@@ -26,9 +26,9 @@ EVERY artifact this protocol emits — ballot, lift table, convener report — l
 ### 1. Seats
 
 - Convene **3 voting seats from 3 model families** in visible cmux panes: R1 Opus 5, R2
-  GPT-5.6-Sol at xhigh, and R3 Fable (current release; today 5.1). Never use background subagents.
-- Pin every seat explicitly and verify the effective model from the pane. The Fable seat launches via
-  `<repo>Claude -s -m fable`; the `fable` alias tracks the current Fable release (golems #765).
+  GPT-5.6-Sol at xhigh, and R3 Fable 5. Never use background subagents.
+- Pin every seat explicitly and verify the effective model from the pane. The Fable seat uses raw
+  `claude --dangerously-skip-permissions --model claude-fable-5` because the repoGolem launcher cannot express it.
 - Supply no shared rubric. Each judge invents named dimensions and weights totaling 100.
 - Each judge scores every lane 1-10, checks the live repo read-only, makes findings falsifiable,
   gives GO / NO-GO / CONDITIONAL GO per gated unit, names its top three changes, signs its family,

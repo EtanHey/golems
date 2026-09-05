@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.golems.stalker-morning-digest</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>@NODE_BIN@</string>
+    <string>@GOLEMS_ROOT@/scripts/stalker-morning-digest.mjs</string>
+    <string>--repo-root</string>
+    <string>@GOLEMS_ROOT@</string>
+    <string>--orchestrator-root</string>
+    <string>@HOME@/Gits/orchestrator</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <!-- launchd uses host-local time; this host is required to stay on Asia/Jerusalem. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>7</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>@GOLEMS_ROOT@/docs.local/stalker-golem/morning-digest.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>@GOLEMS_ROOT@/docs.local/stalker-golem/morning-digest.stderr.log</string>
+</dict>
+</plist>

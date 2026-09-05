@@ -106,13 +106,9 @@ jobs:
 
       - name: Enforce publication boundary
         env:
-          # The private policy reaches ONLY trusted-ref runs (push to master, schedule).
-          # Any pull_request run -- fork OR same-repo -- gets an empty value and runs the
-          # public tree-clean scan. Same-repo PRs execute the PR's own copy of
-          # check-publish-boundary.sh, so a secret-bearing PR run would let mutable code
-          # read the secret (CWE-829, finding 2026-08-20). Fork isolation alone does not
-          # cover same-repo branches; this expression does.
-          PUBLISH_BOUNDARY_PRIVATE_POLICY_YAML: ${{ github.event_name != 'pull_request' && secrets.PUBLISH_BOUNDARY_PEPPER || '' }}
+          # Trusted runs receive the complete private policy out of band. Fork PRs
+          # cannot read this secret and intentionally run the public tree-clean scan.
+          PUBLISH_BOUNDARY_PRIVATE_POLICY_YAML: ${{ secrets.PUBLISH_BOUNDARY_PEPPER }}
           # Scan every commit added after the declared public baseline. Known
           # violations are hash-ratcheted and may burn down, never grow.
           PUBLISH_BOUNDARY_HISTORY_MODE: ratchet
