@@ -12,9 +12,21 @@ interface GithubEntry {
   url: string;
 }
 
+interface GithubTreeEntry {
+  path: string;
+  type: "blob" | "tree" | "commit";
+}
+
+interface GithubTree {
+  tree: GithubTreeEntry[];
+  truncated: boolean;
+}
+
 const REPO = "EtanHey/golems";
 const BASE = `https://api.github.com/repos/${REPO}/contents`;
+const TREES = `https://api.github.com/repos/${REPO}/git/trees`;
 const SKILLS_PATH = "skills/golem-powers";
+const SKILL_MANIFEST = "SKILL.md";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, {
@@ -24,9 +36,33 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// AIDEV-NOTE: one definition of "a skill", shared with
+// scripts/check-skill-library.mjs: a directory under skills/golem-powers that
+// carries a top-level SKILL.md, with dot- and underscore-prefixed names
+// excluded. Listing every directory instead counted _archive, _shared, and the
+// *-workspace helper dirs, so `skills list` reported 95 where the README and
+// check-skill-library.mjs both said 88.
+// The recursive tree API answers this in ONE request; the contents API would
+// need one call per directory to see whether a SKILL.md is there.
 export async function listSkills(): Promise<string[]> {
-  const entries = await fetchJson<GithubEntry[]>(`${BASE}/${SKILLS_PATH}`);
-  return entries.filter((e) => e.type === "dir").map((e) => e.name);
+  const tree = await fetchJson<GithubTree>(
+    `${TREES}/HEAD:${encodeURIComponent(SKILLS_PATH)}?recursive=1`,
+  );
+  if (tree.truncated) {
+    throw new Error(
+      "GitHub returned a truncated tree for skills/golem-powers; refusing to list a partial skill set",
+    );
+  }
+  const names = new Set<string>();
+  for (const entry of tree.tree) {
+    if (entry.type !== "blob") continue;
+    const parts = entry.path.split("/");
+    if (parts.length !== 2 || parts[1] !== SKILL_MANIFEST) continue;
+    const name = parts[0];
+    if (name.startsWith(".") || name.startsWith("_")) continue;
+    names.add(name);
+  }
+  return [...names].sort();
 }
 
 async function collectFiles(url: string): Promise<GithubFile[]> {
