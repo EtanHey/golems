@@ -13,7 +13,7 @@
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create ...` | If `gh` is installed + authenticated |
 | Trigger review bots | `gh pr comment <N> --body "@codex review"` | Shell path, not a native reviewer tool |
-| Trigger Bugbot | `gh pr comment <N> --body "@cursor @bugbot review"` | Re-review with `@cursor @bugbot re-review` |
+| Trigger Bugbot | `gh pr comment <N> --body "@cursor @bugbot review"` | **Opt-in, core paths only** (SKILL.md Step 8a) and never where the repo's `AGENTS.md` bans it (Step 8a.0). Not part of the default panel. Re-review with `@cursor @bugbot re-review` |
 | Read comments | `gh pr view <N> --comments` | Fetch once on state change — never in a poll loop |
 | Merge | `gh pr merge <N> --merge --delete-branch` | See worktree note below |
 
@@ -25,7 +25,8 @@
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Slim-poll review state (see CI + Review Waiting below) |
 | No `CronCreate` | Can't schedule review polling | `gh pr checks <N> --watch` blocks for CI — no scheduling, no sleep loops |
 | No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |
-| No native review-bot tool | Can't invoke Codex Cloud or Cursor Bugbot through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens |
+| No native review-bot tool | Can't invoke Codex Cloud or Cursor Bugbot through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens, filtered by the repo's bot policy |
+| No `AGENTS.md` bot-policy check in the loop | Can summon a bot the target repo bans | Read the target repo's `AGENTS.md` PR-workflow section BEFORE the first `@mention` (SKILL.md Step 8a.0), and name the applied policy in the PR body |
 
 ## Worktree Merge Mechanics
 
@@ -36,15 +37,35 @@ not delete the session underneath you.
 
 ## Shell Review Triggers (Codex fallback)
 
-```bash
-# Trigger the standard review stack from a Codex session
-gh pr comment <N> --body "@codex review"
-gh pr comment <N> --body "@cursor @bugbot review"
+Read the target repo's bot policy first — repo law tightens the fleet default panel, never loosens it
+(SKILL.md Step 8a.0):
 
-# After pushing fixes, request another pass
-gh pr comment <N> --body "@codex review"
-gh pr comment <N> --body "@cursor @bugbot re-review"
+```bash
+sed -n '/## PR Workflow/,/^## /p' AGENTS.md 2>/dev/null
+grep -n -i 'bugbot\|greptile\|coderabbit\|codex review\|do not route' AGENTS.md CLAUDE.md 2>/dev/null
 ```
+
+```bash
+# Trigger the standard review stack from a Codex session (subject to that policy)
+gh pr comment <N> --body "@coderabbitai review"
+gh pr comment <N> --body "@codex review"
+
+# After pushing fixes, request another pass from the reviewers you actually invoked
+gh pr comment <N> --body "@coderabbitai review"
+gh pr comment <N> --body "@codex review"
+```
+
+**Bugbot is not on this list.** It is opt-in on core paths only — a daemon, engine, or transport diff
+— and stays off entirely on docs/skills/tests/config diffs and in any repo whose `AGENTS.md` bans it
+(e.g. brainlayer: *"do not route mandatory reviews to Bugbot or Greptile"*). Where it does apply:
+
+```bash
+gh pr comment <N> --body "@cursor @bugbot review"      # core paths ONLY — opt-in
+gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed round 1
+```
+
+A cheaper Cursor pass with no Bugbot quota cost is the read-only `cursor-agent -p` review (SKILL.md
+Step 8a.2) — Auto-only, no model flag, findings only, never a write pass.
 
 ## CI + Review Waiting (Codex — NO sleep-poll loops)
 
