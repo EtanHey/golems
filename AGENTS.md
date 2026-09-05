@@ -25,13 +25,8 @@ bun test                 # Run all tests
 
 ## Worktree-Isolated Agents
 
-Some agents run with `isolation: worktree` for parallel work without file conflicts:
-
-| Agent | Purpose |
-|-------|---------|
-| `migration-worker` | Database migrations and schema changes |
-| `qa-voice` | Voice-powered QA testing with Playwright |
-| `discovery-voice` | Client discovery call assistant |
+Agents declaring `isolation: worktree` in `.claude/agents/*.md` get their own git
+worktree, for parallel work without file conflicts.
 
 ## Communication Style
 
@@ -47,9 +42,7 @@ Durable content goes in the repo or its `docs.local/` — never `/tmp`,
 `/private/tmp`, `/var/folders`, or `$TMPDIR`, which are wiped on reboot and
 invisible to the rest of the fleet. Worktrees go in `<repo>/.worktrees/<name>`.
 Genuinely ephemeral? `WEAVE_ALLOW_TMP=1 <command>` — allowed and logged.
-
-Claude and Cursor panes have this enforced by the `tmp-block` PreToolUse hook.
-**Codex panes do not** — Codex's `default_permissions = ":workspace"` explicitly
-grants `/tmp` and `$TMPDIR` (it prints `workspace-write [workdir, /tmp, $TMPDIR]`
-at startup), and no hook is wired there yet. In a Codex lane this is a rule you
-follow, not a rail that catches you. See `skills/golem-powers/tmp-block/SKILL.md`.
+Claude and Cursor panes are held to this by the `tmp-block` PreToolUse hook;
+**Codex panes are not wired**, so in a Codex lane it is a rule you follow, not a
+rail that catches you. Full contract, and why Codex is unwired:
+`skills/golem-powers/tmp-block/SKILL.md`.
