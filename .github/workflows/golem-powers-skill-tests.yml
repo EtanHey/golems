@@ -36,8 +36,26 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - name: Install bats
-        run: sudo apt-get update && sudo apt-get install -y bats
+      # zsh, ripgrep and bun are what the suites in scripts/tests/ actually shell
+      # out to, and the runner image ships none of them. Measured in run
+      # 33994270754: 82 of the 90 failures were `exited with code 127,
+      # indicating 'Command not found'` -- 75 direct `zsh` invocations, 5
+      # env-wrapped scripts that drive the zsh dispatcher, 1 `run_claude`, and
+      # build-twitch-chat-lurker.sh, which needs bun. Plus one `rg: command not
+      # found`. jq, timeout, python3, npm and shellcheck are used by the suites
+      # too, but the runner already has them, so they are not installed here.
+      - name: Install bats, zsh and ripgrep
+        run: sudo apt-get update && sudo apt-get install -y bats zsh ripgrep
+
+      # Nothing pins bun at the repo root -- no packageManager key, no
+      # .bun-version, no .tool-versions -- and the three workflows that set one
+      # disagree: security.yml 1.0.25, stalker-chat.yml 1.3.14, spine-gates.yml
+      # latest. 1.3.14 is stalker-chat.yml's, and that workflow builds the very
+      # artifact the stalker suites here exercise, so it is the closest thing to
+      # an intended version. A single root pin would be better than this choice.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
 
       - name: golem-install symlink invariants
         run: |
@@ -57,34 +75,64 @@ jobs:
       # A blocking gate over a known-red directory is worse than the gap it
       # closes — same shape and same reason as the warn job in pr-size-label.yml.
       # Drop `continue-on-error` once scripts/tests/ is green.
+      # The three steps above are a hand-kept enumeration, and that list is the
+      # bug: scripts/tests/ holds 14 .bats files, so 11 suites had no CI at all.
+      # This step globs the directory so a suite is visible the day it lands.
+      #
+      # Why warn and not fail: the directory is not green yet. A blocking gate
+      # over a known-red directory is worse than the gap it closes -- same shape
+      # and reason as the warn job in pr-size-label.yml.
+      #
+      # Why one bats call PER FILE, each bounded: bats has no per-test timeout,
+      # and `tracked dispatcher source isolates concurrent Codex profiles for
+      # the same project` (test 208, test-repogolem-dispatch.bats:2523) hangs
+      # forever -- its stubbed `codex` busy-waits on a release sentinel that
+      # never appears on the runner. A single whole-directory call therefore ran
+      # 46 minutes and reported nothing. Per-file bounds cap the damage at one
+      # file and let every other suite still report, which is the only way to
+      # get a complete count while that test hangs. 180s is ~3x the ~60s the
+      # whole healthy directory took on the runner.
       - name: Whole scripts/tests directory (non-blocking)
         continue-on-error: true
         run: |
           set -uo pipefail
-          tap="$RUNNER_TEMP/bats-all.tap"
-          # GitHub runs this with `bash -e`, so the failing bats pipeline would
-          # abort the step right here and the summary below would never be
-          # written. Suspend -e across exactly that pipeline and carry its exit
-          # status by hand.
+          fails="$RUNNER_TEMP/fails.txt"; : > "$fails"
+          hung="$RUNNER_TEMP/hung.txt"; : > "$hung"
+          ok=0
+          not_ok=0
           set +e
-          bats --tap scripts/tests/*.bats | tee "$tap"
-          status=${PIPESTATUS[0]}
+          for f in scripts/tests/*.bats; do
+            name="$(basename "$f")"
+            out="$RUNNER_TEMP/$name.tap"
+            timeout --kill-after=10s 180s bats --tap "$f" > "$out" 2>&1
+            rc=$?
+            cat "$out"
+            ok=$(( ok + $(grep -c '^ok ' "$out") ))
+            not_ok=$(( not_ok + $(grep -c '^not ok ' "$out") ))
+            sed -n "s/^not ok [0-9]* /$name: /p" "$out" >> "$fails"
+            if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
+              printf '%s\n' "$name" >> "$hung"
+            fi
+          done
           set -e
-          ok=$(grep -c '^ok ' "$tap" || true)
-          not_ok=$(grep -c '^not ok ' "$tap" || true)
-          failures=$(grep '^not ok ' "$tap" || true)
           {
             printf '## scripts/tests — %s ok, %s not ok\n\n' "$ok" "$not_ok"
-            if [ -n "$failures" ]; then
+            if [ -s "$hung" ]; then
+              printf '**Timed out after 180s, so their remaining tests are in neither count:**\n\n'
+              sed 's/^/- `/; s/$/`/' "$hung"
+              printf '\n'
+            fi
+            if [ -s "$fails" ]; then
               printf 'Failing tests:\n\n'
-              printf '%s\n' "$failures" | sed 's/^/- `/; s/$/`/'
-            else
+              sed 's/^/- `/; s/$/`/' "$fails"
+            elif [ ! -s "$hung" ]; then
               printf 'Every suite in `scripts/tests/` passed.\n'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "$failures" ]; then
-            printf '%s\n' "$failures" | while IFS= read -r line; do
-              printf '::warning file=scripts/tests::%s\n' "$line"
-            done
-          fi
-          exit "$status"
+          while IFS= read -r line; do
+            printf '::warning file=scripts/tests::%s\n' "$line"
+          done < "$fails"
+          while IFS= read -r line; do
+            printf '::warning file=scripts/tests::%s timed out after 180s\n' "$line"
+          done < "$hung"
+          if [ -s "$fails" ] || [ -s "$hung" ]; then exit 1; fi
