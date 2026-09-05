@@ -1,0 +1,33 @@
+# Canon 9 wants a size label on every PR at open. This job is the reminder, not
+# the gate: it WARNS and exits 0.
+#
+# Why warn and not fail (2026-09-05): on the day this landed the fleet merged 56
+# PRs and 39 of them had no size label, and three repos were still on the
+# retired `size/*` scheme. A failing check would have gone red on essentially
+# every in-flight PR in the fleet before `ensure` had run everywhere and before
+# /pr-loop started applying the label automatically. Flip `check` to a failing
+# gate once a full day passes with no warnings.
+name: pr-size-label
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  size-label-warning:
+    name: Warn when a PR has no size label
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Warn on a missing size label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_REPO: ${{ github.repository }}
+        run: bash scripts/pr-size-labels.sh check "$PR_NUMBER" --repo "$PR_REPO"

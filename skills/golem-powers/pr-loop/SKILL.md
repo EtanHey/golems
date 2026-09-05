@@ -319,6 +319,41 @@ gh pr create --title "feat: description" --body-file - <<'EOF'
 EOF
 ```
 
+### Size label (canon 9) — apply it at open, not later
+
+The scheme is **colon**: `size:XS` `size:S` `size:M` `size:L`. `size/XS` (slash)
+is retired; `ensure` renames it in place so old PRs keep their label.
+
+Immediately after `gh pr create` returns the PR number:
+
+```bash
+# creates/normalizes the four labels in the repo (idempotent, safe to re-run)
+scripts/pr-size-labels.sh ensure <owner/repo>
+
+# sizes the PR from its hand-written diff and applies exactly one size:* label,
+# removing any other size:* or size/* it carries
+scripts/pr-size-labels.sh compute <pr> --repo <owner/repo>
+```
+
+Sizing is additions + deletions over non-generated files (locks, `dist/`,
+`node_modules/`, snapshots, fixtures and `testdata/` are excluded — the full
+glob list is in the script header):
+
+| label | hand-written lines |
+|---|---|
+| `size:XS` | 0–20 |
+| `size:S` | 21–100 |
+| `size:M` | 101–400 |
+| `size:L` | over 400 |
+
+**`size:L` owes a one-line why** in the PR body — canon 9 splits past ~400
+hand-written lines, so an L that is not split has to say why it could not be.
+Put it on its own line, e.g. `size:L because the generated client and its
+consumers cannot land separately without breaking the build.`
+
+CI (`.github/workflows/pr-size-label.yml`) warns — it does not fail — when a PR
+reaches review with no `size:*` label.
+
 The signature block goes **last** in the body, and the same block ends every PR
 comment, review, and issue comment (Agent Identity Signature above). Commits use
 the `Co-Authored-By: <seat> running <model>` trailer instead — never the block.
