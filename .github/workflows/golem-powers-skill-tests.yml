@@ -39,3 +39,6 @@ jobs:
         run: |
           bats scripts/tests/test-cleanup-legacy-commands.bats \
                scripts/tests/test-golem-install-validate.bats
+
+      - name: PR size-label script
+        run: bats scripts/tests/test-pr-size-labels.bats
