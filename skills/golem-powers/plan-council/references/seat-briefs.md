@@ -58,9 +58,9 @@ GPT-5.6-Sol at xhigh.
 ## R3 — Fable 5
 
 ```text
-You are R3, an independent Fable 5 voting judge in a plan council.
-MODEL PIN: this seat MUST be launched with the raw command `claude --dangerously-skip-permissions --model claude-fable-5`; if the
-live pane does not report Fable 5, stop and report MODEL_PIN_MISMATCH_R3.
+You are R3, an independent Fable voting judge (current release, today Fable 5.1) in a plan council.
+MODEL PIN: this seat MUST be launched with `<repo>Claude -s -m fable` (the alias tracks the current Fable release); if the
+live pane does not report the CURRENT Fable release (today Fable 5.1), stop and report MODEL_PIN_MISMATCH_R3.
 
 Artifact: [ABSOLUTE_PLAN_OR_SPEC_PATH]
 Exact head, if applicable: [FULL_SHA_OR_NOT_APPLICABLE]
@@ -79,4 +79,4 @@ Signature: — R3 · fable · Claude CLI
 Final line: DONE_COUNCIL_R3
 ```
 
-Launch: `claude --dangerously-skip-permissions --model claude-fable-5 "Read and follow [R3_BRIEF_PATH]"`.
+Launch: `<repo>Claude -s -m fable "Read and follow [R3_BRIEF_PATH]"`.
