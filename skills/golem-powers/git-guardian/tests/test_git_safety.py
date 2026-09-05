@@ -709,3 +709,67 @@ def test_w16_dotfiles_repo_at_home_does_not_become_the_boundary(tmp_path, monkey
     (outside / ".git").mkdir(parents=True)
     (outside / "src").mkdir()
     assert git_safety._outermost_repo_root(str(outside / "src")) == str(outside)
+
+
+# ── W27: pkill/killall argument-order folding (2026-09-05 mass-kill incident) ────
+
+def test_w27_pkill_options_after_the_pattern_are_blocked():
+    # BSD getopt stops at the first non-option, so every word after the pattern is
+    # folded INTO the pattern as an alternation branch. This is the exact shape that
+    # SIGTERM'd 20 launchd jobs and every Claude seat on 2026-09-05.
+    blocked = (
+        "pkill -f 'inbox.jsonl' -P 1",
+        "pkill -f 'inbox.jsonl' -P 1 2>/dev/null; kill 40955 2>/dev/null && echo done",
+        "sudo pkill -f 'foo' -u 501",
+        "killall -f 'bar' -m",
+        "PKILL -f 'foo' -P 1",
+        "/usr/bin/pkill -f 'foo' -P 1",
+        "bash -c \"pkill -f 'foo' -P 1\"",
+    )
+    for command in blocked:
+        reason = git_safety.dangerous_shell_reason(command)
+        assert reason and "pkill" in reason.lower(), command
+        assert "pgrep" in reason, command
+
+
+def test_w27_degenerate_kill_patterns_are_blocked():
+    # The folded result itself, and the single-character / all-digit patterns that
+    # match ~92 processes on this machine.
+    blocked = (
+        "pkill -f '1'",
+        "pkill -f 'abc'",
+        "pkill -f 'inbox.jsonl|-P|1'",
+        "pkill -f 'inbox.jsonl|1'",
+        "pkill -f 501",
+        "killall -m -f '1'",
+        "killall -f 'bar|-m'",
+        # Two operands is never two patterns — getopt folds them into one alternation.
+        "pkill -f inbox.jsonl extra-operand",
+    )
+    for command in blocked:
+        reason = git_safety.dangerous_shell_reason(command)
+        assert reason and "pkill" in reason.lower(), command
+
+
+def test_w27_correct_kill_forms_stay_allowed():
+    # A false block here costs more than a miss (W16 repaired over-broad rm blocking
+    # in this same file). Legitimate targeted kills must keep working.
+    allowed = (
+        "pkill -f -P 1 'inbox.jsonl'",
+        "pgrep -f 'inbox.jsonl' -P 1",
+        "pgrep -f '1'",
+        "kill 40955",
+        "kill -9 40955",
+        "killall Dock",
+        "pkill -HUP -f '/opt/svc/daemon.py'",
+        "pkill -- -weird-pattern",
+        "pkill -u 501 -f 'inbox.jsonl'",
+        "pkill -f 'node --inspect'",
+        "pkill -f 'foo|bar'",
+        "pkill -f 'inbox.jsonl'",
+        "pkill -f 'node'",
+        "killall -f 'barproc'",
+        'echo "never run pkill -f \'x\' -P 1"',
+    )
+    for command in allowed:
+        assert git_safety.dangerous_shell_reason(command) is None, command
