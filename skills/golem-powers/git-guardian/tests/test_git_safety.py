@@ -674,3 +674,38 @@ def test_w16_nested_independent_clone_root_is_exempt(tmp_path):
     assert git_safety.dangerous_shell_reason(
         "rm -rf .", cwd=str(scratch), env={}
     ) is None
+
+
+def test_w16_dot_tail_does_not_qualify_as_a_literal_tail(tmp_path):
+    # Self-review finding on this PR's own diff: `$X/.` resolves straight back to `$X`,
+    # so a "." tail defeats the one-level-below guarantee the allowance rests on.
+    for command in ("rm -rf $X/.", "rm -rf $X/./", "rm -rf $X/.//."):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env={}
+        ) is not None, command
+    # …while a real component after a "." still qualifies (it IS one level below).
+    assert git_safety.dangerous_shell_reason(
+        "rm -rf $X/./mergetest", cwd=str(tmp_path), env={}
+    ) is None
+
+
+def test_w16_dotfiles_repo_at_home_does_not_become_the_boundary(tmp_path, monkeypatch):
+    # Self-review finding: `git init` in $HOME (a dotfiles checkout — common) would make
+    # $HOME the outermost root for everything under it, so `rm -rf ~/Gits/<repo>` would
+    # measure as 2 components and ALLOW a whole-repo delete. The walk must not accept a
+    # repo at or above $HOME.
+    home = tmp_path / "home"
+    (home / ".git").mkdir(parents=True)
+    repo = home / "Gits" / "golems"
+    (repo / ".git").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home))
+    assert git_safety._outermost_repo_root(str(repo)) == str(repo)
+    for command in (f'rm -rf "{repo}"', f'rm -rf "{repo}/skills"'):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(home), env={"HOME": str(home)}
+        ) is not None, command
+    # A repo OUTSIDE home is unaffected — the walk still finds its outermost root.
+    outside = tmp_path / "opt" / "project"
+    (outside / ".git").mkdir(parents=True)
+    (outside / "src").mkdir()
+    assert git_safety._outermost_repo_root(str(outside / "src")) == str(outside)

@@ -289,13 +289,21 @@ def _outermost_repo_root(path: str) -> str | None:
     route around the guard. The outer repo's boundary still governs, so the main
     checkout's root and its top-level directories stay protected.
     """
+    home = os.path.normpath(os.path.expanduser("~"))
     current = os.path.abspath(path)
     outermost = None
     while True:
-        if os.path.exists(os.path.join(current, ".git")):
+        # A repo AT or ABOVE $HOME — a dotfiles checkout is the common one — must never
+        # become the boundary. It would swallow every real repo underneath it and turn
+        # a whole-repo delete into a "deep enough" allow (`~/Gits/<repo>` measures as
+        # 2 components against `~`). Home itself is covered by the home-directory rule.
+        if (
+            current not in (home, os.sep)
+            and os.path.exists(os.path.join(current, ".git"))
+        ):
             outermost = current
         parent = os.path.dirname(current)
-        if parent == current:
+        if parent == current or current == home:
             return outermost
         current = parent
 
@@ -336,7 +344,9 @@ def _literal_tail_after_unresolved_var(
                 tail_parts.append("")
             tail_parts[-1] += char
         cursor += 1
-    return saw_unresolved and any(tail_parts)
+    # "." does not count: `$X/.` resolves straight back to `$X`, which would defeat the
+    # one-level-below guarantee the whole allowance rests on.
+    return saw_unresolved and any(part not in ("", ".") for part in tail_parts)
 
 
 def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str | None:
