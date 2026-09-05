@@ -58,8 +58,14 @@ jobs:
         run: |
           set -uo pipefail
           tap="$RUNNER_TEMP/bats-all.tap"
+          # GitHub runs this with `bash -e`, so the failing bats pipeline would
+          # abort the step right here and the summary below would never be
+          # written. Suspend -e across exactly that pipeline and carry its exit
+          # status by hand.
+          set +e
           bats --tap scripts/tests/*.bats | tee "$tap"
           status=${PIPESTATUS[0]}
+          set -e
           ok=$(grep -c '^ok ' "$tap" || true)
           not_ok=$(grep -c '^not ok ' "$tap" || true)
           failures=$(grep '^not ok ' "$tap" || true)
