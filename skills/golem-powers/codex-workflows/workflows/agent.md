@@ -15,8 +15,13 @@ skills/golem-powers/codex-workflows/scripts/codex-workflows.sh agent \
   --lead lead-name \
   --run-id example-r1 \
   --model gpt-5.6-luna \
-  --effort xhigh
+  --effort medium
 ```
+
+`--effort` is set **per dispatch**, not per lane: `medium` or `low` for scoped, focused, or
+mechanical jobs, `high` only when the job is genuinely complex, `xhigh` only by explicit choice
+named with its reason. The role default is a ceiling, not a floor. (Rungs are orc's
+operationalization of Etan's 2026-09-05 ruling — see `skills/golem-powers/pr-loop/SKILL.md`.)
 
 `--run-id ID` maps to `<run-dir>/<ID>/manifest.json`. Use `--manifest
 /absolute/run/manifest.json` instead to create or append to that explicit run;
