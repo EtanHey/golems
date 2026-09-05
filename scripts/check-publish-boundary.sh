@@ -1,4 +1,15 @@
 #!/usr/bin/env bash
+#
+# HISTORY MODES — read before choosing (learned the hard way on the 2026-09-05 public flip):
+#   ratchet     — re-runs this check against every commit since PUBLISH_BOUNDARY_HISTORY_BASE
+#                 using the CURRENT allowlist. The base must be reachable. On the public golems
+#                 repo (an orphan built from golems-history) the base is the genesis commit.
+#   single-root — asserts the repo has EXACTLY ONE reachable commit. It is a verification
+#                 snapshot mode: it goes RED on the very first PR after genesis (2 commits).
+#                 Do NOT use it on a live repo; it is for proving a freshly-built orphan tree
+#                 before its first push.
+#   current-tree — no history check; what a local run does by default. A local PASS here
+#                 does not predict CI, which runs ratchet.
 set -euo pipefail
 export LC_ALL=C
 export LANG=C
