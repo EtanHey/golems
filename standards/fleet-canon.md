@@ -74,3 +74,8 @@ or operational detail after the trim wave.
 - `scripts/canon-drift-lint.mjs --check` compares the marker-delimited block above against the installed block.
 - Missing installed block reports `not-installed` and exits 0 so this staged PR can merge before installation.
 - Once installed, any hash or section-set mismatch reports `drift`; `--check` exits 1 for CI.
+10. **never-privatize** - Privatizing a repo is never the remedy for a leak; prevention is: publication-boundary
+    guards, the docs.local law, secrets never on disk inside a repo. A leak is fixed by removing the blob path
+    (an orphan-commit republish from an audited SHA) while the public repo STAYS public. Privatizing loses the
+    stars and kills CI (public repos are exempt from the Actions billing lock). The archived VoiceLayer is the
+    scar this rule exists to prevent; golems went public on 2026-09-05 by exactly this shape.
