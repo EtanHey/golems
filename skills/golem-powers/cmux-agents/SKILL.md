@@ -117,6 +117,11 @@ Fleet law for user-visible completion lives in canon #4; visual evidence mechani
 
 Every autonomous worker task must end with a file write and a DONE marker:
 
+**Stop-state clause (required in every payload):** if the worker stops before the task's end state, its
+last write to the report must say exactly where it stopped and what the next step is. End state for PR
+work = review bots and required checks green on the LATEST commit; merge only on instruction. See
+`/pr-loop` "Stop-State and End-State".
+
 ```bash
 # In the worker's prompt:
 Write your report to /path/to/output/batch-WORKER.md. The last line of the

@@ -21,6 +21,23 @@ exit 3 = FLAG). FLAG ⇒ finish the loop to the authority-appropriate endpoint:
 MERGED for a lead, or reviewed PR handoff for a worker. Surface the PR number,
 not a permission question.
 
+## Stop-State and End-State (Astra digest 2026-09-05, §2 L60 / §3 L131 / §4 L146)
+
+**End state, precisely:** done = review bots and required checks GREEN on the **LATEST** commit. Not
+"a green run exists" — green on the commit that is actually at the head of the PR.
+
+**The four explicit turns**, in order, none skipped and none merged into a neighbour:
+1. fix
+2. commit + push + open/update the PR
+3. babysit to green on the latest commit (invoke bots, answer findings, re-push)
+4. merge **only on instruction** (lead authority or the brief's merge policy)
+
+**Stop-state clause — when you stop before the end state (no PR, or PR not merged):** state exactly
+where you stopped and what the next turn is. "Stopped after step 2: PR #N is open, CI running, next is
+step 3 babysit" is a valid stop. "Done" without a PR URL, or silence, is not. The Astra digest's worst
+observed behaviour was stopping at the literal question and repeating the same stop after correction —
+a stop-state line is what makes a stop legible instead of a stall.
+
 ## Autonomous Agent Mode
 
 If you are running autonomously (no human in the loop), these rules are mandatory:
