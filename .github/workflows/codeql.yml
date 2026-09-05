@@ -3,8 +3,8 @@ name: CodeQL
 on:
   push:
     branches: [master, main]
+  # No branches filter: a PR stacked on another PR's branch gets this gate too.
   pull_request:
-    branches: [master, main]
   schedule:
     # Run Mondays at 6 AM UTC
     - cron: "0 6 * * 1"

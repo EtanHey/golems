@@ -1,8 +1,8 @@
 name: Security Checks
 
 on:
+  # No branches filter: a PR stacked on another PR's branch gets this gate too.
   pull_request:
-    branches: [master, main]
   push:
     branches: [master, main]
   schedule:

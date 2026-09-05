@@ -23,6 +23,8 @@ bun install              # Install all workspace deps
 bun test                 # Run all tests
 ```
 
+CI runs on PRs into any base branch, so a stacked PR gets the full suite.
+
 ## Worktree-Isolated Agents
 
 Agents declaring `isolation: worktree` in `.claude/agents/*.md` get their own git

@@ -1,8 +1,12 @@
 name: golem-powers-skill-tests
 
 on:
+  # No branches filter on pull_request: a PR stacked on another PR's branch has
+  # to get CI too. With `branches: [master]` a PR into any other base ran none
+  # of this workflow, which is how a stacked PR reached "green" having tested
+  # nothing. push stays master-only so a feature-branch push does not run this
+  # a second time alongside its own PR.
   pull_request:
-    branches: [master]
   push:
     branches: [master]
 
