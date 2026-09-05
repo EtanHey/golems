@@ -742,6 +742,146 @@ def is_dangerous_rm(command: str, *, cwd: str | None = None, env=None):
     return False, None
 
 
+# ── pkill/killall argument-order folding ────────────────────────────────────────
+# BSD getopt stops at the first non-option operand, so `pkill -f 'x' -P 1` folds `-P`
+# and `1` INTO the pattern — it is exactly `pkill -f 'x|-P|1'`, i.e. SIGTERM to every
+# process whose full argv contains the character `1`. On 2026-09-05 that killed 20
+# launchd jobs and every Claude seat whose argv held a `1` (verified read-only at the
+# time: `pgrep -f 'inbox.jsonl' -P 1` and `pgrep -f 'inbox.jsonl|-P|1'` returned
+# identical 92-pid sets, while `pgrep -f -P 1 'inbox.jsonl'` returned 1).
+# See the fleet incident write-up docs.local/incidents/2026-09-05-mass-claude-kill.md.
+#
+# AIDEV-NOTE: scope limit — the hook sees ONE command string at a time, so the
+# "assert a `pgrep` dry-run under 5 matches first" half of the prevention rule is only
+# mechanically checkable when both appear on the same command line. This guard enforces
+# the argument ORDER and the degenerate-pattern shape; the dry-run requirement is
+# carried as GUIDANCE in the deny message. Do not claim it is enforced in general.
+_KILL_MATCHER_COMMANDS = {"pkill", "killall"}
+
+# Options that consume a SEPARATE following word. Knowing these is what keeps the
+# CORRECT form (`pkill -u 501 -f 'x'`) from reading as pattern-then-flag and being
+# false-blocked. Union of pkill(1) and killall(1) across BSD and Linux; `-s` is treated
+# as value-taking (Linux `killall -s TERM`) because guessing that way can only cost a
+# miss, never a false block.
+_KILL_OPTIONS_WITH_VALUE = {
+    "-c", "-d", "-g", "-G", "-j", "-P", "-s", "-t", "-u", "-U", "-z", "-Z",
+    "--context", "--delimiter", "--euid", "--group", "--jail", "--ns",
+    "--older-than", "--parent", "--pgroup", "--session", "--signal",
+    "--terminal", "--uid", "--user", "--younger-than",
+}
+_KILL_FULL_MATCH_OPTIONS = {"--full"}
+
+_KILL_GUIDANCE = (
+    "Use `pkill -f -P 1 'pattern'`, and show `pgrep -f 'pattern'` with fewer than 5 "
+    "matches first. Prefer a pidfile, `lsof`, or `launchctl kickstart -k`."
+)
+
+
+def _top_level_alternation(pattern: str) -> list[str]:
+    """Split a regex on `|` at nesting depth 0, ignoring escapes, groups and classes."""
+    branches: list[str] = []
+    current = ""
+    depth = 0
+    in_class = False
+    escaped = False
+    for char in pattern:
+        if escaped:
+            current += char
+            escaped = False
+            continue
+        if char == "\\":
+            current += char
+            escaped = True
+            continue
+        if in_class:
+            current += char
+            if char == "]":
+                in_class = False
+            continue
+        if char == "[":
+            in_class = True
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth = max(0, depth - 1)
+        elif char == "|" and depth == 0:
+            branches.append(current)
+            current = ""
+            continue
+        current += char
+    branches.append(current)
+    return branches
+
+
+def _degenerate_kill_pattern(pattern: str) -> bool:
+    """True for the `-f` patterns that match nearly every process on the machine.
+
+    Applied to the POST-FOLDING effective pattern (all operands joined with `|`, which
+    is what BSD getopt actually hands the matcher). Deliberately narrow beyond that — a
+    false block here costs more than a miss — so only the shapes folding produces are
+    caught: three characters or fewer, all digits, or a top-level alternation carrying a
+    one-character or bare `-`-prefixed branch. `pkill -f 'inbox.jsonl'` and
+    `pkill -f 'foo|bar'` stay allowed.
+    """
+    if len(pattern) <= 3 or pattern.isdigit():
+        return True
+    branches = _top_level_alternation(pattern)
+    return len(branches) > 1 and any(
+        len(branch) <= 1 or (branch.startswith("-") and len(branch) > 1)
+        for branch in branches
+    )
+
+
+def _kill_matcher_reason(words: list[str], position: int, command_name: str) -> str | None:
+    """Block pattern-matching kills whose flags trail the pattern, or whose `-f`
+    pattern is the degenerate shape that trailing flags fold into."""
+    index = position + 1
+    operands: list[str] = []
+    full_match = False
+    while index < len(words):
+        word = words[index]
+        if word == "--":
+            # Everything after `--` is an operand, never an option.
+            operands.extend(words[index + 1:])
+            break
+        if not word.startswith("-") or word == "-":
+            operands.append(word)
+            index += 1
+            continue
+        if operands:
+            return (
+                f"Dangerous command: `{command_name}` options must precede the pattern "
+                f"(BSD getopt folds trailing flags into the pattern). {_KILL_GUIDANCE}"
+            )
+        option = word.split("=", 1)[0]
+        if option in _KILL_FULL_MATCH_OPTIONS or (
+            not word.startswith("--") and "f" in word[1:]
+        ):
+            full_match = True
+        index += 1
+        if "=" not in word and option in _KILL_OPTIONS_WITH_VALUE:
+            index += 1
+    if full_match and operands:
+        # Extra operands are not extra patterns: BSD getopt joins them into ONE
+        # alternation, so judge the effective pattern the matcher really sees.
+        effective = "|".join(operands)
+        if len(operands) > 1:
+            # `pkill` takes exactly ONE pattern; a second operand is not a second
+            # pattern, it is a folded alternation branch.
+            return (
+                f"Dangerous command: `{command_name} -f` was given {len(operands)} "
+                f"operands, which BSD getopt folds into the single pattern "
+                f"{effective!r} — it matches nearly every process. {_KILL_GUIDANCE}"
+            )
+        if _degenerate_kill_pattern(effective):
+            return (
+                f"Dangerous command: `{command_name} -f {effective!r}` matches nearly "
+                f"every process — this is the shape argument folding produces. "
+                f"{_KILL_GUIDANCE}"
+            )
+    return None
+
+
 def _dangerous_non_rm_in_words(words: list[str], position: int = 0) -> str | None:
     """Inspect git/railway only in executable command positions."""
     assignment_re = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", re.DOTALL)
@@ -830,6 +970,9 @@ def _dangerous_non_rm_in_words(words: list[str], position: int = 0) -> str | Non
             },
         )
         return _dangerous_non_rm_in_words(words, nested)
+
+    if command_name in _KILL_MATCHER_COMMANDS:
+        return _kill_matcher_reason(words, position, command_name)
 
     if command_name == "railway":
         if words[position + 1:position + 2] == ["down"]:
