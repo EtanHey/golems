@@ -2860,3 +2860,29 @@ JSON
     [ "$status" -eq 0 ]
     assert_no_worker_persona_markers "$output"
 }
+
+@test "tracked dispatcher source sets claude --effort by seat: lead high, worker medium, -E wins" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    run_claude() {
+      zsh -f -c '
+        export RALPH_REGISTRY_FILE="$1"; [ -n "$2" ] && export GOLEM_ROLE="$2"; [ -n "$3" ] && export GOLEM_EFFORT="$3"
+        function _ralph_setup_mcps() { return 0; }
+        function _ralph_setup_secrets() { return 0; }
+        function _golem_setup_env() { return 0; }
+        function claude() { print -r -- "ARGS=$*"; }
+        source "$4"; _golem_register_wrappers
+        shift 4; testrepoClaude -s "$@"
+      ' _ "$REGISTRY_FILE" "$1" "$2" "$SOURCE_DISPATCHER" "${@:3}"
+    }
+    run run_claude "" ""
+    [ "$status" -eq 0 ]; grep -F -q -- "--effort high" <<< "$output"
+    run run_claude worker ""
+    [ "$status" -eq 0 ]; grep -F -q -- "--effort medium" <<< "$output"
+    run run_claude worker low
+    [ "$status" -eq 0 ]; grep -F -q -- "--effort low" <<< "$output"
+    run run_claude worker low -E xhigh
+    [ "$status" -eq 0 ]; grep -F -q -- "--effort xhigh" <<< "$output"
+    # RED half: a lead must NOT come out medium, or the precedence is broken
+    run run_claude "" ""
+    ! grep -F -q -- "--effort medium" <<< "$output"
+}
