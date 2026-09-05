@@ -19,7 +19,7 @@ const CAP = 120;
 
 const EXCEPTIONS = {
   "adversarial-council": 234,
-  "audio-dashboard": 163,
+  "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
   "budget-usage-lint": 244,
   "codex-workflows": 142,
   "collab-monitor": 185,
