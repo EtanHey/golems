@@ -86,14 +86,22 @@ teardown() {
   [ "$status" -ne 0 ]
 }
 
-@test "golems base omits stale launcher and icon-library claims" {
+@test "golems base omits stale claims and launcher law stays in the canon" {
   BASE="$REPO_ROOT/.claude/rules/golems-base.md"
   run grep -E 'lucide-react|ralph[.]zsh|ln -s ../node_modules|cp ../[.]env' "$BASE"
   [ "$status" -ne 0 ]
   run grep -E 'lucide-react|SVG file creation' "$HOOK"
   [ "$status" -ne 0 ]
 
-  grep -F 'repoGolem launcher' "$BASE"
+  # Launcher law is no longer golems-base's to state. standards/fleet-canon.md
+  # rule 6 owns it, and that file's own Overlap Reconciliation table records the
+  # move: "launchers | `repogolem` skill; launcher scripts; W0.2 seat registry |
+  # Canon owns default launcher naming, registry override precedence, and
+  # skip-perms law". This assertion follows the law to its home instead of
+  # asking the boot preamble to restate it, which is the duplication canon
+  # exists to prevent.
+  grep -F 'repoGolem launchers' "$REPO_ROOT/standards/fleet-canon.md"
+
   grep -F 'AIDEV-NOTE:' "$BASE"
   grep -F 'non-null assertions' "$BASE"
   grep -F 'docs/architecture/' "$BASE"
