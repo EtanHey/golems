@@ -428,6 +428,19 @@ Fleet law for collab claims, DONE markers, and guard handoffs lives in canon #7.
   `/pr-loop` → `references/github-identity.md`). The worker signs with ITS OWN seat/role/harness and
   its OWN live-session model — never a model value you pass down from the spawn.
 
+### Spawn Only What the Job Needs (Etan, 2026-09-05)
+
+Etan, verbatim — relayed via orc, the ellipsis is his:
+
+> "tell the agents to do it wisely and not just blindly make workflows and sub-agents… especially
+> when they're Fable, make sure they're not creating Fable sub-agents and workflows full of Fables
+> when they don't actually need them, instead of just pin-gating it."
+
+Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold;
+every spawn pinned explicitly; Fable only where judgment is the bottleneck, never for mechanical
+steps; a Fable seat defaults its workers to opus/sonnet and says why when it does not. The gate
+(`model-pin-gate`) is the backstop, not the decision.
+
 ## Prompt Size Ceiling — oversized sends freeze surfaces above ~2000 chars
 
 > **Why this exists:** A 72-hour JSONL sweep (2026-04-12 → 2026-04-15) across 5 Claude Code orchestrator sessions found that raw surface sends over 2,000 characters correlated strongly with surface freezes. In one TaskOwl-app session: 868 total send calls, 13 exceeded 2,000 chars (max 4,382), and those 13 large calls preceded 6 frozen / surface-unresponsive incidents. In a control session (`coach` repo) every send stayed under 1,900 chars and there were **zero** freezes. The `coach` control case is the proof: discipline eliminates the symptom.
