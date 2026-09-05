@@ -311,6 +311,9 @@ gh pr create --title "feat: description" --body-file - <<'EOF'
 - [ ] Tests pass
 - [ ] Manual verification done
 
+## Bot policy
+- Read `<repo>/AGENTS.md` → panel applied: <bots summoned> (<bots excluded, and why>)
+
 — golemsClaude (lead) · claude-code/opus-4.6
 <!-- golem-id v1 {"seat":"golemsClaude","role":"lead","harness":"claude-code","model":"claude-opus-4.6","model_source":"session-jsonl","session":"db7f3bb9","ts":"2026-08-08T18:40:00Z"} -->
 EOF
@@ -365,8 +368,37 @@ CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 
 Always explicitly request reviews. Don't wait for auto-detection.
 
+#### 8a.0 — Read the target repo's bot policy BEFORE summoning anything
+
+The panel below is the **fleet default**. A repo's own `AGENTS.md` (or `CLAUDE.md` where there is no
+`AGENTS.md`) may tighten it, and **repo law wins** — canon: repo law tightens, never loosens. Skipping
+this read is how a worker summons a bot into a repo that bans it.
+
 ```bash
-# The default panel (do this right after PR creation)
+# In the TARGET repo, read the review/bot policy before the first @mention
+sed -n '/## PR Workflow/,/^## /p' AGENTS.md 2>/dev/null
+grep -n -i 'bugbot\|greptile\|coderabbit\|codex review\|do not route' AGENTS.md CLAUDE.md 2>/dev/null
+```
+
+1. **Read** the policy — the PR-workflow / review section of the target repo's `AGENTS.md`, falling
+   back to `CLAUDE.md`.
+2. **Summon only what it allows.** A bot the repo bans is not summoned — not at round 1, and not at
+   re-review — even when the fleet default panel below lists it.
+3. **Say which policy you applied** in the PR body, one line naming the file you read and what it
+   excluded. Examples:
+   - `Bot policy: brainlayer AGENTS.md ("do not route mandatory reviews to Bugbot or Greptile") → panel = CodeRabbit + Codex.`
+   - `Bot policy: no bot clause in AGENTS.md → fleet default panel.`
+
+Live conflict this clause exists for: `EtanHey/brainlayer`'s `AGENTS.md` says *"Do not route mandatory
+reviews to Bugbot or Greptile."* On a brainlayer PR the `@greptileai review` line below is dropped and
+Bugbot stays off regardless of core-path tiering. Origin: brainlayer lead escalation 2026-09-03 — a
+worker followed this skill verbatim and summoned Bugbot into the repo that bans it
+(`orchestrator/backlog/golems.md` #21).
+
+#### 8a.1 — The panel
+
+```bash
+# The default panel (do this right after PR creation, filtered by 8a.0)
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@greptileai review"
 gh pr comment <N> --body "@codex review"
@@ -391,6 +423,26 @@ Trigger: Bugbot answered `usage limit reached` on skill-creator #51, a non-core 
 > **Provenance:** this is *orc's* ruling, not an Etan ratification. Orc took it rather than ask Etan
 > to raise Cursor's cap, and offered him the reversal; no ratification or objection is on record.
 > If the cap is raised, this tiering is the clause to revisit.
+
+#### 8a.2 — The Cursor review pass is READ-ONLY
+
+When the loop wants Cursor's eyes on a diff, that is a `cursor-workflows` / `cursor-agent -p` **review**
+pass — never a write pass, never an implementation pass. Cursor gathers and verifies; Codex implements
+(canon #1). A Cursor pass that edits files inside the PR loop is a routing violation, not a shortcut.
+
+```bash
+# Read-only Cursor review — costs no Bugbot quota, needs no @mention
+cursor-agent -p --output-format text \
+  "Review this branch's diff against main for correctness bugs and security issues. \
+   Report findings only. Do NOT edit, create, or delete any file."
+```
+
+- **Auto-only, no model flag** (canon #1): never pass `-m`/`--model` or a model field — pinned Cursor
+  drains the shared subscription pool fast.
+- Because it spends no Bugbot quota, this pass is still available on a repo whose policy bans Bugbot
+  (8a.0) and on a non-core diff where Bugbot is correctly off the panel.
+- If the pass exhausts Cursor's shared quota through its own dispatch, report **that dispatch** as the
+  cause — never the resulting `resource_exhausted` as an external finding (canon #3).
 
 Bot-invocation comments are agent-authored PR comments, so the signature block
 applies to them too — the `gh()` wrapper will append it automatically once it
@@ -449,7 +501,8 @@ collection path does not reply to a thread; use `/replies` or the documented
 |--------|------|----------------------|
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
-| Cursor Bugbot | Bug detection — **opt-in, core paths only** | Not on the default panel (see Step 8a tiering). On a daemon/engine/transport diff: `gh pr comment <N> --body "@cursor @bugbot review"`. Re-review after fixes: `gh pr comment <N> --body "@cursor @bugbot re-review"`. Bot responds as `cursor[bot]`. |
+| Cursor (read-only pass) | Diff review through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — Auto-only, never a write pass (Step 8a.2). |
+| Cursor Bugbot | Bug detection — **opt-in, core paths only** | Not on the default panel (see Step 8a tiering) and never where repo policy bans it (Step 8a.0). On a daemon/engine/transport diff: `gh pr comment <N> --body "@cursor @bugbot review"`. Re-review after fixes: `gh pr comment <N> --body "@cursor @bugbot re-review"`. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | Check via CI status |
 
@@ -461,8 +514,8 @@ gh pr comment <N> --body "@codex review"
 gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed round 1
 ```
 
-Re-review the reviewers you actually invoked. A bot that was correctly left off the panel for a
-non-core diff does not get summoned at round 2 either.
+Re-review the reviewers you actually invoked. A bot that was correctly left off the panel — by repo
+policy (8a.0) or by non-core tiering (8a.1) — does not get summoned at round 2 either.
 
 **Codex Cloud is enabled on:** EtanHey/voicelayer, EtanHey/orchestrator, EtanHey/golems, EtanHey/brainlayer.
 
