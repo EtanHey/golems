@@ -10,7 +10,7 @@
 
 1. Write the three briefs from [../references/seat-briefs.md](../references/seat-briefs.md), replacing
    every bracketed placeholder. Do not supply a common rubric.
-2. Create 3 visible cmux panes. Use the repo launchers for Opus and Sol; use the raw Fable command.
+2. Create 3 visible cmux panes. Use the repo launchers for all three seats (`-m fable` for R3).
 3. Verify each pane within 30 seconds with cmux `read_screen`. Confirm its effective model, brief,
    repo, and read-only constraint. A missing/mismatched seat is not a council; relaunch it.
 4. Start marker-count monitoring against the append-only collab. Use one supervised monitor per live
@@ -22,9 +22,9 @@
 |---|---|---|
 | R1 | Opus 5 | `<repo>Claude -s "Read and follow <R1-brief-path>"`; abort if the launcher does not report Opus 5. |
 | R2 | GPT-5.6-Sol, xhigh | `<repo>Codex -s -E xhigh "Read and follow <R2-brief-path>"`; abort if the launcher does not report GPT-5.6-Sol/xhigh. |
-| R3 | Fable 5 | `claude --dangerously-skip-permissions --model claude-fable-5 "Read and follow <R3-brief-path>"`. |
+| R3 | Fable (current, today 5.1) | `<repo>Claude -s -m fable "Read and follow <R3-brief-path>"`; abort if the pane does not report the current Fable release (today 5.1) — a stale installed launcher resolves the alias to an older Fable. |
 
-The launcher pin is authoritative for R1/R2; never pretend a rejected model override worked.
+The launcher pin is authoritative for all three seats; never pretend a rejected model override worked.
 
 ## Harvest and gate
 
