@@ -6,6 +6,8 @@ setup() {
     POST_STREAM="$SCRIPT_DIR/post-stream.sh"
     # shellcheck source=../lib/stream-helpers.sh
     source "$SCRIPT_DIR/lib/stream-helpers.sh"
+    # shellcheck source=../lib/bun-version.sh
+    source "$SCRIPT_DIR/lib/bun-version.sh"
     TMPDIR_="$(mktemp -d)"
     FAKE_BIN="$TMPDIR_/bin"
     ALERTS_FILE="$TMPDIR_/alerts.jsonl"
@@ -86,6 +88,15 @@ write_scoring_marker() {
 }
 
 @test "committed Twitch chat bundle matches a fresh dependency-inclusive build" {
+    # build-twitch-chat-lurker.sh calls a bare `bun build`, so it uses whatever
+    # bun is on PATH. bun bakes its own runtime prelude into the output, so this
+    # comparison is only meaningful on the pinned version -- skip rather than
+    # fail on a machine that is off the pin, and say which versions are in play.
+    mismatch="$(bun_pin_mismatch_reason)"
+    if [ -n "$mismatch" ]; then
+        skip "$mismatch"
+    fi
+
     rebuilt="$TMPDIR_/twitch-chat-lurker.js"
     rebuilt_license="$TMPDIR_/twitch-chat-lurker.LICENSE.txt"
 

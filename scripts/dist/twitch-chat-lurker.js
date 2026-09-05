@@ -33,7 +33,7 @@ var __toESM = (mod, isNodeMode, target) => {
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
 var __require = import.meta.require;
 
-// node_modules/tmi.js/lib/utils.js
+// ../../node_modules/tmi.js/lib/utils.js
 var require_utils = __commonJS((exports, module) => {
   var actionMessageRegex = /^\u0001ACTION ([^\u0001]+)\u0001$/;
   var justinFanRegex = /^(justinfan)(\d+$)/;
@@ -136,7 +136,7 @@ var require_utils = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/tmi.js/lib/api.js
+// ../../node_modules/tmi.js/lib/api.js
 var require_api = __commonJS((exports, module) => {
   var fetch = __require("node-fetch");
   var _ = require_utils();
@@ -188,7 +188,7 @@ var require_api = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/tmi.js/lib/commands.js
+// ../../node_modules/tmi.js/lib/commands.js
 var require_commands = __commonJS((exports, module) => {
   var _ = require_utils();
   function followersonly(channel, minutes) {
@@ -643,7 +643,7 @@ var require_commands = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/tmi.js/lib/events.js
+// ../../node_modules/tmi.js/lib/events.js
 var require_events = __commonJS((exports, module) => {
   function EventEmitter() {
     this._events = this._events || {};
@@ -893,7 +893,7 @@ var require_events = __commonJS((exports, module) => {
   }
 });
 
-// node_modules/tmi.js/lib/logger.js
+// ../../node_modules/tmi.js/lib/logger.js
 var require_logger = __commonJS((exports, module) => {
   var _ = require_utils();
   var currentLevel = "info";
@@ -918,7 +918,7 @@ var require_logger = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/tmi.js/lib/parser.js
+// ../../node_modules/tmi.js/lib/parser.js
 var require_parser = __commonJS((exports, module) => {
   var _ = require_utils();
   var nonspaceRegex = /\S+/g;
@@ -1063,7 +1063,7 @@ var require_parser = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/tmi.js/lib/timer.js
+// ../../node_modules/tmi.js/lib/timer.js
 var require_timer = __commonJS((exports, module) => {
   class Queue {
     constructor(defaultDelay) {
@@ -1091,7 +1091,7 @@ var require_timer = __commonJS((exports, module) => {
   module.exports = Queue;
 });
 
-// node_modules/tmi.js/lib/client.js
+// ../../node_modules/tmi.js/lib/client.js
 var require_client = __commonJS((exports, module) => {
   var _global = typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : {};
   var _WebSocket = _global.WebSocket || __require("ws");
@@ -2244,7 +2244,7 @@ ${JSON.stringify(message, null, 4)}`);
   }
 });
 
-// node_modules/tmi.js/index.js
+// ../../node_modules/tmi.js/index.js
 var require_tmi = __commonJS((exports, module) => {
   var client = require_client();
   module.exports = {
