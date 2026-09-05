@@ -2585,6 +2585,7 @@ JSON
       export RALPH_REGISTRY_FILE="$1"
       export CODEX_HOME="$3"
       typeset -g CODEX_STUB_RELEASE_DEADLINE="$4"
+      source "$PORTABLE_STAT_LIB"
 
       function _ralph_setup_mcps() { return 0; }
       function _ralph_setup_secrets() { return 0; }
@@ -2640,8 +2641,8 @@ JSON
       file_a="$CODEX_HOME/${profile_a}.config.toml"
       file_b="$CODEX_HOME/${profile_b}.config.toml"
       [[ -f "$file_a" && -f "$file_b" ]] || exit 94
-      [[ "$(stat -f %OLp "$file_a")" == 600 ]] || exit 95
-      [[ "$(stat -f %OLp "$file_b")" == 600 ]] || exit 96
+      [[ "$(portable_stat mode "$file_a")" == 600 ]] || exit 95
+      [[ "$(portable_stat mode "$file_b")" == 600 ]] || exit 96
       print -r -- "CONCURRENT_PROFILES=$profile_a,$profile_b"
 
       touch "$CODEX_HOME/release-A"
@@ -2981,10 +2982,11 @@ snapshot_tmp_staging_entries() {
       # survive bats single-quoting AND zsh double-quoting, and an anchor lost to
       # either layer silently turns the /tmp assertion below into a no-op.
       function claude() {
+        source "$PORTABLE_STAT_LIB"
         print -r -- "PATTERN_SELFCHECK=$(print -l repogolem-decoy .claude_notify_config_decoy unrelated-decoy | grep -E "$TMP_STAGING_PATTERN" | tr "\n" " ")"
         print -r -- "LIVE_TMP=$(ls -A /tmp 2>/dev/null | grep -E "$TMP_STAGING_PATTERN" | tr "\n" " ")"
         print -r -- "LIVE_STAGING=$(ls -A "$HOME/.cache/repogolem/testrepo" 2>/dev/null | tr "\n" " ")"
-        print -r -- "STAGING_MODE=$(stat -f %OLp "$HOME/.cache/repogolem/testrepo" 2>/dev/null)"
+        print -r -- "STAGING_MODE=$(portable_stat mode "$HOME/.cache/repogolem/testrepo")"
       }
 
       source "$3"
