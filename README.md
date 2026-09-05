@@ -12,10 +12,11 @@ that work together for a bounded job. A **skill** is a `SKILL.md` workflow that
 an AI coding agent can load and follow. Skills may also ship scripts,
 references, adapters, fixtures, and executable evals.
 
-The repository currently contains 13 workspace package directories, 93
-top-level `golem-powers` skill directories, and 122 `SKILL.md` entrypoints.
-Those numbers are generated from the checked-out tree and may change as the
-project evolves.
+At commit `72d907ec` the tree has 13 workspace packages and 88 skills that
+carry a top-level `SKILL.md` under `skills/golem-powers/`. That directory holds
+95 entries; the other 7 are shared, archived, or workspace scaffolding rather
+than installable skills. Run `node scripts/check-skill-library.mjs` to
+re-derive the skill count instead of trusting this paragraph.
 
 ## Quick start
 
@@ -28,7 +29,9 @@ bun install
 bun test
 ```
 
-Inspect or install a skill directly from the source checkout:
+List or install skills. Both commands read `skills/golem-powers/` from
+`master` through the GitHub API, so they need network access and report what is
+published rather than what is in your working tree:
 
 ```bash
 bun packages/golem-skills/src/index.ts skills list
@@ -75,6 +78,18 @@ skill-name/
 An eval demonstrates only the behavior asserted by that eval. It is regression
 evidence, not a claim that a skill or agent is correct in every environment.
 
+## Launchers and CI gates
+
+`scripts/repogolem/` installs `golem-dispatch.zsh`, a zsh function that starts a
+coding-agent session in a chosen repo; `-E, --effort <low|medium|high|xhigh|max|ultra>`
+sets the effort for a single dispatch. The launchers assume the author's own
+machine layout, so read them as a reference rather than a supported product.
+
+Pull requests and pushes to `master` run CodeQL, secret scanning, a dependency
+audit, a publish-boundary guard, a `docs.local` guard, the Python skill suites
+(`scripts/run-skill-tests.sh`), and the bats suites in `scripts/tests/`.
+`bun test` is not one of those gates.
+
 ## Development
 
 ```bash
@@ -82,9 +97,13 @@ bun install
 bun test
 ```
 
-Package-specific instructions live in `packages/*/CLAUDE.md`. Contribution
-guidance is in [CONTRIBUTING.md](CONTRIBUTING.md), and vulnerability reporting
-is in [SECURITY.md](SECURITY.md).
+`bun test` runs 2130 tests across 158 files. At `72d907ec` it reports 2124
+passing, 4 skipped, and 2 failing; both failures predate this checkout, so a
+clean clone shows them too.
+
+Eight of the 13 packages carry a `CLAUDE.md` with package-specific
+instructions. Contribution guidance is in [CONTRIBUTING.md](CONTRIBUTING.md),
+and vulnerability reporting is in [SECURITY.md](SECURITY.md).
 
 ## License
 
