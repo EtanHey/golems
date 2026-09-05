@@ -1,0 +1,30 @@
+# commit — Per-CLI Capability Matrix
+
+skill: commit
+
+adapters:
+  claude:
+    cr_review: true                  # cr review --plain (headless CodeRabbit)
+    pre_commit_hooks: true           # Git triggers automatically; Claude diagnoses failures
+    ralph_mode: true                 # --story + --message + atomic criterion marking
+    co_author_tag: true
+    hook_failure_diagnosis: true     # Reads hook output, fixes root cause
+
+  codex:
+    cr_review: conditional           # Only if cr CLI installed in environment
+    pre_commit_hooks: true           # Git triggers automatically
+    ralph_mode: false                # No JSON story criterion marking
+    co_author_tag: true              # Plain text in commit message
+    hook_failure_diagnosis: partial  # Sees output but no skill-level fix guidance
+
+# Task routing
+routing:
+  standard_commit: codex             # Basic stage + commit, Codex works fine
+  cr_gated_commit: claude            # Need CodeRabbit pre-screen
+  ralph_atomic_commit: claude        # Ralph mode requires Claude
+
+# Gaps requiring orchestration
+gaps:
+  codex_missing:
+    - cr_review_precheck             # Run cr manually or skip; risk: bad commits pass
+    - ralph_mode                     # Must be done in Claude session

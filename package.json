@@ -1,0 +1,36 @@
+{
+  "name": "golems",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "bun test packages/*/src/__tests__/",
+    "test:stalker-chat": "bats scripts/tests/test-stalker-durable-failures.bats",
+    "test:skill-symlinks": "bats scripts/tests/test-cleanup-legacy-commands.bats scripts/tests/test-golem-install-validate.bats",
+    "test:spine-gates": "bun test skills/golem-powers/*-gate/evals/ skills/golem-powers/_shared/stop-hook-runtime/evals/ skills/golem-powers/crash-resume-index/evals/ skills/golem-powers/audio-dashboard/evals/ skills/golem-powers/research-lifecycle/evals/"
+  },
+  "dependencies": {
+    "@axiomhq/js": "^1.4.0",
+    "tmi.js": "^1.8.5"
+  },
+  "devDependencies": {
+    "happy-dom": "20.10.6"
+  },
+  "overrides": {
+    "@hono/node-server": "1.19.17",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "axios": "1.19.0",
+    "body-parser": "2.3.0",
+    "brace-expansion": "2.1.4",
+    "express-rate-limit": "8.6.2",
+    "fast-uri": "3.1.5",
+    "form-data": "4.0.6",
+    "hono": "4.13.2",
+    "ip-address": "10.5.0",
+    "minimatch": "9.0.7",
+    "path-to-regexp": "8.4.2",
+    "qs": "6.15.2",
+    "ws": "8.21.3"
+  }
+}

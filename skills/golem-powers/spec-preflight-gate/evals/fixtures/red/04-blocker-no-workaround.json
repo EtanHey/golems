@@ -1,0 +1,23 @@
+{
+  "specimen": "R-037/install-blocker-declared-human-only-before-user-space-workaround",
+  "violation": "BLOCKER_NO_WORKAROUND",
+  "events": [
+    { "role": "user", "text": "Spawn a worker; if setup blocks, keep moving without asking Etan unless truly necessary.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching setup worker.",
+      "tools": [
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Install the local app from docs/plan/setup-handoff.md."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "setup failed: needs sudo. blocked, needs Etan to install this.", "tools": [] }
+  ]
+}

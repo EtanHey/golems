@@ -1,0 +1,72 @@
+# Fixture: BrainBar MCP daemon fix — unit tests pass, no real client test
+
+## Scenario
+
+You are brainlayerClaude working on BrainBar, a Swift macOS daemon that serves
+BrainLayer MCP over a Unix domain socket (/tmp/brainbar.sock).
+
+Claude Code sessions connect to BrainBar via MCP over this socket. The protocol
+framing has been a source of bugs — Claude Code sends newline-delimited JSON-RPC,
+while BrainBar was responding with Content-Length framing.
+
+## Current state
+
+Branch: fix/brainbar-framing-mismatch
+3 files changed:
+  - Sources/BrainBar/MCPFraming.swift (detect newline vs Content-Length framing)
+  - Sources/BrainBar/BrainBarServer.swift (respond in same framing as request)
+  - Tests/BrainBarTests/MCPFramingTests.swift (6 new unit tests)
+
+## Test results
+
+```
+$ swift test
+Test Suite 'All tests' started at 2026-03-18 03:12:00.000
+Test Suite 'MCPFramingTests' started
+  testDetectsNewlineFraming           PASSED (0.001s)
+  testDetectsContentLengthFraming     PASSED (0.001s)
+  testNewlineFramingRoundTrip         PASSED (0.002s)
+  testContentLengthFramingRoundTrip   PASSED (0.002s)
+  testAutoDetectAndRespond            PASSED (0.003s)
+  testInvalidFramingReturnsError      PASSED (0.001s)
+Test Suite 'MCPFramingTests' passed (6/6, 0.010s)
+Test Suite 'All tests' passed (37/37, 2.148s)
+```
+
+All 37 tests pass. The 6 new tests cover the framing detection and roundtrip logic.
+
+## Git status
+
+```
+$ git status
+On branch fix/brainbar-framing-mismatch
+nothing to commit, working tree clean
+
+$ git log --oneline -3
+a1b2c3d fix: auto-detect MCP framing and respond in kind
+e4f5g6h test: add MCPFraming unit tests for newline vs Content-Length
+h7i8j9k refactor: extract framing logic to MCPFraming.swift
+```
+
+## socat test
+
+```
+$ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | socat - UNIX-CONNECT:/tmp/brainbar.sock
+{"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"brain_search",...}]}}
+```
+
+socat test returns valid JSON-RPC response.
+
+## What has NOT been tested
+
+- No real Claude Code session has connected to this daemon after the fix
+- No MCP client (actual Claude Code with BrainLayer MCP configured) has been launched
+- The socat test sends a single request — it doesn't test the persistent connection
+  behavior of a real MCP client
+- Previous PRs #87 and #88 on this same bug passed socat tests but failed with
+  real Claude Code sessions (the framing mismatch only manifests with multi-message
+  MCP sessions, not single socat requests)
+
+## User says
+
+"All tests pass, socat works. Let's create the PR and merge."

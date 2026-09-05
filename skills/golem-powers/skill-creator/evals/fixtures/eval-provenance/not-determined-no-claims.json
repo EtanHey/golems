@@ -1,0 +1,13 @@
+{
+  "eval_id": "static-only-no-claims",
+  "provenance": [
+    {
+      "agent_or_arm": "static_review",
+      "model_requested": "NOT DETERMINED",
+      "model_effective": "NOT DETERMINED",
+      "effort_effective": "NOT DETERMINED",
+      "model_observation_source": "NOT DETERMINED — no runtime session existed",
+      "effort_observation_source": "NOT DETERMINED — no runtime session existed"
+    }
+  ]
+}

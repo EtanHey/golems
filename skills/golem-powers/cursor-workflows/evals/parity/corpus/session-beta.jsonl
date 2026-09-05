@@ -1,0 +1,3 @@
+{"line":1,"kind":"brief","text":"Second-pass recon target for the inner-loop guard."}
+{"line":2,"kind":"finding_seed","id":"CW-HIGH-002","importance":"high","title":"Loop-until-dry is required to catch schema-invalid replay findings","round_available":2,"requires":["CW-HIGH-001"],"second_round_only":true,"evidence_anchor":"session-beta.jsonl:2","text":"A second loop_until_dry round surfaces the schema-validity failure; a single gather pass misses it."}
+{"line":3,"kind":"dry_marker","text":"No further findings remain after the second-round schema-validity finding."}

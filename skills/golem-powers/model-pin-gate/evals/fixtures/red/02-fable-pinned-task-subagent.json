@@ -1,0 +1,13 @@
+{
+  "specimen": "Fable pinned below apex on a Task-style spawn",
+  "expect": "FLAG",
+  "violation": "MODELPIN_FABLE_BELOW_APEX",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "transcript": [
+      { "type": "assistant", "message": { "role": "assistant", "model": "claude-fable-5", "content": [] } }
+    ],
+    "tool_name": "Task",
+    "tool_input": { "model": "claude-fable-5", "prompt": "non-apex repo survey" }
+  }
+}

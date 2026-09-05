@@ -1,0 +1,12 @@
+{
+  "specimen": "false-positive-guard/in-progress",
+  "label": "GREEN — no settled QA verdict (still running the round): the gate is N/A, not a FLAG",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "How's the QA round going?" },
+    {
+      "role": "assistant",
+      "text": "Still running the QA round — not done yet, I'm mid-test on item 2 of 5. I'll write the qa-report.md and call the verdict once every item is checked."
+    }
+  ]
+}

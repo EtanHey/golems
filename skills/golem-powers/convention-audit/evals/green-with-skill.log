@@ -1,0 +1,30 @@
+Command:
+python3 -m unittest skills/golem-powers/convention-audit/scripts/__tests__/test_convention_audit.py -v
+
+Result after independent-review hardening: exit 0; 25 tests run; 25 passed; 0 failures; 0 errors.
+
+Covered contracts include:
+- exact six-site known-answer inventory with exactly two divergent sites;
+- shared-helper must-not-flag control and no answer keys inside audited fixtures;
+- generic Python SQLite-window detection with comment and third-party exclusions;
+- raw Codex Luna/max command construction and silent downgrade rejection;
+- max-to-xhigh fallback classification;
+- structured payload validation, including divergent-site subset integrity;
+- observed and unrecognized token telemetry handling;
+- fail-closed git-state checks and immutable targets;
+- shipped `scripts/run.sh` fan-out, synthesis, report, telemetry, and retained-preflight flow against a fake CLI;
+- live-eval scoring selects the exact candidate and logical gate failures are nonzero.
+- live-eval JSONL contamination checks reject answer-key access and are required by the ship gate.
+
+Live round-2 confirmation:
+- isolated control: 3/3, zero findings, contamination check passed, Luna/max with no fallback,
+  7,155 output tokens, 168.605 seconds;
+- shipped `run.sh`: exit 0, seven workers with observed telemetry, one rendered finding,
+  unchanged target state, Luna/max with no fallback, 18,986 output tokens, 184.544 seconds.
+
+The deterministic and live gates are GREEN.
+
+Independent-review correction:
+- all-raw comparison families now return no static divergence unless a normalized site exists;
+- rendered reports disclose seed-assisted evidence or the absence of measured unseeded-lens evidence;
+- BrainLayer is first; VoiceLayer/cmuxlayer spend is conditional on an unseeded BrainLayer calibration point.

@@ -1,0 +1,82 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "commit",
+  "eval_type": "adapter",
+  "target_cli": "codex",
+  "eval_file": "evals/adapters/codex.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/commit/adapters/capabilities.yaml",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "codex-standard-commit-routing-is-valid",
+      "assertions": [
+        {
+          "name": "standard-commit-route-points-to-codex",
+          "result": "PASS",
+          "evidence": "routing section: 'standard_commit: codex  # Basic stage + commit, Codex works fine'. Explicitly routes to Codex."
+        },
+        {
+          "name": "commit-path-uses-real-git-shell-commands",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'pre_commit_hooks: true  # Git triggers automatically'. Implies standard git shell commit commands. No nonexistent Codex-specific primitives used."
+        },
+        {
+          "name": "pre-commit-hooks-remain-supported",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'pre_commit_hooks: true  # Git triggers automatically'. Hook execution is a git capability preserved under Codex."
+        }
+      ]
+    },
+    {
+      "eval_id": "codex-coderabbit-gap-is-conditional-not-silent",
+      "assertions": [
+        {
+          "name": "cr-review-gap-is-marked-conditional",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'cr_review: conditional  # Only if cr CLI installed in environment'. Not silently assumed."
+        },
+        {
+          "name": "manual-cr-shell-path-is-documented",
+          "result": "PASS",
+          "evidence": "gaps.codex_missing: 'cr_review_precheck: Run cr manually or skip; risk: bad commits pass'. The cr shell path is acknowledged."
+        },
+        {
+          "name": "codex-review-is-not-treated-as-coderabbit",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex tracks 'cr_review' (the CodeRabbit CLI) separately. No conflation with 'codex review' command. Routing 'cr_gated_commit: claude' sends CodeRabbit-dependent work to Claude."
+        }
+      ]
+    },
+    {
+      "eval_id": "codex-ralph-gap-is-routed-away-cleanly",
+      "assertions": [
+        {
+          "name": "ralph-mode-is-marked-unavailable",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'ralph_mode: false  # No JSON story criterion marking'. Clearly unavailable."
+        },
+        {
+          "name": "claude-or-manual-story-update-fallback-exists",
+          "result": "PASS",
+          "evidence": "routing: 'ralph_atomic_commit: claude'. gaps.codex_missing: 'ralph_mode: Must be done in Claude session'. Both routing and gap documentation provide the fallback."
+        },
+        {
+          "name": "standard-and-ralph-routes-do-not-collapse",
+          "result": "PASS",
+          "evidence": "routing has distinct entries: 'standard_commit: codex' and 'ralph_atomic_commit: claude'. Two separate paths, no overlap."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

@@ -1,0 +1,29 @@
+=== neg-1-flat-mcl.md ===
+path: $HOME/Gits/golems/skills/golem-powers/research-prompt-quality/evals/fixtures/neg-1-flat-mcl.md
+  existing-work-check: 0/2
+  drive-grounding: 0/2
+  current-usage-examples: 1/2
+  prior-research-reconciliation: 0/2
+  non-redundancy: 1/2
+TOTAL: 2/10
+RED GATE: pass
+
+=== neg-2-redundant-rrf.md ===
+path: $HOME/Gits/golems/skills/golem-powers/research-prompt-quality/evals/fixtures/neg-2-redundant-rrf.md
+  existing-work-check: 0/2
+  drive-grounding: 0/2
+  current-usage-examples: 0/2
+  prior-research-reconciliation: 0/2
+  non-redundancy: 0/2
+TOTAL: 0/10
+RED GATE: pass
+
+=== pos-2-rrf-correct.md ===
+path: $HOME/Gits/golems/skills/golem-powers/research-prompt-quality/evals/fixtures/pos-2-rrf-correct.md
+  existing-work-check: 2/2
+  drive-grounding: 2/2
+  current-usage-examples: 2/2
+  prior-research-reconciliation: 2/2
+  non-redundancy: 2/2
+TOTAL: 10/10
+RED GATE: pass

@@ -1,0 +1,55 @@
+<!-- IDENTITY: golems monorepo, EtanHey, autonomous AI agent ecosystem -->
+# Golems Monorepo
+
+> Bun workspace of reusable agent packages, CLIs, and evaluated workflow skills.
+
+## Packages
+
+The current workspace inventory and package purposes live in `README.md`.
+Always read the package-specific `CLAUDE.md` before changing a package.
+
+## Key Relationships
+
+- **ClaudeGolem** registers Composers from Jobs + Recruiter for Telegram commands
+- **CoachGolem** reads getStatus() from Jobs, Recruiter, Teller (read-only)
+- **Services** (briefing) imports from Coach for daily plan generation
+- **Cloud Worker** remains a local/successor-host runnable scheduler; Railway service was deleted on 2026-07-05
+- **All packages** depend on Shared for Supabase, LLM, state, notifications
+
+## Development
+
+```bash
+bun install              # Install all workspace deps
+bun test                 # Run all tests
+```
+
+## Worktree-Isolated Agents
+
+Some agents run with `isolation: worktree` for parallel work without file conflicts:
+
+| Agent | Purpose |
+|-------|---------|
+| `migration-worker` | Database migrations and schema changes |
+| `qa-voice` | Voice-powered QA testing with Playwright |
+| `discovery-voice` | Client discovery call assistant |
+
+## Communication Style
+
+- **Formality:** 2/10 — Very casual
+- **Length:** Brief, direct
+- **Tone:** Friendly, sometimes playful
+
+See `packages/claude/SOUL.md` for bot persona.
+
+## Never write durable content to /tmp
+
+Durable content goes in the repo or its `docs.local/` — never `/tmp`,
+`/private/tmp`, `/var/folders`, or `$TMPDIR`, which are wiped on reboot and
+invisible to the rest of the fleet. Worktrees go in `<repo>/.worktrees/<name>`.
+Genuinely ephemeral? `WEAVE_ALLOW_TMP=1 <command>` — allowed and logged.
+
+Claude and Cursor panes have this enforced by the `tmp-block` PreToolUse hook.
+**Codex panes do not** — Codex's `default_permissions = ":workspace"` explicitly
+grants `/tmp` and `$TMPDIR` (it prints `workspace-write [workdir, /tmp, $TMPDIR]`
+at startup), and no hook is wired there yet. In a Codex lane this is a rule you
+follow, not a rail that catches you. See `skills/golem-powers/tmp-block/SKILL.md`.

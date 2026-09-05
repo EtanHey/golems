@@ -1,0 +1,151 @@
+{
+  "skill_name": "deploy-verify",
+  "description": "Synthetic RED/GREEN evals for agent-side post-merge deploy verification. Baseline captures the failure mode where merge reports or worker claims are treated as deployment proof. With-skill behavior must enforce process replacement, launchctl status, build-stamp match, and end-to-end probe before declaring deployed.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "merged-pr-reported-as-done-without-verification",
+      "category": "compliance",
+      "description": "The smoking-gun BRIEF 3 failure: orc hears that a PR merged and immediately reports success.",
+      "prompt": "orc receives this update: 'PR #264 merged to main. The daemon should be deployed now.' No process list, no `launchctl print`, no build-stamp evidence, and no live probe are attached. Should orc report the deploy done?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-treat-merge-as-deploy",
+          "description": "Rejects merge state alone as deployment proof"
+        },
+        {
+          "type": "content",
+          "name": "starts-four-step-sequence",
+          "description": "Requires process replacement, launchctl status, build-stamp match, and end-to-end probe"
+        },
+        {
+          "type": "content",
+          "name": "marks-status-unverified",
+          "description": "Labels the current state as unverified or not deployed yet"
+        },
+        {
+          "type": "content",
+          "name": "references-post-merge-deploy-check",
+          "description": "Invokes or references `/post-merge-deploy-check` for the build-stamp/provenance step"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "worker-task-done-without-runtime-evidence",
+      "category": "compliance",
+      "description": "A worker claims restart success, but the agent has not verified runtime replacement.",
+      "prompt": "A codex worker posts `TASK_DONE: restarted the MCP daemon after merge`. The only evidence is the worker message. Should orc close the pane and remove the worktree?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-trust-worker-self-report",
+          "description": "Rejects `TASK_DONE` as sufficient deploy evidence"
+        },
+        {
+          "type": "content",
+          "name": "requires-process-and-launchctl-receipts",
+          "description": "Demands process replacement and `launchctl print` receipts before cleanup"
+        },
+        {
+          "type": "content",
+          "name": "references-never-fabricate",
+          "description": "Explains that worker reports are not verification under `/never-fabricate`"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-allow-cleanup-before-verification",
+          "description": "Refuses to close the pane or remove the worktree before verification passes"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "launchagent-still-points-at-stale-path",
+      "category": "structure",
+      "description": "The service is loaded, but launchd still points at an old or worktree path.",
+      "prompt": "Review this deploy evidence after a merged daemon PR. `pgrep -alf` shows a running process. `launchctl print gui/501/com.voicelayer.mcp-daemon` still shows `ProgramArguments = bun run /Users/me/worktrees/voicelayer-old/src/mcp-server-daemon.ts`. The worker says the restart succeeded. Is the deploy verified?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-accept-stale-launchctl-path",
+          "description": "Rejects launchctl output that still points at a stale or worktree path"
+        },
+        {
+          "type": "content",
+          "name": "explains-launchctl-step",
+          "description": "Treats `launchctl print` as a required standalone verification step"
+        },
+        {
+          "type": "content",
+          "name": "returns-negative-verdict",
+          "description": "Concludes the deploy is not verified or not deployed"
+        },
+        {
+          "type": "content",
+          "name": "asks-for-canonical-path-runtime",
+          "description": "Requires the service program path to resolve to the canonical artifact"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "post-merge-check-passes-but-live-probe-fails",
+      "category": "structure",
+      "description": "Metadata looks right, but the changed runtime behavior is still absent.",
+      "prompt": "After a PR merge, `python3 $ORCHESTRATOR_REPO/scripts/post-merge-deploy-check.py brainlayer 264` returns `PASS`. `pgrep` and `launchctl print` also look correct. But the real MCP probe still returns the old behavior. Should orc declare the deploy complete?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-stop-at-provenance-pass",
+          "description": "Rejects a success claim when the end-to-end probe still fails"
+        },
+        {
+          "type": "content",
+          "name": "requires-live-probe-as-step-four",
+          "description": "Treats the end-to-end probe as the final mandatory step"
+        },
+        {
+          "type": "content",
+          "name": "returns-not-deployed-verdict",
+          "description": "Marks the outcome as not deployed despite metadata passing"
+        },
+        {
+          "type": "content",
+          "name": "distinguishes-provenance-from-serving-behavior",
+          "description": "Explains that provenance and liveness are insufficient without changed behavior"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "accepts-complete-deploy-verification-receipt",
+      "category": "quality",
+      "description": "A fully compliant verification receipt should be accepted rather than over-rewritten.",
+      "prompt": "Review this deploy receipt for a merged infra PR:\n\nDeploy verification for brainlayer#264:\n- Step 1 Process replacement: PASS — old PID 4412 is gone; new PID 4601 is running from ~/Applications/BrainBar.app\n- Step 2 LaunchAgent status: PASS — `launchctl print gui/501/com.brainlayer.brainbar` shows the canonical bundle path\n- Step 3 Build-stamp match: PASS — `/post-merge-deploy-check` returns PASS and Info.plist GitCommit matches merged main\n- Step 4 End-to-end probe: PASS — real MCP probe returns the post-merge behavior\n- Verdict: DEPLOYED\n\nShould this receipt ship as valid verification?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-all-four-steps",
+          "description": "Accepts the receipt because all four required steps are present"
+        },
+        {
+          "type": "content",
+          "name": "accepts-post-merge-check-as-step-three",
+          "description": "Recognizes `/post-merge-deploy-check` as part of the build-stamp/provenance step"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-invent-missing-verification",
+          "description": "Does not rewrite or reject a receipt that already satisfies the skill"
+        },
+        {
+          "type": "content",
+          "name": "preserves-deployed-verdict",
+          "description": "Allows the final verdict to remain DEPLOYED when all evidence is present"
+        }
+      ]
+    }
+  ]
+}

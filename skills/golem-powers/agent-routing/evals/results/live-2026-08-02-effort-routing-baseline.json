@@ -1,0 +1,75 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-08-02",
+  "skill": "agent-routing",
+  "eval_ids": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "variant": "without_skill",
+  "agent_id": "golemsClaude-38c959d3",
+  "surface": "surface:231",
+  "requested_model": null,
+  "effective_model": "claude-opus-5[1m]",
+  "model_note": "The skill workflow requested Sonnet, but cmux translated model=sonnet into -m sonnet and repoGolem correctly refused the agent-session model override. The baseline was rerun with the launcher's pinned Claude default.",
+  "provenance_status": "HISTORICAL_ALIAS_ONLY_NON_COMPARABLE",
+  "historical_score_disposition": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "output_marker": "EFFORT_EVAL",
+  "marker_found": true,
+  "choices": [
+    {
+      "id": 24,
+      "model": "gpt-5.6-luna",
+      "effort": "medium",
+      "expected_effort": "medium",
+      "effort_correct": true
+    },
+    {
+      "id": 25,
+      "model": "gpt-5.6-luna",
+      "effort": "medium",
+      "expected_effort": "medium",
+      "effort_correct": true
+    },
+    {
+      "id": 26,
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "expected_effort": "high",
+      "effort_correct": true
+    },
+    {
+      "id": 27,
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "expected_effort": "high",
+      "effort_correct": true
+    },
+    {
+      "id": 28,
+      "model": "gpt-5.6-terra",
+      "effort": "xhigh",
+      "expected_effort": "xhigh",
+      "effort_correct": true
+    },
+    {
+      "id": 29,
+      "model": "gpt-5.6-terra",
+      "effort": "max",
+      "expected_effort": "xhigh",
+      "effort_correct": false
+    }
+  ],
+  "red_findings": [
+    "Case 29 escalated automatically to max even though max's incremental value and stable policy are NOT KNOWN.",
+    "Cases 28 and 29 invented a Terra-is-deepest-reasoning hierarchy despite no measured Terra task-tier basis.",
+    "The dispatch guidance said to pin values explicitly but did not distinguish repoGolem's working -E pass-through from its deliberate agent-session model refusal."
+  ],
+  "verdict": "HISTORICAL_NON_COMPARABLE: retained choices document the session response, but alias-only provenance cannot support a score, threshold, or cross-arm comparison.",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

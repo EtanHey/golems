@@ -1,0 +1,346 @@
+{
+  "skill": "conference-recruiting",
+  "version": 2,
+  "created": "2026-08-03",
+  "updated": "2026-08-03",
+  "evals": [
+    {
+      "id": 1,
+      "name": "hackers-summer-camp-full-sweep",
+      "category": "compliance",
+      "description": "Core happy path: user asks to sweep Hackers Summer Camp (BSides LV + Black Hat + DEF CON) for hiring companies",
+      "prompt": "PROFILE SOURCE: skills/golem-powers/conference-recruiting/evals/fixtures/valid-profile-source.yaml. Run a conference recruiting sweep on Hackers Summer Camp \u2014 find which companies are hiring and what roles fit me.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "resolves-all-three-conferences",
+          "description": "Treats 'Hackers Summer Camp' as BSides Las Vegas + Black Hat USA + DEF CON, resolving the official site for each"
+        },
+        {
+          "type": "tool_usage",
+          "name": "extracts-sponsors-and-speakers",
+          "description": "Pulls companies from BOTH sponsor pages AND speaker affiliations, tagging each company with its source and sponsor tier"
+        },
+        {
+          "type": "tool_usage",
+          "name": "loads-configured-profile-source",
+          "description": "Resolves PROFILE SOURCE only from an explicit run path or CONFERENCE_RECRUITING_PROFILE_SOURCE, reads and validates it before fit judgment, and never guesses a default path"
+        },
+        {
+          "type": "content",
+          "name": "single-aggregated-file",
+          "description": "Produces ONE aggregated markdown file (not scattered notes) with company, source signal, matching roles, locations, and direct apply URLs"
+        },
+        {
+          "type": "content",
+          "name": "configured-location-ranking",
+          "description": "Ranks locations from profile.location in the configured profile source instead of assuming a specific country or remote preference"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "single-conference-sweep",
+      "category": "compliance",
+      "description": "Happy path with one named conference the skill has no reference entry for",
+      "prompt": "PROFILE SOURCE: skills/golem-powers/conference-recruiting/evals/fixtures/valid-profile-source.yaml. Do the conference recruiting thing for CyberTech Tel Aviv 2027.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "finds-official-site",
+          "description": "Web-searches for the official conference site instead of hallucinating URLs"
+        },
+        {
+          "type": "tool_usage",
+          "name": "sponsor-tier-captured",
+          "description": "Records sponsor tier (platinum/gold/etc.) as a hiring-budget signal where the site exposes it"
+        },
+        {
+          "type": "content",
+          "name": "careers-urls-verified",
+          "description": "Career page URLs are fetched/verified, not pattern-guessed and emitted unchecked"
+        },
+        {
+          "type": "content",
+          "name": "output-in-applications-dir",
+          "description": "Aggregated file lands in docs.local/applications/conference-sweeps/ with conference+date naming"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "no-relevant-roles-edge",
+      "category": "structure",
+      "description": "Edge case: sponsor companies exist but none have roles matching the user's profile",
+      "prompt": "PROFILE SOURCE: skills/golem-powers/conference-recruiting/evals/fixtures/valid-profile-source.yaml. Sweep [small niche conference] for jobs matching my profile.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "companies-still-listed",
+          "description": "Companies with no matching open roles are still listed in a 'watch' section with careers URL, not silently dropped"
+        },
+        {
+          "type": "negative",
+          "name": "no-fabricated-roles",
+          "description": "Does NOT invent plausible-sounding roles to fill the report; empty result sections state 'no matching roles found as of <date>'"
+        },
+        {
+          "type": "content",
+          "name": "date-stamped",
+          "description": "Report is date-stamped (job listings go stale fast)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "paywalled-or-js-heavy-site",
+      "category": "structure",
+      "description": "Failure mode: conference sponsor page or company careers page cannot be fetched (JS-rendered, blocked, 404)",
+      "prompt": "Sweep DEF CON for hiring companies.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "fetch-failures-reported",
+          "description": "Unfetchable pages are listed explicitly in the report ('could not fetch: <url>') rather than omitted"
+        },
+        {
+          "type": "tool_usage",
+          "name": "fallback-search-used",
+          "description": "For unfetchable careers pages, falls back to a web search using <company> plus profile.location before giving up"
+        },
+        {
+          "type": "negative",
+          "name": "no-mock-green",
+          "description": "Does NOT report a company as 'not hiring' when the truth is 'page could not be checked'"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "job-search-pipeline-integration",
+      "category": "quality",
+      "description": "Interaction with the user's configured job-search workflow: sweep results should feed the existing pipeline without assuming a private repo or vault",
+      "prompt": "After the sweep, what should I do with these companies?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "top-targets-shortlist",
+          "description": "Produces a shortlist (5-10) of best-fit companies with a one-line why for each, not just the raw table"
+        },
+        {
+          "type": "content",
+          "name": "configured-secondary-copy",
+          "description": "Copies the report only to an explicitly configured secondary destination; if none exists, keeps the primary report and does not guess a vault or private-repo path"
+        },
+        {
+          "type": "tool_usage",
+          "name": "brain-store-results",
+          "description": "brain_stores the sweep summary (conference, date, top targets) so future sessions can recall it"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "profile-source-provenance-worker-brief",
+      "category": "compliance",
+      "description": "Failure A: worker fan-out must inherit the canonical profile rather than a stale memory estimate",
+      "prompt": "PROFILE SOURCE: skills/golem-powers/conference-recruiting/evals/fixtures/valid-profile-source.yaml. Sweep a conference with 40 sponsor companies. Delegate career-page checks and tell the workers what candidate profile to use.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "profile-source-before-worker-dispatch",
+          "description": "Reads and validates the configured profile source before dispatching any worker that will judge fit"
+        },
+        {
+          "type": "content",
+          "name": "quoted-profile-source-with-line-provenance",
+          "description": "Every worker brief includes a blockquote copied verbatim from the configured profile source plus exact file-and-line provenance"
+        },
+        {
+          "type": "negative",
+          "name": "memory-does-not-supply-experience",
+          "description": "Does NOT use a BrainLayer or handoff snippet as the source for years, seniority, artifacts, or other canonical profile claims"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "human-first-level-routing",
+      "category": "compliance",
+      "description": "Failure B: route roles by real level and warm-path state instead of title volume or sponsor prestige",
+      "prompt": "Rank three verified roles for a roughly three-year candidate: Acme has seven openings and every title starts with Senior; Beta has one unprefixed Software Engineer opening; Gamma has a Senior / Principal slug whose body says Senior and an active referrer. The configured profile source also lists an old Delta connector with status unknown and last_contacted null.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "unprefixed-cold-senior-referral-only",
+          "description": "Routes unprefixed titles as cold-applyable and Senior-titled roles as referral-only; it does not recommend cold Senior applications"
+        },
+        {
+          "type": "tool_usage",
+          "name": "dual-level-body-read",
+          "description": "Treats 'Senior / Principal' as a dual-level req, reads the posting body for the actual target level, and uses that evidence to clarify a referrer's slug misread"
+        },
+        {
+          "type": "negative",
+          "name": "req-count-not-flexibility",
+          "description": "Does NOT treat many Senior-prefixed reqs as evidence of leveling flexibility; uniform seniority prefixes are a level floor"
+        },
+        {
+          "type": "content",
+          "name": "company-rigidity-is-secondary",
+          "description": "Uses company size as a secondary rigidity signal while distinguishing it from the stronger uniform-prefix level-floor evidence"
+        },
+        {
+          "type": "content",
+          "name": "human-column-sorted-first",
+          "description": "Report includes an 'is there a human here?' field and sorts active human routes before colder routes"
+        },
+        {
+          "type": "tool_usage",
+          "name": "pipeline-history-before-ranking",
+          "description": "Cross-checks applications, rejections, referrals, and contact attempts before ranking"
+        },
+        {
+          "type": "negative",
+          "name": "connector-roster-not-live-opportunity",
+          "description": "Treats the profile source's connectors array as a relationship roster, keeps unknown as unknown, and does NOT infer an unworked or live opportunity; only current recorded evidence or user confirmation may promote the state"
+        },
+        {
+          "type": "negative",
+          "name": "referral-does-not-relevel",
+          "description": "Does NOT claim a referral offsets a tenure or level gap; a warm path changes who reads the candidate, not the candidate's level"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "profile-source-resume-selection",
+      "category": "compliance",
+      "description": "Failure C: choose existing resume artifacts by verified headline identity without sending multiple files to one human",
+      "prompt": "Run this as a dry-run in two phases. Phase A: PROFILE SOURCE is unset; explain what happens before any resume choice. Phase B: PROFILE SOURCE is explicitly set to skills/golem-powers/conference-recruiting/evals/fixtures/valid-profile-source.yaml; read and validate it, then choose which artifact metadata is appropriate for a referrer routing two different roles. Do not send or open the placeholder artifact bytes. Shipment-target folder names do not reliably identify variants. Do not build anything new.",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "fails-closed-when-profile-source-unset",
+          "description": "In Phase A, stops and asks for PROFILE SOURCE before resume selection; it does not guess a profile, inventory, person, repo, or default path",
+          "role": "regression-guard",
+          "discriminates": false,
+          "note": "Reclassified 2026-08-03 by skillCreator. A live baseline arm with NO skill loaded reached this same refusal unaided, so this assertion does not discriminate skill-vs-baseline. It is retained as a REGRESSION GUARD: passing it is required, but passing it is NOT evidence of uplift and must not be counted toward a delta. Evidence: evals/notes/live-ab-finding-2026-08-03.md (qualitative, non-citable for deltas)."
+        },
+        {
+          "type": "tool_usage",
+          "name": "reads-and-validates-configured-profile-source",
+          "description": "In Phase B, reads the explicitly configured fixture, validates contract_version and required fields, and uses its artifacts inventory"
+        },
+        {
+          "type": "negative",
+          "name": "no-hardcoded-private-profile-path",
+          "description": "Does NOT probe or require a person-specific file, private repo, or machine-specific default path"
+        },
+        {
+          "type": "content",
+          "name": "headline-identifies-variant",
+          "description": "Identifies each artifact by its rendered headline string; shipment folder name is not treated as variant identity"
+        },
+        {
+          "type": "content",
+          "name": "one-file-per-referrer-human",
+          "description": "Selects one resume file for the referrer even when that person is routing multiple roles"
+        },
+        {
+          "type": "content",
+          "name": "tailoring-only-across-recipients",
+          "description": "Allows per-role resume choices only when the files go to different recipient humans"
+        },
+        {
+          "type": "content",
+          "name": "headline-match-beats-body-tailoring",
+          "description": "Prefers a truthful headline that matches the req title over a body that is more tailored"
+        },
+        {
+          "type": "negative",
+          "name": "no-new-build-by-default",
+          "description": "Maps verified existing inventory by default and does NOT build a new tailored resume unless separately authorized"
+        },
+        {
+          "type": "negative",
+          "name": "rejects-and-repairs-unheld-headline",
+          "description": "Does NOT recommend an artifact whose headline names a role the candidate never held; requires repair through the profile source's owning workflow and explicitly treats truth repair as always allowed rather than as prohibited tailoring"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "referral-send-protocol",
+      "category": "compliance",
+      "description": "Failure D: a referral package must protect the referrer and keep relationship state canonical",
+      "prompt": "PROFILE SOURCE: skills/golem-powers/conference-recruiting/evals/fixtures/valid-profile-source.yaml. A new connector offers to refer the candidate to two companies. Prepare the outreach package and explain how to handle a quick rejection.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "connector-logged-before-work",
+          "description": "Adds the new connector through the canonical workflow that maintains PROFILE SOURCE and re-reads the updated or regenerated source before researching or messaging through that person"
+        },
+        {
+          "type": "content",
+          "name": "cv-link-gap-disclosure-together",
+          "description": "Sends the chosen CV with the specific req link and an upfront years-gap disclosure"
+        },
+        {
+          "type": "content",
+          "name": "one-concrete-ask",
+          "description": "Makes one concrete ask per referrer, leading with the best-fit company and treating other options as secondary"
+        },
+        {
+          "type": "content",
+          "name": "fast-no-preserves-relationship",
+          "description": "Treats a fast disclosed no as a successful cheap outcome, asks for feedback-if-not-a-fit, and keeps the relationship warm"
+        },
+        {
+          "type": "negative",
+          "name": "no-relevel-promise",
+          "description": "Does NOT tell the candidate that a referral will overcome a hiring manager's level screen"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "fanout-source-and-eval-honesty",
+      "category": "compliance",
+      "description": "Failure E: large sweeps need bounded workers, first-party ATS recovery, explicit coverage decisions, and observed eval provenance",
+      "prompt": "A sponsor list contains hundreds of companies, several career boards are JavaScript-heavy, and sponsor volume alone already looks sufficient. Run the sweep and record the eval evidence.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "concrete-model-pin-and-stagger",
+          "description": "Pins a concrete model ID for every worker and runs at most three workers concurrently in staggered waves"
+        },
+        {
+          "type": "tool_usage",
+          "name": "ats-api-first",
+          "description": "For JavaScript-heavy boards, checks first-party Greenhouse/Ashby or equivalent ATS APIs before relying on mirrors"
+        },
+        {
+          "type": "negative",
+          "name": "stale-mirror-not-live-role",
+          "description": "Does NOT treat a stale aggregator or cached ATS mirror as a live role without first-party confirmation"
+        },
+        {
+          "type": "content",
+          "name": "could-not-check-is-not-not-hiring",
+          "description": "Preserves 'could not check' when live verification fails instead of converting uncertainty into 'not hiring'"
+        },
+        {
+          "type": "content",
+          "name": "speaker-mining-explicit-opt-out",
+          "description": "Mines speaker affiliations or records an explicit, reasoned opt-out; sponsor volume is never a silent reason to skip speaker mining"
+        },
+        {
+          "type": "content",
+          "name": "effective-model-provenance",
+          "description": "Every eval arm records requested model, observed effective model ID, observed effective effort, and allowed runtime observation sources; aliases or inferred model-table mappings are not evidence"
+        }
+      ]
+    }
+  ]
+}

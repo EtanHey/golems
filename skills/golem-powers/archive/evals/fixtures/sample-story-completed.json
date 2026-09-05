@@ -1,0 +1,12 @@
+{
+  "id": "US-001",
+  "title": "Add user authentication flow",
+  "description": "Implement login/signup with Convex auth",
+  "acceptance_criteria": [
+    "User can sign up with email",
+    "User can log in",
+    "Session persists across page refreshes"
+  ],
+  "passes": true,
+  "completed_at": "2026-03-01T14:30:00Z"
+}

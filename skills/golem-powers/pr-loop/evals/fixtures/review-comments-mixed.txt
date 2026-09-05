@@ -1,0 +1,29 @@
+PR #184: feat: add retry wrapper with exponential backoff
+
+--- Review Comment 1 (coderabbit) ---
+[BUG] src/utils/retry.ts:34
+The `maxRetries` parameter defaults to `Infinity` when not provided. This means a permanently failing call will retry forever, consuming resources indefinitely.
+Suggestion: Default to 3 retries with a configurable max.
+
+--- Review Comment 2 (coderabbit) ---
+[STYLE] src/utils/retry.ts:12
+Consider using `const` instead of `let` for the `delay` variable since it is reassigned inside the loop body using a new binding.
+Note: This is a style preference — both work correctly.
+
+--- Review Comment 3 (coderabbit) ---
+[SUGGESTION] src/utils/retry.ts:45
+You could add jitter to the backoff to prevent thundering herd. Something like:
+```ts
+const jitter = Math.random() * delay * 0.1;
+await sleep(delay + jitter);
+```
+This is an enhancement, not a bug.
+
+--- Review Comment 4 (coderabbit) ---
+[FALSE POSITIVE] tests/retry.test.ts:28
+Warning: test uses `setTimeout` with 0ms delay which may cause flaky behavior.
+Note: In this context, the 0ms is intentional — it tests the immediate-retry path. The test is deterministic.
+
+--- Review Comment 5 (coderabbit) ---
+[BUG] src/utils/retry.ts:52
+The `onRetry` callback is invoked AFTER the delay, not before. The JSDoc says "called before each retry attempt." Either fix the code or fix the docs.

@@ -1,0 +1,14 @@
+{
+  "eval_id": "unexpected-provenance-field",
+  "provenance": [
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "sonnet",
+      "model_effective": "claude-sonnet-5",
+      "effort_effective": "high",
+      "model_observation_source": "CLI status line",
+      "effort_observation_source": "CLI status line",
+      "bogus_extra": "must not be ignored"
+    }
+  ]
+}

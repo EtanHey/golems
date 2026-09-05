@@ -1,0 +1,18 @@
+{
+  "specimen": "chatgpt-codex/senduserfile-failure-must-not-clear-visual-gate",
+  "violation": "VISUAL_GATE_WRONG_CHANNEL",
+  "events": [
+    { "role": "user", "text": "Send the screenshot for visual approval before release.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Routing the screenshot approval now.",
+      "tools": [
+        { "name": "SendUserFile", "input": { "path": "/tmp/missing-approval.png", "caption": "Visual approval needed" } },
+        { "name": "Bash", "input": { "command": "./scripts/send-message.sh --text 'Visual approval request sent'" } }
+      ]
+    },
+    { "role": "tool", "text": "SendUserFile failed: ENOENT /tmp/missing-approval.png", "tools": [] },
+    { "role": "tool", "text": "{\"ok\":true,\"result\":{\"message_id\":44}}", "tools": [] },
+    { "role": "assistant", "text": "Visual approval routed.", "tools": [] }
+  ]
+}

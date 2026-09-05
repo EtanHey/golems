@@ -1,0 +1,24 @@
+{
+  "eval_id": "comparable-with-scores",
+  "baseline_score": 30,
+  "withskill_score": 72,
+  "delta": 42,
+  "provenance": [
+    {
+      "agent_or_arm": "baseline",
+      "model_requested": "sonnet",
+      "model_effective": "claude-sonnet-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field",
+      "effort_observation_source": "session JSONL effort field"
+    },
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "sonnet",
+      "model_effective": "claude-sonnet-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field",
+      "effort_observation_source": "session JSONL effort field"
+    }
+  ]
+}

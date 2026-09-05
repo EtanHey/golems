@@ -1,0 +1,9 @@
+{
+  "date": "2026-04-05",
+  "eval_id": "legacy-result-with-claims",
+  "provenance": "alias-only",
+  "baseline_score": 30,
+  "withskill_score": 72,
+  "delta": 42,
+  "comparable": true
+}

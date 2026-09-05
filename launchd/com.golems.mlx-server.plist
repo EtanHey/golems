@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.golems.mlx-server</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Library/Frameworks/Python.framework/Versions/3.13/bin/python3</string>
+        <string>-m</string>
+        <string>mlx_lm</string>
+        <string>server</string>
+        <string>--model</string>
+        <string>mlx-community/Qwen2.5-Coder-14B-Instruct-4bit</string>
+        <string>--port</string>
+        <string>8080</string>
+    </array>
+
+    <!-- On-demand: don't keep alive — 14B model eats ~8GB RAM.
+         Start manually or via launchctl kickstart when needed. -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- Wait 10s between restarts to avoid thrashing -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>WorkingDirectory</key>
+    <string>@HOME@/Gits/brainlayer</string>
+
+    <key>StandardOutPath</key>
+    <string>@HOME@/.golems-zikaron/logs/mlx-server.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>@HOME@/.golems-zikaron/logs/mlx-server-err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>@HOME@/.local/bin:/Library/Frameworks/Python.framework/Versions/3.13/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>@HOME@</string>
+    </dict>
+</dict>
+</plist>

@@ -1,0 +1,13 @@
+{
+  "project": "golems",
+  "sprint": "Sprint 7",
+  "stats": {
+    "total": 8,
+    "completed": 5,
+    "pending": 2,
+    "blocked": 1
+  },
+  "completed": ["US-001", "US-002", "US-003", "US-004", "US-005"],
+  "pending": ["US-006", "US-007"],
+  "blocked": ["US-008"]
+}

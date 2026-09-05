@@ -1,0 +1,25 @@
+{
+  "specimen": "cursor-bugbot/absolute-spec-path-probe-does-not-clear-setup-workaround",
+  "violation": "BLOCKER_NO_WORKAROUND",
+  "events": [
+    { "role": "user", "text": "Check the setup handoff and spawn setup worker.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Checking handoff then dispatching setup.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "test -f /Users/example/Gits/golems/docs/plan/setup-handoff.md" } },
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Run setup from docs/plan/setup-handoff.md."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "", "tools": [] },
+    { "role": "tool", "text": "setup failed: blocked, needs Etan to install", "tools": [] }
+  ]
+}

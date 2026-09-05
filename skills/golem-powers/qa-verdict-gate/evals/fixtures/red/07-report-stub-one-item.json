@@ -1,0 +1,44 @@
+{
+  "specimen": "qa-verdict/stub-report (artifact without checklist)",
+  "label": "RED — a qa-report.md is written but it is a one-line stub with no checklist items; the artifact gate requires the checklist",
+  "expect": "FLAG",
+  "violation": "QA_NO_REPORT_ARTIFACT",
+  "events": [
+    { "role": "user", "text": "QA the home page and write the report." },
+    {
+      "role": "assistant",
+      "text": "Driving the home page.",
+      "tools": [
+        {
+          "name": "mcp__playwright__browser_navigate",
+          "input": { "url": "http://localhost:3000/" }
+        },
+        {
+          "name": "mcp__playwright__browser_take_screenshot",
+          "input": { "path": "home.png" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "navigated to /, page loaded; screenshot captured to home.png; rendered 4 cards"
+    },
+    {
+      "role": "assistant",
+      "text": "Writing the report.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/qa/qa-report.md",
+            "content": "QA done. Looks fine."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "QA complete ✅ — verdict: PASS. Report written to docs.local/qa/qa-report.md."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "specimen": "Workflow script with agent() calls and enough model pins",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "transcript": [
+      { "type": "assistant", "message": { "role": "assistant", "model": "claude-fable-5", "content": [] } }
+    ],
+    "tool_name": "Workflow",
+    "tool_input": {
+      "script": "agent({model:'opus', prompt:'a'}); agent({ model: 'sonnet', prompt:'b'});"
+    }
+  }
+}

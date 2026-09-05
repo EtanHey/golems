@@ -1,0 +1,16 @@
+{
+  "eval_id": "static-only",
+  "baseline_score": 38,
+  "withskill_score": 87,
+  "delta": 49,
+  "provenance": [
+    {
+      "agent_or_arm": "static_review",
+      "model_requested": "NOT DETERMINED",
+      "model_effective": "NOT DETERMINED",
+      "effort_effective": "NOT DETERMINED",
+      "model_observation_source": "NOT DETERMINED — no runtime session existed",
+      "effort_observation_source": "NOT DETERMINED — no runtime session existed"
+    }
+  ]
+}

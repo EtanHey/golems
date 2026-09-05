@@ -1,0 +1,14 @@
+{
+  "provenance": "alias-only",
+  "skill": "cron-payload-discipline",
+  "date": "2026-05-02",
+  "variant": "without-skill",
+  "method": "synthetic static scoring against eval assertions",
+  "total_evals": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "passed_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "notes": "Baseline mirrors the failure shape from BRIEF 4: it tends to accept prompt-state, leaves live queries too late, and misses frame-discipline gaps.",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

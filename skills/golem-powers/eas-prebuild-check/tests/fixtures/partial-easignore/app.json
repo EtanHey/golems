@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Partial Easignore",
+    "slug": "partial-easignore",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.taskowl.partialeasignore",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.taskowl.partialeasignore",
+      "versionCode": 1
+    }
+  }
+}

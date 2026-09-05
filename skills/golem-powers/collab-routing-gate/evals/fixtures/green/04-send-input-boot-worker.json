@@ -1,0 +1,21 @@
+{
+  "specimen": "false-positive-guard/boot-prompt",
+  "label": "GREEN — send_input used to BOOT a worker with its task (not coordination chatter)",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Dispatch the T4 task." },
+    {
+      "role": "assistant",
+      "text": "Booting the worker with its brief.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__send_input",
+          "input": {
+            "agent": "brainlayer-w1",
+            "message": "Read docs/plan/T4.md and execute the full pr-loop to MERGED."
+          }
+        }
+      ]
+    }
+  ]
+}

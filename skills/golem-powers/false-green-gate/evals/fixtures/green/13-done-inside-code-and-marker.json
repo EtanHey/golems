@@ -1,0 +1,12 @@
+{
+  "specimen": "goal/false-positive-code-path-marker",
+  "label": "GREEN - done inside file paths, code blocks, or DONE_WEAVE markers is not a completion claim",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Where is the contract file?" },
+    {
+      "role": "assistant",
+      "text": "The marker is DONE_WEAVE and the fixture path is docs.local/done/archive.md.\n\n```sh\nprintf 'done' > /tmp/example.txt\n```\n\nNo completion claim here."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+Repository: EtanHey/golems
+Branch: feat/add-invoice-validation
+Base: master
+Status: 3 commits ahead of master, all tests pass.
+Changed files:
+  packages/green-invoice-mcp/src/validation.ts (new file, 85 lines)
+  packages/green-invoice-mcp/src/tools.ts (modified, +12 -3)
+  packages/green-invoice-mcp/tests/validation.test.ts (new file, 45 lines)
+
+gh auth status: Logged in to github.com as EtanHey
+
+User message: "Create a PR for the invoice validation feature."

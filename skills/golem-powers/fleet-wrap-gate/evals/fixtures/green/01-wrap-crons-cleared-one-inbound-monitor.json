@@ -1,0 +1,19 @@
+{
+  "specimen": "compliant fleet wrap — all crons cleared, ONE inbound monitor, going silent",
+  "label": "GREEN — fleet wrap with CronDelete clearing every poll cron, cron-count=0 attested, and only ONE inbound standby monitor kept (monitor-law). Going silent.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "wrap the fleet" },
+    {
+      "role": "assistant",
+      "text": "Fleet wrapped — all crons cleared (cron-count=0). Keeping one inbound collab monitor armed so I catch your next message, then going silent.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__CronDelete",
+          "input": { "id": "fleet-health-watch" }
+        },
+        { "name": "mcp__cmuxlayer__CronDelete", "input": { "id": "pr-review-poll" } }
+      ]
+    }
+  ]
+}

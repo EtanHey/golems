@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "No IOS Devices",
+    "slug": "no-ios-devices",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.taskowl.noiosdevices",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.taskowl.noiosdevices",
+      "versionCode": 1
+    }
+  }
+}

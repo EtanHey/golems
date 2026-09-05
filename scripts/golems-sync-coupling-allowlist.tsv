@@ -1,0 +1,106 @@
+# Exact file-and-token exceptions for shipped skill payload coupling checks.
+# Fields: relative path<TAB>literal token<TAB>one-line reason.
+_archive/claude-web-research/SKILL.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/cli-agents/SKILL.md	~/Gits/X	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/cli-agents/evals/evals.json	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/cli-agents/scripts/run.sh	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/cli-agents/scripts/run.sh	~/Gits/rudy	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/cli-agents/scripts/run.sh	~/Gits/songscript	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/cli-agents/scripts/run.sh	~/Gits/taskowl	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/cli-agents/scripts/run.sh	~/Gits/union	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/code-review/workflows/blue-team.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/code-review/workflows/red-team.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/content/SKILL.md	~/Gits/golems-zikaron	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/content/workflows/draft.md	~/Gits/golems-zikaron	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/email-golem/SKILL.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/linkedin-post/workflows/topic.md	~/Gits/etanheyman.com	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/linkedin-post/workflows/topic.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/nightly-docs-update/SKILL.md	~/Gits/etanheyman.com	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/nightly-docs-update/SKILL.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/nightly-docs-update/evals/evals.json	/Users/example	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/nightly-docs-update/evals/fixtures/stats-output-partial-failure.txt	/Users/example	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/nightly-docs-update/scripts/default.sh	~/Gits/etanheyman.com	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/orchestrator-status/SKILL.md	~/Gits/brainlayer	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/orchestrator-status/SKILL.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/research-prompt-quality/evals/fixtures/pos-2-rrf-correct.md	~/Gits/brainlayer	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/research-prompt-quality/references/ground-template.md	~/Gits/...	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/video-showcase/SKILL.md	~/Gits/contentGolem	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/worktrees/SKILL.md	/Users/me	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/worktrees/workflows/list.md	/Users/me	Archived historical artifact; literal retained as non-runtime evidence.
+_archive/writing-skills/workflows/create.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
+agada-bench/evals/fixtures/tiny-session.jsonl	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+agent-routing/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+agent-routing/evals/results/live-2026-08-02-effort-routing-with-skill.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+approval-comms-gate/evals/fixtures/red/01-outbox-md-void.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+approval-comms-gate/evals/fixtures/red/06-incident-framing-outbox-bypass.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+approval-comms-gate/evals/fixtures/red/08-resend-outbox-md.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+architectural-conformance-audit/evals/smoke-real-env.log	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+audio-dashboard/evals/audio-dashboard.test.mjs	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+audio-dashboard/evals/audio-dashboard.test.mjs	/Users/operator	Test or evaluation evidence intentionally preserves this machine-path specimen.
+audio-dashboard/evals/audio-dashboard.test.mjs	/Users/tester	Test or evaluation evidence intentionally preserves this machine-path specimen.
+audio-dashboard/evals/fixtures/green/03-teleprompter-drift-insync.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+cmux-agents/evals/evals.json	~/Gits/...	Test or evaluation evidence intentionally preserves this machine-path specimen.
+cmux-agents/evals/evals.json	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+cmux-workspace/historical-pain-points.md	~/Gits/repo	Historical reference preserves observed source text and is not executed.
+codex-workflows/evals/evals.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+codex-workflows/evals/run-false-green.sh	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+codex-workflows/tests/test_codex_workflows.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+content-demo-creation/voicebar-visual-reference.md	~/Gits/voicelayer	Historical reference preserves observed source text and is not executed.
+context-check/evals/evals.json	~/Gits/TaskOwl-app	Test or evaluation evidence intentionally preserves this machine-path specimen.
+context-check/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+context-check/evals/evals.json	~/Gits/some-new-app	Test or evaluation evidence intentionally preserves this machine-path specimen.
+deploy-verify/evals/evals.json	/Users/me	Test or evaluation evidence intentionally preserves this machine-path specimen.
+false-green-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+fleet-wrap-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+git-guardian/tests/test_git_safety.py	/opt/homebrew/bin/git	Test or evaluation evidence intentionally preserves this machine-path specimen.
+golem-install/evals/evals.json	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+html-dashboard/templates/template.html	~/Gits/brainlayer	Display template contains a non-executed sample path.
+idle-dwell-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+install-runbook-linter/fixtures/green-runbook.md	/opt/homebrew/bin/brew	Test or evaluation evidence intentionally preserves this machine-path specimen.
+install-runbook-linter/tests/test_runbook_lint.py	/opt/homebrew/bin/brew	Test or evaluation evidence intentionally preserves this machine-path specimen.
+launchd-secret-linter/fixtures/green-plist.plist	/Users/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
+launchd-secret-linter/fixtures/green-plist.plist	/opt/homebrew/bin/mysvc	Test or evaluation evidence intentionally preserves this machine-path specimen.
+launchd-secret-linter/fixtures/red-plist.plist	/Users/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
+launchd-secret-linter/tests/test_plist_secret_lint.py	/Users/x	Test or evaluation evidence intentionally preserves this machine-path specimen.
+launchd-secret-linter/tests/test_plist_secret_lint.py	/opt/homebrew/bin/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
+model-pin-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+monitor-law-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+never-fabricate/evals/evals.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+never-fabricate/evals/fixtures/pytest-output.txt	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+obsidian/evals/evals.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/iteration-1/eval-1-brainlayer-first/eval_metadata.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/iteration-1/eval-1-brainlayer-first/with_skill/outputs/response.md	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/iteration-1/eval-1-brainlayer-first/without_skill/outputs/response.md	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/iteration-1/eval-5-verify-claims/without_skill/outputs/response.md	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/iteration-1/eval-5-verify-claims/without_skill/outputs/response.md	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/iteration-1/eval-5-verify-claims/without_skill/outputs/response.md	~/Gits/voicelayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/iteration-2/eval-1/with_skill/outputs/response.md	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/maintenance-report.md	~/Gits/cmuxlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc-workspace/skill-snapshot/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc/workflows/evals/green-with-workflow.log	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+orc/workflows/evals/smoke-real-env.log	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+plan-council/fixtures/real-ballots/r1-opus.md	/opt/homebrew/bin/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+plan-council/fixtures/real-ballots/r2-sol.md	/opt/homebrew/bin/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+plan-council/fixtures/real-collab.md	/opt/homebrew/bin/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+pr-loop-workspace/iteration-1/simulated-responses/eval-8-with-skill.md	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+pr-loop-workspace/iteration-1/simulated-responses/eval-9-with-skill.md	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+pr-loop/evals/fixtures/identity-provenance-conflict.txt	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+pr-queue-gate/evals/pr-queue-gate.test.mjs	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+pr-queue-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+qa-verdict-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+repogolem/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+repogolem/evals/evals.json	~/Gits/myapp	Test or evaluation evidence intentionally preserves this machine-path specimen.
+skill-creator/tests/test_cmux_capture.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+skill-creator/tests/test_cmux_capture_batch.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+skill-creator/tests/test_jsonl_to_phoenix_traces.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+skill-creator/tests/test_phoenix_eval_launchd.py	~/Gits/brainlayer-phoenix	Test or evaluation evidence intentionally preserves this machine-path specimen.
+skill-creator/tests/test_phoenix_mobile.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+spec-preflight-gate/evals/fixtures/red/05-absolute-spec-path-unverified.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+spec-preflight-gate/evals/fixtures/red/07-dispatch-path-not-workaround.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+spec-preflight-gate/evals/fixtures/red/09-path-probe-not-workaround.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+tmp-block/hooks/tests/test_tmp_block.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+tmp-block/hooks/tests/test_tmp_block.py	~/Gits/foo.wt	Test or evaluation evidence intentionally preserves this machine-path specimen.
+tmp-block/tests/test_worktree_anchor.py	/Users/x	Test or evaluation evidence intentionally preserves this machine-path specimen.
+tmp-block/tests/test_worktree_anchor.py	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+whats-new/evals/evals.json	~/Gits/voicelayer	Test or evaluation evidence intentionally preserves this machine-path specimen.

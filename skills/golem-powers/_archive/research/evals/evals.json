@@ -1,0 +1,238 @@
+{
+  "skill": "research-skills-v2",
+  "version": "1.0.0",
+  "created": "2026-04-08",
+  "description": "Evals for the unified Drive-backed research skills migration",
+  "cases": [
+    {
+      "id": 1,
+      "name": "rename-discovery-gemini",
+      "category": "compliance",
+      "description": "Agent should discover /gemini-research (not /notebooklm-research) when the user asks for Gemini",
+      "prompt": "I want to use Gemini to do deep research on LightRAG vs GraphRAG architectures. Set up a research notebook.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "invokes-gemini-research",
+          "description": "Agent invokes /gemini-research or its MCP equivalent, NOT /notebooklm-research"
+        },
+        {
+          "type": "negative",
+          "name": "no-gemini-google-com-redirect",
+          "description": "Agent does NOT tell the user to go to gemini.google.com — NotebookLM IS Gemini"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "rename-discovery-notebooklm",
+      "category": "compliance",
+      "description": "Agent should still find the skill when user says NotebookLM (back-compat)",
+      "prompt": "Create a NotebookLM notebook for the 6PM architecture research.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "invokes-gemini-research",
+          "description": "Agent invokes /gemini-research (the new name) and optionally notes 'formerly notebooklm-research'"
+        },
+        {
+          "type": "content",
+          "name": "notebook-created",
+          "description": "Output shows notebook_create was called with title 'Research: 6PM Architecture' or similar"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "unified-context-single-folder",
+      "category": "structure",
+      "description": "/research --unified must reference the same Drive folder for both Claude Web and Gemini dispatch",
+      "prompt": "/research --unified 'Compare BrainLayer vs Mem0 for long-term memory' --project brainlayer",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "claude-web-dispatch",
+          "description": "Agent dispatches to /claude-web-research with Drive folder ID as context source"
+        },
+        {
+          "type": "tool_usage",
+          "name": "gemini-dispatch",
+          "description": "Agent dispatches to /gemini-research with SAME Drive folder ID as context source"
+        },
+        {
+          "type": "content",
+          "name": "matching-folder-ids",
+          "description": "Both dispatches reference the identical Drive folder ID (exact string match)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "account-verification-on-boot",
+      "category": "compliance",
+      "description": "Every research skill must verify active Google account before acting",
+      "prompt": "/gemini-research 'Research LangChain memory patterns'",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "verify-account-called",
+          "description": "Agent runs verify-account.sh (or equivalent server_info() + authGetStatus check) before any Drive or NotebookLM MCP call"
+        },
+        {
+          "type": "content",
+          "name": "active-account-logged",
+          "description": "Output mentions the active Google account (research-account@example.com) as a visible precondition"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "account-mismatch-fails-loudly",
+      "category": "compliance",
+      "description": "When active account is wrong, skill must fail loudly with remediation",
+      "prompt": "/gemini-research 'Research X'  # with mocked Drive MCP returning maintainer@example.com",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "explicit-mismatch-error",
+          "description": "Output contains explicit account-mismatch error, NOT a silent failure or wrong-account success"
+        },
+        {
+          "type": "content",
+          "name": "remediation-message",
+          "description": "Output tells user how to fix: 'Run: nlm login switch etanface' or equivalent"
+        },
+        {
+          "type": "negative",
+          "name": "no-silent-proceed",
+          "description": "Agent does NOT proceed to create notebooks on the wrong account"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "context-numbering-single-source",
+      "category": "structure",
+      "description": "The 00/01-19/... numbering scheme should be defined in one place",
+      "prompt": "Set up context files for a new research project called 'voicelayer'",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "references-shared-scheme",
+          "description": "Agent references _shared/context-numbering.md or equivalent single source, not duplicate tables from each skill"
+        },
+        {
+          "type": "tool_usage",
+          "name": "creates-in-drive",
+          "description": "Agent creates context/ folder in Drive/Research/voicelayer/ (not Obsidian, not local-only)"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "claude-web-drive-prompt-storage",
+      "category": "compliance",
+      "description": "/claude-web-research writes prompts to Drive, not Obsidian",
+      "prompt": "/claude-web-research Write R84: investigate vector DB options for 1M+ entities --project brainlayer",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "drive-upload",
+          "description": "Agent uploads R84-vector-db-options.md to Drive/Research/brainlayer/prompts/ via Drive MCP"
+        },
+        {
+          "type": "negative",
+          "name": "no-obsidian-write",
+          "description": "Agent does NOT write to ~/Library/Mobile Documents/iCloud~md~obsidian/..."
+        },
+        {
+          "type": "content",
+          "name": "next-rnn-correct",
+          "description": "Agent lists existing prompts in Drive prompts/ to pick R{NN+1} correctly"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "ab-test-paired-results",
+      "category": "structure",
+      "description": "/research-ab-test finds paired results without guessing platforms",
+      "prompt": "/research-ab-test R82 --project brainlayer",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "reads-paired-results",
+          "description": "Agent reads Drive/Research/brainlayer/results/R82-claude-web-result.md AND R82-gemini-result.md by filename, not by content analysis"
+        },
+        {
+          "type": "negative",
+          "name": "no-platform-guessing",
+          "description": "Agent does NOT include 'which platform produced this' language — filenames are authoritative"
+        },
+        {
+          "type": "content",
+          "name": "10-dimension-scoring",
+          "description": "Output contains all 10 dimensions with 0-5 scores for each platform"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "migration-preserves-prompts",
+      "category": "structure",
+      "description": "Migration script preserves all prompts and context files from Obsidian to Drive",
+      "prompt": "bash migrate-obsidian-to-drive.sh batch-brainlayer",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "file-count-matches",
+          "description": "Post-migration file count in Drive/Research/brainlayer/ matches pre-migration count in Obsidian batch-brainlayer/"
+        },
+        {
+          "type": "content",
+          "name": "empty-content-diff",
+          "description": "Content diffs between Obsidian source files and Drive destination files are empty"
+        },
+        {
+          "type": "content",
+          "name": "deprecation-marker",
+          "description": "Obsidian folder has a DEPRECATED.md pointing to the new Drive path after migration"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "back-compat-alias",
+      "category": "compliance",
+      "description": "Old /notebooklm-research name resolves to new skill during back-compat window",
+      "prompt": "/notebooklm-research create a notebook for the cmux research project",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "deprecation-warning",
+          "description": "Output prints deprecation warning: 'notebooklm-research is renamed to gemini-research; alias active for 1 release'"
+        },
+        {
+          "type": "tool_usage",
+          "name": "loads-gemini-research",
+          "description": "Actual skill loaded is /gemini-research (verifiable by SKILL.md path)"
+        },
+        {
+          "type": "content",
+          "name": "same-functionality",
+          "description": "All notebook creation steps execute identically to /gemini-research"
+        }
+      ]
+    }
+  ],
+  "baseline_expected_score": "30-50%",
+  "target_with_skill_score": ">80%",
+  "minimum_delta": 25,
+  "notes": [
+    "Cases 1-2 are the core discoverability value prop — the rename must work both ways",
+    "Cases 3, 6, 8 validate the Drive-unified architecture",
+    "Cases 4, 5 validate OAuth safety (biggest v1 bug class)",
+    "Case 9 validates migration safety (no data loss)",
+    "Case 10 validates back-compat during the 1-release transition"
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "cli-agents",
+  "eval_type": "behavior",
+  "eval_file": "evals/behavior/evals.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/cli-agents/SKILL.md",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "audit-and-research-open-visible-agents",
+      "assertions": [
+        {
+          "name": "both-requests-launch-visible-agents",
+          "result": "PASS",
+          "evidence": "Two patterns: Workers (split in current workspace) and Audit/Research (new workspace). Both launch actual visible cmux panes, not generic responses."
+        },
+        {
+          "name": "operator-can-distinguish-the-two-agents",
+          "result": "PASS",
+          "evidence": "'cmux rename-tab --surface SURFACE Audit: reponame' — each workspace/pane is labeled. Intent column in table: 'Worker' vs 'Audit/Research'."
+        },
+        {
+          "name": "main-working-view-is-not-overrun",
+          "result": "PASS",
+          "evidence": "Audit/Research pattern: 'New workspace, named — Doesnt clutter working view, find in sidebar'. Workers go in current workspace only when that is the intent."
+        }
+      ]
+    },
+    {
+      "eval_id": "parallel-implementation-workers-stay-monitorable",
+      "assertions": [
+        {
+          "name": "one-worker-per-implementation-task",
+          "result": "PASS",
+          "evidence": "Example: 3 parallel workers iterates over repos — each gets its own SURFACE via new-split. One pane per task."
+        },
+        {
+          "name": "workers-are-visible-and-labeled",
+          "result": "PASS",
+          "evidence": "'cmux rename-tab --surface SURFACE repo' labels each worker. Monitoring: 'cmux read-screen --surface surface:N --lines 8'."
+        },
+        {
+          "name": "launch-pattern-avoids-collisions",
+          "result": "PASS",
+          "evidence": "'Launch sequentially (1Password biometric needs ~2s between each)' and 'sleep 3  # Wait for Touch ID' between spawns."
+        }
+      ]
+    },
+    {
+      "eval_id": "cursor-security-finding-is-verified-before-remediation",
+      "assertions": [
+        {
+          "name": "finding-is-verified-against-repo-state",
+          "result": "PASS",
+          "evidence": "Rule 6: 'Verify cursor findings — cursor cannot always tell if files are git-tracked. Check with git ls-files before acting.'"
+        },
+        {
+          "name": "false-positive-risk-is-accounted-for",
+          "result": "PASS",
+          "evidence": "Rule 6 acknowledges cursor false positive risk: 'cursor cannot always tell if files are git-tracked'. Verification is required before acting."
+        },
+        {
+          "name": "panic-remediation-is-blocked-until-confirmed",
+          "result": "PASS",
+          "evidence": "Rule 6: 'before acting' — verification with git ls-files must complete before any remediation. No panic-action path exists in the skill."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

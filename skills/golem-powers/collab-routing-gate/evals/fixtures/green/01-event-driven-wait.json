@@ -1,0 +1,18 @@
+{
+  "specimen": "false-positive-guard/wait_for",
+  "label": "GREEN — worker watched via event-driven wait_for(agent_id), not a sleep-poll",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Watch the brainlayer worker." },
+    {
+      "role": "assistant",
+      "text": "Arming an event-driven wait on the worker.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__wait_for",
+          "input": { "agent_id": "brainlayer-w1", "until": "done" }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "name": "@golems/content",
+  "version": "1.0.0",
+  "description": "ContentGolem — content creation and publishing for LinkedIn, Soltome, and ghostwriting with critique-wave refinement.",
+  "author": "EtanHey",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EtanHey/golems",
+    "directory": "packages/content"
+  },
+  "keywords": [
+    "golems",
+    "ai-agent",
+    "content-creation",
+    "linkedin",
+    "publishing",
+    "remotion",
+    "video"
+  ],
+  "scripts": {
+    "validate-brand": "bun run scripts/validate-brand.ts",
+    "render": "bun run scripts/render.ts render",
+    "render:list": "bun run scripts/render.ts list",
+    "render:still": "bun run scripts/render.ts still",
+    "render:preview": "bun run scripts/render.ts preview",
+    "studio": "cd remotion && bunx remotion studio src/index.ts",
+    "generate": "bun run scripts/generate.ts",
+    "generate:status": "bun run scripts/generate.ts --status",
+    "generate:models": "bun run scripts/generate.ts --models",
+    "dataviz": "bun run scripts/dataviz.ts",
+    "dataviz:all": "bun run scripts/dataviz.ts all",
+    "pipeline": "bun run scripts/pipeline.ts",
+    "pipeline:route": "bun run scripts/pipeline.ts route",
+    "pipeline:stats": "bun run scripts/pipeline.ts stats",
+    "pipeline:list": "bun run scripts/pipeline.ts list",
+    "serve": "bun run src/http-service.ts",
+    "workflows:backup": "bash scripts/backup-workflows.sh",
+    "workflows:restore": "bash scripts/restore-workflows.sh"
+  },
+  "exports": {
+    "./*": "./src/*.ts",
+    "./brand": "./src/brand/index.ts",
+    "./brand/*": "./src/brand/*.ts",
+    "./remotion": "./src/remotion/index.ts",
+    "./remotion/*": "./src/remotion/*.ts",
+    "./render": "./src/render/index.ts",
+    "./comfyui": "./src/comfyui/index.ts",
+    "./comfyui/*": "./src/comfyui/*.ts",
+    "./quality": "./src/quality/index.ts",
+    "./dataviz": "./src/dataviz/index.ts",
+    "./dataviz/*": "./src/dataviz/*.ts",
+    "./dataviz/fetchers/*": "./src/dataviz/fetchers/*.ts",
+    "./dataviz/charts/*": "./src/dataviz/charts/*.ts",
+    "./dataviz/templates/*": "./src/dataviz/templates/*.ts",
+    "./pipeline": "./src/pipeline/index.ts",
+    "./pipeline/*": "./src/pipeline/*.ts",
+    "./http-service": "./src/http-service.ts"
+  },
+  "dependencies": {
+    "@golems/shared": "workspace:*",
+    "@remotion/google-fonts": "4.0.421",
+    "@remotion/paths": "4.0.421",
+    "@stable-canvas/comfyui-client": "^1.5.9",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "peerDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.421"
+  }
+}

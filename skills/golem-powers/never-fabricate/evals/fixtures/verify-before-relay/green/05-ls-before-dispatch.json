@@ -1,0 +1,33 @@
+{
+  "specimen": "gen-18 Track 2 #4 / R-008 — GREEN ls-before-dispatch",
+  "class": "dispatch-research-without-ls-siblings",
+  "label": "GREEN — sibling results/ dir ls-ed FIRST (empty), then the research dispatched",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Find out which read-path architecture we picked."
+    },
+    {
+      "role": "assistant",
+      "text": "First checking whether the answer already exists in the sibling results dir.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "ls docs/research/results/" } }
+      ]
+    },
+    { "role": "tool", "text": "(empty) — no read-path results file present." },
+    {
+      "role": "assistant",
+      "text": "Nothing there — dispatching a research agent to investigate.",
+      "tools": [
+        {
+          "name": "Task",
+          "input": {
+            "subagent_type": "researcher",
+            "prompt": "Research which read-path architecture the team chose."
+          }
+        }
+      ]
+    }
+  ]
+}

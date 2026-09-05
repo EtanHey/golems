@@ -1,0 +1,27 @@
+{
+  "specimen": "narrationlayer/019ee3dd#5 (resume variant)",
+  "label": "GREEN — crashed lead is RESUMED via repoGolem --resume, not duplicate-spawned",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "The brainlayer lead pane crashed. Get it going again."
+    },
+    {
+      "role": "tool",
+      "text": "list_agents: surface=brainlayer-lead state=error session_id=019ee1c2-aaaa resumable=true last_active=2m ago"
+    },
+    {
+      "role": "assistant",
+      "text": "The pane shows resumable=true with ~386K tokens of context. Resuming the original session rather than spawning a fresh lead.",
+      "tools": [
+        {
+          "name": "send_command",
+          "input": {
+            "command": "repogolem --resume 019ee1c2-aaaa --repo brainlayer"
+          }
+        }
+      ]
+    }
+  ]
+}

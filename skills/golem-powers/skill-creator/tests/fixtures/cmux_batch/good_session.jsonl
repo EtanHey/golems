@@ -1,0 +1,11 @@
+{"type":"assistant","timestamp":"2026-06-03T00:00:01.000Z","message":{"model":"claude-opus-4-8","role":"assistant","content":[{"type":"tool_use","id":"toolu_good_1","name":"mcp__cmux__new_split","input":{"workspace":"workspace:1","pane":"pane:1"}}]}}
+{"type":"user","timestamp":"2026-06-03T00:00:02.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_good_1","content":"OK surface:10 pane:1 workspace:1"}]}}
+{"type":"assistant","timestamp":"2026-06-03T00:00:03.000Z","message":{"model":"claude-opus-4-8","role":"assistant","content":[{"type":"tool_use","id":"toolu_good_2","name":"mcp__cmux__list_surfaces","input":{"pane":"pane:1"}}]}}
+{"type":"user","timestamp":"2026-06-03T00:00:04.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_good_2","content":"surface:10 ready"}]}}
+{"type":"assistant","timestamp":"2026-06-03T00:00:05.000Z","message":{"model":"claude-opus-4-8","role":"assistant","content":[{"type":"tool_use","id":"toolu_good_3","name":"mcp__cmux__focus","input":{"surface":"surface:10"}}]}}
+{"type":"user","timestamp":"2026-06-03T00:00:06.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_good_3","content":"OK focused surface:10"}]}}
+{"type":"assistant","timestamp":"2026-06-03T00:00:07.000Z","message":{"model":"claude-opus-4-8","role":"assistant","content":[{"type":"tool_use","id":"toolu_good_4","name":"mcp__cmux__send_input","input":{"surface":"surface:10","text":"Run the assigned check."}}]}}
+{"type":"user","timestamp":"2026-06-03T00:00:08.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_good_4","content":"OK sent to surface:10"}]}}
+{"type":"assistant","timestamp":"2026-06-03T00:00:09.000Z","message":{"model":"claude-opus-4-8","role":"assistant","content":[{"type":"tool_use","id":"toolu_good_5","name":"mcp__cmux__read_screen","input":{"surface":"surface:10","lines":20}}]}}
+{"type":"user","timestamp":"2026-06-03T00:00:10.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_good_5","content":"ready ok harness-ok"}]}}
+{"type":"assistant","timestamp":"2026-06-03T00:00:11.000Z","message":{"model":"claude-opus-4-8","role":"assistant","content":[{"type":"text","text":"TASK_DONE"}]}}

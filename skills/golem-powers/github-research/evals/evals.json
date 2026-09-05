@@ -1,0 +1,65 @@
+{
+  "skill_name": "github-research",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just cloned this unfamiliar repo. Help me understand its architecture.",
+      "expected_output": "Agent searches BrainLayer first, then explores codebase systematically — entry points, config, dependencies, patterns.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "brain-search-before-files",
+          "description": "Response checks BrainLayer for existing knowledge about this repo before reading any files"
+        },
+        {
+          "name": "maps-entry-points",
+          "description": "Response identifies main entry points (package.json scripts, main files, config) not random files"
+        },
+        {
+          "name": "identifies-patterns-not-just-files",
+          "description": "Response describes architectural patterns (monorepo structure, API layer, etc.) not just file listings"
+        },
+        {
+          "name": "stores-findings-in-brainlayer",
+          "description": "Response includes brain_store of key architectural findings for future sessions"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to catch up on my own branch. Use github-research to see what changed.",
+      "expected_output": "Agent redirects to catchup skill — github-research is for UNFAMILIAR codebases, not own branch catchup.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "redirects-to-catchup",
+          "description": "Response recognizes this is a catchup scenario and suggests using the catchup or catchup-recent skill instead"
+        },
+        {
+          "name": "explains-scope-difference",
+          "description": "Response explains github-research is for unfamiliar codebases, not tracking own changes"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Audit this repo for undocumented features, missing tests, and configuration gaps.",
+      "expected_output": "Agent performs structured audit: checks test coverage, README completeness, config validation, and flags gaps.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "checks-test-coverage",
+          "description": "Response examines test files relative to source files, identifies untested modules"
+        },
+        {
+          "name": "checks-documentation",
+          "description": "Response verifies README accuracy against actual codebase structure"
+        },
+        {
+          "name": "flags-configuration-gaps",
+          "description": "Response checks for missing env vars, unvalidated config, hardcoded values"
+        }
+      ]
+    }
+  ]
+}

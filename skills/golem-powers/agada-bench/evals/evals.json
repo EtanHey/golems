@@ -1,0 +1,419 @@
+{
+  "skill": "agada-bench",
+  "version": "v1.1",
+  "description": "Eval coverage for /agada-bench. Two mode families: BENCH-MODE (default, score live BL recall vs standing gold) and BUILD-MODE (subcommand, extend standing corpus with new domain). Static smoke runs all of them; full live BL smoke requires MCP access (operator-driven, see workflows/run-bench.md).",
+  "fixtures_root": "evals/fixtures/",
+  "cases": [
+    {
+      "id": "run-bench-prepare",
+      "category": "compliance",
+      "name": "BENCH-MODE: run-bench.py prepare loads 4 historical golds + reconstructs 67 queries",
+      "input": {
+        "script": "scripts/run-bench.py",
+        "args": [
+          "prepare",
+          "--gold",
+          "techgym:/opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/phase-3-gold/gold.jsonl",
+          "--gold",
+          "freelance:/opt/private/coordination/docs.local/plans/2026-05-16-agada-run-2-freelance/phase-3-gold/gold.jsonl",
+          "--gold",
+          "recruiting:/opt/private/coordination/docs.local/plans/2026-05-16-agada-run-3-recruiting/phase-3-gold/gold.jsonl",
+          "--gold",
+          "architecture:/opt/private/coordination/docs.local/plans/2026-05-16-agada-run-4-architecture/phase-3-gold/gold.jsonl",
+          "--output",
+          "/tmp/agada-eval-prepare/bench-queries.jsonl"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "bench-queries.jsonl has 1 _meta row + 67 query rows (16 + 20 + 19 + 12)",
+        "_meta.total_gold_pairs == 198",
+        "_meta.total_l2_l3 == 53",
+        "_meta.low_power_domains == ['architecture'] (W0 #3: L2+L3 < 5)",
+        "Every non-_meta row has query_text and query_filters fields (W0 #2: QUERY RECONSTRUCTION from phase-0b-corpus)",
+        "Every non-_meta row has expected_gold list populated from gold.jsonl"
+      ]
+    },
+    {
+      "id": "run-bench-score-synthetic",
+      "category": "quality",
+      "name": "BENCH-MODE: run-bench.py score computes correct recall@K on synthetic perfect results",
+      "description": "Feed synthetic bench-results.jsonl where every gold-L3 query returns expected chunks at positions 1..N. Verify the math.",
+      "setup": [
+        "Run run-bench-prepare to produce bench-queries.jsonl",
+        "Generate synthetic bench-results.jsonl with every expected_gold chunk at position i+1, provenance=true_hit, source_session_id=sim-prior, chunk_created_iso=2026-04-01T00:00:00Z"
+      ],
+      "input": {
+        "script": "scripts/run-bench.py",
+        "args": [
+          "score",
+          "--queries",
+          "/tmp/agada-eval-prepare/bench-queries.jsonl",
+          "--results",
+          "/tmp/agada-eval-prepare/bench-results-synthetic.jsonl",
+          "--output",
+          "/tmp/agada-eval-prepare/bench-report.md",
+          "--json-out",
+          "/tmp/agada-eval-prepare/bench-summary.json"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "bench-summary.json overall.queries == 55 (67 minus 12 architecture LOW-POWER)",
+        "bench-summary.json include_low_power == false by default",
+        "bench-summary.json overall.placebo_rate == 0.0 (synthetic all true_hit)",
+        "Per-domain breakdown present for techgym, freelance, recruiting, architecture",
+        "Architecture flagged as LOW-POWER in report markdown"
+      ]
+    },
+    {
+      "id": "run-bench-chunked-write",
+      "category": "compliance",
+      "name": "BENCH-MODE: run-bench.py score uses append-mode chunked writes (W0 #1)",
+      "description": "Verify that long report writes don't fail on large payloads.",
+      "assertions": [
+        "scripts/run-bench.py contains append_chunked helper that writes ≤2048 byte segments via 'ab' mode",
+        "scripts/run-bench.py score truncates output before append (write_text('')) then chunked-appends sections",
+        "Synthetic test with 67-query report produces complete output (no truncation)"
+      ]
+    },
+    {
+      "id": "run-agada-bench-mode-default",
+      "category": "structure",
+      "name": "TOP-LEVEL: run-agada.sh (no args) routes to bench mode",
+      "input": {
+        "script": "scripts/run-agada.sh",
+        "args": ["--output-dir", "/tmp/agada-eval-driver-bench/", "--dry-run"]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "stdout contains 'BENCH MODE'",
+        "stdout does NOT contain 'BUILD MODE'",
+        "stdout lists 4 --gold args from STANDING_GOLDS",
+        "Output dir queries path uses YYYY-MM-DD prefix"
+      ]
+    },
+    {
+      "id": "run-agada-build-subcommand",
+      "category": "structure",
+      "name": "TOP-LEVEL: run-agada.sh build routes to build mode",
+      "input": {
+        "script": "scripts/run-agada.sh",
+        "args": [
+          "build",
+          "--session",
+          "evals/fixtures/tiny-session.jsonl",
+          "--domain",
+          "smoke",
+          "--output",
+          "/tmp/agada-eval-driver-build/",
+          "--judges",
+          "claude",
+          "--liveness-check",
+          "warn-only",
+          "--dry-run"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "stdout contains 'BUILD MODE'",
+        "stdout contains 'PHASE 1 dispatch'",
+        "stdout lists claudeJudge spawn-brief path"
+      ]
+    },
+    {
+      "id": "extract-corpus-minimal",
+      "category": "compliance",
+      "name": "extract-corpus.py parses tiny-session.jsonl into an 8-row corpus",
+      "input": {
+        "script": "scripts/extract-corpus.py",
+        "args": [
+          "--session",
+          "evals/fixtures/tiny-session.jsonl",
+          "--output",
+          "/tmp/agada-eval-extract-minimal/"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "/tmp/agada-eval-extract-minimal/corpus.jsonl exists",
+        "corpus.jsonl row count is between 8 and 9 (5 brain_search calls returned: 3+2+0+2+1 = 8 chunks; zero-result query 3 goes to zero-result-queries.jsonl)",
+        "Every row has required fields: query_id, query_text, chunk_id, chunk_full_content, audit_returned_position, audit_score",
+        "/tmp/agada-eval-extract-minimal/zero-result-queries.jsonl exists with 1 row (the synthetic 'laptop liquid spill' query)",
+        "/tmp/agada-eval-extract-minimal/corpus-summary.md exists and contains 'Total brain_search calls: 5'",
+        "Row with chunk_id 'rt-fix-aaaa-' has chunk_importance == 2",
+        "Hebrew content in rt-fix-cccc-1 is preserved verbatim (דוגמה לחשבונית present in chunk_full_content)"
+      ]
+    },
+    {
+      "id": "liveness-check-pass",
+      "category": "compliance",
+      "name": "liveness-check.py reports ALIVE for a complete claude-only fixture run",
+      "setup": [
+        "mkdir -p /tmp/agada-eval-liveness-pass/phase-0b-corpus/",
+        "mkdir -p /tmp/agada-eval-liveness-pass/phase-1-judgments/",
+        "Generate corpus.jsonl with 3 (qid, chunk_id) rows.",
+        "Generate claude.jsonl with the same 3 (qid, chunk_id) rows graded."
+      ],
+      "input": {
+        "script": "scripts/liveness-check.py",
+        "args": [
+          "--phase1-dir",
+          "/tmp/agada-eval-liveness-pass/phase-1-judgments/",
+          "--corpus",
+          "/tmp/agada-eval-liveness-pass/phase-0b-corpus/corpus.jsonl",
+          "--expected-judges",
+          "claude",
+          "--tolerance",
+          "0.05",
+          "--strict"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "liveness-report.md contains 'claudeJudge | 3 | 3 | 0 | 100.0% | ✅ ALIVE'",
+        "liveness-report.md verdict line contains 'PASS' or '✅'"
+      ]
+    },
+    {
+      "id": "liveness-check-fm13-fail",
+      "category": "compliance",
+      "name": "liveness-check.py FAILS LOUD when a judge is under-quota (FM13)",
+      "setup": [
+        "Generate corpus.jsonl with 10 (qid, chunk_id) rows.",
+        "Generate gemini.jsonl with only 6 rows (60% = below 95% threshold)."
+      ],
+      "input": {
+        "script": "scripts/liveness-check.py",
+        "args": [
+          "--phase1-dir",
+          "/tmp/agada-eval-liveness-fail/phase-1-judgments/",
+          "--corpus",
+          "/tmp/agada-eval-liveness-fail/phase-0b-corpus/corpus.jsonl",
+          "--expected-judges",
+          "gemini",
+          "--tolerance",
+          "0.05",
+          "--strict"
+        ]
+      },
+      "assertions": [
+        "Exit code == 2",
+        "liveness-report.md contains 'geminiJudge' AND ('DEAD' OR 'under quota' OR 'FAIL')",
+        "stderr or stdout contains 'FM13' or 'liveness'"
+      ]
+    },
+    {
+      "id": "kappa-matrix-historical",
+      "category": "quality",
+      "name": "kappa-matrix.py reproduces W3.2's empirical baseline on Runs 2/3/4 phase-1-judgments",
+      "input": {
+        "script": "scripts/kappa-matrix.py",
+        "args": [
+          "--from-phase1",
+          "/opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/phase-1-judgments/",
+          "--judges",
+          "claude,codex,cursor,gemini",
+          "--out",
+          "/tmp/agada-eval-kappa.md",
+          "--bootstrap-iters",
+          "200",
+          "--corpus",
+          "/opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/phase-0b-corpus/corpus.jsonl"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "kappa.md contains 'claude × cursor' pair with κ between 0.70 and 0.90 (W3.2 reported 0.811)",
+        "kappa.md contains 'codex × gemini' pair with κ between 0.30 and 0.50 (W3.2 reported 0.38)",
+        "kappa.md drop-judge recommendation contains 'cursorJudge' (highest-κ pair member)"
+      ]
+    },
+    {
+      "id": "build-crossref-refactor-parity",
+      "category": "compliance",
+      "name": "Refactored build-crossref.py produces output ≥95% identical to the original on Run 1's data",
+      "input": {
+        "script": "scripts/build-crossref.py",
+        "args": [
+          "--run-dir",
+          "/tmp/agada-eval-crossref-parity/",
+          "--judges",
+          "claude,codex,cursor,gemini"
+        ],
+        "setup": [
+          "cp -r /opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/ /tmp/agada-eval-crossref-parity/",
+          "rm /tmp/agada-eval-crossref-parity/phase-2-crossref/disagreement-matrix.md",
+          "rm /tmp/agada-eval-crossref-parity/phase-2-crossref/consensus-draft.jsonl"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "consensus-draft.jsonl row count matches original within ±2 rows",
+        "consensus-draft.jsonl 'unanimous' bucket count matches original within ±2",
+        "disagreement-matrix.md contains 'spread' analysis section"
+      ]
+    },
+    {
+      "id": "build-gold-refactor-parity",
+      "category": "compliance",
+      "name": "Refactored build-gold.py produces ≥95% identical gold.jsonl to the original on Run 1's data",
+      "input": {
+        "script": "scripts/build-gold.py",
+        "args": [
+          "--run-dir",
+          "/tmp/agada-eval-gold-parity/",
+          "--judges",
+          "claude,codex,cursor,gemini",
+          "--tiebreaker",
+          "claude"
+        ],
+        "setup": [
+          "cp -r /opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/ /tmp/agada-eval-gold-parity/",
+          "mv /tmp/agada-eval-gold-parity/phase-3-gold/gold.jsonl /tmp/agada-eval-gold-parity/phase-3-gold/gold.jsonl.original",
+          "rm /tmp/agada-eval-gold-parity/phase-3-gold/adjudication-log.md /tmp/agada-eval-gold-parity/phase-3-gold/FM-summary.md"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0 OR (exit 2 AND notes mention unresolved rows expected for route-pending-rt.py)",
+        "gold.jsonl row count == 58 (matches original)",
+        "Diff of gold.jsonl vs gold.jsonl.original: ≥ 95% of rows have identical gold_label",
+        "FM-summary.md contains 'FM12' footnote (gemini-only judge-integrity-failure)"
+      ]
+    },
+    {
+      "id": "route-pending-rt-cascade",
+      "category": "compliance",
+      "name": "route-pending-rt.py identifies Run 1's hard pair and routes correctly under each cascade mode",
+      "input": {
+        "script": "scripts/route-pending-rt.py",
+        "args": [
+          "--gold",
+          "/opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/phase-3-gold/gold.jsonl",
+          "--consensus",
+          "/opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/phase-2-crossref/consensus-draft.jsonl",
+          "--cascade",
+          "opus-4-7",
+          "--out",
+          "/tmp/agada-eval-route-rt.md",
+          "--dry-run"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "Output identifies the Run 1 hard pair (qid=1, chunk_id=rt-3f77d29a-ad11c3648797a588) — historically the spread-2 case requiring red-team",
+        "pending-rt-routing.md contains route classification ('cascade-opus' OR 'discard-fm14' OR 'etan-adjudicate')",
+        "When --cascade is 'opus-4-7' (v1 stub), cascade-queue.md is emitted with pending-cascade rows"
+      ]
+    },
+    {
+      "id": "run-agada-dry-run",
+      "category": "structure",
+      "name": "run-agada.sh --dry-run on tiny-session.jsonl prints the dispatch plan without spawning judges",
+      "input": {
+        "script": "scripts/run-agada.sh",
+        "args": [
+          "--session",
+          "evals/fixtures/tiny-session.jsonl",
+          "--domain",
+          "smoke",
+          "--output",
+          "/tmp/agada-eval-driver-dryrun/",
+          "--judges",
+          "claude",
+          "--liveness-check",
+          "warn-only",
+          "--dry-run"
+        ]
+      },
+      "assertions": [
+        "Exit code == 0",
+        "stdout contains 'PHASE 1 — DISPATCH JUDGES'",
+        "stdout lists claudeJudge spawn-brief path",
+        "stdout does NOT contain 'cmux MCP error' (dry-run skips actual spawn)",
+        "Output dir /tmp/agada-eval-driver-dryrun/phase-0b-corpus/corpus.jsonl exists after extract phase ran",
+        "No phase-2-crossref/ output (dry-run halts before crossref since judges didn't run)"
+      ]
+    },
+    {
+      "id": "regression-run-1-reference-session",
+      "category": "quality",
+      "name": "Re-running /agada-bench on Run 1's coach session reproduces ≥95% of the original gold",
+      "description": "Full pipeline run on a private reference session. Requires actual 3-judge dispatch via cmux MCP — this case is run manually by the operator, not by automated eval harness. Listed here for completeness.",
+      "manual": true,
+      "input": {
+        "operator_steps": [
+          "bash scripts/run-agada.sh --session ~/.claude/projects/-Users-example-Gits-private-project/example-session.jsonl --domain techgym-rerun --output /tmp/agada-rerun-techgym/ --judges claude,codex,gemini,cursor --pending-rt-cascade operator-adjudicate",
+          "Spawn the 4 judges via cmux MCP per the printed dispatch plan.",
+          "Wait for all 4 <judge>.jsonl files to fill.",
+          "Press Enter in the run-agada.sh prompt to continue with liveness + crossref + gold-lock."
+        ]
+      },
+      "assertions": [
+        "STATUS.md verdict == 'GOLD_LOCKED'",
+        "gold.jsonl row count == 58 (matches Run 1 corpus)",
+        "Diff vs /opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/phase-3-gold/gold.jsonl: ≥ 95% of rows have identical gold_label (allow 5% slack for judge stochasticity)",
+        "FM12 incident reproducible: liveness-check flags geminiJudge integrity failure (~18 off-corpus rows)"
+      ]
+    }
+  ],
+  "compliance_checks": [
+    {
+      "name": "skill-structure",
+      "description": "All required files exist per SKILL.md spec",
+      "paths_required": [
+        "SKILL.md",
+        "workflows/run-bench.md",
+        "workflows/build-new-domain.md",
+        "workflows/add-domain.md",
+        "workflows/liveness-check.md",
+        "workflows/pending-rt-routing.md",
+        "workflows/kappa-validation.md",
+        "references/grading-rubric.md",
+        "references/failure-modes.md",
+        "references/judge-panel.md",
+        "references/roadmap-v2.md",
+        "references/prior-runs.md",
+        "adapters/claude.md",
+        "adapters/codex.md",
+        "adapters/gemini.md",
+        "adapters/cursor.md",
+        "adapters/capabilities.yaml",
+        "scripts/extract-corpus.py",
+        "scripts/dispatch-judges.py",
+        "scripts/liveness-check.py",
+        "scripts/kappa-matrix.py",
+        "scripts/route-pending-rt.py",
+        "scripts/build-crossref.py",
+        "scripts/build-gold.py",
+        "scripts/run-agada.sh",
+        "evals/evals.json",
+        "evals/fixtures/tiny-session.jsonl"
+      ]
+    },
+    {
+      "name": "skill-frontmatter",
+      "description": "SKILL.md frontmatter has name and description; description includes trigger words",
+      "required_trigger_words_in_description": [
+        "agada",
+        "BrainLayer",
+        "judge",
+        "gold",
+        "benchmark"
+      ]
+    },
+    {
+      "name": "rubric-canonical",
+      "description": "references/grading-rubric.md is byte-equivalent (modulo header) to the canonical v1.1 source",
+      "source": "/opt/private/coordination/docs.local/plans/2026-05-15-agada-bench-4way-judge/phase-0a-rubric/grading-rubric.md"
+    }
+  ],
+  "scoring_rubric": {
+    "compliance_weight": 0.5,
+    "structure_weight": 0.3,
+    "quality_weight": 0.2,
+    "ship_threshold": 0.85,
+    "iterate_threshold": 0.7,
+    "max_iterations": 3
+  }
+}

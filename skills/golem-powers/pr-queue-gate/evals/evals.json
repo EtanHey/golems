@@ -1,0 +1,86 @@
+[
+  {
+    "id": 1,
+    "name": "primitive-two-open-fleet-prs",
+    "category": "compliance",
+    "description": "The primitive filters a mixed GitHub response to two fleet-authored PRs.",
+    "prompt": "Run pr-queue.sh against a fixture repo whose mocked gh response has one owner PR, one same-repo fix/ fleet PR, one external contrib/ PR, and one cross-repo external fix/ PR.",
+    "assertions": [
+      { "type": "tool_usage", "name": "one-gh-call", "description": "Exactly one gh pr list call occurs." },
+      { "type": "content", "name": "two-filtered", "description": "The JSON open count and prs array both contain exactly two PRs." },
+      { "type": "content", "name": "exit-three", "description": "The primitive exits 3." }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "stop-blocks-once",
+    "category": "compliance",
+    "description": "A first Stop with an open fleet queue blocks and names every allowed disposition.",
+    "prompt": "Send a Stop payload with cwd in the two-PR fixture repo and a new session_id.",
+    "assertions": [
+      { "type": "content", "name": "block", "description": "The hook emits decision=block." },
+      { "type": "content", "name": "queue-listed", "description": "Both PR numbers and titles appear in the reason." },
+      { "type": "content", "name": "dispositions", "description": "Merge, review-routed, and real-blocker dispositions appear." }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "clean-repo-allows",
+    "category": "structure",
+    "description": "A clean fleet repository does not block Stop.",
+    "prompt": "Send a Stop payload for a fixture repo whose mocked gh response is an empty array.",
+    "assertions": [
+      { "type": "content", "name": "allow-shape", "description": "The hook emits exactly {}." },
+      { "type": "content", "name": "primitive-zero", "description": "The primitive emits open=0 and exits 0." },
+      { "type": "negative", "name": "no-latch", "description": "No session latch is created." }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "second-stop-latched",
+    "category": "compliance",
+    "description": "The same session can never be blocked twice.",
+    "prompt": "Run the open-queue Stop payload twice with the same session_id.",
+    "assertions": [
+      { "type": "content", "name": "first-blocks", "description": "The first invocation blocks." },
+      { "type": "content", "name": "second-allows", "description": "The second invocation emits {}." },
+      { "type": "tool_usage", "name": "no-second-gh", "description": "The gh shim records only one call." }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "gh-error-fails-open",
+    "category": "quality",
+    "description": "GitHub infrastructure failure cannot trap the seat.",
+    "prompt": "Make the PATH-shimmed gh print a network error and exit nonzero, then send a Stop payload.",
+    "assertions": [
+      { "type": "content", "name": "allow", "description": "The hook emits {}." },
+      { "type": "content", "name": "ledger", "description": "The ledger contains event=gh-error and the original message." },
+      { "type": "negative", "name": "no-block", "description": "No block decision or latch is produced." }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "pr-loop-disposition-integration",
+    "category": "compliance",
+    "description": "The gate routes an acknowledged queue into the existing PR loop without changing merge authority.",
+    "prompt": "Inspect the block reason for an open queue after a clean review is already available.",
+    "assertions": [
+      { "type": "content", "name": "admin-merge", "description": "The merge disposition says merge per /pr-loop --admin." },
+      { "type": "negative", "name": "no-permission-wait", "description": "The reason does not request GitHub or human approval." },
+      { "type": "content", "name": "collab-post", "description": "The reason instructs the lane to post its disposition to the collab." }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "untrusted-pr-metadata-is-bounded",
+    "category": "security",
+    "description": "GitHub-controlled title metadata cannot inject terminal or bidirectional controls or unbounded text into model context.",
+    "prompt": "Send a Stop payload whose owner-authored PR title contains ANSI and bidirectional controls, irregular whitespace, and more than 120 Unicode code points.",
+    "assertions": [
+      { "type": "negative", "name": "no-controls", "description": "The reason contains no ANSI, C0/C1, or bidirectional display controls from the title." },
+      { "type": "content", "name": "bounded", "description": "The normalized title is truncated to 120 Unicode code points with an ellipsis." },
+      { "type": "content", "name": "delimited", "description": "The title is JSON-delimited and explicitly labeled as metadata, not instructions." }
+    ]
+  }
+]

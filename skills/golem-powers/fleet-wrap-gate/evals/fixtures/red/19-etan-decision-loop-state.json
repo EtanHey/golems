@@ -1,0 +1,23 @@
+{
+  "specimen": "durable registry — terminal Etan-only decision with armed /loop",
+  "label": "RED — work is complete and only an Etan decision remains, but a durable /loop is still running.",
+  "expect": "FLAG",
+  "violation": "FLEETWRAP_LOOP_ALIVE",
+  "state": {
+    "loops": [
+      {
+        "id": "loop-etan-19",
+        "status": "running",
+        "command": "/loop 5m check whether Etan decided"
+      }
+    ],
+    "crons": []
+  },
+  "events": [
+    { "role": "user", "text": "where are we?" },
+    {
+      "role": "assistant",
+      "text": "Work is complete; only an Etan decision remains. Standing down."
+    }
+  ]
+}

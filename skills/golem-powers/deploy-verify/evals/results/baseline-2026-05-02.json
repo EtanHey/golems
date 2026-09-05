@@ -1,0 +1,14 @@
+{
+  "provenance": "alias-only",
+  "skill": "deploy-verify",
+  "date": "2026-05-02",
+  "variant": "without-skill",
+  "method": "synthetic static scoring against eval assertions",
+  "total_evals": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "passed_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "notes": "Baseline mirrors the BRIEF 3 failure shape: merge reports and worker self-reports are accepted too easily, provenance is conflated with deployment, and the runtime probe is often skipped.",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

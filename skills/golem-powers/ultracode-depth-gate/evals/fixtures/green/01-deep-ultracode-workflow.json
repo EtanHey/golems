@@ -1,0 +1,14 @@
+{
+  "specimen": "Theo/workflows-build-sub-workflows-depth-floor-pass",
+  "events": [
+    { "role": "user", "text": "Run an ultracode exhaustive repo audit.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching deep workflow.",
+      "tools": [
+        { "name": "Workflow", "input": { "script": "gatherers: 17 cheap-model gatherers\nverifiers: 3 adversarial verifiers\nshape: workflows build sub-workflows, not flat N-to-1\nstop: loop-until-dry quality-not-budget" } }
+      ]
+    },
+    { "role": "tool", "text": "workflow accepted: gatherers=17 adversarial_verifiers=3 loop_until_dry=true quality_stop=true", "tools": [] }
+  ]
+}

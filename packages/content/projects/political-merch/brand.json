@@ -1,0 +1,57 @@
+{
+  "$schema": "1.0",
+  "name": "Political Merch",
+  "description": "Bold political merchandise designs — t-shirts, stickers, posters with sharp messaging.",
+  "colors": {
+    "primary": "#DC2626",
+    "secondary": "#1D4ED8",
+    "accent": "#FACC15",
+    "background": "#FFFFFF",
+    "surface": "#F9FAFB",
+    "text": {
+      "primary": "#111827",
+      "secondary": "#4B5563",
+      "onPrimary": "#FFFFFF",
+      "onAccent": "#111827"
+    }
+  },
+  "typography": {
+    "heading": {
+      "family": "Bebas Neue",
+      "weights": { "regular": 400 },
+      "source": "google"
+    },
+    "body": {
+      "family": "Roboto",
+      "weights": { "regular": 400, "bold": 700 },
+      "source": "google"
+    },
+    "code": {
+      "family": "monospace",
+      "weights": { "regular": 400 }
+    },
+    "baseFontSize": 18
+  },
+  "logos": {
+    "default": "assets/merch-logo.svg"
+  },
+  "tone": {
+    "formality": 4,
+    "emojiUsage": "never",
+    "language": "en",
+    "voiceDescription": "Bold, direct, punchy. Short slogans. High-contrast visuals. Think protest poster meets streetwear brand."
+  },
+  "social": {
+    "handles": {},
+    "hashtags": ["#Merch", "#Design"],
+    "defaultCTA": "Shop now"
+  },
+  "templates": {
+    "image": {
+      "width": 2400,
+      "height": 3200,
+      "format": "png",
+      "quality": 100
+    }
+  }
+}

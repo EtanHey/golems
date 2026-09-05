@@ -1,0 +1,23 @@
+{
+  "specimen": "R-037/absolute-docs-plan-path-without-same-turn-check",
+  "violation": "SPEC_FILE_UNVERIFIED",
+  "events": [
+    { "role": "user", "text": "Spawn a worker from the absolute handoff path.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching from the absolute path.",
+      "tools": [
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Use /Users/example/Gits/golems/docs/plan/spawn-hygiene.md and implement the handoff."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "spawned agent golems in repo golems", "tools": [] }
+  ]
+}

@@ -1,0 +1,55 @@
+# pr-loop — Per-CLI Capability Matrix
+
+skill: pr-loop
+
+adapters:
+  claude:
+    gh_cli: true
+    git_ops: true
+    cr_review_precommit: true        # cr review --plain before commit
+    coderabbit_subagent: true        # Agent(subagent_type="coderabbit:code-reviewer")
+    review_polling: native           # CronCreate + /loop tool
+    brainlayer_postmerge: true       # brain_store after merge (mandatory)
+    worktree_isolation: native       # claude --worktree feat/name
+    cursor_bugbot_trigger: true      # gh pr comment "@cursor @bugbot review"
+    live_model_provenance: session-jsonl  # .message.model in ~/.claude/projects/**.jsonl (verified 2026-08-08)
+    identity_signature: true         # can emit full golem-id v1 blob
+    full_loop: true
+
+  codex:
+    gh_cli: conditional              # Needs gh installed + authenticated in env
+    git_ops: true
+    cr_review_precommit: conditional # Only if cr CLI installed
+    coderabbit_subagent: false       # No Agent() tool
+    review_polling: shell_loop_only  # for i in seq; do gh api ...; sleep 30; done
+    brainlayer_postmerge: false      # No MCP access
+    worktree_isolation: manual       # git worktree add required before spawning
+    cursor_bugbot_trigger: conditional # Needs gh installed + authenticated; use gh pr comment "@cursor @bugbot review"
+    live_model_provenance: session-jsonl  # LAST turn_context.model in ~/.codex/sessions/**/rollout-*.jsonl (verified 2026-08-08)
+    identity_signature: true         # can emit full golem-id v1 blob; effort in turn_context stays OFF GitHub
+    full_loop: partial               # Missing native review tooling + post-merge tracking
+
+  cursor:
+    gh_cli: conditional              # Needs gh installed + authenticated in env
+    git_ops: true
+    live_model_provenance: unavailable   # No verified per-turn model record (checked 2026-08-08) → model_source: unavailable
+    identity_signature: partial      # seat/role/harness yes; model must be "unknown"
+    full_loop: partial               # See adapters/cursor.md
+
+# Task routing
+routing:
+  full_autonomous_loop: claude       # Claude does the complete loop autonomously
+  implement_only: codex              # Codex implements, Claude handles review+merge
+  parallel_prs: claude               # Native --worktree for isolation
+
+# Gaps requiring orchestration
+gaps:
+  codex_missing:
+    - brainlayer_postmerge           # Must be done by Claude session after Codex merges
+    - coderabbit_subagent            # Use shell polling as fallback
+    - native_review_tooling          # Trigger bots via gh pr comment; no native reviewer tool
+  cursor_missing:
+    - live_model_provenance          # No verified per-turn model source; sign with model "unknown"
+  fleet_missing:
+    - gh_signature_wrapper           # gh() auto-injection designed, NOT built (golems/repoGolem lane) — sign by hand
+    - checkpoint_effort_capture      # effort captured nowhere today (brainlayer lane); never put it on GitHub

@@ -1,0 +1,107 @@
+{
+  "skill_name": "plan-validate",
+  "tier": "flagship",
+  "models": ["opus", "sonnet"],
+  "evals": [
+    {
+      "id": 0,
+      "name": "flag-unverified-threshold",
+      "prompt": "Here's a plan that claims 'BLEU score >0.8 means high quality translation'",
+      "expected_output": "Flag as ESTIMATED or PHANTOM — BLEU 0.8 is unusually high for most tasks, needs source citation. Generate a research prompt to verify against MT benchmarks.",
+      "root_cause_tested": "phantom_detection — tests whether skill catches numeric thresholds without evidence",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_bleu_claim",
+          "description": "Identifies the BLEU 0.8 claim as needing verification (ESTIMATED or PHANTOM)",
+          "type": "content"
+        },
+        {
+          "name": "rejects_without_evidence",
+          "description": "Does NOT accept the 0.8 threshold without a source citation",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "verify-tool-assumption",
+      "prompt": "Plan says 'We'll use React 19 server components for the dashboard'",
+      "expected_output": "Flag as needing verification — check if the project already uses React, what version, and whether React 19 server components are stable.",
+      "root_cause_tested": "tool_assumption — tests whether skill verifies library/framework assumptions",
+      "files": [],
+      "assertions": [
+        {
+          "name": "checks_existing_stack",
+          "description": "Checks whether React is already in the project's dependencies",
+          "type": "content"
+        },
+        {
+          "name": "verifies_version_stability",
+          "description": "Verifies React 19 server components exist and are production-stable",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "preserve-verified-kill-phantoms",
+      "prompt": "Plan has 3 verified claims with source citations (MDN docs, RFC 7231, npm registry) and 2 phantoms with no evidence: 'SQLite handles 10K concurrent writes' and 'Bun is 3x faster than Node for this workload'",
+      "expected_output": "Keep the 3 verified claims intact. Generate specific research prompts for the 2 phantoms. For SQLite: check write concurrency limits in WAL mode. For Bun: check benchmarks for the specific workload type.",
+      "root_cause_tested": "selective_validation — tests that verified claims survive while phantoms get research prompts",
+      "files": [],
+      "assertions": [
+        {
+          "name": "generates_research_prompts",
+          "description": "Generates specific research prompts for the 2 phantom claims",
+          "type": "content"
+        },
+        {
+          "name": "preserves_verified",
+          "description": "Does not modify or question the 3 verified claims with source citations",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "flag-whisper-streaming-claim",
+      "prompt": "Sprint plan claims 'Whisper v4 supports real-time streaming transcription natively'",
+      "expected_output": "Flag as PHANTOM or ESTIMATED — verify against Whisper documentation whether the claimed version supports native streaming.",
+      "root_cause_tested": "phantom_detection — tests whether skill catches AI tool capability claims",
+      "files": [],
+      "assertions": [
+        {
+          "name": "does_not_accept_streaming",
+          "description": "Does not accept the streaming claim without verification against docs",
+          "type": "content"
+        },
+        {
+          "name": "generates_research",
+          "description": "Generates a research prompt to verify Whisper streaming capabilities",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "cross-track-dependency",
+      "prompt": "Plan says 'Track 2 output feeds Track 5 via shared JSON file at /tmp/handoff.json'",
+      "expected_output": "Flag cross-dependency — is the JSON schema defined? Does Track 2 actually write there? Is /tmp safe for cross-track data (cleared on reboot)?",
+      "root_cause_tested": "cross_dependency — tests whether skill catches undefined cross-track interfaces",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_cross_dependency",
+          "description": "Identifies the cross-track data dependency between Track 2 and Track 5",
+          "type": "content"
+        },
+        {
+          "name": "checks_interface_contract",
+          "description": "Asks whether the JSON schema/interface contract is defined",
+          "type": "content"
+        }
+      ]
+    }
+  ]
+}

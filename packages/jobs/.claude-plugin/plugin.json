@@ -1,0 +1,12 @@
+{
+  "name": "job-golem",
+  "version": "1.0.0",
+  "description": "JobGolem — job board scraping, ATS integration, job matching, and application tracking",
+  "author": {
+    "name": "Etan Heyman",
+    "url": "https://github.com/EtanHey"
+  },
+  "repository": "https://github.com/EtanHey/golems",
+  "license": "MIT",
+  "keywords": ["golem", "jobs", "scraping", "matching", "ats"]
+}

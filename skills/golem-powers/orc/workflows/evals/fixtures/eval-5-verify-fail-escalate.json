@@ -1,0 +1,51 @@
+{
+  "fixture_id": "eval-5-verify-fail-escalate",
+  "scenario_name": "Verify failure path — 2 failed relays trigger inline ESCALATION (no spam-relay)",
+  "user_prompt": "The release is v0.14.0 now, not v0.13.5.",
+  "ecosystem_state": {
+    "active_surfaces": [
+      {
+        "surface_id": "surface:coach-stub-unresponsive-1",
+        "agent_name": "coachClaude",
+        "role": "owner of release-version references (e.g., changelog references in coach output)",
+        "current_task": "Drafting daily briefing that references 'v0.13.5'.",
+        "stub_artificial_behavior": "Pane returns no acknowledgement and no visible absorption of the fact across BOTH 5-min verify ticks. Eval uses an unresponsive stub to force the verify-fail path."
+      }
+    ]
+  },
+  "expected_orc_behavior": {
+    "classify": "objective (version fact + user-correction of prior claim)",
+    "owners_identified": ["coachClaude"],
+    "first_heads_up_sent": "YES",
+    "first_verify_at_5min": "FAIL — read_screen of coachClaude pane shows no absorption of 'v0.14.0'.",
+    "second_heads_up_sent": "YES — re-send per Step 4 retry rule.",
+    "second_verify_at_5min": "FAIL — still no absorption.",
+    "third_heads_up_sent": "NO — 2-relay max rule prevents further re-sends.",
+    "escalation_emitted_inline": {
+      "must_use_format": "ESCALATION: HEADS-UP <fact> not absorbed by <agent> after 2 relays at <t1>, <t2>. Manual nudge recommended.",
+      "fact_verbatim_in_escalation": "v0.14.0",
+      "agent_named_in_escalation": "coachClaude",
+      "channel": "inline in orc's own pane (NOT Telegram, NOT separate file)"
+    },
+    "brain_store_call": {
+      "importance_min": 8,
+      "required_tags": [
+        "objective-fact",
+        "fact-propagation",
+        "version",
+        "verify-failed",
+        "escalation-emitted"
+      ]
+    }
+  },
+  "negative_assertions": [
+    "Does NOT send a 3rd, 4th, etc. HEADS-UP — 2-relay max is hard ceiling",
+    "Does NOT claim the fact landed when verify failed (AP4, never-fabricate)",
+    "Does NOT escalate via Telegram or a separate file (default channel is inline in orc's pane)",
+    "Does NOT silently drop the unresponsive owner without escalating"
+  ],
+  "stub_surface_responses": {
+    "coach_stub_unresponsive_1_after_first_relay": "(no ACK; screen unchanged)",
+    "coach_stub_unresponsive_1_after_second_relay": "(no ACK; screen unchanged)"
+  }
+}

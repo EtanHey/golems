@@ -1,0 +1,12 @@
+{
+  "specimen": "da456dfd#3 incident framing last — stack path first",
+  "violation": "INCIDENT_FRAMING_LAST",
+  "events": [
+    { "role": "user", "text": "Incident: the operator needs to know what happened and what to do.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Stack path: notify-server.ts threw ECONNREFUSED and the log tail shows the bot API request never happened.\nPlain-English framing: your approval message did not reach the live channel, so don't treat the design gate as cleared.",
+      "tools": []
+    }
+  ]
+}

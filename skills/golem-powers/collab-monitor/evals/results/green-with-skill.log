@@ -1,0 +1,17 @@
+EVAL_RUNTIME requested=bash effective=bash-3.2.57(1)-release effort=deterministic source=/bin/bash
+ok 1 filter-too-broad GREEN
+ok 2 self-signature-match GREEN
+ok 3 content-hash-dedup GREEN
+ok 4 silent-seed GREEN
+ok 5 bash-3.2-safe GREEN
+ok 6 comm-unsorted GREEN
+ok 7 large-plan-teaching GREEN
+ok 8 shrink-detection GREEN
+ok 9 explicit-limitations GREEN
+ok 10 durable-start-stop GREEN
+ok 11 exact-listener-boundary GREEN
+ok 12 heading-mention-is-not-authorship GREEN
+ok 13 canonical-path-state GREEN
+ok 14 transient-vanish-retry GREEN
+ok 15 supervisor-watch-not-poll GREEN
+CANDIDATE_SUMMARY pass=15 fail=0

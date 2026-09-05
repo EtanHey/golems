@@ -1,0 +1,33 @@
+# gen-18 spine gates — the co-requisite live-behavior gate runs in CI.
+# Doctrine: no spine deliverable is DONE unless its automated RED→GREEN gate runs
+# on every PR that touches it. The pinned transcript fixtures are the replay
+# substrate (R-003/R-014 pattern); this job is what makes them a real gate.
+name: spine-gates
+
+on:
+  pull_request:
+    paths:
+      - "skills/golem-powers/*-gate/**"
+      - "skills/golem-powers/crash-resume-index/**"
+      - "skills/golem-powers/audio-dashboard/**"
+      - ".github/workflows/spine-gates.yml"
+      - "package.json"
+  push:
+    branches: [master]
+    paths:
+      - "skills/golem-powers/*-gate/**"
+      - "skills/golem-powers/crash-resume-index/**"
+      - "skills/golem-powers/audio-dashboard/**"
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - name: Install test dependencies
+        run: bun install --frozen-lockfile
+      - name: Replay spine gate fixtures (RED must FLAG, GREEN must PASS)
+        run: bun run test:spine-gates

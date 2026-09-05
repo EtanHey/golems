@@ -1,0 +1,19 @@
+{
+  "specimen": "surface:241 HOLD: PR #347 title over a dead shell",
+  "provenance": "2026-08-03 liveness-check brief RED 3",
+  "enumerated": {
+    "id": "22222222-2222-4222-8222-222222222222",
+    "ref": "surface:241",
+    "title": "HOLD: PR #347",
+    "type": "terminal",
+    "workspace_ref": "workspace:1"
+  },
+  "observation": {
+    "identity_status": "MATCHED",
+    "process_alive": false,
+    "agent_state": "idle",
+    "open_lane": "unknown",
+    "artifact": {"status": "unknown", "uncommitted": null, "unpushed": null}
+  },
+  "expected": {"verdict": "DEAD-shell"}
+}

@@ -1,0 +1,65 @@
+{
+  "skill_name": "github",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a PR for my current branch. I fixed the auth middleware to handle expired tokens.",
+      "expected_output": "Uses `gh pr create` with a descriptive title and body. Pushes branch with -u flag first if needed. Uses HEREDOC for the body. Includes Co-Authored-By line in any commits.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-gh-pr-create",
+          "description": "Uses `gh pr create` CLI command (not GitHub web UI or API calls)"
+        },
+        {
+          "name": "checks-git-status-first",
+          "description": "Runs `git status` and/or `git diff` before creating the PR to understand current state"
+        },
+        {
+          "name": "pushes-branch-before-pr",
+          "description": "Ensures branch is pushed to remote (git push -u origin) before creating the PR"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm getting 'Bad credentials' from gh even though I'm logged in. What's wrong?",
+      "expected_output": "Diagnoses the GITHUB_TOKEN conflict. Checks `gh auth status` for the 'token in GITHUB_TOKEN is invalid' message. Searches shell config for stale GITHUB_TOKEN export. Suggests unsetting it.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "diagnoses-github-token-conflict",
+          "description": "Identifies that a stale GITHUB_TOKEN env var overrides valid keyring auth (the specific troubleshooting case from the skill)"
+        },
+        {
+          "name": "checks-shell-config-for-token",
+          "description": "Greps ~/.zshrc, ~/.bashrc, ~/.zprofile for GITHUB_TOKEN exports"
+        },
+        {
+          "name": "suggests-unset-and-remove",
+          "description": "Suggests both `unset GITHUB_TOKEN` for current session AND removing the export from shell config"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Stage and commit my changes to auth.ts and middleware.ts. The fix resolves issue #42.",
+      "expected_output": "Stages specific files (not git add -A). Creates commit with 'fix: resolve issue #42' and Co-Authored-By. Uses HEREDOC for commit message.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "stages-specific-files-not-all",
+          "description": "Uses `git add auth.ts middleware.ts` (specific files) rather than `git add -A` or `git add .` (safety rule)"
+        },
+        {
+          "name": "includes-co-authored-by",
+          "description": "Commit message includes Co-Authored-By: Claude line"
+        },
+        {
+          "name": "references-issue-number",
+          "description": "Commit message references #42 (e.g., 'Closes #42' or 'resolve issue #42')"
+        }
+      ]
+    }
+  ]
+}

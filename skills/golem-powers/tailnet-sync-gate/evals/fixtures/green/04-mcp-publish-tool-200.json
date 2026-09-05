@@ -1,0 +1,46 @@
+{
+  "specimen": "tailnet-sync/mcp-publisher (tool-name-normalization)",
+  "label": "GREEN — Write + the agent-html-publisher publish_dashboard MCP tool (the canonical mirror) + curl 200. Confirms mcp__…__publish_dashboard normalizes to publish_dashboard.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Publish the compare dashboard to the hub."
+    },
+    {
+      "role": "assistant",
+      "text": "Writing then publishing via the html-publisher, then probing.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/dashboards/compare.html",
+            "content": "<html>compare</html>"
+          }
+        },
+        {
+          "name": "mcp__agent-html-publisher__publish_dashboard",
+          "input": {
+            "name": "compare",
+            "topic": "compare"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "curl -s -o /dev/null -w '%{http_code}' https://hub.example.invalid/compare/compare.html"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "{\"published\": true, \"url\": \"https://hub.example.invalid/compare/compare.html\"}"
+    },
+    { "role": "tool", "text": "200" },
+    {
+      "role": "assistant",
+      "text": "Published ✅ — the compare dashboard is live on the tailnet hub (curl returned 200)."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "eval_id": "single-arm-delta",
+  "delta": 42,
+  "provenance": [
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "sonnet",
+      "model_effective": "claude-sonnet-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field",
+      "effort_observation_source": "session JSONL effort field"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+{"timestamp":"2026-08-12T03:00:00.000Z","type":"session_meta","payload":{"id":"019fec96-588d-7000-8000-000000000002","timestamp":"2026-08-12T03:00:00.000Z","cwd":"__OTHER_CWD__","originator":"codex_cli_rs","cli_version":"0.147.0","source":"cli"}}
+{"timestamp":"2026-08-12T03:00:01.000Z","type":"turn_context","payload":{"cwd":"__OTHER_CWD__","model":"gpt-5.6-luna","effort":"max"}}

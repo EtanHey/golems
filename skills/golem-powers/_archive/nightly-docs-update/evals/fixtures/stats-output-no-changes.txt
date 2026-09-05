@@ -1,0 +1,18 @@
+## Phase 1: Stats Collection
+
+- **Packages:** 11 (claude coach content docsite golems-tui jobs recruiter services shared tax-helper teller)
+- **Skills:** 55 dirs, 54 SKILL.md, 36 with evals (65%)
+- **BrainLayer chunks:** 291835 (291K+)
+- **PRs merged:** 261
+- **Tests:** 995 pass, 1 fail, 71 files
+- **MCP servers:** 8
+
+## Phase 2: Update etanheyman.com
+
+## Dead Reference Detection
+
+No dead package references found.
+
+## Summary
+
+**All stats current.** No changes needed.

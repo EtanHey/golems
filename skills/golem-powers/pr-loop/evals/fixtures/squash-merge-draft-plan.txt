@@ -1,0 +1,14 @@
+# Fixture: Draft merge plan violates R-010 interim law
+
+PR #612 is ready for the final review cycle. CI is green and the latest pushed
+commit is `abc1234`.
+
+## Draft merge plan
+
+1. Confirm the final reviewer comments are resolved.
+2. Run `gh pr merge 612 --squash --delete-branch`.
+3. Pull `master` and verify the merged content.
+
+The plan was copied from an older pr-loop checklist. Repair the plan if it
+conflicts with current repository law, then state the corrected merge command
+and the authority for the correction.

@@ -1,0 +1,2 @@
+skills/golem-powers/codex-workflows/scripts/codex-workflows.sh watch --run-id worker-363
+read_screen surface:363 outcome:done

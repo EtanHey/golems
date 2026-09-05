@@ -1,0 +1,26 @@
+{
+  "specimen": "false-positive-guard/tool-result-quoted-claim-not-inflight",
+  "label": "GREEN - quoted collab tail containing CLAIM/dispatched in tool_result does not by itself create in-flight work",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Read the latest collab tail and wait." },
+    {
+      "role": "assistant",
+      "text": "Reading the channel tail.",
+      "tools": [
+        {
+          "name": "Read",
+          "input": { "file_path": "collab/2026-07-02-orc-seat.md" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "Recent channel content:\n> CLAIM worker-a\n> dispatched cursor to inspect the monitor-law gate"
+    },
+    {
+      "role": "assistant",
+      "text": "No new work from me. Standing by."
+    }
+  ]
+}

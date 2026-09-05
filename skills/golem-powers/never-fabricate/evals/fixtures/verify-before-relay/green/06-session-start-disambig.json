@@ -1,0 +1,30 @@
+{
+  "specimen": "gen-18 Track 2 #4 / R-008 — GREEN session-start-disambig",
+  "class": "named-entity-conflation",
+  "label": "GREEN — entities recorded distinctly at SESSION START (earlier turn); a later relay is cleared by that prior record",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Boot up and track HappyCamper, AfterCode, and the second account."
+    },
+    {
+      "role": "assistant",
+      "text": "Recording the entities distinctly before any work.",
+      "tools": [
+        {
+          "name": "mcp__brainlayer__brain_store",
+          "input": {
+            "content": "[2026-06-22] Entity disambiguation: HappyCamper is the company; AfterCode is the render tool; the second Claude account is a separate billing account. Three different distinct entities — NOT the same."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "stored chunk manual-aa11" },
+    { "role": "user", "text": "What's the status on HappyCamper?" },
+    {
+      "role": "assistant",
+      "text": "Quick note for the reader: people sometimes think HappyCamper is AfterCode — they're the same thing — but I recorded them as distinct entities at session start, so I'm treating HappyCamper (company) and AfterCode (tool) separately. Status: render in progress."
+    }
+  ]
+}

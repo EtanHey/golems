@@ -1,0 +1,3 @@
+Obsidian vault path: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/personal/Personal/
+
+User message: "Search my notes for anything about the BrainLayer architecture decision."

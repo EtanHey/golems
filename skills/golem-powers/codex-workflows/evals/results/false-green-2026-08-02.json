@@ -1,0 +1,38 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-08-02",
+  "skill": "codex-workflows",
+  "eval": "false-green-launch-detection",
+  "recorded_history": true,
+  "red": {
+    "command": "python3 -m unittest -v test_codex_workflows.CodexWorkflowPrimitiveTests.test_false_green_naive_launch_is_rejected",
+    "exit_code": 1,
+    "naive_shell_exit": 0,
+    "pid_captured": true,
+    "process_alive_after_grace": false,
+    "log_nonempty": true,
+    "expected_failure": "verify_launch is not implemented"
+  },
+  "green": {
+    "command": "bash skills/golem-powers/codex-workflows/evals/run-false-green.sh",
+    "exit_code": 0,
+    "verifier_ok": false,
+    "verifier_state": "failed_launch",
+    "diagnostic_detected": true
+  },
+  "historical_focused_suite_at_green_commit": {
+    "command": "python3 -m unittest discover -s skills/golem-powers/codex-workflows/tests -v",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failures": 0,
+    "errors": 0
+  },
+  "current_focused_suite": {
+    "command": "python3 -m unittest discover -s skills/golem-powers/codex-workflows/tests -v",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failures": 0,
+    "errors": 0
+  },
+  "verdict": "PASS",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

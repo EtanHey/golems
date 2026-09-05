@@ -1,0 +1,360 @@
+{
+  "skill_name": "ecosystem-health",
+  "evals": [
+    {
+      "id": 1,
+      "name": "unhealthy-mcp-cascade-response",
+      "prompt": "I ran a health check and BrainLayer MCP timed out. The other 4 MCPs are fine. What should I do?",
+      "expected_output": "Should recognize BrainLayer as the highest-priority MCP failure because it cascades to all golems (every golem = vanilla LLM without BrainLayer). Should check DB vitals (WAL size, chunk count, DB path) via the python3 sqlite3 diagnostic script. Should check for stale MCP processes (pgrep -fl brainlayer). Should NOT treat this as a minor issue or suggest 'try again later'.",
+      "root_cause_tested": "cascade_awareness — tests whether skill teaches BrainLayer-down as a P0 cascading failure, not a generic MCP timeout",
+      "assertions": [
+        {
+          "text": "Identifies BrainLayer as cascading failure that affects ALL golems, not just one service",
+          "type": "behavioral"
+        },
+        {
+          "text": "Runs or recommends the python3 sqlite3 diagnostic to check WAL size and chunk count",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks for stale MCP processes with pgrep or similar process inspection",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT suggest 'just retry the brain_recall' as the primary fix",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT treat BrainLayer outage with the same severity as exa or supabase outage",
+          "type": "negative"
+        },
+        {
+          "text": "References specific WAL thresholds: >100MB = YELLOW (checkpoint needed), >500MB = RED (queries will timeout)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "git-hygiene-dirty-main-branch",
+      "prompt": "I've been coding for a few hours across multiple repos. Can you check if my git status is clean across the ecosystem?",
+      "expected_output": "Should run the multi-repo git status loop across all 5 key repos (golems, brainlayer, voicelayer, orchestrator, cmuxlayer). Should distinguish between dirty-on-feature-branch (YELLOW, normal) and dirty-on-main (RED, risk of accidental loss). Should report repo name, branch, and uncommitted file count. Should flag stale non-main branches with uncommitted work.",
+      "root_cause_tested": "threshold_awareness — tests whether skill applies correct severity levels for git hygiene (main dirty = RED vs feature branch dirty = YELLOW)",
+      "assertions": [
+        {
+          "text": "Iterates over all 5 key repos: golems, brainlayer, voicelayer, orchestrator, cmuxlayer",
+          "type": "behavioral"
+        },
+        {
+          "text": "Reports branch name alongside dirty status for each repo",
+          "type": "behavioral"
+        },
+        {
+          "text": "Flags uncommitted changes on main/master as RED (risk of accidental loss)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Treats dirty feature branch as YELLOW (normal during development), not RED",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT just run 'git status' in the current repo only",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT treat all dirty repos with equal severity regardless of branch",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "brainlayer-db-locked-diagnosis",
+      "prompt": "brain_search keeps returning errors and I see 'database is locked' in the logs. The WAL file is huge. What's happening and how do I fix it?",
+      "expected_output": "Should diagnose WAL bloat as the root cause of lock contention. Should check WAL size with the python3 diagnostic script and compare against thresholds (>100MB YELLOW, >500MB RED). Should check for multiple MCP server processes holding the DB open (each Claude session spawns its own MCP server). Should recommend killing stale MCP processes, then checkpointing the WAL. Should check chunk count to verify no data loss after recovery.",
+      "root_cause_tested": "specific_diagnosis — tests whether skill teaches the WAL bloat + stale MCP process diagnosis rather than generic 'restart the service'",
+      "assertions": [
+        {
+          "text": "Checks WAL file size and compares against specific thresholds (100MB YELLOW, 500MB RED)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Identifies multiple MCP server processes as a cause of WAL bloat (each Claude session spawns its own)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recommends killing stale MCP processes before attempting WAL checkpoint",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks chunk count after recovery to verify no data loss",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT suggest only 'restart the database' without diagnosing stale processes",
+          "type": "negative"
+        },
+        {
+          "text": "References the specific DB paths to check (~/.local/share/brainlayer/brainlayer.db or ~/.local/share/zikaron/zikaron.db)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "voicelayer-daemon-crash-detection",
+      "prompt": "Voice commands stopped working. I can't get voice_speak to do anything. Is the VoiceLayer daemon alive?",
+      "expected_output": "Should run the full VoiceLayer diagnostic: check Voice Bar app process (pgrep -x 'Voice Bar' or 'VoiceBar'), check MCP daemon process (pgrep -fl mcp-server-daemon), verify both socket files exist at /tmp/voicelayer.sock and /tmp/voicelayer-mcp.sock, check daemon stderr log for errors (tail -5 /tmp/voicelayer-mcp-daemon.stderr.log). Should know the expected state: Voice Bar = 1 process, MCP daemon = 1 process via LaunchAgent, both sockets present.",
+      "root_cause_tested": "process_monitoring_specifics — tests whether skill provides the exact process names, socket paths, and log locations rather than generic 'check if it is running'",
+      "assertions": [
+        {
+          "text": "Checks Voice Bar app process with pgrep using correct process names ('Voice Bar' or 'VoiceBar')",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks MCP daemon process with pgrep for 'mcp-server-daemon'",
+          "type": "behavioral"
+        },
+        {
+          "text": "Verifies both socket files: /tmp/voicelayer.sock AND /tmp/voicelayer-mcp.sock",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks daemon stderr log at /tmp/voicelayer-mcp-daemon.stderr.log for recent errors",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT suggest only 'restart VoiceLayer' without checking which component failed (app vs daemon vs socket)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT check generic system logs instead of the specific daemon log path",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "enrichment-stalled-diagnosis",
+      "prompt": "I stored a bunch of chunks in BrainLayer yesterday but they don't seem to have entities or embeddings yet. Is the enrichment pipeline working?",
+      "expected_output": "Should check enrichment process (pgrep -fl 'brainlayer.*enrich' or 'enrichment'). Should use brain_recall(mode='stats') to get enrichment_pending count and last_enrichment timestamp. Should apply thresholds: pending <100 and last enrichment <1h = GREEN, pending 100-1000 or >6h = YELLOW, pending >1000 or >24h = RED. Should also check JSONL watcher status since watcher being dead can cause enrichment to never trigger.",
+      "root_cause_tested": "pipeline_awareness — tests whether skill teaches the enrichment pipeline thresholds and the watcher-enrichment dependency",
+      "assertions": [
+        {
+          "text": "Checks enrichment process with pgrep for 'brainlayer.*enrich' or 'enrichment'",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses brain_recall(mode='stats') to check enrichment_pending count and last_enrichment timestamp",
+          "type": "behavioral"
+        },
+        {
+          "text": "Applies specific thresholds: pending >1000 or last enrichment >24h = RED",
+          "type": "behavioral"
+        },
+        {
+          "text": "Also checks JSONL watcher status as part of the diagnosis (watcher feeds the enrichment pipeline)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT suggest 'just re-store the chunks' as the fix without checking the pipeline first",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT give generic advice about embeddings without checking the specific process and stats",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "full-health-report-format",
+      "prompt": "Run a full ecosystem health check and give me the results.",
+      "expected_output": "Should run ALL 8 check sections (MCP connectivity, BrainLayer responsive, VoiceLayer daemon, JSONL watcher, enrichment, git status, Axiom telemetry, open PRs). Should produce the structured report format with Infrastructure/Data/Development tables using status indicators. Should store the report in BrainLayer with tags ['health-check', 'ecosystem', 'maintenance']. Should have an Overall status (GREEN/YELLOW/RED) and an Actions Needed section.",
+      "root_cause_tested": "complete_workflow — tests whether skill drives all 8 checks and produces the structured report format rather than ad-hoc answers",
+      "assertions": [
+        {
+          "text": "Checks all 5 MCP servers: BrainLayer, VoiceLayer, cmux, exa, supabase",
+          "type": "behavioral"
+        },
+        {
+          "text": "Produces a structured table report with Infrastructure, Data, and Development sections",
+          "type": "behavioral"
+        },
+        {
+          "text": "Includes an Overall status line (GREEN, YELLOW, or RED)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Stores the health report in BrainLayer via brain_store with tags including 'health-check'",
+          "type": "behavioral"
+        },
+        {
+          "text": "Includes an 'Actions Needed' section listing specific remediation steps",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT skip the git status or open PR checks (common omission)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT produce a free-form narrative instead of the structured table format",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "stale-pr-detection-and-escalation",
+      "prompt": "Are there any open PRs rotting across the ecosystem? I haven't checked in a while.",
+      "expected_output": "Should run gh pr list across all 5 repos (EtanHey/golems, EtanHey/brainlayer, EtanHey/voicelayer, EtanHey/orchestrator, EtanHey/cmuxlayer). Should apply the thresholds: 0 open = GREEN, 1-3 open = YELLOW, PR open >7 days = RED (stale). Should show PR number, title, and creation date. Should recommend specific action for each stale PR: merge, close, or review.",
+      "root_cause_tested": "threshold_and_action — tests whether skill provides the specific repo list, threshold rules, and actionable recommendations per PR",
+      "assertions": [
+        {
+          "text": "Checks all 5 repos using correct GitHub org/repo format (EtanHey/golems, etc.)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses gh pr list with --state open and shows PR number, title, and creation date",
+          "type": "behavioral"
+        },
+        {
+          "text": "Flags PRs open longer than 7 days as RED/stale",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recommends specific action per stale PR (merge, close, or needs review)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT check only the current repo's PRs",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT just list PRs without applying the age-based severity thresholds",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "jsonl-watcher-dead-with-inbox-backlog",
+      "prompt": "I've been storing chunks via the JSONL inbox but I'm not sure they're being processed. Can you check?",
+      "expected_output": "Should check watcher process (pgrep -fl 'brainlayer.*watch' or 'jsonl.*watch'). Should count files in ~/.brainlayer/inbox/ and apply thresholds: 0-2 = GREEN (processing), 3-10 = YELLOW (slow), 10+ = RED (dead or stuck). Should check watcher log at /tmp/brainlayer-watcher.log for recent activity. Should distinguish between watcher-not-running vs watcher-running-but-stuck.",
+      "root_cause_tested": "specific_diagnostics — tests whether skill provides exact process names, inbox path, log location, and file count thresholds",
+      "assertions": [
+        {
+          "text": "Checks watcher process with pgrep for 'brainlayer.*watch' or 'jsonl.*watch'",
+          "type": "behavioral"
+        },
+        {
+          "text": "Counts files in ~/.brainlayer/inbox/ and applies thresholds (0-2 GREEN, 3-10 YELLOW, 10+ RED)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks watcher log at /tmp/brainlayer-watcher.log for recent activity",
+          "type": "behavioral"
+        },
+        {
+          "text": "Distinguishes between watcher-not-running and watcher-running-but-stuck scenarios",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT just say 'check if the watcher is running' without specifying the process name or inbox path",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "axiom-telemetry-blind-spot",
+      "prompt": "I want to make sure our observability is working. Is Axiom receiving data from the ecosystem?",
+      "expected_output": "Should check for Axiom heartbeats in the watcher log (grep for 'axiom', 'telemetry', 'heartbeat' in /tmp/brainlayer-watcher.log). Should check last heartbeat timestamp and apply thresholds: <15min = GREEN, 15min-1h = YELLOW, >1h or no log = RED. Should verify AXIOM_TOKEN and AXIOM_DATASET environment variables are set. Should flag 'no heartbeat = telemetry blind' as the key risk.",
+      "root_cause_tested": "observability_check — tests whether skill teaches the specific Axiom check procedure with env vars and heartbeat thresholds",
+      "assertions": [
+        {
+          "text": "Checks watcher log for Axiom heartbeat entries with grep",
+          "type": "behavioral"
+        },
+        {
+          "text": "Applies heartbeat freshness thresholds: <15min GREEN, 15min-1h YELLOW, >1h RED",
+          "type": "behavioral"
+        },
+        {
+          "text": "Verifies AXIOM_TOKEN and AXIOM_DATASET environment variables are configured",
+          "type": "behavioral"
+        },
+        {
+          "text": "Identifies 'no heartbeat = telemetry blind' as a specific risk category",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT just say 'check your monitoring dashboard' without running the local diagnostics",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "post-infra-change-regression-check",
+      "prompt": "I just merged a PR that updates the BrainBar daemon's LaunchAgent plist. Should I run a health check?",
+      "expected_output": "Should immediately say YES and run the full health check. The skill explicitly states health checks should run 'after major changes' especially 'PRs that touch daemons, MCPs, or infrastructure'. Should specifically verify the new daemon is actually running (not just merged), check process list, verify LaunchAgent is loaded, verify the old process was replaced. Infrastructure merge != deployed change.",
+      "root_cause_tested": "trigger_awareness — tests whether skill drives a health check after infrastructure PRs, and distinguishes 'merged' from 'running'",
+      "assertions": [
+        {
+          "text": "Immediately recommends running the full health check (not 'maybe later')",
+          "type": "behavioral"
+        },
+        {
+          "text": "Verifies the new daemon/LaunchAgent is actually running after the merge, not just that code was merged",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks process list to confirm old process was replaced by new one",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT assume merged PR = deployed and working",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT skip the health check or say 'it should be fine since the PR passed CI'",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "deep-check-weekly-extras",
+      "prompt": "It's Sunday maintenance day. Run the full deep health check, not just the quick one.",
+      "expected_output": "Should run all 8 quick check sections PLUS the deep check extras: friction scan (python3 $ORCHESTRATOR_REPO/scripts/friction-scan.py --threshold 5), skill eval sampling (pick 3-5 skills, verify evals exist), BrainLayer search quality (3 known-good queries), cross-repo staleness (git log -1 for each repo, flag >2 weeks inactive), and hook health (verify SessionStart + UserPromptSubmit hooks, flag any PostToolUse hooks as dangerous).",
+      "root_cause_tested": "deep_vs_quick — tests whether skill distinguishes weekly deep check from session quick check and includes all extra sections",
+      "assertions": [
+        {
+          "text": "Runs the friction scan with python3 $ORCHESTRATOR_REPO/scripts/friction-scan.py --threshold 5",
+          "type": "behavioral"
+        },
+        {
+          "text": "Samples 3-5 skills and checks if their evals exist",
+          "type": "behavioral"
+        },
+        {
+          "text": "Runs 3 known-good BrainLayer search queries to verify search quality",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks cross-repo staleness with git log -1 for each repo, flags >2 weeks inactive",
+          "type": "behavioral"
+        },
+        {
+          "text": "Verifies hook health: SessionStart + UserPromptSubmit present, no PostToolUse hooks",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT just run the quick check and call it done when 'deep check' was requested",
+          "type": "negative"
+        }
+      ]
+    }
+  ]
+}

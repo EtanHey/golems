@@ -1,0 +1,29 @@
+{
+  "specimen": "gen-18 Track 2 #4 / R-008 — GREEN invoice-verified",
+  "class": "cost-field-misread",
+  "label": "GREEN — billed amount asserted from the actual invoice/billing source, not the usage telemetry field",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "How much am I being charged this month?" },
+    {
+      "role": "assistant",
+      "text": "I'll check the actual billing invoice, not the per-call usage estimate.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "curl -s https://api.anthropic.com/v1/organizations/billing/invoice | jq '.amount_due'"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "{ \"invoice_id\": \"inv_92\", \"amount_due\": 47.30, \"source\": \"billing\" }"
+    },
+    {
+      "role": "assistant",
+      "text": "Your billed amount this month is $47.30 — confirmed from the billing invoice (inv_92, amount_due). The per-call costDollars telemetry is a separate estimate and not the account charge."
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "updated": "2026-02-07",
+  "community_resource": "https://soydev.link",
+  "_community_resource_todo": "TODO(docs-ready): Replace community_resource URL with our own docs link once golems documentation site is deployed. Search for this field to update.",
+  "skills": [
+    {
+      "name": "CodeRabbit",
+      "description": "AI-powered code review on PRs. Catches ~46% of real bugs.",
+      "category": "code-review",
+      "free_tier": "4 reviews/hour, 200 files/review",
+      "setup_complexity": "S",
+      "relevant_project_types": ["typescript", "python", "ruby", "go", "java"],
+      "url": "https://coderabbit.ai",
+      "status": "active"
+    },
+    {
+      "name": "Cursor BugBot",
+      "description": "Finds interaction bugs between changed and existing code.",
+      "category": "code-review",
+      "free_tier": "Included with Cursor Pro ($20/mo)",
+      "setup_complexity": "S",
+      "relevant_project_types": ["typescript", "python", "go"],
+      "url": "https://cursor.com",
+      "status": "active"
+    },
+    {
+      "name": "DeepSource",
+      "description": "Code quality + security scanning. Replaces Dependabot with deeper analysis.",
+      "category": "code-review",
+      "free_tier": "Free forever for open source",
+      "setup_complexity": "S",
+      "relevant_project_types": ["typescript", "python", "go", "ruby", "java"],
+      "url": "https://deepsource.com",
+      "status": "active"
+    },
+    {
+      "name": "Highlight.io",
+      "description": "DEPRECATED: Being absorbed into LaunchDarkly, shutting down Feb 28 2026. Do NOT integrate.",
+      "category": "monitoring",
+      "free_tier": "N/A - shutting down",
+      "setup_complexity": "M",
+      "relevant_project_types": ["typescript", "python", "go"],
+      "url": "https://highlight.io/blog/launchdarkly-migration",
+      "status": "evaluation"
+    },
+    {
+      "name": "Exa",
+      "description": "AI web search API. Company research, job enrichment, knowledge lookup.",
+      "category": "search",
+      "free_tier": "$10 free credits (~2000 searches)",
+      "setup_complexity": "S",
+      "relevant_project_types": ["typescript", "python"],
+      "url": "https://exa.ai",
+      "status": "planned"
+    },
+    {
+      "name": "Blacksmith",
+      "description": "6x faster GitHub Actions runners. Drop-in replacement.",
+      "category": "deployment",
+      "free_tier": "3000 free minutes/month",
+      "setup_complexity": "S",
+      "relevant_project_types": ["typescript", "python", "expo", "docker"],
+      "url": "https://blacksmith.sh",
+      "status": "evaluation"
+    },
+    {
+      "name": "Browserbase",
+      "description": "Serverless browser automation for AI agents. Stealth mode + captcha solving.",
+      "category": "browser-automation",
+      "free_tier": "1 concurrent browser, 1 hour",
+      "setup_complexity": "M",
+      "relevant_project_types": ["typescript", "python"],
+      "url": "https://browserbase.com",
+      "status": "evaluation"
+    },
+    {
+      "name": "Graphite",
+      "description": "Stacked PRs and merge queue. Better PR workflow for teams.",
+      "category": "git-workflow",
+      "free_tier": "Free for open source",
+      "setup_complexity": "M",
+      "relevant_project_types": ["typescript", "python", "go", "ruby"],
+      "url": "https://graphite.dev",
+      "status": "evaluation"
+    },
+    {
+      "name": "Qodo Merge",
+      "description": "AI test generation from PR context. /test command on PRs.",
+      "category": "testing",
+      "free_tier": "Free for open source",
+      "setup_complexity": "S",
+      "relevant_project_types": ["typescript", "python", "java"],
+      "url": "https://qodo.ai",
+      "status": "evaluation"
+    },
+    {
+      "name": "Context7",
+      "description": "Library documentation lookup for AI agents. MCP server.",
+      "category": "search",
+      "free_tier": "Free",
+      "setup_complexity": "S",
+      "relevant_project_types": ["typescript", "python", "go"],
+      "url": "https://context7.com",
+      "status": "active"
+    },
+    {
+      "name": "UptimeRobot",
+      "description": "HTTP monitoring with webhook alerts. Mobile app with widgets.",
+      "category": "monitoring",
+      "free_tier": "50 monitors, 5min interval",
+      "setup_complexity": "S",
+      "relevant_project_types": ["typescript", "python", "docker"],
+      "url": "https://uptimerobot.com",
+      "status": "active"
+    }
+  ]
+}

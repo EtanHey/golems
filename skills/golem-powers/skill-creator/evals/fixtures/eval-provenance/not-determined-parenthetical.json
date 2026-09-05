@@ -1,0 +1,13 @@
+{
+  "eval_id": "not-determined-parenthetical",
+  "provenance": [
+    {
+      "agent_or_arm": "static_review",
+      "model_requested": "NOT DETERMINED",
+      "model_effective": "NOT DETERMINED (no runtime session existed)",
+      "effort_effective": "NOT DETERMINED (no runtime session existed)",
+      "model_observation_source": "NOT DETERMINED (no runtime session existed)",
+      "effort_observation_source": "NOT DETERMINED (no runtime session existed)"
+    }
+  ]
+}

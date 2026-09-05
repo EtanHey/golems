@@ -1,0 +1,27 @@
+contract_version: 1
+
+profile:
+  positioning: "Full-stack engineer building developer tools and AI infrastructure"
+  tenure_years: 3.5
+  location: "Europe or remote"
+
+artifacts:
+  - path: "/example/resumes/full-stack.pdf"
+    headline: "Full Stack Engineer | Developer Tools & AI Infrastructure"
+    fit:
+      - full-stack
+      - developer-tools
+  - path: "/example/resumes/applied-ai.pdf"
+    headline: "Software Engineer | Applied AI & Integrations"
+    fit:
+      - applied-ai
+      - integrations
+
+connectors:
+  - name: "Example Connector"
+    company: null
+    status: unknown
+    last_contacted: null
+
+prohibited:
+  - "Do not claim production experience with prototype-only technologies."

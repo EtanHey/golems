@@ -1,0 +1,27 @@
+{
+  "name": "@golems/recruiter",
+  "version": "1.0.0",
+  "description": "RecruiterGolem — active job search with contact finding, style-adapted outreach, interview practice, and Elo-rated skill tracking.",
+  "author": "EtanHey",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EtanHey/golems",
+    "directory": "packages/recruiter"
+  },
+  "keywords": [
+    "golems",
+    "ai-agent",
+    "job-search",
+    "recruiting",
+    "interview-prep"
+  ],
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@golems/shared": "workspace:*"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "tool": "mcp__brainlayer__brain_store",
+  "ok": false,
+  "error": "apsw.BusyError: database is locked",
+  "chunk_id": null,
+  "expected_reason": "db_busy",
+  "fallback_required": true
+}

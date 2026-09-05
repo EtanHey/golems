@@ -1,0 +1,7 @@
+# Generated content outputs — never commit
+**/outputs/*
+!**/outputs/.gitkeep
+**/assets/*.png
+**/assets/*.jpg
+**/assets/*.mp4
+**/assets/*.gif

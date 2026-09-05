@@ -1,0 +1,25 @@
+{
+  "specimen": "2026-07-02/fleet-stall-3",
+  "label": "RED — done worker panes sat unharvested while the lead idled",
+  "expect": "FLAG",
+  "violation": "DONE_WORKER_UNHARVESTED",
+  "hookDecision": "block",
+  "events": [
+    {
+      "role": "user",
+      "text": "Four workers are in flight. You own the queue; harvest any completed reports and keep driving."
+    },
+    {
+      "role": "assistant",
+      "text": "Current state: waiting on the fleet. I am standing by and will check back later."
+    }
+  ],
+  "state": {
+    "workers": [
+      { "id": "W1", "state": "done", "paneOpen": true, "doneMinutes": 18, "harvested": false, "queueItem": "imp7 report" },
+      { "id": "W2", "state": "done", "paneOpen": true, "doneMinutes": 16, "harvested": false, "queueItem": "imp8 report" },
+      { "id": "W3", "state": "done", "paneOpen": true, "doneMinutes": 15, "harvested": false, "queueItem": "imp9 report" },
+      { "id": "W4", "state": "done", "paneOpen": true, "doneMinutes": 14, "harvested": false, "queueItem": "imp10 report" }
+    ]
+  }
+}

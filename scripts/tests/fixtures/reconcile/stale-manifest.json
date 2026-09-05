@@ -1,0 +1,7 @@
+{
+  "files": {
+    "SKILL.md": "sha-stale-skill",
+    "scripts/bootstrap.mjs": "sha-current-bootstrap",
+    "stale-only.txt": "sha-stale-only"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "specimen": "Non-Fable opus seat Agent call is out of scope",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "transcript": [
+      { "type": "assistant", "message": { "role": "assistant", "model": "claude-opus-4-8", "content": [] } }
+    ],
+    "tool_name": "Agent",
+    "tool_input": { "prompt": "survey the repo" }
+  }
+}

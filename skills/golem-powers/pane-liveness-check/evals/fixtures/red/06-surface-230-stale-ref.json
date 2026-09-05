@@ -1,0 +1,17 @@
+{
+  "specimen": "surface:230 silently retargeted to live surface:219 after a husk close",
+  "provenance": "2026-08-03 liveness-check brief RED 5",
+  "enumerated": {
+    "id": "44444444-4444-4444-8444-444444444444",
+    "ref": "surface:230",
+    "title": "closed husk",
+    "type": "terminal",
+    "workspace_ref": "workspace:1"
+  },
+  "observation": {
+    "identity_status": "STALE-REF",
+    "resolved_id": "55555555-5555-4555-8555-555555555555",
+    "resolved_title": "cmuxlayer live worker"
+  },
+  "expected": {"verdict": null, "identity_status": "STALE-REF"}
+}

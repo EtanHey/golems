@@ -1,0 +1,4 @@
+SMOKE_RUNTIME requested=bash effective=bash-3.2.57(1)-release effort=deterministic source=/bin/bash
+SMOKE first_append_alerts=1 expected=1
+SMOKE duplicate_append_alerts=0 expected=0
+SMOKE PASS

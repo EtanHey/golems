@@ -1,0 +1,12 @@
+{
+  "specimen": "false-positive guard — 'No polling crons' disclaimer is an attestation, not an arming",
+  "label": "GREEN — a pure inbound standby monitor whose narrative says 'No polling crons.' The negated mention of polling crons is an attestation of absence (cron-count=0), not a still-armed poller.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "anything else?" },
+    {
+      "role": "assistant",
+      "text": "Nope — standing by for Etan, one inbound monitor up. No polling crons, stopped the health-watch already."
+    }
+  ]
+}

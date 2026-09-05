@@ -1,0 +1,81 @@
+{
+  "skill_name": "test-plan",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm about to create a PR for my feature branch. Run /test-plan to generate a QA checklist.",
+      "expected_output": "Runs the generate.sh script which diffs the current branch against main, categorizes changed files, and outputs a markdown checklist grouped by feature/component with specific, actionable test items including edge cases and regression areas.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "generates-from-git-diff",
+          "description": "The test plan is generated from the actual git diff (branch vs base), NOT from memory or assumptions about what changed. The generate.sh script must run to produce the diff."
+        },
+        {
+          "name": "grouped-by-feature-component",
+          "description": "Test items are grouped by feature or component (e.g., 'API Changes', 'Database/Schema', 'UI Components') — not a flat unstructured list."
+        },
+        {
+          "name": "checkable-markdown-format",
+          "description": "Output uses markdown checkbox format (- [ ] Test: ...) so it can be pasted directly into a PR description as a checkable QA list."
+        },
+        {
+          "name": "includes-edge-cases",
+          "description": "Test items cover edge cases (empty states, error states, loading states) and are not limited to happy-path scenarios."
+        },
+        {
+          "name": "includes-regression-suggestions",
+          "description": "When changes touch shared code or common utilities, the plan includes regression test suggestions for areas that could be affected beyond the direct changes."
+        },
+        {
+          "name": "specific-not-generic",
+          "description": "Test descriptions are specific to the actual changes (e.g., 'Verify user form validates email format') not generic (e.g., 'Test the form'). The skill guidelines explicitly require specificity."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Generate a test plan for my changes. Don't bother looking at the diff — I know what I changed. I modified the user auth flow and the payment endpoint.",
+      "expected_output": "Still runs the generate.sh script against the actual git diff rather than relying on the user's description. The diff may reveal additional changes the user forgot about.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "runs-diff-despite-user-description",
+          "description": "MUST run the actual git diff even when the user describes their changes verbally. The skill's value is catching things the developer missed — relying on their description defeats the purpose."
+        },
+        {
+          "name": "executes-generate-script",
+          "description": "Runs scripts/generate.sh (the execute: frontmatter target) rather than manually constructing a test plan from the user's verbal description."
+        },
+        {
+          "name": "may-find-additional-changes",
+          "description": "The diff-based approach may surface changes the user didn't mention (config changes, utility modifications, etc.) and includes those in the test plan."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run /test-plan --base staging. The diff is huge — over 200 files changed including database migrations, API endpoints, UI components, and config changes.",
+      "expected_output": "Handles a large diff by categorizing all changes, prioritizing critical tests first (DB migrations, API), and producing a structured plan that covers all change categories without omitting any.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "respects-base-branch-override",
+          "description": "Uses 'staging' as the base branch for the diff instead of the default 'main', as specified by the --base flag."
+        },
+        {
+          "name": "categorizes-all-file-types",
+          "description": "Categorizes the large set of changes by type (UI, API, DB, Config, etc.) as specified in the skill — doesn't just list files or collapse everything into one section."
+        },
+        {
+          "name": "prioritizes-critical-tests",
+          "description": "Puts most critical tests first within each section (the skill guidelines explicitly require this). Database migrations and API changes should appear before cosmetic UI tweaks."
+        },
+        {
+          "name": "includes-setup-steps",
+          "description": "For a large diff involving DB migrations and config changes, includes prerequisite setup steps (run migrations, set env vars) before the test items."
+        }
+      ]
+    }
+  ]
+}

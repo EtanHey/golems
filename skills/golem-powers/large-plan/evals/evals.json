@@ -1,0 +1,147 @@
+{
+  "skill_name": "large-plan",
+  "tier": "flagship",
+  "models": [
+    "opus",
+    "sonnet",
+    "haiku",
+    "gemini",
+    "cursor-gpt5.3",
+    "glm-4.7-flash",
+    "qwen-7b"
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to rebuild the auth system from scratch. It's a multi-week effort with 4 phases: schema migration, API rewrite, frontend integration, and testing. Scaffold a plan.",
+      "expected_output": "Agent creates folder-based plan structure with phase files, dependencies between phases, quality gates, and PR loop per phase.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "scaffolds-folder-structure",
+          "description": "Response creates a plan directory with per-phase files (phase-1.md, phase-2.md, etc.)"
+        },
+        {
+          "name": "includes-phase-dependencies",
+          "description": "Response defines which phases block others and what must complete before next phase starts"
+        },
+        {
+          "name": "pr-loop-per-phase",
+          "description": "Response includes a PR loop (branch, test, PR, review, merge) for each phase, not one big PR"
+        },
+        {
+          "name": "includes-quality-gates",
+          "description": "Response defines quality gates between phases (test coverage, review approval, etc.)"
+        },
+        {
+          "name": "references-tdd",
+          "description": "Response includes TDD (test-driven development) as part of the implementation approach"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Phase 2 is taking too long. Let's skip the tests and just merge it so we can start phase 3.",
+      "expected_output": "Agent refuses to skip tests — quality gates exist for a reason. Suggests scoping down phase 2 instead.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "refuses-to-skip-quality-gate",
+          "description": "Response does not agree to skip tests or quality gates under time pressure"
+        },
+        {
+          "name": "suggests-scope-reduction",
+          "description": "Response suggests reducing phase 2 scope rather than skipping quality steps"
+        },
+        {
+          "name": "maintains-pr-loop",
+          "description": "Response insists on the PR loop even for reduced scope"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Phase 1 is done. Two tasks in phase 2 are independent. Can we parallelize them?",
+      "expected_output": "Agent sets up async agent collaboration — parallel workers on independent tasks, collab files for coordination.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "spawns-parallel-agents",
+          "description": "Response sets up parallel workers for the independent tasks"
+        },
+        {
+          "name": "uses-collab-files",
+          "description": "Response creates collab files or tracking for inter-agent coordination"
+        },
+        {
+          "name": "defines-merge-strategy",
+          "description": "Response explains how parallel work will be merged (separate branches, sequential PRs, etc.)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Scaffold a collab for 3 agents working on parallel phases. One agent per repo: voicelayer, brainlayer, cmux. All independent. I'll be asleep — make it fully autonomous.",
+      "expected_output": "Agent creates collab file with all mandatory sections, sets up monitoring loops, includes all mandatory rules (honesty, checkpoint, loop, task usage, PR teaching, entity awareness).",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-task-create",
+          "description": "Agent uses TaskCreate to track each phase/task so progress is visible in UI"
+        },
+        {
+          "name": "updates-collab-before-commits",
+          "description": "Collab template includes Update Gates requiring collab update BEFORE every commit"
+        },
+        {
+          "name": "brain-store-checkpoints",
+          "description": "Collab includes checkpoint protocol with brain_store cadence (every 3 tasks or at milestones)"
+        },
+        {
+          "name": "teaches-coderabbit",
+          "description": "Collab includes PR Loop Teaching rule — agents must @coderabbitai with design decision Learnings, not just 'Fixed in X'"
+        },
+        {
+          "name": "honesty-rule-present",
+          "description": "Collab includes HONESTY RULE requiring agents to raise concerns instead of pushing through"
+        },
+        {
+          "name": "sets-up-monitoring-loops",
+          "description": "Orchestrator sets up /loop or CronCreate to monitor agent progress after delegation — no fire-and-forget"
+        },
+        {
+          "name": "agent-entity-awareness",
+          "description": "Collab includes instruction for agents to run brain_entity() at kickoff to discover ecosystem"
+        },
+        {
+          "name": "hook-file-before-register",
+          "description": "Anti-pattern list includes rule: create hook files BEFORE registering in settings.json"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I spawned 3 agents for the sprint. They've been running for 20 minutes. How do I know if they're stuck?",
+      "expected_output": "Agent checks collab file for stale statuses, suggests /loop monitoring, and reads task status. Does NOT just say 'check the collab file' — actively checks it.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "reads-collab-file",
+          "description": "Agent actually reads the collab file to check agent statuses, not just tells user to check"
+        },
+        {
+          "name": "checks-stale-working",
+          "description": "Agent looks for agents stuck in 'working' status with no recent Messages updates"
+        },
+        {
+          "name": "suggests-loop-monitoring",
+          "description": "Agent suggests setting up /loop or CronCreate for ongoing monitoring"
+        },
+        {
+          "name": "checks-task-status",
+          "description": "Agent checks TaskList or TaskGet for progress visibility"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-04-05",
+  "skill": "yash",
+  "eval_name": "nativewind-1722-followup-bug",
+  "variant": "real-baseline-opus-no-skill",
+  "scenario": "REAL dependency bug: nativewind useColorScheme() returns 'unspecified' when app resumes from background on RN 0.83+. Follow-up to #1722 crash (already fixed). Agent given explicit fork+fix+PR+patch framing in prompt.",
+  "agent": {
+    "type": "claude",
+    "model": "Opus 4.6 (1M context)",
+    "surface": "surface:27",
+    "cost": 4.72,
+    "duration": "16m",
+    "tokens": 102662,
+    "context_pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "real_cmux_surface": true,
+    "skill_loaded": false
+  },
+  "assertions": {
+    "diagnoses-before-blaming": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Discovered original crash bug already fixed in PR #1725/commit 912f387. Identified the FOLLOW-UP bug (unspecified on resume) as the real unsolved issue. Read source code to understand root cause: ?? 'light' guard doesn't catch truthy string 'unspecified'."
+    },
+    "checks-existing-prs": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Checked git log for appearance-observables.ts, found PR #1725 merged. Checked npm versions. Verified 0.2.3 ships the crash fix but NOT the resume bug fix."
+    },
+    "proposes-upstream-fix": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Created branch fix/filter-unspecified-color-scheme, wrote resolveColorScheme() helper, 5 new tests, submitted PR #1767 to nativewind/nativewind. All 21 existing tests pass."
+    },
+    "uses-patch-package-or-bridge": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Created patches/fix-appearance-crash.sh (73 lines) and updated package.json postinstall for TaskOwl. Used sed-based patching (not npx patch-package) but functionally equivalent bridge pattern."
+    },
+    "tracks-upstream": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Did NOT brain_store the PR for tracking. Did not document when to remove the patch. However, the PR URL is in the commit message and the patch script has comments."
+    }
+  },
+  "total_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "max_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "percentage": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "pr_url": "https://github.com/nativewind/nativewind/pull/1767",
+  "analysis": {
+    "key_finding": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "prompt_contamination": "HIGH — the task prompt contained /yash vocabulary ('fork the repo', 'submit a PR upstream', 'patch-package bridge'). This is equivalent to telling the agent what to do rather than testing if the skill would make it do so.",
+    "genuine_yash_behaviors": "Agent independently: (1) discovered existing fix before acting, (2) pivoted to unsolved bug, (3) wrote proper tests, (4) created PR with good description referencing reporter. These suggest Opus has strong OSS contribution instincts even without the skill.",
+    "missing_yash_behaviors": "Did not use brain_store for tracking. Used sed-patching instead of patch-package (the specific tool /yash recommends). Did not comment on the GitHub issue to coordinate.",
+    "delta_prediction": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "methodology_note": "Prompt contamination makes this a poor baseline test. Future /yash evals should use neutral framing: 'We have a dependency bug, what should we do?' without prescribing the method."
+  },
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

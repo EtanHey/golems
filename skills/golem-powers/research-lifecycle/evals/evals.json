@@ -1,0 +1,192 @@
+{
+  "skill_name": "research-lifecycle",
+  "description": "Eval cases for research-lifecycle skill. Tests staleness detection, context refresh, condensation, archival, Drive corpus freshness, and NotebookLM mirroring. Based on the R75→R76 transition anti-pattern and the 2026-08-02 stale-Drive regression.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We just merged 3 PRs that fixed FTS5 sync, implemented entity detection, and improved search ranking. The context file '91-swift-python-root-cause.md' still says 'FTS5 is 96.9% desynced.' What should I do?",
+      "expected_output": "Should trigger the full lifecycle: (1) create a sprint results file with before/after, (2) update or condense the stale file to reflect current state, (3) refresh description.md. Should NOT leave stale claims in context files.",
+      "assertions": [
+        {
+          "text": "Creates a new sprint results context file with before/after states",
+          "type": "behavioral"
+        },
+        {
+          "text": "Updates or condenses the stale file (removes 'FTS5 is 96.9% desynced')",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT leave the stale claim in place without updating it",
+          "type": "negative"
+        },
+        {
+          "text": "Includes benchmark numbers (before→after) in the new file",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions refreshing description.md to reflect current state",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We're about to write the R76 research prompt for BrainLayer. The last sprint fixed most of R75's findings. Should we just send R76 with the same context files?",
+      "expected_output": "Absolutely NOT — must run lifecycle Steps 2-4 first (condense, update, archive). Sending stale context means R76 starts from wrong assumptions. The researcher will waste time on already-fixed problems.",
+      "assertions": [
+        {
+          "text": "Recommends running lifecycle before writing R76 (not just sending with existing context)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Specifically mentions condensing stale files and updating description.md",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT recommend sending R76 with unchanged context files",
+          "type": "negative"
+        },
+        {
+          "text": "Warns that stale context leads to wrong research assumptions",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The brainlayer research-context/ folder has 15 files. Some are from 2 weeks ago and reference problems that are fixed. Should I delete them?",
+      "expected_output": "Don't delete — CONDENSE. Merge related stale files into a condensed summary that reflects current state. Keep timeless content (references, architecture decisions). Archive fully-implemented research results.",
+      "assertions": [
+        {
+          "text": "Recommends condensing rather than deleting stale files",
+          "type": "behavioral"
+        },
+        {
+          "text": "Suggests merging related files into one condensed summary",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT recommend deleting all old files without preserving useful content",
+          "type": "negative"
+        },
+        {
+          "text": "Distinguishes timeless content (keep) from stale claims (update)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The description.md says 'Known limitation: entity extraction has 0.055% coverage.' But we just merged a PR that implemented entity detection. How do I update it?",
+      "expected_output": "Verify the claim against current state first (run a query or check test results). If entity detection is now working, update the stat. Format: facts first (current number), then context (what changed).",
+      "assertions": [
+        {
+          "text": "Verifies the current state before updating (doesn't just remove the limitation)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Updates with the current number, not just 'fixed'",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT fabricate a new number without checking",
+          "type": "negative"
+        },
+        {
+          "text": "Formats as facts first (number/state), then context (what changed, when)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We have a NotebookLM notebook for the brainlayer project with 45 sources. After the R75 sprint, at least 10 of those sources contain stale claims. What's the update process?",
+      "expected_output": "Should: (1) identify the 10 stale sources, (2) add updated replacement files with wait=True, (3) verify replacements are indexed and readable, (4) delete stale sources only after verification, and (5) update notebook instructions to note the refresh date. Must handle .py/.json file type restrictions.",
+      "assertions": [
+        {
+          "text": "Adds updated replacements before deleting stale sources",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uploads updated files with wait=True for indexing",
+          "type": "behavioral"
+        },
+        {
+          "text": "Verifies replacements are indexed and readable before deleting stale sources",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions the file type restrictions (.py/.json need .txt rename)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Updates notebook instructions with the refresh date",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT delete stale sources until replacement indexing is verified",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/maintenance is running for the brainlayer project. Should it check research context?",
+      "expected_output": "Yes — /maintenance should include a research context staleness check. At minimum: verify description.md stats are current, check if any context files reference fixed problems, flag files older than 2 sprints.",
+      "assertions": [
+        {
+          "text": "Confirms that /maintenance should check research context staleness",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions checking description.md stats against current state",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions flagging files older than 2 sprints",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT say research context is outside /maintenance scope",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "completed-local-lifecycle-with-stale-drive-must-fail",
+      "category": "compliance",
+      "prompt": "A lifecycle run refreshed the local project context, updated description.md, archived implemented research, and replaced every stale NotebookLM source. The Google Drive corpus was never refreshed and is older than the local context. Can I mark the lifecycle complete and send the next Gemini Deep Research prompt?",
+      "expected_output": "No. The lifecycle must fail its completion gate until the current local corpus is pushed to the correct Drive location and verified there. Before emitting the Gemini prompt, require a Grounding block naming the Drive docs or the exact line 'None — web-only research'.",
+      "assertions": [
+        {
+          "name": "completion-refused",
+          "text": "Refuses to mark the lifecycle complete while the Drive corpus is older than local context",
+          "type": "behavioral"
+        },
+        {
+          "name": "drive-route-required",
+          "text": "Requires pushing the current local corpus to the correct Drive folder via /drive-usage",
+          "type": "behavioral"
+        },
+        {
+          "name": "real-auth-required",
+          "text": "Requires a real authenticated Drive call rather than treating MCP tool availability as authentication evidence",
+          "type": "behavioral"
+        },
+        {
+          "name": "grounding-required",
+          "text": "Requires the Gemini prompt Grounding block or the exact 'None — web-only research' line before emission",
+          "type": "behavioral"
+        },
+        {
+          "name": "no-attach-instruction",
+          "text": "Does NOT instruct Etan to attach or upload Drive documents",
+          "type": "negative"
+        }
+      ],
+      "fixture": "fixtures/eval-7-stale-drive.json",
+      "discriminating_power": "high — the pre-fix skill documents a complete run that never touches Drive"
+    }
+  ]
+}

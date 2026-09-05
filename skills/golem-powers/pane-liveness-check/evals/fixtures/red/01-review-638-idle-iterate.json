@@ -1,0 +1,20 @@
+{
+  "specimen": "review-638/review-633 idle bare prompts with outstanding ITERATEs",
+  "provenance": "2026-08-03 liveness-check brief RED 1 and FLEET-STANDING correction",
+  "enumerated": {
+    "id": "623F99CC-97B7-427A-840C-096600B392B8",
+    "ref": "surface:239",
+    "title": "review-638",
+    "type": "terminal",
+    "workspace_ref": "workspace:1"
+  },
+  "observation": {
+    "identity_status": "MATCHED",
+    "process_alive": true,
+    "agent_state": "idle",
+    "open_lane": "open",
+    "open_lane_reason": "review verdict remains owed to the lead",
+    "artifact": {"status": "unknown", "uncommitted": null, "unpushed": null}
+  },
+  "expected": {"verdict": "KEEP-blocked"}
+}

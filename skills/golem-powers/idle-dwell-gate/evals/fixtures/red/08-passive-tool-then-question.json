@@ -1,0 +1,25 @@
+{
+  "specimen": "codex-review/passive-tool-bypass",
+  "label": "RED — a passive Read/TodoWrite + a coordination question must still FLAG (passive ≠ driving)",
+  "expect": "FLAG",
+  "violation": "NO_INPUT_DECISION",
+  "events": [
+    {
+      "role": "user",
+      "text": "The branch is approved — run the full pr loop."
+    },
+    {
+      "role": "assistant",
+      "text": "Let me check the plan.",
+      "tools": [
+        { "name": "TodoWrite", "input": { "todos": [] } },
+        { "name": "Read", "input": { "file_path": "docs/plan/T1.md" } }
+      ]
+    },
+    { "role": "tool", "text": "(todos updated)" },
+    {
+      "role": "assistant",
+      "text": "I've reviewed the plan. How would you like me to proceed — open the PR now, or wait?"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "specimen": "registry/unclaimed-armed-monitor-missing-ground-truth",
+  "label": "RED - armed active-channel monitor with no claimed id is still absent from registry ground truth",
+  "expect": "FLAG",
+  "violation": "MONITOR_STALE_HEARTBEAT",
+  "monitorRegistry": {
+    "nowMs": 200000,
+    "heartbeatWindowMs": 30000,
+    "monitors": []
+  },
+  "events": [
+    { "role": "user", "text": "Lead the unclaimed registry-miss sprint." },
+    {
+      "role": "assistant",
+      "text": "Arming an active-channel monitor and dispatching.",
+      "tools": [
+        {
+          "name": "Monitor",
+          "input": {
+            "id": "mon-missing-ground-truth",
+            "path": "collab/2026-07-02-missing-ground-truth.md",
+            "pattern": "^### |ORC-RECEIPT:|@missingGroundTruth|BLOCKED",
+            "persistent": true
+          }
+        },
+        {
+          "name": "mcp__cmux__spawn_agent",
+          "input": { "cli": "codex", "repo": "golems" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-07-02-missing-ground-truth.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: kickoff"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Monitor armed. Standing by."
+    }
+  ]
+}

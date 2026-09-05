@@ -1,0 +1,15 @@
+{
+  "specimen": "R-042/sixteen-gatherers-below-floor",
+  "violation": "DEPTH_FLOOR_GATHERERS",
+  "events": [
+    { "role": "user", "text": "Be thorough and exhaustive: run an ultracode fan-out audit.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching workflow.",
+      "tools": [
+        { "name": "Workflow", "input": { "script": "gatherers: 16 cheap-model gatherers\nverifiers: 3 adversarial verifiers\nstop: loop-until-dry quality-not-budget" } }
+      ]
+    },
+    { "role": "tool", "text": "workflow accepted: gatherers=16 verifiers=3 loop_until_dry=true", "tools": [] }
+  ]
+}

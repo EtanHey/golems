@@ -1,0 +1,32 @@
+{
+  "specimen": "tailnet-sync/not-applicable",
+  "label": "GREEN (N/A) — a non-dashboard turn: a code edit + 'done', no dashboard Write at all. The gate is inert.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Fix the off-by-one in the scorer."
+    },
+    {
+      "role": "assistant",
+      "text": "Fixed the off-by-one and the unit tests are green. Done ✅.",
+      "tools": [
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "packages/jobs/src/scorer.ts",
+            "old_string": "i <= n",
+            "new_string": "i < n"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "bun test packages/jobs/src/scorer.test.ts"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "12 pass, 0 fail" }
+  ]
+}

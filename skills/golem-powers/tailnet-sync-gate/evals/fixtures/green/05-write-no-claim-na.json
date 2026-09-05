@@ -1,0 +1,24 @@
+{
+  "specimen": "tailnet-sync/write-no-claim",
+  "label": "GREEN (N/A) — a dashboard Write but NO publish/done/live claim (still drafting). The gate only fires once a publish claim is made.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Start drafting the sprint dashboard, I'll review before we publish."
+    },
+    {
+      "role": "assistant",
+      "text": "Drafted the first cut locally — I'll mirror and probe once you approve the layout.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/dashboards/sprint-draft.html",
+            "content": "<html>draft</html>"
+          }
+        }
+      ]
+    }
+  ]
+}

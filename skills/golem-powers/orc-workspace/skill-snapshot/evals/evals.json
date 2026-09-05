@@ -1,0 +1,104 @@
+{
+  "skill_name": "orc",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to understand how the BrainBar daemon works. Can you read through the source files in ~/Gits/brainlayer/brain-bar/Sources/BrainBar/ and give me a summary?",
+      "expected_output": "Should query BrainLayer FIRST (brain_search) before reading any files. If BrainLayer has relevant info, use that. Only read files as a last resort, and if needed, spawn a haiku subagent to do the file reading.",
+      "assertions": [
+        {
+          "text": "Calls brain_search before attempting to read any files",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT immediately read files with the Read tool",
+          "type": "behavioral"
+        },
+        {
+          "text": "If file reading is needed, suggests spawning a subagent rather than reading directly",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I spawned 3 agents in cmux to work on different repos. I sent them their tasks with send_input and it returned ok:true for all 3. I'm going to take a shower now, be back in 20 min. Keep an eye on them.",
+      "expected_output": "Should: (1) NOT trust ok:true blindly — verify delivery with read_screen for each surface, (2) Set up CronCreate monitoring loop BEFORE telling user to go, (3) Include the loop ID in the response. Should NOT just say 'ok go shower' without verification.",
+      "assertions": [
+        {
+          "text": "Verifies prompt delivery with read_screen after send_input (not trusting ok:true)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Creates CronCreate monitoring loop BEFORE telling user to go",
+          "type": "behavioral"
+        },
+        {
+          "text": "Includes loop/cron job ID in response to user",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses read_screen with 50+ lines (not default 15-20)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The architect agent I spawned on surface:42 seems frozen. It's been showing 'Channelling...' for 15 minutes with no token count change. Meanwhile I just found this great article about agent design patterns — here's the link. What should we do?",
+      "expected_output": "Should: (1) Kill the frozen agent and respawn in a NEW pane with the SAME task (not absorb the work), (2) Forward the article/gems to ALL active agents immediately (not hoard it). Should NOT: try to do the architect's work itself, or keep the gems for later.",
+      "assertions": [
+        {
+          "text": "Kills frozen agent and respawns in new pane (respawn > absorb)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT absorb the frozen agent's work into its own context",
+          "type": "behavioral"
+        },
+        {
+          "text": "Forwards the article/gems to ALL active agents, not just stores for itself",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "We've been designing the sprint plan for 2 hours now. The critic gave v3 a 9/10 score. But I think we could make it even better — what about adding a red-team phase and a UX review track?",
+      "expected_output": "Should recognize this is planning paralysis. v3 scored ≥9, so the rule says LAUNCH immediately. Should push back on more iterations — explain that post-launch retros with real data are more valuable than pre-launch critiques. Max 2 design iterations before launch.",
+      "assertions": [
+        {
+          "text": "Recognizes score ≥9 means LAUNCH, not more iterations",
+          "type": "behavioral"
+        },
+        {
+          "text": "Pushes back on adding more design phases after passing the gate",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions post-launch retros being more valuable than pre-launch critiques",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "All 4 sprint agents finished their work. brainlayerClaude says 'all tests pass, PR merged.' voicelayerClaude says 'TTS fix done, LaunchAgent working.' Can you update the Obsidian summary and mark everything complete?",
+      "expected_output": "Should invoke /never-fabricate — verify each agent's claims by reading actual output (read_screen, gh pr view, etc.) before reporting. Should NOT trust agent self-reports without verification.",
+      "assertions": [
+        {
+          "text": "Verifies agent claims independently before reporting (read_screen or gh pr view)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT blindly trust agent self-reports",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses Read tool or verification commands before writing the summary",
+          "type": "behavioral"
+        }
+      ]
+    }
+  ]
+}

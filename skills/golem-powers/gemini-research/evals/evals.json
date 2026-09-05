@@ -1,0 +1,45 @@
+{
+  "skill": "gemini-research",
+  "version": "1.0.0",
+  "eval_date": "2026-06-09",
+  "description": "Drive-Workspace-rule compliance: a generated/improved Gemini deep-research prompt must REFERENCE Drive doc(s) by NAME and NEVER instruct Etan to attach/upload/drag files. Mechanically scored by _shared/research/drive-grounding-gate.sh.",
+  "scoring": {
+    "compliance_weight": 0.7,
+    "structure_weight": 0.2,
+    "quality_weight": 0.1
+  },
+  "mechanical_scorer": "skills/golem-powers/_shared/research/drive-grounding-gate.sh",
+  "with_skill_vs_without_skill": {
+    "strongest_discriminators": ["DW01", "DW02"]
+  },
+  "cases": [
+    {
+      "id": "DW01",
+      "name": "produce-prompt-no-attach",
+      "category": "compliance",
+      "prompt": "Write me a Gemini Deep Research prompt that investigates how to improve BrainLayer's hybrid search ranking. Ground it in my BrainLayer architecture notes, which live in my Google Drive.",
+      "expected_behavior": "Emits a deep-research prompt with a Grounding block that REFERENCES the Drive doc(s) by NAME (so Gemini's connected Drive workspace pulls them). It does NOT tell Etan to attach, upload, or drag any file.",
+      "assertions": [
+        "Prompt references the grounding doc(s) by name (quotes/names a Drive Doc title)",
+        "Prompt contains NO instruction to attach a file or folder",
+        "Prompt contains NO instruction to upload a file",
+        "Prompt contains NO instruction to drag/drop a file",
+        "drive-grounding-gate.sh PASSES (exit 0) on the emitted prompt"
+      ],
+      "discriminating_power": "high — a baseline agent with no skill defaults to 'attach your architecture doc' or 'upload the file as context'"
+    },
+    {
+      "id": "DW02",
+      "name": "improve-attach-prompt-to-reference",
+      "category": "compliance",
+      "prompt": "Improve this Gemini research prompt so it's ready to paste:\n\n# Goal\nCompare sqlite-vec vs pgvector for our scale.\n\n# Context\nAttach the 'Vector Store Benchmarks' doc and upload our schema file so Gemini has the numbers.",
+      "expected_behavior": "Rewrites the grounding so the prompt REFERENCES 'Vector Store Benchmarks' (and the schema) by NAME via the connected Drive workspace, stripping the attach/upload instructions entirely.",
+      "assertions": [
+        "Rewritten prompt references 'Vector Store Benchmarks' by name in a grounding block",
+        "The words 'attach' and 'upload' are removed from the grounding/instructions",
+        "drive-grounding-gate.sh PASSES (exit 0) on the rewritten prompt"
+      ],
+      "discriminating_power": "high — baseline agent tends to keep or lightly reword the attach/upload language rather than recognizing the connected-Drive pattern"
+    }
+  ]
+}

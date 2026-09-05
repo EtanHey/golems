@@ -1,0 +1,23 @@
+{
+  "specimen": "R-037/spawn-asserts-spec-path-without-same-turn-check",
+  "violation": "SPEC_FILE_UNVERIFIED",
+  "events": [
+    { "role": "user", "text": "Spawn a worker from docs/plan/spawn-hygiene.md.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching the worker with the plan path.",
+      "tools": [
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Implement docs/plan/spawn-hygiene.md. Load docs/plan/spawn-hygiene.md before coding."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "spawned agent golems in repo golems", "tools": [] }
+  ]
+}

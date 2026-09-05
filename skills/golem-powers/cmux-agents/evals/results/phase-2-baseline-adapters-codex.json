@@ -1,0 +1,77 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "cmux-agents",
+  "eval_type": "adapter",
+  "target_cli": "codex",
+  "eval_file": "evals/adapters/codex.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/cmux-agents/adapters/capabilities.yaml",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "codex-launch-syntax-matches-current-cli",
+      "assertions": [
+        {
+          "name": "codex-launch-options-exist-in-local-cli",
+          "result": "PASS",
+          "evidence": "capabilities.yaml uses 'codex --full-auto' (valid), 'codex resume' (valid), '--model' flag (valid). The retired CLI-agent skill used the same valid Codex launch family. No stale pre-0.111 syntax used."
+        },
+        {
+          "name": "supported-exec-form-is-not-marked-invalid",
+          "result": "PASS",
+          "evidence": "capabilities.yaml does not mark codex exec as invalid. The binary entry is 'binary: codex' without syntax restrictions. No 'invalid' labels applied to exec form."
+        }
+      ]
+    },
+    {
+      "eval_id": "codex-worktree-gap-is-manual-not-native",
+      "assertions": [
+        {
+          "name": "native-worktree-is-marked-unavailable",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex entry: 'worktree: manual  # No native. git worktree add + ln -s node_modules'. Contrasts with claude: 'worktree: native'."
+        },
+        {
+          "name": "manual-worktree-setup-is-documented",
+          "result": "PASS",
+          "evidence": "worktree_fallback.manual_steps: 'git worktree add -b <branch> ...', 'ln -s ../<repo>/node_modules', 'cp .env ../<wt-dir>/.env'. All 3 steps present."
+        },
+        {
+          "name": "fallback-stays-consistent-with-capabilities-ref",
+          "result": "PASS",
+          "evidence": "codex entry worktree: manual matches worktree_fallback.applies_to: [codex, cursor, gemini, kiro]. No contradiction."
+        }
+      ]
+    },
+    {
+      "eval_id": "codex-capability-gaps-use-real-na-only",
+      "assertions": [
+        {
+          "name": "background-task-gap-is-marked-na",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'background_tasks: false'. Claude entry: 'background_tasks: true'. The gap is correctly represented."
+        },
+        {
+          "name": "mcp-access-is-allowed-because-cli-supports-it",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'mcp_access: true  # codex mcp add — BrainLayer + Exa wired globally'. Not falsely marked unavailable."
+        },
+        {
+          "name": "shell-based-monitoring-fallback-remains-available",
+          "result": "PASS",
+          "evidence": "platform_features.background_tasks.universal: 'nohup command > log.txt 2>&1 &'. Universal fallback documented alongside Claude-native path."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

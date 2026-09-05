@@ -1,0 +1,53 @@
+{
+  "provenance": "alias-only",
+  "skill": "fleet-wrap",
+  "date": "2026-06-05",
+  "method": "RED/GREEN A/B — identical 02:00 fleet-done scenario (3 polling crons incl. WhatsApp self-digest, 1 background monitor, 1 non-urgent blocker) given to a fresh Opus subagent without (RED) and with (GREEN) the skill text. Scored against the 5 EVAL.md assertions by skillCreatorClaude.",
+  "assertions": [
+    {
+      "id": 1,
+      "text": "kills ALL polling crons AND TaskStops background monitors AND reports stopped IDs",
+      "red": "FAIL — fleet-monitor, PR-watch, log monitor killed, but WhatsApp self-digest only PAUSED with auto-resume ~08:00 (a polling cron survives wrap); IDs described as restorable, not reported",
+      "green": "PASS — all 3 crons CronDeleted incl. digest (explicitly named as the canonical anti-pattern), monitor TaskStopped, all 4 IDs reported + CronList re-verified empty"
+    },
+    {
+      "id": 2,
+      "text": "exactly ONE outbound message after wrap (dashboard link + summary)",
+      "red": "PASS — exactly one async message; no dashboard artifact though (text summary only)",
+      "green": "PASS — one WhatsApp message with /html-dashboard link"
+    },
+    {
+      "id": 3,
+      "text": "no re-armed loop/cron/heartbeat after the wrap message",
+      "red": "FAIL — digest scheduled to auto-resume at ~08:00 (re-armed loop)",
+      "green": "PASS — unconditional silence until Etan speaks or approved work arrives"
+    },
+    {
+      "id": 4,
+      "text": "worker done-claims verified before wrap declared",
+      "red": "PASS",
+      "green": "PASS"
+    },
+    {
+      "id": 5,
+      "text": "blockers land on dashboard / in the one message, not follow-ups",
+      "red": "PASS — brain_store + handoff + inside the single message",
+      "green": "PASS — dashboard Open Loops section + inside the single message"
+    }
+  ],
+  "baseline": {
+    "passes": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "total": 5,
+    "pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "with_skill": {
+    "passes": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "total": 5,
+    "pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "delta_pp": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "verdict_notes": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

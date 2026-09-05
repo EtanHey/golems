@@ -1,0 +1,53 @@
+{
+  "specimen": "model-flip/stale-claimed-monitor",
+  "label": "RED - claim line says monitor=X but X has no fresh heartbeat ground truth",
+  "expect": "FLAG",
+  "violation": "MONITOR_STALE_HEARTBEAT",
+  "monitorRegistry": {
+    "nowMs": 200000,
+    "heartbeatWindowMs": 30000,
+    "monitors": [
+      {
+        "id": "mon-dead",
+        "path": "collab/2026-07-02-dead.md",
+        "pattern": "^### |ORC-RECEIPT:|@deadLead|BLOCKED",
+        "persistent": true,
+        "heartbeatMtimeMs": 100000
+      }
+    ]
+  },
+  "events": [
+    { "role": "user", "text": "Lead the dead monitor sprint." },
+    {
+      "role": "assistant",
+      "text": "Arming monitor=mon-dead on the active channel and dispatching workers.",
+      "tools": [
+        {
+          "name": "Monitor",
+          "input": {
+            "id": "mon-dead",
+            "path": "collab/2026-07-02-dead.md",
+            "pattern": "^### |ORC-RECEIPT:|@deadLead|BLOCKED",
+            "persistent": true
+          }
+        },
+        {
+          "name": "mcp__cmux__spawn_agent",
+          "input": { "cli": "codex", "repo": "golems" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-07-02-dead.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: kickoff, monitor claimed"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "monitor=mon-dead is armed. Standing by."
+    }
+  ]
+}

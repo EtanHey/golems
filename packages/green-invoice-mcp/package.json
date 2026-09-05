@@ -1,0 +1,33 @@
+{
+  "name": "@golems/green-invoice-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Green Invoice (Morning) — Israeli invoicing, receipts, and client management via REST API.",
+  "author": "EtanHey",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EtanHey/golems",
+    "directory": "packages/green-invoice-mcp"
+  },
+  "keywords": [
+    "golems",
+    "mcp",
+    "green-invoice",
+    "morning",
+    "invoicing",
+    "receipts",
+    "israel"
+  ],
+  "bin": {
+    "green-invoice-mcp": "./src/mcp-server.ts"
+  },
+  "scripts": {
+    "start": "bun run src/mcp-server.ts",
+    "test": "bun test src/__tests__/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}

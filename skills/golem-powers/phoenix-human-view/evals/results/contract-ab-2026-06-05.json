@@ -1,0 +1,95 @@
+{
+  "provenance": "alias-only",
+  "skill": "phoenix-human-view",
+  "date": "2026-06-05",
+  "method": "RED/GREEN A/B — identical 'design a Phoenix human-grading view + pre-merge plan' scenario (mobile-grading operator, turns w/ thinking + tool calls, auto-critic) given to a fresh Opus subagent without (RED) and with (GREEN) the skill. Scored against 12 checks: the 10 contract items + operator-sign-off gate + annotation-PII rule. Scored by skillCreatorClaude.",
+  "checks": [
+    {
+      "id": 1,
+      "text": "turn-by-turn scrollable replay, not a scorecard",
+      "red": "PARTIAL (0.5) — transcript exists but the primary surface is a verdict flow (Agree/Override + auto-advance); assistant turns truncated to ~6 lines",
+      "green": "PASS — CLI-feel full replay, scores demoted to sticky-header chrome"
+    },
+    {
+      "id": 2,
+      "text": "fewer human-readable columns / detail-on-demand",
+      "red": "PASS — chips, no tables",
+      "green": "PASS"
+    },
+    {
+      "id": 3,
+      "text": "IDs hidden but copyable",
+      "red": "FAIL — ID treatment never addressed",
+      "green": "PASS — ⧉ tap-copy + toast + details sheet"
+    },
+    {
+      "id": 4,
+      "text": "thinking/tool churn collapsed by default, critic flags visible when collapsed",
+      "red": "PASS — collapsed pills; flagged turns get amber border",
+      "green": "PASS — incl. explicit flag-on-collapsed-header"
+    },
+    {
+      "id": 5,
+      "text": "identity chips repo+agent+model+role",
+      "red": "PASS",
+      "green": "PASS"
+    },
+    {
+      "id": 6,
+      "text": "tool filters",
+      "red": "FAIL — no tool-based filtering",
+      "green": "PASS — auto-derived multi-select chips, list + in-replay"
+    },
+    {
+      "id": 7,
+      "text": "tiny FROZEN suite-versioned starter dataset",
+      "red": "FAIL — live critic-FAIL-first queue, newest-first; mutates mid-pass (good idea, but violates frozen/comparable)",
+      "green": "PASS — immutable human-eval-suite-v1 snapshot w/ coverage sampling"
+    },
+    {
+      "id": 8,
+      "text": "mark-wrong-in-thread",
+      "red": "PASS — long-press in-thread sheet + taxonomy chips",
+      "green": "PASS"
+    },
+    {
+      "id": 9,
+      "text": "mobile-first + desktop AND mobile screenshots before merge",
+      "red": "PASS — 390x844 Playwright + keyboard-occlusion check + screenshots attached",
+      "green": "PASS — both viewports + real-phone pass"
+    },
+    {
+      "id": 10,
+      "text": "turn-type honesty (local-command artifacts are COMMAND, never USER)",
+      "red": "FAIL — never addressed",
+      "green": "PASS — ⌘ badge, muted styling"
+    },
+    {
+      "id": 11,
+      "text": "operator sign-off is the merge gate (never autonomous)",
+      "red": "FAIL — plan ends 'wait for review, merge' with no operator hold",
+      "green": "PASS — PR HOLDS for Etan after screenshots; upstream HOLD too"
+    },
+    {
+      "id": 12,
+      "text": "no raw personal text logged into annotation datasets",
+      "red": "FAIL — free-text notes stored with no PII rule",
+      "green": "PASS — annotations store IDs + verdict + reason only"
+    }
+  ],
+  "baseline": {
+    "passes": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "total": 12,
+    "pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "with_skill": {
+    "passes": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "total": 12,
+    "pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "delta_pp": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "verdict_notes": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

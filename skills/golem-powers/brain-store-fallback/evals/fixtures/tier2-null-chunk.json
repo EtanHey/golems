@@ -1,0 +1,8 @@
+{
+  "tool": "mcp__brainlayer__brain_store",
+  "ok": true,
+  "message": "accepted",
+  "chunk_id": null,
+  "expected_reason": "queued_null_chunk",
+  "fallback_required": true
+}

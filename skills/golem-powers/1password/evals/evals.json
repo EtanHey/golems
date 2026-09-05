@@ -1,0 +1,69 @@
+{
+  "skill_name": "1password",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need the Anthropic API key from 1Password. Get it for me.",
+      "expected_output": "Runs `op item get` command to retrieve the ANTHROPIC API_KEY from the development vault. Provides the actual value, not instructions to look it up.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-op-cli-for-secrets",
+          "description": "Uses `op item get` CLI command to retrieve the secret, does NOT tell user to open the 1Password app"
+        },
+        {
+          "name": "targets-correct-vault",
+          "description": "Searches the 'development' vault for the ANTHROPIC API key (per vault organization)"
+        },
+        {
+          "name": "provides-value-directly",
+          "description": "Provides the retrieved secret value to the user rather than giving instructions to look it up manually"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have a .env file at ./packages/api/.env with 5 API keys. Migrate it to 1Password securely.",
+      "expected_output": "Uses the migrate-env.sh script or op CLI to migrate .env contents. Uses --dry-run first. Creates .env.template with op:// references. Does NOT delete the original .env.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-dry-run-first",
+          "description": "Runs migration with --dry-run flag first before actual migration (safety rule)"
+        },
+        {
+          "name": "creates-env-template",
+          "description": "Creates a .env.template file with op:// references alongside the original .env"
+        },
+        {
+          "name": "does-not-delete-original-env",
+          "description": "Does NOT delete the original .env file (safety rule: migration creates template alongside)"
+        },
+        {
+          "name": "auto-categorizes-by-prefix",
+          "description": "Uses service auto-detection (ANTHROPIC_* -> anthropic/, SUPABASE_* -> supabase/, etc.) for organizing items"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Set up secrets for a new project called 'songscript'. It needs CONVEX_DEPLOY_KEY and ANTHROPIC_API_KEY available as .env.local for local dev.",
+      "expected_output": "Recommends 1Password Environments (preferred method). Guides through creating an environment in the desktop app UI, adding the variables, and mounting to .env.local. Mentions that environment creation is UI-only, not CLI.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "recommends-environments-for-local-dev",
+          "description": "Recommends 1Password Environments as the preferred method for local development secrets (not manual CLI migration)"
+        },
+        {
+          "name": "notes-ui-only-creation",
+          "description": "Mentions that Environments are created in the 1Password desktop app UI, not via CLI"
+        },
+        {
+          "name": "explains-named-pipe-benefit",
+          "description": "Explains that mounted .env is a named pipe (secrets never written to disk) as a key benefit"
+        }
+      ]
+    }
+  ]
+}

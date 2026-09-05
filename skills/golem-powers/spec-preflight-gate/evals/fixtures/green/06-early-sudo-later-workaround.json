@@ -1,0 +1,16 @@
+{
+  "specimen": "cursor-bugbot/early-needs-sudo-does-not-block-later-user-space-workaround",
+  "events": [
+    { "role": "user", "text": "Handle setup blocker without asking Etan unless truly necessary.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Trying setup, then user-space fallback if needed.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "installer" } },
+        { "name": "Bash", "input": { "command": "installer --appdir ~/Applications || APP_HOME=$HOME/.local/share/app installer --no-sudo" } }
+      ]
+    },
+    { "role": "tool", "text": "installer failed: needs sudo", "tools": [] },
+    { "role": "tool", "text": "installer failed: blocked, needs Etan after --appdir ~/Applications and APP_HOME=$HOME/.local/share/app also failed", "tools": [] }
+  ]
+}

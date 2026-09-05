@@ -1,0 +1,17 @@
+Context: Agent on surface :56 reports completion.
+read_screen(:56, lines: 40) output:
+  "...
+  ---RESPONSE_START---
+  Completed: Full test suite run.
+  Results: 1143 passed, 2 skipped, 1 xfailed, 0 failures.
+  No regressions detected.
+  PR: N/A (read-only task)
+  ---RESPONSE_END---
+
+  ❯ "
+
+Agent registry:
+  - brainlayer-worker (surface :56, status: ACTIVE, tokens: 234,100)
+  - golems-worker (surface :63, status: ACTIVE, tokens: 156,200)
+
+User message: "Check on the brainlayer agent."

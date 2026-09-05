@@ -1,0 +1,75 @@
+{
+  "skill_name": "prd",
+  "tier": "flagship",
+  "models": [
+    "opus",
+    "sonnet",
+    "haiku",
+    "gemini",
+    "cursor-gpt5.3",
+    "glm-4.7-flash",
+    "qwen-7b"
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to build a new notification system for the golems app. Create a PRD.",
+      "expected_output": "Agent generates a structured JSON PRD with scope, stakeholders, stories with acceptance criteria, and references to relevant skills.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "generates-json-prd",
+          "description": "Response produces a valid JSON PRD structure, not just prose"
+        },
+        {
+          "name": "includes-scope-and-stakeholders",
+          "description": "Response includes project scope definition and stakeholder identification"
+        },
+        {
+          "name": "stories-have-acceptance-criteria",
+          "description": "Response includes stories/tasks with specific, testable acceptance criteria"
+        },
+        {
+          "name": "references-relevant-skills",
+          "description": "Response mentions relevant skills for implementation (context7, github, etc.)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Just write me a quick feature spec, don't need a full PRD.",
+      "expected_output": "Agent explains why the structured PRD format matters for Ralph workflow and offers a lighter version that still has the critical fields.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "maintains-structure",
+          "description": "Response still produces structured output with at minimum: scope, stories, and criteria — not just prose"
+        },
+        {
+          "name": "explains-prd-value",
+          "description": "Response explains why structure matters (Ralph needs it, tracks progress, enables automation)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add three new stories to the existing notification PRD at docs.local/prd/notifications.json.",
+      "expected_output": "Agent uses the update.json pattern to add stories, not manual JSON editing.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-update-json-pattern",
+          "description": "Response uses the update.json append pattern rather than manually editing the PRD file"
+        },
+        {
+          "name": "validates-existing-prd",
+          "description": "Response reads the existing PRD first to understand context before adding stories"
+        },
+        {
+          "name": "new-stories-have-criteria",
+          "description": "Each new story includes acceptance criteria, not just a title"
+        }
+      ]
+    }
+  ]
+}

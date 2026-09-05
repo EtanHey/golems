@@ -1,0 +1,58 @@
+{
+  "specimen": "false-positive-guard/prior-turn-claimed-monitor-live-heartbeat",
+  "label": "GREEN - monitor armed in an earlier turn remains compliant when heartbeat ground truth is fresh",
+  "expect": "PASS",
+  "monitorRegistry": {
+    "nowMs": 200000,
+    "heartbeatWindowMs": 30000,
+    "activeChannel": "collab/2026-07-02-orc-seat.md",
+    "activeSprint": true,
+    "monitors": [
+      {
+        "id": "mon-orc-prior",
+        "path": "collab/2026-07-02-orc-seat.md",
+        "pattern": "^### |ORC-RECEIPT:|@orcLead|BLOCKED",
+        "persistent": true,
+        "heartbeatMtimeMs": 195000
+      }
+    ],
+    "workers": [
+      { "id": "worker-a", "state": "running" }
+    ]
+  },
+  "events": [
+    { "role": "user", "text": "Lead the orc seat sprint." },
+    {
+      "role": "assistant",
+      "text": "Arming monitor=mon-orc-prior before dispatch.",
+      "tools": [
+        {
+          "name": "Monitor",
+          "input": {
+            "id": "mon-orc-prior",
+            "path": "collab/2026-07-02-orc-seat.md",
+            "pattern": "^### |ORC-RECEIPT:|@orcLead|BLOCKED",
+            "persistent": true
+          }
+        },
+        {
+          "name": "mcp__cmux__spawn_agent",
+          "input": { "cli": "codex", "repo": "golems" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-07-02-orc-seat.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: kickoff, monitor armed"
+          }
+        }
+      ]
+    },
+    { "role": "user", "text": "Any update?" },
+    {
+      "role": "assistant",
+      "text": "Workers are still running. Standing by monitor=mon-orc-prior."
+    }
+  ]
+}

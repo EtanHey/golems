@@ -1,0 +1,13 @@
+{
+  "eval_id": "missing-source",
+  "provenance": [
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "sonnet",
+      "model_effective": "claude-sonnet-5",
+      "effort_effective": "high",
+      "model_observation_source": "",
+      "effort_observation_source": "CLI status line"
+    }
+  ]
+}

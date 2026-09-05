@@ -1,0 +1,12 @@
+{
+  "specimen": "Fable seat Agent call pinned to an explicit cheaper model",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "transcript": [
+      { "type": "assistant", "message": { "role": "assistant", "model": "claude-fable-5", "content": [] } }
+    ],
+    "tool_name": "Agent",
+    "tool_input": { "model": "sonnet", "prompt": "survey the repo", "reason": "cheap pass" }
+  }
+}

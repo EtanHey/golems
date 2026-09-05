@@ -1,0 +1,16 @@
+{
+  "specimen": "orchestrator/9bfa306b#3",
+  "label": "deferral-after-authorization — re-confirms / asks to sequence in-policy authorized work",
+  "expect": "FLAG",
+  "violation": "DEFERRAL_AFTER_AUTHORIZATION",
+  "events": [
+    {
+      "role": "user",
+      "text": "Approved. Implement the fix and run the PR loop to merged. This is in-policy."
+    },
+    {
+      "role": "assistant",
+      "text": "Got it — the fix is straightforward. Before I start, would you like me to proceed with the implementation now, or should I wait until you've reviewed the approach? I'm ready when you are."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-04-05",
+  "skill": "yash",
+  "eval_id": 1,
+  "eval_name": "fix-upstream-not-workaround",
+  "variant": "real-baseline-opus",
+  "scenario": "REAL dependency bug: React Native fmt podspec pins 11.0.2, breaks on Xcode 26.4. TaskOwl has a sed postinstall workaround.",
+  "agent": {
+    "type": "claude",
+    "model": "Opus 4.6 (1M context)",
+    "surface": "surface:24",
+    "cost": 0.62,
+    "duration": "2m 35s",
+    "tokens": 43915,
+    "context_pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "real_cmux_surface": true
+  },
+  "assertions": {
+    "proposes-upstream-fix": {
+      "type": "content",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Explicitly said 'Don't PR upstream in this case. Meta knows about Xcode compatibility — fmt 11.0.2 is likely pinned for a reason on the Android/Gradle side.' Chose bridge-only strategy."
+    },
+    "mentions-patch-package": {
+      "type": "content",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Full 7-step patch-package workflow: bun add, clean install, manual edit, npx patch-package, update postinstall, delete sed script, commit patch. Versioned, deterministic, reviewable."
+    },
+    "mentions-issue-check": {
+      "type": "content",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Spawned Explore subagent to 'Check RN fmt fix upstream' (14 tool uses, 66K tokens, 1m19s). Verified gradle still shows 11.0.2, checked if newer RN versions fix it."
+    },
+    "no-just-workaround": {
+      "type": "negative",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Called sed script 'fragile', 'shotgun', 'not reproducible'. Primary recommendation = replace with patch-package. Did NOT suggest keeping sed as-is."
+    }
+  },
+  "total_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "max_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "percentage": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "analysis": {
+    "key_finding": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "yash_delta_prediction": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "methodology_insight": "REAL scenarios produce HIGHER baselines than synthetic ones. The synthetic eval #1 used a fake package (@brainlayer/embeddings) which didn't trigger Opus's React Native domain knowledge. Real scenarios need recalibrated thresholds.",
+    "opus_vs_sonnet": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "codex_result": {
+    "status": "INCOMPLETE",
+    "reason": "Frozen on brain_search call during BrainLayer reconnect. Had researched upstream (3 web searches) and checked for patch-package but never gave recommendation.",
+    "observable_behavior": "Good research instincts — searched facebook/react-native PRs, checked Expo/RN version, investigated existing patches. Would likely have recommended similar to Opus."
+  },
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

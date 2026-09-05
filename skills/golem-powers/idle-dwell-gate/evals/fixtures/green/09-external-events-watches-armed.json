@@ -1,0 +1,25 @@
+{
+  "specimen": "2026-07-02/external-event-gated-queue",
+  "label": "GREEN — all queue items are gated on external events and watches are armed",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Continue the release queue, but CI and the other lane's merge are external gates."
+    },
+    {
+      "role": "assistant",
+      "text": "Both remaining queue items are blocked on external events: CI completion and the other lane's merge. Watches are armed for both; no no-input decision is being parked."
+    }
+  ],
+  "state": {
+    "queue": [
+      { "id": "release-ci", "approved": true, "started": true, "requiresUserInput": false, "blockedOn": "CI" },
+      { "id": "other-lane-merge", "approved": true, "started": true, "requiresUserInput": false, "blockedOn": "other lane merge" }
+    ],
+    "watches": [
+      { "id": "ci-watch", "active": true, "target": "release-ci" },
+      { "id": "merge-watch", "active": true, "target": "other-lane-merge" }
+    ]
+  }
+}

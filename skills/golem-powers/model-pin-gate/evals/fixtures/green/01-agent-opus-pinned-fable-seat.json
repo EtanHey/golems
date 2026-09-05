@@ -1,0 +1,12 @@
+{
+  "specimen": "Fable seat Agent call pinned to opus",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "transcript": [
+      { "type": "assistant", "message": { "role": "assistant", "model": "claude-fable-5", "content": [] } }
+    ],
+    "tool_name": "Agent",
+    "tool_input": { "model": "opus", "prompt": "survey the repo" }
+  }
+}

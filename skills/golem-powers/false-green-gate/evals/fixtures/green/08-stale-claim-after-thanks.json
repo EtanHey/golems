@@ -1,0 +1,30 @@
+{
+  "specimen": "cursor-review/stale-claim (false-positive guard)",
+  "label": "GREEN — an already-probed 'done' followed by a 'thanks' turn must not re-FLAG (no claim this turn)",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Render the segment." },
+    {
+      "role": "assistant",
+      "text": "Probing.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "ffprobe -show_entries format=size,duration out/seg.mp3"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "size=18200\nduration=120.40" },
+    {
+      "role": "assistant",
+      "text": "Render complete ✅ — out/seg.mp3 is 18200 bytes, 120.40s."
+    },
+    { "role": "user", "text": "thanks!" },
+    {
+      "role": "assistant",
+      "text": "You're welcome — let me know if you need anything else."
+    }
+  ]
+}

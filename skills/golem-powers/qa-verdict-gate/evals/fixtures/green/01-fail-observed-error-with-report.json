@@ -1,0 +1,51 @@
+{
+  "specimen": "qa-verdict/fail-earned",
+  "label": "GREEN — FAIL backed by an OBSERVED error screenshot AND a qa-report.md with all checklist items",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "QA the Spin Rare flow and report the verdict." },
+    {
+      "role": "assistant",
+      "text": "Driving the flow, capturing the failing screen, then writing the report.",
+      "tools": [
+        {
+          "name": "mcp__playwright__browser_navigate",
+          "input": { "url": "http://localhost:3000/spin" }
+        },
+        {
+          "name": "mcp__playwright__browser_click",
+          "input": { "selector": "#spin-rare" }
+        },
+        {
+          "name": "mcp__playwright__browser_take_screenshot",
+          "input": { "path": "spin-error.png" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "navigated to /spin, page loaded, element #spin-rare found"
+    },
+    {
+      "role": "tool",
+      "text": "clicked #spin-rare; screenshot captured to spin-error.png — Uncaught TypeError: cannot read properties of undefined (reading 'rarity') at spin.js:42; the modal shows a blank reward"
+    },
+    {
+      "role": "assistant",
+      "text": "Writing the QA report.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/qa/qa-report.md",
+            "content": "# QA Report — Spin Rare\n\n- [x] Item 1: page loads\n- [x] Item 2: spin button visible\n- [✗] Item 3: Spin Rare resolves a reward — FAILED, screenshot spin-error.png shows TypeError on rarity\n- [x] Item 4: modal opens\n\nVerdict: FAIL — observed TypeError at spin.js:42."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Verdict: FAIL ❌ — confirmed-observed: clicking Spin Rare throws a TypeError (see spin-error.png), reward modal is blank. Report written to docs.local/qa/qa-report.md."
+    }
+  ]
+}

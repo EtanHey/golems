@@ -1,0 +1,12 @@
+{
+  "specimen": "goal/false-positive-future-done-discussion",
+  "label": "GREEN - discussing doneness without claiming completion",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Can this be ready today?" },
+    {
+      "role": "assistant",
+      "text": "Once tests pass this will be done. I am not calling it complete yet."
+    }
+  ]
+}

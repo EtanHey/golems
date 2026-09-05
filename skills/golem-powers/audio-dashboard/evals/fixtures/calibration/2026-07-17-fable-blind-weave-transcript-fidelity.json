@@ -1,0 +1,383 @@
+{
+  "version": 1,
+  "kind": "TRANSCRIPT_FIDELITY_CALIBRATION",
+  "calibrationDate": "2026-07-17",
+  "source": {
+    "provenanceClass": "REAL_DETERMINISTIC_DECODE",
+    "jobId": "fable-blind-weave-2026-07-15",
+    "decoder": "runWhisperCliWordTimings",
+    "whisperModel": "ggml-large-v3-turbo.bin",
+    "incidentRepeatCount": 3,
+    "rawCorpusSha256": "a54d9945c95f2ee4793a48929306dff03afb2d5021ee5c1b9a503ce5419affd5"
+  },
+  "gateConfig": {
+    "minCriticalTokenChars": 8,
+    "minCriticalEditDistance": 4,
+    "minCriticalEditRatio": 0.4,
+    "maxCriticalEditRatio": 0.5,
+    "minCriticalLengthRatio": 0.8,
+    "minTruncatedPrefixChars": 4,
+    "minMissingSuffixChars": 3,
+    "maxMissingTailWords": 0
+  },
+  "expectedIncidents": [
+    "s9q",
+    "s13a"
+  ],
+  "summary": {
+    "sceneCount": 33,
+    "cleanExpected": 31,
+    "pass": 31,
+    "rejected": 2,
+    "unexpectedRejects": [],
+    "missedIncidents": []
+  },
+  "scenes": [
+    {
+      "id": "s1q",
+      "classification": "CLEAN",
+      "wavBasename": "s1q.wav",
+      "scriptWordCount": 29,
+      "rawWordCount": 29,
+      "rawWordsSha256": "d8d5148f51b0d7ba1b7600c6a92ef746e9eb429c2bc1a0b0cb77013ab6b0a2f1",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s1a",
+      "classification": "CLEAN",
+      "wavBasename": "s1a.wav",
+      "scriptWordCount": 123,
+      "rawWordCount": 118,
+      "rawWordsSha256": "fa900ed8c08eccca5df090c8f9983ade59e6cd6641569c6ab8fdac725c8756e4",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s2q",
+      "classification": "CLEAN",
+      "wavBasename": "s2q.wav",
+      "scriptWordCount": 29,
+      "rawWordCount": 29,
+      "rawWordsSha256": "e2068504ac46f57e4aca273a1423b620b00544a8895ae316ab26c590e17b9992",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s2a",
+      "classification": "CLEAN",
+      "wavBasename": "s2a.wav",
+      "scriptWordCount": 156,
+      "rawWordCount": 151,
+      "rawWordsSha256": "2261e69b2091f64430507ff2d177dfbf1c70cb52dc993241f704e30feff89098",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s3q",
+      "classification": "CLEAN",
+      "wavBasename": "s3q.wav",
+      "scriptWordCount": 36,
+      "rawWordCount": 36,
+      "rawWordsSha256": "8c896318ebc84463580bc14de283165fbe42e1b33f246525d27110dda756c15f",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s3a",
+      "classification": "CLEAN",
+      "wavBasename": "s3a.wav",
+      "scriptWordCount": 134,
+      "rawWordCount": 131,
+      "rawWordsSha256": "e3a246d9904a992247cb3d36f15286e53f0e0b1a50d5e7c11361c27d07ca02da",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s4q",
+      "classification": "CLEAN",
+      "wavBasename": "s4q.wav",
+      "scriptWordCount": 25,
+      "rawWordCount": 25,
+      "rawWordsSha256": "413ba2adcb7fb62427f2f2adee93ca7757f6a2e6be8b50135fc0fe35231d3c5c",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s4a",
+      "classification": "CLEAN",
+      "wavBasename": "s4a.wav",
+      "scriptWordCount": 182,
+      "rawWordCount": 173,
+      "rawWordsSha256": "57bc8b746091c65a5985d5956bb701b19aafc1126d0d0ef9e8396d1893dd047d",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s5q",
+      "classification": "CLEAN",
+      "wavBasename": "s5q.wav",
+      "scriptWordCount": 16,
+      "rawWordCount": 15,
+      "rawWordsSha256": "7585f7935e616c9734cf1908dd6d5d0026ff7793cf741bacbdee114f0ae03d9a",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s5a",
+      "classification": "CLEAN",
+      "wavBasename": "s5a.wav",
+      "scriptWordCount": 161,
+      "rawWordCount": 150,
+      "rawWordsSha256": "9b9295c55f95069991f99bf6b0fece76687c6cbc524fc892b3844e76e0771732",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s6q",
+      "classification": "CLEAN",
+      "wavBasename": "s6q.wav",
+      "scriptWordCount": 34,
+      "rawWordCount": 34,
+      "rawWordsSha256": "98c9ef9a3ab4a675f305c14d8aad2178a902270bfda1c81b8db4bd07810d96cc",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s6a",
+      "classification": "CLEAN",
+      "wavBasename": "s6a.wav",
+      "scriptWordCount": 141,
+      "rawWordCount": 139,
+      "rawWordsSha256": "4d966348591be1816dbeddb4fedcd05d105d2b1e8e5721d74b82bab0827e379a",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s7q",
+      "classification": "CLEAN",
+      "wavBasename": "s7q.wav",
+      "scriptWordCount": 10,
+      "rawWordCount": 10,
+      "rawWordsSha256": "598b58dccd56d7d6db19d05d358df78497b31d3aa02a21f863349001065c4d3f",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s7a",
+      "classification": "CLEAN",
+      "wavBasename": "s7a.wav",
+      "scriptWordCount": 150,
+      "rawWordCount": 145,
+      "rawWordsSha256": "cda5b90fa223e61f236d0c18fa27be52250373f61d242e83b64aad442eb5fd44",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s8q",
+      "classification": "CLEAN",
+      "wavBasename": "s8q.wav",
+      "scriptWordCount": 8,
+      "rawWordCount": 8,
+      "rawWordsSha256": "e511764a99577d1348dd51e9208b139ca105ba96049850dac0c45722bd15bb71",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s8a",
+      "classification": "CLEAN",
+      "wavBasename": "s8a.wav",
+      "scriptWordCount": 133,
+      "rawWordCount": 129,
+      "rawWordsSha256": "a252a351d12f14bcea26925307b5c5089dd78993e3600c82ff8e3a4d1f185449",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s9q",
+      "classification": "INCIDENT",
+      "wavBasename": "s9q.wav",
+      "scriptWordCount": 50,
+      "rawWordCount": 50,
+      "rawWordsSha256": "e283fb68d304ce4cb920094e82152ea0899001d7a5690adb2c94594d8a503a5b",
+      "verdict": "REJECTED",
+      "violations": [
+        {
+          "segment": "s9q",
+          "metric": "PHONEME_CRITICAL_SUBSTITUTION",
+          "value": 4,
+          "threshold": 4,
+          "evidence": "raw=\"Overtime,\" expected=\"overnight\" editDistance=4 editRatio=0.444 lengthRatio=0.889 exactAnchors=2"
+        }
+      ]
+    },
+    {
+      "id": "s9a",
+      "classification": "CLEAN",
+      "wavBasename": "s9a.wav",
+      "scriptWordCount": 167,
+      "rawWordCount": 162,
+      "rawWordsSha256": "b473dd733e576f72d74e0f99545da28c973f7d7ecfd87dce8a5a491f98019667",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s10q",
+      "classification": "CLEAN",
+      "wavBasename": "s10q.wav",
+      "scriptWordCount": 20,
+      "rawWordCount": 20,
+      "rawWordsSha256": "deaffa93934dbba986e18e150e4ded004c8c35d3282b4b03a88a129453fc5a79",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s10a",
+      "classification": "CLEAN",
+      "wavBasename": "s10a.wav",
+      "scriptWordCount": 185,
+      "rawWordCount": 180,
+      "rawWordsSha256": "5d5b5477cb5967c8058effa7ff7102cd4830c71193226ca77a7385e1dbd4f743",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s11q",
+      "classification": "CLEAN",
+      "wavBasename": "s11q.wav",
+      "scriptWordCount": 56,
+      "rawWordCount": 56,
+      "rawWordsSha256": "1ccae45689d8620938827fbb05a5dae622e055e948420aba485338cae89ce1b7",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s11a",
+      "classification": "CLEAN",
+      "wavBasename": "s11a.wav",
+      "scriptWordCount": 189,
+      "rawWordCount": 186,
+      "rawWordsSha256": "cdc11b6554f1aca07410bc7207e4465caf6b3d70208d1b64d73e16bdf7465446",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s11b",
+      "classification": "CLEAN",
+      "wavBasename": "s11b.wav",
+      "scriptWordCount": 200,
+      "rawWordCount": 178,
+      "rawWordsSha256": "6240b9114ebfe34bdcd3b6c63bf95b7ae9fcbb67319006a584eed294cd05f7df",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s12q",
+      "classification": "CLEAN",
+      "wavBasename": "s12q.wav",
+      "scriptWordCount": 32,
+      "rawWordCount": 32,
+      "rawWordsSha256": "efe8d52321cf0cf9d503867229e6add6b401ce60bb212234b7ae36b08babbf61",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s12a",
+      "classification": "CLEAN",
+      "wavBasename": "s12a.wav",
+      "scriptWordCount": 132,
+      "rawWordCount": 120,
+      "rawWordsSha256": "54b96e617399a9e501e9aa4d2729204984b71b8d7674ee27b2e2829c89ed5cfb",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s12m",
+      "classification": "CLEAN",
+      "wavBasename": "s12m.wav",
+      "scriptWordCount": 116,
+      "rawWordCount": 115,
+      "rawWordsSha256": "3b904b94e50bbf05a9a8b174acac1791a628d299c6faeead411ea957ce5d3b2c",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s12b",
+      "classification": "CLEAN",
+      "wavBasename": "s12b.wav",
+      "scriptWordCount": 156,
+      "rawWordCount": 153,
+      "rawWordsSha256": "8aefcaca4ca32ebf462555d364353898175e81fbde1a4b6b0de12c4bcc9bae62",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s13q",
+      "classification": "CLEAN",
+      "wavBasename": "s13q.wav",
+      "scriptWordCount": 34,
+      "rawWordCount": 34,
+      "rawWordsSha256": "e85f292bd5ffe0b6cf4ed196e6d681bd262a82e772d2e4dcfc9ebb8e0ef59a8f",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s13a",
+      "classification": "INCIDENT",
+      "wavBasename": "s13a.wav",
+      "scriptWordCount": 222,
+      "rawWordCount": 218,
+      "rawWordsSha256": "10b76d7256cee0b8ce7d1a2f13ef8470fcb210be0f0eefd4006ef314d0bce51a",
+      "verdict": "REJECTED",
+      "violations": [
+        {
+          "segment": "s13a",
+          "metric": "PHONEME_CRITICAL_SUBSTITUTION",
+          "value": 4,
+          "threshold": 4,
+          "evidence": "raw=\"WebSeaCut\" expected=\"websocket\" editDistance=4 editRatio=0.444 lengthRatio=1.000 exactAnchors=2"
+        }
+      ]
+    },
+    {
+      "id": "s13b",
+      "classification": "CLEAN",
+      "wavBasename": "s13b.wav",
+      "scriptWordCount": 188,
+      "rawWordCount": 184,
+      "rawWordsSha256": "b4c1bcde1fb3989833689beed6dfd77f5f83f15d2b9de06668a2b4b5c10f0652",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s14q",
+      "classification": "CLEAN",
+      "wavBasename": "s14q.wav",
+      "scriptWordCount": 34,
+      "rawWordCount": 34,
+      "rawWordsSha256": "cafc48cd3c118a87f8d40152f345327c18a319cbce07d7bf99618f332378fd13",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s14a",
+      "classification": "CLEAN",
+      "wavBasename": "s14a.wav",
+      "scriptWordCount": 211,
+      "rawWordCount": 206,
+      "rawWordsSha256": "af4779296e4ffa41e118efb0a55d207b6d2ff92af0d1ab2a57bb929f353a97ed",
+      "verdict": "PASS",
+      "violations": []
+    },
+    {
+      "id": "s14b",
+      "classification": "CLEAN",
+      "wavBasename": "s14b.wav",
+      "scriptWordCount": 136,
+      "rawWordCount": 133,
+      "rawWordsSha256": "f9700771365fe3efec6062a23812eac26ff79fba1eab1e1ef3db9ee3afbfb56e",
+      "verdict": "PASS",
+      "violations": []
+    }
+  ]
+}

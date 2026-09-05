@@ -1,0 +1,29 @@
+{
+  "specimen": "false-positive-guard/split-turn (cursor HIGH)",
+  "label": "GREEN — the drive (dispatch) is in an earlier assistant message of the same turn; closing text follows",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "The sprint queue has tasks remaining. You own them. Go."
+    },
+    {
+      "role": "assistant",
+      "text": "Picking up T4 — dispatching now.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__send_to_agent",
+          "input": {
+            "agent": "brainlayer-w1",
+            "message": "Read docs/plan/T4.md and run the full pr-loop to MERGED."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "delivered to brainlayer-w1" },
+    {
+      "role": "assistant",
+      "text": "Dispatched T4 to the brainlayer worker. Monitoring its progress; will pick up T5 next."
+    }
+  ]
+}

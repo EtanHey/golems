@@ -1,0 +1,10 @@
+EVAL_RUNTIME requested=bash effective=bash-3.2.57(1)-release effort=deterministic source=/bin/bash
+not ok 1 filter-too-broad RED :: documentation text matched the broad event filter
+not ok 2 self-signature-match RED :: the listener's own post matched @skillcreator
+not ok 3 no-dedup RED :: the same old hit re-fired after file growth
+not ok 4 no-seed RED :: the first arm dumped existing history
+not ok 5 bash-3.2-declare-A RED :: declare -A exited 2 under macOS /bin/bash
+not ok 6 comm-unsorted RED :: comm invented a change for the same unsorted set
+not ok 7 large-plan-grep-done RED :: the exact :244 hit re-fired after one unrelated append
+not ok 8 repeated-read-screen RED :: one worker outcome triggered 7 paid screen reads instead of one process-exit watch
+BASELINE_SUMMARY expected_red=8 observed_red=8 unexpected_green=0

@@ -1,0 +1,151 @@
+{
+  "skill_name": "freeze-detect",
+  "description": "Synthetic RED/GREEN evals for parsed-only freeze detection. Baseline captures repeated wrapper reads, false idle classification, and misuse of token counters. With-skill behavior must rotate one full read per tick, require prompt proof plus 60s identical full-screen reads before declaring idle, and park monitoring around known long-running operations.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "parsed-only-five-surfaces-three-ticks",
+      "category": "compliance",
+      "description": "The BRIEF 2 smoking-gun scenario: five surfaces are sampled with parsed_only for three ticks, and one active codex is falsely called idle.",
+      "prompt": "Review this monitoring pattern. There are 5 cmux surfaces. For ticks 1 through 3, the monitor reads every surface with `parsed_only=true` and gets the same 6-line wrapper each time. It performs 15 parsed reads total, does zero full-screen reads, and concludes that surface s:7 is idle. Should this behavior ship as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "rejects-parsed-only-idle-verdict",
+          "description": "Does not accept an idle conclusion drawn from repeated parsed-only wrappers alone"
+        },
+        {
+          "type": "content",
+          "name": "forces-one-full-read-on-worst-offender",
+          "description": "Escalates exactly one worst-offender surface to a full read instead of all five"
+        },
+        {
+          "type": "content",
+          "name": "rotates-full-read-across-ticks",
+          "description": "Explains that suspicious surfaces should be rotated one per tick rather than repeatedly re-reading all of them"
+        },
+        {
+          "type": "content",
+          "name": "preserves-active-codex-possibility",
+          "description": "Acknowledges that one of the apparently unchanged surfaces may still be active until a full read proves otherwise"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "prompt-required-before-idle",
+      "category": "compliance",
+      "description": "A surface looks quiet, but the full read never shows a bottom-of-screen prompt indicator.",
+      "prompt": "A monitor performs a full read on the worst offender. The screen has not changed for 70 seconds, but the bottom of the screen does not show `›`, `>`, or `$`. The monitor still wants to mark the worker idle because the screen is unchanged. Is that correct?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-declare-idle-without-prompt-proof",
+          "description": "Rejects an idle verdict when no prompt indicator is visible at the bottom of the screen"
+        },
+        {
+          "type": "content",
+          "name": "requires-bottom-of-screen-prompt",
+          "description": "States that `›`, `>`, or `$` must be visible at the bottom of the full screen before the worker can be called idle"
+        },
+        {
+          "type": "content",
+          "name": "classifies-as-idle-candidate-or-unknown",
+          "description": "Keeps the surface as an idle-candidate or unknown-needs-recheck rather than asserting idleness"
+        },
+        {
+          "type": "content",
+          "name": "retains-sixty-second-gate",
+          "description": "Preserves the 60-second identical full-read requirement instead of dropping it"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "token-count-frozen-tool-call",
+      "category": "structure",
+      "description": "Token counts stop changing while a tool call continues to run.",
+      "prompt": "The monitor notices that a codex surface's token count has not increased for two minutes. A full read from the previous tick showed an active tool call still running. The monitor wants to declare the worker idle because the token count is frozen. Should it?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-equate-token-freeze-with-idle",
+          "description": "Rejects token-count-frozen as sufficient proof of idleness"
+        },
+        {
+          "type": "content",
+          "name": "treats-token-stall-as-hint-only",
+          "description": "States that token freeze is only a hint to inspect the surface, not a terminal diagnosis"
+        },
+        {
+          "type": "content",
+          "name": "references-tool-calls-non-billing",
+          "description": "Explains that tool calls or subprocesses may continue without incremental token billing"
+        },
+        {
+          "type": "content",
+          "name": "keeps-worker-active-until-full-read-proves-idle",
+          "description": "Preserves active or unknown status until a full read proves an idle shell prompt state"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "long-running-build-carve-out",
+      "category": "structure",
+      "description": "The last full read clearly showed a multi-minute build or test operation.",
+      "prompt": "The last full read on surface s:3 showed `pnpm test --watch` compiling and streaming output. Parsed-only telemetry has matched for the next two ticks. The monitor wants to keep checking that worker every minute and ping it for progress. Is that the right behavior?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-ping-long-running-worker-for-normal-stability",
+          "description": "Rejects progress-pinging a worker simply because a known long-running operation looks stable"
+        },
+        {
+          "type": "content",
+          "name": "parks-monitor-not-worker",
+          "description": "States that the monitoring branch should be parked while the worker continues uninterrupted"
+        },
+        {
+          "type": "content",
+          "name": "sets-fifteen-minute-recheck",
+          "description": "Schedules a 15-minute re-check interval for that surface"
+        },
+        {
+          "type": "content",
+          "name": "records-last-known-long-running-op",
+          "description": "Preserves the full-read summary so future ticks know why the surface was parked"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "accepts-single-rotation-green-shape",
+      "category": "quality",
+      "description": "A compliant monitoring plan rotates one full read per tick and correctly distinguishes active, idle-candidate, and long-running states.",
+      "prompt": "Review this freeze-detection plan. Tick 1: parsed-only on 5 surfaces, full read on worst offender s:7 shows an active codex tool call. Tick 2: parsed-only on all 5 surfaces again, full read rotates to s:3 and shows `npm run build` still running, so the monitor parks that branch for 15 minutes. Tick 3: parsed-only on the remaining suspicious surfaces, full read rotates to s:5 and shows a bottom-of-screen `$` prompt with an identical full-screen read already stable for 65 seconds. Should this plan be accepted?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "accepts-one-full-read-per-tick",
+          "description": "Recognizes the one-full-read rotation as the correct monitoring shape"
+        },
+        {
+          "type": "content",
+          "name": "identifies-one-active-codex-correctly",
+          "description": "Acknowledges that the plan correctly keeps s:7 active rather than mislabeling it idle"
+        },
+        {
+          "type": "content",
+          "name": "accepts-long-running-carve-out",
+          "description": "Accepts the 15-minute park for the known build surface"
+        },
+        {
+          "type": "content",
+          "name": "accepts-idle-only-with-prompt-and-time",
+          "description": "Accepts the idle verdict only for the surface that shows both prompt proof and 60+ seconds of identical full-screen reads"
+        }
+      ]
+    }
+  ]
+}

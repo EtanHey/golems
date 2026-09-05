@@ -1,0 +1,49 @@
+{
+  "date": "2026-08-03",
+  "skill": "collab-monitor",
+  "evaluation_kind": "deterministic-shell-red-green",
+  "provenance": [
+    {
+      "agent_or_arm": "recorded-broken-mechanisms",
+      "model_requested": "bash",
+      "model_effective": "bash-3.2.57",
+      "effort_effective": "deterministic",
+      "model_observation_source": "CLI status line: /bin/bash --version reported GNU bash 3.2.57(1)-release",
+      "effort_observation_source": "CLI status line: run-evals.sh declared deterministic shell execution"
+    },
+    {
+      "agent_or_arm": "packaged-candidate",
+      "model_requested": "bash",
+      "model_effective": "bash-3.2.57",
+      "effort_effective": "deterministic",
+      "model_observation_source": "CLI status line: /bin/bash --version reported GNU bash 3.2.57(1)-release",
+      "effort_observation_source": "CLI status line: run-evals.sh declared deterministic shell execution"
+    },
+    {
+      "agent_or_arm": "two-file-smoke",
+      "model_requested": "bash",
+      "model_effective": "bash-3.2.57",
+      "effort_effective": "deterministic",
+      "model_observation_source": "CLI status line: /bin/bash --version reported GNU bash 3.2.57(1)-release",
+      "effort_observation_source": "CLI status line: live-two-file-smoke.sh declared deterministic shell execution"
+    }
+  ],
+  "outcomes": {
+    "recorded_broken_mechanisms": {
+      "command": "bash skills/golem-powers/collab-monitor/evals/run-evals.sh baseline",
+      "expected_red": 8,
+      "observed_red": 8,
+      "unexpected_green": 0
+    },
+    "packaged_candidate": {
+      "command": "bash skills/golem-powers/collab-monitor/evals/run-evals.sh candidate",
+      "passing_checks": 15,
+      "failing_checks": 0
+    },
+    "two_file_smoke": {
+      "command": "bash skills/golem-powers/collab-monitor/evals/live-two-file-smoke.sh",
+      "first_append_alerts": 1,
+      "duplicate_append_alerts": 0
+    }
+  }
+}

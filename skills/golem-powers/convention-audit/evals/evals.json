@@ -1,0 +1,142 @@
+{
+  "skill": "convention-audit",
+  "classification": "encoded-preference",
+  "evals": [
+    {
+      "id": 1,
+      "name": "brainlayer-c99fabb7-time-window-known-answer",
+      "category": "compliance",
+      "description": "Seed-assisted known-answer ship gate from the hand audit at BrainLayer commit c99fabb7. This measures the deterministic SQLite inventory plus model verification; it is not evidence that unseeded model lenses discover the defect unaided.",
+      "evidence_note": "When the static seed emits no candidate, this eval provides no measured known-answer detection evidence for the unseeded lenses.",
+      "prompt": "Audit the supplied BrainLayer c99fabb7 tree for one concept with independent implementations that can silently diverge.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "reports-six-sites",
+          "description": "Reports the timestamp-window concept as having exactly six implementation sites."
+        },
+        {
+          "type": "content",
+          "name": "flags-session-repo",
+          "description": "Flags src/brainlayer/session_repo.py:62 as divergent."
+        },
+        {
+          "type": "content",
+          "name": "flags-enrich-recent",
+          "description": "Flags scripts/enrich_recent.py:77 as divergent."
+        },
+        {
+          "type": "negative",
+          "name": "does-not-flag-normalized-sites",
+          "description": "Does not flag search_repo.py:2264, mcp/enrich_handler.py:107, eval/enrichment_quality_benchmark.py:127, or p0_longitudinal_count.py:25 as divergent."
+        },
+        {
+          "type": "content",
+          "name": "proposes-shared-helper",
+          "description": "Proposes one parameterized timestamp-window SQL helper or equivalent single source of truth."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "shared-helper-must-not-flag-control",
+      "category": "compliance",
+      "description": "Negative control where every caller delegates to one shared helper.",
+      "prompt": "Audit a repository whose three recent-item callers all use time_windows.recent_clause().",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "no-false-finding",
+          "description": "Does not report independent implementations for the shared time-window concept."
+        },
+        {
+          "type": "content",
+          "name": "clean-control-verdict",
+          "description": "Returns zero findings for the control repository."
+        },
+        {
+          "type": "negative",
+          "name": "no-generic-lint-noise",
+          "description": "Does not emit style, naming, formatting, or generic duplication warnings."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "two-writers-one-field",
+      "category": "quality",
+      "description": "Recognizes uncoordinated writers to one semantic field as missing ownership.",
+      "prompt": "Audit a fixture where two pipelines independently assign provenance_class with conflicting precedence.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "names-concept",
+          "description": "Names provenance ownership as the duplicated concept."
+        },
+        {
+          "type": "content",
+          "name": "lists-both-writers",
+          "description": "Lists every independent writer with file and line."
+        },
+        {
+          "type": "content",
+          "name": "proposes-owner-shape",
+          "description": "Proposes one writer or one explicit precedence function."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "split-lifecycle-ownership",
+      "category": "quality",
+      "description": "Recognizes producer and consumer lifecycle controls that can drift.",
+      "prompt": "Audit a fixture where pausing a producer does not pause its queue consumer.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "lists-both-lifecycle-halves",
+          "description": "Lists producer and consumer control sites."
+        },
+        {
+          "type": "content",
+          "name": "explains-divergence",
+          "description": "Explains the state in which the halves disagree."
+        },
+        {
+          "type": "content",
+          "name": "proposes-unified-controller",
+          "description": "Proposes one lifecycle controller or shared state transition."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "report-only-pinned-run",
+      "category": "structure",
+      "description": "Enforces the requested runner and report contract.",
+      "prompt": "Run the audit on a repository and produce its final report.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "raw-codex-luna-workers",
+          "description": "Spawns raw codex exec workers pinned to gpt-5.6-luna and max, with xhigh only as an explicit fallback."
+        },
+        {
+          "type": "content",
+          "name": "reports-effective-effort",
+          "description": "Reports the verified effective model and reasoning effort."
+        },
+        {
+          "type": "content",
+          "name": "reports-telemetry",
+          "description": "Reports output tokens, wall-clock duration, and cost or an explicit unavailable cost field."
+        },
+        {
+          "type": "negative",
+          "name": "does-not-edit-target",
+          "description": "Treats findings as reports and makes no target-repository fixes."
+        }
+      ]
+    }
+  ]
+}

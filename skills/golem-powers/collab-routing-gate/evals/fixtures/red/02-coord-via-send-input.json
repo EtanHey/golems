@@ -1,0 +1,22 @@
+{
+  "specimen": "orchestrator/send_input-coordination (R-002)",
+  "label": "RED — cross-lead coordination (status ping) sent via send_input instead of a collab append",
+  "expect": "FLAG",
+  "violation": "COORD_VIA_SEND_INPUT",
+  "events": [
+    { "role": "user", "text": "Coordinate with the brainlayer lead." },
+    {
+      "role": "assistant",
+      "text": "Pinging them.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__send_input",
+          "input": {
+            "agent": "brainlayer-lead",
+            "message": "@brainClaude what's your status on the watcher fix? are you blocked?"
+          }
+        }
+      ]
+    }
+  ]
+}

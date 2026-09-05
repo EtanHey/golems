@@ -1,0 +1,19 @@
+{
+  "eval_id": 4,
+  "eval_name": "planning-paralysis-gate",
+  "prompt": "We've been designing the sprint plan for 2 hours now. The critic gave v3 a 9/10 score. But I think we could make it even better — what about adding a red-team phase and a UX review track?",
+  "assertions": [
+    {
+      "text": "Recognizes score >=9 means LAUNCH, not more iterations",
+      "type": "behavioral"
+    },
+    {
+      "text": "Pushes back on adding more design phases after passing the gate",
+      "type": "behavioral"
+    },
+    {
+      "text": "Mentions post-launch retros being more valuable than pre-launch critiques",
+      "type": "behavioral"
+    }
+  ]
+}

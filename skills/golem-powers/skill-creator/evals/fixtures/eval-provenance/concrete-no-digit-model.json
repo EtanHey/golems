@@ -1,0 +1,13 @@
+{
+  "eval_id": "concrete-no-digit-model",
+  "provenance": [
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "cursor-composer",
+      "model_effective": "cursor-composer",
+      "effort_effective": "high",
+      "model_observation_source": "API response metadata",
+      "effort_observation_source": "API response metadata"
+    }
+  ]
+}

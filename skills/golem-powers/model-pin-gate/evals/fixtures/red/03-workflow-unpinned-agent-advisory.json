@@ -1,0 +1,15 @@
+{
+  "specimen": "Workflow script has more agent() calls than model pins",
+  "expect": "ADVISORY",
+  "violation": "MODELPIN_WORKFLOW_AGENT_MODEL_ADVISORY",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "transcript": [
+      { "type": "assistant", "message": { "role": "assistant", "model": "claude-fable-5", "content": [] } }
+    ],
+    "tool_name": "Workflow",
+    "tool_input": {
+      "script": "agent({prompt:'a'}); agent({prompt:'b'}); agent({prompt:'c'}); agent({prompt:'d'}); agent({prompt:'e'});"
+    }
+  }
+}

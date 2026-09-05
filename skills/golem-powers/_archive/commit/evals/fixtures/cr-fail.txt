@@ -1,0 +1,17 @@
+CodeRabbit Review — src/auth/cleanup.ts
+
+Summary: 1 file reviewed, 2 issues found.
+
+Issue 1 [CRITICAL]:
+  File: src/auth/cleanup.ts:44
+  The `purgeExpiredSessions()` function deletes sessions using a raw SQL query
+  (`DELETE FROM sessions WHERE expires_at < NOW()`) without parameterization.
+  This is a SQL injection vector if `expires_at` column handling ever changes.
+  Recommendation: Use the ORM's `where` clause or parameterized query.
+
+Issue 2 [WARNING]:
+  File: src/auth/cleanup.ts:12
+  The `SESSION_TTL` constant is set to 86400000 (24h in ms) but the comment
+  says "1 hour TTL." Comment and value are inconsistent.
+
+Verdict: FAIL — 1 critical issue must be resolved.

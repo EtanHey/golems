@@ -1,0 +1,12 @@
+{
+  "specimen": "false-positive-guard/in-progress",
+  "label": "GREEN — no completion claim (work still in progress): the gate is N/A, not a FLAG",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "How's the render going?" },
+    {
+      "role": "assistant",
+      "text": "Still mid-render — it's not done yet, the encode is about 60% through. I'll probe the artifact with ffprobe once it lands."
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-08-02",
+  "skill": "agent-routing",
+  "eval_ids": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "variant": "with_skill",
+  "agent_id": "golemsClaude-6230b7bc",
+  "surface": "surface:245",
+  "transcript": "/Users/example/.claude/projects/-Users-etanheyman-Gits-golems/6230b7bc-9c61-48b9-98c4-bf0e8d7bb7e8.jsonl",
+  "requested_model": null,
+  "effective_model": "claude-opus-5[1m]",
+  "model_note": "The same pinned Claude default was used as the baseline because repoGolem correctly refused cmux's -m sonnet agent-session launch.",
+  "provenance_status": "HISTORICAL_ALIAS_ONLY_NON_COMPARABLE",
+  "historical_score_disposition": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "output_marker": "EFFORT_EVAL",
+  "marker_found_in_transcript": true,
+  "round2_fresh_rerun": "Retained response after reconciling the xhigh policy and replacing max with ultra in the dispatch template; no comparable score is claimed.",
+  "choices": [
+    {
+      "id": 24,
+      "model": "gpt-5.6-luna",
+      "effort": "medium",
+      "expected_effort": "medium",
+      "effort_correct": true
+    },
+    {
+      "id": 25,
+      "model": "gpt-5.6-luna",
+      "effort": "medium",
+      "expected_effort": "medium",
+      "effort_correct": true
+    },
+    {
+      "id": 26,
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "expected_effort": "high",
+      "effort_correct": true
+    },
+    {
+      "id": 27,
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "expected_effort": "high",
+      "effort_correct": true
+    },
+    {
+      "id": 28,
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "expected_effort": "xhigh",
+      "effort_correct": true
+    },
+    {
+      "id": 29,
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "expected_effort": "xhigh",
+      "effort_correct": true
+    }
+  ],
+  "verdict": "HISTORICAL_NON_COMPARABLE: retained choices document the session response, but alias-only provenance cannot support a score, threshold, or cross-arm comparison.",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

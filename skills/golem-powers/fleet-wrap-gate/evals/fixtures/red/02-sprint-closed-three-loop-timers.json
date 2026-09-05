@@ -1,0 +1,26 @@
+{
+  "specimen": "sprint-close with 3 /loop poll timers still armed",
+  "label": "RED — 'sprint closed' declared while three /loop poll timers are still firing. Redundant poll loops at terminal state.",
+  "expect": "FLAG",
+  "violation": "FLEETWRAP_LOOP_ALIVE",
+  "events": [
+    { "role": "user", "text": "sprint's done, close it out" },
+    {
+      "role": "assistant",
+      "text": "Sprint closed — everything merged. Leaving my three /loop poll timers armed so I keep checking the PRs, the deploy, and the queue.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": { "command": "/loop 5m gh pr list --state open" }
+        },
+        { "name": "Bash", "input": { "command": "/loop 5m railway status" } },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "/loop 5m gh api repos/EtanHey/golems/actions/runs"
+          }
+        }
+      ]
+    }
+  ]
+}

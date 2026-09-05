@@ -1,0 +1,112 @@
+{
+  "skill_name": "shell-hardening",
+  "tier": "standard",
+  "models": ["opus", "sonnet"],
+  "evals": [
+    {
+      "id": 0,
+      "name": "printf-json-injection",
+      "prompt": "Review this script: printf '{\"name\": \"%s\"}' \"$user_input\"",
+      "expected_output": "Flag CRITICAL — JSON injection via printf format string in JSON construction. Recommend jq --arg for safe JSON construction.",
+      "root_cause_tested": "injection — tests whether skill detects printf-based JSON injection",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_injection",
+          "description": "Identifies printf JSON injection risk as CRITICAL",
+          "type": "content"
+        },
+        {
+          "name": "recommends_jq",
+          "description": "Recommends jq --arg for safe JSON construction",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "eval-command-injection",
+      "prompt": "Script uses eval \"$cmd\" where cmd is built from user input via cmd=\"git commit -m $message\"",
+      "expected_output": "Flag CRITICAL — command injection via eval with variable input. Suggest array-based command construction.",
+      "root_cause_tested": "injection — tests whether skill detects eval-based command injection",
+      "files": [],
+      "assertions": [
+        {
+          "name": "flags_eval",
+          "description": "Flags eval with variable input as CRITICAL security issue",
+          "type": "content"
+        },
+        {
+          "name": "suggests_arrays",
+          "description": "Suggests array-based command construction as the safe alternative",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "missing-set-flags",
+      "prompt": "Bash script starts with #!/bin/bash and no set flags, then proceeds to process files",
+      "expected_output": "Flag missing set -euo pipefail header. Recommend #!/usr/bin/env bash with set -euo pipefail.",
+      "root_cause_tested": "header — tests whether skill catches missing error handling flags",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_missing_flags",
+          "description": "Identifies missing set -euo pipefail error handling flags",
+          "type": "content"
+        },
+        {
+          "name": "recommends_pipefail",
+          "description": "Recommends the full set -euo pipefail header",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "temp-file-secrets-no-cleanup",
+      "prompt": "Script writes API keys to /tmp/creds.txt without trap cleanup: echo \"$API_KEY\" > /tmp/creds.txt",
+      "expected_output": "Flag HIGH — hardcoded tmp path (use mktemp), no trap cleanup, secrets written to temp file.",
+      "root_cause_tested": "temp_files — tests whether skill catches temp file misuse with secrets",
+      "files": [],
+      "assertions": [
+        {
+          "name": "flags_hardcoded_tmp",
+          "description": "Flags hardcoded /tmp path and recommends mktemp",
+          "type": "content"
+        },
+        {
+          "name": "flags_missing_trap",
+          "description": "Flags missing trap for cleanup on EXIT",
+          "type": "content"
+        },
+        {
+          "name": "flags_secrets_in_tmp",
+          "description": "Flags writing secrets/API keys to temp files",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "unquoted-path-in-rm",
+      "prompt": "Script uses rm $file_path without quotes in a loop over user-provided filenames",
+      "expected_output": "Flag HIGH — unquoted path variable in destructive command. Word splitting could cause unintended deletion.",
+      "root_cause_tested": "path_safety — tests whether skill catches unquoted variables in destructive commands",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_unquoted",
+          "description": "Identifies unquoted variable in destructive rm command",
+          "type": "content"
+        },
+        {
+          "name": "recommends_quoting",
+          "description": "Recommends quoting the variable: \"$file_path\"",
+          "type": "content"
+        }
+      ]
+    }
+  ]
+}

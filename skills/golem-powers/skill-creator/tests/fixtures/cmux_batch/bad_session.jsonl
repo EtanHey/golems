@@ -1,0 +1,1 @@
+{"type":"assistant","timestamp":"2026-06-03T00:01:01.000Z","message":{"model":"claude-haiku-3-5","role":"assistant","content":[{"type":"text","text":"I would call the cmux tool like this instead of executing it:\n```json\n{\"name\":\"mcp__cmux__send_input\",\"input\":{\"surface\":\"surface:99\",\"text\":\"please do the work\"}}\n```"}]}}

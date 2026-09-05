@@ -1,0 +1,29 @@
+{
+  "name": "@golems/cli",
+  "version": "0.1.0",
+  "description": "Golems ecosystem CLI — setup, dependency checking, and environment validation for Claude Code agents",
+  "type": "module",
+  "bin": {
+    "golems": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "test": "bun test tests/"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "keywords": [
+    "golems",
+    "claude-code",
+    "cli",
+    "setup",
+    "dependencies"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EtanHey/golems",
+    "directory": "packages/golems-cli"
+  }
+}

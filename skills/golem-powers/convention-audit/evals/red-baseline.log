@@ -1,0 +1,21 @@
+Command:
+python3 -m unittest skills/golem-powers/convention-audit/scripts/__tests__/test_convention_audit.py -v
+
+Result: exit 1; 5 tests run; 5 expected failures.
+
+First failure:
+test_brainlayer_c99fabb7_flags_only_the_two_divergent_sites ... FAIL
+AssertionError: unexpectedly None : convention-audit runner is not implemented
+
+RED verdict: the known-answer audit behavior did not exist before implementation.
+
+Iteration-2 detector RED:
+- two contract tests errored because `detect_sqlite_recent_window_candidates` did not exist;
+- the prompt contract then failed because the time lens did not receive deterministic evidence.
+
+Claude pair-review hardening RED:
+- four failures and four errors exposed in-tree fixture answer keys, fail-open git-state handling,
+  orphan divergent sites, and comment/vendor false positives.
+
+These failures were captured before their corresponding implementation changes; fixtures' semantic
+ground truth was not changed.

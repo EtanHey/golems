@@ -1,0 +1,383 @@
+{
+  "specimen": "s9q real deterministic decode: overnight-to-Overtime substitution",
+  "gate": "transcript-fidelity",
+  "violation": "PHONEME_CRITICAL_SUBSTITUTION",
+  "provenanceClass": "PROVEN_VERBATIM",
+  "source": {
+    "kind": "real-deterministic-decode",
+    "jobId": "fable-blind-weave-2026-07-15",
+    "segment": "s9q",
+    "wavBasename": "s9q.wav",
+    "decoder": "runWhisperCliWordTimings",
+    "whisperModel": "ggml-large-v3-turbo.bin",
+    "repeatedDecodeCount": 3,
+    "rawWordsSha256": "e283fb68d304ce4cb920094e82152ea0899001d7a5690adb2c94594d8a503a5b",
+    "observation": "Fresh vendored Whisper decode emits Overtime, at 2.26-2.76s with confidence 0.72; three complete decode arrays were byte-identical.",
+    "contract": "orchestrator/standards/layers/gates.md section 7 specimen bank"
+  },
+  "staleSynthProvenance": {
+    "sidecarText": "Before we close, an addendum from Overtime. The stalker golem, the service that watches for lyve streams and records them, had a rough night. The phone would not stop buzzing: lyve for three minutes, lyve again, lyve again, and never a single message with anything in it. What actually broke?",
+    "expectedMetric": "SYNTH_PROVENANCE_STALE",
+    "runbook": "rerun synth-segments"
+  },
+  "transcriptFidelity": {
+    "segments": [
+      {
+        "id": "s9q",
+        "script": "Before we close, an addendum from overnight. The stalker golem, the service that watches for live streams and records them, had a rough night. The phone would not stop buzzing: live for three minutes, live again, live again, and never a single message with anything in it. What actually broke?",
+        "rawWords": [
+          {
+            "index": 0,
+            "word": "Before",
+            "start": 0.17,
+            "end": 0.34,
+            "confidence": 0.973
+          },
+          {
+            "index": 1,
+            "word": "we",
+            "start": 0.34,
+            "end": 0.45,
+            "confidence": 1
+          },
+          {
+            "index": 2,
+            "word": "close,",
+            "start": 0.45,
+            "end": 0.81,
+            "confidence": 0.983
+          },
+          {
+            "index": 3,
+            "word": "an",
+            "start": 0.81,
+            "end": 0.91,
+            "confidence": 0.877
+          },
+          {
+            "index": 4,
+            "word": "addendum",
+            "start": 0.91,
+            "end": 2.06,
+            "confidence": 0.991
+          },
+          {
+            "index": 5,
+            "word": "from",
+            "start": 2.06,
+            "end": 2.26,
+            "confidence": 0.986
+          },
+          {
+            "index": 6,
+            "word": "Overtime,",
+            "start": 2.26,
+            "end": 2.76,
+            "confidence": 0.72
+          },
+          {
+            "index": 7,
+            "word": "the",
+            "start": 3.1,
+            "end": 3.1,
+            "confidence": 0.731
+          },
+          {
+            "index": 8,
+            "word": "stalker",
+            "start": 3.44,
+            "end": 3.85,
+            "confidence": 0.99
+          },
+          {
+            "index": 9,
+            "word": "golem,",
+            "start": 3.94,
+            "end": 4.69,
+            "confidence": 0.909
+          },
+          {
+            "index": 10,
+            "word": "the",
+            "start": 4.69,
+            "end": 4.82,
+            "confidence": 0.819
+          },
+          {
+            "index": 11,
+            "word": "service",
+            "start": 5.44,
+            "end": 5.46,
+            "confidence": 0.996
+          },
+          {
+            "index": 12,
+            "word": "that",
+            "start": 5.46,
+            "end": 5.76,
+            "confidence": 0.995
+          },
+          {
+            "index": 13,
+            "word": "watches",
+            "start": 5.76,
+            "end": 6.32,
+            "confidence": 0.997
+          },
+          {
+            "index": 14,
+            "word": "for",
+            "start": 6.32,
+            "end": 6.54,
+            "confidence": 0.619
+          },
+          {
+            "index": 15,
+            "word": "live",
+            "start": 6.71,
+            "end": 6.77,
+            "confidence": 0.924
+          },
+          {
+            "index": 16,
+            "word": "streams",
+            "start": 6.83,
+            "end": 7.25,
+            "confidence": 0.999
+          },
+          {
+            "index": 17,
+            "word": "and",
+            "start": 7.25,
+            "end": 7.35,
+            "confidence": 0.993
+          },
+          {
+            "index": 18,
+            "word": "records",
+            "start": 7.35,
+            "end": 7.49,
+            "confidence": 1
+          },
+          {
+            "index": 19,
+            "word": "them.",
+            "start": 8.14,
+            "end": 8.38,
+            "confidence": 0.891
+          },
+          {
+            "index": 20,
+            "word": "Had",
+            "start": 8.38,
+            "end": 8.62,
+            "confidence": 0.892
+          },
+          {
+            "index": 21,
+            "word": "a",
+            "start": 8.62,
+            "end": 8.68,
+            "confidence": 1
+          },
+          {
+            "index": 22,
+            "word": "rough",
+            "start": 8.72,
+            "end": 9.1,
+            "confidence": 1
+          },
+          {
+            "index": 23,
+            "word": "night.",
+            "start": 9.11,
+            "end": 9.76,
+            "confidence": 0.933
+          },
+          {
+            "index": 24,
+            "word": "The",
+            "start": 9.98,
+            "end": 10,
+            "confidence": 1
+          },
+          {
+            "index": 25,
+            "word": "phone",
+            "start": 10,
+            "end": 10.4,
+            "confidence": 1
+          },
+          {
+            "index": 26,
+            "word": "would",
+            "start": 10.48,
+            "end": 10.72,
+            "confidence": 1
+          },
+          {
+            "index": 27,
+            "word": "not",
+            "start": 10.94,
+            "end": 11.06,
+            "confidence": 1
+          },
+          {
+            "index": 28,
+            "word": "stop",
+            "start": 11.06,
+            "end": 11.32,
+            "confidence": 1
+          },
+          {
+            "index": 29,
+            "word": "buzzing.",
+            "start": 11.96,
+            "end": 12.26,
+            "confidence": 0.994
+          },
+          {
+            "index": 30,
+            "word": "Live",
+            "start": 12.26,
+            "end": 12.7,
+            "confidence": 0.981
+          },
+          {
+            "index": 31,
+            "word": "for",
+            "start": 12.7,
+            "end": 13.03,
+            "confidence": 0.998
+          },
+          {
+            "index": 32,
+            "word": "three",
+            "start": 13.03,
+            "end": 13.58,
+            "confidence": 0.997
+          },
+          {
+            "index": 33,
+            "word": "minutes.",
+            "start": 13.75,
+            "end": 14.36,
+            "confidence": 0.877
+          },
+          {
+            "index": 34,
+            "word": "Live",
+            "start": 14.36,
+            "end": 14.48,
+            "confidence": 1
+          },
+          {
+            "index": 35,
+            "word": "again.",
+            "start": 14.61,
+            "end": 15.29,
+            "confidence": 0.889
+          },
+          {
+            "index": 36,
+            "word": "Live",
+            "start": 15.29,
+            "end": 15.6,
+            "confidence": 1
+          },
+          {
+            "index": 37,
+            "word": "again.",
+            "start": 15.6,
+            "end": 16.14,
+            "confidence": 0.993
+          },
+          {
+            "index": 38,
+            "word": "And",
+            "start": 16.45,
+            "end": 16.45,
+            "confidence": 0.989
+          },
+          {
+            "index": 39,
+            "word": "never",
+            "start": 16.84,
+            "end": 16.84,
+            "confidence": 1
+          },
+          {
+            "index": 40,
+            "word": "a",
+            "start": 16.91,
+            "end": 16.91,
+            "confidence": 1
+          },
+          {
+            "index": 41,
+            "word": "single",
+            "start": 17.02,
+            "end": 17.38,
+            "confidence": 1
+          },
+          {
+            "index": 42,
+            "word": "message",
+            "start": 17.38,
+            "end": 17.76,
+            "confidence": 1
+          },
+          {
+            "index": 43,
+            "word": "with",
+            "start": 17.98,
+            "end": 18.24,
+            "confidence": 1
+          },
+          {
+            "index": 44,
+            "word": "anything",
+            "start": 18.24,
+            "end": 18.41,
+            "confidence": 1
+          },
+          {
+            "index": 45,
+            "word": "in",
+            "start": 19.02,
+            "end": 19.02,
+            "confidence": 1
+          },
+          {
+            "index": 46,
+            "word": "it.",
+            "start": 19.03,
+            "end": 19.4,
+            "confidence": 1
+          },
+          {
+            "index": 47,
+            "word": "What",
+            "start": 19.4,
+            "end": 19.71,
+            "confidence": 0.997
+          },
+          {
+            "index": 48,
+            "word": "actually",
+            "start": 19.71,
+            "end": 20.35,
+            "confidence": 1
+          },
+          {
+            "index": 49,
+            "word": "broke",
+            "start": 20.52,
+            "end": 20.72,
+            "confidence": 0.981
+          }
+        ]
+      }
+    ]
+  }
+}

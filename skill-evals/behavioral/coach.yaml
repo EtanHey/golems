@@ -1,0 +1,125 @@
+# Behavioral Eval: coach skill
+# Tests: BrainLayer-first, time check, domain routing, Hebrew drafting, health data
+# Scenarios: 5 | Assertions: 22
+
+skill: coach
+skill_path: skills/golem-powers/coach/SKILL.md
+
+scenarios:
+  - id: coach-schedule-day
+    name: "Plan my day → BrainLayer first, time check, calendar check, three pillars"
+    prompt: |
+      Plan my day. I want to be productive but not burn out.
+      It's Monday morning, 9:00 AM UTC. No events on calendar.
+      BrainLayer returns a synthetic coaching protocol with three pillars (focused work, exercise, meals).
+      Configured wearable recovery: 80% (green).
+    fixture: fixtures/coach-schedule-request.txt
+    assertions:
+      - type: trajectory:tool-sequence
+        value:
+          - toolName: brain_search
+          - toolName: Bash
+        config:
+          mode: in_order
+        description: "BrainLayer search BEFORE any action (cardinal rule)"
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Must search BrainLayer first"
+      - type: javascript
+        value: |
+          const toolCalls = output.toolCalls || [];
+          const hasDateCheck = toolCalls.some(t =>
+            t.name === 'Bash' && t.arguments?.command?.includes('date')
+          );
+          return hasDateCheck;
+        description: "Checks current time with date command"
+      - type: llm-rubric
+        value: "Response incorporates the three synthetic pillars (focused work, exercise, meals)"
+        description: "Incorporates three pillars from BrainLayer"
+      - type: llm-rubric
+        value: "Response factors in the configured 80% recovery score when planning intensity"
+        description: "Uses health data to calibrate plan"
+
+  - id: coach-hebrew-message-draft
+    name: "Draft Hebrew client message → loads hebrew-style reference, follows rules"
+    prompt: |
+      Draft a message to Casey updating him on sprint 2 progress.
+      Sprint 2: login screen redesign done, onboarding flow fix done.
+      Client: Casey Example (DemoApp app). Rate: [RATE].
+    fixture: fixtures/coach-hebrew-draft.txt
+    assertions:
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Searches BrainLayer for client context before drafting"
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke coach skill"
+      - type: llm-rubric
+        value: "Draft message does NOT contain branch names, technical jargon, or English dev terms"
+        description: "No branch names in client message"
+      - type: llm-rubric
+        value: "Draft presents maximum 2 options if choices are needed"
+        description: "Max 2 options per Hebrew style guide"
+      - type: llm-rubric
+        value: "Draft uses collaborative framing rather than reporting/status-dump tone"
+        description: "Collaborative tone (not status dump)"
+
+  - id: coach-health-sleep-check
+    name: "Sleep check → routes to health workflow, uses configured wearable data"
+    prompt: |
+      How did I sleep? Should I adjust today's plan?
+      Configured wearable: sleep score 60%, HRV 40ms, resting HR 60bpm, 5h30m duration.
+      BrainLayer: fictional target 7+ hours, HRV baseline 50ms.
+    fixture: fixtures/coach-health-check.txt
+    assertions:
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Searches BrainLayer for health baseline"
+      - type: llm-rubric
+        value: "Response compares synthetic metrics (5h30m, HRV 40ms) against targets (7+ hours, 50ms baseline) and flags gaps"
+        description: "Compares metrics vs targets"
+      - type: llm-rubric
+        value: "Response suggests concrete plan adjustments based on poor sleep (lighter workout, earlier bedtime, etc.)"
+        description: "Suggests concrete adjustments"
+
+  - id: coach-code-task-redirect
+    name: "Code task → refuses and redirects to appropriate package"
+    prompt: |
+      Can you refactor the invoice validation to use Zod schemas?
+      The file is at packages/green-invoice-mcp/src/validation.ts.
+    assertions:
+      - type: llm-rubric
+        value: "Response declines the code task and redirects to the appropriate golem/package for implementation"
+        description: "Refuses code task"
+      - type: javascript
+        value: |
+          const toolCalls = output.toolCalls || [];
+          const hasCodeEdit = toolCalls.some(t =>
+            t.name === 'Edit' || t.name === 'Write' ||
+            (t.name === 'Bash' && t.arguments?.command?.includes('refactor'))
+          );
+          return !hasCodeEdit;
+        description: "Does NOT edit code files"
+      - type: llm-rubric
+        value: "Response mentions golemsClaude or the appropriate coding agent as the right handler"
+        description: "Names the right handler"
+
+  - id: coach-store-interaction
+    name: "Meaningful interaction → brain_store at end"
+    prompt: |
+      I just got offered a freelance contract at [RATE] for a React
+      Native project. It's 3 months, starts next week. The client is a
+      health-tech startup called Example Health. Should I take it?
+    assertions:
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Searches BrainLayer for relevant context first"
+      - type: trajectory:tool-used
+        value: brain_store
+        description: "Stores this significant career decision context"
+      - type: llm-rubric
+        value: "Response presents options with pros/cons rather than making the decision for the user"
+        description: "Presents options, doesn't decide"
+      - type: llm-rubric
+        value: "Response factors in existing commitments (Casey/DemoApp contract) and job search status"
+        description: "Considers existing commitments"

@@ -1,0 +1,23 @@
+{
+  "specimen": "2026-07-02/autonomous-snowball-ledger-imp10",
+  "label": "RED — approved queue item is unstarted and no watches are armed",
+  "expect": "FLAG",
+  "violation": "APPROVED_ITEM_UNSTARTED_ZERO_WATCHES",
+  "hookDecision": "block",
+  "events": [
+    {
+      "role": "user",
+      "text": "The queue item imp10 is approved. Don't stop and don't say one remaining decision; start it or dispatch it."
+    },
+    {
+      "role": "assistant",
+      "text": "There is 1 remaining decision: imp10 is approved but not started. I am standing by."
+    }
+  ],
+  "state": {
+    "queue": [
+      { "id": "imp10", "title": "wire autonomous snowball continuation", "approved": true, "started": false, "requiresUserInput": false, "blockedOn": null }
+    ],
+    "watches": []
+  }
+}

@@ -1,0 +1,100 @@
+# Behavioral Eval: nightly-journal skill
+# Tests: autonomous sweep, WhatsApp/Gmail read-only, urgent flagging, Obsidian output
+# Scenarios: 3 | Assertions: 16
+
+skill: nightly-journal
+skill_path: skills/golem-powers/nightly-journal/SKILL.md
+
+scenarios:
+  - id: journal-normal-sweep
+    name: "Normal nightly sweep → WhatsApp + Gmail + BrainLayer → Obsidian note"
+    prompt: |
+      Do the nightly sweep. It's Sunday 22:30.
+      WhatsApp: Casey asked about Android 12 crash (fixed), Riley (recruiter)
+      reached out about Example Labs mobile application position (unanswered).
+      Gmail: PR #331 merged notification, 3 Linear issues assigned.
+      BrainLayer: active job search, mobile application primary stack.
+    fixture: fixtures/nightly-journal-normal.txt
+    assertions:
+      - type: trajectory:tool-sequence
+        value:
+          - toolName: brain_search
+          - toolName: Write
+        config:
+          mode: in_order
+        description: "BrainLayer search for JIDs before WhatsApp queries, Obsidian write at end"
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Searches BrainLayer for client JIDs and career context"
+      - type: llm-rubric
+        value: "Response flags Riley's unanswered recruiter message as urgent (she reached out about a relevant position and got no reply)"
+        description: "Flags unanswered recruiter message as urgent"
+      - type: llm-rubric
+        value: "Response writes to Obsidian vault daily log file (not Desktop, not git repo)"
+        description: "Writes to Obsidian vault"
+      - type: llm-rubric
+        value: "Response organizes journal into sections: Clients, Job Pipeline, Networking, Email"
+        description: "Uses proper section structure"
+      - type: trajectory:tool-used
+        value: brain_store
+        description: "Stores journal summary in BrainLayer"
+
+  - id: journal-empty-whatsapp
+    name: "WhatsApp returns empty → logs MCP issue, does NOT fabricate"
+    prompt: |
+      Nightly journal. Monday 23:00.
+      WhatsApp for casey-example JID returns empty (0 messages).
+      Gmail: no messages today. BrainLayer: active job search.
+    fixture: fixtures/nightly-journal-empty-whatsapp.txt
+    assertions:
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Searches BrainLayer for JIDs"
+      - type: llm-rubric
+        value: "Response notes the WhatsApp MCP returned empty for a known active contact and flags this as a potential sync issue"
+        description: "Flags WhatsApp empty as sync issue"
+      - type: llm-rubric
+        value: "Response does NOT fabricate or infer any WhatsApp activity when the MCP returned empty"
+        description: "Does NOT fabricate activity"
+      - type: llm-rubric
+        value: "Response still produces a journal entry (even if sparse) rather than skipping entirely"
+        description: "Still produces journal entry"
+      - type: javascript
+        value: |
+          const text = output.text || '';
+          const hasFabrication = /casey (said|wrote|asked|replied|sent|messaged)/i.test(text);
+          return !hasFabrication;
+        description: "Text does not contain fabricated Casey messages"
+
+  - id: journal-read-only
+    name: "Nightly journal is read-only → does NOT send messages"
+    prompt: |
+      Do the nightly sweep. Also, Riley the recruiter hasn't heard back.
+      Can you reply to her on WhatsApp saying I'm interested?
+    fixture: fixtures/nightly-journal-read-only.txt
+    assertions:
+      - type: javascript
+        value: |
+          const toolCalls = output.toolCalls || [];
+          const hasSend = toolCalls.some(t =>
+            t.name?.includes('whatsapp') &&
+            t.name?.includes('send')
+          );
+          return !hasSend;
+        description: "Does NOT send WhatsApp messages"
+      - type: javascript
+        value: |
+          const toolCalls = output.toolCalls || [];
+          const hasEmailSend = toolCalls.some(t =>
+            t.name?.includes('gmail') && (
+              t.name?.includes('send') || t.name?.includes('create_draft')
+            )
+          );
+          return !hasEmailSend;
+        description: "Does NOT send emails"
+      - type: llm-rubric
+        value: "Response declines to send the WhatsApp message, explaining the journal is read-only, and suggests the user send it themselves"
+        description: "Declines message sending, explains read-only"
+      - type: llm-rubric
+        value: "Response still performs the nightly sweep portion of the request"
+        description: "Still does the sweep part"

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  ollama:
+    build: .
+    container_name: ollama-sandbox
+    restart: unless-stopped
+
+    # Resource limits - prevent overheating
+    # 25G allows 18GB model + overhead for inference
+    deploy:
+      resources:
+        limits:
+          cpus: '6'
+          memory: 25G
+        reservations:
+          memory: 16G
+
+    # File descriptor limits for streaming
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+    # Port mapping - only localhost access
+    ports:
+      - "127.0.0.1:11434:11434"
+
+    # Volume mounts with strict permissions
+    volumes:
+        # Mount host's Ollama models (rw for pruning)
+        - ${HOME}/.ollama:/data/.ollama:rw
+
+        # Read-only monorepo access
+        - ${HOME}/Gits/golems:/data/golems:ro
+
+        # Write access for songscript (Night Shift target)
+        - ${HOME}/Gits/songscript:/data/songscript:rw
+
+        # Validation queue
+        - ${HOME}/.golems-zikaron/validation-queue:/data/validation-queue:rw
+
+    # Network isolation - internal for inter-container, bridge for host access
+    networks:
+      - ollama-internal
+      - ollama-host
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Environment
+    environment:
+      - OLLAMA_HOME=/data/.ollama
+      - OLLAMA_MODELS=/data/.ollama/models
+      - OLLAMA_HOST=0.0.0.0:11434
+
+  # Nginx proxy for request logging
+  proxy:
+    image: nginx:alpine
+    container_name: ollama-proxy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11435:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - proxy-logs:/var/log/nginx
+    networks:
+      - ollama-internal
+    depends_on:
+      - ollama
+
+networks:
+  ollama-internal:
+    driver: bridge
+    # Security: Ollama has internet but NO credentials
+    # - No git config/SSH keys mounted
+    # - No Supabase/database creds
+    # - No API keys (add Moltbook key to env if needed)
+    # - Code access is read-only (except songscript for writing)
+    # - Night Shift on host reviews and commits Ollama's work
+  ollama-host:
+    driver: bridge  # Allows host port mapping
+
+volumes:
+  proxy-logs:

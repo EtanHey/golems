@@ -1,0 +1,143 @@
+{
+  "specimen": "2026-07-17 real narrationlayer vendor-first drift before Lane C upstream sync",
+  "capturedAt": "2026-07-17T12:31:56Z",
+  "golemsHead": "84c111ef34596099866295b7ba3f8a6911fb2f6e",
+  "stamp": {
+    "schemaVersion": 1,
+    "vendor": "narrationlayer",
+    "vendorDate": "2026-07-17",
+    "upstream": {
+      "repository": "EtanHey/narrationlayer",
+      "commit": "2ea3d6ccf3105611c5e27409622d52e68dc3e338",
+      "committedAt": "2026-06-22T20:09:40+03:00"
+    },
+    "pairs": [
+      {
+        "id": "local-tts-runner",
+        "vendorPath": "vendor/narrationlayer/local-tts-runner.ts",
+        "sourcePath": "bin/local-tts-runner.ts",
+        "vendorSha256": "09c1be52679b481d2a86327ad04b4272b19dc136f40aa62aeeb57dc56084158b",
+        "sourceSha256": "1ba43727551dbeeaeffaf0333a923183d3baae51fea08568fde1e1e85da8e1cb"
+      },
+      {
+        "id": "profiles",
+        "vendorPath": "vendor/narrationlayer/profiles.ts",
+        "sourcePath": "src/profiles.ts",
+        "vendorSha256": "b4630a31da38726b987a7aae1a05fb1010f6b027d3231630cd429ea4e5d6301a",
+        "sourceSha256": "99a6cf58d268253de4e6e848e4776bc4e01e4de930e285582bd3153ff004c8ec"
+      },
+      {
+        "id": "schema",
+        "vendorPath": "vendor/narrationlayer/schema.ts",
+        "sourcePath": "src/schema.ts",
+        "vendorSha256": "e21463d518593ef136660fe1f3673d59307e1bedba1f86e252e577f49940fe43",
+        "sourceSha256": "07dd64a660ce388a37aea30ae4640f509a5e947a63f262bd9d00f2c6df5d1d92"
+      },
+      {
+        "id": "text-normalize",
+        "vendorPath": "vendor/narrationlayer/text-normalize.ts",
+        "sourcePath": "src/text-normalize.ts",
+        "vendorSha256": "15632883848aaafc3d38a4935f87bebc2f2eb799c2adab2af050a32081c00dd2",
+        "sourceSha256": "15632883848aaafc3d38a4935f87bebc2f2eb799c2adab2af050a32081c00dd2"
+      },
+      {
+        "id": "word-timing-repair",
+        "vendorPath": "vendor/narrationlayer/word-timing-repair.ts",
+        "sourcePath": "src/word-timing-repair.ts",
+        "vendorSha256": "b61fd60a5d4169ca23e91f207183232d1db7568d2fb49964da90b78539a3da88",
+        "sourceSha256": "02a6c8572c524ac3ae1a83dde2084035d1d4b403fd78fb965396bccc2b3d12d3"
+      },
+      {
+        "id": "word-timings",
+        "vendorPath": "vendor/narrationlayer/word-timings.ts",
+        "sourcePath": "src/word-timings.ts",
+        "vendorSha256": "4feed16024248316625c2c772788e7a92c8cfd2637aa15922f814c604264da55",
+        "sourceSha256": "4feed16024248316625c2c772788e7a92c8cfd2637aa15922f814c604264da55"
+      }
+    ],
+    "intentionalAdaptations": [
+      {
+        "pairId": "local-tts-runner",
+        "reason": "Vendored imports resolve to sibling modules and profile roots are env-configurable for repo-free runtime."
+      },
+      {
+        "pairId": "profiles",
+        "reason": "Vendored profile type imports resolve to the local schema shim."
+      },
+      {
+        "pairId": "schema",
+        "reason": "Vendored schema is a minimal type-only portability shim."
+      }
+    ],
+    "vendorSideFirst": [
+      {
+        "id": "D6d_CACHE_RECEIPT",
+        "pairId": "local-tts-runner",
+        "status": "open",
+        "aidevNote": "This vendored runtime writes the content-hash receipt required for D6d purge-on-reject; upstream narrationlayer synchronization is still owed.",
+        "requiredUpstreamPatterns": [
+          "export async function writeTakeCacheReceipt(",
+          "export async function clearTakeCacheReceipt(",
+          "await writeTakeCacheReceipt(output, cacheKey"
+        ],
+        "testCommand": [
+          "bun",
+          "test",
+          "tests/local-tts-runner.test.ts"
+        ]
+      },
+      {
+        "id": "D6a_RAW_SERIES",
+        "pairId": "word-timing-repair",
+        "status": "open",
+        "aidevNote": "This vendored runtime preserves the untouched Whisper series so gates judge RAW while display uses repaired timing; upstream narrationlayer synchronization is still owed.",
+        "requiredUpstreamPatterns": [
+          "rawWords: WordTiming[];",
+          "return { rawWords: timings, words: timings, repaired: false }",
+          "rawWords: timings,"
+        ],
+        "testCommand": [
+          "bun",
+          "test",
+          "tests/word-timing-repair.test.ts"
+        ]
+      }
+    ]
+  },
+  "observed": {
+    "vendorHead": "84c111ef34596099866295b7ba3f8a6911fb2f6e",
+    "upstreamHead": "2ea3d6ccf3105611c5e27409622d52e68dc3e338",
+    "pairs": [
+      {
+        "id": "local-tts-runner",
+        "vendorSha256": "09c1be52679b481d2a86327ad04b4272b19dc136f40aa62aeeb57dc56084158b",
+        "sourceSha256": "1ba43727551dbeeaeffaf0333a923183d3baae51fea08568fde1e1e85da8e1cb"
+      },
+      {
+        "id": "profiles",
+        "vendorSha256": "b4630a31da38726b987a7aae1a05fb1010f6b027d3231630cd429ea4e5d6301a",
+        "sourceSha256": "99a6cf58d268253de4e6e848e4776bc4e01e4de930e285582bd3153ff004c8ec"
+      },
+      {
+        "id": "schema",
+        "vendorSha256": "e21463d518593ef136660fe1f3673d59307e1bedba1f86e252e577f49940fe43",
+        "sourceSha256": "07dd64a660ce388a37aea30ae4640f509a5e947a63f262bd9d00f2c6df5d1d92"
+      },
+      {
+        "id": "text-normalize",
+        "vendorSha256": "15632883848aaafc3d38a4935f87bebc2f2eb799c2adab2af050a32081c00dd2",
+        "sourceSha256": "15632883848aaafc3d38a4935f87bebc2f2eb799c2adab2af050a32081c00dd2"
+      },
+      {
+        "id": "word-timing-repair",
+        "vendorSha256": "b61fd60a5d4169ca23e91f207183232d1db7568d2fb49964da90b78539a3da88",
+        "sourceSha256": "02a6c8572c524ac3ae1a83dde2084035d1d4b403fd78fb965396bccc2b3d12d3"
+      },
+      {
+        "id": "word-timings",
+        "vendorSha256": "4feed16024248316625c2c772788e7a92c8cfd2637aa15922f814c604264da55",
+        "sourceSha256": "4feed16024248316625c2c772788e7a92c8cfd2637aa15922f814c604264da55"
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "specimen": "false-positive-guard/clean-stop",
+  "label": "GREEN — all queued work MERGED, nothing left in the queue: a clean stop is not idle-dwell",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Finish the sprint queue." },
+    {
+      "role": "assistant",
+      "text": "All three queued tasks are MERGED: T4 (PR #601), T5 (PR #602), T6 (PR #603). Branches deleted, main pulled. The queue is empty — nothing else is authorized or pending. Monitor stays armed; standing by for new work."
+    }
+  ]
+}

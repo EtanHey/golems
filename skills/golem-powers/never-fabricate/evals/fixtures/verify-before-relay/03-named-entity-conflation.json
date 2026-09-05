@@ -1,0 +1,15 @@
+{
+  "specimen": "gen-18 Track 2 #4 / R-008 — named-entity-conflation (imp-10 repeated critical error)",
+  "class": "named-entity-conflation",
+  "label": "Conflating distinct entities — HappyCamper (the company) vs AfterCode (the tool) vs a second Claude account — relayed as the same thing",
+  "expect": "FLAG",
+  "violation": "VBR_NAMED_ENTITY_CONFLATION",
+  "why": "HappyCamper (the company), AfterCode (the tool), and the second Claude account are three distinct entities. Treating them as one (e.g. 'HappyCamper's AfterCode render on the same account') is the imp-10 repeated-critical-error class. The fix requires a session-start brain_store disambiguation that records each entity's identity BEFORE relaying any claim that spans them.",
+  "events": [
+    { "role": "user", "text": "What's the status on HappyCamper?" },
+    {
+      "role": "assistant",
+      "text": "HappyCamper is AfterCode — the render tool on the second Claude account. So the HappyCamper render is running on the same account as AfterCode. They're the same thing, status is good."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "skill_name": "presentation-builder",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a talk next week about AI-assisted development. Help me build the presentation.",
+      "expected_output": "Agent follows Michal's workshop method — starts with premise/framing before jumping to slides.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "starts-with-premise",
+          "description": "Response begins with premise exploration (what's the core argument?) before creating any slides"
+        },
+        {
+          "name": "follows-workshop-phases",
+          "description": "Response follows the phase sequence: premise, framing, draft, polish — not jumping straight to content"
+        },
+        {
+          "name": "includes-opening-and-closing",
+          "description": "Response addresses opening hook and closing call-to-action as distinct steps"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Just write me 10 slides about AI tools. Skip the workshop stuff.",
+      "expected_output": "Agent pushes back on skipping the premise/framing phases — those determine whether the talk lands.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "resists-skipping-premise",
+          "description": "Response explains why premise/framing matter and doesn't just produce 10 slides"
+        },
+        {
+          "name": "asks-about-audience",
+          "description": "Response asks about audience and context before producing content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The slides are done. I think I'm ready for the talk.",
+      "expected_output": "Agent reminds about practice step — slides done doesn't mean prepared.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "includes-practice-step",
+          "description": "Response reminds that practice/rehearsal is part of the preparation process"
+        },
+        {
+          "name": "offers-voice-practice",
+          "description": "Response offers voice-powered practice mode if VoiceLayer is available"
+        }
+      ]
+    }
+  ]
+}

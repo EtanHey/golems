@@ -1,0 +1,65 @@
+{
+  "skill_name": "critique-waves",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just finished a complex refactor of the auth module. Run a critique wave to verify it.",
+      "expected_output": "Agent scaffolds verification folder, spawns parallel critique agents with different angles, collects results, and reports consensus.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "scaffolds-verification-folder",
+          "description": "Response creates instructions.md and tracker.md in a verification folder before spawning agents"
+        },
+        {
+          "name": "spawns-parallel-agents",
+          "description": "Response launches multiple critique agents in parallel, not sequentially"
+        },
+        {
+          "name": "waits-for-all-agents",
+          "description": "Response collects results from ALL agents before declaring consensus, doesn't stop at first response"
+        },
+        {
+          "name": "reports-consensus-or-disagreement",
+          "description": "Response explicitly states whether agents reached consensus or highlights disagreements"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Two of three agents approved but one found a critical issue. What do we do?",
+      "expected_output": "Agent does NOT declare consensus — the critical issue blocks. Iterates: fix issue, re-run wave on the fix.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "critical-blocks-consensus",
+          "description": "Response treats one critical finding as blocking even though majority approved"
+        },
+        {
+          "name": "iterates-after-fix",
+          "description": "Response plans to re-run a critique wave after the critical issue is fixed"
+        },
+        {
+          "name": "does-not-declare-done",
+          "description": "Response does not claim work is verified when a critical finding exists"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Just run one agent to review it, we don't need the full critique wave for this.",
+      "expected_output": "Agent explains that single-reviewer defeats the purpose of multi-agent verification and suggests coderabbit for simpler reviews.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "explains-multi-agent-value",
+          "description": "Response explains why multiple perspectives matter for verification"
+        },
+        {
+          "name": "suggests-alternative-for-simple-review",
+          "description": "Response suggests coderabbit or a single code review for simpler cases"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+Synthetic fixture only: a fictional user asks about sleep quality.
+Configured wearable returns: sleep score 60%, HRV 40ms, resting HR 60bpm, sleep duration 5h30m.
+BrainLayer returns: "Fictional target: 7+ hours sleep, HRV baseline 50ms"
+
+User message: "How did I sleep? Should I adjust today's plan?"

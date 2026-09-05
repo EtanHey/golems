@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["worker", "findings"],
+  "properties": {
+    "worker": {"type": "string", "const": "synthesis"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["concept", "implementation_sites", "divergent_sites", "shared_helper_shape", "confidence"],
+        "properties": {
+          "concept": {"type": "string"},
+          "implementation_sites": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "line", "summary"],
+              "properties": {
+                "path": {"type": "string"},
+                "line": {"type": "integer", "minimum": 1},
+                "summary": {"type": "string"}
+              }
+            }
+          },
+          "divergent_sites": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "line", "reason"],
+              "properties": {
+                "path": {"type": "string"},
+                "line": {"type": "integer", "minimum": 1},
+                "reason": {"type": "string"}
+              }
+            }
+          },
+          "shared_helper_shape": {"type": "string"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+        }
+      }
+    }
+  }
+}

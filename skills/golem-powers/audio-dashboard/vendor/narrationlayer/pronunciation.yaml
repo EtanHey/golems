@@ -1,0 +1,21 @@
+# AIDEV-NOTE: This vendored engine overlay lands vendor-side first; upstream
+# NarrationLayer synchronization is still owed and must preserve this file.
+#
+# NarrationLayer pronunciation overlay
+# Applied as text preprocessing on the synth-input channel only.
+# Format is compatible with ~/.voicelayer/pronunciation.yaml:
+#
+# section:
+#   term: "pronunciation"
+
+acronyms:
+  PR: "pull request"
+  QA: "quality assurance"
+
+# Context-conditional heteronyms use exact phrases, longest first. This avoids
+# changing the /lɪv/ sense in text such as "I live in Riverton." Add each new
+# /laɪv/ context explicitly until the shared B8 dictionary contract is ratified.
+heteronyms:
+  live streams: "lyve streams"
+  live for: "lyve for"
+  live again: "lyve again"

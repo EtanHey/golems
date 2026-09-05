@@ -1,0 +1,22 @@
+{
+  "specimen": "N/A when dispatch brief does not reference spec or handoff path",
+  "events": [
+    { "role": "user", "text": "Spawn a worker to inspect current git status.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching status worker.",
+      "tools": [
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Inspect git status and report changed files."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "spawned agent golems in repo golems", "tools": [] }
+  ]
+}

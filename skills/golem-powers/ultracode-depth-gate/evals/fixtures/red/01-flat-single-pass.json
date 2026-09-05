@@ -1,0 +1,20 @@
+{
+  "specimen": "R-042/flat-six-gatherer-single-pass",
+  "violation": "FLAT_SINGLE_PASS",
+  "events": [
+    { "role": "user", "text": "Run an ultracode exhaustive architecture audit of this repo.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching a broad gather pass.",
+      "tools": [
+        { "name": "spawn_agent", "input": { "role": "gatherer", "model": "cheap", "prompt": "Gather area 1" } },
+        { "name": "spawn_agent", "input": { "role": "gatherer", "model": "cheap", "prompt": "Gather area 2" } },
+        { "name": "spawn_agent", "input": { "role": "gatherer", "model": "cheap", "prompt": "Gather area 3" } },
+        { "name": "spawn_agent", "input": { "role": "gatherer", "model": "cheap", "prompt": "Gather area 4" } },
+        { "name": "spawn_agent", "input": { "role": "gatherer", "model": "cheap", "prompt": "Gather area 5" } },
+        { "name": "spawn_agent", "input": { "role": "gatherer", "model": "cheap", "prompt": "Gather area 6" } }
+      ]
+    },
+    { "role": "tool", "text": "spawned 6 one-shot gatherers", "tools": [] }
+  ]
+}

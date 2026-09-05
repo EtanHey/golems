@@ -1,0 +1,12 @@
+{
+  "specimen": "coderabbit/negated-published-false-positive",
+  "label": "GREEN - negated published/live wording is not a completion claim",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Is the page published?" },
+    {
+      "role": "assistant",
+      "text": "It is not published yet. I still need to run the URL probe before reporting it live."
+    }
+  ]
+}

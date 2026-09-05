@@ -1,0 +1,36 @@
+{
+  "specimen": "orchestrator/monitor-on-side-channel (R-002 22x imp-10)",
+  "label": "RED — monitor armed on a side/Q&A collab while the squad posts to the active channel",
+  "expect": "FLAG",
+  "violation": "MONITOR_WRONG_CHANNEL",
+  "events": [
+    { "role": "user", "text": "Lead the voicelayer sprint." },
+    {
+      "role": "assistant",
+      "text": "Spawning the worker and arming my monitor.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__spawn_agent",
+          "input": { "cli": "codex", "repo": "voicelayer" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-06-22-voicelayer.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: voicelayer kickoff"
+          }
+        },
+        {
+          "name": "Monitor",
+          "input": {
+            "path": "collab/2026-06-22-side-qa.md",
+            "pattern": "### |BLOCKED",
+            "persistent": true
+          }
+        }
+      ]
+    },
+    { "role": "assistant", "text": "Monitor armed, standing by." }
+  ]
+}

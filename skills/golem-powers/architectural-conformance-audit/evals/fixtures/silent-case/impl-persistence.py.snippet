@@ -1,0 +1,37 @@
+# Synthetic persistence layer — uses SQLite WAL.
+# SOTA is silent on persistence backend. Audit MUST produce N/A for this primitive.
+# Fixture only.
+
+import sqlite3
+from contextlib import contextmanager
+
+
+DB_PATH = "/var/lib/brainlayer/store.db"
+
+
+def init_db() -> None:
+    """
+    AUDIT NOTE: Persistence backend = SQLite (WAL mode). The fixture SOTA file
+    (sota-excerpt.md) discusses framing primitives ONLY and is silent on
+    persistence choice. Expected audit verdict for this primitive: N/A.
+    """
+    with _conn() as c:
+        c.executescript(
+            """
+            PRAGMA journal_mode=WAL;
+            CREATE TABLE IF NOT EXISTS chunks (
+                id INTEGER PRIMARY KEY,
+                content TEXT NOT NULL
+            );
+            """
+        )
+
+
+@contextmanager
+def _conn():
+    c = sqlite3.connect(DB_PATH)
+    try:
+        yield c
+        c.commit()
+    finally:
+        c.close()

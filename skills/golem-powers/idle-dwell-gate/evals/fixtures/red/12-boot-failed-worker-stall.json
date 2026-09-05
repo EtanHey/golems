@@ -1,0 +1,22 @@
+{
+  "specimen": "2026-07-02/fleet-stall-4",
+  "label": "RED — boot-failed worker in this workspace has non-empty composer and zero tool calls since spawn",
+  "expect": "FLAG",
+  "violation": "BOOT_FAILED_WORKER_STALL",
+  "hookDecision": "advisory",
+  "events": [
+    {
+      "role": "user",
+      "text": "Check the worker seats in this workspace and keep the queue moving."
+    },
+    {
+      "role": "assistant",
+      "text": "No progress to report yet. I am standing by."
+    }
+  ],
+  "state": {
+    "workers": [
+      { "id": "W9", "state": "boot_failed", "paneOpen": true, "workspace": "idle-dwell-gate", "composer": "Read the goal and start.", "toolCallsSinceSpawn": 0 }
+    ]
+  }
+}

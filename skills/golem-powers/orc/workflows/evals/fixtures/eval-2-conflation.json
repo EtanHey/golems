@@ -1,0 +1,60 @@
+{
+  "fixture_id": "eval-2-conflation",
+  "scenario_name": "Conflation case — objective fact + subjective scope decision in the same turn (May 21 [4509] reproduction)",
+  "wave_evidence": "orc-may21 event [4509] — orc said: 'Got it. Not pinging coachClaude. If Phase 4 ships fast enough, the lecture content updates with the live system anyway.' This generalized 'don't ping coach' to silence the date relay too. THE critical conflation.",
+  "user_prompt": "Nah, don't ping coach about lecture content updates. And by the way the date is Wednesday May 27, not Sunday.",
+  "ecosystem_state": {
+    "active_surfaces": [
+      {
+        "surface_id": "surface:coach-stub-1",
+        "agent_name": "coachClaude",
+        "role": "lecture-prep + calendar owner",
+        "current_task": "Drafting lecture-prep notes with 'Sunday May 24' as the canonical date."
+      },
+      {
+        "surface_id": "surface:codex-batch-stub-5",
+        "agent_name": "codex-batch-may20-21",
+        "role": "Codex worker mid-batch",
+        "design_doc_excerpt": "DESIGN.md mentions 'Sunday May 24' verbatim 14 times."
+      }
+    ]
+  },
+  "expected_orc_behavior": {
+    "segment_classification": [
+      {
+        "segment": "Nah, don't ping coach about lecture content updates",
+        "class": "subjective (scope-restriction; tone/routing-class)"
+      },
+      {
+        "segment": "the date is Wednesday May 27, not Sunday",
+        "class": "objective (date correction; user-correction of prior claim)"
+      }
+    ],
+    "two_line_ack_required": {
+      "ack_objective_pattern": "ACK on objective fact: <date verbatim> — relaying to <owner list>.",
+      "ack_subjective_pattern": "ACK on scope decision: not pinging coach about lecture *content* updates — limiting to coach-self-driven updates only."
+    },
+    "heads_up_sent_to_coach": "YES — the date fact still propagates to coach because it is OBJECTIVE and independent of the content-scope restriction.",
+    "heads_up_sent_to_codex": "YES — Codex worker has stale DESIGN.md referencing the old date.",
+    "honored_scope": "Do NOT relay lecture *content* updates to coach (the scope decision IS honored for its actual subjective scope).",
+    "brain_store_call": {
+      "importance_min": 8,
+      "required_tags": [
+        "objective-fact",
+        "fact-propagation",
+        "date",
+        "conflation-handled"
+      ]
+    }
+  },
+  "negative_assertions": [
+    "Does NOT write 'Got it. Not pinging coachClaude. ...' as a single-ACK response (the [4509] bug)",
+    "Does NOT generalize 'don't ping coach' to silence the date relay",
+    "Does NOT skip the explicit two-line ACK pattern",
+    "Does NOT incorrectly relay lecture *content* updates to coach (the scope decision IS scoped correctly)"
+  ],
+  "stub_surface_responses": {
+    "coach_stub_1_initial_screen": "...drafting lecture-prep notes for Sunday May 24...",
+    "coach_stub_1_post_relay_screen_after_5min": "...HEADS-UP received: date corrected to Wed 2026-05-27. No content updates from orc per scope decision. Acknowledged."
+  }
+}

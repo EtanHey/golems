@@ -1,0 +1,23 @@
+{
+  "specimen": "2026-07-02/fleet-wrap-compliant-etan-only-decision",
+  "label": "GREEN — waiting on a genuine Etan-only decision with monitors armed and decision left visible",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Stop at the vendor purchase decision; only I can approve the spend."
+    },
+    {
+      "role": "assistant",
+      "text": "All autonomous work is complete. The only remaining item is Etan-only: approve the vendor spend. The decision is left in front of you, and the inbound monitor is armed. Standing by for that decision."
+    }
+  ],
+  "state": {
+    "queue": [
+      { "id": "vendor-spend", "approved": false, "requiresUserInput": true, "blockedOn": "Etan approval" }
+    ],
+    "watches": [
+      { "id": "inbound-etan-decision", "active": true, "kind": "inbound_monitor" }
+    ]
+  }
+}

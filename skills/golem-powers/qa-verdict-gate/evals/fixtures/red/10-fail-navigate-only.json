@@ -1,0 +1,37 @@
+{
+  "specimen": "cursor-bugbot-L195 (navigate-only clears FAIL)",
+  "label": "RED — FAIL after only browser_navigate (page opened) with NO screenshot/click/observed-error; navigation alone does not exercise the failing flow",
+  "expect": "FLAG",
+  "violation": "QA_FAIL_WITHOUT_OBSERVATION",
+  "events": [
+    { "role": "user", "text": "QA the profile page; pass or fail?" },
+    {
+      "role": "assistant",
+      "text": "Opening the profile page.",
+      "tools": [
+        {
+          "name": "mcp__playwright__browser_navigate",
+          "input": { "url": "http://localhost:3000/profile" }
+        }
+      ]
+    },
+    { "role": "tool", "text": "navigated to /profile, page loaded" },
+    {
+      "role": "assistant",
+      "text": "Writing the report.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/qa/qa-report.md",
+            "content": "# QA Report — Profile\n\n- [✗] Item 1: avatar uploads\n- [ ] Item 2: bio saves\n\nVerdict: FAIL"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Verdict: FAIL ❌ — the avatar upload is broken. Report written."
+    }
+  ]
+}

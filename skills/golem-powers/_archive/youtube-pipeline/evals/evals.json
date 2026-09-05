@@ -1,0 +1,69 @@
+{
+  "skill_name": "youtube-pipeline",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Process this video for me: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "expected_output": "Uses exa web_search (NOT WebFetch) with the full YouTube URL as query. Then calls brain_digest on the transcript. Then calls brain_store with structured conclusions tagged with 'youtube'. Reports key takeaways to user.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-exa-not-webfetch",
+          "description": "Calls web_search_exa with the full YouTube URL as the query parameter — does NOT attempt WebFetch which fails on YouTube"
+        },
+        {
+          "name": "calls-brain-digest-on-transcript",
+          "description": "Passes the raw transcript text to brain_digest for entity/relation extraction before storing conclusions"
+        },
+        {
+          "name": "calls-brain-store-with-youtube-tag",
+          "description": "Calls brain_store with structured conclusions and includes 'youtube' in the tags array"
+        },
+        {
+          "name": "includes-author-slug-tag",
+          "description": "Tags in brain_store include an author slug (e.g., 'rick-astley') derived from the video author, not just generic tags"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Watch this Theo video and tell me what's interesting: https://www.youtube.com/watch?v=abc123xyz",
+      "expected_output": "Three-step pipeline: exa search -> brain_digest -> brain_store. Reports key findings with connection to current projects. Tags include 'youtube' and 'theo-browne'.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "follows-three-step-pipeline",
+          "description": "Executes all 3 steps in order: (1) exa web_search_exa, (2) brain_digest, (3) brain_store — not just fetching and summarizing inline"
+        },
+        {
+          "name": "stores-structured-conclusions",
+          "description": "brain_store content includes structured format with video title, author, key findings as numbered list, and action items"
+        },
+        {
+          "name": "reports-project-connections",
+          "description": "Summary mentions how findings connect to current projects (golems, voicelayer, etc.) — not just a generic video summary"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I have 3 videos to process: https://youtube.com/watch?v=vid1, https://youtube.com/watch?v=vid2, https://youtube.com/watch?v=vid3. Extract knowledge from all of them.",
+      "expected_output": "Runs exa searches in parallel (batch mode). Digests each transcript separately. Stores individual conclusions plus one synthesis. Single summary report to user.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "parallel-exa-searches",
+          "description": "Launches multiple exa web_search_exa calls in parallel (not sequentially one at a time)"
+        },
+        {
+          "name": "individual-brain-stores",
+          "description": "Calls brain_store for each video individually (not one giant store for all 3)"
+        },
+        {
+          "name": "synthesis-store",
+          "description": "After individual stores, creates one synthesis brain_store that connects findings across the 3 videos"
+        }
+      ]
+    }
+  ]
+}

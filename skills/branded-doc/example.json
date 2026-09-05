@@ -1,0 +1,52 @@
+{
+  "title": "Project Feedback — Appendix A",
+  "date": "1 March 2026",
+  "recipient": "Client Name — Company",
+  "intro": [
+    "Hi Client,",
+    "I reviewed the latest version of the appendix. Below are my notes, organized by section."
+  ],
+  "sections": [
+    {
+      "num": 1,
+      "title": "Section 3.4 — Late Penalty (1% per day)",
+      "tag": "remove",
+      "body": "I'd like to remove this clause entirely. In software development, delays happen: unexpected bugs, spec changes, dependencies on your side like approvals or assets. If there's a delay, I'll update you in advance. But an automatic deduction mechanism per day doesn't fit development work."
+    },
+    {
+      "num": 2,
+      "title": "Section 7.2 — Open Source Restriction",
+      "tag": "change",
+      "body": "Every modern application is built on Open Source libraries. React Native itself is Open Source, as is Firebase SDK and every npm package. This restriction effectively blocks all development work. I suggest replacing with: \"Standard Open Source libraries are pre-approved. Only licenses that require source code disclosure (GPL, AGPL) require written approval.\""
+    },
+    {
+      "num": 3,
+      "title": "Portfolio Rights",
+      "tag": "add",
+      "body": "I'd like to add: \"The service provider has the right to mention the project name in portfolios and resumes, with a brief description of the work, without exposing code or proprietary details.\""
+    },
+    {
+      "num": 4,
+      "title": "Approval Timeline",
+      "tag": "add",
+      "body": "I'd like to add: \"The client will approve or provide written feedback within 5 business days. If no response is received, the deliverable is deemed approved.\""
+    },
+    {
+      "num": 5,
+      "title": "Items I Accept in v6",
+      "tag": "note",
+      "body": "These clauses were addressed and I'm satisfied with the current wording: Open Source permissive/copyleft distinction, 6-month non-compete narrowed to the specific domain, code in client repos, NDA signed."
+    }
+  ],
+  "pricing": {
+    "title": "Pricing",
+    "headers": ["Plan", "Rate", "Total"],
+    "rows": [
+      ["Hour Block (retainer)", "$100/hr", "50% upfront, 50% on completion"],
+      ["Ad-hoc (hourly)", "$120/hr", "Weekly billing"]
+    ],
+    "note": "All prices exclude VAT where applicable."
+  },
+  "availability": "Immediately. I can start as soon as we sign.",
+  "closing": "Looking forward to your response. Happy to hop on a quick call after you review this."
+}

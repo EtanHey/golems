@@ -1,0 +1,77 @@
+{
+  "skill_name": "skills",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "What skills do I have installed? Run /skills to show me.",
+      "expected_output": "Runs the discovery script against ~/.claude/skills/, outputs a grouped markdown table with skill names, descriptions, sources (golem-powers/superpowers/custom), and workflow counts.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "scans-skills-directory",
+          "description": "Scans ~/.claude/skills/ directory (the actual installed skills location), not a hardcoded list. Discovers skills dynamically by reading SKILL.md frontmatter."
+        },
+        {
+          "name": "groups-by-category",
+          "description": "Output is grouped into categories (Infrastructure, Domain, Custom) — not a flat unsorted list. Categories are determined by keyword matching on skill name+description."
+        },
+        {
+          "name": "shows-description-not-content",
+          "description": "Shows the short description from frontmatter for each skill, NOT the full SKILL.md contents. The skill is a discovery tool, not a content dumper."
+        },
+        {
+          "name": "includes-source-column",
+          "description": "Each skill row includes its source (golem-powers, superpowers, or custom) determined by resolving symlinks and checking the path."
+        },
+        {
+          "name": "includes-workflow-count",
+          "description": "Shows the number of workflows (sub-procedures) for skills that have a workflows/ directory, displayed as a count in the table."
+        },
+        {
+          "name": "includes-superpowers",
+          "description": "Superpowers skills (from the superpowers directory) are included in the listing alongside golem-powers skills — not omitted."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run /skills --search git to find git-related skills.",
+      "expected_output": "Filters the skill list to only show skills whose name or description matches 'git', presented in the same grouped table format.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "filters-by-keyword",
+          "description": "Output only includes skills where the name or description matches the search keyword 'git'. Non-matching skills are excluded."
+        },
+        {
+          "name": "maintains-table-format",
+          "description": "Filtered results use the same grouped markdown table format as the full listing — not a different output format."
+        },
+        {
+          "name": "case-insensitive-search",
+          "description": "Search is case-insensitive (grep -qi) as specified in the skill — 'git' matches 'Git', 'GitHub', etc."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Show me all my skills. For each one, dump the full SKILL.md file contents so I can review them all.",
+      "expected_output": "Lists skills with descriptions in the standard table format. Does NOT dump full SKILL.md contents for every skill — that would burn context. Suggests invoking specific skills to see their full docs.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "does-not-dump-full-contents",
+          "description": "Does NOT read and output the full SKILL.md for every installed skill. The /skills skill is for DISCOVERY (names + descriptions), not content dumping. Full content would burn the context window."
+        },
+        {
+          "name": "suggests-direct-invocation",
+          "description": "Suggests the user invoke a specific skill (e.g., /github) to see its full documentation, rather than dumping everything at once."
+        },
+        {
+          "name": "still-shows-table",
+          "description": "Still produces the standard grouped table output with descriptions — doesn't refuse entirely, just scopes to the discovery format."
+        }
+      ]
+    }
+  ]
+}

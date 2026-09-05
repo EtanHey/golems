@@ -1,0 +1,22 @@
+{
+  "specimen": "false-positive-guard/decision-with-rec",
+  "label": "GREEN — an async decision posted to collab WITH a recommendation",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Surface the socket-ownership decision." },
+    {
+      "role": "assistant",
+      "text": "Posting with my recommendation.",
+      "tools": [
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-06-22-cmux.md",
+            "old_string": "x",
+            "new_string": "### orcClaude\nDECISION: RAM watchdog ownership — systems repo vs cmuxlayer fork. I recommend the systems repo (single canonical copy, avoids the fork-drift that blocked clx-03). Proceeding with that unless you say otherwise."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "provenance": [
+    {
+      "agent_or_arm": "authorized_round_2_control_baseline_without_skill",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "gpt-5.6-luna",
+      "effort_effective": "max",
+      "model_observation_source": "CLI status line: round2-control-live/pin-preflight.log lines 7-13; 1 preflight observation applied to 3 workers by construction, shared across 2 compared arms (this arm: 1 worker); per-worker banners are not emitted under --json",
+      "effort_observation_source": "CLI status line: round2-control-live/pin-preflight.log lines 7-13; 1 preflight observation applied to 3 workers by construction, shared across 2 compared arms (this arm: 1 worker); per-worker banners are not emitted under --json"
+    },
+    {
+      "agent_or_arm": "authorized_round_2_control_green_with_skill",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "gpt-5.6-luna",
+      "effort_effective": "max",
+      "model_observation_source": "CLI status line: round2-control-live/pin-preflight.log lines 7-13; 1 preflight observation applied to 3 workers by construction, shared across 2 compared arms (this arm: 2 workers); per-worker banners are not emitted under --json",
+      "effort_observation_source": "CLI status line: round2-control-live/pin-preflight.log lines 7-13; 1 preflight observation applied to 3 workers by construction, shared across 2 compared arms (this arm: 2 workers); per-worker banners are not emitted under --json"
+    }
+  ],
+  "baseline_without_skill": {
+    "passed": 0,
+    "score_pct": 0.0,
+    "total": 3
+  },
+  "contamination_check_passed": true,
+  "control_gate_passed": true,
+  "control_report": {
+    "findings": [],
+    "repo": "shared-helper-control",
+    "revision": "fixture-sha256:75c8c4cfe26fe1505dbe0c48763ebb5840d326172fa6b71635610a6c96bdcf1b"
+  },
+  "fixture_revision": "fixture-sha256:75c8c4cfe26fe1505dbe0c48763ebb5840d326172fa6b71635610a6c96bdcf1b",
+  "green_with_skill": {
+    "passed": 3,
+    "score_pct": 100.0,
+    "total": 3
+  },
+  "pin": {
+    "effort": "max",
+    "fallback_used": false,
+    "model": "gpt-5.6-luna",
+    "requested_effort": "max"
+  },
+  "results_path": "/private/tmp/convention-audit-round2-authorized-control/control-live-20260802T220628Z/results.json",
+  "telemetry": {
+    "cached_input_tokens": 353536,
+    "cost_source": "unavailable",
+    "cost_usd": null,
+    "input_tokens": 443101,
+    "output_tokens": 7155,
+    "wall_seconds": 168.605
+  }
+}

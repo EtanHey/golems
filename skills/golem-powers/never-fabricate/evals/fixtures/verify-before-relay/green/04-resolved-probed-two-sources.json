@@ -1,0 +1,37 @@
+{
+  "specimen": "gen-18 Track 2 #4 / R-008 — GREEN resolved-probed-two-sources",
+  "class": "freshness-RESOLVED-without-probe",
+  "label": "GREEN — RESOLVED backed by an artifact-existence probe AND a second independent evidence check",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Is R-031 resolved?" },
+    {
+      "role": "assistant",
+      "text": "Probing the artifact exists, then corroborating with a second independent source.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "ls docs/research/results/R-031.md && cat docs/research/results/R-031.md"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": { "command": "grep -r 'R-031' docs/architecture/decisions/" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "R-031.md exists. Content: 'socket-direct read path chosen, ADR-0042.'"
+    },
+    {
+      "role": "tool",
+      "text": "docs/architecture/decisions/ADR-0042.md: 'R-031 socket-direct — accepted, implemented in PR #480.'"
+    },
+    {
+      "role": "assistant",
+      "text": "R-031 is RESOLVED — confirmed the results artifact exists (ls + cat) AND corroborated by an independent ADR (ADR-0042, implemented in PR #480). Two independent sources, artifact probed. Marking it done."
+    }
+  ]
+}

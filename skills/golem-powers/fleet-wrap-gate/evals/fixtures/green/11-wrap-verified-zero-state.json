@@ -1,0 +1,16 @@
+{
+  "specimen": "durable registry — wrap with verified zero cron/loop state",
+  "label": "GREEN — terminal wrap and durable state confirms no live crons or loops.",
+  "expect": "PASS",
+  "state": {
+    "crons": [],
+    "loops": []
+  },
+  "events": [
+    { "role": "user", "text": "wrap the fleet" },
+    {
+      "role": "assistant",
+      "text": "Fleet wrapped; the decision is left for Etan; going silent."
+    }
+  ]
+}

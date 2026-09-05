@@ -1,0 +1,59 @@
+{
+  "skill_name": "archive",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/archive — I want to archive the current sprint and clean up completed stories.",
+      "expected_output": "Creates a timestamped archive directory in docs.local/prd-archive/ containing index.json, all story files, and progress.txt. Then removes completed stories (passes=true) while preserving pending and blocked stories. Resets the PRD index.",
+      "files": [
+        "/opt/private/coordination/skill-evals/archive/evals/fixtures/sample-prd-index.json",
+        "/opt/private/coordination/skill-evals/archive/evals/fixtures/sample-story-completed.json",
+        "/opt/private/coordination/skill-evals/archive/evals/fixtures/sample-story-pending.json"
+      ],
+      "assertions": [
+        {
+          "name": "creates-timestamped-archive-directory",
+          "description": "Creates an archive directory with a timestamp pattern (e.g., docs.local/prd-archive/20260307-HHMMSS/)"
+        },
+        {
+          "name": "archives-before-cleanup",
+          "description": "Creates the archive snapshot BEFORE removing any completed stories — safety-first approach"
+        },
+        {
+          "name": "preserves-pending-and-blocked",
+          "description": "Does NOT remove stories that are pending (passes=false) or in the blocked array — only completed stories get cleaned"
+        },
+        {
+          "name": "resets-prd-index-after-cleanup",
+          "description": "Updates the PRD index.json to reflect the remaining stories after cleanup (stats reset, completed array cleared)"
+        },
+        {
+          "name": "uses-archive-scripts",
+          "description": "Uses or references the skill's archive-snapshot.sh and/or cleanup-completed.sh scripts rather than implementing archive logic from scratch"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/archive — just take a snapshot, don't clean anything up.",
+      "expected_output": "Creates a snapshot-only archive without removing any stories. The full current PRD state is preserved in docs.local/prd-archive/ with timestamp. No stories are deleted or modified.",
+      "files": [
+        "/opt/private/coordination/skill-evals/archive/evals/fixtures/sample-prd-index.json"
+      ],
+      "assertions": [
+        {
+          "name": "creates-snapshot-without-cleanup",
+          "description": "Creates the archive snapshot but does NOT remove or modify any existing story files or the PRD index"
+        },
+        {
+          "name": "archive-contains-full-state",
+          "description": "Archive directory contains index.json, all story files (completed + pending + blocked), and progress.txt"
+        },
+        {
+          "name": "no-stories-deleted",
+          "description": "No story files are deleted from the working PRD directory — this is snapshot-only"
+        }
+      ]
+    }
+  ]
+}

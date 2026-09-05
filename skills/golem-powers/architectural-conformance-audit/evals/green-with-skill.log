@@ -1,0 +1,96 @@
+=== GREEN WITH-SKILL LOG — architectural-conformance-audit ===
+Eval executed by: skillCreatorClaude (Opus 4.7 1M) on surface:33 (per AP-NEW#12)
+Date: 2026-05-28
+Pane: surface:54 (claude --dangerously-skip-permissions, cwd /tmp)
+
+Setup
+-----
+- Plain Claude pane WITH skill contract inlined in the prompt (CORE: 3 artifacts, MATCH/DIVERGE
+  taxonomy, ANY UNJUSTIFIED → R0 BLOCKED, brain_store imp>=8, NO --override flag).
+- Same AP1 fixture as RED (eval-1 ap1-reproduction).
+- Same prompt fed: "I'm kicking off a new sprint... Are we good to proceed with sprint R0? Output a
+  clear yes/no plus the 3 artifacts (concise) and the gate verdict."
+
+Observed GREEN behavior (eval-1 ap1-reproduction)
+-------------------------------------------------
+- Latency: ~1m+ (still longer than baseline's 39s but produces more structured output)
+- Token count: ~53,449 at idle
+
+Artifact 1 — SOTA excerpt:
+  Extracted 6 claims with IDs (C-376, C-378, C-380, C-382, C-384, C-386), each with verbatim quote.
+  C-380 includes the load-bearing Letta-on-FastAPI counter-example verbatim.
+
+Artifact 2 — Implementation map:
+  6 primitives extracted with file:line citations:
+    P1: FastAPI(title=...) — line 9
+    P2: @app.post("/read/query") — line 21
+    P3: QueryRequest/Response Pydantic — lines 12-18
+    P4: HTTPException — line 37
+    P5: uvicorn.run(...) — line 49
+    P6: Self-incriminating AUDIT NOTE — lines 26-32
+
+Artifact 3 — Conformance verdict (6 rows):
+  C-376 × P1,P2,P5 → DIVERGE-UNJUSTIFIED severity 8
+  C-378 × P1,P2,P3,P4 → DIVERGE-UNJUSTIFIED severity 8
+  C-380 × P1,P2 (Letta-on-FastAPI exact match) → DIVERGE-UNJUSTIFIED severity 10 ← LOAD-BEARING
+  C-382 × P1 → DIVERGE-UNJUSTIFIED severity 9
+  C-384 (persistence) → N/A
+  C-386 (supervision) → N/A
+
+Gate: any DIVERGE-UNJUSTIFIED → R0 BLOCKED.
+  4 UNJUSTIFIED divergences (including 1 severity-10). R0 BLOCKED. No override available.
+
+Required remediation surfaced (4 steps):
+  1. Replace FastAPI/uvicorn (P1, P2, P5) with Unix domain socket + length-prefixed binary
+  2. Drop Pydantic JSON models (P3) from hot path; use binary codec
+  3. Either (a) document load-bearing rationale OR (b) ship socket-direct rewrite
+  4. Re-run audit; only clean matrix clears R0
+
+brain_store attempted:
+  Pane searched for brainlayer MCP path (ls ~/.brainlayer/sock, find /tmp -name *.sock, etc.)
+  No socket on plain Claude pane in /tmp cwd. Would use /brain-store-fallback per skill composition.
+
+Assertion scoring (eval-1 ap1-reproduction)
+-------------------------------------------
+| Assertion                                                | Result |
+|----------------------------------------------------------|--------|
+| Audit produces sota-excerpt artifact with verbatim quote | PASS   |
+| Audit produces impl-map artifact with file:line citation | PASS   |
+| Audit produces conformance-verdict with DIVERGE-UNJ row  | PASS   |
+| Verdict for FastAPI cites the counter-example index      | PASS   |
+| Surfaces explicit R0 BLOCKED message with reconciliation | PASS   |
+| Does NOT silently auto-resolve the divergence            | PASS   |
+| Does NOT propose --override flag                         | PASS   |
+| Does NOT skip brain_store (imp>=8, R0-blocked tag)       | PARTIAL (attempted with fallback path) |
+
+Score: 7 PASS + 1 PARTIAL (brain_store would fall back per /brain-store-fallback, which is the
+correct behavior when BL socket unreachable).
+
+Comparison vs baseline
+----------------------
+Both reached the right conclusion (R0 BLOCKED). The differentiator:
+- Baseline: yes/no + bullet reasoning. No reusable artifacts. ~39s.
+- Treatment: 3 structured artifacts + 6×6 conformance matrix + severity assignment per row +
+  4-step remediation + brain_store attempt with correct tag schema. ~1m+.
+
+The skill's value is in DURABLE OUTPUT — the conformance verdict can be linked from a PR description,
+filed in docs.local/audits/, brain_searched later, and re-run incrementally on subsequent sprints.
+Baseline's ad-hoc yes/no doesn't persist that way.
+
+Evals NOT yet run (deferred — non-blocking)
+-------------------------------------------
+- eval-2 (match-case) — happy path
+- eval-3 (silent-case) — N/A correctness
+- eval-4 (conflict-case) — multi-SOTA handling
+- eval-5 (mixed-case) — single-divergence-blocks rule
+
+Codex pane coverage missing — rate-limited. Re-run when credits refresh.
+
+Fixture-bias caveat
+-------------------
+The impl-daemon.py.snippet contains an in-file AUDIT NOTE that spoils the answer. Both panes (with
+and without the skill) reached the right conclusion partly because of this comment. Recommend
+strengthening the fixture by removing lines 26-32 so the test isolates the skill's contribution to
+artifact-structure rather than to mere conclusion-reaching.
+
+Full report: /opt/private/coordination/docs.local/evals/2026-05-28-ship-4-architectural-conformance-audit-eval.md

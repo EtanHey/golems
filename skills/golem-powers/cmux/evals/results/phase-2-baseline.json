@@ -1,0 +1,81 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "cmux",
+  "eval_type": "behavior",
+  "eval_file": "evals/behavior/evals.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/cmux/SKILL.md",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "open-visible-terminal-pane",
+      "assertions": [
+        {
+          "name": "second-terminal-pane-exists",
+          "result": "PASS",
+          "evidence": "Splits section: 'cmux new-split right — adds a right split in current workspace'. Creates actual pane, not a description."
+        },
+        {
+          "name": "new-pane-is-usable-immediately",
+          "result": "PASS",
+          "evidence": "After new-split, pane is in shell-ready state. 'cmux send --surface surface:3 cmd\\n' can be used immediately to run commands."
+        },
+        {
+          "name": "original-workspace-remains-readable",
+          "result": "PASS",
+          "evidence": "Splitting creates a new surface alongside the existing one — the original pane remains the current context."
+        }
+      ]
+    },
+    {
+      "eval_id": "send-command-to-target-pane",
+      "assertions": [
+        {
+          "name": "command-lands-on-requested-surface",
+          "result": "PASS",
+          "evidence": "Send Commands section: 'cmux send --surface surface:3 cmd\\n' — --surface flag targets the exact requested pane."
+        },
+        {
+          "name": "execution-is-triggered",
+          "result": "PASS",
+          "evidence": "Note: '\\n at end of send = auto-press Enter to run'. The send command triggers execution directly."
+        },
+        {
+          "name": "result-can-be-observed-from-pane",
+          "result": "PASS",
+          "evidence": "The pane is a visible split in the terminal. Operator can directly observe command output in the target surface."
+        }
+      ]
+    },
+    {
+      "eval_id": "not-in-cmux-skips-gracefully",
+      "assertions": [
+        {
+          "name": "non-cmux-state-is-detected",
+          "result": "PASS",
+          "evidence": "Detect cmux section: 'if ! command -v cmux &>/dev/null || ! cmux identify --json &>/dev/null; then ...' — checks both binary and session state."
+        },
+        {
+          "name": "broken-cmux-commands-are-not-emitted",
+          "result": "PASS",
+          "evidence": "Detection block exits with 'exit 0' before any cmux commands can execute when not in cmux."
+        },
+        {
+          "name": "fallback-or-clear-message-is-given",
+          "result": "PASS",
+          "evidence": "Detection block: 'echo Not in cmux — skipping cmux operations' provides a clear skip message to the operator."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

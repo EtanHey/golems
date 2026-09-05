@@ -1,0 +1,63 @@
+=== GREEN WITH-WORKFLOW LOG — orc/workflows/fact-propagation ===
+Eval executed by: skillCreatorClaude (Opus 4.7 1M) on surface:33 (per AP-NEW#12)
+Date: 2026-05-28
+Pane: surface:49 (claude --dangerously-skip-permissions, cwd /tmp)
+
+Setup
+-----
+- Plain Claude pane WITH workflow context inlined (CORE DISTINCTION + 5 steps + HEADS-UP format +
+  AP1-6 included in the prompt).
+- Mock cross-agent dispatch identical to RED baseline (same fixtures, same stub surfaces).
+- Same prompt fed: "I'm not presenting Sunday again. I'm presenting Wednesday."
+
+Observed GREEN behavior (eval-1 date-correction)
+-------------------------------------------------
+- Latency: ~49s (vs 1m41s baseline — 2x faster despite producing MORE structured output)
+- Used HEADS-UP format verbatim:
+    "HEADS-UP (fact-propagation): Presenting date is Wednesday, NOT Sunday May 24.
+     Source: User turn (verbatim 'I'm not presenting Sunday again. I'm presenting Wednesday.')
+     Owners notified: coachClaude (surface:1), codex-batch-may20-21 (surface:5)
+     Action required: none — informational. DESIGN.md has 14 'Sunday May 24' mentions — purge/replace on next pass."
+- brain_store at importance 9 with tags:
+    ["objective-fact", "fact-propagation", "date-change", "presentation", "techgym", "user-correction"]
+- Wrote audit log entry to ~/Gits/golems/docs.local/audits/fact-propagation/2026-05-28-relays.md
+- Set up 5-min verify via ScheduleWakeup +300s -> read_screen both surfaces
+- Asked clarifying question about WHICH Wednesday (responsible disambiguation, not AP3 violation —
+  the relay was already initiated; the question was about preventing a wasted 2nd relay)
+
+Assertion scoring (eval-1)
+--------------------------
+| Assertion                                                | Result |
+|----------------------------------------------------------|--------|
+| Classifies as OBJECTIVE                                  | PASS   |
+| Identifies coach + codex worker as owners                | PASS   |
+| Sends HEADS-UP in documented format                      | PASS   |
+| Sends HEADS-UP to each owner                             | PASS   |
+| brain_store at imp>=8 with required tags                 | PASS   |
+| Sets up 5-min verify (read_screen or wait_for)           | PASS   |
+| Does NOT bury fact in parenthetical (AP1)                | PASS   |
+| Does NOT substitute conversational ACK (AP2)             | PASS   |
+| Does NOT ask permission for objective fact relay (AP3)   | PASS   |
+
+Score: 9/9. All required behaviors present. Workflow ships as-is.
+
+Bonus finding (independent corroboration of SHIP-1 deployment bug)
+------------------------------------------------------------------
+The treatment pane added an unprompted note:
+  "Note on the hook: the frustration-capture hook fired on the word 'CORE' inside the workflow
+   description quoted in your prompt — not on a real user correction in this turn."
+
+This is independent confirmation (from a separate cmux pane) that the deployed frustration-capture
+hook is false-positive-firing on 4+ char uppercase words. See full SHIP-1 re-eval report:
+/opt/private/coordination/docs.local/evals/2026-05-28-ship-1-frustration-capture-reeval.md
+
+Evals NOT yet run (deferred — non-blocking)
+-------------------------------------------
+- eval-2 (conflation, [4509] class) — should be run next
+- eval-3 (pr-merge, tool-detected) — high real-world hit rate
+- eval-4 (subjective) — confirms AP5 prevention
+- eval-5 (verify-fail-escalate) — confirms 2-relay max + escalation channel
+
+Codex coverage missing — rate-limited from prior Steinberger eval. Re-run when credits refresh.
+
+Full report: /opt/private/coordination/docs.local/evals/2026-05-28-ship-3-fact-propagation-eval.md

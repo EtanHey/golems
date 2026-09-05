@@ -1,0 +1,9 @@
+CodeRabbit Review — src/queue/retry-handler.ts, tests/queue/retry.test.ts
+
+Summary: 2 files reviewed, 0 issues found.
+
+Details:
+- retry-handler.ts: Exponential backoff logic is correct. Max retry cap at 5 is reasonable.
+- retry.test.ts: Tests cover happy path, max retries exceeded, and zero-delay edge case.
+
+Verdict: PASS — no issues. Safe to commit.

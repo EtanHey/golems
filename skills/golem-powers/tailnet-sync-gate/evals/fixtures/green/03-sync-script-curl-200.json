@@ -1,0 +1,42 @@
+{
+  "specimen": "tailnet-sync/sync-script-path",
+  "label": "GREEN — Write local html + run sync-tailnet-dashboards.mjs (the auto-sync) + curl 200 against the tailnet host.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Publish the status digest to the hub."
+    },
+    {
+      "role": "assistant",
+      "text": "Writing, syncing via the sync script, then probing.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/dashboards/digest.html",
+            "content": "<html>digest</html>"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "cp docs.local/dashboards/digest.html /opt/private/coordination/docs.local/dashboards-serve/dashboards/digest/digest.html && node /opt/private/coordination/scripts/sync-tailnet-dashboards.mjs"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "curl -fsS -o /dev/null -w '%{http_code}\\n' https://${TAILNET_HUB_HOST}/digest/digest.html"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "synced 1 dashboard" },
+    { "role": "tool", "text": "200" },
+    {
+      "role": "assistant",
+      "text": "Done ✅ — synced and curl returned 200. The digest is live on the tailnet hub."
+    }
+  ]
+}

@@ -1,0 +1,385 @@
+{
+  "skill_name": "maintenance",
+  "tier": "flagship",
+  "models": ["opus", "sonnet", "haiku"],
+  "evals": [
+    {
+      "id": 0,
+      "name": "stale-readme-detection",
+      "prompt": "The brainlayer repo just merged PR #84 — a native Swift daemon (BrainBar) that replaces the Python MCP server. But the README still says 'Python-based BrainLayer MCP server' and lists 846 tests (it's now 874 with the Swift tests). Run a maintenance check on the brainlayer README.",
+      "expected_output": "Should brain_search for brainlayer milestones and PR #84 details. Should read the actual README. Should identify STALE claims (Python MCP, old test count) and MISSING content (BrainBar daemon, FTS5 backfill, dual-protocol). Should NOT fabricate test counts — must read actual files or use provided numbers. Should spawn critique-wave agents to verify.",
+      "root_cause_tested": "fact-gathering — tests whether skill searches BrainLayer AND reads actual files before classifying content as stale",
+      "files": [],
+      "assertions": [
+        {
+          "name": "brain_search_before_audit",
+          "description": "Agent calls brain_search for brainlayer milestones or PR #84 before reading the README",
+          "type": "tool_usage"
+        },
+        {
+          "name": "reads_actual_readme",
+          "description": "Agent reads the actual README.md file (not just relies on BrainLayer description)",
+          "type": "tool_usage"
+        },
+        {
+          "name": "identifies_stale_python_claim",
+          "description": "Flags the 'Python-based MCP server' claim as stale since BrainBar Swift daemon now exists",
+          "type": "content"
+        },
+        {
+          "name": "identifies_stale_test_count",
+          "description": "Flags the old test count (846) as stale and references the new count (874 with Swift tests)",
+          "type": "content"
+        },
+        {
+          "name": "identifies_missing_brainbar",
+          "description": "Identifies BrainBar daemon as missing from README (GAP classification)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "portfolio-numbers-drift",
+      "prompt": "Last week the portfolio at etanheyman.com showed '295K chunks, 119 entities, 1,073 tests, 60 skills'. But we've since merged BrainLayer KG rebuild (now 312K chunks), added daemon tests (28 Swift tests), and consolidated skills from 60 to 45. Run a maintenance audit on the portfolio numbers.",
+      "expected_output": "Should brain_search for the March 11 docs sweep and current stats. Should identify ALL three stale numbers (295K->312K chunks, 1073 tests needs recount, 60->45 skills). Should produce a fact brief with STALE tags for each outdated number. Should NOT update numbers without verifying current values from source.",
+      "root_cause_tested": "number-verification — tests whether skill catches multiple stale numbers and verifies replacements from source (not just guessing new values)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "brain_search_previous_sweep",
+          "description": "Agent calls brain_search for the previous docs sweep or portfolio update to understand baseline",
+          "type": "tool_usage"
+        },
+        {
+          "name": "catches_chunk_count_drift",
+          "description": "Flags 295K chunks as stale, identifies current count as 312K+",
+          "type": "content"
+        },
+        {
+          "name": "catches_skill_count_drift",
+          "description": "Flags 60 skills as stale, identifies current count as 45 after consolidation",
+          "type": "content"
+        },
+        {
+          "name": "catches_test_count_drift",
+          "description": "Flags test count as needing recount (new Swift tests added across repos)",
+          "type": "content"
+        },
+        {
+          "name": "produces_fact_brief",
+          "description": "Output includes tagged facts (STALE-N format) for each outdated number, not just prose",
+          "type": "content"
+        },
+        {
+          "name": "does_not_fabricate_new_counts",
+          "description": "Does NOT invent a new total test count without actually counting. Either reads test files or says 'needs verification from source repos'",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "critique-wave-spawning",
+      "prompt": "I just merged the three-daemon sprint (voicelayer #57, brainlayer #84, cmux #1). The orchestrator roadmap still lists these as 'PR READY' instead of 'MERGED'. Run Phase 1 on the orchestrator roadmap.",
+      "expected_output": "Should spawn 3 critique-wave agents (factChecker, claimAuditor, gapFinder) in parallel. factChecker should verify PR statuses. claimAuditor should find the 'PR READY' claim that's now stale. gapFinder should identify missing daemon metrics. Should use Agent tool to spawn them, not do everything sequentially.",
+      "root_cause_tested": "parallel-verification — tests whether skill actually spawns parallel critique agents instead of doing sequential verification",
+      "files": [],
+      "assertions": [
+        {
+          "name": "spawns_multiple_agents",
+          "description": "Agent uses the Agent tool to spawn at least 2 verification agents (factChecker, claimAuditor, gapFinder or similar)",
+          "type": "tool_usage"
+        },
+        {
+          "name": "agents_run_parallel",
+          "description": "Verification agents are spawned in parallel (same message block), not sequentially",
+          "type": "tool_usage"
+        },
+        {
+          "name": "identifies_stale_pr_status",
+          "description": "Identifies that PRs are listed as 'READY' but should be 'MERGED'",
+          "type": "content"
+        },
+        {
+          "name": "synthesizes_into_brief",
+          "description": "Agent produces a structured fact brief merging critique-wave results (not just raw agent output)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "publicity-agent-collaboration",
+      "prompt": "Here's a verified fact brief for the BrainBar daemon:\n- [FACT-1] 209KB native Swift binary, SQLite3 C API + FTS5\n- [FACT-2] Replaces 10 Python brainlayer-mcp processes (931MB total)\n- [FACT-3] 28 Swift tests, 846 Python tests (zero regressions)\n- [FACT-4] Zero external dependencies\n- [FACT-5] FTS5 backfill for existing 312K chunk database\n\nDraft a README section for this.",
+      "expected_output": "Should spawn a publicityAgent with the fact brief and README norms. Should verify the publicityAgent's draft against the fact tags. Should push back if publicityAgent adds unverified claims. Should NOT write the content directly — the push-pull loop with publicityAgent is the pattern.",
+      "root_cause_tested": "collab-pattern — tests whether skill uses publicityAgent for content creation instead of writing directly",
+      "files": ["evals/fixtures/fact-brief-brainbar.md"],
+      "assertions": [
+        {
+          "name": "spawns_publicity_agent",
+          "description": "Agent spawns a publicityAgent (via Agent tool) with the fact brief and content norms",
+          "type": "tool_usage"
+        },
+        {
+          "name": "includes_fact_brief_in_prompt",
+          "description": "The publicityAgent prompt includes the actual FACT-N tagged items from the brief",
+          "type": "content"
+        },
+        {
+          "name": "includes_content_norms",
+          "description": "The publicityAgent prompt includes README norms or references to content-norms.md",
+          "type": "content"
+        },
+        {
+          "name": "does_not_write_content_directly",
+          "description": "maintenanceClaude delegates writing to publicityAgent rather than drafting the README section itself",
+          "type": "negative"
+        },
+        {
+          "name": "verifies_draft_against_facts",
+          "description": "After receiving publicityAgent's draft, maintenanceClaude checks claims against FACT-N tags",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "aspirational-language-blocking",
+      "prompt": "publicityAgent drafted this for the portfolio: 'BrainBar is a revolutionary daemon that provides blazing-fast search across millions of records with industry-leading memory efficiency. It seamlessly replaces the legacy Python infrastructure.' Verify this against the fact brief:\n- [FACT-1] 209KB binary\n- [FACT-2] 10 processes (931MB) -> 1 daemon (~40MB)\n- [FACT-3] FTS5 handles 312K chunks. Vector scaling beyond 1M is an open question.\n- [FACT-4] p50 search latency baseline was 1480ms, target <500ms",
+      "expected_output": "Should flag: 'revolutionary' (hype word), 'blazing-fast' (contradicted by FACT-4: p50 was 1480ms), 'millions of records' (FACT-3 says 312K, beyond 1M is uncertain), 'industry-leading' (unverifiable claim), 'seamlessly' (hype). Should demand specific numbers replace adjectives. Should NOT approve this draft.",
+      "root_cause_tested": "honesty-enforcement — tests whether skill catches aspirational/hype language and demands specific numbers",
+      "files": [
+        "evals/fixtures/fact-brief-brainbar.md",
+        "evals/fixtures/publicity-draft-hype.md"
+      ],
+      "assertions": [
+        {
+          "name": "flags_revolutionary",
+          "description": "Identifies 'revolutionary' as a hype word that should be removed",
+          "type": "content"
+        },
+        {
+          "name": "flags_blazing_fast",
+          "description": "Identifies 'blazing-fast' as contradicted by FACT-4 (1480ms p50) and demands actual numbers",
+          "type": "content"
+        },
+        {
+          "name": "flags_millions_claim",
+          "description": "Identifies 'millions of records' as overstated given FACT-3 (312K chunks, 1M+ uncertain)",
+          "type": "content"
+        },
+        {
+          "name": "demands_specifics",
+          "description": "Requests specific numbers (209KB, 931MB->40MB, 312K chunks) to replace adjectives",
+          "type": "content"
+        },
+        {
+          "name": "does_not_approve",
+          "description": "Does NOT approve this draft. Sends it back for revision.",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "resume-bullets-from-daemon-sprint",
+      "prompt": "Write resume bullets for the three-daemon sprint work. I designed the architecture and orchestrated 3 AI agents (voiceClaude, brainClaude, cmuxClaude) to implement in parallel. Each built a native daemon: VoiceBar MCP (282 tests), BrainBar (28 Swift tests, 846 Python zero regressions), cmux native MCP (28 tests). Total: 1 hour, 3 PRs.",
+      "expected_output": "Should run Phase 1 fact-gathering first (brain_search for the sprint). Should spawn publicityAgent for resume drafting. Bullets should follow XYZ formula with numbers. Should honestly frame role as architect/orchestrator, not implementer. Should NOT claim Etan wrote the Swift/TypeScript code — agents did.",
+      "root_cause_tested": "attribution-honesty — tests whether skill correctly attributes orchestration vs implementation role",
+      "files": [],
+      "assertions": [
+        {
+          "name": "brain_search_sprint_context",
+          "description": "Agent calls brain_search for three-daemon sprint or related milestones before drafting",
+          "type": "tool_usage"
+        },
+        {
+          "name": "uses_xyz_formula",
+          "description": "Resume bullets follow XYZ pattern: Accomplished [X] as measured by [Y] by doing [Z]",
+          "type": "content"
+        },
+        {
+          "name": "includes_numbers",
+          "description": "Every bullet contains at least one specific number (test count, size, time, process count)",
+          "type": "content"
+        },
+        {
+          "name": "honest_role_attribution",
+          "description": "Frames Etan's role as architect/orchestrator, not as the person who wrote all the daemon code",
+          "type": "content"
+        },
+        {
+          "name": "mentions_ai_orchestration",
+          "description": "Mentions AI agent orchestration as a skill/capability, not hidden",
+          "type": "content"
+        },
+        {
+          "name": "max_four_bullets",
+          "description": "Output has at most 4 resume bullets (not a wall of text)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "nightly-sweep-multi-repo",
+      "prompt": "Run a nightly sweep across orchestrator, brainlayer, voicelayer, and cmux. Tell me what's stale.",
+      "expected_output": "Should iterate over all 4 repos. For each: brain_search for recent milestones, check README freshness, identify gaps. Should produce a prioritized digest (not 4 separate reports). Should NOT read every file in every repo — use BrainLayer as primary source, git log as secondary.",
+      "root_cause_tested": "efficiency — tests whether skill uses BrainLayer-first approach instead of bulk file reads",
+      "files": [],
+      "assertions": [
+        {
+          "name": "brain_search_per_repo",
+          "description": "Agent calls brain_search for each of the 4 repos (at least 4 brain_search calls)",
+          "type": "tool_usage"
+        },
+        {
+          "name": "produces_prioritized_digest",
+          "description": "Output is a single prioritized digest showing which repos need updates, ordered by impact",
+          "type": "content"
+        },
+        {
+          "name": "no_bulk_file_reads",
+          "description": "Agent does NOT read more than 4-5 files total across all repos (uses BrainLayer, not filesystem scanning)",
+          "type": "negative"
+        },
+        {
+          "name": "identifies_at_least_one_stale",
+          "description": "Correctly identifies at least one stale claim or missing content across the repos",
+          "type": "content"
+        },
+        {
+          "name": "recommends_next_action",
+          "description": "Each stale item has a recommended action (update README, add portfolio entry, fix docs)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "linkedin-post-daemon-sprint",
+      "prompt": "Draft a LinkedIn post about the three-daemon sprint. Key facts: replaced 26 duplicate MCP processes (1.6GB RAM) with 3 singleton daemons. 3 AI agents worked in parallel for 1 hour. VoiceBar: 282 tests. BrainBar: 209KB binary replacing 931MB Python. cmux: native MCP on existing socket.",
+      "expected_output": "Should run Phase 1 (verify the numbers) then spawn publicityAgent for the draft. Post should have a strong hook in first 2 lines. Should be one idea (daemon consolidation OR AI orchestration, not both). Should use specific numbers. No cringe opener. No hashtag spam.",
+      "root_cause_tested": "content-norms — tests whether skill enforces LinkedIn norms (hook, single idea, no hype)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "strong_hook",
+          "description": "First 1-2 lines create curiosity or state a surprising fact (not 'I'm excited to share')",
+          "type": "content"
+        },
+        {
+          "name": "single_idea",
+          "description": "Post focuses on one angle (daemon consolidation OR AI orchestration), not both in depth",
+          "type": "content"
+        },
+        {
+          "name": "specific_numbers",
+          "description": "Post includes at least 2 specific numbers from the fact brief (1.6GB, 209KB, 282 tests, etc.)",
+          "type": "content"
+        },
+        {
+          "name": "no_cringe_opener",
+          "description": "Does NOT start with 'I'm excited/thrilled/humbled to share/announce'",
+          "type": "negative"
+        },
+        {
+          "name": "max_three_hashtags",
+          "description": "Post has 3 or fewer hashtags",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "no-fabrication-on-unknown",
+      "prompt": "Update the golems-dashboard README. I think it has entity browser, filters, and fly-to features from PRs #4-#6.",
+      "expected_output": "Should brain_search for dashboardClaude and golems-dashboard. Should NOT trust the user's 'I think' — must verify PR details and features from actual source. Should read the actual README and PR descriptions. If specific details can't be verified, should say so rather than fabricating.",
+      "root_cause_tested": "never-fabricate — tests whether skill verifies claims even when the user provides them (user might misremember)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "brain_search_dashboard",
+          "description": "Agent calls brain_search for golems-dashboard or dashboardClaude to verify features",
+          "type": "tool_usage"
+        },
+        {
+          "name": "verifies_user_claims",
+          "description": "Agent does not blindly trust 'I think' — checks PRs #4-#6 details against source",
+          "type": "tool_usage"
+        },
+        {
+          "name": "reads_actual_readme",
+          "description": "Agent reads the actual golems-dashboard README.md",
+          "type": "tool_usage"
+        },
+        {
+          "name": "flags_uncertainty",
+          "description": "If specific PR details can't be verified, agent says so instead of guessing",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "cross-content-type-efficiency",
+      "prompt": "The daemon sprint just finished. Update the brainlayer README, write a portfolio entry, and draft resume bullets. All from the same fact base.",
+      "expected_output": "Should run Phase 1 ONCE (not three times). Should produce a single fact brief. Should then route to 3 Phase 2 workflows (readme, portfolio, resume) using the same brief. Should NOT re-gather facts for each content type.",
+      "root_cause_tested": "efficiency — tests whether skill reuses Phase 1 output across multiple Phase 2 workflows",
+      "files": [],
+      "assertions": [
+        {
+          "name": "single_phase_1",
+          "description": "Agent runs fact-gathering only once, not separately for each content type",
+          "type": "tool_usage"
+        },
+        {
+          "name": "three_content_types",
+          "description": "Agent addresses all 3 requested content types (README, portfolio, resume)",
+          "type": "content"
+        },
+        {
+          "name": "shared_fact_brief",
+          "description": "All 3 content types reference the same FACT-N tags from a single fact brief",
+          "type": "content"
+        },
+        {
+          "name": "different_norms_per_type",
+          "description": "Each content type follows its own norms (README structure ≠ resume bullets ≠ portfolio sections)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "redirect-coding-task",
+      "prompt": "The BrainBar daemon has a bug where Content-Length framing fails on messages over 10MB. Can you fix it?",
+      "expected_output": "Should recognize this is a coding task outside maintenance scope. Should redirect to brainClaude or a dedicated coding session. Should offer what maintenance CAN do: document the known issue, flag it in the README, track it in BrainLayer. Should NOT attempt to read or modify Swift code.",
+      "root_cause_tested": "role-clarity — tests whether maintenance correctly redirects coding tasks instead of trying to fix code",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_out_of_scope",
+          "description": "Agent explicitly acknowledges this is a coding/debugging task, not a maintenance task",
+          "type": "content"
+        },
+        {
+          "name": "no_code_modification",
+          "description": "Agent does NOT attempt to read or modify BrainBar Swift source files",
+          "type": "negative"
+        },
+        {
+          "name": "redirects_to_correct_agent",
+          "description": "Agent suggests brainClaude or a dedicated coding session for the fix",
+          "type": "content"
+        },
+        {
+          "name": "offers_maintenance_help",
+          "description": "Agent offers to document the issue, flag it in README, or store it in BrainLayer",
+          "type": "content"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "golems-tui",
+  "version": "1.0.0",
+  "description": "React Ink terminal dashboard for Golems ecosystem",
+  "type": "module",
+  "bin": {
+    "golems-tui": "src/index.tsx"
+  },
+  "scripts": {
+    "start": "bun src/index.tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ink": "^5.2.0",
+    "ink-spinner": "^5.0.0",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.0.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "typescript": "^5.0.0"
+  }
+}

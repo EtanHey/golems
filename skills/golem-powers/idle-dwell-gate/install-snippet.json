@@ -1,0 +1,12 @@
+{
+  "target": "hooks.Stop[]",
+  "entry": {
+    "hooks": [
+      {
+        "type": "command",
+        "command": "/Users/example/.nvm/versions/node/v22.22.0/bin/node /Users/example/Gits/golems/skills/golem-powers/idle-dwell-gate/scripts/idle-dwell-gate-hook.mjs",
+        "timeout": 5
+      }
+    ]
+  }
+}

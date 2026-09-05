@@ -1,0 +1,94 @@
+# agada-bench — Per-CLI Capability Matrix
+#
+# Mirrors pr-loop/adapters/capabilities.yaml structure. Used by scripts/dispatch-judges.py
+# to select which adapters are eligible for the requested --judges set.
+
+skill: agada-bench
+
+adapters:
+  claude:
+    launcher: "claudeJudge -s"
+    mcp_required: false
+    model: claude-opus-4-7
+    typical_runtime_min: 12
+    judge_timeout_min: 30
+    in_default_panel: true
+    independence_rank: 3
+    tiebreaker_role: true
+    historical_fm12_rate: 0.0          # 0 hallucinations on Runs 2/3/4
+    historical_fm13_rate: 0.0          # never died
+    mean_confidence_v11: 86.6
+    unique_catches: []                 # claudeJudge contributes balanced consensus, not unique catches
+
+  codex:
+    launcher: "codexJudge -s"
+    mcp_required: false
+    model: gpt-5-codex
+    typical_runtime_min: 15
+    judge_timeout_min: 35
+    in_default_panel: true
+    independence_rank: 1               # most independent
+    tiebreaker_role: false
+    historical_fm12_rate: 0.0
+    historical_fm13_rate: 0.0
+    mean_confidence_v11: 78
+    unique_catches:
+      - "FM11 x 17 (self-referential query echo)"
+      - "FM8 x 3 (importance inversion)"
+
+  gemini:
+    launcher: "geminiJudge -s"
+    mcp_required: false
+    model: gemini-1.5-pro-002
+    typical_runtime_min: 20
+    judge_timeout_min: 40             # extra slack due to historical PTY-death incident
+    in_default_panel: true
+    independence_rank: 2
+    tiebreaker_role: false
+    historical_fm12_rate: 0.23        # Run 1 — eliminated in v1.1 prompts
+    historical_fm13_rate: 0.25        # Run 4 s:60 PTY death; liveness gate now catches
+    mean_confidence_v11: 72
+    reliability_concern: "FM13 risk — liveness gate mandatory"
+
+  cursor:
+    launcher: "cursorJudge -s"
+    mcp_required: false
+    model: cursor-agent-auto
+    typical_runtime_min: 10
+    judge_timeout_min: 30
+    in_default_panel: false           # dropped per W3.2 κ matrix
+    independence_rank: 4              # most redundant
+    tiebreaker_role: false
+    historical_fm12_rate: 0.0
+    historical_fm13_rate: 0.0
+    mean_confidence_v11: 81           # best raw calibration
+    redundancy_pair: "claude"         # κ(claude, cursor) = 0.811 is highest pair
+
+# Panel composition
+panels:
+  default:
+    judges: [claude, codex, gemini]
+    tiebreaker: claude
+    pending_rt_cascade: opus-4-7
+    liveness_check: strict
+    row_tolerance: 0.05
+
+  v1_1_reproduction:
+    judges: [claude, codex, gemini, cursor]
+    tiebreaker: claude
+    pending_rt_cascade: etan-adjudicate   # historical Runs 1–4 used manual adjudication
+    liveness_check: warn-only             # historical runs predate liveness gate
+    row_tolerance: 0.05
+
+  smoke:
+    judges: [claude]
+    tiebreaker: claude
+    pending_rt_cascade: discard-fm14      # smoke runs aren't gold-locked
+    liveness_check: warn-only
+    row_tolerance: 0.10
+
+# Gaps requiring orchestration
+gaps:
+  none:                              # All 3 judges are self-contained; no MCP, no post-merge tracking
+    - judges_are_independent: true   # nothing to orchestrate between them
+    - liveness_gate_catches_drift: true

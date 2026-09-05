@@ -1,0 +1,12 @@
+{
+  "name": "content-golem",
+  "version": "1.0.0",
+  "description": "ContentGolem — LinkedIn posts, Soltome publishing, ghostwriting, and content strategy",
+  "author": {
+    "name": "Etan Heyman",
+    "url": "https://github.com/EtanHey"
+  },
+  "repository": "https://github.com/EtanHey/golems",
+  "license": "MIT",
+  "keywords": ["golem", "content", "linkedin", "soltome", "writing"]
+}

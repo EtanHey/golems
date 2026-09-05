@@ -1,0 +1,22 @@
+{
+  "specimen": "cursor-bugbot/permission-denied-on-non-setup-dispatch-is-not-blocker-doctrine",
+  "events": [
+    { "role": "user", "text": "Spawn a worker to inspect a restricted log.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching a non-setup inspection worker.",
+      "tools": [
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Inspect current git status and summarize accessible logs."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "spawned worker; /var/log/private.log returned permission denied", "tools": [] }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "skill_name": "figma-swarm",
+  "tier": "flagship",
+  "models": [
+    "opus",
+    "sonnet",
+    "haiku",
+    "gemini",
+    "cursor-gpt5.3",
+    "glm-4.7-flash",
+    "qwen-7b"
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have 6 profile screens in Figma (node IDs: 540:9301, 540:9372, 687:6107, 540:9464, 540:9559, 540:9823). File key is ZTrCM0RDRJQT4m2xGzKEBR. Decompose all screens, map to our ui-native components, and figure out what needs building.",
+      "expected_output": "Creates collab/figma-swarm/profile/ structure, spawns 6 screen agents via /cmux-agents, each produces a decomposition file, shared components are registered in component-needed.md with consensus protocol",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "description": "Invokes /cmux-agents to spawn screen agents (not sequential, parallel)"
+        },
+        {
+          "type": "content",
+          "description": "Creates collab/figma-swarm/ directory structure with component-needed.md and mailbox"
+        },
+        {
+          "type": "content",
+          "description": "Uses Figma MCP to screenshot at least one screen"
+        },
+        {
+          "type": "content",
+          "description": "Maps components against existing inventory (matched/close/missing)"
+        },
+        {
+          "type": "content",
+          "description": "Registers missing components in component-needed.md with specs"
+        },
+        {
+          "type": "content",
+          "description": "References consensus protocol for shared components"
+        },
+        {
+          "type": "negative",
+          "description": "Does NOT build all components sequentially itself — delegates to agents"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Two of my screen agents both need a BottomDrawer component but with different heights. Agent-A wants 60% and Agent-B wants 40%. How do they resolve this?",
+      "expected_output": "Applies consensus protocol: suggests making BottomDrawer a single component with a height prop (variant consolidation). Requires 2 straight consensus loops between Agent-A and Agent-B. If they can't agree, flags to orchestrator.",
+      "assertions": [
+        {
+          "type": "content",
+          "description": "References 2-straight-consensus-loops rule"
+        },
+        {
+          "type": "content",
+          "description": "Suggests variant consolidation (one component with height prop) rather than two separate components"
+        },
+        {
+          "type": "content",
+          "description": "Describes the claim → wait → negotiate → agree → agree again flow"
+        },
+        {
+          "type": "content",
+          "description": "Mentions escalation to orchestrator if consensus fails"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The designer updated 3 screens in Figma since we last mapped them. Check for drift.",
+      "expected_output": "Follows drift workflow: re-screenshots the 3 screens, compares against stored decompositions, produces a drift report with changes detected (new/removed/changed components)",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "description": "Uses Figma MCP to re-screenshot screens"
+        },
+        {
+          "type": "content",
+          "description": "Compares against existing screen decomposition files"
+        },
+        {
+          "type": "content",
+          "description": "Produces a drift report with change categories (NEW/REMOVED/CHANGED)"
+        },
+        {
+          "type": "content",
+          "description": "Suggests updates to component registry based on drift"
+        }
+      ]
+    }
+  ]
+}

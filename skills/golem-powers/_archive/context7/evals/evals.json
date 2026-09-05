@@ -1,0 +1,65 @@
+{
+  "skill_name": "context7",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How do I use the new React Server Components with Next.js app router? Show me the current API.",
+      "expected_output": "First resolves the library ID (e.g., /vercel/next.js) using resolve-library, THEN queries docs with that ID. Does not skip the resolve step or guess the library ID.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "resolves-library-id-first",
+          "description": "Calls resolve-library-id (MCP tool or CLI script) to search for the library BEFORE querying docs — does not hardcode or guess the Context7 library ID"
+        },
+        {
+          "name": "queries-docs-with-resolved-id",
+          "description": "After getting the library ID from resolve, calls query-docs (MCP tool or CLI script) with that ID and a relevant query about server components/app router"
+        },
+        {
+          "name": "returns-code-examples",
+          "description": "Response includes actual code examples from the Context7 documentation, not just descriptions from general knowledge"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need the API reference for iced (the Rust GUI framework). What widgets are available and how do I create a button with an on_press handler?",
+      "expected_output": "Resolves 'iced' to its Context7 library ID first. Then queries for button/widget documentation. Returns current API signatures, not outdated ones from training data.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "resolves-iced-library-id",
+          "description": "Calls resolve-library-id with 'iced' (or 'iced-rs') to find the correct Context7 library ID — does not assume the ID"
+        },
+        {
+          "name": "queries-for-button-widget-docs",
+          "description": "Queries Context7 docs specifically about button/widget/on_press — not just generic 'iced' documentation"
+        },
+        {
+          "name": "uses-context7-not-training-data",
+          "description": "Response cites or includes documentation snippets from Context7, not just reciting from training data knowledge of iced"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "What's the correct way to set up Convex schema validation with v.object and v.string? The docs I found online seem outdated.",
+      "expected_output": "Resolves Convex library ID via Context7. Queries for schema validation docs. Returns up-to-date API with current function signatures. Handles large doc blocks appropriately (summarizes or delegates if >100 lines).",
+      "files": [],
+      "assertions": [
+        {
+          "name": "two-step-resolve-then-query",
+          "description": "Performs the two-step Context7 flow: (1) resolve-library-id for 'convex', (2) query-docs with resolved ID — both steps are explicit"
+        },
+        {
+          "name": "schema-specific-query",
+          "description": "Query to Context7 is specific to schema/validation (mentions v.object, v.string, schema, or validators) — not a generic 'convex' query"
+        },
+        {
+          "name": "handles-large-docs-appropriately",
+          "description": "If Context7 returns a large documentation block (>100 lines), summarizes or uses the summarize-file script rather than dumping raw docs into context"
+        }
+      ]
+    }
+  ]
+}

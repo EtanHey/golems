@@ -1,0 +1,59 @@
+=== RED BASELINE LOG — orc/workflows/fact-propagation ===
+Eval executed by: skillCreatorClaude (Opus 4.7 1M) on surface:33 (per AP-NEW#12)
+Date: 2026-05-28
+Pane: surface:48 (claude --dangerously-skip-permissions, cwd /tmp)
+
+Setup
+-----
+- Plain Claude pane WITHOUT the workflow file in scope (no role-priming with the workflow text).
+- Mock cross-agent dispatch from fixtures/eval-1-date-correction.json:
+    coachClaude on surface:1 (TechGym lecture-prep, DESIGN.md mentions "Sunday May 24")
+    codex-batch-may20-21 on surface:5 (Codex worker, DESIGN.md mentions "Sunday May 24" 14 times)
+- Prompt fed (verbatim):
+    "I'm not presenting Sunday again. I'm presenting Wednesday."
+
+Observed RED behavior (matches the historical bug — F69, gen-7 collapse class)
+------------------------------------------------------------------------------
+1. Conversational reasoning instead of structured propagation. The agent spent ~1m41s reasoning about
+   the staleness of the DESIGN.md references and what to do, instead of immediately classifying +
+   relaying per a workflow.
+2. NO HEADS-UP format used. The "Action: Halt s:5 / Halt s:1" lines are dispatcher actions, not
+   fact-propagation relays. No "HEADS-UP (fact-propagation):" header anywhere in the output.
+3. AP3 reproduced — asked user permission. Final output ended with:
+   "Open question for you (Etan): Wed May 27 already happened. Do you want (a) post-mortem of how
+    the lecture actually went, (b) re-prep for a new Wednesday (Jun 3?), or (c) just kill both
+    workers and walk away? Workers are staged-halted pending your call."
+   This is exactly AP3 (asking permission for an objective fact relay). The fact should auto-relay;
+   the scope of HOW to use it can be subjective and asked.
+4. AP2 reproduced — conversational ACK substituted for relay. The "open question" + "workers are
+   staged-halted" pattern IS the conversational ACK substitution; relay was deferred to a later
+   user decision.
+5. brain_store attempt fired at importance 10 (correct), BUT the staged content was queued because
+   plain Claude pane lacks the brainlayer MCP socket. This is acceptable behavior (use brain_store
+   fallback per SHIP-2). Tags were not visible in the truncated narrow-pane output; missing the
+   'fact-propagation' tag is likely.
+6. No 5-min verify mechanism set up. No read_screen plan, no wait_for plan.
+
+Pass criteria for RED — MET
+---------------------------
+RED is "correct" when it FAILS to propagate. Baseline pane failed in exactly the documented ways
+(AP2 + AP3 + missing HEADS-UP format + missing verify). This proves the historical bug is
+reproducible and the workflow's marginal value is real.
+
+Assertion scoring (eval-1)
+--------------------------
+| Assertion                                                | Result  |
+|----------------------------------------------------------|---------|
+| Classifies as OBJECTIVE                                  | PASS    |
+| Identifies coach + codex worker as owners                | PASS    |
+| Sends HEADS-UP in documented format                      | FAIL    |
+| Sends HEADS-UP to each owner                             | FAIL    |
+| brain_store at imp>=8 with required tags                 | PARTIAL |
+| Sets up 5-min verify                                     | FAIL    |
+| Does NOT bury fact in parenthetical (AP1)                | PASS    |
+| Does NOT substitute conversational ACK (AP2)             | FAIL    |
+| Does NOT ask permission for objective fact relay (AP3)   | FAIL    |
+
+Score: 3/9 + 1 partial. The 4 failures are the exact failure class the workflow exists to fix.
+
+Full report: /opt/private/coordination/docs.local/evals/2026-05-28-ship-3-fact-propagation-eval.md

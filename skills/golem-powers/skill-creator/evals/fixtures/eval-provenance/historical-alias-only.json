@@ -1,0 +1,8 @@
+{
+  "date": "2026-04-05",
+  "eval_id": "legacy-result",
+  "provenance": "alias-only",
+  "agent": {
+    "model": "Sonnet 4.6"
+  }
+}

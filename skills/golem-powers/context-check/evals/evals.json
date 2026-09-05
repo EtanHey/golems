@@ -1,0 +1,137 @@
+[
+  {
+    "name": "audit-known-project",
+    "prompt": "I'm in the TaskOwl app directory (~/Gits/TaskOwl-app). Run a context check to see if my AI context is set up correctly for this project.",
+    "expected_behaviors": [
+      {
+        "id": "reads-registry",
+        "description": "Reads ~/.golems/config.yaml to find the project's context profile",
+        "assertion": "contains",
+        "value": "config.yaml"
+      },
+      {
+        "id": "identifies-project",
+        "description": "Correctly identifies the project as 'taskowl'",
+        "assertion": "contains",
+        "value": "taskowl"
+      },
+      {
+        "id": "runs-audit-script",
+        "description": "Runs the audit.sh script to check context",
+        "assertion": "contains",
+        "value": "audit.sh"
+      },
+      {
+        "id": "reports-skill-waste",
+        "description": "Reports on extra/wasted skills loaded",
+        "assertion": "contains_any",
+        "value": ["extra", "waste", "blocked", "unnecessary"]
+      },
+      {
+        "id": "reports-mcp-status",
+        "description": "Reports on MCP server status (blocked vs allowed)",
+        "assertion": "contains_any",
+        "value": ["MCP", "brainlayer", "voicelayer", "supabase"]
+      },
+      {
+        "id": "no-pink-elephant",
+        "description": "Does NOT list 30+ skills to ignore in output (positive framing only)",
+        "assertion": "not_contains",
+        "value": "Skills to IGNORE"
+      }
+    ],
+    "models": ["opus", "sonnet", "haiku"]
+  },
+  {
+    "name": "fix-mode-generates-configs",
+    "prompt": "I'm in the brainlayer repo (~/Gits/brainlayer). Run context-check in fix mode to generate the right configs for this project.",
+    "expected_behaviors": [
+      {
+        "id": "uses-fix-flag",
+        "description": "Runs audit.sh with --fix flag",
+        "assertion": "contains",
+        "value": "--fix"
+      },
+      {
+        "id": "generates-settings",
+        "description": "Generates .claude/settings.local.json",
+        "assertion": "contains",
+        "value": "settings.local.json"
+      },
+      {
+        "id": "blocks-right-mcps",
+        "description": "Blocks voicelayer and supabase MCPs (per brainlayer profile)",
+        "assertion": "contains_any",
+        "value": ["voicelayer", "supabase", "disabledMcpjsonServers"]
+      },
+      {
+        "id": "generates-containerization",
+        "description": "Generates CLAUDE.md containerization section with allowlist",
+        "assertion": "contains_any",
+        "value": ["CONTAINERIZATION", "ONLY Use These", "allowlist"]
+      },
+      {
+        "id": "positive-framing-only",
+        "description": "Uses allowlist, not blocklist, for skills",
+        "assertion": "not_contains",
+        "value": "Skills to IGNORE"
+      }
+    ],
+    "models": ["opus", "sonnet", "haiku"]
+  },
+  {
+    "name": "unknown-project-discovery",
+    "prompt": "I'm in a new project directory (~/Gits/some-new-app) that isn't in the golems registry. Check its context setup.",
+    "expected_behaviors": [
+      {
+        "id": "detects-unknown",
+        "description": "Recognizes the project is not in the registry",
+        "assertion": "contains_any",
+        "value": [
+          "not found",
+          "no context profile",
+          "not in the registry",
+          "unknown"
+        ]
+      },
+      {
+        "id": "suggests-discovery",
+        "description": "Offers to scan the repo to suggest a profile",
+        "assertion": "contains_any",
+        "value": ["scan", "detect", "discover", "package.json", "suggest"]
+      },
+      {
+        "id": "no-fabrication",
+        "description": "Does NOT guess or fabricate a profile for an unknown project",
+        "assertion": "not_contains",
+        "value": "Allowed ("
+      }
+    ],
+    "models": ["opus", "sonnet"]
+  },
+  {
+    "name": "token-waste-estimation",
+    "prompt": "How much context am I wasting on irrelevant skills in the TaskOwl project? Give me the numbers.",
+    "expected_behaviors": [
+      {
+        "id": "quantifies-waste",
+        "description": "Provides a token count estimate for wasted context",
+        "assertion": "contains_any",
+        "value": ["token", "waste", "overhead", "estimate"]
+      },
+      {
+        "id": "percentage-of-context",
+        "description": "Expresses waste as percentage of context window",
+        "assertion": "contains",
+        "value": "%"
+      },
+      {
+        "id": "runs-audit",
+        "description": "Actually runs the audit rather than guessing",
+        "assertion": "contains_any",
+        "value": ["audit.sh", "context-check", "config.yaml"]
+      }
+    ],
+    "models": ["opus", "sonnet"]
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "name": "@golems/content-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts CodeShowcase out/code-showcase.mp4",
+    "still": "remotion still src/index.ts CodeShowcase out/code-showcase.png"
+  },
+  "dependencies": {
+    "@react-three/drei": "9",
+    "@react-three/fiber": "8",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/three": "4.0.422",
+    "@types/three": "^0.182.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "remotion": "^4.0.0",
+    "three": "^0.182.0"
+  },
+  "devDependencies": {
+    "style-loader": "^3.3.0",
+    "css-loader": "^6.8.0",
+    "typescript": "^5.0.0"
+  }
+}

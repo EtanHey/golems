@@ -1,0 +1,32 @@
+{
+  "specimen": "single repeated-token-loop / cross-voice-bleed long-drag acoustic artifact",
+  "gate": "acoustic",
+  "case": "repeated-token-loop",
+  "expectedMetric": "DURATION_WORD_SIBLING_RATIO",
+  "segments": [
+    {
+      "id": "clean-a",
+      "role": "host",
+      "seconds": 8,
+      "words": 20,
+      "sampleRate": 8000,
+      "baseAmplitude": 0
+    },
+    {
+      "id": "loop-drag",
+      "role": "host",
+      "seconds": 90,
+      "words": 12,
+      "sampleRate": 8000,
+      "baseAmplitude": 0
+    },
+    {
+      "id": "clean-b",
+      "role": "host",
+      "seconds": 8.2,
+      "words": 20,
+      "sampleRate": 8000,
+      "baseAmplitude": 0
+    }
+  ]
+}

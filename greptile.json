@@ -1,0 +1,41 @@
+{
+  "customContext": {
+    "rules": [
+      {
+        "content": "This is a Bun monorepo with 11 workspace packages. Use `bun test` not `npm test`."
+      },
+      {
+        "content": "Never use non-null assertions (!) without validation. Always validate env vars and optional values.",
+        "scope": ["**/*.ts"]
+      },
+      {
+        "content": "Use lucide-react for icons. Never create custom SVGs unless absolutely necessary.",
+        "scope": ["**/*.tsx"]
+      },
+      {
+        "content": "Flag surprises — if something in the codebase is unexpected, mention it in the review."
+      },
+      {
+        "content": "Check for circular dependency patterns between packages. Use init() functions for lazy loading.",
+        "scope": ["packages/shared/**"]
+      },
+      {
+        "content": "RTL awareness: Hebrew text should be text-right, items-end. Flex order is reversed in RTL.",
+        "scope": ["**/*.tsx"]
+      }
+    ],
+    "files": [
+      {
+        "content": "Read CLAUDE.md for full project conventions and anti-patterns."
+      }
+    ]
+  },
+  "ignorePatterns": [
+    "node_modules",
+    ".git",
+    "dist",
+    "*.lock",
+    "claude.scratchpad.md",
+    "docs.local/**"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "specimen": "cursor-bugbot/telegram-generic-ok-text-is-not-live-api-confirmation",
+  "violation": "VISUAL_GATE_WRONG_CHANNEL",
+  "events": [
+    { "role": "user", "text": "Send the screenshot for visual approval before release.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Routing the screenshot approval now.",
+      "tools": [
+        { "name": "SendUserFile", "input": { "path": "/tmp/approval.png", "caption": "Visual approval needed" } },
+        { "name": "Bash", "input": { "command": "./scripts/send-message.sh --text 'Visual approval request sent'" } }
+      ]
+    },
+    { "role": "tool", "text": "SendUserFile delivered /tmp/approval.png", "tools": [] },
+    { "role": "tool", "text": "telegram probe ok=true", "tools": [] },
+    { "role": "assistant", "text": "Visual gate routed.", "tools": [] }
+  ]
+}

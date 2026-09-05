@@ -1,0 +1,36 @@
+{
+  "specimen": "orchestrator/monitor-keyed-to-nothing (R-002)",
+  "label": "RED — monitor on the active channel but its pattern keys on no heartbeat marker (never fires)",
+  "expect": "FLAG",
+  "violation": "MONITOR_NO_MARKER",
+  "events": [
+    { "role": "user", "text": "Lead the cmux sprint." },
+    {
+      "role": "assistant",
+      "text": "Spawning and arming.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__spawn_agent",
+          "input": { "cli": "codex", "repo": "cmuxlayer" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-06-22-cmux.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: cmux kickoff"
+          }
+        },
+        {
+          "name": "Monitor",
+          "input": {
+            "path": "collab/2026-06-22-cmux.md",
+            "pattern": "finished",
+            "persistent": true
+          }
+        }
+      ]
+    },
+    { "role": "assistant", "text": "Armed, going quiet." }
+  ]
+}

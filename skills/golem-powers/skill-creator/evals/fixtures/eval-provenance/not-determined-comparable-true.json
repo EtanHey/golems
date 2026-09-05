@@ -1,0 +1,14 @@
+{
+  "eval_id": "not-determined-comparable-true",
+  "comparable": true,
+  "provenance": [
+    {
+      "agent_or_arm": "static_review",
+      "model_requested": "sonnet",
+      "model_effective": "NOT DETERMINED",
+      "effort_effective": "NOT DETERMINED",
+      "model_observation_source": "NOT DETERMINED — no runtime session existed",
+      "effort_observation_source": "NOT DETERMINED — no runtime session existed"
+    }
+  ]
+}

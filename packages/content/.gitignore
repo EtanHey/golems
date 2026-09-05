@@ -1,0 +1,7 @@
+# Generated output (images, renders, exports)
+output/
+
+# One-off generation scripts (Imagen, ComfyUI, Grok experiments)
+scripts/direct-generate.py
+scripts/grok-mamdani.py
+scripts/imagen3-*.py

@@ -1,0 +1,65 @@
+{
+  "skill_name": "obsidian",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Find my recent diary entries from this week and summarize what I wrote about.",
+      "expected_output": "Uses the specific iCloud vault path to find diary entries, reads from the Diary/ subfolder with date-formatted filenames (MM-DD-YYYY.md), and returns actual content.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-icloud-vault-path",
+          "description": "Uses the exact vault path: /Users/example/Library/Mobile Documents/iCloud~md~obsidian/Documents/personal — NOT a generic ~/Documents or ~/Obsidian path"
+        },
+        {
+          "name": "targets-diary-subfolder",
+          "description": "Looks in the Diary/ subfolder specifically, not searching the entire vault root"
+        },
+        {
+          "name": "uses-date-format-MM-DD-YYYY",
+          "description": "Searches for or references files with MM-DD-YYYY.md naming pattern (the vault's diary format)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add a new note to my Obsidian vault about a project idea: build a CLI tool that converts voice memos to structured meeting notes. Put it with my other Golems ideas.",
+      "expected_output": "Creates or appends to a file in the Golems/ subfolder of the iCloud vault. Preserves existing content if the file exists. Does not delete any notes.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "writes-to-golems-subfolder",
+          "description": "Creates/updates a file inside the Golems/ subfolder of the vault, not in vault root or another folder"
+        },
+        {
+          "name": "uses-exact-icloud-vault-path",
+          "description": "File path starts with /Users/example/Library/Mobile Documents/iCloud~md~obsidian/Documents/personal/Golems/"
+        },
+        {
+          "name": "does-not-delete-existing-notes",
+          "description": "If modifying an existing file (like Golems Ideas.md), reads it first before writing to preserve existing content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Search my Obsidian notes for anything mentioning 'authentication' or 'auth flow'.",
+      "expected_output": "Searches across the vault using the correct iCloud path, searching .md files for the terms, and returns matching note paths with context.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "searches-vault-not-filesystem",
+          "description": "Searches within the iCloud Obsidian vault path, not in ~/Gits/ or other code directories"
+        },
+        {
+          "name": "searches-md-files-only",
+          "description": "Restricts search to .md files (--include='*.md' or equivalent), not all file types"
+        },
+        {
+          "name": "returns-file-paths-with-context",
+          "description": "Shows which note files matched, not just a yes/no answer"
+        }
+      ]
+    }
+  ]
+}

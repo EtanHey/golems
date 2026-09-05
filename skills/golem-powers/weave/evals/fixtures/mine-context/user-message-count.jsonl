@@ -1,0 +1,17 @@
+{"type":"user","message":{"role":"user","content":"Please fix the denominator predicate."}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_fixture","content":"command output"}]}}
+{"type":"user","isMeta":true,"message":{"role":"user","content":"Injected metadata, not operator speech."}}
+{"type":"user","message":{"role":"user","content":"<command-message>weave is running</command-message><command-name>/weave</command-name>"}}
+{"type":"user","message":{"role":"user","content":"<queue-operation>queued worker relay</queue-operation>"}}
+{"type":"user","message":{"role":"user","content":"<task-notification>worker completed</task-notification>"}}
+{"type":"user","message":{"role":"user","content":"<system-reminder>automatic reminder only</system-reminder>"}}
+{"type":"user","isSidechain":true,"message":{"role":"user","content":"Sub-agent turn, not operator speech."}}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"This is the second real operator turn."}]}}
+{"type":"assistant","message":{"role":"assistant","content":"Assistant output is not a user turn."}}
+{"type":"queue-operation","message":{"content":"Top-level queue metadata."}}
+{"type":"last-prompt","message":{"content":"Top-level last prompt metadata."}}
+{"type":"task-notification","message":{"content":"Top-level task notification metadata."}}
+{"type":"user","message":{"role":"user","content":""}}
+{"type":"user","message":{"role":"user","content":"<local-command-stdout>automatic command output</local-command-stdout>"}}
+{"type":"user","message":{"role":"user","content":"<last-prompt>relayed prior prompt</last-prompt>"}}
+{"type":"user","message":"not a message object"}

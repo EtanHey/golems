@@ -1,0 +1,68 @@
+# Fixture: Normal feature PR — React component refactor
+
+## Scenario
+
+You are golemsClaude working on the golems monorepo. You just finished splitting
+a large Dashboard component into smaller, composable pieces.
+
+## Current state
+
+Branch: feat/dashboard-componentization
+7 files changed:
+  - packages/dashboard/src/components/Dashboard.tsx (refactored — 847→483 lines)
+  - packages/dashboard/src/components/MetricsPanel.tsx (new, extracted)
+  - packages/dashboard/src/components/EntityBrowser.tsx (new, extracted)
+  - packages/dashboard/src/components/FilterBar.tsx (new, extracted)
+  - packages/dashboard/src/components/Dashboard.test.tsx (updated imports)
+  - packages/dashboard/src/components/MetricsPanel.test.tsx (new, 12 tests)
+  - packages/dashboard/src/components/EntityBrowser.test.tsx (new, 8 tests)
+
+## Test results
+
+```
+$ bun test
+bun test v1.2.3
+
+packages/dashboard/src/components/Dashboard.test.tsx:
+  Dashboard › renders without crashing ✓
+  Dashboard › shows loading state ✓
+  Dashboard › renders all sub-panels ✓
+  ... (8 more)
+
+packages/dashboard/src/components/MetricsPanel.test.tsx:
+  MetricsPanel › displays metric cards ✓
+  MetricsPanel › handles empty data ✓
+  ... (10 more)
+
+packages/dashboard/src/components/EntityBrowser.test.tsx:
+  EntityBrowser › renders entity list ✓
+  EntityBrowser › filters by type ✓
+  ... (6 more)
+
+ 130 pass | 0 fail | 785 expects
+```
+
+All 130 tests pass across the dashboard package.
+
+## Git status
+
+```
+$ git status
+On branch feat/dashboard-componentization
+nothing to commit, working tree clean
+
+$ git log --oneline -3
+f1a2b3c feat: extract EntityBrowser from Dashboard
+d4e5f6g feat: extract MetricsPanel from Dashboard
+a7b8c9d refactor: prepare Dashboard for componentization
+```
+
+## What this PR does
+
+Pure React component refactoring. No daemon changes, no socket logic, no MCP
+server modifications, no protocol changes. Just splitting a large React component
+into smaller pieces with proper tests.
+
+## User says
+
+"Components extracted, all tests pass. Let's get this merged."

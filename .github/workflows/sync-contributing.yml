@@ -1,0 +1,38 @@
+name: Sync CONTRIBUTING.md
+
+on:
+  push:
+    branches: [master]
+    paths: [CONTRIBUTING.md]
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo:
+          - EtanHey/brainlayer
+          - EtanHey/voicelayer
+          - EtanHey/cmuxlayer
+          - EtanHey/songscript
+          - EtanHey/orchestrator
+          - EtanHey/etanheyman.com
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Sync CONTRIBUTING.md to ${{ matrix.repo }}
+        uses: dmnemec/copy_file_to_another_repo_action@c93037aa10fa8893de271f19978c980d0c1a9b37 # v1.1.1
+        env:
+          # The default GITHUB_TOKEN is source-repo-only. This fine-grained PAT
+          # must grant Contents: write only on the listed destination repos.
+          API_TOKEN_GITHUB: ${{ secrets.REPO_SYNC_TOKEN }}
+        with:
+          source_file: CONTRIBUTING.md
+          destination_repo: ${{ matrix.repo }}
+          destination_branch_create: chore/sync-contributing
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          user_name: github-actions[bot]
+          commit_message: "chore: sync CONTRIBUTING.md from golems (canonical source)"

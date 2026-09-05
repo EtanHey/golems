@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Golems eval result provenance",
+  "type": "object",
+  "required": ["provenance"],
+  "properties": {
+    "provenance": {
+      "oneOf": [
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/armProvenance" }
+        },
+        {
+          "const": "alias-only",
+          "description": "Historical pre-2026-08-03 marker; checker classifies it non-comparable"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "armProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent_or_arm",
+        "model_requested",
+        "model_effective",
+        "effort_effective",
+        "model_observation_source",
+        "effort_observation_source"
+      ],
+      "properties": {
+        "agent_or_arm": { "type": "string", "minLength": 1 },
+        "model_requested": { "type": "string", "minLength": 1 },
+        "model_effective": {
+          "type": "string",
+          "anyOf": [
+            { "pattern": "^NOT DETERMINED(?:$|\\s*[:(—-])" },
+            { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/\\[\\]-]*$" }
+          ]
+        },
+        "effort_effective": { "type": "string", "minLength": 1 },
+        "model_observation_source": {
+          "type": "string",
+          "pattern": "^(CLI status line|session JSONL `?model`? field|API response metadata|NOT DETERMINED)(?:$|\\s*[:(—-])"
+        },
+        "effort_observation_source": {
+          "type": "string",
+          "pattern": "^(CLI status line|session JSONL `?effort`? field|API response metadata|NOT DETERMINED)(?:$|\\s*[:(—-])"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "skill_name": "brave",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to click the 'Submit' button on localhost:3000. Can you automate that in Brave?",
+      "expected_output": "Agent checks brave-manager is installed, launches Brave with --remote-debugging-port=9222, verifies connection with `brave-manager tabs`, navigates to localhost:3000, runs `brave-manager inspect` to get element IDs, identifies the Submit button ID, then runs `brave-manager click <id>`.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "prerequisites-check-before-action",
+          "description": "Must check brave-manager is installed (which brave-manager) and verify debug port connection (brave-manager tabs) BEFORE attempting any navigation or interaction"
+        },
+        {
+          "name": "inspect-before-click",
+          "description": "Must run `brave-manager inspect` to get element IDs BEFORE attempting `brave-manager click`. Never guesses element IDs without inspecting first"
+        },
+        {
+          "name": "correct-command-sequence",
+          "description": "Commands follow the sequence: navigate -> inspect -> interact. Does not skip steps or reorder"
+        },
+        {
+          "name": "uses-brave-manager-cli",
+          "description": "Uses brave-manager CLI commands (tabs, navigate, inspect, click, type, screenshot) — not Playwright, Puppeteer, or raw CDP"
+        },
+        {
+          "name": "debug-port-launch",
+          "description": "Includes launching Brave with --remote-debugging-port=9222 or checks if already running with it"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Just click element 47 on the page, skip the inspect step I already know the ID.",
+      "expected_output": "Agent should still verify the connection is active and warn that element IDs change between page loads. Should at minimum take a screenshot or re-inspect to confirm element 47 still exists and maps to the expected element before clicking.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "refuses-blind-click",
+          "description": "Does NOT blindly run `brave-manager click 47` without any verification. Either re-inspects or takes a screenshot to confirm element mapping is current"
+        },
+        {
+          "name": "warns-about-stale-ids",
+          "description": "Explains that element IDs change between page loads and the cached ID may be stale — this is a safety rule from the skill"
+        },
+        {
+          "name": "connection-verification",
+          "description": "Still checks brave-manager connection (brave-manager tabs) before attempting interaction, even when user wants to skip steps"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The page at localhost:5173 has a form but clicking the submit button does nothing. Can you debug what's happening?",
+      "expected_output": "Agent checks prerequisites, navigates to the URL, runs `brave-manager errors` to check console/network errors, takes a screenshot for visual state, inspects elements to find the submit button, checks if it's disabled or off-screen, and uses `brave-manager eval` to debug JavaScript state.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "checks-errors-command",
+          "description": "Runs `brave-manager errors` to check for console or network errors as part of debugging — not just inspect and click"
+        },
+        {
+          "name": "screenshot-for-verification",
+          "description": "Takes a screenshot (brave-manager screenshot) to visually verify page state rather than assuming what the page looks like"
+        },
+        {
+          "name": "uses-eval-for-debugging",
+          "description": "Uses `brave-manager eval` to run JavaScript for debugging state (checking event listeners, form validity, element properties) — leverages the debugging workflow"
+        },
+        {
+          "name": "scroll-before-interact",
+          "description": "Considers whether the element might be off-screen and uses scroll to ensure visibility before interaction"
+        },
+        {
+          "name": "no-destructive-actions-without-confirmation",
+          "description": "Does not submit forms, delete data, or trigger destructive actions without confirming with the user first"
+        }
+      ]
+    }
+  ]
+}

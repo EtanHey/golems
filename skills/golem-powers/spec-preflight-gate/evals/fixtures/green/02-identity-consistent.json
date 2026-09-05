@@ -1,0 +1,24 @@
+{
+  "specimen": "identity consistent across name repo launcher and prompt",
+  "events": [
+    { "role": "user", "text": "Dispatch the golems worker from handoff docs/plan/spawn-hygiene.md.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Verifying handoff then dispatching the matched seat.",
+      "tools": [
+        { "name": "Read", "input": { "file_path": "docs/plan/spawn-hygiene.md" } },
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "You are golems. Work in repo golems with launcher golems. Use grep-pattern `spawn-hygiene` and structural invariants from docs/plan/spawn-hygiene.md."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "# Spawn Hygiene\nPattern: spawn-hygiene", "tools": [] },
+    { "role": "tool", "text": "spawned agent golems in repo golems with launcher golems", "tools": [] }
+  ]
+}

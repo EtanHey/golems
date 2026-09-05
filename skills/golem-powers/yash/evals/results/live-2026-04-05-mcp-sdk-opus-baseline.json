@@ -1,0 +1,54 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-04-05",
+  "skill": "yash",
+  "eval_name": "mcp-sdk-1049-stdio-crash",
+  "variant": "real-baseline-opus-no-skill",
+  "scenario": "REAL dependency bug: @modelcontextprotocol/sdk stdio client crashes with -32000 Connection closed when server exits. We hit this daily (BrainLayer + VoiceLayer MCP disconnects). Agent given explicit fork+fix+PR+patch framing.",
+  "agent": {
+    "type": "claude",
+    "model": "Opus 4.6 (1M context)",
+    "surface": "surface:30",
+    "cost": 9.37,
+    "duration": "25m",
+    "tokens": 137389,
+    "context_pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "real_cmux_surface": true,
+    "skill_loaded": false
+  },
+  "assertions": {
+    "discovers-existing-pr": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Found PR #1814 (async onclose + stdin EOF) and PR #1568 (EPIPE handling). Referenced both in PR description as complementary work. Did NOT duplicate — created a different fix approach."
+    },
+    "proposes-upstream-fix": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Forked repo, created branch fix/connection-closed-unhandled-rejection, wrote 2 fixes (Promise.resolve().then() deferred rejection + stdin EOF detection), ran all 1321 tests, submitted PR #1853."
+    },
+    "uses-patch-package-or-bridge": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Used pnpm-native patching (pnpm patch + pnpm patch-commit). Created @modelcontextprotocol__sdk.patch for v1.29.0. Adapted fix for v1.x API (McpError vs SdkError). Included removal instructions."
+    },
+    "no-just-workaround": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Did NOT suggest just wrapping in try/catch. Primary recommendation is the upstream fix. Patch bridge is explicitly temporary with removal criteria."
+    },
+    "tracks-upstream": {
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Wrote README with explicit removal instructions: 'Remove when PR #1853 merges AND you update the package.' Included version check commands."
+    }
+  },
+  "total_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "max_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "percentage": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "pr_url": "https://github.com/modelcontextprotocol/typescript-sdk/pull/1853",
+  "analysis": {
+    "key_finding": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "prompt_contamination": "HIGH — task prompt said 'fix this properly', 'check if anyone has already submitted a fix', 'submit a new PR or build on existing work', 'create a patch-package bridge'. This is essentially the /yash decision tree narrated.",
+    "genuine_yash_behaviors": "Agent independently: (1) discovered PR #1814 and positioned fix as complementary, (2) adapted fix for v1.x API differences, (3) used pnpm-native patching (correct for our package manager), (4) wrote removal instructions with version check commands, (5) ran full 1321-test suite before submitting.",
+    "model_capability_note": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "methodology_note": "Like the nativewind eval, prompt contamination makes this an inflated baseline. True /yash delta for Opus would require neutral framing."
+  },
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

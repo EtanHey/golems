@@ -1,0 +1,91 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "pr-loop",
+  "eval_type": "behavior",
+  "eval_file": "evals/behavior/evals.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/pr-loop/SKILL.md",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "feature-ready-drives-to-merged",
+      "assertions": [
+        {
+          "name": "mission-is-merged-not-pr-created",
+          "result": "PASS",
+          "evidence": "SKILL.md: 'MISSION = MERGED. Not tests pass. Not PR created. Not pushed. Done = PR merged + branch deleted + main pulled.' Iron Law is explicit."
+        },
+        {
+          "name": "fresh-verification-before-shipping",
+          "result": "PASS",
+          "evidence": "Step 4: 'VERIFY - Invoke /superpowers:verification-before-completion' is an independent verification step before commit/push."
+        },
+        {
+          "name": "review-is-read-before-merge",
+          "result": "PASS",
+          "evidence": "Step 8 REVIEW: 'Fetch + read review comments' with explicit methods: 'gh pr view <N> --comments' and 'gh api repos/.../pulls/.../comments'. Reading is mandatory before merge."
+        },
+        {
+          "name": "main-is-cleaned-up-after-merge",
+          "result": "PASS",
+          "evidence": "Step 11: 'CLEANUP - git checkout main && git pull'. Merge step uses '--delete-branch' flag."
+        }
+      ]
+    },
+    {
+      "eval_id": "review-feedback-needs-second-cycle",
+      "assertions": [
+        {
+          "name": "real-bugs-fixed-before-merge",
+          "result": "PASS",
+          "evidence": "Step 9 FIX: 'Address real bugs from review'. HIGH severity = 'must fix before merge'. Classification table: 'Real bug: FIX immediately. Push fix. Re-review.'"
+        },
+        {
+          "name": "review-comments-are-classified",
+          "result": "PASS",
+          "evidence": "Explicit classification table: Real bug, Security issue, Style preference, Over-engineering suggestion, False positive — each with distinct action."
+        },
+        {
+          "name": "substantive-fixes-trigger-rereview",
+          "result": "PASS",
+          "evidence": "'After addressing reviews: git push. # Wait for another review cycle if changes were significant.'"
+        },
+        {
+          "name": "false-positives-are-not-blockers",
+          "result": "PASS",
+          "evidence": "Classification table: 'False positive: SKIP. Note why.' Also: 'WRONG: blindly accepting every review comment'."
+        }
+      ]
+    },
+    {
+      "eval_id": "tiny-change-still-runs-full-loop",
+      "assertions": [
+        {
+          "name": "rejects-pr-created-as-done",
+          "result": "PASS",
+          "evidence": "'WRONG: PR created, done! ← Mission is MERGED, not created' explicitly listed in What NOT To Do section."
+        },
+        {
+          "name": "review-remains-required-for-small-change",
+          "result": "PASS",
+          "evidence": "'WRONG: Skip review because it is a small change ← Small changes break things too' explicitly listed."
+        },
+        {
+          "name": "completion-still-includes-merge-and-cleanup",
+          "result": "PASS",
+          "evidence": "Full loop steps 10+11: merge with --delete-branch + git checkout main && git pull. No shortcut path exists."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

@@ -1,0 +1,49 @@
+{
+  "skill": "cursor-workflows-parity",
+  "without": "cursor-agent.single-pass.ndjson",
+  "with": "cursor-agent.loop-until-dry.ndjson",
+  "assertions": [
+    {
+      "id": "mode-marker",
+      "category": "structure",
+      "kind": "includes",
+      "value": "\"mode\":\"cursor-agent-ndjson-replay\""
+    },
+    {
+      "id": "round-one-present",
+      "category": "structure",
+      "kind": "includes",
+      "value": "\"round\":1"
+    },
+    {
+      "id": "round-two-present",
+      "category": "compliance",
+      "kind": "includes",
+      "value": "\"round\":2"
+    },
+    {
+      "id": "first-finding-present",
+      "category": "compliance",
+      "kind": "includes",
+      "value": "\"id\":\"CW-HIGH-001\""
+    },
+    {
+      "id": "second-finding-present",
+      "category": "compliance",
+      "kind": "includes",
+      "value": "\"id\":\"CW-HIGH-002\""
+    },
+    {
+      "id": "second-round-only-marker",
+      "category": "compliance",
+      "kind": "includes",
+      "value": "\"second_round_only\":true"
+    },
+    {
+      "id": "usage-ledger-present",
+      "category": "quality",
+      "kind": "includes",
+      "value": "\"total_tokens\":2080"
+    }
+  ]
+}

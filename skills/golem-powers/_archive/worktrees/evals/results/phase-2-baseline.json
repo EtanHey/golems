@@ -1,0 +1,83 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "worktrees",
+  "eval_type": "behavior",
+  "eval_file": "evals/behavior/evals.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/worktrees/SKILL.md",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "create-new-isolated-worktree",
+      "assertions": [
+        {
+          "name": "default-worktree-path-is-used",
+          "result": "PASS",
+          "evidence": "Default Paths section: 'Worktrees are created at: ~/worktrees/<repo>/<branch>'. Example shown."
+        },
+        {
+          "name": "env-and-dependencies-are-bootstrapped",
+          "result": "PASS",
+          "evidence": "Environment Setup section: auto-handles env files (1Password op inject or copy) and auto-detects + installs dependencies (bun/pnpm/yarn/npm)."
+        },
+        {
+          "name": "source-checkout-stays-untouched",
+          "result": "PASS",
+          "evidence": "Worktrees create a separate path '~/worktrees/<repo>/<branch>' — the main repo checkout is never the worktree target."
+        }
+      ]
+    },
+    {
+      "eval_id": "parallel-same-repo-uses-separate-worktrees",
+      "assertions": [
+        {
+          "name": "one-worktree-per-branch",
+          "result": "PASS",
+          "evidence": "'git worktree add ~/worktrees/$(basename \"$PWD\")/feature-name -b feature-name' — each branch gets its own path."
+        },
+        {
+          "name": "shared-checkout-pattern-is-blocked",
+          "result": "FAIL",
+          "evidence": "The skill promotes worktree isolation but does NOT explicitly block or warn against the unsafe same-checkout pattern. The description says 'preventing cross-contamination' but there is no explicit guardrail that rejects or warns when the user proposes multiplexing one checkout.",
+          "gap": "Missing: explicit warning or refusal when single-checkout branching is proposed for parallel work."
+        },
+        {
+          "name": "cleanup-paths-are-reported",
+          "result": "PASS",
+          "evidence": "Quick Commands: 'git worktree remove ~/worktrees/$(basename \"$PWD\")/feature-name' and 'git worktree prune' are documented."
+        }
+      ]
+    },
+    {
+      "eval_id": "cleanup-merged-worktree-safely",
+      "assertions": [
+        {
+          "name": "merged-worktree-is-removed",
+          "result": "PASS",
+          "evidence": "Quick Commands: 'git worktree remove ~/worktrees/<repo>/<branch>' removes the worktree from disk and registry."
+        },
+        {
+          "name": "stale-refs-are-pruned",
+          "result": "PASS",
+          "evidence": "Quick Commands: 'git worktree prune' is documented alongside the remove command."
+        },
+        {
+          "name": "active-or-unmerged-worktrees-are-protected",
+          "result": "FAIL",
+          "evidence": "The skill documents 'git worktree remove' without any merge-status check or guard. There is no instruction to verify the branch is merged before removal, and no explicit protection for active or in-progress worktrees.",
+          "gap": "Missing: pre-removal merge check (e.g. git branch --merged) and explicit warning against removing unmerged worktrees."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

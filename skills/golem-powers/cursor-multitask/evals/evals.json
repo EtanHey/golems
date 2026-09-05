@@ -1,0 +1,133 @@
+{
+  "skill_name": "cursor-multitask",
+  "tier": "standard",
+  "type": "encoded-preference",
+  "description": "Eval cases for the cursor-multitask routing skill. Each case tests whether the agent routes a fan-out / parallel task to the CORRECT engine (Cursor /multitask GUI, headless cursor-agent shell fan-out, Claude Workflow tool, cmux fleet, or serial-no-parallelism). The discriminating failure the skill prevents: a headless/terminal orchestrator reaching for /multitask, which silently no-ops because it is GUI-only (verified Cursor 3.3.2, 2026-06-05).",
+  "models": ["opus", "sonnet", "haiku"],
+  "evals": [
+    {
+      "id": 1,
+      "name": "headless-orchestrator-wants-parallel",
+      "prompt": "I'm running as an orchestrator in a cmux terminal pane (no Cursor editor open). I need to classify 40 files as relevant/irrelevant in parallel to save wall-clock time. Should I use Cursor's /multitask for this?",
+      "expected_output": "Must say NO — /multitask is an in-editor GUI command and silently no-ops in headless contexts. Should route to headless cursor-agent shell fan-out (background & + wait, or find|while read with --force --output-format json) OR the Claude Workflow tool. Should mention determinism / token accounting as the reason headless wins here.",
+      "root_cause_tested": "gui_misroute — the central mistake the skill exists to prevent",
+      "assertions": [
+        {
+          "name": "rejects_multitask_headless",
+          "description": "Explicitly states /multitask will NOT work headlessly / is GUI-only",
+          "type": "content"
+        },
+        {
+          "name": "routes_to_headless_or_workflow",
+          "description": "Recommends headless cursor-agent shell fan-out or the Claude Workflow tool instead",
+          "type": "behavioral"
+        },
+        {
+          "name": "no_blind_multitask_recipe",
+          "description": "Does NOT hand the orchestrator a /multitask invocation as if it would run",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "human-in-cursor-editor",
+      "prompt": "I'm in the Cursor editor right now and I want to write tests, write docs, and run the type checker for the auth module all at once without queuing them, while keeping my main chat free for follow-ups.",
+      "expected_output": "This is the canonical /multitask use case: human in the editor, independent prompts, wants foreground free. Should recommend /multitask with the ||| separator in the Agents Window.",
+      "root_cause_tested": "correct_gui_use — skill should NOT over-correct and avoid /multitask when it IS the right tool",
+      "assertions": [
+        {
+          "name": "recommends_multitask",
+          "description": "Recommends Cursor /multitask in the Agents Window",
+          "type": "content"
+        },
+        {
+          "name": "mentions_separator",
+          "description": "Mentions the ||| prompt separator",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "sequential-dependency-no-parallel",
+      "prompt": "I need to (1) generate a database migration, then (2) run it, then (3) update the ORM models to match the new schema. Can I multitask these in parallel?",
+      "expected_output": "Must say NO to parallelism — these steps are sequentially dependent (each needs the prior step's output). Should recommend running serially in a single agent.",
+      "root_cause_tested": "false_parallelism — parallelizing dependent steps wastes tokens",
+      "assertions": [
+        {
+          "name": "rejects_parallel",
+          "description": "States these steps are sequentially dependent and should NOT be parallelized",
+          "type": "content"
+        },
+        {
+          "name": "recommends_serial",
+          "description": "Recommends running serially in one agent",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "visible-multi-vendor-fleet",
+      "prompt": "I want to watch a Cursor agent, a Codex agent, and a Gemini agent each audit a different repo at the same time, visibly, so I can see their progress side by side.",
+      "expected_output": "Multi-vendor + visible + watchable = cmux fleet, not /multitask (single-vendor, in-editor) and not headless (not visible). Should route to /cmux-agents and reference /agent-routing.",
+      "root_cause_tested": "engine_selection — distinguishing cmux fleet from /multitask",
+      "assertions": [
+        {
+          "name": "routes_to_cmux",
+          "description": "Routes to the cmux fleet / cmux-agents for visible multi-vendor work",
+          "type": "behavioral"
+        },
+        {
+          "name": "not_multitask",
+          "description": "Does NOT recommend /multitask (it is single-vendor, in-editor)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "ci-pipeline-batch",
+      "prompt": "In our CI pipeline I want to run lint, type-check, and the test suite as three parallel passes and fail the build if any returns nonzero. Best way?",
+      "expected_output": "CI = headless, scriptable, deterministic, needs exit codes. Should recommend headless cursor-agent shell fan-out (& + wait, capture exit codes / --output-format json), NOT /multitask (no CI surface).",
+      "root_cause_tested": "ci_misroute — /multitask has no headless/CI surface",
+      "assertions": [
+        {
+          "name": "routes_to_headless",
+          "description": "Recommends headless cursor-agent shell fan-out for CI",
+          "type": "behavioral"
+        },
+        {
+          "name": "mentions_exit_or_json",
+          "description": "Mentions exit codes or --output-format json for deterministic CI gating",
+          "type": "content"
+        },
+        {
+          "name": "not_multitask_ci",
+          "description": "Does NOT recommend /multitask for CI",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "interaction-with-agent-routing",
+      "prompt": "We're writing a collab kickoff for a sprint that has a big parallel data-gathering phase. How do agent-routing and parallelism fit together here?",
+      "expected_output": "Should distinguish the two axes: /agent-routing picks Cursor/Codex/Claude by task TYPE; cursor-multitask picks the parallelism ENGINE once it's known to be a fan-out. Should reference using both together.",
+      "root_cause_tested": "skill_interaction — clarifies boundary with agent-routing",
+      "assertions": [
+        {
+          "name": "distinguishes_axes",
+          "description": "Distinguishes task-type routing (agent-routing) from parallelism-engine routing (this skill)",
+          "type": "content"
+        },
+        {
+          "name": "references_agent_routing",
+          "description": "References /agent-routing as complementary",
+          "type": "behavioral"
+        }
+      ]
+    }
+  ]
+}

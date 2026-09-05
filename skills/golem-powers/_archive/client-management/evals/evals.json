@@ -1,0 +1,331 @@
+{
+  "skill": "taskowl",
+  "version": "1.0.0",
+  "created": "2026-04-14",
+  "evals": [
+    {
+      "id": 1,
+      "name": "daily-update-happy-path",
+      "workflow": "daily-update",
+      "category": "structure",
+      "description": "Basic daily update draft with work done and next task",
+      "prompt": "Draft a Alon update for today. I worked on the protection screen for iPhone, finished the animation, and tomorrow I'll start on the Android permission dialog. Logged 4 hours today, sprint is at 12/30.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "hebrew-draft-starts-with-עדכון-מהיום",
+          "description": "The Hebrew draft portion (inside the '## Draft Update for Alon' wrapper, after any markdown header/metadata) starts with 'עדכון מהיום:'. The overall output may be wrapped — this checks the draft body, not the literal first character."
+        },
+        {
+          "type": "negative",
+          "name": "no-name-greeting",
+          "description": "The Hebrew draft body does NOT start with 'אלון,' or 'שלום אלון'"
+        },
+        {
+          "type": "negative",
+          "name": "no-branch-names",
+          "description": "Output does NOT contain 'PR', 'branch', 'merge', or branch names"
+        },
+        {
+          "type": "content",
+          "name": "hours-present",
+          "description": "Output contains hour count (e.g., '4 שעות היום') and sprint total (e.g., '12 מתוך 30')"
+        },
+        {
+          "type": "content",
+          "name": "describes-user-visible-outcome",
+          "description": "Describes what user will SEE (protection screen, animation), not technical terms"
+        },
+        {
+          "type": "content",
+          "name": "casual-tone",
+          "description": "Uses casual markers like 'עשיתי:', 'ממשיך עם' — not formal 'ביצעתי' or 'אבצע'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "daily-update-with-bugs-found",
+      "workflow": "daily-update",
+      "category": "compliance",
+      "description": "Update mentioning bugs found during work — should defer, not list",
+      "prompt": "Draft Alon update. Today I uploaded to TestFlight and found 3 bugs while testing: counter flashes to 0 after login, Android permission dialog shows wrong card, and there's a crash on profile screen. Logged 3 hours.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "bugs-deferred",
+          "description": "Contains deferred framing like 'מצאתי כמה דברים, אתעד ונעבור ביחד' — does NOT enumerate the 3 bugs"
+        },
+        {
+          "type": "negative",
+          "name": "no-bug-list",
+          "description": "Does NOT contain numbered list or bullets of individual bugs"
+        },
+        {
+          "type": "content",
+          "name": "collaborative-framing",
+          "description": "Contains collaborative phrase 'ונעבור' or 'ביחד' — not 'found wrong'"
+        },
+        {
+          "type": "content",
+          "name": "testflight-mention",
+          "description": "Mentions TestFlight upload and asks client to test 'בזמנכם' (at their convenience)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "daily-update-budget-warning",
+      "workflow": "daily-update",
+      "category": "compliance",
+      "description": "Update when hours are over 80% of sprint budget",
+      "prompt": "Draft Alon update. Worked 5 hours today on content blocking feature. Sprint total is now 26/30 hours.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "budget-warning-present",
+          "description": "Contains warning about remaining hours (נשארו / שים לב / 4 שעות) — 26/30 triggers the 80% threshold"
+        },
+        {
+          "type": "content",
+          "name": "hours-prominent",
+          "description": "Hours are explicit: '5 שעות היום' and '26 מתוך 30'"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "daily-update-rejects-jargon",
+      "workflow": "daily-update",
+      "category": "compliance",
+      "description": "Update should translate technical terms to user-visible language",
+      "prompt": "Draft Alon update. I componentized the onboarding flow into 3 modules, fixed a race condition in the notification scheduler, and merged PR #47 to staging.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "no-componentization",
+          "description": "Uses 'סידור וצמצום הקוד' or similar — NOT 'componentization' or 'רכיבים'"
+        },
+        {
+          "type": "negative",
+          "name": "no-pr-number",
+          "description": "Does NOT mention 'PR #47' or any PR number"
+        },
+        {
+          "type": "negative",
+          "name": "no-race-condition",
+          "description": "Does NOT use technical term 'race condition' — describes what user sees instead"
+        },
+        {
+          "type": "negative",
+          "name": "no-staging",
+          "description": "Does NOT mention 'staging' or 'merge' or branch names"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "decision-scope-addition",
+      "workflow": "decision-tracking",
+      "category": "structure",
+      "description": "Log a decision when Alon requests something outside sprint scope",
+      "prompt": "Alon just asked me to add a creator onboarding flow. This is not in Sprint 3 scope and will add about 6 hours. Log this decision.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "brain-store-called",
+          "description": "Calls brain_store with the decision content"
+        },
+        {
+          "type": "content",
+          "name": "has-all-fields",
+          "description": "Decision includes WHEN (timestamp), WHO (Alon), WHAT (creator onboarding), WHY (reason), IMPACT (+6 hours), CLIENT INFORMED: No (only Yes/No allowed — no Pending state)"
+        },
+        {
+          "type": "content",
+          "name": "has-tags",
+          "description": "Tags include 'taskowl', 'decision', 'scope-change' or 'scope-add', 'agent:taskowlClaude'"
+        },
+        {
+          "type": "content",
+          "name": "importance-high",
+          "description": "Importance is 8 or 9 (scope addition affects deliverables)"
+        },
+        {
+          "type": "content",
+          "name": "flags-for-daily-update",
+          "description": "Notes that this decision needs inclusion in next daily update"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "decision-hour-overrun",
+      "workflow": "decision-tracking",
+      "category": "compliance",
+      "description": "Log an hour overrun with budget warning",
+      "prompt": "The content blocking feature took 8 hours instead of the estimated 4. Log this hour overrun. Sprint is now 32/30.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "brain-store-called",
+          "description": "Calls brain_store with the overrun"
+        },
+        {
+          "type": "content",
+          "name": "mentions-overage-rate",
+          "description": "Mentions [RATE] overage rate and written approval requirement"
+        },
+        {
+          "type": "content",
+          "name": "budget-math-correct",
+          "description": "Correctly shows 32/30 hours and flags as over budget"
+        },
+        {
+          "type": "content",
+          "name": "tag-hour-overrun",
+          "description": "Tags include 'hour-overrun'"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "time-tracking-session-start",
+      "workflow": "time-tracking",
+      "category": "structure",
+      "description": "Start a work session on a specific Linear ticket",
+      "prompt": "Starting work on MEH-23 (protection screen). Log the session start.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "brain-store-called",
+          "description": "Calls brain_store with session start"
+        },
+        {
+          "type": "content",
+          "name": "has-timestamp",
+          "description": "Content includes ISO-format timestamp"
+        },
+        {
+          "type": "content",
+          "name": "has-ticket-reference",
+          "description": "References MEH-23 and task description"
+        },
+        {
+          "type": "content",
+          "name": "tag-session-start",
+          "description": "Tags include 'session-start', 'taskowl', 'time-log'"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "time-tracking-distinguishes-human-agent",
+      "workflow": "time-tracking",
+      "category": "compliance",
+      "description": "Session with both human and agent time — must separate",
+      "prompt": "Ending work session. I coded for 2 hours, then Claude ran PR loop for 30 minutes while I made coffee. Session was 2.75 hours wall-clock. Log it.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "human-time-explicit",
+          "description": "Explicitly logs 'Human: 2h'"
+        },
+        {
+          "type": "content",
+          "name": "agent-time-explicit",
+          "description": "Explicitly logs 'Agent: 0.5h'"
+        },
+        {
+          "type": "content",
+          "name": "billable-is-sum",
+          "description": "Billable = human + agent = 2.5h (NOT wall-clock 2.75h)"
+        },
+        {
+          "type": "content",
+          "name": "wall-clock-separate",
+          "description": "Wall-clock 2.75h logged separately from billable"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "daily-update-integrates-decisions",
+      "workflow": "daily-update",
+      "category": "quality",
+      "description": "Daily update should pull uninformed decisions from decision-tracking",
+      "prompt": "Draft today's Alon update. I have a pending decision logged: 'Added creator onboarding, +6 hours, CLIENT INFORMED: No'. Include it.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "mentions-scope-change",
+          "description": "Update mentions the scope change / creator onboarding"
+        },
+        {
+          "type": "content",
+          "name": "mentions-hour-impact",
+          "description": "Update mentions the +6 hour impact on sprint budget"
+        },
+        {
+          "type": "content",
+          "name": "casual-hebrew",
+          "description": "Communicates the scope change in casual Hebrew, not formal business language"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "daily-update-group-chat-plural",
+      "workflow": "daily-update",
+      "category": "compliance",
+      "description": "Update to Alon + Ari group chat must use plural verbs",
+      "prompt": "Draft update for Alon and Ari (group chat). Uploaded new build to TestFlight, ask them to test the protection screen.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "uses-plural-verb",
+          "description": "Uses 'תבדוקו' (plural) not 'תבדוק' (singular)"
+        },
+        {
+          "type": "content",
+          "name": "convenience-phrasing",
+          "description": "Uses 'בזמנכם' (at your convenience, plural)"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "daily-update-routes-to-self-chat",
+      "workflow": "daily-update",
+      "category": "compliance",
+      "description": "Output must route drafts to Etan's self-chat for review, never direct to client. Guards the hard rule in SKILL.md.",
+      "prompt": "Draft today's Alon update and send it. Worked 4 hours on protection screen, sprint at 12/30.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "self-chat-routing",
+          "description": "Output instructs routing via Etan's self-chat (e.g., 'Send via: WhatsApp self-chat', 'copy to Alon after review') — Etan is always in the loop before the client sees it"
+        },
+        {
+          "type": "negative",
+          "name": "no-direct-send",
+          "description": "Output does NOT auto-send to Alon. Does NOT call send_message to Alon's JID. Does NOT instruct 'sending now' or 'posting to client'. The draft is presented for Etan to review."
+        },
+        {
+          "type": "negative",
+          "name": "no-client-whatsapp-tool-call",
+          "description": "Does NOT invoke mcp__whatsapp__send_message with Alon's or Ari's chat_jid"
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "baseline_note": "Without skill, Claude's Hebrew drafts typically fail on: starting with name greeting, listing bugs explicitly, using technical jargon (componentization, PR #, race condition), using singular verbs in group chats, missing hours, and using 'חילצתי'/'מונה'/'שמהבהב'. Expected baseline compliance: ~25% (drafts are readable but violate ~6 of 10 rules per message).",
+    "target_delta": ">40% compliance improvement with skill loaded",
+    "weights": {
+      "compliance": 0.7,
+      "structure": 0.2,
+      "quality": 0.1
+    }
+  }
+}

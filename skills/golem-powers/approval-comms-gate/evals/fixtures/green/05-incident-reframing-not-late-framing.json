@@ -1,0 +1,11 @@
+{
+  "specimen": "false-positive-guard/reframing-is-not-framing-header",
+  "events": [
+    { "role": "user", "text": "Incident: give a concise technical note without operator framing yet.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Logs: notify returned a transient 502.\nNext: reframing: keep this as a technical note until the operator-facing answer is ready.",
+      "tools": []
+    }
+  ]
+}

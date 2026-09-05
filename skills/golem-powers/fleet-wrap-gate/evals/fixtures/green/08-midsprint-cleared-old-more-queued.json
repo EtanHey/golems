@@ -1,0 +1,21 @@
+{
+  "specimen": "false-positive guard — mid-sprint that mentions clearing old crons + more work queued (Cursor MEDIUM)",
+  "label": "GREEN — 'kicking off … cleared the old crons … more work queued' + a CronCreate to drive the run. The 'cleared old crons' clearing phrase must NOT make this read as a terminal stand-down; it is legitimate mid-sprint work → N/A.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "start the next phase" },
+    {
+      "role": "assistant",
+      "text": "Kicking off the next phase — cleared the old crons from the last run, more work is queued. Arming the fleet driver to keep going.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__CronCreate",
+          "input": {
+            "schedule": "*/5 * * * *",
+            "prompt": "FLEET TICK: drive the next queued task"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AutoCursor Analyze Synthesis",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "top_n",
+    "synthesis",
+    "clusters",
+    "top_findings",
+    "deduplicated_findings",
+    "usage"
+  ],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "top_n": { "type": "integer" },
+    "synthesis": { "type": "string" },
+    "clusters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cluster_id",
+          "theme",
+          "track",
+          "finding_ids",
+          "duplicate_ids",
+          "recurrence",
+          "max_importance",
+          "score",
+          "summary",
+          "recommended_actions"
+        ],
+        "properties": {
+          "cluster_id": { "type": "string" },
+          "theme": { "type": "string" },
+          "track": { "type": "string" },
+          "finding_ids": { "type": "array", "items": { "type": "string" } },
+          "duplicate_ids": { "type": "array", "items": { "type": "string" } },
+          "recurrence": { "type": "integer" },
+          "max_importance": { "type": "number" },
+          "score": { "type": "number" },
+          "summary": { "type": "string" },
+          "recommended_actions": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "top_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "detail",
+          "evidence",
+          "type",
+          "importance",
+          "cluster_id",
+          "recurrence",
+          "score",
+          "duplicate_ids",
+          "reason"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "detail": { "type": "string" },
+          "evidence": { "type": "array", "items": { "type": "string" } },
+          "type": { "type": "string" },
+          "importance": { "type": "number" },
+          "cluster_id": { "type": "string" },
+          "recurrence": { "type": "integer" },
+          "score": { "type": "number" },
+          "duplicate_ids": { "type": "array", "items": { "type": "string" } },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "deduplicated_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "duplicate_ids",
+          "recurrence",
+          "max_importance"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "duplicate_ids": { "type": "array", "items": { "type": "string" } },
+          "recurrence": { "type": "integer" },
+          "max_importance": { "type": "number" }
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "required": ["inputTokens", "outputTokens", "totalTokens"],
+      "properties": {
+        "inputTokens": { "type": "integer" },
+        "outputTokens": { "type": "integer" },
+        "totalTokens": { "type": "integer" }
+      }
+    }
+  }
+}

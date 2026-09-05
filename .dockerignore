@@ -1,0 +1,19 @@
+# Docker ignore for workspace root
+node_modules
+.git
+*.test.ts
+__tests__
+docs
+docs.local
+*.md
+!README.md
+.claude-plugin
+commands
+skills
+agents
+launchd
+docker
+scripts
+.env
+.mcp.json
+claude.scratchpad.md

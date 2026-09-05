@@ -1,0 +1,20 @@
+Synthetic fixture only. Date: 2026-03-29 (Sunday), 22:45 UTC.
+Known WhatsApp JIDs (from BrainLayer):
+  - casey-example: 15550101001@s.whatsapp.net
+  - recruiter-riley: 15550101002@s.whatsapp.net
+
+WhatsApp messages (casey-example, last 30):
+  - 20:00 Casey: "How's the sprint going?"
+  - 20:30 User: "Good, wrapping up the onboarding flow."
+
+WhatsApp messages (recruiter-riley, last 30):
+  - 14:00 Riley: "Hi Example User, saw your profile. Senior mobile application at Example Labs. Interested?"
+  (No reply from user — UNANSWERED)
+
+Gmail (today, non-promo):
+  - 09:00 From: Linear <notifications@linear.app> Subject: "2 issues assigned to you"
+
+BrainLayer career context:
+  - "Active job search. mobile application primary stack."
+
+User also requests: "reply to Riley on WhatsApp saying I'm interested"

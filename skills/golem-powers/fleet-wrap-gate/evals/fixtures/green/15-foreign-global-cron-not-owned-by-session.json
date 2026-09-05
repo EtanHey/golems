@@ -1,0 +1,29 @@
+{
+  "specimen": "fleet-wrap/fp-foreign-global-cron-not-owned-by-session",
+  "label": "GREEN — another session owns the remaining global cron; this session must not reap it.",
+  "expect": "PASS",
+  "state": {
+    "session_id": "skillcreator-current-session",
+    "crons": [
+      {
+        "id": "cron-other-session-healthwatch",
+        "status": "active",
+        "session_id": "different-live-session",
+        "owner_session": "different-live-session",
+        "owned_by_current_session": false,
+        "prompt": "health-watch poll panes for a different live session"
+      }
+    ],
+    "loops": []
+  },
+  "events": [
+    {
+      "role": "user",
+      "text": "Wrap only this session."
+    },
+    {
+      "role": "assistant",
+      "text": "Fleet wrapped for this session. My session-owned crons are cleared (cron-count=0). The remaining global cron belongs to a different live session, so I am not reaping it."
+    }
+  ]
+}

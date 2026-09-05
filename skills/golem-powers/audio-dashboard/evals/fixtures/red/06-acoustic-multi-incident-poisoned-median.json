@@ -1,0 +1,41 @@
+{
+  "specimen": "multi-incident-per-wrap duration artifacts that poison the same-role sibling median",
+  "gate": "acoustic",
+  "case": "multi-incident-poisoned-median",
+  "violation": "DURATION_WORD_ABSOLUTE_BACKSTOP",
+  "expectedMissBeforeBackstop": true,
+  "segments": [
+    {
+      "id": "clean-anchor",
+      "role": "expert",
+      "seconds": 8,
+      "words": 20,
+      "sampleRate": 8000,
+      "baseAmplitude": 0
+    },
+    {
+      "id": "artifact-a",
+      "role": "expert",
+      "seconds": 44,
+      "words": 20,
+      "sampleRate": 8000,
+      "baseAmplitude": 0
+    },
+    {
+      "id": "artifact-b",
+      "role": "expert",
+      "seconds": 45,
+      "words": 20,
+      "sampleRate": 8000,
+      "baseAmplitude": 0
+    },
+    {
+      "id": "artifact-c",
+      "role": "expert",
+      "seconds": 46,
+      "words": 20,
+      "sampleRate": 8000,
+      "baseAmplitude": 0
+    }
+  ]
+}

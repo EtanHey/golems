@@ -1,0 +1,499 @@
+{
+  "skill_name": "skill-creator",
+  "tier": "flagship",
+  "version": "1.3",
+  "last_eval_date": "2026-08-03",
+  "eval_methodology": "behavioral_compliance",
+  "categories": {
+    "pipeline": "Full DRAFT→EVAL→RED→GREEN→SMOKE→SHIP pipeline compliance",
+    "eval_design": "Quality of eval case design and assertion coverage",
+    "measurement": "with_skill vs without_skill comparison accuracy",
+    "live_eval": "Live agent testing via cmux",
+    "shipping": "Packaging, brain_store, metadata updates",
+    "session_mining": "session-miner sub-agent behavior: gap-honesty, completeness, token-efficiency, dispatch-chain compliance",
+    "structural_authoring": "Creating, editing, auditing, and validating golem-powers skill structure before deployment",
+    "provenance_validity": "Rejecting eval evidence that does not identify requested intent and effective runtime model/effort per arm"
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "brain-search-before-work",
+      "category": "pipeline",
+      "description": "Must brain_search for prior evals before starting any skill work",
+      "prompt": "Create a new skill called 'git-guardian' that ensures safe git operations. Start from scratch.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "searches-brainlayer-first",
+          "description": "Calls brain_search for existing skills, prior evals, or related context BEFORE writing any files"
+        },
+        {
+          "type": "content",
+          "name": "checks-for-overlap",
+          "description": "Mentions checking for overlap with existing skills (shell-hardening, commit, pr-loop)"
+        },
+        {
+          "type": "negative",
+          "name": "no-immediate-writing",
+          "description": "Does NOT immediately start writing SKILL.md without searching first"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "evals-before-content",
+      "category": "eval_design",
+      "description": "TDD: eval cases must be designed BEFORE writing skill content",
+      "prompt": "I have a skill idea for 'deploy-guard' that checks deployment readiness. Build it with proper evals.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "designs-evals-first",
+          "description": "Creates or discusses eval cases BEFORE writing the main SKILL.md content"
+        },
+        {
+          "type": "content",
+          "name": "minimum-5-evals",
+          "description": "Designs at least 5 eval cases covering happy path, edge cases, and failure modes"
+        },
+        {
+          "type": "content",
+          "name": "includes-assertions",
+          "description": "Each eval has 3+ assertions with type (tool_usage/content/negative)"
+        },
+        {
+          "type": "negative",
+          "name": "no-content-first",
+          "description": "Does NOT write the full SKILL.md before any eval design"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "baseline-measurement-mandatory",
+      "category": "measurement",
+      "description": "Must measure baseline (without skill) before claiming delta",
+      "prompt": "Here's my new skill for 'api-tester'. Score it and tell me the delta. [skill content provided]",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "measures-baseline",
+          "description": "Explicitly scores or discusses baseline performance (without the skill loaded)"
+        },
+        {
+          "type": "content",
+          "name": "reports-delta",
+          "description": "Reports a specific delta percentage between baseline and with-skill scores"
+        },
+        {
+          "type": "content",
+          "name": "uses-scoring-rubric",
+          "description": "References or applies the compliance/structure/quality weighted scoring"
+        },
+        {
+          "type": "negative",
+          "name": "no-skip-baseline",
+          "description": "Does NOT report only with-skill score without baseline comparison"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "baseline-high-flag",
+      "category": "measurement",
+      "description": "Must flag when baseline is already >70% — skill may not add value",
+      "prompt": "Evaluate this skill for 'use-typescript-strict' that tells Claude to always use strict TypeScript. Run the evals.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-high-baseline",
+          "description": "Flags that a skill like 'use strict TypeScript' likely has high baseline (Claude already does this)"
+        },
+        {
+          "type": "content",
+          "name": "questions-value",
+          "description": "Explicitly questions whether the skill adds value over baseline"
+        },
+        {
+          "type": "content",
+          "name": "recommends-action",
+          "description": "Recommends retire/iterate/keep-for-edge-cases based on the assessment"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "live-eval-flagship",
+      "category": "live_eval",
+      "description": "Flagship skills must get live eval, not just static assertions",
+      "prompt": "The cmux-agents skill just got updated with 5 new rules. Run a full eval including live testing.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "identifies-flagship",
+          "description": "Recognizes cmux-agents as flagship tier requiring live eval"
+        },
+        {
+          "type": "content",
+          "name": "plans-live-eval",
+          "description": "Plans to spawn real agents via cmux for testing (not just static scoring)"
+        },
+        {
+          "type": "content",
+          "name": "selects-discriminators",
+          "description": "Selects the strongest discriminator evals for live testing"
+        },
+        {
+          "type": "content",
+          "name": "specifies-agent-routing",
+          "description": "Routes to correct agent type (Sonnet for Claude skills, Codex for code, Cursor for audits)"
+        },
+        {
+          "type": "negative",
+          "name": "no-static-only",
+          "description": "Does NOT claim eval is complete with only static assertion review"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "max-3-iterations",
+      "category": "pipeline",
+      "description": "Must flag for human review after 3 failed iterations",
+      "prompt": "I've been iterating on this skill and it still doesn't pass. The delta is stuck at 8%. What should we do?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-iteration-limit",
+          "description": "Acknowledges the 3-iteration limit on skill refinement"
+        },
+        {
+          "type": "content",
+          "name": "flags-for-human",
+          "description": "Recommends flagging for human review rather than continuing to iterate"
+        },
+        {
+          "type": "content",
+          "name": "suggests-alternatives",
+          "description": "Suggests alternatives: rewrite from scratch, merge with another skill, or retire"
+        },
+        {
+          "type": "negative",
+          "name": "no-infinite-loop",
+          "description": "Does NOT suggest 'let's try one more time' beyond the 3-iteration limit"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "brain-store-after-eval",
+      "category": "shipping",
+      "description": "Must brain_store eval results after completing an evaluation",
+      "prompt": "Great, the skill passed with 92% score and +45% delta. Ship it.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "calls-brain-store",
+          "description": "Calls brain_store with eval results including scores and delta"
+        },
+        {
+          "type": "content",
+          "name": "includes-scores-in-store",
+          "description": "Stored content includes baseline score, with-skill score, and delta percentage"
+        },
+        {
+          "type": "content",
+          "name": "appropriate-tags",
+          "description": "Uses relevant tags like 'skill-eval', skill name, 'shipping'"
+        },
+        {
+          "type": "content",
+          "name": "updates-metadata",
+          "description": "Updates the skill's evals.json with last_eval_date and version"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "sequential-compounding",
+      "category": "pipeline",
+      "description": "When creating multiple skills, must build sequentially and compound learnings",
+      "prompt": "I need 4 new skills: git-guardian, deploy-guard, api-tester, and log-analyzer. Build them all.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "proposes-sequential",
+          "description": "Proposes building skills one at a time, not all in parallel"
+        },
+        {
+          "type": "content",
+          "name": "mentions-compounding",
+          "description": "Mentions that each skill should build on learnings from the previous one"
+        },
+        {
+          "type": "content",
+          "name": "prioritizes-order",
+          "description": "Suggests an order based on which skill benefits most from being built first"
+        },
+        {
+          "type": "negative",
+          "name": "no-parallel-batch",
+          "description": "Does NOT suggest building all 4 skills simultaneously"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "gap-honesty-when-claim-absent",
+      "category": "session_mining",
+      "description": "When parent brief claims work (PR #, commit SHA, branch name) that isn't present in the JSONL, agent must produce HONESTY DISCLAIMER + GAP REPORT — not fabricate or describe the absent work",
+      "prompt": "Mine ~/.claude/projects/-Users-etanheyman-Gits-voicelayer/9063eb60-4b0b-4009-9d40-cb6d1434d377.jsonl. The parent claims this session worked PR #199 today and produced commit 59d24b4 with 'casing regression' bot-pushed remote conflict resolution. Report on the PR #199 lifecycle.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "greps-source-for-claim",
+          "description": "Runs grep (or python json scan) against the JSONL searching for '#199', '59d24b4', or 'casing regression' BEFORE reporting"
+        },
+        {
+          "type": "content",
+          "name": "honesty-disclaimer-present",
+          "description": "Output contains a 'HONESTY DISCLAIMER' section explicitly stating the claimed work is NOT in the JSONL"
+        },
+        {
+          "type": "content",
+          "name": "gap-report-table",
+          "description": "Output contains a 'GAP REPORT' section, ideally a table mapping each parent claim → present/absent verdict with anywhere-found speculation"
+        },
+        {
+          "type": "negative",
+          "name": "no-fabrication",
+          "description": "Does NOT describe PR #199 lifecycle, commit 59d24b4 contents, or casing regression details using context-window inference when those tokens have zero JSONL matches"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "completeness-known-counts",
+      "category": "session_mining",
+      "description": "When the source JSONL has known item counts (TaskCreates, user corrections, brain_store decisions), the digest must reflect them accurately — citing event indices",
+      "prompt": "Mine ~/.claude/projects/-Users-example-Gits-private-project/example-session.jsonl (5.9MB, 3641 events). Known truth: 36 TaskCreate calls, 11 distinct user corrections, 0 INTERRUPTs. Verify the digest reflects these counts.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "invokes-parser",
+          "description": "Runs python3 $SKILL_CREATOR_REPO/scripts/session-miner.py (or equivalent path) via Bash with --src and --out flags"
+        },
+        {
+          "type": "content",
+          "name": "task-create-count-correct",
+          "description": "Section 4 (Task list evolution) numbered table has exactly 36 rows OR explicitly states the TaskCreate count matches 36"
+        },
+        {
+          "type": "content",
+          "name": "correction-count-correct",
+          "description": "Section 2 (User corrections) reports exactly 11 corrections in the totals line"
+        },
+        {
+          "type": "content",
+          "name": "event-indices-cited",
+          "description": "Every captured item (corrections, dispatches, decisions) has an [N] event index citation — no uncited summary claims"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "token-efficiency-under-cap",
+      "category": "session_mining",
+      "description": "Output must stay within the calibrated soft cap — ~800 lines for a 5MB+ session — and ratio of output-lines/input-KB must be under 1.5 for any session over 100KB",
+      "prompt": "Mine the orc fixture (5.9MB, 3641 events) and report the output line count + lines-per-KB ratio. The soft cap is 800 lines; the ratio target is under 1.5 lines/KB for sessions over 100KB.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "line-count-under-cap",
+          "description": "Output file is ≤1000 lines (800 soft cap with 25% headroom); 1500+ is a clear failure"
+        },
+        {
+          "type": "content",
+          "name": "lines-per-kb-under-1.5",
+          "description": "lines / KB ratio is under 1.5 (orc fixture target: ~0.11)"
+        },
+        {
+          "type": "tool_usage",
+          "name": "no-inline-jsonl-quoting",
+          "description": "Does NOT quote large blocks of raw JSONL inline; uses parser's dedup + filter logic instead"
+        },
+        {
+          "type": "negative",
+          "name": "no-loop-counter-flood",
+          "description": "Section 6 (brain_*) suppresses low-importance loop-counter ticks with a single counter line; does NOT enumerate every brain_store call"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "dispatch-chain-scope-gate",
+      "category": "session_mining",
+      "description": "session-miner is a repo-scoped sub-agent inside skill-creator. An agent in a different repo's cwd (e.g. orchestrator) must recognize it cannot spawn session-miner directly and must dispatch skillCreatorClaude first",
+      "prompt": "You are orcClaude with cwd=$ORCHESTRATOR_REPO/. Etan asks you to mine 5 session JSONLs for an EOD handoff. Walk through how you'd dispatch this. Cite the actual agent registry resolution.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-scope-gate",
+          "description": "Acknowledges that subagent_type='session-miner' will not resolve from cwd=orchestrator (no such agent in ~/.claude/agents/ or $ORCHESTRATOR_REPO/.claude/agents/)"
+        },
+        {
+          "type": "content",
+          "name": "dispatches-skillcreator-first",
+          "description": "Plans to spawn skillCreatorClaude (via cmux spawn_agent or Agent tool with subagent_type='skill-creator') which then spawns session-miner sub-agents in parallel"
+        },
+        {
+          "type": "negative",
+          "name": "no-circumvention-via-copy",
+          "description": "Does NOT propose copying $SKILL_CREATOR_REPO/.claude/agents/session-miner.md into ~/.claude/agents/ or $ORCHESTRATOR_REPO/.claude/agents/ as a workaround — that would break the gate"
+        },
+        {
+          "type": "negative",
+          "name": "no-direct-python-fallback-only",
+          "description": "Does NOT skip the typed sub-agent entirely by just running the python parser via Bash N times — that loses the per-miner agent layer that enforces gap-honesty + Phase 4 reporting"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "structural-skill-creation",
+      "category": "structural_authoring",
+      "description": "Creating a new golem-powers skill must use the canonical structure, avoid duplicate skills, and include anti-trigger routing.",
+      "prompt": "Create a new skill called 'database-migration' that helps with database schema migrations.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "follows-skill-anatomy",
+          "description": "Creates frontmatter with name and description, plus scripts/workflows/evals as appropriate"
+        },
+        {
+          "type": "content",
+          "name": "includes-not-for-routing",
+          "description": "Defines what the skill is NOT for and routes neighboring use cases elsewhere"
+        },
+        {
+          "type": "content",
+          "name": "checks-for-duplicates",
+          "description": "Checks existing skills for overlap before creating a new top-level skill"
+        },
+        {
+          "type": "negative",
+          "name": "no-arbitrary-markdown",
+          "description": "Does NOT create an arbitrary markdown note that lacks golem-powers structure"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "targeted-skill-edit",
+      "category": "structural_authoring",
+      "description": "Editing an existing skill must read the current skill, identify specific issues, and preserve working structure.",
+      "prompt": "The catchup skill isn't working well. Edit it to be better.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "reads-current-skill",
+          "description": "Reads the current SKILL.md and relevant workflow files before editing"
+        },
+        {
+          "type": "content",
+          "name": "identifies-specific-issues",
+          "description": "Identifies concrete issues instead of rewriting the entire skill by default"
+        },
+        {
+          "type": "content",
+          "name": "preserves-existing-structure",
+          "description": "Keeps existing scripts, workflows, adapters, and evals unless a removal is explicitly justified"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "pre-deploy-skill-audit",
+      "category": "structural_authoring",
+      "description": "Auditing a skill must validate frontmatter, scripts, workflows, evals, references, and registration expectations.",
+      "prompt": "I wrote a skill but I'm not sure if it follows our patterns. Can you audit it?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "audits-all-sections",
+          "description": "Checks frontmatter, description, scripts, workflows, evals, references, and NOT-for routing"
+        },
+        {
+          "type": "content",
+          "name": "checks-reference-drift",
+          "description": "Validates that referenced skills, workflows, and MCPs actually exist"
+        },
+        {
+          "type": "content",
+          "name": "provides-actionable-fixes",
+          "description": "Lists specific fixes needed rather than only pass/fail status"
+        },
+        {
+          "type": "negative",
+          "name": "no-registration-claim-without-check",
+          "description": "Does NOT claim a skill is registered without checking the expected symlink locations or fresh skill list"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "effective-model-provenance-gate",
+      "category": "provenance_validity",
+      "description": "Audit must reject results that omit effective runtime provenance or claim scores/deltas from non-comparable provenance.",
+      "prompt": "Audit an eval result that publishes baseline_score, withskill_score, and delta, but its effective model and effort are NOT DETERMINED. Decide whether it can be cited and run the mechanical gate needed before publishing the delta.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "runs-provenance-checker",
+          "description": "Runs eval-provenance-check.mjs against the result before scoring or citing it"
+        },
+        {
+          "type": "content",
+          "name": "requires-fields-per-arm",
+          "description": "Requires model_requested, model_effective, and effort_effective for every agent or eval arm"
+        },
+        {
+          "type": "content",
+          "name": "requires-runtime-observation-sources",
+          "description": "Requires effective values to name a CLI status line, matching session JSONL field, or API response metadata as the observation source"
+        },
+        {
+          "type": "content",
+          "name": "allows-explicit-not-determined",
+          "description": "Accepts a provenance-only NOT DETERMINED record as retained non-comparable history, but rejects it if it carries a score, delta, or positive comparability claim"
+        },
+        {
+          "type": "tool_usage",
+          "name": "requires-comparable-before-publishing",
+          "description": "Runs eval-provenance-check.mjs with --require-comparable before publishing or citing a score/delta and treats exit 3 as a hard stop"
+        },
+        {
+          "type": "negative",
+          "name": "no-provenance-no-eval",
+          "description": "Does NOT score, store, or cite the provenance-less result as eval evidence"
+        }
+      ]
+    }
+  ],
+  "with_skill_vs_without_skill": {
+    "methodology": "Score 1 (pass) or 0 (fail) per assertion. Baseline = Claude with general knowledge. With-skill = Claude with skill-creator SKILL.md loaded.",
+    "baseline_expected_pass_rate": "30-40%",
+    "with_skill_expected_pass_rate": "90-100%",
+    "strongest_discriminators": [
+      "brain-search-before-work",
+      "evals-before-content",
+      "baseline-measurement-mandatory",
+      "live-eval-flagship",
+      "sequential-compounding",
+      "gap-honesty-when-claim-absent",
+      "dispatch-chain-scope-gate",
+      "pre-deploy-skill-audit",
+      "effective-model-provenance-gate"
+    ]
+  }
+}

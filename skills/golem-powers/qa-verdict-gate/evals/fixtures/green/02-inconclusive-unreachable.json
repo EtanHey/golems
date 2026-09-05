@@ -1,0 +1,39 @@
+{
+  "specimen": "qa-verdict/inconclusive-correct",
+  "label": "GREEN — INCONCLUSIVE correctly used when the path was unreachable (page never loaded), report written",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "QA the new checkout regression." },
+    {
+      "role": "assistant",
+      "text": "Trying to load the checkout page.",
+      "tools": [
+        {
+          "name": "mcp__playwright__browser_navigate",
+          "input": { "url": "http://localhost:3000/checkout" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "navigation timeout: page never loaded — net::ERR_CONNECTION_REFUSED, the dev server is down"
+    },
+    {
+      "role": "assistant",
+      "text": "The page never loaded so I could not reach the checkout flow. Writing an inconclusive report.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/qa/qa-report.md",
+            "content": "# QA Report — Checkout\n\n- [ ] Item 1: checkout page loads — COULD NOT REACH (server down)\n- [ ] Item 2: add-to-cart\n- [ ] Item 3: payment\n\nVerdict: INCONCLUSIVE — the page never loaded (ERR_CONNECTION_REFUSED); the regression path was not reachable, so neither PASS nor FAIL can be asserted."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Verdict: INCONCLUSIVE — couldn't reach the checkout flow (the page never loaded, server refused the connection). Report written; this is not a PASS or a FAIL."
+    }
+  ]
+}

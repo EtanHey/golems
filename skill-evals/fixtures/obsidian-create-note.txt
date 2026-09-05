@@ -1,0 +1,3 @@
+Obsidian vault path: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/personal/Personal/
+
+User message: "Create a note called 'Sprint 3 Retrospective' with sections for What Went Well, What Didn't, and Action Items."

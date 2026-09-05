@@ -1,0 +1,148 @@
+{
+  "skill_name": "research-ab-test",
+  "description": "Eval cases for the research A/B test skill. Tests whether agents correctly set up, run, score, and interpret multi-platform research comparisons. Based on R75 methodology (April 4, 2026).",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to compare Claude and Gemini for BrainLayer improvement research. What's the first step?",
+      "expected_output": "Should set up equivalent context on BOTH platforms first (same background files). Should NOT jump to submitting the prompt without matching context.",
+      "assertions": [
+        {
+          "text": "Starts with context setup — ensuring both platforms have equivalent background info",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT submit the prompt to one platform before setting up context on both",
+          "type": "negative"
+        },
+        {
+          "text": "Mentions the need for the SAME prompt to go to both platforms",
+          "type": "behavioral"
+        },
+        {
+          "text": "Notes any access differences between platforms (e.g., Claude has MCP, Gemini doesn't)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Both research results are back. Claude scored higher overall, but Gemini found a real bug in the code that Claude missed. Who wins?",
+      "expected_output": "Should recognize that unique finds matter as much as total score. Should recommend using BOTH platforms — Claude for overall quality, Gemini for code-level bugs. Not a binary winner.",
+      "assertions": [
+        {
+          "text": "Does NOT declare a single binary winner without nuance",
+          "type": "negative"
+        },
+        {
+          "text": "Highlights the unique find as valuable (Gemini's code bug discovery)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recommends platform routing based on strengths (not just overall score)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Suggests merging unique finds from both platforms for the best result",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Score this research result on the 10-dimension rubric. The result found 3 novel insights, gave specific code-level fixes, but was poorly organized and cited 2 blog posts as primary sources.",
+      "expected_output": "Should score Novelty and Code-Level Insight HIGH (3 novel insights, specific fixes). Should score Structure LOW (poorly organized). Should score Source Quality LOW (blog posts, not papers/docs).",
+      "assertions": [
+        {
+          "text": "Scores Novelty high (3 novel insights = strong)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Scores Code-Level Insight high (specific code fixes)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Scores Structure low (poorly organized)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Scores Source Quality low (blog posts, not authoritative sources)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses the 0-5 scale for each dimension (not just high/low)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Claude has live BrainLayer MCP access during research, but NotebookLM only has static uploaded files. Is this a fair comparison?",
+      "expected_output": "Should acknowledge this is a real methodological difference. Should note it in the comparison (Claude's MCP access was the KEY differentiator in R75). Should suggest it as a documented variable, not a reason to invalidate the test.",
+      "assertions": [
+        {
+          "text": "Acknowledges the methodological difference (MCP access vs static files)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT dismiss the comparison as invalid",
+          "type": "negative"
+        },
+        {
+          "text": "Notes this as a documented variable to be considered in scoring",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions that this WAS the key differentiator in R75 (real evidence, not speculation)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "User asks: 'Should I cancel one paid research subscription and switch to a competing plan?' Based on what I know, should I answer from my training data?",
+      "expected_output": "Should NOT answer from training data or opinions. Should recommend running an A/B test first to validate with data. This is exactly when the skill should be invoked.",
+      "assertions": [
+        {
+          "text": "Recommends running an A/B test before making the subscription decision",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT give a recommendation based solely on training data or opinions",
+          "type": "negative"
+        },
+        {
+          "text": "Suggests testing with a prompt that represents the user's actual research needs",
+          "type": "behavioral"
+        },
+        {
+          "text": "References the R75 results as a prior data point (not as the definitive answer)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I need to run the same research prompt on Claude, Gemini, AND NotebookLM. How do I set up NotebookLM given that it blocks .py and .json files?",
+      "expected_output": "Should reference /notebooklm-research NP3 — rename .py/.json to .txt or use source_type='text' via MCP. Should also mention the 50-source limit and account verification.",
+      "assertions": [
+        {
+          "text": "Mentions the .txt rename workaround for blocked file types",
+          "type": "behavioral"
+        },
+        {
+          "text": "References /notebooklm-research skill for detailed NLM patterns",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions the 50-source limit as a constraint to plan for",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT suggest uploading .py/.json files directly (they'll be rejected)",
+          "type": "negative"
+        }
+      ]
+    }
+  ]
+}

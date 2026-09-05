@@ -1,0 +1,20 @@
+{
+  "specimen": "verified closed lane with clean pushed artifact and reported harvest",
+  "enumerated": {
+    "id": "66666666-6666-4666-8666-666666666666",
+    "ref": "surface:310",
+    "title": "review complete — reported",
+    "type": "terminal",
+    "workspace_ref": "workspace:1"
+  },
+  "observation": {
+    "identity_status": "MATCHED",
+    "process_alive": true,
+    "agent_state": "done",
+    "open_lane": "closed",
+    "reported": true,
+    "harvest_verified": true,
+    "artifact": {"status": "clean", "uncommitted": false, "unpushed": 0}
+  },
+  "expected": {"verdict": "CLOSE-CANDIDATE"}
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": "friendly-label-as-effective",
+  "provenance": [
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "sonnet",
+      "model_effective": "Sonnet 5",
+      "effort_effective": "high",
+      "model_observation_source": "CLI status line",
+      "effort_observation_source": "CLI status line"
+    }
+  ]
+}

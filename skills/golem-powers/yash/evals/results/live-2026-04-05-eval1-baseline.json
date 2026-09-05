@@ -1,0 +1,42 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-04-05",
+  "skill": "yash",
+  "eval_id": 1,
+  "eval_name": "fix-upstream-not-workaround",
+  "variant": "baseline",
+  "agent": {
+    "type": "claude",
+    "model": "Sonnet 4.6",
+    "tokens": 39699,
+    "context_pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "assertions": {
+    "proposes-upstream-fix": {
+      "type": "content",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Mentions fork+patch as step 4 but PRIMARY recommendation is 'Guard on your side first' (workaround). Upstream fix is afterthought, not default."
+    },
+    "mentions-patch-package": {
+      "type": "content",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Uses bun workspace override pattern instead of patch-package. Conceptually similar but doesn't know the specific tool."
+    },
+    "mentions-issue-check": {
+      "type": "content",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Step 2: 'File an issue upstream' + Step 3: 'Check if there's a newer version'"
+    },
+    "no-just-workaround": {
+      "type": "negative",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "FAILS — primary recommendation IS the workaround: 'Guard on your side first — add an empty-string check. This is the fastest fix and doesn't block you.' Called it 'non-negotiable.'"
+    }
+  },
+  "total_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "max_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "percentage": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "notes": "Strong discriminator validated. Without /yash, Sonnet defaults to caller-side guard (workaround) as PRIMARY action. Upstream fix is step 4/afterthought. With /yash, decision tree routes to 'Fork, fix, PR upstream' as default.",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

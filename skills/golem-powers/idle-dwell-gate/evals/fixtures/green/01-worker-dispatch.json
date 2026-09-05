@@ -1,0 +1,24 @@
+{
+  "specimen": "narrationlayer/019ee3dd#5",
+  "label": "GREEN — open queue, terminal action dispatches the next worker (drives, no pause)",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "The sprint queue has 3 approved tasks remaining. You own them. Go."
+    },
+    {
+      "role": "assistant",
+      "text": "Picking up T4 first. Dispatching the brain_search fix to the brainlayer worker now.",
+      "tools": [
+        {
+          "name": "send_to_agent",
+          "input": {
+            "agent": "brainlayer-w1",
+            "message": "Read docs/plan/T4.md and execute the full pr-loop to MERGED."
+          }
+        }
+      ]
+    }
+  ]
+}

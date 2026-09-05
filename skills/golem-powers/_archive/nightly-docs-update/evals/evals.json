@@ -1,0 +1,113 @@
+{
+  "skill_name": "nightly-docs-update",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run /nightly-docs-update. The script output is in /Users/example/Gits/golems/skills/golem-powers/nightly-docs-update/evals/fixtures/stats-output-with-drift.txt. Stats have drifted — chunk count went from 291K to 295K, PRs from 261 to 275, tests from 995 to 1012. 6 files were updated. Create a PR with the changes.",
+      "expected_output": "Agent reads the script output, recognizes stats have drifted, creates a branch, commits the changes, and creates a PR with a summary of what changed.",
+      "files": [
+        "/Users/example/Gits/golems/skills/golem-powers/nightly-docs-update/evals/fixtures/stats-output-with-drift.txt"
+      ],
+      "assertions": [
+        {
+          "name": "reads-script-output",
+          "description": "Agent reads or parses the script output to understand what changed"
+        },
+        {
+          "name": "identifies-specific-drift",
+          "description": "Agent identifies the specific numbers that changed (chunks 291K→295K, PRs 261→275, tests 995→1012)"
+        },
+        {
+          "name": "creates-pr-branch",
+          "description": "Agent creates a branch with conventional name like chore/nightly-docs-YYYY-MM-DD"
+        },
+        {
+          "name": "commits-with-summary",
+          "description": "Agent commits with a descriptive message mentioning the stats update"
+        },
+        {
+          "name": "creates-pr-with-diff",
+          "description": "Agent creates a PR that includes which files changed and the stat deltas"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run /nightly-docs-update. The script output is in /Users/example/Gits/golems/skills/golem-powers/nightly-docs-update/evals/fixtures/stats-output-no-changes.txt. All stats are current — no drift detected.",
+      "expected_output": "Agent reads the output, confirms no changes are needed, and exits cleanly without creating a PR or unnecessary commits.",
+      "files": [
+        "/Users/example/Gits/golems/skills/golem-powers/nightly-docs-update/evals/fixtures/stats-output-no-changes.txt"
+      ],
+      "assertions": [
+        {
+          "name": "reads-script-output",
+          "description": "Agent reads the script output before making conclusions"
+        },
+        {
+          "name": "recognizes-no-changes",
+          "description": "Agent recognizes the 'All stats current' message and does not attempt file modifications"
+        },
+        {
+          "name": "does-not-create-empty-pr",
+          "description": "Agent does not create a branch, commit, or PR when nothing changed"
+        },
+        {
+          "name": "reports-clean-status",
+          "description": "Agent reports to the user that docs are up-to-date"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run /nightly-docs-update. The script output is in /Users/example/Gits/golems/skills/golem-powers/nightly-docs-update/evals/fixtures/stats-output-dead-refs.txt. Two dead package references were detected: packages/orchestrator/ and packages/dashboard/.",
+      "expected_output": "Agent surfaces the dead references, explains what each one means (orchestrator removed, dashboard renamed to docsite), and asks the user whether to fix them or leave them for historical accuracy.",
+      "files": [
+        "/Users/example/Gits/golems/skills/golem-powers/nightly-docs-update/evals/fixtures/stats-output-dead-refs.txt"
+      ],
+      "assertions": [
+        {
+          "name": "surfaces-dead-refs",
+          "description": "Agent highlights the dead package references and which files contain them"
+        },
+        {
+          "name": "explains-context",
+          "description": "Agent explains what happened to each dead package (orchestrator removed, dashboard→docsite)"
+        },
+        {
+          "name": "does-not-auto-fix-dead-refs",
+          "description": "Agent does NOT automatically edit files to remove dead references — these may be historically accurate"
+        },
+        {
+          "name": "asks-for-decision",
+          "description": "Agent asks the user whether to fix the references or leave them"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run /nightly-docs-update. The script output is in /Users/example/Gits/golems/skills/golem-powers/nightly-docs-update/evals/fixtures/stats-output-partial-failure.txt. BrainLayer DB was not found and gh CLI is not authenticated. The portfolio repo has uncommitted changes.",
+      "expected_output": "Agent reads the warnings, reports that chunk count and PR count could not be collected, warns about the dirty portfolio repo state, and skips updates for stats that have zero values to avoid overwriting good data with zeros.",
+      "files": [
+        "/Users/example/Gits/golems/skills/golem-powers/nightly-docs-update/evals/fixtures/stats-output-partial-failure.txt"
+      ],
+      "assertions": [
+        {
+          "name": "reads-warnings",
+          "description": "Agent reads and reports the specific warnings (missing DB, missing gh CLI)"
+        },
+        {
+          "name": "does-not-write-zeros",
+          "description": "Agent recognizes that chunk_count=0 and pr_count=0 are failures, not real values, and does NOT update files with zeros"
+        },
+        {
+          "name": "warns-about-dirty-repo",
+          "description": "Agent flags the uncommitted changes in etanheyman.com as a risk"
+        },
+        {
+          "name": "suggests-remediation",
+          "description": "Agent suggests how to fix the issues (install sqlite3, authenticate gh, commit/stash portfolio changes)"
+        }
+      ]
+    }
+  ]
+}

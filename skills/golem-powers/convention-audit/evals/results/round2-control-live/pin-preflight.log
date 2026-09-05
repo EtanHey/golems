@@ -1,0 +1,22 @@
+requested_model=gpt-5.6-luna
+requested_effort=max
+returncode=0
+{"worker":"synthesis","findings":[]}
+
+OpenAI Codex v0.146.0
+--------
+workdir: /var/folders/nb/ddw_4cvn2s9dfrhw3hvsdvwm0000gn/T/convention-audit-control-c8v6tfqw/shared-helper-control
+model: gpt-5.6-luna
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: max
+reasoning summaries: none
+session id: 019fc483-9fce-78d2-95be-cd258374a4c8
+--------
+user
+Return exactly {"worker":"synthesis","findings":[]} and do not inspect or edit files.
+codex
+{"worker":"synthesis","findings":[]}
+tokens used
+16,918

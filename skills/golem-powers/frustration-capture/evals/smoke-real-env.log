@@ -1,0 +1,15 @@
+SMOKE REAL ENV: Claude Code UserPromptSubmit hook activation
+Command: claude -p --include-hook-events --output-format=stream-json --max-budget-usd 0.05 --tools "" --model sonnet "No, I told you Brave is wrong, I use Helium. Reply with exactly whether you saw any FRUSTRATION SIGNAL DETECTED context and name the skill you should run."
+
+Observed UserPromptSubmit hook response:
+[FRUSTRATION SIGNAL DETECTED - Tier 2, category assumption]
+User correction pattern matched: 'No'.
+Multiple correction/frustration patterns matched: 'No', 'wrong', 'I told you', 'FRUSTRATION'.
+MANDATORY action before responding: run /frustration-capture to brain_store this correction at importance >=9. Quote the user verbatim. Do NOT just apologize - store the correction first.
+
+Observed assistant first response:
+Yes, I saw `[FRUSTRATION SIGNAL DETECTED - Tier 2, category assumption]` in the hook context.
+The skill I should run is `/frustration-capture`.
+
+Result note:
+The Claude run returned error_max_budget_usd after producing the response because --max-budget-usd was set to 0.05 for quota control. Hook firing and first-response behavior were already observed in the stream-json hook events.

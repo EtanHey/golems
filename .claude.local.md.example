@@ -1,0 +1,27 @@
+# .claude.local.md — Machine-Specific Config
+# Copy to .claude.local.md and customize for your machine.
+# This file is gitignored — safe for local paths, ports, and overrides.
+
+## Local Paths
+# - Repo: /Users/YOURUSERNAME/Gits/golems
+# - Skills: /Users/YOURUSERNAME/Gits/golems/skills/golem-powers
+# - Bun: /Users/YOURUSERNAME/.bun/bin/bun
+# - Claude CLI: /Users/YOURUSERNAME/.local/bin/claude
+
+## Monorepo Packages
+# - ralph: packages/ralph (CLI + agent runner)
+# - coach: packages/coach (life admin assistant)
+# - shared: packages/shared (shared utilities)
+
+## MCP Servers (local)
+# - brainlayer-mcp (BrainBar via /tmp/brainbar.sock)
+# - voicelayer-mcp (via /tmp/voicelayer-mcp.sock)
+# - supabase (golems tables)
+
+## External Services
+# - Supabase project: check 1Password vault "development"
+# - Convex deployment: check packages/*/convex.json
+
+## Dev Flags
+# - debug_hooks: false
+# - mock_mcp: false (set true for offline skill testing)

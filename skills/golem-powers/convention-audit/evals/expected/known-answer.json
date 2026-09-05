@@ -1,0 +1,22 @@
+{
+  "worker": "time-and-query-semantics",
+  "findings": [
+    {
+      "concept": "recent timestamp-window comparison",
+      "implementation_sites": [
+        {"path": "src/brainlayer/session_repo.py", "line": 62, "summary": "compares raw ISO created_at text to SQLite datetime text"},
+        {"path": "scripts/enrich_recent.py", "line": 77, "summary": "compares raw ISO created_at text to SQLite datetime text"},
+        {"path": "src/brainlayer/search_repo.py", "line": 2264, "summary": "normalizes created_at through datetime()"},
+        {"path": "src/brainlayer/mcp/enrich_handler.py", "line": 107, "summary": "normalizes enriched_at through datetime()"},
+        {"path": "src/brainlayer/eval/enrichment_quality_benchmark.py", "line": 127, "summary": "normalizes created_at through datetime()"},
+        {"path": "src/brainlayer/p0_longitudinal_count.py", "line": 25, "summary": "normalizes created_at through datetime()"}
+      ],
+      "divergent_sites": [
+        {"path": "src/brainlayer/session_repo.py", "line": 62, "reason": "raw text uses a different timestamp separator"},
+        {"path": "scripts/enrich_recent.py", "line": 77, "reason": "raw text uses a different timestamp separator"}
+      ],
+      "shared_helper_shape": "A parameterized recent_timestamp_clause(column, amount, unit) that always applies SQLite datetime() normalization.",
+      "confidence": "high"
+    }
+  ]
+}

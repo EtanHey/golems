@@ -1,0 +1,77 @@
+{
+  "skill_name": "video-showcase",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to create a 60-second showcase video for my SaaS app 'TaskFlow'. I have 3 screenshots in ~/screenshots/. Key features: real-time sync, team boards, AI summaries. Colors: primary #3B82F6, dark bg #0F172A.",
+      "expected_output": "Gathers inputs, selects ProductHero template, copies screenshots to remotion/public/, generates a TSX composition with proper Remotion APIs (useCurrentFrame, interpolate, spring, Sequence), and renders to MP4.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "generates-tsx-composition",
+          "description": "Creates an actual TSX composition file in remotion/src/compositions/ — not just a description of what the video should look like. The file must be valid React+Remotion code."
+        },
+        {
+          "name": "uses-remotion-frame-api",
+          "description": "All animations use Remotion's frame-based APIs (useCurrentFrame, interpolate, spring, Sequence) — NOT CSS animations, Tailwind transitions, setTimeout, or setInterval. This is the #1 critical rule."
+        },
+        {
+          "name": "uses-sequence-for-timing",
+          "description": "Timeline sections (intro, screenshots, features, outro) are structured with <Sequence from={N}> components for timing — not conditional rendering based on time calculations."
+        },
+        {
+          "name": "uses-static-file-for-assets",
+          "description": "Screenshots are referenced via staticFile() and placed in the public/ directory — not imported as modules or referenced with relative paths."
+        },
+        {
+          "name": "renders-to-mp4",
+          "description": "Includes the npx remotion render command to produce an actual MP4 output file, with the correct composition ID and props passed as JSON."
+        },
+        {
+          "name": "clamps-extrapolation",
+          "description": "All interpolate() calls include extrapolateRight: 'clamp' to prevent animation values from overshooting their targets — a critical Remotion rule specified in the skill."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Make me a quick video. Just use CSS animations and Tailwind — I don't want to deal with all that Remotion frame math.",
+      "expected_output": "Explains that Remotion requires frame-based animation (interpolate, spring) and CSS/Tailwind animations will NOT work in rendered video. Proceeds with proper Remotion APIs.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "rejects-css-animations",
+          "description": "Does NOT use CSS animations, Tailwind transitions, or any non-Remotion animation approach. Explains WHY: Remotion renders frame-by-frame deterministically, so CSS animations produce unpredictable results."
+        },
+        {
+          "name": "uses-frame-based-animation-anyway",
+          "description": "Proceeds with proper Remotion frame-based APIs (interpolate, spring) despite the user's preference for CSS. This is a hard constraint, not a suggestion."
+        },
+        {
+          "name": "no-settimeout-setinterval",
+          "description": "Does NOT use setTimeout or setInterval anywhere in the composition. Remotion is deterministic and frame-based — timer-based code breaks rendering."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need showcase videos for 5 different projects. Can you batch-render them all? Here are the project names and screenshots for each.",
+      "expected_output": "Uses the renderMedia() API from @remotion/renderer for batch rendering rather than running 5 separate CLI commands. Creates a batch render script that iterates over projects.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-batch-render-api",
+          "description": "Uses the programmatic renderMedia() + selectComposition() API from @remotion/renderer for batch rendering — not 5 separate npx remotion render CLI invocations."
+        },
+        {
+          "name": "separate-output-per-project",
+          "description": "Each project renders to a separate output file (e.g., out/ProjectA.mp4, out/ProjectB.mp4) — not overwriting a single output."
+        },
+        {
+          "name": "json-serializable-props",
+          "description": "All inputProps passed to compositions are JSON-serializable (strings, numbers, arrays) — no functions or React elements, as required by the skill's critical rules."
+        }
+      ]
+    }
+  ]
+}

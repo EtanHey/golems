@@ -1,0 +1,107 @@
+# Behavioral Eval: commit skill
+# Tests: CodeRabbit gating, staged-check, co-author trailer, CR-fail handling
+# Scenarios: 3 | Assertions: 15
+
+skill: commit
+skill_path: skills/golem-powers/commit/SKILL.md
+
+scenarios:
+  - id: commit-happy-path
+    name: "Staged changes + CR pass → commit with co-author"
+    prompt: |
+      The queue retry fix is staged and ready. Current staged diff stat
+      shows 2 files changed (32 insertions, 10 deletions) in
+      src/queue/retry-handler.ts and tests/queue/retry.test.ts.
+      CodeRabbit review returned: PASS — no issues. Safe to commit.
+      Run the /commit flow.
+    fixture: skills/golem-powers/commit/evals/fixtures/staged-stat.txt
+    assertions:
+      - type: trajectory:tool-sequence
+        value:
+          - toolName: Bash
+            args_contain: "git diff --staged"
+          - toolName: Bash
+            args_contain: "cr review"
+          - toolName: Bash
+            args_contain: "git commit"
+        config:
+          mode: in_order
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke the commit skill"
+      - type: trajectory:step-count
+        value: ">= 3"
+        description: "At least 3 tool calls: check staged, review, commit"
+      - type: javascript
+        value: |
+          // Co-author trailer must appear in commit command
+          const commits = output.toolCalls.filter(t =>
+            t.name === 'Bash' && t.arguments?.command?.includes('git commit')
+          );
+          return commits.some(c => c.arguments.command.includes('Co-Authored-By'));
+        description: "Commit includes co-author trailer"
+      - type: not-contains
+        value: "git push"
+        description: "commit skill must NOT push"
+
+  - id: commit-cr-fail-blocks
+    name: "CR fails → surfaces issues, does NOT auto-commit"
+    prompt: |
+      Use /commit for the staged auth cleanup. CodeRabbit review found:
+      CRITICAL: SQL injection in purgeExpiredSessions() — raw DELETE query
+      without parameterization. WARNING: Comment says "1 hour TTL" but
+      constant is 24h. Verdict: FAIL — 1 critical issue must be resolved.
+    fixture: skills/golem-powers/commit/evals/fixtures/cr-fail.txt
+    assertions:
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke commit skill"
+      - type: javascript
+        value: |
+          // Must NOT have a git commit call after CR failure
+          const toolCalls = output.toolCalls || [];
+          const crIndex = toolCalls.findIndex(t =>
+            t.name === 'Bash' && t.arguments?.command?.includes('cr review')
+          );
+          const commitAfterCr = toolCalls.slice(crIndex + 1).some(t =>
+            t.name === 'Bash' && t.arguments?.command?.includes('git commit')
+          );
+          return !commitAfterCr;
+        description: "Does not auto-commit after CR failure"
+      - type: llm-rubric
+        value: "Response surfaces the specific CodeRabbit issues (SQL injection, TTL mismatch) rather than giving a generic failure message"
+        description: "Surfaces specific CR findings"
+      - type: llm-rubric
+        value: "Response asks the user whether to proceed anyway or fix the issues first"
+        description: "Asks user whether to override"
+      - type: not-contains
+        value: "git push"
+        description: "commit skill must NOT push"
+
+  - id: commit-nothing-staged
+    name: "No staged changes → rejects commit flow"
+    prompt: |
+      Please commit the logging cleanup. Git status shows:
+      On branch feat/logging-cleanup
+      Changes not staged for commit:
+        modified: src/logger.ts
+      No changes added to commit (use "git add" to stage).
+    assertions:
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke commit skill"
+      - type: javascript
+        value: |
+          // Must NOT run cr review or git commit when nothing is staged
+          const toolCalls = output.toolCalls || [];
+          const hasReview = toolCalls.some(t =>
+            t.name === 'Bash' && t.arguments?.command?.includes('cr review')
+          );
+          const hasCommit = toolCalls.some(t =>
+            t.name === 'Bash' && t.arguments?.command?.includes('git commit')
+          );
+          return !hasReview && !hasCommit;
+        description: "Does not run review or commit without staged changes"
+      - type: llm-rubric
+        value: "Response tells the user to stage files first using git add"
+        description: "Instructs user to stage first"

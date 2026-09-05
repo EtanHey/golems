@@ -1,0 +1,11 @@
+{
+  "specimen": "incident response answers operator framing first",
+  "events": [
+    { "role": "user", "text": "Incident: explain what the operator needs to know.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Plain-English framing: the screenshot approval was not delivered, so the visual gate is still closed and the next action is to resend through the live bot API.\nEvidence: notify-server log then shows the outbox path had no watcher.",
+      "tools": []
+    }
+  ]
+}

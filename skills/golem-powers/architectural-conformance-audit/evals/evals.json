@@ -1,0 +1,154 @@
+{
+  "skill_name": "architectural-conformance-audit",
+  "skill_kind": "skill",
+  "notes": "Evals reproduce the AP1 root-cause class (FastAPI misclassification, 36h cost) + 4 sibling architectural-conformance scenarios. Scenario 1 is load-bearing — a real-world regression replay using an excerpt from the May 2026 brainlayer-readpath research output + a synthetic FastAPI daemon snippet mimicking the deleted PR-α daemon.py. Run via skillCreatorClaude on a separate cmux pane per AP-NEW#12 (do NOT self-eval). Multi-agent eval encouraged: run on both a Claude pane and a Codex pane for stronger coverage.",
+  "fixtures_dir": "fixtures/",
+  "evals": [
+    {
+      "id": 1,
+      "slug": "ap1-reproduction",
+      "fixture": "fixtures/ap1-reproduction/",
+      "scenario": "SOTA cites Letta-on-FastAPI as the counter-example; implementation uses FastAPI daemon anyway. The historical AP1 class — 36h misdirected work because R5 evaluators graded local-optimum 8.85/10 without checking SOTA's counter-example citation.",
+      "prompt": "Run architectural-conformance-audit for the brainlayer-readpath sprint. SOTA: fixtures/ap1-reproduction/sota-excerpt.md. Implementation snippet: fixtures/ap1-reproduction/impl-daemon.py.snippet.",
+      "expected_baseline_without_skill": "No diff produced. The SOTA file is read by the researcher, but no downstream gate compares the cited counter-example against the impl. Sprint proceeds with FastAPI daemon assumed correct. Matches the historical AP1 chronology (3 R5 + 13 Codex + 4 Cursor + 3 researcher passes all missed it).",
+      "expected_target_with_skill": "Audit produces three artifacts. Conformance verdict lists the FastAPI primitive (impl-daemon.py.snippet line range) with the verbatim Letta-on-FastAPI counter-example cite from sota-excerpt.md. Verdict = DIVERGE — UNJUSTIFIED. R0 BLOCKED message surfaces to Etan + sprint LEAD with reconciliation path (change impl OR document rationale).",
+      "assertions": [
+        {
+          "text": "Audit produces sota-excerpt artifact with verbatim Letta-on-FastAPI counter-example quote",
+          "type": "behavioral"
+        },
+        {
+          "text": "Audit produces impl-map artifact identifying the FastAPI primitive with file:line citation",
+          "type": "behavioral"
+        },
+        {
+          "text": "Audit produces conformance-verdict artifact with at least one DIVERGE — UNJUSTIFIED row",
+          "type": "behavioral"
+        },
+        {
+          "text": "Verdict for the FastAPI primitive cites the counter-example index from the SOTA file",
+          "type": "behavioral"
+        },
+        {
+          "text": "Surfaces explicit R0 BLOCKED message with reconciliation path",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT silently auto-resolve the divergence",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT propose an --override flag (no override path exists by design)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT skip the brain_store call (importance >= 8, tag includes 'architectural-audit' + 'R0-blocked')",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "slug": "match-case",
+      "fixture": "fixtures/match-case/",
+      "scenario": "SOTA recommends socket-direct; implementation uses socket-direct. Happy path — audit produces MATCH, R0 clears, brain_store fires.",
+      "prompt": "Run architectural-conformance-audit for the post-PR-#312 brainlayer-readpath sprint. SOTA: fixtures/match-case/sota-excerpt.md. Implementation snippet: fixtures/match-case/impl-socket.py.snippet.",
+      "expected_target_with_skill": "Conformance verdict shows MATCH for the socket-direct primitive. R0 CLEARED. brain_store called at importance >=8 with tags including 'architectural-audit' and 'R0-cleared'.",
+      "assertions": [
+        {
+          "text": "Verdict shows MATCH for the socket-direct primitive",
+          "type": "behavioral"
+        },
+        {
+          "text": "R0 status = CLEARED (no UNJUSTIFIED divergence)",
+          "type": "behavioral"
+        },
+        {
+          "text": "brain_store fires at importance >= 8 with 'R0-cleared' tag",
+          "type": "behavioral"
+        },
+        { "text": "Does NOT produce any DIVERGE rows", "type": "negative" }
+      ]
+    },
+    {
+      "id": 3,
+      "slug": "silent-case",
+      "fixture": "fixtures/silent-case/",
+      "scenario": "SOTA is silent on persistence backend; implementation uses SQLite. Audit produces N/A for the SQLite primitive (does NOT block R0).",
+      "prompt": "Run architectural-conformance-audit for a sprint where the SOTA research file does not discuss persistence backend choice, but implementation uses SQLite.",
+      "expected_target_with_skill": "Conformance verdict shows N/A for the SQLite primitive (SOTA silent → not a divergence). R0 CLEARED.",
+      "assertions": [
+        {
+          "text": "Verdict shows N/A for the SQLite primitive",
+          "type": "behavioral"
+        },
+        { "text": "R0 status = CLEARED", "type": "behavioral" },
+        {
+          "text": "Does NOT produce DIVERGE for a SOTA-silent primitive",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT treat SOTA-silent as either MATCH or DIVERGE (must be explicitly N/A)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "slug": "conflict-case",
+      "fixture": "fixtures/conflict-case/",
+      "scenario": "Two SOTA candidates conflict (e.g., research-A says socket-direct; research-B says FastAPI). Audit must NOT auto-canonicalize by date. It lists both files, holds the gate, and requires Etan to pick.",
+      "prompt": "Run architectural-conformance-audit. Two SOTA files exist: fixtures/conflict-case/sota-A.md (favors socket-direct) and fixtures/conflict-case/sota-B.md (favors FastAPI). Both timestamps within 2 days.",
+      "expected_target_with_skill": "Audit detects multiple SOTA candidates. Lists both files in the verdict with their respective claims. Does NOT auto-canonicalize (no date-based tiebreak). Gate held pending Etan pick. Explicit message: 'Multiple SOTA outputs conflict; canonicalize before re-running.'",
+      "assertions": [
+        {
+          "text": "Audit detects both sota-A.md AND sota-B.md as candidates",
+          "type": "behavioral"
+        },
+        {
+          "text": "Audit lists both files with their claims",
+          "type": "behavioral"
+        },
+        {
+          "text": "R0 status = HELD (not CLEARED, not BLOCKED-by-divergence — it's held pending canonicalize)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT auto-pick by date (staleness is the AP1 root cause)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT silently use one and discard the other",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "slug": "mixed-case",
+      "fixture": "fixtures/mixed-case/",
+      "scenario": "Multiple architectural primitives, mixed MATCH/DIVERGE. Even if 9/10 primitives MATCH, any single UNJUSTIFIED DIVERGE blocks R0.",
+      "prompt": "Run architectural-conformance-audit for a sprint with 10 architectural primitives. 9 MATCH the SOTA. 1 DIVERGES (UNJUSTIFIED).",
+      "expected_target_with_skill": "Conformance verdict lists ALL 10 primitives. 9 MATCH rows + 1 DIVERGE — UNJUSTIFIED row. R0 BLOCKED on the single UNJUSTIFIED divergence (the 9 MATCHes do NOT compensate).",
+      "assertions": [
+        { "text": "Verdict lists all 10 primitives", "type": "behavioral" },
+        {
+          "text": "R0 BLOCKED on the single UNJUSTIFIED divergence",
+          "type": "behavioral"
+        },
+        {
+          "text": "9 MATCHes in the same verdict do NOT override the 1 UNJUSTIFIED block",
+          "type": "behavioral"
+        },
+        {
+          "text": "BLOCKED message cites the specific divergent primitive (not a generic 'something is wrong')",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT score the verdict (no 'overall 9/10 ship'); R0 is binary on any UNJUSTIFIED",
+          "type": "negative"
+        }
+      ]
+    }
+  ]
+}

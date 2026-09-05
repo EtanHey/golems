@@ -1,0 +1,32 @@
+## Phase 1: Stats Collection
+
+- **Packages:** 11 (claude coach content docsite golems-tui jobs recruiter services shared tax-helper teller)
+- **Skills:** 55 dirs, 54 SKILL.md, 36 with evals (65%)
+- **BrainLayer chunks:** 0 (0K+)
+- **PRs merged:** 0
+- **Tests:** 995 pass, 1 fail, 71 files
+- **MCP servers:** 8
+
+## Warnings
+- BrainLayer DB not found at /Users/example/.local/share/zikaron/zikaron.db — skipping chunk count
+- gh CLI not found — skipping PR count
+
+## Phase 2: Update etanheyman.com
+
+**WARNING:** etanheyman.com has uncommitted changes. Proceeding anyway — changes will be mixed in.
+```
+M content/golems/architecture.md
+?? temp-notes.md
+```
+
+## Dead Reference Detection
+
+No dead package references found.
+
+## Summary
+
+### Warnings
+- BrainLayer DB not found at /Users/example/.local/share/zikaron/zikaron.db — skipping chunk count
+- gh CLI not found — skipping PR count
+
+**All stats current.** No changes needed.

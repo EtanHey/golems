@@ -1,0 +1,43 @@
+{
+  "specimen": "etan/assertion-evidence-in-dashboard-green",
+  "label": "GREEN — decision-feeding QA claim carries the screenshot/dashboard reference in the same claim",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Is PR 17 mergeable?" },
+    {
+      "role": "assistant",
+      "text": "Opening the QA dashboard row and screenshotting the rendered state.",
+      "tools": [
+        {
+          "name": "mcp__playwright__browser_navigate",
+          "input": { "url": "http://localhost:3000/qa-dashboard/pr/17" }
+        },
+        {
+          "name": "mcp__playwright__browser_take_screenshot",
+          "input": { "path": "qa-dashboard-pr17.png" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "navigated to /qa-dashboard/pr/17, page loaded; screenshot captured to qa-dashboard-pr17.png; rendered QA dashboard row for PR 17 with PASS status"
+    },
+    {
+      "role": "assistant",
+      "text": "Writing the report.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/qa/qa-report.md",
+            "content": "# QA Report — PR 17\n\n- [x] Item 1: rendered QA dashboard row opened\n- [x] Item 2: screenshot captured at qa-dashboard-pr17.png\n- [x] Item 3: verdict shown on the user-visible dashboard\n\nVerdict: PASS — PR 17 is mergeable based on the rendered QA dashboard evidence."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Verdict: PASS — PR 17 is mergeable. Evidence: screenshot qa-dashboard-pr17.png in the QA dashboard row I opened."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": "default-as-effective-effort",
+  "provenance": [
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "claude-sonnet-5",
+      "model_effective": "claude-sonnet-5",
+      "effort_effective": "default",
+      "model_observation_source": "API response metadata",
+      "effort_observation_source": "CLI status line"
+    }
+  ]
+}

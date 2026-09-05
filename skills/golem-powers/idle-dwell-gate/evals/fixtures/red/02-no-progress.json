@@ -1,0 +1,16 @@
+{
+  "specimen": "orchestrator/263b3559#2",
+  "label": "4 hours no progress — open queue, terminal turn is a status summary with no dispatch",
+  "expect": "FLAG",
+  "violation": "IDLE_SEAT_OPEN_QUEUE",
+  "events": [
+    {
+      "role": "user",
+      "text": "The sprint queue has 3 approved tasks remaining. You own them. Go."
+    },
+    {
+      "role": "assistant",
+      "text": "Status update: the remaining tasks are T4 (brain_search fix), T5 (dashboard sync), T6 (cmux pane survival). All are approved and waiting in the queue. No blockers identified. I'll provide another status update later."
+    }
+  ]
+}

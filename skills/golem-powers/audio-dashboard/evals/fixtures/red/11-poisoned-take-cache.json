@@ -1,0 +1,22 @@
+{
+  "specimen": "fleet-nightwrap s2a frozen cache restored a rejected transient-artifact take",
+  "gate": "take-cache-purge",
+  "violation": "POISONED_FROZEN_TAKE",
+  "source": {
+    "incident": "fleet-nightwrap 2026-07-03 acoustic reroll session, cited by the 2026-07-16 D6 addendum",
+    "artifact": "orchestrator/docs.local/nightwrap-resynth-backup/s2a.orig/s2a.wav",
+    "observation": "The content-hash cache restored the rejected s2a take until the cache was bypassed and replaced.",
+    "wavSha256": "81b161eaf7df45b3c2089481d5c2bc2aababb3dfc93b52729b8ddabf09247b19",
+    "wavBytes": 2477358,
+    "contract": "orchestrator/standards/layers/gates.md sections 7 and 8.6"
+  },
+  "segment": "s2a",
+  "cacheKey": "3a29a2b9c0b5ec51d2473142b1417f69459a3fb2a8cf82568091bc425bfaa503",
+  "cleanSiblingKey": "cc42107f7f8f4bdfef6835ba36244b18e5870081955499f07235b45c1cb0cb25",
+  "portableExtraction": {
+    "description": "Exact first 416 bytes of the rejected incident WAV; full artifact identity is recorded above.",
+    "bytes": 416,
+    "sha256": "10273310d7a47740dd71fb224f62e2dff6e32777d47c34a6c2be5353fadb2542",
+    "base64": "UklGRibNJQBXQVZFZm10IBAAAAABAAEAwF0AAIC7AAACABAATElTVBoAAABJTkZPSVNGVA4AAABMYXZmNjIuMTIuMTAyAGRhdGHgzCUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  }
+}

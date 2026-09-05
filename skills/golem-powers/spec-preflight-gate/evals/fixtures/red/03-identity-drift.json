@@ -1,0 +1,25 @@
+{
+  "specimen": "R-037/spawned-seat-name-repo-launcher-mismatch",
+  "violation": "IDENTITY_DRIFT",
+  "events": [
+    { "role": "user", "text": "Spawn the implementation worker from docs/plan/spawn-hygiene.md.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Verified the path and dispatching.",
+      "tools": [
+        { "name": "Read", "input": { "file_path": "docs/plan/spawn-hygiene.md" } },
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golemsClaude",
+            "repo": "skill-creator",
+            "launcher": "golems",
+            "prompt": "You are golemsClaude. Work in the skill-creator repo using grep-patterns from docs/plan/spawn-hygiene.md."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "# Spawn Hygiene Plan\nUse grep-patterns for invariants.", "tools": [] },
+    { "role": "tool", "text": "spawned agent golemsClaude in repo skill-creator with launcher golems", "tools": [] }
+  ]
+}

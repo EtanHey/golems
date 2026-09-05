@@ -1,0 +1,24 @@
+{
+  "specimen": "monitor-law exception — persistent inbound collab monitor stays",
+  "label": "GREEN — inbound collab monitor is allowed at stand-down; periodic crons and loops are not.",
+  "expect": "PASS",
+  "state": {
+    "monitors": [
+      {
+        "id": "inbound-collab-13",
+        "status": "active",
+        "kind": "inbound_monitor",
+        "prompt": "relay any inbound Etan reply"
+      }
+    ],
+    "crons": [],
+    "loops": []
+  },
+  "events": [
+    { "role": "user", "text": "stand down" },
+    {
+      "role": "assistant",
+      "text": "Standing down. Inbound collab monitor stays; everything periodic is stopped."
+    }
+  ]
+}

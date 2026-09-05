@@ -1,0 +1,3 @@
+{"line":1,"kind":"brief","text":"Cursor-workflows parity eval must compare Claude gather anchors against Cursor gather anchors without live model variance."}
+{"line":2,"kind":"finding_seed","id":"CW-HIGH-001","importance":"high","title":"Replay fixtures must preserve cursor-agent NDJSON usage events","round_available":1,"evidence_anchor":"session-alpha.jsonl:2","text":"The deterministic gate needs the raw cursor-agent NDJSON replay so token accounting is validated, not inferred."}
+{"line":3,"kind":"followup_seed","reveals":"CW-HIGH-002","text":"After CW-HIGH-001 is found, run a second gather pass over the follow-up ledger lines; the single pass does not inspect schema failure evidence."}

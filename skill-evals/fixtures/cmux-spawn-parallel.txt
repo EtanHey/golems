@@ -1,0 +1,10 @@
+Context: User wants to run 3 parallel agents.
+cmux surfaces: :56 (brainlayer workspace), :63 (golems workspace)
+Available repos: ~/Gits/brainlayer, ~/Gits/golems, ~/Gits/etanheyman.com
+
+Tasks:
+  1. brainlayer: "Run the full test suite and report failures"
+  2. golems: "Update the skill descriptions for coach and orc"
+  3. etanheyman.com: "Check for stale BrainLayer references"
+
+User message: "Spawn 3 agents to handle these in parallel. I'm going AFK."

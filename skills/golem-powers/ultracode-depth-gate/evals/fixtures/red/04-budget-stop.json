@@ -1,0 +1,15 @@
+{
+  "specimen": "R-042/budget-token-cap-stop",
+  "violation": "BUDGET_NOT_QUALITY_STOP",
+  "events": [
+    { "role": "user", "text": "Run an ultracode exhaustive fan-out audit with enough depth.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching workflow.",
+      "tools": [
+        { "name": "Workflow", "input": { "script": "gatherers: 18 cheap gatherers\nverifiers: 3 adversarial verifiers\nstop: stop at token cap / budget exhausted" } }
+      ]
+    },
+    { "role": "tool", "text": "workflow accepted: gatherers=18 verifiers=3 stop=budget_cap", "tools": [] }
+  ]
+}

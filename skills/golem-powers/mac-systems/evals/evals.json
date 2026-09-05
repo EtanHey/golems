@@ -1,0 +1,109 @@
+{
+  "skill_name": "mac-systems",
+  "tier": "reference",
+  "version": "1.1.0",
+  "last_eval_date": null,
+  "last_static_smoke_date": "2026-07-17",
+  "evals": [
+    {
+      "id": 1,
+      "name": "high-frequency-dashboard-state",
+      "category": "quality",
+      "description": "A high-frequency SwiftUI dashboard should use property-granular observation and coalesced mutations.",
+      "prompt": "Design state ownership for a macOS SwiftUI dashboard receiving metrics at 50Hz without invalidating the entire view tree.",
+      "expected_output": "Use @Observable models split by update frequency and coalesce incoming events to at most 10–20 UI mutations per second.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "observable-models",
+          "description": "Recommends @Observable rather than a single broad ObservableObject.",
+          "pattern": "@Observable|Observation"
+        },
+        {
+          "type": "content",
+          "name": "coalesced-updates",
+          "description": "Bounds or coalesces UI mutations instead of publishing all 50 events per second.",
+          "pattern": "coalesc|10.?20|UpdatePump"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "resilient-launchd-service",
+      "category": "compliance",
+      "description": "A Codex-launched background service should use launchd primitives that survive child reaping.",
+      "prompt": "Start a local macOS helper from Codex so it survives the current command, restarts after crashes, and never hardcodes a tailnet IP.",
+      "expected_output": "Bind loopback, use a LaunchAgent or launchctl submit rather than nohup, and consider launchd socket activation for restart resilience.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "surviving-detach",
+          "description": "Uses launchctl submit or a LaunchAgent instead of a detached shell child.",
+          "pattern": "launchctl submit|LaunchAgent"
+        },
+        {
+          "type": "content",
+          "name": "loopback-bind",
+          "description": "Uses loopback rather than a hardcoded tailnet address.",
+          "pattern": "127\\.0\\.0\\.1|loopback"
+        },
+        {
+          "type": "negative",
+          "name": "no-nohup",
+          "description": "Does not present nohup as the durable Codex detach mechanism.",
+          "pattern": "nohup.*recommended|use nohup"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "security-and-tcc-diagnostics",
+      "category": "compliance",
+      "description": "Security troubleshooting should use the real macOS binaries and distinguish Gatekeeper from TCC.",
+      "prompt": "A signed menu-bar app is blocked and its automation permission is missing. Give a safe diagnostic sequence from zsh.",
+      "expected_output": "Use spctl and codesign for Gatekeeper/signing, /usr/bin/log for syspolicyd, and tccutil or the TCC database for permissions.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "gatekeeper-tools",
+          "description": "Includes spctl and codesign diagnostics.",
+          "pattern": "spctl|codesign"
+        },
+        {
+          "type": "content",
+          "name": "absolute-log-binary",
+          "description": "Uses /usr/bin/log so zsh's log builtin cannot create a false negative.",
+          "pattern": "/usr/bin/log"
+        },
+        {
+          "type": "content",
+          "name": "tcc-path",
+          "description": "Includes tccutil or an explicit TCC database inspection.",
+          "pattern": "tccutil|com\\.apple\\.TCC"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "compressed-memory-leak-watch",
+      "category": "quality",
+      "description": "A macOS leak watch should threshold physical footprint rather than compressed RSS.",
+      "prompt": "Build a leak watch for a macOS process whose RSS falls when memory compression starts. Which metric should trigger escalation?",
+      "expected_output": "Read phys_footprint with /usr/bin/footprint, convert to bytes, and threshold that value rather than ps RSS.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "physical-footprint",
+          "description": "Uses /usr/bin/footprint or phys_footprint as the canonical metric.",
+          "pattern": "/usr/bin/footprint|phys_footprint"
+        },
+        {
+          "type": "content",
+          "name": "rejects-rss-threshold",
+          "description": "Explicitly rejects ps RSS as the canonical leak threshold.",
+          "pattern": "rather than (ps )?RSS|not (ps )?RSS|never .*RSS|RSS.*under-report"
+        }
+      ]
+    }
+  ]
+}

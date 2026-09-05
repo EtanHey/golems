@@ -1,0 +1,31 @@
+{
+  "specimen": "orchestrator/1e8746db#5",
+  "label": "duplicate-successor — fresh spawn_agent over a resumable crashed lead (discards ~386K tokens)",
+  "expect": "FLAG",
+  "violation": "SPAWN_OVER_RESUMABLE",
+  "events": [
+    {
+      "role": "user",
+      "text": "The brainlayer lead pane crashed. Get it going again."
+    },
+    {
+      "role": "tool",
+      "text": "list_agents: surface=brainlayer-lead state=error session_id=019ee1c2-aaaa resumable=true last_active=2m ago (≈386K tokens of context)"
+    },
+    {
+      "role": "assistant",
+      "text": "The brainlayer lead is gone. I'll spin up a fresh lead to take over the work.",
+      "tools": [
+        {
+          "name": "spawn_agent",
+          "input": {
+            "cli": "claude",
+            "role": "lead",
+            "repo": "brainlayer",
+            "prompt": "You are the new brainlayer lead. Start from the plan."
+          }
+        }
+      ]
+    }
+  ]
+}

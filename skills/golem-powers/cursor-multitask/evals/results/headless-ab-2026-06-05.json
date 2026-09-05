@@ -1,0 +1,55 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-06-05",
+  "skill": "cursor-multitask",
+  "method": "headless A/B — claude -p sonnet-4-6, 6 cases x 2 arms, Skill tool disallowed in BOTH arms; with_skill arm = SKILL.md via --append-system-prompt. Runner: skill-creator/scripts/cursor-multitask-ab.sh, root /tmp/cm-ab-2026-06-05-r3",
+  "isolation": {
+    "flags": [
+      "--strict-mcp-config --mcp-config {mcpServers:{}}",
+      "--settings disableAllHooks",
+      "--no-session-persistence",
+      "--disallowed-tools Skill",
+      "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1"
+    ],
+    "disclosed_leak": "real HOME kept for auth (fresh HOME -> Not logged in; no API key on box). User-level ~/.claude/CLAUDE.md loads in BOTH arms (CLAUDE_COUNTER visible in outputs). Paired delta remains valid; absolute baseline is CALL-VERIFIED not LIVE-VERIFIED per R01.",
+    "confidence": "CALL-VERIFIED"
+  },
+  "scores": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "per_case": {
+    "1-headless-orchestrator": {
+      "baseline": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "with_skill": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "note": "baseline already rejects /multitask headless + routes to Workflow pipeline()"
+    },
+    "2-human-in-cursor-editor": {
+      "baseline": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "with_skill": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "note": "STRONGEST DISCRIMINATOR: baseline invents generic background agents, never mentions /multitask or ||| separator"
+    },
+    "3-sequential-dependency": {
+      "baseline": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "with_skill": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    "4-visible-multi-vendor": {
+      "baseline": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "with_skill": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "note": "DISCRIMINATOR: baseline routes to raw tmux panes; skill routes to cmux fleet (spawn_agent, workspaces, DONE markers)"
+    },
+    "5-ci-pipeline": {
+      "baseline": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "with_skill": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "note": "weak case design — CI lint/typecheck/test needs no agents at all; both arms correctly gave shell/CI-native parallelism; assertion 'cursor-agent fan-out' scored leniently as 'headless fan-out shape'"
+    },
+    "6-agent-routing-interaction": {
+      "baseline": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "with_skill": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "note": "prompt itself names agent-routing, so baseline passes naturally — weak discriminator"
+    }
+  },
+  "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "verdict_notes": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "corrections_made_during_eval": "Original draft's '/multitask silently no-ops with empty output' evidence was a workspace-trust-gate artifact. Re-verified on cursor-agent 2026.06.04: text passes through as plain prompt to ONE agent (transcript: 3 events, zero subagents; stream-json: single session_id) which falsely claims 'ran in parallel'. SKILL.md + head-to-head.md corrected to 'silent degradation that looks like success'.",
+  "iterations": "1/3",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

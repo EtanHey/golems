@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "defaults": {
+    "target": "m1",
+    "sourceRef": "origin/master"
+  },
+  "targets": {
+    "m1": {
+      "sshHost": "m1",
+      "skills": [],
+      "standaloneSkills": {
+        "id": "skills-install",
+        "sourceRoot": "skills/golem-powers",
+        "installRoot": "$HOME/.golems/skills",
+        "linkRoot": "$HOME/.claude/skills",
+        "legacyCheckoutRoot": "$HOME/Gits/golems",
+        "verifyCommands": [
+          "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && bun scripts/bootstrap.mjs --json"
+        ]
+      },
+      "ralphtools": {
+        "id": "ralphtools-install",
+        "checkCommand": "set -euo pipefail; dest=\"$HOME/.config/ralphtools/lib\"; test -d \"$dest\"; test ! -L \"$dest\"; for file in ralph-registry.zsh ralph-secrets.zsh; do test -f \"$dest/$file\"; test ! -L \"$dest/$file\"; done; grep -Fq 'source \"$HOME/.config/ralphtools/lib/ralph-secrets.zsh\"' \"$HOME/.zshrc\"; grep -Fq 'source \"$HOME/.config/ralphtools/lib/ralph-registry.zsh\"' \"$HOME/.zshrc\"; zsh -ic 'type golemsClaude >/dev/null && type hcGemini >/dev/null && type aftercodeGemini >/dev/null'",
+        "fixCommand": "set -euo pipefail; src=\"$HOME/Gits/ralph/lib\"; dest=\"$HOME/.config/ralphtools/lib\"; ts=$(date +%Y%m%d-%H%M%S); stage=\"${dest}.stage-$ts\"; backup=\"${dest}.backup-$ts\"; test -f \"$src/ralph-registry.zsh\"; test -f \"$src/ralph-secrets.zsh\"; mkdir -p \"$stage\"; cp -p \"$src/ralph-registry.zsh\" \"$src/ralph-secrets.zsh\" \"$stage/\"; test ! -L \"$stage/ralph-registry.zsh\"; test ! -L \"$stage/ralph-secrets.zsh\"; if [ -e \"$dest\" ] || [ -L \"$dest\" ]; then mv \"$dest\" \"$backup\"; fi; mv \"$stage\" \"$dest\"; cp -p \"$HOME/.zshrc\" \"$HOME/.zshrc.ralphtools-bak-$ts\"; /usr/bin/python3 -c 'from pathlib import Path; import sys; p=Path(sys.argv[1]); s=p.read_text(); s=s.replace(\"$HOME/Gits/ralph/lib/ralph-secrets.zsh\", \"$HOME/.config/ralphtools/lib/ralph-secrets.zsh\").replace(\"$HOME/Gits/ralph/lib/ralph-registry.zsh\", \"$HOME/.config/ralphtools/lib/ralph-registry.zsh\"); p.write_text(s)' \"$HOME/.zshrc\"",
+        "verifyCommand": "set -euo pipefail; dest=\"$HOME/.config/ralphtools/lib\"; test -d \"$dest\"; test ! -L \"$dest\"; for file in ralph-registry.zsh ralph-secrets.zsh; do test -f \"$dest/$file\"; test ! -L \"$dest/$file\"; done; grep -Fq 'source \"$HOME/.config/ralphtools/lib/ralph-secrets.zsh\"' \"$HOME/.zshrc\"; grep -Fq 'source \"$HOME/.config/ralphtools/lib/ralph-registry.zsh\"' \"$HOME/.zshrc\"; zsh -ic 'type golemsClaude >/dev/null && type hcGemini >/dev/null && type aftercodeGemini >/dev/null'"
+      },
+      "rewires": [
+        {
+          "id": "narration-config",
+          "checkCommand": "set -euo pipefail; test -f \"$HOME/.voicelayer/profiles.local.yaml\"; test ! -L \"$HOME/.voicelayer/profiles.local.yaml\"; grep -Fqx 'export NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\"' \"$HOME/.zshrc\"",
+          "fixCommand": "set -euo pipefail; src=\"$HOME/Gits/narrationlayer/profiles.local.yaml\"; dest=\"$HOME/.voicelayer/profiles.local.yaml\"; ts=$(date +%Y%m%d-%H%M%S); test -f \"$src\"; mkdir -p \"$(dirname \"$dest\")\"; if [ -e \"$dest\" ] || [ -L \"$dest\" ]; then mv \"$dest\" \"${dest}.backup-$ts\"; fi; cp -p \"$src\" \"$dest\"; chmod 600 \"$dest\"; cp -p \"$HOME/.zshrc\" \"$HOME/.zshrc.narration-bak-$ts\"; /usr/bin/python3 -c 'from pathlib import Path; import sys; p=Path(sys.argv[1]); s=p.read_text(); old=\"export NARRATIONLAYER_PROFILES_FILE=\\\"$HOME/Gits/narrationlayer/profiles.local.yaml\\\"\"; new=\"export NARRATIONLAYER_PROFILES_FILE=\\\"$HOME/.voicelayer/profiles.local.yaml\\\"\"; assert old in s or new in s; p.write_text(s.replace(old, new))' \"$HOME/.zshrc\"",
+          "verifyCommand": "set -euo pipefail; test -f \"$HOME/.voicelayer/profiles.local.yaml\"; test ! -L \"$HOME/.voicelayer/profiles.local.yaml\"; grep -Fqx 'export NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\"' \"$HOME/.zshrc\""
+        }
+      ],
+      "hostEnvCheckers": [
+        {
+          "id": "audio-dashboard-hard-deps",
+          "checkCommand": "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
+          "provisionCommand": "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; set -euo pipefail; command -v bun >/dev/null 2>&1 || { echo 'missing bun -> curl -fsSL https://bun.sh/install | bash'; curl -fsSL https://bun.sh/install | bash; }; command -v ffmpeg >/dev/null 2>&1 || { echo 'missing ffmpeg -> brew install ffmpeg'; brew install ffmpeg; }; command -v ffprobe >/dev/null 2>&1 || { echo 'missing ffprobe -> brew install ffmpeg (ships ffprobe)'; brew install ffmpeg; }; command -v whisper-cli >/dev/null 2>&1 || { echo 'missing whisper-cli -> brew install whisper-cpp'; brew install whisper-cpp; }; model=\"$HOME/.cache/whisper/ggml-large-v3-turbo.bin\"; if [ ! -f \"$model\" ]; then echo 'missing whisper-model -> download a ggml model to ~/.cache/whisper/ (e.g. ggml-large-v3-turbo.bin) or set NARRATIONLAYER_WHISPER_MODEL'; mkdir -p \"$(dirname \"$model\")\"; curl -fL --retry 3 -o \"$model\" https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin; fi",
+          "verifyCommand": "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
+          "installHint": "Run the standalone bootstrap JSON report and follow each exact hint; public hard deps may be auto-provisioned, but machine-local profiles and media are never bundled by this reconciler."
+        },
+        {
+          "id": "voicelayer-stt-polish",
+          "checkCommand": "set -euo pipefail; test \"$(uname -m)\" = arm64 || { echo 'mlx-lm disabled: MLX requires arm64'; exit 3; }; test -x /opt/homebrew/bin/mlx_lm.server || { echo 'missing mlx_lm.server -> /opt/homebrew/bin/pip3.13 install --break-system-packages mlx-lm'; exit 1; }; test -d \"$HOME/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-4bit\" || { echo 'missing model -> pull mlx-community/Qwen3-4B-Instruct-2507-4bit with huggingface_hub.snapshot_download'; exit 1; }",
+          "provisionCommand": "set -euo pipefail; test \"$(uname -m)\" = arm64 || { echo 'mlx-lm disabled: MLX requires arm64'; exit 3; }; if [ ! -x /opt/homebrew/bin/mlx_lm.server ]; then /opt/homebrew/bin/pip3.13 install --break-system-packages mlx-lm; fi; if [ ! -d \"$HOME/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-4bit\" ]; then /opt/homebrew/bin/python3.13 -c 'from huggingface_hub import snapshot_download; snapshot_download(\"mlx-community/Qwen3-4B-Instruct-2507-4bit\")'; fi; if ! lsof -nP -iTCP:8080 -sTCP:LISTEN >/dev/null 2>&1; then daemon_pid=$(pgrep -f mcp-server-daemon.ts | head -1 || true); if [ -n \"$daemon_pid\" ]; then kill -TERM \"$daemon_pid\"; for attempt in $(seq 1 30); do lsof -nP -iTCP:8080 -sTCP:LISTEN >/dev/null 2>&1 && break; sleep 1; done; fi; fi",
+          "verifyCommand": "set -euo pipefail; daemon_pid=$(pgrep -f mcp-server-daemon.ts | head -1); listener_pid=$(lsof -nP -t -iTCP:8080 -sTCP:LISTEN | head -1); parent_pid=$(ps -o ppid= -p \"$listener_pid\" | tr -d ' '); test \"$parent_pid\" = \"$daemon_pid\"; response=$(curl -fsS --max-time 45 http://127.0.0.1:8080/v1/chat/completions -H 'Content-Type: application/json' --data-binary '{\"model\":\"mlx-community/Qwen3-4B-Instruct-2507-4bit\",\"messages\":[{\"role\":\"user\",\"content\":\"Clean this transcript without changing meaning: um I I think this is is ready\"}],\"max_tokens\":64}'); printf '%s' \"$response\" | grep -q '\"choices\"'",
+          "installHint": "/opt/homebrew/bin/pip3.13 install --break-system-packages mlx-lm; pre-pull mlx-community/Qwen3-4B-Instruct-2507-4bit; bounce mcp-server-daemon.ts only if :8080 is not already daemon-owned."
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "id": "audio-dashboard-tts-8880",
+          "checkCommand": "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
+          "installHint": "start the qwen3 voice daemon on :8880 and verify ~/.voicelayer/daemon.secret plus the locally configured profile reference"
+        },
+        {
+          "id": "voicelayer-stt-polish-8080",
+          "checkCommand": "set -euo pipefail; daemon_pid=$(pgrep -f mcp-server-daemon.ts | head -1); listener_pid=$(lsof -nP -t -iTCP:8080 -sTCP:LISTEN | head -1); parent_pid=$(ps -o ppid= -p \"$listener_pid\" | tr -d ' '); test \"$parent_pid\" = \"$daemon_pid\"; response=$(curl -fsS --max-time 45 http://127.0.0.1:8080/v1/chat/completions -H 'Content-Type: application/json' --data-binary '{\"model\":\"mlx-community/Qwen3-4B-Instruct-2507-4bit\",\"messages\":[{\"role\":\"user\",\"content\":\"Clean this transcript without changing meaning: um I I think this is is ready\"}],\"max_tokens\":64}'); printf '%s' \"$response\" | grep -q '\"choices\"'",
+          "installHint": "verify mlx_lm.server is a child of mcp-server-daemon.ts and the OpenAI-compatible completion probe returns choices"
+        }
+      ],
+      "gitInventory": {
+        "id": "gits-end-state",
+        "root": "$HOME/Gits",
+        "allow": ["artifact-uprising-audit", "mimir", "mimir.wt"],
+        "required": ["artifact-uprising-audit", "mimir"]
+      },
+      "retireGitRoot": "$HOME/Gits",
+      "retireBackupRoot": "$HOME/.golems/backups",
+      "retire": [
+        {
+          "name": "aftercode",
+          "replacement": "$HOME/.golems/skills/audio-dashboard AfterCode workflow",
+          "requiresGreen": ["skills-install"]
+        },
+        {
+          "name": "narrationlayer",
+          "replacement": "$HOME/.golems/skills/audio-dashboard vendored engine and $HOME/.voicelayer/profiles.local.yaml",
+          "requiresGreen": ["skills-install", "narration-config", "audio-dashboard-hard-deps", "audio-dashboard-tts-8880"]
+        },
+        {
+          "name": "ralph",
+          "replacement": "$HOME/.config/ralphtools/lib real launcher files",
+          "requiresGreen": ["ralphtools-install"]
+        },
+        {
+          "name": "golems",
+          "replacement": "$HOME/.golems/skills real content with $HOME/.claude/skills links",
+          "requiresGreen": ["skills-install", "ralphtools-install", "narration-config", "audio-dashboard-hard-deps", "audio-dashboard-tts-8880"]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "specimen": "monitor-law — a single inbound CronCreate with no descriptive payload",
+  "label": "GREEN — a stand-down arming ONE inbound monitor whose CronCreate carries no descriptive payload. Many inbound listeners carry no payload; an empty/benign payload under genuine inbound framing is allowed.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "stand down" },
+    {
+      "role": "assistant",
+      "text": "Standing by for Etan — one inbound monitor armed to catch your reply, awaiting an Etan decision. No health-watch, no polling.",
+      "tools": [{ "name": "mcp__cmuxlayer__CronCreate", "input": {} }]
+    }
+  ]
+}

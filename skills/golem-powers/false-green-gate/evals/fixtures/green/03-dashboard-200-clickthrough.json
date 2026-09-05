@@ -1,0 +1,38 @@
+{
+  "specimen": "false-green/dashboard-verified",
+  "label": "GREEN — dashboard claim with same-turn HTTP 200 AND a signed-in Playwright click-through",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Publish the sprint dashboard to the tailnet hub."
+    },
+    {
+      "role": "assistant",
+      "text": "Mirroring to the hub, then probing the served URL.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "curl -s -o /dev/null -w '%{http_code}' https://dashboard-host.example.test/sprint.html"
+          }
+        },
+        {
+          "name": "mcp__playwright__browser_navigate",
+          "input": {
+            "url": "https://dashboard-host.example.test/sprint.html"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "200" },
+    {
+      "role": "tool",
+      "text": "playwright: signed-in click-through OK, screenshot of the live dashboard captured, 6 cards rendered"
+    },
+    {
+      "role": "assistant",
+      "text": "Done ✅ — curl returned 200 and the signed-in click-through renders all 6 cards. Live at the tailnet hub."
+    }
+  ]
+}

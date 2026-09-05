@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Golems Registry",
+  "description": "Typed registry for the Golems ecosystem — packages, golems, services, MCP servers, infrastructure, and skills",
+  "type": "object",
+  "required": [
+    "version",
+    "updatedAt",
+    "packages",
+    "golems",
+    "services",
+    "mcpServers",
+    "infrastructure",
+    "skills"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semver version of the registry format"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date",
+      "description": "Last updated date (YYYY-MM-DD)"
+    },
+    "packages": {
+      "type": "object",
+      "description": "Monorepo packages",
+      "additionalProperties": {
+        "$ref": "#/definitions/Package"
+      }
+    },
+    "golems": {
+      "type": "object",
+      "description": "Domain expert agents",
+      "additionalProperties": {
+        "$ref": "#/definitions/Golem"
+      }
+    },
+    "services": {
+      "type": "object",
+      "description": "Launchd-managed background services",
+      "additionalProperties": {
+        "$ref": "#/definitions/Service"
+      }
+    },
+    "mcpServers": {
+      "type": "object",
+      "description": "MCP tool servers",
+      "additionalProperties": {
+        "$ref": "#/definitions/McpServer"
+      }
+    },
+    "infrastructure": {
+      "type": "object",
+      "description": "Cloud infrastructure",
+      "additionalProperties": {
+        "$ref": "#/definitions/InfraService"
+      }
+    },
+    "skills": {
+      "type": "array",
+      "description": "Available skill names (in skills/golem-powers/)",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    }
+  },
+  "definitions": {
+    "Package": {
+      "type": "object",
+      "required": ["path", "description", "runtime", "entrypoints"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Relative path from monorepo root"
+        },
+        "description": { "type": "string" },
+        "runtime": {
+          "type": "string",
+          "enum": ["bun", "node", "python", "zsh"],
+          "description": "Primary runtime"
+        },
+        "entrypoints": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Named entrypoint files (relative to package path)"
+        }
+      }
+    },
+    "Golem": {
+      "type": "object",
+      "required": ["name", "package", "description", "entrypoint"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "description": "PascalCase golem name" },
+        "package": {
+          "type": "string",
+          "description": "Key in packages object"
+        },
+        "description": { "type": "string" },
+        "entrypoint": {
+          "type": "string",
+          "description": "Entry file relative to package path"
+        },
+        "schedule": {
+          "type": "string",
+          "description": "When it runs (if scheduled)"
+        }
+      }
+    },
+    "Service": {
+      "type": "object",
+      "required": ["plist", "description", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "plist": {
+          "type": "string",
+          "description": "Launchd plist label (without .plist)"
+        },
+        "description": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["keepAlive", "interval", "calendar"],
+          "description": "Service scheduling type"
+        },
+        "intervalSeconds": {
+          "type": "integer",
+          "description": "Interval for 'interval' type services"
+        }
+      }
+    },
+    "McpServer": {
+      "type": "object",
+      "required": ["description", "transport"],
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string" },
+        "transport": {
+          "type": "string",
+          "enum": ["stdio", "sse", "http"],
+          "description": "MCP transport type"
+        }
+      }
+    },
+    "InfraService": {
+      "type": "object",
+      "required": ["description"],
+      "additionalProperties": false,
+      "properties": {
+        "projectId": { "type": "string" },
+        "projectName": { "type": "string" },
+        "domain": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

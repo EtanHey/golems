@@ -1,0 +1,13 @@
+{
+  "specimen": "narrationlayer/script-relay",
+  "label": "RED — relayed the SCRIPT TEXT instead of the rendered audio artifact",
+  "expect": "FLAG",
+  "violation": "RENDER_SCRIPT_NOT_AUDIO",
+  "events": [
+    { "role": "user", "text": "Render the AfterCode narration." },
+    {
+      "role": "assistant",
+      "text": "Here's the script, ready to play: \"Welcome back to AfterCode. Today we dig into render gates...\" Give it a read."
+    }
+  ]
+}

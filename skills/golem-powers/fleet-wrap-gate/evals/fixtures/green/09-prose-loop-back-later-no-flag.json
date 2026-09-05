@@ -1,0 +1,12 @@
+{
+  "specimen": "false-positive guard — ordinary 'loop back later' prose is not a poll loop",
+  "label": "GREEN — a clean wrap (cron-count=0) whose narrative says 'I'll loop back later'. The narrative-loop detector is narrow (/loop, while-true, 'poll loop running') and must NOT match casual 'loop back' phrasing.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "wrap" },
+    {
+      "role": "assistant",
+      "text": "Fleet wrapped — cron-count=0, all monitors stopped. I'll loop back later if anything comes up. Going silent."
+    }
+  ]
+}

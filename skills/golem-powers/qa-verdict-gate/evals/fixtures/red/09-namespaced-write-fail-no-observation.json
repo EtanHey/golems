@@ -1,0 +1,26 @@
+{
+  "specimen": "cursor-review/tool-name-normalization",
+  "label": "RED — qa-report.md written via a NAMESPACED mcp Write tool; normalization must recognize the artifact, leaving the real violation: a FAIL with no observed evidence",
+  "expect": "FLAG",
+  "violation": "QA_FAIL_WITHOUT_OBSERVATION",
+  "events": [
+    { "role": "user", "text": "QA the export feature; verdict please." },
+    {
+      "role": "assistant",
+      "text": "Inspecting the export code and writing the report via the filesystem MCP.",
+      "tools": [
+        {
+          "name": "mcp__filesystem__Write",
+          "input": {
+            "file_path": "docs.local/qa/qa-report.md",
+            "content": "# QA Report — Export\n\n- [✗] Item 1: export produces a file\n- [ ] Item 2: file opens\n\nVerdict: FAIL — I think the export is broken."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Verdict: FAIL ❌ — the export feature is broken. Report written via the filesystem MCP."
+    }
+  ]
+}

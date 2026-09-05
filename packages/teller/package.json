@@ -1,0 +1,27 @@
+{
+  "name": "@golems/teller",
+  "version": "1.0.0",
+  "description": "TellerGolem — financial intelligence including subscription tracking, payment categorization, spending reports, and anomaly alerts.",
+  "author": "EtanHey",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EtanHey/golems",
+    "directory": "packages/teller"
+  },
+  "keywords": [
+    "golems",
+    "ai-agent",
+    "finance",
+    "subscriptions",
+    "tax-planning"
+  ],
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@golems/shared": "workspace:*"
+  }
+}

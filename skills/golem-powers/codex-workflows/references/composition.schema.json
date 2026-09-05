@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://etanheyman.com/schemas/codex-workflows-composition.json",
+  "title": "Codex Workflows Composition",
+  "type": "object",
+  "required": [
+    "repo",
+    "lead"
+  ],
+  "properties": {
+    "repo": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "lead": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "default": "gpt-5.6-luna"
+    },
+    "effort": {
+      "enum": [
+        "xhigh",
+        "max"
+      ],
+      "default": "xhigh"
+    },
+    "continue_on_failure": {
+      "type": "boolean",
+      "default": false
+    },
+    "workers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/worker"
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/stage"
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "workers"
+      ],
+      "not": {
+        "required": [
+          "stages"
+        ]
+      }
+    },
+    {
+      "required": [
+        "stages"
+      ],
+      "not": {
+        "required": [
+          "workers"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "safeName": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$"
+    },
+    "worker": {
+      "type": "object",
+      "required": [
+        "name",
+        "brief"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/safeName"
+        },
+        "brief": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "model": {
+          "type": "string"
+        },
+        "effort": {
+          "enum": [
+            "xhigh",
+            "max"
+          ]
+        },
+        "report_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/"
+          }
+        },
+        "artifacts": {
+          "description": "Required output patterns relative to this worker's isolated worktree; harvest copies matches to <output-dir>/<worker>/artifacts/<relative-path>.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+"
+          }
+        },
+        "launch_timeout": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "expected_result": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stage": {
+      "type": "object",
+      "required": [
+        "name",
+        "workers"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/safeName"
+        },
+        "workers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/worker"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

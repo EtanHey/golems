@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.example.hardened</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>GOOGLE_API_KEY</key>
+		<string>op://Private/google/api_key</string>
+		<key>GH_TOKEN</key>
+		<string>$GH_TOKEN</string>
+		<key>DB_PASSWORD</key>
+		<string>${DB_PASSWORD}</string>
+		<key>DATA_DIR</key>
+		<string>/Users/worker/data</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/mysvc</string>
+	</array>
+</dict>
+</plist>

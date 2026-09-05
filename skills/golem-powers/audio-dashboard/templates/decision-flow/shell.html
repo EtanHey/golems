@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" data-dashboard-type="decision-flow">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{TITLE}}</title>
+<style>{{STYLES}}</style>
+</head>
+<body data-storage-key="{{STORAGE_KEY}}">
+  <header class="df-top">
+    <div><p class="df-kicker">{{KICKER}}</p>{{MODE_SWITCH}}<h1>{{HEADING}}</h1><p class="df-subtitle">{{SUBTITLE}}</p><p class="df-storage-state" id="df-storage-state" aria-live="polite">Answers save only for this dashboard on this device.</p></div>
+    <button type="button" id="df-copy">Copy answers</button>
+  </header>
+  <section class="df-aggregate" aria-label="Decision progress">
+    <div><b>{{DECISION_COUNT}}</b><span>decisions</span></div>
+    <div><b id="df-answered">0</b><span>answered</span></div>
+    <div><b id="df-remaining">{{DECISION_COUNT}}</b><span>remaining</span></div>
+    <div><b>{{SCENE_COUNT}}</b><span>audio clips</span></div>
+  </section>
+  <main class="df-ledger">{{CARDS}}</main>
+  <p class="df-copy-state" id="df-copy-state" aria-live="polite"></p>
+  <script id="tpdata" type="application/json">{{TPDATA}}</script>
+  <script>{{SCRIPT}}</script>
+</body>
+</html>

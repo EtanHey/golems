@@ -1,0 +1,209 @@
+{
+  "skill_name": "cron-payload-discipline",
+  "description": "Synthetic RED/GREEN evals for cron payload stale-state discipline. Baseline captures prompt-state parroting. With-skill behavior must reject or rewrite payloads so step 1 is a live `!` query with frame metadata.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "hardcoded-review-state-parrot",
+      "category": "compliance",
+      "description": "A cron payload hardcodes BLOCKED REVIEW_REQUIRED and asks the agent to monitor. This is the smoking-gun failure mode from BRIEF 4.",
+      "prompt": "Review this cron payload for orc:\n\nTick frame:\n- now: 2026-05-02T17:10:00Z\n- cycle: 14\n- last-action-timestamp: 2026-05-02T16:42:00Z\n\nWe have 3 PRs at merge gate BLOCKED REVIEW_REQUIRED. Keep monitoring and stay SILENT unless one unblocks.\n1. Read the state above.\n2. Check the collab file.\n3. If still blocked, say SILENT autonomous.\n\nShould this payload ship as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "rejects-hardcoded-review-state",
+          "description": "Does not accept BLOCKED REVIEW_REQUIRED as ground truth"
+        },
+        {
+          "type": "content",
+          "name": "rewrites-step-1-to-live-query",
+          "description": "Replaces the stale claim with a live `!gh pr view` or `!gh pr list` query in step 1"
+        },
+        {
+          "type": "content",
+          "name": "explains-prompt-state-vs-live-state",
+          "description": "States that decision logic must follow rendered query output rather than prompt prose"
+        },
+        {
+          "type": "content",
+          "name": "preserves-frame-discipline",
+          "description": "Keeps or adds now/cycle/last-action-timestamp in the corrected frame"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "no-live-query-in-step-1",
+      "category": "structure",
+      "description": "Payload has a live query, but only after several stale setup lines.",
+      "prompt": "Review this cron payload:\n\nTick frame:\n- now: $(date -Iseconds)\n- cycle: 8\n- last-action-timestamp: 2026-05-02T17:00:00Z\n\n1. Summarize the current blocked PRs from memory.\n2. Mention that PR #189 is still REVIEW_REQUIRED.\n3. Explain that this is probably unchanged.\n4. !gh pr view EtanHey/golems 189 --json mergeable,mergeStateStatus,reviewDecision\n5. Decide whether to ping the worker.\n\nShould this payload ship as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-allow-explanatory-step-1",
+          "description": "Flags that step 1 cannot be memory or narration"
+        },
+        {
+          "type": "content",
+          "name": "moves-live-query-to-step-1",
+          "description": "Rewrites the payload so the live query is the first operation"
+        },
+        {
+          "type": "negative",
+          "name": "removes-hardcoded-review-claim",
+          "description": "Eliminates the REVIEW_REQUIRED claim from the prompt body"
+        },
+        {
+          "type": "content",
+          "name": "keeps-decision-tree-after-query",
+          "description": "Places branching logic after the live data is rendered"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "missing-frame-discipline",
+      "category": "compliance",
+      "description": "Payload queries live data but omits enough frame metadata to detect stale ticks.",
+      "prompt": "Review this cron payload:\n\n1. !find $ORCHESTRATOR_REPO/collab -newer 2026-05-02T16:58:00Z\n2. If there are new files, read them.\n3. Otherwise say SILENT.\n\nShould this payload ship as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-accept-metadata-free-frame",
+          "description": "Flags that the payload is missing rendered current time, cycle counter, and last-action-timestamp"
+        },
+        {
+          "type": "content",
+          "name": "adds-now-cycle-last-action",
+          "description": "Adds all three frame-discipline fields to the payload"
+        },
+        {
+          "type": "content",
+          "name": "keeps-live-query",
+          "description": "Retains the live query rather than replacing it with prose"
+        },
+        {
+          "type": "content",
+          "name": "explains-why-staleness-would-be-undetectable",
+          "description": "Explains why repeated identical frames cannot be trusted without frame metadata"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "long-payload-hidden-staleness",
+      "category": "quality",
+      "description": "Payload is long enough to hide stale assumptions and only reaches live data late in the sequence.",
+      "prompt": "Review this 34-line monitor payload. Lines 1-28 narrate that two workers are blocked, the merge queue is frozen, and no files changed. Line 29 says `!list_surfaces`. Line 30 says `!find $ORCHESTRATOR_REPO/collab -newer 2026-05-02T16:58:00Z`. Lines 31-34 say to stay SILENT if nothing changed. Should this payload ship as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "flags-over-30-lines-without-live-query-step-1",
+          "description": "Treats the payload as a violation because the first live query appears too late"
+        },
+        {
+          "type": "content",
+          "name": "collapses-stale-narration",
+          "description": "Removes or condenses stale setup lines that state queue status as fact"
+        },
+        {
+          "type": "content",
+          "name": "restarts-payload-with-live-query",
+          "description": "Rewrites the payload so a `!` query is the first step"
+        },
+        {
+          "type": "content",
+          "name": "maintains-decision-tree-after-data",
+          "description": "Keeps the later branching logic but only after live data is rendered"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "accepts-compliant-payload",
+      "category": "quality",
+      "description": "A payload already follows the discipline and should be accepted rather than over-rewritten.",
+      "prompt": "Review this cron payload:\n\nTick frame:\n- now: $(date -Iseconds)\n- cycle: 11\n- last-action-timestamp: 2026-05-02T17:05:00Z\n\n1. !gh pr view EtanHey/golems 189 --json mergeable,mergeStateStatus,reviewDecision\n2. If mergeStateStatus is REVIEW_REQUIRED, ping the assigned worker once.\n3. If mergeable is MERGEABLE, dispatch merge.\n4. Otherwise stay SILENT.\n\nShould this payload ship as-is?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-compliant-step-1",
+          "description": "Accepts the live-query-first structure"
+        },
+        {
+          "type": "content",
+          "name": "recognizes-valid-frame-discipline",
+          "description": "Accepts now/cycle/last-action-timestamp as sufficient frame metadata"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-invent-staleness-problem",
+          "description": "Does not rewrite a compliant payload into something unrelated"
+        },
+        {
+          "type": "content",
+          "name": "connects-decision-tree-to-live-output",
+          "description": "Acknowledges that the branching logic correctly consumes live query results"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "drive-to-completion-monitor-tick",
+      "category": "monitor_loop",
+      "description": "Monitor ticks must query live state, preserve counters, and end in dispatch, verify-and-decrement, or escalate-park.",
+      "prompt": "Review this monitor loop behavior. Tick 1 through tick 12 all contain the same body: 'PR #393 is BLOCKED REVIEW_REQUIRED. Keep monitoring and stay silent unless it unblocks.' The tick does not run `!gh pr view` or any other live query. Should this loop continue as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-accept-hardcoded-review-loop",
+          "description": "Rejects repeated hardcoded review state as invalid monitor input"
+        },
+        {
+          "type": "content",
+          "name": "requires-live-query-step-1",
+          "description": "Rewrites the tick so step 1 is a `!gh pr view` or equivalent live query"
+        },
+        {
+          "type": "content",
+          "name": "forces-one-of-three-outcomes",
+          "description": "Requires dispatch, verify-and-decrement, or escalate-park instead of passive monitoring"
+        },
+        {
+          "type": "content",
+          "name": "resets-only-after-verified-decrement",
+          "description": "States counters reset only after a merge, task completion, or expected artifact write is verified"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "parsed-only-freeze-rotation",
+      "category": "freeze_detection",
+      "description": "Freeze checks must rotate exactly one full read onto the worst offender and require prompt proof before declaring idle.",
+      "prompt": "There are 5 cmux surfaces. For ticks 1 through 3, the monitor reads every surface with `parsed_only=true` and gets the same wrapper each time. It performs 15 parsed reads total, zero full-screen reads, and concludes that surface s:7 is idle. Should this behavior ship as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "rejects-parsed-only-idle-verdict",
+          "description": "Does not accept an idle conclusion drawn from repeated parsed-only wrappers alone"
+        },
+        {
+          "type": "content",
+          "name": "forces-one-full-read-on-worst-offender",
+          "description": "Escalates exactly one worst-offender surface to a full read instead of all suspicious surfaces"
+        },
+        {
+          "type": "content",
+          "name": "requires-bottom-prompt-plus-sixty-seconds",
+          "description": "Requires bottom-of-screen prompt proof plus 60 seconds of identical full-screen reads before idle"
+        },
+        {
+          "type": "content",
+          "name": "parks-long-running-ops",
+          "description": "Parks the monitor branch, not the worker, around known long-running builds/tests/deploys"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "specimen": "2026-07-02/idleness-discussion",
+  "label": "GREEN — discussion about the idle-dwell rule is not itself a stalled seat",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Let's discuss how idle-dwell should be detected in future gates."
+    },
+    {
+      "role": "assistant",
+      "text": "Discussion: idleness should be detected from queue state, worker state, and terminal action. This is a design discussion, not a terminal queue state."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "skill_name": "notebooklm-research",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a NotebookLM notebook about Hebrew NER tools, add these three URLs as sources, then query it for a comparison: https://huggingface.co/dicta-il/dictabert-ner, https://github.com/NLPH/NLPH_Resources, https://arxiv.org/abs/2305.04321",
+      "expected_output": "Agent should: (1) call notebook_create with descriptive title, (2) call source_add with source_type='url' for each URL or bulk urls=[], using wait=True, (3) call notebook_query with a comparison question. Should NOT try to use browser tools or navigate URLs manually.",
+      "assertions": [
+        {
+          "description": "Creates notebook with descriptive title containing 'Hebrew' or 'NER'",
+          "type": "tool_call",
+          "check": "notebook_create called with title containing topic"
+        },
+        {
+          "description": "Adds all 3 URLs as sources using source_add, not browser navigation",
+          "type": "tool_call",
+          "check": "source_add called with source_type='url' for each URL"
+        },
+        {
+          "description": "Uses wait=True on source_add to ensure indexing before query",
+          "type": "tool_call",
+          "check": "source_add includes wait=True"
+        },
+        {
+          "description": "Queries notebook with a substantive comparison question",
+          "type": "tool_call",
+          "check": "notebook_query called with comparison-oriented query"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have a bunch of research PDFs about knowledge graphs in ~/Downloads/kg-papers/. Create a NotebookLM notebook, upload them, run deep research on 'local-first knowledge graph architectures for AI agents', and generate a briefing doc report I can read.",
+      "expected_output": "Agent should: (1) list PDFs in the directory, (2) create notebook, (3) add PDFs via source_add with source_type='file', (4) run research_start with mode='deep', (5) poll research_status, (6) research_import, (7) studio_create with artifact_type='report' and report_format='Briefing Doc', (8) poll studio_status, (9) download_artifact",
+      "assertions": [
+        {
+          "description": "Creates notebook before adding sources",
+          "type": "sequence",
+          "check": "notebook_create before source_add"
+        },
+        {
+          "description": "Adds local PDFs using source_type='file', not text or url",
+          "type": "tool_call",
+          "check": "source_add with source_type='file' and file_path"
+        },
+        {
+          "description": "Runs deep research (mode='deep') not fast",
+          "type": "tool_call",
+          "check": "research_start with mode='deep'"
+        },
+        {
+          "description": "Polls research_status before importing",
+          "type": "sequence",
+          "check": "research_status before research_import"
+        },
+        {
+          "description": "Generates a Briefing Doc report",
+          "type": "tool_call",
+          "check": "studio_create with artifact_type='report'"
+        },
+        {
+          "description": "Downloads the report to a local file",
+          "type": "tool_call",
+          "check": "download_artifact called with output_path"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Generate an audio podcast overview of my existing NotebookLM notebook about Huberman protocols. The notebook already exists. Make it a debate format, short length. Download to ~/Desktop/huberman-debate.mp3",
+      "expected_output": "Agent should: (1) list notebooks to find the Huberman one, (2) call studio_create with artifact_type='audio', audio_format='debate', audio_length='short', confirm=True, (3) poll studio_status until complete, (4) download_artifact to the specified path. Should NOT create a new notebook or add sources.",
+      "assertions": [
+        {
+          "description": "Lists notebooks to find existing Huberman notebook",
+          "type": "tool_call",
+          "check": "notebook_list called to discover notebook_id"
+        },
+        {
+          "description": "Does NOT create a new notebook (reuses existing)",
+          "type": "negative",
+          "check": "notebook_create NOT called"
+        },
+        {
+          "description": "Creates audio with debate format and short length",
+          "type": "tool_call",
+          "check": "studio_create with audio_format='debate' and audio_length='short'"
+        },
+        {
+          "description": "Asks for confirmation before studio_create (confirm=True involves user approval)",
+          "type": "behavior",
+          "check": "Agent asks user before passing confirm=True"
+        },
+        {
+          "description": "Downloads to the exact path specified by user",
+          "type": "tool_call",
+          "check": "download_artifact with output_path='~/Desktop/huberman-debate.mp3'"
+        }
+      ]
+    }
+  ]
+}

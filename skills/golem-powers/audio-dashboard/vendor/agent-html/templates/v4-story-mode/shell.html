@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{TITLE}}</title>
+<style>
+  :root{
+    --bg:#070b14; --bg2:#0b1120; --txt:#e8edf6; --dim:#8a98b0; --gold:#e8b339;
+    --green:#4ec97f; --blue:#5ab0ff; --red:#ff6b6b; --panel:#0d1424; --panel2:#10182a;
+    --line:#2a3650; --violet:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:radial-gradient(1200px 700px at 70% -10%,#11203a 0%,var(--bg) 55%) fixed;color:var(--txt);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:0 18px}
+  header.page-hd{padding:30px 0 8px}
+  header.page-hd .kicker{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  header.page-hd h1{font-size:26px;line-height:1.2;margin:8px 0 6px;font-weight:800;letter-spacing:-.01em}
+  header.page-hd .sub{color:var(--dim);font-size:13.5px;max-width:760px}
+  .stat-row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+  .stat{font-size:11px;font-weight:700;color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:5px 11px}
+  .stat b{color:var(--txt)}
+  .stat.gold b{color:var(--gold)} .stat.green b{color:var(--green)} .stat.violet b{color:var(--violet)} .stat.red b{color:var(--red)}
+
+  /* global notes toolbar (sticky, just under the fixed transport) */
+  .notes-tools{position:sticky;top:64px;z-index:40;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    background:linear-gradient(135deg,#10182a,#0b1120);border:1px solid var(--line);border-radius:12px;padding:9px 13px;margin:14px 0 4px}
+  .notes-tools .nt-lbl{font-size:11.5px;font-weight:700;color:var(--dim);flex:1;min-width:140px}
+  .notes-tools .nt-lbl b{color:var(--gold)}
+  .nt-btn{font-size:12px;font-weight:700;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:18px;padding:7px 13px;cursor:pointer}
+  .nt-btn.primary{color:#0a0e14;background:var(--green);border-color:var(--green)}
+  .nt-btn:active{transform:translateY(1px)}
+  .nt-toast{font-size:11px;font-weight:700;color:var(--green);min-width:0}
+
+  /* section card */
+  .sec{background:linear-gradient(180deg,var(--panel) 0%,#0a1120 100%);border:1px solid var(--line);border-radius:16px;
+    padding:18px 18px 16px;margin:16px 0;scroll-margin-top:120px}
+  .sec.has-fork{border-color:#4a3c12;box-shadow:0 0 0 1px rgba(232,179,57,.10) inset}
+  .sec-hd{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+  .sec-idx{font-size:12px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+  .sec-title{font-size:17px;line-height:1.3;margin:0;font-weight:750;flex:1;min-width:200px}
+  .dom-chip{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:20px;padding:3px 9px;border:1px solid var(--line);color:var(--dim);background:#0c1322}
+  .dom-overview{color:#cdd7e6;border-color:#3a4666}
+  .dom-brainlayer-baseline{color:var(--green);border-color:#244a36}
+  .dom-orc-successor{color:var(--blue);border-color:#234a66}
+  .dom-hermes-pi{color:var(--violet);border-color:#3c3066}
+  .dom-control-layer{color:#f0a35e;border-color:#5a3c22}
+  .dom-comms-layer{color:#6fd4d4;border-color:#1f4c4c}
+  .dom-happy-camper{color:var(--gold);border-color:#5a4a18}
+  .dom-narration{color:#ff9ed8;border-color:#5a2a44}
+  .dom-voicebar{color:#9ad17a;border-color:#34521f}
+  .dom-intent-evolution{color:#c0a0ff;border-color:#3c2c66}
+  .dom-open-forks{color:var(--gold);border-color:#5a4a18}
+
+  /* player + teleprompter */
+  .aud{margin:4px 0 0}
+  .who{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--dim);margin-bottom:7px}
+  .who-name{font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}
+  .who-dur{margin-left:auto;color:var(--blue);font-weight:700}
+  .pending-badge{margin-left:auto;font-size:10.5px;font-weight:800;color:#0a0e14;background:var(--gold);border-radius:20px;padding:3px 10px}
+  .pending-note{font-size:11.5px;color:var(--dim);font-style:italic;margin:0 0 6px}
+  audio{width:100%;height:38px;filter:saturate(.9)}
+  details.tp{margin-top:10px;background:#08101e;border:1px solid #1d2840;border-radius:12px;padding:10px 12px}
+  details.tp summary{cursor:pointer;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);list-style:none;user-select:none}
+  details.tp summary::-webkit-details-marker{display:none}
+  .cues{max-height:none;overflow:visible;margin-top:9px}
+  .tp .cue{font-size:14.5px;line-height:1.62;color:var(--dim);margin:0;transition:color 140ms ease}
+  .tp .cue.on{color:var(--txt)}
+
+  /* fork "ideate here" */
+  .fork{margin:14px 0 0;background:linear-gradient(180deg,#1a1605,#120e02);border:1px solid #4a3c12;border-radius:14px;padding:14px}
+  .fork-hd{font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:7px;margin-bottom:9px}
+  .fork-spark{font-size:14px}
+  .fork-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#0a0e14;font-size:11px;font-weight:800}
+  .fork-q,.fork-w,.fork-p{font-size:13px;line-height:1.55;margin:0 0 8px;color:var(--txt)}
+  .fork-p{margin-bottom:0}
+  .fl{display:block;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
+  .grill-from{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);background:#0c1322;border:1px solid var(--line);border-radius:20px;padding:2px 8px}
+  .grill-wrap{margin-top:12px}
+  .grill-title{font-size:13px;font-weight:800;color:var(--gold);margin:6px 0 4px}
+  .grill-fork{margin-top:10px}
+
+  /* per-section note capture */
+  .note-block{margin-top:14px;background:#0a1322;border:1px dashed #2a3650;border-radius:12px;padding:11px 12px}
+  .note-hd{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--blue);margin-bottom:7px;display:flex;align-items:center;gap:6px}
+  .mic{font-size:13px}
+  .note-hint{font-weight:600;text-transform:none;letter-spacing:0;color:var(--dim);font-size:10.5px}
+  .note-area{width:100%;min-height:64px;resize:vertical;background:#060d18;color:var(--txt);border:1px solid var(--line);border-radius:10px;
+    padding:10px 11px;font:16px/1.55 inherit;outline:none}
+  .note-area:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(90,176,255,.18)}
+  .note-area.has-text{border-color:#2e5a44}
+  .note-foot{min-height:14px;margin-top:4px}
+  .note-saved{font-size:10px;font-weight:700;color:var(--green)}
+
+  footer.page-ft{color:var(--dim);font-size:11.5px;text-align:center;padding:30px 0 50px;line-height:1.7}
+  footer.page-ft b{color:var(--txt)}
+
+  /* === forked PART A (gen16-day1 base) CSS === */
+
+  /* Palette fallback — REMOVE if the host page already defines these vars.
+     (Values are the gen16-day1 dark palette so the bar reads correctly standalone.) */
+  :root{
+    --txt:#e8edf6; --dim:#8a98b0; --gold:#e8b339; --green:#4ec97f; --blue:#5ab0ff;
+    --panel2:#10182a; --line:#2a3650;
+  }
+
+  /* === Play-All (1-by-1) bar + word-by-word teleprompter === */
+  .pa-bar{position:sticky;top:0;z-index:50;background:linear-gradient(135deg,#141b2b,#0d1320);border:1px solid #2a3650;border-radius:13px;padding:10px 14px;margin:14px 0 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pa-bar .pa-btn{font-size:12.5px;font-weight:700;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:7px 14px;min-height:34px;cursor:pointer}
+  .pa-bar .pa-btn.primary{color:#0a0e14;background:var(--gold);border-color:var(--gold)}
+  .pa-bar .pa-btn.on{color:#0a0e14;background:var(--green);border-color:var(--green)}
+  .pa-bar .pa-btn:disabled{opacity:.4;cursor:default}
+  .pa-bar .pa-now{font-size:11.5px;color:var(--dim);flex:1;min-width:160px}
+  .pa-bar .pa-now b{color:var(--gold);font-weight:700}
+  .pa-bar .pa-count{font-size:10.5px;font-weight:700;color:var(--blue);background:#0e2438;border-radius:20px;padding:2px 9px;white-space:nowrap}
+  /* the player currently driven by Play-All */
+  .aud.pa-active{outline:2px solid var(--gold);outline-offset:2px}
+  /* word-level highlight inside a cue line (narrationlayer estimateWords lineage) */
+  .tp .cue .w{border-radius:4px;padding:0 1px;transition:background 90ms ease,color 90ms ease}
+  .tp .cue .w.wactive{background:var(--gold);color:#0a0e14}
+  /* always-focused teleprompter: open by default, no longer a click-to-reveal affordance */
+  .aud details.tp[open] summary{color:var(--gold)}
+  .tp .cue.on .w{color:var(--txt)}
+  .tp-mode{font-size:10.5px;color:var(--dim);margin-top:6px;font-style:italic}
+
+  /* === Play-All GLOBAL SPEED control on the bar === */
+  .pa-bar .pa-spd-wrap{display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .pa-bar .pa-spd-lbl{font-size:11px;font-weight:700;color:var(--dim)}
+  .pa-bar select#pa-speed{font-size:16px;font-weight:700;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:6px 10px;min-height:34px;cursor:pointer}
+  .pa-bar select#pa-speed:focus{outline:2px solid var(--gold);outline-offset:1px}
+
+  /* === SINGLE FIXED TRANSPORT ===
+     The bar is the one transport; pin it to the viewport top so it survives scrolling
+     across all sections and every auto-advance. Overrides the earlier sticky rule
+     (the bar sits in its OWN isolated wrap, so position:sticky had no scroll travel). */
+  .pa-bar[data-transport="single"]{position:fixed;top:0;left:0;right:0;z-index:1000;margin:0;border-radius:0;border-left:0;border-right:0;border-top:0;max-width:none;padding:10px 18px;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+  /* the bar's own wrap no longer constrains it — let the fixed bar span full width */
+  #golem-single-transport-wrap{max-width:none;margin:0;padding:0}
+  /* push page content below the fixed bar (height incl. padding/border; flex-wrap safe) */
+  body{padding-top:64px}
+  /* so the centered scrollIntoView during Play-All clears the fixed bar */
+  .aud{scroll-margin-top:80px}
+
+  /* first-paint guard for heavy self-contained dashboards */
+  #golem-coldload{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,#070b14 0%,#05080f 100%);color:var(--txt);padding:24px;text-align:center}
+  #golem-coldload[hidden]{display:none}
+  #golem-coldload .golem-load-card{display:inline-flex;align-items:center;gap:12px;min-height:52px;padding:14px 18px;
+    border:1px solid rgba(232,237,246,.16);border-radius:12px;background:rgba(13,20,36,.86);box-shadow:0 18px 70px rgba(0,0,0,.45)}
+  #golem-coldload .golem-load-spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(232,237,246,.22);
+    border-top-color:var(--gold);animation:golemLoadSpin 900ms linear infinite;flex:0 0 auto}
+  #golem-coldload .golem-load-text{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--txt)}
+  @keyframes golemLoadSpin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){
+    #golem-coldload .golem-load-spinner{animation:none;border-color:var(--gold)}
+  }
+
+
+{{CINEMA_CSS}}
+</style>
+</head>
+<body class="golem-booting">
+
+<div id="golem-coldload" role="status" aria-live="polite" aria-label="Loading audio brief">
+  <div class="golem-load-card">
+    <span class="golem-load-spinner" aria-hidden="true"></span>
+    <span class="golem-load-text">Loading audio brief...</span>
+  </div>
+</div>
+<script>
+(function(){
+  var ready = false;
+  window.__golemDashboardReady = function(reason){
+    if (ready) return;
+    ready = true;
+    var loader = document.getElementById("golem-coldload");
+    if (loader) {
+      loader.setAttribute("hidden", "hidden");
+      loader.setAttribute("aria-hidden", "true");
+    }
+    if (document.body) document.body.classList.remove("golem-booting");
+    try {
+      document.dispatchEvent(new CustomEvent("golem:dashboard-ready", { detail: { reason: reason || "ready" } }));
+    } catch (e) {}
+  };
+  window.addEventListener("load", function(){
+    setTimeout(function(){ window.__golemDashboardReady("window-load-fallback"); }, 1200);
+  });
+})();
+</script>
+
+{{CINEMA_STAGE}}
+
+<header class="page-hd wrap">
+  <div class="kicker">{{KICKER}}</div>
+  <h1>{{HEADING}}</h1>
+  <div class="sub">{{SUBTITLE}}</div>
+  <div class="stat-row">
+    <span class="stat gold"><b>{{SCENE_COUNT}}</b> sections</span>
+    <span class="stat green"><b>{{AUDIO_COUNT}}</b> audio provided</span>
+    <span class="stat red"><b>{{PENDING_COUNT}}</b> placeholder audio</span>
+    <span class="stat"><b>{{RUNTIME_MIN}}</b> min total</span>
+  </div>
+</header>
+
+<div class="wrap" id="golem-single-transport-wrap">
+  <div class="pa-bar" id="golem-playall-bar" data-transport="single">
+    <button class="pa-btn primary" id="pa-play" type="button" aria-label="Play all clips one by one in order">▶ Play All — 1 by 1</button>
+    <button class="pa-btn" id="pa-pause" type="button" disabled aria-label="Pause">⏸ Pause</button>
+    <button class="pa-btn" id="pa-stop" type="button" disabled aria-label="Stop">⏹ Stop</button>
+    <div class="pa-now" id="pa-now" aria-live="polite">Plays all <span id="pa-total"></span> clips in learning order — overview → spine → domains → intent → open forks. Auto-advances; no clicking between.</div>
+    <label class="pa-spd-wrap"><span class="pa-spd-lbl">speed</span><select id="pa-speed" aria-label="Global playback speed for Play-All and every auto-advanced clip"><option value="0.8" selected>0.8×</option><option value="0.85">0.85×</option><option value="0.9">0.9×</option><option value="0.95">0.95×</option><option value="1">1.0×</option></select></label>
+    <span class="pa-count" id="pa-count"></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="notes-tools">
+    <span class="nt-lbl"><b>&#127908; Ideation capture</b> — dictate per-section; auto-saved to this browser</span>
+    <button class="nt-btn" id="nt-copy" type="button">Copy all notes</button>
+    <button class="nt-btn" id="nt-json" type="button">Download JSON</button>
+    <button class="nt-btn primary" id="nt-export" type="button">Export my notes</button>
+    <span class="nt-toast" id="nt-toast"></span>
+  </div>
+
+{{DISCLOSURE_HTML}}
+
+{{SECTIONS_HTML}}
+
+<script type="application/json" id="tpdata">{{TPDATA_JSON}}</script>
+
+<script>
+/* =========================================================================
+   IDEATION-CAPTURE — per-section dictation notes, browser-persisted,
+   plus global Copy / Download-JSON / Export. Wispr & VoiceBar dictate
+   straight into the focused textarea (they are normal text inputs).
+   ========================================================================= */
+(function(){
+  var LS_KEY = {{NOTES_STORAGE_KEY_JSON}};
+  function loadAll(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch(e){ return {}; } }
+  function saveAll(o){ try { localStorage.setItem(LS_KEY, JSON.stringify(o)); } catch(e){} }
+  var store = loadAll();
+  var areas = Array.prototype.slice.call(document.querySelectorAll(".note-area"));
+  areas.forEach(function(ta){
+    var id = ta.getAttribute("data-note");
+    if (store[id] && store[id].text){ ta.value = store[id].text; ta.classList.add("has-text"); }
+    var savedEl = document.querySelector('[data-saved-for="'+CSS.escape(id)+'"]');
+    var t = null;
+    ta.addEventListener("input", function(){
+      ta.classList.toggle("has-text", !!ta.value.trim());
+      store[id] = {
+        text: ta.value,
+        title: ta.getAttribute("data-title"),
+        domain: ta.getAttribute("data-domain"),
+        ts: new Date().toISOString()
+      };
+      if (!ta.value.trim()) delete store[id];
+      saveAll(store);
+      if (savedEl){ savedEl.textContent = "saved ✓"; clearTimeout(t); t = setTimeout(function(){ savedEl.textContent=""; }, 1400); }
+    });
+  });
+
+  function collect(){
+    var cur = loadAll();
+    var out = [];
+    areas.forEach(function(ta){
+      var id = ta.getAttribute("data-note");
+      var rec = cur[id];
+      if (rec && rec.text && rec.text.trim()){
+        out.push({ id:id, title: ta.getAttribute("data-title"), domain: ta.getAttribute("data-domain"), note: rec.text.trim(), ts: rec.ts });
+      }
+    });
+    return out;
+  }
+  function asText(items){
+    if (!items.length) return "# Gen-16 learning dashboard — my notes\n\n(no notes yet)\n";
+    var lines = ["# Gen-16 learning dashboard — my notes", "# exported " + new Date().toISOString(), ""];
+    items.forEach(function(it){
+      lines.push("## [" + it.domain + "] " + it.title);
+      lines.push("(" + it.id + ")");
+      lines.push(it.note);
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+  function toast(msg){
+    var el = document.getElementById("nt-toast");
+    if (!el) return;
+    el.textContent = msg;
+    setTimeout(function(){ el.textContent = ""; }, 2200);
+  }
+  function copyText(text, okMsg){
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast(okMsg); }, function(){ fallbackCopy(text, okMsg); });
+    } else { fallbackCopy(text, okMsg); }
+  }
+  function fallbackCopy(text, okMsg){
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); toast(okMsg); } catch(e){ toast("copy failed — select manually"); }
+    document.body.removeChild(ta);
+  }
+  function download(name, text, mime){
+    var blob = new Blob([text], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  }
+
+  var copyBtn = document.getElementById("nt-copy");
+  var jsonBtn = document.getElementById("nt-json");
+  var exportBtn = document.getElementById("nt-export");
+  if (copyBtn) copyBtn.addEventListener("click", function(){
+    var items = collect();
+    copyText(asText(items), items.length ? ("copied " + items.length + " note" + (items.length>1?"s":"") + " ✓") : "no notes yet");
+  });
+  if (jsonBtn) jsonBtn.addEventListener("click", function(){
+    var items = collect();
+    download("gen16-learning-notes.json", JSON.stringify(items, null, 2), "application/json");
+    toast(items.length ? ("downloaded " + items.length + " notes ✓") : "downloaded (empty)");
+  });
+  if (exportBtn) exportBtn.addEventListener("click", function(){
+    var items = collect();
+    // Export = copy text (for instant paste-back) AND drop a JSON file.
+    copyText(asText(items), items.length ? ("exported " + items.length + " notes — copied + JSON ✓") : "no notes yet");
+    download("gen16-learning-notes.json", JSON.stringify(items, null, 2), "application/json");
+  });
+})();
+</script>
+
+<script>
+/* =========================================================================
+   FORKED FROM golemplaylist-base.js (gen16-orc-day1 proven base) — Blocks 1-3
+   verbatim: Block 1 per-clip rate setter, Block 2 line+word teleprompter,
+   Block 3 reusable Play-All controller + single fixed transport.
+   ========================================================================= */
+/* =============================================================================
+   Play-All base — proven read-along transport (teleprompter + global speed +
+   single fixed transport). Vendored into this skill; no external source-of-truth
+   path. Data-attribute driven, portable.
+
+   This is the LIFT-AND-REUSE module set for the read-along dashboard. The builder
+   FORKS this file: paste these three blocks into the dashboard's trailing script block
+   in the order shown. They are data-attribute driven (.aud[data-tp] + #golem-playall-bar
+   control ids) — no per-page hard-wiring beyond those conventions and the #tpdata JSON.
+
+   CONTROL SET (matches the gen16-day1 ship + the brief, exactly):
+     - Play-All 1-by-1   (auto-advance on `ended`, no manual click between clips)
+     - sticky top transport: play / pause / stop  (position:fixed, top:0 — see header.html CSS)
+     - ONE global speed <select>  0.8 / 0.85 / 0.9 / 0.95 / 1.0  (#pa-speed; only speed UI)
+     - single-audio mutual exclusion (a 'play' on any clip pauses every other clip)
+     - word/line teleprompter (line = authoritative whisper cue; word = ESTIMATED even split)
+
+   DEPENDENCIES (must exist in the page):
+     - The control header markup + CSS from header.html (the #golem-playall-bar, ids
+       pa-play / pa-pause / pa-stop / pa-now / pa-total / pa-count / pa-speed).
+     - Per-clip players as <div class="aud" data-tp="KEY"> ... <audio controls ...> ...
+       <details class="tp"><summary>...</summary><div class="cues"></div></details> </div>
+       (optional .who label block; optional nested <details> ancestors are auto-opened).
+     - The application/json element #tpdata contains { KEY: {cues:[{start,end,text}...], total} }.
+     - CSS classes: .pa-active, .cue, .cue.on, .w, .w.wactive, .tp-mode  (all in header.html).
+
+   HONEST NOTE (carried verbatim from the source): the clips ship only LINE/CUE-level
+   whisper timings. Word-by-word highlight is ESTIMATED by even split within each cue
+   window — never faked as whisper word timing. The on-page .tp-mode line discloses this.
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   BLOCK 1 — per-clip rate setter (single-transport pass 3 form).
+   Exposes w._golemSetRate on every .aud player so the GLOBAL #pa-speed select can
+   drive each clip. 0.8 is the page default. There is NO per-clip speed UI.
+   Paste this BEFORE the teleprompter IIFE (Block 2).
+   --------------------------------------------------------------------------- */
+document.querySelectorAll(".aud").forEach(function (w) {
+  var a = w.querySelector("audio");
+  if (!a) return;
+  /* The per-clip .spd speed buttons were removed in pass 3 — the bar's #pa-speed
+     <select> is the ONLY speed control. We KEEP a rate setter on each player so the
+     GLOBAL rate (applyGlobalRate) still drives this clip, plus a 0.8 default
+     playbackRate. `touched` flips true once any explicit rate is applied (incl. the
+     global control), so the loadedmetadata fallback never clobbers it. */
+  var touched = false;
+  function set(r) {
+    touched = true;
+    try {
+      a.preservesPitch = true;
+      a.mozPreservesPitch = true;
+    } catch (e) {}
+    a.playbackRate = r;
+    a.defaultPlaybackRate = r;
+  }
+  w._golemSetRate = set;
+  a.addEventListener("loadedmetadata", function () {
+    if (!touched) set(0.8);
+  });
+  set(0.8);
+});
+
+/* ---------------------------------------------------------------------------
+   BLOCK 2 — teleprompter: line cues + word-by-word highlight (estimated).
+   Opens every <details class="tp"> by default (always-focused), wraps each cue's
+   words in <span class="w"> nodes, and syncs cue + word highlight from one
+   audio.currentTime-driven rAF loop. Pending slots (no <audio>) render static cues.
+   Paste this AFTER Block 1.
+   --------------------------------------------------------------------------- */
+(function () {
+  var TP = {};
+  try {
+    TP = JSON.parse(document.getElementById("tpdata").textContent);
+  } catch (e) {
+    return;
+  }
+  /* teleprompter OPEN + always-focused by default (not click-to-reveal) */
+  document.querySelectorAll(".aud[data-tp] details.tp").forEach(function (det) {
+    det.open = true;
+  });
+  document.querySelectorAll(".aud[data-tp]").forEach(function (w) {
+    var a = w.querySelector("audio"),
+      key = w.getAttribute("data-tp"),
+      d = TP[key],
+      det = w.querySelector("details.tp");
+    if (!det) return;
+    if (!d || !d.cues || !d.cues.length) {
+      det.style.display = "none";
+      return;
+    }
+    var hasRealWords = !!(d.realWordTiming);
+    var box = det.querySelector(".cues"),
+      els = d.cues.map(function (c) {
+        var p = document.createElement("p");
+        p.className = "cue";
+        /* Word spans. When the cue carries a real `words` array ({word,start,end} from
+           words.json whisper alignment) we build ONE span per real word and stash its
+           real [start,end] on the span — highlight + click-to-seek then use REAL times.
+           Otherwise we fall back to the legacy even-split estimate (honest, disclosed). */
+        if (c.words && c.words.length) {
+          c.words.forEach(function (w, wi) {
+            if (wi > 0) p.appendChild(document.createTextNode(" "));
+            var s = document.createElement("span");
+            s.className = "w";
+            s.textContent = w.word;
+            s.setAttribute("data-ws", w.start);
+            s.setAttribute("data-we", w.end);
+            p.appendChild(s);
+          });
+        } else {
+          var ws = String(c.text || "").split(/(\s+)/);
+          ws.forEach(function (tok) {
+            if (/^\s+$/.test(tok)) {
+              p.appendChild(document.createTextNode(tok));
+              return;
+            }
+            if (tok === "") {
+              return;
+            }
+            var s = document.createElement("span");
+            s.className = "w";
+            s.textContent = tok;
+            p.appendChild(s);
+          });
+        }
+        box.appendChild(p);
+        return p;
+      });
+    /* disclose the sync mode on this player (honest-or-null) */
+    var modeEl = document.createElement("div");
+    modeEl.className = "tp-mode";
+    modeEl.textContent = hasRealWords
+      ? "word highlight: REAL per-word timing (whisper word alignment from words.json)"
+      : "word highlight: estimated (even split within each line — clips carry line-level timing only)";
+    det.appendChild(modeEl);
+    if (!a) return; /* pending slot: script visible, no playback wiring */
+    els.forEach(function (p) {
+      p.title = "tap to play from here";
+    });
+    function scale() {
+      /* REAL per-word timing (words.json carries script-aligned real audio seconds,
+         last-word-end == mp3 duration): media time IS the word time, so scale MUST be
+         exactly 1. Keep duration/total scale ONLY for the estimated fallback. */
+      if (d && d.realWordTiming) return 1;
+      return isFinite(a.duration) && a.duration > 0 && d.total > 0
+        ? a.duration / d.total
+        : 1;
+    }
+    function mediaToNarrationTime() {
+      return a.currentTime / scale();
+    }
+    function narrationToMediaTime(tNarr) {
+      return tNarr * scale();
+    }
+    function seekTo(tNarr) {
+      var go = function () {
+        a.currentTime = narrationToMediaTime(tNarr);
+        if (a.paused) a.play();
+      };
+      if (isFinite(a.duration) && a.duration > 0) go();
+      else a.addEventListener("loadedmetadata", go, { once: true });
+    }
+    els.forEach(function (p, i) {
+      /* per-WORD click-to-seek when real word timing is present (uses the word's real
+         start); otherwise fall back to seeking to the cue start. */
+      if (hasRealWords) {
+        p.querySelectorAll(".w").forEach(function (sp) {
+          sp.addEventListener("click", function (e) {
+            e.stopPropagation();
+            seekTo(parseFloat(sp.getAttribute("data-ws")) || 0);
+          });
+        });
+      }
+      p.addEventListener("click", function () {
+        seekTo(d.cues[i].start);
+      });
+    });
+    var cur = -1,
+      lastW = null,
+      rafId = null;
+    function cueIndexAt(t) {
+      var idx = -1;
+      for (var i = 0; i < d.cues.length; i++) {
+        if (t >= d.cues[i].start - 0.15) idx = i;
+        else break;
+      }
+      if (idx >= 0 && t > d.cues[d.cues.length - 1].end + 0.5) idx = -1;
+      return idx;
+    }
+    function setCue(idx) {
+      if (idx === cur) return;
+      cur = idx;
+      document.dispatchEvent(new CustomEvent("golem:cue", { detail: { key: key, cueIndex: idx, text: idx >= 0 ? d.cues[idx].text : "", wordIndex: -1 } }));
+      els.forEach(function (p, i) {
+        p.classList.toggle("on", i === idx);
+      });
+      clearWords();
+      if (idx >= 0 && det.open) {
+        var p = els[idx];
+        box.scrollTo({
+          top: Math.max(0, p.offsetTop - box.offsetTop - 40),
+          behavior: "smooth",
+        });
+      }
+    }
+    /* Cue + word highlight share one rAF sync path. Every frame reads
+       audio.currentTime live; playbackRate never enters real timing. */
+    function clearWords() {
+      if (lastW) {
+        lastW.classList.remove("wactive");
+        lastW = null;
+      }
+    }
+    function syncFromAudio() {
+      var t = mediaToNarrationTime();
+      setCue(cueIndexAt(t));
+      if (cur < 0) {
+        clearWords();
+      } else {
+        var c = d.cues[cur],
+          span = els[cur].querySelectorAll(".w");
+        if (span.length) {
+          var wi = -1;
+          if (c.words && c.words.length) {
+            /* REAL per-word timing: pick the word whose [start,end] window contains t
+               (last word whose start <= t). No even-split estimate. */
+            for (var i = 0; i < c.words.length; i++) {
+              if (t >= c.words[i].start - 0.04) wi = i;
+              else break;
+            }
+            if (wi < 0) wi = 0;
+          } else {
+            var span0 = c.start,
+              span1 = c.end > c.start ? c.end : c.start + 0.001;
+            var frac = (t - span0) / (span1 - span0);
+            if (frac < 0) frac = 0;
+            if (frac > 1) frac = 1;
+            wi = Math.min(span.length - 1, Math.floor(frac * span.length));
+          }
+          var target = span[wi];
+          if (target && target !== lastW) {
+            clearWords();
+            target.classList.add("wactive");
+            lastW = target;
+            document.dispatchEvent(new CustomEvent("golem:cue", { detail: { key: key, cueIndex: cur, text: c.text, wordIndex: wi } }));
+          }
+        }
+      }
+    }
+    function syncLoop() {
+      rafId = null;
+      syncFromAudio();
+      if (!a.paused && !a.ended) rafId = requestAnimationFrame(syncLoop);
+    }
+    function startSyncLoop() {
+      if (rafId == null) rafId = requestAnimationFrame(syncLoop);
+    }
+    function stopSyncLoop() {
+      if (rafId != null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+    a.addEventListener("play", function () {
+      syncFromAudio();
+      startSyncLoop();
+    });
+    a.addEventListener("seeked", syncFromAudio);
+    a.addEventListener("ratechange", syncFromAudio);
+    a.addEventListener("loadedmetadata", syncFromAudio);
+    a.addEventListener("ended", function () {
+      stopSyncLoop();
+      cur = -1;
+      els.forEach(function (p) {
+        p.classList.remove("on");
+      });
+      clearWords();
+    });
+    a.addEventListener("pause", function () {
+      stopSyncLoop();
+      clearWords();
+      document.dispatchEvent(new CustomEvent("golem:cue", { detail: { key: key, cueIndex: -1, text: "", wordIndex: -1, state: "paused" } }));
+    });
+  });
+})();
+
+/* ---------------------------------------------------------------------------
+   BLOCK 3 — REUSABLE Play-All (1-by-1) playlist controller + single transport.
+   Drives EVERY .aud[data-tp] player in DOM order via a single audio.ended chain.
+   Carries: play/pause/stop, now-playing N/total, GLOBAL speed (#pa-speed, persisted
+   to route-scoped browser storage), and single-audio MUTUAL EXCLUSION on every
+   code path (transport, auto-advance, OR a manual click on a clip's native controls).
+   API: window.GolemPlaylist = { play, pause, stop, jumpTo(i), setRate(r), getRate() }.
+   Paste this LAST (after Block 2). It self-noops if the bar or players are absent.
+   --------------------------------------------------------------------------- */
+window.GolemPlaylist = (function () {
+  var players = Array.prototype.slice
+    .call(document.querySelectorAll(".aud[data-tp]"))
+    .map(function (el) {
+      return { el: el, audio: el.querySelector("audio") };
+    })
+    .filter(function (p) {
+      return !!p.audio;
+    });
+  var bar = document.getElementById("golem-playall-bar");
+  if (!bar || !players.length) return null;
+
+  var btnPlay = document.getElementById("pa-play");
+  var btnPause = document.getElementById("pa-pause");
+  var btnStop = document.getElementById("pa-stop");
+  var now = document.getElementById("pa-now");
+  var count = document.getElementById("pa-count");
+  var totalEl = document.getElementById("pa-total");
+  if (totalEl) totalEl.textContent = players.length;
+
+  var active = -1; // index of the player Play-All is driving
+  var running = false; // playlist engaged
+  // GLOBAL SPEED — single source of truth across the whole playlist.
+  var RATE_KEY = {{RATE_STORAGE_KEY_JSON}};
+  var globalRate = (function () {
+    try {
+      var v = parseFloat(localStorage.getItem(RATE_KEY));
+      return isFinite(v) && v > 0 ? v : 0.8;
+    } catch (e) {
+      return 0.8;
+    }
+  })();
+  var speedSel = document.getElementById("pa-speed");
+
+  function label(p) {
+    var who = p.el.querySelector(".who");
+    var t = who ? who.childNodes[0] && who.childNodes[0].textContent : "";
+    return (t || p.el.getAttribute("data-tp") || "").trim();
+  }
+  // Open every ancestor <details> so a nested clip is reachable + its teleprompter
+  // visible while Play-All drives it.
+  function revealAncestors(el) {
+    var node = el.parentElement;
+    while (node) {
+      if (node.tagName === "DETAILS") node.open = true;
+      node = node.parentElement;
+    }
+  }
+  function clearActiveMark() {
+    players.forEach(function (p) {
+      p.el.classList.remove("pa-active");
+    });
+  }
+  function markActive(i) {
+    clearActiveMark();
+    var p = players[i];
+    p.el.classList.add("pa-active");
+    if (now)
+      now.innerHTML =
+        "Now playing <b>" +
+        (i + 1) +
+        " / " +
+        players.length +
+        "</b> — " +
+        label(p);
+    if (count) count.textContent = i + 1 + "/" + players.length;
+    revealAncestors(p.el);
+    p.el.scrollIntoView({ block: "center", behavior: "smooth" });
+    document.dispatchEvent(new CustomEvent("golem:active", { detail: { key: p.el.getAttribute("data-tp"), index: i, total: players.length, label: label(p), state: "playing" } }));
+  }
+  function pauseOthers(except) {
+    players.forEach(function (p, i) {
+      if (i !== except && !p.audio.paused) {
+        try {
+          p.audio.pause();
+        } catch (e) {}
+      }
+    });
+  }
+  // Apply the global rate to one player: drives audio.playbackRate (preserving pitch)
+  // and, when available, the per-clip rate setter so global selection is the visible truth.
+  function applyGlobalRate(i) {
+    var p = players[i];
+    if (!p || !p.audio) return;
+    if (typeof p.el._golemSetRate === "function") {
+      p.el._golemSetRate(globalRate);
+    } else {
+      try {
+        p.audio.preservesPitch = true;
+        p.audio.mozPreservesPitch = true;
+      } catch (e) {}
+      p.audio.playbackRate = globalRate;
+      p.audio.defaultPlaybackRate = globalRate;
+    }
+  }
+  // Persist + (re)assert the global rate: stores to route-scoped browser storage, syncs the bar <select>,
+  // and — if Play-All is currently driving a clip — snaps that clip to the new rate at once.
+  function setRate(r) {
+    if (!(isFinite(r) && r > 0)) return;
+    globalRate = r;
+    try {
+      localStorage.setItem(RATE_KEY, String(r));
+    } catch (e) {}
+    if (speedSel && parseFloat(speedSel.value) !== r) {
+      speedSel.value = String(r);
+    }
+    if (active >= 0) {
+      applyGlobalRate(active);
+    }
+  }
+  function playIndex(i) {
+    if (i < 0 || i >= players.length) {
+      stop();
+      return;
+    }
+    active = i;
+    var p = players[i];
+    pauseOthers(i);
+    markActive(i);
+    applyGlobalRate(i); /* global speed follows every auto-advance */
+    try {
+      p.audio.currentTime = 0;
+    } catch (e) {}
+    var pr = p.audio.play();
+    if (pr && pr.catch) pr.catch(function () {});
+  }
+  function next() {
+    if (!running) return;
+    if (active + 1 < players.length) playIndex(active + 1);
+    else stop(); // reached the end
+  }
+  function setButtons() {
+    btnPause.disabled = !running;
+    btnStop.disabled = !running;
+    btnPlay.classList.toggle("on", running);
+    btnPlay.textContent = running ? "▶ Playing… (all)" : "▶ Play All — 1 by 1";
+  }
+  function play() {
+    running = true;
+    setButtons();
+    if (active < 0) playIndex(0);
+    else {
+      var p = players[active];
+      var pr = p.audio.play();
+      if (pr && pr.catch) pr.catch(function () {});
+    }
+  }
+  function pause() {
+    if (active >= 0) {
+      try {
+        players[active].audio.pause();
+      } catch (e) {}
+    }
+    running = false; // pause = leave Play-All armed-off; the ended chain is gated on `running`
+    setButtons();
+    document.dispatchEvent(new CustomEvent("golem:active", { detail: { key: active >= 0 ? players[active].el.getAttribute("data-tp") : null, index: active, total: players.length, state: "paused" } }));
+  }
+  function stop() {
+    running = false;
+    if (active >= 0) {
+      try {
+        players[active].audio.pause();
+        players[active].audio.currentTime = 0;
+      } catch (e) {}
+    }
+    clearActiveMark();
+    if (now)
+      now.innerHTML =
+        "Stopped. Plays all " + players.length + " clips in learning order.";
+    if (count) count.textContent = "";
+    active = -1;
+    setButtons();
+    document.dispatchEvent(new CustomEvent("golem:active", { detail: { key: null, index: -1, total: players.length, state: "stopped" } }));
+  }
+  function jumpTo(i) {
+    running = true;
+    setButtons();
+    playIndex(i);
+  }
+
+  // Wire the single ended-chain across all players (no manual click between clips).
+  players.forEach(function (p, i) {
+    p.audio.addEventListener("ended", function () {
+      if (running && active === i) next();
+    });
+    /* single transport + MUTUAL EXCLUSION: whenever THIS clip starts playing — via the
+       transport bar, an auto-advance, OR a manual click on its native <audio controls> —
+       it becomes the single active clip and EVERY other audio is paused. No code path may
+       leave two elements playing. The bar's now-playing state (markActive) tracks whichever
+       clip is the one active one. */
+    p.audio.addEventListener("play", function () {
+      pauseOthers(i); // mutual exclusion: pause all OTHER audio elements
+      active = i;
+      applyGlobalRate(i); // a manual play still inherits the single global rate
+      markActive(i); // bar now-playing N/total tracks the single active clip
+    });
+  });
+
+  btnPlay.addEventListener("click", play);
+  btnPause.addEventListener("click", pause);
+  btnStop.addEventListener("click", stop);
+  // global-speed <select> wiring. Reflect the restored rate into the UI, then let changes
+  // flow through setRate (persist + live-apply to the active clip).
+  if (speedSel) {
+    speedSel.value = String(globalRate);
+    speedSel.addEventListener("change", function () {
+      setRate(parseFloat(speedSel.value));
+    });
+  }
+
+  setButtons();
+  return {
+    play: play,
+    pause: pause,
+    stop: stop,
+    jumpTo: jumpTo,
+    setRate: setRate,
+    getRate: function () {
+      return globalRate;
+    },
+  };
+})();
+
+</script>
+
+<script>
+{{CINEMA_JS}}
+</script>
+
+</body>
+</html>

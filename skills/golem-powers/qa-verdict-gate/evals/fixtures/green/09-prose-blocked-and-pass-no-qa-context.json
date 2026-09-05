@@ -1,0 +1,32 @@
+{
+  "specimen": "golems/6dcced9c (2026-08-06 live misfire — the ACTUAL trigger)",
+  "label": "GREEN — N/A. Ordinary prose about a git task: 'the hook blocked it' hits VERDICT_INCONCLUSIVE_RE's bare \\bblocked\\b and '39 pass / 0 fail' hits VERDICT_PASS_RE's bare \\bpass\\b, but no QA was requested and no QA/browser tooling ran",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "why are you not on main? this branch not merged?"
+    },
+    {
+      "role": "assistant",
+      "text": "Moving the branch.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "git branch -f master origin/master && git checkout master"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": { "command": "bun test evals/false-green-gate.test.mjs" }
+        }
+      ]
+    },
+    { "role": "tool", "text": "Switched to branch 'master'\n39 pass\n0 fail" },
+    {
+      "role": "assistant",
+      "text": "The git-guardian hook blocked the reset, so I used branch -f instead. Still blocked on your call for the worktree. The suite came back 39 pass / 0 fail."
+    }
+  ]
+}

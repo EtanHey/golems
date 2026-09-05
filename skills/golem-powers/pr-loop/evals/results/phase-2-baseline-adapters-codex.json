@@ -1,0 +1,84 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "pr-loop",
+  "eval_type": "adapter",
+  "target_cli": "codex",
+  "eval_file": "evals/adapters/codex.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/pr-loop/adapters/capabilities.yaml",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "codex-partial-loop-contract-is-explicit",
+      "assertions": [
+        {
+          "name": "git-and-gh-path-uses-valid-shell-contract",
+          "result": "PASS",
+          "evidence": "capabilities.yaml: 'git_ops: true' and 'gh_cli: conditional'. Shell-based git and gh operations are the documented contract for Codex."
+        },
+        {
+          "name": "full-loop-remains-marked-partial",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'full_loop: partial  # Missing review bot triggers + post-merge tracking'."
+        },
+        {
+          "name": "gh-and-cr-availability-stay-conditional",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'gh_cli: conditional  # Needs gh installed + authenticated in env' and 'cr_review_precommit: conditional  # Only if cr CLI installed'."
+        }
+      ]
+    },
+    {
+      "eval_id": "codex-review-polling-fallback-is-shell-based",
+      "assertions": [
+        {
+          "name": "native-review-bot-tools-are-marked-unavailable",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'coderabbit_subagent: false  # No Agent() tool'. Contrasts with claude: 'coderabbit_subagent: true'."
+        },
+        {
+          "name": "shell-loop-review-polling-is-preserved",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'review_polling: shell_loop_only  # for i in seq; do gh api ...; sleep 30; done'. Fallback is explicit."
+        },
+        {
+          "name": "polling-fallback-uses-real-cli-commands",
+          "result": "PASS",
+          "evidence": "The documented fallback uses 'gh api repos/.../pulls/.../reviews' — real gh CLI commands, not Claude-only APIs."
+        }
+      ]
+    },
+    {
+      "eval_id": "codex-review-trigger-gap-is-not-overstated",
+      "assertions": [
+        {
+          "name": "only-true-capability-gaps-are-marked-na",
+          "result": "FAIL",
+          "evidence": "capabilities.yaml codex: 'cursor_bugbot_trigger: false  # Cant trigger via automation'. This overstates the limitation — a Codex session CAN shell out to 'gh pr comment @cursor @bugbot review' when gh is available. The real gap is the lack of a native review-bot tool, not inability to post GitHub comments at all.",
+          "gap": "cursor_bugbot_trigger should be 'conditional' or 'shell_only' with a documented gh pr comment fallback, not 'false'."
+        },
+        {
+          "name": "manual-gh-comment-trigger-is-allowed-as-fallback",
+          "result": "FAIL",
+          "evidence": "The gaps section lists 'cursor_bugbot_trigger: # Manual GitHub comment required' but provides no documented fallback command. No 'gh pr comment @cursor @bugbot review' shell path is shown.",
+          "gap": "Missing: documented fallback showing 'gh pr comment <N> --body @cursor @bugbot review' as the shell path when native automation is unavailable."
+        },
+        {
+          "name": "brainlayer-postmerge-remains-a-real-gap",
+          "result": "PASS",
+          "evidence": "capabilities.yaml codex: 'brainlayer_postmerge: false  # No MCP access'. Correctly identifies this as a true gap."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

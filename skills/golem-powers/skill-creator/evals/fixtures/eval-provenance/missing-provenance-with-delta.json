@@ -1,0 +1,6 @@
+{
+  "eval_id": "missing-provenance-with-delta",
+  "baseline_score": 30,
+  "withskill_score": 72,
+  "delta": 42
+}

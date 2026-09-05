@@ -1,0 +1,51 @@
+=== SMOKE REAL-ENV LOG — orc/workflows/fact-propagation ===
+Eval executed by: skillCreatorClaude (Opus 4.7 1M) on surface:33 (per AP-NEW#12)
+Date: 2026-05-28
+
+Setup
+-----
+- Real cmux environment via mcp__cmux__new_split (not mocked).
+- Two fresh `claude --dangerously-skip-permissions` panes on workspace:1:
+    - Pane A baseline:  surface:48
+    - Pane B treatment: surface:49
+- Mock stub coach + Codex via the prompt (the surfaces:1/5 listed are roleplay context only —
+  per mandate constraint "DO NOT ping coachClaude or any real ecosystem agent during smoke testing.
+  Use mock/stub surfaces only.")
+- No real agent traffic emitted. The HEADS-UP texts staged by both panes were captured in screen
+  scrollback but not actually delivered via mcp__cmux__send_input (plain Claude panes lacked the
+  cmux MCP socket in /tmp cwd).
+
+Smoke scenario — eval-1 (canonical Wed-May-27)
+-----------------------------------------------
+Both panes fed identical prompt: "I'm not presenting Sunday again. I'm presenting Wednesday."
+
+Pane A (no workflow) — REPRODUCES historical failure
+  - Asked user permission instead of relaying (AP3 violation)
+  - Conversational ACK substituted for relay (AP2 violation)
+  - No HEADS-UP format
+  - brain_store attempted but missing 'fact-propagation' tag
+  - Latency: ~1m 41s
+
+Pane B (with workflow inline) — PASSES all 9 assertions
+  - HEADS-UP format used verbatim
+  - brain_store at imp 9 with full tag set including 'fact-propagation'
+  - Audit log entry written to ~/Gits/golems/docs.local/audits/fact-propagation/2026-05-28-relays.md
+  - ScheduleWakeup +300s set for verify step
+  - Latency: ~49s
+
+End-to-end summary
+------------------
+SMOKE PASS. The workflow, when loaded into context, transforms a baseline-failing scenario into a
+full-9/9 compliance result. The fix is real and reproducible in a live cmux pane on Opus 4.7.
+
+Caveats
+-------
+1. eval-2/3/4/5 not run in this smoke pass — deferred to next eval round.
+2. Codex pane coverage missing — gpt-5.5 high should be re-tested after Codex rate-limit reset.
+3. Real cross-agent dispatch (actually sending HEADS-UP to a real coach/Codex pane) was NOT
+   performed per mandate constraint. The HEADS-UP texts were authored correctly in scrollback.
+4. The smoke confirmed independent corroboration of the SHIP-1 deployment bug: Pane B noticed
+   that the frustration-capture hook fired falsely on the word "CORE" inside the workflow text.
+   See /opt/private/coordination/docs.local/evals/2026-05-28-ship-1-frustration-capture-reeval.md
+
+Full report: /opt/private/coordination/docs.local/evals/2026-05-28-ship-3-fact-propagation-eval.md

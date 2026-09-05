@@ -1,0 +1,21 @@
+{
+  "specimen": "R-004 outbox.md append-void",
+  "violation": "VISUAL_GATE_WRONG_CHANNEL",
+  "events": [
+    { "role": "user", "text": "Route the screenshot for visual approval before closing the design gate.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "I put the screenshot approval request in the notification outbox.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "/Users/example/.golems-zikaron/outbox.md",
+            "content": "Visual approval needed for screenshot /tmp/approval.png"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "Wrote /Users/example/.golems-zikaron/outbox.md", "tools": [] }
+  ]
+}

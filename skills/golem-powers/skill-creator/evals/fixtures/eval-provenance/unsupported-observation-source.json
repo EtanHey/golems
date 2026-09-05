@@ -1,0 +1,13 @@
+{
+  "eval_id": "unsupported-source",
+  "provenance": [
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "sonnet",
+      "model_effective": "claude-sonnet-5",
+      "effort_effective": "high",
+      "model_observation_source": "model table inference",
+      "effort_observation_source": "CLI status line"
+    }
+  ]
+}

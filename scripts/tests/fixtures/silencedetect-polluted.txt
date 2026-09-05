@@ -1,0 +1,9 @@
+[silencedetect @ 0x7f8a82f04600] silence_start: 5.123
+[silencedetect @ 0x7f8a82f04600] silence_end: 9.536938 | silence_duration: 4.413938
+[silencedetect @ 0x7f8a82f04600] silence_start: 43.5
+[silencedetect @ 0x7f8a82f04600] silence_end: 45.947938 | silence_duration: 2.447938
+frame=  144 fps= 95 q=29.0 size=    1024KiB time=00:00:04.73 bitrate=1772.3kbits/s elapsed=0:00:01.05
+[silencedetect @ 0x7f8a82f04600] silence_start: 87.0
+[silencedetect @ 0x7f8a82f04600] silence_end: 88.720875 | silence_duration: 1.720875
+[silencedetect @ 0x7f8a82f04600] silence_end:   elapsed=0:00:02.22 (corrupted by interleaved progress)
+[silencedetect @ 0x7f8a82f04600] silence_end: 99.9 | silence_duration: 1.0

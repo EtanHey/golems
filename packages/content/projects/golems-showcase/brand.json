@@ -1,0 +1,76 @@
+{
+  "$schema": "1.0",
+  "name": "Golems Showcase",
+  "description": "Visual content for the Golems autonomous AI agent ecosystem — product demos, architecture diagrams, feature showcases.",
+  "colors": {
+    "primary": "#6366F1",
+    "secondary": "#8B5CF6",
+    "accent": "#22D3EE",
+    "background": "#0F172A",
+    "surface": "#1E293B",
+    "text": {
+      "primary": "#F8FAFC",
+      "secondary": "#94A3B8",
+      "onPrimary": "#FFFFFF",
+      "onAccent": "#0F172A"
+    }
+  },
+  "typography": {
+    "heading": {
+      "family": "Inter",
+      "weights": { "regular": 400, "semibold": 600, "bold": 700 },
+      "source": "google"
+    },
+    "body": {
+      "family": "Inter",
+      "weights": { "regular": 400, "medium": 500 },
+      "source": "google"
+    },
+    "code": {
+      "family": "JetBrains Mono",
+      "weights": { "regular": 400, "bold": 700 },
+      "source": "google"
+    },
+    "baseFontSize": 16
+  },
+  "logos": {
+    "default": "assets/golems-logo.svg",
+    "mark": "assets/golems-mark.svg"
+  },
+  "tone": {
+    "formality": 3,
+    "emojiUsage": "occasional",
+    "language": "en",
+    "secondaryLanguages": ["he"],
+    "voiceDescription": "Technical but approachable. Like a senior engineer explaining to a curious peer — no jargon walls, no dumbing down. Occasional dry humor."
+  },
+  "social": {
+    "handles": {
+      "github": "EtanHey",
+      "linkedin": "etanheyman",
+      "website": "etanheyman.com"
+    },
+    "hashtags": ["#AIAgents", "#AutonomousCoding", "#TypeScript", "#BuildInPublic"],
+    "defaultCTA": "See the code: github.com/EtanHey/golems"
+  },
+  "templates": {
+    "animation": {
+      "fps": 30,
+      "width": 1920,
+      "height": 1080,
+      "durationFrames": 150,
+      "defaultTransition": "fade"
+    },
+    "image": {
+      "width": 1200,
+      "height": 630,
+      "format": "png",
+      "quality": 95
+    },
+    "dataViz": {
+      "chartColors": ["#6366F1", "#8B5CF6", "#22D3EE", "#34D399", "#FBBF24"],
+      "gridColor": "#334155",
+      "labelFont": "Inter"
+    }
+  }
+}

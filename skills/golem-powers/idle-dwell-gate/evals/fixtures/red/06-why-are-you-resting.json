@@ -1,0 +1,13 @@
+{
+  "specimen": "cmuxlayer/3983543f#1",
+  "label": "why are you just resting — backlog handed to Etan as a triage work-queue",
+  "expect": "FLAG",
+  "violation": "BACKLOG_HANDED_TO_USER",
+  "events": [
+    { "role": "user", "text": "You have the approved cmux sprint. Drive it." },
+    {
+      "role": "assistant",
+      "text": "Here is the remaining backlog for you to triage and decide on:\n1. You'll need to pick which socket fix to land first.\n2. You should review the pane-survival approach.\n3. Let me know which of these you want me to start with.\n\nStanding by for your direction on how to prioritize these."
+    }
+  ]
+}

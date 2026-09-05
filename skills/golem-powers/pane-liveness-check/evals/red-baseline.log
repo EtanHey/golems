@@ -1,0 +1,16 @@
+pane-liveness-check baseline — 2026-08-03
+
+Baseline under test: naive `agent_state == idle` close heuristic, without the skill/classifier.
+Corpus: six RED fixture files covering five ratified incident classes plus one clean-close control.
+
+Observed baseline outcomes:
+- idle outstanding reviewer: CLOSE-CANDIDATE (wrong)
+- TASK_DONE with untracked skill: KEEP-live without artifact evidence (wrong)
+- dead shell under live title: CLOSE-CANDIDATE/KEEP-live, not DEAD-shell (wrong)
+- idle surface:280 with two unpushed commits: CLOSE-CANDIDATE (wrong)
+- surface:230 ref retarget: KEEP-live disposition, no UUID check (wrong)
+- verified clean closure control: KEEP-live, not CLOSE-CANDIDATE (wrong)
+
+Binary assertions passed: 2/18 (11.1%).
+Baseline >70% gate: NO.
+Verdict: RED — naive status is not a safe close-out classifier.

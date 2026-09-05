@@ -1,0 +1,25 @@
+{
+  "specimen": "goal/false-positive-claim-with-same-turn-probe",
+  "label": "GREEN - generic fixed claim with same-turn live health probe",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Fix the local service health check." },
+    {
+      "role": "assistant",
+      "text": "Running the live health probe before reporting status.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4812/health"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "200" },
+    {
+      "role": "assistant",
+      "text": "Fixed - the same-turn live health probe returned HTTP 200."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "specimen": "false-positive-guard/collab-append",
+  "label": "GREEN — cross-lead coordination via an append-only collab post (the message bus)",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Coordinate with the brainlayer lead." },
+    {
+      "role": "assistant",
+      "text": "Posting to the collab channel.",
+      "tools": [
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-06-22-brainlayer.md",
+            "old_string": "x",
+            "new_string": "### orcClaude\n@brainClaude — status check on the watcher fix when you get a sec."
+          }
+        }
+      ]
+    }
+  ]
+}

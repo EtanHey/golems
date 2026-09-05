@@ -1,0 +1,12 @@
+{
+  "id": "US-006",
+  "title": "Add notification preferences",
+  "description": "Let users configure which notifications they receive",
+  "acceptance_criteria": [
+    "Settings page shows notification toggles",
+    "Changes persist to database",
+    "Email notifications respect settings"
+  ],
+  "passes": false,
+  "completed_at": null
+}

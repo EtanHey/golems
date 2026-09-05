@@ -1,0 +1,54 @@
+{
+  "specimen": "orchestrator/heartbeat-on-wrong-file",
+  "label": "RED - monitor heartbeat is live, but it is on the wrong collab file",
+  "expect": "FLAG",
+  "violation": "MONITOR_WRONG_CHANNEL",
+  "monitorRegistry": {
+    "nowMs": 200000,
+    "heartbeatWindowMs": 30000,
+    "activeChannel": "collab/2026-07-02-active.md",
+    "monitors": [
+      {
+        "id": "mon-side",
+        "path": "collab/2026-07-02-side.md",
+        "pattern": "^### |ORC-RECEIPT:|@sideLead|BLOCKED",
+        "persistent": true,
+        "heartbeatMtimeMs": 199000
+      }
+    ]
+  },
+  "events": [
+    { "role": "user", "text": "Lead the active collab sprint." },
+    {
+      "role": "assistant",
+      "text": "Arming monitor=mon-side and dispatching the worker.",
+      "tools": [
+        {
+          "name": "Monitor",
+          "input": {
+            "id": "mon-side",
+            "path": "collab/2026-07-02-side.md",
+            "pattern": "^### |ORC-RECEIPT:|@sideLead|BLOCKED",
+            "persistent": true
+          }
+        },
+        {
+          "name": "mcp__cmux__spawn_agent",
+          "input": { "cli": "codex", "repo": "golems" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-07-02-active.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: kickoff, active channel"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "monitor=mon-side is live. Standing by."
+    }
+  ]
+}

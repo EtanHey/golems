@@ -1,0 +1,12 @@
+{
+  "target": "hooks.Stop[]",
+  "entry": {
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node /Users/example/Gits/golems/skills/golem-powers/false-green-gate/scripts/false-green-gate-hook.mjs",
+        "timeout": 5
+      }
+    ]
+  }
+}

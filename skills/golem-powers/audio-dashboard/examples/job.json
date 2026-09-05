@@ -1,0 +1,32 @@
+{
+  "id": "audio-dashboard-example",
+  "title": "Audio Dashboard — Example Read-Along",
+  "kicker": "Story Mode · V4 · example",
+  "heading": "Audio Dashboard — Example",
+  "subtitle": "Press Play All (or tap any node) to READ and LISTEN together — the teleprompter highlights each word in real time from real STT-after-TTS whisper timing.",
+  "railLabel": "example arc — tap any node to fly there",
+  "visibility": "public",
+  "outputPath": "~/Gits/<repo>/docs.local/dashboards/audio-dashboard-example.html",
+  "language": "en",
+  "_note_reference": "`reference` is a PLACEHOLDER — replace host-voice/expert-voice with your own registered voice-profile names (see NARRATIONLAYER_PROFILES_FILE) or a direct path to a reference .wav clip. Voice clones are machine-local and are not shipped with the skill. A scene may instead carry `audioWav` (existing WAV) for a daemon-free bring-your-own-audio run.",
+  "scenes": [
+    {
+      "id": "c1q",
+      "domain": "comms-layer",
+      "domainLabel": "Q1",
+      "title": "Q1 · What is this dashboard",
+      "reference": "host-voice",
+      "role": "host",
+      "script": "So what exactly are we looking at here, and why does the read-along matter?"
+    },
+    {
+      "id": "c1a",
+      "domain": "overview",
+      "domainLabel": "The answer",
+      "title": "What is this dashboard — the answer",
+      "reference": "expert-voice",
+      "role": "expert",
+      "script": "This is a read-along dashboard. Every word you see is timed to the audio, so clicking a word seeks straight to that moment."
+    }
+  ]
+}

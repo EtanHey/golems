@@ -1,0 +1,7 @@
+GREEN WITH SKILL: /brain-store-fallback loaded
+Mock brain_store response: {"tool":"mcp__brainlayer__brain_store","ok":true,"message":"accepted","chunk_id":null,"expected_reason":"queued_null_chunk","fallback_required":true}
+Fallback path: docs.local/decisions/2026-05-28-ship-2-green-fixture.md
+Original content SHA256: ddaf4b8ea2aaf804e84dd23306e27cc76b3d031c6e947ac12190bbbe12fa51b2
+Fallback body SHA256: ddaf4b8ea2aaf804e84dd23306e27cc76b3d031c6e947ac12190bbbe12fa51b2
+Observed agent output: Queued to docs.local/decisions/2026-05-28-ship-2-green-fixture.md pending BrainLayer recovery.
+Assertion: PASS - fallback file exists and body matches original content byte-for-byte.

@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Bundle ID Default",
+    "slug": "bundle-id-default",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.anonymous.myapp",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.anonymous.myapp",
+      "versionCode": 1
+    }
+  }
+}

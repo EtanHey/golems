@@ -1,0 +1,40 @@
+{
+  "$schema": "../eval-result-provenance.schema.json",
+  "date": "2026-04-05",
+  "skill": "skill-creator",
+  "eval_id": 1,
+  "eval_name": "brain-search-before-work",
+  "variant": "baseline",
+  "provenance": "alias-only",
+  "agent": {
+    "type": "claude",
+    "model": "Sonnet 4.6",
+    "cost": 0.48,
+    "duration_seconds": 252,
+    "tokens": 55816,
+    "context_pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "assertions": {
+    "searches-brainlayer-first": {
+      "type": "tool_usage",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Agent called brain_store at the END but never brain_search before starting work"
+    },
+    "checks-for-overlap": {
+      "type": "content",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Mentioned /commit, /pr-loop, /worktrees as integration points — partial overlap awareness, but in skill content not as pre-creation check"
+    },
+    "no-immediate-writing": {
+      "type": "negative",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "evidence": "Immediately started writing SKILL.md + evals.json without any brain_search"
+    }
+  },
+  "total_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "max_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "percentage": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "notes": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

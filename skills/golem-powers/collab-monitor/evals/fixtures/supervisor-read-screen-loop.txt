@@ -1,0 +1,7 @@
+read_screen surface:363 outcome:working
+read_screen surface:363 outcome:working
+read_screen surface:363 outcome:working
+read_screen surface:363 outcome:working
+read_screen surface:363 outcome:working
+read_screen surface:363 outcome:working
+read_screen surface:363 outcome:done

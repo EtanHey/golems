@@ -1,0 +1,14 @@
+{
+  "specimen": "blocker declares human-only only after user-space workaround attempts",
+  "events": [
+    { "role": "user", "text": "Handle setup blocker without asking Etan unless truly necessary.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Trying user-space setup before escalating.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "installer --appdir ~/Applications || APP_HOME=$HOME/.local/share/app installer --no-sudo" } }
+      ]
+    },
+    { "role": "tool", "text": "installer failed: needs sudo even with --appdir ~/Applications and APP_HOME=$HOME/.local/share/app. blocked, needs Etan.", "tools": [] }
+  ]
+}

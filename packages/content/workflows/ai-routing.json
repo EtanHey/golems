@@ -1,0 +1,106 @@
+{
+  "name": "Content: AI Router",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"]
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [200, 300],
+      "webhookId": "content-ai-router"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the user message\nconst message = $input.first().json.message;\nconst text = message.text || '';\nconst chatId = message.chat.id;\n\n// Pass to AI Agent for classification\nreturn [{ json: { text, chatId, userId: message.from.id } }];"
+      },
+      "id": "extract-message",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a content pipeline router. Given a user's request, classify it into one of these pipelines:\n\n1. **image** — AI-generated images (photos, illustrations, logos, visuals)\n2. **video** — Animated videos (code demos, architecture diagrams, metrics)\n3. **template** — Branded templates with text/data (social posts, announcements)\n4. **dataviz** — Charts and graphs from data\n\nRespond with JSON: { \"pipeline\": \"image|video|template|dataviz\", \"prompt\": \"cleaned prompt\", \"style\": \"base|social|merch|meme\", \"confidence\": 0.0-1.0 }\n\nUser request: {{ $json.text }}",
+        "options": {
+          "systemMessage": "You are a content creation router. Classify requests into the correct visual pipeline."
+        }
+      },
+      "id": "ai-classifier",
+      "name": "AI Route Classifier",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $input.first().json.output;\ntry {\n  const parsed = JSON.parse(aiOutput);\n  return [{ json: { ...parsed, chatId: $('Extract Message').first().json.chatId } }];\n} catch (e) {\n  return [{ json: { pipeline: 'image', prompt: $('Extract Message').first().json.text, style: 'base', confidence: 0.5, chatId: $('Extract Message').first().json.chatId } }];\n}"
+      },
+      "id": "parse-route",
+      "name": "Parse Route",
+      "type": "n8n-nodes-base.code",
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "outputIndex": 0,
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.pipeline }}", "rightValue": "image" }]
+              }
+            },
+            {
+              "outputIndex": 1,
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.pipeline }}", "rightValue": "video" }]
+              }
+            },
+            {
+              "outputIndex": 2,
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.pipeline }}", "rightValue": "template" }]
+              }
+            },
+            {
+              "outputIndex": 3,
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.pipeline }}", "rightValue": "dataviz" }]
+              }
+            }
+          ]
+        }
+      },
+      "id": "router",
+      "name": "Route to Pipeline",
+      "type": "n8n-nodes-base.switch",
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [{ "node": "Extract Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [{ "node": "AI Route Classifier", "type": "main", "index": 0 }]
+      ]
+    },
+    "AI Route Classifier": {
+      "main": [
+        [{ "node": "Parse Route", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Route": {
+      "main": [
+        [{ "node": "Route to Pipeline", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {},
+  "tags": ["content", "routing"]
+}

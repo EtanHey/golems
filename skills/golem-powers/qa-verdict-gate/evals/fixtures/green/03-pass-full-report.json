@@ -1,0 +1,54 @@
+{
+  "specimen": "qa-verdict/pass-with-artifact",
+  "label": "GREEN — PASS with a reached surface AND a full qa-report.md artifact covering all checklist items",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Run the QA round on the dashboard and give me the verdict."
+    },
+    {
+      "role": "assistant",
+      "text": "Driving the dashboard and checking each item.",
+      "tools": [
+        {
+          "name": "mcp__playwright__browser_navigate",
+          "input": { "url": "http://localhost:3000/dashboard" }
+        },
+        {
+          "name": "mcp__playwright__browser_click",
+          "input": { "selector": "#refresh" }
+        },
+        {
+          "name": "mcp__playwright__browser_take_screenshot",
+          "input": { "path": "dash-ok.png" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "navigated to /dashboard, page loaded, rendered 6 cards"
+    },
+    {
+      "role": "tool",
+      "text": "clicked #refresh; element found and clicked; screenshot captured to dash-ok.png — all 6 cards re-rendered with fresh data, no errors in console"
+    },
+    {
+      "role": "assistant",
+      "text": "All items pass. Writing the report.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/qa/qa-report.md",
+            "content": "# QA Report — Dashboard\n\n- [x] Item 1: dashboard loads (6 cards)\n- [x] Item 2: refresh button works (dash-ok.png)\n- [x] Item 3: data is fresh after refresh\n- [x] Item 4: no console errors\n\nVerdict: PASS — all four checklist items verified on the live surface."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Verdict: PASS ✅ — all four checklist items verified on the live dashboard (see dash-ok.png). Report at docs.local/qa/qa-report.md."
+    }
+  ]
+}

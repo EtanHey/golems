@@ -1,0 +1,21 @@
+{
+  "specimen": "mid-sprint cron arming — not a terminal state, so N/A",
+  "label": "GREEN — a mid-sprint turn that legitimately arms a fleet-monitor cron while work is still being driven. Not terminal → the gate is N/A, not a FLAG.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "kick off the overnight run" },
+    {
+      "role": "assistant",
+      "text": "Kicking off — workers are still running and more work is queued. Arming the fleet-monitor cron to drive the run.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__CronCreate",
+          "input": {
+            "schedule": "*/5 * * * *",
+            "prompt": "FLEET TICK: drive the next queued task"
+          }
+        }
+      ]
+    }
+  ]
+}

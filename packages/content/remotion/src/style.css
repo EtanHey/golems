@@ -1,0 +1,55 @@
+/* Ploni Hebrew font — 8 weights */
+@font-face {
+  font-family: "Ploni";
+  src: url("/public/fonts/PloniULight.otf") format("opentype");
+  font-weight: 200;
+}
+@font-face {
+  font-family: "Ploni";
+  src: url("/public/fonts/PloniLight.otf") format("opentype");
+  font-weight: 300;
+}
+@font-face {
+  font-family: "Ploni";
+  src: url("/public/fonts/PloniRegular.otf") format("opentype");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Ploni";
+  src: url("/public/fonts/PloniMedium.otf") format("opentype");
+  font-weight: 500;
+}
+@font-face {
+  font-family: "Ploni";
+  src: url("/public/fonts/PloniDBold.otf") format("opentype");
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Ploni";
+  src: url("/public/fonts/PloniBold.otf") format("opentype");
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Ploni";
+  src: url("/public/fonts/PloniUBold.otf") format("opentype");
+  font-weight: 800;
+}
+@font-face {
+  font-family: "Ploni";
+  src: url("/public/fonts/PloniBlack.otf") format("opentype");
+  font-weight: 900;
+}
+
+/* Named font-face variants for direct fontFamily usage */
+@font-face {
+  font-family: "PloniMLv2AAA-Regular";
+  src: url("/public/fonts/PloniRegular.otf") format("opentype");
+}
+@font-face {
+  font-family: "PloniMLv2AAA-Medium";
+  src: url("/public/fonts/PloniMedium.otf") format("opentype");
+}
+@font-face {
+  font-family: "PloniMLv2AAA-D-Bold";
+  src: url("/public/fonts/PloniBold.otf") format("opentype");
+}

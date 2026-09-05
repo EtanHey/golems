@@ -1,0 +1,39 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-08-02",
+  "skill": "codex-workflows",
+  "eval": "watch-false-green-regression",
+  "red": {
+    "source_run_id": "storage-audit-1",
+    "reported_watch_exit": 0,
+    "workers_running": 5,
+    "matching_processes_alive": 5,
+    "declared_artifacts_present": 0,
+    "verdict": "FALSE_GREEN"
+  },
+  "green": {
+    "aggregate_guard_test": {
+      "reported_watch_exit": 0,
+      "worker_status": "running",
+      "guarded_exit": 1
+    },
+    "copied_live_manifest_test": {
+      "command": "codex-workflows.sh watch --manifest <copy> --watch-timeout 0",
+      "workers": 5,
+      "worker_status": "watch_timeout",
+      "exit_code": 124
+    },
+    "run_id_aliases": [
+      "watch",
+      "status",
+      "harvest",
+      "cleanup"
+    ],
+    "focused_tests_passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "python_skill_tests_passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "python_skill_tests_skipped": 1
+  },
+  "verdict": "PASS",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

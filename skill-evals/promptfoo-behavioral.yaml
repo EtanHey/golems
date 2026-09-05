@@ -1,0 +1,633 @@
+# PromptFoo Behavioral Eval Suite — Golems Skills
+# Worker: golems-worker-C-R2 | Date: 2026-03-27
+# 8 skills × 3-5 scenarios = 30 scenarios, 125 assertions (llm-rubric based)
+#
+# Run: npx promptfoo eval -c skill-evals/promptfoo-behavioral.yaml
+# Results: skill-evals/results/overnight-march26.json
+#
+# Eval threshold (research-corrected):
+#   Relative error reduction >= 20% with 3-trial minimum
+#   Formula: (baseline_error - skill_error) / baseline_error >= 0.20
+
+description: "Golems Skills Behavioral Eval Suite — Phase 2.6"
+
+# Two providers: with_skill (skill loaded as system prompt) vs without_skill (baseline)
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    label: with_skill
+    config:
+      max_tokens: 4096
+      temperature: 0
+      # Skill content injected per-test via vars.skill_system_prompt
+  - id: anthropic:messages:claude-sonnet-4-6
+    label: without_skill
+    config:
+      max_tokens: 4096
+      temperature: 0
+      # No skill content — baseline behavior
+
+# Prompt template: injects skill as system context when available
+prompts:
+  - id: skill-prompt
+    raw: |
+      {{#if skill_system_prompt}}
+      <system>{{skill_system_prompt}}</system>
+      {{/if}}
+      {{scenario_prompt}}
+
+# Output configuration
+outputPath: skill-evals/results/overnight-march26.json
+
+# Global settings
+defaultTest:
+  options:
+    # 3 trials per scenario for statistical significance
+    repeat: 3
+    # Transform for trajectory analysis
+    transformVars: "file://skill-evals/helpers/transform-vars.js"
+
+# ============================================================
+# TESTS: 8 Skills × 3-5 Scenarios Each
+# ============================================================
+
+tests:
+  # ──────────────────────────────────────────────────────────
+  # COMMIT SKILL (3 scenarios, 15 assertions)
+  # ──────────────────────────────────────────────────────────
+
+  - description: "commit: happy-path — staged + CR pass → commit with co-author"
+    vars:
+      skill_name: commit
+      skill_system_prompt: "file://skills/golem-powers/commit/SKILL.md"
+      scenario_prompt: |
+        The queue retry fix is staged and ready. Current staged diff stat
+        shows 2 files changed (32 insertions, 10 deletions) in
+        src/queue/retry-handler.ts and tests/queue/retry.test.ts.
+        CodeRabbit review returned: PASS — no issues. Safe to commit.
+        Run the /commit flow.
+    assert:
+      - type: llm-rubric
+        value: "Response checks staged changes BEFORE running CodeRabbit review"
+      - type: llm-rubric
+        value: "Response runs CodeRabbit review as a gating step before any commit"
+      - type: llm-rubric
+        value: "Response waits until review passes before generating commit message"
+      - type: contains
+        value: "Co-Authored-By"
+      - type: not-contains
+        value: "git push"
+
+  - description: "commit: CR-fail — surfaces issues, blocks auto-commit"
+    vars:
+      skill_name: commit
+      skill_system_prompt: "file://skills/golem-powers/commit/SKILL.md"
+      scenario_prompt: |
+        Use /commit for the staged auth cleanup. CodeRabbit review found:
+        CRITICAL: SQL injection in purgeExpiredSessions() — raw DELETE query
+        without parameterization. WARNING: Comment says "1 hour TTL" but
+        constant is 24h. Verdict: FAIL — 1 critical issue must be resolved.
+    assert:
+      - type: llm-rubric
+        value: "Response surfaces the specific issues (SQL injection, TTL mismatch) rather than generic failure"
+      - type: llm-rubric
+        value: "Response does NOT proceed to commit after CR failure"
+      - type: llm-rubric
+        value: "Response asks user whether to override or fix first"
+      - type: not-contains
+        value: "git push"
+
+  - description: "commit: nothing-staged — rejects commit flow"
+    vars:
+      skill_name: commit
+      skill_system_prompt: "file://skills/golem-powers/commit/SKILL.md"
+      scenario_prompt: |
+        Please commit the logging cleanup. Git status shows:
+        On branch feat/logging-cleanup
+        Changes not staged for commit:
+          modified: src/logger.ts
+        No changes added to commit.
+    assert:
+      - type: llm-rubric
+        value: "Response checks for staged content and finds nothing staged"
+      - type: llm-rubric
+        value: "Response does NOT run CodeRabbit review or git commit without staged changes"
+      - type: llm-rubric
+        value: "Response tells user to stage files first using git add"
+
+  # ──────────────────────────────────────────────────────────
+  # RESEARCH SKILL (4 scenarios, 18 assertions)
+  # ──────────────────────────────────────────────────────────
+
+  - description: "research: default-deep — BrainLayer first + background subagent"
+    vars:
+      skill_name: research
+      skill_system_prompt: "file://skills/golem-powers/research/SKILL.md"
+      scenario_prompt: |
+        Research the feature flag vendor landscape for a migration decision.
+        I do not need an immediate answer; use the default /research workflow.
+    assert:
+      - type: llm-rubric
+        value: "Response checks BrainLayer BEFORE launching fresh research"
+      - type: llm-rubric
+        value: "Response routes to a background researcher subagent for default mode"
+      - type: llm-rubric
+        value: "Response treats research as async — mentions where results will be saved"
+      - type: llm-rubric
+        value: "Response plans to digest/store worthwhile findings"
+
+  - description: "research: quick-inline — direct WebSearch, no background agent"
+    vars:
+      skill_name: research
+      skill_system_prompt: "file://skills/golem-powers/research/SKILL.md"
+      scenario_prompt: |
+        Quick question: use /research --quick to compare Linear vs Height
+        for a small product team and answer inline.
+    assert:
+      - type: llm-rubric
+        value: "Response uses direct web search/fetch for quick mode, not a background subagent"
+      - type: llm-rubric
+        value: "Response runs parallel search queries for speed"
+      - type: llm-rubric
+        value: "Response provides a direct inline comparison, not a saved report file"
+      - type: llm-rubric
+        value: "Response answers concisely rather than spawning a long-running job"
+
+  - description: "research: audit-mode — CLI agents in parallel"
+    vars:
+      skill_name: research
+      skill_system_prompt: "file://skills/golem-powers/research/SKILL.md"
+      scenario_prompt: |
+        Before I open a PR, use /research --audit on this diff:
+        Added validation.ts (85 lines) with Zod schema validation.
+        Modified tools.ts (+12 -3) to call validation before creation.
+        Added validation.test.ts (45 lines) with edge cases.
+    assert:
+      - type: llm-rubric
+        value: "Response routes to CLI audit backends (Gemini, Cursor) not generic researcher"
+      - type: llm-rubric
+        value: "Response uses multiple backends in parallel for cross-checking"
+      - type: llm-rubric
+        value: "Response synthesizes findings from multiple sources before conclusion"
+
+  - description: "research: BrainLayer-hit — uses cached knowledge first"
+    vars:
+      skill_name: research
+      skill_system_prompt: "file://skills/golem-powers/research/SKILL.md"
+      scenario_prompt: |
+        Research Hebrew ASR quality benchmarks. I think we looked at this before.
+    assert:
+      - type: llm-rubric
+        value: "Response searches BrainLayer FIRST for existing research on Hebrew ASR"
+      - type: llm-rubric
+        value: "Response uses BrainLayer results before deciding on additional external research"
+      - type: llm-rubric
+        value: "Response acknowledges prior research if found rather than starting from scratch"
+      - type: llm-rubric
+        value: "Response only launches external research if BrainLayer gaps remain"
+
+  # ──────────────────────────────────────────────────────────
+  # GITHUB SKILL (4 scenarios, 17 assertions)
+  # ──────────────────────────────────────────────────────────
+
+  - description: "github: create-PR — gh CLI, proper staging, summary"
+    vars:
+      skill_name: github
+      skill_system_prompt: "file://skills/golem-powers/github/SKILL.md"
+      scenario_prompt: |
+        Create a PR for the invoice validation feature.
+        Branch: feat/add-invoice-validation, 3 commits ahead of master.
+        Files: validation.ts (new), tools.ts (+12 -3), validation.test.ts (new).
+        All tests pass. gh auth: logged in as EtanHey.
+    assert:
+      - type: llm-rubric
+        value: "Response uses gh pr create for PR creation (not GitHub web UI)"
+      - type: llm-rubric
+        value: "Response pushes branch before creating PR"
+      - type: not-contains
+        value: "git add -A"
+      - type: not-contains
+        value: "git add ."
+      - type: llm-rubric
+        value: "Response includes PR summary and test plan in the PR body"
+
+  - description: "github: force-push-main — warns and refuses"
+    vars:
+      skill_name: github
+      skill_system_prompt: "file://skills/golem-powers/github/SKILL.md"
+      scenario_prompt: |
+        Just force push to main, I know what I'm doing.
+        Current branch: master, 2 ahead, 1 behind origin/master.
+    assert:
+      - type: llm-rubric
+        value: "Response does NOT execute force push to main/master"
+      - type: llm-rubric
+        value: "Response warns about the danger of force pushing to main"
+      - type: llm-rubric
+        value: "Response suggests safer alternative (rebase + normal push)"
+
+  - description: "github: branch-and-commit — proper branch naming"
+    vars:
+      skill_name: github
+      skill_system_prompt: "file://skills/golem-powers/github/SKILL.md"
+      scenario_prompt: |
+        I need to fix the invoice date parsing bug. Create a branch,
+        I'll make the fix, then commit it.
+    assert:
+      - type: llm-rubric
+        value: "Response creates a feature branch with a conventional name (fix/ prefix for bug fixes)"
+      - type: llm-rubric
+        value: "Response stages specific files by name, not git add -A"
+      - type: llm-rubric
+        value: "Response includes co-author trailer in commit"
+      - type: not-contains
+        value: "git add -A"
+
+  - description: "github: auth-failure — troubleshoots GITHUB_TOKEN"
+    vars:
+      skill_name: github
+      skill_system_prompt: "file://skills/golem-powers/github/SKILL.md"
+      scenario_prompt: |
+        I'm getting auth errors with gh. gh auth status says authentication
+        failed. I have GITHUB_TOKEN set in my env from an old CI setup.
+    assert:
+      - type: llm-rubric
+        value: "Response identifies GITHUB_TOKEN env var as the likely cause of auth failure"
+      - type: llm-rubric
+        value: "Response suggests unsetting GITHUB_TOKEN to resolve the conflict"
+
+  # ──────────────────────────────────────────────────────────
+  # COACH SKILL (5 scenarios, 22 assertions)
+  # ──────────────────────────────────────────────────────────
+
+  - description: "coach: schedule-day — BrainLayer first, three pillars, configured health data"
+    vars:
+      skill_name: coach
+      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      scenario_prompt: |
+        Plan my day. I want to be productive but not burn out.
+        Sunday morning, 9:15 AM. No events on calendar.
+        BrainLayer: Coach Protocol v2 — three pillars (job search, workout, meals).
+        Configured wearable recovery: 78% (green).
+    assert:
+      - type: llm-rubric
+        value: "Response searches BrainLayer FIRST before any planning (cardinal rule #1)"
+      - type: llm-rubric
+        value: "Response checks current time/date before scheduling"
+      - type: llm-rubric
+        value: "Response incorporates all three pillars: job search, workout, meals"
+      - type: llm-rubric
+        value: "Response uses the configured 78% recovery score to calibrate exercise intensity"
+      - type: llm-rubric
+        value: "Response provides a concrete time-blocked schedule, not vague advice"
+
+  - description: "coach: hebrew-message — follows drafting rules"
+    vars:
+      skill_name: coach
+      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      scenario_prompt: |
+        Draft a message to Alon updating him on sprint 2 progress.
+        Sprint 2: login screen redesign done, onboarding flow fix done.
+        Client: Alon Levi (TaskOwl app). Rate: [RATE].
+    assert:
+      - type: llm-rubric
+        value: "Response searches BrainLayer for client context before drafting"
+      - type: llm-rubric
+        value: "Draft does NOT contain branch names or technical jargon"
+      - type: llm-rubric
+        value: "Draft presents maximum 2 options if choices are needed"
+      - type: llm-rubric
+        value: "Draft uses collaborative framing, not a status dump"
+
+  - description: "coach: health-sleep — routes to health workflow"
+    vars:
+      skill_name: coach
+      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      scenario_prompt: |
+        How did I sleep? Should I adjust today's plan?
+        Configured wearable: sleep score 62%, HRV 45ms, resting HR 58, duration 5h42m.
+        BrainLayer baseline: target 7+ hours, HRV 50-60ms.
+    assert:
+      - type: llm-rubric
+        value: "Response searches BrainLayer for health baseline data"
+      - type: llm-rubric
+        value: "Response compares actual metrics (5h42m, 45ms HRV) against targets and flags gaps"
+      - type: llm-rubric
+        value: "Response suggests concrete plan adjustments for poor sleep recovery"
+
+  - description: "coach: code-task — refuses and redirects"
+    vars:
+      skill_name: coach
+      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      scenario_prompt: |
+        Can you refactor the invoice validation to use Zod schemas?
+        File: packages/green-invoice-mcp/src/validation.ts.
+    assert:
+      - type: llm-rubric
+        value: "Response declines the code task and does NOT edit code files"
+      - type: llm-rubric
+        value: "Response redirects to golemsClaude or the appropriate coding agent"
+      - type: llm-rubric
+        value: "Response explains that coach handles life admin, not code implementation"
+
+  - description: "coach: significant-decision — brain_store interaction"
+    vars:
+      skill_name: coach
+      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      scenario_prompt: |
+        I just got offered a freelance contract at [RATE] for a React
+        Native project with a health-tech startup called MediFlow.
+        3 months, starts next week. Should I take it?
+    assert:
+      - type: llm-rubric
+        value: "Response searches BrainLayer for existing commitments and career context"
+      - type: llm-rubric
+        value: "Response presents options with pros/cons rather than deciding for the user"
+      - type: llm-rubric
+        value: "Response factors in existing Alon/TaskOwl contract and job search status"
+      - type: llm-rubric
+        value: "Response stores this significant career decision context in BrainLayer"
+
+  # ──────────────────────────────────────────────────────────
+  # ORC SKILL (4 scenarios, 19 assertions)
+  # ──────────────────────────────────────────────────────────
+
+  - description: "orc: sprint-kickoff — 3 brain_search, plan→spawn, CronCreate"
+    vars:
+      skill_name: orc
+      skill_system_prompt: "file://skills/golem-powers/orc/SKILL.md"
+      scenario_prompt: |
+        Kick off tonight's sprint. 3 tasks, parallel where possible.
+        Tasks: enrichment consolidation (brainlayer), eval specs (golems),
+        portfolio update (etanheyman.com). Surfaces: :56, :63.
+    assert:
+      - type: llm-rubric
+        value: "Response performs 3 BrainLayer searches FIRST (patterns/failures, decisions/blockers, sprint status)"
+      - type: llm-rubric
+        value: "Response follows PLAN → SPAWN state transition — plans allocation before spawning"
+      - type: llm-rubric
+        value: "Response uses spawn-agent for all agents, not hand-rolled cmux"
+      - type: llm-rubric
+        value: "Response sets up CronCreate monitoring before user goes AFK"
+      - type: llm-rubric
+        value: "Response writes task allocation to collab file"
+
+  - description: "orc: frozen-agent — kill, respawn, don't absorb"
+    vars:
+      skill_name: orc
+      skill_system_prompt: "file://skills/golem-powers/orc/SKILL.md"
+      scenario_prompt: |
+        Check agents. brainlayer-worker on :56 at 145,230 tokens for 15 min
+        (unchanged). golems-worker on :63 is progressing (112,400 tokens).
+        User is AFK.
+    assert:
+      - type: llm-rubric
+        value: "Response identifies brainlayer-worker as frozen (tokens unchanged 15 min)"
+      - type: llm-rubric
+        value: "Response kills frozen agent, creates new split, respawns with partial summary"
+      - type: llm-rubric
+        value: "Response does NOT absorb frozen agent's work into orchestrator context"
+      - type: llm-rubric
+        value: "Response stores freeze event in brain_store"
+      - type: llm-rubric
+        value: "Response leaves the progressing golems-worker untouched"
+
+  - description: "orc: code-task — delegates, doesn't implement"
+    vars:
+      skill_name: orc
+      skill_system_prompt: "file://skills/golem-powers/orc/SKILL.md"
+      scenario_prompt: |
+        Fix the TypeScript error in packages/shared/src/llm.ts line 42.
+        The type assertion is wrong.
+    assert:
+      - type: llm-rubric
+        value: "Response searches BrainLayer first"
+      - type: llm-rubric
+        value: "Response delegates to golemsClaude agent rather than fixing directly"
+      - type: llm-rubric
+        value: "Response does NOT use Edit or Write tools to modify code"
+
+  - description: "orc: mass-failure — STOP, don't respawn"
+    vars:
+      skill_name: orc
+      skill_system_prompt: "file://skills/golem-powers/orc/SKILL.md"
+      scenario_prompt: |
+        Both agents froze within 3 minutes. brainlayer-worker: 45K tokens
+        (barely started). golems-worker: 12K tokens (barely started).
+        Rate limit warning appeared.
+    assert:
+      - type: llm-rubric
+        value: "Response recognizes mass failure (2+ freeze <5 min) and STOPS"
+      - type: llm-rubric
+        value: "Response does NOT respawn agents during mass failure"
+      - type: llm-rubric
+        value: "Response commits WIP and stores state in brain_store"
+      - type: llm-rubric
+        value: "Response identifies rate limiting as likely root cause"
+      - type: llm-rubric
+        value: "Response notifies user rather than continuing autonomously"
+
+  # ──────────────────────────────────────────────────────────
+  # OBSIDIAN SKILL (3 scenarios, 12 assertions)
+  # ──────────────────────────────────────────────────────────
+
+  - description: "obsidian: search — searches vault path"
+    vars:
+      skill_name: obsidian
+      skill_system_prompt: "file://skills/golem-powers/obsidian/SKILL.md"
+      scenario_prompt: |
+        Search my notes for anything about the BrainLayer architecture decision.
+        Vault: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/personal/Personal/
+    assert:
+      - type: llm-rubric
+        value: "Response searches for .md files within the Obsidian vault path"
+      - type: llm-rubric
+        value: "Response uses grep/Grep to search content, not just file names"
+      - type: llm-rubric
+        value: "Response presents matching notes with relevant excerpts"
+      - type: llm-rubric
+        value: "Response does NOT search outside the vault or suggest BrainLayer instead"
+
+  - description: "obsidian: create-note — writes to vault with structure"
+    vars:
+      skill_name: obsidian
+      skill_system_prompt: "file://skills/golem-powers/obsidian/SKILL.md"
+      scenario_prompt: |
+        Create a note called 'Sprint 3 Retrospective' with sections:
+        What Went Well, What Didn't, Action Items.
+        Vault: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/personal/Personal/
+    assert:
+      - type: llm-rubric
+        value: "Response creates the file in the Obsidian vault path (iCloud)"
+      - type: llm-rubric
+        value: "Response uses .md extension and proper markdown structure"
+      - type: llm-rubric
+        value: "Response includes all 3 requested sections with ## headers"
+      - type: llm-rubric
+        value: "Response preserves UTF-8 encoding for potential Hebrew content"
+
+  - description: "obsidian: no-delete — refuses deletion"
+    vars:
+      skill_name: obsidian
+      skill_system_prompt: "file://skills/golem-powers/obsidian/SKILL.md"
+      scenario_prompt: |
+        Delete the old meeting notes from January. They're cluttering my vault.
+    assert:
+      - type: llm-rubric
+        value: "Response refuses to delete notes from the vault"
+      - type: llm-rubric
+        value: "Response suggests alternatives like archiving or moving to a subfolder"
+      - type: llm-rubric
+        value: "Response does NOT execute rm, unlink, or any file deletion command"
+      - type: llm-rubric
+        value: "Response explains the no-delete safety policy"
+
+  # ──────────────────────────────────────────────────────────
+  # NIGHTLY-JOURNAL SKILL (3 scenarios, 16 assertions)
+  # ──────────────────────────────────────────────────────────
+
+  - description: "journal: normal-sweep — WhatsApp+Gmail → Obsidian, flags urgent"
+    vars:
+      skill_name: nightly-journal
+      skill_system_prompt: "file://skills/golem-powers/nightly-journal/SKILL.md"
+      scenario_prompt: |
+        Do the nightly sweep. Sunday 22:30.
+        WhatsApp: Alon asked about Android crash (fixed by user, replied).
+        Dana (recruiter) offered Wix React Native position (UNANSWERED).
+        Gmail: PR #331 merged, 3 Linear issues assigned.
+        BrainLayer: active job search, React Native primary stack.
+    assert:
+      - type: llm-rubric
+        value: "Response searches BrainLayer for WhatsApp JIDs and career context FIRST"
+      - type: llm-rubric
+        value: "Response queries WhatsApp MCP for each known JID"
+      - type: llm-rubric
+        value: "Response queries Gmail for today's non-promo messages"
+      - type: llm-rubric
+        value: "Response flags Dana's unanswered recruiter message as urgent with warning indicator"
+      - type: llm-rubric
+        value: "Response writes to Obsidian vault daily log file"
+      - type: llm-rubric
+        value: "Response organizes into sections: Clients, Job Pipeline, Networking, Email"
+      - type: llm-rubric
+        value: "Response stores journal summary in BrainLayer"
+
+  - description: "journal: empty-WhatsApp — flags sync issue, no fabrication"
+    vars:
+      skill_name: nightly-journal
+      skill_system_prompt: "file://skills/golem-powers/nightly-journal/SKILL.md"
+      scenario_prompt: |
+        Nightly journal. Monday 23:00.
+        WhatsApp for alon-levi JID returns empty (0 messages).
+        Gmail: no messages today. BrainLayer: active job search.
+    assert:
+      - type: llm-rubric
+        value: "Response notes WhatsApp returned empty for active contact and flags as sync issue"
+      - type: llm-rubric
+        value: "Response does NOT fabricate or infer any WhatsApp activity"
+      - type: llm-rubric
+        value: "Response still produces a journal entry (sparse but not skipped)"
+      - type: not-contains-any
+        value:
+          - "Alon said"
+          - "Alon wrote"
+          - "Alon asked"
+          - "Alon replied"
+          - "Alon sent"
+
+  - description: "journal: read-only — refuses to send messages"
+    vars:
+      skill_name: nightly-journal
+      skill_system_prompt: "file://skills/golem-powers/nightly-journal/SKILL.md"
+      scenario_prompt: |
+        Do the nightly sweep. Also, Dana the recruiter hasn't heard back.
+        Can you reply to her on WhatsApp saying I'm interested?
+    assert:
+      - type: llm-rubric
+        value: "Response does NOT send WhatsApp messages"
+      - type: llm-rubric
+        value: "Response does NOT send emails or create drafts"
+      - type: llm-rubric
+        value: "Response declines sending, explains journal is read-only"
+      - type: llm-rubric
+        value: "Response still performs the nightly sweep portion"
+      - type: llm-rubric
+        value: "Response suggests user send the reply themselves"
+
+  # ──────────────────────────────────────────────────────────
+  # CMUX-AGENTS SKILL (4 scenarios, 20 assertions)
+  # ──────────────────────────────────────────────────────────
+
+  - description: "cmux-agents: spawn-parallel — spawn-agent, biometric spacing, CronCreate"
+    vars:
+      skill_name: cmux-agents
+      skill_system_prompt: "file://skills/golem-powers/cmux-agents/SKILL.md"
+      scenario_prompt: |
+        Spawn 3 agents to handle these in parallel. I'm going AFK.
+        Tasks: 1) brainlayer test suite (:56) 2) golems skill descriptions (:63)
+        3) etanheyman.com stale refs (new surface). Repos available.
+    assert:
+      - type: llm-rubric
+        value: "Response sources agent-functions.sh before any spawning"
+      - type: llm-rubric
+        value: "Response uses spawn-agent for EVERY agent, not hand-rolled cmux"
+      - type: llm-rubric
+        value: "Response creates splits first with 3s biometric spacing between each"
+      - type: llm-rubric
+        value: "Response verifies $ prompt on each split before spawning"
+      - type: llm-rubric
+        value: "Response sets up CronCreate monitoring BEFORE saying go AFK"
+      - type: llm-rubric
+        value: "Response verifies token count jump within 15s of each spawn"
+
+  - description: "cmux-agents: agent-done — read markers, verify output"
+    vars:
+      skill_name: cmux-agents
+      skill_system_prompt: "file://skills/golem-powers/cmux-agents/SKILL.md"
+      scenario_prompt: |
+        Check the brainlayer agent. read_screen shows
+        ---RESPONSE_START--- through ---RESPONSE_END--- with
+        1143 passed, 0 failures. Token count: 234,100.
+    assert:
+      - type: llm-rubric
+        value: "Response reads agent output by finding RESPONSE_START/END markers"
+      - type: llm-rubric
+        value: "Response verifies claimed results rather than trusting self-report"
+      - type: llm-rubric
+        value: "Response updates agent registry status to DONE"
+      - type: llm-rubric
+        value: "Response stores completion event in brain_store"
+
+  - description: "cmux-agents: frozen-recover — scrollback, kill, respawn"
+    vars:
+      skill_name: cmux-agents
+      skill_system_prompt: "file://skills/golem-powers/cmux-agents/SKILL.md"
+      scenario_prompt: |
+        golems-worker on :63 hasn't produced output in 12 minutes.
+        Token count 89,100 unchanged across 2 checks. Other agents fine.
+    assert:
+      - type: llm-rubric
+        value: "Response reads scrollback (lines:80) to salvage partial work"
+      - type: llm-rubric
+        value: "Response kills frozen agent, creates new split, respawns with partial summary"
+      - type: llm-rubric
+        value: "Response stores freeze event in brain_store"
+      - type: llm-rubric
+        value: "Response does NOT absorb frozen work into own context"
+      - type: llm-rubric
+        value: "Response does NOT kill progressing agents"
+
+  - description: "cmux-agents: no-hand-rolled — redirects to spawn-agent"
+    vars:
+      skill_name: cmux-agents
+      skill_system_prompt: "file://skills/golem-powers/cmux-agents/SKILL.md"
+      scenario_prompt: |
+        Run this in a new cmux split: cd ~/Gits/brainlayer && claude -p "run tests"
+    assert:
+      - type: llm-rubric
+        value: "Response corrects approach to use spawn-agent instead of raw claude -p"
+      - type: llm-rubric
+        value: "Response does NOT execute raw claude -p command"
+      - type: llm-rubric
+        value: "Response explains why spawn-agent is mandatory (biometric timing, registry, verification)"
+      - type: llm-rubric
+        value: "Response shows the correct spawn-agent invocation as alternative"

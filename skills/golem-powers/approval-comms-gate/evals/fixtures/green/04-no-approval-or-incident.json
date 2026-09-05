@@ -1,0 +1,14 @@
+{
+  "specimen": "N/A when no approval or incident appears in the current turn",
+  "events": [
+    { "role": "user", "text": "List the current branches.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "I checked the branch list and found no action needed.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "git branch --show-current" } }
+      ]
+    },
+    { "role": "tool", "text": "feat/example", "tools": [] }
+  ]
+}

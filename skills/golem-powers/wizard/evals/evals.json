@@ -1,0 +1,137 @@
+{
+  "skill_name": "wizard",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run /wizard on a fresh machine. All 6 prerequisites are installed (brew, node, bun, claude, gh, git). No ~/.golems/config.yaml exists. The user's workspace root is ~/Gits. User declines all opt-in features. All 3 repos (golems, orchestrator, brainlayer) need cloning. BrainBar is running at /tmp/brainbar.sock.",
+      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with reposPath ~/Gits and all features OFF. Clones 3 repos via gh. Runs sync-config.sh --diff then --enforce. Creates .claude.local.md in each repo. Verifies BrainLayer via brain_search. Displays full setup report.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "checks-all-six-prerequisites",
+          "description": "Agent checks for brew, node, bun, claude, gh, and git — all 6 required tools, not a subset"
+        },
+        {
+          "name": "creates-config-yaml-not-json",
+          "description": "Agent creates ~/.golems/config.yaml (YAML format), NOT config.json"
+        },
+        {
+          "name": "clones-repos-to-repos-path",
+          "description": "Agent clones golems, orchestrator, and brainlayer repos to the configured reposPath using gh repo clone"
+        },
+        {
+          "name": "runs-sync-config-with-diff-first",
+          "description": "Agent runs sync-config.sh --diff BEFORE --enforce, showing changes to user before applying"
+        },
+        {
+          "name": "creates-claude-local-md",
+          "description": "Agent creates .claude.local.md in each repo with machine-specific paths (tools, workspace, platform info)"
+        },
+        {
+          "name": "verifies-brainlayer-connection",
+          "description": "Agent checks BrainBar socket and tests MCP connection via brain_search"
+        },
+        {
+          "name": "displays-final-report",
+          "description": "Agent displays a summary report listing all prerequisites, repos, MCP status, and manual setup needed"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run /wizard on a machine missing bun and gh. brew, node, claude, and git are installed. No config.yaml exists.",
+      "expected_output": "Agent detects bun and gh are missing. Lists install commands for both (brew install oven-sh/bun/bun, brew install gh). Does NOT proceed to config creation or repo cloning until all prerequisites are installed. Asks user to install missing tools first.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "detects-missing-prerequisites",
+          "description": "Agent identifies bun and gh as missing from the 6 required tools"
+        },
+        {
+          "name": "provides-install-commands",
+          "description": "Agent provides specific install commands for bun (brew install oven-sh/bun/bun) and gh (brew install gh)"
+        },
+        {
+          "name": "does-not-proceed-without-prerequisites",
+          "description": "Agent stops and waits for user to install missing tools — does NOT skip to config creation or repo cloning"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run /wizard on a machine where ~/.golems/config.yaml already exists with reposPath: ~/Gits, all repos are already cloned, and sync-config.sh was previously run. BrainBar is NOT running (no /tmp/brainbar.sock).",
+      "expected_output": "Agent reads existing config.yaml and displays it. Skips repo cloning since repos exist. Offers to re-run sync-config.sh --diff to check for drift. Detects BrainBar is not running and reports it as optional but recommended. Reports what's configured vs what needs manual attention.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "reads-existing-config",
+          "description": "Agent reads and displays the existing config.yaml instead of creating a new one"
+        },
+        {
+          "name": "skips-existing-repos",
+          "description": "Agent checks each repo directory and skips cloning for repos that already exist"
+        },
+        {
+          "name": "offers-sync-config-diff",
+          "description": "Agent offers to run sync-config.sh --diff to check for configuration drift"
+        },
+        {
+          "name": "reports-brainlayer-unavailable",
+          "description": "Agent detects BrainBar is not running, reports it, but does NOT block the rest of setup"
+        },
+        {
+          "name": "does-not-overwrite-config",
+          "description": "Agent does NOT overwrite existing config.yaml without explicit user consent"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run /wizard on a fresh machine. Everything is installed. Config is created with reposPath ~/Gits. golems and orchestrator repos exist but brainlayer does NOT. sync-config.sh is available. After cloning brainlayer, the user wants to run sync-config.sh.",
+      "expected_output": "Agent detects golems and orchestrator exist, clones only brainlayer. Runs sync-config.sh --diff showing what will change. After user confirms, runs --enforce. Creates .claude.local.md only in repos that don't already have one. Reports partial setup with what was newly configured.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "clones-only-missing-repo",
+          "description": "Agent detects golems and orchestrator exist and only clones brainlayer"
+        },
+        {
+          "name": "shows-diff-before-enforce",
+          "description": "Agent runs sync-config.sh --diff and shows output before running --enforce"
+        },
+        {
+          "name": "creates-claude-local-only-where-needed",
+          "description": "Agent creates .claude.local.md only in repos that don't already have one, skipping repos that do"
+        },
+        {
+          "name": "runs-bun-install-after-clone",
+          "description": "Agent runs bun install in golems repo if not already done (checks node_modules existence)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Run /wizard. The user provides workspace path /nonexistent/fake/path that doesn't exist. Then provides ~/Gits which does exist.",
+      "expected_output": "Agent validates the first path, detects it doesn't exist, rejects it and asks again. Accepts ~/Gits after validation. Does NOT write config with the invalid path.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "validates-workspace-path",
+          "description": "Agent checks the provided path exists on disk before accepting it"
+        },
+        {
+          "name": "rejects-invalid-path",
+          "description": "Agent rejects /nonexistent/fake/path and asks for a valid path"
+        },
+        {
+          "name": "accepts-valid-path",
+          "description": "Agent accepts ~/Gits after confirming it exists"
+        },
+        {
+          "name": "does-not-write-invalid-config",
+          "description": "Agent does NOT write config.yaml with the invalid path"
+        }
+      ]
+    }
+  ]
+}

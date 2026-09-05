@@ -1,0 +1,19 @@
+{
+  "specimen": "surface:280 looked idle while holding two unpushed commits",
+  "provenance": "2026-08-03 liveness-check brief RED 4",
+  "enumerated": {
+    "id": "F6CEDDD7-0EDC-4F0C-BB79-FE1443B433E1",
+    "ref": "surface:280",
+    "title": "UNPUSHED-fix/pause-actually-pauses (2 commits)",
+    "type": "terminal",
+    "workspace_ref": "workspace:1"
+  },
+  "observation": {
+    "identity_status": "MATCHED",
+    "process_alive": true,
+    "agent_state": "idle",
+    "open_lane": "unknown",
+    "artifact": {"status": "unpushed", "uncommitted": false, "unpushed": 2}
+  },
+  "expected": {"verdict": "KEEP-unpushed"}
+}

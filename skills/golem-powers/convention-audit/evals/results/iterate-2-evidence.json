@@ -1,0 +1,159 @@
+{
+  "provenance": [
+    {
+      "agent_or_arm": "live_confirmation_baseline_without_skill",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "NOT DETERMINED",
+      "effort_effective": "NOT DETERMINED",
+      "model_observation_source": "NOT DETERMINED — raw_preflight_banner_retained=false; compared live arms declared separately",
+      "effort_observation_source": "NOT DETERMINED — raw_preflight_banner_retained=false; compared live arms declared separately"
+    },
+    {
+      "agent_or_arm": "live_confirmation_green_with_skill",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "NOT DETERMINED",
+      "effort_effective": "NOT DETERMINED",
+      "model_observation_source": "NOT DETERMINED — raw_preflight_banner_retained=false; compared live arms declared separately",
+      "effort_observation_source": "NOT DETERMINED — raw_preflight_banner_retained=false; compared live arms declared separately"
+    },
+    {
+      "agent_or_arm": "authorized_round_2_control_baseline_without_skill",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "gpt-5.6-luna",
+      "effort_effective": "max",
+      "model_observation_source": "CLI status line: round2-control-live/pin-preflight.log lines 7-13; 1 preflight observation applied to 3 workers by construction, shared across 2 compared arms (this arm: 1 worker); per-worker banners are not emitted under --json",
+      "effort_observation_source": "CLI status line: round2-control-live/pin-preflight.log lines 7-13; 1 preflight observation applied to 3 workers by construction, shared across 2 compared arms (this arm: 1 worker); per-worker banners are not emitted under --json"
+    },
+    {
+      "agent_or_arm": "authorized_round_2_control_green_with_skill",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "gpt-5.6-luna",
+      "effort_effective": "max",
+      "model_observation_source": "CLI status line: round2-control-live/pin-preflight.log lines 7-13; 1 preflight observation applied to 3 workers by construction, shared across 2 compared arms (this arm: 2 workers); per-worker banners are not emitted under --json",
+      "effort_observation_source": "CLI status line: round2-control-live/pin-preflight.log lines 7-13; 1 preflight observation applied to 3 workers by construction, shared across 2 compared arms (this arm: 2 workers); per-worker banners are not emitted under --json"
+    },
+    {
+      "agent_or_arm": "authorized_round_2_served",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "gpt-5.6-luna",
+      "effort_effective": "max",
+      "model_observation_source": "CLI status line: round2-served-run/pin-preflight.log lines 7-13; 1 preflight observation applied to 7 workers by construction; per-worker banners are not emitted under --json",
+      "effort_observation_source": "CLI status line: round2-served-run/pin-preflight.log lines 7-13; 1 preflight observation applied to 7 workers by construction; per-worker banners are not emitted under --json"
+    }
+  ],
+  "attempt": "2026-08-02-iterate-2",
+  "status": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "local_red_green": {
+    "red": [
+      {
+        "stage": "detector contract",
+        "result": "2 errors",
+        "cause": "detect_sqlite_recent_window_candidates did not exist"
+      },
+      {
+        "stage": "review hardening",
+        "result": "4 failures and 4 errors",
+        "cause": "fixture answer keys were in audited trees; git state failed open; divergent-site validation and static-detector exclusions were missing"
+      }
+    ],
+    "green_before_live": {
+      "known_answer": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "shared_helper_control": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "method": "deterministic local detector and scoring; no model call"
+    },
+    "green_after_pair_review_fixes": {
+      "command": "python3 -m unittest skills/golem-powers/convention-audit/scripts/__tests__/test_convention_audit.py -v",
+      "result": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "entrypoint_characterization": "scripts/run.sh completed fan-out, synthesis, reports, telemetry, retained preflight evidence, and immutable-target checks against a fake Codex CLI"
+    }
+  },
+  "live_confirmation": {
+    "results_path": "/private/tmp/convention-audit-live-20260802-iterate2/live-20260802T204025Z/results.json",
+    "known_revision": "c99fabb70d02a673aa689da2f2c5c26b6e842f14",
+    "requested_and_accepted_pin": {
+      "model": "gpt-5.6-luna",
+      "effort": "max",
+      "fallback_used": false
+    },
+    "telemetry": {
+      "input_tokens": 17240511,
+      "cached_input_tokens": 16196608,
+      "output_tokens": 109764,
+      "cost_usd": null,
+      "cost_source": "unavailable"
+    },
+    "observed_scores": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "known_answer_validity": "valid detector-assisted result; this measures the shipped static-seed-plus-model system, not unaided Luna discovery",
+    "known_answer_output": {
+      "concept": "SQLite recent timestamp-window comparison over stored ISO timestamp text",
+      "implementation_sites": [
+        "scripts/enrich_recent.py:77",
+        "src/brainlayer/session_repo.py:62",
+        "src/brainlayer/eval/enrichment_quality_benchmark.py:127",
+        "src/brainlayer/mcp/enrich_handler.py:107",
+        "src/brainlayer/p0_longitudinal_count.py:25",
+        "src/brainlayer/search_repo.py:2264"
+      ],
+      "divergent_sites": [
+        "scripts/enrich_recent.py:77",
+        "src/brainlayer/session_repo.py:62"
+      ]
+    },
+    "control_validity": "invalidated by Claude pair review: every worker audited evals/fixtures/shared-helper-control/worker-output.json, an in-tree zero-findings answer key",
+    "raw_preflight_banner_retained": false
+  },
+  "post_review_hardening": {
+    "answer_keys_moved_outside_fixture_trees": true,
+    "control_runs_from_isolated_temporary_copy": true,
+    "current_control_fixture_sha256": "75c8c4cfe26fe1505dbe0c48763ebb5840d326172fa6b71635610a6c96bdcf1b",
+    "repository_state_probe_fails_closed": true,
+    "worker_and_synthesis_external_path_reads_forbidden": true,
+    "future_live_jsonl_answer_key_contamination_check": true,
+    "future_ship_gate_requires_contamination_check": true,
+    "preflight_banner_retained_for_future_runs": true,
+    "live_logical_failure_returns_nonzero": true
+  },
+  "authorized_round_2_confirmations": {
+    "authority": "one isolated live control arm and one real-model run.sh served artifact; Luna max; no fallback",
+    "control": {
+      "artifact": "round2-control-live/results.json",
+      "pin_evidence": "round2-control-live/pin-preflight.log",
+      "fixture_revision": "fixture-sha256:75c8c4cfe26fe1505dbe0c48763ebb5840d326172fa6b71635610a6c96bdcf1b",
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "findings": 0,
+      "contamination_check_passed": true,
+      "model": "gpt-5.6-luna",
+      "effort": "max",
+      "fallback_used": false,
+      "output_tokens": 7155,
+      "wall_seconds": 168.605,
+      "cost_usd": null
+    },
+    "served_run": {
+      "artifacts": [
+        "round2-served-run/report.json",
+        "round2-served-run/report.md",
+        "round2-served-run/run-log.json",
+        "round2-served-run/pin-preflight.log"
+      ],
+      "target_revision": "3e4d5f2398b3ebac3b03b0ff15efe0fafaef2d4f",
+      "exit_code": 0,
+      "findings": 1,
+      "model": "gpt-5.6-luna",
+      "effort": "max",
+      "fallback_used": false,
+      "worker_count": 7,
+      "output_tokens": 18986,
+      "wall_seconds": 184.544,
+      "cost_usd": null,
+      "target_git_state_unchanged": true
+    }
+  },
+  "ship_decision": {
+    "gate_passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "reason": "the valid known-answer arm, clean contamination-proof control, and real-model served run all passed",
+    "pr_status": "authorized_after_final_artifact_commit"
+  },
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

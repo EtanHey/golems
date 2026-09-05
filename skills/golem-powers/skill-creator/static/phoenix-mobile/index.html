@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Phoenix Mobile Curator</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Phoenix Mobile</p>
+          <h1>Session Curator</h1>
+        </div>
+        <button id="refresh-button" class="icon-button" type="button" aria-label="Refresh sessions">↻</button>
+      </header>
+
+      <section id="session-list" class="session-list" aria-label="Sessions">
+        <div class="section-heading">
+          <h2>Sessions</h2>
+          <span id="server-status" class="status-pill">Loading</span>
+        </div>
+        <div id="sessions" class="session-stack"></div>
+      </section>
+
+      <section id="session-detail" class="session-detail hidden" aria-label="Session detail" data-testid="session-detail">
+        <div class="detail-toolbar">
+          <button id="back-button" class="secondary-button" type="button">Sessions</button>
+          <div>
+            <p class="eyebrow">Reviewing</p>
+            <h2 id="detail-title">Session</h2>
+            <div id="detail-participants" class="participant-chips"></div>
+            <p id="detail-session-id" class="detail-session-id"></p>
+          </div>
+          <div id="detail-auto-critic" class="detail-auto-critic" aria-live="polite"></div>
+        </div>
+
+        <section class="framing-panel" aria-label="Review focus">
+          <h3>Session replay for eval</h3>
+          <p>Focus on whether the agent understood the task, used tools well, and recovered from mistakes. Tap Mark wrong on any turn that needs review.</p>
+        </section>
+
+        <div id="session-summary" class="summary-band"></div>
+
+        <form id="session-score" class="score-bar">
+          <button class="good-button" type="button" data-session-label="good">GOOD</button>
+          <button class="bad-button" type="button" data-session-label="bad">BAD</button>
+          <textarea id="session-comment" rows="2" placeholder="Session note"></textarea>
+        </form>
+
+        <div id="cards" class="cards" data-testid="cards"></div>
+      </section>
+    </main>
+
+    <template id="session-row-template">
+      <button class="session-row" type="button">
+        <span class="session-identity"></span>
+        <span class="participant-chips"></span>
+        <span class="session-id"></span>
+        <span class="session-meta"></span>
+      </button>
+    </template>
+
+    <template id="card-template">
+      <article class="turn-card" data-testid="turn-card">
+        <div class="card-topline">
+          <span class="card-kind"></span>
+          <span class="card-time"></span>
+        </div>
+        <h3 class="card-title"></h3>
+        <div class="card-body"></div>
+        <div class="card-extra"></div>
+        <div class="annotation-row">
+          <button class="wrong-toggle" type="button">Mark wrong</button>
+          <textarea class="card-comment" rows="2" placeholder="What was wrong?"></textarea>
+          <button class="save-card" type="button">Save</button>
+        </div>
+        <p class="save-status" aria-live="polite"></p>
+      </article>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" width="420" height="260">
+  <style>
+    .bg { fill: #0d1117; }
+    .clay { fill: #c4783c; opacity: 0.85; }
+    .accent { fill: #8b7355; }
+    .glow { fill: #ffb020; }
+    .dim { fill: #666; }
+    text { font-family: 'IBM Plex Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace; font-size: 13px; white-space: pre; }
+  </style>
+  <rect class="bg" width="420" height="260" rx="8"/>
+  <text x="98" y="28"><tspan class="clay">         ▄▄████████▄▄</tspan></text>
+  <text x="98" y="42"><tspan class="clay">       ▄██▓░░░░░░░░▓██▄</tspan></text>
+  <text x="98" y="56"><tspan class="clay">     ▄██▓░░</tspan><tspan class="accent">┌──────┐</tspan><tspan class="clay">░░▓██▄</tspan></text>
+  <text x="98" y="70"><tspan class="clay">    ███▓░░░</tspan><tspan class="accent">│</tspan><tspan class="dim"> </tspan><tspan class="glow">אמת</tspan><tspan class="dim">  </tspan><tspan class="accent">│</tspan><tspan class="clay">░░░▓███</tspan></text>
+  <text x="98" y="84"><tspan class="clay">   ███▓░░░░</tspan><tspan class="accent">└──────┘</tspan><tspan class="clay">░░░░▓███</tspan></text>
+  <text x="98" y="98"><tspan class="clay">   ███▓░░░░░░░░░░░░░░░░▓███</tspan></text>
+  <text x="98" y="112"><tspan class="clay">  ████▓░░■■■░░░░░░■■■░░▓████</tspan></text>
+  <text x="98" y="126"><tspan class="clay">  ████▓░░■</tspan><tspan class="glow">◆</tspan><tspan class="clay">■░░░░░░■</tspan><tspan class="glow">◆</tspan><tspan class="clay">■░░▓████</tspan></text>
+  <text x="98" y="140"><tspan class="clay">  ████▓░░■■■░░░░░░■■■░░▓████</tspan></text>
+  <text x="98" y="154"><tspan class="clay">   ███▓░░░░░░░░░░░░░░░░▓███</tspan></text>
+  <text x="98" y="168"><tspan class="clay">   ███▓░░░░</tspan><tspan class="accent">╔══════╗</tspan><tspan class="clay">░░░░▓███</tspan></text>
+  <text x="98" y="182"><tspan class="clay">   ███▓░░░░</tspan><tspan class="accent">║</tspan><tspan class="dim"> {··} </tspan><tspan class="accent">║</tspan><tspan class="clay">░░░░▓███</tspan></text>
+  <text x="98" y="196"><tspan class="clay">    ███▓░░░</tspan><tspan class="accent">╚══════╝</tspan><tspan class="clay">░░░▓███</tspan></text>
+  <text x="98" y="210"><tspan class="clay">     ▀██▓░░░░░░░░░░░░▓██▀</tspan></text>
+  <text x="98" y="224"><tspan class="accent">    ╔══</tspan><tspan class="clay">▀████████████████▀</tspan><tspan class="accent">══╗</tspan></text>
+  <text x="98" y="238"><tspan class="accent">    ║                      ║</tspan></text>
+</svg>

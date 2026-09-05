@@ -1,0 +1,23 @@
+{
+  "specimen": "orchestrator/bare-decision-question (collab-first)",
+  "label": "RED — an async decision posted to collab as a bare question with no recommendation",
+  "expect": "FLAG",
+  "violation": "DECISION_WITHOUT_RECOMMENDATION",
+  "events": [
+    { "role": "user", "text": "Surface the socket-ownership decision." },
+    {
+      "role": "assistant",
+      "text": "Posting the decision to collab.",
+      "tools": [
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-06-22-cmux.md",
+            "old_string": "x",
+            "new_string": "### orcClaude\nDECISION NEEDED: should we put the RAM watchdog in the systems repo or the cmuxlayer fork? A or B?"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+# Behavioral Eval: orc skill
+# Tests: 3-search cardinal rule, state machine, agent spawning, frozen recovery
+# Scenarios: 4 | Assertions: 19
+
+skill: orc
+skill_path: skills/golem-powers/orc/SKILL.md
+
+scenarios:
+  - id: orc-sprint-kickoff
+    name: "Sprint kickoff → 3 BrainLayer searches, spawn-agent, CronCreate"
+    prompt: |
+      Kick off tonight's sprint. 3 tasks, parallel where possible.
+      Tasks: enrichment consolidation (brainlayer), behavioral eval specs
+      (golems), portfolio update (etanheyman.com).
+      cmux surfaces: :56, :63. No agents running.
+    fixture: fixtures/orc-sprint-kickoff.txt
+    assertions:
+      - type: trajectory:tool-sequence
+        value:
+          - toolName: brain_search
+          - toolName: brain_search
+          - toolName: brain_search
+        config:
+          mode: in_order
+        description: "3 BrainLayer searches BEFORE any action (cardinal rule)"
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Must search BrainLayer (patterns, decisions, sprint status)"
+      - type: javascript
+        value: |
+          const toolCalls = output.toolCalls || [];
+          const brainSearches = toolCalls.filter(t => t.name === 'brain_search');
+          return brainSearches.length >= 3;
+        description: "Exactly 3+ brain_search calls"
+      - type: llm-rubric
+        value: "Response follows PLAN → SPAWN state transition — plans task allocation before spawning any agents"
+        description: "Plans before spawning"
+      - type: llm-rubric
+        value: "Response uses spawn-agent function (from cmux-agents), not hand-rolled cmux commands"
+        description: "Uses spawn-agent, not hand-rolled cmux"
+      - type: llm-rubric
+        value: "Response sets up CronCreate monitoring loop BEFORE telling user to go AFK"
+        description: "CronCreate before AFK"
+
+  - id: orc-frozen-agent-recovery
+    name: "Agent frozen 15min → kill, new_split, respawn with partial summary"
+    prompt: |
+      Check on the agents. brainlayer-worker on :56 has been at 145,230
+      tokens for 15 minutes (unchanged). golems-worker on :63 is progressing
+      (112,400 tokens, up from 89,100). User is AFK.
+    fixture: fixtures/orc-agent-frozen.txt
+    assertions:
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Searches BrainLayer before acting"
+      - type: llm-rubric
+        value: "Response identifies brainlayer-worker as frozen (token count unchanged for 15 min)"
+        description: "Identifies frozen agent"
+      - type: llm-rubric
+        value: "Response kills the frozen agent, creates a new split, and respawns with partial work summary"
+        description: "Kill → new_split → respawn with summary"
+      - type: llm-rubric
+        value: "Response does NOT absorb the frozen agent's work into the orchestrator's own context"
+        description: "Does not absorb frozen work"
+      - type: llm-rubric
+        value: "Response stores the freeze event in brain_store for the audit trail"
+        description: "brain_store the freeze event"
+
+  - id: orc-code-task-redirect
+    name: "Implementation task → spawns agent, does NOT code itself"
+    prompt: |
+      Fix the TypeScript error in packages/shared/src/llm.ts line 42.
+      The type assertion is wrong.
+    assertions:
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "BrainLayer search first"
+      - type: javascript
+        value: |
+          const toolCalls = output.toolCalls || [];
+          const hasEdit = toolCalls.some(t =>
+            t.name === 'Edit' || t.name === 'Write'
+          );
+          return !hasEdit;
+        description: "Does NOT edit code directly"
+      - type: llm-rubric
+        value: "Response delegates the fix to an agent (golemsClaude) rather than implementing it directly"
+        description: "Delegates to agent, doesn't implement"
+
+  - id: orc-mass-failure-stop
+    name: "2+ agents freeze in <5min → STOP, commit WIP, brain_store state"
+    prompt: |
+      Both agents froze within 3 minutes of each other.
+      brainlayer-worker: frozen at 45,000 tokens (barely started).
+      golems-worker: frozen at 12,000 tokens (barely started).
+      This happened right after the rate limit warning appeared.
+    assertions:
+      - type: llm-rubric
+        value: "Response recognizes the mass failure pattern (2+ freeze <5 min) and STOPS rather than respawning"
+        description: "Recognizes mass failure → STOP"
+      - type: llm-rubric
+        value: "Response commits WIP and stores state in brain_store rather than continuing"
+        description: "Commits WIP, stores state"
+      - type: llm-rubric
+        value: "Response identifies rate limiting as the likely root cause rather than blaming individual agents"
+        description: "Identifies rate limiting as root cause"
+      - type: javascript
+        value: |
+          const toolCalls = output.toolCalls || [];
+          const hasRespawn = toolCalls.some(t =>
+            t.name === 'Bash' && t.arguments?.command?.includes('spawn-agent')
+          );
+          return !hasRespawn;
+        description: "Does NOT respawn agents during mass failure"

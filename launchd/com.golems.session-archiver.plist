@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.golems.session-archiver</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@HOME@/.bun/bin/bun</string>
+        <string>run</string>
+        <string>@GOLEMS_ROOT@/packages/services/src/session-archiver.ts</string>
+        <string>--execute</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <!-- Run daily at 4 AM -->
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>@HOME@/.golems-zikaron/logs/session-archiver.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>@HOME@/.golems-zikaron/logs/session-archiver.error.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>@HOME@/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>SESSIONS_TO_KEEP</key>
+        <string>7</string>
+    </dict>
+</dict>
+</plist>

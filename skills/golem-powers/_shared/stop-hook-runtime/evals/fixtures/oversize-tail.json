@@ -1,0 +1,9 @@
+{
+  "paddingBytes": 614400,
+  "tailEvents": [
+    { "role": "user", "text": "Did you fix the bug?" },
+    { "role": "assistant", "text": "Fixed. Everything is working now." }
+  ],
+  "expectedDecision": "block",
+  "expectedReason": "FALSE_GREEN_LIVE_PROBE"
+}

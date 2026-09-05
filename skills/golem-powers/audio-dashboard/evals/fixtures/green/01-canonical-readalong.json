@@ -1,0 +1,18 @@
+{
+  "specimen": "canonical narrationlayer AfterCode read-along",
+  "evidence": {
+    "generator": "agent-html/host/build-aftercode-tonight.mjs",
+    "outputPath": "/opt/private/skill-tools/docs.local/dashboards/2026-06-22-aftercode-tonight-cinema.html",
+    "tailnetSync": {
+      "status": "ran",
+      "command": "node /opt/private/coordination/scripts/sync-tailnet-dashboards.mjs"
+    },
+    "wordsJson": [
+      { "word": "Tonight", "start": 0.11, "end": 0.42 },
+      { "word": "we", "start": 0.45, "end": 0.58 },
+      { "word": "trace", "start": 0.62, "end": 0.93 },
+      { "word": "decisions", "start": 0.97, "end": 1.48 }
+    ],
+    "html": "<script id=\"tpdata\" type=\"application/json\">[{\"realWordTiming\":true,\"script\":\"Tonight we trace decisions\",\"words\":[{\"word\":\"Tonight\",\"start\":0.11,\"end\":0.42},{\"word\":\"we\",\"start\":0.45,\"end\":0.58},{\"word\":\"trace\",\"start\":0.62,\"end\":0.93},{\"word\":\"decisions\",\"start\":0.97,\"end\":1.48}]}]</script><section class=\"transcript\"><span class=\"w\" data-ws=\"0.11\" data-we=\"0.42\">Tonight</span> <span class=\"w\" data-ws=\"0.45\" data-we=\"0.58\">we</span> <span class=\"w\" data-ws=\"0.62\" data-we=\"0.93\">trace</span> <span class=\"w\" data-ws=\"0.97\" data-we=\"1.48\">decisions</span></section><script>document.querySelectorAll('[data-ws]').forEach(word => word.addEventListener('click', () => { audio.currentTime = Number(word.dataset.ws); }));</script>"
+  }
+}

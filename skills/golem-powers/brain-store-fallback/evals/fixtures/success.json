@@ -1,0 +1,7 @@
+{
+  "tool": "mcp__brainlayer__brain_store",
+  "ok": true,
+  "message": "stored",
+  "chunk_id": "brainbar-test-chunk-123",
+  "fallback_required": false
+}

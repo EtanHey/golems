@@ -1,0 +1,53 @@
+# coach — Per-CLI Capability Matrix
+# Coach skill is memory-first — BrainLayer MCP is NOT optional.
+# Without it, the core value (persistent context across sessions) is absent.
+
+skill: coach
+
+adapters:
+  claude:
+    mcp_access: true
+    brainlayer:
+      brain_search: true             # Memory-first — required before every response
+      brain_store: true              # Persist outcomes, corrections, preference changes
+      brain_entity: true             # Look up people, clients, companies
+    calendar_mcp: true               # mcp__claude_ai_Google_Calendar__*
+    gmail_mcp: true                  # mcp__claude_ai_Gmail__*
+    voicelayer_mcp: true             # voice_speak + voice_ask (durable session mode)
+    obsidian_reads: true             # Filesystem reads of vault files
+    op_cli: true                     # 1Password credential retrieval
+    full_coach: true
+
+  codex:
+    mcp_access: false
+    brainlayer:
+      brain_search: false            # CRITICAL GAP — no past context
+      brain_store: false             # CRITICAL GAP — outcomes not persisted
+      brain_entity: false
+    calendar_mcp: false
+    gmail_mcp: false
+    voicelayer_mcp: false
+    obsidian_reads: true             # Can read vault files via filesystem
+    op_cli: true                     # `op item get` works as shell command
+    full_coach: false                # Severely degraded — no memory, no calendar
+
+# Task routing
+routing:
+  full_coaching: claude              # Only Claude has complete capability
+  text_drafting_only: codex          # Draft a message or schedule file (no memory needed)
+  session_recap: claude              # Always Claude — needs brain_store
+
+# Gaps requiring orchestration
+gaps:
+  codex_missing:
+    - brain_search                   # Must export context to file from Claude session first
+    - brain_store                    # Must be done by Claude session after Codex finishes
+    - calendar_mcp                   # No calendar create/read; use markdown fallback
+    - gmail_mcp                      # No email correspondence access
+    - voicelayer_mcp                 # No voice mode
+
+# Workaround pattern when Codex is unavoidable
+codex_bridge:
+  before_codex: "brain_search('coach <topic>') from Claude → save to /tmp/coach-context.md"
+  during_codex: "Pass context file via prompt: codex --full-auto \"$(cat /tmp/coach-context.md)\\n\\nTask: ...\""
+  after_codex: "Claude session: brain_store outcomes with tags ['coach', 'agent:coachClaude']"

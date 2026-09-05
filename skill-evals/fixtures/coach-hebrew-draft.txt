@@ -1,0 +1,8 @@
+Synthetic fixture only.
+
+User context: Freelance client Casey Example (DemoApp app).
+Sprint 2 is underway at [RATE].
+User completed: login screen redesign, onboarding flow fix.
+User needs to send a status update to Casey via WhatsApp.
+
+User message: "Draft a message to Casey updating him on sprint 2 progress."

@@ -1,0 +1,12 @@
+{
+  "name": "claude-golem",
+  "version": "1.0.0",
+  "description": "ClaudeGolem — orchestrator, Telegram router, and external face of the Golems ecosystem",
+  "author": {
+    "name": "Etan Heyman",
+    "url": "https://github.com/EtanHey"
+  },
+  "repository": "https://github.com/EtanHey/golems",
+  "license": "MIT",
+  "keywords": ["golem", "telegram", "orchestrator", "claude"]
+}

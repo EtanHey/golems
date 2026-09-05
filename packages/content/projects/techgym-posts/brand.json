@@ -1,0 +1,61 @@
+{
+  "$schema": "1.0",
+  "name": "TechGym Posts",
+  "description": "Content for the Israeli tech WhatsApp community — job market insights, tech discussions, community highlights.",
+  "colors": {
+    "primary": "#10B981",
+    "secondary": "#059669",
+    "accent": "#F59E0B",
+    "background": "#FFFFFF",
+    "surface": "#F3F4F6",
+    "text": {
+      "primary": "#111827",
+      "secondary": "#6B7280",
+      "onPrimary": "#FFFFFF",
+      "onAccent": "#111827"
+    }
+  },
+  "typography": {
+    "heading": {
+      "family": "Heebo",
+      "weights": { "regular": 400, "bold": 700, "black": 900 },
+      "source": "google"
+    },
+    "body": {
+      "family": "Heebo",
+      "weights": { "regular": 400, "medium": 500 },
+      "source": "google"
+    },
+    "code": {
+      "family": "Fira Code",
+      "weights": { "regular": 400 },
+      "source": "google"
+    },
+    "baseFontSize": 16
+  },
+  "logos": {
+    "default": "assets/techgym-logo.svg"
+  },
+  "tone": {
+    "formality": 2,
+    "emojiUsage": "occasional",
+    "language": "he",
+    "secondaryLanguages": ["en"],
+    "voiceDescription": "Casual Israeli tech talk. Hebrew-first with English tech terms. Like posting in a WhatsApp group of engineers — direct, sometimes sarcastic, always substantive."
+  },
+  "social": {
+    "handles": {
+      "whatsapp": "TechGym"
+    },
+    "hashtags": ["#TechGym", "#IsraeliTech", "#HiTech"],
+    "defaultCTA": "Join the TechGym group"
+  },
+  "templates": {
+    "image": {
+      "width": 1080,
+      "height": 1080,
+      "format": "png",
+      "quality": 90
+    }
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "skill_name": "repogolem",
+  "description": "Eval cases for the repoGolem launcher skill. Tests correct launcher usage, flag mapping, interactive vs headless mode, and cmux integration. All from real violations in orc sessions.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to spawn a Codex agent in the brainlayer repo via cmux. What command do I send?",
+      "expected_output": "Should use the repoGolem launcher: send_input 'brainlayerCodex -s', NOT raw CLI. Must include send_key return after.",
+      "assertions": [
+        {
+          "text": "Uses the launcher function 'brainlayerCodex -s' (not raw codex CLI)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT use 'source ~/.zshrc && cd ~/Gits/brainlayer && codex -s'",
+          "type": "negative"
+        },
+        {
+          "text": "Includes send_key 'return' after send_input",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses -s flag for skip-permissions (not the full --dangerously-bypass-approvals-and-sandbox)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to run a Cursor agent in headless mode to audit brainlayer code and get text output. How?",
+      "expected_output": "Should use -p flag with the prompt: brainlayerCursor -s -p 'audit prompt here'. Should mention this is headless/scripting mode, NOT interactive.",
+      "assertions": [
+        {
+          "text": "Uses 'brainlayerCursor -s -p \"prompt\"' pattern",
+          "type": "behavioral"
+        },
+        {
+          "text": "Notes that -p is for headless/scripting mode, not interactive",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT suggest -p for interactive use (interactive = launch without -p, send prompt separately)",
+          "type": "negative"
+        },
+        {
+          "text": "Mentions that -p adds --print and --output-format text automatically",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "What's the difference between brainlayerClaude -s, brainlayerClaude -S, and brainlayerClaude -m sonnet?",
+      "expected_output": "Should clearly distinguish: -s = skip-permissions, while -S is a Claude-only Sonnet model shortcut equivalent to -m sonnet. Sonnet requests are refused for full panes and allowed only for headless work.",
+      "assertions": [
+        {
+          "text": "Correctly explains -s = skip-permissions",
+          "type": "behavioral"
+        },
+        {
+          "text": "Correctly explains -S as a Claude-only Sonnet shortcut equivalent to -m sonnet",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT confuse skip-permissions with model selection",
+          "type": "negative"
+        },
+        {
+          "text": "Notes that Sonnet is refused for full panes but allowed for headless work",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I need a Cursor agent to do a read-only audit of the golems repo. Should I use golemsCursor -s or golemsCursor -s -p 'audit prompt'?",
+      "expected_output": "For INTERACTIVE use (monitoring via cmux, sending follow-ups): golemsCursor -s then send prompt separately. For HEADLESS/SCRIPTING (one-shot, get output): golemsCursor -s -p 'prompt'. Interactive is better for monitored agents.",
+      "assertions": [
+        {
+          "text": "Distinguishes interactive (-s alone) from headless (-s -p)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recommends interactive for cmux-monitored agents (can send follow-ups)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recommends headless for scripted one-shot tasks",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT suggest -p for all use cases indiscriminately",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I want to resume the last orcClaude session. What's the command?",
+      "expected_output": "orcClaude -s -c (continue last session). Or orcClaude --resume for the session picker. Should note that -c on Cursor is a no-op (not supported).",
+      "assertions": [
+        {
+          "text": "Uses 'orcClaude -s -c' for continuing the last session",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions --resume as an alternative for session picker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Notes that -c is a no-op on Cursor (not supported)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I need to add a brand new project called 'myapp' at ~/Gits/myapp to the registry. What are the steps?",
+      "expected_output": "Should outline: (1) edit registry.json with project entry, (2) regenerate launchers, (3) source launchers.zsh, (4) verify with 'which myappClaude'.",
+      "assertions": [
+        {
+          "text": "Mentions editing registry.json with the project entry",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions regenerating with _ralph_generate_launchers_from_registry",
+          "type": "behavioral"
+        },
+        {
+          "text": "Mentions sourcing the generated file afterwards",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT suggest manually writing launcher functions",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I need to launch a Claude agent with the --agent skill-creator flag in the golems repo, with skip-permissions. What's the command?",
+      "expected_output": "Should know that --agent doesn't support -s shorthand. Must use the full flag: golemsClaude --agent skill-creator --dangerously-skip-permissions. Or just golemsClaude -s and then the agent flag is separate.",
+      "assertions": [
+        {
+          "text": "Knows that --agent combined with -s may not work (flag interaction issue)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Suggests the full --dangerously-skip-permissions flag with --agent",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT blindly suggest 'golemsClaude --agent skill-creator -s' without noting the gotcha",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "The user said 'spawn a Cursor in brainlayer to scan for stubs'. Based on /agent-routing, Cursor is correct for read-only data gathering. Now, how do I actually launch it via cmux?",
+      "expected_output": "Should show the full cmux flow: new_split → send_input('brainlayerCursor -s') → send_key('return') → wait 8-10s → send_input(task prompt) → send_key('return'). Links /agent-routing (WHO) to /repogolem (HOW).",
+      "assertions": [
+        {
+          "text": "Shows the full cmux spawn sequence (new_split → send_input → send_key → wait → send task)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses the repoGolem launcher (brainlayerCursor -s), not raw CLI",
+          "type": "behavioral"
+        },
+        {
+          "text": "Includes the wait step between launcher and task prompt (8-10s for boot)",
+          "type": "behavioral"
+        },
+        {
+          "text": "References /agent-routing for the routing decision (Cursor for data gathering)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT send the task in the same send_input as the launcher (they're separate steps)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I need the launcher-v2 rules before I start and resume Claude/Codex panes, including an explicit Codex model through cmux. What defaults, overrides, and failure cases must I know?",
+      "expected_output": "Should state that bare Claude pins the current top Opus at 1M and bare Codex pins the current top Sol; Codex -s is a compatibility no-op; explicit repoGolem -m/-E values work without an environment gate; spawn_agent accepts an explicit Codex model but its effort enum is currently narrower than the launcher's, preflights the model before surface creation, and rolls back a prepared worktree on rejection; Codex -c resumes the newest usable rollout for the launch cwd and restores its model+effort unless explicit flags override them; fresh-cwd -c, bare resume picker mode, and resume with -p all fail loudly.",
+      "assertions": [
+        {
+          "text": "States that bare Claude pins the current top Opus at 1M and bare Codex pins the current top Sol",
+          "type": "behavioral"
+        },
+        {
+          "text": "States that Codex -s is a compatibility no-op and explicit repoGolem -m/-E values pass through without an environment gate",
+          "type": "behavioral"
+        },
+        {
+          "text": "States that cmux spawn_agent accepts an explicit Codex model, passes model/effort to repoGolem, and currently accepts only medium/high/xhigh/ultra effort",
+          "type": "behavioral"
+        },
+        {
+          "text": "States that cmux preflights an explicit Codex model before surface creation and rolls back any prepared worktree when the model is rejected",
+          "type": "behavioral"
+        },
+        {
+          "text": "Explains that Codex -c is scoped to the launch cwd, skips unusable newer rollouts, restores the selected session model+effort, and lets explicit -m/-E override recovered values",
+          "type": "behavioral"
+        },
+        {
+          "text": "Says fresh-cwd -c fails with no matching rollout, bare resume picker mode is refused, and resume combined with -p/--print fails loudly",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT claim that Codex -m needs an environment gate or advise omitting spawn_agent.model",
+          "type": "negative"
+        }
+      ]
+    }
+  ]
+}

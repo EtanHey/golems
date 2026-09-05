@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CursorWorkflowParityFinding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "importance",
+    "source",
+    "discovered_round",
+    "second_round_only",
+    "evidence"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "importance": { "enum": ["high", "medium", "low"] },
+    "source": { "type": "string", "minLength": 1 },
+    "discovered_round": { "type": "integer", "minimum": 1 },
+    "second_round_only": { "type": "boolean" },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "line", "anchor", "quote"],
+        "properties": {
+          "file": { "type": "string", "minLength": 1 },
+          "line": { "type": "integer", "minimum": 1 },
+          "anchor": { "type": "string", "minLength": 1 },
+          "quote": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

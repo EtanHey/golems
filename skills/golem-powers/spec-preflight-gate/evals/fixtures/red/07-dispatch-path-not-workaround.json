@@ -1,0 +1,23 @@
+{
+  "specimen": "cursor-bugbot/dispatch-payload-path-does-not-clear-setup-workaround",
+  "violation": "BLOCKER_NO_WORKAROUND",
+  "events": [
+    { "role": "user", "text": "Spawn a setup worker and do not ask Etan unless a real workaround fails.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching setup worker.",
+      "tools": [
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Run setup using reference path /Users/example/Gits/golems/docs/plan/setup-handoff.md."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "setup failed: blocked, needs Etan to install this", "tools": [] }
+  ]
+}

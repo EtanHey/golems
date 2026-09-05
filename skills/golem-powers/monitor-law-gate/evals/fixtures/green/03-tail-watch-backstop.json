@@ -1,0 +1,36 @@
+{
+  "specimen": "false-positive-guard/tail-watch",
+  "label": "GREEN — a Bash tail -f heartbeat backstop on the active channel keyed to markers",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Lead the teller sprint." },
+    {
+      "role": "assistant",
+      "text": "Arming a heartbeat backstop on the channel and dispatching.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "tail -f -n0 collab/2026-06-22-teller.md | grep --line-buffered -E '^### |ORC-RECEIPT:|@spineClaude|BLOCKED' &"
+          }
+        },
+        {
+          "name": "mcp__cmuxlayer__spawn_agent",
+          "input": { "cli": "codex", "repo": "teller" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-06-22-teller.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: teller kickoff, backstop armed"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Heartbeat backstop armed on the active channel, worker dispatched."
+    }
+  ]
+}

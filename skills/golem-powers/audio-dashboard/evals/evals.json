@@ -1,0 +1,190 @@
+{
+  "skill_name": "audio-dashboard",
+  "evals": [
+  {
+    "id": 1,
+    "name": "canonical-readalong-passes",
+    "category": "compliance",
+    "description": "A dashboard built through the canonical narrationlayer/AfterCode path with separate raw and repaired words, BUILD receipts, real transcript text, word-click seek, and docs.local publish source passes.",
+    "prompt": "Build an AfterCode read-along dashboard with narrationlayer, real STT-after-TTS word timings, word-click seek, and tailnet publishing.",
+    "assertions": [
+      { "type": "content", "name": "requires-real-words-json", "description": "Evidence includes words.json entries shaped as {word,start,end}." },
+      { "type": "content", "name": "requires-raw-words-json", "description": "Each segment preserves untouched Whisper words.raw.json separately from repaired display words.json." },
+      { "type": "content", "name": "requires-nonempty-words", "description": "words.json is nonempty for each timed segment." },
+      { "type": "content", "name": "requires-real-timing-status", "description": "Evidence declares real timing via realWordTiming:true or timing.status:'available' with words." },
+      { "type": "content", "name": "requires-word-click-seek", "description": "Dashboard click handling seeks audio.currentTime to the clicked word timestamp." },
+      { "type": "content", "name": "requires-real-transcript", "description": "Displayed transcript is bound to script/words, not placeholder recap copy." },
+      { "type": "content", "name": "requires-docslocal-publish-source", "description": "Output path is under a repo docs.local/dashboards source path." },
+      { "type": "content", "name": "requires-build-receipts", "description": "The matching schema-v1 receipts sidecar carries PASS rows for transcript-fidelity, acoustic, onset-energy, and teleprompter-drift with no machine paths." },
+      { "type": "content", "name": "requires-tailnet-sync", "description": "Publishing runs sync-tailnet-dashboards.mjs or explicitly waits for launchd sync." }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "estimated-wpm-timings-rejected",
+    "category": "failure",
+    "description": "Any WPM/even-split/estimated timing dashboard is rejected even if it has transcript text.",
+    "prompt": "Ship an audio dashboard using duration divided by word count for read-along timing.",
+    "assertions": [
+      { "type": "negative", "name": "rejects-wpm", "description": "WPM, even-split, estimated, fake, line-level, or hardcoded duration timing is rejected." },
+      { "type": "negative", "name": "rejects-realwordtiming-false", "description": "realWordTiming:false is rejected." },
+      { "type": "negative", "name": "transcript-does-not-rescue-timing", "description": "Real transcript text does not override estimated timing." }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "placeholder-recap-rejected",
+    "category": "failure",
+    "description": "Placeholder/meta-copy recap text is rejected even when words.json has real timestamps.",
+    "prompt": "Build a dashboard whose teleprompter says 'No gist available yet' while the spoken audio came from another script.",
+    "assertions": [
+      { "type": "negative", "name": "rejects-placeholder-copy", "description": "Known placeholder/meta recap phrases are rejected." },
+      { "type": "negative", "name": "words-do-not-rescue-placeholder", "description": "Real words.json does not override placeholder transcript binding." },
+      { "type": "content", "name": "requires-script-binding", "description": "Displayed text must be bound to the transcript/script used for timing." }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "golemplaylist-v1-rejected",
+    "category": "failure",
+    "description": "Old GolemPlaylist V1/gen16 generators are rejected for canonical read-along dashboards.",
+    "prompt": "Generate a Stalker-style dashboard by inlining golemplaylist-base.js and cue_for WPM timing.",
+    "assertions": [
+      { "type": "negative", "name": "rejects-golemplaylist-base", "description": "golemplaylist-base.js and old gen16 multi-audio sources are rejected." },
+      { "type": "negative", "name": "rejects-cue-for-wpm", "description": "cue_for WPM/even-split timing is rejected." },
+      { "type": "content", "name": "requires-current-engine", "description": "Current engine paths are narrationlayer dashboard/teleprompter or agent-html build-aftercode-tonight.mjs/render-v4." }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "dashboards-serve-copy-rejected",
+    "category": "interaction",
+    "description": "Publishing by copying directly into dashboards-serve is rejected; durable source is repo docs.local/dashboards plus tailnet sync.",
+    "prompt": "Publish an HTML dashboard by copying it into orchestrator/docs.local/dashboards-serve/dashboards.",
+    "assertions": [
+      { "type": "negative", "name": "rejects-serve-tree-output", "description": "A dashboards-serve output path is rejected because sync rebuilds that tree." },
+      { "type": "content", "name": "requires-docslocal-output", "description": "Output path must be a repo docs.local/dashboards source path." },
+      { "type": "content", "name": "requires-tailnet-sync", "description": "Publishing runs sync-tailnet-dashboards.mjs or waits for launchd sync." }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "partial-re-render-preserves-word-sync",
+    "category": "regression",
+    "description": "A partial patch build with one frozen scene, one re-synthesized scene, and one appended scene preserves real word timing and fails closed on broken artifacts.",
+    "prompt": "Patch an existing read-along dashboard by preserving untouched scene artifacts, re-synthesizing one changed scene, appending a new scene, then rebuilding through the audio-dashboard skill.",
+    "assertions": [
+      { "type": "content", "name": "duration-matches-ffprobe", "description": "For every scene, abs(tpdata[scene].total - ffprobe(scene.mp3).duration) <= 0.50." },
+      { "type": "content", "name": "final-words-monotonic-nonoverlapping", "description": "For every scene, final tpdata[scene].cues[0].words is monotonic and non-overlapping: word[i].start >= word[i-1].end - 0.001." },
+      { "type": "content", "name": "resynth-scenes-preserve-words-json-timings", "description": "For every re-synthesized scene, final tpdata word count equals words.json word count and final word timings equal words.json timings within 0.001s." },
+      { "type": "content", "name": "frozen-scenes-byte-identical", "description": "For every frozen untouched scene, words.json is byte-identical before and after the partial patch, and the embedded mp3 hash is byte-identical before and after the partial patch." },
+      { "type": "negative", "name": "patched-build-fails-on-broken-artifacts", "description": "The patched build fails if any scene has a missing mp3, missing words.json, overlapping word spans, or a words.json duration that disagrees with ffprobe(mp3) by more than tolerance." }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "synthesized-audio-acoustic-artifact-gate",
+    "category": "regression",
+    "description": "Synthesized audio must pass acoustic-artifact invariants, including the separate onset-energy floor, before any publish claim.",
+    "prompt": "Build a synthesized read-along dashboard and reject duration-inflated, high-f0, or quiet-onset TTS artifact segments before publishing.",
+    "assertions": [
+      { "type": "negative", "name": "flags-duration-word-sibling-ratio", "description": "A segment whose WAV duration per word is more than 1.25x its same-role sibling median is rejected with the segment id and re-synth command." },
+      { "type": "negative", "name": "flags-high-f0-voiced-frame-count", "description": "A segment with more than 112 voiced frames above 2x its median f0, after RMS and periodicity gating, is rejected." },
+      { "type": "negative", "name": "flags-repeated-token-loop-long-drag", "description": "A single repeated-token-loop or cross-voice-bleed long-drag fixture is rejected by the duration/word sibling-ratio metric." },
+      { "type": "negative", "name": "flags-multi-incident-poisoned-median", "description": "When more than half of same-role siblings are duration artifacts, an absolute duration/word backstop rejects the incident-heavy set even though the sibling median is poisoned." },
+      { "type": "negative", "name": "flags-high-f0-absolute-backstop", "description": "When incident-heavy siblings poison the high-f0 sibling median, the calibrated absolute high-f0 frame threshold still rejects the artifact." },
+      { "type": "content", "name": "passes-s3a-like-stable-outlier", "description": "Stable high-f0 outlier counts below the calibrated glitch threshold pass so the true-negative seed pattern is preserved." },
+      { "type": "negative", "name": "flags-quiet-onset-absolute-floor", "description": "A segment whose first 750ms RMS is below -35dBFS rejects with ONSET_ENERGY_ABSOLUTE_RMS_DBFS and a fresh-take reroll runbook." },
+      { "type": "negative", "name": "flags-quiet-onset-relative-delta", "description": "A segment whose first 750ms RMS is more than 26dB below its complete-segment peak rejects with ONSET_ENERGY_PEAK_DELTA_DB." },
+      { "type": "content", "name": "calibrates-33-clean-onsets", "description": "The committed real 33-scene narration calibration has zero onset-energy rejects and discloses the exact install thresholds." },
+      { "type": "content", "name": "resynth-busts-tts-cache", "description": "The runbook uses --resynth-scene plus --no-cache so flagged segment re-rolls bypass the frozen cache." },
+      { "type": "content", "name": "reject-purges-frozen-take", "description": "An acoustic REJECT immediately purges that segment's content-hash frozen take and records the purge receipt." }
+    ]
+  },
+  {
+    "id": 8,
+    "name": "teleprompter-tail-drift-gate",
+    "category": "regression",
+    "description": "Long read-along transcripts must preserve raw-audio-to-rendered-word sync through the tail, so accumulated drift is rejected inline at BUILD.",
+    "prompt": "Verify a long read-along dashboard against its words.raw.json timings and reject raw-vs-rendered tail drift before HTML emission.",
+    "assertions": [
+      { "type": "content", "name": "passes-banked-in-sync-green-fixture", "description": "The GREEN-FIXTURE-insync-2026-07-06 timing data copied into eval fixtures passes with zero tail drift." },
+      { "type": "negative", "name": "rejects-tail-only-accumulated-drift", "description": "A fixture whose head words remain aligned but whose final third progressively skews beyond tolerance is rejected." },
+      { "type": "content", "name": "checks-the-tail", "description": "The eval asserts head delta stays within tolerance while tail delta exceeds tolerance, proving the check is not head-only." },
+      { "type": "content", "name": "runs-under-stop-class-budget", "description": "The drift gate completes under the <5s stop-class latency budget." }
+    ]
+  },
+  {
+    "id": 9,
+    "name": "native-decision-surface-round-trip",
+    "category": "regression",
+    "description": "A job spec with decisions renders native answer boxes during build, with radio picks, free text, persistence, and Copy-answers export.",
+    "prompt": "Build an audio dashboard whose job spec includes decisions and verify the answer round-trip is native to the audio-dashboard skill.",
+    "assertions": [
+      { "type": "content", "name": "renders-spec-decisions", "description": "build-dashboard.mjs renders one decision card per spec.decisions item without a post-inject script." },
+      { "type": "content", "name": "uses-stable-spec-storage-key", "description": "The decision surface defaults to dbx:<spec.id> as the localStorage key." },
+      { "type": "content", "name": "persists-picks-and-free-text", "description": "Radio picks and per-decision free-text note areas are saved to localStorage." },
+      { "type": "content", "name": "exports-copy-answers-markdown", "description": "Copy answers exports paste-ready markdown covering both picked options and free-text answers, with a clipboard fallback." },
+      { "type": "content", "name": "idempotent-injection", "description": "Injecting the decision surface twice replaces the existing block instead of duplicating cards or scripts." },
+      { "type": "content", "name": "supports-optional-answer-sink", "description": "A configured answer sink appears as data-answer-sink for same-Mac harvest hooks." }
+    ]
+  },
+  {
+    "id": 10,
+    "name": "decision-flow-card-local-audio",
+    "category": "interaction",
+    "description": "The decision-flow type is a distinct ledger-card questionnaire surface with card-local full-section audio and real word timing.",
+    "prompt": "Build a decision batch where each card owns its narration, reveals a read-along while playing, then collapses for answering and advances to the next card.",
+    "assertions": [
+      { "type": "content", "name": "distinct-from-cinema", "description": "spec.type=decision-flow routes to templates/decision-flow and contains no cinema or global Play-All surface." },
+      { "type": "content", "name": "card-local-full-section-audio", "description": "Each decision owns one or more sceneIds behind one card-local play control; every scene has exactly one owner." },
+      { "type": "content", "name": "real-word-timing-inside-card", "description": "The playing card shows transcript words carrying real audio timestamps, and clicking a word seeks that card's audio." },
+      { "type": "interaction", "name": "collapses-teleprompter-when-ready", "description": "Pause and completion collapse the teleprompter so the question, any option blocks, and free-text response remain clean." },
+      { "type": "interaction", "name": "advances-or-skips", "description": "Next decision and Skip for now both advance focus to the following ledger card." },
+      { "type": "content", "name": "harvestable-answer-round-trip", "description": "Radio picks and free text persist to localStorage and Copy answers exports paste-ready markdown." }
+    ]
+  },
+  {
+    "id": 11,
+    "name": "decision-flow-zero-context-narration",
+    "category": "quality",
+    "description": "Decision-flow audio gives an operator enough plain-language context to decide without knowing agent-coined vocabulary or reading another artifact.",
+    "prompt": "Author an audio decision card about an internal incident whose source material uses codenames, shorthand, and agent-coined labels. The operator has not read the underlying plan or collab logs.",
+    "assertions": [
+      { "type": "content", "name": "defines-internal-terms-inline", "description": "The narration defines every internal term, codename, and agent-coined label in plain language on first use." },
+      { "type": "content", "name": "explains-decision-consequences", "description": "The narration explains what happened, why the decision matters, and what concretely changes between the options." },
+      { "type": "negative", "name": "forbids-unexplained-agent-jargon", "description": "The card never asks the operator to decide on unexplained jargon or relies on another artifact or glossary for essential context." }
+    ]
+  },
+  {
+    "id": 12,
+    "name": "raw-transcript-fidelity-and-receipts",
+    "category": "regression",
+    "description": "Display repair cannot mask a bad take: real deterministic Whisper substitutions reject BUILD, the 33-scene calibration stays clean, and a portable receipt survives.",
+    "prompt": "Replay the full fresh s9q and s13a decodes through BUILD, verify the 33-scene calibration receipt, and prove repaired words cannot make either incident publishable.",
+    "assertions": [
+      { "type": "negative", "name": "rejects-real-overtime-substitution", "description": "The complete real s9q decode emits Overtime, and rejects overnight-to-Overtime as PHONEME_CRITICAL_SUBSTITUTION." },
+      { "type": "negative", "name": "rejects-real-webseacut-substitution", "description": "The complete real s13a decode emits WebSeaCut and rejects websocket-to-WebSeaCut even when words.json renders the script token." },
+      { "type": "content", "name": "calibrates-full-real-corpus", "description": "A reproducible receipt records 31 clean PASS scenes, two incident REJECT scenes, and no unexpected rejects or missed incidents." },
+      { "type": "negative", "name": "scriptless-byo-distinct-reject", "description": "A BYO scene without script rejects as SCRIPTLESS_SCENE_UNSUPPORTED with an add-script runbook and the NOT_APPLICABLE spec question." },
+      { "type": "content", "name": "purges-rejected-content-key", "description": "D6b and acoustic rejection remove only the rejected segment's 64-hex frozen cache entry." },
+      { "type": "content", "name": "reject-receipt-survives", "description": "A schema-v1 BUILD receipt with the typed violation and completed purge exists even though rejected HTML is withheld." },
+      { "type": "negative", "name": "receipts-forbid-machine-paths", "description": "The receipts JSON contains no absolute path, including paths embedded after colon or comma delimiters, user directory, or hostname." }
+    ]
+  },
+  {
+    "id": 13,
+    "name": "engine-channel-spoken-form-and-respell",
+    "category": "regression",
+    "description": "B13 spaced-capital expansions and B11 contextual respells affect only the narration engine synth input; rendered display text stays verbatim.",
+    "prompt": "Replay the real frame_0616 P R script and s9q live-stream script through pronunciation preprocessing, then prove the synth input changes while the teleprompter does not.",
+    "assertions": [
+      { "type": "content", "name": "expands-spaced-capitals-on-synth-input", "description": "The config map expands frame_0616 P R to pull request and Q A to quality assurance before synthesis; unmapped spaced capitals collapse to a compact acronym." },
+      { "type": "content", "name": "supports-install-pronunciation-overlay", "description": "NARRATIONLAYER_PRONUNCIATION_FILE accepts path-delimited VoiceLayer-compatible overlays, with later entries overriding earlier entries." },
+      { "type": "content", "name": "respells-contextual-heteronym-on-synth-input", "description": "Exact s9q /laɪv/ context phrases use the lyve respell without changing the /lɪv/ sense." },
+      { "type": "content", "name": "preserves-real-timing-through-approved-aliases", "description": "The exact persisted synth transcript derives approved synth/display aliases, so raw STT timings map to authored display tokens without estimated fallback; unrelated substitutions still reject." },
+      { "type": "negative", "name": "preserves-original-display-text", "description": "Scene scripts and rendered teleprompter text equal the original authored text including punctuation; words.json/tpdata display tokens preserve their original text, ordering, and timing metadata, and none contain pull request or lyve unless authored." }
+    ]
+  }
+  ]
+}

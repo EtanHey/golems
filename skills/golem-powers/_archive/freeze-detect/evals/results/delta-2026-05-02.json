@@ -1,0 +1,13 @@
+{
+  "provenance": "alias-only",
+  "skill": "freeze-detect",
+  "date": "2026-05-02",
+  "baseline_average": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "with_skill_average": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "delta": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "minimum_delta": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "meets_gate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "method": "synthetic static scoring against eval assertions",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

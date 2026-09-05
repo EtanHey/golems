@@ -1,0 +1,80 @@
+node_modules
+.env
+.env.local
+.mcp.json
+.ralph-worktrees/
+
+# Claude scratchpads (temp working files)
+claude.scratchpad*.md
+**/claude.scratchpad*.md
+nohup.out
+**/nohup.out
+
+# Project-level Claude config (may have keys)
+.claude/*
+!.claude/rules/
+!.claude/agents/
+!.claude/hooks/
+.claude/hooks/*.bak-*
+
+# Local profile symlink (source data lives outside this repository)
+.claude/rules/owner-profile.md
+
+# Local research docs (cherry-pick to real docs when ready)
+research.docs.local/
+docs.local/
+
+# Coach one-off calendar scripts (personal, not for repo)
+packages/coach/_book-*.ts
+packages/coach/_fix-*.ts
+packages/coach/_cleanup-*.ts
+packages/coach/_check-*.ts
+packages/coach/_delete-*.ts
+packages/coach/_list-*.ts
+
+# Test artifacts
+packages/shared/.test-state-store/
+__pycache__/
+*.py[cod]
+
+# WIP - Tax Helper
+packages/tax-helper/
+skills/golem-powers/tax-helper/
+packages/ralph/skills/golem-powers/tax-helper
+docs/tax-helper-plan.md
+
+# Private contract-review extension
+skills/golem-powers/contract-feedback/
+
+# DeepSource CLI
+packages/docsite/bin/
+.vercel
+
+# Machine-local Claude config
+.claude.local.md
+mlx_models/
+collab/
+.codex-stale-backup-*/
+*.bak
+2026-*.txt
+conversation-*.txt
+
+# Remotion render artifacts (videos/stills) — never commit
+packages/content/remotion/out/
+
+# Generated graph analysis output
+graphify-out/
+
+# Local agent MCP config
+.agents/
+.mcp.json.bak*
+# Linked worktrees and publication-rehearsal clone trees stay machine-local.
+.worktrees*/
+*-clonetest/
+golems-verify/
+golems-purge.git/
+.cmux/worktrees/
+
+# Weave retros are private operational records; keep only the public tombstone.
+skills/golem-powers/weave/retros/*
+!skills/golem-powers/weave/retros/README.md

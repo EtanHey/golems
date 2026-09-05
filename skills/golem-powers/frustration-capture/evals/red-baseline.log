@@ -1,0 +1,103 @@
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+___________________ test_corrupted_stdin_fails_open_and_logs ___________________
+
+tmp_path = PosixPath('/private/var/folders/nb/ddw_4cvn2s9dfrhw3hvsdvwm0000gn/T/pytest-of-etanheyman/pytest-17/test_corrupted_stdin_fails_ope0')
+
+    def test_corrupted_stdin_fails_open_and_logs(tmp_path):
+        log_path = tmp_path / "frustration-hook.err.log"
+        env = os.environ.copy()
+        env["FRUSTRATION_HOOK_LOG"] = str(log_path)
+    
+        result = subprocess.run(
+            [sys.executable, str(HOOK)],
+            input="{not valid json",
+            text=True,
+            capture_output=True,
+            timeout=1,
+            check=False,
+            env=env,
+        )
+    
+>       assert result.returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.13/bin/python3', '$HOME/.config/su...1/skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py': [Errno 2] No such file or directory\n").returncode
+
+skills/golem-powers/frustration-capture/hooks/tests/test_failsafe.py:26: AssertionError
+______________________ test_neutral_prompt_has_no_output _______________________
+
+    def test_neutral_prompt_has_no_output():
+        result = subprocess.run(
+            [sys.executable, str(HOOK)],
+            input=json.dumps({"user_prompt": "Check the build status"}),
+            text=True,
+            capture_output=True,
+            timeout=1,
+            check=False,
+        )
+    
+>       assert result.returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.13/bin/python3', '$HOME/.config/su...1/skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py': [Errno 2] No such file or directory\n").returncode
+
+skills/golem-powers/frustration-capture/hooks/tests/test_neutral_prompt.py:20: AssertionError
+_________________________ test_all_prompts_under_500ms _________________________
+
+    def test_all_prompts_under_500ms():
+        timings = []
+        for prompt in PROMPTS:
+            start = time.perf_counter()
+            result = subprocess.run(
+                [sys.executable, str(HOOK)],
+                input=json.dumps({"user_prompt": prompt}),
+                text=True,
+                capture_output=True,
+                timeout=1,
+                check=False,
+            )
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            timings.append(elapsed_ms)
+>           assert result.returncode == 0
+E           assert 2 == 0
+E            +  where 2 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.13/bin/python3', '$HOME/.config/su...1/skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py': [Errno 2] No such file or directory\n").returncode
+
+skills/golem-powers/frustration-capture/hooks/tests/test_performance.py:39: AssertionError
+_____________________________ test_tier1_detection _____________________________
+
+    def test_tier1_detection():
+        result = run_hook("No, that's wrong")
+>       assert result.returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.13/bin/python3', '$HOME/.config/su...1/skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py': [Errno 2] No such file or directory\n").returncode
+
+skills/golem-powers/frustration-capture/hooks/tests/test_tier1_detection.py:24: AssertionError
+___________________ test_tier2_escalation_multiple_patterns ____________________
+
+    def test_tier2_escalation_multiple_patterns():
+        payload = json.dumps(
+            {
+                "prompt": "What the fuck, I told you no",
+                "session_id": "test-tier2",
+            }
+        )
+        result = subprocess.run(
+            [sys.executable, str(HOOK)],
+            input=payload,
+            text=True,
+            capture_output=True,
+            timeout=1,
+            check=False,
+        )
+    
+>       assert result.returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['/Library/Frameworks/Python.framework/Versions/3.13/bin/python3', '$HOME/.config/su...1/skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py': [Errno 2] No such file or directory\n").returncode
+
+skills/golem-powers/frustration-capture/hooks/tests/test_tier2_escalation.py:26: AssertionError
+=========================== short test summary info ============================
+FAILED skills/golem-powers/frustration-capture/hooks/tests/test_failsafe.py::test_corrupted_stdin_fails_open_and_logs
+FAILED skills/golem-powers/frustration-capture/hooks/tests/test_neutral_prompt.py::test_neutral_prompt_has_no_output
+FAILED skills/golem-powers/frustration-capture/hooks/tests/test_performance.py::test_all_prompts_under_500ms
+FAILED skills/golem-powers/frustration-capture/hooks/tests/test_tier1_detection.py::test_tier1_detection
+FAILED skills/golem-powers/frustration-capture/hooks/tests/test_tier2_escalation.py::test_tier2_escalation_multiple_patterns
+5 failed in 0.12s

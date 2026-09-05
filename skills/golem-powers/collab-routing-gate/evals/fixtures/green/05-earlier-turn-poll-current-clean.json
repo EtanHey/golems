@@ -1,0 +1,38 @@
+{
+  "specimen": "cursor-review/current-turn-scope (HIGH)",
+  "label": "GREEN — an earlier-turn sleep-poll must not FLAG a compliant CURRENT turn (event-driven wait)",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Watch the worker." },
+    {
+      "role": "assistant",
+      "text": "Checking.",
+      "tools": [
+        { "name": "mcp__cmuxlayer__read_screen", "input": { "agent": "w1" } }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Waiting.",
+      "tools": [{ "name": "Bash", "input": { "command": "sleep 30" } }]
+    },
+    {
+      "role": "assistant",
+      "text": "Checking.",
+      "tools": [
+        { "name": "mcp__cmuxlayer__read_screen", "input": { "agent": "w1" } }
+      ]
+    },
+    { "role": "user", "text": "Now watch it properly." },
+    {
+      "role": "assistant",
+      "text": "Switching to an event-driven wait.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__wait_for",
+          "input": { "agent_id": "w1", "until": "done" }
+        }
+      ]
+    }
+  ]
+}

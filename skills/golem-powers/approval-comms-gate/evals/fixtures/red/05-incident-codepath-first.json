@@ -1,0 +1,12 @@
+{
+  "specimen": "da456dfd#9 incident framing last — code path first",
+  "violation": "INCIDENT_FRAMING_LAST",
+  "events": [
+    { "role": "user", "text": "Incident update, give the operator the useful framing.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Code path: approval-router -> outbox writer -> no launchd watcher.\nOperator framing: this was not delivered; use the live bot API path before considering the visual approval complete.",
+      "tools": []
+    }
+  ]
+}

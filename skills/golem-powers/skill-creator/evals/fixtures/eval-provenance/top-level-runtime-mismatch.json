@@ -1,0 +1,17 @@
+{
+  "eval_id": "top-level-runtime-mismatch",
+  "variant": "with_skill",
+  "requested_model": "sonnet",
+  "effective_model": "claude-opus-5",
+  "effective_effort": "high",
+  "provenance": [
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "sonnet",
+      "model_effective": "claude-sonnet-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field",
+      "effort_observation_source": "session JSONL effort field"
+    }
+  ]
+}

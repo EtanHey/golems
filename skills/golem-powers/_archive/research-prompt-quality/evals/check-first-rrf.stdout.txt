@@ -1,0 +1,42 @@
+check-first: query="RRF" pattern=(rrf)
+check-first: scanned Drive roots=0 repos under $HOME/Gits
+check-first: canonical prior RRF artifacts (verified):
+  - [OK] /opt/private/coordination/docs.local/research/2026-05-26-cormack-vs-brainlayer-corpus.md
+  - [OK] $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/A8-per-agent-ranking-and-syllabi.md
+  - [OK] $HOME/Gits/brainlayer/docs.local/research/2026-05-26-rrf-domain-stage1.md
+  - [OK] /opt/private/skill-tools/docs.local/handoffs/2026-05-17/web-weave/rrf-k-tuning.md
+  - [OK] $HOME/Gits/brainlayer/docs.local/plans/2026-05-15-bl-overhaul/phase-3-hybrid-search-rrf
+  - [OK] /opt/private/coach/docs.local/decisions/2026-05-26-cormack-rrf-deep-research.md
+check-first: 159 hit(s) (showing up to 30):
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-rrf-domain-stage1.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-27-design-research-prompts-puddle-and-self-aware-enrichment.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-27-design-extensions/topic-B-self-aware-claude-desktop.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-27-design-extensions/topic-A-puddle-claude-desktop.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-27-design-extensions/topic-A-puddle-gemini-deep-research.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-27-design-extensions/topic-B-self-aware-gemini-deep-research.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/stream-1-claude-desktop-research.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/INDEX-stream-1-ranking.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/A7-in-house-ranking-tuning.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/FINAL.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/DRIVE-URLS.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/A5-prior-benchmark-summary.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/A4-stt-correction-dictionary.md
+  - $HOME/Gits/brainlayer/docs.local/research/2026-05-26-research-lead/A8-per-agent-ranking-and-syllabi.md
+  - $HOME/Gits/brainlayer/docs.local/research/brainlayer-source-types/responses/prompt-4-claude-desktop-opus47.md
+  - $HOME/Gits/brainlayer/docs.local/plans/2026-05-15-bl-overhaul/collab.md
+  - $HOME/Gits/brainlayer/docs.local/plans/2026-05-15-bl-overhaul/verified-assumptions.md
+  - $HOME/Gits/brainlayer/docs.local/plans/2026-05-15-bl-overhaul/README.md
+  - $HOME/Gits/brainlayer/docs.local/plans/2026-05-15-bl-overhaul/phase-3-hybrid-search-rrf/README.md
+  - $HOME/Gits/brainlayer/docs.local/plans/2026-05-15-bl-overhaul/phase-3-hybrid-search-rrf
+  - /opt/private/coach/docs.local/plans/lecture-imagery-pipeline/collab.md
+  - /opt/private/coach/docs.local/plans/lecture-imagery-pipeline/README.md
+  - /opt/private/coach/docs.local/plans/resume-v6-factcheck/collab.md
+  - /opt/private/coach/docs.local/plans/resume-v6-factcheck/README.md
+  - /opt/private/coach/docs.local/plans/lecture-rehearsal-2026-05-23/WORKPLAN.md
+  - /opt/private/coach/docs.local/plans/lecture-rehearsal-2026-05-23/run-mp4-slide-boundaries.md
+  - /opt/private/coach/docs.local/plans/lecture-rehearsal-2026-05-23/stitch-pick-variation-B.md
+  - /opt/private/coach/docs.local/plans/lecture-rehearsal-2026-05-23/stitch-pick-variation-C.md
+  - /opt/private/coach/docs.local/plans/lecture-rehearsal-2026-05-23/stitch-pick-variation-A.md
+  - /opt/private/coach/docs.local/plans/lecture-rehearsal-2026-05-23/stitch-final-picks.md
+  ... and 129 more
+

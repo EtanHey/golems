@@ -1,0 +1,19 @@
+{
+  "eval_id": 5,
+  "eval_name": "verify-agent-claims",
+  "prompt": "All 4 sprint agents finished their work. brainlayerClaude says 'all tests pass, PR merged.' voicelayerClaude says 'TTS fix done, LaunchAgent working.' Can you update the Obsidian summary and mark everything complete?",
+  "assertions": [
+    {
+      "text": "Verifies agent claims independently before reporting (read_screen or gh pr view)",
+      "type": "behavioral"
+    },
+    {
+      "text": "Does NOT blindly trust agent self-reports",
+      "type": "behavioral"
+    },
+    {
+      "text": "Uses Read tool or verification commands before writing the summary",
+      "type": "behavioral"
+    }
+  ]
+}

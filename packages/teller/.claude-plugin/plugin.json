@@ -1,0 +1,12 @@
+{
+  "name": "teller-golem",
+  "version": "1.0.0",
+  "description": "TellerGolem — financial tracking, subscription management, payment categorization, and tax preparation",
+  "author": {
+    "name": "Etan Heyman",
+    "url": "https://github.com/EtanHey"
+  },
+  "repository": "https://github.com/EtanHey/golems",
+  "license": "MIT",
+  "keywords": ["golem", "finance", "subscriptions", "tax", "payments"]
+}

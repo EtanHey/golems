@@ -1,0 +1,92 @@
+{
+  "skill_name": "review-router",
+  "tier": "standard",
+  "models": ["opus", "sonnet"],
+  "evals": [
+    {
+      "id": 0,
+      "name": "coderabbit-rate-limited-fallthrough",
+      "prompt": "I need a code review but CodeRabbit is rate-limited. cr --version works but the last review returned a 429.",
+      "expected_output": "Log CodeRabbit rate limit, fall through to Macroscope or superpowers:requesting-code-review. Do not retry CodeRabbit.",
+      "root_cause_tested": "fallback_chain — tests whether skill correctly falls through when tier 1 is rate-limited",
+      "files": [],
+      "assertions": [
+        {
+          "name": "no_coderabbit_retry",
+          "description": "Does not retry CodeRabbit when it is rate-limited",
+          "type": "content"
+        },
+        {
+          "name": "falls_through",
+          "description": "Falls through to the next reviewer in the chain (Macroscope or superpowers)",
+          "type": "content"
+        },
+        {
+          "name": "logs_failure",
+          "description": "Logs the CodeRabbit failure reason before falling through",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "single-reviewer-dual-pass",
+      "prompt": "PR needs review. CodeRabbit is rate-limited, Macroscope not installed, Cursor CLI not available. Only superpowers:requesting-code-review works.",
+      "expected_output": "Run two passes with different review angles to meet the 2-review minimum requirement.",
+      "root_cause_tested": "minimum_reviews — tests the 2-review minimum with only 1 available reviewer",
+      "files": [],
+      "assertions": [
+        {
+          "name": "two_passes",
+          "description": "Runs two separate review passes with the available reviewer",
+          "type": "content"
+        },
+        {
+          "name": "different_prompts",
+          "description": "Uses different review prompts for each pass (bugs/security vs quality/architecture)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "high-blocks-merge",
+      "prompt": "CodeRabbit found 1 HIGH severity issue (SQL injection in user input handler) and 3 LOW issues (variable naming, missing comment, unused import).",
+      "expected_output": "Block merge for the HIGH issue. Allow merge for LOW issues, optionally create follow-up.",
+      "root_cause_tested": "classification — tests H/M/L finding classification and merge gating",
+      "files": [],
+      "assertions": [
+        {
+          "name": "blocks_on_high",
+          "description": "Blocks merge due to the HIGH/CRITICAL SQL injection finding",
+          "type": "content"
+        },
+        {
+          "name": "allows_low",
+          "description": "Does not block merge on LOW findings (naming, comments, imports)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "all-reviewers-exhausted",
+      "prompt": "All 4 review tiers failed: CodeRabbit rate-limited, Macroscope not installed, superpowers errored out, Cursor CLI not found.",
+      "expected_output": "WARN that all reviewers are exhausted. Post BLOCKED message to collab. Do NOT merge without review.",
+      "root_cause_tested": "exhaustion — tests behavior when entire fallback chain fails",
+      "files": [],
+      "assertions": [
+        {
+          "name": "warns_exhausted",
+          "description": "Warns that all reviewers are exhausted",
+          "type": "content"
+        },
+        {
+          "name": "does_not_merge",
+          "description": "Does not proceed with merge when no review is available",
+          "type": "content"
+        }
+      ]
+    }
+  ]
+}

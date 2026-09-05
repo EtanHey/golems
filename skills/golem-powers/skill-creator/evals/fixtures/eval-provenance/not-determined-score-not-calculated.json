@@ -1,0 +1,16 @@
+{
+  "eval_id": "not-determined-score-not-calculated",
+  "baseline_score": null,
+  "withskill_score": "NOT CALCULATED",
+  "score_notes": "see the section above for why no score was calculated",
+  "provenance": [
+    {
+      "agent_or_arm": "static_review",
+      "model_requested": "sonnet",
+      "model_effective": "NOT DETERMINED",
+      "effort_effective": "NOT DETERMINED",
+      "model_observation_source": "NOT DETERMINED — no runtime session existed",
+      "effort_observation_source": "NOT DETERMINED — no runtime session existed"
+    }
+  ]
+}

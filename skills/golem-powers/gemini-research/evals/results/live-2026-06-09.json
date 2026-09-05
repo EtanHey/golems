@@ -1,0 +1,33 @@
+{
+  "provenance": "alias-only",
+  "date": "2026-06-09",
+  "skill": "gemini-research (+ shared drive-grounding-gate with claude-desktop-research)",
+  "harness": "real cmux panes (2 Opus 4.8 workers per case: baseline = no skill, with = /gemini-research loaded)",
+  "scorer": "_shared/research/drive-grounding-gate.sh (mechanical: 0 attach/upload/drag = PASS)",
+  "rule": "DRIVE-WORKSPACE — every deep-research prompt REFERENCES Drive doc(s) by NAME; never instructs Etan to attach/upload.",
+  "cases": [
+    {
+      "id": "DW01",
+      "name": "produce-prompt-from-scratch",
+      "baseline_gate": "PASS (0 violations)",
+      "withskill_gate": "PASS (0 violations)",
+      "delta_compliance_pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "note": "WEAK discriminator: baseline Opus 4.8 already phrases grounding as 'read my notes in my connected Google Drive' — it does not spontaneously add attach/upload. With-skill is structurally superior (follows the encoded Grounding-block template + adds a missing-doc guard), but the binary rule-gate does not separate them.",
+      "structure_baseline_10": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "structure_withskill_10": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "id": "DW02",
+      "name": "improve-a-prompt-that-already-says-attach/upload",
+      "input": "# Context\nAttach the 'Vector Store Benchmarks' doc and upload our schema file so Gemini has the numbers.",
+      "baseline_gate": "FAIL (3 violations — kept AND amplified: 'Two sources are attached and are authoritative', 'per the attached sources')",
+      "withskill_gate": "PASS (0 violations — rewrote to 'retrieve them yourself via the connected Drive workspace by their names; nothing is handed to you manually')",
+      "delta_compliance_pct": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "note": "STRONG discriminator. Baseline propagates the attach/upload instruction already present in the input; the skill strips it and converts to reference-by-name. This is the exact failure Etan keeps hitting."
+    }
+  ],
+  "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "summary": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

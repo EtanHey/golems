@@ -1,0 +1,221 @@
+{
+  "skill_name": "orc/workflows/fact-propagation",
+  "skill_kind": "workflow",
+  "skill_invoked_by": "orc",
+  "notes": "Evals reproduce the canonical wave-2 propagation gap (Wed-May-27, F69 / gen-7 collapse) and its conflation class. Each scenario mocks the cross-agent dispatch via a stub coach surface + 0-2 stub Codex workers (see fixtures/*.json). The 'without_workflow' baseline reproduces the historical bug; the 'with_workflow' target proves the fix. Run via skillCreatorClaude on a separate cmux pane per AP-NEW#12 (do NOT self-eval). Multi-agent eval encouraged: run on both a Claude pane and a Codex pane for stronger coverage.",
+  "fixtures_dir": "fixtures/",
+  "evals": [
+    {
+      "id": 1,
+      "slug": "date-correction",
+      "fixture": "fixtures/eval-1-date-correction.json",
+      "scenario": "Canonical Wed-May-27 reproduction. User corrects date; coach is active with lecture-prep in scope; 1 Codex worker has stale DESIGN.md referencing the old date.",
+      "prompt": "I'm not presenting Sunday again. I'm presenting Wednesday.",
+      "context": {
+        "active_agents": [
+          "coachClaude (surface:1, lecture-prep)",
+          "codex-batch-may20-21 (surface:5, DESIGN.md mentions 'Sunday May 24')"
+        ],
+        "prior_orc_state": "Has said 'Sunday' 9 times since May 18 in references to the upcoming TechGym lecture."
+      },
+      "expected_output": "Classify segment as OBJECTIVE (date correction; user-correction of prior agent claim). Identify owners: coachClaude + codex-batch-may20-21. Send HEADS-UP to each owner in the documented format. brain_store at importance>=8 with tags including 'objective-fact' and 'fact-propagation'. Set up 5-min monitor-tick verify on both owner surfaces. Do NOT bury the fact in a parenthetical (AP1). Do NOT ACK to user as a substitute for relay (AP2). Do NOT ask permission for the relay (AP3).",
+      "assertions": [
+        {
+          "text": "Classifies the date statement as OBJECTIVE (not subjective, not ambiguous)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Identifies coachClaude AND the Codex worker (DESIGN.md grep) as owners",
+          "type": "behavioral"
+        },
+        {
+          "text": "Sends HEADS-UP (fact-propagation): ... in the documented format to coachClaude",
+          "type": "behavioral"
+        },
+        {
+          "text": "Sends HEADS-UP to the affected Codex worker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Calls brain_store at importance >= 8 with tags including 'objective-fact' and 'fact-propagation'",
+          "type": "behavioral"
+        },
+        {
+          "text": "Sets up 5-min verify (read_screen on each owner surface OR wait_for pattern)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT bury the fact inside another request (AP1 — parenthetical relay)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT use 'got it' to user as the only acknowledgement (AP2 — conversational ACK substitution)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT ask the user permission to relay the date to coach (AP3 — asking permission for objective fact)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "slug": "conflation",
+      "fixture": "fixtures/eval-2-conflation.json",
+      "scenario": "The canonical conflation reproduction (May 21 [4509] class). User issues an objective fact AND a subjective scope-restriction in the SAME turn. orc must propagate the objective fact regardless of the scope restriction, and must emit the explicit two-line ACK pattern.",
+      "prompt": "Nah, don't ping coach about lecture content updates. And by the way the date is Wednesday May 27, not Sunday.",
+      "context": {
+        "active_agents": [
+          "coachClaude (surface:1)",
+          "codex-batch-may20-21 (surface:5, DESIGN.md mentions 'Sunday May 24')"
+        ]
+      },
+      "expected_output": "Recognize TWO independent decisions in one turn: (a) OBJECTIVE fact = 'date is Wed May 27', (b) SUBJECTIVE scope decision = 'don't ping coach about lecture *content* updates'. Emit two ACK lines. Propagate the date fact to coach + Codex worker via HEADS-UP. Honor the content-scope decision (do not relay lecture content updates to coach). The two decisions are independent — scope-restriction on (b) does NOT silence relay on (a).",
+      "assertions": [
+        {
+          "text": "Emits 'ACK on objective fact: ...' line for the date",
+          "type": "behavioral"
+        },
+        {
+          "text": "Emits 'ACK on scope decision: ...' line for the content-restriction",
+          "type": "behavioral"
+        },
+        {
+          "text": "Still relays the date HEADS-UP to coachClaude despite the 'don't ping coach' instruction",
+          "type": "behavioral"
+        },
+        {
+          "text": "Still relays the date HEADS-UP to the Codex worker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT generalize 'don't ping coach' to silence the date relay (the [4509] conflation bug)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT relay lecture *content* updates to coach (the scope decision IS honored for its actual scope)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "slug": "pr-merge",
+      "fixture": "fixtures/eval-3-pr-merge.json",
+      "scenario": "Tool-detected objective fact (no user instruction). orc detects gh pr merge success; must auto-propagate the PR # + mergeCommit SHA to all owning agents.",
+      "prompt": "[TOOL EVENT] gh pr merge success: brainlayer PR #313 merged, mergeCommit 7b5ceea2 on main.",
+      "context": {
+        "active_agents": [
+          "brainlayerClaude-LEAD (surface:9)",
+          "codex-bl-readpath (surface:11, working in worktree that branches off pre-merge state)"
+        ]
+      },
+      "expected_output": "Classify as OBJECTIVE (PR merge + SHA). Identify owners: brainlayer-LEAD + codex-bl-readpath. Auto-relay HEADS-UP to each within 1 monitor-tick without asking user permission. brain_store at importance >= 8 with tags including 'PR-merge', 'brainlayer', 'pr-313'. No user-facing ACK is needed since this is tool-detected; the relay is the deliverable.",
+      "assertions": [
+        {
+          "text": "Classifies the PR merge as OBJECTIVE",
+          "type": "behavioral"
+        },
+        {
+          "text": "Identifies brainlayer-LEAD AND codex-bl-readpath as owners",
+          "type": "behavioral"
+        },
+        {
+          "text": "Sends HEADS-UP to each owner within 1 monitor-tick",
+          "type": "behavioral"
+        },
+        {
+          "text": "Calls brain_store at importance >= 8 with PR-merge tags",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT ask user permission for the tool-detected relay (AP3)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT skip the relay because 'no user said anything' — tool events count",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "slug": "subjective",
+      "fixture": "fixtures/eval-4-subjective.json",
+      "scenario": "Pure subjective decision (scope change, no objective fact attached). orc must NOT auto-propagate to unaffected agents. Only the immediately-affected agent (brainlayer-LEAD) gets notified; coach + Codex workers in other repos do NOT.",
+      "prompt": "Let's defer brainlayer Phase 4 until after the lecture.",
+      "context": {
+        "active_agents": [
+          "brainlayerClaude-LEAD (surface:9, Phase 4 in scope)",
+          "coachClaude (surface:1)",
+          "codex-recruiter (surface:7, unrelated repo)"
+        ]
+      },
+      "expected_output": "Classify as SUBJECTIVE (scope decision). Update orc's own sprint plan. Notify brainlayer-LEAD only (immediately-affected). Do NOT send HEADS-UP to coach or codex-recruiter (Phase 4 doesn't appear in their dispatch — they have nothing to update). No fact-propagation brain_store fires (orc may still log the scope decision under separate routing tags, but not under objective-fact tags).",
+      "assertions": [
+        {
+          "text": "Classifies the deferral as SUBJECTIVE (not objective)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Notifies brainlayer-LEAD about Phase 4 deferral",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT send HEADS-UP to coachClaude (unaffected agent)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT send HEADS-UP to codex-recruiter (unaffected agent)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT call brain_store with 'objective-fact' tag for this turn",
+          "type": "negative"
+        },
+        {
+          "text": "Does not auto-relay subjective decisions as if they were objective (AP5)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "slug": "verify-fail-escalate",
+      "fixture": "fixtures/eval-5-verify-fail-escalate.json",
+      "scenario": "Verification failure path. orc relays HEADS-UP, but Step 4 verify fails twice (owner agent stuck or unresponsive). After 2 failed relays, orc must emit the inline ESCALATION line — NOT continue spamming relays.",
+      "prompt": "The release is v0.14.0 now, not v0.13.5.",
+      "context": {
+        "active_agents": ["coachClaude (surface:1)"],
+        "owner_behavior": "coachClaude pane returns no acknowledgement and no visible absorption of the fact across two 5-min verify ticks (stub pane is artificially unresponsive for eval purposes)."
+      },
+      "expected_output": "Classify as OBJECTIVE (version fact, user-correction). Send first HEADS-UP. 5-min verify fails (read_screen shows no absorption). Send SECOND HEADS-UP. 5-min verify fails again. STOP relays (do NOT spam a third). Emit inline ESCALATION line in orc's own pane: 'ESCALATION: HEADS-UP v0.14.0 not absorbed by coachClaude after 2 relays at <t1>, <t2>. Manual nudge recommended.' Do NOT pretend the relay landed (AP4 / never-fabricate).",
+      "assertions": [
+        {
+          "text": "Sends at most 2 HEADS-UP relays (the 2-relay max rule)",
+          "type": "behavioral"
+        },
+        {
+          "text": "After 2 failures, emits inline ESCALATION line in orc's own pane",
+          "type": "behavioral"
+        },
+        {
+          "text": "ESCALATION line references the fact and the unresponsive owner",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT send a 3rd, 4th, etc. HEADS-UP (avoids spam-relay)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT claim the fact landed when verify failed (AP4 / never-fabricate)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT send a Telegram or out-of-band escalation (default channel is inline)",
+          "type": "negative"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+# context-check — Per-CLI Capability Matrix
+# What each CLI can audit and fix for context hygiene.
+
+adapters:
+  claude:
+    binary: claude
+    audit:
+      skills_dir: true          # ls ~/.claude/skills/ — each dir is a loaded skill
+      mcp_loaded: true          # .mcp.json, parent .mcp.json, global settings.json mcpServers
+      hooks_loaded: true        # settings.json → hooks section
+      settings_local: true      # .claude/settings.local.json per-project override
+      registry_lookup: true     # ~/.golems/config.yaml → contextProfiles
+    fix:
+      settings_local_json: true # Generate disabledMcpjsonServers + hooks override
+      claude_md_section: true   # Append CONTAINERIZATION section to CLAUDE.md
+      mcp_disable: true         # disabledMcpjsonServers in settings.local.json
+      hooks_disable: true       # Override hooks to [] in settings.local.json
+    commands:
+      list_mcps: "/mcp"                  # Built-in Claude Code command
+      check_hooks: "settings.json hooks" # python3 parse settings.json
+
+  codex:
+    binary: codex
+    audit:
+      skills_dir: true          # ls ~/.claude/skills/ — still applies (same machine)
+      mcp_loaded: false         # No MCP in Codex
+      hooks_loaded: false       # No hooks in Codex
+      settings_local: false     # No .claude/settings.local.json equivalent
+      registry_lookup: true     # Can still read ~/.golems/config.yaml
+    fix:
+      settings_local_json: false  # Can't generate Claude Code settings
+      claude_md_section: true     # Can append CONTAINERIZATION to CLAUDE.md
+      mcp_disable: false          # N/A — no MCP
+      hooks_disable: false        # N/A — no hooks
+    limitations:
+      - "MCP state is unauditable — no MCP support"
+      - "Hook state is unauditable — no hooks support"
+      - "Can only audit skills list and generate CLAUDE.md section"
+
+  cursor:
+    binary: cursor
+    audit:
+      skills_dir: true          # ls ~/.claude/skills/ — same machine
+      mcp_loaded: false         # No MCP in Cursor CLI
+      hooks_loaded: false       # No hooks
+      settings_local: false     # No .claude/settings.local.json equivalent
+      registry_lookup: true     # Can read ~/.golems/config.yaml
+      cursor_rules: true        # Can check .cursor/rules/ and .cursorrules
+    fix:
+      settings_local_json: false  # Can't generate Claude Code settings
+      claude_md_section: true     # Can append CONTAINERIZATION to CLAUDE.md
+      cursor_rules: true          # Can generate .cursor/rules/containerization.md
+      mcp_disable: false
+      hooks_disable: false
+    limitations:
+      - "MCP and hooks are Claude Code-specific — skip those audit steps"
+      - "Fix output: CLAUDE.md section + .cursor/rules/ file (not settings.local.json)"
+
+# Platform feature availability — audit vs fix
+platform_features:
+  settings_local_json:
+    claude_code: ".claude/settings.local.json — disabledMcpjsonServers + hooks override"
+    universal: "manually comment out MCPs in .mcp.json (document why)"
+  mcp_audit:
+    claude_code: "/mcp command + parse settings.json mcpServers"
+    universal: "not applicable — other CLIs have no MCP"
+  hook_audit:
+    claude_code: "parse settings.json hooks section"
+    universal: "not applicable — other CLIs have no hook system"
+  skills_audit:
+    claude_code: "ls ~/.claude/skills/"
+    universal: "ls ~/.claude/skills/ (same — shared skill dir)"
+  containerization_output:
+    claude_code: ".claude/settings.local.json + CLAUDE.md section"
+    cursor: ".cursor/rules/containerization.md + CLAUDE.md section"
+    codex: "CLAUDE.md section only"
+    universal: "CLAUDE.md CONTAINERIZATION section (works everywhere)"

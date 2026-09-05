@@ -1,0 +1,56 @@
+{
+  "fixture_id": "eval-1-date-correction",
+  "scenario_name": "Canonical Wed-May-27 date correction (F69 reproduction)",
+  "wave_evidence": "orc-may21 event [3589] — Etan-verbatim: 'I'm not presenting Sunday again. I'm presenting Wednesday.' Severity 10; 6 corroborating digests (RT1-corrected).",
+  "user_prompt": "I'm not presenting Sunday again. I'm presenting Wednesday.",
+  "ecosystem_state": {
+    "active_surfaces": [
+      {
+        "surface_id": "surface:coach-stub-1",
+        "agent_name": "coachClaude",
+        "role": "lecture-prep + calendar owner",
+        "current_task": "Drafting lecture-prep notes with 'Sunday May 24' as the canonical date (matches the stale state from May 18-21).",
+        "design_doc_excerpt": "## TechGym Lecture — Sunday May 24\n- Slides: 12 of 20\n- Demo flow: BrainLayer → orc relay → multi-agent sprint."
+      },
+      {
+        "surface_id": "surface:codex-batch-stub-5",
+        "agent_name": "codex-batch-may20-21",
+        "role": "Codex worker mid-batch",
+        "current_task": "Generating supporting docs for the lecture demo.",
+        "design_doc_excerpt": "DESIGN.md mentions 'Sunday May 24' verbatim 14 times."
+      }
+    ],
+    "orc_prior_behavior": "Has said 'Sunday' 9 times since May 18 in references to the upcoming TechGym lecture. No date correction yet."
+  },
+  "expected_orc_behavior": {
+    "classify": "objective (date correction; user-correction of prior agent claim — always objective)",
+    "owners_identified": ["coachClaude", "codex-batch-may20-21"],
+    "heads_up_sent_to_coach": {
+      "must_use_format": "HEADS-UP (fact-propagation): ...",
+      "fact_verbatim": "Presenting date is Wed 2026-05-27, NOT Sun 2026-05-24",
+      "action_required_line": "Action required: none — informational. Update lecture-prep artifacts when convenient."
+    },
+    "heads_up_sent_to_codex": {
+      "must_use_format": "HEADS-UP (fact-propagation): ...",
+      "fact_verbatim_includes": ["Wed 2026-05-27", "Sunday May 24"],
+      "action_required_line": "Action required: none — informational. Update DESIGN.md the next time you edit it."
+    },
+    "brain_store_call": {
+      "importance_min": 8,
+      "required_tags": ["objective-fact", "fact-propagation", "date"],
+      "content_pattern_includes": ["2026-05-27", "Wed", "orc-may21", "[3589]"]
+    },
+    "verify_setup": "5-min monitor-tick read_screen on both coach + codex surfaces, OR wait_for pattern with 5-min timeout."
+  },
+  "negative_assertions": [
+    "Does NOT relay the date as a parenthetical inside another request (AP1)",
+    "Does NOT substitute 'got it' to user for actual relay (AP2)",
+    "Does NOT ask user permission to relay the date to coach (AP3)",
+    "Does NOT skip the verify step (AP4)",
+    "Does NOT report the relay as landed before verify confirms (never-fabricate)"
+  ],
+  "stub_surface_responses": {
+    "coach_stub_1_initial_screen": "...drafting lecture-prep notes for Sunday May 24...",
+    "coach_stub_1_post_relay_screen_after_5min": "...HEADS-UP received. Updating lecture-prep to Wed 2026-05-27. Acknowledged."
+  }
+}

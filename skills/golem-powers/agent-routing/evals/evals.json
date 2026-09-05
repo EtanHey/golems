@@ -1,0 +1,939 @@
+{
+  "skill_name": "agent-routing",
+  "description": "Eval cases for the agent routing matrix skill. Each case tests whether the agent correctly routes tasks to Cursor (gather), Codex (implement), or Claude (orchestrate). All cases derive from real violations in April 4, 2026 orcClaude session.",
+  "effort_routing_gate": {
+    "category": "model-effort",
+    "total_cases": 8,
+    "minimum_correct_effort_tiers": 7,
+    "grader_instruction": "For eval IDs 24-31, score the selected effort against expected_effort. At least 7 of 8 exact tiers must match. Also check that the answer explains its model choice, makes -E explicit when repoGolem can carry the choice, and reports the effective model plus effort from the run log."
+  },
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to understand what's in the BrainLayer SQLite database -- how many chunks, what tags exist, whether the FTS5 index is in sync. Can you run some queries to check?",
+      "expected_output": "Should route this to a Cursor worker via cmux, NOT run sqlite3 queries itself. This is a read-only data-gathering task.",
+      "assertions": [
+        {
+          "text": "Routes the SQL querying task to a Cursor worker (mentions spawning Cursor, cmux, or delegating the queries)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT run sqlite3 or SQL queries directly itself",
+          "type": "negative"
+        },
+        {
+          "text": "Includes READ-ONLY instruction in the Cursor prompt (no modifications to the database)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Specifies an output location for Cursor's findings (e.g., docs.local/ or a findings file)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The FTS5 index is 96% out of sync. We need to rebuild it -- can you write a migration script that drops and recreates the FTS5 triggers?",
+      "expected_output": "Should route this implementation task to Codex, NOT write the migration script itself. This is a code change task.",
+      "assertions": [
+        {
+          "text": "Routes the implementation task to Codex (mentions spawning Codex, delegating the code work)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT write the migration script itself using Write/Edit tools",
+          "type": "negative"
+        },
+        {
+          "text": "Provides Codex with clear requirements for the migration (what to drop, what to recreate)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT route this implementation work to Cursor (Cursor is read-only)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We're starting a new sprint collab. brainClaude will investigate BrainLayer search quality issues, and we need code fixes applied. Write the collab kickoff.",
+      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Cursor for investigation/data-gathering, Codex for code fixes, and Claude for coordination.",
+      "assertions": [
+        {
+          "text": "Includes an Agent Routing table or section in the collab",
+          "type": "behavioral"
+        },
+        {
+          "text": "Assigns data-gathering/investigation tasks to Cursor (not Claude)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Assigns code fix/implementation tasks to Codex (not Claude or Cursor)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Assigns coordination/review tasks to Claude",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT assign implementation work directly to the Claude agent",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm checking on the sprint agents. brainClaude is at 72% context and has been running sqlite3 queries for the last 20 minutes. The Cursor worker on surface:63 was spawned but has 0 tokens -- it never received a task. What should I do?",
+      "expected_output": "Should flag this as a routing violation. brainClaude is doing Cursor work itself. Should nudge brainClaude to delegate remaining queries to the Cursor worker, and verify the Cursor surface is still alive.",
+      "assertions": [
+        {
+          "text": "Identifies the situation as a routing violation (Claude doing Cursor work)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recommends sending remaining query work to the idle Cursor worker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks whether the Cursor surface is still alive (list_surfaces or read_screen)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT accept the situation as normal or say 'brainClaude is handling it fine'",
+          "type": "negative"
+        },
+        {
+          "text": "Notes that 72% context burn on data gathering is wasteful when a Cursor worker exists",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We need to audit all 53 skill files in golem-powers/ to check which ones have evals and which don't. Then for any skills missing evals, we need to create eval cases. How should we set this up?",
+      "expected_output": "Should split into two phases: (1) Cursor scans all skill directories for evals (read-only audit), (2) Codex creates missing eval files (implementation). Claude coordinates and reviews.",
+      "assertions": [
+        {
+          "text": "Splits the task into a gathering phase (audit) and implementation phase (create evals)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Routes the audit/scan phase to Cursor (read-only file listing and checking)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Routes the eval creation phase to Codex (file creation is implementation)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT try to do both the scan and the creation in a single agent",
+          "type": "negative"
+        },
+        {
+          "text": "Mentions an intermediate output (e.g., findings file) that bridges the two phases",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "The Cursor worker on surface:68 seems to have crashed -- it's not responding to read_screen. The Claude agent hasn't noticed and is still waiting for results. What do I do?",
+      "expected_output": "Should immediately respawn the Cursor worker on a new surface, resend the original task, and notify the Claude agent. Don't wait for the Claude to discover the crash on its own.",
+      "assertions": [
+        {
+          "text": "Takes immediate action to respawn the crashed Cursor worker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Creates a NEW surface for the respawned worker (not reusing the crashed one)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Resends the original task to the new Cursor worker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Notifies the Claude agent about the respawn and new surface reference",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT tell the Claude agent to 'just do the Cursor work itself'",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I need to scan all Python files in ~/Gits/brainlayer/ for any function that has a docstring but no implementation body (stubs). Can you grep for that pattern?",
+      "expected_output": "Should recognize this as a read-only data-gathering task and route to Cursor. Should NOT run grep itself, as this is mechanical file scanning that burns Claude context.",
+      "assertions": [
+        {
+          "text": "Routes the grep/scanning task to a Cursor worker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT run grep or file scanning commands directly itself",
+          "type": "negative"
+        },
+        {
+          "text": "Provides the Cursor worker with the specific grep pattern or search criteria",
+          "type": "behavioral"
+        },
+        {
+          "text": "Specifies where Cursor should write results (docs.local/ or similar)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "brainClaude just finished its sprint. Looking at the collab log, it did all 5 SQL queries itself, never sent anything to its Cursor worker, and also wrote a 200-line fix directly instead of using Codex. How do we prevent this next time?",
+      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Cursor, (2) 200-line fix should have gone to Codex. Should recommend adding routing verification gates to future collabs.",
+      "assertions": [
+        {
+          "text": "Identifies the SQL queries as a routing violation (should be Cursor)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Identifies the 200-line implementation as a routing violation (should be Codex)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recommends specific process improvements (routing verification gates, utilization checks)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT dismiss the violations as 'it got the job done anyway'",
+          "type": "negative"
+        },
+        {
+          "text": "References the routing matrix (Cursor=gather, Codex=implement, Claude=orchestrate)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Choose the Codex launcher/model for these two jobs: (A) a single-file review of a 180-line patch that I can describe in two sentences, and (B) a multi-file refactor that will touch 7 files, needs a collab file, and will probably land around 900 LOC. Also tell me whether GPT-5.4-mini should be the default fast path.",
+      "expected_output": "Should route both (A) and (B) through `brainlayerCodex -s`; (A) should NOT be sent through a shortcut fast flag or automatic Spark routing. If Spark is mentioned at all, it must be framed only as an explicit `-m gpt-5.3-codex-spark` override for cases where the dispatcher intentionally asks for that model. GPT-5.4-mini must be rejected as the routine default for Codex work.",
+      "assertions": [
+        {
+          "text": "Routes the single-file 180-line review through `brainlayerCodex -s`",
+          "type": "behavioral"
+        },
+        {
+          "text": "Routes the 7-file collab-backed 900 LOC refactor to the main-pool default via `-s` alone (no `-m` flag)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Frames Spark only as an explicit `-m gpt-5.3-codex-spark` override if it is mentioned",
+          "type": "behavioral"
+        },
+        {
+          "text": "Rejects GPT-5.4-mini as the routine default path for Codex work",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT recommend `--fast`",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT automatically route the small task to Spark unless the prompt explicitly asks for Spark",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "I need to spawn a Cursor worker in the brainlayer repo to audit FTS5 sync. Give me the exact one-liner to dispatch it.",
+      "expected_output": "Should output exactly `brainlayerCursor -s \"...\"` (the prompt content can vary). Should NOT include `cd ~/Gits/brainlayer`, `MCP_CONNECTION_NONBLOCKING=1`, `CLAUDE_CODE_NO_FLICKER=1`, `source ~/.zshrc &&`, or a raw `cursor agent` invocation. This is the AP11 test (2026-05-21 severity-10 mandate).",
+      "assertions": [
+        {
+          "text": "Uses the `brainlayerCursor -s` launcher form (matches regex `^brainlayerCursor -s `)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT include `cd ~/Gits/` or any `cd` before the launcher",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT include `MCP_CONNECTION_NONBLOCKING=1` (launcher exports this)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT include `CLAUDE_CODE_NO_FLICKER=1` (launcher exports this)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT include `source ~/.zshrc` (launcher is already in the calling shell)",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT call raw `cursor agent` or `cursor` directly (skips launcher infrastructure)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Dispatch a Codex worker to fix a small typo in the brainlayer search.py file. What's the exact command?",
+      "expected_output": "Should be `brainlayerCodex -s \"...\"`. Should NOT use `--fast`, should NOT use raw `codex`, should NOT include `cd` or env-var ceremony. The `-s` flag alone is sufficient — it maps to `--dangerously-bypass-approvals-and-sandbox` for Codex.",
+      "assertions": [
+        {
+          "text": "Uses `brainlayerCodex -s` (matches regex `^brainlayerCodex -s `)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT use the `--fast` flag",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT use raw `codex` (no launcher) or `codex --full-auto`",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT prepend `cd ~/Gits/brainlayer &&`",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT include `MCP_CONNECTION_NONBLOCKING=1` or `CLAUDE_CODE_NO_FLICKER=1`",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Someone wrote in a collab kickoff: `cd ~/Gits/brainlayer && MCP_CONNECTION_NONBLOCKING=1 CLAUDE_CODE_NO_FLICKER=1 cursor agent \"audit X\"`. Is this correct? If not, what's the fix?",
+      "expected_output": "Should identify this as an AP11 violation (verbose launcher invocation). Should rewrite it as `brainlayerCursor -s \"audit X\"`. Should explain that the launcher already does cd + env-var exports + iTerm profile + MCP wiring, so the ceremony is redundant.",
+      "assertions": [
+        {
+          "text": "Identifies the command as a violation (AP11 or 'verbose launcher invocation' or 'wrong form')",
+          "type": "behavioral"
+        },
+        {
+          "text": "Provides the corrected form using `brainlayerCursor -s`",
+          "type": "behavioral"
+        },
+        {
+          "text": "Explains that the launcher already handles cd, env vars, and infrastructure",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT defend or accept the verbose form as 'also OK' or 'equivalent'",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Given this recent JSONL transcript excerpt, identify any worker dispatch violations and provide the canonical replacement commands:\n\n{\"message\":{\"content\":\"cmux send --surface surface:2 \\\"cd ~/Gits/brainlayer && MCP_CONNECTION_NONBLOCKING=1 CLAUDE_CODE_NO_FLICKER=1 cursor agent \\\\\\\"audit read path\\\\\\\"\\\"\"}}\n{\"message\":{\"content\":\"cmux send --surface surface:3 \\\"brainlayerCodex --fast \\\\\\\"fix typo\\\\\\\"\\\"\"}}\n{\"message\":{\"content\":\"cmux send --surface surface:4 \\\"brainlayerCursor -s \\\\\\\"scan FTS\\\\\\\"\\\"\"}}",
+      "expected_output": "Should flag the first two transcript lines as AP11 violations and leave the third line alone. The replacements should be `brainlayerCursor -s \"audit read path\"` and `brainlayerCodex -s \"fix typo\"`. The answer should explain that the launcher handles cwd/env/MCP setup and that `--fast` is not a repoGolem routing flag.",
+      "assertions": [
+        {
+          "text": "Flags the verbose `cd ... MCP_CONNECTION_NONBLOCKING=1 CLAUDE_CODE_NO_FLICKER=1 cursor agent` line as an AP11 violation",
+          "type": "behavioral"
+        },
+        {
+          "text": "Flags `brainlayerCodex --fast` as a violation",
+          "type": "behavioral"
+        },
+        {
+          "text": "Provides `brainlayerCursor -s \"audit read path\"` as the corrected command",
+          "type": "behavioral"
+        },
+        {
+          "text": "Provides `brainlayerCodex -s \"fix typo\"` as the corrected command",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT flag the existing `brainlayerCursor -s` line as a violation",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Classify these two dispatches under AP11:\n\nA. Visible cmux pane worker: `cmux send --surface surface:3 \"brainlayerCodex --fast \\\"small implementation\\\"\"`\nB. Internal ephemeral subagent spawned from inside an agent session: `spawn_agent({\"agent_type\":\"worker\", \"model\":\"gpt-5.3-codex-spark\", \"message\":\"small implementation\"})`\n\nWhich one is allowed, and what should A be rewritten to?",
+      "expected_output": "Should reject A because visible cmux pane workers must use `{repo}{Tool} -s \"prompt\"` only and must never use `--fast`. Should rewrite A as `brainlayerCodex -s \"small implementation\"`. Should allow B because it is an internal ephemeral subagent, where Spark is permitted through explicit model selection (`gpt-5.3-codex-spark` or `-m gpt-5.3-codex-spark`). Should state that `--fast` is banned as an alias in both layers.",
+      "assertions": [
+        {
+          "text": "Identifies A as a visible cmux pane worker dispatch",
+          "type": "behavioral"
+        },
+        {
+          "text": "Rejects `brainlayerCodex --fast` for visible cmux pane workers",
+          "type": "behavioral"
+        },
+        {
+          "text": "Rewrites A to `brainlayerCodex -s \"small implementation\"`",
+          "type": "behavioral"
+        },
+        {
+          "text": "Identifies B as an internal ephemeral subagent rather than a cmux pane worker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Allows Spark for B through explicit model selection (`gpt-5.3-codex-spark` or `-m gpt-5.3-codex-spark`)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT allow `--fast` as an alias in either layer",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Etan points at an existing right-side `brainlayerCodex` cmux worker and says to give it the full BrainLayer baseline/cleanup mission. The worker's current task_summary is a narrow #554 Swift diagnosis. What is the correct routing action?",
+      "expected_output": "Should reuse the existing managed BrainLayerCodex worker unless unhealthy or explicitly replaced, write a full goal file preserving the complete baseline/cleanup mission, send one `/goal Read and execute...` prompt to that agent_id, and avoid spawning a duplicate worker just to get a cleaner prompt.",
+      "assertions": [
+        {
+          "text": "Reuses the existing `brainlayerCodex` worker unless it is dead/unhealthy or explicitly replaced",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT spawn a duplicate BrainLayerCodex for the same lane just to get a cleaner prompt",
+          "type": "negative"
+        },
+        {
+          "text": "Writes a file-backed goal with the full BrainLayer baseline/cleanup mission",
+          "type": "behavioral"
+        },
+        {
+          "text": "Sends one `/goal Read and execute this goal file until complete: <path>` style prompt to the existing agent_id",
+          "type": "behavioral"
+        },
+        {
+          "text": "States that the stale #554 task is superseded, not forked into a second lane",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "A lead received a long BrainLayer baseline delegation covering PR state, branch/worktree cleanup, service health, durable queue/deferred-store replay, watcher coverage, stats truthfulness, no data deletion, and green/no-green criteria. The lead wants to send a Codex worker only the next narrow PR blocker. Is that acceptable?",
+      "expected_output": "Should reject narrowing the mission. The goal file must preserve the whole delegation and include hard constraints, success criteria, report path, DONE marker, and green/no-green criteria.",
+      "assertions": [
+        {
+          "text": "Rejects shrinking a broad baseline/cleanup delegation to the next narrow blocker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires preserving PR state, branch/worktree cleanup, service health, queue/deferred replay, watcher coverage, stats truthfulness, no data deletion, and green/no-green criteria when those are part of the ask",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires a goal file with hard constraints, success criteria, report path, DONE marker, and green/no-green criteria",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT approve a narrow task unless the user explicitly narrowed the scope",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "A Codex worker wrote `~/Gits/brainlayer/docs.local/reports/brainlayer-baseline-report.md` ending with `DONE_BRAINLAYER_BASELINE`, but the pane never sent a final response and cmux wait_for still says ready. The user asked to conserve lead context. What should the lead do?",
+      "expected_output": "Should read the report file and treat the DONE marker as task completion, record the stale cmux lifecycle state as health evidence, and stop high-frequency pane polling/scrollback reads unless debugging delivery.",
+      "assertions": [
+        {
+          "text": "Reads `~/Gits/brainlayer/docs.local/reports/brainlayer-baseline-report.md` and verifies `DONE_BRAINLAYER_BASELINE`",
+          "type": "behavioral"
+        },
+        {
+          "text": "Treats the verified DONE marker as the worker completion signal for the lane",
+          "type": "behavioral"
+        },
+        {
+          "text": "Records wait_for/registry/pane disagreement as cmux health evidence",
+          "type": "behavioral"
+        },
+        {
+          "text": "Stops high-frequency pane polling or large scrollback reads after file completion is verified",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT rerun or duplicate the lane solely because the pane stayed silent",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "BrainLayer PRs are merged and CI is green. A dashboard says vector coverage is 100%, but deferred stores may be stranded, active transcript roots may be unwatched, queue state has not been checked, and probe semantics are unclear. Can the lead greenlight Rust planning?",
+      "expected_output": "Should answer NOT_GREEN. PR/CI/dashboard green is not enough for infra baseline; the lead must verify durable queue state, deferred-store replay, missing vectors, watcher roots, and truthful probe/coverage semantics before greenlighting.",
+      "assertions": [
+        {
+          "text": "Answers `NOT_GREEN` or equivalent no-green verdict",
+          "type": "behavioral"
+        },
+        {
+          "text": "Says merged PRs and CI green are insufficient for BrainLayer baseline greenlight",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires durable queue state and deferred-store replay verification",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires watcher-root, missing-vector, and probe/coverage truthfulness checks",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT greenlight Rust planning from dashboard 100% alone",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "Etan asks: 'If I come back to this cmux workspace and there are zero worker agents running, can I trust that everything is done right?' What should the lead guarantee before closing the workers?",
+      "expected_output": "Should state that zero worker agents is trustworthy only if every collab lane has terminal file-backed evidence: DONE with verified report marker, BLOCKED/NOT_GREEN with handoff and next owner, or TRANSFERRED with successor agent_id and delivery evidence. Otherwise keep the lane visible or record closure_without_artifact health failure.",
+      "assertions": [
+        {
+          "text": "Says zero workers is only valid after every lane has terminal evidence",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires verified report path plus exact DONE marker for done lanes",
+          "type": "behavioral"
+        },
+        {
+          "text": "Allows BLOCKED/NOT_GREEN only with file-backed handoff, health evidence, next action, and owner",
+          "type": "behavioral"
+        },
+        {
+          "text": "Allows transferred lanes only with successor agent_id and delivery evidence",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT treat a clean/empty workspace alone as proof of completion",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "You need an M1 VoiceLayer lead. A right-pane Codex worker/orphan surface has been renamed `M1 LEAD`, has no managed agent_id, and was given a `/goal` that tells it to run all checks itself. What does agent-routing require?",
+      "expected_output": "Should require a managed role:'orchestrator' lead in the left pane with an orchestration goal that delegates Cursor/Codex workers, not a renamed worker/orphan surface self-implementing the lane. Missing agent_id/raw send_input/interrupted spawn are health failures requiring recovery or replacement.",
+      "assertions": [
+        {
+          "text": "Requires the lead to be a managed agent_id with role:'orchestrator'",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires left/lead-pane placement for the lead",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires the lead goal to delegate Cursor/Codex/cmux workers rather than self-implement the whole lane",
+          "type": "behavioral"
+        },
+        {
+          "text": "Treats missing agent_id/orphan or interrupted-spawn surface as a health failure requiring recovery/register or replacement",
+          "type": "behavioral"
+        },
+        {
+          "text": "Treats raw send_input as an escape hatch only, not normal lead routing",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT accept renaming a worker/right-pane surface as a valid lead promotion",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "A Codex worker was assigned an approved production-readiness lane. It finished implementation, tests pass, but now says: 'I cannot commit or merge because the rules say I need explicit permission. Also the BrainLayer MCP needs a restart and Codex cannot reconnect, so I am waiting for Etan.' What does agent-routing require?",
+      "expected_output": "Should reject permission parking. Approved delegated work authorizes the normal PR loop and in-scope MCP/service recovery. The worker or lead should checkpoint state, commit/push/PR/merge according to pr-loop and merge authority, restart/reload the in-scope MCP/service, spawn/resume a managed successor if Codex cannot reconnect, verify with a real probe, and continue. Only irreversible data loss, force-push/history rewrite, destructive cleanup of unowned work, credential/account changes, paid external actions, or human-only license/ToS acceptance require Etan.",
+      "assertions": [
+        {
+          "text": "Rejects 'cannot commit/merge due rules' as permission parking for approved delegated work",
+          "type": "behavioral"
+        },
+        {
+          "text": "Routes normal commit/push/PR/review/merge through `/pr-loop` when the goal or lead owns merge",
+          "type": "behavioral"
+        },
+        {
+          "text": "Treats in-scope MCP/daemon restart or reload as a recoverable action, not a human blocker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Handles Codex MCP reconnect limits by checkpointing and spawning/resuming a managed successor",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires post-restart/post-merge real verification before claiming green",
+          "type": "behavioral"
+        },
+        {
+          "text": "Names the narrow class of true human blockers: irreversible data loss, force-push/history rewrite, destructive cleanup of unowned work, credential/account changes, paid external actions, or human-only license/ToS acceptance",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT leave the worker idle waiting for Etan on recoverable blockers",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "A lead claims the tiny-unblocker carve-out for an urgent implementation: a roughly 500-line refactor across multiple files, created in the shared tree, with no same-post collab disclosure. What does agent-routing require?",
+      "expected_output": "Should reject the tiny-unblocker claim. Urgency alone does not qualify: the carve-out is capped at <=20 changed lines, one single-purpose change, zero new files, mandatory same-post collab disclosure with what/why urgent/line count, and an isolated worktree. This multi-file shared-tree refactor must route to a visible Codex-implements + Claude-reviews pair, and the skipped disclosure must be required before proceeding.",
+      "assertions": [
+        {
+          "text": "Names the three hard bounds: <=20 changed lines, single purpose, and zero new files",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires SAME-POST collab disclosure covering what changed, why urgent, and line count",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires an isolated worktree and rejects shared-tree edits for the carve-out",
+          "type": "behavioral"
+        },
+        {
+          "text": "Routes the multi-file refactor to a visible Codex-implements + Claude-reviews pair",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT accept urgency alone as qualifying for the tiny-unblocker carve-out",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT allow shared-tree edits under the tiny-unblocker carve-out",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "prompt": "A Fable/apex seat needs to fan out mixed work: bulk codebase mining, implementation, user-facing prose, review, and an experimental Haiku run. What model table and override rules should agent-routing apply?",
+      "expected_output": "Should use the task-to-model override table keyed by exact invocation strings: `gpt-5.5` via `codex exec` for bulk/mechanical implementation-shaped work, `gpt-5.3-codex-spark` only through an explicit `-m gpt-5.3-codex-spark` plus effort pin and only after quality measurement for implementation-shaped load, `sonnet` for low-cost Claude wrappers and bulk Claude work, `claude-opus-5[1m]` for taste/review/reasoning, and `haiku` only as measure-first with no policy-default row. It should frame the table as defaults-not-limits, use intelligence > taste > cost with cost as tie-breaker, say reasoning effort is per tool call/work shape, and treat Fable as apex-orchestration only with post-2026-07-07 usage-credit costs rather than a scored general row.",
+      "assertions": [
+        {
+          "text": "Keys the table by exact invocation strings: `gpt-5.5`, `gpt-5.3-codex-spark`, `sonnet`, `claude-opus-5[1m]`, and `haiku`",
+          "type": "behavioral"
+        },
+        {
+          "text": "Frames the table as defaults-not-limits with standing permission to override based on output quality",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses the priority rule `intelligence > taste > cost` and treats cost as a tie-breaker only",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires Spark to be explicit via `-m gpt-5.3-codex-spark` with a reasoning-effort pin and quality measurement before policy use",
+          "type": "behavioral"
+        },
+        {
+          "text": "Rejects Spark for bulk transcript grep-and-cite mining based on the measured timeout/zero-output datapoint",
+          "type": "behavioral"
+        },
+        {
+          "text": "Marks `haiku` as measure-first and not a policy default",
+          "type": "behavioral"
+        },
+        {
+          "text": "Treats Fable as apex-orchestration only and post-2026-07-07 usage credits, not a scored general routing row",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT list Fable as a normal scored row for general worker routing",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT use marketing-tier row names instead of exact invocation strings",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "bounded-mechanical-change",
+      "category": "model-effort",
+      "description": "A fully specified mechanical implementation lane should use the settled bounded-work floor.",
+      "prompt": "Choose a Codex model and effort for this mission: rename one JSON field in an adapter and update the two existing fixtures. The exact diff shape is specified, a focused regression test already fails, there are no design choices, and rollback is trivial. State the dispatch approach and what the run log must prove.",
+      "expected_effort": "medium",
+      "expected_model": "gpt-5.6-luna is a reasonable candidate pending measurement; gpt-5.6-sol remains valid when an open-ended turn appears",
+      "expected_output": "Select medium because this is bounded, mechanical, and well-tested, and pass -E medium explicitly through repoGolem. Luna may be tried as the measured bounded-work candidate, but the evidence is limited; if a Luna model pin is required, use a raw Codex spawn with an explicit medium reasoning-effort pin because repoGolem refuses agent-session model overrides. Report the effective model and effort from the run log.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "selects-medium",
+          "description": "Selects medium, not the high default or xhigh, for the bounded mechanical lane.",
+          "text": "Selects medium for the bounded mechanical lane"
+        },
+        {
+          "type": "content",
+          "name": "qualifies-luna",
+          "description": "Treats Luna as a reasonable bounded-work candidate pending measurement, not universal doctrine.",
+          "text": "Qualifies Luna as a bounded-work candidate pending measurement"
+        },
+        {
+          "type": "content",
+          "name": "reports-effective-routing",
+          "description": "Requires the effective model and effort from the run log and distinguishes repoGolem effort pass-through from model refusal.",
+          "text": "Reports effective model and effort from the run log"
+        },
+        {
+          "type": "content",
+          "name": "explicit-medium-effort-pin",
+          "description": "Uses repoGolem -E medium explicitly, or an explicit medium reasoning-effort pin when a raw model override is required.",
+          "text": "Uses -E medium or an explicit raw medium effort pin"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "bounded-pattern-audit",
+      "category": "model-effort",
+      "description": "A binary-rubric audit over repetitive artifacts should not inherit excessive reasoning effort.",
+      "prompt": "Choose a Codex model and effort for this mission: inspect 40 generated migration diffs against four explicit invariants, emit pass/fail plus evidence for each, and make no code changes. The rubric is binary and every result is independently checkable. State what is known versus not known about the model choice.",
+      "expected_effort": "medium",
+      "expected_model": "gpt-5.6-luna is Etan's measured audit candidate, but only one qualified head-to-head supports the direction",
+      "expected_output": "Select medium for the bounded, mechanical, independently verifiable audit and pass -E medium explicitly. Luna is a reasonable audit candidate, but the measured evidence is only one qualified comparison and cost-per-task must include output tokens and wall-clock. Report the effective model and effort from the run log.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "selects-medium",
+          "description": "Selects medium for the bounded binary-rubric audit.",
+          "text": "Selects medium for the bounded audit"
+        },
+        {
+          "type": "content",
+          "name": "states-evidence-limit",
+          "description": "States that Luna's support is limited to one qualified head-to-head and does not generalize beyond measured work.",
+          "text": "Marks the Luna evidence as limited"
+        },
+        {
+          "type": "content",
+          "name": "measures-task-cost",
+          "description": "Requires output tokens and wall-clock, not token price alone.",
+          "text": "Measures output tokens and wall-clock"
+        },
+        {
+          "type": "content",
+          "name": "explicit-effort-and-routing-proof",
+          "description": "Passes -E medium explicitly and reports the effective model and effort from the run log.",
+          "text": "Uses -E medium and reports effective routing"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "routine-open-ended-implementation",
+      "category": "model-effort",
+      "description": "A normal implementation lane with unresolved local choices should retain the safe default.",
+      "prompt": "Choose a Codex model and effort for this mission: add a new import adapter across three modules. Acceptance tests and API boundaries are clear, but the internal decomposition and error-handling design are open-ended. This is normal product work, not an incident.",
+      "expected_effort": "high",
+      "expected_model": "gpt-5.6-sol",
+      "expected_output": "Select Sol at high. High is the safe default and the open-ended implementation choices make Sol appropriate. Pass -E high explicitly so inheriting the launcher default is deliberate, then verify the run log.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "selects-high",
+          "description": "Selects high for normal open-ended implementation.",
+          "text": "Selects high"
+        },
+        {
+          "type": "content",
+          "name": "selects-sol",
+          "description": "Selects Sol because implementation choices remain open-ended.",
+          "text": "Selects gpt-5.6-sol"
+        },
+        {
+          "type": "content",
+          "name": "explicit-effort-choice",
+          "description": "Passes -E high explicitly and verifies the effective run-log values.",
+          "text": "Makes -E high explicit and verifies the run log"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "judgment-heavy-review",
+      "category": "model-effort",
+      "description": "A review with meaningful judgment but no exceptional contradiction should use high, not reflexive xhigh.",
+      "prompt": "Choose a Codex model and effort for this mission: review a seven-file authorization refactor for invariant preservation and missing tests. The diff is readable and the threat model is documented; the task needs judgment, but there is no contradictory evidence or live corruption.",
+      "expected_effort": "high",
+      "expected_model": "gpt-5.6-sol",
+      "expected_output": "Select Sol at high and pass -E high explicitly. The review needs substantial judgment, but it lacks the gnarly debugging, adversarial uncertainty, or contradiction that would justify xhigh/max. Report the effective model and effort from the run log.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "selects-high",
+          "description": "Selects high for the judgment-heavy but tractable review.",
+          "text": "Selects high"
+        },
+        {
+          "type": "negative",
+          "name": "rejects-reflexive-xhigh",
+          "description": "Does not select xhigh merely because the review is important.",
+          "text": "Does not select xhigh by default"
+        },
+        {
+          "type": "content",
+          "name": "names-escalation-signals",
+          "description": "Names contradiction, adversarial uncertainty, or gnarly debugging as escalation signals.",
+          "text": "Names the signals that would justify xhigh"
+        },
+        {
+          "type": "content",
+          "name": "explicit-effort-and-routing-proof",
+          "description": "Passes -E high explicitly and reports the effective model and effort from the run log.",
+          "text": "Uses -E high and reports effective routing"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "gnarly-concurrency-debugging",
+      "category": "model-effort",
+      "description": "A nondeterministic cross-process failure with contradictory evidence justifies extra-high reasoning.",
+      "prompt": "Choose a Codex model and effort for this mission: diagnose intermittent queue corruption across a daemon, SQLite transaction boundary, and three clients. Unit tests are green, production traces contradict each other, reproduction is nondeterministic, and a wrong fix could strand user data.",
+      "expected_effort": "xhigh",
+      "expected_model": "gpt-5.6-sol",
+      "expected_output": "Select Sol at xhigh and pass -E xhigh explicitly because the debugging is nondeterministic, cross-process, contradictory, and high consequence. This is the hardest-reasoning exception, not a new default. Report the effective model and effort from the run log.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "selects-xhigh",
+          "description": "Selects xhigh for the contradictory nondeterministic debugging mission.",
+          "text": "Selects xhigh"
+        },
+        {
+          "type": "content",
+          "name": "selects-sol",
+          "description": "Keeps the open-ended debugging mission on Sol.",
+          "text": "Selects gpt-5.6-sol"
+        },
+        {
+          "type": "negative",
+          "name": "keeps-xhigh-exceptional",
+          "description": "Does not generalize xhigh into the launcher or fleet default.",
+          "text": "Keeps xhigh exceptional"
+        },
+        {
+          "type": "content",
+          "name": "explicit-effort-and-routing-proof",
+          "description": "Passes -E xhigh explicitly and reports the effective model and effort from the run log.",
+          "text": "Uses -E xhigh and reports effective routing"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "adversarial-design-under-contradiction",
+      "category": "model-effort",
+      "description": "Adversarial design with mutually conflicting requirements belongs in the hardest-reasoning tier without inventing max doctrine.",
+      "prompt": "Choose a Codex model and effort for this mission: design a recovery protocol where the written requirements conflict on whether replay may duplicate side effects. You must reconcile the contradiction, construct adversarial counterexamples, and produce a decision safe against data loss. Should this automatically use max?",
+      "expected_effort": "xhigh",
+      "expected_model": "gpt-5.6-sol",
+      "expected_output": "Select Sol at xhigh for adversarial design under contradiction and pass -E xhigh explicitly. Do not automatically select max: the incremental value and a stable max policy are NOT KNOWN. repoGolem can carry -E max, but reachability is not evidence that max pays; use it only when a mission-specific eval proves the extra effort is worthwhile. Report the effective model and effort from the run log.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "selects-xhigh",
+          "description": "Selects xhigh for adversarial reasoning under conflicting requirements.",
+          "text": "Selects xhigh"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-invent-max-doctrine",
+          "description": "Does not automatically select max or claim a known general max policy.",
+          "text": "Does not automatically select max"
+        },
+        {
+          "type": "content",
+          "name": "marks-max-gap",
+          "description": "Marks max's incremental value as NOT KNOWN and distinguishes launcher reachability from evidence that max pays.",
+          "text": "Marks max as NOT KNOWN despite repoGolem support"
+        },
+        {
+          "type": "content",
+          "name": "explicit-effort-and-routing-proof",
+          "description": "Passes -E xhigh explicitly and reports the effective model and effort from the run log.",
+          "text": "Uses -E xhigh and reports effective routing"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "name": "below-medium-known-output-transform",
+      "category": "model-effort",
+      "description": "A tiny mechanical transformation with a byte-for-byte known answer shape belongs below the settled medium implementation floor.",
+      "prompt": "Choose a Codex model and effort for this mission: reformat one existing Markdown file to an exact canonical output that has already been supplied. There are no semantic edits or design choices, the answer shape is known byte-for-byte, a deterministic formatter check verifies it, and rollback is one file. State the dispatch approach and what the run log must prove.",
+      "expected_effort": "low",
+      "expected_model": "gpt-5.6-luna is a reasonable candidate pending measurement; no mission-specific model benchmark is established",
+      "expected_output": "Select low because this is below the bounded implementation bar: it is a tiny known-output transformation with no judgment and deterministic verification. Keep medium as the floor for bounded implementation lanes, pass -E low explicitly, and report the effective model and effort from the run log. Luna is only a candidate pending measurement.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "selects-low",
+          "description": "Selects low for a tiny known-output mechanical transformation.",
+          "text": "Selects low"
+        },
+        {
+          "type": "content",
+          "name": "preserves-medium-floor",
+          "description": "Explains that medium remains the floor for bounded implementation lanes and this task sits below that bar.",
+          "text": "Distinguishes low from the medium implementation floor"
+        },
+        {
+          "type": "content",
+          "name": "explicit-low-dispatch",
+          "description": "Passes -E low explicitly through repoGolem.",
+          "text": "Uses -E low"
+        },
+        {
+          "type": "content",
+          "name": "reports-effective-routing",
+          "description": "Requires the effective model and effort from the run log.",
+          "text": "Reports effective model and effort from the run log"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "name": "omitted-effort-is-silent-choice",
+      "category": "model-effort",
+      "description": "A dispatch that omits -E must be treated as silently choosing the launcher default rather than making no effort decision.",
+      "prompt": "Review this draft dispatch for a well-specified bounded implementation lane: `golemsCodex -s \"apply the specified adapter patch and run the focused regression test\"`. The diff shape is known, the task still requires implementation, and the draft gives no effort choice or rationale. Should it ship unchanged? State the corrected dispatch and explain what the omission means.",
+      "expected_effort": "medium",
+      "expected_model": "gpt-5.6-luna is a reasonable bounded-work candidate pending measurement; no model pin is required by this prompt",
+      "expected_output": "Reject the draft unchanged. Omitting -E silently chooses the launcher's high default; it is not the absence of a decision. Require a mission-specific rationale and correct the dispatch to -E medium because this is a bounded implementation lane, then verify the effective model and effort from the run log.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "flags-omitted-effort",
+          "description": "Flags the missing -E as a defect rather than accepting the inherited default.",
+          "text": "Flags the omitted -E"
+        },
+        {
+          "type": "content",
+          "name": "calls-silence-a-choice",
+          "description": "States that inheriting the default is a decision made silently.",
+          "text": "Calls the silent default a choice"
+        },
+        {
+          "type": "content",
+          "name": "requires-mission-rationale",
+          "description": "Requires the brief to name an effort and explain why it fits the mission.",
+          "text": "Requires an effort rationale"
+        },
+        {
+          "type": "content",
+          "name": "corrects-to-medium",
+          "description": "Corrects the bounded implementation dispatch to use -E medium explicitly.",
+          "text": "Uses -E medium"
+        }
+      ]
+    }
+  ]
+}

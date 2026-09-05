@@ -1,0 +1,22 @@
+{
+  "specimen": "canonical read-along transcript mentions estimated WPM placeholder prose",
+  "evidence": {
+    "generator": "agent-html/host/build-aftercode-tonight.mjs",
+    "outputPath": "/opt/private/skill-tools/docs.local/dashboards/2026-06-26-transcript-mentions-estimated.html",
+    "tailnetSync": {
+      "status": "ran",
+      "command": "node /opt/private/coordination/scripts/sync-tailnet-dashboards.mjs"
+    },
+    "wordsJson": [
+      { "word": "The", "start": 0.10, "end": 0.22 },
+      { "word": "transcript", "start": 0.25, "end": 0.62 },
+      { "word": "mentions", "start": 0.66, "end": 1.05 },
+      { "word": "estimated", "start": 1.10, "end": 1.55 },
+      { "word": "WPM", "start": 1.61, "end": 1.86 },
+      { "word": "as", "start": 1.91, "end": 2.02 },
+      { "word": "placeholder", "start": 2.08, "end": 2.58 },
+      { "word": "history", "start": 2.64, "end": 2.99 }
+    ],
+    "html": "<script id=\"tpdata\" type=\"application/json\">[{\"realWordTiming\":true,\"timing\":{\"source\":\"whisper-cli\"},\"script\":\"The transcript mentions estimated WPM as placeholder history\",\"words\":[{\"word\":\"The\",\"start\":0.10,\"end\":0.22},{\"word\":\"transcript\",\"start\":0.25,\"end\":0.62},{\"word\":\"mentions\",\"start\":0.66,\"end\":1.05},{\"word\":\"estimated\",\"start\":1.10,\"end\":1.55},{\"word\":\"WPM\",\"start\":1.61,\"end\":1.86},{\"word\":\"as\",\"start\":1.91,\"end\":2.02},{\"word\":\"placeholder\",\"start\":2.08,\"end\":2.58},{\"word\":\"history\",\"start\":2.64,\"end\":2.99}]}]</script><section class=\"transcript\"><span class=\"w\" data-ws=\"0.10\" data-we=\"0.22\">The</span> <span class=\"w\" data-ws=\"0.25\" data-we=\"0.62\">transcript</span> <span class=\"w\" data-ws=\"0.66\" data-we=\"1.05\">mentions</span> <span class=\"w\" data-ws=\"1.10\" data-we=\"1.55\">estimated</span> <span class=\"w\" data-ws=\"1.61\" data-we=\"1.86\">WPM</span> <span class=\"w\" data-ws=\"1.91\" data-we=\"2.02\">as</span> <span class=\"w\" data-ws=\"2.08\" data-we=\"2.58\">placeholder</span> <span class=\"w\" data-ws=\"2.64\" data-we=\"2.99\">history</span></section><script>document.querySelectorAll('[data-ws]').forEach(word => word.addEventListener('click', () => { audio.currentTime = Number(word.dataset.ws); }));</script>"
+  }
+}

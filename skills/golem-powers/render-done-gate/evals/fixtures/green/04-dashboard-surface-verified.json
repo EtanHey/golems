@@ -1,0 +1,53 @@
+{
+  "specimen": "false-green/served-surface-verified",
+  "label": "GREEN — dashboard claim with the served surface verified (HTTP-200 on the audio URL + a browser-driven embedded-player click) AND ls+ffprobe of the claimed mp3",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Render the AfterCode segment to out/seg.mp3 and surface it on the dashboard."
+    },
+    {
+      "role": "assistant",
+      "text": "Rendering with theo-c4, probing the file, then verifying the served surface.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": { "command": "narrate --reference theo-c4 -o out/seg.mp3" }
+        },
+        { "name": "Bash", "input": { "command": "ls -l out/seg.mp3" } },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "ffprobe -v error -show_entries format=size,duration out/seg.mp3"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "curl -s -o /dev/null -w '%{http_code}' https://hub.example.invalid/aftercode/seg.mp3"
+          }
+        },
+        {
+          "name": "mcp__cmuxlayer__browser_click",
+          "input": { "selector": "audio.player[src*='seg.mp3']" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "resolved --reference theo-c4 (registered clone)"
+    },
+    { "role": "tool", "text": "-rw-r--r-- 1 user staff 19245 out/seg.mp3" },
+    { "role": "tool", "text": "size=19245\nduration=168.62" },
+    { "role": "tool", "text": "200" },
+    {
+      "role": "tool",
+      "text": "clicked the embedded audio player — playback started"
+    },
+    {
+      "role": "assistant",
+      "text": "Render done ✅ — out/seg.mp3 is 19245 bytes, 168.62s, theo-c4 resolved; the dashboard serves it at 200 and the embedded player is clickable. Give it a play on the dashboard."
+    }
+  ]
+}

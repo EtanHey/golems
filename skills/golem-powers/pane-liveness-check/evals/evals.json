@@ -1,0 +1,78 @@
+{
+  "skill": "pane-liveness-check",
+  "classification": "encoded-preference",
+  "evals": [
+    {
+      "id": 1,
+      "name": "idle-reviewer-with-outstanding-iterate",
+      "category": "compliance",
+      "description": "Recorded review-638/review-633 incident: an idle bare prompt still holds owed review work.",
+      "prompt": "Classify an idle review pane whose ITERATE verdict remains outstanding.",
+      "assertions": [
+        {"type": "content", "name": "keep-blocked", "description": "Returns KEEP-blocked rather than treating idle as done."},
+        {"type": "negative", "name": "no-close", "description": "Does not emit CLOSE-CANDIDATE."},
+        {"type": "content", "name": "reason-names-open-lane", "description": "Reason identifies outstanding or unknown lane work."}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "task-done-with-untracked-artifact",
+      "category": "compliance",
+      "description": "Recorded convention-audit incident: TASK_DONE was emitted while the whole skill directory was untracked.",
+      "prompt": "Classify a TASK_DONE pane whose Git evidence contains untracked files.",
+      "assertions": [
+        {"type": "content", "name": "keep-unpushed", "description": "Returns KEEP-unpushed."},
+        {"type": "negative", "name": "task-done-not-proof", "description": "Does not treat TASK_DONE as artifact proof."},
+        {"type": "content", "name": "reason-names-uncommitted", "description": "Reason names uncommitted/untracked work."}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "dead-process-under-live-title",
+      "category": "compliance",
+      "description": "Recorded surface:241 and surface:222 incidents: a HOLD/review title survived a dead shell or exited Codex process.",
+      "prompt": "Classify titled panes whose process is verified dead.",
+      "assertions": [
+        {"type": "content", "name": "dead-shell", "description": "Returns DEAD-shell."},
+        {"type": "negative", "name": "title-not-liveness", "description": "Does not infer process liveness from the title."},
+        {"type": "content", "name": "process-field", "description": "Reports process alive=false distinctly from live idle."}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "idle-pane-with-two-unpushed-commits",
+      "category": "compliance",
+      "description": "Recorded surface:280 incident: an idle-looking pane held two commits not present upstream.",
+      "prompt": "Classify an idle pane with two verified unpushed commits.",
+      "assertions": [
+        {"type": "content", "name": "keep-unpushed", "description": "Returns KEEP-unpushed with hard-blocker wording."},
+        {"type": "negative", "name": "no-close", "description": "Never emits CLOSE-CANDIDATE."},
+        {"type": "content", "name": "commit-count", "description": "Reports the two-commit evidence."}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "numeric-ref-retargets-live-worker",
+      "category": "compliance",
+      "description": "Recorded surface:230 incident: after a close, the numeric ref silently resolved to a different live worker.",
+      "prompt": "Classify a row whose numeric ref resolves to a different stable UUID immediately before read.",
+      "assertions": [
+        {"type": "content", "name": "stale-ref", "description": "Returns STALE-REF — re-enumerate."},
+        {"type": "negative", "name": "no-disposition", "description": "Sets verdict to null and performs no pane read."},
+        {"type": "tool_usage", "name": "verbose-list", "description": "Every list_surfaces call uses verbose:true."}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "clean-verified-closure-control",
+      "category": "structure",
+      "description": "Positive control: only fully verified closure may become a close candidate.",
+      "prompt": "Classify a live idle/done pane with no open lane, verified reporting, and clean pushed artifacts.",
+      "assertions": [
+        {"type": "content", "name": "close-candidate", "description": "Returns CLOSE-CANDIDATE."},
+        {"type": "negative", "name": "no-cost", "description": "Output contains no cost/burn field."},
+        {"type": "content", "name": "uuid-key", "description": "The stable surface UUID is the row key."}
+      ]
+    }
+  ]
+}

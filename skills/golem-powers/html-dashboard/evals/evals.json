@@ -1,0 +1,92 @@
+{
+  "skill_name": "html-dashboard",
+  "tier": "flagship",
+  "version": "1.0.0",
+  "last_eval_date": "2026-05-31",
+  "evals": [
+  {
+    "id": 1,
+    "name": "dashboard-request-clones-gen12-template",
+    "category": "compliance",
+    "description": "A dashboard request must invoke the skill path and clone the gen-12 template/reference before writing output.",
+    "prompt": "Make me a dashboard summarizing what changed in tonight's orchestration sprint.",
+    "expected_output": "Agent opens a prior dashboard/template first, clones it to docs.local/dashboards/YYYY-MM-DD-orchestration-sprint.html, and preserves the gen-12 design system.",
+    "assertions": [
+      {
+        "type": "content",
+        "name": "reference-before-produce",
+        "description": "Mentions opening the most recent/best prior dashboard or templates/template.html before creating output.",
+        "pattern": "(most-recent|best prior|newest).*dashboard|templates/template\\.html|template\\.html"
+      },
+      {
+        "type": "content",
+        "name": "template-cloned",
+        "description": "Uses the html-dashboard template rather than creating generic static HTML.",
+        "pattern": "clone|cloned|copy.*template|html-dashboard"
+      },
+      {
+        "type": "content",
+        "name": "target-path",
+        "description": "Saves under docs.local/dashboards/YYYY-MM-DD-<topic>.html.",
+        "pattern": "docs\\.local/dashboards/[0-9]{4}-[0-9]{2}-[0-9]{2}-[^[:space:]]+\\.html"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "quality-bar-components",
+    "category": "structure",
+    "description": "With the skill, dashboard output must include all gen-12 interaction primitives.",
+    "prompt": "Create a status report dashboard comparing the three candidate plans.",
+    "expected_output": "HTML includes Google Fonts, gradient verdict hero, at least 3 cards with drawer reasoning, tabs, glossary terms, pills, and dark radial-gradient theme.",
+    "assertions": [
+      {
+        "type": "content",
+        "name": "fonts-and-theme",
+        "description": "Includes Inter, JetBrains Mono, CSS custom properties, dark background, and radial gradients.",
+        "pattern": "Inter|JetBrains Mono|radial-gradient|--bg"
+      },
+      {
+        "type": "content",
+        "name": "interactive-primitives",
+        "description": "Includes TRACKS cards, drawer open/close logic, tab switching, and GLOSS glossary handling.",
+        "pattern": "TRACKS|GLOSS|drawer|tab"
+      },
+      {
+        "type": "content",
+        "name": "minimum-glossary",
+        "description": "Defines at least five real glossary entries and wires .g[data-gloss] terms to them.",
+        "pattern": "data-gloss|bindGloss|GLOSS"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "no-fabricated-dashboard-data",
+    "category": "quality",
+    "description": "Dashboard data must be verified, not invented to fill the template.",
+    "prompt": "Make a digest dashboard of what moved today. Use the files in docs.local and current git state.",
+    "expected_output": "Agent reads source files/command output, uses only verified facts, and reports a verification receipt.",
+    "assertions": [
+      {
+        "type": "content",
+        "name": "source-backed-claims",
+        "description": "Every status, metric, PR number, date, and decision is traceable to a read file, command output, or user-provided content.",
+        "pattern": "verified|source|read|command|git|docs\\.local"
+      },
+      {
+        "type": "negative",
+        "name": "no-placeholder-shipping",
+        "description": "Does not leave {{PLACEHOLDER}} text or sample orchestration data in the shipped dashboard.",
+        "pattern": "\\{\\{[A-Z0-9_-]+\\}\\}|Sample|orchestration-status"
+      },
+      {
+        "type": "content",
+        "name": "verification-receipt",
+        "description": "Includes content and visual/behavioral verification status before claiming done.",
+        "pattern": "Helium|VISUAL VERIFICATION NOT PERFORMED|verified|verification"
+      }
+    ]
+  }
+  ]
+}

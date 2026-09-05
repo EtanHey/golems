@@ -1,0 +1,99 @@
+# Behavioral Eval: cmux-agents skill
+# Tests: spawn-agent usage, biometric spacing, verification, frozen recovery, AFK monitoring
+# Scenarios: 4 | Assertions: 19
+
+skill: cmux-agents
+skill_path: skills/golem-powers/cmux-agents/SKILL.md
+
+scenarios:
+  - id: cmux-spawn-parallel
+    name: "Spawn 3 parallel agents → spawn-agent, sequential with 3s gap, CronCreate"
+    prompt: |
+      Spawn 3 agents to handle these in parallel. I'm going AFK.
+      Tasks: 1) brainlayer test suite (surface :56)
+      2) golems skill descriptions (surface :63)
+      3) etanheyman.com stale refs (new surface needed)
+    fixture: fixtures/cmux-spawn-parallel.txt
+    assertions:
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke cmux-agents skill"
+      - type: llm-rubric
+        value: "Response sources agent-functions.sh before any spawning"
+        description: "Sources agent-functions.sh first"
+      - type: llm-rubric
+        value: "Response uses spawn-agent function for every agent, NOT hand-rolled cmux commands"
+        description: "Uses spawn-agent, not hand-rolled cmux"
+      - type: llm-rubric
+        value: "Response creates splits first (with 3s biometric spacing), verifies $ prompt, THEN spawns agents sequentially"
+        description: "Splits first, verify, then sequential spawn"
+      - type: llm-rubric
+        value: "Response sets up CronCreate monitoring loop BEFORE telling user to go AFK"
+        description: "CronCreate before AFK"
+      - type: llm-rubric
+        value: "Response verifies each agent's token count jumped within 15 seconds of spawn"
+        description: "Verifies token count after spawn"
+
+  - id: cmux-agent-done-verify
+    name: "Agent reports done → read_screen, find markers, verify output"
+    prompt: |
+      Check on the brainlayer agent. read_screen shows
+      ---RESPONSE_START--- ... ---RESPONSE_END--- markers with
+      1143 passed, 0 failures. Agent token count: 234,100.
+    fixture: fixtures/cmux-agent-done.txt
+    assertions:
+      - type: llm-rubric
+        value: "Response reads the agent's output by finding ---RESPONSE_START/END--- markers"
+        description: "Reads RESPONSE markers"
+      - type: llm-rubric
+        value: "Response verifies the claimed results (test count) rather than trusting self-report blindly"
+        description: "Verifies claims, doesn't trust blindly"
+      - type: llm-rubric
+        value: "Response updates the agent registry status to DONE"
+        description: "Updates registry status"
+      - type: trajectory:tool-used
+        value: brain_store
+        description: "Stores completion in BrainLayer"
+
+  - id: cmux-frozen-agent-recover
+    name: "Frozen agent → read scrollback, salvage, kill, respawn"
+    prompt: |
+      The golems-worker on :63 hasn't produced output in 12 minutes.
+      Token count: 89,100 (unchanged across 2 checks).
+      Other agents are fine.
+    assertions:
+      - type: llm-rubric
+        value: "Response reads the frozen agent's scrollback (lines:80) to salvage partial work"
+        description: "Reads scrollback to salvage"
+      - type: llm-rubric
+        value: "Response kills the frozen agent, creates a new split, and respawns with summary of already-done work"
+        description: "Kill → new_split → respawn with partial summary"
+      - type: llm-rubric
+        value: "Response stores the freeze event in brain_store"
+        description: "brain_store the freeze"
+      - type: llm-rubric
+        value: "Response does NOT absorb the frozen agent's remaining work into orchestrator context"
+        description: "Does not absorb frozen work"
+
+  - id: cmux-no-hand-rolled
+    name: "Manual cmux request → redirects to spawn-agent"
+    prompt: |
+      Run this in a new cmux split: `cd ~/Gits/brainlayer && claude -p "run tests"`
+    assertions:
+      - type: llm-rubric
+        value: "Response corrects the approach — uses spawn-agent instead of hand-rolled cmux + claude commands"
+        description: "Corrects to spawn-agent"
+      - type: javascript
+        value: |
+          const toolCalls = output.toolCalls || [];
+          const hasRawClaude = toolCalls.some(t =>
+            t.name === 'Bash' && t.arguments?.command?.includes('claude -p')
+          );
+          return !hasRawClaude;
+        description: "Does NOT run raw claude -p"
+      - type: llm-rubric
+        value: "Response explains why spawn-agent is mandatory (handles biometric timing, registry, verification)"
+        description: "Explains why spawn-agent is required"
+      - type: trajectory:step-count
+        value: ">= 1"
+        description: "At least one corrective action"

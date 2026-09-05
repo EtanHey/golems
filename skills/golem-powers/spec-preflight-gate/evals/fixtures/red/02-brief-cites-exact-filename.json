@@ -1,0 +1,25 @@
+{
+  "specimen": "R-037/brief-pins-exact-handoff-filename-load-bearing",
+  "violation": "BRIEF_CITES_EXACT_FILENAME",
+  "events": [
+    { "role": "user", "text": "Spawn a worker using the current handoff.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Checking the handoff then dispatching.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "test -f docs/plan/final-spawn-handoff.md" } },
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "You must use exactly docs/plan/final-spawn-handoff.md as the source of truth. Do not search for alternatives."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "", "tools": [] },
+    { "role": "tool", "text": "spawned agent golems in repo golems", "tools": [] }
+  ]
+}

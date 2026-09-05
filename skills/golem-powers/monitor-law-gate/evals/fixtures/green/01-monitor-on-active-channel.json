@@ -1,0 +1,38 @@
+{
+  "specimen": "false-positive-guard/correct-monitor",
+  "label": "GREEN — persistent Monitor armed on the ACTIVE channel keyed to a heartbeat marker",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Lead the brainlayer sprint." },
+    {
+      "role": "assistant",
+      "text": "Arming my inbound monitor on the channel first, then spawning.",
+      "tools": [
+        {
+          "name": "Monitor",
+          "input": {
+            "path": "collab/2026-06-22-brainlayer.md",
+            "pattern": "^### |ORC-RECEIPT:|@spineClaude|BLOCKED",
+            "persistent": true
+          }
+        },
+        {
+          "name": "mcp__cmuxlayer__spawn_agent",
+          "input": { "cli": "codex", "repo": "brainlayer" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-06-22-brainlayer.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: kickoff, monitor armed"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Monitor armed on the active channel, worker dispatched. Standing by."
+    }
+  ]
+}

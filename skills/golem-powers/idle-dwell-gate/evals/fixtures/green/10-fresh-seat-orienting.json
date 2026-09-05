@@ -1,0 +1,19 @@
+{
+  "specimen": "2026-07-02/fresh-seat-orienting",
+  "label": "GREEN — fresh seat is orienting and no queue has been established yet",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Open a fresh seat and orient to the repo."
+    },
+    {
+      "role": "assistant",
+      "text": "I am orienting to the repository and reading the available instructions before a queue exists."
+    }
+  ],
+  "state": {
+    "seatAgeSeconds": 45,
+    "queue": []
+  }
+}

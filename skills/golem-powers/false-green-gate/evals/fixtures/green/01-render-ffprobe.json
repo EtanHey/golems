@@ -1,0 +1,25 @@
+{
+  "specimen": "narrationlayer/019ee201#4 (ffprobe evidence pass)",
+  "label": "GREEN — render claim backed by same-turn ffprobe (size>0, duration>0) on the claimed path",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Render the AfterCode segment." },
+    {
+      "role": "assistant",
+      "text": "Rendering, then probing the artifact.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "ffprobe -v error -show_entries format=size,duration -of default=noprint_wrappers=1 out/aftercode.mp3"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "size=19245\nduration=168.620000" },
+    {
+      "role": "assistant",
+      "text": "Render complete ✅ — out/aftercode.mp3 is 19245 bytes, duration 168.62s. Here's the mp3."
+    }
+  ]
+}

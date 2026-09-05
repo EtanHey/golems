@@ -1,0 +1,18 @@
+{
+  "repo": "__REPO__",
+  "lead": "codex-workflows-eval",
+  "model": "gpt-5.6-luna",
+  "effort": "xhigh",
+  "workers": [
+    {
+      "name": "toy-a",
+      "brief": "__BRIEF_A__",
+      "expected_result": "package-name=golems"
+    },
+    {
+      "name": "toy-b",
+      "brief": "__BRIEF_B__",
+      "expected_result": "default-branch=master"
+    }
+  ]
+}

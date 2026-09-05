@@ -1,0 +1,58 @@
+{
+  "provenance": [
+    {
+      "agent_or_arm": "deterministic_replay",
+      "model_requested": "none",
+      "model_effective": "NOT DETERMINED",
+      "effort_effective": "NOT DETERMINED",
+      "model_observation_source": "NOT DETERMINED — deterministic replay; live_calls_spent=0",
+      "effort_observation_source": "NOT DETERMINED — deterministic replay; live_calls_spent=0"
+    }
+  ],
+  "contract_decision": {
+    "final_synthesis_requires_exact_divergent_subset": true,
+    "rationale": "The retained live failure showed a systematic representation mismatch: raw lenses often used a function entrypoint as an implementation site and a different internal line as the divergent site. Synthesis is the existing verifier and normalizer, so raw candidates pass structural validation while final output keeps the strict exact path:line subset gate.",
+    "raw_lenses_require_exact_divergent_subset": false
+  },
+  "live_calls_spent": 0,
+  "replay": {
+    "raw_findings_forwarded_to_synthesis": 32,
+    "raw_payloads_accepted": 6,
+    "strict_clean_findings": 22,
+    "strict_final_validation": true,
+    "strict_mismatched_candidates_for_synthesis_to_normalize_or_reject": 10
+  },
+  "source_artifacts": [
+    {
+      "file": "data-ownership.last.json",
+      "sha256": "dcec07b757d8d7d99c167f697a99cf82ddca0bbb8ba01841d7091edc48afb426"
+    },
+    {
+      "file": "duplicated-domain-logic.last.json",
+      "sha256": "96024c55bf8e81607987e7e042cb2bd1b6646367ced49fb7493b2ac6fd4ab990"
+    },
+    {
+      "file": "lifecycle-control.last.json",
+      "sha256": "896daaf0997b67f29d8446e35a2b6503dc488a302bee785a4cc8fa23df7b702c"
+    },
+    {
+      "file": "live-copy-drift.last.json",
+      "sha256": "95d10b5631a3b0975290318b1c13e3aac5c015558a1c309b0297f6fdd5bdcc59"
+    },
+    {
+      "file": "paths-and-identity.last.json",
+      "sha256": "b8a56c490b3988a790669096142d936ca751ffca6dce6a70dd951f8931e67a5c"
+    },
+    {
+      "file": "time-and-query-semantics.last.json",
+      "sha256": "074f2a288e9a39e2eb909b984492d84c6f51ece681c0e3fe9743c0b2eb955f74"
+    }
+  ],
+  "source_run": "/opt/private/coordination/docs.local/audits/2026-08-03-convention-audit-brainlayer/brainlayer-20260802T223458Z",
+  "tdd": {
+    "green": "2 tests passed: the retained finding-0 shape reached synthesis and an analysis failure wrote a durable partial run-log",
+    "red": "finding-0 replay exited 1 with 'divergent sites must also be implementation sites'; partial-failure replay raised FileNotFoundError for run-log.json"
+  },
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

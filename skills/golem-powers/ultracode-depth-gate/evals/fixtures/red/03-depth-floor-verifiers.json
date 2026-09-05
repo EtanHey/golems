@@ -1,0 +1,15 @@
+{
+  "specimen": "R-042/two-adversarial-verifiers-below-floor",
+  "violation": "DEPTH_FLOOR_VERIFIERS",
+  "events": [
+    { "role": "user", "text": "Comprehensive ultracode audit: do the full workflow topology.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching workflow.",
+      "tools": [
+        { "name": "Workflow", "input": { "script": "gatherers: 17 cheap gatherer agents\nverifiers: 2 adversarial verifier agents\nstop: loop-until-dry quality-stop" } }
+      ]
+    },
+    { "role": "tool", "text": "workflow accepted: gatherers=17 verifiers=2 loop_until_dry=true", "tools": [] }
+  ]
+}

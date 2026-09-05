@@ -1,0 +1,23 @@
+{
+  "specimen": "false-positive-guard/self-drive",
+  "label": "GREEN — open queue, agent does the authorized work itself (opens the PR) instead of pausing",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Branch is done and approved. Don't idle — run the full pr loop."
+    },
+    {
+      "role": "assistant",
+      "text": "Running the loop now: pushing the branch and opening the PR.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "git push -u origin feat/x && gh pr create --fill"
+          }
+        }
+      ]
+    }
+  ]
+}

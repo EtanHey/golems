@@ -1,0 +1,12 @@
+{
+  "specimen": "Missing transcript model fails open",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "transcript": [
+      { "type": "assistant", "message": { "role": "assistant", "content": [] } }
+    ],
+    "tool_name": "Agent",
+    "tool_input": { "prompt": "survey the repo" }
+  }
+}

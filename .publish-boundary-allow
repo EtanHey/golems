@@ -1,0 +1,76 @@
+# Explicit tracked-path exceptions only. Globs and directories are rejected.
+# This test file contains authored synthetic violations used to prove the guard.
+scripts/tests/check-publish-boundary.test.sh
+
+# Authored adversarial fixture for the launchd secret detector.
+skills/golem-powers/launchd-secret-linter/tests/test_plist_secret_lint.py
+
+# Synthetic health/schedule prompts used by behavioral evaluations.
+skill-evals/behavioral/coach.yaml
+skill-evals/fixtures/coach-schedule-request.txt
+skill-evals/promptfoo-behavioral.yaml
+
+# Public vendor names, synthetic people, and authored email/categorization fixtures.
+packages/coach/src/__tests__/morning-briefing-runner.test.ts
+packages/coach/src/__tests__/morning-briefing.test.ts
+packages/golems-tui/src/data.ts
+packages/green-invoice-mcp/src/__tests__/mcp-server.test.ts
+packages/recruiter/src/__tests__/auto-outreach.test.ts
+packages/recruiter/src/__tests__/obsidian-export.test.ts
+packages/recruiter/src/__tests__/outreach-db.test.ts
+packages/shared/src/__tests__/email-golem/draft-reply.test.ts
+packages/shared/src/__tests__/email-golem/followup.test.ts
+packages/shared/src/__tests__/email-golem/gmail-client.test.ts
+packages/shared/src/__tests__/email-golem/scorer.test.ts
+packages/shared/src/email/scorer.ts
+packages/teller/src/__tests__/categorizer.test.ts
+packages/teller/src/__tests__/teller-alerts.test.ts
+packages/teller/src/categorizer.ts
+rules-library/workflow/testing.md
+scripts/benchmark-glm.ts
+scripts/tests/test-check-instruction-shape.bats
+scripts/tests/test-stream-helpers.bats
+scripts/tests/test-worktree-gc.bats
+scripts/test_precompact.py
+skill-evals/fixtures/nightly-journal-empty-whatsapp.txt
+skill-evals/fixtures/nightly-journal-normal.txt
+skill-evals/fixtures/nightly-journal-read-only.txt
+
+skills/golem-powers/audio-dashboard/evals/narration-vendor-drift.test.mjs
+skills/golem-powers/crash-resume-index/evals/crash-resume-index.test.mjs
+
+# Frustration/operator-language detector implementation and authored test corpus.
+hooks/precompact-checkpoint.py
+skills/golem-powers/frustration-capture/SKILL.md
+skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py
+skills/golem-powers/frustration-capture/hooks/tests/test_session_false_positive_corpus.py
+skills/golem-powers/weave/registry/validate-registry.sh
+
+# Generic transcript/session processing mechanics and synthetic evaluation output.
+packages/content/prompts/launch/text/reddit-localllama-bl.md
+packages/services/CLAUDE.md
+skills/golem-powers/agada-bench/workflows/build-new-domain.md
+skills/golem-powers/google-drive-archive/SKILL.md
+skills/golem-powers/orc-workspace/iteration-1/eval-3-frozen-gems/without_skill/outputs/response.md
+skills/golem-powers/orc/SKILL.md
+skills/golem-powers/skill-creator/agents/session-miner.toml
+skills/golem-powers/skill-creator/scripts/phoenix_auto_critic.py
+
+# The docs.local guard's own header comment names the categories it exists to
+# block ("session transcripts"), which the raw-session pattern then matches.
+# A detector matching its own description is a false positive, not a leak.
+scripts/guard-no-docslocal.sh
+
+# Authored adversarial fixtures for the machine-coupling guard: these tests
+# assert that a developer-home path in shipped Markdown is REFUSED, so the
+# literal /Users/... path is the test input. Username scrubbed to `testuser`.
+scripts/tests/test-golems-sync.bats
+
+# 2026-08-26-golems-sync.md leaked a private-repo path and a .cmux agent report
+# path. Both are REDACTED at the tip in this PR. This entry exists only because
+# the CI history ratchet re-scans every commit since the history base with the
+# CURRENT allowlist, and those older blobs are immutable -- a tip redaction can
+# never clear them. Removing this entry requires rewriting published history,
+# which is Etan's call, not a gate's.
+# WARNING: while this entry stands, NEW leaks in this file are not caught.
+docs/plans/2026-08-26-golems-sync.md

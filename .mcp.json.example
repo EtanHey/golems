@@ -1,0 +1,81 @@
+{
+  "_comment": "Replace <coordination-root>, then run its mcp-setup.sh against this checkout.",
+  "mcpServers": {
+    "brainlayer": {
+      "command": "brainlayer-mcp"
+    },
+    "voicelayer": {
+      "command": "voicelayer-mcp"
+    },
+    "golems-glm": {
+      "command": "bun",
+      "args": [
+        "run",
+        "packages/shared/src/glm/mcp-server.ts"
+      ]
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@0.10.0",
+        "--access-token",
+        "op://development/mcp-supabase/ACCESS_TOKEN"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "op://development/mcp-supabase/ACCESS_TOKEN"
+      }
+    },
+    "exa": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "exa-mcp-server@3.4.0"
+      ],
+      "env": {
+        "EXA_API_KEY": "op://development/EXA_API_KEY/credential"
+      }
+    },
+    "sophtron": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@sophtron/sophtron-mcp-server@0.1.0"
+      ],
+      "env": {
+        "SOPHTRON_USER_ID": "op://development/Sophtron API/username",
+        "SOPHTRON_ACCESS_KEY": "op://development/Sophtron API/password"
+      }
+    },
+    "kernel": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@0.1.38",
+        "https://mcp.onkernel.com/mcp",
+        "--header",
+        "Authorization:Bearer op://Private/Kernel api key/password"
+      ]
+    },
+    "_disabled_golems-email": {
+      "command": "bun",
+      "args": [
+        "run",
+        "packages/shared/src/email/mcp-server.ts"
+      ]
+    },
+    "_disabled_golems-jobs": {
+      "command": "bun",
+      "args": [
+        "run",
+        "packages/jobs/src/mcp-server.ts"
+      ]
+    },
+    "cmux": {
+      "command": "node",
+      "args": [
+        "<coordination-root>/tools/cmux-mcp/dist/index.js"
+      ]
+    }
+  }
+}

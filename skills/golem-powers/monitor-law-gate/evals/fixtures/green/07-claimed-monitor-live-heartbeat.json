@@ -1,0 +1,52 @@
+{
+  "specimen": "false-positive-guard/live-claimed-monitor",
+  "label": "GREEN - claimed monitor id is backed by fresh heartbeat ground truth on the active channel",
+  "expect": "PASS",
+  "monitorRegistry": {
+    "nowMs": 200000,
+    "heartbeatWindowMs": 30000,
+    "monitors": [
+      {
+        "id": "mon-live",
+        "path": "collab/2026-07-02-live.md",
+        "pattern": "^### |ORC-RECEIPT:|@liveLead|BLOCKED",
+        "persistent": true,
+        "heartbeatMtimeMs": 190000
+      }
+    ]
+  },
+  "events": [
+    { "role": "user", "text": "Lead the live monitor sprint." },
+    {
+      "role": "assistant",
+      "text": "Arming monitor=mon-live on the active channel and dispatching workers.",
+      "tools": [
+        {
+          "name": "Monitor",
+          "input": {
+            "id": "mon-live",
+            "path": "collab/2026-07-02-live.md",
+            "pattern": "^### |ORC-RECEIPT:|@liveLead|BLOCKED",
+            "persistent": true
+          }
+        },
+        {
+          "name": "mcp__cmux__spawn_agent",
+          "input": { "cli": "codex", "repo": "golems" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-07-02-live.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: kickoff, monitor armed"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "monitor=mon-live is armed and live. Standing by."
+    }
+  ]
+}

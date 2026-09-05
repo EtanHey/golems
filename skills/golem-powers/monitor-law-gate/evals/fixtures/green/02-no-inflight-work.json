@@ -1,0 +1,12 @@
+{
+  "specimen": "false-positive-guard/na",
+  "label": "GREEN — no in-flight lead/orc work (a plain Q&A turn): the monitor law is N/A",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "What does the brainlayer watcher daemon do?" },
+    {
+      "role": "assistant",
+      "text": "The watcher ingests agent JSONL roots into the FTS index. No sprint, no workers — just answering."
+    }
+  ]
+}

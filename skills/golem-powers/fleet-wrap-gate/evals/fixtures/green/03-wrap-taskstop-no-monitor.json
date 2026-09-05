@@ -1,0 +1,15 @@
+{
+  "specimen": "compliant wrap — TaskStop clears the monitor, zero crons, no standby kept",
+  "label": "GREEN — sprint close that stops the background monitor via TaskStop and keeps NOTHING armed. cron-count=0 the hard way.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "sprint close, full stop" },
+    {
+      "role": "assistant",
+      "text": "Sprint closed. Stopped all monitors — no crons remain. Silent.",
+      "tools": [
+        { "name": "mcp__cmuxlayer__TaskStop", "input": { "id": "fleet-monitor" } }
+      ]
+    }
+  ]
+}

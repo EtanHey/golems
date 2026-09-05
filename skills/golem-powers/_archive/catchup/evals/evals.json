@@ -1,0 +1,69 @@
+{
+  "skill_name": "catchup",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/catchup",
+      "expected_output": "Auto-detects mode by checking git status --short and git log main...HEAD. If uncommitted changes exist and few branch commits, uses quick mode (reads only modified files). If many branch commits or no uncommitted changes, uses full mode (reads all branch changes vs main). Provides appropriate summary.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "auto-detects-mode",
+          "description": "Checks both git status --short AND git log main...HEAD to determine quick vs full mode"
+        },
+        {
+          "name": "reads-relevant-files",
+          "description": "Actually reads files using the Read tool — does not just list filenames"
+        },
+        {
+          "name": "provides-summary",
+          "description": "Summarizes what's being worked on, current state, and what's next"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I've been away for 3 days, what's been happening on this branch? /catchup",
+      "expected_output": "Detects long break context and uses full mode. Runs git diff --name-only main...HEAD. Reads files in dependency order (schema, config, server, UI, tests). Checks git log for commit history. Provides chronological understanding.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-full-mode",
+          "description": "Uses full mode (git diff main...HEAD) given the 3-day absence context"
+        },
+        {
+          "name": "reads-in-dependency-order",
+          "description": "Reads schema/database files before config before server/API before components/UI before tests"
+        },
+        {
+          "name": "checks-commit-history",
+          "description": "Runs git log main...HEAD or similar to see commit messages and chronological progress"
+        },
+        {
+          "name": "identifies-remaining-work",
+          "description": "Identifies what appears to be left to do (TODOs, incomplete implementations, missing tests)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/catchup quick",
+      "expected_output": "Uses quick mode explicitly. Runs git status --short. Reads only modified/staged files. Provides brief summary of in-progress changes. Does NOT run full branch diff.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-quick-mode",
+          "description": "Uses git status --short, NOT git diff main...HEAD, because user specified quick mode"
+        },
+        {
+          "name": "reads-only-modified",
+          "description": "Reads only files with M status from git status, not all branch changes"
+        },
+        {
+          "name": "brief-summary",
+          "description": "Provides concise summary of in-progress work without full branch context"
+        }
+      ]
+    }
+  ]
+}

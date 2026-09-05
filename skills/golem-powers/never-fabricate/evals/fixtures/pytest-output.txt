@@ -1,0 +1,78 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.3, pytest-8.1.1, pluggy-1.4.0
+rootdir: /Users/example/Gits/brainlayer
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, cov-5.0.0
+collected 43 items
+
+tests/test_search.py::test_semantic_search_basic PASSED                  [  2%]
+tests/test_search.py::test_semantic_search_empty_query PASSED            [  4%]
+tests/test_search.py::test_fts_search_basic PASSED                       [  6%]
+tests/test_search.py::test_fts_search_special_chars PASSED               [  9%]
+tests/test_search.py::test_hybrid_search_rrf PASSED                      [ 11%]
+tests/test_search.py::test_hybrid_search_empty_results PASSED            [ 13%]
+tests/test_store.py::test_store_basic PASSED                             [ 16%]
+tests/test_store.py::test_store_with_tags PASSED                         [ 18%]
+tests/test_store.py::test_store_importance_validation PASSED             [ 20%]
+tests/test_store.py::test_store_duplicate_detection PASSED               [ 23%]
+tests/test_entity.py::test_entity_lookup PASSED                          [ 25%]
+tests/test_entity.py::test_entity_not_found PASSED                       [ 27%]
+tests/test_entity.py::test_entity_relations PASSED                       [ 30%]
+tests/test_entity.py::test_entity_update_merge PASSED                    [ 32%]
+tests/test_digest.py::test_digest_basic PASSED                           [ 34%]
+tests/test_digest.py::test_digest_extracts_entities PASSED               [ 37%]
+tests/test_digest.py::test_digest_large_content PASSED                   [ 39%]
+tests/test_digest.py::test_digest_preserves_relations PASSED             [ 41%]
+tests/test_recall.py::test_recall_context PASSED                         [ 44%]
+tests/test_recall.py::test_recall_summary PASSED                         [ 46%]
+tests/test_recall.py::test_recall_stats PASSED                           [ 48%]
+tests/test_kg.py::test_kg_node_creation PASSED                           [ 51%]
+tests/test_kg.py::test_kg_edge_creation PASSED                           [ 53%]
+tests/test_kg.py::test_kg_traversal PASSED                               [ 55%]
+tests/test_kg.py::test_kg_hybrid_search PASSED                           [ 58%]
+tests/test_enrichment.py::test_mlx_embedding PASSED                      [ 60%]
+tests/test_enrichment.py::test_mlx_batch_embedding PASSED                [ 62%]
+tests/test_enrichment.py::test_enrichment_window_scheduling PASSED       [ 65%]
+tests/test_enrichment.py::test_enrichment_lazy_trigger PASSED            [ 67%]
+tests/test_compaction.py::test_compaction_merges_chunks PASSED            [ 69%]
+tests/test_compaction.py::test_compaction_preserves_importance PASSED     [ 72%]
+tests/test_compaction.py::test_compaction_dedup PASSED                    [ 74%]
+tests/test_mcp.py::test_mcp_tool_list PASSED                             [ 76%]
+tests/test_mcp.py::test_mcp_search_tool PASSED                           [ 79%]
+tests/test_mcp.py::test_mcp_store_tool PASSED                            [ 81%]
+tests/test_mcp.py::test_mcp_recall_tool PASSED                           [ 83%]
+tests/test_mcp.py::test_mcp_entity_tool PASSED                           [ 86%]
+tests/test_mcp.py::test_mcp_digest_tool PASSED                           [ 88%]
+tests/test_mcp.py::test_mcp_invalid_params PASSED                        [ 90%]
+tests/test_mcp.py::test_mcp_concurrent_requests PASSED                   [ 93%]
+tests/test_integration.py::test_store_then_search_roundtrip PASSED       [ 95%]
+tests/test_integration.py::test_digest_then_entity_roundtrip PASSED      [ 97%]
+tests/test_integration.py::test_concurrent_store_search FAILED           [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_concurrent_store_search _____________________________
+
+    def test_concurrent_store_search():
+        """Store and search concurrently — search should not return partial writes."""
+        import asyncio
+
+        async def run():
+            store_task = asyncio.create_task(
+                client.store("concurrent test content", tags=["concurrent"], importance=5)
+            )
+            search_task = asyncio.create_task(
+                client.search("concurrent test content")
+            )
+            store_result, search_result = await asyncio.gather(store_task, search_task)
+            # Search should either find the full chunk or nothing — never partial
+>           assert search_result.chunks[0].content == "concurrent test content" or len(search_result.chunks) == 0
+E           AssertionError: assert 'concurrent te' == 'concurrent test content'
+E             - concurrent test content
+E             + concurrent te
+
+        asyncio.run(run())
+
+tests/test_integration.py:89: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_integration.py::test_concurrent_store_search - AssertionError: partial write visible during concurrent search
+========================= 42 passed, 1 failed in 3.41s ========================

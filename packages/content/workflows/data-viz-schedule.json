@@ -1,0 +1,96 @@
+{
+  "name": "Content: Scheduled Data Viz",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every Monday 9am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/dataviz/render",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "type", "value": "jobs" },
+            { "name": "format", "value": "linkedin" }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "retry": { "maxRetries": 3, "retryInterval": 10000 }
+        }
+      },
+      "id": "render-jobs",
+      "name": "Render Job Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/dataviz/render",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "type", "value": "brain" },
+            { "name": "format", "value": "linkedin" }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "retry": { "maxRetries": 3, "retryInterval": 10000 }
+        }
+      },
+      "id": "render-brain",
+      "name": "Render Brain Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "Weekly Data Viz Ready!\n\nJob Market + Brain Growth infographics generated.\nCheck outputs in ~/golems-content/outputs/dataviz/",
+        "additionalFields": {}
+      },
+      "id": "telegram-notify",
+      "name": "Notify on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Every Monday 9am": {
+      "main": [
+        [
+          { "node": "Render Job Stats", "type": "main", "index": 0 },
+          { "node": "Render Brain Stats", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Render Job Stats": {
+      "main": [
+        [{ "node": "Notify on Telegram", "type": "main", "index": 0 }]
+      ]
+    },
+    "Render Brain Stats": {
+      "main": [
+        [{ "node": "Notify on Telegram", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {},
+  "tags": ["content", "data-viz", "scheduled"]
+}

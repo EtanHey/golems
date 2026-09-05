@@ -1,0 +1,12 @@
+{
+  "target": "hooks.Stop[]",
+  "entry": {
+    "hooks": [
+      {
+        "type": "command",
+        "command": "/Users/example/.nvm/versions/node/v22.22.0/bin/node /Users/example/.claude/hooks/pr-queue-gate/scripts/pr-queue-gate-hook.mjs",
+        "timeout": 5
+      }
+    ]
+  }
+}

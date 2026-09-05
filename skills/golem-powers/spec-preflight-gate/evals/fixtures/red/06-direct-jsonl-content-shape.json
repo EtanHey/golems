@@ -1,0 +1,27 @@
+{
+  "specimen": "coderabbit/direct-jsonl-role-content-tool-use-preserved",
+  "violation": "SPEC_FILE_UNVERIFIED",
+  "raw": [
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": "Spawn a worker from docs/plan/spawn-hygiene.md." }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Implement docs/plan/spawn-hygiene.md without first checking it."
+          }
+        }
+      ]
+    }
+  ]
+}

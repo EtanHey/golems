@@ -1,0 +1,36 @@
+{
+  "name": "@golems/claude",
+  "version": "1.0.0",
+  "description": "ClaudeGolem — central orchestrator and Telegram router for the Golems ecosystem, coordinating domain-specific golems via Grammy composers.",
+  "author": "EtanHey",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EtanHey/golems",
+    "directory": "packages/claude"
+  },
+  "keywords": [
+    "golems",
+    "ai-agent",
+    "telegram",
+    "grammy",
+    "orchestration"
+  ],
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "bot": "bun run src/telegram-bot.ts"
+  },
+  "dependencies": {
+    "@golems/coach": "workspace:*",
+    "@golems/jobs": "workspace:*",
+    "@golems/recruiter": "workspace:*",
+    "@golems/services": "workspace:*",
+    "@golems/shared": "workspace:*",
+    "@golems/teller": "workspace:*",
+    "grammy": "^1.21.1"
+  }
+}

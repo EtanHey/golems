@@ -1,0 +1,128 @@
+{
+  "eval_suite": "Golems Skills Behavioral Eval Suite — Phase 2.6",
+  "date": "2026-03-27",
+  "worker": "golems-worker-C-R2",
+  "status": "specs-created",
+  "note": "Eval specs written and validated. Awaiting execution via `npx promptfoo eval`. Results will populate once run with Anthropic API key.",
+  "config_path": "skill-evals/promptfoo-behavioral.yaml",
+  "threshold": {
+    "method": "relative_error_reduction",
+    "minimum": 0.2,
+    "trials_per_scenario": 3,
+    "formula": "(baseline_error - skill_error) / baseline_error >= 0.20"
+  },
+  "skills_evaluated": 8,
+  "total_scenarios": 30,
+  "total_assertions": 125,
+  "assertion_types_main_yaml": {
+    "llm-rubric": 103,
+    "not-contains": 7,
+    "contains": 1,
+    "not-contains-any": 1,
+    "note": "Main YAML uses llm-rubric for text-based behavioral assessment"
+  },
+  "assertion_types_per_skill_yaml": {
+    "trajectory:tool-sequence": 8,
+    "trajectory:tool-used": 18,
+    "trajectory:step-count": 7,
+    "javascript": 13,
+    "llm-rubric": 60,
+    "not-contains": 7,
+    "note": "Per-skill YAMLs use trajectory assertions for future custom runner (C-R3 Mock MCP Harness)"
+  },
+  "skills": [
+    {
+      "skill_name": "commit",
+      "grade_from_c_r1": "Gold",
+      "scenarios": 3,
+      "assertions": 12,
+      "behavioral_yaml": "skill-evals/behavioral/commit.yaml",
+      "result": null,
+      "with_skill_score": null,
+      "without_skill_score": null,
+      "relative_error_reduction": null
+    },
+    {
+      "skill_name": "research",
+      "grade_from_c_r1": "Silver",
+      "scenarios": 4,
+      "assertions": 18,
+      "behavioral_yaml": "skill-evals/behavioral/research.yaml",
+      "result": null,
+      "with_skill_score": null,
+      "without_skill_score": null,
+      "relative_error_reduction": null
+    },
+    {
+      "skill_name": "github",
+      "grade_from_c_r1": "Silver",
+      "scenarios": 4,
+      "assertions": 17,
+      "behavioral_yaml": "skill-evals/behavioral/github.yaml",
+      "result": null,
+      "with_skill_score": null,
+      "without_skill_score": null,
+      "relative_error_reduction": null
+    },
+    {
+      "skill_name": "coach",
+      "grade_from_c_r1": "Bronze",
+      "scenarios": 5,
+      "assertions": 22,
+      "behavioral_yaml": "skill-evals/behavioral/coach.yaml",
+      "result": null,
+      "with_skill_score": null,
+      "without_skill_score": null,
+      "relative_error_reduction": null
+    },
+    {
+      "skill_name": "orc",
+      "grade_from_c_r1": "Bronze",
+      "scenarios": 4,
+      "assertions": 19,
+      "behavioral_yaml": "skill-evals/behavioral/orc.yaml",
+      "result": null,
+      "with_skill_score": null,
+      "without_skill_score": null,
+      "relative_error_reduction": null
+    },
+    {
+      "skill_name": "obsidian",
+      "grade_from_c_r1": "Silver",
+      "scenarios": 3,
+      "assertions": 12,
+      "behavioral_yaml": "skill-evals/behavioral/obsidian.yaml",
+      "result": null,
+      "with_skill_score": null,
+      "without_skill_score": null,
+      "relative_error_reduction": null
+    },
+    {
+      "skill_name": "nightly-journal",
+      "grade_from_c_r1": "Bronze",
+      "scenarios": 3,
+      "assertions": 16,
+      "behavioral_yaml": "skill-evals/behavioral/nightly-journal.yaml",
+      "result": null,
+      "with_skill_score": null,
+      "without_skill_score": null,
+      "relative_error_reduction": null
+    },
+    {
+      "skill_name": "cmux-agents",
+      "grade_from_c_r1": "Gold",
+      "scenarios": 4,
+      "assertions": 19,
+      "behavioral_yaml": "skill-evals/behavioral/cmux-agents.yaml",
+      "result": null,
+      "with_skill_score": null,
+      "without_skill_score": null,
+      "relative_error_reduction": null
+    }
+  ],
+  "existing_assertion_baseline": {
+    "adapter_assertions": 102,
+    "regressions": 0,
+    "verified_by": "golems-worker-C-R2"
+  }
+}

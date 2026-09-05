@@ -1,0 +1,42 @@
+{
+  "specimen": "tailnet-sync/canonical-happy-path",
+  "label": "GREEN — Write local html + mirror Write to dashboards-serve + curl '%{http_code}' against the tailnet host returning 200, all same turn.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Build and publish the sprint dashboard to the tailnet hub."
+    },
+    {
+      "role": "assistant",
+      "text": "Writing locally, mirroring to the serve dir, then probing the served URL.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/dashboards/2026-06-21-sprint.html",
+            "content": "<html>sprint</html>"
+          }
+        },
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "/opt/private/coordination/docs.local/dashboards-serve/dashboards/sprint/2026-06-21-sprint.html",
+            "content": "<html>sprint</html>"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "curl -s -o /dev/null -w '%{http_code}' https://hub.example.invalid/sprint/2026-06-21-sprint.html"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "200" },
+    {
+      "role": "assistant",
+      "text": "Published ✅ — mirrored to the serve dir and curl returned 200. The sprint dashboard is live on the tailnet hub."
+    }
+  ]
+}

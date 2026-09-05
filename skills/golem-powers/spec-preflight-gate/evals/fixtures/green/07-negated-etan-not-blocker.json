@@ -1,0 +1,14 @@
+{
+  "specimen": "cursor-bugbot/negated-etan-phrase-is-not-human-only-blocker",
+  "events": [
+    { "role": "user", "text": "Run setup and report whether it needs Etan.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Running setup probe.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "setup-tool --check" } }
+      ]
+    },
+    { "role": "tool", "text": "setup check passed; this does not need Etan", "tools": [] }
+  ]
+}

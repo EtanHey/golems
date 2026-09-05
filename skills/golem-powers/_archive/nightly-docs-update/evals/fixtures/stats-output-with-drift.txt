@@ -1,0 +1,36 @@
+## Phase 1: Stats Collection
+
+- **Packages:** 11 (claude coach content docsite golems-tui jobs recruiter services shared tax-helper teller)
+- **Skills:** 56 dirs, 55 SKILL.md, 37 with evals (66%)
+- **BrainLayer chunks:** 295432 (295K+)
+- **PRs merged:** 275
+- **Tests:** 1012 pass, 0 fail, 72 files
+- **MCP servers:** 8
+
+## Phase 2: Update etanheyman.com
+
+- Updated `project-showcase-config.ts`: stats
+- Updated `terminal-showcase-config.ts`: chunk count
+- Updated `content/golems/faq.md`: chunk count → 295K+
+- Updated `content/golems/zikaron.md`: chunk count → 295K+
+- Updated `content/golems/llm.md`: chunk count → 295K+
+- Updated `architecture.md`: package count → 11
+
+## Dead Reference Detection
+
+No dead package references found.
+
+## Summary
+
+### Files Changed
+```
+ app/(golems)/golems/config/project-showcase-config.ts | 4 ++--
+ app/(golems)/golems/config/terminal-showcase-config.ts | 2 +-
+ content/golems/faq.md                                  | 2 +-
+ content/golems/zikaron.md                              | 4 ++--
+ content/golems/llm.md                                  | 2 +-
+ content/golems/architecture.md                         | 2 +-
+ 6 files changed, 8 insertions(+), 8 deletions(-)
+```
+
+**Action needed:** Create a PR with these changes.

@@ -1,0 +1,18 @@
+{
+  "specimen": "launcher-only title with no task",
+  "enumerated": {
+    "id": "99999999-9999-4999-8999-999999999999",
+    "ref": "surface:313",
+    "title": "golemsClaude [surface:313]",
+    "type": "terminal",
+    "workspace_ref": "workspace:1"
+  },
+  "observation": {
+    "identity_status": "MATCHED",
+    "process_alive": true,
+    "agent_state": "idle",
+    "open_lane": "unknown",
+    "artifact": {"status": "unknown", "uncommitted": null, "unpushed": null}
+  },
+  "expected": {"verdict": "KEEP-blocked", "untitled": true, "owner": "UNKNOWN"}
+}

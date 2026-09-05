@@ -1,0 +1,14 @@
+{
+  "specimen": "persistent work routed through large-plan:collab",
+  "events": [
+    { "role": "user", "text": "Use persistent agents and collab for a comprehensive ultracode audit.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Routing via large-plan collab.",
+      "tools": [
+        { "name": "large-plan:collab", "input": { "mode": "persistent", "gatherers": 17, "verifiers": 3, "stop": "loop-until-dry quality-stop" } }
+      ]
+    },
+    { "role": "tool", "text": "large-plan:collab accepted persistent workflow gatherers=17 verifiers=3 loop_until_dry=true", "tools": [] }
+  ]
+}

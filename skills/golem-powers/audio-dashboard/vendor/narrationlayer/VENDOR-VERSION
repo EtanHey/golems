@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "vendor": "narrationlayer",
+  "vendorDate": "2026-07-17",
+  "upstream": {
+    "repository": "EtanHey/narrationlayer",
+    "commit": "b8bd6407b420d8b807df3c82599c43a7f3d4d9f8",
+    "committedAt": "2026-07-17T23:22:50+03:00"
+  },
+  "pairs": [
+    {
+      "id": "local-tts-runner",
+      "vendorPath": "vendor/narrationlayer/local-tts-runner.ts",
+      "sourcePath": "bin/local-tts-runner.ts",
+      "vendorSha256": "4f572f9643f9ff843e8acc473b89e2ff0492da66aca6057b01437703c850bba1",
+      "sourceSha256": "f367be380ea63401cd3c0e499cdf249d726e826ce7401ee5395971ef298d990b"
+    },
+    {
+      "id": "profiles",
+      "vendorPath": "vendor/narrationlayer/profiles.ts",
+      "sourcePath": "src/profiles.ts",
+      "vendorSha256": "b4630a31da38726b987a7aae1a05fb1010f6b027d3231630cd429ea4e5d6301a",
+      "sourceSha256": "e03fc506bd6a5bcaab9b730ace9d49c2a09bd31f1b23e65d6606327c2ca33056"
+    },
+    {
+      "id": "schema",
+      "vendorPath": "vendor/narrationlayer/schema.ts",
+      "sourcePath": "src/schema.ts",
+      "vendorSha256": "e21463d518593ef136660fe1f3673d59307e1bedba1f86e252e577f49940fe43",
+      "sourceSha256": "0068b49b4ee2a96fd16598ccb85560c6179baa1b55b2af6be35aedca6d13afc5"
+    },
+    {
+      "id": "text-normalize",
+      "vendorPath": "vendor/narrationlayer/text-normalize.ts",
+      "sourcePath": "src/text-normalize.ts",
+      "vendorSha256": "1dfa15cfe808e90c5461b9dc4928a340fe795ff54256286ee9e6d3778185329e",
+      "sourceSha256": "15632883848aaafc3d38a4935f87bebc2f2eb799c2adab2af050a32081c00dd2"
+    },
+    {
+      "id": "word-timing-repair",
+      "vendorPath": "vendor/narrationlayer/word-timing-repair.ts",
+      "sourcePath": "src/word-timing-repair.ts",
+      "vendorSha256": "31a003bafaca943999a15aac49cda69e7ed48c1abcea35c606baa3c77bb64a6a",
+      "sourceSha256": "84251ae390ed90d5a70aa1e4530146204648bdafbcbb5d6f2a153ea06e64482a"
+    },
+    {
+      "id": "word-timings",
+      "vendorPath": "vendor/narrationlayer/word-timings.ts",
+      "sourcePath": "src/word-timings.ts",
+      "vendorSha256": "f6c0f928e5d09fc7e200ca6d8635a2041c44fc5341ec972b8549f0974cc812b3",
+      "sourceSha256": "4feed16024248316625c2c772788e7a92c8cfd2637aa15922f814c604264da55"
+    }
+  ],
+  "intentionalAdaptations": [
+    {
+      "pairId": "local-tts-runner",
+      "reason": "Vendored imports resolve to sibling modules and profile roots are env-configurable for repo-free runtime."
+    },
+    {
+      "pairId": "profiles",
+      "reason": "Vendored profile type imports resolve to the local schema shim."
+    },
+    {
+      "pairId": "schema",
+      "reason": "Vendored schema is a minimal type-only portability shim."
+    },
+    {
+      "pairId": "local-tts-runner",
+      "reason": "The vendored cache-receipt port is semantically equivalent but textually diverges from upstream in formatting, boolean coercion, and error messages; normalize it at the next re-vendor."
+    },
+    {
+      "pairId": "local-tts-runner",
+      "reason": "The vendored runner consumes the skill-local B13/B11 two-channel pronunciation overlay while upstream keeps repo-generic normalization; the paired open text-normalize and timing-alias debts track the owed portable upstream ports."
+    }
+  ],
+  "vendorSideFirst": [
+    {
+      "id": "D6d_CACHE_RECEIPT",
+      "pairId": "local-tts-runner",
+      "status": "resolved",
+      "aidevNote": "This vendored runtime writes the content-hash receipt required for D6d purge-on-reject; upstream narrationlayer synchronization is still owed.",
+      "requiredUpstreamPatterns": [
+        "export async function writeTakeCacheReceipt(",
+        "export async function clearTakeCacheReceipt(",
+        "await writeTakeCacheReceipt(output, cacheKey"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/local-tts-runner.test.ts"
+      ],
+      "resolvedUpstreamCommit": "6b1b5904d37e292b5c6f87a83ad986b1b579168b"
+    },
+    {
+      "id": "D6a_RAW_SERIES",
+      "pairId": "word-timing-repair",
+      "status": "resolved",
+      "aidevNote": "This vendored runtime preserves the untouched Whisper series so gates judge RAW while display uses repaired timing; upstream narrationlayer synchronization is still owed.",
+      "requiredUpstreamPatterns": [
+        "rawWords: WordTiming[];",
+        "return { rawWords: timings, words: timings, repaired: false }",
+        "rawWords: timings,"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/word-timing-repair.test.ts"
+      ],
+      "resolvedUpstreamCommit": "6b1b5904d37e292b5c6f87a83ad986b1b579168b"
+    },
+    {
+      "id": "B13_SPOKEN_PROVENANCE_AFTER_WAV",
+      "pairId": "local-tts-runner",
+      "status": "resolved",
+      "aidevNote": "This vendored runtime commits the spoken-input sidecar only after the selected or synthesized WAV passes non-empty validation; upstream NarrationLayer synchronization was owed after golems commit 6912ef33.",
+      "requiredUpstreamPatterns": [
+        "A failed rerun must never pair new sidecar bytes with an older output.",
+        "aliases from these bytes, so publishing them before the WAV is accepted is unsafe.",
+        "await writeFile(`${output}.spoken.txt`, spokenText, \"utf8\");"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/local-tts-runner.test.ts"
+      ],
+      "resolvedUpstreamCommit": "b8bd6407b420d8b807df3c82599c43a7f3d4d9f8"
+    },
+    {
+      "id": "B13_SPEECH_SANITIZER",
+      "pairId": "text-normalize",
+      "status": "open",
+      "aidevNote": "The vendored two-channel sanitizer and deterministic speech-alias derivation landed in golems PR #630 before the equivalent NarrationLayer source port.",
+      "requiredUpstreamPatterns": [
+        "export interface SpeechChannels {",
+        "export function deriveSpeechAliases(",
+        "export function prepareSpeechChannels("
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/text-normalize.test.ts"
+      ]
+    },
+    {
+      "id": "B13_TIMING_ALIASES",
+      "pairId": "word-timing-repair",
+      "status": "open",
+      "aidevNote": "The vendored timing repair accepts deterministic speech aliases from golems PR #630 before the equivalent NarrationLayer source port.",
+      "requiredUpstreamPatterns": [
+        "export interface WordTimingAlias {",
+        "function compileAliasSignatures(",
+        "aliases: WordTimingAlias[] = []"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/word-timing-repair.test.ts"
+      ]
+    },
+    {
+      "id": "GOLEMS_SYNC_PORTABLE_WHISPER_DISCOVERY",
+      "pairId": "word-timings",
+      "status": "open",
+      "aidevNote": "The vendored runtime constructs standard Homebrew fallback paths without embedding a machine-coupled /opt/homebrew/bin/<tool> literal, so the repo-free golems sync guard can reject literal tool paths. Port the same construction upstream before resolving this debt.",
+      "requiredUpstreamPatterns": [
+        "path.join(\"/opt/homebrew\", \"bin\", \"whisper-cli\")",
+        "path.join(\"/usr/local\", \"bin\", \"whisper-cli\")"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/word-timings.test.ts"
+      ]
+    }
+  ],
+  "upstreamSideFirst": [
+    {
+      "id": "VOICE_SSOT_PROFILE_CACHE_KEY",
+      "pairId": "local-tts-runner",
+      "status": "open",
+      "aidevNote": "The vendored runtime is behind upstream voice-SSOT: it omits profileId, profileVersion, and model from frozen-take content-hash cache keys and does not call warnIfNonAcceptedProfile. A fast-follow re-vendor lane is owed.",
+      "requiredUpstreamPatterns": [
+        "profileId?: string;",
+        "profileVersion?: string;",
+        "model?: string;",
+        "profileId: input.profileId,",
+        "profileVersion: input.profileVersion,",
+        "model: input.model,",
+        "warnIfNonAcceptedProfile(profile, ref);"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/local-tts-runner.test.ts"
+      ]
+    }
+  ]
+}

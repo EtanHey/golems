@@ -1,0 +1,81 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "code-review",
+  "eval_type": "behavior",
+  "eval_file": "evals/behavior/evals.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/code-review/SKILL.md",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "request-standard-review-coverage",
+      "assertions": [
+        {
+          "name": "standard-review-stack-is-requested",
+          "result": "PASS",
+          "evidence": "How to Request section: 'cr review --plain', 'Agent(subagent_type=coderabbit:code-reviewer)', 'Or use Greptile plugin' — specific stack, not generic."
+        },
+        {
+          "name": "feedback-tracking-path-is-explicit",
+          "result": "PASS",
+          "evidence": "The response pattern step 1 is 'READ: Complete feedback without reacting' and the tooling (cr review, coderabbit subagent, Greptile) all return actionable output for tracking."
+        },
+        {
+          "name": "no-clean-claim-before-feedback",
+          "result": "PASS",
+          "evidence": "Response Pattern step 3: 'VERIFY: Check against codebase reality'. Forbidden Responses prohibit premature reactions. The pattern requires reading before acting."
+        }
+      ]
+    },
+    {
+      "eval_id": "triage-mixed-review-feedback",
+      "assertions": [
+        {
+          "name": "blocking-issues-are-prioritized",
+          "result": "PASS",
+          "evidence": "Implementation Order: '2. Blocking issues (breaks, security)' before '3. Simple fixes' and '4. Complex fixes'."
+        },
+        {
+          "name": "non-blocking-comments-are-classified",
+          "result": "PASS",
+          "evidence": "Classify Each Comment table: Real bug/Security, Important improvement, Style preference, Over-engineering, False positive — all with distinct handling."
+        },
+        {
+          "name": "low-signal-comments-can-be-declined",
+          "result": "PASS",
+          "evidence": "Table: 'Style preference: Fix if genuinely better, skip if bikeshed'. 'Over-engineering: SKIP with reasoning'. 'False positive: SKIP with reasoning'. YAGNI check section."
+        }
+      ]
+    },
+    {
+      "eval_id": "clarify-before-implementing-unclear-review",
+      "assertions": [
+        {
+          "name": "clarification-or-restatement-happens-first",
+          "result": "PASS",
+          "evidence": "Implementation Order: '1. Clarify anything unclear FIRST — don not implement partial understanding'. Response Pattern step 2: 'UNDERSTAND: Restate requirement in own words (or ask)'."
+        },
+        {
+          "name": "codebase-reality-is-verified-before-fix",
+          "result": "PASS",
+          "evidence": "Response Pattern step 3: 'VERIFY: Check against codebase reality'. Step 4: 'EVALUATE: Technically sound for THIS codebase?'"
+        },
+        {
+          "name": "no-blind-agreement-or-emotional-validation",
+          "result": "PASS",
+          "evidence": "Forbidden Responses: 'NEVER say: You are absolutely right!, Great point!, Thanks for catching that!' — explicit prohibition."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.golems.comfyui</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@HOME@/Gits/ComfyUI/venv/bin/python</string>
+        <string>@HOME@/Gits/ComfyUI/main.py</string>
+        <string>--listen</string>
+        <string>127.0.0.1</string>
+        <string>--port</string>
+        <string>8188</string>
+        <string>--use-pytorch-cross-attention</string>
+        <string>--force-fp16</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>@HOME@/Gits/ComfyUI</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTORCH_ENABLE_MPS_FALLBACK</key>
+        <string>1</string>
+        <key>PYTORCH_MPS_HIGH_WATERMARK_RATIO</key>
+        <string>0.0</string>
+        <key>PATH</key>
+        <string>@HOME@/Gits/ComfyUI/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <!-- Start on demand, not at login -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- Restart on crash (but not on clean exit) -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/comfyui.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/comfyui.stderr.log</string>
+</dict>
+</plist>

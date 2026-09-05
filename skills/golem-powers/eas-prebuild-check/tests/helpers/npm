@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cmd="npm $*"
+project_dir="${PROJECT_DIR:-$PWD}"
+mocks_file="$project_dir/.eas-prebuild-check.mocks"
+
+if [[ ! -f "$mocks_file" ]]; then
+  echo "Missing mocks file: $mocks_file" >&2
+  exit 1
+fi
+
+value="$(jq -r --arg cmd "$cmd" '.[$cmd] // empty' "$mocks_file")"
+if [[ -z "$value" ]]; then
+  echo "No npm mock registered for: $cmd" >&2
+  exit 1
+fi
+
+printf '%s\n' "$value"

@@ -1,0 +1,308 @@
+{
+  "skill": "eas-prebuild-check",
+  "version": "1.0.0",
+  "created": "2026-04-08",
+  "description": "Evals for /eas-prebuild-check — validates Expo iOS/Android sync before first EAS build",
+  "source": "TaskOwl Sprint 2 EAS build lessons (April 8, 2026)",
+  "cases": [
+    {
+      "id": 1,
+      "name": "missing-easignore-detected",
+      "category": "compliance",
+      "description": "Project with no .easignore should fail check 01 loudly",
+      "prompt": "/eas-prebuild-check (in a project with no .easignore and a 500MB node_modules)",
+      "fixture": "tests/fixtures/missing-easignore/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "check-01-fail",
+          "description": "Output contains '[1/9]' line with '✗ FAIL' status and references '.easignore'"
+        },
+        {
+          "type": "content",
+          "name": "fix-suggested",
+          "description": "Output suggests --fix or copying from templates/.easignore"
+        },
+        {
+          "type": "content",
+          "name": "do-not-build-warning",
+          "description": "Output contains 'DO NOT run `eas build`' in summary section"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "easignore-partial-warn",
+      "category": "compliance",
+      "description": ".easignore exists but missing node_modules → WARN not FAIL",
+      "prompt": "/eas-prebuild-check (project has .easignore with only '.expo' entry)",
+      "fixture": "tests/fixtures/partial-easignore/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "check-01-warn",
+          "description": "Output shows check 1 as '⚠ WARN' (not FAIL)"
+        },
+        {
+          "type": "content",
+          "name": "missing-node-modules-listed",
+          "description": "Output names 'node_modules' in the missing excludes list"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "bundle-id-suspicious-default",
+      "category": "compliance",
+      "description": "Suspicious scaffold bundle IDs (com.yuvalnir.fromtoday, com.anonymous.*) flagged as WARN",
+      "prompt": "/eas-prebuild-check (app.json has expo.ios.bundleIdentifier = 'com.anonymous.myapp')",
+      "fixture": "tests/fixtures/bundle-id-default/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "check-04-warn",
+          "description": "Output shows check 4 (Bundle ID consistency) as WARN"
+        },
+        {
+          "type": "content",
+          "name": "suspicious-label",
+          "description": "Output contains 'suspicious' or 'scaffold default' language"
+        },
+        {
+          "type": "content",
+          "name": "fix-references-app-json",
+          "description": "Fix suggestion mentions editing app.json expo.ios.bundleIdentifier"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "version-mismatch-detected",
+      "category": "compliance",
+      "description": "Missing versionCode or buildNumber should FAIL check 05",
+      "prompt": "/eas-prebuild-check --platform both (app.json has version but no buildNumber/versionCode)",
+      "fixture": "tests/fixtures/no-version-fields/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "check-05-fail",
+          "description": "Check 5 (Version sync) shows FAIL"
+        },
+        {
+          "type": "content",
+          "name": "missing-fields-listed",
+          "description": "Output explicitly names the missing fields (ios.buildNumber or android.versionCode)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "no-ios-devices-preview",
+      "category": "compliance",
+      "description": "Preview profile with 0 registered devices → FAIL check 06",
+      "prompt": "/eas-prebuild-check --platform ios --profile preview (mocked eas device:list returns [])",
+      "fixture": "tests/fixtures/no-ios-devices/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "check-06-fail",
+          "description": "Check 6 (iOS devices registered) shows FAIL"
+        },
+        {
+          "type": "content",
+          "name": "device-create-suggested",
+          "description": "Fix suggestion is 'eas device:create'"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "production-profile-skips-device-check",
+      "category": "structure",
+      "description": "Profile=production should SKIP check 06 (production uses App Store distribution, not ad-hoc)",
+      "prompt": "/eas-prebuild-check --platform ios --profile production (0 registered devices)",
+      "fixture": "tests/fixtures/no-ios-devices/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "check-06-skipped",
+          "description": "Check 6 shows '⊘ SKIPPED' status with reason mentioning 'ad-hoc not required'"
+        },
+        {
+          "type": "negative",
+          "name": "no-device-failure",
+          "description": "Check 6 is NOT marked FAIL"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "eas-cli-outdated-warn",
+      "category": "compliance",
+      "description": "When local eas-cli is older than npm latest, check 3 should WARN",
+      "prompt": "/eas-prebuild-check (mocked: eas --version = 17.0.0, npm view = 18.5.0)",
+      "fixture": "tests/fixtures/happy-path/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "check-03-warn",
+          "description": "Check 3 shows WARN status"
+        },
+        {
+          "type": "content",
+          "name": "upgrade-command",
+          "description": "Fix suggests 'npm install -g eas-cli@latest'"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "fix-writes-canonical-easignore",
+      "category": "quality",
+      "description": "--fix mode on project with no .easignore should write from template without data loss",
+      "prompt": "/eas-prebuild-check --fix (project missing .easignore, has other files)",
+      "fixture": "tests/fixtures/missing-easignore/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "check-01-pass-after-fix",
+          "description": "After --fix, check 1 shows PASS"
+        },
+        {
+          "type": "content",
+          "name": "easignore-file-written",
+          "description": "A .easignore file exists in the project after running and contains 'node_modules'"
+        },
+        {
+          "type": "negative",
+          "name": "no-other-files-touched",
+          "description": "No other files in the project were modified or created (except .easignore)"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "fix-refuses-destructive-changes",
+      "category": "compliance",
+      "description": "--fix should NEVER auto-change bundle ID, device registration, or credentials",
+      "prompt": "/eas-prebuild-check --fix (project has suspicious bundle ID and 0 devices)",
+      "fixture": "tests/fixtures/bundle-id-default/",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "no-auto-bundle-change",
+          "description": "app.json bundleIdentifier is UNCHANGED after --fix"
+        },
+        {
+          "type": "content",
+          "name": "user-judgment-required",
+          "description": "Output says check 4 still requires user action / 'needs user judgment' or similar"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "json-mode-machine-readable",
+      "category": "structure",
+      "description": "--json flag produces valid parseable JSON with expected keys",
+      "prompt": "/eas-prebuild-check --json",
+      "fixture": "tests/fixtures/happy-path/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "valid-json",
+          "description": "Output parses as valid JSON (jq . succeeds)"
+        },
+        {
+          "type": "content",
+          "name": "has-checks-array",
+          "description": "JSON has 'checks' array with at least 9 entries"
+        },
+        {
+          "type": "content",
+          "name": "has-summary-object",
+          "description": "JSON has 'summary' object with pass, fail, warn, skip, info counts"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "managed-workflow-skip-native-checks",
+      "category": "structure",
+      "description": "Managed workflow (no ios/ or android/ dirs) — some native checks should SKIP or adapt",
+      "prompt": "/eas-prebuild-check (project has no ios/ or android/ folders — managed workflow)",
+      "fixture": "tests/fixtures/managed-workflow/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "still-runs-all-checks",
+          "description": "All 9 checks still run (managed workflow still needs them)"
+        },
+        {
+          "type": "content",
+          "name": "easignore-still-important",
+          "description": "Check 1 still runs — .easignore matters even in managed workflow (root node_modules exists)"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "exit-code-nonzero-on-fail",
+      "category": "compliance",
+      "description": "When any check is FAIL, exit code must be 1",
+      "prompt": "/eas-prebuild-check (known-failing project); echo $?",
+      "fixture": "tests/fixtures/missing-easignore/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "exit-code-1",
+          "description": "Shell exit code is 1 (not 0, not 2)"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "exit-code-zero-on-pass",
+      "category": "compliance",
+      "description": "When all checks are PASS or WARN/INFO only, exit code is 0",
+      "prompt": "/eas-prebuild-check (happy-path project); echo $?",
+      "fixture": "tests/fixtures/happy-path/",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "exit-code-0",
+          "description": "Shell exit code is 0"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "exit-code-2-not-expo",
+      "category": "compliance",
+      "description": "Running outside an Expo project → exit 2 with clear message",
+      "prompt": "cd /tmp && /eas-prebuild-check",
+      "fixture": null,
+      "assertions": [
+        {
+          "type": "content",
+          "name": "not-expo-message",
+          "description": "stderr says 'Not an Expo project' or mentions missing app.json/app.config.js"
+        },
+        {
+          "type": "content",
+          "name": "exit-code-2",
+          "description": "Shell exit code is 2"
+        }
+      ]
+    }
+  ],
+  "baseline_expected_score": "5-15%",
+  "target_with_skill_score": ">90%",
+  "minimum_delta": 70,
+  "notes": [
+    "Baseline should be near zero because no agent naturally knows all 9 checks from memory — they require running specific eas-cli commands and parsing outputs.",
+    "Core discriminators: cases 1, 5, 7, 10 — these test the skill's unique knowledge.",
+    "Cases 8, 9 validate safety of --fix mode — critical for trust.",
+    "Cases 12-14 validate exit code discipline — required for CI/CD integration."
+  ]
+}

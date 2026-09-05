@@ -1,0 +1,50 @@
+{
+  "red_arm": {
+    "runner": "claude-workflow-reference",
+    "description": "Frozen reference gather over corpus/session-alpha.jsonl and corpus/session-beta.jsonl using Claude workflow semantics.",
+    "token_usage": {
+      "input_tokens": 1280,
+      "output_tokens": 440,
+      "total_tokens": 1720,
+      "estimated_cost_usd": 0.0064
+    }
+  },
+  "coverage_tolerance": {
+    "high_importance": 1.0
+  },
+  "second_round_only_finding_id": "CW-HIGH-002",
+  "findings": [
+    {
+      "id": "CW-HIGH-001",
+      "title": "Replay fixtures must preserve cursor-agent NDJSON usage events",
+      "importance": "high",
+      "source": "claude-reference",
+      "discovered_round": 1,
+      "second_round_only": false,
+      "evidence": [
+        {
+          "file": "corpus/session-alpha.jsonl",
+          "line": 2,
+          "anchor": "session-alpha.jsonl:2",
+          "quote": "The deterministic gate needs the raw cursor-agent NDJSON replay so token accounting is validated, not inferred."
+        }
+      ]
+    },
+    {
+      "id": "CW-HIGH-002",
+      "title": "Loop-until-dry is required to catch schema-invalid replay findings",
+      "importance": "high",
+      "source": "claude-reference",
+      "discovered_round": 2,
+      "second_round_only": true,
+      "evidence": [
+        {
+          "file": "corpus/session-beta.jsonl",
+          "line": 2,
+          "anchor": "session-beta.jsonl:2",
+          "quote": "A second loop_until_dry round surfaces the schema-validity failure; a single gather pass misses it."
+        }
+      ]
+    }
+  ]
+}

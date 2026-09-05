@@ -1,0 +1,15 @@
+{
+  "specimen": "cursor-bugbot/mixed-negated-and-positive-etan-blocker-still-flags",
+  "violation": "BLOCKER_NO_WORKAROUND",
+  "events": [
+    { "role": "user", "text": "Run setup and only escalate after a workaround.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Running setup probe.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "setup-tool --check" } }
+      ]
+    },
+    { "role": "tool", "text": "setup precheck does not need Etan, but install is blocked, needs Etan for admin install", "tools": [] }
+  ]
+}

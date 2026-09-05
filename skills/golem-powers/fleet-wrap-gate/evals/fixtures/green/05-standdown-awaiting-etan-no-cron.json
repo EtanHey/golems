@@ -1,0 +1,12 @@
+{
+  "specimen": "stand-down awaiting an Etan decision — inbound monitor only, no poll cron",
+  "label": "GREEN — work done, awaiting an Etan decision, ONE inbound-only monitor armed to catch the reply, no health-watch / poll / loop. The allowed monitor-law case.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "everything merged?" },
+    {
+      "role": "assistant",
+      "text": "All work merged — standing down, awaiting an Etan decision on Track 3. One inbound-only monitor armed to catch your reply; no polling crons, cron-count=0."
+    }
+  ]
+}

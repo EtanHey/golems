@@ -1,0 +1,27 @@
+SEAT CONTEXT — brainlayer worker, about to post a review verdict on EtanHey/brainlayer PR #661
+
+--- launcher env (repoGolem export) ---
+GOLEM_SEAT=brainlayerCodex
+GOLEM_ROLE=worker
+GOLEM_HARNESS=codex
+
+--- cmux spawn registry entry (mcp__cmuxlayer__get_agent_state) ---
+{
+  "agent_id": "brainlayerCodex-w3",
+  "spawned_at": "2026-08-08T09:02:11Z",
+  "requested_model": "gpt-5.4",
+  "reasoning_effort": "xhigh",
+  "surface": "surface:7"
+}
+
+--- tail of the session rollout JSONL (~/.codex/sessions/2026/08/08/rollout-...-a91c77e2-...jsonl) ---
+{"payload":{"type":"turn_context","model":"gpt-5.4","effort":"xhigh","turn_id":"t1","cwd":"/Users/example/Gits/brainlayer"}}
+{"payload":{"type":"turn_context","model":"gpt-5.6-sol","effort":"medium","turn_id":"t14","cwd":"/Users/example/Gits/brainlayer"}}
+{"payload":{"type":"turn_context","model":"gpt-5.6-sol","effort":"medium","turn_id":"t15","cwd":"/Users/example/Gits/brainlayer"}}
+
+--- the agent's own belief, stated earlier this session ---
+"I'm GPT-5.4 running at extra-high reasoning."
+
+--- the comment body to post ---
+Reviewed the retry path. LGTM: the backoff now caps at 30s and the dead-letter
+write is idempotent. One nit left inline on naming; not blocking.

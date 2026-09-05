@@ -1,0 +1,97 @@
+# Behavioral Eval: research skill
+# Tests: BrainLayer-first, backend routing, quick vs deep, results storage
+# Scenarios: 4 | Assertions: 18
+
+skill: research
+skill_path: skills/golem-powers/research/SKILL.md
+
+scenarios:
+  - id: research-default-deep
+    name: "Default research → BrainLayer check + background subagent"
+    prompt: |
+      Research the feature flag vendor landscape for a migration decision.
+      I do not need an immediate answer; use the default /research workflow.
+    assertions:
+      - type: trajectory:tool-sequence
+        value:
+          - toolName: brain_search
+          - toolName: Agent
+        config:
+          mode: in_order
+        description: "Checks BrainLayer BEFORE spawning researcher subagent"
+      - type: trajectory:tool-used
+        value: brain_search
+        description: "Must search BrainLayer first (cache check)"
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke research skill"
+      - type: llm-rubric
+        value: "Response treats research as an async/background task, mentioning where results will be saved, rather than blocking for a long inline answer"
+        description: "Treats default research as background task"
+      - type: llm-rubric
+        value: "Response mentions storing or digesting useful findings for later retrieval"
+        description: "Plans to persist worthwhile results"
+
+  - id: research-quick-inline
+    name: "Quick mode → inline web search, no background agent"
+    prompt: |
+      Quick question: use /research --quick to compare Linear vs Height
+      for a small product team and answer inline.
+    assertions:
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke research skill"
+      - type: trajectory:tool-used
+        value: WebSearch
+        description: "Quick mode uses direct web search, not subagent"
+      - type: javascript
+        value: |
+          // Should NOT spawn a background Agent for quick mode
+          const toolCalls = output.toolCalls || [];
+          const hasBackgroundAgent = toolCalls.some(t =>
+            t.name === 'Agent' && t.arguments?.run_in_background === true
+          );
+          return !hasBackgroundAgent;
+        description: "Does NOT spawn background agent for quick mode"
+      - type: llm-rubric
+        value: "Response provides a direct inline comparison rather than describing a saved report or long-running job"
+        description: "Returns inline answer without report file"
+
+  - id: research-audit-mode
+    name: "Audit mode → CLI agents (Gemini/Cursor) in parallel"
+    prompt: |
+      Before I open a PR, use /research --audit on this diff:
+      Added validation.ts (85 lines) with Zod schema validation.
+      Modified tools.ts (+12 -3) to call validation before invoice creation.
+      Added validation.test.ts (45 lines) with edge case coverage.
+    assertions:
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke research skill"
+      - type: llm-rubric
+        value: "Response routes the audit to CLI agent backends (mentions Gemini, Cursor, or similar audit tools) rather than the generic researcher subagent"
+        description: "Routes to audit-specific CLI agents"
+      - type: llm-rubric
+        value: "Response uses multiple audit backends or mentions cross-checking findings from multiple sources"
+        description: "Uses multiple backends for coverage"
+
+  - id: research-brainlayer-hit
+    name: "BrainLayer has relevant data → uses it before external research"
+    prompt: |
+      Research Hebrew ASR quality benchmarks. I think we looked at this before.
+    assertions:
+      - type: trajectory:tool-sequence
+        value:
+          - toolName: brain_search
+        config:
+          mode: in_order
+        description: "BrainLayer search comes first"
+      - type: trajectory:tool-used
+        value: Skill
+        description: "Must invoke research skill"
+      - type: llm-rubric
+        value: "Response acknowledges and uses any BrainLayer results found before deciding whether additional research is needed"
+        description: "Uses existing BrainLayer knowledge before external research"
+      - type: trajectory:step-count
+        value: ">= 2"
+        description: "At least skill invocation + brain_search"

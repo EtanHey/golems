@@ -1,0 +1,167 @@
+{
+  "skill_name": "session-handoff",
+  "description": "Eval cases for the session-handoff skill. Tests structured handoff file creation, brain_store persistence, new agent spawning, grill answering, and verification. All cases from real April 4, 2026 handoff failures.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "My context is at 68% and I have 3 active agents working on a sprint. The user just said 'I'm going to sleep, wrap things up.' How do I hand off?",
+      "expected_output": "Should write a structured handoff file (NOT raw cmux text), brain_store the state, spawn a new agent, and set up monitoring. Should NOT just say 'goodnight' or end the session.",
+      "assertions": [
+        {
+          "text": "Writes a structured handoff file to docs.local/handoffs/ (not raw cmux text)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Includes agent state table with surfaces, tasks, and context %",
+          "type": "behavioral"
+        },
+        {
+          "text": "brain_stores the handoff summary with appropriate tags",
+          "type": "behavioral"
+        },
+        {
+          "text": "Spawns a new agent to continue the work",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT just say 'goodnight' without handing off to a continuation agent",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I just spawned a new orcClaude to take over. It's asking: 'What's the current state? What should I focus on? What agents are running?' Should I tell the user to answer these questions?",
+      "expected_output": "Absolutely NOT — the OUTGOING agent must answer the grill questions from its own context. The user should never be a message relay.",
+      "assertions": [
+        {
+          "text": "Answers the new agent's questions directly (via send_input to its surface)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT tell the user to answer the grill questions",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT wait passively for the user to relay information",
+          "type": "negative"
+        },
+        {
+          "text": "Uses its own accumulated context to answer (it has the knowledge)",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need to hand off but I've received 8 user corrections this session about routing, fabrication, and browser preferences. What goes in the handoff file?",
+      "expected_output": "All 8 corrections MUST be in the User Corrections section of the handoff file, with category, importance, and exact quotes. Without this, the new agent will repeat the same mistakes.",
+      "assertions": [
+        {
+          "text": "Includes a User Corrections section in the handoff file",
+          "type": "behavioral"
+        },
+        {
+          "text": "Lists all 8 corrections with categories and exact user quotes",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT omit corrections from the handoff (they're the most valuable transfer)",
+          "type": "negative"
+        },
+        {
+          "text": "Includes importance levels for each correction",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The new agent is booted and I sent it the handoff file path. How do I know the handoff is actually complete?",
+      "expected_output": "Must verify: (1) new agent is actively working (read_screen shows tool calls), (2) monitoring is set up, (3) corrections are in BrainLayer (brain_search). Only THEN declare complete.",
+      "assertions": [
+        {
+          "text": "Checks that the new agent is actively working (read_screen, token count increasing)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Verifies monitoring is set up (CronCreate or /loop)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Verifies corrections are stored in BrainLayer (brain_search check)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT declare handoff complete without verification steps",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I'm at 72% context. Should I compact first or hand off directly?",
+      "expected_output": "At 72%, should hand off directly — NOT compact. Compaction loses 60-70% of context, and quality already degrades past 50%. A structured handoff to a fresh agent preserves more knowledge than a compaction.",
+      "assertions": [
+        {
+          "text": "Recommends handoff over compaction at 72% context",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT recommend compacting at 72% (too late, loses too much)",
+          "type": "negative"
+        },
+        {
+          "text": "Mentions that compaction loses 60-70% of context",
+          "type": "behavioral"
+        },
+        {
+          "text": "Explains that structured handoff preserves more than compaction",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I want to hand off to a new session. Should I use 'orcClaude -s' or 'orcClaude -s -c' for the new agent?",
+      "expected_output": "For a TRUE handoff (new agent, fresh context): use 'orcClaude -s' (fresh session). '-c' continues the SAME session which defeats the purpose of a handoff. Only use '-c' if you want to resume your own session after a disconnect.",
+      "assertions": [
+        {
+          "text": "Recommends 'orcClaude -s' for a fresh handoff agent (not -c)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Explains that -c continues the same session (not a fresh start)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT confuse -s (skip-permissions) with -c (continue)",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "The user told me to set up a /loop to monitor the new agent during handoff. I forgot. Now the user is reminding me for the second time. What happened?",
+      "expected_output": "Should recognize this as a monitoring failure (same pattern as orc R4-R5). Should immediately set up the loop AND brain_store this as a correction (via /frustration-capture).",
+      "assertions": [
+        {
+          "text": "Immediately sets up the monitoring loop (CronCreate or /loop)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recognizes this is a repeated instruction (user asked twice)",
+          "type": "behavioral"
+        },
+        {
+          "text": "brain_stores this as a user correction via /frustration-capture",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT make excuses for forgetting the loop",
+          "type": "negative"
+        }
+      ]
+    }
+  ]
+}

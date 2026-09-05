@@ -1,0 +1,227 @@
+#!/bin/bash
+# setupGolemClaude - Initialize a project with Golem Claude system
+#
+# This script:
+# 1. Creates/updates project CLAUDE.md with proper inheritance
+# 2. Sets up contexts/ folder with symlinks to shared contexts
+# 3. Configures .claude/ project settings
+# 4. Wires up to Telegram notifications
+#
+# Usage: setupGolemClaude [project-path]
+# Example: setupGolemClaude ~/Gits/my-new-project
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+GOLEM_HOME="$HOME/Gits/golems"
+SHARED_CONTEXTS="$GOLEM_HOME/contexts"
+
+# Default to current directory if no argument
+PROJECT_PATH="${1:-.}"
+PROJECT_PATH=$(cd "$PROJECT_PATH" && pwd)
+PROJECT_NAME=$(basename "$PROJECT_PATH")
+
+echo "=== setupGolemClaude ==="
+echo "Project: $PROJECT_NAME"
+echo "Path: $PROJECT_PATH"
+echo ""
+
+# 1. Check prerequisites
+echo -e "${YELLOW}[1/5] Checking prerequisites...${NC}"
+if [ ! -d "$GOLEM_HOME" ]; then
+    echo -e "${RED}Error: claude-golem not found at $GOLEM_HOME${NC}"
+    exit 1
+fi
+
+if [ ! -f "$HOME/.claude/CLAUDE.md" ]; then
+    echo -e "${RED}Error: Global CLAUDE.md not found at ~/.claude/CLAUDE.md${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}Prerequisites OK${NC}"
+
+# 2. Create/update CLAUDE.md
+echo -e "${YELLOW}[2/5] Setting up CLAUDE.md...${NC}"
+
+if [ -f "$PROJECT_PATH/CLAUDE.md" ]; then
+    # Check if it already has the inheritance header
+    if grep -q "INHERITS FROM" "$PROJECT_PATH/CLAUDE.md"; then
+        echo "CLAUDE.md already has inheritance - skipping"
+    else
+        echo "CLAUDE.md exists but missing inheritance header - backing up and updating"
+        cp "$PROJECT_PATH/CLAUDE.md" "$PROJECT_PATH/CLAUDE.md.bak"
+
+        # Prepend inheritance header
+        cat > "$PROJECT_PATH/CLAUDE.md.new" << 'EOF'
+# Project Instructions
+
+> **INHERITS FROM**: `~/.claude/CLAUDE.md` (global rules)
+>
+> This file contains PROJECT-SPECIFIC rules only.
+> Global rules (CLAUDE_COUNTER, Telegram notifications, commit rules) are in the global file.
+> DO NOT duplicate global rules here - they apply automatically.
+
+---
+
+EOF
+        cat "$PROJECT_PATH/CLAUDE.md" >> "$PROJECT_PATH/CLAUDE.md.new"
+        mv "$PROJECT_PATH/CLAUDE.md.new" "$PROJECT_PATH/CLAUDE.md"
+        echo -e "${GREEN}Updated CLAUDE.md with inheritance header${NC}"
+    fi
+else
+    # Create new CLAUDE.md
+    cat > "$PROJECT_PATH/CLAUDE.md" << EOF
+# $PROJECT_NAME Instructions
+
+> **INHERITS FROM**: \`~/.claude/CLAUDE.md\` (global rules)
+>
+> This file contains PROJECT-SPECIFIC rules only.
+> Global rules (CLAUDE_COUNTER, Telegram notifications, commit rules) are in the global file.
+> DO NOT duplicate global rules here - they apply automatically.
+
+---
+
+## About This Project
+
+[Add project description here]
+
+## Project-Specific Commands
+
+[Add any project-specific CLI commands here]
+
+## Key Files
+
+| Path | Purpose |
+|------|---------|
+| src/ | Source code |
+
+---
+
+## Golem Ecosystem Reference
+
+This project is part of the Golem ecosystem. Key components:
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| **Ralph** | ~/Gits/claude-golem | Autonomous AI coding loop |
+| **Zikaron** | ~/Gits/zikaron | Memory layer (indexes Claude conversations) |
+| **GolemsZikaron** | ~/Gits/golems-zikaron | Telegram bot + Moltbook integration |
+| **Moltbook** | (via golems-zikaron) | AI social network presence |
+
+### Active LaunchAgents
+- \`com.golemszikaron.telegram\` - Telegram bot (always on)
+- \`com.golemszikaron.nightshift\` - 3am autonomous work
+- \`com.golemszikaron.briefing\` - 8am briefings
+- \`com.zikaron.watcher\` - File watcher for indexing
+
+### State Locations
+- \`~/.golems-zikaron/\` - Telegram inbox/outbox, state.json
+- \`~/.config/ralph/\` - Ralph runtime config
+- \`~/.claude/\` - Claude Code state
+
+### Skills
+Main skills in \`~/Gits/claude-golem/skills/golem-powers/\`:
+- \`/prd\` - Create PRDs for Ralph
+- \`/commit\` - Atomic commit with CodeRabbit review
+- \`/notify\` - Send Telegram notification
+
+EOF
+    echo -e "${GREEN}Created CLAUDE.md${NC}"
+fi
+
+# 3. Set up contexts/ folder
+echo -e "${YELLOW}[3/5] Setting up contexts/...${NC}"
+mkdir -p "$PROJECT_PATH/contexts"
+
+# Symlink shared contexts if not already present
+if [ ! -e "$PROJECT_PATH/contexts/base.md" ]; then
+    ln -s "$SHARED_CONTEXTS/base.md" "$PROJECT_PATH/contexts/base.md" 2>/dev/null || \
+        cp "$SHARED_CONTEXTS/base.md" "$PROJECT_PATH/contexts/base.md"
+    echo "Linked contexts/base.md"
+fi
+
+if [ ! -e "$PROJECT_PATH/contexts/golem-ecosystem.md" ]; then
+    ln -s "$SHARED_CONTEXTS/golem-ecosystem.md" "$PROJECT_PATH/contexts/golem-ecosystem.md" 2>/dev/null || \
+        cp "$SHARED_CONTEXTS/golem-ecosystem.md" "$PROJECT_PATH/contexts/golem-ecosystem.md"
+    echo "Linked contexts/golem-ecosystem.md"
+fi
+
+# Create project-specific context template if doesn't exist
+if [ ! -f "$PROJECT_PATH/contexts/project.md" ]; then
+    cat > "$PROJECT_PATH/contexts/project.md" << EOF
+# $PROJECT_NAME Context
+
+> Load this context when working on $PROJECT_NAME
+
+## Stack
+
+- [Add your stack here]
+
+## Patterns
+
+- [Add project-specific patterns here]
+
+## Gotchas
+
+- [Add things to watch out for]
+EOF
+    echo "Created contexts/project.md template"
+fi
+
+echo -e "${GREEN}Contexts set up${NC}"
+
+# 4. Set up .claude/ project config (if Claude Code is used)
+echo -e "${YELLOW}[4/5] Setting up .claude/ config...${NC}"
+mkdir -p "$PROJECT_PATH/.claude"
+
+if [ ! -f "$PROJECT_PATH/.claude/settings.local.json" ]; then
+    cat > "$PROJECT_PATH/.claude/settings.local.json" << EOF
+{
+  "permissions": {
+    "allow": [],
+    "deny": []
+  }
+}
+EOF
+    echo "Created .claude/settings.local.json"
+fi
+
+# Add to .gitignore if not already there
+if [ -f "$PROJECT_PATH/.gitignore" ]; then
+    if ! grep -q ".claude/settings.local.json" "$PROJECT_PATH/.gitignore"; then
+        echo ".claude/settings.local.json" >> "$PROJECT_PATH/.gitignore"
+        echo "Added .claude/settings.local.json to .gitignore"
+    fi
+fi
+
+echo -e "${GREEN}.claude/ config set up${NC}"
+
+# 5. Verify Telegram notification endpoint
+echo -e "${YELLOW}[5/5] Verifying Telegram endpoint...${NC}"
+if curl -s -o /dev/null -w "%{http_code}" http://localhost:3847/health 2>/dev/null | grep -q "200"; then
+    echo -e "${GREEN}Telegram notification server is running${NC}"
+else
+    echo -e "${YELLOW}Warning: Telegram notification server not responding at localhost:3847${NC}"
+    echo "Make sure golems-zikaron telegram bot is running"
+fi
+
+# Summary
+echo ""
+echo "=== Setup Complete ==="
+echo ""
+echo "Created/updated:"
+echo "  - $PROJECT_PATH/CLAUDE.md (with inheritance)"
+echo "  - $PROJECT_PATH/contexts/ (shared + project-specific)"
+echo "  - $PROJECT_PATH/.claude/ (local config)"
+echo ""
+echo "Next steps:"
+echo "  1. Edit CLAUDE.md to add project-specific instructions"
+echo "  2. Edit contexts/project.md for your stack/patterns"
+echo "  3. Run 'claude' in $PROJECT_PATH to start coding"
+echo ""
+echo -e "${GREEN}Done!${NC}"

@@ -1,0 +1,182 @@
+{
+  "skill_name": "yash",
+  "tier": "standard",
+  "version": "1.0",
+  "last_eval_date": "2026-04-05",
+  "eval_methodology": "behavioral_compliance",
+  "categories": {
+    "diagnosis": "Correctly identifying dependency bugs vs user error",
+    "upstream_first": "Choosing to fix upstream instead of workaround",
+    "bridge_pattern": "Using patch-package as temporary bridge",
+    "tracking": "Storing upstream PR status in BrainLayer",
+    "acceptable_workaround": "Recognizing when workaround IS appropriate"
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "fix-upstream-not-workaround",
+      "category": "upstream_first",
+      "description": "When hitting a clear dependency bug, agent should propose fixing upstream, not working around",
+      "prompt": "I'm getting a crash in the `@brainlayer/embeddings` package — it throws when the input text is empty string. I checked and it's clearly a bug in their validation. What should I do?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "proposes-upstream-fix",
+          "description": "Proposes forking the repo and submitting a PR to fix the validation bug"
+        },
+        {
+          "type": "content",
+          "name": "mentions-patch-package",
+          "description": "Suggests patch-package as a temporary bridge while waiting for the PR to merge"
+        },
+        {
+          "type": "content",
+          "name": "mentions-issue-check",
+          "description": "Suggests checking the issue tracker first for existing reports or PRs"
+        },
+        {
+          "type": "negative",
+          "name": "no-just-workaround",
+          "description": "Does NOT suggest only adding an empty-string check in the caller as the primary solution"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "diagnose-before-blaming",
+      "category": "diagnosis",
+      "description": "Agent should verify it's actually a dependency bug before proposing upstream fix",
+      "prompt": "This library is broken — `parseConfig()` keeps returning null. I'm calling it like `parseConfig('./config.yaml')` but it only accepts JSON. Fix the library.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "checks-api-usage",
+          "description": "Asks whether the user is passing YAML to a JSON-only parser — checks API usage first"
+        },
+        {
+          "type": "content",
+          "name": "reads-docs",
+          "description": "Suggests reading the library docs to verify the expected input format"
+        },
+        {
+          "type": "negative",
+          "name": "no-blind-fork",
+          "description": "Does NOT immediately suggest forking and PRing without verifying it's actually a bug"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "patch-package-bridge",
+      "category": "bridge_pattern",
+      "description": "Agent should know the full patch-package workflow as a temporary bridge",
+      "prompt": "I found a bug in `fast-csv` parsing — it drops the last row when the file doesn't end with a newline. I submitted a PR upstream but need a fix NOW for my production pipeline. What's the fastest bridge?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "patch-package-workflow",
+          "description": "Describes the patch-package workflow: fix in node_modules, run npx patch-package, commit the .patch file"
+        },
+        {
+          "type": "content",
+          "name": "postinstall-script",
+          "description": "Mentions adding 'postinstall': 'patch-package' to package.json scripts"
+        },
+        {
+          "type": "content",
+          "name": "removal-plan",
+          "description": "Mentions removing the patch when the upstream PR merges and package updates"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "track-upstream-pr",
+      "category": "tracking",
+      "description": "Agent should brain_store the upstream PR for tracking",
+      "prompt": "Great, I submitted the PR to fix the CSV parser bug. PR is at https://github.com/fast-csv/fast-csv/pull/847. How do I make sure I don't forget to clean up the patch when it merges?",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "brain-stores-pr",
+          "description": "Uses brain_store to record the upstream PR URL, the local patch file, and the cleanup instructions"
+        },
+        {
+          "type": "content",
+          "name": "includes-removal-trigger",
+          "description": "Specifies when to remove the patch (PR merge + package update)"
+        },
+        {
+          "type": "content",
+          "name": "tags-appropriately",
+          "description": "Uses tags like 'yash', 'upstream-pr', or the package name"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "workaround-acceptable-design-limit",
+      "category": "acceptable_workaround",
+      "description": "Agent should recognize when workaround IS the right call (design limitation, not bug)",
+      "prompt": "The SQLite driver doesn't support concurrent writes — I need to handle write contention in my app. Should I fork SQLite and add concurrent write support?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-design-limitation",
+          "description": "Recognizes this is a design limitation of SQLite, not a bug — single-writer is intentional"
+        },
+        {
+          "type": "content",
+          "name": "suggests-application-level-fix",
+          "description": "Suggests application-level solutions (write queue, WAL mode, serialization) instead of forking"
+        },
+        {
+          "type": "negative",
+          "name": "no-fork-sqlite",
+          "description": "Does NOT suggest forking SQLite to add concurrent writes"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "abandoned-project-fork",
+      "category": "upstream_first",
+      "description": "For abandoned projects, agent should suggest permanent fork or alternative",
+      "prompt": "I'm using `legacy-auth-middleware` which hasn't been updated in 2 years. It has a critical security bug but the maintainer is unresponsive. 3 PRs are open with no review. What should I do?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "detects-abandoned",
+          "description": "Recognizes the project is abandoned (2 years no updates, unresponsive maintainer)"
+        },
+        {
+          "type": "content",
+          "name": "suggests-permanent-fork-or-alternative",
+          "description": "Suggests either a permanent fork (published under own scope) OR migrating to an actively maintained alternative"
+        },
+        {
+          "type": "content",
+          "name": "security-urgency",
+          "description": "Treats the security bug with appropriate urgency — don't wait for a dead project"
+        },
+        {
+          "type": "negative",
+          "name": "no-wait-for-maintainer",
+          "description": "Does NOT suggest 'wait for the maintainer to respond' as the primary action"
+        }
+      ]
+    }
+  ],
+  "with_skill_vs_without_skill": {
+    "methodology": "Score 1/0 per assertion. Baseline = Claude with no yash skill. With-skill = Claude with yash SKILL.md loaded.",
+    "baseline_expected_pass_rate": "35-50%",
+    "with_skill_expected_pass_rate": "85-95%",
+    "strongest_discriminators": [
+      "fix-upstream-not-workaround",
+      "patch-package-bridge",
+      "track-upstream-pr",
+      "abandoned-project-fork"
+    ],
+    "weakest_discriminators_notes": "diagnose-before-blaming and workaround-acceptable-design-limit may pass baseline since Claude already has some judgment about when bugs are real vs user error. These test nuance, not core behavior."
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "specimen": "monitor-law via a real CronCreate framed as the inbound/standby monitor (Macroscope MEDIUM — exception must be live, not dead code)",
+  "label": "GREEN — a stand-down that arms ONE CronCreate explicitly framed as the inbound monitor (await an Etan decision), with NO health-watch/poll/loop. The single allowed inbound monitor — must PASS, not be unreachable.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "stand down for the night" },
+    {
+      "role": "assistant",
+      "text": "Standing down — arming one inbound monitor to catch your reply, awaiting an Etan decision on Track 3. No health-watch, no polling.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__CronCreate",
+          "input": {
+            "schedule": "* * * * *",
+            "prompt": "inbound: relay any Etan message"
+          }
+        }
+      ]
+    }
+  ]
+}

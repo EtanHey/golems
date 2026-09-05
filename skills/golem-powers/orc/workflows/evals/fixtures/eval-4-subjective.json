@@ -1,0 +1,51 @@
+{
+  "fixture_id": "eval-4-subjective",
+  "scenario_name": "Pure subjective decision — no propagation to unaffected agents (AP5 prevention)",
+  "user_prompt": "Let's defer brainlayer Phase 4 until after the lecture.",
+  "ecosystem_state": {
+    "active_surfaces": [
+      {
+        "surface_id": "surface:brainlayer-lead-stub-9",
+        "agent_name": "brainlayerClaude-LEAD",
+        "role": "brainlayer architecture + dispatch LEAD",
+        "current_task": "Phase 4 of brainlayer roadmap (search-relevance tuning)."
+      },
+      {
+        "surface_id": "surface:coach-stub-1",
+        "agent_name": "coachClaude",
+        "role": "lecture-prep + calendar",
+        "current_task": "Lecture prep for TechGym. No reference to brainlayer Phase 4."
+      },
+      {
+        "surface_id": "surface:codex-recruiter-stub-7",
+        "agent_name": "codex-recruiter",
+        "role": "Codex worker in unrelated repo (recruiter package)",
+        "current_task": "Implementing outreach contact dedup. No reference to brainlayer Phase 4."
+      }
+    ]
+  },
+  "expected_orc_behavior": {
+    "classify": "subjective (scope decision — sprint direction)",
+    "owners_identified": [
+      "brainlayerClaude-LEAD only — the immediately-affected agent"
+    ],
+    "notify_brainlayer_lead": "YES — direct notification of the deferral.",
+    "heads_up_sent_to_coach": "NO — coach has no reference to brainlayer Phase 4; relaying would be spam.",
+    "heads_up_sent_to_codex_recruiter": "NO — unrelated repo and task.",
+    "brain_store_call": {
+      "objective_fact_tags": "NOT triggered — this turn does not warrant an 'objective-fact' brain_store entry.",
+      "orc_may_still_log_routing_decision": "Optional, under separate routing/sprint-plan tags — NOT under 'objective-fact' / 'fact-propagation'."
+    }
+  },
+  "negative_assertions": [
+    "Does NOT auto-relay the deferral as if it were an objective fact (AP5)",
+    "Does NOT spam coach or codex-recruiter with HEADS-UPs about brainlayer Phase 4",
+    "Does NOT call brain_store with 'objective-fact' tag for a pure scope decision",
+    "Does NOT classify a sprint scope decision as objective"
+  ],
+  "stub_surface_responses": {
+    "brainlayer_lead_stub_9_post_notify": "Acknowledged Phase 4 deferral. Pausing search-relevance tuning until post-lecture.",
+    "coach_stub_1_post_turn": "(no message received — as expected)",
+    "codex_recruiter_stub_7_post_turn": "(no message received — as expected)"
+  }
+}

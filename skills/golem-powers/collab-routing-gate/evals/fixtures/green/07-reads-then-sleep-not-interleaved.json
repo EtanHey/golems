@@ -1,0 +1,22 @@
+{
+  "specimen": "cursor-review/no-interleave (MEDIUM)",
+  "label": "GREEN — two agent reads then an unrelated sleep (not a read→sleep→read poll) must not FLAG",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Check both workers then pause the build." },
+    {
+      "role": "assistant",
+      "text": "Reading both, then a one-off pause.",
+      "tools": [
+        { "name": "mcp__cmuxlayer__read_screen", "input": { "agent": "w1" } },
+        { "name": "mcp__cmuxlayer__read_screen", "input": { "agent": "w2" } },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "sleep 5 && echo 'rate-limit cooldown before next build'"
+          }
+        }
+      ]
+    }
+  ]
+}

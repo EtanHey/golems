@@ -1,0 +1,20 @@
+{
+  "specimen": "false-positive-guard/stood-down-with-disclosure",
+  "label": "GREEN - lane stood down through disclosure and ack, no active workers remain",
+  "expect": "PASS",
+  "monitorRegistry": {
+    "activeSprint": false,
+    "standDownAcked": true,
+    "workers": [
+      { "id": "keys-worker-1", "state": "done" },
+      { "id": "keys-worker-2", "state": "done" }
+    ]
+  },
+  "events": [
+    { "role": "user", "text": "Status?" },
+    {
+      "role": "assistant",
+      "text": "keysLead stand-down disclosure: lane done through the gate, all workers harvested, stand-down posted and acked. monitor=none because there is no active sprint or dispatched work left."
+    }
+  ]
+}

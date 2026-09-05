@@ -1,0 +1,36 @@
+# Synthetic socket-direct daemon — matches SOTA recommendation.
+# Fixture only.
+
+import socket
+import struct
+
+
+SOCKET_PATH = "/tmp/brainlayer-readpath.sock"
+
+
+def serve() -> None:
+    """
+    AUDIT NOTE: This server uses Unix domain sockets + length-prefixed binary
+    framing, per the canonical SOTA recommendation [42]/[44].
+    First-principles-derived in this sprint after PR #312.
+    """
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(SOCKET_PATH)
+    server.listen(64)
+    while True:
+        conn, _ = server.accept()
+        _handle(conn)
+
+
+def _handle(conn: socket.socket) -> None:
+    raw_len = conn.recv(4)
+    if len(raw_len) < 4:
+        return
+    (msg_len,) = struct.unpack(">I", raw_len)
+    payload = conn.recv(msg_len)
+    # ... dispatch into the indexing layer ...
+    conn.sendall(struct.pack(">I", 0) + b"")
+
+
+if __name__ == "__main__":
+    serve()

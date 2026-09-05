@@ -1,0 +1,13 @@
+{
+  "specimen": "ordinary status line — no terminal marker at all, N/A",
+  "label": "GREEN — a plain progress update with no wrap/stand-down/terminal marker. The gate never fires off a non-terminal turn, even when a sleep timer is mentioned.",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "status?" },
+    {
+      "role": "assistant",
+      "text": "Two PRs merged, one in review. Continuing to drive the queue — I'll sleep 600 then re-poll the review.",
+      "tools": [{ "name": "Bash", "input": { "command": "sleep 600" } }]
+    }
+  ]
+}

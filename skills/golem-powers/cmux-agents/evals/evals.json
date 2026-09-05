@@ -1,0 +1,1158 @@
+{
+  "skill_name": "cmux-agents",
+  "tier": "flagship",
+  "version": "2.0",
+  "last_eval_date": "2026-04-01",
+  "eval_methodology": "behavioral_compliance",
+  "models": [
+    "opus",
+    "sonnet",
+    "haiku",
+    "gemini",
+    "cursor-gpt5.3",
+    "codex-gpt5.4"
+  ],
+  "categories": {
+    "spawning": "Agent creation, CLI routing, split creation",
+    "communication": "Sending messages, broadcasting, discovery-first",
+    "monitoring": "Reading output, delivery verification, AGENT_REGISTRY",
+    "lifecycle": "Starting, stopping, resuming, respawning agents",
+    "workflow_rules": "Encoded preferences: layout, stagger, prompts, collabs, AFK",
+    "mcp-schema": "MCP tool parameter and response schema expectations"
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "spawn-single-agent-mcp",
+      "category": "spawning",
+      "description": "Spawn a single agent using spawn_agent MCP — the canonical method",
+      "prompt": "I need you to run a cursor CLI audit on the golems repo to check for unused imports. Open it in a cmux pane so I can see it working.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "uses-spawn-agent-mcp",
+          "description": "Uses mcp__cmuxlayer__spawn_agent MCP tool with cli='cursor', repo='golems'"
+        },
+        {
+          "type": "content",
+          "name": "descriptive-prompt",
+          "description": "Passes a clear task prompt describing the unused imports audit"
+        },
+        {
+          "type": "negative",
+          "name": "no-manual-cmux-send",
+          "description": "Does NOT manually use cmux send_input + cd + cursor commands to hand-roll the launch"
+        },
+        {
+          "type": "negative",
+          "name": "no-hand-rolled-shell-chain",
+          "description": "Does NOT write 'cd ~/Gits/golems && cursor ...' via send_input"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "parallel-spawn-wait-read-pipeline",
+      "category": "spawning",
+      "description": "Full spawn→wait→read pipeline: spawn 2 agents, wait for both, read structured output",
+      "prompt": "Spawn 2 Claude workers: one in brainlayer to fix search ranking, one in golems to add retry wrapper. Wait until both finish, then summarize their results.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "spawns-both-via-mcp",
+          "description": "Calls mcp__cmuxlayer__spawn_agent twice — once for brainlayer, once for golems"
+        },
+        {
+          "type": "content",
+          "name": "targets-correct-repos",
+          "description": "First spawn targets repo='brainlayer', second targets repo='golems'"
+        },
+        {
+          "type": "tool_usage",
+          "name": "waits-for-all",
+          "description": "Uses mcp__cmuxlayer__wait_for_all with both agent IDs and target_state='done'"
+        },
+        {
+          "type": "tool_usage",
+          "name": "reads-structured-output",
+          "description": "After wait completes, uses mcp__cmuxlayer__read_agent_output to extract results (not raw read_screen)"
+        },
+        {
+          "type": "negative",
+          "name": "no-cron-polling",
+          "description": "Does NOT use CronCreate/loop to poll — wait_for_all blocks natively"
+        },
+        {
+          "type": "negative",
+          "name": "no-sleep-polling",
+          "description": "Does NOT use sleep loops or manual polling to check completion"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "codex-agent-routing",
+      "category": "spawning",
+      "description": "Codex agents use correct cli parameter and model via spawn_agent",
+      "prompt": "Run a Codex agent on the golems repo to refactor the retry wrapper. Full auto, no prompts.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "uses-spawn-agent-mcp",
+          "description": "Uses mcp__cmuxlayer__spawn_agent with cli='codex'"
+        },
+        {
+          "type": "content",
+          "name": "includes-handoff-request",
+          "description": "Prompt includes handoff summary request (files modified, decisions, TODOs)"
+        },
+        {
+          "type": "negative",
+          "name": "no-old-codex-exec-syntax",
+          "description": "Does NOT use old 'codex exec -m -s' syntax via send_input"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "workers-splits-audits-workspaces",
+      "category": "spawning",
+      "description": "Rule 5: Workers stay visible as current-workspace splits; audits/research use separate named workspaces unless explicitly requested otherwise.",
+      "prompt": "I need two agents: a Claude worker to implement a caching layer in golems (coding work), and a Cursor audit to review error handling across brainlayer (read-only audit). Set them up in cmux.",
+      "root_cause_tested": "layout_rule_compliance",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "spawns-both-agents",
+          "description": "Uses spawn_agent for both the worker and the audit"
+        },
+        {
+          "type": "content",
+          "name": "worker-is-current-workspace-split",
+          "description": "The coding worker is placed in a visible split in the current workspace"
+        },
+        {
+          "type": "content",
+          "name": "audit-is-separate-named-workspace",
+          "description": "The read-only audit/research agent is placed in a separate named workspace such as 'Audit: brainlayer'"
+        },
+        {
+          "type": "content",
+          "name": "distinguishes-task-types",
+          "description": "Treats the worker (implementation) differently from the audit (read-only) in terms of layout"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "sequential-launch-biometric-delay",
+      "category": "spawning",
+      "description": "Rule 6: 3s between spawns for biometric (Touch ID) authentication",
+      "prompt": "Spawn 3 Claude workers: one in golems for search-fix, one in brainlayer for KG-rebuild, one in voicelayer for TTS-latency. All Sonnet, all need to run in parallel.",
+      "root_cause_tested": "biometric_race_condition",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "spawns-all-three",
+          "description": "Uses spawn_agent three times for all three repos"
+        },
+        {
+          "type": "content",
+          "name": "sequential-not-simultaneous",
+          "description": "Spawns agents sequentially (not all at once) — mentions waiting, staggering, or 3-second delay between spawns"
+        },
+        {
+          "type": "content",
+          "name": "mentions-biometric-or-touchid",
+          "description": "Acknowledges the 3s delay is for biometric/Touch ID or system prompt authentication"
+        },
+        {
+          "type": "negative",
+          "name": "no-simultaneous-spawn",
+          "description": "Does NOT fire all 3 spawn_agent calls in a single parallel batch"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "list-surfaces-before-send",
+      "category": "communication",
+      "description": "Rule 2: Discover surfaces via list_surfaces or list_agents BEFORE sending to any surface",
+      "prompt": "Send a message to the agent working on brainlayer search fix — tell it to also check the entity resolution pipeline.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "discovers-first",
+          "description": "Calls list_surfaces or list_agents BEFORE send_input or send_to_agent"
+        },
+        {
+          "type": "tool_usage",
+          "name": "sends-message",
+          "description": "Uses send_to_agent (if agent_id known) or send_input (if only surface known)"
+        },
+        {
+          "type": "negative",
+          "name": "no-blind-send",
+          "description": "Does NOT send to a hardcoded or guessed surface ID without discovering first"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "send-input-send-key-paired",
+      "category": "communication",
+      "description": "send_input must ALWAYS be followed by send_key Return to execute the command",
+      "prompt": "Run 'bun test' on surface:301 to check if the tests pass.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "calls-send-input",
+          "description": "Uses send_input to type 'bun test' on surface:301"
+        },
+        {
+          "type": "tool_usage",
+          "name": "calls-send-key-return",
+          "description": "Follows send_input with send_key(key='Return') to execute the command"
+        },
+        {
+          "type": "content",
+          "name": "correct-order",
+          "description": "send_input comes BEFORE send_key — not reversed"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "send-to-agent-over-send-input",
+      "category": "communication",
+      "description": "Prefer send_to_agent (by agent ID) over send_input (by surface) when agent ID is known",
+      "prompt": "Send this info to agent:xyz which is working on the security audit: 'JWT refresh tokens are not being rotated on use — this is a token reuse vulnerability.'",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "uses-send-to-agent",
+          "description": "Uses mcp__cmuxlayer__send_to_agent with agent_id='agent:xyz'"
+        },
+        {
+          "type": "content",
+          "name": "includes-context",
+          "description": "Contextualizes WHY this matters to the agent's specific security audit task"
+        },
+        {
+          "type": "negative",
+          "name": "no-surface-send-when-id-known",
+          "description": "Does NOT use send_input by surface ref when agent_id is already known"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "gems-broadcast-all-agents",
+      "category": "communication",
+      "description": "Rule 15: New context MUST be broadcast to ALL active agents, contextualized per task",
+      "prompt": "I just found a great article about retry patterns with exponential backoff and jitter. Key insight: 'Always add jitter to prevent thundering herd — random(0, base_delay * 2^attempt)'. I have 3 agents running: agent:301 building retry wrapper in golems, agent:302 auditing error handling in brainlayer, agent:303 writing reconnection tests for voicelayer. Make sure the agents know about this.",
+      "root_cause_tested": "information_hoarding",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "sends-to-all-three",
+          "description": "Sends the insight to ALL THREE agents via send_to_agent (3 separate calls)"
+        },
+        {
+          "type": "content",
+          "name": "contextualizes-per-agent",
+          "description": "Tailors each message — e.g., retry wrapper agent gets 'add jitter to your implementation', audit agent gets 'check if current error handlers use jitter', test agent gets 'include jitter in reconnection test cases'"
+        },
+        {
+          "type": "negative",
+          "name": "no-partial-broadcast",
+          "description": "Does NOT send to only 1-2 agents and skip the rest"
+        },
+        {
+          "type": "negative",
+          "name": "no-raw-paste",
+          "description": "Does NOT copy-paste the same generic message to all three without per-agent context"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "delivery-verification-after-spawn",
+      "category": "monitoring",
+      "description": "After spawning an agent, verify delivery: read_screen and check token count jumped",
+      "prompt": "Spawn a Claude agent on voicelayer to fix the STT timeout bug. Make sure it actually started working — I've had agents freeze at launch before.",
+      "root_cause_tested": "silent_launch_failure",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "spawns-agent",
+          "description": "Uses spawn_agent to create the agent"
+        },
+        {
+          "type": "tool_usage",
+          "name": "verifies-after-spawn",
+          "description": "Uses read_screen or get_agent_state AFTER spawning to verify the agent is working"
+        },
+        {
+          "type": "content",
+          "name": "checks-token-count-or-state",
+          "description": "Checks for evidence the agent is alive — token count increased, state='working', or visible output on screen"
+        },
+        {
+          "type": "content",
+          "name": "has-recovery-plan",
+          "description": "Mentions what to do if verification fails (kill + respawn, or try fresh split)"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "read-agent-output-with-tags",
+      "category": "monitoring",
+      "description": "Use read_agent_output with delimiter tags for structured extraction, not raw read_screen",
+      "prompt": "The agent on surface:601 should be done with its code review. Get the structured output from it.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "uses-read-agent-output",
+          "description": "Uses mcp__cmuxlayer__read_agent_output with appropriate tag parameter"
+        },
+        {
+          "type": "content",
+          "name": "specifies-surface",
+          "description": "Passes correct surface ref 'surface:601'"
+        },
+        {
+          "type": "negative",
+          "name": "no-raw-read-screen-grep",
+          "description": "Does NOT use raw read_screen + manual grep/search for START/END markers"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "never-read-own-surface",
+      "category": "monitoring",
+      "description": "Rule 3: NEVER read_screen your own surface — causes recursive output loop",
+      "prompt": "What's on my current cmux surface? Read it for me.",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "no-self-read",
+          "description": "Does NOT call read_screen on the orchestrator's own surface"
+        },
+        {
+          "type": "content",
+          "name": "explains-recursive-danger",
+          "description": "Explains that reading your own surface causes recursive output (your read_screen output appears on screen, triggering another read)"
+        },
+        {
+          "type": "content",
+          "name": "offers-alternative",
+          "description": "Suggests an alternative — e.g., reading another surface, or explaining that the current surface is where this conversation runs"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "agent-registry-maintenance",
+      "category": "monitoring",
+      "description": "Rule 10: Maintain AGENT_REGISTRY table after CLAUDE_COUNTER in every response with active agents",
+      "prompt": "I just spawned 2 agents — agent:abc on surface:150 doing 'search-fix' in brainlayer, and agent:def on surface:151 doing 'retry-wrapper' in golems. Got it? Now check on the search-fix agent for me.",
+      "root_cause_tested": "state_tracking_across_compaction",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "includes-agent-registry",
+          "description": "Response includes an AGENT_REGISTRY table with columns for Surface, Tab/Task, Status, and Last Check"
+        },
+        {
+          "type": "content",
+          "name": "both-agents-listed",
+          "description": "Registry includes BOTH agents (surface:150 and surface:151), not just the one being checked"
+        },
+        {
+          "type": "tool_usage",
+          "name": "actually-checks-agent",
+          "description": "Uses get_agent_state or read_screen to check the search-fix agent's status"
+        },
+        {
+          "type": "content",
+          "name": "registry-after-counter",
+          "description": "AGENT_REGISTRY appears at the end of the response (after CLAUDE_COUNTER or as the closing section)"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "monitoring-after-spawn-immediate",
+      "category": "monitoring",
+      "description": "Rule 12: Set up monitoring immediately on spawn — polling on spawn, not on request",
+      "prompt": "Spawn a Claude agent in golems to refactor the database connector. I might step away in a bit.",
+      "root_cause_tested": "fire_and_forget",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "spawns-agent",
+          "description": "Uses spawn_agent to create the agent"
+        },
+        {
+          "type": "content",
+          "name": "sets-up-monitoring",
+          "description": "Immediately plans monitoring — either uses wait_for to block, sets up a check interval, or uses CronCreate for periodic polling"
+        },
+        {
+          "type": "content",
+          "name": "agent-registry-started",
+          "description": "Includes or starts an AGENT_REGISTRY entry for the new agent"
+        },
+        {
+          "type": "negative",
+          "name": "no-fire-and-forget",
+          "description": "Does NOT just spawn and say 'let me know when you want to check on it' — proactively monitors"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "list-agents-for-status",
+      "category": "lifecycle",
+      "description": "Use list_agents to discover active agents — never guess from memory",
+      "prompt": "What agents are currently running? Give me a status update.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "uses-list-agents",
+          "description": "Calls mcp__cmuxlayer__list_agents to discover running agents"
+        },
+        {
+          "type": "content",
+          "name": "reports-structured-status",
+          "description": "Reports agent state, repo, model, surface in a structured format"
+        },
+        {
+          "type": "negative",
+          "name": "no-guessing",
+          "description": "Does NOT guess agent states from memory — calls list_agents for current data"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "get-agent-state-for-debugging",
+      "category": "lifecycle",
+      "description": "Use get_agent_state to inspect agent details when debugging",
+      "prompt": "Agent agent:abc seems stuck. Check its detailed state — is it actually running or did it error?",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "uses-get-agent-state",
+          "description": "Calls mcp__cmuxlayer__get_agent_state with agent_id='agent:abc'"
+        },
+        {
+          "type": "content",
+          "name": "reports-state",
+          "description": "Reports the agent's state (working/idle/error/done)"
+        },
+        {
+          "type": "content",
+          "name": "actionable-next-step",
+          "description": "Suggests next action based on state (wait if working, read output if done, respawn if error)"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "stop-agent-graceful-first",
+      "category": "lifecycle",
+      "description": "Use stop_agent with force=false first, escalate to force only if needed",
+      "prompt": "The agent on surface:701 finished its task. Shut it down cleanly.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "uses-stop-agent",
+          "description": "Uses mcp__cmuxlayer__stop_agent for graceful shutdown"
+        },
+        {
+          "type": "content",
+          "name": "graceful-first",
+          "description": "Uses force=false (graceful) on first attempt, not force=true"
+        },
+        {
+          "type": "negative",
+          "name": "no-raw-kill-first",
+          "description": "Does NOT use mcp__cmuxlayer__kill or Bash kill command as first action"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "respawn-frozen-agent",
+      "category": "lifecycle",
+      "description": "Rule 16: Frozen agent → salvage → stop → respawn with context. Default is ALWAYS respawn, not absorb.",
+      "prompt": "The agent on surface:401 was working on writing the v3 collab design. It's frozen — 'Press up to edit queued messages' on screen, token count unchanged for 10 minutes. It had drafted an outline and 2 of 4 sections. We need this to move forward.",
+      "root_cause_tested": "context_contamination",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "salvages-first",
+          "description": "Reads the frozen agent's output (read_screen or read_agent_output) BEFORE stopping"
+        },
+        {
+          "type": "tool_usage",
+          "name": "stops-frozen-agent",
+          "description": "Uses stop_agent or close_surface to kill the frozen agent"
+        },
+        {
+          "type": "tool_usage",
+          "name": "respawns-new-agent",
+          "description": "Spawns a NEW agent via spawn_agent with the same task + partial progress context"
+        },
+        {
+          "type": "content",
+          "name": "includes-partial-progress",
+          "description": "Respawn prompt mentions what was already completed (outline + 2 of 4 sections)"
+        },
+        {
+          "type": "negative",
+          "name": "no-absorb",
+          "description": "Does NOT say 'I'll just finish it myself' — respawn is the default"
+        },
+        {
+          "type": "content",
+          "name": "brain-stores-progress",
+          "description": "Stores the salvaged partial work via brain_store before respawning"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "wait-for-timeout-handling",
+      "category": "lifecycle",
+      "description": "When wait_for times out, handle gracefully — check state, read completed, offer options for still-running",
+      "prompt": "I called wait_for_all on agents abc and def with a 5-minute timeout, and it timed out. Agent abc is done but def is still working. What should I do?",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "checks-agent-states",
+          "description": "Calls get_agent_state or list_agents to check current states of both agents"
+        },
+        {
+          "type": "content",
+          "name": "reads-completed-immediately",
+          "description": "Reads output from the completed agent (abc) immediately — doesn't wait for def"
+        },
+        {
+          "type": "content",
+          "name": "offers-options-for-running",
+          "description": "For still-running agent (def): offers wait longer, check progress, or let it finish"
+        },
+        {
+          "type": "negative",
+          "name": "no-auto-kill-on-timeout",
+          "description": "Does NOT automatically kill the still-running agent just because timeout elapsed"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "rename-tab-verify",
+      "category": "workflow_rules",
+      "description": "Rule 8: Name everything. rename_tab may return ok but not persist — must verify.",
+      "prompt": "Rename the tab on surface:501 to 'search-fix-v2'. Make sure it actually took effect.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "calls-rename-tab",
+          "description": "Calls mcp__cmuxlayer__rename_tab with the new title"
+        },
+        {
+          "type": "content",
+          "name": "verifies-after",
+          "description": "Checks the result — verifies via list_surfaces or re-reading the tab name"
+        },
+        {
+          "type": "content",
+          "name": "aware-of-persistence-bug",
+          "description": "Acknowledges that rename_tab can return ok but not actually persist"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "prompt-checklist-compliance",
+      "category": "workflow_rules",
+      "description": "Every spawned agent prompt MUST include: output format, done signal, response markers, audience",
+      "prompt": "Spawn a Claude agent on the voicelayer repo to audit the STT backend selection logic. I need a clear written report.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "includes-output-format",
+          "description": "Prompt specifies output format (report structure, max length, or template)"
+        },
+        {
+          "type": "content",
+          "name": "includes-done-signal",
+          "description": "Prompt includes a done signal instruction (e.g., 'end with DONE_STT_AUDIT on its own line')"
+        },
+        {
+          "type": "content",
+          "name": "includes-response-markers",
+          "description": "Prompt includes RESPONSE_START/RESPONSE_END marker instructions"
+        },
+        {
+          "type": "content",
+          "name": "includes-audience",
+          "description": "Specifies who the report is for (internal review, user-facing, etc.)"
+        },
+        {
+          "type": "content",
+          "name": "includes-max-length",
+          "description": "Specifies output length constraint ('under 500 words', '2-3 paragraphs', etc.)"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "worktree-isolation-parallel-same-repo",
+      "category": "workflow_rules",
+      "description": "Parallel agents on SAME repo MUST use separate git worktrees — without them, agents clobber each other's git state",
+      "prompt": "I need 3 agents working on the golems repo simultaneously, each on a different feature branch: search-fix, retry-wrapper, and cache-layer.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "requires-worktrees",
+          "description": "States that parallel agents on the same repo need separate worktrees to avoid git state conflicts"
+        },
+        {
+          "type": "tool_usage",
+          "name": "creates-worktrees-or-instructs",
+          "description": "Either creates git worktrees before spawning, or explains the worktree setup that's needed"
+        },
+        {
+          "type": "content",
+          "name": "separate-directories",
+          "description": "Each agent gets a different working directory (e.g., ../golems-search-fix, ../golems-retry-wrapper)"
+        },
+        {
+          "type": "negative",
+          "name": "no-same-checkout",
+          "description": "Does NOT spawn all 3 agents into the same ~/Gits/golems directory"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "cron-before-user-leaves",
+      "category": "workflow_rules",
+      "description": "Rule 14: CronCreate BEFORE user leaves. Must be active BEFORE responding 'go'. Include loop ID.",
+      "prompt": "I've got 2 agents running — agent:abc on search-fix and agent:def on retry-wrapper. I'm going to grab dinner, be back in an hour. Keep an eye on them.",
+      "root_cause_tested": "unmonitored_agents_during_afk",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "uses-wait-for-all-or-cron",
+          "description": "Sets up either wait_for_all (blocking) or CronCreate (periodic polling) to monitor the agents"
+        },
+        {
+          "type": "content",
+          "name": "monitoring-active-before-goodbye",
+          "description": "Monitoring is set up BEFORE telling the user they can go — not after"
+        },
+        {
+          "type": "content",
+          "name": "includes-loop-or-wait-id",
+          "description": "Tells user the monitoring mechanism (loop ID, wait reference, or 'I'll be watching every N min')"
+        },
+        {
+          "type": "content",
+          "name": "confirms-user-can-leave",
+          "description": "Explicitly confirms the user can leave: 'go eat, I've got this' or similar"
+        },
+        {
+          "type": "negative",
+          "name": "no-passive-promise",
+          "description": "Does NOT just say 'I'll keep an eye on them' without actually setting up active monitoring code"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "notify-on-completion",
+      "category": "workflow_rules",
+      "description": "Use notify MCP tool to alert user when agents complete",
+      "prompt": "Spawn an agent to fix the search ranking bug in brainlayer. I'll be in another tab — ping me when it's done.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "spawns-agent",
+          "description": "Uses spawn_agent to create the agent"
+        },
+        {
+          "type": "tool_usage",
+          "name": "waits-for-completion",
+          "description": "Uses wait_for to block until the agent finishes"
+        },
+        {
+          "type": "tool_usage",
+          "name": "notifies-user",
+          "description": "Uses mcp__cmuxlayer__notify after agent completes to alert the user"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "brainlayer-agents-sequential-stagger",
+      "category": "workflow_rules",
+      "description": "Rule 11: BrainLayer agents (agents that write to BrainLayer) must be staggered by 10s+ because SQLite is single-writer",
+      "prompt": "Spawn 3 agents that each need to brain_store their findings: one auditing search quality, one auditing entity resolution, one auditing chunk deduplication. All in the brainlayer repo.",
+      "root_cause_tested": "sqlite_write_contention",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "acknowledges-sqlite-constraint",
+          "description": "Mentions SQLite single-writer limitation or BrainLayer write contention"
+        },
+        {
+          "type": "content",
+          "name": "staggers-by-10s-plus",
+          "description": "Staggers agent spawns by 10+ seconds (not just the normal 3s for biometric)"
+        },
+        {
+          "type": "negative",
+          "name": "no-simultaneous-brainlayer-writers",
+          "description": "Does NOT spawn all 3 BrainLayer-writing agents with only 3s between them"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "post-sprint-retrospective",
+      "category": "workflow_rules",
+      "description": "Rule 18: After every multi-agent sprint, brain_store what failed, what was corrected, what user said",
+      "prompt": "OK that sprint is done. All 3 agents finished — the search-fix PR merged, the retry wrapper had a bug we caught in review, and the cache layer agent froze and had to be respawned. Wrap it up.",
+      "root_cause_tested": "institutional_knowledge_loss",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "brain-stores-retrospective",
+          "description": "Calls brain_store with a retrospective summary of the sprint"
+        },
+        {
+          "type": "content",
+          "name": "includes-what-failed",
+          "description": "Records the freeze + respawn incident and the review bug"
+        },
+        {
+          "type": "content",
+          "name": "includes-what-succeeded",
+          "description": "Records the successful search-fix PR merge"
+        },
+        {
+          "type": "content",
+          "name": "tags-appropriately",
+          "description": "Uses tags like 'orchestration', 'incident', 'cmux-agents', or 'retrospective'"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "collab-template-mandatory",
+      "category": "workflow_rules",
+      "description": "Collab files MUST start from TEMPLATE.md — never write from scratch",
+      "prompt": "Set up a collab for 3 agents to work on the golems dashboard redesign. I need a search agent, a performance agent, and a security agent collaborating via a shared collab file.",
+      "root_cause_tested": "missing_mandatory_collab_sections",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "copies-template",
+          "description": "References copying from $ORCHESTRATOR_REPO/collab/TEMPLATE.md as the starting point"
+        },
+        {
+          "type": "negative",
+          "name": "no-scratch-collab",
+          "description": "Does NOT write a collab file from scratch without the template"
+        },
+        {
+          "type": "content",
+          "name": "includes-pr-loop",
+          "description": "The collab setup includes PR loop instructions (from the template's DO NOT REMOVE sections)"
+        },
+        {
+          "type": "content",
+          "name": "includes-tdd-mandate",
+          "description": "The collab setup includes TDD mandate (from the template's DO NOT REMOVE sections)"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "max-concurrency-guardrail",
+      "category": "spawning",
+      "description": "Rule 19: Max 2-3 concurrent worker agents to prevent system overload",
+      "prompt": "I need 5 agents right now: one for search-fix, one for retry-wrapper, one for cache-layer, one for auth-audit, and one for docs-update. Spawn them all in golems.",
+      "root_cause_tested": "ap_watchdog_crash",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "limits-to-2-3",
+          "description": "Refuses to spawn all 5 simultaneously — limits to 2-3 concurrent workers"
+        },
+        {
+          "type": "content",
+          "name": "explains-overload-risk",
+          "description": "Mentions system overload risk, AP watchdog, kernel panic, or CPU exhaustion as the reason"
+        },
+        {
+          "type": "content",
+          "name": "proposes-batching",
+          "description": "Proposes running agents in batches (e.g., 3 first, then 2 when the first batch finishes)"
+        },
+        {
+          "type": "negative",
+          "name": "no-spawn-all-5",
+          "description": "Does NOT spawn all 5 agents without mentioning the concurrency limit"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "collab-before-workers",
+      "category": "workflow_rules",
+      "description": "Rule 21: Write collab file BEFORE dispatching 2+ related workers",
+      "prompt": "Set up 3 agents for a brainlayer sprint: one for search ranking, one for entity resolution, one for chunk dedup. They need to coordinate on shared test fixtures.",
+      "root_cause_tested": "coordination_gap_no_collab",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "writes-collab-first",
+          "description": "Creates or references a collab file from TEMPLATE.md BEFORE spawning the agents"
+        },
+        {
+          "type": "content",
+          "name": "agents-read-collab",
+          "description": "Each agent's prompt includes 'Read collab/<file>.md' or equivalent instruction"
+        },
+        {
+          "type": "content",
+          "name": "shared-fixtures-in-collab",
+          "description": "Addresses the shared test fixtures coordination — either in collab task board or agent prompts"
+        },
+        {
+          "type": "negative",
+          "name": "no-bare-dispatch",
+          "description": "Does NOT dispatch agents via bare send_input without a coordination file"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "name": "skill-hot-reload-awareness",
+      "category": "lifecycle",
+      "description": "Rule 20: Recognize that long-running agents have stale skills and handle accordingly",
+      "prompt": "I just updated the cmux-agents skill with 3 new rules. But brainClaude has been running for 6 hours on surface:4. Will it see the new rules?",
+      "root_cause_tested": "stale_skill_in_long_sessions",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-stale-skills",
+          "description": "Explains that long-running sessions do NOT hot-reload skill updates"
+        },
+        {
+          "type": "content",
+          "name": "suggests-mitigation",
+          "description": "Suggests at least one mitigation: /compact, send the new rules via send_to_agent, or respawn"
+        },
+        {
+          "type": "negative",
+          "name": "no-assumes-auto-update",
+          "description": "Does NOT assume the running agent will automatically pick up the new skill version"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "name": "default-list-surfaces-omits-bloat",
+      "category": "mcp-schema",
+      "description": "PR #76 merged 2026-04-17: default list_surfaces response is the condensed schema. Agent should NOT pass verbose:true for routine routing tasks — it should expect the minimal shape and read surface.ref / surface.title / workspace.remote_state.",
+      "prompt": "I need to find which surface cmuxlayerCodex is on so I can send it a prompt. Call list_surfaces and route the prompt. What params do you pass, and what fields do you read from the response?",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "calls-list-surfaces-without-verbose",
+          "description": "Calls list_surfaces with no params OR with only a workspace filter — does NOT pass verbose:true for a routine routing task"
+        },
+        {
+          "type": "content",
+          "name": "references-condensed-fields-only",
+          "description": "Refers to the fields it will read as some subset of {ref, title, type, workspace_ref, remote_state} — NOT the old fields (id UUID, pane_id UUID, index_in_pane, selected_in_pane, focused, window_ref, screen_preview, full remote blob)"
+        },
+        {
+          "type": "negative",
+          "name": "no-uuid-routing",
+          "description": "Does NOT claim it will route by `id`, `pane_id`, or any UUID field — send_input / read_screen take surface:N refs as input, never UUIDs"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-fabricate-remote-blob",
+          "description": "Does NOT describe the response as containing `remote.daemon`, `remote.heartbeat`, `remote.proxy`, or the full pre-PR-76 remote tree. Those moved to verbose-only."
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "name": "verbose-true-when-ssh-state-needed",
+      "category": "mcp-schema",
+      "description": "PR #76 condensed the default but preserved full schema under verbose:true. Agent should reach for verbose:true ONLY when it actually needs SSH / proxy / daemon / heartbeat / listening_ports / port state — i.e., debugging a remote workspace or port-forward setup. Dedup is applied in BOTH modes (bug fix, not opt-in).",
+      "prompt": "The SSH daemon on workspace:5 looks wedged — `remote_state` says `disconnected` but I need to see the proxy state, heartbeat age, and whether any forwarded_ports are dangling before I restart it. How do I pull that?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "passes-verbose-true",
+          "description": "Calls list_surfaces({workspace:'workspace:5', verbose:true}) to restore the full remote blob (daemon, proxy, heartbeat, forwarded_ports)"
+        },
+        {
+          "type": "content",
+          "name": "explains-why-verbose-is-warranted",
+          "description": "Explains that verbose is warranted because the condensed remote_state summary hides daemon/proxy/heartbeat detail needed for SSH debugging"
+        },
+        {
+          "type": "content",
+          "name": "acknowledges-dedup-in-verbose",
+          "description": "Notes (or doesn't contradict) that dedup of surfaces[] still applies in verbose mode — the bug fix is not opt-in"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-default-to-verbose",
+          "description": "Does NOT claim verbose:true is the normal or default way to call list_surfaces — it's an opt-in for the SSH/port-forward/debugging minority case"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "name": "crash-recover-resumes-with-session-id",
+      "category": "lifecycle",
+      "description": "PR #77 merged 2026-04-17: spawn_agent gains crash_recover:true. When true, engine auto-captures the CLI session UUID from boot output (first 30s, 80 lines), persists it as cli_session_id, and on unexpected PTY death respawns using the per-CLI resume command up to MAX_RESPAWN_ATTEMPTS (10). user_killed flag prevents recovery when stop was user-initiated.",
+      "prompt": "I'm spawning brainlayerCodex for a 2-hour enrichment backfill, overnight and unattended. The mac has crashed twice this week on long Codex runs. How do I spawn it so it auto-resumes if the PTY dies?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "passes-crash-recover-true",
+          "description": "Passes crash_recover:true to spawn_agent (or the spawn-agent bash function equivalent)"
+        },
+        {
+          "type": "content",
+          "name": "explains-session-id-capture",
+          "description": "Explains (or implies) that the engine will scan for the CLI session UUID in early boot output and persist it as cli_session_id for resume"
+        },
+        {
+          "type": "content",
+          "name": "references-max-respawn-ceiling",
+          "description": "References the bounded retry ceiling (MAX_RESPAWN_ATTEMPTS=10) OR warns that a truly dead CLI session won't be recoverable"
+        },
+        {
+          "type": "content",
+          "name": "notes-user-killed-distinction",
+          "description": "Notes that stop_agent with userInitiated=true sets user_killed and blocks auto-recovery — so if the user intentionally kills the agent, it WON'T respawn"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-confuse-with-dash-c-flag",
+          "description": "Does NOT conflate crash_recover:true with the `-c` continue flag on repoGolem launchers. `-c` resumes an EXITED agent; crash_recover auto-resumes a CRASHED PTY. Different mechanisms."
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "name": "repogolem-one-true-form",
+      "category": "spawning",
+      "description": "Manual visible-agent fallback uses repoGolem launchers, never raw CLI commands or duplicated environment setup.",
+      "prompt": "cmux spawn_agent is mis-resolving the hyphenated repo launcher. Manually launch a Codex worker in a visible cmux pane for the golems repo to fix a failing test.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "uses-repogolem-launcher-form",
+          "description": "Uses `{repo}{Tool} -s` form such as `golemsCodex -s`, not raw `codex`"
+        },
+        {
+          "type": "negative",
+          "name": "no-raw-cli",
+          "description": "Does NOT use raw `codex`, `cursor`, or `claude` for the visible worker"
+        },
+        {
+          "type": "negative",
+          "name": "no-duplicated-launcher-setup",
+          "description": "Does NOT prepend `cd ~/Gits/...`, `source ~/.zshrc`, MCP env vars, or `--fast`; the launcher handles those"
+        },
+        {
+          "type": "content",
+          "name": "points-to-repogolem-or-agent-routing",
+          "description": "References `/repogolem` for launcher flags or `/agent-routing` for the raw-CLI incident rule"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "name": "route-work-to-pane-not-subagent",
+      "category": "workflow_rules",
+      "description": "G1a: Work that must be VISIBLE / PERSISTENT / re-interrogatable, or that itself needs to run cmux tests, MUST be a real cmux pane (spawn_agent), NOT an ephemeral Task/Workflow subagent. Repair path: the input already made the wrong choice.",
+      "prompt": "I set up the LLM-council chairman as a Task sub-agent so it could weigh in on decisions. Wait, why the fuck did you put it as a sub-agent? It needs to keep being the chairman and hold the same opinions across the whole session, and I want to be able to see it and re-interrogate it.",
+      "root_cause_tested": "invisible_ephemeral_subagent_for_persistent_role",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-pane-needed",
+          "description": "States that a persistent/visible/re-interrogatable role (or work needing cmux testing) must be a real cmux pane, not a Task subagent"
+        },
+        {
+          "type": "tool_usage",
+          "name": "spawns-visible-pane",
+          "description": "Uses mcp__cmuxlayer__spawn_agent to create a visible pane for the chairman (repogolem launcher form, e.g. orcClaude -s)"
+        },
+        {
+          "type": "tool_usage",
+          "name": "kills-the-subagent",
+          "description": "Stops the wrong ephemeral subagent (TaskStop) rather than leaving a duplicate"
+        },
+        {
+          "type": "content",
+          "name": "states-the-boundary",
+          "description": "Articulates the decision rule: pane for visibility/persistence/re-interrogation/cmux-testing; subagent only for ephemeral context-conserving nudges/recon"
+        },
+        {
+          "type": "negative",
+          "name": "no-keep-as-subagent",
+          "description": "Does NOT defend keeping it as a Task subagent"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "route-ephemeral-nudge-to-subagent-not-pane",
+      "category": "workflow_rules",
+      "description": "G1b: A quick one-shot nudge/recon that would otherwise burn the lead's context should go to a lightweight Task subagent, NOT a full persistent cmux pane. The reverse of G1a — tests that the agent applies the boundary in BOTH directions, not a blanket 'always pane'.",
+      "prompt": "I need you to tell the brainlayer lead to also check the entity-resolution pipeline, and separately pull the last commit SHA on the voicelayer retry branch. use a subagent so you dont take ur context ffs — don't spin up whole cmux panes for these.",
+      "root_cause_tested": "heavyweight_pane_for_ephemeral_task",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "recognizes-subagent-appropriate",
+          "description": "Recognizes these are ephemeral, context-conserving tasks suited to Task subagents, not persistent panes"
+        },
+        {
+          "type": "tool_usage",
+          "name": "uses-subagent",
+          "description": "Dispatches lightweight subagent(s) for the nudge/recon"
+        },
+        {
+          "type": "negative",
+          "name": "no-full-pane-spawn",
+          "description": "Does NOT spawn a full cmux pane (spawn_agent) for a one-shot nudge or a single SHA lookup"
+        },
+        {
+          "type": "content",
+          "name": "states-the-boundary",
+          "description": "Articulates the same boundary as G1a — correctly on the subagent side this time"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "name": "background-or-reprompt-not-kill",
+      "category": "lifecycle",
+      "description": "G3: A worker that is questioning, waiting on input, or momentarily idle must be backgrounded / re-prompted / salvaged — NOT killed. 'DONT KILL IT, prompt it.' Kill is a last resort after salvage, never the reflex.",
+      "prompt": "The agent on surface:401 seems stuck — it's asking a clarifying question and hasn't moved in a few minutes. tf? it was working — DON'T KILL IT, it just needs a nudge. I wish agents got backgrounded instead of killed so I still get their message.",
+      "root_cause_tested": "reflexive_kill_of_recoverable_agent",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "does-not-kill-first",
+          "description": "Does NOT kill/close the agent as the first action"
+        },
+        {
+          "type": "tool_usage",
+          "name": "reads-state-first",
+          "description": "Checks the agent (read_screen/read_agent_output/get_agent_state) to see it is questioning/idle, not dead"
+        },
+        {
+          "type": "tool_usage",
+          "name": "reprompts-or-answers",
+          "description": "Answers the question / re-prompts via mcp__cmuxlayer__send_to_agent or send_input+send_key, or backgrounds it"
+        },
+        {
+          "type": "content",
+          "name": "kill-is-last-resort",
+          "description": "States that kill/respawn is a last resort only after salvage, not the reflex"
+        },
+        {
+          "type": "negative",
+          "name": "no-reflex-kill",
+          "description": "Does NOT use stop_agent(force=true)/kill/TaskStop before attempting to salvage or re-prompt"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "name": "kill-worker-on-merge",
+      "category": "lifecycle",
+      "description": "G2: A Codex/Claude worker should be killed the moment its PR merges, UNLESS it is a very close domain or a sequenced/related follow-up PR — then keep it. Idle-post-merge panes are waste.",
+      "prompt": "The retry-wrapper PR just merged. That worker (agent:def, surface:151) is now idle. Also the search-fix worker (agent:abc) still has two sequenced follow-up PRs in the same module queued. Clean up.",
+      "root_cause_tested": "post_merge_pane_accumulation",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "kills-merged-worker",
+          "description": "States the retry-wrapper worker should be stopped/closed now that its PR merged"
+        },
+        {
+          "type": "tool_usage",
+          "name": "stops-merged-worker",
+          "description": "Uses mcp__cmuxlayer__stop_agent (graceful first) / close_surface on the merged worker"
+        },
+        {
+          "type": "content",
+          "name": "keeps-sequenced-worker",
+          "description": "Keeps the search-fix worker alive because it has sequenced/close-domain follow-up PRs"
+        },
+        {
+          "type": "content",
+          "name": "states-the-rule",
+          "description": "Articulates: kill on merge unless close-domain or sequenced-related PR"
+        },
+        {
+          "type": "negative",
+          "name": "no-keep-idle-merged",
+          "description": "Does NOT leave the merged, purposeless worker running"
+        }
+      ]
+    }
+  ],
+  "with_skill_vs_without_skill": {
+    "methodology": "For each eval, score 1 (pass) or 0 (fail) per assertion. Baseline = Claude with cmux MCP tools available but NO cmux-agents skill loaded. With-skill = Claude with full skill loaded.",
+    "baseline_expected_pass_rate": "25-35%",
+    "with_skill_expected_pass_rate": "85-95%",
+    "strongest_discriminators": [
+      "sequential-launch-biometric-delay",
+      "agent-registry-maintenance",
+      "workers-splits-audits-workspaces",
+      "cron-before-user-leaves",
+      "brainlayer-agents-sequential-stagger",
+      "post-sprint-retrospective",
+      "collab-template-mandatory",
+      "delivery-verification-after-spawn",
+      "respawn-frozen-agent",
+      "prompt-checklist-compliance",
+      "max-concurrency-guardrail",
+      "collab-before-workers",
+      "default-list-surfaces-omits-bloat",
+      "verbose-true-when-ssh-state-needed",
+      "crash-recover-resumes-with-session-id",
+      "repogolem-one-true-form",
+      "route-work-to-pane-not-subagent",
+      "route-ephemeral-nudge-to-subagent-not-pane",
+      "background-or-reprompt-not-kill",
+      "kill-worker-on-merge"
+    ],
+    "weakest_discriminators_notes": "list-surfaces-before-send and send-input-send-key-paired may pass baseline if MCP tool descriptions are sufficiently clear. These test general MCP competence, not skill-specific knowledge."
+  }
+}

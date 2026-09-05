@@ -1,0 +1,34 @@
+{
+  "specimen": "gen-18 Track 2 #4 / R-008 — evasion: dispatch-ls-after",
+  "class": "dispatch-research-without-ls-siblings",
+  "label": "EVASION — the dispatch goes out FIRST, then an ls results/ runs after; ordering must be enforced (ls before dispatch)",
+  "expect": "FLAG",
+  "violation": "VBR_DISPATCH_WITHOUT_LS_SIBLINGS",
+  "why": "An `ls results/` that runs AFTER the dispatch does not retroactively make the dispatch safe — by then the duplicate research is already in flight. The ls-of-siblings probe must PRECEDE the dispatch, so a trailing ls still FIRES.",
+  "events": [
+    {
+      "role": "user",
+      "text": "Find out which read-path architecture we picked."
+    },
+    {
+      "role": "assistant",
+      "text": "Dispatching the research agent.",
+      "tools": [
+        {
+          "name": "Task",
+          "input": {
+            "subagent_type": "researcher",
+            "prompt": "Research which read-path architecture the team chose."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Now let me also check the results dir.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "ls docs/research/results/" } }
+      ]
+    }
+  ]
+}

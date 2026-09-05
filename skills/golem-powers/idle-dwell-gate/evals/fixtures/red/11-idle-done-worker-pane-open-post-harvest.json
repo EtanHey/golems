@@ -1,0 +1,22 @@
+{
+  "specimen": "2026-07-02/visibly-alive-doctrine",
+  "label": "RED — harvested DONE worker pane remains open and reads as active failure",
+  "expect": "FLAG",
+  "violation": "IDLE_DONE_WORKER_PANE_OPEN",
+  "hookDecision": "advisory",
+  "events": [
+    {
+      "role": "user",
+      "text": "Close out the harvested workers; visibly alive DONE panes should not be left open."
+    },
+    {
+      "role": "assistant",
+      "text": "The reports were harvested. I am leaving the panes visible for now and standing by."
+    }
+  ],
+  "state": {
+    "workers": [
+      { "id": "W7", "state": "done", "paneOpen": true, "doneMinutes": 22, "harvested": true, "queueItem": "qa-report" }
+    ]
+  }
+}

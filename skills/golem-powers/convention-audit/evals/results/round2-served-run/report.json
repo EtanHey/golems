@@ -1,0 +1,46 @@
+{
+  "provenance": [
+    {
+      "agent_or_arm": "authorized_round_2_served",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "gpt-5.6-luna",
+      "effort_effective": "max",
+      "model_observation_source": "CLI status line: round2-served-run/pin-preflight.log lines 7-13; 1 preflight observation applied to 7 workers by construction; per-worker banners are not emitted under --json",
+      "effort_observation_source": "CLI status line: round2-served-run/pin-preflight.log lines 7-13; 1 preflight observation applied to 7 workers by construction; per-worker banners are not emitted under --json"
+    }
+  ],
+  "findings": [
+    {
+      "concept": "One-day recent-chunks timestamp window",
+      "confidence": "high",
+      "divergent_sites": [
+        {
+          "line": 1,
+          "path": "recent_queries.py",
+          "reason": "Raw text comparison is format-dependent and excludes rows exactly at the cutoff."
+        },
+        {
+          "line": 2,
+          "path": "recent_queries.py",
+          "reason": "Datetime normalization and inclusive >= semantics can classify rows differently from the raw strict comparison."
+        }
+      ],
+      "implementation_sites": [
+        {
+          "line": 1,
+          "path": "recent_queries.py",
+          "summary": "RAW_RECENT_QUERY filters with a raw created_at > datetime('now', '-1 day') comparison."
+        },
+        {
+          "line": 2,
+          "path": "recent_queries.py",
+          "summary": "NORMALIZED_RECENT_QUERY applies datetime(created_at) and uses an inclusive >= cutoff."
+        }
+      ],
+      "shared_helper_shape": "One canonical recent-query owner in recent_queries.py should define timestamp normalization and the boundary operator; consumers should reference it instead of separate SQL constants.",
+      "site_count": 2
+    }
+  ],
+  "repo": "convention-audit-round2-served-target",
+  "revision": "3e4d5f2398b3ebac3b03b0ff15efe0fafaef2d4f"
+}

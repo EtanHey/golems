@@ -1,0 +1,56 @@
+{
+  "geminiPrompt": "# Grounding\n- \"BrainLayer Architecture Notes\"\n\n# Scope\nVerify current search ranking.",
+  "canonicalLocalFiles": [
+    {
+      "name": "01-context.md",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "modifiedTime": "2026-08-02T10:00:00Z"
+    }
+  ],
+  "receipt": {
+    "driveRoute": {
+      "canonical": true,
+      "resolvedWith": [
+        "/drive-usage",
+        "/braindrive"
+      ]
+    },
+    "driveAuth": {
+      "callSucceeded": true,
+      "authed": true
+    },
+    "accountVerification": {
+      "callSucceeded": true,
+      "drive_account": "research-account@example.com",
+      "notebooklm_account": "research-account@example.com",
+      "expected": "research-account@example.com",
+      "match": true
+    },
+    "localFiles": [
+      {
+        "name": "01-context.md",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "modifiedTime": "2026-08-02T10:00:00Z"
+      }
+    ],
+    "driveFiles": [
+      {
+        "name": "01-context.md",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "modifiedTime": "2026-08-01T10:00:00Z"
+      }
+    ],
+    "notebooklm": {
+      "exists": true,
+      "expectedReplacementIds": [
+        "source-new"
+      ],
+      "indexedSourceIds": [
+        "source-new"
+      ],
+      "staleSourceIds": [
+        "source-old"
+      ]
+    }
+  }
+}

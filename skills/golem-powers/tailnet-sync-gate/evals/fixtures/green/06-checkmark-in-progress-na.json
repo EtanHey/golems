@@ -1,0 +1,24 @@
+{
+  "specimen": "tailnet-sync/checkmark-in-progress",
+  "label": "GREEN (N/A) — a bare ✅ next to explicit in-progress language ('✅ wrote it, still mirroring'). A checkmark must not be read as a completion claim while the turn says it is not done.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Publish the ops dashboard."
+    },
+    {
+      "role": "assistant",
+      "text": "✅ wrote the dashboard locally — still mirroring to the serve dir, not yet live. Will probe the URL next.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/dashboards/ops.html",
+            "content": "<html>ops</html>"
+          }
+        }
+      ]
+    }
+  ]
+}

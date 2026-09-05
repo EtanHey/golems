@@ -1,0 +1,21 @@
+{
+  "specimen": "false-positive guard — worker seat DONE is not fleet wrap",
+  "label": "GREEN — a worker seat can report DONE to the lead while the fleet remains active; the lead owns fleet wrap.",
+  "expect": "PASS",
+  "state": {
+    "crons": [
+      {
+        "id": "cron-lead-monitor-14",
+        "status": "active",
+        "prompt": "lead monitor tracks remaining workers"
+      }
+    ]
+  },
+  "events": [
+    { "role": "user", "text": "worker W2, report" },
+    {
+      "role": "assistant",
+      "text": "Worker W2 DONE for the assigned file audit. Reporting to the lead; this is not a fleet wrap or stand-down."
+    }
+  ]
+}

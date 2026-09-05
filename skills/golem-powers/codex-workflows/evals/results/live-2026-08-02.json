@@ -1,0 +1,71 @@
+{
+  "provenance": "alias-only",
+  "agent_type": "codex",
+  "date": "2026-08-02",
+  "degraded_mode": [
+    "lead-reachable-only",
+    "no-pane",
+    "no-listen-name",
+    "no-self-monitor"
+  ],
+  "eval": "live-two-worker-fanout",
+  "manifest_mapping_distinct": true,
+  "mode": "parallel",
+  "run_id": "cw-live-20260802-66089",
+  "skill": "codex-workflows",
+  "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "workers": {
+    "toy-a": {
+      "assistant_result": "package-name=golems\nTASK_DONE",
+      "branch": "codex-workflows/cw-live-20260802-66089-toy-a",
+      "checks": {
+        "assistant_result_exact": true,
+        "degraded_mode_exact": true,
+        "effort_xhigh": true,
+        "log_exists": true,
+        "model_luna": true,
+        "output_tokens_positive": true,
+        "status_completed": true,
+        "task_done_exact": true,
+        "wall_seconds_positive": true,
+        "worktree_exists": true
+      },
+      "effort": "xhigh",
+      "expected_result": "package-name=golems",
+      "log_name": "toy-a.log",
+      "model": "gpt-5.6-luna",
+      "output_tokens": 1570,
+      "status": "completed",
+      "task_done": true,
+      "wall_seconds": 50.039,
+      "worktree_name": "toy-a"
+    },
+    "toy-b": {
+      "assistant_result": "default-branch=master\nTASK_DONE",
+      "branch": "codex-workflows/cw-live-20260802-66089-toy-b",
+      "checks": {
+        "assistant_result_exact": true,
+        "degraded_mode_exact": true,
+        "effort_xhigh": true,
+        "log_exists": true,
+        "model_luna": true,
+        "output_tokens_positive": true,
+        "status_completed": true,
+        "task_done_exact": true,
+        "wall_seconds_positive": true,
+        "worktree_exists": true
+      },
+      "effort": "xhigh",
+      "expected_result": "default-branch=master",
+      "log_name": "toy-b.log",
+      "model": "gpt-5.6-luna",
+      "output_tokens": 1699,
+      "status": "completed",
+      "task_done": true,
+      "wall_seconds": 50.369,
+      "worktree_name": "toy-b"
+    }
+  },
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

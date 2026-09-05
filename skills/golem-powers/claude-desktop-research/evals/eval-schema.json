@@ -1,0 +1,123 @@
+{
+  "skill": "claude-web-research",
+  "version": "1.0.0",
+  "eval_date": "2026-03-29",
+  "description": "Behavioral compliance evals for the claude-web-research browser automation skill",
+  "scoring": {
+    "compliance_weight": 0.7,
+    "structure_weight": 0.2,
+    "quality_weight": 0.1
+  },
+  "cases": [
+    {
+      "id": "E01",
+      "name": "single-prompt-happy-path",
+      "category": "compliance",
+      "prompt": "Submit this research prompt to my 'Test Research' project on claude.ai with deep research enabled: 'What are the best practices for SQLite WAL mode in production?'",
+      "expected_behavior": "Agent follows all 8 steps: navigate to project, enable Research+Web search, set Opus 4.6 Extended, paste prompt via JS injection, click send, confirm MCP connectors, verify research started, report success",
+      "assertions": [
+        "Agent uses Chrome MCP tools (navigate, find, click, javascript_tool)",
+        "Agent enables Research with Web search via the '+' menu",
+        "Agent sets model to Opus 4.6 with Extended thinking",
+        "Agent uses JavaScript injection for prompt text (not form_input for long text)",
+        "Agent clicks send button",
+        "Agent handles MCP connector approval dialog",
+        "Agent verifies research actually started before reporting success",
+        "Agent does NOT claim success without screenshot/page verification"
+      ],
+      "discriminating_power": "high — without skill, agent won't know the UI flow"
+    },
+    {
+      "id": "E02",
+      "name": "batch-three-prompts",
+      "category": "compliance",
+      "prompt": "Submit these 3 research prompts to 'Test Research' project: R01-sqlite.md, R02-search.md, R03-caching.md from ~/research-batch/",
+      "expected_behavior": "Agent submits all 3 prompts sequentially. MCP connector approval only on first prompt. Returns to project page between prompts. Reports batch results.",
+      "assertions": [
+        "Agent reads all 3 prompt files before starting",
+        "Agent confirms MCP connectors on FIRST prompt only",
+        "Agent does NOT attempt MCP confirmation on prompts 2 and 3",
+        "Agent navigates back to project page between prompts",
+        "Agent verifies Research+Model settings persist (checks but doesn't re-enable)",
+        "Agent reports per-prompt status (submitted/failed)",
+        "Agent handles the batch pattern as described in skill"
+      ],
+      "discriminating_power": "high — the first-prompt-only MCP approval is skill-specific knowledge"
+    },
+    {
+      "id": "E03",
+      "name": "project-creation-flow",
+      "category": "structure",
+      "prompt": "Create a new project called 'Architecture Research' on claude.ai with description 'Deep dives into system architecture patterns', then submit this prompt: 'Compare event sourcing vs CQRS for real-time collaborative apps'",
+      "expected_behavior": "Agent creates project first (name, description), then submits prompt within it. Follows project setup flow from skill.",
+      "assertions": [
+        "Agent navigates to claude.ai/projects",
+        "Agent clicks '+ New project'",
+        "Agent fills in project name and description",
+        "Agent creates the project before attempting to submit prompts",
+        "Agent then follows the standard prompt submission flow",
+        "Agent does NOT skip project creation and try to submit to nonexistent project"
+      ],
+      "discriminating_power": "medium — baseline Claude might figure out project creation but not the exact UI flow"
+    },
+    {
+      "id": "E04",
+      "name": "error-recovery-no-extension",
+      "category": "quality",
+      "prompt": "Submit a research prompt to claude.ai but the Chrome extension isn't responding",
+      "expected_behavior": "Agent detects Chrome MCP unavailability, reports the issue clearly, suggests troubleshooting steps (check extension, refresh browser, restart MCP server)",
+      "assertions": [
+        "Agent attempts to use Chrome MCP tools",
+        "Agent recognizes when tools fail or return errors",
+        "Agent does NOT silently fail or claim success",
+        "Agent suggests specific troubleshooting steps from the skill",
+        "Agent asks user for help if unable to resolve"
+      ],
+      "discriminating_power": "medium — good agents handle errors regardless of skill"
+    },
+    {
+      "id": "E05",
+      "name": "settings-persistence-verification",
+      "category": "compliance",
+      "prompt": "I already have Research and Opus Extended set up in my project. Just paste and send this prompt: 'Analyze the tradeoffs of Unix sockets vs TCP for local IPC'",
+      "expected_behavior": "Agent verifies settings are already correct (blue magnifying glass icon, 'Opus 4.6 Extended' in selector) and skips re-enabling them. Proceeds directly to paste and send.",
+      "assertions": [
+        "Agent checks for Research indicator (blue magnifying glass) before trying to enable",
+        "Agent checks model selector text before trying to change it",
+        "Agent does NOT redundantly re-enable settings that are already active",
+        "Agent proceeds to paste prompt after verification",
+        "Agent uses JavaScript injection for the prompt text"
+      ],
+      "discriminating_power": "medium — skill teaches to verify before re-enabling"
+    },
+    {
+      "id": "E06",
+      "name": "js-injection-vs-form-input",
+      "category": "structure",
+      "prompt": "Submit this 2000-word research prompt to my project: [very long prompt about distributed systems architecture, microservices patterns, event-driven design, and database sharding strategies across multiple paragraphs...]",
+      "expected_behavior": "Agent uses JavaScript injection (execCommand or InputEvent dispatch) for the long prompt, NOT form_input which fails on long contenteditable text",
+      "assertions": [
+        "Agent uses mcp__claude-in-chrome__javascript_tool for prompt insertion",
+        "Agent does NOT use form_input for the long prompt text",
+        "Agent uses either execCommand('insertText') or InputEvent dispatch pattern",
+        "Agent verifies the full prompt was inserted before sending"
+      ],
+      "discriminating_power": "high — without skill, agent would try form_input and fail on long text"
+    },
+    {
+      "id": "E07",
+      "name": "model-fallback-no-opus",
+      "category": "quality",
+      "prompt": "Submit a research prompt but my account only has Sonnet, not Opus",
+      "expected_behavior": "Agent recognizes Opus is unavailable, falls back to Sonnet 4.6 Extended as documented in troubleshooting section, informs user of the fallback",
+      "assertions": [
+        "Agent attempts to select Opus 4.6 first",
+        "Agent recognizes when Opus is not in the model list",
+        "Agent falls back to Sonnet 4.6 Extended (as documented in skill troubleshooting)",
+        "Agent informs user about the model fallback",
+        "Agent still enables Extended thinking on the fallback model"
+      ],
+      "discriminating_power": "medium — skill documents this specific fallback"
+    }
+  ]
+}

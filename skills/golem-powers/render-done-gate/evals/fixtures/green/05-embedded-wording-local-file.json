@@ -1,0 +1,38 @@
+{
+  "specimen": "cursor-bugbot/embedded-wording-false-surface (MEDIUM)",
+  "label": "GREEN — a LOCAL-file claim whose prose merely mentions 'embedded in the bundle' (not a served dashboard surface) must NOT force served-only verification; the valid ls+ffprobe of the claimed path passes",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Render the AfterCode segment to out/seg.mp3 with the registered clone."
+    },
+    {
+      "role": "assistant",
+      "text": "Rendering with theo-c4, then the composite probe.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": { "command": "narrate --reference theo-c4 -o out/seg.mp3" }
+        },
+        { "name": "Bash", "input": { "command": "ls -l out/seg.mp3" } },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "ffprobe -v error -show_entries format=size,duration out/seg.mp3"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "resolved --reference theo-c4 (registered clone)"
+    },
+    { "role": "tool", "text": "-rw-r--r-- 1 user staff 19245 out/seg.mp3" },
+    { "role": "tool", "text": "size=19245\nduration=168.62" },
+    {
+      "role": "assistant",
+      "text": "Render done ✅ — out/seg.mp3 is 19245 bytes, 168.62s, theo-c4 resolved, and it's embedded in the bundle. Give it a play."
+    }
+  ]
+}

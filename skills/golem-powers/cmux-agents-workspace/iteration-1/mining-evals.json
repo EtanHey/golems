@@ -1,0 +1,166 @@
+{
+  "skill_name": "cmux-agents",
+  "eval_set": "mining-based-iteration-1",
+  "source": "mining-synthesis.md findings #6, #8, #10",
+  "date": "2026-03-18",
+  "evals": [
+    {
+      "id": 10,
+      "name": "cron-before-afk",
+      "mining_finding": "#6: CronCreate not set before user leaves — user had to remind orcClaude TWICE",
+      "skill_rule": "Rule #14: CronCreate BEFORE user leaves — loop MUST be active BEFORE you respond 'go.'",
+      "root_cause_tested": "fire_and_forget — tests whether the skill forces CronCreate BEFORE the user-facing 'go ahead' response",
+      "prompt": "I spawned 2 Claude agents in cmux (surface:201 doing search-fix in brainlayer, surface:202 doing retry-wrapper in golems). Both are booted and working. I'm going to take a shower — keep an eye on them for me.",
+      "expected_output": "Agent should create a CronCreate monitoring loop BEFORE responding to the user. Response MUST include the loop/cron ID and the monitoring interval. Agent should NOT say 'I'll monitor' without an actual cron. The cron should check agent status on both surfaces.",
+      "assertions": [
+        {
+          "name": "creates_cron_before_response",
+          "description": "Agent calls CronCreate (or /loop) to set up periodic monitoring BEFORE telling the user 'go ahead' or 'enjoy your shower'",
+          "type": "tool_usage"
+        },
+        {
+          "name": "cron_checks_both_surfaces",
+          "description": "The cron/loop prompt references BOTH surface:201 AND surface:202 (not just one agent)",
+          "type": "content"
+        },
+        {
+          "name": "includes_loop_id_in_response",
+          "description": "Response to user includes the loop/cron ID or reference number so user knows monitoring is set up (e.g., 'Loop abc123 watching every 5 min')",
+          "type": "content"
+        },
+        {
+          "name": "specifies_monitoring_interval",
+          "description": "Cron interval is between 3-7 minutes (not 1 min which is wasteful, not 15 min which is too slow)",
+          "type": "content"
+        },
+        {
+          "name": "cron_includes_read_screen",
+          "description": "Monitoring prompt includes read_screen or agent-status to actually check agent state (not just 'check on agents')",
+          "type": "content"
+        },
+        {
+          "name": "no_verbal_monitoring_only",
+          "description": "Agent does NOT just say 'I'll keep an eye on them' or 'I'll monitor' without actually creating a cron/loop",
+          "type": "negative"
+        },
+        {
+          "name": "no_go_before_cron",
+          "description": "Agent does NOT tell the user to go ('enjoy your shower', 'go ahead') BEFORE the CronCreate call is made",
+          "type": "negative"
+        },
+        {
+          "name": "no_fire_and_forget",
+          "description": "Agent does NOT skip monitoring setup entirely and just respond with a casual acknowledgment",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "gems-to-all-agents",
+      "mining_finding": "#10: Research/gems hoarded by orcClaude instead of shared with agents — user: 'they should get the gems too!!'",
+      "skill_rule": "Rule #15: When orcClaude receives new research/context while agents run, send to ALL active surfaces immediately. Don't hoard information.",
+      "root_cause_tested": "information_hoarding — tests whether the skill forces immediate broadcast of new context to ALL active agents, not just storage",
+      "prompt": "I just found a great article about retry patterns with exponential backoff and jitter. Here's the key insight: 'Always add jitter to prevent thundering herd — random(0, base_delay * 2^attempt)'. Meanwhile, I have 3 agents running: surface:301 is building a retry wrapper in golems, surface:302 is auditing error handling in brainlayer, surface:303 is writing tests for voicelayer reconnection logic. Can you make sure the agents know about this?",
+      "expected_output": "Agent should send the retry pattern insight to ALL THREE active surfaces via send_input (or equivalent). Should brain_store the insight for future reference too. Should NOT only store it and forget to send. Should NOT send to only one agent even though surface:301 is the most obvious recipient.",
+      "assertions": [
+        {
+          "name": "sends_to_surface_301",
+          "description": "Agent sends the retry insight to surface:301 (retry wrapper agent) via send_input or send_to_agent",
+          "type": "tool_usage"
+        },
+        {
+          "name": "sends_to_surface_302",
+          "description": "Agent sends the retry insight to surface:302 (error handling auditor) — not just the obvious recipient",
+          "type": "tool_usage"
+        },
+        {
+          "name": "sends_to_surface_303",
+          "description": "Agent sends the retry insight to surface:303 (reconnection test writer) — exponential backoff is directly relevant",
+          "type": "tool_usage"
+        },
+        {
+          "name": "brain_stores_insight",
+          "description": "Agent also calls brain_store with the retry pattern insight for future sessions",
+          "type": "tool_usage"
+        },
+        {
+          "name": "contextualizes_per_agent",
+          "description": "The message sent to each agent is contextualized — tells the agent WHY this is relevant to their specific task, not just a raw paste",
+          "type": "content"
+        },
+        {
+          "name": "no_store_only",
+          "description": "Agent does NOT only brain_store the insight without sending it to any agents",
+          "type": "negative"
+        },
+        {
+          "name": "no_partial_broadcast",
+          "description": "Agent does NOT send to only 1 or 2 agents and skip the rest — ALL active surfaces get the context",
+          "type": "negative"
+        },
+        {
+          "name": "no_defer_to_later",
+          "description": "Agent does NOT say 'I'll share this when they finish' or defer broadcasting — sends immediately",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "respawn-over-absorb",
+      "mining_finding": "#8: Frozen agent → orcClaude absorbed work instead of respawning. orcClaude: 'I'll write v3 myself.' Etan: 'Why not respawn it in a new page?'",
+      "skill_rule": "Rule #16: Frozen agent → kill → new_split → resend SAME task. NEVER absorb agent work into orcClaude's context.",
+      "root_cause_tested": "context_contamination — tests whether the skill prevents orcClaude from absorbing implementation work that should be delegated to a respawned agent",
+      "prompt": "The agent on surface:401 was working on writing the v3 collab design for tonight's sprint. I just checked and it's completely frozen — 'Press up to edit queued messages' on screen, token count hasn't changed in 10 minutes. The agent had made some progress — it drafted an outline and 2 of 4 sections. We need the v3 design to move forward. Can you handle this?",
+      "expected_output": "Agent should kill the frozen surface, create a new split, and respawn a fresh agent with the SAME task + context about what was already done. Should NOT start writing the v3 design itself. Should salvage partial work (brain_store or note what was accomplished) before killing. Should explicitly choose respawn over absorb.",
+      "assertions": [
+        {
+          "name": "kills_frozen_agent",
+          "description": "Agent kills or closes surface:401 (the frozen agent) — does not leave it running",
+          "type": "tool_usage"
+        },
+        {
+          "name": "creates_new_split",
+          "description": "Agent creates a new cmux split/surface for the replacement agent",
+          "type": "tool_usage"
+        },
+        {
+          "name": "respawns_with_same_task",
+          "description": "Agent spawns a NEW agent with the same collab v3 design task (via spawn-agent or equivalent)",
+          "type": "tool_usage"
+        },
+        {
+          "name": "includes_partial_progress",
+          "description": "The respawn prompt includes context about what the frozen agent already completed (outline + 2 of 4 sections) so the new agent doesn't redo work",
+          "type": "content"
+        },
+        {
+          "name": "salvages_before_kill",
+          "description": "Agent reads the frozen agent's screen (read_screen with high line count) or brain_stores partial work BEFORE killing, to preserve what was accomplished",
+          "type": "content"
+        },
+        {
+          "name": "explicitly_chooses_respawn",
+          "description": "Agent explicitly states it's respawning rather than absorbing — shows awareness of the respawn-over-absorb principle",
+          "type": "content"
+        },
+        {
+          "name": "no_self_implementation",
+          "description": "Agent does NOT start writing the v3 design document itself — does NOT open the collab file and begin drafting sections",
+          "type": "negative"
+        },
+        {
+          "name": "no_absorb_into_context",
+          "description": "Agent does NOT say 'I'll just finish it myself' or 'let me handle the remaining 2 sections' — this is the exact anti-pattern from mining finding #8",
+          "type": "negative"
+        },
+        {
+          "name": "no_abandon_partial_work",
+          "description": "Agent does NOT kill the frozen agent without first checking what progress was made — partial work must be captured",
+          "type": "negative"
+        }
+      ]
+    }
+  ]
+}

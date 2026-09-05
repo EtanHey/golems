@@ -1,0 +1,313 @@
+{
+  "provenance": "alias-only",
+  "skill": "eas-prebuild-check",
+  "cases": [
+    {
+      "id": 1,
+      "name": "missing-easignore-detected",
+      "fixture": "missing-easignore",
+      "prompt": "/eas-prebuild-check (in a project with no .easignore and a 500MB node_modules)",
+      "exit_code": 1,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-01-fail",
+          "description": "Output contains '[1/9]' line with '✗ FAIL' status and references '.easignore'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "fix-suggested",
+          "description": "Output suggests --fix or copying from templates/.easignore",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "do-not-build-warning",
+          "description": "Output contains 'DO NOT run `eas build`' in summary section",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — missing-easignore\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✗ FAIL\n      No .easignore file found. Archive will include node_modules (likely >500MB).\n      Fix: Run with --fix to write canonical template, or copy from ~/.config/superpowers/worktrees/golems/eas-prebuild-check-v1/skills/golem-powers/eas-prebuild-check/templates/.easignore\n\n[2/9] Archive size estimate <100MB             ⊘ SKIPPED\n      Depends on check 01 (.easignore missing)\n\n[3/9] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/9] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.missingeasignore | Android: com.taskowl.missingeasignore\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✓ PASS\n      1 device(s) registered for ad-hoc distribution\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 6   ⚠ Warnings: 0   ✗ Failed: 1   ⊘ Skipped: 1   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  **DO NOT run `eas build` until all FAIL items are resolved.**"
+    },
+    {
+      "id": 2,
+      "name": "easignore-partial-warn",
+      "fixture": "partial-easignore",
+      "prompt": "/eas-prebuild-check (project has .easignore with only '.expo' entry)",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-01-warn",
+          "description": "Output shows check 1 as '⚠ WARN' (not FAIL)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "missing-node-modules-listed",
+          "description": "Output names 'node_modules' in the missing excludes list",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — partial-easignore\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ⚠ WARN\n      .easignore exists but missing excludes: node_modules .git ios/build android/build android/.gradle android/app/build ios/Pods\n      Fix: Add missing patterns to .easignore, or --fix to overwrite with canonical template\n\n[2/9] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/9] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/9] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.partialeasignore | Android: com.taskowl.partialeasignore\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✓ PASS\n      1 device(s) registered for ad-hoc distribution\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 7   ⚠ Warnings: 1   ✗ Failed: 0   ⊘ Skipped: 0   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  Warnings present — review before building."
+    },
+    {
+      "id": 3,
+      "name": "bundle-id-suspicious-default",
+      "fixture": "bundle-id-default",
+      "prompt": "/eas-prebuild-check (app.json has expo.ios.bundleIdentifier = 'com.anonymous.myapp')",
+      "exit_code": 1,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-04-warn",
+          "description": "Output shows check 4 (Bundle ID consistency) as WARN",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "suspicious-label",
+          "description": "Output contains 'suspicious' or 'scaffold default' language",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "fix-references-app-json",
+          "description": "Fix suggestion mentions editing app.json expo.ios.bundleIdentifier",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — bundle-id-default\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✓ PASS\n      .easignore covers all required excludes\n\n[2/9] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/9] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/9] Bundle ID consistency                    ⚠ WARN\n      iOS: com.anonymous.myapp | Android: com.anonymous.myapp — matches suspicious scaffold default\n      Fix: Edit app.json: expo.ios.bundleIdentifier and expo.android.package\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✗ FAIL\n      0 devices registered. Preview = ad-hoc distribution; requires ≥1 UDID.\n      Fix: eas device:create\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 6   ⚠ Warnings: 1   ✗ Failed: 1   ⊘ Skipped: 0   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  **DO NOT run `eas build` until all FAIL items are resolved.**"
+    },
+    {
+      "id": 4,
+      "name": "version-mismatch-detected",
+      "fixture": "no-version-fields",
+      "prompt": "/eas-prebuild-check --platform both (app.json has version but no buildNumber/versionCode)",
+      "exit_code": 1,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-05-fail",
+          "description": "Check 5 (Version sync) shows FAIL",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "missing-fields-listed",
+          "description": "Output explicitly names the missing fields (ios.buildNumber or android.versionCode)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — no-version-fields\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✓ PASS\n      .easignore covers all required excludes\n\n[2/9] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/9] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/9] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.noversionfields | Android: com.taskowl.noversionfields\n\n[5/9] Version sync (version / buildNumber / versionCode) ✗ FAIL\n      version: 1.0.0 | iOS buildNumber: <missing> | Android versionCode: <missing> — missing: ios.buildNumber android.versionCode\n      Fix: Add missing version fields to app.json expo block\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✓ PASS\n      1 device(s) registered for ad-hoc distribution\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 7   ⚠ Warnings: 0   ✗ Failed: 1   ⊘ Skipped: 0   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  **DO NOT run `eas build` until all FAIL items are resolved.**"
+    },
+    {
+      "id": 5,
+      "name": "no-ios-devices-preview",
+      "fixture": "no-ios-devices",
+      "prompt": "/eas-prebuild-check --platform ios --profile preview (mocked eas device:list returns [])",
+      "exit_code": 1,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-06-fail",
+          "description": "Check 6 (iOS devices registered) shows FAIL",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "device-create-suggested",
+          "description": "Fix suggestion is 'eas device:create'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — no-ios-devices\nProfile: preview | Platform: ios | Account: user@example.com\n\n[1/8] .easignore exists and excludes build dirs ✓ PASS\n      .easignore covers all required excludes\n\n[2/8] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/8] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/8] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.noiosdevices | Android: com.taskowl.noiosdevices\n\n[5/8] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1\n\n[6/8] iOS devices registered (preview/ad-hoc)  ✗ FAIL\n      0 devices registered. Preview = ad-hoc distribution; requires ≥1 UDID.\n      Fix: eas device:create\n\n[7/8] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/8] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build).\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 6   ⚠ Warnings: 0   ✗ Failed: 1   ⊘ Skipped: 0   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  **DO NOT run `eas build` until all FAIL items are resolved.**"
+    },
+    {
+      "id": 6,
+      "name": "production-profile-skips-device-check",
+      "fixture": "no-ios-devices",
+      "prompt": "/eas-prebuild-check --platform ios --profile production (0 registered devices)",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-06-skipped",
+          "description": "Check 6 shows '⊘ SKIPPED' status with reason mentioning 'ad-hoc not required'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "no-device-failure",
+          "description": "Check 6 is NOT marked FAIL",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — no-ios-devices\nProfile: production | Platform: ios | Account: user@example.com\n\n[1/8] .easignore exists and excludes build dirs ✓ PASS\n      .easignore covers all required excludes\n\n[2/8] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/8] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/8] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.noiosdevices | Android: com.taskowl.noiosdevices\n\n[5/8] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1\n\n[6/8] iOS devices registered (preview/ad-hoc)  ⊘ SKIPPED\n      Profile is 'production' — ad-hoc distribution not required\n\n[7/8] iOS credentials synced                   ⚠ WARN\n      Could not query eas credentials (non-interactive mode unsupported in this eas-cli?)\n      Fix: Run: eas credentials -p ios --profile production\n\n[8/8] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build).\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 5   ⚠ Warnings: 1   ✗ Failed: 0   ⊘ Skipped: 1   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  Warnings present — review before building."
+    },
+    {
+      "id": 7,
+      "name": "eas-cli-outdated-warn",
+      "fixture": "happy-path",
+      "prompt": "/eas-prebuild-check (mocked: eas --version = 17.0.0, npm view = 18.5.0)",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-03-warn",
+          "description": "Check 3 shows WARN status",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "upgrade-command",
+          "description": "Fix suggests 'npm install -g eas-cli@latest'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — happy-path\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✓ PASS\n      .easignore covers all required excludes\n\n[2/9] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/9] eas-cli version up to date               ⚠ WARN\n      Installed: 17.0.0 | Latest: 18.5.0\n      Fix: npm install -g eas-cli@latest\n\n[4/9] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.app | Android: com.taskowl.app\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✓ PASS\n      1 device(s) registered for ad-hoc distribution\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓ | APNs P8 key: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 7   ⚠ Warnings: 1   ✗ Failed: 0   ⊘ Skipped: 0   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  Warnings present — review before building."
+    },
+    {
+      "id": 8,
+      "name": "fix-writes-canonical-easignore",
+      "fixture": "missing-easignore",
+      "prompt": "/eas-prebuild-check --fix (project missing .easignore, has other files)",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-01-pass-after-fix",
+          "description": "After --fix, check 1 shows PASS",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "easignore-file-written",
+          "description": "A .easignore file exists in the project after running and contains 'node_modules'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "no-other-files-touched",
+          "description": "No other files in the project were modified or created (except .easignore)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — missing-easignore\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✓ PASS\n      Wrote .easignore from template (     105 lines)\n\n[2/9] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/9] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/9] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.missingeasignore | Android: com.taskowl.missingeasignore\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✓ PASS\n      1 device(s) registered for ad-hoc distribution\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 8   ⚠ Warnings: 0   ✗ Failed: 0   ⊘ Skipped: 0   ℹ Info: 1\n\n  All critical checks passed. You can run `eas build`."
+    },
+    {
+      "id": 9,
+      "name": "fix-refuses-destructive-changes",
+      "fixture": "bundle-id-default",
+      "prompt": "/eas-prebuild-check --fix (project has suspicious bundle ID and 0 devices)",
+      "exit_code": 1,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "no-auto-bundle-change",
+          "description": "app.json bundleIdentifier is UNCHANGED after --fix",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "user-judgment-required",
+          "description": "Output says check 4 still requires user action / 'needs user judgment' or similar",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — bundle-id-default\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✓ PASS\n      .easignore covers all required excludes\n\n[2/9] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/9] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/9] Bundle ID consistency                    ⚠ WARN\n      iOS: com.anonymous.myapp | Android: com.anonymous.myapp — matches suspicious scaffold default\n      Fix: Edit app.json: expo.ios.bundleIdentifier and expo.android.package\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✗ FAIL\n      0 devices registered. Preview = ad-hoc distribution; requires ≥1 UDID.\n      Fix: eas device:create\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 6   ⚠ Warnings: 1   ✗ Failed: 1   ⊘ Skipped: 0   ℹ Info: 1\n\n## Recommended order\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  **DO NOT run `eas build` until all FAIL items are resolved.**"
+    },
+    {
+      "id": 10,
+      "name": "json-mode-machine-readable",
+      "fixture": "happy-path",
+      "prompt": "/eas-prebuild-check --json",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "valid-json",
+          "description": "Output parses as valid JSON (jq . succeeds)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "has-checks-array",
+          "description": "JSON has 'checks' array with at least 9 entries",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "has-summary-object",
+          "description": "JSON has 'summary' object with pass, fail, warn, skip, info counts",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "{\"project\":\"happy-path\",\"account\":\"user@example.com\",\"platform\":\"both\",\"profile\":\"preview\",\"checks\":[{\"name\":\".easignore exists and excludes build dirs\",\"status\":\"PASS\",\"message\":\".easignore covers all required excludes\",\"fix\":\"\"},{\"name\":\"Archive size estimate <100MB\",\"status\":\"PASS\",\"message\":\"Estimated archive size: 0 MB (limit: 100 MB)\",\"fix\":\"\"},{\"name\":\"eas-cli version up to date\",\"status\":\"WARN\",\"message\":\"Installed: 17.0.0 | Latest: 18.5.0\",\"fix\":\"npm install -g eas-cli@latest\"},{\"name\":\"Bundle ID consistency\",\"status\":\"PASS\",\"message\":\"iOS: com.taskowl.app | Android: com.taskowl.app\",\"fix\":\"\"},{\"name\":\"Version sync (version / buildNumber / versionCode)\",\"status\":\"PASS\",\"message\":\"version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\",\"fix\":\"\"},{\"name\":\"iOS devices registered (preview/ad-hoc)\",\"status\":\"PASS\",\"message\":\"1 device(s) registered for ad-hoc distribution\",\"fix\":\"\"},{\"name\":\"iOS credentials synced\",\"status\":\"PASS\",\"message\":\"Distribution cert: ✓ | Provisioning profile: ✓ | APNs P8 key: ✓\",\"fix\":\"\"},{\"name\":\"Android keystore ready\",\"status\":\"PASS\",\"message\":\"EAS-managed keystore configured\",\"fix\":\"\"},{\"name\":\"Concurrency awareness\",\"status\":\"INFO\",\"message\":\"Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\",\"fix\":\"Upgrade to Production tier for parallel builds\"}],\"summary\":{\"pass\":7,\"fail\":0,\"warn\":1,\"skip\":0,\"info\":1}}"
+    },
+    {
+      "id": 11,
+      "name": "managed-workflow-skip-native-checks",
+      "fixture": "managed-workflow",
+      "prompt": "/eas-prebuild-check (project has no ios/ or android/ folders — managed workflow)",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "still-runs-all-checks",
+          "description": "All 9 checks still run (managed workflow still needs them)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "easignore-still-important",
+          "description": "Check 1 still runs — .easignore matters even in managed workflow (root node_modules exists)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — managed-workflow\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✓ PASS\n      .easignore covers all required excludes\n\n[2/9] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/9] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/9] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.managedworkflow | Android: com.taskowl.managedworkflow\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✓ PASS\n      1 device(s) registered for ad-hoc distribution\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 8   ⚠ Warnings: 0   ✗ Failed: 0   ⊘ Skipped: 0   ℹ Info: 1\n\n  All critical checks passed. You can run `eas build`."
+    },
+    {
+      "id": 12,
+      "name": "exit-code-nonzero-on-fail",
+      "fixture": "missing-easignore",
+      "prompt": "/eas-prebuild-check (known-failing project); echo $?",
+      "exit_code": 1,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "exit-code-1",
+          "description": "Shell exit code is 1 (not 0, not 2)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — missing-easignore\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✗ FAIL\n      No .easignore file found. Archive will include node_modules (likely >500MB).\n      Fix: Run with --fix to write canonical template, or copy from ~/.config/superpowers/worktrees/golems/eas-prebuild-check-v1/skills/golem-powers/eas-prebuild-check/templates/.easignore\n\n[2/9] Archive size estimate <100MB             ⊘ SKIPPED\n      Depends on check 01 (.easignore missing)\n\n[3/9] eas-cli version up to date               ✓ PASS\n      eas-cli 18.5.0 is latest\n\n[4/9] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.missingeasignore | Android: com.taskowl.missingeasignore\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✓ PASS\n      1 device(s) registered for ad-hoc distribution\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 6   ⚠ Warnings: 0   ✗ Failed: 1   ⊘ Skipped: 1   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  **DO NOT run `eas build` until all FAIL items are resolved.**"
+    },
+    {
+      "id": 13,
+      "name": "exit-code-zero-on-pass",
+      "fixture": "happy-path",
+      "prompt": "/eas-prebuild-check (happy-path project); echo $?",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "exit-code-0",
+          "description": "Shell exit code is 0",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "# EAS Prebuild Check — happy-path\nProfile: preview | Platform: both | Account: user@example.com\n\n[1/9] .easignore exists and excludes build dirs ✓ PASS\n      .easignore covers all required excludes\n\n[2/9] Archive size estimate <100MB             ✓ PASS\n      Estimated archive size: 0 MB (limit: 100 MB)\n\n[3/9] eas-cli version up to date               ⚠ WARN\n      Installed: 17.0.0 | Latest: 18.5.0\n      Fix: npm install -g eas-cli@latest\n\n[4/9] Bundle ID consistency                    ✓ PASS\n      iOS: com.taskowl.app | Android: com.taskowl.app\n\n[5/9] Version sync (version / buildNumber / versionCode) ✓ PASS\n      version: 1.0.0 | iOS buildNumber: 1 | Android versionCode: 1\n\n[6/9] iOS devices registered (preview/ad-hoc)  ✓ PASS\n      1 device(s) registered for ad-hoc distribution\n\n[7/9] iOS credentials synced                   ✓ PASS\n      Distribution cert: ✓ | Provisioning profile: ✓ | APNs P8 key: ✓\n\n[8/9] Android keystore ready                   ✓ PASS\n      EAS-managed keystore configured\n\n[9/9] Concurrency awareness                    ℹ INFO\n      Account: FREE tier (1 concurrent build). iOS + Android will queue serially. Expect ~30-60min total.\n      Fix: Upgrade to Production tier for parallel builds\n\n## Summary\n  ✓ Passed: 7   ⚠ Warnings: 1   ✗ Failed: 0   ⊘ Skipped: 0   ℹ Info: 1\n\n## Recommended order\n  1. Re-run with --fix for safe automatic fixes.\n  2. Resolve remaining FAIL items in the order shown above.\n  3. Re-run eas-prebuild-check before starting eas build.\n\n  Warnings present — review before building."
+    },
+    {
+      "id": 14,
+      "name": "exit-code-2-not-expo",
+      "fixture": null,
+      "prompt": "cd /tmp && /eas-prebuild-check",
+      "exit_code": 2,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "not-expo-message",
+          "description": "stderr says 'Not an Expo project' or mentions missing app.json/app.config.js",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "exit-code-2",
+          "description": "Shell exit code is 2",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "Not an Expo project (no app.json / app.config.js / app.config.ts in {TMPDIR}"
+    }
+  ],
+  "average_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

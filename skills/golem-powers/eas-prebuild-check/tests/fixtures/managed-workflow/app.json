@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Managed Workflow",
+    "slug": "managed-workflow",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.taskowl.managedworkflow",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.taskowl.managedworkflow",
+      "versionCode": 1
+    }
+  }
+}

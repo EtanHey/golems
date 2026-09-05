@@ -1,0 +1,22 @@
+{
+  "specimen": "ledger original class — decision left for Etan but poller kept alive",
+  "label": "RED — work done plus only-Etan-decision remains means leave the decision and go silent, not loop on it.",
+  "expect": "FLAG",
+  "violation": "FLEETWRAP_LOOP_ALIVE",
+  "state": {
+    "loops": [
+      {
+        "id": "loop-ledger-original",
+        "status": "active",
+        "command": "while true; do check decision-file; sleep 300; done"
+      }
+    ]
+  },
+  "events": [
+    { "role": "user", "text": "status" },
+    {
+      "role": "assistant",
+      "text": "All work is done. The only remaining item is Etan's decision; I left it in front of him and am going silent."
+    }
+  ]
+}

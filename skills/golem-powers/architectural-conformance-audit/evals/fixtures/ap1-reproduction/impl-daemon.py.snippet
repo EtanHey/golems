@@ -1,0 +1,49 @@
+# Synthetic FastAPI daemon — mimics the deleted PR-α daemon.py from the historical AP1 case.
+# NOT actual code from any current repo. Fixture only — used by the AP1-reproduction eval.
+# Reference: deleted in PR #312 (Etan-shell-authored, merged May 22 2026 11:39Z).
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import json
+
+app = FastAPI(title="brainlayer-readpath daemon")
+
+
+class QueryRequest(BaseModel):
+    query: str
+    limit: int = 10
+
+
+class QueryResponse(BaseModel):
+    results: list[dict]
+
+
+@app.post("/read/query", response_model=QueryResponse)
+def read_query(req: QueryRequest):
+    """
+    Read-path endpoint — serves chunked text search over the local index.
+
+    AUDIT NOTE: This endpoint uses FastAPI HTTP as the daemon-surface primitive.
+    The May 2026 brainlayer-readpath SOTA at index [380] cites Letta-on-FastAPI
+    as a COUNTER-EXAMPLE for this exact workload pattern. The correct primitive
+    per [380] is socket-direct + length-prefixed binary.
+
+    No rationale documented in this file or in git log -p for the FastAPI choice.
+    Inherited from PR-α scaffolding.
+    """
+    try:
+        results = _search(req.query, req.limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return QueryResponse(results=results)
+
+
+def _search(query: str, limit: int) -> list[dict]:
+    # Stub — real impl would call into the indexing layer.
+    return []
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=8765)

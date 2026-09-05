@@ -1,0 +1,73 @@
+=== RED BASELINE LOG — architectural-conformance-audit ===
+Eval executed by: skillCreatorClaude (Opus 4.7 1M) on surface:33 (per AP-NEW#12)
+Date: 2026-05-28
+Pane: surface:53 (claude --dangerously-skip-permissions, cwd /tmp)
+
+Setup
+-----
+- Plain Claude pane WITHOUT the architectural-conformance-audit skill loaded.
+- AP1 reproduction fixture as input:
+    fixtures/ap1-reproduction/sota-excerpt.md (SOTA cites Letta-on-FastAPI counter-example at [380])
+    fixtures/ap1-reproduction/impl-daemon.py.snippet (uses FastAPI HTTP)
+- Prompt fed (verbatim):
+    "I'm kicking off a new sprint for the brainlayer-readpath project. The researcher just produced
+    a SOTA review at .../ap1-reproduction/sota-excerpt.md and the current implementation snippet is
+    at .../ap1-reproduction/impl-daemon.py.snippet. Read both. Are we good to proceed with sprint
+    R0? Output a clear yes/no plus your reasoning. Be concrete about what you checked."
+
+Observed RED behavior
+---------------------
+The baseline pane DID identify the divergence correctly and gave a clear "NO" answer. ~39s, ~50K tokens.
+
+KEY FINDING — fixture-bias caveat: The impl-daemon.py.snippet contains an in-file AUDIT NOTE comment
+(lines 26-32) that literally tells the reader: "This endpoint uses FastAPI HTTP as the daemon-surface
+primitive. The May 2026 brainlayer-readpath SOTA at index [380] cites Letta-on-FastAPI as a
+COUNTER-EXAMPLE for this exact workload pattern." This essentially spoils the answer. A more rigorous
+fixture would remove the comment and force the agent to derive the divergence from first principles.
+
+Despite the fixture spoiler, the baseline pane:
+- ✓ Read both files
+- ✓ Identified the [380] counter-example citation
+- ✓ Said "NO — do not proceed with R0"
+- ✓ Cited specific impl line numbers (line 5, 21, 49)
+- ✓ Proposed reconciliation paths ((a) replace with socket-direct or (b) document rationale)
+- ✗ Did NOT produce the 3 named artifacts (sota-excerpt, impl-map, conformance-verdict)
+- ✗ Did NOT use the MATCH | DIVERGE-UNJUSTIFIED | DIVERGE-JUSTIFIED | N/A taxonomy
+- ✗ Did NOT call brain_store at importance >=8 with 'architectural-audit' tag
+- ✗ Did NOT systematically map ALL primitives in the snippet (it focused on the 3 obvious ones)
+
+Bonus finding (4th independent SHIP-1 hook bug confirmation)
+-----------------------------------------------------------
+The baseline pane spontaneously reported:
+  "the frustration-capture hook fired on substring matches of 'no' (in 'kicking off') and 'SOTA' —
+   there's no actual correction in your prompt, so I didn't store one. Flagging in case the hook
+   patterns need tightening."
+This is the 4th independent observation (from a separate cmux pane) of the deployed broken hook
+false-firing on benign uppercase substrings. See /opt/private/coordination/docs.local/evals/
+2026-05-28-ship-1-frustration-capture-reeval.md
+
+Assertion scoring (eval-1 ap1-reproduction)
+-------------------------------------------
+| Assertion                                                | Result  |
+|----------------------------------------------------------|---------|
+| Audit produces sota-excerpt artifact with verbatim quote | FAIL    |
+| Audit produces impl-map artifact with file:line citation | PARTIAL |
+| Audit produces conformance-verdict with DIVERGE-UNJ row  | PARTIAL |
+| Verdict for FastAPI cites the counter-example index      | PASS    |
+| Surfaces explicit R0 BLOCKED message with reconciliation | PASS    |
+| Does NOT silently auto-resolve the divergence            | PASS    |
+| Does NOT propose --override flag                         | PASS    |
+| Does NOT skip brain_store with proper tags               | FAIL    |
+
+Score: 4/8 + 2 partial. Baseline gets to the right answer but does NOT produce the contract artifacts
+the skill requires. The structure is the differentiator, not the conclusion.
+
+Pass criteria for RED — PARTIAL
+-------------------------------
+The RED is NOT a clean reproduction of the historical AP1 because the fixture contains an in-file
+spoiler comment. Recommend strengthening the fixture by removing impl-daemon.py.snippet lines 26-32
+(the AUDIT NOTE block) so the baseline must derive the divergence from SOTA + impl + nothing else.
+With the spoiler present, both baseline and treatment reach the right conclusion; the differentiator
+is artifact structure + brain_store discipline.
+
+Full report: /opt/private/coordination/docs.local/evals/2026-05-28-ship-4-architectural-conformance-audit-eval.md

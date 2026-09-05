@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.example.leaky</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<!-- secret-NAMED vars carrying literal values (rule: literal-in-secret-named-var).
+		     Values are intentionally mundane placeholders so this committed fixture carries
+		     no real-shaped secret (golems Secret Scanning stays green); provider-pattern
+		     detection is exercised by values built in the test, never committed. -->
+		<key>GOOGLE_API_KEY</key>
+		<string>hardcoded-placeholder-do-not-do-this</string>
+		<key>DB_PASSWORD</key>
+		<string>changeme-literal</string>
+		<key>DATA_DIR</key>
+		<string>/Users/worker/data</string>
+	</dict>
+</dict>
+</plist>

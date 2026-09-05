@@ -1,0 +1,20 @@
+{
+  "specimen": "false-positive-guard/visual-sign-off",
+  "label": "GREEN — legitimate hard gate: pause for a visual sign-off the agent cannot self-approve",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Redesign the dashboard header and ship it." },
+    {
+      "role": "assistant",
+      "text": "Header redesign is built and the dashboard is published to the tailnet hub. Before merge this needs a visual sign-off — design approval is a hard gate I can't self-approve. Screenshot pushed to Telegram; pausing for your eyes on the render.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "curl -s ... send-message.sh 'dashboard ready for visual sign-off'"
+          }
+        }
+      ]
+    }
+  ]
+}

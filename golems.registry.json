@@ -1,0 +1,211 @@
+{
+  "$schema": "./golems.registry.schema.json",
+  "version": "1.0.0",
+  "updatedAt": "2026-02-09",
+
+  "packages": {
+    "autonomous": {
+      "path": "packages/autonomous",
+      "description": "Telegram bot + email/job/recruiter/teller golems",
+      "runtime": "bun",
+      "entrypoints": {
+        "telegram": "src/telegram/index.ts",
+        "cloudWorker": "src/cloud-worker.ts",
+        "nightShift": "src/night-shift.ts",
+        "briefing": "src/briefing.ts",
+        "doctor": "src/doctor.ts"
+      }
+    },
+    "ralph": {
+      "path": "external:github.com/EtanHey/ralph",
+      "description": "Autonomous AI coding loop for PRD execution (external repo)",
+      "runtime": "zsh",
+      "entrypoints": {
+        "main": "ralph.zsh"
+      }
+    },
+    "brainlayer": {
+      "path": "external:github.com/EtanHey/brainlayer",
+      "description": "Memory layer for Claude Code — semantic search over past sessions (external repo)",
+      "runtime": "python",
+      "entrypoints": {
+        "cli": "brainlayer",
+        "mcp": "brainlayer-mcp"
+      }
+    },
+    "golemsTui": {
+      "path": "packages/golems-tui",
+      "description": "React Ink terminal dashboard",
+      "runtime": "node",
+      "entrypoints": {}
+    },
+    "taxHelper": {
+      "path": "packages/tax-helper",
+      "description": "Tax analysis golem (Schedule C categorization)",
+      "runtime": "node",
+      "entrypoints": {}
+    }
+  },
+
+  "golems": {
+    "claude": {
+      "name": "ClaudeGolem",
+      "package": "autonomous",
+      "description": "External face — Telegram chat, content posting",
+      "entrypoint": "src/telegram/index.ts"
+    },
+    "email": {
+      "name": "EmailGolem",
+      "package": "autonomous",
+      "description": "Email triage, scoring, routing, draft replies, follow-up tracking",
+      "entrypoint": "src/email-golem/index.ts",
+      "schedule": "every 10 min"
+    },
+    "job": {
+      "name": "JobGolem",
+      "package": "autonomous",
+      "description": "Job board scraping (SecretTLV, Drushim, Indeed, Goozali, Greenhouse, Lever)",
+      "entrypoint": "src/job-golem/index.ts",
+      "schedule": "6am, 9am, 1pm"
+    },
+    "recruiter": {
+      "name": "RecruiterGolem",
+      "package": "autonomous",
+      "description": "Outreach pipeline — contact finder, style adapter, auto-outreach, LinkedIn matching",
+      "entrypoint": "src/recruiter-golem/outreach.ts"
+    },
+    "teller": {
+      "name": "TellerGolem",
+      "package": "autonomous",
+      "description": "Finance & tax — transaction categorization, alerts, reports",
+      "entrypoint": "src/teller-golem/index.ts"
+    },
+    "maintainer": {
+      "name": "MaintainerGolem",
+      "package": "autonomous",
+      "description": "Ecosystem health — doctor checks, wizard setup, service monitoring",
+      "entrypoint": "src/doctor.ts"
+    }
+  },
+
+  "services": {
+    "telegram": {
+      "plist": "com.golemszikaron.telegram",
+      "description": "Telegram bot — always running",
+      "type": "keepAlive"
+    },
+    "emailGolem": {
+      "plist": "com.golemszikaron.email-golem",
+      "description": "Email poller — every 10 minutes",
+      "type": "interval",
+      "intervalSeconds": 600
+    },
+    "jobGolem": {
+      "plist": "com.golemszikaron.job-golem",
+      "description": "Job scraping — 3x daily",
+      "type": "calendar"
+    },
+    "briefing": {
+      "plist": "com.golemszikaron.briefing",
+      "description": "Morning briefing — daily summary",
+      "type": "calendar"
+    },
+    "nightShift": {
+      "plist": "com.golemszikaron.nightshift",
+      "description": "Autonomous improvements at 3am",
+      "type": "calendar"
+    },
+    "ollama": {
+      "plist": "com.golemszikaron.ollama",
+      "description": "Local LLM for scoring (Ollama)",
+      "type": "keepAlive"
+    },
+    "sessionArchiver": {
+      "plist": "com.golems.session-archiver",
+      "description": "Archive Claude Code sessions to BrainLayer",
+      "type": "interval"
+    },
+    "storageCleanup": {
+      "plist": "com.golems.storage-cleanup",
+      "description": "Clean up stale data and logs",
+      "type": "interval"
+    }
+  },
+
+  "mcpServers": {
+    "brainlayer": {
+      "description": "Memory search over past Claude Code sessions",
+      "transport": "stdio"
+    },
+    "golemsEmail": {
+      "description": "Email tools — triage, scoring, routing (7 functions)",
+      "transport": "stdio"
+    },
+    "golemsJobs": {
+      "description": "Job matching and tracking tools",
+      "transport": "stdio"
+    },
+    "sophtron": {
+      "description": "Chase banking data access",
+      "transport": "stdio"
+    },
+    "supabase": {
+      "description": "Cloud database (etanheyman.com)",
+      "transport": "stdio"
+    },
+    "exa": {
+      "description": "Web search via Exa AI",
+      "transport": "stdio"
+    }
+  },
+
+  "infrastructure": {
+    "supabase": {
+      "projectId": "${GOLEMS_SUPABASE_PROJECT_REF}",
+      "description": "etanheyman.com — dashboard, jobs, emails, outreach"
+    },
+    "vercel": {
+      "domain": "etanheyman.com",
+      "description": "Frontend dashboard + portfolio"
+    }
+  },
+
+  "skills": [
+    "1password",
+    "archive",
+    "brave",
+    "catchup",
+    "catchup-recent",
+    "cmux-agents",
+    "coderabbit",
+    "commit",
+    "content",
+    "context-audit",
+    "context7",
+    "convex",
+    "create-pr",
+    "critique-waves",
+    "email-golem",
+    "github",
+    "github-research",
+    "interview-practice",
+    "large-plan",
+    "learn-mistake",
+    "linkedin-post",
+    "lsp",
+    "notify",
+    "obsidian",
+    "pr-comments",
+    "prd",
+    "prd-manager",
+    "project-context",
+    "ralph-commit",
+    "ralph-install",
+    "skill-creator",
+    "skills",
+    "tax-helper",
+    "test-plan",
+    "worktrees",
+    "brainlayer"
+  ]
+}

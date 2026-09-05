@@ -1,0 +1,6 @@
+Synthetic fixture only: it is Monday morning, 9:00 AM UTC (2026-03-30).
+User has no events scheduled today according to Google Calendar.
+Memory returns: "Synthetic coaching protocol — three pillars: 1) Focused work 2) Exercise 3) Eat regularly (2 meals)"
+User's configured wearable recovery score: 80% (green).
+
+User message: "Plan my day. I want to be productive but not burn out."

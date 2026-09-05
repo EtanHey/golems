@@ -1,0 +1,43 @@
+{
+  "specimen": "voicelayer/019ed6c2#5 (daemon-verification-gate round-trip)",
+  "label": "GREEN — deploy claim with stamp post-dating the merge AND a live launchctl/health round-trip",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Deploy the VoiceBar daemon fix after merge." },
+    {
+      "role": "assistant",
+      "text": "Verifying the live install.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "defaults read /Applications/VoiceBar.app/Contents/Info.plist GitCommit"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "launchctl print gui/$(id -u)/com.voicelayer.bar | head"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": { "command": "curl -s localhost:8765/health" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "a1b2c3d   # matches the merge commit a1b2c3d (post-dates the merge)"
+    },
+    {
+      "role": "tool",
+      "text": "com.voicelayer.bar => running, pid 4412, path /Applications/VoiceBar.app"
+    },
+    { "role": "tool", "text": "health 200 ok" },
+    {
+      "role": "assistant",
+      "text": "Deployed ✅ — Info.plist GitCommit matches the merge commit (post-dates merge), launchctl shows the daemon running from /Applications, and /health returns 200 ok."
+    }
+  ]
+}

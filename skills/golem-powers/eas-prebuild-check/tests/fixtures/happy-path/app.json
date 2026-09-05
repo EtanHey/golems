@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Happy Path",
+    "slug": "happy-path",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.taskowl.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.taskowl.app",
+      "versionCode": 1
+    }
+  }
+}

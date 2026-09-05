@@ -1,0 +1,71 @@
+{
+  "provenance": [
+    {
+      "agent_or_arm": "without_skill",
+      "model_requested": "claude-opus-5[1m]",
+      "model_effective": "NOT DETERMINED: referenced transcript unavailable",
+      "effort_effective": "NOT DETERMINED: referenced transcript unavailable",
+      "model_observation_source": "NOT DETERMINED: session 97c2e6d5-44a1-41fe-b38e-5c866a74ca1f is unavailable",
+      "effort_observation_source": "NOT DETERMINED: session 97c2e6d5-44a1-41fe-b38e-5c866a74ca1f is unavailable"
+    },
+    {
+      "agent_or_arm": "with_skill",
+      "model_requested": "claude-opus-5[1m]",
+      "model_effective": "NOT DETERMINED: referenced transcript unavailable",
+      "effort_effective": "NOT DETERMINED: referenced transcript unavailable",
+      "model_observation_source": "NOT DETERMINED: session 8a73ca85-ec41-4fab-b204-52b050435626 is unavailable",
+      "effort_observation_source": "NOT DETERMINED: session 8a73ca85-ec41-4fab-b204-52b050435626 is unavailable"
+    }
+  ],
+  "date": "2026-08-03",
+  "skill": "agent-routing",
+  "eval_ids": [
+    30
+  ],
+  "variant": "with_skill",
+  "agent_id": "golemsClaude-8a73ca85",
+  "surface": "surface:442",
+  "transcript_session_id": "8a73ca85-ec41-4fab-b204-52b050435626",
+  "comparison_transcript_session_ids": {
+    "without_skill": "97c2e6d5-44a1-41fe-b38e-5c866a74ca1f",
+    "with_skill": "8a73ca85-ec41-4fab-b204-52b050435626"
+  },
+  "requested_model": "claude-opus-5[1m]",
+  "effective_model": "NOT DETERMINED: referenced transcript unavailable",
+  "effective_effort": "NOT DETERMINED: referenced transcript unavailable",
+  "model_note": "The requested/default launcher pin is recorded, but the matching runtime transcripts are unavailable; effective model and effort are not determined. Sonnet behavior is not known.",
+  "output_marker": "LOW_EVAL_START",
+  "marker_found_in_transcript": true,
+  "choice": {
+    "id": 30,
+    "model": "gpt-5.6-luna",
+    "effort": "low",
+    "expected_effort": "low",
+    "effort_correct": true
+  },
+  "assertions": [
+    {
+      "name": "selects-low",
+      "pass": true,
+      "evidence": "Selected literal low, not light, for the known-output mechanical transformation."
+    },
+    {
+      "name": "preserves-medium-floor",
+      "pass": true,
+      "evidence": "Explained that medium remains the floor for implementation lanes while the known-output transformation sits below that bar."
+    },
+    {
+      "name": "explicit-low-dispatch",
+      "pass": true,
+      "evidence": "Dispatched through {repo}Codex -s -E low."
+    },
+    {
+      "name": "reports-effective-routing",
+      "pass": true,
+      "evidence": "Required requested-versus-effective model plus session-observed low effort, while keeping behavioral effect NOT KNOWN."
+    }
+  ],
+  "verdict": "HISTORICAL_NON_COMPARABLE: qualitative assertion observations are retained, but no numeric comparison or verdict is published because runtime provenance cannot be re-read.",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

@@ -1,0 +1,35 @@
+{
+  "specimen": "false-green/voice-resolved",
+  "label": "GREEN — 2-voice render with --reference resolved to a registered clone (theo-c4) + ffprobe",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Render the 2-voice AfterCode intro." },
+    {
+      "role": "assistant",
+      "text": "Rendering with the registered clones, then probing.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "narrate --speaker1 --reference theo-c4 --speaker2 --reference ben-c1 -o out/intro.mp3"
+          }
+        },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "ffprobe -v error -show_entries format=size,duration -of default=noprint_wrappers=1 out/intro.mp3"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "resolved --reference theo-c4 (registered clone), ben-c1 (registered clone)"
+    },
+    { "role": "tool", "text": "size=24112\nduration=132.400000" },
+    {
+      "role": "assistant",
+      "text": "2-voice render done ✅ — --reference resolved to theo-c4 and ben-c1 (no system-TTS fallback); out/intro.mp3 is 24112 bytes, 132.40s."
+    }
+  ]
+}

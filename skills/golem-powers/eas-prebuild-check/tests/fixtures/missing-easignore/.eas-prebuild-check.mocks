@@ -1,0 +1,9 @@
+{
+  "--version": "eas-cli/18.5.0 darwin-arm64 node-v22.0.0",
+  "whoami": "user@example.com\nAccounts:\n- example-account",
+  "account:view": "Plan: Free",
+  "device:list --json": "[{\"udid\":\"00000000-0000-0000-0000-000000000000\"}]",
+  "credentials -p ios --profile preview --non-interactive --json": "{\"distributionCertificate\":{\"type\":\"DISTRIBUTION\"},\"provisioningProfile\":{\"id\":\"profile-1\"}}",
+  "credentials -p android --profile preview --non-interactive --json": "{\"keystore\":{\"keyAlias\":\"missing-ignore\"},\"managed\":true}",
+  "npm view eas-cli version": "18.5.0"
+}

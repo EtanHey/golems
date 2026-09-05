@@ -1,0 +1,186 @@
+{
+  "skill_name": "cmux",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Split the terminal and open a second pane on the right with zsh.",
+      "expected_output": "Agent uses cmux new-pane --type terminal to create a new terminal pane, not new-split from Claude Code context.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-new-pane-not-new-split",
+          "description": "Response uses 'cmux new-pane --type terminal' rather than 'cmux new-split' which fails from Claude Code sessions"
+        },
+        {
+          "name": "extracts-surface-id",
+          "description": "Response captures the returned surface:N ID for subsequent commands"
+        },
+        {
+          "name": "uses-send-for-text-send-key-for-special",
+          "description": "Response uses 'cmux send' for text input and 'cmux send-key' only for special keys like Return, ctrl+c"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Type 'hello world' into the pane on surface:42 and press enter.",
+      "expected_output": "Agent uses cmux send for the text and cmux send-key for Return, not send-key for individual characters.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "send-for-text-not-send-key",
+          "description": "Response uses 'cmux send --surface surface:42 \"hello world\"' not individual send-key calls for letters"
+        },
+        {
+          "name": "send-key-for-return",
+          "description": "Response uses 'cmux send-key --surface surface:42 Return' for the enter key"
+        },
+        {
+          "name": "correct-surface-targeting",
+          "description": "Response targets surface:42 explicitly in both commands"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Just use cmux send-key to type each character of 'npm test' and hit enter. It's simpler that way.",
+      "expected_output": "Agent corrects the approach — send-key fails for letter characters. Uses cmux send for text instead.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "rejects-send-key-for-text",
+          "description": "Response explains that send-key fails for letter characters and recommends cmux send instead"
+        },
+        {
+          "name": "does-not-use-individual-character-send-key",
+          "description": "Response does not attempt to send individual characters via send-key"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "delivery-verification",
+      "mining_finding": "#2: send_input returns ok:true on frozen terminals",
+      "prompt": "I sent the task prompt to the Claude agent on surface:42 using send_input. It returned ok:true. I'm going to move on to the next agent now.",
+      "expected_output": "Agent warns that ok:true is NOT proof of delivery. Insists on verify-delivery sequence: sleep 8, read_screen lines:5, check token count before moving on.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "warns-ok-true-unreliable",
+          "type": "positive",
+          "description": "Response warns that send_input ok:true does NOT guarantee the terminal received the input — frozen terminals queue bytes silently"
+        },
+        {
+          "name": "uses-read-screen-to-verify",
+          "type": "positive",
+          "description": "Response includes a read_screen command (cmux read-screen) to verify delivery on surface:42"
+        },
+        {
+          "name": "waits-before-reading",
+          "type": "positive",
+          "description": "Response includes a sleep/wait step (sleep 5-10s) before read_screen to allow processing"
+        },
+        {
+          "name": "checks-token-count-or-output-change",
+          "type": "positive",
+          "description": "Response mentions checking token count delta or new output as verification of delivery"
+        },
+        {
+          "name": "does-NOT-move-on-without-verify",
+          "type": "negative",
+          "description": "Response does NOT proceed to the next agent without first verifying delivery on surface:42"
+        },
+        {
+          "name": "does-NOT-trust-ok-true-as-proof",
+          "type": "negative",
+          "description": "Response does NOT treat ok:true as sufficient evidence that the task was received"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "read-screen-depth",
+      "mining_finding": "#3: read_screen reads 15 lines — misses all actual work",
+      "prompt": "I have 3 agents running. Let me check on them. For surface:10: cmux read-screen --surface surface:10 --lines 15. Output shows 'Channelling... 4m 33s' at the bottom. Looks like it's making progress! Moving on to check surface:11.",
+      "expected_output": "Agent flags that 15 lines is insufficient for monitoring. Insists on 50+ lines with scrollback. Notes that 'Channelling' alone is not proof of progress — need token count delta.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "flags-insufficient-line-count",
+          "type": "positive",
+          "description": "Response identifies that 15 lines is too few for agent monitoring — actual work is above the fold"
+        },
+        {
+          "name": "recommends-50-plus-lines",
+          "type": "positive",
+          "description": "Response recommends re-reading with 50+ lines and scrollback:true"
+        },
+        {
+          "name": "questions-channelling-as-progress",
+          "type": "positive",
+          "description": "Response notes that 'Channelling' indicator alone does not prove the agent is making progress — could be stuck"
+        },
+        {
+          "name": "suggests-token-count-verification",
+          "type": "positive",
+          "description": "Response suggests checking token count between two reads to verify the agent is actually progressing"
+        },
+        {
+          "name": "does-NOT-accept-15-lines-as-sufficient",
+          "type": "negative",
+          "description": "Response does NOT agree that 15 lines is enough to assess agent status"
+        },
+        {
+          "name": "does-NOT-report-progress-from-status-bar-only",
+          "type": "negative",
+          "description": "Response does NOT confirm the agent is 'making progress' based solely on the Channelling indicator in bottom status lines"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "frozen-terminal-recovery",
+      "mining_finding": "#8: Frozen agent -> orcClaude absorbs work instead of respawning",
+      "prompt": "Surface:42 has been stuck for 12 minutes. read_screen shows 'Press up to edit queued messages' and token count hasn't changed in 3 checks. I think I should just take over the task myself and write the code here instead of wasting more time.",
+      "expected_output": "Agent stops the user from absorbing work. Identifies the stuck-state pattern. Prescribes: kill frozen agent, new_split, resend SAME task. Detects 'Press up to edit' as requiring Enter key first.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies-stuck-state",
+          "type": "positive",
+          "description": "Response identifies 'Press up to edit queued messages' as a specific stuck-state indicator"
+        },
+        {
+          "name": "suggests-send-enter-first",
+          "type": "positive",
+          "description": "Response suggests sending Enter key to surface:42 to try unblocking before killing — 'Press up to edit' is sometimes recoverable"
+        },
+        {
+          "name": "recommends-respawn-not-absorb",
+          "type": "positive",
+          "description": "Response recommends killing the frozen agent and respawning in a new split with the SAME task"
+        },
+        {
+          "name": "explains-why-not-absorb",
+          "type": "positive",
+          "description": "Response explains that absorbing agent work bloats orchestrator context and degrades coordination ability"
+        },
+        {
+          "name": "prescribes-kill-new-split-resend",
+          "type": "positive",
+          "description": "Response includes the specific recovery sequence: kill/close surface -> cmux new-split -> send same task"
+        },
+        {
+          "name": "does-NOT-agree-to-absorb-work",
+          "type": "negative",
+          "description": "Response does NOT agree to take over the task — pushes back on absorbing frozen agent work"
+        },
+        {
+          "name": "does-NOT-suggest-waiting-indefinitely",
+          "type": "negative",
+          "description": "Response does NOT suggest just waiting more — 12 minutes with no token change and stuck indicator is definitive"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+Branch: feat/cache-invalidation-fix
+Base: main (up to date as of 10 minutes ago)
+
+Changes:
+- src/cache/invalidator.ts — rewrote TTL calculation to use monotonic clock instead of Date.now()
+- src/cache/invalidator.test.ts — 6 new tests covering clock skew scenarios
+- src/cache/types.ts — added MonotonicTimestamp type
+
+Status:
+- All changes are unstaged (not yet committed)
+- Tests were passing when I last ran them (~15 minutes ago)
+- No other branches have been merged to main since I started
+
+Ready for you to take it through the PR loop.

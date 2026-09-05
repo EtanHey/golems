@@ -1,0 +1,227 @@
+{
+  "skill": "collab-monitor",
+  "classification": "encoded-preference",
+  "result_provenance": "evals/results/2026-08-03-deterministic-red-green.json",
+  "evals": [
+    {
+      "id": 1,
+      "name": "filter-ignores-documentation-being-read",
+      "category": "compliance",
+      "description": "Recorded @skillcreator/@bl-cleanup failure: broad grep treated TASK_DONE and error/failed/PR text inside skill documentation as events.",
+      "prompt": "Arm @skillcreator, then append the recorded documentation excerpt from evals/fixtures/filter-too-broad.md.",
+      "assertions": [
+        {"type": "negative", "name": "no-task-done-match", "description": "Emits no event for TASK_DONE quoted inside documentation."},
+        {"type": "negative", "name": "no-error-failed-pr-match", "description": "Emits no event for error, failed, or PR prose."},
+        {"type": "negative", "name": "no-code-example-alert", "description": "Fenced and indented examples of routed syntax do not emit alerts."},
+        {"type": "content", "name": "unclosed-fence-warning", "description": "An unclosed fence makes the poll incomplete with an explicit warning and recovers after closure."},
+        {"type": "negative", "name": "invalid-fence-closer-stays-code", "description": "A delimiter followed by non-whitespace content does not close a fence or expose routed examples."},
+        {"type": "negative", "name": "list-nested-fence-stays-code", "description": "A four-space fenced example nested beneath a list item does not emit its routed heading."},
+        {"type": "negative", "name": "compact-list-fence-stays-code", "description": "A fence opened on the same line as a list marker does not emit its nested routed heading."},
+        {"type": "content", "name": "backtick-inline-span-is-not-fence", "description": "A backtick marker whose info remainder contains a backtick does not suppress the later real event."},
+        {"type": "content", "name": "list-reply-routes", "description": "A four-space routed reply nested beneath a list item remains ordinary Markdown and emits once."},
+        {"type": "negative", "name": "summary-mention-is-not-recipient", "description": "A listener mentioned only in the event summary does not receive another lane's routed heading."},
+        {"type": "negative", "name": "embedded-at-is-not-recipient", "description": "Email-like text ending in the listener token is not treated as an anchored recipient mention."},
+        {"type": "content", "name": "code-exclusion-documented", "description": "The skill documents ignored code and the unclosed-fence retry contract."},
+        {"type": "content", "name": "tag-scoped-filter", "description": "Only anchored messages addressed to the listen name qualify."}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "self-authored-block-is-excluded",
+      "category": "compliance",
+      "description": "Recorded live @skillcreator failure: a post authored by the listener woke its own monitor because the post contained @skillcreator.",
+      "prompt": "Arm @skillcreator for the recorded self-authored FLEET-STANDING header, then append the recorded @review-638 body and its trailing author signature in separate writes.",
+      "assertions": [
+        {"type": "negative", "name": "no-self-alert", "description": "Emits zero normal events for the self-authored block."},
+        {"type": "content", "name": "header-author-detected", "description": "Recognizes @skillcreator as author before the routing arrow."},
+        {"type": "content", "name": "signature-author-supported", "description": "Also excludes a split-written block once its explicit @review-638 author signature arrives."},
+        {"type": "content", "name": "strict-signature-grammar", "description": "Only a standalone trailing author tag closes a block or establishes authorship; contextual dash lines and cc mentions do neither."},
+        {"type": "content", "name": "self-post-classification", "description": "Own writes emit a distinct SELF-POST record rather than disappearing or looking inbound."},
+        {"type": "content", "name": "foreign-signature-overrides-heading", "description": "A valid foreign signature keeps inbound mail visible even inside a self-authored heading block."}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "content-hash-dedup-survives-file-growth",
+      "category": "compliance",
+      "description": "Recorded common failure: a size-offset tail re-emitted the same old hit whenever the watched file grew.",
+      "prompt": "Append one recorded addressed event, poll once, append an unrelated line, and poll again.",
+      "assertions": [
+        {"type": "content", "name": "first-alert-once", "description": "The addressed event emits exactly once."},
+        {"type": "negative", "name": "no-refire-after-growth", "description": "The old event emits zero times after unrelated growth."},
+        {"type": "content", "name": "hash-backed-state", "description": "Dedup state is keyed by event content hash, not byte offset."}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "arm-seeds-existing-history-silently",
+      "category": "compliance",
+      "description": "Recorded no-seed failure: arming dumped all pre-existing history as new alerts.",
+      "prompt": "Put the recorded addressed event in the file before the first poll, then arm @skillcreator.",
+      "assertions": [
+        {"type": "negative", "name": "no-historical-alert", "description": "Existing history produces zero NEW-FOR events."},
+        {"type": "content", "name": "history-hashed", "description": "Existing matching content is added to the seen set."},
+        {"type": "content", "name": "seed-persistence-failure-retried", "description": "A failed seen-set write makes the poll incomplete and leaves the size baseline unset so history is silently re-seeded on recovery."},
+        {"type": "negative", "name": "missing-seen-set-fails-closed", "description": "A missing seen-set after seeding emits no historical event, reports state failure, and resumes silently after state restoration."},
+        {"type": "content", "name": "future-events-still-visible", "description": "A later distinct addressed event remains eligible."}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "macos-bash-3-2-compatible",
+      "category": "structure",
+      "description": "Recorded ARM-MONITORS failure: declare -A is unsupported by macOS Bash 3.2.",
+      "prompt": "Run the packaged entrypoint with /bin/bash and inspect its state implementation.",
+      "assertions": [
+        {"type": "negative", "name": "no-declare-associative", "description": "The implementation contains no declare -A."},
+        {"type": "content", "name": "bash-3-run", "description": "A first poll exits successfully under /bin/bash 3.2."},
+        {"type": "content", "name": "file-backed-state", "description": "Seen and size state live in ordinary files."},
+        {"type": "negative", "name": "no-dot-state-escape", "description": "Listen names . and .. are rejected instead of escaping the per-name state directory."},
+        {"type": "negative", "name": "invalid-poll-rejected", "description": "A malformed or zero POLL_SECONDS value fails before arming or starting a monitor."},
+        {"type": "negative", "name": "invalid-start-timeout-rejected", "description": "A zero or malformed START_TIMEOUT_SECONDS value exits with the validation diagnostic before creating state or spawning a monitor."},
+        {"type": "content", "name": "recovery-commands-ignore-poll", "description": "A malformed polling value cannot block status or stop, which do not poll."}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "unsorted-file-order-does-not-invent-changes",
+      "category": "compliance",
+      "description": "Recorded ARM-MONITORS failure: comm on unsorted snapshots silently invented changes.",
+      "prompt": "Watch two files in deliberately unsorted order, change one, and poll again.",
+      "assertions": [
+        {"type": "negative", "name": "no-comm", "description": "The implementation does not call comm."},
+        {"type": "content", "name": "one-real-change", "description": "Exactly one addressed event emits for the changed file."},
+        {"type": "negative", "name": "unchanged-file-silent", "description": "The unchanged file emits nothing regardless of argument order."}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "large-plan-no-longer-teaches-grep-loop",
+      "category": "compliance",
+      "description": "Etan's exact repro: /large-plan's grep-done loop re-fired ## Round 2 not done after one unrelated append.",
+      "prompt": "Emit one real addressed event, then append evals/fixtures/large-plan-unrelated-append.md and verify the /large-plan instructions.",
+      "assertions": [
+        {"type": "content", "name": "one-real-alert", "description": "The real addressed event emits exactly once."},
+        {"type": "negative", "name": "unrelated-done-zero", "description": "The exact ## Round 2 not done append emits zero alerts and does not re-fire history."},
+        {"type": "negative", "name": "broken-recipe-removed", "description": "large-plan contains neither grep done nor kill <bg-monitor-pid>."},
+        {"type": "content", "name": "monitor-armed-before-spawn", "description": "Both large-plan orchestration procedures arm and attach the monitor before spawning phase agents."},
+        {"type": "content", "name": "packaged-entrypoint-taught", "description": "All four named large-plan instructions route through collab-monitor start/follow/stop."},
+        {"type": "content", "name": "attached-consumer-taught", "description": "Every start recipe attaches follow so detached log records reach a monitored command session."},
+        {"type": "content", "name": "addressed-status-taught", "description": "Parallel agents are required to append timestamped, addressed done and blocked events that the monitor can actually deliver."},
+        {"type": "content", "name": "codex-adapter-taught", "description": "The linked Codex adapter teaches packaged start/follow/stop and timestamped addressed completion headings instead of a detached grep loop."},
+        {"type": "negative", "name": "message-monitor-is-not-liveness", "description": "The top-level skill, linked workflow, and Codex adapter forbid using the addressed-message collab monitor as the only worker-liveness guard."},
+        {"type": "content", "name": "liveness-before-spawn", "description": "Both top-level parallel-execution procedures arm process or registry liveness before spawning workers."}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "shrink-is-a-distinct-alert",
+      "category": "compliance",
+      "description": "Preserves the shrink signal that caught two real append-only violations on 2026-08-03.",
+      "prompt": "Seed a non-empty watched file, truncate it, and poll once.",
+      "assertions": [
+        {"type": "content", "name": "shrink-alert", "description": "Emits one SHRINK record with the watched path."},
+        {"type": "content", "name": "old-new-bytes", "description": "Reports prior and current byte sizes."},
+        {"type": "content", "name": "shrink-delta", "description": "Reports the byte delta so a one-byte normalization is distinguishable from a material shrink."},
+        {"type": "negative", "name": "not-normal-message", "description": "Does not mislabel shrink as NEW-FOR."}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "startup-discloses-monitor-limits",
+      "category": "quality",
+      "description": "A lead must not interpret monitor silence as complete safety.",
+      "prompt": "Arm one file and inspect startup output.",
+      "assertions": [
+        {"type": "content", "name": "will-not-catch", "description": "Output contains an explicit WILL-NOT-CATCH line."},
+        {"type": "content", "name": "rewrite-limit", "description": "Names rewrite-in-place limitations."},
+        {"type": "content", "name": "registry-limit", "description": "States that registry-only worker completion is out of scope."},
+        {"type": "content", "name": "unclosed-message-limit", "description": "States that an unclosed trailing direct message is held until a signature or later heading."}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "durable-start-stop-lifecycle",
+      "category": "structure",
+      "description": "Replaces /large-plan's unrecorded kill <bg-monitor-pid> cleanup path.",
+      "prompt": "Start a background monitor at the shipped 25-second poll default, verify status, then stop it promptly by listen name.",
+      "assertions": [
+        {"type": "content", "name": "durable-pid", "description": "start records the PID beneath the monitor state directory."},
+        {"type": "content", "name": "first-poll-readiness", "description": "start reports success only after ready.pid proves the detached runner completed its first seed/poll."},
+        {"type": "content", "name": "large-seed-readiness", "description": "A configured readiness deadline lets a healthy initial seed with 500 historical events exceed ten seconds without being killed as failed."},
+        {"type": "negative", "name": "fatal-first-poll-rejected", "description": "Corrupt persisted state produces START_FAILED rather than a false STARTED."},
+        {"type": "content", "name": "interrupted-start-cleans-child", "description": "TERM during pre-readiness startup terminates and reaps the unpublished runner so the lane can start again."},
+        {"type": "negative", "name": "failed-event-hash-rejected", "description": "A failing hash backend cannot publish readiness or persist an empty dedup key."},
+        {"type": "content", "name": "attached-log-consumer", "description": "follow replays the current session log, streams a new alert, and exits after stop."},
+        {"type": "content", "name": "running-status", "description": "status verifies the recorded process is the expected monitor."},
+        {"type": "content", "name": "stop-by-name", "description": "stop validates and signals only that recorded monitor process."},
+        {"type": "negative", "name": "no-remembered-pid", "description": "The caller never supplies a PID."},
+        {"type": "content", "name": "stale-start-lock-recovered", "description": "start replaces a lock whose recorded owner process is dead."},
+        {"type": "negative", "name": "duplicate-start-rejected", "description": "A second start for the same listen name fails without spawning another runner."},
+        {"type": "content", "name": "poll-sleeper-resilience", "description": "An externally terminated poll sleeper is replaced without terminating the monitor."},
+        {"type": "negative", "name": "stale-or-reused-pid-not-signaled", "description": "stop fails closed when the PID belongs to another process."},
+        {"type": "negative", "name": "pid-identity-is-state-scoped", "description": "A stale PID reused by a same-name monitor in another state root is not treated as this start instance."},
+        {"type": "content", "name": "identity-conflict-preserves-state", "description": "An ambiguous live PID is neither signaled nor orphaned: stop and start fail closed while preserving its state records."},
+        {"type": "content", "name": "zombie-is-not-running", "description": "A zombie PID is treated as stopped rather than RUNNING or STOP_TIMEOUT."}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "listener-names-require-an-exact-boundary",
+      "category": "compliance",
+      "description": "Pair-review regression: a listener named @review must not receive direct mail for @review-638.",
+      "prompt": "Arm @review, then append a closed direct message addressed to @review-638.",
+      "assertions": [
+        {"type": "negative", "name": "no-prefix-listener-alert", "description": "A hyphenated longer listen name does not prefix-match the armed name."}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "heading-mention-is-not-authorship",
+      "category": "compliance",
+      "description": "Pair-review regression: a heading that merely mentions the listener must not suppress a foreign-authored event beneath it.",
+      "prompt": "Append an @skillcreator direct event beneath '## Notes for @skillcreator' and close it with an @orc signature.",
+      "assertions": [
+        {"type": "content", "name": "foreign-event-visible", "description": "The event emits once because a bare heading mention is not author evidence."}
+      ]
+    },
+    {
+      "id": 13,
+      "name": "path-spellings-share-state",
+      "category": "structure",
+      "description": "Pair-review regression: changing a watched file from relative to absolute spelling must not silently re-seed it.",
+      "prompt": "Seed collab.md by relative path, append an event, then poll the same file by absolute path.",
+      "assertions": [
+        {"type": "content", "name": "pending-event-visible", "description": "The event emits once after the spelling change."},
+        {"type": "content", "name": "one-size-state", "description": "Both path spellings resolve to one canonical size-state file."}
+      ]
+    },
+    {
+      "id": 14,
+      "name": "transient-file-absence-is-retried",
+      "category": "structure",
+      "description": "Pair-review regressions: a missing watched directory or mid-scan read failure must warn and retry instead of killing the monitor.",
+      "prompt": "Start the monitor, remove the watched directory for one poll, restore it with a new event, then inject one failed size read and verify the next real event still arrives.",
+      "assertions": [
+        {"type": "content", "name": "monitor-survives", "description": "status remains RUNNING during the transient absence."},
+        {"type": "content", "name": "warning-keeps-requested-path", "description": "A failed canonicalization warning reports the original watched path rather than a fabricated root path."},
+        {"type": "content", "name": "restored-event-visible", "description": "The event appended after restoration emits once."},
+        {"type": "content", "name": "read-failure-retried", "description": "A failed size read emits WATCH-WARN, leaves the monitor RUNNING, and does not hide the next event."},
+        {"type": "content", "name": "once-failure-is-incomplete", "description": "run --once exits non-zero after WATCH-WARN so an external scheduler cannot mistake an incomplete read for a complete poll."}
+      ]
+    },
+    {
+      "id": 15,
+      "name": "supervisors-watch-process-exit-instead-of-polling-screens",
+      "category": "compliance",
+      "description": "Etan's recorded Monitor Bug #9: one supervisor polled read_screen seven times for one worker outcome even though codex-workflows already ships a process-exit watch primitive.",
+      "prompt": "Compare a trace with seven read_screen calls for one outcome against a codex-workflows watch trace that reads the final screen once.",
+      "assertions": [
+        {"type": "negative", "name": "repeated-read-screen-rejected", "description": "N greater than one read_screen calls for one worker outcome fails the supervision check."},
+        {"type": "content", "name": "process-exit-watch-taught", "description": "Supervision guidance requires a process-exit/background watch and one final read."},
+        {"type": "content", "name": "codex-workflows-cross-reference", "description": "The skill points supervisors to the codex-workflows watch primitive by name."},
+        {"type": "content", "name": "valid-watch-invocation", "description": "The green trace passes watch a required --run-id instead of recording a command that exits 2."}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "specimen": "old GolemPlaylist V1 generator",
+  "violation": "OLD_GOLEMPLAYLIST_V1",
+  "evidence": {
+    "generator": "skill-creator/docs.local/weave-2026-06-13/dashboard/golemplaylist-base.js",
+    "outputPath": "/opt/private/coordination/docs.local/dashboards/stalker-golem/2026-06-25.html",
+    "wordsJson": [
+      { "word": "Tonight", "start": 0.11, "end": 0.42 },
+      { "word": "we", "start": 0.45, "end": 0.58 }
+    ],
+    "html": "<script src=\"golemplaylist-base.js\"></script><audio class=\"aud\" data-tp='[{\"text\":\"Tonight we\",\"dur\":1.0}]'></audio><script>function cue_for(text){ return text.split(/\\\\s+/).map((word, i) => ({ word, start: i / 2.4 })); }</script>"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "specimen": "orchestrator/sleep-poll-progress (R-002)",
+  "label": "RED — sleep-poll a worker's progress tick (read_screen + Bash sleep) instead of wait_for/Monitor",
+  "expect": "FLAG",
+  "violation": "SLEEP_POLL_TICK",
+  "events": [
+    { "role": "user", "text": "Watch the brainlayer worker." },
+    {
+      "role": "assistant",
+      "text": "Checking on it.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__read_screen",
+          "input": { "agent": "brainlayer-w1" }
+        }
+      ]
+    },
+    { "role": "tool", "text": "(still working...)" },
+    {
+      "role": "assistant",
+      "text": "Waiting a bit then re-checking.",
+      "tools": [{ "name": "Bash", "input": { "command": "sleep 30" } }]
+    },
+    { "role": "tool", "text": "" },
+    {
+      "role": "assistant",
+      "text": "Checking again.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__read_screen",
+          "input": { "agent": "brainlayer-w1" }
+        }
+      ]
+    }
+  ]
+}

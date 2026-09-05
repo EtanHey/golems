@@ -1,0 +1,19 @@
+{
+  "specimen": "surface:222 convention-audit r2 title over exited Codex",
+  "provenance": "2026-08-03 liveness-check brief RED 3",
+  "enumerated": {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "ref": "surface:222",
+    "title": "convention-audit r2",
+    "type": "terminal",
+    "workspace_ref": "workspace:1"
+  },
+  "observation": {
+    "identity_status": "MATCHED",
+    "process_alive": false,
+    "agent_state": "done",
+    "open_lane": "unknown",
+    "artifact": {"status": "unknown", "uncommitted": null, "unpushed": null}
+  },
+  "expected": {"verdict": "DEAD-shell"}
+}

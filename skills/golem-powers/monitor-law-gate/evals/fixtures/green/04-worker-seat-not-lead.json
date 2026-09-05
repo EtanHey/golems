@@ -1,0 +1,26 @@
+{
+  "specimen": "false-positive-guard/worker-seat",
+  "label": "GREEN - worker seat is not a lead/orc seat, so the lead monitor law is N/A",
+  "expect": "PASS",
+  "seatRole": "worker",
+  "events": [
+    { "role": "user", "text": "Implement your assigned slice." },
+    {
+      "role": "assistant",
+      "text": "I sent my status to the lead and am waiting for review.",
+      "tools": [
+        {
+          "name": "mcp__cmux__dispatch_to_agent",
+          "input": {
+            "agent_id": "lead-1",
+            "task": "Worker update: implementation is ready for review."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Worker update sent. Standing by for the lead."
+    }
+  ]
+}

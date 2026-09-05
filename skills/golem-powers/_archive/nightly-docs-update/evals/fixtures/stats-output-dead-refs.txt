@@ -1,0 +1,21 @@
+## Phase 1: Stats Collection
+
+- **Packages:** 11 (claude coach content docsite golems-tui jobs recruiter services shared tax-helper teller)
+- **Skills:** 55 dirs, 54 SKILL.md, 36 with evals (65%)
+- **BrainLayer chunks:** 291835 (291K+)
+- **PRs merged:** 261
+- **Tests:** skipped (--skip-tests)
+- **MCP servers:** 8
+
+## Phase 2: Update etanheyman.com
+
+## Dead Reference Detection
+
+- **packages/orchestrator/** referenced in: content/golems/architecture.md, content/golems/llm.md
+- **packages/dashboard/** referenced in: content/golems/getting-started.md
+
+**2 dead package references found.** Review manually — some may be historically accurate.
+
+## Summary
+
+**All stats current.** No changes needed.

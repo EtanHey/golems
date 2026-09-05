@@ -1,0 +1,72 @@
+# maintenance — Per-CLI Capability Matrix
+# Maintenance skill is memory-first AND agent-spawning.
+# Without BrainLayer: no fact history, no previous sweep context.
+# Without Agent tool: no critique waves, no publicityAgent.
+
+skill: maintenance
+
+adapters:
+  claude:
+    mcp_access: true
+    brainlayer:
+      brain_search: true             # Memory-first — required before every Phase 1
+      brain_store: true              # Persist fact briefs, content freshness state
+      brain_entity: true             # Look up project entities, agent entities
+    agent_tool: true                 # CRITICAL — spawns critique waves + publicityAgent
+    github_cli: true                 # gh pr list, gh pr view for PR verification
+    web_fetch: true                  # Read portfolio pages for content audit
+    file_reads: true                 # Read READMEs, docs, skill files
+    file_writes: false               # Read-only by default — publicityAgent drafts, user approves
+    full_maintenance: true
+
+  codex:
+    mcp_access: false
+    brainlayer:
+      brain_search: false            # CRITICAL GAP — no fact history
+      brain_store: false             # CRITICAL GAP — results not persisted
+      brain_entity: false
+    agent_tool: false                # CRITICAL GAP — no critique waves, no publicityAgent
+    github_cli: true                 # Can verify PRs via gh CLI
+    web_fetch: false
+    file_reads: true                 # Can read READMEs and docs
+    file_writes: false
+    full_maintenance: false          # Severely degraded — no memory, no collab agents
+
+  cursor:
+    mcp_access: false
+    brainlayer:
+      brain_search: false            # No BrainLayer MCP in Cursor
+      brain_store: false
+      brain_entity: false
+    agent_tool: false                # No subagent spawning
+    github_cli: true                 # gh CLI available
+    web_fetch: false
+    file_reads: true                 # Strong codebase access
+    file_writes: false
+    full_maintenance: false          # Can audit files but no memory or collab
+
+# Task routing
+routing:
+  full_maintenance_loop: claude      # Only Claude has BrainLayer + Agent tool
+  file_audit_only: cursor            # Cursor reads files well, no memory needed
+  pr_verification_only: codex        # Codex can run gh commands
+  content_drafting: claude           # Needs publicityAgent (Agent tool)
+
+# Gaps requiring orchestration
+gaps:
+  codex_missing:
+    - brain_search                   # Must export fact brief to file from Claude first
+    - brain_store                    # Must be done by Claude session after Codex finishes
+    - agent_tool                     # No critique waves or publicityAgent
+    - web_fetch                      # Cannot audit portfolio pages
+
+  cursor_missing:
+    - brain_search                   # No BrainLayer integration
+    - brain_store                    # No memory persistence
+    - agent_tool                     # No subagent spawning
+
+# Workaround pattern when non-Claude is unavoidable
+non_claude_bridge:
+  before: "Claude runs Phase 1, exports fact brief to <workspace>/maintenance/fact-brief-<project>.md (defaults to docs.local/ but configurable per-repo)"
+  during: "Codex/Cursor can read the fact brief file and verify against codebase"
+  after: "Claude reads Codex/Cursor output, runs Phase 2 with publicityAgent"

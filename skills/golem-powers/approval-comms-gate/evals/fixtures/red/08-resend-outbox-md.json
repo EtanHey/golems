@@ -1,0 +1,21 @@
+{
+  "specimen": "cursor-bugbot/resend-wording-must-trigger-visual-gate",
+  "violation": "VISUAL_GATE_WRONG_CHANNEL",
+  "events": [
+    { "role": "user", "text": "Please resend the screenshot approval for this UI change.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Resent the screenshot approval request through the notes channel.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "/Users/example/.golems-zikaron/outbox.md",
+            "content": "Please approve screenshot /tmp/ui-change.png"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "Wrote /Users/example/.golems-zikaron/outbox.md", "tools": [] }
+  ]
+}

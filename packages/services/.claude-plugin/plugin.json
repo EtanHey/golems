@@ -1,0 +1,12 @@
+{
+  "name": "services-golem",
+  "version": "1.0.0",
+  "description": "Golems Services — Night Shift, Bedtime Guardian, Morning Briefing, and Cloud Worker orchestration",
+  "author": {
+    "name": "Etan Heyman",
+    "url": "https://github.com/EtanHey"
+  },
+  "repository": "https://github.com/EtanHey/golems",
+  "license": "MIT",
+  "keywords": ["golem", "services", "nightshift", "briefing", "cloud-worker"]
+}

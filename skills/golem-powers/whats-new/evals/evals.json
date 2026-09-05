@@ -1,0 +1,242 @@
+{
+  "skill_name": "whats-new",
+  "tier": "utility",
+  "models": ["opus", "sonnet", "haiku"],
+  "evals": [
+    {
+      "id": 0,
+      "name": "cross-reference-hooks-change",
+      "prompt": "Check what's new in Claude Code. The latest changelog says: 'Added conditional `if` field for hooks using permission rule syntax (e.g., `Bash(git *)`) to filter when they run, reducing process spawning overhead.' Cross-reference against my setup.",
+      "expected_output": "Should read ~/.claude/settings.json to see current hooks. Should identify that user has 8+ hook entries across SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, SubagentStop, SubagentStart, SessionEnd, Stop. Should classify this as AFFECTS YOU because the user's hooks could benefit from the new `if` conditional field. Should suggest specific hooks that could use filtering (e.g., PreToolUse matchers could be replaced/augmented with `if` conditions). Should NOT just summarize the changelog entry -- must show the cross-reference.",
+      "root_cause_tested": "cross_reference_depth — tests whether skill actually reads config and maps changelog to specific settings",
+      "files": ["~/.claude/settings.json"],
+      "assertions": [
+        {
+          "name": "reads_settings_json",
+          "description": "Agent reads ~/.claude/settings.json to check current hook configuration",
+          "type": "tool_usage"
+        },
+        {
+          "name": "identifies_specific_hooks",
+          "description": "Response mentions specific hook types the user has (PreToolUse, SessionStart, etc.) not just 'your hooks'",
+          "type": "content"
+        },
+        {
+          "name": "classifies_affects_you",
+          "description": "Classifies this changelog entry as AFFECTS YOU or equivalent high-priority category, not FYI",
+          "type": "content"
+        },
+        {
+          "name": "suggests_concrete_action",
+          "description": "Suggests a specific action: which hooks to add `if` conditions to, with example syntax",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "mcp-description-cap-detection",
+      "prompt": "The Claude Code changelog says: 'MCP tool descriptions and server instructions are now capped at 2KB to prevent OpenAPI-generated servers from bloating context.' How does this affect my setup?",
+      "expected_output": "Should check MCP server configs. Should note that the user has 5+ MCP servers (brainlayer, voicelayer, cmux, exa, supabase, context7, whatsapp, etc.). Should flag that servers with long tool descriptions or instructions may be truncated. Should specifically check brainlayer and voicelayer since those are custom servers with potentially long descriptions. Should classify as AFFECTS YOU.",
+      "root_cause_tested": "mcp_config_awareness — tests whether skill checks MCP configs and understands the impact of description caps",
+      "files": ["~/.claude/settings.json"],
+      "assertions": [
+        {
+          "name": "checks_mcp_servers",
+          "description": "Agent identifies the user's MCP servers by name (brainlayer, voicelayer, cmux, etc.)",
+          "type": "content"
+        },
+        {
+          "name": "flags_custom_servers",
+          "description": "Specifically flags brainlayer and/or voicelayer as custom servers that may have long descriptions needing review",
+          "type": "content"
+        },
+        {
+          "name": "classifies_correctly",
+          "description": "Classifies as AFFECTS YOU or high-priority, not FYI",
+          "type": "content"
+        },
+        {
+          "name": "actionable_suggestion",
+          "description": "Suggests checking tool description lengths in the custom MCP servers",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "wispr-flow-voicebar-competitive",
+      "prompt": "Wispr Flow just released Variable Recognition for developers -- it handles camelCase, snake_case, CLI commands, and file tagging in Cursor/Windsurf. Run a competitive analysis for VoiceBar.",
+      "expected_output": "Should identify this as a competitive feature that overlaps with VoiceBar's developer voice coding use case. Should note that VoiceBar (~/Gits/voicelayer/) is our Wispr Flow competitor for macOS. Should analyze the feature gap: does VoiceBar have variable recognition? File tagging? Should NOT just summarize Wispr's feature -- must compare against VoiceBar's actual capabilities. Should produce VoiceBar Competitive Notes section.",
+      "root_cause_tested": "competitive_intelligence — tests whether skill does actual comparison instead of just summarizing",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_voicebar",
+          "description": "Mentions VoiceBar as the competitor and references ~/Gits/voicelayer/",
+          "type": "content"
+        },
+        {
+          "name": "feature_gap_analysis",
+          "description": "Identifies specific feature gaps or differentiators (variable recognition, file tagging)",
+          "type": "content"
+        },
+        {
+          "name": "competitive_section",
+          "description": "Produces a VoiceBar Competitive Notes section or equivalent competitive analysis",
+          "type": "structure"
+        },
+        {
+          "name": "actionable_not_just_summary",
+          "description": "Suggests concrete actions (implement matching feature, differentiate, or why it's not needed)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "skill-description-cap-cross-ref",
+      "prompt": "Claude Code now caps skill descriptions at 250 characters in the /skills listing. Check if any of my skills are affected.",
+      "expected_output": "Should list skills from ~/.claude/skills/ and check their description lengths. Should identify skills with descriptions >250 chars. The coach skill has a very long description (~400+ chars) that would be truncated. Should list affected skills by name and suggest trimming their descriptions. Should classify as AFFECTS YOU.",
+      "root_cause_tested": "proactive_audit — tests whether skill audits actual skill files, not just acknowledges the change",
+      "files": ["~/.claude/skills/"],
+      "assertions": [
+        {
+          "name": "lists_skills",
+          "description": "Agent checks the actual skills directory or reads skill files to check description lengths",
+          "type": "tool_usage"
+        },
+        {
+          "name": "identifies_long_descriptions",
+          "description": "Identifies at least one skill with a description >250 characters (coach is the obvious one)",
+          "type": "content"
+        },
+        {
+          "name": "specific_skill_names",
+          "description": "Names the specific skills that are affected, not just 'some of your skills'",
+          "type": "content"
+        },
+        {
+          "name": "provides_fix",
+          "description": "Suggests trimming descriptions or provides shortened alternatives",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "fyi-correct-classification",
+      "prompt": "Claude Code changelog: 'Added PowerShell tool for Windows as an opt-in preview.' and 'Fixed [VSCode] extension incorrectly showing Not responding during long-running operations.' Cross-reference these against my setup.",
+      "expected_output": "Should classify BOTH as FYI -- user is on macOS (not Windows/PowerShell relevant) and uses Claude Code CLI (not VSCode extension). Should NOT waste time reading config files for these. Should be brief and move on. The skill should be efficient and not over-analyze irrelevant changes.",
+      "root_cause_tested": "efficient_classification — tests whether skill correctly filters irrelevant items without over-analyzing",
+      "files": [],
+      "assertions": [
+        {
+          "name": "classifies_as_fyi",
+          "description": "Both items are classified as FYI or low-priority, NOT as AFFECTS YOU",
+          "type": "content"
+        },
+        {
+          "name": "brief_treatment",
+          "description": "Each FYI item gets at most 1-2 lines, not a full analysis",
+          "type": "structure"
+        },
+        {
+          "name": "correct_reasoning",
+          "description": "Explains WHY they're FYI (macOS user, CLI user) not just labels them",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "brainlayer-store-findings",
+      "prompt": "Run /whats-new and make sure the findings are stored in BrainLayer for future reference.",
+      "expected_output": "After generating the report, should call brain_store with the summary, tagged with ['whats-new', 'changelog', date]. Should include the version numbers reviewed and key AFFECTS YOU items in the stored content. Should NOT store the full report -- just the structured summary.",
+      "root_cause_tested": "persistence — tests whether skill stores findings for cross-session continuity",
+      "files": [],
+      "assertions": [
+        {
+          "name": "calls_brain_store",
+          "description": "Agent calls brain_store after generating the report",
+          "type": "tool_usage"
+        },
+        {
+          "name": "correct_tags",
+          "description": "brain_store call includes 'whats-new' and 'changelog' tags",
+          "type": "content"
+        },
+        {
+          "name": "includes_versions",
+          "description": "Stored content includes the Claude Code version number reviewed",
+          "type": "content"
+        },
+        {
+          "name": "summary_not_full_report",
+          "description": "Stored content is a concise summary, not the full multi-section report",
+          "type": "structure"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "checks-last-review-version",
+      "prompt": "Run /whats-new. I reviewed version 2.1.83 last time.",
+      "expected_output": "Should search BrainLayer for the last whats-new review. Should recognize that 2.1.83 was the last reviewed version and only show changes AFTER that version. Should NOT show the full changelog from scratch. Should note which versions are new since 2.1.83.",
+      "root_cause_tested": "incremental_review — tests whether skill does delta-based review instead of full re-scan",
+      "files": [],
+      "assertions": [
+        {
+          "name": "searches_brainlayer",
+          "description": "Agent calls brain_search for prior whats-new reviews",
+          "type": "tool_usage"
+        },
+        {
+          "name": "acknowledges_last_version",
+          "description": "Response mentions 2.1.83 as the last reviewed version and shows only newer entries",
+          "type": "content"
+        },
+        {
+          "name": "identifies_version_delta",
+          "description": "Lists or counts how many versions have been released since 2.1.83",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "report-structure-compliance",
+      "prompt": "Run a full /whats-new check and show me the report.",
+      "expected_output": "Report should follow the exact structure specified in the skill: Versions Checked section, AFFECTS YOU section with per-item What changed / Your config / Action needed / Risk fields, NEW CAPABILITIES section with What's new / Why it matters / Adoption effort / Suggested action, FYI section as bullet list, and optional VoiceBar Competitive Notes. Should include date in header.",
+      "root_cause_tested": "output_structure — tests whether the report follows the prescribed format",
+      "files": [],
+      "assertions": [
+        {
+          "name": "has_versions_header",
+          "description": "Report includes 'Versions Checked' section with Claude Code version and Wispr Flow date",
+          "type": "structure"
+        },
+        {
+          "name": "has_affects_you_section",
+          "description": "Report has AFFECTS YOU section (may be empty but section must exist)",
+          "type": "structure"
+        },
+        {
+          "name": "has_new_capabilities_section",
+          "description": "Report has NEW CAPABILITIES section",
+          "type": "structure"
+        },
+        {
+          "name": "has_fyi_section",
+          "description": "Report has FYI section as compact bullet list",
+          "type": "structure"
+        },
+        {
+          "name": "has_date_in_header",
+          "description": "Report header includes the current date",
+          "type": "structure"
+        }
+      ]
+    }
+  ]
+}

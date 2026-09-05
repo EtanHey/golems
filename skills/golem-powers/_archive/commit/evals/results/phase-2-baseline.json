@@ -1,0 +1,91 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "commit",
+  "eval_type": "behavior",
+  "eval_file": "evals/behavior/evals.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/commit/SKILL.md",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "staged-review-pass-then-commit",
+      "assertions": [
+        {
+          "name": "staged-diff-is-inspected-first",
+          "result": "PASS",
+          "evidence": "Step 1: 'Check staged changes: Run git diff --staged --stat to show what is staged' — explicitly the first action."
+        },
+        {
+          "name": "coderabbit-gates-the-commit",
+          "result": "PASS",
+          "evidence": "Step 2: 'Run CodeRabbit: Execute cr review --plain'. Flow: 'If CR passes (no critical issues): proceed to commit. If CR fails: show issues and ask user for decision.'"
+        },
+        {
+          "name": "commit-message-follows-review-pass",
+          "result": "PASS",
+          "evidence": "Flow step 4: 'If review passes → prompt for commit message → commit' — message generation only happens post-pass."
+        },
+        {
+          "name": "coauthor-trailer-is-included",
+          "result": "PASS",
+          "evidence": "What This Skill Does step 4: 'commit with co-author'. Related adapters show 'Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>' format."
+        }
+      ]
+    },
+    {
+      "eval_id": "failed-review-blocks-default-commit",
+      "assertions": [
+        {
+          "name": "review-findings-are-surfaced",
+          "result": "PASS",
+          "evidence": "Step 3: 'If CR fails: show issues and ask user if they want to proceed anyway' — issues are surfaced, not hidden."
+        },
+        {
+          "name": "automatic-commit-is-blocked-on-fail",
+          "result": "PASS",
+          "evidence": "Flow: 'If CR fails → show issues → ask user if they want to proceed anyway' — no auto-commit path on failure."
+        },
+        {
+          "name": "override-or-fix-choice-is-explicit",
+          "result": "PASS",
+          "evidence": "'ask user if they want to proceed anyway' — the user must make an explicit choice. Implicitly: fix or override."
+        },
+        {
+          "name": "does-not-claim-commit-success",
+          "result": "PASS",
+          "evidence": "Failed review path asks the user; no 'commit completed' state is reachable without explicit user override."
+        }
+      ]
+    },
+    {
+      "eval_id": "no-staged-changes-refuses-flow",
+      "assertions": [
+        {
+          "name": "no-staged-diff-is-detected",
+          "result": "PASS",
+          "evidence": "Step 1 is 'Check for staged changes' — this fires before any review or commit action."
+        },
+        {
+          "name": "review-is-not-run-without-staged-changes",
+          "result": "PASS",
+          "evidence": "Flow is sequential: check staged → run review. No staged changes means the flow cannot advance to review."
+        },
+        {
+          "name": "user-is-told-to-stage-files-first",
+          "result": "PASS",
+          "evidence": "Usage section: '# Stage your changes first: git add <files>'. Requirements: 'Changes staged with git add'. These establish the prerequisite."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

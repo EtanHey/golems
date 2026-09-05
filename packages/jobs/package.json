@@ -1,0 +1,30 @@
+{
+  "name": "@golems/jobs",
+  "version": "1.0.0",
+  "description": "JobGolem — passive job discovery through scraping, intelligent matching, and applicant tracking.",
+  "author": "EtanHey",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EtanHey/golems",
+    "directory": "packages/jobs"
+  },
+  "keywords": [
+    "golems",
+    "ai-agent",
+    "job-matching",
+    "scraper",
+    "recruiting"
+  ],
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@golems/recruiter": "workspace:*",
+    "@golems/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ts-jobspy": "^2.0.3"
+  }
+}

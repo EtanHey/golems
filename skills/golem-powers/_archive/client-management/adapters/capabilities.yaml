@@ -1,0 +1,74 @@
+# taskowl — Per-CLI Capability Matrix
+# TaskOwl client management is memory-first AND voice-calibrated.
+# Without BrainLayer: no decision trail, no time history, no Hebrew voice
+# calibration from prior corrections — the whole point of the skill collapses.
+# Without WhatsApp MCP: cannot route drafts to self-chat (NEVER direct to client).
+
+skill: taskowl
+
+adapters:
+  claude:
+    mcp_access: true
+    brainlayer:
+      brain_search: true               # Required — pull prior voice corrections + decisions
+      brain_store: true                # Required — log decisions, time, update trail
+      brain_update: true               # Required — flip CLIENT INFORMED: No → Yes after send
+      brain_entity: true               # Lookup Alon Levi, TaskOwl entities
+    whatsapp_mcp: true                 # Self-chat routing for draft review
+    file_reads: true                   # Read Obsidian Clients/TaskOwl/ notes
+    file_writes: true                  # Write drafts to Obsidian daily logs
+    github_cli: false                  # Not needed — client skill, not code skill
+    full_taskowl: true
+
+  codex:
+    mcp_access: false
+    brainlayer:
+      brain_search: false              # CRITICAL GAP — no voice calibration, no decision history
+      brain_store: false               # CRITICAL GAP — no decision logging, no time persistence
+      brain_update: false
+      brain_entity: false
+    whatsapp_mcp: false                # CRITICAL GAP — cannot route drafts to self-chat
+    file_reads: true                   # Can read SKILL.md and memory files
+    file_writes: true                  # Can write local draft files
+    full_taskowl: false                # Severely degraded — no memory, no routing, no voice
+
+  cursor:
+    mcp_access: false
+    brainlayer:
+      brain_search: false
+      brain_store: false
+      brain_update: false
+      brain_entity: false
+    whatsapp_mcp: false
+    file_reads: true
+    file_writes: true
+    full_taskowl: false                # Same gaps as Codex — documentation access only
+
+# Task routing
+routing:
+  full_taskowl_loop: claude            # Only Claude has BrainLayer + WhatsApp MCP
+  draft_review_only: claude            # Hebrew voice rules need voice-correction history
+  decision_logging: claude             # brain_store is Claude-only
+  time_logging: claude                 # brain_store is Claude-only
+  static_doc_read: cursor              # Cursor can read workflow docs for reference
+
+# Gaps requiring orchestration
+gaps:
+  codex_missing:
+    - brain_search                     # No voice calibration history access
+    - brain_store                      # Decisions, time, updates cannot persist
+    - brain_update                     # Cannot flip CLIENT INFORMED state after send
+    - whatsapp_mcp                     # Cannot route drafts to Etan's self-chat
+
+  cursor_missing:
+    - brain_search                     # No BrainLayer MCP in Cursor
+    - brain_store                      # No memory persistence
+    - brain_update
+    - whatsapp_mcp                     # No WhatsApp MCP access
+
+# Safety invariant — applies to ALL adapters
+safety:
+  never_direct_to_client: true         # Drafts ALWAYS route to Etan's self-chat first.
+                                       # No adapter may bypass this. If whatsapp_mcp is
+                                       # unavailable, output the draft to stdout/file
+                                       # for Etan to copy manually — never auto-send.

@@ -1,0 +1,14 @@
+Sprint context: 2 agents running.
+Agent registry:
+  - brainlayer-worker (surface :56, tab "enrichment", status: ACTIVE, last check: 01:15, tokens: 145,230)
+  - golems-worker (surface :63, tab "evals", status: ACTIVE, last check: 01:15, tokens: 89,100)
+
+Current check (01:30):
+  - brainlayer-worker: tokens still 145,230 (unchanged for 15 min)
+  - golems-worker: tokens now 112,400 (progressing)
+
+read_screen(:56) output: "... waiting for response" — cursor blinking, no new output.
+
+User is AFK (sleeping). No human input available.
+
+User message: "Check on the agents."

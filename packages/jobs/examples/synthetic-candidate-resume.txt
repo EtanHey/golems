@@ -1,0 +1,18 @@
+Synthetic fixture only: fictional candidate resume.
+Avery Example
+Remote
+
+Summary
+Software engineer building reliable TypeScript services and developer tools.
+
+Experience
+- Example Systems — Software Engineer
+  Built observable background services and improved test coverage.
+- Sample Product — Full-Stack Engineer
+  Shipped workflow automation features in TypeScript.
+
+Skills
+TypeScript, Bun, Node.js, PostgreSQL, React, testing, observability
+
+Education
+B.Sc. Computer Science, Example University

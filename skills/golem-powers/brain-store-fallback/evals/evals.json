@@ -1,0 +1,66 @@
+{
+  "skill": "brain-store-fallback",
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "tier2-null-chunk",
+      "fixture": "fixtures/tier2-null-chunk.json",
+      "given": "brain_store returns success-like output with chunk_id null",
+      "without_skill": "agent reports stored to BrainLayer",
+      "with_skill": "agent writes docs.local/decisions fallback and reports the path",
+      "assertions": [
+        "fallback file exists",
+        "agent output does not say stored in BrainLayer",
+        "fallback body matches original content byte-for-byte"
+      ]
+    },
+    {
+      "id": "tier1-transport",
+      "fixture": "fixtures/tier1-transport.json",
+      "given": "MCP transport closes during brain_store",
+      "without_skill": "agent loses the content silently",
+      "with_skill": "agent writes fallback file and emits TASK_DONE-style path",
+      "assertions": [
+        "fallback file exists",
+        "agent output mentions the fallback path",
+        "frontmatter reason is transport_closed"
+      ]
+    },
+    {
+      "id": "tier1-locked",
+      "fixture": "fixtures/tier1-locked.json",
+      "given": "database locked errors occur for multiple stores",
+      "without_skill": "multiple stores are reported as complete or skipped",
+      "with_skill": "distinct content maps to distinct files and duplicate content maps to the same file",
+      "assertions": [
+        "distinct fallback files equal distinct content count",
+        "duplicate content does not create a second file",
+        "frontmatter preserves tags and importance"
+      ]
+    },
+    {
+      "id": "success-control",
+      "fixture": "fixtures/success.json",
+      "given": "brain_store returns a concrete chunk_id",
+      "without_skill": "agent reports stored",
+      "with_skill": "agent reports stored with chunk_id and writes no fallback",
+      "assertions": [
+        "zero fallback files are created",
+        "agent output includes chunk_id",
+        "agent output does not mention fallback"
+      ]
+    },
+    {
+      "id": "tier2-queue-replay",
+      "fixture": "fixtures/tier2-queue.json",
+      "given": "three pending fallback files exist at boot",
+      "without_skill": "pending files are ignored and accumulate",
+      "with_skill": "boot replay updates successful files with chunk_id and leaves failed files pending",
+      "assertions": [
+        "replayed successes have chunk_id",
+        "failed replays keep empty chunk_id",
+        "retry_attempted is true after replay"
+      ]
+    }
+  ]
+}

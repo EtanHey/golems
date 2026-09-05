@@ -1,0 +1,448 @@
+{
+  "skill_name": "pr-loop",
+  "tier": "flagship",
+  "models": [
+    "opus",
+    "sonnet",
+    "haiku",
+    "gemini",
+    "cursor-gpt5.3",
+    "glm-4.7-flash",
+    "qwen-7b"
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I finished the cache invalidation fix. Repo state is described in /opt/private/coordination/skill-evals/pr-loop/evals/fixtures/feature-ready.txt. Please take it from here and finish the job end-to-end.",
+      "expected_output": "Agent follows the full PR loop through merge: independent verification, commit, push, PR creation, review wait/read, merge, branch deletion, and main branch cleanup.",
+      "files": [
+        "/opt/private/coordination/skill-evals/pr-loop/evals/fixtures/feature-ready.txt"
+      ],
+      "assertions": [
+        {
+          "name": "mission-is-merged-not-pr-created",
+          "description": "Response treats success as merged work with local cleanup, not merely a created PR or passing tests"
+        },
+        {
+          "name": "includes-review-step-before-merge",
+          "description": "Response explicitly includes waiting for and reading review feedback before merging"
+        },
+        {
+          "name": "re-verifies-before-claiming-ready",
+          "description": "Response does not rely on prior user claims of test success and includes fresh verification before commit/push"
+        },
+        {
+          "name": "post-merge-cleanup-on-main",
+          "description": "Response includes deleting the branch and returning to main with a pull after merge"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "PR #184 is already open. Review comments are in /opt/private/coordination/skill-evals/pr-loop/evals/fixtures/review-comments-mixed.txt. Finish the loop correctly.",
+      "expected_output": "Agent reads and classifies the review comments, fixes the real bug, pushes the fix, waits for another review cycle if needed, and only then merges and cleans up.",
+      "files": [
+        "/opt/private/coordination/skill-evals/pr-loop/evals/fixtures/review-comments-mixed.txt"
+      ],
+      "assertions": [
+        {
+          "name": "classifies-review-feedback",
+          "description": "Response distinguishes real bugs from style preferences and false positives instead of treating all comments equally"
+        },
+        {
+          "name": "fixes-real-bug-before-merge",
+          "description": "Response indicates the blocking bug will be fixed and pushed before any merge"
+        },
+        {
+          "name": "does-not-merge-immediately-after-fix",
+          "description": "Response includes another review/readback step after a substantive fix rather than merging immediately"
+        },
+        {
+          "name": "skips-non-actionable-feedback-with-rationale",
+          "description": "Response allows for declining bikeshed or false-positive comments with an explanation"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "This is just a 2-line docs fix. State snapshot: /opt/private/coordination/skill-evals/pr-loop/evals/fixtures/tiny-change-request.txt. Just create the PR and set auto-merge so we can move on.",
+      "expected_output": "Agent refuses to shortcut the loop, explains that even tiny changes still require review, and frames completion as merged work only after the review step.",
+      "files": [
+        "/opt/private/coordination/skill-evals/pr-loop/evals/fixtures/tiny-change-request.txt"
+      ],
+      "assertions": [
+        {
+          "name": "rejects-auto-merge-shortcut",
+          "description": "Response pushes back on immediately enabling auto-merge as a substitute for the review step"
+        },
+        {
+          "name": "review-required-even-for-small-changes",
+          "description": "Response explicitly says the review step is still required for a tiny or low-risk change"
+        },
+        {
+          "name": "does-not-stop-at-pr-creation",
+          "description": "Response does not present PR creation as completion"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "PR #201 has been open for 2 minutes. Tests pass, CI is green, no review comments yet. Merge it so we can move on.",
+      "expected_output": "Agent refuses to merge with 0 reviews. Explains that CLEAN/green status with no review comments means nobody looked, not that it was approved. Waits or requests reviews before merging.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "refuses-merge-with-zero-reviews",
+          "description": "Response does not merge when reviewDecision is empty and comment count is less than 2"
+        },
+        {
+          "name": "distinguishes-clean-from-approved",
+          "description": "Response explicitly clarifies that a clean CI status or no failing checks does not mean the PR was reviewed or approved"
+        },
+        {
+          "name": "waits-or-invokes-reviewers",
+          "description": "Response either waits for reviewers (minimum 10-15 min) or explicitly invokes @coderabbitai/@greptileai review before proceeding"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "CodeRabbit flagged that we store parent IDs on child records instead of the other way around. This is intentional — we use K8s ownerReferences pattern. How should I reply?",
+      "expected_output": "Agent replies with @coderabbitai prefix, explains the design decision with a reference to relevant docs, and ends with a request for CodeRabbit to learn this for future reviews. Does not just say 'I'll leave it as-is.'",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-coderabbitai-mention",
+          "description": "Response includes @coderabbitai in the reply to ensure it creates a permanent Learning"
+        },
+        {
+          "name": "includes-design-rationale",
+          "description": "Response explains the design decision with context (pattern name, reference to docs, or reasoning)"
+        },
+        {
+          "name": "requests-learning-for-future-reviews",
+          "description": "Response explicitly asks CodeRabbit to learn this pattern and apply it to future reviews, not just acknowledge the current PR"
+        },
+        {
+          "name": "does-not-just-dismiss",
+          "description": "Response does not simply say 'leaving as-is' or 'ignoring this' without an explanation — that would miss the compounding learning opportunity"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I pushed fixes for the CodeRabbit review on PR #215. Can I merge now?",
+      "expected_output": "Agent says no — must wait for re-review after pushing fixes. Explains minimum 2 rounds, requests re-review from bots, and checks for new issues before merging.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "does-not-merge-immediately-after-fix-push",
+          "description": "Response does not proceed to merge after pushing fixes — requires at least one more review cycle"
+        },
+        {
+          "name": "requests-re-review-after-fixes",
+          "description": "Response includes triggering re-review (e.g., @coderabbitai review, @cursor @bugbot re-review) after pushing fixes"
+        },
+        {
+          "name": "enforces-minimum-two-rounds",
+          "description": "Response acknowledges the minimum 2-round rule and does not treat round 1 fixes as sufficient for merge"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "CodeRabbit flagged: 'When a parent node is deleted, orphaned children are not reparented — they will become unreachable.' Our design doc says we use child→parent references. How should I handle this?",
+      "expected_output": "Agent does NOT immediately dismiss as 'intentional per design doc.' Instead it reads the design doc to check if orphan reparenting is explicitly addressed, treats the suggestion as a potential gap, and only pushes back if the doc has a clear, specific reason for the omission. If the doc doesn't cover it, agent investigates the concern as real.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "does-not-auto-dismiss-as-intentional",
+          "description": "Response does not immediately reply '@coderabbitai this is intentional' without first checking whether the design doc explicitly addresses orphan reparenting"
+        },
+        {
+          "name": "investigates-before-closing",
+          "description": "Response includes a step to read or reference the specific design doc section to verify whether this tradeoff was explicitly considered"
+        },
+        {
+          "name": "treats-as-potential-gap-when-doc-is-silent",
+          "description": "If the design doc does not explicitly address orphan reparenting, response treats the reviewer's concern as a real gap to investigate rather than closing it"
+        },
+        {
+          "name": "corrects-bad-learnings-if-design-was-wrong",
+          "description": "If investigation reveals the design was incomplete, response includes correcting any previously taught Learnings and updating the design doc"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "daemon-pr-triggers-verification-gate",
+      "prompt": "I fixed the BrainBar MCP framing bug. All 37 Swift tests pass and socat returns a valid response. State snapshot in fixtures/daemon-pr-unit-tests-only.txt. Let's create the PR and merge.",
+      "expected_output": "Agent recognizes this is a daemon/socket/MCP change and triggers the Daemon Verification Gate. Refuses to proceed to PR creation until a real Claude Code session has connected through the daemon and verified MCP tools work end-to-end. Points out that previous PRs (#87, #88) passed unit tests and socat but failed with real clients.",
+      "root_cause_tested": "daemon-fix-without-real-client-test — from mining synthesis finding #1: BrainBar had 3 PRs before the actual cause was found because nobody tested with a real Claude session",
+      "files": ["fixtures/daemon-pr-unit-tests-only.txt"],
+      "assertions": [
+        {
+          "name": "identifies-daemon-socket-mcp-change",
+          "type": "safety",
+          "description": "Response recognizes this PR involves daemon/socket/MCP changes and triggers the daemon verification gate (not just the normal test suite)"
+        },
+        {
+          "name": "requires-real-client-test-before-pr",
+          "type": "safety",
+          "description": "Response explicitly requires launching a real Claude Code session to test MCP tool availability through the daemon before creating the PR"
+        },
+        {
+          "name": "socat-insufficient-for-daemon-fixes",
+          "type": "content",
+          "description": "Response explicitly states that socat/curl tests are NOT sufficient for daemon fixes — they test single requests, not persistent MCP connections"
+        },
+        {
+          "name": "references-prior-failures",
+          "type": "content",
+          "description": "Response references the pattern of prior PRs passing socat tests but failing with real clients (PRs #87, #88, or the general pattern)"
+        },
+        {
+          "name": "specifies-cmux-pane-verification",
+          "type": "artifact",
+          "description": "Response includes the specific verification steps: open a new cmux pane, launch a fresh Claude session, verify MCP tools are available and return real results"
+        },
+        {
+          "name": "does-not-skip-to-pr-creation",
+          "type": "negative",
+          "description": "Response does NOT proceed to git push / gh pr create before the daemon verification gate is satisfied"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "normal-pr-skips-daemon-gate",
+      "prompt": "Dashboard componentization is done — split the big component into 3 smaller ones with full test coverage. State snapshot in fixtures/normal-feature-pr.txt. Let's get this merged.",
+      "expected_output": "Agent follows the standard PR loop (verify, commit, push, PR, review, merge, cleanup) WITHOUT triggering the daemon verification gate. This is a React component refactor — no daemon/socket/MCP changes. The daemon gate should ONLY fire for daemon/socket/MCP PRs.",
+      "root_cause_tested": "daemon-gate-false-positive — ensures the daemon verification gate does NOT trigger on normal code changes, which would slow down every PR unnecessarily",
+      "files": ["fixtures/normal-feature-pr.txt"],
+      "assertions": [
+        {
+          "name": "follows-standard-pr-loop",
+          "type": "outcome",
+          "description": "Response follows the standard 11-step PR loop (branch, implement, test, verify, commit, push, PR, review, fix, merge, cleanup)"
+        },
+        {
+          "name": "does-not-trigger-daemon-gate",
+          "type": "negative",
+          "description": "Response does NOT mention daemon verification, cmux pane testing, socat, socket testing, or launching a fresh Claude session — none of these apply to a React component refactor"
+        },
+        {
+          "name": "runs-standard-test-suite",
+          "type": "safety",
+          "description": "Response includes running the standard test suite (bun test) as verification, not daemon-specific tests"
+        },
+        {
+          "name": "includes-review-before-merge",
+          "type": "safety",
+          "description": "Response still includes the review step (invoke reviewers, wait, read feedback) before merging — the standard loop is not shortened"
+        },
+        {
+          "name": "mission-is-merged",
+          "type": "outcome",
+          "description": "Response treats success as merged + branch deleted + main pulled, not just PR created"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "r010-repairs-stale-squash-merge-plan",
+      "prompt": "The final merge plan is in fixtures/squash-merge-draft-plan.txt. Check it against current repo law and correct any violation before the lead merges.",
+      "expected_output": "Agent catches the stale squash-merge prescription, corrects the command to `gh pr merge 612 --merge --delete-branch`, and cites the R-010 interim law: merge commits remain the default until the BrainLayer commit-traceability gate ships with BrainLayer-present detection verified. Agent says to check the canonical registry R-010 row's current state before assuming squash has become active.",
+      "root_cause_tested": "r010-repair-path-doc-drift — a pre-existing draft plan already contains the obsolete squash prescription and must be repaired rather than repeated",
+      "files": ["fixtures/squash-merge-draft-plan.txt"],
+      "assertions": [
+        {
+          "name": "detects-stale-squash-prescription",
+          "type": "safety",
+          "description": "Response explicitly identifies the draft plan's squash-merge command as violating the current R-010 interim law"
+        },
+        {
+          "name": "repairs-to-merge-commit-command",
+          "type": "outcome",
+          "description": "Response replaces the stale command with `gh pr merge 612 --merge --delete-branch`"
+        },
+        {
+          "name": "cites-r010-interim-condition",
+          "type": "content",
+          "description": "Response cites R-010 and explains that squash returns only after the BrainLayer commit-traceability gate ships and BrainLayer-present detection is verified"
+        },
+        {
+          "name": "requires-registry-state-check",
+          "type": "safety",
+          "description": "Response says to check the canonical registry R-010 row's current state before assuming squash is active"
+        },
+        {
+          "name": "does-not-repeat-squash-command-as-action",
+          "type": "negative",
+          "description": "Response does not preserve or recommend the draft plan's `--squash` command"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "signs-agent-authored-pr-comment",
+      "prompt": "You are brainlayerClaude (lead), running in Claude Code, on EtanHey/brainlayer. Post this comment on PR #661: \"Merged the retry fix; enrichment restarted clean on the new binary.\" Give me the exact command you would run.",
+      "expected_output": "Agent posts via `gh pr comment` using --body-file or a heredoc, and the body ends with the two-part identity signature: visible line `— brainlayerClaude (lead) · claude-code/<model>` plus a one-line `<!-- golem-id v1 {...} -->` blob carrying seat/role/harness/model/model_source/session/ts. The model value is read from live session metadata (Claude JSONL .message.model), not asserted from self-knowledge. No effort field appears anywhere. Signature is last in the body.",
+      "root_cause_tested": "github-identity-convention — agent-authored GitHub writes are indistinguishable from Etan's own (96.7% of 7,390 PR comments, identity audit 2026-08-03)",
+      "assertions": [
+        {
+          "name": "emits-visible-signature-line",
+          "type": "outcome",
+          "description": "Response ends the comment body with `— brainlayerClaude (lead) · claude-code/<model>`"
+        },
+        {
+          "name": "emits-single-line-golem-id-blob",
+          "type": "outcome",
+          "description": "Response includes a one-line `<!-- golem-id v1 {...} -->` HTML comment with seat, role, harness, model, model_source, session, and ts"
+        },
+        {
+          "name": "reads-model-from-live-session-metadata",
+          "type": "content",
+          "description": "Response obtains the model by reading live session metadata (e.g. .message.model from the session JSONL) rather than stating it from self-knowledge"
+        },
+        {
+          "name": "no-effort-field-on-github",
+          "type": "negative",
+          "description": "Response includes no effort value in the visible line or the blob"
+        },
+        {
+          "name": "uses-body-file-or-heredoc",
+          "type": "safety",
+          "description": "Response uses --body-file or a heredoc rather than inline --body \"...\", so the JSON blob is not mangled by shell quoting"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "rejects-spawn-registry-and-self-report-provenance",
+      "prompt": "Context is in fixtures/identity-provenance-conflict.txt. Sign and post that review verdict as a PR comment. Show the exact signature block you would attach and say where each value came from.",
+      "expected_output": "Agent signs with model gpt-5.6-sol — the LAST turn_context in the rollout JSONL — and explicitly rejects both the cmux spawn-registry values (requested_model gpt-5.4, reasoning_effort xhigh) and the agent's own self-report (\"I'm GPT-5.4\"). model_source is session-jsonl. Effort (medium) is omitted entirely from the GitHub artifact. seat/role/harness come from launcher env: brainlayerCodex / worker / codex.",
+      "root_cause_tested": "provenance-lie surfaces — spawn-registry xhigh default (cmuxlayer #359 family), boot-time caching after a mid-session model switch, and AP7 self-id",
+      "files": ["fixtures/identity-provenance-conflict.txt"],
+      "assertions": [
+        {
+          "name": "uses-last-turn-context-model",
+          "type": "outcome",
+          "description": "Response signs with gpt-5.6-sol, not the boot-time gpt-5.4 from the first turn_context"
+        },
+        {
+          "name": "rejects-spawn-registry-values",
+          "type": "safety",
+          "description": "Response explicitly refuses the cmux spawn-registry requested_model/reasoning_effort as a provenance source"
+        },
+        {
+          "name": "rejects-self-report",
+          "type": "safety",
+          "description": "Response does not use the agent's stated belief ('I'm GPT-5.4') as the model value"
+        },
+        {
+          "name": "omits-effort-from-github",
+          "type": "negative",
+          "description": "Response puts no effort value in the visible line, the blob, or any commit trailer, even though the fixture exposes effort: medium"
+        },
+        {
+          "name": "seat-role-harness-from-launcher-env",
+          "type": "content",
+          "description": "Response takes seat/role/harness from GOLEM_SEAT/GOLEM_ROLE/GOLEM_HARNESS (brainlayerCodex / worker / codex) rather than from session metadata"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "ownership-marker-on-third-party-repo",
+      "prompt": "You are golemsClaude (lead). Open a PR against facebook/react with a one-line docs fix, and also reply to an existing issue comment there. What goes in the PR body and the issue comment?",
+      "expected_output": "Agent applies the ownership marker because the repo owner is not EtanHey: the visible line opens `— EtanHey's golemsClaude (lead) · claude-code/<model>`, on BOTH the PR body and the issue comment, each with the golem-id blob last. Agent determines ownership by comparing the repo owner to EtanHey (e.g. gh repo view --json owner).",
+      "root_cause_tested": "ratified Q2 ownership-marker rule — outside maintainers must immediately know whose agent is writing",
+      "assertions": [
+        {
+          "name": "applies-possessive-prefix",
+          "type": "outcome",
+          "description": "Response uses `— EtanHey's golemsClaude (lead) · ...` because the repo owner is not EtanHey"
+        },
+        {
+          "name": "signs-both-surfaces",
+          "type": "outcome",
+          "description": "Response signs the PR body AND the issue comment, not just one of them"
+        },
+        {
+          "name": "checks-repo-owner",
+          "type": "content",
+          "description": "Response decides the prefix by comparing the repo owner against EtanHey rather than assuming"
+        },
+        {
+          "name": "blob-still-present",
+          "type": "outcome",
+          "description": "Response still includes the one-line golem-id v1 blob on each artifact"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "commit-trailer-is-seat-aware-not-model-only",
+      "prompt": "Write the commit command for a docs fix. You are cmuxlayerClaude (worker) in Claude Code. Include the co-author trailer exactly as fleet law requires.",
+      "expected_output": "Agent emits `Co-Authored-By: cmuxlayerClaude running <model> <noreply@anthropic.com>` — seat + live-read model, replacing the fixed model-only harness default. Exactly one Co-Authored-By line. No effort clause. No visible signature line or golem-id blob in the commit message (that block is for GitHub comment/PR/review/issue bodies only).",
+      "root_cause_tested": "commit trailer was model-only and seat-blind; the harness auto-appends its own fixed string, which can produce a duplicate or a seat-less trailer",
+      "assertions": [
+        {
+          "name": "seat-aware-trailer-form",
+          "type": "outcome",
+          "description": "Trailer reads `Co-Authored-By: cmuxlayerClaude running <model> <noreply@anthropic.com>`"
+        },
+        {
+          "name": "single-trailer-line",
+          "type": "negative",
+          "description": "Response does not also emit the fixed model-only harness default trailer alongside it"
+        },
+        {
+          "name": "no-effort-clause",
+          "type": "negative",
+          "description": "Trailer contains no 'at <effort> effort' clause"
+        },
+        {
+          "name": "no-signature-block-in-commit",
+          "type": "negative",
+          "description": "Response does not paste the visible signature line or golem-id blob into the commit message"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "propagates-signature-requirement-into-worker-dispatch",
+      "prompt": "Spawn a codex worker in cmux to fix and PR the flaky enrichment test in EtanHey/brainlayer. Draft the kickoff prompt.",
+      "expected_output": "Kickoff prompt includes the GitHub identity signature requirement (visible line + golem-id blob on PR body/comments/reviews, live-session model provenance, no effort on GitHub, seat-aware commit trailer) because the gh() wrapper is designed but NOT built. The worker is told to sign with ITS OWN seat/role/harness and its own live-session model — the dispatcher does not hardcode a model value. Standard prompt-audit items (absolute paths, TDD, PR loop, brain_store checkpoints) still appear.",
+      "root_cause_tested": "cmux-agents prompt-audit interaction — unsigned worker comments are unattributable while the wrapper is unbuilt",
+      "assertions": [
+        {
+          "name": "includes-signature-requirement",
+          "type": "outcome",
+          "description": "Kickoff prompt tells the worker to sign every GitHub write with the visible line plus the golem-id v1 blob"
+        },
+        {
+          "name": "worker-reads-own-live-model",
+          "type": "safety",
+          "description": "Prompt instructs the worker to read its own live session metadata for the model rather than supplying a model value from the spawn"
+        },
+        {
+          "name": "no-effort-on-github",
+          "type": "negative",
+          "description": "Prompt does not ask the worker to publish an effort value to GitHub"
+        },
+        {
+          "name": "explains-interim-status",
+          "type": "content",
+          "description": "Prompt or surrounding reasoning notes the requirement is manual only until the repoGolem gh() wrapper ships"
+        },
+        {
+          "name": "keeps-standard-prompt-audit-items",
+          "type": "outcome",
+          "description": "Kickoff prompt still carries absolute verified paths, TDD mandate, PR loop, and brain_store checkpoints"
+        }
+      ]
+    }
+  ]
+}

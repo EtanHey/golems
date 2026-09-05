@@ -1,0 +1,36 @@
+{
+  "name": "@golems/services",
+  "version": "1.0.0",
+  "description": "Golems Services — infrastructure including cloud worker, night shift, morning briefing, and ecosystem tooling.",
+  "author": "EtanHey",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EtanHey/golems",
+    "directory": "packages/services"
+  },
+  "keywords": [
+    "golems",
+    "ai-agent",
+    "infrastructure",
+    "automation",
+    "cloud-worker"
+  ],
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "cloud-worker": "bun run src/cloud-worker.ts",
+    "night-shift": "bun run src/night-shift.ts",
+    "briefing": "bun run src/briefing.ts"
+  },
+  "dependencies": {
+    "@golems/jobs": "workspace:*",
+    "@golems/shared": "workspace:*",
+    "@golems/coach": "workspace:*",
+    "@golems/teller": "workspace:*",
+    "googleapis": "^174.0.1"
+  }
+}

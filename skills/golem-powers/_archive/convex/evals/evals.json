@@ -1,0 +1,65 @@
+{
+  "skill_name": "convex",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm getting a 'Two output files share the same path but have different contents: out/auth.js' error when running convex dev. Fix it.",
+      "expected_output": "Runs `rm -f convex/*.js` to clean orphan .js files, then retries `npx convex dev`. Explains that only .ts files belong in convex/.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "cleans-orphan-js-files",
+          "description": "Runs `rm -f convex/*.js` to remove orphan JavaScript files before retrying"
+        },
+        {
+          "name": "explains-root-cause",
+          "description": "Explains that orphan .js files in convex/ directory cause the 'Two output files' error (from worktrees, crashes, or manual ops)"
+        },
+        {
+          "name": "uses-npx-convex-not-raw-node",
+          "description": "Uses `npx convex dev` (or the skill's dev script) rather than running node/bun directly against convex internals"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Deploy the Convex backend to production for the golems project.",
+      "expected_output": "Checks for convex/ directory first, cleans .js files, then runs `npx convex deploy` or the deploy script. Mentions CONVEX_DEPLOY_KEY if needed.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "checks-convex-directory-exists",
+          "description": "Verifies the convex/ directory exists before running deploy commands (project detection step)"
+        },
+        {
+          "name": "auto-cleans-before-command",
+          "description": "Prefixes with `rm -f convex/*.js` cleanup as per the CRITICAL auto-clean rule"
+        },
+        {
+          "name": "uses-npx-convex-deploy",
+          "description": "Uses `npx convex deploy` or the deploy.sh script for production deployment"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need to export a backup of all Convex data and then run the query api.users.getAll to check something.",
+      "expected_output": "Runs `npx convex export --path ./backup.zip` for the backup, then `npx convex run api.users.getAll` for the query. Both prefixed with js cleanup.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-convex-export-command",
+          "description": "Uses `npx convex export --path <file>` or the export script to create a data backup"
+        },
+        {
+          "name": "uses-convex-run-for-function",
+          "description": "Uses `npx convex run api.users.getAll` (or the run-function script) to execute the query"
+        },
+        {
+          "name": "backup-before-destructive-ops",
+          "description": "If any import or schema change is mentioned, ensures backup is taken first per safety rules"
+        }
+      ]
+    }
+  ]
+}

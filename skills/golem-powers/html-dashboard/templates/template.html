@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{DASHBOARD_TITLE}} · gen-12 · {{YYYY-MM-DD}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   ORCHESTRATION STATUS · gen-12 · two-mac-hub aesthetic
+   Bold verdict headline, 4-track summary cards -> click ->
+   reasoning SIDE-PANEL, tabbed detail (no infinite scroll),
+   plain-language inline GLOSS, high-contrast readable pills.
+   CSS + components + JS patterns reused from the two-mac-hub
+   decision board (the aesthetic of record).
+   ============================================================ */
+
+:root {
+  --bg:#0e1014; --bg-soft:#14171d; --panel:#171b22; --panel-2:#1b2029; --panel-3:#1f2530;
+  --line:#242a34; --line-soft:#1d222b; --hover:#1f2530;
+  --ink:#e8ebf1; --ink-2:#aeb6c4; --ink-3:#737c8d; --ink-4:#4d5567;
+  --dissolve:#4ea88a; --derisk:#5b8dd1; --unaff:#8a92a3; --warn:#d6a85e; --hot:#d08770; --done:#a78bd6;
+  --m1:#4ea88a; --m4:#5b8dd1;
+  --focus:#5b8dd1; --radius:12px; --radius-sm:8px;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 34px rgba(0,0,0,.32);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --t-fast:130ms cubic-bezier(.4,0,.2,1);
+  --t-med:260ms cubic-bezier(.32,.72,0,1);
+  --t-slow:420ms cubic-bezier(.32,.72,0,1);
+  --maxw:1180px;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  margin:0;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(91,141,209,.07), transparent 60%),
+    radial-gradient(1000px 500px at -10% 10%, rgba(78,168,138,.06), transparent 55%),
+    var(--bg);
+  color:var(--ink); font-family:'Inter',system-ui,sans-serif; font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; letter-spacing:-.01em;
+}
+.mono { font-family:'JetBrains Mono',monospace; letter-spacing:0; }
+button { font-family:inherit; cursor:pointer; color:inherit; }
+code { font-family:'JetBrains Mono',monospace; font-size:.85em; background:rgba(255,255,255,.05); padding:1px 6px; border-radius:5px; color:var(--ink); }
+::selection { background:rgba(91,141,209,.28); }
+::-webkit-scrollbar { width:11px; height:11px; }
+::-webkit-scrollbar-thumb { background:#262c37; border-radius:6px; border:3px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background:#323a47; }
+::-webkit-scrollbar-track { background:transparent; }
+.wrap { max-width:var(--maxw); margin:0 auto; padding:0 28px; }
+
+/* ---- Jargon gloss (inline "what does this mean?") ---- */
+.g {
+  border-bottom:1px dashed var(--ink-4); cursor:help; color:inherit;
+  text-underline-offset:3px; transition:border-color var(--t-fast), color var(--t-fast);
+}
+.g:hover, .g:focus-visible { border-bottom-color:var(--m4); color:var(--ink); outline:none; }
+.g::after { content:" \24D8"; font-size:.78em; color:var(--ink-3); vertical-align:.05em; }
+
+/* ---------------- Sticky nav ---------------- */
+.nav { position:sticky; top:0; z-index:60; background:rgba(14,16,20,.86); backdrop-filter:blur(14px); border-bottom:1px solid var(--line); }
+.nav-in { max-width:var(--maxw); margin:0 auto; padding:0 28px; height:54px; display:flex; align-items:center; gap:14px; }
+.brand { display:flex; align-items:center; gap:10px; }
+.brand-dot { width:25px; height:25px; border-radius:7px; background:linear-gradient(135deg,var(--m4),var(--m1)); display:grid; place-items:center; font-size:11px; font-weight:800; color:#0e1014; box-shadow:0 0 0 1px rgba(255,255,255,.07) inset; }
+.brand-name { font-weight:650; font-size:14.5px; letter-spacing:-.02em; }
+.brand-verdict { color:var(--ink-2); font-size:12.5px; }
+.brand-verdict b { color:var(--m1); font-weight:600; }
+.nav-spacer { flex:1; }
+.jump { display:flex; gap:2px; }
+.jump button { background:none; border:none; color:var(--ink-3); padding:6px 11px; border-radius:8px; font-size:13px; font-weight:500; transition:color var(--t-fast), background var(--t-fast); white-space:nowrap; }
+.jump button:hover { color:var(--ink); background:var(--hover); }
+.jump button.active { color:var(--ink); background:var(--panel-2); }
+@media (max-width:920px){ .jump{ display:none; } }
+
+/* ---------------- Hero / Verdict ---------------- */
+.hero { padding:42px 0 22px; }
+.eyebrow { display:inline-flex; align-items:center; gap:9px; font-size:11.5px; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); }
+.eyebrow .pulse { width:7px; height:7px; border-radius:50%; background:var(--dissolve); box-shadow:0 0 0 0 rgba(78,168,138,.5); animation:pulse 2.6s infinite; }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(78,168,138,.5);} 70%{box-shadow:0 0 0 9px rgba(78,168,138,0);} 100%{box-shadow:0 0 0 0 rgba(78,168,138,0);} }
+.verdict-word { margin:14px 0 6px; font-size:clamp(38px,6.4vw,68px); font-weight:800; letter-spacing:-.04em; line-height:1.0;
+  background:linear-gradient(180deg,#f4f6fa 0%,#c4cbd8 130%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.verdict-word .accent { background:linear-gradient(120deg,var(--m1),var(--m4)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.verdict-lede { font-size:clamp(16px,2vw,19px); color:var(--ink-2); max-width:820px; margin:6px 0 22px; line-height:1.5; }
+.verdict-lede b { color:var(--ink); font-weight:600; }
+.verdict-chips { display:flex; flex-wrap:wrap; gap:11px; }
+.vchip { display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:12px 15px; min-width:225px; flex:1 1 225px; box-shadow:var(--shadow-sm); }
+.vchip .ico { width:32px; height:32px; border-radius:9px; flex:0 0 32px; display:grid; place-items:center; font-size:15px; background:rgba(91,141,209,.12); border:1px solid rgba(91,141,209,.22); }
+.vchip.g2 .ico { background:rgba(78,168,138,.12); border-color:rgba(78,168,138,.24); }
+.vchip.gd .ico { background:rgba(167,139,214,.13); border-color:rgba(167,139,214,.26); }
+.vchip .k { font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+.vchip .v { font-size:13.5px; font-weight:600; color:var(--ink); line-height:1.3; }
+
+/* ---------------- Caveat banner ---------------- */
+.banner { margin:22px 0 0; display:flex; gap:13px; align-items:flex-start;
+  background:linear-gradient(90deg,rgba(214,168,94,.10),rgba(214,168,94,.03));
+  border:1px solid rgba(214,168,94,.28); border-left:3px solid var(--warn); border-radius:var(--radius); padding:13px 16px; }
+.banner .b-ico { font-size:17px; line-height:1.4; }
+.banner .b-body { font-size:13px; color:var(--ink-2); }
+.banner .b-body b { color:var(--warn); font-weight:650; }
+.banner.ok { background:linear-gradient(90deg,rgba(78,168,138,.10),rgba(78,168,138,.03)); border-color:rgba(78,168,138,.28); border-left-color:var(--dissolve); }
+.banner.ok .b-body b { color:var(--dissolve); }
+
+/* ---------------- Tracks (summary cards -> side-panel) ---------------- */
+.tracks { display:grid; grid-template-columns:repeat(4,1fr); gap:13px; margin-top:26px; }
+@media (max-width:1000px){ .tracks{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:560px){ .tracks{ grid-template-columns:1fr; } }
+.track { text-align:left; width:100%; background:var(--panel); border:1px solid var(--line); border-top:3px solid var(--line); border-radius:var(--radius);
+  padding:16px 17px 15px; display:flex; flex-direction:column; gap:9px; position:relative; transition:border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast); }
+.track:hover { border-color:#38404e; transform:translateY(-2px); box-shadow:var(--shadow); }
+.track:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.track.a { border-top-color:var(--warn); }
+.track.b { border-top-color:var(--dissolve); }
+.track.c { border-top-color:var(--done); }
+.track.d { border-top-color:var(--derisk); }
+.tr-top { display:flex; align-items:center; gap:10px; }
+.tr-letter { width:28px; height:28px; border-radius:8px; flex:0 0 28px; display:grid; place-items:center; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px; color:#0e1014; }
+.track.a .tr-letter { background:var(--warn); }
+.track.b .tr-letter { background:var(--dissolve); }
+.track.c .tr-letter { background:var(--done); }
+.track.d .tr-letter { background:var(--derisk); }
+.tr-name { font-weight:700; font-size:14px; letter-spacing:-.02em; flex:1; }
+.tr-name small { display:block; font-weight:500; font-size:11px; color:var(--ink-3); letter-spacing:0; margin-top:1px; }
+.tr-call { font-size:13px; color:var(--ink-2); line-height:1.5; }
+.tr-call b { color:var(--ink); font-weight:600; }
+.tr-open { margin-top:auto; padding-top:8px; font-size:12px; color:var(--ink-3); font-weight:500; display:inline-flex; align-items:center; gap:6px; }
+.track:hover .tr-open { color:var(--m4); }
+.tr-open .arrow { transition:transform var(--t-fast); }
+.track:hover .tr-open .arrow { transform:translateX(3px); }
+
+.tracks-note { margin-top:14px; background:var(--panel-2); border:1px solid var(--line); border-left:3px solid var(--m1); border-radius:var(--radius); padding:13px 16px; font-size:13px; color:var(--ink-2); line-height:1.5; }
+.tracks-note b { color:var(--ink); font-weight:600; }
+.tracks-note .star { color:var(--dissolve); font-weight:700; }
+.synergy-chip { display:inline-flex; align-items:center; gap:6px; margin-top:11px; background:rgba(78,168,138,.07); border:1px solid rgba(78,168,138,.3); border-radius:18px; padding:5px 12px; font-size:12px; color:var(--m1); font-weight:600; }
+
+/* ---------------- Status pills (high contrast, readable) ---------------- */
+.pill { display:inline-flex; align-items:center; gap:5px; padding:3px 11px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.02em; text-transform:uppercase; line-height:1.4; border:1px solid; vertical-align:middle; }
+.pill.merged { background:rgba(167,139,214,.18); color:#cdb6f2; border-color:rgba(167,139,214,.5); }
+.pill.merging { background:rgba(78,168,138,.18); color:#7fd4b4; border-color:rgba(78,168,138,.5); }
+.pill.rework { background:rgba(214,168,94,.18); color:#ecca8a; border-color:rgba(214,168,94,.5); }
+.pill.planned { background:rgba(91,141,209,.18); color:#9cc0f0; border-color:rgba(91,141,209,.5); }
+.pill.review { background:rgba(78,168,138,.13); color:#7fd4b4; border-color:rgba(78,168,138,.38); }
+.pill.idle { background:rgba(138,146,163,.16); color:#c2c9d4; border-color:rgba(138,146,163,.45); }
+
+/* ---------------- Tabbed sections (paginate, no infinite scroll) ---------------- */
+.tabwrap { margin-top:30px; }
+.tabbar { display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-bottom:0; margin-bottom:24px; }
+.tab { background:none; border:none; border-bottom:2px solid transparent; color:var(--ink-3); padding:11px 15px 13px; font-size:14px; font-weight:600; letter-spacing:-.01em; transition:color var(--t-fast), border-color var(--t-fast); display:inline-flex; align-items:center; gap:8px; }
+.tab .tn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-4); }
+.tab:hover { color:var(--ink-2); }
+.tab.active { color:var(--ink); border-bottom-color:var(--m1); }
+.tab.active .tn { color:var(--m1); }
+.panel { display:none; }
+.panel.show { display:block; animation:fade .26s ease; }
+@keyframes fade { from{ opacity:0; transform:translateY(4px);} to{ opacity:1; transform:none;} }
+.sec-title { font-size:clamp(21px,2.8vw,27px); font-weight:700; letter-spacing:-.025em; margin:0 0 5px; }
+.sec-sub { color:var(--ink-2); font-size:14px; max-width:780px; margin:0 0 20px; }
+.sec-sub b { color:var(--ink); }
+
+/* ---------------- PR table ---------------- */
+.prtable { width:100%; border-collapse:collapse; font-size:13.5px; }
+.prtable th, .prtable td { text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); }
+.prtable th { color:var(--ink-3); font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+.prtable tr:last-child td { border-bottom:none; }
+.prtable tbody tr { transition:background var(--t-fast); }
+.prtable tbody tr:hover { background:var(--panel-2); }
+.prtable td b { color:var(--ink); font-weight:600; }
+.prtable .gate { color:var(--ink-3); font-size:12px; }
+.prwrap { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+
+/* ---------------- Fleet table ---------------- */
+.fleet { width:100%; border-collapse:collapse; font-size:13.5px; }
+.fleet th, .fleet td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); }
+.fleet th { color:var(--ink-3); font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+.fleet tr:last-child td { border-bottom:none; }
+.fleet tbody tr:hover { background:var(--panel-2); }
+.fleet .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; vertical-align:middle; }
+.fleet .dot.go { background:var(--dissolve); }
+.fleet .dot.warn { background:var(--warn); }
+.fleet .dot.done { background:var(--done); }
+.fleet .dot.info { background:var(--derisk); }
+.fleet td b { color:var(--ink); font-weight:600; }
+.fleet .retire { color:#ecca8a; font-weight:600; }
+
+/* ---------------- Setup-map (verified facts) ---------------- */
+.facts { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--dissolve); border-radius:var(--radius); padding:15px 17px; margin-top:16px; }
+.facts h3 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); margin:0 0 9px; font-weight:600; }
+.facts ul { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:7px; }
+.facts li { display:flex; gap:10px; align-items:flex-start; font-size:13px; color:var(--ink-2); line-height:1.5; }
+.facts li .fk { flex:0 0 auto; color:var(--dissolve); }
+.facts li b { color:var(--ink); font-weight:600; }
+
+/* ---------------- Audit findings grid (tinted cards -> side-panel) ---------------- */
+.audit-meta { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 16px; }
+.amchip { background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:5px 13px; font-size:12px; color:var(--ink-2); }
+.amchip b { color:var(--ink); }
+.sevfilter { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 18px; }
+.sevbtn { background:var(--panel); border:1px solid var(--line); color:var(--ink-3); padding:6px 13px; border-radius:8px; font-size:12.5px; font-weight:600; transition:all var(--t-fast); }
+.sevbtn:hover { color:var(--ink); border-color:#38404e; }
+.sevbtn.active { background:var(--panel-2); color:var(--ink); border-color:var(--m4); }
+.findings { display:grid; grid-template-columns:repeat(3,1fr); gap:11px; }
+@media (max-width:900px){ .findings{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:600px){ .findings{ grid-template-columns:1fr; } }
+.finding { text-align:left; width:100%; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--line); border-radius:var(--radius);
+  padding:13px 15px; display:flex; flex-direction:column; gap:7px; position:relative; transition:border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast); }
+.finding:hover { border-color:#38404e; transform:translateY(-2px); box-shadow:var(--shadow); }
+.finding:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.finding.sev5 { border-left-color:var(--hot); }
+.finding.sev4 { border-left-color:var(--warn); }
+.finding.sev3 { border-left-color:var(--derisk); }
+.f-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.f-id { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--ink-3); }
+.f-sev { font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:5px; }
+.finding.sev5 .f-sev { background:rgba(208,135,112,.16); color:#e3a48d; border:1px solid rgba(208,135,112,.32); }
+.finding.sev4 .f-sev { background:rgba(214,168,94,.14); color:#e0bd7c; border:1px solid rgba(214,168,94,.32); }
+.finding.sev3 .f-sev { background:rgba(91,141,209,.14); color:#9cc0f0; border:1px solid rgba(91,141,209,.32); }
+.f-impact { font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:5px; margin-left:auto; }
+.f-impact.blocks { background:rgba(208,135,112,.14); color:#e3a48d; }
+.f-impact.risks { background:rgba(214,168,94,.12); color:#e0bd7c; }
+.f-impact.neutral { background:rgba(138,146,163,.14); color:#b6bdca; }
+.f-title { font-weight:650; font-size:13.5px; color:var(--ink); line-height:1.35; }
+.f-where { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-3); line-height:1.4; word-break:break-word; }
+.f-open { margin-top:auto; padding-top:5px; font-size:11.5px; color:var(--ink-3); font-weight:500; display:inline-flex; align-items:center; gap:6px; }
+.finding:hover .f-open { color:var(--m4); }
+.f-open .arrow { transition:transform var(--t-fast); }
+.finding:hover .f-open .arrow { transform:translateX(3px); }
+.finding.reframed { background:linear-gradient(180deg,rgba(78,168,138,.07),transparent 60%); }
+.f-flag { font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:5px; background:rgba(78,168,138,.16); color:#7fd4b4; border:1px solid rgba(78,168,138,.34); }
+
+/* ---------------- Awaiting / collabs grid ---------------- */
+.cardgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(255px,1fr)); gap:12px; }
+.simplecard { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; transition:border-color var(--t-fast); }
+.simplecard:hover { border-color:#313947; }
+.simplecard .k { font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+.simplecard .t { font-weight:650; font-size:14.5px; margin:4px 0 6px; display:flex; align-items:center; gap:8px; }
+.simplecard .t .dot { width:9px; height:9px; border-radius:50%; flex:0 0 9px; }
+.simplecard .t .dot.warn { background:var(--warn); }
+.simplecard .t .dot.info { background:var(--derisk); }
+.simplecard .t .dot.go { background:var(--dissolve); }
+.simplecard .v { color:var(--ink-2); font-size:13px; line-height:1.5; }
+.simplecard .v b { color:var(--ink); font-weight:600; }
+
+/* ---------------- Shipped strip ---------------- */
+.shipped { background:linear-gradient(90deg,rgba(78,168,138,.08),rgba(78,168,138,.02)); border:1px solid rgba(78,168,138,.28); border-left:3px solid var(--dissolve); border-radius:var(--radius); padding:15px 18px; }
+.shipped .v { font-size:13.5px; color:var(--ink-2); line-height:1.7; }
+.shipped .v b { color:var(--ink); font-weight:600; }
+
+/* ---------------- Side-panel (THE interaction primitive) ---------------- */
+.scrim { position:fixed; inset:0; background:rgba(8,10,13,.55); backdrop-filter:blur(3px); opacity:0; pointer-events:none; transition:opacity var(--t-med); z-index:90; }
+.scrim.open { opacity:1; pointer-events:auto; }
+.drawer { position:fixed; top:0; right:0; height:100%; width:min(560px,94vw); background:var(--bg-soft); border-left:1px solid var(--line);
+  box-shadow:-20px 0 50px rgba(0,0,0,.4); transform:translateX(100%); transition:transform var(--t-slow); z-index:95; display:flex; flex-direction:column; }
+.drawer.open { transform:translateX(0); }
+.drawer-head { display:flex; align-items:center; gap:12px; padding:18px 20px 14px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg-soft); }
+.drawer-back { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-size:13px; font-weight:500; color:var(--ink-2); display:inline-flex; align-items:center; gap:7px; transition:all var(--t-fast); }
+.drawer-back:hover { border-color:#38404e; color:var(--ink); background:var(--panel-2); }
+.drawer-head .d-letter { width:28px; height:28px; border-radius:7px; flex:0 0 28px; display:grid; place-items:center; font-family:'JetBrains Mono',monospace; font-weight:600; font-size:12px; background:var(--panel-3); color:var(--m1); border:1px solid var(--line); }
+.drawer-title { font-weight:650; font-size:14.5px; flex:1; line-height:1.3; }
+.drawer-body { padding:20px; overflow-y:auto; flex:1; }
+.drawer-body h4 { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-3); margin:20px 0 8px; font-weight:600; }
+.drawer-body h4:first-child { margin-top:0; }
+.drawer-body .rec-box { background:rgba(78,168,138,.07); border:1px solid rgba(78,168,138,.24); border-radius:var(--radius); padding:13px 15px; font-size:14px; color:var(--ink); font-weight:500; line-height:1.5; }
+.drawer-body .rec-box b { color:var(--m1); }
+.drawer-body p { font-size:13px; color:var(--ink-2); margin:0 0 10px; line-height:1.55; }
+.drawer-body .tradeoff { display:flex; gap:11px; align-items:flex-start; font-size:12.5px; color:var(--ink-2); background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:7px; line-height:1.5; }
+.drawer-body .tradeoff .tk { flex:0 0 auto; font-size:14px; }
+.drawer-body .tradeoff b { color:var(--ink); }
+.drawer-body .route { display:inline-flex; align-items:center; gap:7px; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:5px 13px; font-size:12.5px; color:var(--ink-2); }
+.drawer-body .route b { color:var(--m4); }
+.drawer-body .evid { font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-2); background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px 12px; line-height:1.6; word-break:break-word; }
+.drawer-body .blue-box { background:rgba(91,141,209,.07); border:1px solid rgba(91,141,209,.24); border-radius:var(--radius); padding:12px 14px; font-size:13px; color:var(--ink-2); line-height:1.55; }
+.drawer-body .blue-box b { color:#9cc0f0; }
+
+/* ---------------- Footer ---------------- */
+.foot { padding:36px 0 60px; border-top:1px solid var(--line); margin-top:40px; color:var(--ink-3); font-size:12.5px; }
+.foot a { color:var(--m4); text-decoration:none; }
+.foot .fl { display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:9px; }
+.foot code { font-size:11px; color:var(--ink-2); }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<!-- HTML-DASHBOARD TEMPLATE: clone this file, then replace every {{PLACEHOLDER}} and every TEMPLATE DATA block with real verified content. Never build dashboard HTML from scratch. -->
+
+<!-- ============ NAV ============ -->
+<nav class="nav">
+  <div class="nav-in">
+    <div class="brand">
+      <div class="brand-dot">orc</div>
+      <div>
+        <div class="brand-name">{{DASHBOARD_TITLE}}</div>
+        <div class="brand-verdict"><b>{{NAV_VERDICT}}</b></div>
+      </div>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="jump" id="jump">
+      <button data-go="verdict">Verdict</button>
+      <button data-go="tracks">4 tracks</button>
+      <button data-go="tabs">Detail</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO / VERDICT ============ -->
+<header class="hero" id="verdict">
+  <div class="wrap">
+    <span class="eyebrow"><span class="pulse"></span> {{EYEBROW_DATE_SCOPE_SOURCE}}</span>
+    <h1 class="verdict-word">{{HERO_VERDICT_PREFIX}} <span class="accent">{{HERO_VERDICT_ACCENT}}</span></h1>
+    <p class="verdict-lede">
+      <!-- PLACEHOLDER: Replace this lede with verified real content. Use <b>, <code>, and <span class="g" data-gloss="..."> terms wired in GLOSS. -->
+      Three BrainLayer-COMPOUND tracks are landing at once: <b>A (L0 memory-quality)</b> &mdash; PR #408 in rework; <b>B (L1 bus-reconnect)</b> &mdash; PR #26 merged; <b>C (two-Mac hub)</b> &mdash; decision board FINAL. <b>Track D (docs.local &rarr; Google Drive)</b> is planned, post-hub. A 30-finding red/blue <span class="g" data-gloss="brittleness">brittleness audit</span> maps what breaks in the 2-Mac move. <b>Waiting on you:</b> the DB-vacuum quiet window + the conductor direction.
+    </p>
+    <div class="verdict-chips">
+      <!-- PLACEHOLDER: Replace chips with 3-5 high-signal summary chips. Keep .vchip classes. -->
+      <div class="vchip"><div class="ico">&#129504;</div><div><div class="k">Track A &mdash; #1 pain</div><div class="v">L0 memory · PR #408 rework</div></div></div>
+      <div class="vchip g2"><div class="ico">&#9889;</div><div><div class="k">Track B &mdash; merged</div><div class="v">L1 bus-reconnect · PR #26</div></div></div>
+      <div class="vchip gd"><div class="ico">&#129534;</div><div><div class="k">Track C &mdash; board FINAL</div><div class="v">Two-Mac hub · 32 GB &#10003;</div></div></div>
+      <div class="vchip"><div class="ico">&#9729;</div><div><div class="k">Track D &mdash; planned</div><div class="v">docs.local &rarr; Drive (post-hub)</div></div></div>
+    </div>
+
+    <div class="banner ok">
+      <span class="b-ico">&#9989;</span>
+      <div class="b-body">
+        <b>M1 Pro = 32 GB confirmed &#10003;</b> &mdash; the only hardware gate is met, so <b>Track C is viable end-to-end</b> (engine relocation was always ungated; the fleet-on-hub gate is now satisfied).
+        One caveat: <b>BrainLayer was down during the audit</b> (<code>brain_search</code> returned "not connected"), so it was blind to the L0 work &mdash; re-run <code>brain_search</code> once the engine is back to confirm nothing contradicts a prior call.
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ 4 TRACKS (summary cards -> side-panel) ============ -->
+<section id="tracks">
+  <div class="wrap">
+    <div class="tracks" id="trackGrid"><!-- TRACKS cards injected from TEMPLATE DATA: TRACKS. Minimum 3. --></div>
+
+    <div class="tracks-note">
+      <span class="star">&#9733;</span> The win is <b>COMPOUND = search-quality + write-reliability.</b> The hub buys <b>reliability</b> (it dissolves the L1 pains: <span class="g" data-gloss="spof">single point of failure</span>, write-lock, MCP flaps) but does <b>nothing for L0</b> (hallucinations + <span class="g" data-gloss="supersession">supersession</span>) &mdash; only Track A buys that. Two wins, two tracks; nothing is paused.
+      <br><span class="synergy-chip">&#128279; B&rarr;C: build the <span class="g" data-gloss="transport">network transport</span> contract ONCE &mdash; B's Phase-2 deliverable = C's prerequisite</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TABBED DETAIL (progressive disclosure) ============ -->
+<section class="tabwrap" id="tabs">
+  <div class="wrap">
+    <div class="tabbar" id="tabbar" role="tablist">
+      <button id="tab-prs" class="tab active" data-tab="prs" role="tab" aria-selected="true"><span class="tn">A</span> PRs in flight</button>
+      <button id="tab-audit" class="tab" data-tab="audit" role="tab" aria-selected="false"><span class="tn">B</span> Brittleness audit</button>
+      <button id="tab-fleet" class="tab" data-tab="fleet" role="tab" aria-selected="false"><span class="tn">C</span> Fleet &amp; panes</button>
+      <button id="tab-awaiting" class="tab" data-tab="awaiting" role="tab" aria-selected="false"><span class="tn">D</span> Awaiting you</button>
+    </div>
+
+    <!-- ---- TAB A: PRs in flight ---- -->
+    <div class="panel show" id="panel-prs" role="tabpanel" aria-labelledby="tab-prs">
+      <h2 class="sec-title">PRs in flight</h2>
+      <p class="sec-sub">One open PR (#408) gating the live tracks, <b>four merged today</b>. Pills are the real status &mdash; <b>high-contrast, readable</b>.</p>
+      <div class="prwrap">
+        <table class="prtable">
+          <thead><tr><th>PR</th><th>Repo</th><th>What</th><th>Status</th><th>Gate</th></tr></thead>
+          <tbody>
+            <tr><td><code>#408</code></td><td>brainlayer</td><td><b>L0</b> entity_facts aggregation &rarr; supersession</td><td><span class="pill rework">rework</span></td><td class="gate">s:7 blocked merge &mdash; <span class="g" data-gloss="brainentity">brain_entity</span> doesn't surface the facts yet; sent back to wire + e2e test</td></tr>
+            <tr><td><code>#26</code></td><td>mcplayer</td><td><b>L1</b> reverse-proxy + reconnect-survival + <span class="g" data-gloss="perreq">per-request timeout</span></td><td><span class="pill merged">merged</span></td><td class="gate">Cursor review = 0 (s:1); durable fix for the 18-min Codex hang &mdash; MERGED</td></tr>
+            <tr><td><code>#114</code></td><td>cmux</td><td>spawn-tooling fix (create-ws + launcher resolve)</td><td><span class="pill merged">merged</span></td><td class="gate">s:3 gated Codex s:25 &#10003;</td></tr>
+            <tr><td><code>#432</code></td><td>weave/golems</td><td>/weave skill (rebuilt + permanent)</td><td><span class="pill merged">merged</span></td><td class="gate">&#10003; earlier today</td></tr>
+            <tr><td><code>#113</code></td><td>cmux</td><td>role-layout (worker auto-dock)</td><td><span class="pill merged">merged</span></td><td class="gate">&#10003; active after MCP restart</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ---- TAB B: Brittleness audit ---- -->
+    <div class="panel" id="panel-audit" role="tabpanel" aria-labelledby="tab-audit">
+      <h2 class="sec-title">Brittleness audit &mdash; red/blue</h2>
+      <p class="sec-sub">RED hunts what breaks in the 2-Mac move; <b>BLUE</b> verifies + proposes the hardening. Click any card for the reasoning: the RED finding, the BLUE confirmation, and where it routes. <b>Two standing edits applied below.</b></p>
+      <div class="audit-meta">
+        <span class="amchip"><b>28</b> findings shown</span>
+        <span class="amchip"><b>2</b> auditor passes (ws:4)</span>
+        <span class="amchip f-flag" style="border-radius:18px;">1Password / op:// migration &mdash; DROPPED (standing decision)</span>
+        <span class="amchip f-flag" style="border-radius:18px;">socat &mdash; REFRAMED as decouple-server-from-connection</span>
+      </div>
+      <div class="sevfilter" id="sevfilter" role="group" aria-label="Filter findings by severity">
+        <button class="sevbtn active" data-sev="all">All</button>
+        <button class="sevbtn" data-sev="5">sev-5 blockers</button>
+        <button class="sevbtn" data-sev="4">sev-4</button>
+        <button class="sevbtn" data-sev="3">sev-3</button>
+      </div>
+      <div class="findings" id="findingsGrid"><!-- cards injected --></div>
+    </div>
+
+    <!-- ---- TAB C: Fleet & panes ---- -->
+    <div class="panel" id="panel-fleet" role="tabpanel" aria-labelledby="tab-fleet">
+      <h2 class="sec-title">Fleet &mdash; agents &amp; panes</h2>
+      <p class="sec-sub">The live commanders and contributors firing right now &mdash; <b>6 active</b> + <b>2 contributors</b>. The gen-11 LEADs are <b>retired</b> (off-board, listed below the table).</p>
+      <div class="prwrap">
+        <table class="fleet">
+          <thead><tr><th>Surface</th><th>Role</th><th>State</th><th>Killable?</th></tr></thead>
+          <tbody>
+            <tr><td><b>s:26</b> orc</td><td>orchestrator &mdash; live conductor</td><td><span class="dot go"></span>conducting</td><td>no &mdash; the conductor</td></tr>
+            <tr><td><b>s:7</b> brainlayer-LEAD</td><td>commander A (L0)</td><td><span class="dot go"></span>reviewing #408</td><td>no &mdash; mid-gate</td></tr>
+            <tr><td><b>s:1</b> mcplayer-LEAD</td><td>commander B (L1)</td><td><span class="dot done"></span>#26 MERGED</td><td>no &mdash; just merged</td></tr>
+            <tr><td><b>s:3</b> cmuxlayer-LEAD</td><td>commander (spawn-fix)</td><td><span class="dot go"></span>active</td><td>no &mdash; mid-gate</td></tr>
+            <tr><td><b>s:2</b> eval-gate</td><td>spawn-tooling eval</td><td><span class="dot go"></span>working</td><td>no</td></tr>
+            <tr><td><b>s:9</b> weave</td><td>track-C board / conductor</td><td><span class="dot done"></span>standing by</td><td>soon &mdash; board done</td></tr>
+            <tr><td><b>s:31</b> DB-vacuum</td><td>contributor</td><td><span class="dot go"></span>running</td><td>auto-archive on TASK_DONE</td></tr>
+            <tr><td><b>s:32</b> sliceB-judge</td><td>contributor</td><td><span class="dot go"></span>working</td><td>auto-archive on TASK_DONE</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="sec-sub" style="margin:12px 0 0;color:var(--ink-3);font-size:12.5px;">Retired/closed this session (off-board): <span class="pill idle">voicelayer s:5</span> <span class="pill idle">metacom s:6</span> <span class="pill idle">Slice-A codex s:20</span> <span class="pill idle">proxy codex s:12</span> <span class="pill idle">audit cursors s:21/s:22</span></p>
+      <div class="facts">
+        <h3>Verified facts (setup-map)</h3>
+        <ul>
+          <li><span class="fk">&#9656;</span><span>Real DB = <code>~/.local/share/brainlayer/brainlayer.db</code> = <b>10.3 GB</b> (monolithic SQLite, WAL mode)</span></li>
+          <li><span class="fk">&#9656;</span><span>Enrichment backlog <b>~123k</b> files; drain <b>~37/min</b> &lt; production <b>~61/min</b> (24h avg)</span></li>
+          <li><span class="fk">&#9656;</span><span>Codex-hang root = boot <code>brain_search</code> on contended DB &mdash; <b>fixed</b> (now non-blocking)</span></li>
+          <li><span class="fk">&#9656;</span><span>Heavy/flaky pre-push hook (2251 tests in a fresh .venv) = its own brittleness</span></li>
+          <li><span class="fk">&#9656;</span><span><span class="g" data-gloss="reaper">mcp-reaper</span> loaded but <b>not running</b> &rarr; orphan MCP procs accumulate</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ---- TAB D: Awaiting you ---- -->
+    <div class="panel" id="panel-awaiting" role="tabpanel" aria-labelledby="tab-awaiting">
+      <h2 class="sec-title">Awaiting you</h2>
+      <p class="sec-sub">Three decisions and a pilot need your call. Everything else is firing on its own.</p>
+      <div class="cardgrid">
+        <div class="simplecard"><span class="k">Decision</span><div class="t"><span class="dot warn"></span>DB-vacuum window</div><div class="v">The <b>10.3 GB</b> contention root. s:7 needs a brief fleet-quiet window for the exclusive-lock <span class="g" data-gloss="vacuum">VACUUM</span> + the <b>~123k</b> backlog drain. Say when.</div></div>
+        <div class="simplecard"><span class="k">Decision</span><div class="t"><span class="dot warn"></span>Conductor direction</div><div class="v"><b>n3-cabinet</b> wins; round-3 spec ready (act-mode HTML, plan-as-folder, demo-queue). Sequenced after L0/L1 &mdash; confirm when to start.</div></div>
+        <div class="simplecard"><span class="k">Pilot</span><div class="t"><span class="dot info"></span>Beads pilot</div><div class="v">Researcher sub-agent investigating <b>Dolt</b> for 2-Mac sync + the <b>Beads</b> task model. Report incoming &mdash; pilot on your go.</div></div>
+        <div class="simplecard"><span class="k">Cleanup</span><div class="t"><span class="dot warn"></span>Retire idle LEADs + scale cursors</div><div class="v">s:5/s:6 idle = retire candidates. Cursors at 2 (not 4) &mdash; spawn tooling fought us; fix shipping (s:25). 4-team stand-up ready on your go.</div></div>
+      </div>
+
+      <h2 class="sec-title" style="margin-top:34px;">Shipped tonight</h2>
+      <div class="shipped">
+        <div class="v"><b>/weave</b> rebuilt + MERGED (#432) &middot; cmux <b>role-layout</b> MERGED (#113) &middot; cmux <b>spawn-tooling</b> fix MERGED (#114) &middot; setup-map audit VERIFIED &middot; Codex-hang root fixed (non-blocking <code>brain_search</code>) &middot; two-Mac <b>decision board FINAL</b> &middot; 30-finding brittleness map &middot; worker-monitor cron + auto-dock live &middot; spawn-tooling fix + eval dispatched.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="foot">
+  <div class="wrap">
+    <div><b style="color:var(--ink)">Orchestration status &mdash; gen-12 (2026-05-30 evening).</b> A live snapshot, reskinned to the two-mac-hub aesthetic of record. orc's v1 archived at <code>2026-05-30-orchestration-status-orc-v1.html</code>.</div>
+    <div class="fl">
+      <span>Verdict: <code>4-tracks · A:L0(#408 rework) · B:L1(#26 merged) · C:hub(board FINAL, 32GB&#10003;) · D:Drive(planned)</code></span>
+      <span style="color:var(--dissolve)">Standing edits: 1Password/op:// migration DROPPED · socat REFRAMED (decouple-server-from-connection).</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ SIDE-PANEL ============ -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true">
+  <div class="drawer-head">
+    <button class="drawer-back" id="drawerBack">&#8592; Back</button>
+    <div class="d-letter" id="drawerLetter"></div>
+    <div class="drawer-title" id="drawerTitle"></div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<script>
+"use strict";
+
+/* ============================================================
+   GLOSSARY — every jargon term in plain language. Surfaced
+   inline via .g[data-gloss] -> side-panel.
+   ============================================================ */
+// TEMPLATE DATA: Replace with at least 5 plain-language glossary entries for this dashboard.
+const GLOSS = {
+  brittleness: { t: "Brittleness audit (red/blue)", d: "A structured review where a RED team hunts for everything that would break, and a BLUE team independently verifies each finding and proposes the fix. Here it maps what snaps when the setup splits across two Macs. Two auditor passes (ws:4) cross-checked every finding." },
+  spof:        { t: "Single point of failure (SPOF)", d: "One thing whose death takes the whole system down. The BrainLayer socket lives on one Mac — if that Mac restarts, everything depending on it breaks. Moving the engine to the quiet hub means the busy work-Mac restarting no longer kills it." },
+  supersession:{ t: "Supersession", d: "When a newer fact should override (supersede) an older one. The complaint: you correct the memory, but the old wrong answer still wins in search ranking — the correction does not take precedence the way it should. Track A / PR #408 fixes this." },
+  transport:   { t: "Network transport", d: "The wire-level way two machines talk. Today BrainLayer talks over a local file socket on one Mac. To split across two Macs it must be reachable over the network instead — with reconnect/retry and a banner when the link drops. Track B builds exactly this in its Phase 2; Track C reuses it." },
+  vacuum:      { t: "VACUUM (SQLite)", d: "A SQLite command that rewrites a clean, compact, complete copy of the database — reclaiming space and removing fragmentation. The 10.3 GB DB is under multi-writer contention; an offline VACUUM during a fleet-quiet window cleans it and is also how the hub takes a consistent snapshot to ship to the work-Mac's read-replica. Needs an exclusive lock, hence the quiet window." },
+  socat:       { t: "socat (the OLD fix — reframed)", d: "A tiny relay utility. BrainLayer speaks over a local file socket; socat can bridge it to a network port. The audit's RED-1 flagged that every client uses bare socat with NO timeout. The naive fix — add `socat -T10` — is explicitly REFUTED (an inactivity timeout kills idle MCP stdio). The real fix is to DECOUPLE the server / front-socket from the connection: a stable mcplayer proxy front with a per-request JSON-RPC timeout and a relocatable upstream (unix→tcp for the hub). Frame: decouple-server-from-connection, not 'add a socat timeout'." },
+  perreq:      { t: "Per-request JSON-RPC timeout", d: "A timeout that fires per individual request, not on overall connection inactivity. This is the correct primitive: a slow brain_search bounces after N seconds, but an idle-but-alive MCP stdio connection is never killed. It's why `socat -T` (an inactivity timeout) is the wrong tool — it would kill healthy idle connections." },
+  tailnet:     { t: "Tailscale tailnet", d: "Your own small private network across your devices. Tailscale connects the two Macs directly (encrypted, peer-to-peer on the LAN) so they reach each other by name without exposing anything to the public internet. The 2-Mac hub rides this." },
+  mcplayer:    { t: "mcplayer proxy / bus", d: "A stable front that all MCP clients connect to instead of talking to BrainLayer directly. It owns reconnect/retry, the per-request timeout, and a relocatable upstream (local socket today, TCP-over-Tailscale to the hub tomorrow). One front to relocate, not 33 client configs. Track B / PR #26 builds it." },
+  fts:         { t: "FTS (full-text search)", d: "SQLite's built-in full-text search index. BrainLayer's session-start hook queries the FTS directly against the 10 GB DB; under contention that query can stall, which is why the hook needs an async flag or a 500 ms cap against a read replica." },
+  reaper:      { t: "MCP orphan reaper", d: "A scheduled job that kills leftover MCP server processes after sessions end. It's loaded but not running — so orphan MCP procs (supabase, whatsapp) accumulate. On two Macs the leak doubles, so the reaper must run on both with staggered schedules." },
+  brainentity: { t: "brain_entity", d: "The BrainLayer MCP call that returns a knowledge-graph entity and its facts. PR #408 aggregates entity_facts in the data layer (verified, freq=2), but brain_entity doesn't surface those facts to callers yet — so s:7 blocked the merge and sent it back to wire the read path + add an end-to-end test." },
+  stream:      { t: "Drive stream mode", d: "Google Drive-for-Desktop 'stream' keeps files in the cloud, not copied to disk. A file downloads only when opened; you pin the few you always need so they stay local. That's how a ~500 GB hub disk can front a 5 TB Drive. ⚠ KNOWN RISK, not assumed solved: Etan has had Drive-for-Desktop eat his disk before — verify true-stream behavior + set a cache-size cap + a pin policy BEFORE committing." },
+  jj:          { t: "jj (Jujutsu)", d: "A newer version-control tool on top of git. It makes stacked changes and undo trivial (great when AI agents produce messy history) and needs no server. Proposed on both Macs, syncing through a bare git remote on the hub." }
+};
+
+/* ============================================================
+   TRACKS — lead with the call; reasoning behind the side-panel
+   ============================================================ */
+// TEMPLATE DATA: Replace with 3-5 summary cards. Each opens the reasoning drawer.
+const TRACKS = [
+  { id:"a", cls:"a", letter:"A", name:"L0 &mdash; memory-quality", sub:"owner s:7 brainlayer", statusPill:'<span class="pill rework">rework</span>',
+    call:"<b>PR #408 in rework.</b> Fix supersession-in-ranking + garbled entities. Your #1 pain. Host-independent &mdash; no hub, no RAM gate.",
+    panelTitle:"Track A — L0 memory-quality",
+    rec:"<b>PR #408 (brainlayer) is in rework.</b> Data layer verified (entity_facts aggregation, freq=2 ✓). This is your #1 pain and has zero hardware dependency — it runs independently of the hub.",
+    why:"L0 is search-quality and data-quality software: your corrections don't override in ranking (<span class='g' data-gloss='supersession'>supersession</span>), knowledge-graph entities come out garbled, and the brainClaude/brainlayerClaude (and voiceClaude/voicelayerClaude) entities still need merging into one. None of this is about which Mac runs it. PR #408 aggregates entity_facts in the data layer (verified), but s:7 BLOCKED the merge because <span class='g' data-gloss='brainentity'>brain_entity</span> doesn't surface those facts to callers yet — sent back to wire the read path + add an e2e test. The vision: Grokipedia-style live entities + a local-LLM judge folded in.",
+    tradeoffs:[
+      { k:"&#9733;", t:"<b>This is the #1 win</b> and the only one the hub does nothing for — the hub buys reliability, not search-quality." },
+      { k:"&#9989;", t:"<b>Host-independent, no RAM gate.</b> Owner s:7 (Codex s:20, xhigh). Nothing waits on the two-Mac transition." },
+      { k:"&#9888;", t:"<b>In rework:</b> brain_entity must wire + e2e test before merge. Also re-run <code>brain_search</code> once BrainLayer is healthy — it was down during the audit." }
+    ] },
+  { id:"b", cls:"b", letter:"B", name:"L1 &mdash; bus-reconnect", sub:"owner s:1 mcplayer", statusPill:'<span class="pill merged">merged</span>',
+    call:"<b>PR #26 merged.</b> Put BrainLayer behind the <span class='g' data-gloss='mcplayer'>mcplayer</span> reverse-proxy + reconnect-survival + a <span class='g' data-gloss='perreq'>per-request timeout</span>. Kills the 18-min Codex hang.",
+    panelTitle:"Track B — L1 bus-reconnect",
+    rec:"<b>PR #26 (mcplayer) is merged</b> — Cursor review = 0. The durable fix for the 18-min Codex hang and the <code>/tmp/brainbar.sock</code> reconnect storm.",
+    why:"MCP was hanging. Putting BrainLayer behind the mcplayer reverse-proxy with reconnect-survival, plus a <span class='g' data-gloss='perreq'>per-request JSON-RPC timeout</span>, kills the hang class without waiting on the hardware move. Note the per-request timeout is the CORRECT primitive — not an inactivity timeout (<code>socat -T</code>), which would kill healthy idle MCP connections. The proxy's Phase-2 deliverable is a relocatable upstream (unix→tcp), which is exactly the seam Track C's engine relocation needs.",
+    tradeoffs:[
+      { k:"&#9889;", t:"<b>Fast + durable.</b> Reconnect-survival + per-request timeout, on a stable proxy front. Host-independent, so it doesn't wait on anything." },
+      { k:"&#128279;", t:"<b>B&rarr;C synergy:</b> B's Phase-2 = a <span class='g' data-gloss='transport'>network-transport-ready</span> upstream contract — the SAME seam Track C's engine relocation needs over Tailscale. <b>Build it ONCE: B's P2 = C's prerequisite.</b>" },
+      { k:"&#10003;", t:"<b>Decouple-server-from-connection:</b> the audit's socat finding (RED-1) routes here — a stable front with relocatable upstream, NOT a socat inactivity timeout." }
+    ] },
+  { id:"c", cls:"c", letter:"C", name:"Two-Mac hub", sub:"owner s:9 weave · co-orc", statusPill:'<span class="pill merged">board FINAL</span>',
+    call:"<b>Decision board FINAL.</b> M1 Pro = 32 GB confirmed &rarr; fully viable. Engine-relocation ungated; fleet-on-hub gate satisfied. B's transport is its prerequisite.",
+    panelTitle:"Track C — the two-Mac hub",
+    rec:"<b>Decision board is FINAL</b> (773L, with the reasoning side-panel Etan loves). M1 Pro = 32 GB confirmed &rarr; the hub runs end-to-end. Relocate the engine first (ungated), then move the fleet (gate now satisfied).",
+    why:"The BrainLayer engine+writer is ONE stateful daemon, fine on 16 GB — so engine relocation was always ungated and is the keystone L1 win that retires the <span class='g' data-gloss='spof'>SPOF</span> + write-lock + engine-split pains. The fleet (8–10 leaky agents) is the RAM hog — THAT needed 32 GB, and M1 Pro is confirmed 32 GB, so the fleet gate is satisfied. Track C runs end-to-end, including the fleet phase. M1 = quiet always-on hub; M4 = the mobile work-Mac, linked over a <span class='g' data-gloss='tailnet'>Tailscale tailnet</span>.",
+    tradeoffs:[
+      { k:"&#129504;", t:"<b>Engine: ungated.</b> One daemon — relocate first, the durable L1 win." },
+      { k:"&#10003;", t:"<b>Fleet: 32 GB gate satisfied.</b> M1 Pro confirmed 32 GB → 8–10 fleet agents with headroom. No upgrade needed." },
+      { k:"&#128279;", t:"<b>Reuses B's transport:</b> the engine talks M4↔M1 over the same upstream contract Track B builds — don't build it twice." }
+    ] },
+  { id:"d", cls:"d", letter:"D", name:"docs.local &rarr; Drive", sub:"owner TBD · post-hub", statusPill:'<span class="pill planned">planned</span>',
+    call:"<b>Planned, post-hub.</b> Kill the <code>docs.local</code> tier; move SoT to Google Drive <span class='g' data-gloss='stream'>stream mode</span>. Solves the 500 GB-hub vs 5 TB-Drive gap.",
+    panelTitle:"Track D — docs.local → Google Drive",
+    rec:"<b>Planned for after the hub.</b> Retire the <code>docs.local</code> tier; source-of-truth moves to Google Drive (<span class='g' data-gloss='stream'>stream mode</span>) + BrainLayer index. Solves the ~500 GB-hub vs 5 TB-Drive gap.",
+    why:"The hub's ~500 GB disk can't hold everything; Drive's 5 TB can. In stream mode, files live in the cloud and download only when opened — only hot files stay pinned local. BrainLayer is the index of what's out there. The audit confirms this is urgent: ~30 GB+ of docs.local research caches are NOT in git, the backup job only covers golems/docs.local (with a destructive rsync --delete), and the track-D checklist is 0/6 done.",
+    tradeoffs:[
+      { k:"&#9888;", t:"<b>KNOWN RISK to verify:</b> Drive-for-Desktop has <b>eaten Etan's disk</b> before. Confirm true-stream behavior + set a cache-size cap + a pin policy on the 500 GB hub BEFORE committing." },
+      { k:"&#128190;", t:"<b>Backup hazard:</b> the current backup-docs-local job uses <code>rsync --delete</code> to iCloud — a destructive mirror that could propagate deletions across two writers. Replace with versioned snapshots." },
+      { k:"&#128203;", t:"<b>Ledger gap:</b> 636 files under orchestrator docs.local, only 4 reference a _DRIVE-LEDGER. Block dual-Mac cutover until per-heavy-dir ledgers exist." }
+    ] }
+];
+
+/* ============================================================
+   AUDIT FINDINGS — RED finding + BLUE confirmation + routing.
+   1Password / op:// migration (RED-6/BLUE-6 + RED-2nd-5) DROPPED
+   per Etan's standing decision (gitignored configs, plaintext is
+   not a leak, no op:// migration). socat (RED-1) REFRAMED as
+   decouple-server-from-connection.
+   ============================================================ */
+// TEMPLATE DATA: Optional detail-card dataset for a tab. Replace with real findings or rename to a topic-specific dataset.
+const FINDINGS = [
+  { id:"RED-1", sev:5, impact:"blocks", reframed:true, flag:"Reframed",
+    title:"Decouple the server / front-socket from the connection",
+    where:"33× .mcp.json + ~/.golems/config.yaml + repoGolem Codex",
+    rec:"<b>Decouple server-from-connection.</b> A stable <span class='g' data-gloss='mcplayer'>mcplayer</span> proxy front with a <span class='g' data-gloss='perreq'>per-request JSON-RPC timeout</span> + a relocatable upstream (<code>unix…|tcp:host:port</code> for the hub). NOT 'add a socat -T timeout'.",
+    red:"BrainLayer MCP uses bare <code>socat STDIO UNIX-CONNECT:/tmp/brainbar.sock</code> with NO connect/read/request timeout, across <b>33</b> <code>.mcp.json</code> files (0 had a timeout flag). The hang class persists on any machine that hits a slow <code>brain_search</code> on the contended DB.",
+    blue:"<b>CONFIRMED.</b> Do NOT ship <code>socat -T10</code> as the fleet fix — an inactivity timeout kills idle MCP stdio (documented in the ecosystem-stabilization collab). Harden via the mcplayer per-request timeout on a stable front socket + <code>MCPLAYER_BRAINLAYER_UPSTREAM=unix:…|tcp:host:port</code> for hub relocation. repoGolem must pass through <code>startup_timeout_sec</code> or inherit the proxy front.",
+    evid:"rg -l 'UNIX-CONNECT:/tmp/brainbar.sock' ~/Gits → 33; rg '\\-T|\\-t' → 0",
+    routes:"track B / s:1 mcplayer (P1–P2), then 33 .mcp.json cutover" },
+  { id:"RED-2", sev:5, impact:"blocks",
+    title:"/tmp/brainbar.sock is a host-local SPOF",
+    where:"/tmp/brainbar.sock + BrainBarD",
+    rec:"<b>Hub TCP front.</b> M1 runs BrainBarD + the canonical socket; M4 reaches it via a TCP front over Tailscale, never the raw /tmp path.",
+    red:"Single canonical UNIX socket <span class='g' data-gloss='spof'>SPOF</span>; cannot cross machines. The entire fleet assumes the engine is on the SAME host as the agents.",
+    blue:"<b>CONFIRMED.</b> Hub (M1) runs BrainBarD + canonical socket; M4 uses a TCP front (Tailscale) to the hub proxy, never a direct /tmp path. Clean stale hybrid/test sockets on daemon restart (5+ found in /tmp).",
+    evid:"lsof /tmp/brainbar.sock → BrainBarD PID 46830 + 9+ client FDs",
+    routes:"track C / s:9 two-mac-hub + track B proxy" },
+  { id:"RED-3", sev:5, impact:"blocks",
+    title:"10.3 GB DB is not in git — can't sync to M4",
+    where:"~/.local/share/brainlayer/brainlayer.db",
+    rec:"<b>M1 = sole writer; M4 = readonly replica.</b> Nightly snapshot/rsync + offline VACUUM on the hub during a maintenance window. Gate: no second writer on the replica.",
+    red:"A <b>10.3 GB</b> monolithic SQLite under multi-writer contention (BrainBar, enrich supervisor, drain). The DB is not in git, so 'sync the repo to M4' does NOT get you memory. The track-C 24h read-replica is plan-only — no deployed replica path found.",
+    blue:"<b>CONFIRMED.</b> M1 = sole writer; M4 = readonly replica via nightly snapshot/rsync + <code>BRAINLAYER_DB</code> on M4, or an explicit readonly MCP path. Offline <span class='g' data-gloss='vacuum'>VACUUM</span> on the hub during maintenance. Gate: no second writer on the replica.",
+    evid:"stat → 10326986752 bytes; WAL mode; no replica LaunchAgent found",
+    routes:"track C / s:7 brainlayer + vacuum runbook" },
+  { id:"RED-15", sev:3, impact:"risks",
+    title:"Codex startup_timeout_sec bypassed by launcher socat",
+    where:"~/.codex/config.toml vs repoGolem",
+    rec:"<b>repoGolem must pass through <code>startup_timeout_sec</code></b>; long-term, all clients route through the mcplayer proxy front.",
+    red:"Codex <code>startup_timeout_sec=5</code> on brainlayer-mcp is BYPASSED when the launcher merges the repo <code>.mcp.json</code> socat override — so the same hang class hits M4 Codex against the hub proxy if the proxy lacks a request timeout.",
+    blue:"<b>CONFIRMED.</b> <code>golem-dispatch.zsh</code> passes <code>timeout</code> from JSON, not <code>startup_timeout_sec</code>; live socat override observed. Fix: pass it through; route all clients to the proxy front.",
+    evid:"live ps shows socat override; golem-dispatch.zsh passes 'timeout' not startup_timeout_sec",
+    routes:"repoGolem + track B" },
+  { id:"RED-4", sev:4, impact:"risks",
+    title:"~123k enrichment backlog; drain < production",
+    where:"~/.brainlayer/queue + drain_daemon",
+    rec:"<b>Throttle the producer</b> (<code>BRAINLAYER_ENRICH_RATE</code>), run a continuous drain (not <code>--once</code> storms), set a backlog burn-down SLO, surface queue_depth on a LOUD degradation banner.",
+    red:"~123k enrichment backlog; drain ~37/min &lt; production ~61/min (24h) → persistent queue_depth. M4 readonly searches go stale/partial if the replica lags.",
+    blue:"<b>CONFIRMED (backlog/drain gap).</b> 2nd auditor REFUTED the 'queued≠stored collision data-loss' claim — <code>collisions_dropped</code> is always 0 in drain.log history (code path exists, never fired). Production was 0/min in the last hour (paused ~15:58); the 24h avg still holds.",
+    evid:"find ~/.brainlayer/queue → 123,429 files; drain ~37/min; 0 collision lines in logs",
+    routes:"s:7 brainlayer enrichment + drain" },
+  { id:"RED-5", sev:4, impact:"blocks",
+    title:"Hardcoded $HOME paths + localhost URLs",
+    where:"~/.golems/config.yaml + sync-config.sh",
+    rec:"<b>Per-machine <code>config.local.yaml</code></b> (or env) for reposPath, hub hostnames (<code>HUB_TAILSCALE_HOST</code>), MCP upstream URLs. <code>sync-config --enforce</code> only after <code>--diff</code>.",
+    red:"The fleet MCP template hardcodes <code>$HOME</code> paths and localhost URLs, then regenerates per-repo <code>.mcp.json</code>. A fresh M4 clone without the wizard/sync-config leaves broken MCP paths. 29 LaunchAgents reference user paths or /tmp.",
+    blue:"<b>CONFIRMED.</b> config.yaml hardcodes <code>$HOME/Gits</code>, localhost:8741, /tmp sockets; sync-config.sh defaults <code>$HOME/Gits</code>. Extend the wizard to set hub URL + <code>BRAINLAYER_UPSTREAM</code> per machine.",
+    evid:"config.yaml reposPath + WHATSAPP_API_URL: http://localhost:8741/api; 29 LaunchAgents",
+    routes:"wizard / orchestrator sync-config + track C" },
+  { id:"RED-7", sev:4, impact:"blocks",
+    title:"WhatsApp MCP hardwired to localhost",
+    where:"WhatsApp MCP + launchd com.whatsapp-mcp.bridge*",
+    rec:"<b>Hub hosts the bridges + session DB;</b> M4 MCP uses <code>WHATSAPP_API_URL=http://&lt;m1-tailscale&gt;:8741/api</code> (or disable on mobile). Single bridge per account — kill orphans.",
+    red:"WhatsApp MCP is hardwired to <code>localhost:8741/8742</code> + local SQLite stores. M4 Codex cannot use WhatsApp MCP unless the bridges run on M4 OR an HTTP proxy points at the M1 hub.",
+    blue:"<b>CONFIRMED.</b> Listeners present on 8741/8742; live Codex passes localhost URLs; ~12 whatsapp python procs + bridge PIDs. Hub-host the bridges; point M4 at the hub Tailscale URL.",
+    evid:"lsof -iTCP:8741,8742 -sTCP:LISTEN; bridge PIDs 3997/3998",
+    routes:"track C + whatsapp-mcp owner" },
+  { id:"RED-8", sev:4, impact:"risks",
+    title:"Session-start hook runs sync against 10 GB DB",
+    where:"~/.claude/settings.json SessionStart",
+    rec:"<b>Mark the hook <code>async: true</code></b>, OR query a readonly replica / <code>brain_recall</code> with a 500 ms cap; honor <code>BRAINLAYER_HOOKS_DISABLED</code> on M4.",
+    red:"<code>brainlayer-session-start.py</code> runs SYNCHRONOUSLY (no <code>async: true</code>) with a 2 s timeout against the 10 GB DB, opening SQLite <span class='g' data-gloss='fts'>FTS</span> directly. Session start stalls — worse if M4 mistakenly uses the hub DB over a network FS.",
+    blue:"<b>CONFIRMED.</b> settings.json L223–227: timeout 2000, no async flag. Mark async or query the readonly replica / MCP brain_recall with a 500 ms cap.",
+    evid:"settings.json L223–227; script DEADLINE_MS=450; no \"async\": true",
+    routes:"brainlayer hooks + track C replica" },
+  { id:"RED-9", sev:3, impact:"risks",
+    title:"Three PreToolUse hooks have no timeout",
+    where:"~/.claude/settings.json PreToolUse",
+    rec:"<b>Add explicit 1–2 s timeouts</b>; audit hooks for network/DB calls.",
+    red:"Three PreToolUse hooks (<code>daemon-gate-precheck</code>, <code>pre_tool_use</code>, <code>block-dangerous-commands</code>) have NO timeout key — a latent hang on either Mac if a hook does I/O to hub services.",
+    blue:"<b>CONFIRMED.</b> PreToolUse hooks for daemon-gate, pre_tool_use, block-dangerous — no timeout key. Add explicit 1–2 s timeouts.",
+    evid:"settings.json PreToolUse entries without timeout key",
+    routes:"orchestrator / hooks" },
+  { id:"RED-10", sev:3, impact:"risks",
+    title:"MCP orphan reaper loaded but not running",
+    where:"com.golems.mcp-reaper",
+    rec:"<b>Enable the <span class='g' data-gloss='reaper'>reaper</span> on BOTH Macs</b> with a staggered schedule; add a post-session kill contract on cmux session end.",
+    red:"The MCP orphan reaper is loaded but NOT running (active count = 0); live there are 10 supabase + ~38–42 whatsapp/supabase procs. On two Macs the orphan RAM/FD leak doubles.",
+    blue:"<b>CONFIRMED (counts ±10%).</b> reaper active count = 0; enable on both Macs with a staggered schedule + post-session kill contract.",
+    evid:"launchctl print → active count = 0; ~42 whatsapp+supabase procs",
+    routes:"s:3 orchestrator mcp-orphan-reaper.sh" },
+  { id:"RED-11", sev:4, impact:"blocks",
+    title:"VoiceLayer / cmux / mcplayer bus are host-local",
+    where:"/tmp/voicelayer-mcp.sock, /tmp/cmux.sock, /tmp/mcplayer-bus.sock",
+    rec:"<b>M4:</b> VoiceLayer local-only; cmux must run where the terminal runs (M4 local). mcplayer bus stays on the agent host; only BrainLayer migrates to the hub via the track-B proxy.",
+    red:"VoiceLayer + cmux + mcplayer bus are host-local UNIX transports — blocks voice/cmux on M4 against the M1 hub unless tunneled or disabled.",
+    blue:"<b>CONFIRMED (with nuance).</b> mcplayer bus IS daemonized now (<code>com.mcplayer.bus</code> PID 920, always-on this host) but still not cross-Mac. <code>/tmp/cmux.sock</code> is absent when cmux is idle — the 'always present' wording was overstated.",
+    evid:"/tmp/mcplayer-bus.sock + /tmp/voicelayer-mcp.sock live; cmux.sock absent when idle",
+    routes:"track C + s:1 + s:3" },
+  { id:"RED-12", sev:4, impact:"blocks",
+    title:"~30 GB+ docs.local research cache not in git",
+    where:"Fleet docs.local/ (gitignored)",
+    rec:"<b>Enforce the hierarchy:</b> heavy → Brain Drive + <code>_DRIVE-LEDGER.md</code>; expand the backup job or per-repo archive SLO; cap the Drive stream/cache size.",
+    red:"~30 GB+ local research cache NOT in git, only partially backed up (golems 24G, orchestrator 2.3G, TaskOwl 1.3G, coach 1.1G, brainlayer 599M). The backup job only rsyncs <code>golems/docs.local</code> → iCloud. M4 clone misses plans/audits; agents re-hallucinate.",
+    blue:"<b>CONFIRMED + deepened.</b> The backup plist covers only golems/docs.local with <code>rsync --delete</code> → iCloud. Enforce the SoT hierarchy; expand coverage or do the Drive-stream migration.",
+    evid:"du sizes above; com.golems.backup-docs-local only golems/docs.local",
+    routes:"track D / google-drive-archive + backup-docs-local" },
+  { id:"RED-13", sev:4, impact:"risks",
+    title:"BrainLayer indexer failing under DB lock pressure",
+    where:"com.brainlayer.index",
+    rec:"<b>Serialize index vs drain/enrich;</b> run index off-peak with a readonly connection; fix exit-code alerting.",
+    red:"The indexer launch job is FAILING (exit 1) under DB lock pressure — <code>index.err.log</code> shows repeated retryable SQLite errors up to 128.8 s. Search quality drifts; hub contention affects all consumers.",
+    blue:"<b>CONFIRMED.</b> <code>com.brainlayer.index</code> LastExitStatus 256 (exit 1); err.log ends with 128.8 s DB-lock retry exhaustion. Serialize index vs drain/enrich; readonly indexer connection.",
+    evid:"launchctl list → exit 1; index.err.log → 128.8s DB lock retry",
+    routes:"s:7 brainlayer" },
+  { id:"RED-14", sev:5, impact:"risks",
+    title:"Second BrainBar / live-app QA fights the shared socket+DB",
+    where:"BrainBar menu-bar app (incident pattern)",
+    rec:"<b>Mandatory isolated QA bundle</b> (isolated <code>BRAINLAYER_DB</code> + non-canonical socket); in-app <code>brainbar://export</code> for visual QA; never osascript the canonical app.",
+    red:"A second BrainBar instance or QA against the live app FIGHTS the shared socket + DB — documented multi-minute freeze (GEN-10). The hub is production, so hub QA must use isolated DB + a non-canonical socket only.",
+    blue:"<b>CONFIRMED (pattern; not re-tested live to avoid fighting prod).</b> Mandatory isolated QA bundle; in-app export for visual QA; never osascript the canonical app.",
+    evid:"GEN-10 collab: competing socket + /tmp/.brainbar-toggle → freeze",
+    routes:"s:97 brainbar + QA policy" },
+  { id:"RED-16", sev:3, impact:"risks",
+    title:"Four misleading 0 B brainlayer.db stubs",
+    where:"0 B DB stubs (~/.brainlayer, ~/Gits/brainlayer, …)",
+    rec:"<b>Wizard prints the canonical path;</b> remove the stubs or replace with a README pointer; fail-fast in MCP if DB size &lt; 1 MB.",
+    red:"Four misleading <code>brainlayer.db</code> stubs (0 B) — M4 setup may mispoint tools at an empty DB unless <code>BRAINLAYER_DB</code> is set.",
+    blue:"<b>CONFIRMED.</b> Four 0 B stub DBs verified. Wizard prints canonical path; fail-fast if DB &lt; 1 MB.",
+    evid:"setup-map-VERIFY §1 table; four 0 B stubs",
+    routes:"wizard + brainlayer paths" },
+  { id:"RED-17", sev:3, impact:"neutral",
+    title:"Disabled vs active enrich plists — operator confusion",
+    where:"com.brainlayer.enrich.plist topology",
+    rec:"<b>Document the single active plist;</b> disable enrich daemons on the M4 writer.",
+    red:"Disabled <code>enrich.plist</code>/<code>enrich-backfill.plist</code> vs the active <code>enrichment.plist</code> — operator confusion. Hub misconfig could duplicate enrich on both Macs if plists are copied blindly.",
+    blue:"<b>CONFIRMED.</b> enrich.plist.disabled vs enrichment.plist active (PID 7746). Document the single active plist; disable enrich on the M4 writer.",
+    evid:"setup-map-VERIFY §6; live supervisor PID 7746",
+    routes:"s:7 brainlayer ops" },
+  { id:"RED-18", sev:3, impact:"risks",
+    title:"Memory watchdog notifies/reads hardcoded localhost",
+    where:"systems/bin/cmux-memory-watchdog.sh",
+    rec:"<b>Parameterize the notify URL + brainbar socket per host;</b> run the watchdog only on the machine that runs cmux.",
+    red:"The watchdog notifies via <code>http://localhost:3847</code> and reads <code>/tmp/brainbar.sock</code> — on the wrong host it no-ops or kills the wrong cmux.",
+    blue:"<b>CONFIRMED.</b> Defaults localhost:3847 + /tmp/brainbar.sock (script L6–8). Parameterize per host; run only where cmux runs.",
+    evid:"script env defaults L6–8",
+    routes:"systems / s:3" },
+  /* ---- SECOND AUDITOR PASS — new findings ---- */
+  { id:"RED-2nd-1", sev:5, impact:"blocks",
+    title:"24/24 repoGolem launchers fail in non-interactive shell",
+    where:"skill-creator/scripts/spawn-reliability-probe.sh",
+    rec:"<b>Install launchers into a non-interactive source</b> (<code>/etc/zshenv</code>, cmux pane init, or wrappers in <code>/usr/local/bin</code>); re-run the probe as a CI gate before declaring dual-Mac ready.",
+    red:"ALL 24/24 repoGolem launchers FAIL in a non-interactive shell (cmux <code>spawn_agent</code> context) — every cell reports SOURCING-GAP (.zshrc-only). M4 fresh-login + cmux-orchestrated spawns silently fail even if repos are cloned.",
+    blue:"<b>CONFIRMED.</b> Install ralphtools/golem-dispatch into a non-interactive source; re-run the probe as a CI gate before declaring dual-Mac ready.",
+    evid:"probe 2026-05-30 20:04: all cells SOURCING-GAP; manifest /tmp/spawn-reliability-*.json",
+    routes:"wizard / s:3 cmux / skill-creator eval gate" },
+  { id:"RED-2nd-2", sev:4, impact:"blocks",
+    title:"metacomlayer not in production .mcp.json fleet",
+    where:"metacomlayer fleet wiring",
+    rec:"<b>Add metacomlayer MCP to the hub profile</b> in config.yaml; document required env (<code>MCPLAYER_SOCKET</code>, <code>MCL_AGENT_ID</code>); hub runs the bus + optional MCL MCP per agent host.",
+    red:"MCL is NOT in the production <code>.mcp.json</code> fleet — only scratch demos. Cross-agent collab/receipts are unavailable on a fresh clone; M4 agents can't join bus-backed coordination without manual wiring.",
+    blue:"<b>CONFIRMED.</b> Only 2 scratch files reference metacomlayer. Add to the hub profile; document env; hub runs the mcplayer bus + optional MCL MCP per agent host.",
+    evid:"rg metacomlayer ~/Gits --glob '**/.mcp.json' → 2 scratch files only",
+    routes:"MCL-LEAD / sync-config / track C" },
+  { id:"RED-2nd-3", sev:4, impact:"risks",
+    title:"Wrong default socket in MCL MCP stderr",
+    where:"metacomlayer/src/mcp/server.ts:153",
+    rec:"<b>Fix the default to <code>/tmp/mcplayer-bus.sock</code></b>; fail-fast at MCP startup if the socket is missing or the wrong protocol.",
+    red:"MCL logs <code>MCPLAYER_SOCKET ?? \"/tmp/mcplayer.sock\"</code> but the canonical bus is <code>/tmp/mcplayer-bus.sock</code> (the retired multiplexer path). Operators debugging M4 follow the wrong socket; silent connect failure if env is unset.",
+    blue:"<b>CONFIRMED.</b> <code>com.mcplayer.bus</code> listens on /tmp/mcplayer-bus.sock; legacy /tmp/mcplayer.sock released per GEN-10. Fix the default; fail-fast on wrong/missing socket.",
+    evid:"code read server.ts:153; com.mcplayer.bus on /tmp/mcplayer-bus.sock",
+    routes:"metacomlayer / mcplayer" },
+  { id:"RED-2nd-4", sev:4, impact:"blocks",
+    title:"MCL adapters assume same-host mcplayer bus",
+    where:"metacomlayer stop-hook + mcplayer bus",
+    rec:"<b>Track C must relocate/proxy the mcplayer bus</b> alongside BrainBar — MCL is a SECOND host-local dependency (a separate seam from BrainLayer).",
+    red:"MCL adapters assume the same-host bus — the Stop hook opens <code>RealMcplayer</code> on the local <code>MCPLAYER_SOCKET</code>, no TCP/Tailscale transport. M4 agents can't receive MCL push/inbox from the M1 hub unless the bus is local or proxied.",
+    blue:"<b>CONFIRMED.</b> stop-hook.ts uses <code>RealMcplayer.open()</code>; bus WAL is host-local. Track C must include mcplayer bus relocation/proxy alongside BrainBar.",
+    evid:"stop-hook.ts RealMcplayer.open(); bus WAL ~/Library/.../mcplayer/queue.wal",
+    routes:"track C + MCL-LEAD + mcplayer track B" },
+  { id:"RED-2nd-6", sev:4, impact:"blocks",
+    title:"rsync --delete to iCloud is a destructive mirror",
+    where:"golems/scripts/backup-docs-local.sh",
+    rec:"<b>Replace <code>--delete</code> with versioned snapshots</b> OR per-machine backup roots; expand coverage or do the Drive-stream migration. Never single-direction delete-mirror across two writers.",
+    red:"The backup job <code>rsync --delete</code> to iCloud backs up ONLY <code>golems/docs.local</code> — a destructive mirror. If M4 edits the iCloud copy then the M1 backup runs, deletions propagate. orchestrator/coach/brainlayer 4 GB+ are NEVER backed up by this job.",
+    blue:"<b>CONFIRMED.</b> Plist → script L15–22: <code>--delete</code> to iCloud golems-docs-local. Replace with versioned snapshots or per-machine roots; never delete-mirror across two writers.",
+    evid:"com.golems.backup-docs-local → backup-docs-local.sh L15–22 --delete",
+    routes:"track D + backup-docs-local" },
+  { id:"RED-2nd-7", sev:4, impact:"blocks",
+    title:"Drive migration ledger nearly absent (0/6 done)",
+    where:"orchestrator/docs.local + _DRIVE-LEDGER.md",
+    rec:"<b>Block dual-Mac cutover until the track-D minimum:</b> synced root chosen, a ledger per heavy dir, skills/CLAUDE.md repointed. Until then, tag all agent prompts 'docs.local may be absent on M4.'",
+    red:"636 files under orchestrator <code>docs.local/{audits,plans}</code>, only <b>4</b> reference a <code>_DRIVE-LEDGER</code>; track-D checklist is <b>0/6</b> done. M4 clone gets git code but NOT the 2.3 G orchestrator plans/audits; stream-mode cache blowup is ungoverned until a pin policy exists.",
+    blue:"<b>CONFIRMED.</b> find → 636 files; rg _DRIVE-LEDGER → 4; track-D doc all <code>[ ]</code>. Block cutover until the minimum ledger + repoint exists.",
+    evid:"find → 636; rg -l _DRIVE-LEDGER → 4; track-D-docs-to-drive.md all [ ]",
+    routes:"track D / orc" },
+  { id:"RED-2nd-8", sev:3, impact:"risks",
+    title:"Worktree / fork sprawl",
+    where:"Git worktrees + fork dirs",
+    rec:"<b><code>git worktree prune</code></b>; document the canonical repo list for the wizard; delete/archive fork dirs; M4 gets a clean <code>~/Gits/{orchestrator,brainlayer,golems}</code> only.",
+    red:"Prunable temp worktrees + 9 <code>brainlayer-*</code>/<code>orchestrator-*</code> sibling dirs. M4 clone script may sync the wrong fork; agents cwd into a stale orchestrator copy with a divergent sync-config.",
+    blue:"<b>CONFIRMED.</b> git worktree list shows prunable temp worktrees + fork dirs (orchestrator-p8-baseline, 6× brainlayer-* forks). Prune; document the canonical list.",
+    evid:"git worktree list → /private/tmp/mcp-http-phase1 prunable; 9 fork dirs",
+    routes:"wizard + worktrees skill" },
+  { id:"RED-2nd-9", sev:3, impact:"blocks",
+    title:"Machine-local agent policy doesn't travel",
+    where:".claude.local.md (gitignored)",
+    rec:"<b>Wizard step:</b> generate <code>.claude.local.md</code> per repo + verify required keys; optionally sync non-secret policy via a committed <code>AGENTS.md</code>.",
+    red:"<code>.claude.local.md</code> is gitignored and hardcodes <code>$HOME/Gits/…</code> + <code>/tmp/brainbar.sock</code> — so an M4 clone is missing socket paths, skill paths, and MCP notes. The wizard creates one per machine but with no validation gate.",
+    blue:"<b>CONFIRMED.</b> golems/.gitignore lists .claude.local.md; sample hardcodes user paths + socket. Wizard must generate + verify required keys per repo.",
+    evid:"golems/.gitignore → .claude.local.md; sample hardcodes paths",
+    routes:"wizard" },
+  { id:"RED-2nd-10", sev:3, impact:"risks",
+    title:"Notify stack assumes localhost Telegram bot",
+    where:"config.yaml telegram.notifyPort: 3847",
+    rec:"<b><code>NOTIFY_URL</code> env per host;</b> document which daemons run on the hub vs mobile.",
+    red:"The notify stack assumes a localhost Telegram bot on fixed port 3847 (same class as the watchdog). M4 alerts silently drop if the notify daemon is only on M1.",
+    blue:"<b>CONFIRMED.</b> Port 3847 referenced in config.yaml + watchdog scripts. Add NOTIFY_URL per host; document hub-vs-mobile daemons.",
+    evid:"config.yaml telegram.notifyPort: 3847",
+    routes:"orchestrator notify / track C" },
+  { id:"RED-2nd-11", sev:3, impact:"neutral",
+    title:"Zero Tailscale / HUB_HOST in live config",
+    where:"Deployed config grep",
+    rec:"<b>Add a <code>config.local.yaml</code> schema:</b> <code>hub.host</code>, <code>brainlayer.upstream</code>, <code>whatsapp.apiBase</code>, <code>mcplayer.socket|tcp</code>. Wizard validates reachability before marking setup complete.",
+    red:"All hub routing is plan-only — zero Tailscale/HUB_HOST in the live config. A fresh M4 over Tailscale has nothing to connect to. Confirms RED-2/3/7/11 have no incremental config started.",
+    blue:"<b>CONFIRMED.</b> rg 'tailscale|HUB_|100.x' ~/.golems/config.yaml → empty; track-C design only. Add the config.local.yaml schema; wizard validates reachability.",
+    evid:"rg 'tailscale|HUB_|100\\.\\d+' config.yaml → empty",
+    routes:"track C + wizard" },
+  { id:"RED-2nd-12", sev:3, impact:"risks",
+    title:"docs.local NOT gitignored in orchestrator",
+    where:"orchestrator/.gitignore",
+    rec:"<b>Align the gitignore policy across repos;</b> enforce a pre-commit size gate; migrate to the Drive ledger before any commit.",
+    red:"<code>docs.local/</code> is NOT gitignored in orchestrator (unlike golems) — ambiguous SoT. 2.3 G sits untracked but accidentally committable; an accidental <code>git add docs.local</code> bloats the repo or creates a false SoT.",
+    blue:"<b>CONFIRMED.</b> golems/.gitignore has docs.local/; orchestrator root .gitignore does NOT. Align policy; enforce a pre-commit size gate.",
+    evid:"golems/.gitignore has docs.local/; orchestrator/.gitignore does not",
+    routes:"track D + github" }
+];
+
+/* ---------------- RENDER: tracks ---------------- */
+var trackGrid = document.getElementById("trackGrid");
+TRACKS.forEach(function(t){
+  var b = document.createElement("button");
+  b.className = "track " + t.cls;
+  b.setAttribute("aria-haspopup","dialog");
+  b.dataset.track = t.id;
+  b.innerHTML =
+    '<div class="tr-top"><span class="tr-letter">' + t.letter + '</span>' +
+      '<span class="tr-name">' + t.name + '<small>' + t.sub + '</small></span></div>' +
+    '<div>' + t.statusPill + '</div>' +
+    '<div class="tr-call">' + t.call + '</div>' +
+    '<span class="tr-open">Open the reasoning <span class="arrow">&rarr;</span></span>';
+  b.addEventListener("click", function(e){
+    if (e.target.closest(".g")) return;       // let gloss handle its own click
+    openTrack(t.id);
+  });
+  trackGrid.appendChild(b);
+});
+
+/* ---------------- RENDER: audit findings ---------------- */
+var findingsGrid = document.getElementById("findingsGrid");
+function renderFindings(filter){
+  findingsGrid.innerHTML = "";
+  FINDINGS.filter(function(f){ return filter === "all" || String(f.sev) === filter; }).forEach(function(f){
+    var card = document.createElement("button");
+    card.className = "finding sev" + f.sev + (f.reframed ? " reframed" : "");
+    card.setAttribute("aria-haspopup","dialog");
+    card.dataset.id = f.id;
+    var flagHtml = f.flag ? '<span class="f-flag">' + f.flag + '</span>' : '';
+    card.innerHTML =
+      '<div class="f-top"><span class="f-id">' + f.id + '</span>' +
+        '<span class="f-sev">sev-' + f.sev + '</span>' + flagHtml +
+        '<span class="f-impact ' + f.impact + '">' + f.impact + '</span></div>' +
+      '<div class="f-title">' + f.title + '</div>' +
+      '<div class="f-where">' + f.where + '</div>' +
+      '<span class="f-open">RED + BLUE + routing <span class="arrow">&rarr;</span></span>';
+    card.addEventListener("click", function(e){
+      if (e.target.closest(".g")) return;
+      openFinding(f.id);
+    });
+    findingsGrid.appendChild(card);
+  });
+}
+renderFindings("all");
+
+var sevBtns = document.querySelectorAll("#sevfilter .sevbtn");
+sevBtns.forEach(function(btn){
+  btn.addEventListener("click", function(){
+    sevBtns.forEach(function(b){ b.classList.toggle("active", b === btn); });
+    renderFindings(btn.dataset.sev);
+  });
+});
+
+/* ============================================================
+   SIDE-PANEL — one primitive for tracks, findings, and gloss
+   ============================================================ */
+var scrim = document.getElementById("scrim");
+var drawer = document.getElementById("drawer");
+var drawerBack = document.getElementById("drawerBack");
+var drawerLetter = document.getElementById("drawerLetter");
+var drawerTitle = document.getElementById("drawerTitle");
+var drawerBody = document.getElementById("drawerBody");
+var lastFocused = null;
+
+function openPanel(){
+  scrim.classList.add("open");
+  drawer.classList.add("open");
+  drawer.setAttribute("aria-hidden","false");
+  drawerBody.scrollTop = 0;
+  drawerBack.focus();
+  document.body.style.overflow = "hidden";
+}
+function closeDrawer(){
+  scrim.classList.remove("open");
+  drawer.classList.remove("open");
+  drawer.setAttribute("aria-hidden","true");
+  document.body.style.overflow = "";
+  if (lastFocused && lastFocused.focus) lastFocused.focus();
+}
+function renderTradeoffs(arr){
+  var h = '<h4>Tradeoffs &amp; detail</h4>';
+  arr.forEach(function(t){ h += '<div class="tradeoff"><span class="tk">' + t.k + '</span><span>' + t.t + '</span></div>'; });
+  return h;
+}
+function openTrack(id){
+  var t = TRACKS.find(function(x){ return x.id === id; });
+  if (!t) return;
+  lastFocused = document.activeElement;
+  drawerLetter.textContent = t.letter;
+  drawerTitle.textContent = t.panelTitle;
+  drawerBody.innerHTML =
+    '<h4>The call</h4><div class="rec-box">' + t.rec + '</div>' +
+    '<h4>Why</h4><p>' + t.why + '</p>' +
+    renderTradeoffs(t.tradeoffs);
+  bindGloss(drawerBody);
+  openPanel();
+}
+function openFinding(id){
+  var f = FINDINGS.find(function(x){ return x.id === id; });
+  if (!f) return;
+  lastFocused = document.activeElement;
+  drawerLetter.textContent = "!";
+  drawerTitle.textContent = f.id + " — " + f.title;
+  drawerBody.innerHTML =
+    '<h4>The fix' + (f.reframed ? ' (reframed)' : '') + '</h4><div class="rec-box">' + f.rec + '</div>' +
+    '<h4>RED finding</h4><p>' + f.red + '</p>' +
+    '<h4>BLUE confirmation</h4><div class="blue-box">' + f.blue + '</div>' +
+    '<h4>Evidence</h4><div class="evid">' + f.evid + '</div>' +
+    '<h4>Where it routes</h4><span class="route">&#128279; <b>' + f.routes + '</b></span>';
+  bindGloss(drawerBody);
+  openPanel();
+}
+function openGloss(key, srcEl){
+  var g = GLOSS[key];
+  if (!g) return;
+  lastFocused = srcEl || document.activeElement;
+  drawerLetter.textContent = "?";
+  drawerTitle.textContent = "What does this mean?";
+  drawerBody.innerHTML =
+    '<h4>' + g.t + '</h4><div class="rec-box">' + g.d + '</div>' +
+    '<p style="margin-top:14px;color:var(--ink-3);font-size:12px;">Plain-language gloss &mdash; close to return to the board.</p>';
+  openPanel();
+}
+
+/* gloss: click (and keyboard) anywhere on a .g term -> panel */
+function bindGloss(root){
+  root.querySelectorAll(".g[data-gloss]").forEach(function(el){
+    if (el.dataset.boundGloss === "1") return;
+    el.dataset.boundGloss = "1";
+    el.setAttribute("tabindex","0");
+    el.setAttribute("role","button");
+    var g = GLOSS[el.dataset.gloss];
+    if (g) el.setAttribute("title", g.t + " — click for plain-language explanation");
+    el.addEventListener("click", function(e){ e.stopPropagation(); openGloss(el.dataset.gloss, el); });
+    el.addEventListener("keydown", function(e){
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); openGloss(el.dataset.gloss, el); }
+    });
+  });
+}
+bindGloss(document);
+
+scrim.addEventListener("click", closeDrawer);
+drawerBack.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", function(e){
+  if (e.key === "Escape" && drawer.classList.contains("open")) closeDrawer();
+});
+
+/* ============================================================
+   TABS — paginate (progressive disclosure, no infinite scroll)
+   ============================================================ */
+var tabBtns = document.querySelectorAll("#tabbar .tab");
+var panels = {
+  prs: document.getElementById("panel-prs"),
+  audit: document.getElementById("panel-audit"),
+  fleet: document.getElementById("panel-fleet"),
+  awaiting: document.getElementById("panel-awaiting")
+};
+function showTab(name){
+  tabBtns.forEach(function(b){
+    var isActive = b.dataset.tab === name;
+    b.classList.toggle("active", isActive);
+    b.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  Object.keys(panels).forEach(function(k){ panels[k].classList.toggle("show", k === name); });
+}
+tabBtns.forEach(function(b){ b.addEventListener("click", function(){ showTab(b.dataset.tab); }); });
+
+/* ============================================================
+   JUMP STRIP — smooth scroll + active scrollspy
+   ============================================================ */
+var jumpBtns = document.querySelectorAll("#jump button");
+jumpBtns.forEach(function(btn){
+  btn.addEventListener("click", function(){
+    var target = document.getElementById(btn.dataset.go);
+    if (target) target.scrollIntoView({ behavior:"smooth", block:"start" });
+  });
+});
+var spySections = ["verdict","tracks","tabs"].map(function(id){ return document.getElementById(id); }).filter(Boolean);
+var spy = new IntersectionObserver(function(entries){
+  entries.forEach(function(en){
+    if (en.isIntersecting){
+      var id = en.target.id;
+      jumpBtns.forEach(function(b){ b.classList.toggle("active", b.dataset.go === id); });
+    }
+  });
+}, { rootMargin:"-45% 0px -50% 0px", threshold:0 });
+spySections.forEach(function(s){ spy.observe(s); });
+</script>
+</body>
+</html>

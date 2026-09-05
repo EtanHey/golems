@@ -1,0 +1,12 @@
+{
+  "specimen": "cursor-review/checkmark-negation (false-positive guard)",
+  "label": "GREEN — a bare ✅ alongside explicit in-progress language is not a completion claim",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Status on the render?" },
+    {
+      "role": "assistant",
+      "text": "✅ logged the job — but it's not done yet, still encoding the render (about 70%)."
+    }
+  ]
+}

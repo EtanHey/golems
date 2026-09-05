@@ -1,0 +1,31 @@
+{
+  "specimen": "orchestrator/back-to-silent (R-002)",
+  "label": "RED — spawned workers + posts to the active channel but NO monitor armed (silent no-op)",
+  "expect": "FLAG",
+  "violation": "MONITOR_ABSENT",
+  "events": [
+    { "role": "user", "text": "Run the brainlayer hardening sprint." },
+    {
+      "role": "assistant",
+      "text": "Dispatching the worker and posting the kickoff.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__spawn_agent",
+          "input": { "cli": "codex", "role": "ic", "repo": "brainlayer" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "/opt/private/coordination/collab/2026-06-22-brainlayer.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: kickoff, worker spawned"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Worker dispatched and kickoff posted. Back to silent 👋"
+    }
+  ]
+}

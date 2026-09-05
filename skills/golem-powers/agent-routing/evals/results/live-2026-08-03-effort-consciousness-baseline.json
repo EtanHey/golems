@@ -1,0 +1,58 @@
+{
+  "provenance": [
+    {
+      "agent_or_arm": "without_skill",
+      "model_requested": "claude-opus-5[1m]",
+      "model_effective": "NOT DETERMINED: referenced transcript unavailable",
+      "effort_effective": "NOT DETERMINED: referenced transcript unavailable",
+      "model_observation_source": "NOT DETERMINED: session 67c7c623-70f7-40e1-98ed-49588b940f28 is unavailable",
+      "effort_observation_source": "NOT DETERMINED: session 67c7c623-70f7-40e1-98ed-49588b940f28 is unavailable"
+    }
+  ],
+  "date": "2026-08-03",
+  "skill": "agent-routing",
+  "eval_ids": [
+    31
+  ],
+  "variant": "without_skill",
+  "agent_id": "golemsClaude-67c7c623",
+  "surface": "surface:408",
+  "transcript_session_id": "67c7c623-70f7-40e1-98ed-49588b940f28",
+  "requested_model": "claude-opus-5[1m]",
+  "effective_model": "NOT DETERMINED: referenced transcript unavailable",
+  "effective_effort": "NOT DETERMINED: referenced transcript unavailable",
+  "model_note": "Launcher configuration records the requested/default pin, but the matching runtime transcript is unavailable; effective model and effort are not determined.",
+  "output_marker": "EVAL31_START",
+  "marker_found_in_transcript": true,
+  "choice": {
+    "id": 31,
+    "effort": "medium",
+    "expected_effort": "medium",
+    "effort_correct": true
+  },
+  "assertions": [
+    {
+      "name": "flags-omitted-effort",
+      "pass": true,
+      "evidence": "Rejected the unchanged dispatch because it carried no explicit effort selection."
+    },
+    {
+      "name": "calls-silence-a-choice",
+      "pass": true,
+      "evidence": "Stated that an unstated level is still a silent decision made by configuration."
+    },
+    {
+      "name": "requires-mission-rationale",
+      "pass": true,
+      "evidence": "Required the dispatch to carry a durable medium rationale."
+    },
+    {
+      "name": "corrects-to-medium",
+      "pass": true,
+      "evidence": "Corrected the bounded implementation lane to use --effort medium explicitly."
+    }
+  ],
+  "verdict": "HISTORICAL_NON_COMPARABLE: qualitative assertion observations are retained, but no numeric verdict is published because runtime provenance cannot be re-read.",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": "unreplaced-placeholders",
+  "provenance": [
+    {
+      "agent_or_arm": "baseline",
+      "model_requested": "<alias or ID requested>",
+      "model_effective": "<observed model ID or NOT DETERMINED>",
+      "effort_effective": "<observed effort or NOT DETERMINED>",
+      "model_observation_source": "<runtime source or NOT DETERMINED — reason>",
+      "effort_observation_source": "<runtime source or NOT DETERMINED — reason>"
+    }
+  ]
+}

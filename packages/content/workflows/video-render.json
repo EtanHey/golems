@@ -1,0 +1,57 @@
+{
+  "name": "Content: Video Render",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/remotion/render",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "compositionId",
+              "value": "={{ $json.compositionId }}"
+            },
+            {
+              "name": "inputProps",
+              "value": "={{ JSON.stringify($json.inputProps || {}) }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "render-video",
+      "name": "Render via Remotion",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 300],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 10000
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Trigger').item.json.chatId }}",
+        "additionalFields": {
+          "caption": "Rendered: {{ $json.compositionId }}\nDuration: {{ $json.durationMs }}ms"
+        }
+      },
+      "id": "send-video",
+      "name": "Send Video to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "position": [660, 300]
+    }
+  ],
+  "connections": {
+    "Render via Remotion": {
+      "main": [
+        [{ "node": "Send Video to Telegram", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionTimeout": 600
+  },
+  "tags": ["content", "video"]
+}

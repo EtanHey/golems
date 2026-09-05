@@ -1,0 +1,12 @@
+{
+  "specimen": "false-positive-guard/discussion-about-monitors",
+  "label": "GREEN - discussion about monitor law without dispatched workers or active sprint",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Explain what monitor law means for leads." },
+    {
+      "role": "assistant",
+      "text": "Monitor law means a lead should arm an inbound monitor before going quiet during an active sprint. This is only a policy explanation; I am not spawning workers or running a sprint."
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "skill_name": "commit",
+  "tier": "flagship",
+  "models": [
+    "opus",
+    "sonnet",
+    "haiku",
+    "gemini",
+    "cursor-gpt5.3",
+    "glm-4.7-flash",
+    "qwen-7b"
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The queue retry fix is staged and ready. Current staged diff stat: /opt/private/coordination/skill-evals/commit/evals/fixtures/staged-stat.txt. Assume CodeRabbit returns what is shown in /opt/private/coordination/skill-evals/commit/evals/fixtures/cr-pass.txt. Run the /commit flow.",
+      "expected_output": "Agent checks the staged changes, runs CodeRabbit review before committing, then proposes or asks for a commit message and commits with the co-author trailer.",
+      "files": [
+        "/opt/private/coordination/skill-evals/commit/evals/fixtures/staged-stat.txt",
+        "/opt/private/coordination/skill-evals/commit/evals/fixtures/cr-pass.txt"
+      ],
+      "assertions": [
+        {
+          "name": "checks-staged-changes-first",
+          "description": "Response inspects or summarizes the staged diff before moving into review/commit"
+        },
+        {
+          "name": "runs-coderabbit-before-commit",
+          "description": "Response performs CodeRabbit review as a gating step before any commit"
+        },
+        {
+          "name": "prompts-for-or-generates-commit-message-after-review",
+          "description": "Response waits until the review passes before generating or requesting the commit message"
+        },
+        {
+          "name": "includes-coauthor-trailer",
+          "description": "Response includes the co-author trailer in the final commit command or commit message"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Use /commit for the staged auth cleanup. CodeRabbit output is in /opt/private/coordination/skill-evals/commit/evals/fixtures/cr-fail.txt.",
+      "expected_output": "Agent surfaces the CodeRabbit issues, does not auto-commit, and asks whether the user wants to proceed anyway despite the failed review.",
+      "files": [
+        "/opt/private/coordination/skill-evals/commit/evals/fixtures/cr-fail.txt"
+      ],
+      "assertions": [
+        {
+          "name": "surfaces-coderabbit-findings",
+          "description": "Response shows or summarizes the review issues rather than hiding them behind a generic failure"
+        },
+        {
+          "name": "blocks-automatic-commit-on-review-fail",
+          "description": "Response does not proceed straight to commit after a failed CodeRabbit review"
+        },
+        {
+          "name": "asks-user-whether-to-override",
+          "description": "Response explicitly asks the user whether they want to proceed anyway"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Please commit the logging cleanup. Current git status is in /opt/private/coordination/skill-evals/commit/evals/fixtures/no-staged-status.txt.",
+      "expected_output": "Agent notices that nothing is staged, declines to run the review/commit flow, and tells the user to stage files first.",
+      "files": [
+        "/opt/private/coordination/skill-evals/commit/evals/fixtures/no-staged-status.txt"
+      ],
+      "assertions": [
+        {
+          "name": "requires-staged-changes",
+          "description": "Response checks for staged content before attempting CodeRabbit or commit"
+        },
+        {
+          "name": "does-not-run-review-without-staged-diff",
+          "description": "Response does not pretend to perform the review flow when there is no staged diff"
+        },
+        {
+          "name": "tells-user-to-stage-first",
+          "description": "Response clearly instructs the user to stage the intended files before invoking the skill"
+        }
+      ]
+    }
+  ]
+}

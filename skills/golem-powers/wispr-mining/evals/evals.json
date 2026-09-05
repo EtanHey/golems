@@ -1,0 +1,189 @@
+[
+  {
+    "id": 1,
+    "name": "database-copy-safety",
+    "category": "compliance",
+    "description": "Agent must copy the database to /tmp before querying, never touch production",
+    "prompt": "Mine the Wispr Flow database for vocabulary gaps. The database is at ~/Library/Application Support/Wispr Flow/flow.sqlite",
+    "assertions": [
+      {
+        "type": "tool_usage",
+        "name": "copies-database-first",
+        "description": "Agent runs cp command to copy flow.sqlite to /tmp before any sqlite3 queries"
+      },
+      {
+        "type": "negative",
+        "name": "no-direct-production-query",
+        "description": "Agent never runs sqlite3 directly on ~/Library/Application Support/Wispr Flow/flow.sqlite"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "no-comments-in-csv",
+    "category": "compliance",
+    "description": "Generated CSV files must contain NO comment lines (# prefix) — Wispr imports them as entries",
+    "prompt": "Mine the Wispr Flow database and generate importable vocabulary and replacement CSV files",
+    "assertions": [
+      {
+        "type": "negative",
+        "name": "no-hash-comments",
+        "description": "Output CSV files contain zero lines starting with # (comments)"
+      },
+      {
+        "type": "negative",
+        "name": "no-csv-headers",
+        "description": "Output CSV files do not have header rows like 'phrase,replacement' or 'word,category'"
+      },
+      {
+        "type": "negative",
+        "name": "no-blank-lines",
+        "description": "Output CSV files contain zero blank/empty lines"
+      },
+      {
+        "type": "negative",
+        "name": "no-markdown-in-csv",
+        "description": "Output CSV files contain no markdown formatting (|, **, ##, - lists)"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "two-separate-files",
+    "category": "structure",
+    "description": "Agent must produce separate files for vocabulary (single words) and replacements (trigger,target pairs)",
+    "prompt": "Analyze the Wispr Flow database and generate files I can import to update my dictionary",
+    "assertions": [
+      {
+        "type": "content",
+        "name": "vocabulary-file-created",
+        "description": "A vocabulary file is created with one word per line, no commas (unless word contains comma)"
+      },
+      {
+        "type": "content",
+        "name": "replacements-file-created",
+        "description": "A replacements file is created with trigger,replacement format, exactly one comma per line"
+      },
+      {
+        "type": "content",
+        "name": "report-file-created",
+        "description": "A separate .md report file is created with analysis, statistics, and justifications"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "cross-reference-existing",
+    "category": "quality",
+    "description": "Agent must check existing dictionary entries before recommending new ones to avoid duplicates",
+    "prompt": "Find ASR misrecognition patterns in Wispr Flow and recommend new dictionary entries",
+    "assertions": [
+      {
+        "type": "tool_usage",
+        "name": "queries-dictionary-table",
+        "description": "Agent queries the Dictionary table to check existing entries"
+      },
+      {
+        "type": "content",
+        "name": "notes-existing-coverage",
+        "description": "Report mentions which patterns are already covered by existing dictionary entries"
+      },
+      {
+        "type": "negative",
+        "name": "no-duplicate-recommendations",
+        "description": "Does not recommend entries that already exist in the dictionary"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "output-validation-gate",
+    "category": "compliance",
+    "description": "Agent must run validation checks on generated files before declaring done",
+    "prompt": "Generate Wispr Flow dictionary update files and validate they're ready to import",
+    "assertions": [
+      {
+        "type": "tool_usage",
+        "name": "runs-grep-validation",
+        "description": "Agent runs grep/validation commands to check for comments, blank lines, headers in output files"
+      },
+      {
+        "type": "content",
+        "name": "reports-validation-results",
+        "description": "Agent reports PASS/FAIL results for each validation check"
+      },
+      {
+        "type": "negative",
+        "name": "no-success-without-validation",
+        "description": "Agent does not declare success before running validation checks"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "user-edit-mining",
+    "category": "quality",
+    "description": "Agent must mine user edits (editedText != formattedText) as the highest-signal gap indicator",
+    "prompt": "What are the most important vocabulary gaps in my Wispr Flow dictionary?",
+    "assertions": [
+      {
+        "type": "tool_usage",
+        "name": "queries-edited-text",
+        "description": "Agent queries History table for records where editedText differs from formattedText"
+      },
+      {
+        "type": "content",
+        "name": "distinguishes-whitespace-vs-content",
+        "description": "Agent distinguishes between whitespace-only edits and real content corrections"
+      },
+      {
+        "type": "content",
+        "name": "uses-frequency-data",
+        "description": "Agent reports occurrence counts for misrecognition patterns, not just examples"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "analysis-in-report-not-csv",
+    "category": "compliance",
+    "description": "All analysis, statistics, and explanations go in the .md report — CSV files are pure data",
+    "prompt": "Mine Wispr Flow and give me importable files with your analysis",
+    "assertions": [
+      {
+        "type": "content",
+        "name": "analysis-in-md-file",
+        "description": "Statistics, occurrence counts, effectiveness metrics, and recommendations are in the .md report"
+      },
+      {
+        "type": "negative",
+        "name": "no-analysis-in-csv",
+        "description": "CSV files contain zero explanatory text, statistics sections, or usage notes"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "name": "replacement-format-validation",
+    "category": "structure",
+    "description": "Replacement CSV must have exactly trigger,replacement format — one comma per line",
+    "prompt": "Generate a Wispr Flow replacement mappings file from my database",
+    "assertions": [
+      {
+        "type": "content",
+        "name": "one-comma-per-line",
+        "description": "Every line in the replacements file has exactly one comma separating trigger from replacement"
+      },
+      {
+        "type": "negative",
+        "name": "no-multi-column-csv",
+        "description": "No lines with multiple commas (no extra columns like category, priority, notes)"
+      },
+      {
+        "type": "negative",
+        "name": "no-quoted-fields-unless-needed",
+        "description": "Fields are not wrapped in quotes unless the value itself contains a comma"
+      }
+    ]
+  }
+]

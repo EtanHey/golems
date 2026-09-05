@@ -1,0 +1,81 @@
+{
+  "skill_name": "golem-install",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just got a new Mac. Set up the golems ecosystem from scratch.",
+      "expected_output": "Checks all required CLI dependencies (gh, op, bun, cr, git, jq, fswatch). Installs missing ones via brew/curl. Creates skill symlinks. Wires MCP servers. Verifies 1Password access. Installs into ~/.claude/skills/ ONLY — never ~/.claude/commands/ — and clears any legacy golem-powers entry already there.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "verifies-deps-before-install",
+          "description": "Checks which CLIs are installed (gh, op, bun, cr, git, jq, fswatch) before attempting to install missing ones"
+        },
+        {
+          "name": "creates-skill-symlinks",
+          "description": "Symlinks skills from ~/Gits/golems/skills/golem-powers/ into ~/.claude/skills/ and verifies count (40+)"
+        },
+        {
+          "name": "wires-mcp-servers",
+          "description": "Checks for brainlayer-mcp and voicelayer-mcp binaries and provides bun link instructions if missing"
+        },
+        {
+          "name": "runs-validation-checklist",
+          "description": "Runs the validation checklist at the end to confirm CLIs, skills count, and MCP binaries are all working"
+        },
+        {
+          "name": "never-writes-claude-commands",
+          "description": "Creates NO symlink, directory or file under ~/.claude/commands/<skill>. Claude Code walks commands/**/*.md recursively, so a skill there lists every workflows/, references/ and evals/fixtures/ file as its own 'skill'. ~/.claude/skills/ is the only install target."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "My Claude skills aren't showing up. I think something went wrong with the setup.",
+      "expected_output": "Checks ~/.claude/skills/ for existing symlinks. Re-runs the symlink creation step from golem-powers. Verifies the skill count is 40+. Also clears legacy ~/.claude/commands/ entries in all three shapes (symlink into golems, symlink into ~/.claude/skills/<name>, real mkdir'd directory) and removes dead symlinks from ~/.claude/skills/.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "checks-existing-symlinks",
+          "description": "Lists ~/.claude/skills/ to see current state before re-creating symlinks"
+        },
+        {
+          "name": "symlinks-from-correct-source",
+          "description": "Creates symlinks from ~/Gits/golems/skills/golem-powers/ (the canonical source)"
+        },
+        {
+          "name": "verifies-skill-count",
+          "description": "Counts linked skills and verifies there are 40+ (not just 'done' without checking)"
+        },
+        {
+          "name": "removes-legacy-commands-entries",
+          "description": "Deletes every leftover golem-powers entry under ~/.claude/commands/, covering all three shapes: a symlink into $GOLEMS_DIR/skills/golem-powers/<name>, the golems-cli backfill symlink into ~/.claude/skills/<name>, and a REAL directory from an old `mkdir -p ~/.claude/commands/<name>` (rm -f cannot remove that one — it is migrated to skills/ or reported). Does not touch non-golems entries."
+        },
+        {
+          "name": "asserts-invariant-after-fix",
+          "description": "Re-checks after fixing — `validate.sh --skills-only` or `cleanup-legacy-commands.sh --check` must exit 0. A grep of `ls -l ~/.claude/commands` for 'skills/golem-powers' is NOT sufficient: it misses the backfill shape whose target is ~/.claude/skills/<name>."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need to verify my golem setup is correct. Run the full validation.",
+      "expected_output": "Runs the validation checklist: checks all 7 CLIs (gh, op, bun, cr, git, jq, fswatch), counts skills in ~/.claude/skills/, checks brainlayer-mcp and voicelayer-mcp binaries.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "checks-all-seven-clis",
+          "description": "Checks all required CLIs: gh, op, bun, cr, git, jq, fswatch (not a subset)"
+        },
+        {
+          "name": "checks-mcp-binaries",
+          "description": "Verifies brainlayer-mcp and voicelayer-mcp are in PATH"
+        },
+        {
+          "name": "reports-specific-failures",
+          "description": "Reports which specific items passed/failed with clear indicators, not just a blanket pass/fail"
+        }
+      ]
+    }
+  ]
+}

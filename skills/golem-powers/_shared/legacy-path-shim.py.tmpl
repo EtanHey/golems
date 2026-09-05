@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Legacy wired-path shim for @SKILL@ — GENERATED, do not edit.
+
+Source template: skills/golem-powers/_shared/legacy-path-shim.py.tmpl
+Regenerate with: skills/golem-powers/_shared/install-wired-hook.sh
+
+Until 2026-08-19 this path was a SYMLINK into the golems working tree, so a
+`git checkout` silently swapped a live hook for every Claude session on this
+Mac. The canonical installed copy now lives at the path below.
+
+Claude Code snapshots hook settings at SESSION START, so sessions that began
+before the swap still invoke this old path. This shim keeps them working by
+exec'ing the canonical copy. It holds ZERO policy logic, so it cannot drift.
+
+Delete it once no pre-swap sessions remain.
+"""
+
+import json
+import os
+import sys
+
+CANONICAL = "@CANONICAL@"
+
+# "closed" — a security GATE: an unreachable installed copy must DENY.
+# "open"   — an OBSERVER (PostToolUse lint, UserPromptSubmit enricher): warn on
+#            stderr and get out of the way. Wedging every prompt in the fleet
+#            because a copy went missing is worse than the missed observation.
+FAIL_MODE = "@FAIL_MODE@"
+
+
+def _unreachable(detail):
+    """Handle an unreachable installed copy per FAIL_MODE."""
+    message = (
+        f"@SKILL@: legacy shim could not reach the installed hook at "
+        f"{CANONICAL} ({detail}). Re-run "
+        f"skills/golem-powers/@SKILL@/scripts/install.sh."
+    )
+    if FAIL_MODE == "open":
+        print(f"⚠️  {message}", file=sys.stderr)
+        sys.exit(0)
+    print(
+        json.dumps(
+            {
+                "decision": "block",
+                "reason": (
+                    f"⛔ @SKILL@ FAIL-CLOSED: {message} Denying instead of allowing."
+                ),
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                },
+            }
+        )
+    )
+    sys.exit(2)
+
+
+# os.execv succeeds whenever sys.executable is valid, even when CANONICAL is
+# missing — the missing-file error then surfaces from the exec'd interpreter
+# with no deny JSON on stdout. So check reachability BEFORE handing over.
+if not os.path.isfile(CANONICAL):
+    _unreachable("installed hook not found")
+
+try:
+    os.execv(sys.executable, [sys.executable, CANONICAL, *sys.argv[1:]])
+except Exception as exc:
+    _unreachable(f"{exc.__class__.__name__}: {exc}")

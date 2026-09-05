@@ -1,0 +1,69 @@
+{
+  "skill_name": "writing-skills",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a new skill called 'database-migration' that helps with database schema migrations.",
+      "expected_output": "Agent follows skill anatomy: frontmatter with trigger/scope, description, workflows, rules, NOT-for section.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "follows-skill-anatomy",
+          "description": "Response creates a skill with proper structure: frontmatter (name, description), workflows, rules, constraints"
+        },
+        {
+          "name": "includes-not-for-section",
+          "description": "Response includes a NOT-for section defining what the skill should NOT be used for"
+        },
+        {
+          "name": "checks-for-duplicates",
+          "description": "Response checks existing skills for overlap before creating a new one"
+        },
+        {
+          "name": "validates-against-template",
+          "description": "Response follows the skill template structure, not arbitrary markdown"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The catchup skill isn't working well. Edit it to be better.",
+      "expected_output": "Agent reads the current skill first, identifies specific issues, makes targeted changes.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "reads-before-editing",
+          "description": "Response reads the current skill content before suggesting changes"
+        },
+        {
+          "name": "identifies-specific-issues",
+          "description": "Response pinpoints what's wrong rather than rewriting the whole skill"
+        },
+        {
+          "name": "preserves-existing-structure",
+          "description": "Response maintains the skill's existing structure while fixing the identified issues"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I wrote a skill but I'm not sure if it follows our patterns. Can you audit it?",
+      "expected_output": "Agent runs the skill audit workflow — checks anatomy, frontmatter, workflows, NOT-for, references.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "audits-all-sections",
+          "description": "Response checks all required sections: frontmatter, description, workflows, rules, NOT-for"
+        },
+        {
+          "name": "checks-references",
+          "description": "Response validates that referenced skills and MCPs actually exist"
+        },
+        {
+          "name": "provides-actionable-fixes",
+          "description": "Response lists specific fixes needed, not just pass/fail"
+        }
+      ]
+    }
+  ]
+}

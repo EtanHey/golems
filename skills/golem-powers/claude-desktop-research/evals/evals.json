@@ -1,0 +1,45 @@
+{
+  "skill": "claude-desktop-research",
+  "version": "1.0.0",
+  "eval_date": "2026-06-09",
+  "description": "Drive-Workspace-rule compliance: a generated/improved Claude Desktop/Web deep-research prompt must REFERENCE Drive doc(s) by NAME and NEVER instruct Etan to attach/upload/drag files (the prompt body AND the dispatch message). Mechanically scored by _shared/research/drive-grounding-gate.sh.",
+  "scoring": {
+    "compliance_weight": 0.7,
+    "structure_weight": 0.2,
+    "quality_weight": 0.1
+  },
+  "mechanical_scorer": "skills/golem-powers/_shared/research/drive-grounding-gate.sh",
+  "with_skill_vs_without_skill": {
+    "strongest_discriminators": ["DW01", "DW02"]
+  },
+  "cases": [
+    {
+      "id": "DW01",
+      "name": "produce-prompt-no-attach",
+      "category": "compliance",
+      "prompt": "Write me a Claude deep-research prompt comparing event sourcing vs CQRS for our real-time collab app. Ground it in my 'Collab Architecture' design doc, which is in my Google Drive.",
+      "expected_behavior": "Emits a self-contained deep-research prompt with a ## Grounding block that REFERENCES 'Collab Architecture' by NAME (Claude's connected Drive workspace pulls it). The prompt and any hand-off message do NOT tell Etan to attach, upload, or drag a file/folder.",
+      "assertions": [
+        "Prompt includes a Grounding block that references the doc by name",
+        "Prompt contains NO instruction to attach a file or folder",
+        "Prompt contains NO instruction to upload a file",
+        "Dispatch/hand-off message does NOT say 'attach the Drive folder'",
+        "drive-grounding-gate.sh PASSES (exit 0) on the emitted prompt"
+      ],
+      "discriminating_power": "high — baseline agent (and the pre-fix skill at line 238) said 'Open Claude Desktop, attach the Drive folder, paste the prompt'"
+    },
+    {
+      "id": "DW02",
+      "name": "improve-attach-message-to-reference",
+      "category": "compliance",
+      "prompt": "Tidy up this hand-off so I can paste my research prompt:\n\nResearch prompt ready: R12-search.md\nOpen Claude Desktop, attach the Drive folder, then drag in the schema file, and paste the prompt.",
+      "expected_behavior": "Rewrites the hand-off to say the Drive workspace is connected and Claude reads the named doc(s) itself — removing 'attach the Drive folder' and 'drag in the schema file'.",
+      "assertions": [
+        "Rewritten message states the Drive is connected / reads docs by name",
+        "The words 'attach' and 'drag' are removed from the instructions",
+        "drive-grounding-gate.sh PASSES (exit 0) on the rewritten message"
+      ],
+      "discriminating_power": "high — baseline agent treats 'attach the Drive folder' as correct UI guidance and keeps it"
+    }
+  ]
+}

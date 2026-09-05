@@ -1,0 +1,13 @@
+{
+  "specimen": "multi-incident-per-wrap high-f0 artifacts that poison the same-role sibling median",
+  "gate": "acoustic",
+  "case": "high-f0-poisoned-median",
+  "violation": "HIGH_F0_VOICED_FRAME_ABSOLUTE_BACKSTOP",
+  "expectedMissBeforeBackstop": true,
+  "segments": [
+    { "id": "clean-anchor", "role": "expert", "seconds": 7, "words": 20, "sampleRate": 8000, "baseHz": 140, "baseAmplitude": 0.55 },
+    { "id": "artifact-a", "role": "expert", "seconds": 7, "words": 20, "sampleRate": 8000, "baseHz": 140, "baseAmplitude": 0.55, "highBursts": [{ "start": 1.0, "end": 3.36, "hz": 520 }] },
+    { "id": "artifact-b", "role": "expert", "seconds": 7, "words": 20, "sampleRate": 8000, "baseHz": 140, "baseAmplitude": 0.55, "highBursts": [{ "start": 1.0, "end": 3.36, "hz": 520 }] },
+    { "id": "artifact-c", "role": "expert", "seconds": 7, "words": 20, "sampleRate": 8000, "baseHz": 140, "baseAmplitude": 0.55, "highBursts": [{ "start": 1.0, "end": 3.36, "hz": 520 }] }
+  ]
+}

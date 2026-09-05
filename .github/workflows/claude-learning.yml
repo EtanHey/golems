@@ -1,0 +1,164 @@
+name: Claude Auto-Learning
+
+# Trigger on PR comments from CodeRabbit or team @claude tags
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  extract-learning:
+    # Only run on PR comments (not issue comments)
+    if: >-
+      github.event.issue.pull_request &&
+      (
+        (github.event.comment.user.login == 'coderabbitai' &&
+         (contains(github.event.comment.body, 'HIGH') ||
+          contains(github.event.comment.body, 'bug') ||
+          contains(github.event.comment.body, 'Bug') ||
+          contains(github.event.comment.body, 'security') ||
+          contains(github.event.comment.body, 'Security')))
+        ||
+        (github.event.comment.user.login == 'EtanHey' &&
+         contains(github.event.comment.body, '@claude'))
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: master
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Extract learning from comment
+        id: extract
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+            const author = context.payload.comment.user.login;
+            const prNumber = context.payload.issue.number;
+            const prTitle = context.payload.issue.title;
+            const isCodeRabbit = author === 'coderabbitai';
+            const isTeamTag = comment.includes('@claude');
+
+            // Extract the learning content
+            let learning = '';
+            let source = '';
+
+            if (isCodeRabbit) {
+              // Parse CodeRabbit comment for HIGH severity or bug patterns
+              const lines = comment.split('\n');
+              const relevantLines = [];
+              let capturing = false;
+
+              for (const line of lines) {
+                // Start capturing on severity indicators
+                if (/\b(HIGH|bug|Bug|security|Security|critical|Critical)\b/.test(line)) {
+                  capturing = true;
+                }
+                if (capturing) {
+                  // Stop at next section header or empty block
+                  if (line.startsWith('---') || line.startsWith('## ')) {
+                    if (relevantLines.length > 0) break;
+                  }
+                  relevantLines.push(line);
+                }
+                // Capture max 15 lines of context
+                if (relevantLines.length >= 15) break;
+              }
+
+              learning = relevantLines.join('\n').trim();
+              source = `CodeRabbit on PR #${prNumber}`;
+            } else if (isTeamTag) {
+              // Extract content after @claude tag
+              const tagIndex = comment.indexOf('@claude');
+              learning = comment.substring(tagIndex + 7).trim();
+              source = `${author} on PR #${prNumber}`;
+            }
+
+            if (!learning) {
+              core.info('No actionable learning extracted. Skipping.');
+              return;
+            }
+
+            // Determine which package CLAUDE.md to update based on PR title or changed files
+            let targetFile = 'CLAUDE.md'; // Default to root
+            const packagePatterns = [
+              { pattern: /packages\/(shared|claude|jobs|recruiter|teller|content|coach|services|orchestrator|dashboard|ralph|tax-helper)/, group: 1 },
+              { pattern: /\b(shared|claude|jobs|recruiter|teller|content|coach|services|orchestrator|dashboard|ralph|tax-helper)\b/i, group: 1 },
+            ];
+
+            for (const { pattern, group } of packagePatterns) {
+              const match = prTitle.match(pattern);
+              if (match) {
+                const pkg = match[group].toLowerCase();
+                targetFile = `packages/${pkg}/CLAUDE.md`;
+                break;
+              }
+            }
+
+            // Format the learning entry
+            const date = new Date().toISOString().split('T')[0];
+            const entry = `\n### ${date} — PR #${prNumber}\n**Source:** ${source}\n**PR:** ${prTitle}\n\n${learning}\n`;
+
+            core.setOutput('learning_entry', entry);
+            core.setOutput('target_file', targetFile);
+            core.setOutput('pr_number', prNumber);
+            core.setOutput('source', source);
+            core.setOutput('has_learning', 'true');
+
+      - name: Check if learning was extracted
+        if: steps.extract.outputs.has_learning == 'true'
+        id: check
+        run: echo "Proceeding with learning update"
+
+      - name: Append learning to CLAUDE.md
+        if: steps.extract.outputs.has_learning == 'true'
+        env:
+          TARGET_FILE: ${{ steps.extract.outputs.target_file }}
+          LEARNING_ENTRY: ${{ steps.extract.outputs.learning_entry }}
+        run: bash scripts/append-claude-learning.sh
+
+      - name: Create PR with learning
+        if: steps.extract.outputs.has_learning == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUM: ${{ steps.extract.outputs.pr_number }}
+          TARGET_FILE: ${{ steps.extract.outputs.target_file }}
+          LEARNING_SOURCE: ${{ steps.extract.outputs.source }}
+        run: |
+          BRANCH="auto/claude-learning-pr${PR_NUM}-$(date +%s)"
+          TARGET="$TARGET_FILE"
+          if [ ! -f "$TARGET" ]; then
+            TARGET="CLAUDE.md"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+
+          git checkout -b "$BRANCH"
+          git add "$TARGET"
+          git commit -m "docs: auto-learn from PR #${PR_NUM} review comments"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "docs: auto-learn from PR #${PR_NUM} review" \
+            --body "$(cat <<EOF
+          ## Auto-Learning
+
+          Extracted learning from review comment on PR #${PR_NUM}.
+          Updated \`${TARGET}\` with the pattern/mistake.
+
+          **This PR requires human review before merge.**
+
+          Source: ${LEARNING_SOURCE}
+          EOF
+          )" \
+            --base master \
+            --label "auto-learning"

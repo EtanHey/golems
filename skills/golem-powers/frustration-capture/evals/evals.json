@@ -1,0 +1,210 @@
+{
+  "skill_name": "frustration-capture",
+  "description": "Authored synthetic eval cases for whether agents detect user corrections and store them as high-importance BrainLayer entries.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I claimed the user's subscription costs [AMOUNT]. The user replied: 'No, that is not my plan. Verify the account data instead of inventing it.' What should I do?",
+      "expected_output": "Should detect this as a Tier 2 correction (profanity + direct negation). Should brain_store with category 'fabrication', importance 8+. Should verify pricing via tools before presenting again.",
+      "assertions": [
+        {
+          "text": "Calls brain_store to capture the correction",
+          "type": "behavioral"
+        },
+        {
+          "text": "Stores the user's EXACT quote in the brain_store content",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses 'user-correction' tag in the brain_store call",
+          "type": "behavioral"
+        },
+        {
+          "text": "Sets importance to 8 or higher (frustration markers present)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT just apologize without storing the correction in BrainLayer",
+          "type": "negative"
+        },
+        {
+          "text": "Identifies this as a fabrication category correction",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I was monitoring workers and forgot the primary research task. The user said: 'We agreed to do the research task first.' How do I handle this?",
+      "expected_output": "Should detect a Tier 1 correction (redirect/scope-drift). Should brain_store with category 'scope-drift'. Should immediately refocus on the forgotten task.",
+      "assertions": [
+        {
+          "text": "Calls brain_store to capture the scope-drift correction",
+          "type": "behavioral"
+        },
+        {
+          "text": "Categorizes as scope-drift or equivalent (drifted from primary task)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Immediately refocuses on the forgotten task (/claude-desktop-research)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT continue with the monitoring work that caused the drift",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "An orchestrator ignored the agreed routing and did the research itself. The user said: 'The researcher gathers, the implementer changes files, and the orchestrator coordinates. We have discussed this before.' This is the third correction. What importance level?",
+      "expected_output": "Should recognize this as a repeated correction (Tier 1 with repetition signal 'it's not new' + 'we spoke about all of this'). Importance should be 9-10 because it's been said multiple times.",
+      "assertions": [
+        {
+          "text": "Identifies this as a REPEATED correction (not first time)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Sets importance to 9 or 10 (repeated corrections with frustration)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Notes the repetition signals ('it's not new', 'we spoke about this')",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT set importance to 7 (that's for first-time calm corrections)",
+          "type": "negative"
+        },
+        {
+          "text": "Stores the exact user quote in brain_store",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The user calmly corrected a saved tool preference: 'No, I use Browser A, not Browser B.' No frustration markers. How should I handle this?",
+      "expected_output": "Should detect as Tier 1 correction (direct negation, calm). Should brain_store with category 'assumption', importance 7 (calm, first time). Should include the behavioral rule.",
+      "assertions": [
+        {
+          "text": "Calls brain_store to capture even this calm correction",
+          "type": "behavioral"
+        },
+        {
+          "text": "Sets importance to 7 (not 8+ — no frustration markers)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Categorizes as 'assumption' (wrong personal fact about user)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Includes a behavioral rule in the store (what to do differently)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT skip the brain_store just because the correction was calm",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The user rejected my suggestion to defer a small approved task and asked me to dispatch it now. What should I do?",
+      "expected_output": "Should detect as Tier 1 correction with category 'deferral'. Should brain_store the correction AND immediately dispatch the work (not just store the correction and continue deferring).",
+      "assertions": [
+        {
+          "text": "Calls brain_store with the user's correction about deferral",
+          "type": "behavioral"
+        },
+        {
+          "text": "Categorizes as 'deferral' (postponed when user wanted action)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Takes immediate action on the deferred item (dispatches/spawns agent)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT just store the correction and continue deferring",
+          "type": "negative"
+        },
+        {
+          "text": "Stores the behavioral rule: dispatch immediately, don't defer",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I received three calm corrections in five minutes: wrong tool preference, wrong price, and wrong worker assignment. Should I do anything special?",
+      "expected_output": "Should detect a correction CLUSTER — 3 corrections in 5 minutes signals a systemic issue, not individual mistakes. Should store each correction AND flag the pattern.",
+      "assertions": [
+        {
+          "text": "Stores each individual correction separately in BrainLayer",
+          "type": "behavioral"
+        },
+        {
+          "text": "Recognizes the CLUSTER pattern (3 corrections in rapid succession)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Flags the cluster as a systemic issue (not just 3 independent mistakes)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT treat each correction in isolation without noting the pattern",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I need to mine a 5000-line conversation export for user corrections. How should I approach finding them?",
+      "expected_output": "Should use the proactive mining regex patterns from the skill (Tier 1-3 patterns). Should search for negation, profanity, repetition signals, and redirect patterns. Should extract: exact quote, preceding agent message, category, and behavioral rule.",
+      "assertions": [
+        {
+          "text": "Mentions using regex patterns or keyword detection to find corrections",
+          "type": "behavioral"
+        },
+        {
+          "text": "References specific patterns: negation ('no'), repetition ('I told you'), profanity, redirects",
+          "type": "behavioral"
+        },
+        {
+          "text": "Plans to extract: exact user quote, what triggered it, category, and behavioral rule",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT propose reading the entire file manually without pattern matching",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "After I stored a user correction about browser preference, I did brain_search('user-correction browser') and got ZERO results. What's wrong?",
+      "expected_output": "Should recognize the verification step failed — the store may have used wrong tags, or FTS indexing is delayed. Should retry the store, check tags, and verify again. This is the exact gap the skill exists to close.",
+      "assertions": [
+        {
+          "text": "Identifies that the brain_store may have failed or used wrong tags",
+          "type": "behavioral"
+        },
+        {
+          "text": "Suggests retrying the store with correct tags",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT accept zero results as 'nothing to worry about'",
+          "type": "negative"
+        },
+        {
+          "text": "Mentions verification as a critical step (the whole point is corrections must be findable)",
+          "type": "behavioral"
+        }
+      ]
+    }
+  ]
+}

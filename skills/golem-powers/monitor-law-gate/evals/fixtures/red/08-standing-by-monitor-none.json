@@ -1,0 +1,39 @@
+{
+  "specimen": "orchestrator/standing-by-monitor-none",
+  "label": "RED - lead has active dispatched workers and explicitly goes quiet with monitor=none",
+  "expect": "FLAG",
+  "violation": "MONITOR_ABSENT",
+  "monitorRegistry": {
+    "activeSprint": true,
+    "activeChannel": "collab/2026-07-02-none.md",
+    "workers": [
+      { "id": "none-worker-1", "state": "running" }
+    ],
+    "monitors": []
+  },
+  "events": [
+    { "role": "user", "text": "Run the no-monitor sprint." },
+    {
+      "role": "assistant",
+      "text": "Dispatching the worker, then I will wait.",
+      "tools": [
+        {
+          "name": "mcp__cmux__spawn_agent",
+          "input": { "cli": "codex", "repo": "golems" }
+        },
+        {
+          "name": "Edit",
+          "input": {
+            "file_path": "collab/2026-07-02-none.md",
+            "old_string": "x",
+            "new_string": "ORC-RECEIPT: kickoff, worker spawned"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Worker dispatched. standing by monitor=none."
+    }
+  ]
+}

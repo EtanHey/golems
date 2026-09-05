@@ -1,0 +1,46 @@
+
+<!-- ===== V4 BREAK-THE-MOLD — Story-Mode Cinema stage (additive overlay) ===== -->
+<div id="cinema" data-domain="overview" data-state="idle" aria-label="Story-mode cinematic player">
+  <div class="cx-backdrop" id="cx-backdrop"></div>
+  <div class="cx-grain"></div>
+
+  <div class="cx-top">
+    <span class="cx-kicker" id="cx-kicker">Story Mode · Gen-16</span>
+    <span class="cx-scene"><b id="cx-scene-n">1</b> / <span id="cx-scene-total">55</span></span>
+    <span class="cx-domain" id="cx-domain-chip">Overview</span>
+    <span class="cx-runtime" id="cx-runtime">52 min · 55 scenes</span>
+    <span class="cx-spacer"></span>
+    <button class="cx-exit" id="cx-exit" type="button" title="Switch to the classic scrollable list">▤ classic list</button>
+  </div>
+
+  <div class="cx-stage" id="cx-stage">
+    <div class="cx-domain-big" id="cx-domain-big">Overview</div>
+    <h2 class="cx-title" id="cx-title">What happened in the last two days</h2>
+    <div class="cx-tele" id="cx-tele" role="group" aria-label="Narration teleprompter" aria-live="off">
+      <p class="cx-idlehint" id="cx-idle">Press <b>▶ Play All</b> to watch the whole arc narrated, one scene at a time — or scrub the time-rail below to fly to any moment.</p>
+    </div>
+    <div class="cx-disclosure" id="cx-disclosure">word highlight: real per-word timing where available (whisper word alignment)</div>
+  </div>
+
+  <div class="cx-prog" id="cx-prog" title="Click to scrub within this scene"><div class="fill" id="cx-prog-fill"></div></div>
+
+  <div class="cx-transport">
+    <button class="cx-btn" id="cx-prev" type="button" title="Previous scene" aria-label="Previous scene">⏮</button>
+    <button class="cx-btn primary" id="cx-play" type="button" aria-label="Play all scenes one by one">▶ Play All</button>
+    <button class="cx-btn" id="cx-next" type="button" title="Next scene" aria-label="Next scene">⏭</button>
+    <button class="cx-btn" id="cx-stop" type="button" disabled title="Stop" aria-label="Stop">⏹</button>
+    <select class="cx-spd" id="cx-speed" aria-label="Playback speed">
+      <option value="0.8" selected>0.8×</option>
+      <option value="0.85">0.85×</option>
+      <option value="0.9">0.9×</option>
+      <option value="0.95">0.95×</option>
+      <option value="1">1.0×</option>
+    </select>
+  </div>
+
+  <div class="cx-railwrap">
+    <div class="cx-raillabel">the 2-day arc — tap any node to fly there</div>
+    <div class="cx-rail" id="cx-rail"></div>
+  </div>
+</div>
+<button id="cx-resume" type="button">🎬 back to story mode</button>

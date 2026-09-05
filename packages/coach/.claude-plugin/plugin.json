@@ -1,0 +1,12 @@
+{
+  "name": "coach-golem",
+  "version": "1.0.0",
+  "description": "CoachGolem — personal AI life coach with Huberman protocols, LLM coaching, and calendar integration",
+  "author": {
+    "name": "Etan Heyman",
+    "url": "https://github.com/EtanHey"
+  },
+  "repository": "https://github.com/EtanHey/golems",
+  "license": "MIT",
+  "keywords": ["golem", "coach", "huberman", "health", "calendar", "schedule"]
+}

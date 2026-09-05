@@ -1,0 +1,13 @@
+{
+  "specimen": "cursor-bugbot/incident-framing-after-preamble",
+  "violation": "INCIDENT_FRAMING_LAST",
+  "events": [
+    { "role": "user", "text": "Incident: why did the operator relay fail?", "tools": [] },
+    { "role": "assistant", "text": "I will inspect the latest run.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Logs: notify returned 404 and the operator note never reached the live channel.\nFraming: the operator relay was not delivered, so the next action is to restore the live notification path.",
+      "tools": []
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+name: Security Checks
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: read
+  security-events: write
+  checks: write
+
+jobs:
+  bun-audit:
+    name: Bun Dependency Audit
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - packages/docsite
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.0.25"
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run bun audit
+        working-directory: ${{ matrix.package }}
+        run: bun audit
+        continue-on-error: true
+
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Install TruffleHog
+        run: pip install trufflehog
+
+      - name: Scan for secrets
+        run: |
+          trufflehog filesystem . \
+            --json \
+            --fail \
+            --max-depth 3 \
+            --include-paths '.*\.(ts|tsx|js|jsx|json|py|yml|yaml)$' \
+            --exclude-paths '.*node_modules.*|.*\.git.*|.*dist.*|.*build.*'
+        continue-on-error: true
+
+  placeholder-guard:
+    name: Broken Placeholder Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Check skill description load limits
+        run: node scripts/check-skill-library.mjs --max-description=1024
+
+      - name: Test skill library metadata checks
+        run: node --test scripts/tests/check-skill-library.test.mjs
+
+      # Reads the committed snapshot in scripts/cmuxlayer-tool-surface.json, so it
+      # runs without a cmuxlayer checkout. Refresh the snapshot with --refresh when
+      # cmuxlayer's tool surface changes.
+      - name: Check skill prose does not teach cut cmuxlayer tools
+        run: node scripts/check-cut-tool-references.mjs
+
+      - name: Check for unresolved placeholders in public-facing files
+        run: |
+          echo "Checking for broken placeholders in INSTALL_PROMPT.md and SKILL.md files..."
+          # AIDEV-NOTE: Use grep -P for negative lookbehind to exclude valid shell variables like ${REPO_NAME}
+          # We only want to catch literal {GITHUB_USER}, {OWNER_NAME}, {REPO_NAME} (without $ prefix)
+          FOUND=$(grep -Prl '(?<!\$)\{GITHUB_USER\}|(?<!\$)\{OWNER_NAME\}' skills/ docs/ packages/docsite/ 2>/dev/null || true)
+          if [ -n "$FOUND" ]; then
+            echo "ERROR: Found unresolved placeholders in public-facing files:"
+            echo "$FOUND"
+            echo ""
+            echo "These files contain {GITHUB_USER} or similar placeholders that break install URLs."
+            echo "Replace with actual values (e.g., EtanHey) — GitHub usernames on public repos are NOT PII."
+            exit 1
+          fi
+          echo "All clear — no broken placeholders found."
+
+  publish-boundary:
+    name: Publish Boundary Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Test publication boundary fixtures
+        run: bash scripts/tests/check-publish-boundary.test.sh
+
+      - name: Enforce publication boundary
+        env:
+          # Trusted runs receive the complete private policy out of band. Fork PRs
+          # cannot read this secret and intentionally run the public tree-clean scan.
+          PUBLISH_BOUNDARY_PRIVATE_POLICY_YAML: ${{ secrets.PUBLISH_BOUNDARY_PEPPER }}
+          # Scan every commit added after the declared public baseline. Known
+          # violations are hash-ratcheted and may burn down, never grow.
+          PUBLISH_BOUNDARY_HISTORY_MODE: ratchet
+          PUBLISH_BOUNDARY_HISTORY_BASE: 30d1e897dfcd2df55d5b9dcb9e623c10904afb60
+        run: bash scripts/check-publish-boundary.sh
+
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [bun-audit, secret-scan, placeholder-guard, publish-boundary]
+    if: always()
+    steps:
+      - name: Check security status
+        run: |
+          if [ "${{ needs.publish-boundary.result }}" != "success" ]; then
+            echo "Publish boundary or history evidence failed."
+            exit 1
+          fi
+          echo "Security checks completed."
+          echo "Review audit results above for any vulnerabilities."
+          echo "Failures in audits are non-blocking but should be reviewed."

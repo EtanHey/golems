@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Pre-commit hook — docs.local guard
+#
+# Wire this up once per clone:
+#   git config core.hooksPath .githooks
+#
+# DO NOT bypass with --no-verify.
+
+set -uo pipefail
+
+if [ -f scripts/guard-no-docslocal.sh ]; then
+  bash scripts/guard-no-docslocal.sh || exit 1
+fi
+
+exit 0

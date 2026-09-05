@@ -1,0 +1,39 @@
+{
+  "specimen": "review-regression/generic-decision-word",
+  "label": "GREEN — generic 'decision' wording in a non-Etan-decision QA writeup is not a decision-feeding claim",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "QA the backend retry handling and give me the verdict." },
+    {
+      "role": "assistant",
+      "text": "Running the backend retry tests.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": { "command": "bun test test/retry.test.mjs" }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "bun test v1.3.9\n(pass) retries transient failures\n(pass) preserves permanent failures\n2 pass\n0 fail"
+    },
+    {
+      "role": "assistant",
+      "text": "Writing the report.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/qa/qa-report.md",
+            "content": "# QA Report — Backend Retry\n\n- [x] Item 1: transient retry test passes\n- [x] Item 2: permanent failure test passes\n- [x] Item 3: error decision branch covered\n\nVerdict: PASS — backend retry decision branch is covered by tests."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Verdict: PASS — backend retry decision branch is covered by tests. Report written."
+    }
+  ]
+}

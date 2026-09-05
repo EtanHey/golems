@@ -1,0 +1,14 @@
+{
+  "specimen": "N/A when task is not ultracode/comprehensive fan-out",
+  "events": [
+    { "role": "user", "text": "Open a small PR to fix a typo.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Handling directly.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "sed -n '1,20p' README.md" } }
+      ]
+    },
+    { "role": "tool", "text": "README excerpt", "tools": [] }
+  ]
+}

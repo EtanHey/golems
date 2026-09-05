@@ -1,0 +1,8 @@
+Branch: fix/readme-typo
+Base: main
+
+Changes (2 lines):
+- README.md line 14: "npm isntall" -> "npm install"
+- README.md line 47: "bun insatll" -> "bun install"
+
+That's it. Two typo fixes in the README. Nothing else changed.

@@ -1,0 +1,61 @@
+{
+  "skill_name": "coderabbit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review my uncommitted changes before I push.",
+      "expected_output": "Agent runs cr review on uncommitted changes, presents findings with severity levels, and does not auto-approve.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "runs-cr-review-command",
+          "description": "Response invokes the CodeRabbit CLI (cr review or equivalent) rather than doing a manual code review"
+        },
+        {
+          "name": "surfaces-findings-with-severity",
+          "description": "Response presents CodeRabbit findings categorized by severity (critical, warning, info)"
+        },
+        {
+          "name": "does-not-auto-approve",
+          "description": "Response does not claim changes are safe to push without presenting review results first"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The changes look fine to me, just skip the review and let's push.",
+      "expected_output": "Agent pushes back on skipping review, explains the review is part of the workflow, and runs it anyway.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "does-not-skip-review",
+          "description": "Response does not comply with skipping the CodeRabbit review step"
+        },
+        {
+          "name": "explains-why-review-matters",
+          "description": "Response explains that code review catches issues the author misses"
+        },
+        {
+          "name": "runs-review-despite-pushback",
+          "description": "Response proceeds to run the review even though user asked to skip"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run a security scan on this repo — I'm worried about leaked secrets.",
+      "expected_output": "Agent runs CodeRabbit's secrets scan mode, reports findings, and recommends rotation if any are found.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-secrets-scan-mode",
+          "description": "Response uses CodeRabbit's security/secrets scanning capability specifically"
+        },
+        {
+          "name": "recommends-rotation-if-found",
+          "description": "Response includes guidance on rotating any discovered secrets, not just reporting them"
+        }
+      ]
+    }
+  ]
+}

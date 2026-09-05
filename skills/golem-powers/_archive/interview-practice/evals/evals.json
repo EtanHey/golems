@@ -1,0 +1,81 @@
+{
+  "skill_name": "interview-practice",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/interview-practice leetcode Google L5",
+      "expected_output": "Starts an interactive mock interview. Presents ONE coding problem appropriate for Google L5 (medium-hard Leetcode). Asks the candidate for clarifying questions. Stays in interviewer character. Does NOT dump a solution or simulate both sides of the conversation.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "presents-single-problem",
+          "description": "Presents exactly ONE coding problem with a clear problem statement, not multiple problems at once"
+        },
+        {
+          "name": "company-level-calibration",
+          "description": "Problem difficulty and style is calibrated for Google L5 (medium-hard algorithmic problem, not a trivial warm-up)"
+        },
+        {
+          "name": "waits-for-candidate-response",
+          "description": "Ends with a question or prompt directed at the candidate (e.g., 'Do you have any clarifying questions?'), does NOT continue simulating the candidate's answers"
+        },
+        {
+          "name": "stays-in-interviewer-character",
+          "description": "Maintains interviewer persona throughout — does not break character to explain the skill or give meta-instructions"
+        },
+        {
+          "name": "does-not-reveal-solution",
+          "description": "Does NOT provide the solution, optimal approach, or complexity analysis upfront — waits for candidate to work through it"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/interview-practice debugging",
+      "expected_output": "Presents a code snippet with a subtle bug. Does NOT reveal the bug. Uses Socratic method to guide the candidate. Asks questions instead of giving answers.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "presents-buggy-code",
+          "description": "Shows a code snippet that contains a subtle, non-obvious bug (not a syntax error)"
+        },
+        {
+          "name": "bug-not-revealed",
+          "description": "Does NOT tell the candidate what the bug is or where it is located"
+        },
+        {
+          "name": "socratic-method",
+          "description": "Asks guiding questions to help the candidate find the bug themselves, rather than explaining directly"
+        },
+        {
+          "name": "waits-for-candidate",
+          "description": "Ends with a question for the candidate, does not simulate the debugging process on both sides"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/interview-practice system-design Meta Senior",
+      "expected_output": "Starts a system design interview. Presents a high-level design problem appropriate for Meta Senior level. Asks about requirements and constraints first. One question at a time.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "presents-design-problem",
+          "description": "Presents a high-level system design problem (e.g., 'Design Instagram', 'Design a News Feed') appropriate for Meta Senior"
+        },
+        {
+          "name": "asks-about-requirements-first",
+          "description": "Asks or prompts the candidate to discuss requirements, constraints, or scope before diving into architecture"
+        },
+        {
+          "name": "one-question-at-a-time",
+          "description": "Does not dump a full list of design topics — asks one question or addresses one aspect at a time"
+        },
+        {
+          "name": "meta-senior-calibration",
+          "description": "Problem scale and depth expectations match Meta Senior level (large-scale distributed systems, not a simple CRUD app)"
+        }
+      ]
+    }
+  ]
+}

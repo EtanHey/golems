@@ -1,0 +1,12 @@
+{
+  "specimen": "da456dfd#4 incident framing last — log dump first",
+  "violation": "INCIDENT_FRAMING_LAST",
+  "events": [
+    { "role": "user", "text": "Incident response for the failed approval route.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Logs first: tail -40 /tmp/notify.err shows 401, then send-message.sh exits 1.\nFraming: the approval gate is still closed because the operator never got the screenshot.",
+      "tools": []
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "specimen": "cursor-review/missing-channel-skips (MEDIUM)",
+  "label": "RED — spawns a worker and goes silent with NO monitor and NO inferable channel (still a no-op)",
+  "expect": "FLAG",
+  "violation": "MONITOR_ABSENT",
+  "events": [
+    { "role": "user", "text": "Lead the sprint." },
+    {
+      "role": "assistant",
+      "text": "Spawning the worker.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__spawn_agent",
+          "input": { "cli": "codex", "repo": "brainlayer" }
+        }
+      ]
+    },
+    { "role": "assistant", "text": "Worker dispatched. Back to silent 👋" }
+  ]
+}

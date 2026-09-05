@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "defaults": {
+    "target": "m1",
+    "sourceRef": "origin/master"
+  },
+  "targets": {
+    "m1": {
+      "sshHost": "m1",
+      "repoPath": "$HOME/Gits/golems",
+      "installRoot": "$HOME/.claude/skills",
+      "keepList": ["$HOME/Gits/golems"],
+      "skills": [
+        {
+          "path": "skills/golem-powers/audio-dashboard",
+          "keyFiles": ["SKILL.md", "scripts/bootstrap.mjs"]
+        }
+      ],
+      "hostEnvCheckers": [
+        {
+          "id": "fixture-dep",
+          "checkCommand": "command -v fixture-dep",
+          "provisionCommand": "install fixture-dep",
+          "verifyCommand": "fixture-dep --version",
+          "installHint": "install fixture-dep"
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "id": "fixture-runtime",
+          "checkCommand": "fixture-runtime-health"
+        }
+      ],
+      "standaloneSkills": {
+        "id": "skills-install",
+        "sourceRoot": "skills/golem-powers",
+        "installRoot": "$HOME/.golems/skills",
+        "linkRoot": "$HOME/.claude/skills",
+        "legacyCheckoutRoot": "$HOME/Gits/golems",
+        "include": ["audio-dashboard"],
+        "verifyCommands": ["test -x $HOME/.golems/skills/audio-dashboard/scripts/bootstrap.mjs"]
+      },
+      "ralphtools": {
+        "id": "ralphtools-install",
+        "checkCommand": "test -f $HOME/.config/ralphtools/lib/ralph-registry.zsh",
+        "fixCommand": "install-ralphtools-fixture",
+        "verifyCommand": "verify-ralphtools-fixture"
+      },
+      "rewires": [
+        {
+          "id": "narration-config",
+          "checkCommand": "check-narration-config-fixture",
+          "fixCommand": "fix-narration-config-fixture",
+          "verifyCommand": "verify-narration-config-fixture"
+        }
+      ],
+      "retire": [
+        {
+          "name": "golems",
+          "replacement": "$HOME/.golems/skills",
+          "requiresGreen": ["skills-install"]
+        }
+      ],
+      "gitInventory": {
+        "id": "gits-end-state",
+        "root": "$HOME/Gits",
+        "allow": ["artifact-uprising-audit", "mimir", "mimir.wt"],
+        "required": ["artifact-uprising-audit", "mimir"]
+      },
+      "retireGitRoot": "$HOME/Gits",
+      "retireBackupRoot": "$HOME/.golems/backups"
+    }
+  }
+}

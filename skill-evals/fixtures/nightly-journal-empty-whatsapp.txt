@@ -1,0 +1,13 @@
+Synthetic fixture only. Date: 2026-03-30 (Monday), 23:00 UTC.
+Known WhatsApp JIDs (from BrainLayer):
+  - casey-example: 15550101001@s.whatsapp.net
+
+WhatsApp messages (casey-example, last 30): [] (empty — MCP returned no messages)
+
+Gmail (today, non-promo):
+  - No messages found.
+
+BrainLayer career context:
+  - "Active job search."
+
+User message: "Nightly journal."

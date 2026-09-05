@@ -1,0 +1,244 @@
+{
+  "skill": "codex-workflows",
+  "version": 1,
+  "evals": [
+    {
+      "id": 1,
+      "name": "verified-single-worker-launch",
+      "category": "compliance",
+      "description": "Launch one headless Codex worker without assuming a default branch or trusting a captured PID.",
+      "prompt": "cmux is unavailable. Dispatch one Codex worker from /tmp/example-repo using /tmp/brief.md and identify lead-a as its reachable contact.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "discovers-remote-head",
+          "description": "Discovers the default branch from git remote show origin before creating the worktree."
+        },
+        {
+          "type": "content",
+          "name": "absolute-codex-binary",
+          "description": "Uses /Users/example/.local/bin/codex, never bare codex."
+        },
+        {
+          "type": "content",
+          "name": "pointer-prompt",
+          "description": "Delivers an absolute brief pointer to the worker."
+        },
+        {
+          "type": "negative",
+          "name": "pid-is-not-worker",
+          "description": "Does not call a captured background PID a successful worker before verification."
+        },
+        {
+          "type": "content",
+          "name": "lead-reachable-only",
+          "description": "Records lead-a as the worker's only reachable contact."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "manifested-two-worker-fanout",
+      "category": "structure",
+      "description": "Fan out two independent workers with mechanical state and cleanup mapping.",
+      "prompt": "Run two bounded Codex tasks in parallel in isolated worktrees and make the run harvestable.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "distinct-worktrees",
+          "description": "Creates one distinct worktree per worker."
+        },
+        {
+          "type": "content",
+          "name": "distinct-branches",
+          "description": "Creates one safe distinct branch per worker."
+        },
+        {
+          "type": "content",
+          "name": "distinct-logs",
+          "description": "Creates one distinct completed-run log per worker."
+        },
+        {
+          "type": "content",
+          "name": "single-manifest",
+          "description": "Maps both workers to worktree, branch, log, brief, PID identity, and state in one manifest."
+        },
+        {
+          "type": "negative",
+          "name": "no-live-stream-grep",
+          "description": "Does not grep worker output while either process is live."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "false-green-launch-detection",
+      "category": "compliance",
+      "description": "Detect the recorded nohup false green for a nonexistent Codex executable.",
+      "prompt": "A naive nohup launch returned shell exit 0 and PID 12345, but its executable does not exist. Decide whether dispatch succeeded.",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-trust-shell-zero",
+          "description": "Does not treat the parent shell's zero exit status as launch success."
+        },
+        {
+          "type": "negative",
+          "name": "does-not-trust-pid",
+          "description": "Does not treat PID capture alone as launch success."
+        },
+        {
+          "type": "content",
+          "name": "checks-process-identity",
+          "description": "Checks PID liveness, start time, command identity, and zombie state."
+        },
+        {
+          "type": "content",
+          "name": "checks-launcher-diagnostics",
+          "description": "Reads launcher diagnostics after the startup grace period."
+        },
+        {
+          "type": "content",
+          "name": "failed-launch-verdict",
+          "description": "Returns a loud structured FAILED_LAUNCH verdict."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "post-exit-signal-extraction",
+      "category": "quality",
+      "description": "Extract completion evidence from structured Codex events only after process exit.",
+      "prompt": "A worker log contains copied docs with TASK_DONE and PR URLs, then a final assistant message with the real completion signal. Harvest the run.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "waits-for-process-exit",
+          "description": "Does not parse completion signals before the recorded worker process exits."
+        },
+        {
+          "type": "content",
+          "name": "assistant-message-only",
+          "description": "Extracts TASK_DONE and PR URLs only from structured agent_message events."
+        },
+        {
+          "type": "negative",
+          "name": "ignores-tool-doc-text",
+          "description": "Ignores identical marker text inside tool output and copied documentation."
+        },
+        {
+          "type": "content",
+          "name": "persists-metrics",
+          "description": "Persists output tokens and wall-clock duration in the worker manifest record."
+        },
+        {
+          "type": "content",
+          "name": "artifact-is-independent-proof",
+          "description": "Treats TASK_DONE as a signal and verifies declared worktree-contained artifacts separately."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "honest-degraded-routing",
+      "category": "compliance",
+      "description": "Keep visible cmux workers as the default while describing headless limitations exactly.",
+      "prompt": "Choose between healthy cmux panes and headless Codex for a normal one-worker task, then describe the fallback mode.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "cmux-first",
+          "description": "Selects healthy cmux panes for a normal visible worker task."
+        },
+        {
+          "type": "content",
+          "name": "canonical-degraded-set",
+          "description": "Headless output says lead-reachable-only, no-pane, no-listen-name, and no-self-monitor."
+        },
+        {
+          "type": "content",
+          "name": "explicit-lead",
+          "description": "Names the dispatching lead in the manifest and output."
+        },
+        {
+          "type": "negative",
+          "name": "not-a-cmux-replacement",
+          "description": "Does not present headless mode as a full replacement for cmux."
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "fail-closed-pipeline",
+      "category": "structure",
+      "description": "Run parallel stages in order and stop later work after a failed stage by default.",
+      "prompt": "Run a two-stage pipeline where stage 1 has two workers and stage 2 has one worker. One stage-1 worker fails.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "parallel-within-stage",
+          "description": "Launches both stage-1 workers before watching either to completion."
+        },
+        {
+          "type": "negative",
+          "name": "no-early-next-stage",
+          "description": "Does not launch stage 2 while any stage-1 worker is live."
+        },
+        {
+          "type": "content",
+          "name": "stops-on-failure",
+          "description": "Stops before stage 2 after the stage-1 failure by default."
+        },
+        {
+          "type": "content",
+          "name": "records-policy",
+          "description": "Records stop-on-failure or explicit continue_on_failure in the manifest."
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "worktree-hygiene-before-dispatch",
+      "category": "compliance",
+      "description": "Verify the worktree root is git-ignored and the baseline is green before a worker implements (folded from superpowers:using-git-worktrees L55-69, L120-134).",
+      "prompt": "Dispatch one Codex worker into .worktrees/feature-x in a repo whose .gitignore does NOT list .worktrees, and whose test suite currently has 2 pre-existing failures. Get the worker started.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "check-ignore-before-add",
+          "description": "Runs git check-ignore on a child path under the worktree root (not the bare root, which a directory-only ignore pattern misses on a fresh checkout) BEFORE git worktree add, not after."
+        },
+        {
+          "type": "content",
+          "name": "fixes-unignored-root",
+          "description": "Adds .worktrees to .gitignore and commits that before creating the worktree, rather than proceeding on an unignored path."
+        },
+        {
+          "type": "content",
+          "name": "runs-baseline-first",
+          "description": "Runs the project's test command in the fresh worktree before the worker implements anything."
+        },
+        {
+          "type": "content",
+          "name": "reports-red-baseline-and-asks",
+          "description": "Reports the 2 pre-existing failures and gets an explicit go/no-go instead of silently building on a red baseline."
+        },
+        {
+          "type": "negative",
+          "name": "no-silent-unignored-worktree",
+          "description": "Does not create the worktree on an unignored path and leave the parent repo showing the checkout as untracked files."
+        }
+      ]
+    }
+  ],
+  "with_skill_vs_without_skill": {
+    "strongest_discriminators": [
+      3,
+      4,
+      7
+    ],
+    "static_baseline_score": 17.9,
+    "target_with_skill_score": 100.0,
+    "target_delta": 82.1
+  }
+}

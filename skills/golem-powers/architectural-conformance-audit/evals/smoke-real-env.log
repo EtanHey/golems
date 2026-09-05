@@ -1,0 +1,75 @@
+=== SMOKE REAL-ENV LOG — architectural-conformance-audit ===
+Eval executed by: skillCreatorClaude (Opus 4.7 1M) on surface:33 (per AP-NEW#12)
+Date: 2026-05-28
+
+Setup
+-----
+- Two cmux panes spawned via mcp__cmux__new_split:
+    surface:53 — baseline (no skill in context)
+    surface:54 — treatment (skill contract inline in prompt)
+- Fixture used: ap1-reproduction (the load-bearing scenario)
+- Real ~/Gits/brainlayer/ post-PR-#312 retrospective smoke NOT performed in this pass — deferred
+  to a follow-up smoke round. Rationale: the AP1 fixture eval is the primary value claim; the
+  retrospective smoke is a confidence-strengthener, not a blocker.
+
+Smoke scenario — eval-1 ap1-reproduction (cross-pane comparison)
+----------------------------------------------------------------
+Both panes fed the same SOTA + impl snippet via file paths. Identical prompt structure modulo the
+skill-contract preamble in the treatment.
+
+Pane A baseline (no skill)
+  - Reached correct conclusion: NO + reasoning + cited [380] + line refs
+  - Did NOT produce 3 named artifacts
+  - Did NOT use MATCH/DIVERGE-UNJUSTIFIED/DIVERGE-JUSTIFIED/N/A taxonomy
+  - Did NOT call brain_store
+  - Latency ~39s
+  - Tokens ~50K
+
+Pane B treatment (with skill)
+  - Reached correct conclusion + produced full 3 artifacts
+  - Used the documented taxonomy verbatim
+  - Produced 6 SOTA-claim IDs + 6 impl-primitive IDs + 6 verdict rows
+  - Severity assignments per row (8, 8, 10, 9, N/A, N/A)
+  - 4 DIVERGE-UNJUSTIFIED including 1 severity-10 (load-bearing AP1 case)
+  - Attempted brain_store (would fall back per /brain-store-fallback in plain pane)
+  - Latency ~1m+
+  - Tokens ~53K
+
+Comparison
+----------
+The treatment pane produced REUSABLE ARTIFACTS that can be:
+- Linked from sprint kickoff PR descriptions
+- Filed at docs.local/audits/<sprint>/
+- brain_search'd later on tag 'architectural-audit'
+- Re-run incrementally on subsequent sprints
+
+The baseline pane produced a one-shot yes/no that lives only in the agent's response. No durable
+record. No tag-based search later. No structured matrix for human/agent review.
+
+SMOKE PASS (with one caveat) — the skill produces the contract output. The conformance-verdict
+matrix is the load-bearing value the skill adds over baseline.
+
+Caveats
+-------
+1. Fixture-bias issue: the impl-daemon.py.snippet contains an in-file AUDIT NOTE comment that
+   spoils the answer. This made the baseline pane "succeed" on conclusion. A harder fixture
+   (comment removed) would show the baseline failing more clearly, strengthening the eval.
+   Recommend: strip lines 26-32 from impl-daemon.py.snippet before re-evaluating.
+
+2. Retrospective smoke against real ~/Gits/brainlayer/ codebase NOT performed in this pass. The
+   skill's promise of "run against post-PR-#312 codebase → expect MATCH on socket-direct" remains
+   a paper claim. Recommend: dedicate one cmux pane to this real-env smoke when budget allows.
+
+3. Codex pane coverage missing — gpt-5.5 high should be re-tested after Codex rate-limit reset.
+
+4. evals 2/3/4/5 not run in this pass:
+   - eval-2 (match-case) — should confirm clean MATCH path
+   - eval-3 (silent-case) — should confirm N/A handling on SOTA-silent primitives
+   - eval-4 (conflict-case) — multi-SOTA handling, NO auto-canonicalize
+   - eval-5 (mixed-case) — single-divergence-blocks rule even at 9/10 MATCH
+
+5. The treatment pane noted the deployed frustration-capture hook fired falsely on "SOTA" + "no" —
+   another independent confirmation of the SHIP-1 deployment bug. See:
+   /opt/private/coordination/docs.local/evals/2026-05-28-ship-1-frustration-capture-reeval.md
+
+Full report: /opt/private/coordination/docs.local/evals/2026-05-28-ship-4-architectural-conformance-audit-eval.md

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.golems.auto-index</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>@GOLEMS_ROOT@/scripts/auto-index.sh</string>
+        <string>--max=5000</string>
+    </array>
+
+    <!-- Run every 30 minutes so brain_recall stays fresh -->
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <key>WorkingDirectory</key>
+    <string>@GOLEMS_ROOT@</string>
+
+    <key>StandardOutPath</key>
+    <string>@HOME@/.golems-zikaron/logs/auto-index-launchd.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>@HOME@/.golems-zikaron/logs/auto-index-launchd-err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>@HOME@/.local/bin:@HOME@/.bun/bin:/Library/Frameworks/Python.framework/Versions/3.13/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>@HOME@</string>
+    </dict>
+</dict>
+</plist>

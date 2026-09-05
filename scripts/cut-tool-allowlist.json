@@ -1,0 +1,74 @@
+{
+  "_comment": "Exclusions for check-cut-tool-references.mjs. Every entry states its reason; there are no silent skips. Matching is by content marker, not line number, so ordinary edits above a line do not silently re-open or falsely fail it.",
+  "excluded_dirs": [
+    "skills/golem-powers/orc-workspace/",
+    "skills/golem-powers/cmux-workspace/",
+    "skills/golem-powers/cmux-agents-workspace/",
+    "skills/golem-powers/_archive/"
+  ],
+  "excluded_dirs_reason": "Eval corpora, dated research records, and retired skills. None has a root SKILL.md, so check-skill-library.mjs never loads them and no agent is ever instructed from them. They pin historical behaviour on purpose.",
+  "exclusions": [
+    {
+      "file": "skills/golem-powers/cmux/SKILL.md",
+      "reason": "Names golem-terminal's UDS `send_input` command, not the cut MCP tool. The UDS command still exists.",
+      "markers": ["| `cmux send` | UDS `send_input` command |"]
+    },
+    {
+      "file": "skills/golem-powers/cmux-agents/SKILL.md",
+      "reason": "Prose documenting the v0.4.35 cut itself — the no-replacement table and the caveats that stop an agent reaching for a tool that is gone. Deleting these would remove the warning, not the hazard.",
+      "markers": [
+        "The old single-call `spawn_in_workspace` stand-up was cut in v0.4.35",
+        "(`mine` replaces the cut `my_agents`)",
+        "| `set_status`, `set_progress` | **No replacement.**",
+        "| `stop_agent({userInitiated:false})` | **No replacement.**",
+        "| `new_surface`, `browser_surface` | **No direct replacement.**",
+        "the cut removed `stop_agent` and its `userInitiated` flag",
+        "Pre-v0.4.35 this step used `stop_agent(userInitiated:false)`",
+        "Pre-v0.4.35 this took two calls, `send_input` then `send_key(\"Return\")`",
+        "the old select_workspace was cut in v0.4.35",
+        "`rename_tab(color=...)` was cut and `update_surface` takes only",
+        "`rename_tab(color=…)`, `set_status` and `set_progress` were cut in v0.4.35"
+      ]
+    },
+    {
+      "file": "skills/golem-powers/collab-routing-gate/SKILL.md",
+      "reason": "Mirrors the gate's own matcher set. The matchers must keep the cut names to catch transcripts written before the cut (scope gate, ruled 2026-08-18); the prose has to name what the matcher matches.",
+      "markers": [
+        "no send_input coordination, no sleep-poll ticks",
+        "NOT send_input chatter,",
+        "(read_screen/get_agent_state) instead of `wait_for(agent_id)`",
+        "| `COORD_VIA_SEND_INPUT` |",
+        "`send_input` used to BOOT a worker with its task",
+        "NOT a message bus driven by send_input)"
+      ]
+    },
+    {
+      "file": "skills/golem-powers/spec-preflight-gate/SKILL.md",
+      "reason": "Matcher set for detecting dispatch calls in historical transcripts; same scope-gate ruling as collab-routing-gate.",
+      "markers": ["- Dispatch calls: `spawn_agent`, `Task`, `send_to`, `send_to_agent`"]
+    },
+    {
+      "file": "skills/golem-powers/never-fabricate/SKILL.md",
+      "reason": "Names a provenance CLASS of an already-written message ('was this typed, or send_command'd by an assistant?'). It is not an instruction to call anything.",
+      "markers": ["`send_command` authored by an assistant."]
+    },
+    {
+      "file": "skills/golem-powers/pr-queue-gate/SKILL.md",
+      "reason": "Records the `set_status` gap honestly rather than inventing a mapping — exactly what the brief asked for.",
+      "markers": ["the pre-v0.4.35 `set_status` tool it used to name no longer exists"]
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/agents/session-miner.md",
+      "reason": "Search terms for mining historical JSONL transcripts. Old sessions contain the old tool names; narrowing these terms would blind the miner to the population it exists to find.",
+      "markers": [
+        "**Major dispatches timeline** — TaskCreate, cmux send_input",
+        "**Sub-agent communications** — cmux send_input / read_screen grouped by surface"
+      ]
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/workflows/mine-session.md",
+      "reason": "Same historical-transcript search terms as session-miner.md.",
+      "markers": ["Sub-agent communications (cmux send_input / read_screen by surface)"]
+    }
+  ]
+}

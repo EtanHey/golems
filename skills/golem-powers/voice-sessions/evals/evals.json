@@ -1,0 +1,61 @@
+{
+  "skill_name": "voice-sessions",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just had a meeting with the design team. Let's do a voice debrief.",
+      "expected_output": "Agent initiates voice debrief flow — uses VoiceLayer for conversation, asks probing questions, stores insights in Obsidian.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-voicelayer-tools",
+          "description": "Response uses voice_speak and voice_ask MCP tools for the debrief interaction"
+        },
+        {
+          "name": "asks-probing-questions",
+          "description": "Response includes follow-up questions to extract deeper insights, not just surface notes"
+        },
+        {
+          "name": "stores-in-obsidian",
+          "description": "Response saves structured debrief notes to Obsidian vault"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to practice my pitch but voicelayer seems to be down.",
+      "expected_output": "Agent falls back gracefully to text-based practice mode when VoiceLayer is unavailable.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "graceful-voice-fallback",
+          "description": "Response detects VoiceLayer unavailability and offers text-based alternative"
+        },
+        {
+          "name": "maintains-practice-structure",
+          "description": "Response still follows the practice structure (drilling, fact-checking) even in text mode"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run a QA voice session testing the onboarding flow.",
+      "expected_output": "Agent uses VoiceLayer QA workflow with proper schemas (qa-categories.ts) for structured testing.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-qa-workflow",
+          "description": "Response follows the QA-specific voice session workflow, not generic debrief"
+        },
+        {
+          "name": "references-qa-schemas",
+          "description": "Response uses QA categories and structured test reporting"
+        },
+        {
+          "name": "records-test-results",
+          "description": "Response captures pass/fail results in a structured format"
+        }
+      ]
+    }
+  ]
+}

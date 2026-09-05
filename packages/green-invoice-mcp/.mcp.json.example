@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "green-invoice": {
+      "command": "bun",
+      "args": ["run", "packages/green-invoice-mcp/src/mcp-server.ts"],
+      "env": {
+        "GREEN_INVOICE_ID": "op://Golems/Green Invoice API/credential",
+        "GREEN_INVOICE_SECRET": "op://Golems/Green Invoice API/notes"
+      }
+    }
+  }
+}

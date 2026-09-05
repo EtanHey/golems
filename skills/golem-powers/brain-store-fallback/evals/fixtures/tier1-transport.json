@@ -1,0 +1,8 @@
+{
+  "tool": "mcp__brainlayer__brain_store",
+  "ok": false,
+  "error": "Transport closed",
+  "chunk_id": null,
+  "expected_reason": "transport_closed",
+  "fallback_required": true
+}

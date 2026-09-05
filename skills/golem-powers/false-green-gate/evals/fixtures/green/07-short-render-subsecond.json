@@ -1,0 +1,25 @@
+{
+  "specimen": "codex-review/sub-second-duration (P2)",
+  "label": "GREEN — a valid sub-second render (duration=0.5) must PASS, not false-FLAG FFPROBE",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Render the short SFX stinger." },
+    {
+      "role": "assistant",
+      "text": "Rendering, then probing.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "ffprobe -v error -show_entries format=size,duration -of default=noprint_wrappers=1 out/stinger.mp3"
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "size=4821\nduration=0.500000" },
+    {
+      "role": "assistant",
+      "text": "Render complete ✅ — out/stinger.mp3 is 4821 bytes, duration 0.50s."
+    }
+  ]
+}

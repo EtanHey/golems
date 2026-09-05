@@ -1,0 +1,42 @@
+{
+  "specimen": "real quiet TTS onset whose opener was missed by the original Whisper pass",
+  "gate": "onset-energy",
+  "case": "quiet-onset-real-voice-ask",
+  "audioFile": "12-acoustic-quiet-onset.wav",
+  "expectedMetrics": [
+    "ONSET_ENERGY_ABSOLUTE_RMS_DBFS",
+    "ONSET_ENERGY_PEAK_DELTA_DB"
+  ],
+  "source": {
+    "provenanceClass": "REAL_DOMAIN_MATCHED_AUDIO",
+    "surface": "L1 voice_ask playback",
+    "parentArtifact": "voice-round-2026-07-16/audio.wav",
+    "parentSha256": "30f76f433154b0bb147799314343cd982c1eb614695448d5f5269524d2ffa093",
+    "startSeconds": 1221,
+    "durationSeconds": 4,
+    "extraction": "ffmpeg PCM s16le mono 16000Hz, no gain or normalization",
+    "domainTransfer": "The source surface is L1 voice_ask, while the target gate runs on narration BUILD segments; both expose the same missable-opener defect class through first-window energy versus the segment peak."
+  },
+  "audioSha256": "4fa279b728b6a04d20fd30e06681694cd1a778ea9b6af741706550ed5befadb2",
+  "independentMeasurement": {
+    "tool": "ffmpeg astats on the raw source windows and extracted raw PCM",
+    "onsetWindowSeconds": 0.75,
+    "onsetRmsDbfs": -56.546814,
+    "segmentPeakDbfs": -23.452387,
+    "onsetPeakDeltaDb": 33.094427,
+    "historicalReportedPeakDbfs": -8.1,
+    "historicalPeakReproducedOnRawSource": true,
+    "historicalRawSourcePeak": {
+      "windowStartSeconds": 1206,
+      "windowDurationSeconds": 1,
+      "peakDbfs": -8.131347,
+      "secondsBeforeFixtureStart": 15
+    },
+    "adjacentRawSourceOneSecondPeaksDbfs": {
+      "1205": -20.900524,
+      "1206": -8.131347,
+      "1207": -45.751
+    },
+    "disclosure": "The historical -8.13 dBFS value is a real one-second transient on the raw source around t=1206s, about 15 seconds before this fixture's opener. It is outside the 1221-1225s extract, so the earlier discrepancy is consistent with QA window misalignment, not loudness normalization; the relative onset defect reproduces without gain."
+  }
+}

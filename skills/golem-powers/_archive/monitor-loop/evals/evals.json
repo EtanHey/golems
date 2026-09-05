@@ -1,0 +1,151 @@
+{
+  "skill_name": "monitor-loop",
+  "description": "Synthetic RED/GREEN evals for drive-to-completion monitor ticks. Baseline captures stale-state repetition and passive monitoring. With-skill behavior must query live state with `!`, preserve counters, and end each tick in dispatch, verify-and-decrement, or escalate-park.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "stale-review-loop-repeats-twelve-times",
+      "category": "compliance",
+      "description": "The smoking-gun failure mode from BRIEF 1: twelve ticks all repeat hardcoded BLOCKED REVIEW_REQUIRED state.",
+      "prompt": "Review this monitor loop behavior. Tick 1 through tick 12 all contain the same body: 'PR #393 is BLOCKED REVIEW_REQUIRED. Keep monitoring and stay silent unless it unblocks.' The tick does not run `!gh pr view` or any other live query. Should this loop continue as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-accept-hardcoded-review-loop",
+          "description": "Rejects the repeated hardcoded review state as invalid monitor input"
+        },
+        {
+          "type": "content",
+          "name": "requires-live-query-step-1",
+          "description": "Rewrites the tick so step 1 is a `!gh pr view` or equivalent live query"
+        },
+        {
+          "type": "content",
+          "name": "routes-to-admin-merge-or-escalation",
+          "description": "Explains that once live data shows the queue can move, the loop must dispatch merge/escalation rather than repeat"
+        },
+        {
+          "type": "content",
+          "name": "parks-instead-of-firing-twelve-times",
+          "description": "States that repeated no-change ticks must trigger escalate-park instead of another passive cycle"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "counter-reset-on-noop-ping",
+      "category": "compliance",
+      "description": "A worker replies with a no-op status update, and the loop incorrectly wants to treat that as progress.",
+      "prompt": "Review this monitor logic: cycle 7 sees no PR change. The worker replies 'still looking'. The loop resets consecutive_no_change_ticks to 0 because the worker answered. Is that correct?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-reset-on-reply-alone",
+          "description": "Rejects resetting counters on no-op pings or status replies"
+        },
+        {
+          "type": "content",
+          "name": "defines-real-queue-decrement",
+          "description": "States that only a merge, completion, or file write can reset counters"
+        },
+        {
+          "type": "content",
+          "name": "increments-no-change-after-noop",
+          "description": "Keeps or increments the no-change counters after a no-op reply"
+        },
+        {
+          "type": "content",
+          "name": "preserves-drive-to-completion",
+          "description": "Reframes the next action as dispatch, verify-and-decrement, or escalate-park"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "parsed-only-completion-claim",
+      "category": "structure",
+      "description": "The loop sees a parsed-only surface that looks done and wants to decrement the queue immediately.",
+      "prompt": "A monitor tick reads a parsed-only cmux surface that says TASK_DONE. No PR, file write, or collab side-effect has been verified yet. The loop wants to decrement the queue immediately and reset both counters. Should it?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-treat-parsed-only-as-proof",
+          "description": "Rejects parsed-only telemetry as sufficient evidence"
+        },
+        {
+          "type": "content",
+          "name": "invokes-verify-and-decrement-branch",
+          "description": "Routes to verify-and-decrement rather than immediate completion"
+        },
+        {
+          "type": "content",
+          "name": "references-never-fabricate",
+          "description": "Explains that verification must follow /never-fabricate discipline"
+        },
+        {
+          "type": "content",
+          "name": "resets-only-after-verification",
+          "description": "States that counters reset only after the side-effect is proven"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "tick-without-decision-tree",
+      "category": "structure",
+      "description": "The loop queries live data but still ends the tick with a passive narration.",
+      "prompt": "Review this tick:\n\nTick frame:\n- now: $(date -Iseconds)\n- cycle: 6\n- last-genuine-dispatch-time: 2026-05-02T17:00:00Z\n- consecutive-no-change-ticks: 5\n- consecutive-no-push-ticks: 5\n- park-threshold: 8\n\n1. !gh pr view EtanHey/golems 393 --json mergeable,mergeStateStatus,reviewDecision\n2. !find $ORCHESTRATOR_REPO/collab -newer 2026-05-02T17:00:00Z\n3. I'm monitoring.\n\nShould this tick ship as-is?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-allow-passive-output",
+          "description": "Rejects passive tick output like 'I'm monitoring'"
+        },
+        {
+          "type": "content",
+          "name": "forces-one-of-three-outcomes",
+          "description": "Requires dispatch, verify-and-decrement, or escalate-park"
+        },
+        {
+          "type": "content",
+          "name": "keeps-frame-state",
+          "description": "Preserves the counter and timestamp fields instead of dropping them"
+        },
+        {
+          "type": "content",
+          "name": "consumes-live-data-in-decision",
+          "description": "Connects the final action to the actual live query output"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "threshold-escalation-and-acceptance",
+      "category": "quality",
+      "description": "A compliant tick at threshold should park once, while a compliant tick below threshold should keep the right action shape.",
+      "prompt": "Review two monitor cases. Case A: `consecutive_no_change_ticks=8`, `park-threshold=8`, no live PR/collab delta, no verified file write. Case B: `consecutive_no_change_ticks=3`, `park-threshold=8`, and `!gh pr view` now shows mergeable=MERGEABLE. What should happen?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "parks-at-threshold",
+          "description": "Case A escalates and parks instead of continuing passively"
+        },
+        {
+          "type": "content",
+          "name": "dispatches-on-real-unblock",
+          "description": "Case B dispatches the merge or next queue action"
+        },
+        {
+          "type": "content",
+          "name": "updates-last-genuine-dispatch-time",
+          "description": "States that a real dispatch updates the last genuine dispatch timestamp"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-conflate-park-with-progress",
+          "description": "Does not treat parking as a counter reset or successful queue decrement"
+        }
+      ]
+    }
+  ]
+}

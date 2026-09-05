@@ -1,0 +1,25 @@
+{
+  "specimen": "gen-18 Track 2 #4 / R-008 — GREEN entity-disambiguated",
+  "class": "named-entity-conflation",
+  "label": "GREEN — entities recorded distinctly via a session-start brain_store before any spanning claim",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "What's the status on HappyCamper?" },
+    {
+      "role": "assistant",
+      "text": "Before relaying, I'll record the entities distinctly so I don't conflate them.",
+      "tools": [
+        {
+          "name": "mcp__brainlayer__brain_store",
+          "input": {
+            "content": "[2026-06-22] Entity disambiguation: HappyCamper is the company; AfterCode is the render tool; the second Claude account is a separate billing account. These are three different distinct entities — NOT the same."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Recorded the three distinct entities. HappyCamper (the company) has its render running via AfterCode (the tool) — they are not the same thing. Status: render in progress."
+    }
+  ]
+}

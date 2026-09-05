@@ -1,0 +1,21 @@
+{
+  "specimen": "cursor-review/boot-atmention (MEDIUM)",
+  "label": "GREEN — a worker boot prompt that @-tags the seat is not coordination chatter",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Boot the worker." },
+    {
+      "role": "assistant",
+      "text": "Booting with the brief.",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__send_input",
+          "input": {
+            "agent": "brainlayer-w1",
+            "message": "@brainlayer-w1 Read docs/plan/T4.md and run the full pr-loop to MERGED."
+          }
+        }
+      ]
+    }
+  ]
+}

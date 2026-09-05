@@ -1,0 +1,12 @@
+{
+  "specimen": "chatgpt-codex/bare-file-path-tech-first-incident",
+  "violation": "INCIDENT_FRAMING_LAST",
+  "events": [
+    { "role": "user", "text": "Incident: summarize the operator failure.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "src/notify.js: send returned an error before the operator saw the message.\nFraming: the live notification path failed, so the operator did not receive the instruction.",
+      "tools": []
+    }
+  ]
+}

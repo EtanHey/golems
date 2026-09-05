@@ -1,0 +1,313 @@
+{
+  "provenance": "alias-only",
+  "skill": "eas-prebuild-check",
+  "cases": [
+    {
+      "id": 1,
+      "name": "missing-easignore-detected",
+      "fixture": "missing-easignore",
+      "prompt": "/eas-prebuild-check (in a project with no .easignore and a 500MB node_modules)",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-01-fail",
+          "description": "Output contains '[1/9]' line with '✗ FAIL' status and references '.easignore'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "fix-suggested",
+          "description": "Output suggests --fix or copying from templates/.easignore",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "do-not-build-warning",
+          "description": "Output contains 'DO NOT run `eas build`' in summary section",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 2,
+      "name": "easignore-partial-warn",
+      "fixture": "partial-easignore",
+      "prompt": "/eas-prebuild-check (project has .easignore with only '.expo' entry)",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-01-warn",
+          "description": "Output shows check 1 as '⚠ WARN' (not FAIL)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "missing-node-modules-listed",
+          "description": "Output names 'node_modules' in the missing excludes list",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 3,
+      "name": "bundle-id-suspicious-default",
+      "fixture": "bundle-id-default",
+      "prompt": "/eas-prebuild-check (app.json has expo.ios.bundleIdentifier = 'com.anonymous.myapp')",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-04-warn",
+          "description": "Output shows check 4 (Bundle ID consistency) as WARN",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "suspicious-label",
+          "description": "Output contains 'suspicious' or 'scaffold default' language",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "fix-references-app-json",
+          "description": "Fix suggestion mentions editing app.json expo.ios.bundleIdentifier",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 4,
+      "name": "version-mismatch-detected",
+      "fixture": "no-version-fields",
+      "prompt": "/eas-prebuild-check --platform both (app.json has version but no buildNumber/versionCode)",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-05-fail",
+          "description": "Check 5 (Version sync) shows FAIL",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "missing-fields-listed",
+          "description": "Output explicitly names the missing fields (ios.buildNumber or android.versionCode)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 5,
+      "name": "no-ios-devices-preview",
+      "fixture": "no-ios-devices",
+      "prompt": "/eas-prebuild-check --platform ios --profile preview (mocked eas device:list returns [])",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-06-fail",
+          "description": "Check 6 (iOS devices registered) shows FAIL",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "device-create-suggested",
+          "description": "Fix suggestion is 'eas device:create'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 6,
+      "name": "production-profile-skips-device-check",
+      "fixture": "no-ios-devices",
+      "prompt": "/eas-prebuild-check --platform ios --profile production (0 registered devices)",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-06-skipped",
+          "description": "Check 6 shows '⊘ SKIPPED' status with reason mentioning 'ad-hoc not required'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "no-device-failure",
+          "description": "Check 6 is NOT marked FAIL",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "**0 registered devices is fine for a production profile.** Production iOS builds use App Store distribution, not ad-hoc — so no device UDIDs are needed in the provisioning profile.\n\nDevice registration only matters for `development` and `preview` profiles (ad-hoc distribution). For `production`, Apple signs with an App Store provisioning profile that doesn't include specific devices.\n\nYou're clear to proceed with `eas build --platform ios --profile production`.\n\nCLAUDE_COUNTER: 1"
+    },
+    {
+      "id": 7,
+      "name": "eas-cli-outdated-warn",
+      "fixture": "happy-path",
+      "prompt": "/eas-prebuild-check (mocked: eas --version = 17.0.0, npm view = 18.5.0)",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-03-warn",
+          "description": "Check 3 shows WARN status",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "upgrade-command",
+          "description": "Fix suggests 'npm install -g eas-cli@latest'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 8,
+      "name": "fix-writes-canonical-easignore",
+      "fixture": "missing-easignore",
+      "prompt": "/eas-prebuild-check --fix (project missing .easignore, has other files)",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "check-01-pass-after-fix",
+          "description": "After --fix, check 1 shows PASS",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "easignore-file-written",
+          "description": "A .easignore file exists in the project after running and contains 'node_modules'",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "no-other-files-touched",
+          "description": "No other files in the project were modified or created (except .easignore)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 9,
+      "name": "fix-refuses-destructive-changes",
+      "fixture": "bundle-id-default",
+      "prompt": "/eas-prebuild-check --fix (project has suspicious bundle ID and 0 devices)",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "no-auto-bundle-change",
+          "description": "app.json bundleIdentifier is UNCHANGED after --fix",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "user-judgment-required",
+          "description": "Output says check 4 still requires user action / 'needs user judgment' or similar",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 10,
+      "name": "json-mode-machine-readable",
+      "fixture": "happy-path",
+      "prompt": "/eas-prebuild-check --json",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "valid-json",
+          "description": "Output parses as valid JSON (jq . succeeds)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "has-checks-array",
+          "description": "JSON has 'checks' array with at least 9 entries",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "has-summary-object",
+          "description": "JSON has 'summary' object with pass, fail, warn, skip, info counts",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 11,
+      "name": "managed-workflow-skip-native-checks",
+      "fixture": "managed-workflow",
+      "prompt": "/eas-prebuild-check (project has no ios/ or android/ folders — managed workflow)",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "still-runs-all-checks",
+          "description": "All 9 checks still run (managed workflow still needs them)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "easignore-still-important",
+          "description": "Check 1 still runs — .easignore matters even in managed workflow (root node_modules exists)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "In a **managed workflow** (no `ios/` or `android/` folders), EAS Build runs `expo prebuild` in the cloud, so most local prebuild checks don't apply. The key things to verify are:\n\n1. **`app.json`/`app.config.js`** has correct `bundleIdentifier` and `package` set under `expo.ios` and `expo.android`.\n2. **`.easignore`** exists to avoid uploading `node_modules` or other bloat (prevents 2GB+ archives).\n3. **`eas.json`** has valid build profiles with the right `distribution` and `credentialsSource`.\n4. **EAS CLI** is up to date (`eas --version`) and you're logged in (`eas whoami`).\n5. **Credentials** are synced — run `eas credentials` to check Apple certs/provisioning and Android keystore.\n\nSince prebuild happens server-side in managed flow, you won't catch native config errors locally — focus on the JS-side config and EAS settings.\n\nCLAUDE_COUNTER: 1"
+    },
+    {
+      "id": 12,
+      "name": "exit-code-nonzero-on-fail",
+      "fixture": "missing-easignore",
+      "prompt": "/eas-prebuild-check (known-failing project); echo $?",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "exit-code-1",
+          "description": "Shell exit code is 1 (not 0, not 2)",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 13,
+      "name": "exit-code-zero-on-pass",
+      "fixture": "happy-path",
+      "prompt": "/eas-prebuild-check (happy-path project); echo $?",
+      "exit_code": 124,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "exit-code-0",
+          "description": "Shell exit code is 0",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "TIMEOUT after 20s"
+    },
+    {
+      "id": 14,
+      "name": "exit-code-2-not-expo",
+      "fixture": null,
+      "prompt": "cd /tmp && /eas-prebuild-check",
+      "exit_code": 0,
+      "score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "assertions": [
+        {
+          "name": "not-expo-message",
+          "description": "stderr says 'Not an Expo project' or mentions missing app.json/app.config.js",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        },
+        {
+          "name": "exit-code-2",
+          "description": "Shell exit code is 2",
+          "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+        }
+      ],
+      "output": "`/eas-prebuild-check` isn't a shell executable — it's a Claude Code skill. To use it, just type `/eas-prebuild-check` as a slash command inside a Claude Code session while in your Expo/EAS project directory. It will validate your iOS/Android config before your first EAS build.\n\nIf you want to run it here, just say \"run eas prebuild check\" and I'll invoke it via the Skill tool.\n\nCLAUDE_COUNTER: 1"
+    }
+  ],
+  "average_score": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}

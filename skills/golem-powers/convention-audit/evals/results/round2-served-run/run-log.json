@@ -1,0 +1,116 @@
+{
+  "provenance": [
+    {
+      "agent_or_arm": "authorized_round_2_served",
+      "model_requested": "gpt-5.6-luna",
+      "model_effective": "gpt-5.6-luna",
+      "effort_effective": "max",
+      "model_observation_source": "CLI status line: round2-served-run/pin-preflight.log lines 7-13; 1 preflight observation applied to 7 workers by construction; per-worker banners are not emitted under --json",
+      "effort_observation_source": "CLI status line: round2-served-run/pin-preflight.log lines 7-13; 1 preflight observation applied to 7 workers by construction; per-worker banners are not emitted under --json"
+    }
+  ],
+  "pin": {
+    "effort": "max",
+    "fallback_used": false,
+    "model": "gpt-5.6-luna",
+    "requested_effort": "max"
+  },
+  "repo": "convention-audit-round2-served-target",
+  "revision": "3e4d5f2398b3ebac3b03b0ff15efe0fafaef2d4f",
+  "target_git_state_scope": "tracked and nonignored untracked paths visible to git status",
+  "target_git_state_unchanged": true,
+  "telemetry": {
+    "cached_input_tokens": 763648,
+    "cost_source": "unavailable",
+    "cost_usd": null,
+    "input_tokens": 949832,
+    "output_tokens": 18986,
+    "wall_seconds": 184.544,
+    "workers": [
+      {
+        "cached_input_tokens": 67584,
+        "cost_source": "unavailable",
+        "cost_usd": null,
+        "input_tokens": 88880,
+        "label": "data-ownership",
+        "output_tokens": 1787,
+        "stderr_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/data-ownership.stderr.log",
+        "stdout_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/data-ownership.jsonl",
+        "usage_observed": true,
+        "wall_seconds": 39.14
+      },
+      {
+        "cached_input_tokens": 122624,
+        "cost_source": "unavailable",
+        "cost_usd": null,
+        "input_tokens": 154278,
+        "label": "duplicated-domain-logic",
+        "output_tokens": 1788,
+        "stderr_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/duplicated-domain-logic.stderr.log",
+        "stdout_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/duplicated-domain-logic.jsonl",
+        "usage_observed": true,
+        "wall_seconds": 40.982
+      },
+      {
+        "cached_input_tokens": 86784,
+        "cost_source": "unavailable",
+        "cost_usd": null,
+        "input_tokens": 109825,
+        "label": "lifecycle-control",
+        "output_tokens": 4440,
+        "stderr_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/lifecycle-control.stderr.log",
+        "stdout_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/lifecycle-control.jsonl",
+        "usage_observed": true,
+        "wall_seconds": 87.997
+      },
+      {
+        "cached_input_tokens": 177408,
+        "cost_source": "unavailable",
+        "cost_usd": null,
+        "input_tokens": 211571,
+        "label": "live-copy-drift",
+        "output_tokens": 2541,
+        "stderr_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/live-copy-drift.stderr.log",
+        "stdout_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/live-copy-drift.jsonl",
+        "usage_observed": true,
+        "wall_seconds": 55.445
+      },
+      {
+        "cached_input_tokens": 86784,
+        "cost_source": "unavailable",
+        "cost_usd": null,
+        "input_tokens": 109362,
+        "label": "paths-and-identity",
+        "output_tokens": 2679,
+        "stderr_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/paths-and-identity.stderr.log",
+        "stdout_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/paths-and-identity.jsonl",
+        "usage_observed": true,
+        "wall_seconds": 56.926
+      },
+      {
+        "cached_input_tokens": 117248,
+        "cost_source": "unavailable",
+        "cost_usd": null,
+        "input_tokens": 144085,
+        "label": "time-and-query-semantics",
+        "output_tokens": 3418,
+        "stderr_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/time-and-query-semantics.stderr.log",
+        "stdout_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/time-and-query-semantics.jsonl",
+        "usage_observed": true,
+        "wall_seconds": 70.994
+      },
+      {
+        "cached_input_tokens": 105216,
+        "cost_source": "unavailable",
+        "cost_usd": null,
+        "input_tokens": 131831,
+        "label": "synthesis",
+        "output_tokens": 2333,
+        "stderr_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/synthesis.stderr.log",
+        "stdout_log": "/private/tmp/convention-audit-round2-served-output/convention-audit-round2-served-target-20260802T221020Z/synthesis.jsonl",
+        "usage_observed": true,
+        "wall_seconds": 50.845
+      }
+    ]
+  }
+}

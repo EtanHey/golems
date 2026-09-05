@@ -1,0 +1,7 @@
+{
+  "files": {
+    "SKILL.md": "sha-current-skill",
+    "scripts/bootstrap.mjs": "sha-current-bootstrap",
+    "scripts/render.ts": "sha-current-render"
+  }
+}

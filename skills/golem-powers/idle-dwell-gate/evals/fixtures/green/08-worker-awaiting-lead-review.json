@@ -1,0 +1,21 @@
+{
+  "specimen": "2026-07-02/worker-seat-awaiting-lead-review",
+  "label": "GREEN — worker seat has completed its assigned endpoint and is awaiting lead review",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "You are W2. Implement your assigned file and report back to the lead."
+    },
+    {
+      "role": "assistant",
+      "text": "Worker W2 endpoint reached: implementation and local test are complete. Awaiting lead review; the lead owns harvesting and merge."
+    }
+  ],
+  "state": {
+    "seatRole": "worker",
+    "workers": [
+      { "id": "W2", "state": "awaiting_lead_review", "paneOpen": true, "harvested": false }
+    ]
+  }
+}

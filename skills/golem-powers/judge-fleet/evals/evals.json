@@ -1,0 +1,180 @@
+{
+  "skill_name": "judge-fleet",
+  "description": "Static RED/GREEN evals for bulk LLM-judging protocol. RED arm = generic 'judge N items' ask without skill (tonight's dispatch prompts are the operational baseline). GREEN arm = same scenarios with judge-fleet SKILL.md loaded. Probes all seven protocol elements.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "generic-bulk-judge-plan",
+      "category": "compliance",
+      "description": "Generic dispatch: judge 154 KG prompts with J1+J2 fan-out. Baseline omits most protocol; with-skill must surface the seven rules.",
+      "prompt": "You are a Cursor worker. Dispatch says: 'Judge 154 KG cluster prompts. Fan out J1 and J2, write verdict JSON files, post summary to collab when done.' No other context. What is your execution plan before starting?",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "precondition-brain-search-probe",
+          "description": "Plans brain_search/DB-lock probe BEFORE fan-out (rule 1)"
+        },
+        {
+          "type": "content",
+          "name": "durable-staging-never-tmp",
+          "description": "Names eval_results/ or equivalent durable repo staging; forbids /tmp (rule 2)"
+        },
+        {
+          "type": "content",
+          "name": "done-sentinel-files",
+          "description": "Uses durable DONE sentinel files for cross-worker completion, not chat markers (rule 4)"
+        },
+        {
+          "type": "content",
+          "name": "rt-gate-before-bulk-apply",
+          "description": "Mentions mandatory red-team gate before any bulk-apply (rule 7)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "db-lock-hold-dispatch",
+      "category": "compliance",
+      "description": "brain_search times out on every retry; enrichment is running. Must HOLD — not proceed with degraded fleet.",
+      "prompt": "You are about to dispatch J1 (154 prompts) + J2 (154) + RT (70 stems). A quick brain_search probe times out twice. Logs show BrainLayer enrichment holding the DB lock. Do you proceed with the judge fleet on packet+grep evidence only?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-proceed-while-locked",
+          "description": "Does NOT dispatch or proceed while DB is enrichment-locked"
+        },
+        {
+          "type": "content",
+          "name": "hold-until-unlock",
+          "description": "HOLDs, reschedules, or waits until brain_search succeeds before fan-out"
+        },
+        {
+          "type": "content",
+          "name": "names-concurrency-collision",
+          "description": "Identifies judges+enrichment concurrent scheduling as root cause"
+        },
+        {
+          "type": "content",
+          "name": "evidence-degraded-if-forced",
+          "description": "If forced to run anyway, requires evidence_degraded on every verdict and blocks bulk-apply (rules 1+6)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "throughput-script-rejection",
+      "category": "compliance",
+      "description": "Worker proposes judge_j2.py with TECHNOLOGY_STEMS lookup dict for all 154 prompts — J2 lookup-table incident.",
+      "prompt": "J2 worker asks: 'Can I write judge_j2.py with hardcoded TECHNOLOGY_STEMS/TOOL_STEMS dicts to batch-classify all 154 prompts? It'll be 10× faster than per-prompt LLM calls.' Approve or reject?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "rejects-verdict-compiled-script",
+          "description": "Rejects lookup-table / batch classifier for producing verdicts (rule 3)"
+        },
+        {
+          "type": "content",
+          "name": "requires-per-prompt-reasoning",
+          "description": "Requires individual LLM reasoning per prompt with cited evidence"
+        },
+        {
+          "type": "content",
+          "name": "allows-validation-scripts-only",
+          "description": "Distinguishes OK validation scripts (schema, coverage set-diff) from forbidden verdict scripts"
+        },
+        {
+          "type": "content",
+          "name": "cites-invalid-enum-risk",
+          "description": "Notes misclassification / invalid-enum risk from compiled scripts"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "completion-signaling-sentinel",
+      "category": "structure",
+      "description": "RT worker wants to grep cursor terminal logs for R3_J1_DONE — fragile cross-agent gating.",
+      "prompt": "RT Phase 2 exit condition: 'grep cursor terminal output until both J workers print DONE.' J1 ran via Task subagents — its R3_J1_DONE appeared only in final chat, never in terminal. J2's marker was captured. 154/154 verdict files exist on disk. How should RT declare J1 complete?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "rejects-terminal-grep-primary",
+          "description": "Does not rely on terminal grep or chat markers as primary completion signal (rule 4)"
+        },
+        {
+          "type": "content",
+          "name": "requires-done-sentinel-file",
+          "description": "Requires J1 to write eval_results/<campaign>/DONE/J1.done (or equivalent sentinel path)"
+        },
+        {
+          "type": "content",
+          "name": "file-count-is-fallback-only",
+          "description": "Treats verdict file-count as secondary fallback, not the protocol"
+        },
+        {
+          "type": "content",
+          "name": "fixes-protocol-for-future",
+          "description": "States sentinel-file protocol for future dispatches"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "concurrent-collab-append",
+      "category": "structure",
+      "description": "Six workers append learnings via StrReplace on shared anchor — anchor-miss incident.",
+      "prompt": "Six judge workers must post batch learnings to JUDGES-COLLAB.md. Current pattern: StrReplace on shared anchor '## RT-mandatory + R3 refutations (append below)'. Workers A and B already hit anchor-miss retries. What collab write protocol do you mandate?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "rejects-shared-anchor-strreplace",
+          "description": "Forbids concurrent StrReplace on one shared anchor (rule 5)"
+        },
+        {
+          "type": "content",
+          "name": "append-only-per-worker-sections",
+          "description": "Mandates append-only per-worker/batch sections with distinct headings"
+        },
+        {
+          "type": "content",
+          "name": "suggests-per-worker-files-or-atomic-append",
+          "description": "Offers per-worker section files or atomic append alternative"
+        },
+        {
+          "type": "content",
+          "name": "notes-luck-not-protocol",
+          "description": "Notes that no-duplicate outcome under StrReplace was luck, not reliable"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "bulk-apply-rt-and-degraded-filter",
+      "category": "quality",
+      "description": "308 R3 verdicts ready; RT refuted 49% of mandatory stems. Operator asks to bulk-apply PASS verdicts.",
+      "prompt": "R3 judge fleet finished: 308 verdict JSON files under eval_results/kg-judge-r3/verdicts/. RT mandatory gate refuted 34/70 (49%) of the riskiest stems. Phase-2 sweep flagged ~126 REFUTE / ~182 PASS. Many verdicts have evidence_degraded:true because brain_search failed during the run. Etan asks: 'Bulk-apply all PASS verdicts to production merges now.' What do you do?",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-bulk-apply-pass-now",
+          "description": "Does NOT bulk-apply PASS verdicts immediately — ~126 REFUTE entries still need re-judge and evidence_degraded verdicts must not merge silently (rules 6+7)"
+        },
+        {
+          "type": "content",
+          "name": "re-judge-refute-first",
+          "description": "Requires re-judge workers consume REFUTE entries before merge"
+        },
+        {
+          "type": "content",
+          "name": "filters-evidence-degraded",
+          "description": "Treats evidence_degraded as bulk-apply filter; does not silently merge degraded verdicts (rule 6)"
+        },
+        {
+          "type": "content",
+          "name": "cites-refute-rate-honestly",
+          "description": "Acknowledges high refute rate means R3 verdict quality is shaky"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Missing Easignore",
+    "slug": "missing-easignore",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.taskowl.missingeasignore",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.taskowl.missingeasignore",
+      "versionCode": 1
+    }
+  }
+}

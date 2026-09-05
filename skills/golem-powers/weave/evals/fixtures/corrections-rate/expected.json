@@ -1,0 +1,125 @@
+{
+  "low_confidence_floor": 50,
+  "models": {
+    "fable-5": {
+      "confidence": "comparable",
+      "corrections": {
+        "count": 0,
+        "user_messages": 80,
+        "per_100_user_messages": 0.0
+      },
+      "buckets": {
+        "wrong-impl": {
+          "count": 0,
+          "user_messages": 80,
+          "per_100_user_messages": 0.0
+        },
+        "taste": {
+          "count": 0,
+          "user_messages": 80,
+          "per_100_user_messages": 0.0
+        },
+        "process": {
+          "count": 0,
+          "user_messages": 80,
+          "per_100_user_messages": 0.0
+        },
+        "misread": {
+          "count": 0,
+          "user_messages": 80,
+          "per_100_user_messages": 0.0
+        },
+        "tool-misuse": {
+          "count": 0,
+          "user_messages": 80,
+          "per_100_user_messages": 0.0
+        },
+        "overbuild": {
+          "count": 0,
+          "user_messages": 80,
+          "per_100_user_messages": 0.0
+        }
+      }
+    },
+    "opus-5": {
+      "confidence": "comparable",
+      "corrections": {
+        "count": 5,
+        "user_messages": 120,
+        "per_100_user_messages": 4.2
+      },
+      "buckets": {
+        "wrong-impl": {
+          "count": 2,
+          "user_messages": 120,
+          "per_100_user_messages": 1.7
+        },
+        "taste": {
+          "count": 1,
+          "user_messages": 120,
+          "per_100_user_messages": 0.8
+        },
+        "process": {
+          "count": 0,
+          "user_messages": 120,
+          "per_100_user_messages": 0.0
+        },
+        "misread": {
+          "count": 0,
+          "user_messages": 120,
+          "per_100_user_messages": 0.0
+        },
+        "tool-misuse": {
+          "count": 0,
+          "user_messages": 120,
+          "per_100_user_messages": 0.0
+        },
+        "overbuild": {
+          "count": 2,
+          "user_messages": 120,
+          "per_100_user_messages": 1.7
+        }
+      }
+    },
+    "sol": {
+      "confidence": "low-confidence",
+      "corrections": {
+        "count": 3,
+        "user_messages": 40,
+        "per_100_user_messages": 7.5
+      },
+      "buckets": {
+        "wrong-impl": {
+          "count": 0,
+          "user_messages": 40,
+          "per_100_user_messages": 0.0
+        },
+        "taste": {
+          "count": 0,
+          "user_messages": 40,
+          "per_100_user_messages": 0.0
+        },
+        "process": {
+          "count": 1,
+          "user_messages": 40,
+          "per_100_user_messages": 2.5
+        },
+        "misread": {
+          "count": 1,
+          "user_messages": 40,
+          "per_100_user_messages": 2.5
+        },
+        "tool-misuse": {
+          "count": 1,
+          "user_messages": 40,
+          "per_100_user_messages": 2.5
+        },
+        "overbuild": {
+          "count": 0,
+          "user_messages": 40,
+          "per_100_user_messages": 0.0
+        }
+      }
+    }
+  }
+}

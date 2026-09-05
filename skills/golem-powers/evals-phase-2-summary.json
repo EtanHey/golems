@@ -1,0 +1,177 @@
+{
+  "phase": "2",
+  "graded_by": "evalSonnet",
+  "baseline_date": "2026-03-14",
+  "description": "Phase 2 eval baseline: 8 behavior packs (2A+2B) + 3 adapter packs (2C). Graded by reading each skill file against every assertion in the eval JSON.",
+  "totals": {
+    "packs": 11,
+    "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "packs": [
+    {
+      "skill": "pr-loop",
+      "phase": "2A",
+      "type": "behavior",
+      "result_file": "skills/golem-powers/pr-loop/evals/results/phase-2-baseline.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "skill": "commit",
+      "phase": "2A",
+      "type": "behavior",
+      "result_file": "skills/golem-powers/_archive/commit/evals/results/phase-2-baseline.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "skill": "worktrees",
+      "phase": "2A",
+      "type": "behavior",
+      "result_file": "skills/golem-powers/_archive/worktrees/evals/results/phase-2-baseline.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failures": [
+        {
+          "eval_id": "parallel-same-repo-uses-separate-worktrees",
+          "assertion": "shared-checkout-pattern-is-blocked",
+          "gap": "Skill promotes worktree use but lacks explicit block/warning when user proposes parallel work on a single shared checkout."
+        },
+        {
+          "eval_id": "cleanup-merged-worktree-safely",
+          "assertion": "active-or-unmerged-worktrees-are-protected",
+          "gap": "Cleanup section runs git worktree remove without any merge-status check. No guard against removing unmerged work."
+        }
+      ]
+    },
+    {
+      "skill": "create-pr",
+      "phase": "2A",
+      "type": "behavior",
+      "result_file": "skills/golem-powers/create-pr/evals/results/phase-2-baseline.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "skill": "coderabbit",
+      "phase": "2A",
+      "type": "behavior",
+      "result_file": "skills/golem-powers/coderabbit/evals/results/phase-2-review-lifecycle-baseline.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "skill": "cmux",
+      "phase": "2B",
+      "type": "behavior",
+      "result_file": "skills/golem-powers/cmux/evals/results/phase-2-baseline.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "skill": "cli-agents",
+      "phase": "2B",
+      "type": "behavior",
+      "result_file": "skills/golem-powers/_archive/cli-agents/evals/results/phase-2-baseline.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "skill": "github",
+      "phase": "2B",
+      "type": "behavior",
+      "result_file": "skills/golem-powers/_archive/github/evals/results/phase-2-baseline.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "skill": "cmux-agents",
+      "phase": "2C",
+      "type": "adapter",
+      "target_cli": "codex",
+      "result_file": "skills/golem-powers/cmux-agents/evals/results/phase-2-baseline-adapters-codex.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    },
+    {
+      "skill": "pr-loop",
+      "phase": "2C",
+      "type": "adapter",
+      "target_cli": "codex",
+      "result_file": "skills/golem-powers/pr-loop/evals/results/phase-2-baseline-adapters-codex.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failures": [
+        {
+          "eval_id": "codex-review-trigger-gap-is-not-overstated",
+          "assertion": "only-true-capability-gaps-are-marked-na",
+          "gap": "cursor_bugbot_trigger: false with 'Cant trigger via automation' overstates — Codex can still run gh pr comment. Should be conditional or shell_only."
+        },
+        {
+          "eval_id": "codex-review-trigger-gap-is-not-overstated",
+          "assertion": "manual-gh-comment-trigger-is-allowed-as-fallback",
+          "gap": "No documented shell fallback for cursor bugbot trigger. 'Manual GitHub comment required' is mentioned but gh pr comment syntax is missing."
+        }
+      ]
+    },
+    {
+      "skill": "commit",
+      "phase": "2C",
+      "type": "adapter",
+      "target_cli": "codex",
+      "result_file": "skills/golem-powers/_archive/commit/evals/results/phase-2-baseline-adapters-codex.json",
+      "assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+      "verdict": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+    }
+  ],
+  "red_packs": "NOT DETERMINED: non-comparable historical verdict withdrawn",
+  "recommended_fixes": [
+    {
+      "skill": "worktrees",
+      "file": "SKILL.md",
+      "fix": "Add explicit warning in parallel-branch section: 'Do NOT branch off the same checkout for parallel work — each branch must get its own worktree.' Add merge check to cleanup guide: 'git branch --merged main | grep <branch>' before git worktree remove."
+    },
+    {
+      "skill": "pr-loop/adapters/capabilities.yaml",
+      "fix": "Change codex cursor_bugbot_trigger from 'false' to 'conditional # gh pr comment available when gh is installed'. Add fallback: 'gh pr comment <N> --body @cursor @bugbot review'."
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims and comparative verdicts are withdrawn because the linked result records do not contain complete per-arm effective runtime model and effort evidence. Original values remain in git history."
+}

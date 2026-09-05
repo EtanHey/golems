@@ -1,0 +1,57 @@
+{
+  "skill_name": "surface-sweep",
+  "evals": [
+    {
+      "id": 1,
+      "name": "fixture-accounting-discriminator",
+      "category": "mechanical",
+      "description": "Distinguishes a persuasive single-path completion report from a seven-class surface ledger without depending on scenario-specific nouns.",
+      "prompt": "Grade the paired completion reports for explicit accounting of all seven surface classes. Each class must have one heading and either Checked: <sites> — <result> or N/A — <reason>.",
+      "expected_output": "The RED fixture fails because classes are absent; the GREEN fixture passes because all seven classes have a concrete disposition. Renaming scenario nouns does not change a pass, and adding an incidental scenario noun does not change a failure.",
+      "files": [
+        "fixtures/red-single-surface.md",
+        "fixtures/green-full-sweep.md"
+      ],
+      "assertions": [
+        {
+          "type": "mechanical",
+          "name": "accounts-for-all-seven-classes",
+          "description": "Requires exactly one section for Entry points, Clients, Providers, Contracts, Reverse states, Connection modes, and Docs."
+        },
+        {
+          "type": "mechanical",
+          "name": "requires-a-concrete-disposition",
+          "description": "Each class uses Checked: <sites> — <result> or N/A — <reason> with non-empty accounting on both required sides."
+        },
+        {
+          "type": "negative",
+          "name": "ignores-scenario-vocabulary",
+          "description": "The grader uses only the seven canonical class names and ledger syntax; fixture-specific products, providers, commands, and state names are not scoring inputs."
+        }
+      ]
+    }
+  ],
+  "fixture_grader": {
+    "command": "node --input-type=module -e \"$(jq -r '.fixture_grader.source' skills/golem-powers/surface-sweep/evals/evals.json)\" skills/golem-powers/surface-sweep/evals/evals.json",
+    "classes": [
+      "Entry points",
+      "Clients",
+      "Providers",
+      "Contracts",
+      "Reverse states",
+      "Connection modes",
+      "Docs"
+    ],
+    "cases": [
+      {
+        "file": "fixtures/red-single-surface.md",
+        "expected_pass": false
+      },
+      {
+        "file": "fixtures/green-full-sweep.md",
+        "expected_pass": true
+      }
+    ],
+    "source": "import fs from \"node:fs\";\nimport path from \"node:path\";\n\nconst configPath = process.argv[1];\nconst config = JSON.parse(fs.readFileSync(configPath, \"utf8\"));\nconst grader = config.fixture_grader;\nconst root = path.dirname(configPath);\n\nfunction gradeText(text) {\n  const issues = [];\n  for (const className of grader.classes) {\n    const heading = new RegExp(\"^##\\\\s+\" + className + \"\\\\s*$\", \"gmi\");\n    const matches = [...text.matchAll(heading)];\n    if (matches.length !== 1) {\n      issues.push(className + \": expected one heading, found \" + matches.length);\n      continue;\n    }\n\n    const bodyStart = matches[0].index + matches[0][0].length;\n    const remainder = text.slice(bodyStart);\n    const nextHeading = remainder.search(/^##\\s+/m);\n    const body = (nextHeading === -1 ? remainder : remainder.slice(0, nextHeading)).trim();\n    const paragraphs = body.split(/\\n\\s*\\n/).map((paragraph) => paragraph.replace(/\\s*\\n\\s*/g, \" \").trim());\n    const checked = paragraphs.some((paragraph) => /^Checked:\\s+\\S(?:.*\\S)?\\s+—\\s+\\S(?:.*\\S)?$/i.test(paragraph));\n    const notApplicable = paragraphs.some((paragraph) => /^N\\/A\\s+—\\s+\\S(?:.*\\S)?$/i.test(paragraph));\n    if (!checked && !notApplicable) {\n      issues.push(className + \": missing Checked sites + result or reasoned N/A\");\n    }\n  }\n  return { pass: issues.length === 0, issues };\n}\n\nlet mismatches = 0;\nlet redText = \"\";\nfor (const testCase of grader.cases) {\n  const text = fs.readFileSync(path.join(root, testCase.file), \"utf8\");\n  if (testCase.expected_pass === false) redText = text;\n  const result = gradeText(text);\n  const matched = result.pass === testCase.expected_pass;\n  if (!matched) mismatches += 1;\n  console.log(\"CASE \" + testCase.file + \" expected=\" + (testCase.expected_pass ? \"PASS\" : \"FAIL\") + \" actual=\" + (result.pass ? \"PASS\" : \"FAIL\") + \" \" + (matched ? \"PASS\" : \"MISMATCH\"));\n  if (result.issues.length > 0) console.log(\"  \" + result.issues.join(\"; \"));\n}\n\nconst renamedGreen = grader.classes.map((className, index) => \"## \" + className + \"\\n\\nChecked: renamed-site-\" + (index + 1) + \" — renamed-result-\" + (index + 1) + \".\").join(\"\\n\\n\");\nconst invariants = [\n  [\"renamed-green-nouns\", gradeText(renamedGreen).pass, true],\n  [\"red-plus-incidental-palette\", gradeText(redText + \"\\n\\npalette\").pass, false]\n];\nfor (const [name, actual, expected] of invariants) {\n  const matched = actual === expected;\n  if (!matched) mismatches += 1;\n  console.log(\"INVARIANT \" + name + \" expected=\" + (expected ? \"PASS\" : \"FAIL\") + \" actual=\" + (actual ? \"PASS\" : \"FAIL\") + \" \" + (matched ? \"PASS\" : \"MISMATCH\"));\n}\n\nconsole.log(\"GRADER \" + (mismatches === 0 ? \"PASS\" : \"FAIL\") + \" mismatches=\" + mismatches);\nif (mismatches > 0) process.exitCode = 1;"
+  }
+}

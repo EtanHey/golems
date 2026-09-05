@@ -1,0 +1,13 @@
+Sprint context: Phase 3 of BrainLayer v2 launch.
+Active agents: none (fresh start).
+cmux surfaces available: :56 (brainlayer), :63 (golems).
+Tasks from plan:
+  1. Implement enrichment consolidation (brainlayer repo)
+  2. Write behavioral eval specs (golems repo)
+  3. Update portfolio site (etanheyman.com repo)
+
+BrainLayer search results:
+  - "Phase 2 complete: 1143 tests pass, 3-tool aliases shipped"
+  - "Enrichment scripts scattered across 3 files, need consolidation"
+
+User message: "Kick off tonight's sprint. 3 tasks, parallel where possible."

@@ -1,0 +1,196 @@
+
+  /* ============================================================================
+     V4 BREAK-THE-MOLD — "Story-Mode Cinema" (additive surface)
+     A full-bleed, one-scene-at-a-time cinematic player layered ON TOP of the proven
+     stacked dashboard. The original DOM + GolemPlaylist engine + teleprompter stay
+     LIVE underneath (audio plays, ended-chain auto-advances, word-highlight ticks);
+     #cinema is a pure presentation layer fed by the golem:active / golem:cue events.
+     "Exit to classic list" hides #cinema and reveals the untouched original.
+     ============================================================================ */
+
+  /* per-domain accents (mirror the base .dom-* palette) drive the ambient backdrop */
+  #cinema{
+    --c-overview:#cdd7e6; --c-brainlayer-baseline:#4ec97f; --c-orc-successor:#5ab0ff;
+    --c-hermes-pi:#a78bfa; --c-control-layer:#f0a35e; --c-comms-layer:#6fd4d4;
+    --c-happy-camper:#e8b339; --c-narration:#ff9ed8; --c-voicebar:#9ad17a;
+    --c-intent-evolution:#c0a0ff; --c-open-forks:#e8b339; --c:var(--gold);
+  }
+
+  /* CLASSIC-LIST escape hatch: when cinema is on, the original page is covered (kept
+     in DOM + functional). When the user exits to list, we drop #cinema entirely. */
+  body.cinema-on{overflow:hidden;padding-top:0}
+  body.cinema-on #golem-single-transport-wrap{display:none}      /* original fixed bar hidden — cinema transport is the surface */
+  body.cinema-on > .wrap{visibility:hidden;pointer-events:none}   /* the notes-tools + section list wrap, kept live but covered */
+  body.cinema-on header.page-hd{visibility:hidden}
+  body.cinema-on footer.page-ft{visibility:hidden}
+  body:not(.cinema-on) #cinema{display:none}
+
+  #cinema{
+    position:fixed; inset:0; z-index:9000; display:flex; flex-direction:column;
+    background:var(--bg); color:var(--txt); overflow:hidden;
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  /* ambient backdrop — domain-tinted, cross-fades on scene change */
+  #cinema .cx-backdrop{
+    position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(1100px 720px at 78% -12%, color-mix(in srgb,var(--c) 30%, transparent) 0%, transparent 60%),
+      radial-gradient(900px 600px at 10% 112%, color-mix(in srgb,var(--c) 16%, transparent) 0%, transparent 55%),
+      linear-gradient(180deg,#070b14 0%, #05080f 100%);
+    transition:background 900ms ease;
+  }
+  #cinema .cx-grain{position:absolute; inset:0; z-index:0; pointer-events:none; opacity:.5;
+    background:radial-gradient(circle at 50% 40%, transparent 0%, rgba(0,0,0,.32) 100%);}
+
+  /* TOP META BAR */
+  #cinema .cx-top{position:relative; z-index:3; display:flex; align-items:center; gap:14px;
+    padding:18px 26px 10px; flex-wrap:wrap}
+  #cinema .cx-kicker{font-size:11px; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--c);
+    transition:color 600ms ease; white-space:nowrap}
+  #cinema .cx-scene{font-variant-numeric:tabular-nums; font-size:12.5px; font-weight:800; color:var(--dim)}
+  #cinema .cx-scene b{color:var(--txt); font-size:15px}
+  #cinema .cx-domain{font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    border-radius:20px; padding:4px 11px; border:1px solid color-mix(in srgb,var(--c) 45%, transparent);
+    color:var(--c); background:color-mix(in srgb,var(--c) 12%, transparent); transition:all 600ms ease; white-space:nowrap}
+  #cinema .cx-runtime{font-size:11.5px; color:var(--dim); font-variant-numeric:tabular-nums}
+  #cinema .cx-spacer{flex:1}
+  #cinema .cx-exit{font-size:11.5px; font-weight:700; color:var(--dim); background:var(--panel2);
+    border:1px solid var(--line); border-radius:20px; padding:7px 13px; cursor:pointer; white-space:nowrap}
+  #cinema .cx-exit:hover{color:var(--txt); border-color:var(--c)}
+
+  /* STAGE — the single focused scene */
+  #cinema .cx-stage{position:relative; z-index:2; flex:1; min-height:0; display:flex; flex-direction:column;
+    justify-content:center; align-items:center; text-align:center; padding:10px 7vw 6px; gap:14px}
+  #cinema .cx-domain-big{font-size:12px; font-weight:800; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--c); transition:color 600ms ease}
+  #cinema .cx-title{font-size:clamp(19px, 2.7vw, 31px); line-height:1.18; font-weight:800; letter-spacing:-.01em;
+    max-width:22ch; margin:0; background:linear-gradient(180deg,#ffffff, color-mix(in srgb,var(--c) 55%, #ffffff));
+    -webkit-background-clip:text; background-clip:text; color:transparent; transition:all 500ms ease}
+
+  /* the living teleprompter — the centerpiece "visual": a flowing karaoke paragraph.
+     Bounded height + a top/bottom fade mask = the active word stays centered, the rest
+     drifts into the dark. The whole narration is present; spoken words read brighter. */
+  #cinema .cx-tele{width:min(900px, 92vw); height:min(44vh, 400px); overflow-y:auto; overflow-x:hidden;
+    margin-top:2px; padding:10px 6px; scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 17%,#000 83%,transparent 100%);
+    mask-image:linear-gradient(180deg,transparent 0,#000 17%,#000 83%,transparent 100%)}
+  #cinema .cx-tele::-webkit-scrollbar{display:none}
+  #cinema .cx-para{font-size:clamp(17px,2.25vw,27px); line-height:1.85; font-weight:600; text-align:center; color:#7d8aa3}
+  #cinema .cx-w{display:inline-block; border-radius:7px; padding:0 3px; cursor:pointer; will-change:transform;
+    transition:color 200ms cubic-bezier(.22,1,.36,1), transform 220ms cubic-bezier(.34,1.56,.64,1), text-shadow 200ms ease, background-color 150ms ease}
+  #cinema .cx-w:hover{color:#fff; background-color:color-mix(in srgb,var(--c) 22%, transparent)}
+  #cinema .cx-w.read{color:#566378}                         /* already-spoken DIMS below upcoming (Apple-Music read flow) */
+  #cinema .cx-w.on{color:#fff; background:transparent; transform:scale(1.1); position:relative; z-index:1;
+    text-shadow:0 0 18px color-mix(in srgb,var(--c) 78%, transparent), 0 0 5px color-mix(in srgb,var(--c) 55%, transparent)}
+  #cinema .cx-idlehint{color:var(--dim); font-size:15px; max-width:34ch; margin:0 auto; padding-top:18px}
+  #cinema .cx-disclosure{font-size:10.5px; font-style:italic; color:#5d6b82; margin-top:4px}
+
+  /* scene progress + scrubber (click anywhere to seek within the scene) */
+  #cinema .cx-prog{position:relative; z-index:3; height:6px; margin:2px 26px; background:rgba(255,255,255,.08); border-radius:6px; overflow:hidden; cursor:pointer; transition:height 120ms ease}
+  #cinema .cx-prog:hover{height:9px; background:rgba(255,255,255,.14)}
+  #cinema .cx-prog .fill{position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--c); transition:width 180ms linear, background 600ms ease}
+
+  /* TRANSPORT */
+  #cinema .cx-transport{position:relative; z-index:3; display:flex; align-items:center; justify-content:center; gap:10px;
+    padding:14px 26px 8px; flex-wrap:wrap}
+  #cinema .cx-btn{font-size:14px; font-weight:700; color:var(--txt); background:var(--panel2); border:1px solid var(--line);
+    border-radius:999px; min-width:44px; height:44px; padding:0 16px; cursor:pointer; display:inline-flex;
+    align-items:center; justify-content:center; gap:7px;
+    transition:transform 140ms cubic-bezier(.34,1.56,.64,1), border-color 160ms, box-shadow 200ms, background-color 200ms}
+  #cinema .cx-btn:hover{border-color:var(--c); transform:translateY(-2px); box-shadow:0 6px 18px color-mix(in srgb,var(--c) 22%, transparent)}
+  #cinema .cx-btn:active{transform:translateY(0) scale(.96)}
+  #cinema .cx-btn.primary{background:var(--c); color:#05080f; border-color:var(--c); font-size:14.5px; padding:0 22px; box-shadow:0 4px 16px color-mix(in srgb,var(--c) 35%, transparent)}
+  #cinema .cx-btn.playing.primary{background:var(--green); border-color:var(--green); color:#05080f; animation:cxpulse 2.4s ease-in-out infinite}
+  #cinema .cx-btn:disabled{opacity:.4; cursor:default; transform:none; box-shadow:none}
+  #cinema .cx-spd{font-size:12.5px; font-weight:700; color:var(--txt); background:var(--panel2); border:1px solid var(--line);
+    border-radius:999px; height:44px; padding:0 12px; cursor:pointer}
+  #cinema .cx-spd:focus-visible{outline:2px solid var(--c)}
+
+  /* ARC-RAIL — the 2-day arc as a horizontal scrubbable time-rail (the navigation model) */
+  #cinema .cx-railwrap{position:relative; z-index:3; padding:6px 18px 18px}
+  #cinema .cx-raillabel{font-size:9.5px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#48566e;
+    text-align:center; margin-bottom:7px}
+  #cinema .cx-rail,#cinema .cx-strip{display:flex; align-items:flex-end; gap:8px; overflow-x:auto; overflow-y:hidden; padding:0 4px 10px;
+    scroll-behavior:smooth; scrollbar-width:thin}
+  #cinema .cx-rail::-webkit-scrollbar{height:6px}
+  #cinema .cx-rail::-webkit-scrollbar-thumb{background:#1f2937; border-radius:6px}
+  #cinema .cx-group{display:flex; flex:0 0 auto; flex-direction:column; gap:4px; align-items:stretch}
+  #cinema .cx-grp-nodes{display:flex; align-items:flex-end; gap:3px; height:40px; padding-top:2px}
+  #cinema .cx-node{flex:0 0 auto; width:14px; height:26px; border-radius:5px; cursor:pointer; position:relative;
+    background:color-mix(in srgb, var(--nc) 26%, #0c1322); border:1px solid color-mix(in srgb, var(--nc) 30%, transparent);
+    transition:height 200ms ease, width 200ms ease, background 200ms ease, transform 120ms ease}
+  #cinema .cx-node:hover{transform:translateY(-3px); background:color-mix(in srgb, var(--nc) 55%, #0c1322)}
+  #cinema .cx-node.done{background:color-mix(in srgb, var(--nc) 45%, #0c1322)}
+  #cinema .cx-node.active{width:30px; height:40px; background:var(--nc); border-color:var(--nc);
+    box-shadow:0 0 16px color-mix(in srgb, var(--nc) 55%, transparent)}
+  #cinema .cx-node.active .nodefill{position:absolute; left:0; right:0; bottom:0; background:rgba(255,255,255,.55);
+    border-radius:0 0 4px 4px; height:0%}
+  #cinema .cx-node .tip{position:absolute; bottom:46px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    background:#0c1322; border:1px solid var(--line); color:var(--txt); font-size:11px; font-weight:600;
+    padding:5px 9px; border-radius:8px; opacity:0; pointer-events:none; transition:opacity 140ms; max-width:240px;
+    overflow:hidden; text-overflow:ellipsis; z-index:5}
+  #cinema .cx-node:hover .tip{opacity:1}
+
+  /* a soft "return to cinema" pill shown when in classic-list mode */
+  #cx-resume{position:fixed; z-index:1500; right:16px; bottom:16px; display:none; font-size:12.5px; font-weight:700;
+    color:#05080f; background:var(--gold); border:0; border-radius:999px; padding:11px 18px; cursor:pointer;
+    box-shadow:0 6px 22px rgba(0,0,0,.5)}
+  body:not(.cinema-on) #cx-resume{display:inline-flex; align-items:center; gap:7px}
+
+  @media(max-width:640px){
+    #cinema .cx-top{padding:12px 14px 6px; gap:9px}
+    #cinema .cx-runtime,#cinema .cx-kicker{display:none}
+    #cinema .cx-stage{padding:6px 18px 4px; gap:10px}
+    #cinema .cx-title{font-size:clamp(20px,6vw,26px); max-width:none}
+    #cinema .cx-tele{min-height:120px}
+    #cinema .cx-prog,#cinema .cx-railwrap{margin:0; padding-left:12px; padding-right:12px}
+    #cinema .cx-node{width:10px; min-height:22px}
+    #cinema .cx-node.active{width:24px; height:36px}
+    #cinema .cx-band-lbl{font-size:8px}
+    #cinema .cx-transport{padding:10px 12px 6px; gap:8px}
+    #cinema .cx-btn{height:46px}
+  }
+
+  /* === GREATNESS PASS (additive motion / a11y / chapter-timeline) === */
+
+  /* playing-pulse keyframe for the primary transport button */
+  @keyframes cxpulse{
+    0%,100%{box-shadow:0 4px 16px color-mix(in srgb,var(--green) 30%, transparent)}
+    50%{box-shadow:0 4px 26px color-mix(in srgb,var(--green) 55%, transparent)}
+  }
+
+  /* living backdrop — slow ambient drift + breathing grain (transform/opacity only,
+     so the existing 900ms domain background cross-fade is untouched) */
+  #cinema .cx-backdrop{animation:cxdrift 26s ease-in-out infinite alternate}
+  @keyframes cxdrift{0%{transform:scale(1)}100%{transform:scale(1.06)}}
+  #cinema .cx-grain{animation:cxbreathe 9s ease-in-out infinite}
+  @keyframes cxbreathe{0%,100%{opacity:.5}50%{opacity:.62}}
+
+  /* arc-rail node: spring-in + idle glow on the active node */
+  #cinema .cx-node{transition:height 280ms cubic-bezier(.34,1.56,.64,1), width 280ms cubic-bezier(.34,1.56,.64,1), background 240ms ease, transform 160ms ease}
+  #cinema .cx-node.active{animation:cxnodeglow 3s ease-in-out infinite}
+  @keyframes cxnodeglow{0%,100%{box-shadow:0 0 14px color-mix(in srgb,var(--nc) 45%, transparent)}50%{box-shadow:0 0 22px color-mix(in srgb,var(--nc) 70%, transparent)}}
+  #cinema .cx-node.active .nodefill{transition:height 120ms linear}
+
+  /* CHAPTER TIMELINE — each label is structurally tied to the scene nodes under it */
+  #cinema .cx-band{flex:0 0 auto; min-width:100%; height:22px; border:0; border-radius:6px 6px 0 0; cursor:pointer; position:relative;
+    display:flex; align-items:center; padding:0 7px; overflow:visible; opacity:.5; background:color-mix(in srgb,var(--nc) 22%, #0c1322);
+    transition:opacity 220ms ease, filter 220ms ease}
+  #cinema .cx-band:hover{opacity:.85}
+  #cinema .cx-band.active{opacity:1; filter:brightness(1.14); box-shadow:0 0 12px color-mix(in srgb,var(--nc) 45%, transparent)}
+  #cinema .cx-band-lbl{display:block; font:800 8.5px/1 -apple-system,BlinkMacSystemFont,sans-serif; letter-spacing:.07em; text-transform:uppercase;
+    color:color-mix(in srgb,var(--nc) 82%, #fff); white-space:nowrap; overflow:visible}
+
+  /* focus-visible rings — keyboard users were previously invisible */
+  #cinema .cx-btn:focus-visible,#cinema .cx-exit:focus-visible,#cinema .cx-node:focus-visible,
+  #cinema .cx-band:focus-visible,#cinema .cx-w:focus-visible,#cx-resume:focus-visible{
+    outline:2px solid #fff; outline-offset:2px; box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 50%, transparent)}
+  #cinema .cx-prog:focus-visible{outline:2px solid var(--c); outline-offset:2px}
+
+  /* respect reduced-motion: kill all the new motion + make scrolls instant */
+  @media (prefers-reduced-motion: reduce){
+    #cinema .cx-backdrop,#cinema .cx-grain,#cinema .cx-btn.playing.primary,#cinema .cx-node.active{animation:none !important}
+    #cinema .cx-w,#cinema .cx-title,#cinema .cx-domain-big,#cinema .cx-node,#cinema .cx-band,#cinema .cx-btn{transition-duration:.001ms !important}
+    #cinema .cx-w.on{transform:none}
+    #cinema .cx-tele,#cinema .cx-rail,#cinema .cx-strip{scroll-behavior:auto}
+  }

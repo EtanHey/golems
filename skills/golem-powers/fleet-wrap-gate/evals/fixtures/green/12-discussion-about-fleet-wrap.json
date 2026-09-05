@@ -1,0 +1,21 @@
+{
+  "specimen": "false-positive guard — discussion about fleet-wrap is not a terminal state",
+  "label": "GREEN — design discussion names fleet-wrap but does not declare this seat wrapped.",
+  "expect": "PASS",
+  "state": {
+    "crons": [
+      {
+        "id": "cron-mid-sprint-12",
+        "status": "active",
+        "prompt": "drive current sprint"
+      }
+    ]
+  },
+  "events": [
+    { "role": "user", "text": "what should fleet-wrap-gate enforce?" },
+    {
+      "role": "assistant",
+      "text": "The fleet-wrap gate should check durable cron state before a final stand-down claim."
+    }
+  ]
+}

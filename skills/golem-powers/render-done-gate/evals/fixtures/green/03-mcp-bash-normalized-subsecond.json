@@ -1,0 +1,43 @@
+{
+  "specimen": "false-positive-guard/tool-name-normalization + sub-second",
+  "label": "GREEN — composite probe via an MCP-wrapped Bash tool name (mcp__cmuxlayer__Bash → baseName Bash) + a sub-second duration (0.8s) is valid",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Render the 0.8s AfterCode stinger to out/stinger.mp3 with the registered clone."
+    },
+    {
+      "role": "assistant",
+      "text": "Rendering with theo-c4s, then the composite probe (via the cmux Bash tool).",
+      "tools": [
+        {
+          "name": "mcp__cmuxlayer__Bash",
+          "input": {
+            "command": "narrate --reference theo-c4s -o out/stinger.mp3"
+          }
+        },
+        {
+          "name": "mcp__cmuxlayer__Bash",
+          "input": { "command": "ls -l out/stinger.mp3" }
+        },
+        {
+          "name": "mcp__cmuxlayer__Bash",
+          "input": {
+            "command": "ffprobe -v error -show_entries format=size,duration out/stinger.mp3"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "resolved --reference theo-c4s (registered clone)"
+    },
+    { "role": "tool", "text": "-rw-r--r-- 1 user staff 4096 out/stinger.mp3" },
+    { "role": "tool", "text": "size=4096\nduration=0.8" },
+    {
+      "role": "assistant",
+      "text": "Render done ✅ — out/stinger.mp3 is 4096 bytes, 0.8s, --reference resolved to theo-c4s. Give it a play."
+    }
+  ]
+}

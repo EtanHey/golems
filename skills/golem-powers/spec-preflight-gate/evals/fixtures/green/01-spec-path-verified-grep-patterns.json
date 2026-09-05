@@ -1,0 +1,24 @@
+{
+  "specimen": "asserts spec path exists before spawn and briefs grep-patterns",
+  "events": [
+    { "role": "user", "text": "Spawn a worker from docs/plan/spawn-hygiene.md.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Checking path then dispatching.",
+      "tools": [
+        { "name": "Bash", "input": { "command": "test -f docs/plan/spawn-hygiene.md && grep -n \"assert-before-spawn\\|identity\" docs/plan/spawn-hygiene.md" } },
+        {
+          "name": "spawn_agent",
+          "input": {
+            "name": "golems",
+            "repo": "golems",
+            "launcher": "golems",
+            "prompt": "Use grep-patterns `assert-before-spawn` and `identity` from docs/plan/spawn-hygiene.md; preserve the structural invariant that path checks happen before dispatch."
+          }
+        }
+      ]
+    },
+    { "role": "tool", "text": "docs/plan/spawn-hygiene.md:12:assert-before-spawn\ndocs/plan/spawn-hygiene.md:18:identity", "tools": [] },
+    { "role": "tool", "text": "spawned agent golems in repo golems with launcher golems", "tools": [] }
+  ]
+}

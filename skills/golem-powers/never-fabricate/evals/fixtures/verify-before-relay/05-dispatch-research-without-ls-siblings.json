@@ -1,0 +1,31 @@
+{
+  "specimen": "gen-18 Track 2 #4 / R-008 — dispatch-research-without-ls-siblings",
+  "class": "dispatch-research-without-ls-siblings",
+  "label": "Dispatching a research task without first `ls`-ing the sibling results/ dir to see if it's already answered",
+  "expect": "FLAG",
+  "violation": "VBR_DISPATCH_WITHOUT_LS_SIBLINGS",
+  "why": "Before dispatching a research/agent task, ls the sibling results/ directory — the answer may already exist on disk. Spawning a fresh research run (Agent / cmux spawn / dispatch_to_agent / cursor-agent) without that ls duplicates work and risks contradicting an existing answer. The ls-siblings probe must precede the dispatch in the same turn.",
+  "events": [
+    {
+      "role": "user",
+      "text": "Find out which read-path architecture we picked."
+    },
+    {
+      "role": "assistant",
+      "text": "Dispatching a research agent to investigate the read-path decision.",
+      "tools": [
+        {
+          "name": "Task",
+          "input": {
+            "subagent_type": "researcher",
+            "prompt": "Research which read-path architecture the team chose."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Research dispatched — the agent will report back on the read-path decision."
+    }
+  ]
+}

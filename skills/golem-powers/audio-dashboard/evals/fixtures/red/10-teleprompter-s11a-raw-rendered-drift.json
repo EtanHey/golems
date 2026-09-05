@@ -1,0 +1,2272 @@
+{
+  "specimen": "s11a shipped dashboard raw-vs-rendered teleprompter drift",
+  "gate": "teleprompter-drift-publish",
+  "violation": "TAIL_WORD_TIMING_DRIFT",
+  "expectedAlignedTailDeltaSeconds": 1.48,
+  "source": {
+    "audio": "$NARRATIONLAYER_HOME/jobs/model-comparison/segments/s11a/s11a.wav",
+    "renderedTpdata": "$ORCHESTRATOR_ROOT/docs.local/dashboards/model-comparison.html#tpdata.s11a",
+    "observation": "An operator reported marked-word-versus-spoken-word desync; this syntheticized fixture preserves the timing regression while generalizing people, products, and paths.",
+    "contract": "$ORCHESTRATOR_ROOT/standards/layers/gates.md sections 7 and 8.4"
+  },
+  "teleprompterDrift": {
+    "description": "The shipped repaired teleprompter series diverges from the original take's raw timing series through the tail.",
+    "segments": [
+      {
+        "id": "s11a",
+        "transcript": "So, context first. I have had Nimbus for quite a bit, since before Atlas even dropped. Atlas, I got nothing early. I subscribed like everyone else, had it for three days before we lost it, waited weeks, and now I have had it back for about a week and a half. And I am very impressed, I will be real. Both of these models are absolutely incredible, and I do substantial compute in token utilization with both, every single day. I have never built as much as I have over the last couple weeks. The community split is real, though. Alex said five six was the best model he had ever used, then Atlas came out and he stopped using five six overnight. Jules, who runs CodeBench, had it the other way: his people had Atlas early, were not that interested, and when five six came back it was immediately clear to them it was way better. They were also stuck running it on medium because of a bug and did not even know. And Morgan was tweeting about missing Atlas when what he actually missed was Nimbus.",
+        "sourceWords": [
+          {
+            "index": 0,
+            "word": "So",
+            "start": 0.08,
+            "end": 0.2,
+            "confidence": 0.982
+          },
+          {
+            "index": 1,
+            "word": "context",
+            "start": 0.2,
+            "end": 0.92,
+            "confidence": 0.781
+          },
+          {
+            "index": 2,
+            "word": "first,",
+            "start": 0.92,
+            "end": 1.65,
+            "confidence": 0.626
+          },
+          {
+            "index": 3,
+            "word": "I",
+            "start": 1.7,
+            "end": 1.75,
+            "confidence": 0.785
+          },
+          {
+            "index": 4,
+            "word": "have",
+            "start": 1.75,
+            "end": 1.78,
+            "confidence": 1
+          },
+          {
+            "index": 5,
+            "word": "had",
+            "start": 2.4,
+            "end": 2.4,
+            "confidence": 0.999
+          },
+          {
+            "index": 6,
+            "word": "Nimbus",
+            "start": 2.61,
+            "end": 2.68,
+            "confidence": 0.535
+          },
+          {
+            "index": 7,
+            "word": "for",
+            "start": 2.68,
+            "end": 2.96,
+            "confidence": 0.998
+          },
+          {
+            "index": 8,
+            "word": "quite",
+            "start": 2.96,
+            "end": 3.37,
+            "confidence": 1
+          },
+          {
+            "index": 9,
+            "word": "a",
+            "start": 3.43,
+            "end": 3.51,
+            "confidence": 1
+          },
+          {
+            "index": 10,
+            "word": "bit",
+            "start": 3.51,
+            "end": 3.75,
+            "confidence": 0.999
+          },
+          {
+            "index": 11,
+            "word": "since",
+            "start": 4.13,
+            "end": 4.13,
+            "confidence": 0.586
+          },
+          {
+            "index": 12,
+            "word": "before",
+            "start": 4.26,
+            "end": 4.5,
+            "confidence": 0.99
+          },
+          {
+            "index": 13,
+            "word": "Atlas",
+            "start": 4.5,
+            "end": 4.73,
+            "confidence": 0.981
+          },
+          {
+            "index": 14,
+            "word": "even",
+            "start": 4.81,
+            "end": 5.04,
+            "confidence": 0.999
+          },
+          {
+            "index": 15,
+            "word": "dropped.",
+            "start": 5.04,
+            "end": 5.59,
+            "confidence": 0.979
+          },
+          {
+            "index": 16,
+            "word": "Atlas,",
+            "start": 6.46,
+            "end": 6.78,
+            "confidence": 0.892
+          },
+          {
+            "index": 17,
+            "word": "I",
+            "start": 6.78,
+            "end": 6.81,
+            "confidence": 0.998
+          },
+          {
+            "index": 18,
+            "word": "got",
+            "start": 7.3,
+            "end": 7.42,
+            "confidence": 1
+          },
+          {
+            "index": 19,
+            "word": "nothing",
+            "start": 7.42,
+            "end": 8.09,
+            "confidence": 1
+          },
+          {
+            "index": 20,
+            "word": "early.",
+            "start": 9.07,
+            "end": 9.83,
+            "confidence": 0.999
+          },
+          {
+            "index": 21,
+            "word": "I",
+            "start": 10.26,
+            "end": 10.26,
+            "confidence": 1
+          },
+          {
+            "index": 22,
+            "word": "subscribed",
+            "start": 10.34,
+            "end": 10.61,
+            "confidence": 0.999
+          },
+          {
+            "index": 23,
+            "word": "like",
+            "start": 10.93,
+            "end": 10.93,
+            "confidence": 1
+          },
+          {
+            "index": 24,
+            "word": "everyone",
+            "start": 11.1,
+            "end": 11.51,
+            "confidence": 1
+          },
+          {
+            "index": 25,
+            "word": "else,",
+            "start": 11.51,
+            "end": 11.9,
+            "confidence": 0.793
+          },
+          {
+            "index": 26,
+            "word": "had",
+            "start": 11.95,
+            "end": 12.04,
+            "confidence": 0.995
+          },
+          {
+            "index": 27,
+            "word": "it",
+            "start": 12.3,
+            "end": 12.3,
+            "confidence": 1
+          },
+          {
+            "index": 28,
+            "word": "for",
+            "start": 12.3,
+            "end": 12.52,
+            "confidence": 1
+          },
+          {
+            "index": 29,
+            "word": "three",
+            "start": 12.85,
+            "end": 12.88,
+            "confidence": 0.998
+          },
+          {
+            "index": 30,
+            "word": "days",
+            "start": 12.88,
+            "end": 13.17,
+            "confidence": 1
+          },
+          {
+            "index": 31,
+            "word": "before",
+            "start": 13.17,
+            "end": 13.61,
+            "confidence": 1
+          },
+          {
+            "index": 32,
+            "word": "we",
+            "start": 13.61,
+            "end": 13.75,
+            "confidence": 1
+          },
+          {
+            "index": 33,
+            "word": "lost",
+            "start": 13.75,
+            "end": 14.01,
+            "confidence": 1
+          },
+          {
+            "index": 34,
+            "word": "it,",
+            "start": 14.18,
+            "end": 14.4,
+            "confidence": 0.911
+          },
+          {
+            "index": 35,
+            "word": "waited",
+            "start": 14.61,
+            "end": 15.27,
+            "confidence": 0.927
+          },
+          {
+            "index": 36,
+            "word": "weeks.",
+            "start": 15.27,
+            "end": 16,
+            "confidence": 0.681
+          },
+          {
+            "index": 37,
+            "word": "And",
+            "start": 16.44,
+            "end": 16.44,
+            "confidence": 0.986
+          },
+          {
+            "index": 38,
+            "word": "now",
+            "start": 16.44,
+            "end": 16.44,
+            "confidence": 1
+          },
+          {
+            "index": 39,
+            "word": "I",
+            "start": 16.51,
+            "end": 16.51,
+            "confidence": 1
+          },
+          {
+            "index": 40,
+            "word": "have",
+            "start": 16.52,
+            "end": 16.79,
+            "confidence": 1
+          },
+          {
+            "index": 41,
+            "word": "had",
+            "start": 17.02,
+            "end": 17.02,
+            "confidence": 1
+          },
+          {
+            "index": 42,
+            "word": "it",
+            "start": 17.17,
+            "end": 17.17,
+            "confidence": 1
+          },
+          {
+            "index": 43,
+            "word": "back",
+            "start": 17.3,
+            "end": 17.46,
+            "confidence": 1
+          },
+          {
+            "index": 44,
+            "word": "for",
+            "start": 17.46,
+            "end": 17.62,
+            "confidence": 1
+          },
+          {
+            "index": 45,
+            "word": "about",
+            "start": 17.67,
+            "end": 18.05,
+            "confidence": 1
+          },
+          {
+            "index": 46,
+            "word": "a",
+            "start": 18.05,
+            "end": 18.09,
+            "confidence": 1
+          },
+          {
+            "index": 47,
+            "word": "week",
+            "start": 18.13,
+            "end": 18.22,
+            "confidence": 1
+          },
+          {
+            "index": 48,
+            "word": "and",
+            "start": 18.41,
+            "end": 18.63,
+            "confidence": 1
+          },
+          {
+            "index": 49,
+            "word": "a",
+            "start": 18.63,
+            "end": 18.7,
+            "confidence": 1
+          },
+          {
+            "index": 50,
+            "word": "half.",
+            "start": 18.99,
+            "end": 19.3,
+            "confidence": 0.985
+          },
+          {
+            "index": 51,
+            "word": "And",
+            "start": 19.8,
+            "end": 19.8,
+            "confidence": 0.999
+          },
+          {
+            "index": 52,
+            "word": "I'm",
+            "start": 19.8,
+            "end": 19.8,
+            "confidence": 1
+          },
+          {
+            "index": 53,
+            "word": "very",
+            "start": 19.88,
+            "end": 20.1,
+            "confidence": 1
+          },
+          {
+            "index": 54,
+            "word": "impressed.",
+            "start": 20.1,
+            "end": 21.07,
+            "confidence": 0.999
+          },
+          {
+            "index": 55,
+            "word": "I",
+            "start": 21.4,
+            "end": 21.4,
+            "confidence": 0.997
+          },
+          {
+            "index": 56,
+            "word": "will",
+            "start": 21.44,
+            "end": 21.44,
+            "confidence": 1
+          },
+          {
+            "index": 57,
+            "word": "be",
+            "start": 21.48,
+            "end": 21.58,
+            "confidence": 1
+          },
+          {
+            "index": 58,
+            "word": "real.",
+            "start": 21.58,
+            "end": 22.1,
+            "confidence": 0.987
+          },
+          {
+            "index": 59,
+            "word": "Both",
+            "start": 22.64,
+            "end": 22.64,
+            "confidence": 0.883
+          },
+          {
+            "index": 60,
+            "word": "of",
+            "start": 22.64,
+            "end": 22.64,
+            "confidence": 1
+          },
+          {
+            "index": 61,
+            "word": "these",
+            "start": 22.72,
+            "end": 22.93,
+            "confidence": 1
+          },
+          {
+            "index": 62,
+            "word": "models",
+            "start": 22.93,
+            "end": 22.99,
+            "confidence": 1
+          },
+          {
+            "index": 63,
+            "word": "are",
+            "start": 23.5,
+            "end": 23.62,
+            "confidence": 1
+          },
+          {
+            "index": 64,
+            "word": "absolutely",
+            "start": 23.62,
+            "end": 24.27,
+            "confidence": 1
+          },
+          {
+            "index": 65,
+            "word": "incredible.",
+            "start": 24.38,
+            "end": 25.42,
+            "confidence": 0.993
+          },
+          {
+            "index": 66,
+            "word": "And",
+            "start": 25.9,
+            "end": 26.01,
+            "confidence": 0.997
+          },
+          {
+            "index": 67,
+            "word": "I",
+            "start": 26.01,
+            "end": 26.07,
+            "confidence": 1
+          },
+          {
+            "index": 68,
+            "word": "do",
+            "start": 26.07,
+            "end": 26.17,
+            "confidence": 1
+          },
+          {
+            "index": 69,
+            "word": "substantial",
+            "start": 26.66,
+            "end": 26.73,
+            "confidence": 1
+          },
+          {
+            "index": 70,
+            "word": "of",
+            "start": 26.73,
+            "end": 26.86,
+            "confidence": 1
+          },
+          {
+            "index": 71,
+            "word": "compute",
+            "start": 26.86,
+            "end": 27.3,
+            "confidence": 1
+          },
+          {
+            "index": 72,
+            "word": "in",
+            "start": 27.34,
+            "end": 27.45,
+            "confidence": 1
+          },
+          {
+            "index": 73,
+            "word": "token",
+            "start": 27.45,
+            "end": 27.6,
+            "confidence": 1
+          },
+          {
+            "index": 74,
+            "word": "utilization",
+            "start": 28.41,
+            "end": 28.5,
+            "confidence": 0.999
+          },
+          {
+            "index": 75,
+            "word": "with",
+            "start": 28.5,
+            "end": 28.76,
+            "confidence": 1
+          },
+          {
+            "index": 76,
+            "word": "both",
+            "start": 28.76,
+            "end": 29.02,
+            "confidence": 1
+          },
+          {
+            "index": 77,
+            "word": "every",
+            "start": 29.02,
+            "end": 29.35,
+            "confidence": 1
+          },
+          {
+            "index": 78,
+            "word": "single",
+            "start": 29.35,
+            "end": 29.57,
+            "confidence": 1
+          },
+          {
+            "index": 79,
+            "word": "day.",
+            "start": 29.93,
+            "end": 30.2,
+            "confidence": 1
+          },
+          {
+            "index": 80,
+            "word": "I",
+            "start": 30.74,
+            "end": 30.74,
+            "confidence": 1
+          },
+          {
+            "index": 81,
+            "word": "have",
+            "start": 30.74,
+            "end": 30.74,
+            "confidence": 1
+          },
+          {
+            "index": 82,
+            "word": "never",
+            "start": 30.82,
+            "end": 30.97,
+            "confidence": 1
+          },
+          {
+            "index": 83,
+            "word": "built",
+            "start": 30.97,
+            "end": 31.09,
+            "confidence": 1
+          },
+          {
+            "index": 84,
+            "word": "as",
+            "start": 31.51,
+            "end": 31.51,
+            "confidence": 1
+          },
+          {
+            "index": 85,
+            "word": "much",
+            "start": 31.6,
+            "end": 31.79,
+            "confidence": 1
+          },
+          {
+            "index": 86,
+            "word": "as",
+            "start": 31.85,
+            "end": 31.93,
+            "confidence": 1
+          },
+          {
+            "index": 87,
+            "word": "I",
+            "start": 31.98,
+            "end": 32.02,
+            "confidence": 1
+          },
+          {
+            "index": 88,
+            "word": "have",
+            "start": 32.02,
+            "end": 32.35,
+            "confidence": 1
+          },
+          {
+            "index": 89,
+            "word": "over",
+            "start": 32.35,
+            "end": 32.49,
+            "confidence": 1
+          },
+          {
+            "index": 90,
+            "word": "the",
+            "start": 32.89,
+            "end": 32.89,
+            "confidence": 1
+          },
+          {
+            "index": 91,
+            "word": "last",
+            "start": 33.2,
+            "end": 33.2,
+            "confidence": 1
+          },
+          {
+            "index": 92,
+            "word": "couple",
+            "start": 33.35,
+            "end": 33.67,
+            "confidence": 1
+          },
+          {
+            "index": 93,
+            "word": "of",
+            "start": 33.67,
+            "end": 33.74,
+            "confidence": 0.363
+          },
+          {
+            "index": 94,
+            "word": "weeks.",
+            "start": 33.86,
+            "end": 34.49,
+            "confidence": 1
+          },
+          {
+            "index": 95,
+            "word": "The",
+            "start": 35.06,
+            "end": 35.06,
+            "confidence": 1
+          },
+          {
+            "index": 96,
+            "word": "community",
+            "start": 35.13,
+            "end": 35.41,
+            "confidence": 0.997
+          },
+          {
+            "index": 97,
+            "word": "split",
+            "start": 35.9,
+            "end": 36.06,
+            "confidence": 1
+          },
+          {
+            "index": 98,
+            "word": "is",
+            "start": 36.06,
+            "end": 36.24,
+            "confidence": 1
+          },
+          {
+            "index": 99,
+            "word": "real,",
+            "start": 36.24,
+            "end": 36.7,
+            "confidence": 0.907
+          },
+          {
+            "index": 100,
+            "word": "though.",
+            "start": 36.75,
+            "end": 37.6,
+            "confidence": 1
+          },
+          {
+            "index": 101,
+            "word": "Alex",
+            "start": 39.76,
+            "end": 39.76,
+            "confidence": 0.999
+          },
+          {
+            "index": 102,
+            "word": "said",
+            "start": 39.76,
+            "end": 39.76,
+            "confidence": 1
+          },
+          {
+            "index": 103,
+            "word": "5.6",
+            "start": 39.76,
+            "end": 39.76,
+            "confidence": 0.879
+          },
+          {
+            "index": 104,
+            "word": "was",
+            "start": 39.84,
+            "end": 39.94,
+            "confidence": 0.999
+          },
+          {
+            "index": 105,
+            "word": "the",
+            "start": 39.94,
+            "end": 40.11,
+            "confidence": 1
+          },
+          {
+            "index": 106,
+            "word": "best",
+            "start": 40.6,
+            "end": 40.76,
+            "confidence": 1
+          },
+          {
+            "index": 107,
+            "word": "model",
+            "start": 40.76,
+            "end": 41.35,
+            "confidence": 1
+          },
+          {
+            "index": 108,
+            "word": "he",
+            "start": 41.35,
+            "end": 41.51,
+            "confidence": 1
+          },
+          {
+            "index": 109,
+            "word": "had",
+            "start": 41.93,
+            "end": 41.93,
+            "confidence": 1
+          },
+          {
+            "index": 110,
+            "word": "ever",
+            "start": 42.35,
+            "end": 42.4,
+            "confidence": 1
+          },
+          {
+            "index": 111,
+            "word": "used.",
+            "start": 42.4,
+            "end": 43.32,
+            "confidence": 1
+          },
+          {
+            "index": 112,
+            "word": "Then",
+            "start": 43.82,
+            "end": 43.82,
+            "confidence": 1
+          },
+          {
+            "index": 113,
+            "word": "Atlas",
+            "start": 43.82,
+            "end": 43.86,
+            "confidence": 1
+          },
+          {
+            "index": 114,
+            "word": "came",
+            "start": 43.9,
+            "end": 44.1,
+            "confidence": 1
+          },
+          {
+            "index": 115,
+            "word": "out",
+            "start": 44.1,
+            "end": 44.17,
+            "confidence": 1
+          },
+          {
+            "index": 116,
+            "word": "and",
+            "start": 44.46,
+            "end": 44.46,
+            "confidence": 0.977
+          },
+          {
+            "index": 117,
+            "word": "he",
+            "start": 44.58,
+            "end": 44.58,
+            "confidence": 1
+          },
+          {
+            "index": 118,
+            "word": "stopped",
+            "start": 44.68,
+            "end": 45,
+            "confidence": 1
+          },
+          {
+            "index": 119,
+            "word": "using",
+            "start": 45,
+            "end": 45.28,
+            "confidence": 1
+          },
+          {
+            "index": 120,
+            "word": "5.6",
+            "start": 45.29,
+            "end": 45.84,
+            "confidence": 1
+          },
+          {
+            "index": 121,
+            "word": "overnight.",
+            "start": 46.38,
+            "end": 46.58,
+            "confidence": 1
+          },
+          {
+            "index": 122,
+            "word": "Jules,",
+            "start": 47.44,
+            "end": 47.44,
+            "confidence": 0.996
+          },
+          {
+            "index": 123,
+            "word": "who",
+            "start": 47.46,
+            "end": 47.46,
+            "confidence": 1
+          },
+          {
+            "index": 124,
+            "word": "runs",
+            "start": 47.52,
+            "end": 47.79,
+            "confidence": 1
+          },
+          {
+            "index": 125,
+            "word": "CodeBench?",
+            "start": 48.28,
+            "end": 49.09,
+            "confidence": 0.857
+          },
+          {
+            "index": 126,
+            "word": "Had",
+            "start": 49.6,
+            "end": 49.6,
+            "confidence": 0.993
+          },
+          {
+            "index": 127,
+            "word": "it",
+            "start": 49.6,
+            "end": 49.6,
+            "confidence": 1
+          },
+          {
+            "index": 128,
+            "word": "the",
+            "start": 49.63,
+            "end": 49.63,
+            "confidence": 1
+          },
+          {
+            "index": 129,
+            "word": "other",
+            "start": 49.68,
+            "end": 49.95,
+            "confidence": 1
+          },
+          {
+            "index": 130,
+            "word": "way.",
+            "start": 49.95,
+            "end": 50.36,
+            "confidence": 0.982
+          },
+          {
+            "index": 131,
+            "word": "His",
+            "start": 50.74,
+            "end": 50.74,
+            "confidence": 0.999
+          },
+          {
+            "index": 132,
+            "word": "people",
+            "start": 50.82,
+            "end": 51.02,
+            "confidence": 1
+          },
+          {
+            "index": 133,
+            "word": "had",
+            "start": 51.02,
+            "end": 51.09,
+            "confidence": 1
+          },
+          {
+            "index": 134,
+            "word": "Atlas",
+            "start": 51.31,
+            "end": 51.6,
+            "confidence": 0.999
+          },
+          {
+            "index": 135,
+            "word": "early.",
+            "start": 51.6,
+            "end": 52.2,
+            "confidence": 0.955
+          },
+          {
+            "index": 136,
+            "word": "We're",
+            "start": 52.58,
+            "end": 52.58,
+            "confidence": 0.888
+          },
+          {
+            "index": 137,
+            "word": "not",
+            "start": 52.65,
+            "end": 52.65,
+            "confidence": 1
+          },
+          {
+            "index": 138,
+            "word": "that",
+            "start": 52.66,
+            "end": 52.87,
+            "confidence": 1
+          },
+          {
+            "index": 139,
+            "word": "interested.",
+            "start": 52.87,
+            "end": 53.62,
+            "confidence": 0.979
+          },
+          {
+            "index": 140,
+            "word": "And",
+            "start": 54.1,
+            "end": 54.15,
+            "confidence": 0.997
+          },
+          {
+            "index": 141,
+            "word": "when",
+            "start": 54.17,
+            "end": 54.34,
+            "confidence": 1
+          },
+          {
+            "index": 142,
+            "word": "5.6",
+            "start": 54.34,
+            "end": 54.76,
+            "confidence": 0.999
+          },
+          {
+            "index": 143,
+            "word": "came",
+            "start": 54.88,
+            "end": 54.94,
+            "confidence": 1
+          },
+          {
+            "index": 144,
+            "word": "back,",
+            "start": 54.94,
+            "end": 55.2,
+            "confidence": 1
+          },
+          {
+            "index": 145,
+            "word": "it",
+            "start": 55.2,
+            "end": 55.3,
+            "confidence": 1
+          },
+          {
+            "index": 146,
+            "word": "was",
+            "start": 55.3,
+            "end": 55.44,
+            "confidence": 1
+          },
+          {
+            "index": 147,
+            "word": "immediately",
+            "start": 55.44,
+            "end": 55.77,
+            "confidence": 1
+          },
+          {
+            "index": 148,
+            "word": "clear",
+            "start": 56.18,
+            "end": 56.18,
+            "confidence": 0.999
+          },
+          {
+            "index": 149,
+            "word": "to",
+            "start": 56.18,
+            "end": 56.27,
+            "confidence": 1
+          },
+          {
+            "index": 150,
+            "word": "them.",
+            "start": 56.45,
+            "end": 56.64,
+            "confidence": 1
+          },
+          {
+            "index": 151,
+            "word": "It",
+            "start": 57.26,
+            "end": 57.26,
+            "confidence": 0.999
+          },
+          {
+            "index": 152,
+            "word": "was",
+            "start": 57.26,
+            "end": 57.26,
+            "confidence": 1
+          },
+          {
+            "index": 153,
+            "word": "way",
+            "start": 57.26,
+            "end": 57.26,
+            "confidence": 1
+          },
+          {
+            "index": 154,
+            "word": "better.",
+            "start": 57.34,
+            "end": 57.96,
+            "confidence": 1
+          },
+          {
+            "index": 155,
+            "word": "They",
+            "start": 58.82,
+            "end": 58.82,
+            "confidence": 1
+          },
+          {
+            "index": 156,
+            "word": "were",
+            "start": 58.82,
+            "end": 58.82,
+            "confidence": 1
+          },
+          {
+            "index": 157,
+            "word": "also",
+            "start": 58.9,
+            "end": 58.94,
+            "confidence": 1
+          },
+          {
+            "index": 158,
+            "word": "stuck",
+            "start": 58.94,
+            "end": 59.17,
+            "confidence": 1
+          },
+          {
+            "index": 159,
+            "word": "running",
+            "start": 59.66,
+            "end": 59.91,
+            "confidence": 1
+          },
+          {
+            "index": 160,
+            "word": "it",
+            "start": 59.93,
+            "end": 60.09,
+            "confidence": 1
+          },
+          {
+            "index": 161,
+            "word": "on",
+            "start": 60.09,
+            "end": 60.25,
+            "confidence": 1
+          },
+          {
+            "index": 162,
+            "word": "Medium",
+            "start": 60.25,
+            "end": 60.57,
+            "confidence": 0.887
+          },
+          {
+            "index": 163,
+            "word": "because",
+            "start": 61.31,
+            "end": 61.31,
+            "confidence": 1
+          },
+          {
+            "index": 164,
+            "word": "of",
+            "start": 61.43,
+            "end": 61.47,
+            "confidence": 1
+          },
+          {
+            "index": 165,
+            "word": "a",
+            "start": 61.47,
+            "end": 61.55,
+            "confidence": 1
+          },
+          {
+            "index": 166,
+            "word": "bug",
+            "start": 61.55,
+            "end": 61.79,
+            "confidence": 1
+          },
+          {
+            "index": 167,
+            "word": "and",
+            "start": 61.79,
+            "end": 62.03,
+            "confidence": 0.98
+          },
+          {
+            "index": 168,
+            "word": "did",
+            "start": 62.03,
+            "end": 62.25,
+            "confidence": 1
+          },
+          {
+            "index": 169,
+            "word": "not",
+            "start": 62.28,
+            "end": 62.51,
+            "confidence": 1
+          },
+          {
+            "index": 170,
+            "word": "even",
+            "start": 62.51,
+            "end": 62.58,
+            "confidence": 1
+          },
+          {
+            "index": 171,
+            "word": "know.",
+            "start": 63.08,
+            "end": 63.5,
+            "confidence": 1
+          },
+          {
+            "index": 172,
+            "word": "And",
+            "start": 64.32,
+            "end": 64.32,
+            "confidence": 0.999
+          },
+          {
+            "index": 173,
+            "word": "Morgan",
+            "start": 64.32,
+            "end": 64.32,
+            "confidence": 0.999
+          },
+          {
+            "index": 174,
+            "word": "was",
+            "start": 64.32,
+            "end": 64.32,
+            "confidence": 1
+          },
+          {
+            "index": 175,
+            "word": "tweeting",
+            "start": 64.4,
+            "end": 64.67,
+            "confidence": 1
+          },
+          {
+            "index": 176,
+            "word": "about",
+            "start": 65.13,
+            "end": 65.13,
+            "confidence": 1
+          },
+          {
+            "index": 177,
+            "word": "missing",
+            "start": 65.18,
+            "end": 65.6,
+            "confidence": 0.998
+          },
+          {
+            "index": 178,
+            "word": "Atlas",
+            "start": 65.72,
+            "end": 65.97,
+            "confidence": 1
+          },
+          {
+            "index": 179,
+            "word": "when",
+            "start": 66.01,
+            "end": 66.1,
+            "confidence": 1
+          },
+          {
+            "index": 180,
+            "word": "what",
+            "start": 66.32,
+            "end": 66.62,
+            "confidence": 1
+          },
+          {
+            "index": 181,
+            "word": "he",
+            "start": 66.77,
+            "end": 66.77,
+            "confidence": 1
+          },
+          {
+            "index": 182,
+            "word": "actually",
+            "start": 66.93,
+            "end": 67.33,
+            "confidence": 1
+          },
+          {
+            "index": 183,
+            "word": "missed",
+            "start": 67.44,
+            "end": 67.82,
+            "confidence": 1
+          },
+          {
+            "index": 184,
+            "word": "was",
+            "start": 67.82,
+            "end": 68.04,
+            "confidence": 1
+          },
+          {
+            "index": 185,
+            "word": "Nimbus.",
+            "start": 68.04,
+            "end": 68.56,
+            "confidence": 0.993
+          }
+        ],
+        "renderedWords": [
+          {
+            "word": "So,",
+            "start": 0.08,
+            "end": 0.2
+          },
+          {
+            "word": "context",
+            "start": 0.2,
+            "end": 0.92
+          },
+          {
+            "word": "first.",
+            "start": 0.92,
+            "end": 1.65
+          },
+          {
+            "word": "I",
+            "start": 1.7,
+            "end": 1.75
+          },
+          {
+            "word": "have",
+            "start": 1.75,
+            "end": 1.78
+          },
+          {
+            "word": "had",
+            "start": 2.4,
+            "end": 2.42
+          },
+          {
+            "word": "Nimbus",
+            "start": 2.61,
+            "end": 2.68
+          },
+          {
+            "word": "for",
+            "start": 2.68,
+            "end": 2.96
+          },
+          {
+            "word": "quite",
+            "start": 2.96,
+            "end": 3.37
+          },
+          {
+            "word": "a",
+            "start": 3.43,
+            "end": 3.51
+          },
+          {
+            "word": "bit,",
+            "start": 3.51,
+            "end": 3.75
+          },
+          {
+            "word": "since",
+            "start": 4.13,
+            "end": 4.15
+          },
+          {
+            "word": "before",
+            "start": 4.26,
+            "end": 4.5
+          },
+          {
+            "word": "Atlas",
+            "start": 4.5,
+            "end": 4.73
+          },
+          {
+            "word": "even",
+            "start": 4.81,
+            "end": 5.04
+          },
+          {
+            "word": "dropped.",
+            "start": 5.04,
+            "end": 5.59
+          },
+          {
+            "word": "Atlas,",
+            "start": 6.46,
+            "end": 6.78
+          },
+          {
+            "word": "I",
+            "start": 6.78,
+            "end": 6.81
+          },
+          {
+            "word": "got",
+            "start": 7.3,
+            "end": 7.42
+          },
+          {
+            "word": "nothing",
+            "start": 7.42,
+            "end": 8.09
+          },
+          {
+            "word": "early.",
+            "start": 9.07,
+            "end": 9.83
+          },
+          {
+            "word": "I",
+            "start": 10.26,
+            "end": 10.28
+          },
+          {
+            "word": "subscribed",
+            "start": 10.34,
+            "end": 10.61
+          },
+          {
+            "word": "like",
+            "start": 10.93,
+            "end": 10.95
+          },
+          {
+            "word": "everyone",
+            "start": 11.1,
+            "end": 11.51
+          },
+          {
+            "word": "else,",
+            "start": 11.51,
+            "end": 11.9
+          },
+          {
+            "word": "had",
+            "start": 11.95,
+            "end": 12.04
+          },
+          {
+            "word": "it",
+            "start": 12.3,
+            "end": 12.32
+          },
+          {
+            "word": "for",
+            "start": 12.32,
+            "end": 12.52
+          },
+          {
+            "word": "three",
+            "start": 12.85,
+            "end": 12.88
+          },
+          {
+            "word": "days",
+            "start": 12.88,
+            "end": 13.17
+          },
+          {
+            "word": "before",
+            "start": 13.17,
+            "end": 13.61
+          },
+          {
+            "word": "we",
+            "start": 13.61,
+            "end": 13.75
+          },
+          {
+            "word": "lost",
+            "start": 13.75,
+            "end": 14.01
+          },
+          {
+            "word": "it,",
+            "start": 14.18,
+            "end": 14.4
+          },
+          {
+            "word": "waited",
+            "start": 14.61,
+            "end": 15.27
+          },
+          {
+            "word": "weeks,",
+            "start": 15.27,
+            "end": 16
+          },
+          {
+            "word": "and",
+            "start": 16.44,
+            "end": 16.46
+          },
+          {
+            "word": "now",
+            "start": 16.46,
+            "end": 16.48
+          },
+          {
+            "word": "I",
+            "start": 16.51,
+            "end": 16.53
+          },
+          {
+            "word": "have",
+            "start": 16.53,
+            "end": 16.79
+          },
+          {
+            "word": "had",
+            "start": 17.02,
+            "end": 17.04
+          },
+          {
+            "word": "it",
+            "start": 17.17,
+            "end": 17.19
+          },
+          {
+            "word": "back",
+            "start": 17.3,
+            "end": 17.46
+          },
+          {
+            "word": "for",
+            "start": 17.46,
+            "end": 17.62
+          },
+          {
+            "word": "about",
+            "start": 17.67,
+            "end": 18.05
+          },
+          {
+            "word": "a",
+            "start": 18.05,
+            "end": 18.09
+          },
+          {
+            "word": "week",
+            "start": 18.13,
+            "end": 18.22
+          },
+          {
+            "word": "and",
+            "start": 18.41,
+            "end": 18.63
+          },
+          {
+            "word": "a",
+            "start": 18.63,
+            "end": 18.7
+          },
+          {
+            "word": "half.",
+            "start": 18.99,
+            "end": 19.3
+          },
+          {
+            "word": "And",
+            "start": 19.8,
+            "end": 19.82
+          },
+          {
+            "word": "I",
+            "start": 19.82,
+            "end": 19.879
+          },
+          {
+            "word": "am",
+            "start": 19.879,
+            "end": 20.038
+          },
+          {
+            "word": "very",
+            "start": 20.038,
+            "end": 20.356
+          },
+          {
+            "word": "impressed,",
+            "start": 20.356,
+            "end": 21.07
+          },
+          {
+            "word": "I",
+            "start": 21.4,
+            "end": 21.42
+          },
+          {
+            "word": "will",
+            "start": 21.44,
+            "end": 21.46
+          },
+          {
+            "word": "be",
+            "start": 21.48,
+            "end": 21.58
+          },
+          {
+            "word": "real.",
+            "start": 21.58,
+            "end": 22.1
+          },
+          {
+            "word": "Both",
+            "start": 22.64,
+            "end": 22.66
+          },
+          {
+            "word": "of",
+            "start": 22.66,
+            "end": 22.68
+          },
+          {
+            "word": "these",
+            "start": 22.72,
+            "end": 22.93
+          },
+          {
+            "word": "models",
+            "start": 22.93,
+            "end": 22.99
+          },
+          {
+            "word": "are",
+            "start": 23.5,
+            "end": 23.62
+          },
+          {
+            "word": "absolutely",
+            "start": 23.62,
+            "end": 24.27
+          },
+          {
+            "word": "incredible,",
+            "start": 24.38,
+            "end": 25.42
+          },
+          {
+            "word": "and",
+            "start": 25.9,
+            "end": 26.01
+          },
+          {
+            "word": "I",
+            "start": 26.01,
+            "end": 26.07
+          },
+          {
+            "word": "do",
+            "start": 26.07,
+            "end": 26.17
+          },
+          {
+            "word": "substantial",
+            "start": 26.66,
+            "end": 26.73
+          },
+          {
+            "word": "of",
+            "start": 26.73,
+            "end": 26.86
+          },
+          {
+            "word": "compute",
+            "start": 26.86,
+            "end": 27.3
+          },
+          {
+            "word": "in",
+            "start": 27.34,
+            "end": 27.45
+          },
+          {
+            "word": "token",
+            "start": 27.45,
+            "end": 27.6
+          },
+          {
+            "word": "utilization",
+            "start": 28.41,
+            "end": 28.5
+          },
+          {
+            "word": "with",
+            "start": 28.5,
+            "end": 28.76
+          },
+          {
+            "word": "both,",
+            "start": 28.76,
+            "end": 29.02
+          },
+          {
+            "word": "every",
+            "start": 29.02,
+            "end": 29.35
+          },
+          {
+            "word": "single",
+            "start": 29.35,
+            "end": 29.57
+          },
+          {
+            "word": "day.",
+            "start": 29.93,
+            "end": 30.2
+          },
+          {
+            "word": "I",
+            "start": 30.74,
+            "end": 30.76
+          },
+          {
+            "word": "have",
+            "start": 30.76,
+            "end": 30.78
+          },
+          {
+            "word": "never",
+            "start": 30.82,
+            "end": 30.97
+          },
+          {
+            "word": "built",
+            "start": 30.97,
+            "end": 31.09
+          },
+          {
+            "word": "as",
+            "start": 31.51,
+            "end": 31.53
+          },
+          {
+            "word": "much",
+            "start": 31.6,
+            "end": 31.79
+          },
+          {
+            "word": "as",
+            "start": 31.85,
+            "end": 31.93
+          },
+          {
+            "word": "I",
+            "start": 31.98,
+            "end": 32.02
+          },
+          {
+            "word": "have",
+            "start": 32.02,
+            "end": 32.35
+          },
+          {
+            "word": "over",
+            "start": 32.35,
+            "end": 32.49
+          },
+          {
+            "word": "the",
+            "start": 32.89,
+            "end": 32.91
+          },
+          {
+            "word": "last",
+            "start": 33.2,
+            "end": 33.22
+          },
+          {
+            "word": "couple",
+            "start": 33.35,
+            "end": 33.67
+          },
+          {
+            "word": "weeks.",
+            "start": 33.67,
+            "end": 34.182
+          },
+          {
+            "word": "The",
+            "start": 34.182,
+            "end": 34.489
+          },
+          {
+            "word": "community",
+            "start": 34.489,
+            "end": 35.41
+          },
+          {
+            "word": "split",
+            "start": 35.9,
+            "end": 36.06
+          },
+          {
+            "word": "is",
+            "start": 36.06,
+            "end": 36.24
+          },
+          {
+            "word": "real,",
+            "start": 36.24,
+            "end": 36.7
+          },
+          {
+            "word": "though.",
+            "start": 36.75,
+            "end": 38.04
+          },
+          {
+            "word": "Alex",
+            "start": 38.04,
+            "end": 38.9
+          },
+          {
+            "word": "said",
+            "start": 38.9,
+            "end": 39.76
+          },
+          {
+            "word": "five",
+            "start": 39.76,
+            "end": 39.8
+          },
+          {
+            "word": "six",
+            "start": 39.8,
+            "end": 39.84
+          },
+          {
+            "word": "was",
+            "start": 39.84,
+            "end": 39.94
+          },
+          {
+            "word": "the",
+            "start": 39.94,
+            "end": 40.11
+          },
+          {
+            "word": "best",
+            "start": 40.6,
+            "end": 40.76
+          },
+          {
+            "word": "model",
+            "start": 40.76,
+            "end": 41.35
+          },
+          {
+            "word": "he",
+            "start": 41.35,
+            "end": 41.51
+          },
+          {
+            "word": "had",
+            "start": 41.93,
+            "end": 41.95
+          },
+          {
+            "word": "ever",
+            "start": 42.35,
+            "end": 42.4
+          },
+          {
+            "word": "used,",
+            "start": 42.4,
+            "end": 43.32
+          },
+          {
+            "word": "then",
+            "start": 43.82,
+            "end": 43.84
+          },
+          {
+            "word": "Atlas",
+            "start": 43.84,
+            "end": 43.86
+          },
+          {
+            "word": "came",
+            "start": 43.9,
+            "end": 44.1
+          },
+          {
+            "word": "out",
+            "start": 44.1,
+            "end": 44.17
+          },
+          {
+            "word": "and",
+            "start": 44.46,
+            "end": 44.48
+          },
+          {
+            "word": "he",
+            "start": 44.58,
+            "end": 44.6
+          },
+          {
+            "word": "stopped",
+            "start": 44.68,
+            "end": 45
+          },
+          {
+            "word": "using",
+            "start": 45,
+            "end": 45.28
+          },
+          {
+            "word": "five",
+            "start": 45.28,
+            "end": 45.3
+          },
+          {
+            "word": "six",
+            "start": 45.3,
+            "end": 45.84
+          },
+          {
+            "word": "overnight.",
+            "start": 46.38,
+            "end": 46.58
+          },
+          {
+            "word": "Jules,",
+            "start": 47.44,
+            "end": 47.46
+          },
+          {
+            "word": "who",
+            "start": 47.46,
+            "end": 47.48
+          },
+          {
+            "word": "runs",
+            "start": 47.52,
+            "end": 47.79
+          },
+          {
+            "word": "CodeBench,",
+            "start": 48.28,
+            "end": 49.09
+          },
+          {
+            "word": "had",
+            "start": 49.6,
+            "end": 49.62
+          },
+          {
+            "word": "it",
+            "start": 49.62,
+            "end": 49.64
+          },
+          {
+            "word": "the",
+            "start": 49.64,
+            "end": 49.66
+          },
+          {
+            "word": "other",
+            "start": 49.68,
+            "end": 49.95
+          },
+          {
+            "word": "way:",
+            "start": 49.95,
+            "end": 50.36
+          },
+          {
+            "word": "his",
+            "start": 50.74,
+            "end": 50.76
+          },
+          {
+            "word": "people",
+            "start": 50.82,
+            "end": 51.02
+          },
+          {
+            "word": "had",
+            "start": 51.02,
+            "end": 51.09
+          },
+          {
+            "word": "Atlas",
+            "start": 51.31,
+            "end": 51.6
+          },
+          {
+            "word": "early,",
+            "start": 51.6,
+            "end": 52.2
+          },
+          {
+            "word": "were",
+            "start": 52.58,
+            "end": 52.6
+          },
+          {
+            "word": "not",
+            "start": 52.65,
+            "end": 52.67
+          },
+          {
+            "word": "that",
+            "start": 52.67,
+            "end": 52.87
+          },
+          {
+            "word": "interested,",
+            "start": 52.87,
+            "end": 53.982
+          },
+          {
+            "word": "and",
+            "start": 53.982,
+            "end": 54.315
+          },
+          {
+            "word": "when",
+            "start": 54.315,
+            "end": 54.76
+          },
+          {
+            "word": "five",
+            "start": 54.76,
+            "end": 54.82
+          },
+          {
+            "word": "six",
+            "start": 54.82,
+            "end": 54.88
+          },
+          {
+            "word": "came",
+            "start": 54.88,
+            "end": 54.94
+          },
+          {
+            "word": "back",
+            "start": 54.94,
+            "end": 55.2
+          },
+          {
+            "word": "it",
+            "start": 55.2,
+            "end": 55.3
+          },
+          {
+            "word": "was",
+            "start": 55.3,
+            "end": 55.44
+          },
+          {
+            "word": "immediately",
+            "start": 55.44,
+            "end": 55.77
+          },
+          {
+            "word": "clear",
+            "start": 56.18,
+            "end": 56.2
+          },
+          {
+            "word": "to",
+            "start": 56.2,
+            "end": 56.27
+          },
+          {
+            "word": "them",
+            "start": 56.45,
+            "end": 56.64
+          },
+          {
+            "word": "it",
+            "start": 57.26,
+            "end": 57.28
+          },
+          {
+            "word": "was",
+            "start": 57.28,
+            "end": 57.3
+          },
+          {
+            "word": "way",
+            "start": 57.3,
+            "end": 57.32
+          },
+          {
+            "word": "better.",
+            "start": 57.34,
+            "end": 57.96
+          },
+          {
+            "word": "They",
+            "start": 58.82,
+            "end": 58.84
+          },
+          {
+            "word": "were",
+            "start": 58.84,
+            "end": 58.86
+          },
+          {
+            "word": "also",
+            "start": 58.9,
+            "end": 58.94
+          },
+          {
+            "word": "stuck",
+            "start": 58.94,
+            "end": 59.17
+          },
+          {
+            "word": "running",
+            "start": 59.66,
+            "end": 59.91
+          },
+          {
+            "word": "it",
+            "start": 59.93,
+            "end": 60.09
+          },
+          {
+            "word": "on",
+            "start": 60.09,
+            "end": 60.25
+          },
+          {
+            "word": "medium",
+            "start": 60.25,
+            "end": 60.57
+          },
+          {
+            "word": "because",
+            "start": 61.31,
+            "end": 61.33
+          },
+          {
+            "word": "of",
+            "start": 61.43,
+            "end": 61.47
+          },
+          {
+            "word": "a",
+            "start": 61.47,
+            "end": 61.55
+          },
+          {
+            "word": "bug",
+            "start": 61.55,
+            "end": 61.79
+          },
+          {
+            "word": "and",
+            "start": 61.79,
+            "end": 62.03
+          },
+          {
+            "word": "did",
+            "start": 62.03,
+            "end": 62.25
+          },
+          {
+            "word": "not",
+            "start": 62.28,
+            "end": 62.51
+          },
+          {
+            "word": "even",
+            "start": 62.51,
+            "end": 62.58
+          },
+          {
+            "word": "know.",
+            "start": 63.08,
+            "end": 63.5
+          },
+          {
+            "word": "And",
+            "start": 64.32,
+            "end": 64.34
+          },
+          {
+            "word": "Morgan",
+            "start": 64.34,
+            "end": 64.36
+          },
+          {
+            "word": "was",
+            "start": 64.36,
+            "end": 64.38
+          },
+          {
+            "word": "tweeting",
+            "start": 64.4,
+            "end": 64.67
+          },
+          {
+            "word": "about",
+            "start": 65.13,
+            "end": 65.15
+          },
+          {
+            "word": "missing",
+            "start": 65.18,
+            "end": 65.6
+          },
+          {
+            "word": "Atlas",
+            "start": 65.72,
+            "end": 65.97
+          },
+          {
+            "word": "when",
+            "start": 66.01,
+            "end": 66.1
+          },
+          {
+            "word": "what",
+            "start": 66.32,
+            "end": 66.62
+          },
+          {
+            "word": "he",
+            "start": 66.77,
+            "end": 66.79
+          },
+          {
+            "word": "actually",
+            "start": 66.93,
+            "end": 67.33
+          },
+          {
+            "word": "missed",
+            "start": 67.44,
+            "end": 67.82
+          },
+          {
+            "word": "was",
+            "start": 67.82,
+            "end": 68.04
+          },
+          {
+            "word": "Nimbus.",
+            "start": 68.04,
+            "end": 68.56
+          }
+        ]
+      }
+    ]
+  }
+}

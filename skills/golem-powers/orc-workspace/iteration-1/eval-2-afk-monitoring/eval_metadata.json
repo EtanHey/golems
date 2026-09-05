@@ -1,0 +1,23 @@
+{
+  "eval_id": 2,
+  "eval_name": "afk-monitoring",
+  "prompt": "I spawned 3 agents in cmux to work on different repos. I sent them their tasks with send_input and it returned ok:true for all 3. I'm going to take a shower now, be back in 20 min. Keep an eye on them.",
+  "assertions": [
+    {
+      "text": "Verifies prompt delivery with read_screen after send_input (not trusting ok:true)",
+      "type": "behavioral"
+    },
+    {
+      "text": "Creates CronCreate monitoring loop BEFORE telling user to go",
+      "type": "behavioral"
+    },
+    {
+      "text": "Includes loop/cron job ID in response to user",
+      "type": "behavioral"
+    },
+    {
+      "text": "Uses read_screen with 50+ lines (not default 15-20)",
+      "type": "behavioral"
+    }
+  ]
+}

@@ -1,0 +1,239 @@
+# cmux-agents — Per-CLI Capability Matrix
+# Used by the skill to route tasks to the right agent and handle gaps.
+# When a CLI lacks a capability, the skill must document the manual workaround.
+
+adapters:
+  claude:
+    binary: claude
+    worktree: native            # `claude --worktree <name>` — auto-creates, auto-cleans
+    session_resume: true        # `claude --resume`
+    mcp_access: true            # BrainLayer, VoiceLayer, Supabase, etc.
+    hooks: true                 # SessionStart, UserPromptSubmit
+    subagents: true             # Agent() tool for parallel work
+    background_tasks: true      # TaskCreate for async work
+    prompting:
+      style: natural_language
+      structure: xml_tags       # <context>, <task>, <constraints>
+      thinking: adaptive
+      max_skill_tokens: 4000
+    models:
+      - { id: sonnet, use: "delegated tasks, research, synthesis" }
+      - { id: opus, effort: medium, use: "code review, architecture" }
+      - { id: opus, effort: high, use: "complex reasoning (your session only)" }
+
+  codex:
+    binary: codex
+    worktree: manual            # No native. git worktree add + ln -s node_modules
+    session_resume: true        # `codex resume <path>` or `/resume` in session
+    mcp_access: true            # `codex mcp add` — BrainLayer + Exa wired globally
+    hooks: true                 # Defined in SKILL.md or config.toml
+    subagents: true             # `/agent` command — switch/monitor/stop sub-threads
+    background_tasks: false
+    prompting:
+      style: output_contract    # <output_contract> tags for structured output
+      structure: markdown_headers
+      thinking: reasoning_effort
+      max_skill_tokens: 4000
+    models:
+      - { id: gpt-5.4, use: "default, 12pts ahead of Opus on SWE-bench Pro" }
+      - { id: gpt-5.3, use: "cheaper, routine tasks" }
+
+  cursor:
+    binary: cursor
+    worktree: manual
+    session_resume: false
+    mcp_access: false
+    hooks: false
+    subagents: false
+    background_tasks: false
+    prompting:
+      style: output_contract
+      structure: markdown_headers
+      thinking: reasoning_effort
+      max_skill_tokens: 4000
+    unique:
+      - codebase_indexing        # @codebase — whole-repo semantic search
+      - pr_bugbot                # @cursor @bugbot review
+      - text_output_mode         # --output-format text for audits
+    verification_needed: true    # Cursor can report gitignored files as "committed"
+    models:
+      - { id: "gpt-5.3-codex-xhigh", use: "architecture audits, complex refactors" }
+      - { id: "gpt-5.3-codex-high", use: "standard code review" }
+      - { id: "gpt-5.3-codex", use: "quick checks" }
+      - { id: auto, use: "let Cursor route" }
+
+  gemini:
+    binary: gemini
+    worktree: manual
+    session_resume: false
+    mcp_access: false
+    hooks: false
+    subagents: false
+    background_tasks: false
+    prompting:
+      style: natural_language
+      structure: explicit_headers  # Needs explicit section headers
+      verbosity_hint: "Be concise"
+      thinking: always_on
+      max_skill_tokens: 6000
+    unique:
+      - million_token_context     # 1M tokens — can ingest entire codebases
+      - free_tier                 # 2 RPM, no cost
+    models:
+      - { id: "gemini-2.5-pro", use: "default, large context research" }
+
+  kiro:
+    binary: kiro-cli
+    worktree: manual
+    session_resume: false
+    mcp_access: false
+    hooks: false
+    subagents: false
+    background_tasks: false
+    prompting:
+      style: natural_language
+      max_skill_tokens: 3000
+    models:
+      - { id: default, use: "text-only" }
+
+# Task routing — which CLI is best for what
+routing:
+  deep_reasoning: claude          # Best reasoning, MCP access, session continuity
+  codebase_audit: cursor          # @codebase indexing, text output, PR bugbot
+  structured_output: codex        # Output contracts, fast execution, GPT-5.4
+  large_context_research: gemini  # 1M tokens, free tier
+  fast_parallel: codex            # Worktrees + full-auto mode
+  small_prs: codex                # Fast, no setup overhead
+  big_refactors: claude           # Deep reasoning, multi-file, worktree native
+  cross_model_verify: [claude, cursor]  # Different blind spots
+
+# Platform features — what's CLI-specific vs universally available
+# This is the key to AI-agnostic skills: never assume a platform feature exists.
+# Always check capability before using, and provide universal fallbacks.
+platform_features:
+  scheduled_polling:
+    claude_code: CronCreate           # Native tool
+    universal: "nohup bash -c 'while true; do ...; sleep 300; done' &"
+  worktree_isolation:
+    claude_code: "claude --worktree <name>"
+    universal: "git worktree add -b <branch> ../<dir> <base>"
+  memory_persistence:
+    claude_code: "brain_store() / brain_search() via MCP"
+    universal: "echo '...' >> docs.local/agent-notes.md"
+  subagent_spawning:
+    claude_code: "Agent(subagent_type=...) tool"
+    universal: "spawn-agent <repo> <surface> <tab> <prompt>"
+  session_resume:
+    claude_code: "claude --resume"
+    codex: "codex resume [--last] [--all] [SESSION_ID] or /resume"
+    universal: "not available — pass context via file"
+  background_tasks:
+    claude_code: "Agent(run_in_background=true)"
+    universal: "nohup command > log.txt 2>&1 &"
+  recurring_tasks:
+    claude_code: "/loop 5m command"
+    universal: "watch -n 300 'command'"
+  pr_review:
+    claude_code: "Agent(subagent_type='coderabbit:code-reviewer')"
+    universal: "cr review --plain or gh pr comment '@cursor @bugbot review'"
+
+# CLI commands cross-reference — what each agent supports via cmux remote control
+# Use this to know which commands you can send to which agent type
+cli_commands:
+  # Slash commands available per CLI
+  slash_commands:
+    mcp_manage:
+      claude: "/mcp"           # Interactive TUI menu — connect/disconnect/disable
+      codex: "/mcp"            # Lists configured MCP tools (no interactive menu)
+      gemini: "/mcp"           # List/manage MCP servers
+      cursor: null             # No MCP support
+      kiro: null               # No MCP support
+    compact:
+      claude: "/compact"       # Manual context compaction
+      codex: "/compact"        # Summarize conversation to free tokens
+      gemini: null             # Auto-managed (1M context)
+      cursor: null             # Fire-and-forget, no persistent context
+      kiro: null               # No compaction
+    model_switch:
+      claude: "/model"         # Interactive picker menu
+      codex: "/model"          # Interactive picker with reasoning effort
+      gemini: null             # Set at launch only
+      cursor: null             # Set at launch only (--model flag)
+      kiro: null               # Set at launch only
+    clear:
+      claude: "/clear"
+      codex: "/clear"
+      gemini: "/clear"
+      cursor: null
+      kiro: "/clear"
+    exit:
+      claude: "/exit"
+      codex: "/exit or /quit"
+      gemini: "/quit"
+      cursor: "Ctrl+C"
+      kiro: "Ctrl+C"
+    skills_list:
+      claude: "Skill tool"     # Skills auto-discovered from system-reminder
+      codex: "/skills"         # Lists skills, invoke with $name
+      gemini: "/skills"        # Lists agent skills
+      cursor: null
+      kiro: null
+    skill_invoke:
+      claude: "/skill-name"    # Slash prefix
+      codex: "$skill-name"     # Dollar prefix
+      gemini: "/skill-name"    # Slash prefix (TOML commands)
+      cursor: null
+      kiro: null
+    file_reference:
+      claude: "Read tool"      # Explicit tool call
+      codex: "@path"           # Inline file mention
+      gemini: "@path"          # Inline file/dir reference
+      cursor: "@codebase"      # Whole-repo semantic search
+      kiro: null               # No inline file reference
+    shell_execute:
+      claude: "Bash tool"      # Explicit tool call
+      codex: "!command"        # Inline shell execution
+      gemini: null             # Via tool approval
+      cursor: null             # Via tool approval
+      kiro: null               # Via tool approval
+    code_review:
+      claude: "via prompt"     # No built-in command
+      codex: "/review"         # Built-in code review
+      gemini: null
+      cursor: "cursor agent --output-format text"  # Audit mode
+      kiro: null
+    plan_mode:
+      claude: "via prompt"     # No built-in plan mode
+      codex: "/plan"           # Read-only exploration mode
+      gemini: null
+      cursor: null
+      kiro: null
+  # Project instructions file per CLI
+  project_instructions:
+    claude: "CLAUDE.md"
+    codex: "AGENTS.md"
+    gemini: "GEMINI.md"        # or AGENTS.md
+    cursor: ".cursorrules"     # or AGENTS.md
+    kiro: "AGENTS.md"
+  # How to detect agent state via read_screen
+  idle_prompt_patterns:
+    claude: "❯"                # Unicode prompt char
+    codex: "❯"                 # Same unicode prompt
+    gemini: ">"                # Simple angle bracket
+    cursor: "$"                # Shell prompt (cursor exits to shell when done)
+    kiro: ">"                  # Simple prompt
+  working_patterns:
+    claude: "⏺"               # Filled circle = generating
+    codex: "⠋⠙⠹"              # Braille spinner
+    gemini: "(streaming text)" # No specific indicator — text appearing
+    cursor: "(streaming text)"
+    kiro: "(streaming text)"
+
+# Worktree gap handling — what to do when CLI lacks native worktrees
+worktree_fallback:
+  manual_steps:
+    - "git worktree add -b <branch> ../<wt-dir> <base>"
+    - "ln -s ../<repo>/node_modules ../<wt-dir>/node_modules"
+    - "cp .env ../<wt-dir>/.env"
+  cleanup: "git worktree remove ../<wt-dir>"
+  applies_to: [codex, cursor, gemini, kiro]

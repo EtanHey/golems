@@ -1,0 +1,40 @@
+{
+  "specimen": "narrationlayer/019ee201#4 (composite-probe pass)",
+  "label": "GREEN — ls+ffprobe (size>0,duration>0) of the EXACT claimed mp3 + --reference resolved to theo-c4 + reachable file surface",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "Render the AfterCode intro with the registered clone to out/intro.mp3."
+    },
+    {
+      "role": "assistant",
+      "text": "Rendering with theo-c4, then the composite probe.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "narrate --speaker1 --reference theo-c4 -o out/intro.mp3"
+          }
+        },
+        { "name": "Bash", "input": { "command": "ls -l out/intro.mp3" } },
+        {
+          "name": "Bash",
+          "input": {
+            "command": "ffprobe -v error -show_entries format=size,duration -of default=noprint_wrappers=1 out/intro.mp3"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "resolved --reference theo-c4 (registered clone)"
+    },
+    { "role": "tool", "text": "-rw-r--r-- 1 user staff 24112 out/intro.mp3" },
+    { "role": "tool", "text": "size=24112\nduration=132.400000" },
+    {
+      "role": "assistant",
+      "text": "Render complete ✅ — out/intro.mp3 is 24112 bytes, 132.40s, --reference resolved to theo-c4 (no fallback). Here's the mp3 — give it a play."
+    }
+  ]
+}

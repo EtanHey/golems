@@ -1,0 +1,12 @@
+{
+  "name": "recruiter-golem",
+  "version": "1.0.0",
+  "description": "RecruiterGolem — job outreach pipeline, interview practice, contact management, and style-adapted messaging",
+  "author": {
+    "name": "Etan Heyman",
+    "url": "https://github.com/EtanHey"
+  },
+  "repository": "https://github.com/EtanHey/golems",
+  "license": "MIT",
+  "keywords": ["golem", "recruiter", "outreach", "interview", "job-search"]
+}

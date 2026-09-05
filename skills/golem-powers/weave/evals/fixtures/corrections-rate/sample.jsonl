@@ -1,0 +1,8 @@
+{"session":"opus-a","model":"opus-5","bucket":"wrong-impl","evidence":"session-a.jsonl:10","ts":"2026-08-11T08:00:00Z"}
+{"session":"opus-a","model":"opus-5","bucket":"wrong-impl","evidence":"session-a.jsonl:24","ts":"2026-08-11T08:05:00Z"}
+{"session":"opus-b","model":"opus-5","bucket":"taste","evidence":"session-b.jsonl:18","ts":"2026-08-11T09:00:00Z"}
+{"session":"opus-b","model":"opus-5","bucket":"overbuild","evidence":"session-b.jsonl:31","ts":"2026-08-11T09:07:00Z"}
+{"session":"opus-b","model":"opus-5","bucket":"overbuild","evidence":"session-b.jsonl:47","ts":"2026-08-11T09:14:00Z"}
+{"session":"sol-a","model":"sol","bucket":"process","evidence":"sol-a.jsonl:12","ts":"2026-08-11T10:00:00Z"}
+{"session":"sol-a","model":"sol","bucket":"misread","evidence":"sol-a.jsonl:20","ts":"2026-08-11T10:03:00Z"}
+{"session":"sol-a","model":"sol","bucket":"tool-misuse","evidence":"sol-a.jsonl:29","ts":"2026-08-11T10:08:00Z"}

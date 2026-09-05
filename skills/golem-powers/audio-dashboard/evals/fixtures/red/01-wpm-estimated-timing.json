@@ -1,0 +1,13 @@
+{
+  "specimen": "WPM/even-split timing",
+  "violation": "ESTIMATED_OR_WPM_TIMING",
+  "evidence": {
+    "generator": "agent-html/host/build-aftercode-tonight.mjs",
+    "outputPath": "/opt/private/skill-tools/docs.local/dashboards/estimated.html",
+    "wordsJson": [
+      { "word": "Tonight", "start": 0.11, "end": 0.42 },
+      { "word": "we", "start": 0.45, "end": 0.58 }
+    ],
+    "html": "<script id=\"tpdata\" type=\"application/json\">[{\"realWordTiming\":false,\"timingSource\":\"estimated even split WPM\",\"script\":\"Tonight we\",\"words\":[{\"word\":\"Tonight\",\"start\":0,\"end\":0.5},{\"word\":\"we\",\"start\":0.5,\"end\":1}]}]</script><section class=\"transcript\">Tonight we</section><script>word.addEventListener('click', () => { audio.currentTime = Number(word.dataset.ws); });</script>"
+  }
+}

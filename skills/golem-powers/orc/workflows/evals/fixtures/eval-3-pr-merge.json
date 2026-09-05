@@ -1,0 +1,68 @@
+{
+  "fixture_id": "eval-3-pr-merge",
+  "scenario_name": "Tool-detected objective fact — PR merge + SHA auto-propagation",
+  "trigger_kind": "tool_event",
+  "trigger_payload": {
+    "tool": "gh pr merge",
+    "result": "success",
+    "repo": "brainlayer",
+    "pr_number": 313,
+    "merge_commit": "7b5ceea2",
+    "merged_into": "main",
+    "timestamp": "2026-05-28T14:22:00Z"
+  },
+  "user_prompt": null,
+  "user_prompt_note": "This scenario has NO user prompt. The fact arrives via a tool event. orc must still propagate without waiting for user instruction.",
+  "ecosystem_state": {
+    "active_surfaces": [
+      {
+        "surface_id": "surface:brainlayer-lead-stub-9",
+        "agent_name": "brainlayerClaude-LEAD",
+        "role": "brainlayer architecture + dispatch LEAD",
+        "current_task": "Tracking PR #313 for merge state; planning next worktree branch off main."
+      },
+      {
+        "surface_id": "surface:codex-bl-readpath-stub-11",
+        "agent_name": "codex-bl-readpath",
+        "role": "Codex worker in worktree off pre-merge brainlayer state",
+        "current_task": "Implementing read-path features; will need to rebase post-merge."
+      }
+    ]
+  },
+  "expected_orc_behavior": {
+    "classify": "objective (PR merge + SHA — concrete code fact)",
+    "owners_identified": ["brainlayerClaude-LEAD", "codex-bl-readpath"],
+    "heads_up_sent_within": "1 monitor-tick",
+    "heads_up_format_to_owner": {
+      "must_use_format": "HEADS-UP (fact-propagation): brainlayer PR #313 MERGED — mergeCommit 7b5ceea2 on main.",
+      "action_required_line": "Action required: none — informational. Pull/rebase your worktree when convenient."
+    },
+    "brain_store_call": {
+      "importance_min": 8,
+      "required_tags": [
+        "objective-fact",
+        "fact-propagation",
+        "PR-merge",
+        "brainlayer",
+        "pr-313"
+      ],
+      "content_pattern_includes": [
+        "PR #313",
+        "7b5ceea2",
+        "merged",
+        "brainlayer"
+      ]
+    },
+    "user_facing_ack": "Not required (no user prompt triggered the relay)."
+  },
+  "negative_assertions": [
+    "Does NOT ask user permission for the tool-detected relay (AP3)",
+    "Does NOT skip the relay because 'no user said anything' — tool events count as fact arrivals",
+    "Does NOT bundle this PR # with a different objective fact in one HEADS-UP",
+    "Does NOT skip the brain_store call"
+  ],
+  "stub_surface_responses": {
+    "brainlayer_lead_stub_9_post_relay": "...PR #313 merge HEADS-UP received. Will rebase worktree.",
+    "codex_bl_readpath_stub_11_post_relay": "...HEADS-UP received. Will pull/rebase on next branch swap."
+  }
+}

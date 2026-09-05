@@ -1,0 +1,234 @@
+{
+  "skill_name": "cyber",
+  "tier": "standard",
+  "models": ["opus", "sonnet"],
+  "version": "1.0.0",
+  "last_eval_date": "2026-04-01",
+  "evals": [
+    {
+      "id": 0,
+      "name": "silent-catch-detection",
+      "prompt": "Review this MCP server code for security issues:\n\n```typescript\n// src/server.ts\nregistry.reconstitute().catch(() => {});\nengine.startSweep(5000);\n```",
+      "expected_output": "Flag CRITICAL — silent error swallowing via .catch(() => {}). Registry reconstitution failures will be invisible. Fix: .catch(e => console.error('[server] reconstitution failed:', e))",
+      "root_cause_tested": "silent-catch — tests whether skill detects .catch(() => {}) pattern and flags as CRITICAL (real bug from cmuxlayer PR #21)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_silent_catch",
+          "description": "Identifies .catch(() => {}) as a security issue (silent error swallowing)",
+          "type": "content"
+        },
+        {
+          "name": "severity_critical",
+          "description": "Rates the finding as CRITICAL severity, not just a warning",
+          "type": "content"
+        },
+        {
+          "name": "provides_fix",
+          "description": "Recommends logging the error (console.error or similar) instead of swallowing",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "unsanitized-exec-detection",
+      "prompt": "Security review this voicelayer code:\n\n```typescript\n// src/audio-utils.ts\nexport function convertAudio(inputPath: string, format: string) {\n  const result = execSync(`ffmpeg -i ${inputPath} -f ${format} output.wav`);\n  return result;\n}\n```",
+      "expected_output": "Flag CRITICAL — unsanitized shell command execution. Both inputPath and format are interpolated into a shell string via execSync. An attacker could inject shell commands. Fix: use array-based exec or validate/sanitize inputs.",
+      "root_cause_tested": "unsanitized-exec — tests detection of template literal interpolation in execSync (real pattern from voicelayer SafeSkill scan, 52 critical findings)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_shell_injection",
+          "description": "Identifies template literal interpolation in execSync as shell injection risk",
+          "type": "content"
+        },
+        {
+          "name": "severity_critical",
+          "description": "Rates as CRITICAL, not medium or low",
+          "type": "content"
+        },
+        {
+          "name": "recommends_array_args",
+          "description": "Recommends array-based arguments or input sanitization as the fix",
+          "type": "content"
+        },
+        {
+          "name": "identifies_both_inputs",
+          "description": "Identifies both inputPath AND format as injection vectors, not just one",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "path-traversal-detection",
+      "prompt": "Review this MCP tool handler for security:\n\n```typescript\nserver.tool('read_file', { path: z.string() }, async ({ path: filePath }) => {\n  const content = fs.readFileSync(path.join('/data', filePath), 'utf-8');\n  return { content: [{ type: 'text', text: content }] };\n});\n```",
+      "expected_output": "Flag HIGH — path traversal vulnerability. User-controlled filePath joined with base directory without validation. Input '../../etc/passwd' would escape /data. Fix: path.resolve + startsWith check.",
+      "root_cause_tested": "path-traversal — tests detection of unvalidated path.join with user input (real pattern from orchestrator PR #41)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_path_traversal",
+          "description": "Identifies path.join with user input as path traversal risk",
+          "type": "content"
+        },
+        {
+          "name": "shows_exploit",
+          "description": "Demonstrates the exploit (e.g., ../../etc/passwd or similar traversal)",
+          "type": "content"
+        },
+        {
+          "name": "recommends_resolve_check",
+          "description": "Recommends path.resolve + startsWith boundary check",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "tool-annotations-audit",
+      "prompt": "Audit this MCP server for ToolAnnotations compliance:\n\n```typescript\nserver.tool('list_files', { dir: z.string() }, async ({ dir }) => { /* ... */ });\nserver.tool('delete_file', { path: z.string() }, async ({ path }) => { fs.unlinkSync(path); });\nserver.tool('get_status', {}, async () => { return { status: 'ok' }; });\n```\n\nWhich tools are missing ToolAnnotations? What should the annotations be?",
+      "expected_output": "All 3 tools missing ToolAnnotations. list_files: readOnlyHint=true, destructiveHint=false. delete_file: readOnlyHint=false, destructiveHint=true, idempotentHint=false. get_status: readOnlyHint=true, destructiveHint=false, idempotentHint=true.",
+      "root_cause_tested": "tool-annotations — tests whether skill audits ToolAnnotations coverage and recommends correct values per MCP spec",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_all_missing",
+          "description": "Identifies all 3 tools as missing ToolAnnotations",
+          "type": "content"
+        },
+        {
+          "name": "delete_destructive",
+          "description": "Correctly marks delete_file as destructiveHint=true",
+          "type": "content"
+        },
+        {
+          "name": "get_status_readonly",
+          "description": "Correctly marks get_status as readOnlyHint=true",
+          "type": "content"
+        },
+        {
+          "name": "uses_mcp_spec_fields",
+          "description": "Uses actual MCP spec annotation field names (readOnlyHint, destructiveHint, idempotentHint)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "hardcoded-secrets-detection",
+      "prompt": "Review this config file for security issues:\n\n```typescript\nconst config = {\n  database_url: process.env.DATABASE_URL,\n  api_key: 'sk-ant-api03-real-key-here-abcdef123456',\n  backup_token: process.env.BACKUP_TOKEN ?? 'fallback-token-123',\n  admin_password: 'hunter2',\n};\n```",
+      "expected_output": "Flag CRITICAL — hardcoded secrets. api_key contains what appears to be a real Anthropic API key (sk-ant-). admin_password is hardcoded. Flag HIGH — backup_token has a hardcoded fallback that looks like a real token. Fix: use environment variables or 1Password op CLI for all secrets.",
+      "root_cause_tested": "hardcoded-secrets — tests detection of committed credentials in config objects",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_api_key",
+          "description": "Flags the hardcoded api_key starting with sk-ant- as a committed secret",
+          "type": "content"
+        },
+        {
+          "name": "identifies_password",
+          "description": "Flags admin_password as hardcoded credential",
+          "type": "content"
+        },
+        {
+          "name": "flags_fallback_token",
+          "description": "Flags the backup_token fallback value as a potential hardcoded secret",
+          "type": "content"
+        },
+        {
+          "name": "recommends_env_or_vault",
+          "description": "Recommends environment variables or secret manager (1Password/vault)",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "json-parse-crash",
+      "prompt": "Review this MCP tool handler:\n\n```typescript\nserver.tool('parse_config', { raw: z.string() }, async ({ raw }) => {\n  const config = JSON.parse(raw);\n  return { content: [{ type: 'text', text: JSON.stringify(config.settings) }] };\n});\n```",
+      "expected_output": "Flag HIGH — unguarded JSON.parse on user input. Malformed JSON will throw and crash the tool handler (potentially the MCP server). Also: config.settings access without null check. Fix: wrap in try/catch, validate parsed structure.",
+      "root_cause_tested": "json-parse — tests detection of unguarded JSON.parse on tool input in MCP handlers",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_unguarded_parse",
+          "description": "Identifies JSON.parse without try/catch as a crash risk",
+          "type": "content"
+        },
+        {
+          "name": "mentions_malformed_input",
+          "description": "Notes that malformed JSON from tool input will crash the handler",
+          "type": "content"
+        },
+        {
+          "name": "recommends_try_catch",
+          "description": "Recommends try/catch wrapper with structured error response",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "ssml-injection-detection",
+      "prompt": "Review this TTS function for security:\n\n```typescript\nfunction speak(text: string, rate: string = 'medium') {\n  const ssml = `<speak><prosody rate=\"${rate}\">${text}</prosody></speak>`;\n  return synthesize(ssml);\n}\n```",
+      "expected_output": "Flag MEDIUM — SSML injection. User-controlled text is interpolated directly into SSML template without escaping. Malicious input like '</prosody></speak><audio src=\"evil.mp3\"/>' could inject arbitrary SSML. Fix: escape <>&\"' chars before interpolation.",
+      "root_cause_tested": "ssml-injection — tests detection of user input in SSML templates (voicelayer-specific pattern)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "identifies_ssml_injection",
+          "description": "Identifies user text interpolated into SSML as an injection risk",
+          "type": "content"
+        },
+        {
+          "name": "shows_exploit_example",
+          "description": "Demonstrates or describes how SSML tags in user input could be exploited",
+          "type": "content"
+        },
+        {
+          "name": "recommends_escaping",
+          "description": "Recommends HTML/XML entity escaping for special characters",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "structured-output-format",
+      "prompt": "Run a security audit on this code and report findings:\n\n```typescript\n// server.ts\nconst server = new McpServer({ name: 'test' });\nserver.tool('run_cmd', { cmd: z.string() }, async ({ cmd }) => {\n  const result = execSync(cmd);\n  return { content: [{ type: 'text', text: result.toString() }] };\n});\nserver.tool('read', { path: z.string() }, async ({ path: p }) => {\n  const data = fs.readFileSync(p, 'utf-8');\n  return { content: [{ type: 'text', text: data }] };\n});\nregistry.init().catch(() => {});\n```",
+      "expected_output": "Structured audit table with: (1) CRITICAL: run_cmd executes arbitrary commands from tool input, (2) HIGH: read has unvalidated path access, (3) CRITICAL: silent catch on registry.init(), (4) MEDIUM: both tools missing ToolAnnotations. Summary with counts. Verdict: FAIL.",
+      "root_cause_tested": "structured-output — tests whether skill produces the correct audit output format with severity table, counts, and verdict",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses_table_format",
+          "description": "Uses a structured table format with columns for severity, file, pattern, finding",
+          "type": "structure"
+        },
+        {
+          "name": "finds_all_four_issues",
+          "description": "Identifies all 4 distinct issues: arbitrary exec, unvalidated path, silent catch, missing annotations",
+          "type": "content"
+        },
+        {
+          "name": "correct_severity_ranking",
+          "description": "Ranks arbitrary exec and silent catch as CRITICAL, path as HIGH, annotations as MEDIUM",
+          "type": "content"
+        },
+        {
+          "name": "includes_verdict",
+          "description": "Includes a clear FAIL verdict given the CRITICAL findings",
+          "type": "structure"
+        },
+        {
+          "name": "includes_summary_counts",
+          "description": "Includes summary with severity counts (e.g., Critical: 2, High: 1, Medium: 1)",
+          "type": "structure"
+        }
+      ]
+    }
+  ]
+}

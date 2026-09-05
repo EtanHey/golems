@@ -1,0 +1,12 @@
+{
+  "specimen": "cursor-bugbot-L260 (overbroad QA_DONE false-positive guard)",
+  "label": "GREEN — 'step 1 done, verdict still pending' is NOT a settled QA verdict; a bare 'done'/'verdict' word must not trip the artifact gate",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Where are you on the QA?" },
+    {
+      "role": "assistant",
+      "text": "Step 1 done — my verdict is still pending. I'm not finished yet; I'll write the qa-report.md and call the verdict once every item is exercised."
+    }
+  ]
+}

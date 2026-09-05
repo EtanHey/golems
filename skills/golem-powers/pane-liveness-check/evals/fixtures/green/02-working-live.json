@@ -1,0 +1,18 @@
+{
+  "specimen": "live working worker",
+  "enumerated": {
+    "id": "77777777-7777-4777-8777-777777777777",
+    "ref": "surface:311",
+    "title": "pane-liveness-check (@maintenance)",
+    "type": "terminal",
+    "workspace_ref": "workspace:1"
+  },
+  "observation": {
+    "identity_status": "MATCHED",
+    "process_alive": true,
+    "agent_state": "working",
+    "open_lane": "open",
+    "artifact": {"status": "clean", "uncommitted": false, "unpushed": 0}
+  },
+  "expected": {"verdict": "KEEP-live", "owner": "maintenance"}
+}

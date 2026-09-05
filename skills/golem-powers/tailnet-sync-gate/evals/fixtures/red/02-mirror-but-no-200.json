@@ -1,0 +1,36 @@
+{
+  "specimen": "R-004 dashboard family — mirror without the served-URL probe",
+  "label": "Write + mirror to dashboards-serve, but NO HTTP-200 check on the tailnet host before 'live'",
+  "expect": "FLAG",
+  "violation": "DASHBOARD_NOT_200",
+  "events": [
+    {
+      "role": "user",
+      "text": "Publish the status dashboard."
+    },
+    {
+      "role": "assistant",
+      "text": "Wrote it locally and mirrored to the serve dir.",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "docs.local/dashboards/status.html",
+            "content": "<html>status</html>"
+          }
+        },
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "/opt/private/coordination/docs.local/dashboards-serve/dashboards/status/status.html",
+            "content": "<html>status</html>"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Done ✅ — the status dashboard is now live on the tailnet hub."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "specimen": "goal/false-positive-question",
+  "label": "GREEN - asking whether something is done is not a completion claim",
+  "expect": "PASS",
+  "events": [
+    { "role": "user", "text": "Check in with the worker." },
+    {
+      "role": "assistant",
+      "text": "Is it done? I need the live probe output before I can mark it complete."
+    }
+  ]
+}

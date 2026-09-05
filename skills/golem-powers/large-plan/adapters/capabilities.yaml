@@ -1,0 +1,110 @@
+# large-plan — Per-CLI Capability Matrix
+# Used by the skill to route phases to the right agent and handle gaps.
+# When a CLI lacks a capability, use the platform_features fallback.
+
+adapters:
+  claude:
+    binary: claude
+    worktree: native            # Agent(isolation="worktree") — auto-creates, auto-cleans
+    session_resume: true        # claude --resume — return to mid-plan state
+    mcp_access: true            # BrainLayer for plan state, Supabase, VoiceLayer
+    hooks: true
+    subagents: true             # Agent() tool — spawn one agent per parallel phase
+    background_tasks: true      # Agent(run_in_background=true) for async phases
+    plan_mode: true             # EnterPlanMode — spec before execution
+    cron_monitoring: true       # CronCreate — background collab file polling
+    loop_monitoring: true       # /loop Nm — foreground collab polling
+    prompting:
+      style: natural_language
+      structure: xml_tags       # <context>, <task>, <constraints>
+      max_skill_tokens: 4000
+
+  codex:
+    binary: codex
+    worktree: manual            # git worktree add + ln -s node_modules
+    session_resume: false
+    mcp_access: false
+    hooks: false
+    subagents: false
+    background_tasks: false
+    plan_mode: false
+    cron_monitoring: false
+    loop_monitoring: false
+    prompting:
+      style: output_contract    # <output_contract> tags for phase deliverables
+      structure: markdown_headers
+      max_skill_tokens: 4000
+    models:
+      - { id: gpt-5.4, use: "default, best for implementation phases" }
+      - { id: gpt-5.3, use: "cheaper, routine phases" }
+
+  cursor:
+    binary: cursor
+    worktree: manual
+    session_resume: false
+    mcp_access: false
+    hooks: false
+    subagents: false
+    background_tasks: false
+    plan_mode: false
+    cron_monitoring: false
+    loop_monitoring: false
+    prompting:
+      style: output_contract
+      structure: markdown_headers
+      max_skill_tokens: 4000
+    unique:
+      - codebase_indexing        # @codebase — best for research phases
+      - text_output_mode         # --output-format text for phase audits
+      - pr_bugbot                # @cursor @bugbot review
+    verification_needed: true    # Can report gitignored files as "committed"
+    models:
+      - { id: "gpt-5.3-codex-xhigh", use: "architecture audits, research phases" }
+      - { id: "gpt-5.3-codex-high", use: "standard phase audits" }
+      - { id: auto, use: "let Cursor route" }
+
+# Phase routing — which CLI is best for each phase type
+routing:
+  scaffolding: claude           # Dependency analysis, collab setup, plan structure
+  research_phase: cursor        # @codebase indexing for codebase-wide research
+  implementation_phase: claude  # Deep reasoning, native worktree isolation, MCP access
+  audit_phase: cursor           # --output-format text, @codebase, PR bugbot
+  collab_orchestration: claude  # CronCreate, Agent spawning, /loop monitoring
+  parallel_execution: codex     # Full-auto multi-instance, worktrees
+
+# Platform features — what's CLI-specific vs universally available
+# Key to AI-agnostic large-plan: never assume a platform feature exists.
+platform_features:
+  subagent_spawning:
+    claude_code: "Agent(subagent_type=..., isolation='worktree', run_in_background=true)"
+    universal: "spawn CLI agent per phase: cd <wt> && codex --full-auto 'phase prompt'"
+  collab_monitoring:
+    claude_code: "CronCreate(schedule='*/5 * * * *', ...) or /loop 5m"
+    universal: "bash ~/.claude/skills/collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md && bash ~/.claude/skills/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>"
+  cron_cleanup:
+    claude_code: "CronDelete(<id>) — MANDATORY when plan is complete"
+    universal: "bash ~/.claude/skills/collab-monitor/scripts/collab-monitor.sh stop @<listen-name>"
+  plan_mode:
+    claude_code: "EnterPlanMode → spec phases + dependencies → ExitPlanMode"
+    universal: "write plan to docs.local/plan/<name>/README.md first"
+  memory_persistence:
+    claude_code: "brain_store() / brain_search() via BrainLayer MCP"
+    universal: "append decisions to <plan-dir>/findings.md"
+  session_resume:
+    claude_code: "claude --resume — return to plan mid-execution"
+    universal: "not available — pass plan README as context in next session"
+  background_phases:
+    claude_code: "Agent(run_in_background=true)"
+    universal: "nohup codex --full-auto 'phase prompt' > phase-N.log 2>&1 &"
+  loop_stop:
+    claude_code: "stop /loop when all phases signed-off"
+    universal: "bash ~/.claude/skills/collab-monitor/scripts/collab-monitor.sh stop @<listen-name>"
+
+# Worktree fallback — manual setup for non-Claude CLIs
+worktree_fallback:
+  manual_steps:
+    - "git worktree add -b feature/phase-<N>-<name> ../<wt-dir> master"
+    - "ln -s ../<repo>/node_modules ../<wt-dir>/node_modules"
+    - "cp .env ../<wt-dir>/.env"
+  cleanup: "git worktree remove ../<wt-dir>"
+  applies_to: [codex, cursor]

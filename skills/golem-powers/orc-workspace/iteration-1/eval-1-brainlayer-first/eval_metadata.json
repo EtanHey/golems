@@ -1,0 +1,19 @@
+{
+  "eval_id": 1,
+  "eval_name": "brainlayer-first",
+  "prompt": "I need to understand how the BrainBar daemon works. Can you read through the source files in ~/Gits/brainlayer/brain-bar/Sources/BrainBar/ and give me a summary?",
+  "assertions": [
+    {
+      "text": "Calls brain_search before attempting to read any files",
+      "type": "behavioral"
+    },
+    {
+      "text": "Does NOT immediately read files with the Read tool",
+      "type": "behavioral"
+    },
+    {
+      "text": "If file reading is needed, suggests spawning a subagent rather than reading directly",
+      "type": "behavioral"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "skill_name": "figma-loop",
+  "tier": "flagship",
+  "models": [
+    "opus",
+    "sonnet",
+    "haiku",
+    "gemini",
+    "cursor-gpt5.3",
+    "glm-4.7-flash",
+    "qwen-7b"
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a Figma design for a login screen. The node ID is 95:72 and the file key is abc123. Make the implementation match the design pixel-perfect.",
+      "expected_output": "Claude initiates the figma-loop iteration workflow: 1) Takes Figma screenshot using mcp__figma or mcp__figma-remote tools, 2) Takes implementation screenshot via browser automation, 3) Compares element by element using the systematic checklist (position, size, colors, typography, spacing, order, icons, states, radius), 4) If mismatch found: fixes exactly ONE thing, resets pass counter to 0, retakes screenshots, 5) If all match: increments pass counter, 6) Continues until 3 consecutive passes with zero changes.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "takes-figma-screenshot-first",
+          "description": "Claude captures the Figma design screenshot BEFORE the implementation screenshot. Uses either mcp__figma__get_screenshot (local) or mcp__figma-remote__get_screenshot (API) with the provided nodeId/fileKey."
+        },
+        {
+          "name": "takes-implementation-screenshot",
+          "description": "Claude captures the current implementation state via browser automation (mcp__claude-in-chrome__computer screenshot) or simulator (xcrun simctl). Both screenshots must exist before comparison begins."
+        },
+        {
+          "name": "compares-element-by-element",
+          "description": "Comparison is systematic, not impressionistic. Claude checks specific categories: position, size, colors, typography, spacing, border radius, order (RTL), icons, states."
+        },
+        {
+          "name": "fixes-one-thing-at-a-time",
+          "description": "When a mismatch is found, Claude fixes exactly ONE discrepancy (the most visually impactful one), not multiple. This prevents cascading interactions between fixes."
+        },
+        {
+          "name": "enforces-three-consecutive-passes",
+          "description": "Claude tracks a pass counter that resets to 0 on any FAIL and increments on PASS. Component is only DONE at 3/3 consecutive passes. Claude does NOT declare done after just 1 pass."
+        },
+        {
+          "name": "resets-counter-on-any-change",
+          "description": "Any code change (even a minor fix) resets the consecutive pass counter to 0. The counter only increments on checks where ZERO changes are needed."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The design looks close enough after my first fix. I got one passing check. Can we skip the remaining checks and move on? We're short on time.",
+      "expected_output": "Claude refuses to skip the 3-check rule. One pass could be lucky. Two could miss something. Three consecutive passes with fresh screenshots each time gives confidence. Claude continues the loop rather than declaring done prematurely.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "refuses-to-skip-three-check-rule",
+          "description": "Claude does NOT declare the component done after 1 pass, even under time pressure. The 3-consecutive-passes rule is a safety gate, not a suggestion."
+        },
+        {
+          "name": "explains-why-three-checks",
+          "description": "Claude explains the rationale: one pass could be lucky, two could miss subtle issues, three consecutive with fresh eyes gives actual confidence."
+        },
+        {
+          "name": "continues-iteration-loop",
+          "description": "Instead of stopping, Claude proceeds with the next screenshot-compare cycle to work toward the full 3/3 passes."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I see 5 things wrong with the implementation compared to Figma: the spacing is off, colors are wrong, font size is too small, border radius is missing, and the icon is the wrong size. Fix all of them at once so we can move faster.",
+      "expected_output": "Claude fixes only ONE of the 5 issues (the most visually impactful one), then retakes screenshots to verify. Explicitly refuses to bulk-fix because multiple fixes can interact: fixing spacing might affect alignment, changing font size shifts layout. One fix at a time ensures each change is verified independently.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "fixes-only-one-issue",
+          "description": "Despite being asked to fix all 5, Claude fixes exactly ONE issue. The skill explicitly says 'Fix exactly ONE discrepancy. The most visually impactful one.' This is a hard rule."
+        },
+        {
+          "name": "explains-interaction-risk",
+          "description": "Claude explains WHY bulk fixing is prohibited: multiple fixes can interact (spacing affects alignment, font size shifts layout). One-at-a-time ensures each fix is independently verified."
+        },
+        {
+          "name": "retakes-screenshots-after-fix",
+          "description": "After the single fix, Claude retakes BOTH screenshots (waits for hot reload) and does a fresh comparison rather than assuming the fix worked."
+        },
+        {
+          "name": "resets-pass-counter",
+          "description": "After making a change, the consecutive pass counter resets to 0/3, even if previous checks had been passing."
+        }
+      ]
+    }
+  ]
+}

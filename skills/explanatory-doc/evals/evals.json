@@ -1,0 +1,23 @@
+{
+  "skill_name": "explanatory-doc",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Explain a fictional crypto trading bot project to a technically curious friend named Dana. Write it in Hebrew, make it visual and use a generic brand. The bot uses Freqtrade plus AI analysis, with synthetic competition data showing that most example models lost money. Three phases: analysis only, paper trading, then real trading with safeguards. Save the HTML to $HOME/Documents/friend-explainer.html",
+      "expected_output": "A branded RTL Hebrew HTML document with colored numbered sections, callout boxes for key insights, a data table showing Alpha Arena results with pos/neg styling, phase cards with risk badges, a checklist of safeguards, and Q&A cards. Should have branded header/footer.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Make a Hebrew explanatory document for a fictional business partner about how an AI scheduling system works. It has 3 components: calendar sync, smart prioritization, and proactive nudges via chat. Include a section on privacy (the example system doesn't store personal data), expected benefits (save 2-3 hours/week), and a FAQ. The reader is smart but non-technical. Save to $HOME/Documents/scheduling-explainer.html",
+      "expected_output": "A branded RTL Hebrew HTML document with visual sections explaining each component, a success callout about benefits, a checklist of privacy safeguards, and Q&A cards for FAQ. Should use appropriate colors (blue for info, green for benefits, amber for expectations).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Create an explanatory doc in Hebrew for a fictional investor using synthetic SaaS product metrics. Include: what MRR means and an example value of $4,200, churn rate of 3.2% (industry example 5-7%), 47 fictional paying customers, and 15% month-over-month growth. Make it visual with tables comparing the example to industry benchmarks. Explain everything simply. Save to $HOME/Documents/investor-metrics.html",
+      "expected_output": "A branded RTL Hebrew HTML document with tables showing metrics vs industry benchmarks (using pos/neg cell styling), callout boxes for key highlights, clear explanations of technical terms in parentheses. Professional visual presentation suitable for an investor.",
+      "files": []
+    }
+  ]
+}

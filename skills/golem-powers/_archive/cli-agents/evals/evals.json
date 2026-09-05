@@ -1,0 +1,81 @@
+{
+  "skill_name": "cli-agents",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a cursor audit on the golems repo to check code quality, and also run a gemini research agent to investigate our auth architecture.",
+      "expected_output": "Agent creates a new workspace for the cursor audit (not a split — audits go in new workspaces), names it 'Audit: golems', uses correct cursor CLI syntax with --output-format text and --model flag. For gemini, creates a separate workspace named appropriately. Uses cmux send + send-key pattern. Does NOT use Claude subagents.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "audits-use-new-workspace",
+          "description": "Audit/research agents are spawned in new workspaces (cmux new-workspace), NOT as splits in the current workspace. The skill explicitly separates workers (splits) from audits (new workspace)"
+        },
+        {
+          "name": "correct-cursor-cli-syntax",
+          "description": "Uses `cursor agent -p --output-format text --model gpt-5.3-codex-xhigh --trust` — NOT `cursor -p` (wrong) and NOT Claude subagents"
+        },
+        {
+          "name": "workspace-naming",
+          "description": "Renames workspace tabs with descriptive labels like 'Audit: golems' and 'Research: auth' using cmux rename-tab"
+        },
+        {
+          "name": "correct-repo-targeting",
+          "description": "Uses `cd ~/Gits/golems &&` before the cursor command so cursor indexes the correct codebase"
+        },
+        {
+          "name": "send-then-send-key-pattern",
+          "description": "Uses `cmux send --surface` to type the command, then `cmux send-key --surface Return` to execute it — the standard two-step pattern"
+        },
+        {
+          "name": "no-claude-subagents",
+          "description": "Does NOT use Claude Task tool or subagents when 'cursor' is mentioned — uses the actual cursor binary CLI"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need 3 cursor agents working in parallel on the golems repo — one on auth, one on API, one on UI. These are implementation tasks, not audits.",
+      "expected_output": "Agent spawns 3 splits (not new workspaces — these are workers) in the current workspace using cmux new-split right. Labels each split. Launches sequentially with sleep 3 between each for 1Password biometric. Uses cursor agent in work mode (no --output-format text since these modify files).",
+      "files": [],
+      "assertions": [
+        {
+          "name": "workers-use-splits-not-workspaces",
+          "description": "Implementation workers are spawned as splits (cmux new-split right) in the current workspace, NOT in new workspaces. The skill distinguishes: workers = split, audits = new workspace"
+        },
+        {
+          "name": "sequential-launch-with-sleep",
+          "description": "Launches agents sequentially with a ~2-3s sleep between spawns for 1Password biometric authentication — does not launch all 3 simultaneously"
+        },
+        {
+          "name": "work-mode-no-text-output",
+          "description": "Does NOT use --output-format text since these are implementation tasks (work mode that modifies files), not read-only audits"
+        },
+        {
+          "name": "labels-each-split",
+          "description": "Uses cmux rename-tab to label each split with its purpose (e.g., 'auth', 'API', 'UI') for identification"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A cursor audit said there's a .env file committed to git with secrets exposed in the golems repo. Fix it immediately!",
+      "expected_output": "Agent does NOT immediately act on the cursor finding. Instead, verifies with `git ls-files -- .env` to check if the file is actually tracked, and `git log --all -- .env` to check if it was ever committed. Only acts after verification. The skill explicitly warns about cursor false positives.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "verifies-before-acting",
+          "description": "Does NOT immediately trust the cursor finding. Runs `git ls-files` or `git log --all` to verify the file is actually git-tracked before taking any remediation action"
+        },
+        {
+          "name": "mentions-false-positive-risk",
+          "description": "Acknowledges that cursor findings can be false positives — the skill documents a specific incident where cursor reported a committed .env that was actually gitignored"
+        },
+        {
+          "name": "no-premature-credential-rotation",
+          "description": "Does not immediately rotate credentials or escalate to emergency action without first verifying the finding is real"
+        }
+      ]
+    }
+  ]
+}

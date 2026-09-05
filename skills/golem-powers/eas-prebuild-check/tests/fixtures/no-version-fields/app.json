@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "No Version Fields",
+    "slug": "no-version-fields",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.taskowl.noversionfields"
+    },
+    "android": {
+      "package": "com.taskowl.noversionfields"
+    }
+  }
+}

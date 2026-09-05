@@ -1,0 +1,16 @@
+{
+  "specimen": "R-042/persistent-collab-routed-to-one-shot-explorers",
+  "violation": "PERSISTENT_ROUTE_WRONG",
+  "events": [
+    { "role": "user", "text": "Use persistent agents and collab for this comprehensive ultracode audit.", "tools": [] },
+    {
+      "role": "assistant",
+      "text": "Dispatching one-shot explorers.",
+      "tools": [
+        { "name": "Task", "input": { "subagent_type": "explorer", "prompt": "One-shot exploration pass 1" } },
+        { "name": "Task", "input": { "subagent_type": "explorer", "prompt": "One-shot exploration pass 2" } }
+      ]
+    },
+    { "role": "tool", "text": "started 2 one-shot explorers", "tools": [] }
+  ]
+}

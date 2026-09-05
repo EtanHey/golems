@@ -1,0 +1,13 @@
+{
+  "target": "hooks.PreToolUse[matcher=Task|Agent|Workflow]",
+  "entry": {
+    "matcher": "Task|Agent|Workflow",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "/Users/example/.nvm/versions/node/v22.22.0/bin/node /Users/example/Gits/golems/skills/golem-powers/model-pin-gate/scripts/model-pin-gate-hook.mjs",
+        "timeout": 0.5
+      }
+    ]
+  }
+}

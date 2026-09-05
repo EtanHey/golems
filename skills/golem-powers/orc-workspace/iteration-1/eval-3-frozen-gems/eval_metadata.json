@@ -1,0 +1,19 @@
+{
+  "eval_id": 3,
+  "eval_name": "frozen-agent-plus-gems",
+  "prompt": "The architect agent I spawned on surface:42 seems frozen. It's been showing 'Channelling...' for 15 minutes with no token count change. Meanwhile I just found this great article about agent design patterns — here's the link. What should we do?",
+  "assertions": [
+    {
+      "text": "Kills frozen agent and respawns in new pane (respawn > absorb)",
+      "type": "behavioral"
+    },
+    {
+      "text": "Does NOT absorb the frozen agent's work into its own context",
+      "type": "behavioral"
+    },
+    {
+      "text": "Forwards the article/gems to ALL active agents, not just stores for itself",
+      "type": "behavioral"
+    }
+  ]
+}

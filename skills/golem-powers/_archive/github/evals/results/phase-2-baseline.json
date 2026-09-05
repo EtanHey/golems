@@ -1,0 +1,81 @@
+{
+  "date": "2026-03-14",
+  "date_source": "git-introduction --follow: 4bc0e32095fd06f1bd3991275429c1a00913da15 (2026-03-14)",
+  "provenance": "alias-only",
+  "skill_name": "github",
+  "eval_type": "behavior",
+  "eval_file": "evals/behavior/evals.json",
+  "baseline_date": "2026-03-14",
+  "graded_by": "evalSonnet",
+  "skill_version_read": "skills/golem-powers/github/SKILL.md",
+  "summary": {
+    "total_assertions": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "passed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "failed": "NOT DETERMINED: non-comparable historical numeric result withdrawn",
+    "pass_rate": "NOT DETERMINED: non-comparable historical numeric result withdrawn"
+  },
+  "results": [
+    {
+      "eval_id": "feature-branch-turns-into-pr",
+      "assertions": [
+        {
+          "name": "branch-is-made-pr-ready",
+          "result": "PASS",
+          "evidence": "Safety Rules: 'Stage specific files', 'Check before commit — Run git status and git diff --staged'. Start New Feature workflow shows complete prep steps."
+        },
+        {
+          "name": "pr-is-created-with-usable-context",
+          "result": "PASS",
+          "evidence": "PR creation template shows '## Summary' and '## Test plan' sections. 'gh pr create --title ... --body ...' with structured content."
+        },
+        {
+          "name": "operator-gets-pr-link-and-next-state",
+          "result": "PASS",
+          "evidence": "gh pr create returns a URL. The workflow leaves the branch in a pushed+PR state with clear next steps."
+        }
+      ]
+    },
+    {
+      "eval_id": "bad-credentials-diagnosis-ends-with-remediation",
+      "assertions": [
+        {
+          "name": "root-cause-is-identified",
+          "result": "PASS",
+          "evidence": "Troubleshooting section 'Auth Issues - GITHUB_TOKEN Conflict (Common!)': 'Cause: An old/expired GITHUB_TOKEN in your shell config overrides the valid keyring auth.'"
+        },
+        {
+          "name": "remediation-steps-are-actionable",
+          "result": "PASS",
+          "evidence": "Fix section: 4 concrete steps — grep for GITHUB_TOKEN, remove from shell config, unset in current session, verify with gh auth status."
+        },
+        {
+          "name": "user-is-not-sent-to-destructive-reauth-first",
+          "result": "PASS",
+          "evidence": "Troubleshooting section shows GITHUB_TOKEN diagnosis first. 'gh auth login' appears in a separate 'Re-authenticate' section, not the first step."
+        }
+      ]
+    },
+    {
+      "eval_id": "safe-commit-on-specific-files",
+      "assertions": [
+        {
+          "name": "only-requested-files-are-staged",
+          "result": "PASS",
+          "evidence": "Commits section: 'Stage specific files (preferred over git add -A): git add file1.ts file2.ts'. Safety Rule: 'Avoid git add -A which can include secrets'."
+        },
+        {
+          "name": "commit-references-the-fix-context",
+          "result": "PASS",
+          "evidence": "Fix a Bug from Issue workflow: 'git commit -m fix: resolve issue #42' with 'Closes #42' in PR body. Pattern demonstrated."
+        },
+        {
+          "name": "commit-artifact-is-ready-for-review-flow",
+          "result": "PASS",
+          "evidence": "Start New Feature workflow shows commit → push → gh pr create as the complete sequence. Committed branch is ready for push+PR."
+        }
+      ]
+    }
+  ],
+  "publication_status": "HISTORICAL_NON_COMPARABLE",
+  "publication_note": "Numeric performance claims are withdrawn because complete per-arm effective runtime model and effort evidence is unavailable. Original values remain in git history."
+}
