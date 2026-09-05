@@ -1,6 +1,6 @@
 ---
 name: tailnet-sync-gate
-description: "Mechanical kill-gate: block a dashboard 'published/live' claim unless the SAME turn mirrored it to the tailnet hub AND got HTTP 200. Triggers: dashboard Write, publish to hub, dashboard 'done/live'."
+description: "Kill-gate: dashboard 'live' needs same-turn HTTP 200. Triggers: dashboard Write, publish to hub, dashboard 'done/live'."
 disable-model-invocation: true
 ---
 
@@ -10,6 +10,10 @@ disable-model-invocation: true
 > A local `docs.local/*.html` you only `Write` + `open` orphans the dashboard the user cannot find.
 > No "published/live" leaves the seat without a SAME-TURN mirror to the hub AND an HTTP-200 on the served URL.
 > (R-004, BROKEN-OPEN since gen-7.)
+
+## Scope
+
+Blocks a dashboard 'published/live' claim unless the SAME turn mirrored it to the tailnet hub AND got HTTP 200.
 
 ## What It Is
 

@@ -1,6 +1,6 @@
 ---
 name: judge-fleet
-description: "Bulk LLM-judging protocol for fleet-dispatched verdict runs (KG cluster, eval harness). Triggers: judge fleet, bulk judge, R3 verdicts, kg-judge, RT gate, evidence_degraded. NOT for single reviews, Phoenix UX, or non-judge evals."
+description: "Bulk LLM-judging protocol for fleet-dispatched verdict runs. Triggers: judge fleet, bulk judge, R3 verdicts, kg-judge, RT gate, evidence_degraded. NOT for single reviews, Phoenix UX, or non-judge evals."
 ---
 
 # /judge-fleet — bulk LLM-judging protocol
@@ -11,6 +11,10 @@ Routing: use `/judge-fleet` for bulk verdict fan-out; use `/plan-council` for a 
 > A generic "judge these N items" dispatch loses artifacts, degrades silently,
 > and bulk-applies refuted merges. This skill encodes what the rerun briefs
 > already harden — so agents don't re-learn from /tmp wipes and DB locks.
+
+## Scope
+
+Fleet-dispatched verdict runs means the KG cluster and the eval harness.
 
 ## When to use
 

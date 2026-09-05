@@ -1,11 +1,15 @@
 ---
 name: mac-systems
-description: "macOS systems specialist — AppKit NSPanel architecture, launchd services, socket activation, MCP bridge resilience, syspolicyd, high-frequency SwiftUI dashboards. Triggers: menu-bar apps, LaunchAgents, Gatekeeper/TCC, UDS/MCP bridges, 10Hz+ SwiftUI."
+description: "macOS systems specialist. Triggers: menu-bar apps, LaunchAgents, Gatekeeper/TCC, UDS/MCP bridges, 10Hz+ SwiftUI."
 ---
 
 # mac-systems
 
 macOS systems specialist for low-level AppKit, launchd, security policy, resilient networking, and SwiftUI dashboard architecture.
+
+## Scope
+
+Covers AppKit NSPanel architecture, launchd services, socket activation, MCP bridge resilience, syspolicyd, and high-frequency SwiftUI dashboards.
 
 ## When to Use
 

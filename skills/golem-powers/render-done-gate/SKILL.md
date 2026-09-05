@@ -1,6 +1,6 @@
 ---
 name: render-done-gate
-description: "Mechanical kill-gate: block a narration/AfterCode 'render done / give it a play' without a same-turn ls+ffprobe(size>0,duration>0) of the CLAIMED mp3 + a reachable surface + a registered cloned voice. Triggers: render complete, give it a play, narration done, audio mp3 done."
+description: "Kill-gate: render-done needs ffprobe proof. Triggers: render complete, give it a play, narration done, audio mp3 done."
 disable-model-invocation: true
 ---
 
@@ -9,6 +9,10 @@ disable-model-invocation: true
 > A "render complete / give it a play" message ≠ an mp3 on disk. A 2-voice render that silently fell back
 > to system-TTS for speaker 2 ≠ the registered clone. The script text ≠ the audio artifact.
 > No narration render-done leaves the seat without a SAME-TURN composite probe. (Closes R-035 UNPROVEN/S10 + R-024 LOST.)
+
+## Scope
+
+Blocks a narration/AfterCode 'render done / give it a play' without the full same-turn evidence set: ls + ffprobe (size>0, duration>0) of the CLAIMED mp3, plus a reachable surface and a registered cloned voice.
 
 ## What It Is
 

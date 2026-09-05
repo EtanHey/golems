@@ -1,6 +1,6 @@
 ---
 name: frustration-capture
-description: "Store genuine user corrections/frustration after validating context and speaker intent. Triggers: no/wrong/stop, I told you, not that, profanity/frustration."
+description: "Store genuine user corrections. Triggers: no/wrong/stop, I told you, not that, profanity/frustration."
 hooks:
   UserPromptSubmit:
     - hook: hooks/frustration-capture-prompt.py
@@ -18,6 +18,10 @@ hooks:
 BrainLayer has **ZERO records** of user corrections. This is the single biggest knowledge gap — corrections are the most valuable signals for improving agent behavior, and they're all being lost. This skill closes that gap.
 
 ---
+
+## Scope
+
+Captures user frustration as well as corrections, and stores only after validating context and speaker intent.
 
 ## WHEN TO ACTIVATE
 

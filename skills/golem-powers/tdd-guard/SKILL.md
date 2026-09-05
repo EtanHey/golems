@@ -1,6 +1,6 @@
 ---
 name: tdd-guard
-description: "PreToolUse Write/Edit hook enforcing TDD edit limits for implementation files. Triggers: tdd guard, test-first hook, untested implementation block, snapshot/golden carve-out."
+description: "TDD edit-limit hook. Triggers: tdd guard, test-first hook, untested implementation block, snapshot/golden carve-out."
 hooks:
   PreToolUse:
     - hook: hooks/tdd-guard.py
@@ -11,6 +11,10 @@ hooks:
 
 Hook-carried skill. The enforcing artifact is `hooks/tdd-guard.py`
 (PreToolUse on `Write|Edit`); this page is its contract and verification guide.
+
+## Scope
+
+A PreToolUse hook on Write/Edit. The limits apply to implementation files.
 
 ## Contract
 

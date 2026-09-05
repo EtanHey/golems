@@ -1,6 +1,6 @@
 ---
 name: fleet-wrap-gate
-description: "Mechanical kill-gate: at a fleet-wrap / stand-down state, assert cron-count==0 — no health-watch / `/loop` / sleep-poll cron left armed. Triggers: fleet wrap, stand down, sprint close, going silent."
+description: "Kill-gate: at fleet-wrap/stand-down assert cron-count==0. Triggers: fleet wrap, stand down, sprint close, going silent."
 disable-model-invocation: true
 ---
 
@@ -8,6 +8,10 @@ disable-model-invocation: true
 
 > When the fleet wraps: ZERO polling crons. A "harmless" 5-minute health-watch left running all night IS the failure.
 > Etan at dawn (verbatim, red-team verified): *"Why were you just listing my messages in WhatsApp the whole night? Why didn't you stop?"* — 2× imp-10.
+
+## Scope
+
+cron-count==0 means no health-watch, `/loop`, or sleep-poll cron left armed.
 
 ## What It Is
 

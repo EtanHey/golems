@@ -1,12 +1,16 @@
 ---
 name: monitor-law-gate
-description: "Mechanical monitor-law gate: assert a persistent monitor is armed on the ACTIVE collab channel with a heartbeat marker. Triggers: lead/orc sprint, spawn workers, 'back to silent'."
+description: "Monitor-law gate: monitor armed on the ACTIVE collab. Triggers: lead/orc sprint, spawn workers, 'back to silent'."
 disable-model-invocation: true
 ---
 
 # Skill: Monitor-Law Gate (gen-18 Track 1 #2)
 
 > Fleet law: canon #7 owns claim/guard/DONE/harvest-close. This skill is the deterministic monitor/collab enforcement gate.
+
+## Scope
+
+Asserts the monitor is persistent, armed on the ACTIVE collab channel, and carrying a heartbeat marker.
 
 ## What It Is
 

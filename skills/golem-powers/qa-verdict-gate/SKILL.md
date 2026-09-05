@@ -1,12 +1,16 @@
 ---
 name: qa-verdict-gate
-description: "Mechanical kill-gate: enforce tri-state QA PASS/FAIL/INCONCLUSIVE — FAIL only for confirmed-observed failures, INCONCLUSIVE when the path couldn't be reached, and a qa-report.md artifact must exist. Triggers: QA verdict, QA done/complete, pre-merge QA, false-FAIL."
+description: "Kill-gate: QA PASS/FAIL/INCONCLUSIVE + qa-report.md. Triggers: QA verdict, QA done/complete, pre-merge QA, false-FAIL."
 disable-model-invocation: true
 ---
 
 # Skill: QA Verdict-Integrity Kill-Gate (gen-18 Track 2 #6)
 
 > Fleet law: canon #4 owns user-visible completion; canon #3 owns evidence. This skill enforces QA verdict integrity, report artifacts, and rendered-state evidence.
+
+## Scope
+
+FAIL is only for confirmed-observed failures; INCONCLUSIVE is for when the path couldn't be reached. A qa-report.md artifact must exist.
 
 ## What It Is
 

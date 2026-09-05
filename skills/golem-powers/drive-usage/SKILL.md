@@ -1,6 +1,6 @@
 ---
 name: drive-usage
-description: "Brain Drive filing discipline: where artifacts go + how to name them. Triggers: Drive/Brain Drive upload, folders, prompts/results, audits, plans, transcripts, dashboards, docs.local artifacts. NOT for Gemini Drive/web research; >100KB use archive."
+description: "Brain Drive filing discipline: where artifacts go and how to name them. Triggers: Drive/Brain Drive upload, folders, prompts/results, audits, plans, transcripts, dashboards, docs.local artifacts. NOT for Gemini Drive/web research; >100KB use archive."
 ---
 
 # /drive-usage — Brain Drive filing discipline (where things go)

@@ -1,6 +1,6 @@
 ---
 name: idle-dwell-gate
-description: "Mechanical autonomy gate: flag no-input-decisions + idle-seat-with-open-queue over agent transcripts. Triggers: turn-end autonomy check, /orc + /pr-loop completion, lead about to pause."
+description: "Idle/no-input autonomy gate. Triggers: turn-end autonomy check, /orc + /pr-loop completion, lead about to pause."
 disable-model-invocation: true
 ---
 
@@ -8,6 +8,10 @@ disable-model-invocation: true
 
 > An idle seat with an open queue is not done. Authorization IS permission to drive.
 > This is the MECHANICAL gate the prose kept failing to replace (R-001, 6+ generations BROKEN-OPEN).
+
+## Scope
+
+The gate runs mechanically over agent transcripts, flagging no-input-decisions and idle-seat-with-open-queue.
 
 ## What It Is
 

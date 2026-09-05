@@ -1,11 +1,15 @@
 ---
 name: unslop
-description: "Cut AI tells from writing while keeping every receipt, number, path, and hedge intact. Rewrite text to be faster to scan, with the decision first. Triggers: unslop, cut the slop, wall of text, too verbose, rambly, make this readable. NOT for delivery cadence (see i-have-adhd), channel choice, or artifact length governance."
+description: "Cut AI tells while keeping every receipt, number, path, and hedge intact. Triggers: unslop, cut the slop, wall of text, too verbose, rambly, make this readable. NOT for delivery cadence (see i-have-adhd), channel choice, or artifact length governance."
 ---
 
 # Unslop
 
 Edit text to remove AI patterns and add human voice, without ever damaging evidence.
+
+## Scope
+
+The rewrite target: written text that is faster to scan, with the decision first.
 
 ## Process
 

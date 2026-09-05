@@ -1,6 +1,6 @@
 ---
 name: adversarial-council
-description: "Run and validate a multi-tier anonymized-peer-ranking council. Triggers: peer ranking, anonymized review, adversarial verification, score multiple candidates. NOT for one authored plan/spec with declared judge families (/plan-council)."
+description: "Multi-tier anonymized-peer-ranking council: run and validate. Triggers: peer ranking, anonymized review, adversarial verification, score multiple candidates. NOT for one authored plan/spec with declared judge families (/plan-council)."
 ---
 
 # Adversarial Council

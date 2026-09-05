@@ -1,6 +1,6 @@
 ---
 name: collab-routing-gate
-description: "Mechanical collab-first routing gate: no send_input coordination, no sleep-poll ticks, decisions carry a recommendation. Triggers: cross-lead coordination, worker monitoring, async decision."
+description: "Collab-first routing gate. Triggers: cross-lead coordination, worker monitoring, async decision."
 disable-model-invocation: true
 ---
 
@@ -9,6 +9,10 @@ disable-model-invocation: true
 > Coordination flows through the append-only collab file + event-driven waits — NOT send_input chatter,
 > sleep-poll loops, or bare decision-questions. Mechanizes R-002's substrate (gen-16 ROOT-1
 > "why not update the shared coordination log once for everyone").
+
+## Scope
+
+No pane-send coordination, no sleep-poll ticks, and decisions carry a recommendation.
 
 ## What It Is
 

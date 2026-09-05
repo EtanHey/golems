@@ -1,6 +1,6 @@
 ---
 name: approval-comms-gate
-description: "Mechanical gate for visual approval routing, in-policy PR admin-merge, and incident framing-first doctrine. Triggers: visual/design approval, CI-green in-policy PR, incident/operator response."
+description: "Approval/admin-merge/incident gate. Triggers: visual/design approval, CI-green in-policy PR, incident/operator response."
 disable-model-invocation: true
 ---
 
@@ -13,6 +13,10 @@ This is a deterministic transcript gate for three orc/lead communication failure
 - `INPOLICY_PR_PARKED`: a CI-green in-policy PR is parked for Etan merge approval instead of admin-merged.
 - `INCIDENT_FRAMING_LAST`: an incident/operator response leads with stack/code/log detail before the
   plain-English framing.
+
+## Scope
+
+Covers visual approval routing, in-policy PR admin-merge, and incident framing-first doctrine.
 
 ## Required Evidence
 

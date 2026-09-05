@@ -1,12 +1,16 @@
 ---
 name: false-green-gate
-description: "Mechanical kill-gate: block 'done/green/fixed' without a same-turn live-outcome probe. Triggers: completion claim, pr-loop completion, deploy/render/dashboard 'done'."
+description: "'done/green/fixed' needs a live probe. Triggers: completion claim, pr-loop completion, deploy/render/dashboard 'done'."
 disable-model-invocation: true
 ---
 
 # Skill: False-Green Kill-Gate (gen-18 Track 2 — the gen-17 north star)
 
 > Fleet law: canon #4 owns "done = user-visible". This skill is the mechanical same-turn live-outcome probe gate.
+
+## Scope
+
+The probe must be a same-turn live-outcome probe.
 
 ## What It Is
 

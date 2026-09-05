@@ -1,6 +1,6 @@
 ---
 name: plan-council
-description: "Cross-family judge council over ONE authored plan or spec: 3 visible seats from 3 model families, self-invented rubrics, live-repo read-only validation, measured same-family bias, lift round, exact-head review loops. Triggers: council, review my plan, score the plan, judge the plan, cross-family judges, lift round, exact-head review, conditional GO, MUST_FIX. NOT for anonymized candidate ranking (/adversarial-council) or bulk verdict fleets (/judge-fleet)."
+description: "Cross-family judge council over ONE authored plan or spec. Triggers: council, review my plan, score the plan, judge the plan, cross-family judges, lift round, exact-head review, conditional GO, MUST_FIX. NOT for anonymized candidate ranking (/adversarial-council) or bulk verdict fleets (/judge-fleet)."
 ---
 
 # Plan Council
@@ -8,6 +8,10 @@ description: "Cross-family judge council over ONE authored plan or spec: 3 visib
 Review one authored plan or spec with declared cross-family judges. Disagreement is evidence:
 preserve each judge's independent rubric, validate claims against live local state, and let the
 conservative non-author-family score govern disputed lanes.
+
+## Scope
+
+The council runs 3 visible seats from 3 model families, self-invented rubrics, live-repo read-only validation, measured same-family bias, a lift round, and exact-head review loops.
 
 ## Output contract
 

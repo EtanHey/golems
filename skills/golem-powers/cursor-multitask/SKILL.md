@@ -1,6 +1,6 @@
 ---
 name: cursor-multitask
-description: "Route fan-out / parallel work to the RIGHT engine: Cursor /multitask, headless cursor-agent, Claude Workflow, or cmux. Triggers: multitask, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
+description: "Route fan-out work to the right engine: /multitask, cursor-agent, Claude Workflow, or cmux. Triggers: multitask, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
 ---
 
 # cursor-multitask — Parallel Fan-Out Routing
@@ -8,6 +8,10 @@ description: "Route fan-out / parallel work to the RIGHT engine: Cursor /multita
 > Encoded-preference skill. Picks the right parallelism engine for a fan-out task.
 > The expensive mistake is reaching for an in-editor GUI feature when a headless,
 > deterministic, observable fan-out is what the task actually needs.
+
+## Scope
+
+The engines in full: Cursor /multitask, headless cursor-agent, Claude Workflow, cmux.
 
 ## TL;DR — the one decision
 

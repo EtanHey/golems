@@ -1,6 +1,6 @@
 ---
 name: convention-audit
-description: "Use when code may have duplicated ownership, uncoordinated implementations, multiple writers, split lifecycle controls, live-copy drift, or missing single sources of truth. NOT for generic lint, style, security, or architectural research audits."
+description: "Audit code for duplicated ownership, uncoordinated implementations, multiple writers, split lifecycle controls, live-copy drift, or missing single sources of truth. NOT for generic lint, style, security, or architectural research audits."
 execute: scripts/run.sh
 ---
 
