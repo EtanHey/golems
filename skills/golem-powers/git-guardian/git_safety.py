@@ -278,15 +278,65 @@ def _backtick_bodies(command: str) -> list[str]:
     return bodies
 
 
-def _nearest_repo_root(path: str) -> str | None:
+def _outermost_repo_root(path: str) -> str | None:
+    """Highest ancestor (or `path` itself) holding a `.git`.
+
+    W16: breadth has to be measured against the OUTERMOST repo, because a nested
+    `.git` — a worktree's gitfile, a submodule, a throwaway fixture repo an agent
+    just created — otherwise plants a fresh protected boundary deep inside the repo
+    the agent is working in. That made `rm -rf <worktree>/.rmcached-proof` read as
+    "0 path components" (a whole-repo delete) six levels down, and taught agents to
+    route around the guard. The outer repo's boundary still governs, so the main
+    checkout's root and its top-level directories stay protected.
+    """
     current = os.path.abspath(path)
+    outermost = None
     while True:
         if os.path.exists(os.path.join(current, ".git")):
-            return current
+            outermost = current
         parent = os.path.dirname(current)
         if parent == current:
-            return None
+            return outermost
         current = parent
+
+
+def _literal_tail_after_unresolved_var(
+    target: str, variables: dict[str, str]
+) -> bool:
+    """True when `target` ends in a literal path tail below an unresolved `$VAR`.
+
+    W16 / backlog #17: an unexpanded variable is UNKNOWN, never zero-component. A
+    literal tail component puts the target at least one level BELOW whatever the
+    variable holds, so `$SP/mergetest` can be neither `/` nor the home directory nor
+    a bare repo root whatever `$SP` turns out to be. Globs and command substitutions
+    do not qualify — those leave the target unknowable in both directions.
+    """
+    if "$(" in target or "`" in target:
+        return False
+    cursor = 0
+    saw_unresolved = False
+    tail_parts: list[str] = []
+    while cursor < len(target):
+        if target[cursor] == "$":
+            match = _SHELL_VAR_RE.match(target, cursor)
+            if match is None:
+                return False
+            if variables.get(match.group(1) or match.group(2)) is None:
+                saw_unresolved = True
+                tail_parts = []  # only the tail below the LAST unknown counts
+            cursor = match.end()
+            continue
+        char = target[cursor]
+        if char in "*?[":
+            return False
+        if char == "/":
+            tail_parts.append("")
+        else:
+            if not tail_parts:
+                tail_parts.append("")
+            tail_parts[-1] += char
+        cursor += 1
+    return saw_unresolved and any(tail_parts)
 
 
 def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str | None:
@@ -296,6 +346,8 @@ def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str |
     prefix, complete = _expand_known_vars(target, variables)
     prefix = os.path.expanduser(prefix)
     if not prefix:
+        if _literal_tail_after_unresolved_var(target, variables):
+            return None
         return f"rm target cannot be resolved safely: {target}"
     if os.path.isabs(prefix):
         resolved = os.path.normpath(prefix)
@@ -310,8 +362,19 @@ def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str |
     if resolved == home:
         return "rm targeting home directory"
 
-    repo = _nearest_repo_root(resolved)
+    repo = _outermost_repo_root(resolved)
     if repo is not None:
+        # W16: measuring breadth against the OUTERMOST root makes a worktree's own
+        # contents disposable (the point of the fix) — but the worktree ROOT itself is
+        # still a whole checkout, so guard it by identity rather than by depth. A
+        # gitfile `.git` means "checkout belonging to another repo": a worktree or a
+        # submodule. A nested independent clone (`.git` is a directory, own object
+        # store) is the throwaway-fixture case and stays exempt.
+        if resolved != repo and os.path.isfile(os.path.join(resolved, ".git")):
+            return (
+                "rm target too broad within repo (0 path components): "
+                f"{target}"
+            )
         relative = os.path.relpath(resolved, repo)
         repo_parts = [
             part

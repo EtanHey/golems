@@ -495,3 +495,182 @@ def test_owned_path_comparison_is_normalized():
 def test_non_restore_commands_are_ignored():
     for cmd in ["git status", "git add .", "git commit -m x", "ls -la"]:
         assert git_safety.restore_targets(cmd) is None, cmd
+
+
+# ── W16: nested repo roots + unexpanded-variable targets ──────────────────────────
+# RED specimens from backlog/golems.md #17 (3rd recurrence) and the W13 lane. Each was
+# a FALSE BLOCK: a safe scratch delete the guard refused, which is how agents learn to
+# route around the guard entirely.
+
+
+def _nested_scratch_repo(tmp_path):
+    """outer repo → .worktrees/<wt> (gitfile) → scratch/ (its own .git dir).
+
+    Mirrors the W13 shape: a throwaway fixture repo the agent created several levels
+    down inside a worktree of the repo it is working in.
+    """
+    outer = tmp_path / "outer"
+    (outer / ".git").mkdir(parents=True)
+    worktree = outer / ".worktrees" / "w13-docs-local-burndown"
+    worktree.mkdir(parents=True)
+    (worktree / ".git").write_text("gitdir: ../../.git/worktrees/w13\n")
+    scratch = worktree / ".rmcached-proof"
+    (scratch / ".git").mkdir(parents=True)
+    (scratch / "docs.local").mkdir()
+    return outer, worktree, scratch
+
+
+def test_w16_nested_scratch_repo_delete_is_allowed(tmp_path):
+    # RED #2: a literal path 6 components deep inside a worktree the agent created was
+    # blocked "too broad within repo (0 path components)" — because the target itself
+    # holds a .git, so the nearest-repo-root walk stopped ON the target.
+    outer, _worktree, scratch = _nested_scratch_repo(tmp_path)
+    assert git_safety.dangerous_shell_reason(
+        f'rm -rf "{scratch}"', cwd=str(outer), env={}
+    ) is None
+
+
+def test_w16_nested_scratch_repo_subdir_delete_is_allowed(tmp_path):
+    # Same root cause one level down: "1 path components" relative to the nested repo.
+    outer, _worktree, scratch = _nested_scratch_repo(tmp_path)
+    assert git_safety.dangerous_shell_reason(
+        f'rm -rf "{scratch}/docs.local"', cwd=str(outer), env={}
+    ) is None
+
+
+def test_w16_worktree_subdir_delete_is_allowed(tmp_path):
+    # A worktree's own .git gitfile made every 1-component path inside it "too broad".
+    outer, worktree, _scratch = _nested_scratch_repo(tmp_path)
+    (worktree / "skills").mkdir()
+    assert git_safety.dangerous_shell_reason(
+        f'rm -rf "{worktree}/skills"', cwd=str(outer), env={}
+    ) is None
+
+
+def test_w16_same_command_assignment_to_nested_scratch_is_allowed(tmp_path):
+    # RED #3: the variable already resolved correctly; the nested-root bug then blocked
+    # it anyway. Guards that the assignment path and the breadth path agree.
+    outer, _worktree, scratch = _nested_scratch_repo(tmp_path)
+    assert git_safety.dangerous_shell_reason(
+        f'SCRATCH={scratch}; rm -rf "$SCRATCH"', cwd=str(outer), env={}
+    ) is None
+
+
+def test_w16_unexpanded_var_with_literal_tail_is_allowed(tmp_path):
+    # RED #1 (backlog #17): `$SP` is unexpanded in the command text. An unknown variable
+    # is UNKNOWN, never zero-component — and a literal tail component guarantees the
+    # target sits at least one level below whatever the variable holds, so it can be
+    # neither "/" nor "$HOME" nor a bare repo root.
+    for command in (
+        "rm -rf $SP/mergetest",
+        "rm -rf ${SP}/mergetest",
+        'rm -rf "$SP/mergetest"',
+        "rm -rf $SP/nested/deeper",
+    ):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env={}
+        ) is None, command
+
+
+def test_w16_bare_unresolvable_var_still_blocks(tmp_path):
+    # No literal tail → the target could be "/" or "$HOME" itself. Stays blocked.
+    for command in ('rm -rf "$SP"', "rm -rf $SP", "rm -rf $SP/"):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env={}
+        ) is not None, command
+
+
+def test_w16_unresolvable_var_with_glob_or_substitution_tail_still_blocks(tmp_path):
+    # The tail must be literal. A glob or a command substitution keeps the target
+    # unknowable in both directions, so the conservative verdict holds.
+    for command in (
+        "rm -rf $SP/*",
+        "rm -rf $SP/build*",
+        "rm -rf $(cat target)/mergetest",
+        "rm -rf `cat target`/mergetest",
+    ):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env={}
+        ) is not None, command
+
+
+def test_w16_outer_repo_boundaries_still_hold(tmp_path):
+    # The nested-root relaxation must not move the OUTER repo's boundary: its root and
+    # its top-level directories stay protected.
+    outer, _worktree, _scratch = _nested_scratch_repo(tmp_path)
+    (outer / "skills").mkdir()
+    for command in (
+        f'rm -rf "{outer}"',
+        f'rm -rf "{outer}/skills"',
+        "rm -rf .",
+        "rm -rf ./",
+        "rm -rf *",
+    ):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(outer), env={}
+        ) is not None, command
+
+
+def test_w16_real_dangers_still_block(tmp_path):
+    outer, _worktree, _scratch = _nested_scratch_repo(tmp_path)
+    # The home-directory check compares against the PROCESS home (os.path.expanduser),
+    # so the danger specimen has to name that same directory.
+    home = os.path.expanduser("~")
+    cases = (
+        ("rm -rf /", {}),
+        ("rm -rf ~", {"HOME": home}),
+        ("rm -rf $HOME", {"HOME": home}),
+        ("sudo rm -rf /Users", {}),
+        ("rm -rf ../../..", {}),
+        ("xargs rm -rf /", {}),
+    )
+    for command, env in cases:
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(outer), env=env
+        ) is not None, command
+
+
+def test_w16_rm_inside_string_literals_is_not_an_argv_rm(tmp_path):
+    # RED #4 — already green before W16; kept as a regression guard so a future
+    # tokenizer change cannot reintroduce prose matching.
+    for command in (
+        'echo "run rm -rf later"',
+        'git commit -m "remove rm -rf from script"',
+        "grep -n 'rm -rf' file",
+        "grep -rn 'rm -rf /' scripts",
+    ):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env={}
+        ) is None, command
+
+
+def test_w16_worktree_root_itself_stays_protected(tmp_path):
+    # Caught by the live-hook probe, not by the unit pass: measuring breadth against the
+    # outermost root made `rm -rf .` at a WORKTREE root read as 2 components and slip
+    # through. A worktree root is a whole checkout — guarded by identity (gitfile .git),
+    # not by depth.
+    outer, worktree, _scratch = _nested_scratch_repo(tmp_path)
+    for command in ("rm -rf .", "rm -rf ./", f'rm -rf "{worktree}"'):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(worktree), env={}
+        ) is not None, command
+
+
+def test_w16_submodule_root_stays_protected(tmp_path):
+    # Same identity rule: a submodule's .git is a gitfile, so its root is a checkout.
+    outer, _worktree, _scratch = _nested_scratch_repo(tmp_path)
+    submodule = outer / "vendor" / "somelib"
+    submodule.mkdir(parents=True)
+    (submodule / ".git").write_text("gitdir: ../../.git/modules/somelib\n")
+    assert git_safety.dangerous_shell_reason(
+        f'rm -rf "{submodule}"', cwd=str(outer), env={}
+    ) is not None
+
+
+def test_w16_nested_independent_clone_root_is_exempt(tmp_path):
+    # The throwaway-fixture case: .git is a real directory (own object store), so it is
+    # not a checkout of the outer repo and does not plant a boundary.
+    outer, _worktree, scratch = _nested_scratch_repo(tmp_path)
+    assert git_safety.dangerous_shell_reason(
+        "rm -rf .", cwd=str(scratch), env={}
+    ) is None
