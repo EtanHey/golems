@@ -26,7 +26,7 @@ show_help() {
     echo "  --check            Report only; exit 1 if any fixable legacy entry remains"
     echo "  --dry-run          Print what would change; change nothing; exit 0"
     echo "  --only SCOPE       commands | skills | all (default: all)"
-    echo "  --golems-dir DIR   golems checkout (default: \$GOLEMS_DIR or ~/Gits/golems)"
+    echo "  --golems-dir DIR   golems checkout (default: \$GOLEMS_DIR or \$HOME/Gits/golems)"
     echo "  -h, --help         Show this help"
     echo ""
     echo "Cleans:"
