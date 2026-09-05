@@ -570,10 +570,19 @@ _golem_launch_claude() {
     _notify_config="${_notify_staging_dir}/.claude_notify_config_${project_name}.json"
   fi
   [[ -n "$_notify_config" ]] && rm -f "$_notify_config" 2>/dev/null
-  # localtraps keeps this trap scoped to the launch: the file is sourced into
-  # the user's interactive shell, and a leaked EXIT trap would fire on it.
+  # Clean up a launch the user interrupts. localtraps keeps the trap scoped to
+  # this function: the file is sourced into the user's interactive shell, and a
+  # leaked trap would fire on the shell itself.
+  #
+  # INT/TERM only, deliberately. zsh tears function locals down BEFORE a
+  # localtraps EXIT trap runs, so an EXIT trap reads an unset `$_notify_config`:
+  # it cannot clean anything, and under `setopt nounset` it prints
+  # `parameter not set` on every launch. The normal exit path is already covered
+  # by the explicit `rm` after `_golem_reset_title` below. An INT/TERM trap fires
+  # while this function is still on the stack, so it does see the local.
+  # `${_notify_config:-}` keeps the guard nounset-safe either way.
   setopt localoptions localtraps
-  trap '[[ -n "$_notify_config" ]] && rm -f "$_notify_config" 2>/dev/null' EXIT INT TERM
+  trap '[[ -n "${_notify_config:-}" ]] && rm -f "${_notify_config}" 2>/dev/null' INT TERM
   if [[ -n "$_flag_notify_mode" && -n "$_notify_config" ]]; then
     local quiet_val="false" verbose_val="false"
     [[ "$_flag_notify_mode" == "quiet" ]] && quiet_val="true"
