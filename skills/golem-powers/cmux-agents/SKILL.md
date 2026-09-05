@@ -422,6 +422,7 @@ Fleet law for collab claims, DONE markers, and guard handoffs lives in canon #7.
 - absolute verified paths and real environment facts;
 - max output length, output format, audience, and what not to include;
 - response markers plus a final DONE line;
+- **the effort for THIS job**, named on the brief and matching the launch command (see below);
 - file-based handoff for large briefs;
 - the **GitHub identity signature requirement** if the worker will post to GitHub — mandatory until
   the repoGolem `gh()` wrapper ships and injects it automatically (prompt-audit §3; full spec in
@@ -440,6 +441,23 @@ Sub-agents and workflows only when the task needs parallelism or a context the s
 every spawn pinned explicitly; Fable only where judgment is the bottleneck, never for mechanical
 steps; a Fable seat defaults its workers to opus/sonnet and says why when it does not. The gate
 (`model-pin-gate`) is the backstop, not the decision.
+
+### Effort Is Set Per Dispatch (Etan, 2026-09-05)
+
+Etan, verbatim — relayed via orc, the ellipsis is his:
+
+> "Codex being high instead of xhigh on default is nice, but leads need to know that they should
+> also control the effort levels for more/less complex/more already scoped and focused jobs… not
+> always needed high."
+
+**Codex and Claude workers alike.** The brief names the effort for that job and the spawn's
+`-E/--effort` matches it: `medium` or `low` for scoped, focused, or mechanical work, `high` only
+when the job is genuinely complex, `xhigh` only by explicit choice named with its reason. The
+launcher's role default is a **ceiling, not a floor** — `repoGolem` sets it from the seat
+(Codex `high`; Claude `-E` > `GOLEM_EFFORT` > `GOLEM_ROLE=worker` → `medium` > `high`) and the lead
+lowers it per dispatch. If a brief names no effort, the lead has not finished writing it. Rungs are
+orc's operationalization, not Etan's words; full table in `/pr-loop` → SKILL.md "Effort Is Set Per
+Dispatch".
 
 ## Prompt Size Ceiling — oversized sends freeze surfaces above ~2000 chars
 

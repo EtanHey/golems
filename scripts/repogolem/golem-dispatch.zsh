@@ -419,7 +419,9 @@ _golem_parse_unified_flags() {
 
 _golem_print_codex_help() {
   print -r -- "Codex launcher options:"
-  print -r -- "  -E, --effort <value>   low, medium, high, xhigh, max, ultra (default: high)"
+  print -r -- "  -E, --effort <value>   low, medium, high, xhigh, max, ultra"
+  print -r -- "                         default: Codex high; Claude -E > GOLEM_EFFORT > worker medium > high"
+  print -r -- "                         set it per dispatch — lower for scoped jobs; the default is a ceiling"
   print -r -- "  -m, --model <name>     explicit model override"
   print -r -- "  -s, --skip-permissions compatibility no-op (has no effect)"
   print -r -- "  -c, --continue         resume the last session"

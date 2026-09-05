@@ -1560,7 +1560,9 @@ JSONL
     grep -F -q -- "Codex launcher options:" <<< "$output"
     grep -F -q -- "-E, --effort <value>" <<< "$output"
     grep -F -q -- "-m, --model <name>" <<< "$output"
-    grep -F -q -- "low, medium, high, xhigh, max, ultra (default: high)" <<< "$output"
+    grep -F -q -- "low, medium, high, xhigh, max, ultra" <<< "$output"
+    grep -F -q -- "default: Codex high; Claude -E > GOLEM_EFFORT > worker medium > high" <<< "$output"
+    grep -F -q -- "set it per dispatch" <<< "$output"
     ! grep -F -q -- "CODEX_LAUNCHED=" <<< "$output"
 }
 
