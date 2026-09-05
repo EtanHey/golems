@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 ## Scope
 
-No send_input coordination, no sleep-poll ticks, and decisions carry a recommendation.
+No pane-send coordination, no sleep-poll ticks, and decisions carry a recommendation.
 
 ## What It Is
 
