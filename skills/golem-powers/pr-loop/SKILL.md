@@ -67,6 +67,32 @@ responses"):
 Evidence: two independent re-derivations of the conflict (vlW7#5 "brief explicitly
 says no merge"; kg-harvest#2).
 
+### Effort Is Set Per Dispatch (Etan, 2026-09-05)
+
+Etan, verbatim — fleet-weave item 7A, the ellipsis is his:
+
+> "Codex being high instead of xhigh on default is nice, but leads need to know that they should
+> also control the effort levels for more/less complex/more already scoped and focused jobs… not
+> always needed high."
+
+A lead writing a dispatch brief therefore names the effort **on that brief**. It is a per-job call,
+not a lane-wide setting and not whatever the seat happened to boot with.
+
+**It is a ceiling, not a floor.** The launcher default stands — `repoGolem` sets `--effort` from the
+seat's role (lead `high`, worker `medium`) — and the lead lowers it per dispatch with an explicit
+`-E/--effort <value>`, which wins over the role default. Brief and launch command must agree.
+
+Orc's operationalization of that sentence. The rungs below are orc's gloss, not Etan's words — he
+said "control the effort levels" and did not enumerate them:
+
+| Job shape | Effort |
+|---|---|
+| Scoped, focused, or mechanical — a doc edit, a rename, a one-file fix, a re-cut | `medium`, or `low` when purely mechanical |
+| Genuinely complex — novel design, cross-package refactor, an unknown root cause | `high` |
+| Beyond that | `xhigh` **only by explicit choice**, named in the brief with its reason |
+
+If a brief names no effort, the lead has not finished writing it.
+
 ## Review-Without-Merge ≠ Draft (gen-12 weave E09)
 
 Draft PRs **silently skip bot reviews** (CodeRabbit skipped a PR because it was
@@ -327,12 +353,31 @@ CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 Always explicitly request reviews. Don't wait for auto-detection.
 
 ```bash
-# Invoke all available reviewers (do this right after PR creation)
+# The default panel (do this right after PR creation)
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@greptileai review"
 gh pr comment <N> --body "@codex review"
-gh pr comment <N> --body "@cursor @bugbot review"
 ```
+
+**Bot tiering — Cursor Bugbot is OPT-IN, never a panel default (orc ruling, 2026-09-05).**
+Canon #9 tiers the roster. Clause 4 of the origin ruling, verbatim: *"bot tiering — full 4-bot panel
+only on daemon/engine/transport diffs, else CodeRabbit + one, one pass per bot, duplicate findings
+answered once + dup-links."*
+
+**Core = a daemon, engine, or transport diff.** No canonical path glob exists for this — the prose
+phrase is the whole definition, so judge the diff rather than pattern-match a list. On a core-path
+diff, add Bugbot to the panel:
+
+```bash
+gh pr comment <N> --body "@cursor @bugbot review"   # core paths ONLY — opt-in
+```
+
+On a **non-core** diff — docs, skills, briefs, tests, config — do not summon Bugbot at all.
+Trigger: Bugbot answered `usage limit reached` on skill-creator #51, a non-core diff, 2026-09-05.
+
+> **Provenance:** this is *orc's* ruling, not an Etan ratification. Orc took it rather than ask Etan
+> to raise Cursor's cap, and offered him the reversal; no ratification or objection is on record.
+> If the cap is raised, this tiering is the clause to revisit.
 
 Bot-invocation comments are agent-authored PR comments, so the signature block
 applies to them too — the `gh()` wrapper will append it automatically once it
@@ -391,7 +436,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 |--------|------|----------------------|
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
-| Cursor Bugbot | Bug detection | `gh pr comment <N> --body "@cursor @bugbot review"` or comment manually on GitHub. For re-review after fixes: `gh pr comment <N> --body "@cursor @bugbot re-review"`. Bot responds as `cursor[bot]`. |
+| Cursor Bugbot | Bug detection — **opt-in, core paths only** | Not on the default panel (see Step 8a tiering). On a daemon/engine/transport diff: `gh pr comment <N> --body "@cursor @bugbot review"`. Re-review after fixes: `gh pr comment <N> --body "@cursor @bugbot re-review"`. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | Check via CI status |
 
@@ -400,8 +445,11 @@ collection path does not reply to a thread; use `/replies` or the documented
 ```bash
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@codex review"
-gh pr comment <N> --body "@cursor @bugbot re-review"
+gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed round 1
 ```
+
+Re-review the reviewers you actually invoked. A bot that was correctly left off the panel for a
+non-core diff does not get summoned at round 2 either.
 
 **Codex Cloud is enabled on:** EtanHey/voicelayer, EtanHey/orchestrator, EtanHey/golems, EtanHey/brainlayer.
 
