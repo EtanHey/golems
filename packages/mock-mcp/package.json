@@ -16,7 +16,7 @@
   "devDependencies": {
     "@types/bun": "latest"
   },
-  "peerDependencies": {
+  "engines": {
     "bun": ">=1.0.0"
   }
 }
