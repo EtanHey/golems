@@ -56,7 +56,7 @@ teardown() {
 }
 
 @test "unique recurring and launchd guidance is preserved on demand" {
-  grep -F 'import "../lib/load-env"' "$REPO_ROOT/skills/golem-powers/mac-systems/SKILL.md"
+  grep -F 'import "../lib/load-env"' "$REPO_ROOT/skills/golem-powers/cmux-agents/SKILL.md"
   grep -F 'use a clean temporary worktree or sandbox' "$REPO_ROOT/skills/golem-powers/whats-new/SKILL.md"
   grep -F 'temporarily remove two or three candidate rule files there' "$REPO_ROOT/skills/golem-powers/whats-new/SKILL.md"
 }

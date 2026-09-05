@@ -792,6 +792,55 @@ For finished one-shots and worker panes, treat harvest → review → close pane
 
 Fleet-level concurrency/model/collab law lives in canon #5/#7; launcher/headless policy lives in `/repogolem`.
 
+## Mechanical Environment Truths (hard-won — gen-12 weave E14)
+
+> Retired `/mac-systems` (0 skill loads ever) landed its nine truths here on 2026-09-05; the
+> rest of that skill's macOS reference lives in git history. See golems PR #15 for the last
+> work on it.
+
+One-liners every worker and launchd plist author must internalize:
+
+1. **Tailnet IP bind ban** — NEVER hardcode tailnet IPs in launchd plists or worker-prompt URLs. Bind `127.0.0.1` / loopback or resolve at start. Three live catches: Phoenix phantom listener (two eras), W10 dead `:8852` URL.
+2. **Codex detached-child reap** — Codex `exec` reaps detached children (`&` / `nohup` die). **`launchctl submit`** is the surviving detach path; clean up leftover runners after.
+3. **pipefail + early-exit consumer** — Under `set -o pipefail`, piping into an early-exit consumer (`awk '{exit}'`) SIGPIPE-kills the producer (exit 141). Buffer first, then consume. See `/shell-hardening`.
+4. **zsh read-only specials** — Never use zsh read-only specials (`status`, etc.) as variable names.
+5. **nvm FUNCNEST in profiles** — `voicelayer-profile` `node` hits nvm `_lazy_nvm` FUNCNEST recursion — use **bun** for profile scripts.
+6. **CloudStorage read bounds** — Bound any read of `~/Library/CloudStorage` — cloud-only placeholders hang naive `tar`/`read`.
+7. **Host-identity check first** — Machine-named tasks: verify **current-host vs target-host** identity BEFORE acting ("What you're on is the M4 Max. I was asking about the M1 Pro.").
+8. **Computer-use fallback ladder** — When CU fails on a UI element: element click → coords → `osascript` System Events AX → keystroke.
+9. **footprint, not RSS, for leak watches** — RSS is a liar under the macOS memory compressor: a leak sampler showed RSS bouncing 444–760MB while footprint sat at 5.1G. Leak watches and escalation thresholds MUST read phys_footprint (`/usr/bin/footprint <PID>`), never `ps -o rss`. Recipe below.
+
+Two mechanical recipes the truths depend on.
+
+**Footprint-based leak watch (truth #9).** `/usr/bin/footprint` summary line is
+`name [pid]: 64-bit    Footprint: NNNN KB`. Observed divergence (2026-06-07 cmux leak watch):
+RSS bounced 444–760MB while footprint sat at **5.1G** — an RSS-based watch nearly suppressed the
+escalation. Threshold on footprint bytes, never `ps -o rss`:
+
+```bash
+PID=12345; LIMIT_BYTES=$((4 * 1024 * 1024 * 1024))   # escalate at 4 GiB
+while kill -0 "$PID" 2>/dev/null; do
+  fp_bytes=$(/usr/bin/footprint --format bytes "$PID" 2>/dev/null \
+    | sed -n 's/.*Footprint: \([0-9]*\) B.*/\1/p')
+  if [ -n "$fp_bytes" ] && [ "$fp_bytes" -ge "$LIMIT_BYTES" ]; then
+    echo "LEAK: phys_footprint=${fp_bytes}B >= ${LIMIT_BYTES}B" >&2
+    # escalate here
+  fi
+  sleep 60
+done
+```
+
+**Bun environment loading under launchd (pairs with truth #1).** launchd starts jobs from `/`,
+not the package directory. A Bun entry point that depends on a repository environment loader
+must make it its first import (adjust the relative path as needed):
+
+```typescript
+import "../lib/load-env";
+```
+
+Also: in scripted zsh, ALWAYS invoke `/usr/bin/log` absolutely — zsh has a `log` builtin that
+shadows it and exits 0 with no output, silently fabricating "no log entries" conclusions.
+
 ## Known Issues — cmux rename hooks (design proposal, do NOT edit without orcClaude review)
 
 **Background (2026-04-11):** the cmux tab-rename auto-hook (launcher name → display name + color) has 5 observed bugs. Code changes are OUT OF SCOPE for skill-creator — this section is a design proposal for the next orcClaude session to dispatch.
