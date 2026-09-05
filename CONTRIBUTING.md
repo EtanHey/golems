@@ -21,11 +21,8 @@ bun install
 ## Pull Request Process
 
 1. Create a PR with a clear description of what and why
-2. The checks configured on that repo must pass. Read the PR's own checks list:
-   the set of gates differs per repo and does not always include the full test
-   suite
-3. Automated reviewers are per-repo and not guaranteed. Where one is installed
-   (CodeRabbit, for example), treat its output this way:
+2. Tests must pass — CI runs automatically
+3. **CodeRabbit** reviews every PR automatically:
    - Fix CRITICAL/HIGH issues before merge
    - MEDIUM issues are judgment calls
    - Style-only comments can be skipped with rationale
@@ -52,8 +49,7 @@ This project uses AI coding tools extensively. When AI agents contribute code:
 
 - TypeScript for all new code
 - No `any` types — use proper interfaces
-- Tests live beside the code they cover, either as a sibling `foo.test.ts` or in
-  a `__tests__/` directory — follow whichever the package already uses
+- Tests live next to source files: `foo.ts` has `foo.test.ts`
 - Use `@golems/shared` for Supabase, LLM, and notification utilities
 
 ## Reporting Issues
