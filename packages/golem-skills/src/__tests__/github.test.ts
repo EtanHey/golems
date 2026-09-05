@@ -13,33 +13,50 @@ describe("github client", () => {
   });
 
   describe("listSkills()", () => {
-    test("returns array of skill names (directories only)", async () => {
-      global.fetch = mock(
-        async () =>
-          new Response(
-            JSON.stringify([
-              {
-                name: "cmux-agents",
-                type: "dir",
-                path: "skills/golem-powers/cmux-agents",
-              },
-              {
-                name: "pr-loop",
-                type: "dir",
-                path: "skills/golem-powers/pr-loop",
-              },
-              {
-                name: "README.md",
-                type: "file",
-                path: "skills/golem-powers/README.md",
-              },
-            ]),
-            { status: 200 },
-          ),
+    const treeResponse = (
+      tree: { path: string; type: string }[],
+      truncated = false,
+    ) =>
+      new Response(JSON.stringify({ sha: "t", truncated, tree }), {
+        status: 200,
+      });
+
+    test("returns only directories carrying a top-level SKILL.md", async () => {
+      global.fetch = mock(async () =>
+        treeResponse([
+          { path: "cmux-agents", type: "tree" },
+          { path: "cmux-agents/SKILL.md", type: "blob" },
+          { path: "pr-loop", type: "tree" },
+          { path: "pr-loop/SKILL.md", type: "blob" },
+          { path: "pr-loop/scripts", type: "tree" },
+          { path: "pr-loop/scripts/run.sh", type: "blob" },
+          // a helper directory with no SKILL.md of its own
+          { path: "pr-loop-workspace", type: "tree" },
+          { path: "pr-loop-workspace/notes.md", type: "blob" },
+          // a nested SKILL.md must not register its parent chain
+          { path: "cmux-agents/sub/SKILL.md", type: "blob" },
+          { path: "README.md", type: "blob" },
+        ]),
       ) as typeof fetch;
 
       const skills = await listSkills();
       expect(skills).toEqual(["cmux-agents", "pr-loop"]);
+    });
+
+    test("excludes dot- and underscore-prefixed directories", async () => {
+      global.fetch = mock(async () =>
+        treeResponse([
+          { path: "_archive", type: "tree" },
+          { path: "_archive/SKILL.md", type: "blob" },
+          { path: ".hidden", type: "tree" },
+          { path: ".hidden/SKILL.md", type: "blob" },
+          { path: "cmux", type: "tree" },
+          { path: "cmux/SKILL.md", type: "blob" },
+        ]),
+      ) as typeof fetch;
+
+      const skills = await listSkills();
+      expect(skills).toEqual(["cmux"]);
     });
 
     test("throws on non-200 response", async () => {
@@ -50,17 +67,25 @@ describe("github client", () => {
       await expect(listSkills()).rejects.toThrow("GitHub API error: 404");
     });
 
-    test("calls the correct GitHub URL", async () => {
-      let calledUrl = "";
+    test("throws rather than report a truncated skill set", async () => {
+      global.fetch = mock(async () =>
+        treeResponse([{ path: "cmux/SKILL.md", type: "blob" }], true),
+      ) as typeof fetch;
+
+      await expect(listSkills()).rejects.toThrow("truncated");
+    });
+
+    test("reads the skills tree in a single request", async () => {
+      const calledUrls: string[] = [];
       global.fetch = mock(async (url: string | URL | Request) => {
-        calledUrl = typeof url === "string" ? url : url.toString();
-        return new Response(JSON.stringify([]), { status: 200 });
+        calledUrls.push(typeof url === "string" ? url : url.toString());
+        return treeResponse([]);
       }) as typeof fetch;
 
       await listSkills();
-      expect(calledUrl).toBe(
-        "https://api.github.com/repos/EtanHey/golems/contents/skills/golem-powers",
-      );
+      expect(calledUrls).toEqual([
+        "https://api.github.com/repos/EtanHey/golems/git/trees/HEAD:skills%2Fgolem-powers?recursive=1",
+      ]);
     });
   });
 

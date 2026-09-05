@@ -65,23 +65,19 @@ describe("list module", () => {
       global.fetch = mock(
         async () =>
           new Response(
-            JSON.stringify([
-              {
-                name: "cmux-agents",
-                type: "dir",
-                path: "skills/golem-powers/cmux-agents",
-              },
-              {
-                name: "pr-loop",
-                type: "dir",
-                path: "skills/golem-powers/pr-loop",
-              },
-              {
-                name: "README.md",
-                type: "file",
-                path: "skills/golem-powers/README.md",
-              },
-            ]),
+            JSON.stringify({
+              sha: "t",
+              truncated: false,
+              tree: [
+                { path: "cmux-agents", type: "tree" },
+                { path: "cmux-agents/SKILL.md", type: "blob" },
+                { path: "pr-loop", type: "tree" },
+                { path: "pr-loop/SKILL.md", type: "blob" },
+                { path: "pr-loop-workspace", type: "tree" },
+                { path: "pr-loop-workspace/notes.md", type: "blob" },
+                { path: "README.md", type: "blob" },
+              ],
+            }),
             { status: 200 },
           ),
       ) as typeof fetch;
