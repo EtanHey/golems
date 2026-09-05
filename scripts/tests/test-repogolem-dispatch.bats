@@ -2912,7 +2912,7 @@ snapshot_tmp_staging_entries() {
     mkdir -p "$fake_home"
     local before_tmp; before_tmp="$(snapshot_tmp_staging_entries)"
 
-    run zsh -f -c '
+    run env TMP_STAGING_PATTERN="$TMP_STAGING_PATTERN" zsh -f -c '
       export HOME="$1"
       export RALPH_REGISTRY_FILE="$2"
       unset XDG_RUNTIME_DIR
@@ -2926,8 +2926,12 @@ snapshot_tmp_staging_entries() {
 
       # Stands in for the real claude process, which reads the notify config
       # while it runs. Snapshots both trees while the launch files are live.
+      # The pattern arrives via the environment: inlining it here would have to
+      # survive bats single-quoting AND zsh double-quoting, and an anchor lost to
+      # either layer silently turns the /tmp assertion below into a no-op.
       function claude() {
-        print -r -- "LIVE_TMP=$(ls -A /tmp 2>/dev/null | grep -E "\^(repogolem-|\\.claude_notify_config_)" | tr "\n" " ")"
+        print -r -- "PATTERN_SELFCHECK=$(print -l repogolem-decoy .claude_notify_config_decoy unrelated-decoy | grep -E "$TMP_STAGING_PATTERN" | tr "\n" " ")"
+        print -r -- "LIVE_TMP=$(ls -A /tmp 2>/dev/null | grep -E "$TMP_STAGING_PATTERN" | tr "\n" " ")"
         print -r -- "LIVE_STAGING=$(ls -A "$HOME/.cache/repogolem/testrepo" 2>/dev/null | tr "\n" " ")"
         print -r -- "STAGING_MODE=$(stat -f %OLp "$HOME/.cache/repogolem/testrepo" 2>/dev/null)"
       }
@@ -2938,6 +2942,9 @@ snapshot_tmp_staging_entries() {
     ' _ "$fake_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
+    # The anchor has to survive bats single-quoting and zsh double-quoting, or
+    # the /tmp assertion below matches nothing and silently passes forever.
+    grep -F -q -- "PATTERN_SELFCHECK=repogolem-decoy .claude_notify_config_decoy" <<< "$output"
     # The notify config must exist somewhere while claude runs...
     grep -E -q -- 'LIVE_STAGING=.*\.claude_notify_config_testrepo\.json' <<< "$output"
     # ...and that somewhere must not be /tmp.
@@ -3043,4 +3050,75 @@ AGY
     [ "$status" -eq 0 ]
     grep -E -q -- 'LIVE_STAGING=.*\.claude_notify_config_testrepo\.json' <<< "$output"
     [ ! -d "$fake_home/.cache/repogolem" ]
+}
+
+@test "tracked dispatcher source keeps the notify cleanup quiet under nounset" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home"
+
+    # zsh tears function locals down BEFORE a localtraps EXIT trap runs, so an
+    # EXIT trap that reads a local both fails to clean up and — under nounset —
+    # prints `parameter not set` on every launch. Caught by the W23 spawn proof.
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+      unset XDG_RUNTIME_DIR
+      setopt nounset
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function claude() { print -r -- "CLAUDE-RAN"; }
+
+      source "$3"
+      _golem_register_wrappers
+      testrepoClaude -s -QN
+    ' _ "$fake_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    grep -F -q -- "CLAUDE-RAN" <<< "$output"
+    refute_contains "parameter not set" "$output" \
+      "notify cleanup must not read a torn-down local under nounset"
+}
+
+@test "tracked dispatcher source removes the notify config when a launch is interrupted" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home"
+
+    # An INT trap DOES see the local (it fires while the function is still on
+    # the stack), which is the whole point of the trap: an interrupted launch
+    # must not leave its notify config behind.
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+      unset XDG_RUNTIME_DIR
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      # Stands in for a claude session the user Ctrl-Cs.
+      function claude() {
+        print -r -- "STAGED_BEFORE_INT=$(ls -A "$HOME/.cache/repogolem/testrepo" 2>/dev/null | tr "\n" " ")"
+        kill -INT $$
+        sleep 1
+      }
+
+      source "$3"
+      _golem_register_wrappers
+      testrepoClaude -s -QN
+      print -r -- "STAGED_AFTER_INT=$(ls -A "$HOME/.cache/repogolem/testrepo" 2>/dev/null | tr "\n" " ")"
+    ' _ "$fake_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
+
+    grep -E -q -- 'STAGED_BEFORE_INT=.*\.claude_notify_config_testrepo\.json' <<< "$output"
+    grep -E -q -- 'STAGED_AFTER_INT= *$' <<< "$output"
 }
