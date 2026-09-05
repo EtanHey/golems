@@ -377,6 +377,7 @@ _golem_parse_unified_flags() {
   _flag_web=false
   _flag_headless=false
   _flag_model=""
+  _flag_effort=""
   _flag_sonnet=false
   _flag_headless_prompt=""
   _flag_notify_mode=""
@@ -395,6 +396,11 @@ _golem_parse_unified_flags() {
         fi
         _flag_model="$2"; shift 2 ;;
       -S|--sonnet) _flag_sonnet=true; shift ;;
+      -E|--effort)
+        if [[ -z "${2:-}" ]]; then
+          print -u2 -r -- "repoGolem: --effort requires a value (low|medium|high|xhigh|max)"; return 2
+        fi
+        _flag_effort="$2"; shift 2 ;;
       -p|--print)
         _flag_headless=true
         if [[ -n "$2" && "$2" != -* ]]; then _flag_headless_prompt="$2"; shift; fi
@@ -554,6 +560,21 @@ _golem_launch_claude() {
     _claude_model="claude-opus-5[1m]"
   fi
   claude_args=("--model" "$_claude_model" "${claude_args[@]}")
+  # Effort per seat (weave 5A, 2026-09-05). Precedence: -E flag > GOLEM_EFFORT env >
+  # GOLEM_ROLE=worker -> medium > lead default high. Effort follows the cost of being
+  # wrong on the seat's typical turn, not the seat's rank; retrieval-heavy workers do
+  # not earn high. xhigh is deliberately not a default anywhere: its cost is unrecorded.
+  local _claude_effort
+  if [[ -n "$_flag_effort" ]]; then
+    _claude_effort="$_flag_effort"
+  elif [[ -n "${GOLEM_EFFORT:-}" ]]; then
+    _claude_effort="$GOLEM_EFFORT"
+  elif [[ "${GOLEM_ROLE:-}" == "worker" ]]; then
+    _claude_effort="medium"
+  else
+    _claude_effort="high"
+  fi
+  claude_args=("--effort" "$_claude_effort" "${claude_args[@]}")
   $_flag_skip && claude_args=("--dangerously-skip-permissions" "${claude_args[@]}")
   $_flag_continue && claude_args=("--continue" "${claude_args[@]}")
   if $_flag_headless; then
