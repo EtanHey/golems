@@ -164,8 +164,9 @@ ls ~/.claude/skills/
 # If skills are still under commands/, migrate them. This handles all three legacy
 # shapes (symlink into golems, golems-cli backfill into skills/, real mkdir'd dir)
 # and also clears dead symlinks out of ~/.claude/skills/:
-bash ~/Gits/golems/skills/golem-powers/golem-install/scripts/cleanup-legacy-commands.sh --dry-run
-bash ~/Gits/golems/skills/golem-powers/golem-install/scripts/cleanup-legacy-commands.sh
+cleanup="${GOLEMS_DIR:-$HOME/Gits/golems}/skills/golem-powers/golem-install/scripts/cleanup-legacy-commands.sh"
+bash "$cleanup" --dry-run
+bash "$cleanup"
 ```
 
 **Skills not appearing in Codex:**
