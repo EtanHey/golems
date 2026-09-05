@@ -100,7 +100,7 @@ some_generator > "$tmp"
 awk '/pattern/{print; exit}' "$tmp"
 ```
 
-See `/mac-systems` mechanical truths #3–#4 for environment context.
+See `/cmux-agents` mechanical truths #3–#4 for environment context.
 
 ### 6. ShellCheck (MEDIUM)
 - [ ] Run `shellcheck script.sh` before committing

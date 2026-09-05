@@ -75,7 +75,6 @@
 - /golem-powers:linkedin-post
 - /golem-powers:linkedin-post
 - /golem-powers:loading-states
-- /golem-powers:mac-systems
 - /golem-powers:micro-interaction-spec
 - /golem-powers:never-fabricate
 - /golem-powers:never-fabricate
