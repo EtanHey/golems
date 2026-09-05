@@ -211,13 +211,31 @@ while true; do
   video_mtime=0
   video_age=0
   video_is_stale=false
+  video_stat_failed=false
   if [ -n "$video" ]; then
-    size="$(stat -f '%z' "$video" 2>/dev/null || echo 0)"
-    video_mtime="$(stat -f '%m' "$video" 2>/dev/null || echo 0)"
-    if [[ "$video_mtime" =~ ^[0-9]+$ ]] && [ "$video_mtime" -gt 0 ]; then
+    # These were `stat -f '%z' ... || echo 0`, which is the BSD dialect. Under
+    # GNU stat that -f is a filesystem query: it prints a block of filesystem
+    # statistics and exits 1, so the `|| echo 0` reported a confident zero for
+    # every file. A zero size and a zero mtime are both meaningful here — 0
+    # bytes suppresses the stall restart, and a 0 mtime makes every recording
+    # look infinitely stale — so a stat that fails is now loud and its cycle
+    # skips the checks it can no longer answer, rather than answering wrongly.
+    if ! size="$(portable_stat size "$video")"; then
+      log "ERROR: cannot read size of ${video} — skipping growth/stall checks this cycle"
+      size=0
+      video_stat_failed=true
+    fi
+    if ! video_mtime="$(portable_stat mtime "$video")"; then
+      log "ERROR: cannot read mtime of ${video} — skipping staleness check this cycle"
+      video_mtime=0
+      video_stat_failed=true
+    fi
+    if [ "$video_mtime" -gt 0 ]; then
       video_age=$((now - video_mtime))
     fi
-    if [ -z "$recorder" ] && [ "$video_age" -gt "$ACTIVE_RECORDING_FRESHNESS_SECONDS" ]; then
+    if [ "$video_stat_failed" = false ] \
+      && [ -z "$recorder" ] \
+      && [ "$video_age" -gt "$ACTIVE_RECORDING_FRESHNESS_SECONDS" ]; then
       video_is_stale=true
     fi
   fi

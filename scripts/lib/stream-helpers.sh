@@ -5,6 +5,10 @@
 # (see scripts/tests/test-stream-helpers.bats). Source this file, then call
 # the functions directly. No side effects on source.
 
+STREAM_HELPERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck source=portable-stat.sh
+source "$STREAM_HELPERS_DIR/portable-stat.sh"
+
 # parse_silence_timestamps — read ffmpeg silencedetect stderr from stdin,
 # emit one numeric timestamp per line. Filters out any non-numeric junk that
 # leaks through when ffmpeg's progress reporter interleaves with the filter
@@ -220,14 +224,16 @@ stalker_ytdlp_record_args() {
         "$url"
 }
 
+# stalker_file_mtime — epoch mtime, or 0 for a file that is not there. Kept
+# lenient because its callers poll a file that may not exist yet; the dialect
+# split moved to portable_stat, which is probed from the binary rather than
+# from `uname` (coreutils on macOS, busybox on Linux both broke the old check)
+# and which still complains on stderr when a file that DOES exist cannot be
+# read.
 stalker_file_mtime() {
     local file="$1"
     [ -f "$file" ] || { echo 0; return 0; }
-    if [ "$(uname)" = "Darwin" ]; then
-        stat -f %m "$file"
-    else
-        stat -c %Y "$file"
-    fi
+    portable_stat mtime "$file" || echo 0
 }
 
 stalker_terminate_process_tree() {

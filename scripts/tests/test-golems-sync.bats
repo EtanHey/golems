@@ -2,6 +2,8 @@
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+    # shellcheck source=../lib/portable-stat.sh
+    source "$REPO_ROOT/scripts/lib/portable-stat.sh"
     SYNC_SCRIPT="$REPO_ROOT/scripts/golems-sync.sh"
     HOST_ROOT="$BATS_TEST_TMPDIR/host-home"
     SKILLS_SOURCE="$BATS_TEST_TMPDIR/skills/golem-powers"
@@ -272,12 +274,12 @@ make_tracked_worktree_skills() {
     run_sync --only launcher
     [ "$status" -eq 0 ]
     dispatcher="$HOST_ROOT/.config/ralphtools/golem-dispatch.zsh"
-    first_mtime="$(stat -f %m "$dispatcher")"
+    first_mtime="$(portable_stat mtime "$dispatcher")"
     sleep 1
 
     run_sync --only launcher
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"added=0 updated=0 unchanged=1 backed-up=0"* ]]
-    [ "$(stat -f %m "$dispatcher")" = "$first_mtime" ]
+    [ "$(portable_stat mtime "$dispatcher")" = "$first_mtime" ]
 }

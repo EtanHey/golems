@@ -4,6 +4,9 @@
 
 setup() {
     unset REPOGOLEM_ALLOW_MODEL
+    # Exported so CODEX_STUB_SNAPSHOT can source it: the stub runs inside
+    # `zsh -f -c`, which inherits the environment but no rc files.
+    export PORTABLE_STAT_LIB="$BATS_TEST_DIRNAME/../lib/portable-stat.sh"
     FIXTURES="$BATS_TEST_DIRNAME/fixtures"
     CODEX_SESSION_FIXTURES="$FIXTURES/codex-sessions"
     SOURCE_DISPATCHER="$BATS_TEST_DIRNAME/../repogolem/golem-dispatch.zsh"
@@ -47,11 +50,12 @@ WORKER_PERSONA_MARKERS='Adopt the following launcher agent context|<agent_contex
 # process that reads the file while it is running.
 CODEX_STUB_SNAPSHOT='function codex() {
         print -r -- "CODEX_ARGS=$*"
+        source "$PORTABLE_STAT_LIB"
         local p
         for p in "$CODEX_HOME"/repogolem-*.config.toml(N); do
           cp "$p" "$CODEX_HOME/captured.toml"
           print -r -- "CAPTURED_PROFILE=${p:t}"
-          print -r -- "CAPTURED_MODE=$(stat -f %OLp "$p")"
+          print -r -- "CAPTURED_MODE=$(portable_stat mode "$p")"
         done
       }'
 
