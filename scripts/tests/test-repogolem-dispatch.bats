@@ -55,6 +55,31 @@ CODEX_STUB_SNAPSHOT='function codex() {
         done
       }'
 
+# Stubs that block until a sibling launch releases them must bound the wait.
+# An unbounded `while [[ ! -e $sentinel ]]; do sleep 0.02; done` leaks a
+# spinning child that holds bats' output pipe open whenever the outer script
+# exits before touching the sentinel — which is what hung run 33994495217 for
+# 44 minutes on a runner where the BSD-only `stat -f %OLp` assertion failed
+# first. Healthy waits are 25-75 ms (24 samples over 12 local runs); 7.5s is
+# 100x the slowest observed and clears the outer script's own 2s ready-poll
+# ceiling, so it can only trip when the release genuinely never comes.
+CODEX_STUB_RELEASE_DEADLINE=7.5
+CODEX_STUB_AWAIT_RELEASE='function _await_release() {
+        local sentinel="$1"
+        local -F deadline_s="$2" waited=0
+        zmodload zsh/datetime
+        local -F start=$EPOCHREALTIME
+        while [[ ! -e "$sentinel" ]]; do
+          waited=$(( EPOCHREALTIME - start ))
+          if (( waited >= deadline_s )); then
+            print -r -- "CODEX_STUB_RELEASE_TIMEOUT sentinel=${sentinel} waited=${waited}s deadline=${deadline_s}s" >&2
+            return 89
+          fi
+          sleep 0.02
+        done
+        return 0
+      }'
+
 # bats runs with errexit, but `! cmd` is EXEMPT from it — a bare `! grep`
 # negative assertion can never fail a test. Use this helper instead.
 refute_contains() {
@@ -2520,6 +2545,28 @@ JSON
     refute_contains "project-mcp" "$(cat "$codex_home/captured-2.toml")" "worktree launch must not see the project's servers"
 }
 
+@test "concurrency stub release wait exits on a deadline naming the sentinel instead of spinning" {
+    local codex_home="$TMPDIR_/codex-home-release-deadline"
+    mkdir -p "$codex_home"
+    local sentinel="$codex_home/release-NEVER"
+    [ ! -e "$sentinel" ]
+
+    # Unbounded, this call never returns; the whole point is that it does.
+    local started=$SECONDS
+    run zsh -f -c '
+      '"$CODEX_STUB_AWAIT_RELEASE"'
+      _await_release "$1" "$2"
+    ' _ "$sentinel" "$CODEX_STUB_RELEASE_DEADLINE"
+    local elapsed=$(( SECONDS - started ))
+
+    [ "$status" -eq 89 ]
+    grep -F -q -- "CODEX_STUB_RELEASE_TIMEOUT" <<< "$output"
+    grep -F -q -- "sentinel=$sentinel" <<< "$output"
+    grep -F -q -- "deadline=$CODEX_STUB_RELEASE_DEADLINE" <<< "$output"
+    # bounded well under the workflow's per-file cap, not merely "eventually"
+    [ "$elapsed" -lt 30 ]
+}
+
 @test "tracked dispatcher source isolates concurrent Codex profiles for the same project" {
     [ -f "$SOURCE_DISPATCHER" ]
 
@@ -2533,6 +2580,7 @@ JSON
     run zsh -f -c '
       export RALPH_REGISTRY_FILE="$1"
       export CODEX_HOME="$3"
+      typeset -g CODEX_STUB_RELEASE_DEADLINE="$4"
 
       function _ralph_setup_mcps() { return 0; }
       function _ralph_setup_secrets() { return 0; }
@@ -2540,6 +2588,7 @@ JSON
       function _golem_setup_env() { return 0; }
       function _golem_setup_title() { return 0; }
       function _golem_reset_title() { return 0; }
+      '"$CODEX_STUB_AWAIT_RELEASE"'
       function codex() {
         local profile="" previous=""
         local arg
@@ -2554,9 +2603,7 @@ JSON
         local profile_file="$CODEX_HOME/${profile}.config.toml"
         [[ -f "$profile_file" ]] || return 91
         print -r -- "$profile" > "$CODEX_HOME/ready-${GOLEM_TEST_LAUNCH}"
-        while [[ ! -e "$CODEX_HOME/release-${GOLEM_TEST_LAUNCH}" ]]; do
-          sleep 0.02
-        done
+        _await_release "$CODEX_HOME/release-${GOLEM_TEST_LAUNCH}" "$CODEX_STUB_RELEASE_DEADLINE"
       }
 
       source "$2"
@@ -2602,7 +2649,7 @@ JSON
       touch "$CODEX_HOME/release-B"
       wait "$launch_b"
       [[ ! -e "$file_b" ]] || exit 99
-    ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home"
+    ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home" "$CODEX_STUB_RELEASE_DEADLINE"
 
     if [ "$status" -ne 0 ]; then
       printf '%s\n' "$output" >&2
