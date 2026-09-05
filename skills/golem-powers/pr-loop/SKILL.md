@@ -93,6 +93,19 @@ said "control the effort levels" and did not enumerate them:
 
 If a brief names no effort, the lead has not finished writing it.
 
+### Spawn Only What the Job Needs (Etan, 2026-09-05)
+
+Etan, verbatim — relayed via orc, the ellipsis is his:
+
+> "tell the agents to do it wisely and not just blindly make workflows and sub-agents… especially
+> when they're Fable, make sure they're not creating Fable sub-agents and workflows full of Fables
+> when they don't actually need them, instead of just pin-gating it."
+
+Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold;
+every spawn pinned explicitly; Fable only where judgment is the bottleneck, never for mechanical
+steps; a Fable seat defaults its workers to opus/sonnet and says why when it does not. The gate
+(`model-pin-gate`) is the backstop, not the decision.
+
 ## Review-Without-Merge ≠ Draft (gen-12 weave E09)
 
 Draft PRs **silently skip bot reviews** (CodeRabbit skipped a PR because it was
