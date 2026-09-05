@@ -112,7 +112,7 @@ jobs:
           # Scan every commit added after the declared public baseline. Known
           # violations are hash-ratcheted and may burn down, never grow.
           PUBLISH_BOUNDARY_HISTORY_MODE: ratchet
-          PUBLISH_BOUNDARY_HISTORY_BASE: 30d1e897dfcd2df55d5b9dcb9e623c10904afb60
+          PUBLISH_BOUNDARY_HISTORY_BASE: 5857c663fe37f3dd1fba1d573f813878f3e73875
         run: bash scripts/check-publish-boundary.sh
 
   summary:
