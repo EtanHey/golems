@@ -2888,3 +2888,159 @@ JSON
     run run_claude "" ""
     ! grep -F -q -- "--effort medium" <<< "$output"
 }
+
+# ── W23: launcher staging must never touch a shared /tmp ──────────
+#
+# The fleet's TMP-BLOCK guard denies agents any /tmp write, fail-closed
+# (skills/golem-powers/tmp-block). A launcher that staged its persona context,
+# agy MCP merges, or notify config through /tmp could not be driven by an agent
+# at all. Backlog #24 ruling: the LAUNCHER moves, the guard stays fail-closed.
+#
+# These files are created AND removed inside a single launch, so an ls-before /
+# ls-after diff cannot see them on its own — the stub CLI snapshots /tmp and the
+# staging dir from inside the launch, while the launch's files are still live.
+TMP_STAGING_PATTERN='^(repogolem-|\.claude_notify_config_)'
+
+snapshot_tmp_staging_entries() {
+    ls -A /tmp 2>/dev/null | grep -E "$TMP_STAGING_PATTERN" | sort
+}
+
+@test "tracked dispatcher source stages Claude launches outside /tmp" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home"
+    local before_tmp; before_tmp="$(snapshot_tmp_staging_entries)"
+
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+      unset XDG_RUNTIME_DIR
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+
+      # Stands in for the real claude process, which reads the notify config
+      # while it runs. Snapshots both trees while the launch files are live.
+      function claude() {
+        print -r -- "LIVE_TMP=$(ls -A /tmp 2>/dev/null | grep -E "\^(repogolem-|\\.claude_notify_config_)" | tr "\n" " ")"
+        print -r -- "LIVE_STAGING=$(ls -A "$HOME/.cache/repogolem/testrepo" 2>/dev/null | tr "\n" " ")"
+        print -r -- "STAGING_MODE=$(stat -f %OLp "$HOME/.cache/repogolem/testrepo" 2>/dev/null)"
+      }
+
+      source "$3"
+      _golem_register_wrappers
+      testrepoClaude -s -QN
+    ' _ "$fake_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    # The notify config must exist somewhere while claude runs...
+    grep -E -q -- 'LIVE_STAGING=.*\.claude_notify_config_testrepo\.json' <<< "$output"
+    # ...and that somewhere must not be /tmp.
+    refute_contains ".claude_notify_config_testrepo.json" \
+      "$(grep -E '^LIVE_TMP=' <<< "$output")" \
+      "notify config must not be staged in a shared /tmp"
+    grep -F -q -- "STAGING_MODE=700" <<< "$output"
+
+    [ "$(snapshot_tmp_staging_entries)" = "$before_tmp" ]
+}
+
+@test "tracked dispatcher source stages persona and agy merges outside /tmp" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home/.claude/agents" "$TMPDIR_/bin"
+    cat > "$fake_home/.claude/agents/test-agent.md" <<'AGENT'
+---
+name: test-agent
+description: Test agent context.
+---
+
+# test-agent
+
+Use repository context.
+AGENT
+
+    jq '.projects.testrepo.agent = "test-agent" | .projects.testrepo.mcps = ["brainlayer"]' \
+      "$REGISTRY_FILE" > "$TMPDIR_/registry-with-agent.json"
+    cat > "$TMPDIR_/bin/agy" <<'AGY'
+#!/usr/bin/env zsh
+print -r -- "LIVE_TMP=$(ls -A /tmp 2>/dev/null | grep -E '^(repogolem-|\.claude_notify_config_)' | tr '\n' ' ')"
+print -r -- "LIVE_STAGING=$(ls -A "$HOME/.cache/repogolem/testrepo" 2>/dev/null | tr '\n' ' ')"
+AGY
+    chmod +x "$TMPDIR_/bin/agy"
+
+    local before_tmp; before_tmp="$(snapshot_tmp_staging_entries)"
+
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+      export PATH="$3:$PATH"
+      unset XDG_RUNTIME_DIR
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{\"brainlayer\":{\"command\":\"brainlayer-mcp\"}}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+
+      source "$4"
+      testrepoGemini -s "stage check"
+    ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$TMPDIR_/bin" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    # The persona context file is live while agy runs and must be staged outside /tmp.
+    grep -E -q -- 'LIVE_STAGING=.*repogolem-gemini-testrepo-agent\.' <<< "$output"
+    refute_contains "repogolem-gemini-testrepo-agent." \
+      "$(grep -E '^LIVE_TMP=' <<< "$output")" \
+      "persona context must not be staged in a shared /tmp"
+
+    [ "$(snapshot_tmp_staging_entries)" = "$before_tmp" ]
+}
+
+@test "tracked dispatcher source hardcodes no /tmp staging paths" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    run grep -n -E '(mktemp|>)[^|]*"?/tmp/' "$SOURCE_DISPATCHER"
+    if [ "$status" -eq 0 ]; then
+        echo "launcher still stages through /tmp:" >&2
+        echo "$output" >&2
+        return 1
+    fi
+}
+
+@test "tracked dispatcher source honors XDG_RUNTIME_DIR for staging" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home" xdg="$TMPDIR_/xdg-runtime"
+    mkdir -p "$fake_home" "$xdg"
+
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+      export XDG_RUNTIME_DIR="$3"
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function claude() {
+        print -r -- "LIVE_STAGING=$(ls -A "$XDG_RUNTIME_DIR/repogolem/testrepo" 2>/dev/null | tr "\n" " ")"
+      }
+
+      source "$4"
+      _golem_register_wrappers
+      testrepoClaude -s -QN
+    ' _ "$fake_home" "$REGISTRY_FILE" "$xdg" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    grep -E -q -- 'LIVE_STAGING=.*\.claude_notify_config_testrepo\.json' <<< "$output"
+    [ ! -d "$fake_home/.cache/repogolem" ]
+}
