@@ -1,11 +1,15 @@
 ---
 name: pr-loop
-description: "Full PR loop: branch, test, commit, push, PR, review, fix, merge — plus the agent-identity signature required on every GitHub write. Triggers: create PR, finish work, post PR comment, sign a comment, golem-id, Co-Authored-By trailer."
+description: "Full PR loop plus the agent-identity signature on GitHub writes. Triggers: create PR, finish work, post PR comment, sign a comment, golem-id, Co-Authored-By trailer."
 ---
 
 # PR Loop
 
 > Fleet law: canon #2 owns branch→commit→push→PR→review→merge and PR URL validity. This skill keeps the procedural checklist, review handling, edge cases, and worker-vs-lead merge mechanics.
+
+## Scope
+
+The loop: branch, test, commit, push, PR, review, fix, merge.
 
 ## Loop Endpoint
 

@@ -1,6 +1,6 @@
 ---
 name: spec-preflight-gate
-description: Deterministic gate for spawn/dispatch briefs that reference spec or handoff files. Triggers: spawn hygiene, assert-before-spawn, handoff brief, spec path preflight.
+description: "Gate for briefs citing spec files. Triggers: spawn hygiene, assert-before-spawn, handoff brief, spec path preflight."
 ---
 
 # Spec Preflight Gate
@@ -20,6 +20,10 @@ Exit codes:
 - `0` = PASS
 - `3` = FLAG
 - `2` = usage / parse error
+
+## Scope
+
+A deterministic gate for spawn/dispatch briefs that reference spec or handoff files.
 
 ## Doctrine
 

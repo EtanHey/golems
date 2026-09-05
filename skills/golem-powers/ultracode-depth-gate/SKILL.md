@@ -1,6 +1,6 @@
 ---
 name: ultracode-depth-gate
-description: Deterministic gate for ultracode/comprehensive workflow topology depth floors. Triggers: ultracode, exhaustive audit, deep fan-out, workflow topology, persistent collab.
+description: "Workflow depth-floor gate. Triggers: ultracode, exhaustive audit, deep fan-out, workflow topology, persistent collab."
 ---
 
 # Ultracode Depth Gate
@@ -20,6 +20,10 @@ Exit codes:
 - `0` = PASS
 - `3` = FLAG
 - `2` = usage / parse error
+
+## Scope
+
+A deterministic gate over ultracode and comprehensive workflow topology depth floors.
 
 ## Doctrine
 

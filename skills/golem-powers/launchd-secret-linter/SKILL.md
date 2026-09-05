@@ -1,6 +1,6 @@
 ---
 name: launchd-secret-linter
-description: "Lint launchd plists for hardcoded secrets in EnvironmentVariables. Triggers: launchd plist, LaunchAgents, plist secret, raw API key in plist, secrets hygiene, op:// reference."
+description: "Lint launchd plists for hardcoded secrets. Triggers: launchd plist, LaunchAgents, plist secret, raw API key in plist, secrets hygiene, op:// reference."
 ---
 
 # launchd-secret Linter
@@ -10,6 +10,10 @@ user-agent environment on first load and contaminates the whole fleet** — the 
 specimen was a raw `GOOGLE_API_KEY` leaked exactly this way. A hardened plist carries only
 an **`op://` 1Password reference** or **`$VAR` env-indirection**, never the literal. This
 skill makes that rule a mechanical, replayable gate.
+
+## Scope
+
+The scan target is the plist `EnvironmentVariables` block.
 
 ## Run it
 

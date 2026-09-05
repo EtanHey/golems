@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: "Frontier/round-based plan interview: settle what is already decided, then ask ONLY the open independent decisions in numbered rounds with lettered options and one Recommended each; answer in shorthand (1A 2C). Triggers: grill me, interview me about this plan, shared understanding, walk the design tree. NOT one-question-at-a-time."
+description: "Frontier/round-based plan interview. Triggers: grill me, interview me about this plan, shared understanding, walk the design tree. NOT one-question-at-a-time."
 ---
 
 # /grill-me — frontier rounds, not one question at a time
@@ -9,6 +9,10 @@ description: "Frontier/round-based plan interview: settle what is already decide
 > the retired one-question-per-turn method. Source: Matt Pocock, skills v1.2 (digest
 > `docs.local/video-gems/2026-08-06-matt-pocock-skills-v1.2.0.md`). One-question-per-turn was
 > "incredibly frustrating and dead slow" once only easy yes/no questions remained.
+
+## Scope
+
+The interview settles what is already decided, then asks ONLY the open independent decisions in numbered rounds with lettered options and one Recommended each; answer in shorthand (1A 2C).
 
 ## The loop
 

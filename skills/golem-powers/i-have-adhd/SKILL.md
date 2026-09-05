@@ -1,11 +1,15 @@
 ---
 name: i-have-adhd
-description: "Shape output for an ADHD reader: lead with the concrete next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, and make wins visible. Invoke when a user explicitly asks for ADHD-friendly / action-first / lead-with-the-answer output. Triggers: i-have-adhd, ADHD output, action-first, stop burying the answer. NOT auto-load fleet-wide by default."
+description: "Shape output for an ADHD reader. Triggers: i-have-adhd, ADHD output, action-first, stop burying the answer. NOT auto-load fleet-wide by default."
 ---
 
 # i-have-adhd
 
 The reader has ADHD. Output is not just brief. It is shaped so an ADHD brain can act on it.
+
+## Scope
+
+Shaping means: lead with the concrete next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, and make wins visible. Invoke when a user explicitly asks for ADHD-friendly / action-first / lead-with-the-answer output.
 
 ## What ADHD changes about reading
 

@@ -1,6 +1,6 @@
 ---
 name: tmp-block
-description: "Fail-CLOSED PreToolUse guard denying durable-content writes to temp paths (/tmp, /private/tmp, /var/folders, $TMPDIR) across Write/Edit and Bash writes, and enforcing the ratified <repo>/.worktrees/<name> worktree location. Triggers: tmp guard, TMP-BLOCK deny, WORKTREE-CONVENTION deny, bypass ledger. NOT for storage policy."
+description: "Fail-CLOSED guard denying durable writes to /tmp, /private/tmp, /var/folders, $TMPDIR; enforces <repo>/.worktrees/<name>. Triggers: tmp guard, TMP-BLOCK deny, WORKTREE-CONVENTION deny, bypass ledger. NOT for storage policy."
 ---
 
 # tmp-block — durable staging only, NEVER /tmp
@@ -15,6 +15,10 @@ a working tree, which would make the live fleet-wide guard whatever branch
 happens to be checked out. Install, refresh, and drift-check with
 `scripts/install.sh` (`--check` exits 1 when stale). **A merge does not deploy
 this hook; re-run the installer.** Details in `hooks/INSTALL.md`.
+
+## Scope
+
+A PreToolUse guard. The deny covers Write/Edit and Bash writes. The worktree location `<repo>/.worktrees/<name>` is the ratified convention.
 
 ## Why it exists (S04, weave 2026-06-07 Phase-2 Fix-3)
 

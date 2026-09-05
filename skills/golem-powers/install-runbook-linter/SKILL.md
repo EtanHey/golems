@@ -1,6 +1,6 @@
 ---
 name: install-runbook-linter
-description: "Lint a macOS onboarding runbook for privilege-correctness before it ships. Triggers: install runbook, fresh-Mac onboarding, brew cask runbook, admin/Standard user split, happy-camper onboarding."
+description: "Lint a macOS onboarding runbook for privilege-correctness. Triggers: install runbook, fresh-Mac onboarding, brew cask runbook, admin/Standard user split, happy-camper onboarding."
 ---
 
 # Install-Runbook Linter
@@ -10,6 +10,10 @@ admin-only steps to a Standard (non-admin) user — the gen16 audit failed exact
 Standard user couldn't `brew install`). This skill turns that audit into a **mechanical,
 replayable gate**: `runbook_lint.py` parses a runbook and reports privilege-correctness
 violations, with RED→GREEN fixtures (`fixtures/`, `tests/`).
+
+## Scope
+
+The lint runs before the runbook ships.
 
 ## Run it
 

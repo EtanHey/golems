@@ -1,6 +1,6 @@
 ---
 name: audio-dashboard
-description: "Use when building audio narration dashboards that require STT-after-TTS exact word-timing, a real word-click-seek read-along dashboard, the AfterCode workflow, or publish-to-tailnet delivery."
+description: "Build audio narration dashboards. Triggers: STT-after-TTS exact word-timing, word-click-seek read-along dashboard, AfterCode workflow, publish-to-tailnet delivery."
 ---
 
 # Audio Dashboard

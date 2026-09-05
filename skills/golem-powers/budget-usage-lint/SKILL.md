@@ -1,12 +1,16 @@
 ---
 name: budget-usage-lint
-description: "Non-blocking PostToolUse/Stop hook flagging conserve-Claude / weekly-budget / usage-percent / stay-thin / go-light framing in agent-facing output. Full-throttle is the standing rule; there is NO real conservation premise. Triggers: budget lint, conserve Claude, stay thin, usage percent. NOT for real sourced cost reporting or context/token budget estimation."
+description: "Non-blocking hook flagging conserve-Claude / weekly-budget / usage-percent / stay-thin / go-light framing. Triggers: budget lint, conserve Claude, stay thin, usage percent. NOT for real sourced cost reporting or context/token budget estimation."
 ---
 
 # budget-usage-lint — full throttle is the standing rule
 
 Hook-carried skill. The enforcing artifact is `hooks/budget-usage-lint.py`
 (a **non-blocking** PostToolUse/Stop hook); this page is its contract.
+
+## Scope
+
+Full-throttle is the standing rule; there is NO real conservation premise. It runs as a PostToolUse/Stop hook over agent-facing output.
 
 ## The rule
 

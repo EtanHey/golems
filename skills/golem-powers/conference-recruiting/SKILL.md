@@ -1,6 +1,6 @@
 ---
 name: conference-recruiting
-description: "Use when a user asks to mine a tech or security conference, Hackers Summer Camp, BSides, Black Hat, DEF CON, conference sponsors, exhibitors, or speakers for hiring targets and matching jobs. NOT for general job search or LinkedIn post drafting."
+description: "Mine a conference for hiring targets and matching jobs. Triggers: tech or security conference, Hackers Summer Camp, BSides, Black Hat, DEF CON, conference sponsors, exhibitors, speakers. NOT for general job search or LinkedIn post drafting."
 ---
 
 # Conference Recruiting Sweep

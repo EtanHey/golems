@@ -1,6 +1,6 @@
 ---
 name: crash-resume-index
-description: Durable surface→session_id index so /orc RESUMES a crashed lead (repoGolem --resume) instead of duplicate-spawning a fresh one. Triggers: crash resume, resume not respawn, lead crashed, R-036, SPAWN_OVER_RESUMABLE green path, session_id lookup.
+description: "Durable surface→session_id index so /orc RESUMES a crashed lead. Triggers: crash resume, resume not respawn, lead crashed, R-036, SPAWN_OVER_RESUMABLE green path, session_id lookup."
 ---
 
 # crash-resume-index (gen-18 Track 1 #3)
@@ -13,6 +13,10 @@ of spawning a fresh lead and discarding the crashed session's context.
 > **Why it matters:** orchestrator/263b3559#1 spawned-over-a-resumable and threw
 > away **~386K tokens** of accumulated lead context. The fix is to remember which
 > session was on which surface, across a reboot, and resume it.
+
+## Scope
+
+Resume is via `repoGolem --resume`; it prevents duplicate-spawning a fresh lead.
 
 ## The flow: capture-on-boot → persist → resume-lookup
 

@@ -1,6 +1,6 @@
 ---
 name: collab-monitor
-description: "Arm or stop durable tag-scoped collab-file watches. Triggers: collab monitor, watch collab, listen-name, background watch. NOT for file-integrity auditing or worker-registry completion."
+description: "Arm or stop tag-scoped durable collab-file watches. Triggers: collab monitor, watch collab, listen-name, background watch. NOT for file-integrity auditing or worker-registry completion."
 version: 1.1.0
 type: encoded-preference
 last-eval-date: 2026-08-03

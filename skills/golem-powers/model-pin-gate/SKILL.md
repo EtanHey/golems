@@ -1,12 +1,16 @@
 ---
 name: model-pin-gate
-description: "PreToolUse model-pin guard for Fable seats: Agent/Task spawns must pin a non-Fable model; Workflow agent() pins are advisory. Triggers: model pin, Fable seat, Agent spawn, Workflow spawn."
+description: "PreToolUse model-pin guard for Fable seats. Triggers: model pin, Fable seat, Agent spawn, Workflow spawn."
 disable-model-invocation: true
 ---
 
 # Skill: Model-Pin Gate
 
 > Fleet law: canon #5 owns model policy. This skill is the Claude Code hook that enforces Fable-seat spawn pins.
+
+## Scope
+
+Agent/Task spawns must pin a non-Fable model; Workflow `agent()` pins are advisory.
 
 ## What It Is
 

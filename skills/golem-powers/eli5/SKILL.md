@@ -1,11 +1,15 @@
 ---
 name: eli5
-description: Explain something new fast, for a smart adult who's never touched this topic. Trigger on "/eli5 [topic]", "eli5 this", "break this down for me", "I know nothing about X, catch me up", or any ask for a quick plain-language explainer of how something works. Answers in chat first — tight, no walls, adult tone — then offers a rendered visual that tells the whole thing as one story (a built HTML graphic; chat code-block diagrams do NOT render). NEVER opens with preamble, NEVER talks down.
+description: "Explain a new topic fast to a smart adult. Triggers: /eli5 [topic], eli5 this, break this down for me, I know nothing about X catch me up."
 ---
 
 # eli5 — explain it to a smart adult who's new to this
 
 The job: get someone the *gist* of an unfamiliar topic in ten seconds, then a few clean beats, in language that respects them. This is the opposite of a wall of text and the opposite of a children's book. It's how a sharp friend who happens to know the field would catch you up at a bar.
+
+## Scope
+
+Answers in chat first — tight, no walls, adult tone — then offers a rendered visual that tells the whole thing as one story (a built HTML graphic; chat code-block diagrams do NOT render). NEVER opens with preamble, NEVER talks down.
 
 ## Who "5" is — read this first, it's the whole skill
 

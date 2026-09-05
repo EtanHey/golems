@@ -1,6 +1,6 @@
 ---
 name: pr-queue-gate
-description: "Inspect fleet-authored GitHub PR queues and enforce the one-shot Claude Stop gate. Triggers: PR queue, open-PR blindness, pr-queue gate. NOT for cmuxlayer status-claim enforcement."
+description: "Fleet-authored GitHub PR queues + the one-shot Claude Stop gate. Triggers: PR queue, open-PR blindness, pr-queue gate. NOT for cmuxlayer status-claim enforcement."
 ---
 
 # pr-queue-gate
@@ -8,6 +8,10 @@ description: "Inspect fleet-authored GitHub PR queues and enforce the one-shot C
 Hook-carried skill for the deterministic PR-queue primitive and Claude Code
 session-end gate. The enforcing artifacts are `scripts/pr-queue.sh` and
 `scripts/pr-queue-gate-hook.mjs`.
+
+## Scope
+
+The skill inspects the queue and enforces the gate.
 
 ## Boundary
 

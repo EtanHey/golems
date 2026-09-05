@@ -1,6 +1,6 @@
 ---
 name: surface-sweep
-description: "Use when about to call a change done; after a frontend change; on a multi-client or multi-provider change; when it works on my path but may not elsewhere; when adding a setting, command, keybinding, or provider adapter; or when changing a wire contract. NOT for single-file leaf fixes with no shared consumer, adapter, entry point, state transition, or user-facing surface."
+description: "Sweep every surface a change touches before calling it done. Triggers: change done, frontend change, multi-client or multi-provider change, works on my path but may not elsewhere, adding a setting/command/keybinding/provider adapter, wire-contract change. NOT for single-file leaf fixes with no shared consumer, adapter, entry point, state transition, or user-facing surface."
 ---
 
 # Surface Sweep

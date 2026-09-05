@@ -1,6 +1,6 @@
 ---
 name: pane-liveness-check
-description: "Use when auditing cmux panes for claim-or-close, sprint close-out, idle workers, dead shells, uncommitted or unpushed artifacts, untitled seats, or stale numeric surface refs."
+description: "Audit cmux panes for claim-or-close. Triggers: sprint close-out, idle workers, dead shells, uncommitted or unpushed artifacts, untitled seats, stale numeric surface refs."
 execute: scripts/run.sh
 ---
 
