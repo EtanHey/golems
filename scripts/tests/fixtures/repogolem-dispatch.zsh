@@ -137,6 +137,43 @@ _golem_copy_mcp_to_worktree() {
   echo "[repogolem] copied .mcp.json into worktree" >&2
 }
 
+# ── Launch staging directory ──────────────────────────────────────
+# Short-lived launch files (persona context, agy MCP merges, notify config)
+# stage HERE, never in a shared /tmp. Two reasons:
+#   1. The fleet's TMP-BLOCK guard (skills/golem-powers/tmp-block) denies agents
+#      every /tmp write, fail-closed. A launcher that staged through /tmp could
+#      not be driven by an agent at all — backlog #24's ruling is that the
+#      LAUNCHER moves and the guard stays fail-closed.
+#   2. These files carry MCP config and per-seat context. /tmp is shared and
+#      world-readable; this dir is 0700 and the files inside it are 0600.
+# Cleanup is the same two-layer shape the Codex profile staging already uses
+# below: every call site removes its own file on the way out, and each launch
+# reaps entries an interrupted earlier launch orphaned. The 24h guard keeps the
+# reaper off a concurrent launch's live files.
+# (A `trap`-based sweep cannot replace the reaper here: this file is sourced
+# into the user's interactive shell, so a trap set outside `localtraps` would
+# outlive the launch and fire on the shell itself.)
+_golem_staging_dir() {
+  local project_name="${1:-project}"
+  local safe="${project_name//[^A-Za-z0-9_-]/-}"
+  [[ -z "$safe" ]] && safe="project"
+
+  local base
+  if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+    base="${XDG_RUNTIME_DIR}/repogolem"
+  else
+    base="${HOME}/.cache/repogolem"
+  fi
+
+  local dir="${base}/${safe}"
+  mkdir -p "$dir" 2>/dev/null || return 1
+  chmod 700 "$base" "$dir" 2>/dev/null
+  # (no (#cN) here: that needs EXTENDED_GLOB, which this file does not set)
+  rm -f "$dir"/*(N.mh+24) 2>/dev/null
+
+  print -r -- "$dir"
+}
+
 _golem_inject_agent_context() {
   # Personas are a LEAD affordance. A worker seat gets its brief, not a boot ritual.
   # Gates all four CLIs (codex/cursor/gemini/kiro) at the single shared injection point;
@@ -156,8 +193,12 @@ _golem_inject_agent_context() {
   local safe_project_name="${project_name//[^a-zA-Z0-9_-]/}"
   [[ -z "$safe_project_name" ]] && safe_project_name="project"
 
+  local staging_dir
+  staging_dir=$(_golem_staging_dir "$project_name") || return 0
+
   local context_file
-  context_file=$(mktemp "/tmp/repogolem-${cli_name}-${safe_project_name}-agent.XXXXXX") || return 0
+  context_file=$(umask 077; mktemp "${staging_dir}/repogolem-${cli_name}-${safe_project_name}-agent.XXXXXX") || return 0
+  chmod 600 "$context_file" 2>/dev/null
   if ! awk '
     NR == 1 && $0 == "---" { in_frontmatter = 1; next }
     in_frontmatter && $0 == "---" {
@@ -265,13 +306,16 @@ _golem_sync_agy_workspace() {
     [[ -n "$built" && "$built" != "null" ]] && merged="$built"
   fi
 
+  local staging_dir
+  staging_dir=$(_golem_staging_dir "$project_name") || return 1
+
   local merged_file
-  merged_file=$(mktemp "/tmp/repogolem-agy-${project_name}.XXXXXX.json") || return 1
+  merged_file=$(umask 077; mktemp "${staging_dir}/repogolem-agy-${project_name}.XXXXXX.json") || return 1
   print -r -- "$merged" > "$merged_file"
 
   if [[ -f "${project_path}/.mcp.json" ]]; then
     local merge_file
-    merge_file=$(mktemp "/tmp/repogolem-agy-${project_name}.merge.XXXXXX.json") || {
+    merge_file=$(umask 077; mktemp "${staging_dir}/repogolem-agy-${project_name}.merge.XXXXXX.json") || {
       rm -f "$merged_file"
       return 1
     }
@@ -333,7 +377,7 @@ _golem_sync_agy_workspace() {
   if ! print -r -- "$existing" | jq -e 'type == "object"' >/dev/null 2>&1; then
     existing='{"mcpServers":{}}'
   fi
-  tmp_file=$(mktemp "/tmp/repogolem-agy-${project_name}.agents.XXXXXX.json") || {
+  tmp_file=$(umask 077; mktemp "${staging_dir}/repogolem-agy-${project_name}.agents.XXXXXX.json") || {
     rm -f "$merged_file"
     return 1
   }
@@ -353,7 +397,7 @@ _golem_sync_agy_workspace() {
   if ! print -r -- "$user_existing" | jq -e 'type == "object"' >/dev/null 2>&1; then
     user_existing='{"mcpServers":{}}'
   fi
-  user_tmp=$(mktemp "/tmp/repogolem-agy-${project_name}.user.XXXXXX.json") || {
+  user_tmp=$(umask 077; mktemp "${staging_dir}/repogolem-agy-${project_name}.user.XXXXXX.json") || {
     rm -f "$merged_file"
     return 1
   }
@@ -519,20 +563,31 @@ _golem_launch_claude() {
   cd "${_flag_worktree:-$project_path}" || return 1
   _golem_setup_title "$project_name" "${project_name}Claude"
 
-  # Notifications
-  rm -f "/tmp/.claude_notify_config_${project_name}.json" 2>/dev/null
-  if [[ -n "$_flag_notify_mode" ]]; then
+  # Notifications. Same filename as before, staged 0600 under the launch
+  # staging dir instead of a shared /tmp (see _golem_staging_dir).
+  local _notify_staging_dir _notify_config=""
+  if _notify_staging_dir=$(_golem_staging_dir "$project_name"); then
+    _notify_config="${_notify_staging_dir}/.claude_notify_config_${project_name}.json"
+  fi
+  [[ -n "$_notify_config" ]] && rm -f "$_notify_config" 2>/dev/null
+  # localtraps keeps this trap scoped to the launch: the file is sourced into
+  # the user's interactive shell, and a leaked EXIT trap would fire on it.
+  setopt localoptions localtraps
+  trap '[[ -n "$_notify_config" ]] && rm -f "$_notify_config" 2>/dev/null' EXIT INT TERM
+  if [[ -n "$_flag_notify_mode" && -n "$_notify_config" ]]; then
     local quiet_val="false" verbose_val="false"
     [[ "$_flag_notify_mode" == "quiet" ]] && quiet_val="true"
     [[ "$_flag_notify_mode" == "verbose" ]] && verbose_val="true"
-    jq -n \
-      --arg name "${capitalized_name} Claude" \
-      --arg topic "$ntfy_topic" \
-      --arg cwd "$project_path" \
-      --argjson quiet "$quiet_val" \
-      --argjson verbose "$verbose_val" \
-      '{name: $name, topic: $topic, quiet: $quiet, verbose: $verbose, cwd: $cwd}' \
-      > "/tmp/.claude_notify_config_${project_name}.json"
+    ( umask 077
+      jq -n \
+        --arg name "${capitalized_name} Claude" \
+        --arg topic "$ntfy_topic" \
+        --arg cwd "$project_path" \
+        --argjson quiet "$quiet_val" \
+        --argjson verbose "$verbose_val" \
+        '{name: $name, topic: $topic, quiet: $quiet, verbose: $verbose, cwd: $cwd}' \
+        > "$_notify_config" )
+    chmod 600 "$_notify_config" 2>/dev/null
   fi
 
   if $_flag_update; then
@@ -630,7 +685,7 @@ _golem_launch_claude() {
   fi
 
   _golem_reset_title
-  rm -f "/tmp/.claude_notify_config_${project_name}.json" 2>/dev/null
+  [[ -n "$_notify_config" ]] && rm -f "$_notify_config" 2>/dev/null
   return "$claude_exit"
 }
 
