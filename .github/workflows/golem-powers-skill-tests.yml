@@ -42,3 +42,39 @@ jobs:
 
       - name: PR size-label script
         run: bats scripts/tests/test-pr-size-labels.bats
+
+      # The three steps above are a hand-kept enumeration, and that list is the
+      # bug: scripts/tests/ holds 14 .bats files, so 11 suites had no CI at all
+      # and two of them sat red on master inside a green pipeline. This step
+      # globs the directory so a suite is visible the day it lands, with no
+      # workflow edit to remember.
+      #
+      # Why warn and not fail (2026-09-06): two suites are red on master today.
+      # A blocking gate over a known-red directory is worse than the gap it
+      # closes — same shape and same reason as the warn job in pr-size-label.yml.
+      # Drop `continue-on-error` once scripts/tests/ is green.
+      - name: Whole scripts/tests directory (non-blocking)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          tap="$RUNNER_TEMP/bats-all.tap"
+          bats --tap scripts/tests/*.bats | tee "$tap"
+          status=${PIPESTATUS[0]}
+          ok=$(grep -c '^ok ' "$tap" || true)
+          not_ok=$(grep -c '^not ok ' "$tap" || true)
+          failures=$(grep '^not ok ' "$tap" || true)
+          {
+            printf '## scripts/tests — %s ok, %s not ok\n\n' "$ok" "$not_ok"
+            if [ -n "$failures" ]; then
+              printf 'Failing tests:\n\n'
+              printf '%s\n' "$failures" | sed 's/^/- `/; s/$/`/'
+            else
+              printf 'Every suite in `scripts/tests/` passed.\n'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$failures" ]; then
+            printf '%s\n' "$failures" | while IFS= read -r line; do
+              printf '::warning file=scripts/tests::%s\n' "$line"
+            done
+          fi
+          exit "$status"
