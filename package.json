@@ -12,7 +12,7 @@
     "test:pr-size-labels": "bats scripts/tests/test-pr-size-labels.bats",
     "test:pkill-guard": "bats scripts/tests/test-pkill-guard.bats",
     "test:bun-version-pin": "bats scripts/tests/test-bun-version-pin.bats",
-    "test:spine-gates": "bun test skills/golem-powers/*-gate/evals/ skills/golem-powers/_shared/stop-hook-runtime/evals/ skills/golem-powers/crash-resume-index/evals/ skills/golem-powers/audio-dashboard/evals/ skills/golem-powers/research-lifecycle/evals/"
+    "test:spine-gates": "bun test skills/golem-powers/*-gate/evals/ skills/golem-powers/_shared/stop-hook-runtime/evals/ skills/golem-powers/crash-resume-index/evals/ skills/golem-powers/audio-dashboard/evals/ skills/golem-powers/html-dashboard/evals/ skills/golem-powers/research-lifecycle/evals/"
   },
   "dependencies": {
     "@axiomhq/js": "^1.4.0",

@@ -14,8 +14,8 @@ import { detectTailnetSync } from "../src/tailnet-sync-gate.mjs";
 process.env.TAILNET_HUB_HOST = "hub.example.invalid";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const redDir = path.join(here, "fixtures", "red");
-const greenDir = path.join(here, "fixtures", "green");
+const redDir = path.join(here, "fixtures", "tailnet-sync-gate", "red");
+const greenDir = path.join(here, "fixtures", "tailnet-sync-gate", "green");
 
 function loadFixtures(dir) {
   return readdirSync(dir)

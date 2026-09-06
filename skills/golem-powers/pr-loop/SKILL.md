@@ -143,7 +143,7 @@ Evidence: #257 merged at `61d6f50` before fix `750efdd` landed (recovered via
 
 Fleet law for user-visible completion lives in canon #4. Before emitting `TASK_DONE` or any "done / deployed / green / render-complete" message, run the **false-green gate** on the turn (hook-enforced; not model-invocable) —
 `bun skills/golem-powers/false-green-gate/scripts/false-green-gate-cli.mjs <transcript|->`,
-exit 3 = FLAG. A FLAG means the claim is unearned — run the missing live probe, then claim. Compose with `/deploy-verify`, `/render-done-gate`, and `/qa-verdict-gate` as the domain requires.
+exit 3 = FLAG. A FLAG means the claim is unearned — run the missing live probe, then claim. Compose with `/deploy-verify` and `/qa-verdict-gate` as the domain requires; for a narration render-done, also run `audio-dashboard`'s gate (`bun skills/golem-powers/audio-dashboard/scripts/render-done-gate-cli.mjs <transcript|->`).
 
 ## PR-Referenced Artifacts Must Be Committed (gen-12 weave E09)
 
