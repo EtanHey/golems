@@ -1,10 +1,8 @@
----
-name: render-done-gate
-description: "Kill-gate: render-done needs ffprobe proof. Triggers: render complete, give it a play, narration done, audio mp3 done."
-disable-model-invocation: true
----
+# Gate: Render-Done Kill-Gate (a gate of `audio-dashboard`, not a skill)
 
-# Skill: Render-Done Kill-Gate (gen-18 Track 2 #3 — narration-specialized)
+> Etan ruling 2026-09-06: "they should be gates, not skills." This was a standalone
+> catalog entry until it was folded into its parent skill. Run it from the parent's
+> Acceptance Gate step; there is no `/render-done-gate` slash command any more.
 
 > A "render complete / give it a play" message ≠ an mp3 on disk. A 2-voice render that silently fell back
 > to system-TTS for speaker 2 ≠ the registered clone. The script text ≠ the audio artifact.
@@ -61,14 +59,14 @@ over a narration/AfterCode render-done.
 
 `/pr-loop` states the **Deploy Truth Gate** in prose; this gate makes the narration render-done mechanical:
 before a worker emits a "render done / give it a play / here's the mp3" message, run the gate on the turn —
-`bun skills/golem-powers/render-done-gate/scripts/render-done-gate-cli.mjs <transcript|->` (exit 3 = FLAG). A
+`bun skills/golem-powers/audio-dashboard/scripts/render-done-gate-cli.mjs <transcript|->` (exit 3 = FLAG). A
 FLAG means the claim is not yet earned: run the missing composite probe, then claim.
 
 ## Run It
 
 ```bash
-bun test skills/golem-powers/render-done-gate/evals/render-done-gate.test.mjs   # replay (CI-safe)
-bun skills/golem-powers/render-done-gate/scripts/render-done-gate-cli.mjs <transcript.jsonl|->
+bun test skills/golem-powers/audio-dashboard/evals/render-done-gate.test.mjs   # replay (CI-safe)
+bun skills/golem-powers/audio-dashboard/scripts/render-done-gate-cli.mjs <transcript.jsonl|->
 ```
 
 Programmatic: `import { detectRenderDone } from "./src/render-done-gate.mjs"` → `{ verdict, claim, domains, violations }`.

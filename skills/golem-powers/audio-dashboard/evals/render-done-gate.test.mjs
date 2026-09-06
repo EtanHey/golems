@@ -12,8 +12,8 @@ import path from "node:path";
 import { detectRenderDone, REGISTERED_CLONES } from "../src/render-done-gate.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const redDir = path.join(here, "fixtures", "red");
-const greenDir = path.join(here, "fixtures", "green");
+const redDir = path.join(here, "fixtures", "render-done-gate", "red");
+const greenDir = path.join(here, "fixtures", "render-done-gate", "green");
 
 function loadFixtures(dir) {
   return readdirSync(dir)

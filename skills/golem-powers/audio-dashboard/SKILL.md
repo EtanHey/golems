@@ -340,6 +340,14 @@ bun scripts/bootstrap.mjs --require-tts   # also gate the daemon/token
 
 ## Acceptance Gate
 
+**Gate: `scripts/render-done-gate-cli.mjs` — runs before DONE.** Before emitting a
+"render done / give it a play / here's the mp3" message, replay the turn through
+`bun skills/golem-powers/audio-dashboard/scripts/render-done-gate-cli.mjs <transcript|->`
+(exit 3 = FLAG). It requires the SAME-TURN composite probe — `ls` + `ffprobe`
+(size>0, duration>0) of the **claimed** mp3, a reachable surface, and a registered
+cloned voice (fail-closed on a missing profile or a silent system-TTS fallback).
+A FLAG means the claim is not yet earned: run the missing probe, then claim.
+
 Before calling a dashboard done, verify these conditions (enforced by
 `src/audio-dashboard-evidence.mjs` via `scripts/validate-evidence.mjs`):
 

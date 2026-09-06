@@ -1,10 +1,8 @@
----
-name: tailnet-sync-gate
-description: "Kill-gate: dashboard 'live' needs same-turn HTTP 200. Triggers: dashboard Write, publish to hub, dashboard 'done/live'."
-disable-model-invocation: true
----
+# Gate: Tailnet Post-Write Sync Gate (a gate of `html-dashboard`, not a skill)
 
-# Skill: Tailnet Post-Write Sync Gate (gen-18 Track 2 #5 — closes R-004)
+> Etan ruling 2026-09-06: "they should be gates, not skills." This was a standalone
+> catalog entry until it was folded into its parent skill. Run it from the parent's
+> post-Write sync step; there is no `/tailnet-sync-gate` slash command any more.
 
 > "why didn.t you publish the dashboard." Every dashboard MUST land on the canonical tailnet hub.
 > A local `docs.local/*.html` you only `Write` + `open` orphans the dashboard the user cannot find.
@@ -47,8 +45,8 @@ FLAG. MCP tool names are base-normalized (`mcp__agent-html-publisher__publish_da
 ## How /pr-loop & /html-dashboard Consume It
 
 `/html-dashboard` references this gate as the post-Write sync check. Before a worker emits a "published/
-live/here's the dashboard" message, run the gate on the turn — `/tailnet-sync-gate`
-(`bun skills/golem-powers/tailnet-sync-gate/scripts/tailnet-sync-gate-cli.mjs <transcript|->`, exit 3 = FLAG).
+live/here's the dashboard" message, run the gate on the turn — this gate
+(`bun skills/golem-powers/html-dashboard/scripts/tailnet-sync-gate-cli.mjs <transcript|->`, exit 3 = FLAG).
 A FLAG means the dashboard is orphaned or unverified: mirror it to the serve dir (or run
 `scripts/sync-tailnet-dashboards.mjs`), curl the served URL for 200, then claim. Composes with
 `/false-green-gate` (the broader live-outcome gate) and `/never-fabricate` (read the output before reporting).
@@ -59,8 +57,8 @@ Set `TAILNET_HUB_HOST` from a gitignored env file before running the gate. If it
 check fails closed; never guess or commit a deployment hostname.
 
 ```bash
-bun test skills/golem-powers/tailnet-sync-gate/evals/tailnet-sync-gate.test.mjs   # replay (CI-safe)
-bun skills/golem-powers/tailnet-sync-gate/scripts/tailnet-sync-gate-cli.mjs <transcript.jsonl|->
+bun test skills/golem-powers/html-dashboard/evals/tailnet-sync-gate.test.mjs   # replay (CI-safe)
+bun skills/golem-powers/html-dashboard/scripts/tailnet-sync-gate-cli.mjs <transcript.jsonl|->
 ```
 
 Programmatic: `import { detectTailnetSync } from "./src/tailnet-sync-gate.mjs"` → `{ verdict, claim, dashboardWrite, violations }`.
