@@ -346,13 +346,16 @@ glob list is in the script header):
 | `size:M` | 101–400 |
 | `size:L` | over 400 |
 
-**`size:L` owes a one-line why** in the PR body — canon 9 splits past ~400
-hand-written lines, so an L that is not split has to say why it could not be.
-Put it on its own line, e.g. `size:L because the generated client and its
-consumers cannot land separately without breaking the build.`
+**A measured diff over 400 hand-written lines owes a one-line `size:L` why** in
+the PR body — canon 9 says to split past ~400 lines, so explain why this change
+could not be split. For example:
+`size:L because the generated client and its consumers cannot land separately
+without breaking the build.`
 
-CI (`.github/workflows/pr-size-label.yml`) warns — it does not fail — when a PR
-reaches review with no `size:*` label.
+CI (`.github/workflows/pr-size-label.yml`) **fails** on a lying or conflicting
+label. It **warns** on a missing label and emits a non-fatal reminder on every
+measured diff over 400 hand-written lines to cover a large PR with no stated
+why. The check does not parse the PR body or judge rationale prose.
 
 The signature block goes **last** in the body, and the same block ends every PR
 comment, review, and issue comment (Agent Identity Signature above). Commits use

@@ -25,7 +25,7 @@ make_gh_stub() {
 printf '%s\n' "\$*" >> "$GH_LOG"
 case "\$1 \$2" in
   "label list") printf '%s' '$labels' ;;
-  "pr view")    printf '%s' '$pr_labels' ;;
+  "pr view") printf '%s' '$pr_labels' ;;
 esac
 exit 0
 STUB
@@ -200,8 +200,69 @@ TSV
 
 @test "check is quiet and green when the PR is labeled" {
   make_gh_stub '' $'size:M\nbug'
-  run "$SCRIPT" check 42 --repo golems
+  printf 'src/a.ts\t200\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
   [[ "$output" != *"::warning::"* ]]
-  [[ "$output" == *"OK EtanHey/golems#42 has a size label: size:M"* ]]
+  [[ "$output" == *"OK EtanHey/golems#42 size:M covers 200 hand-written lines"* ]]
+}
+
+@test "check still fails when size:XS under-reports 401 measured lines" {
+  make_gh_stub '' $'size:XS\nbug'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::EtanHey/golems#42 is size:XS but has 401 hand-written lines (requires size:L)"* ]]
+}
+
+@test "check allows a conservative label larger than the measured size" {
+  make_gh_stub '' $'size:M\nbug'
+  printf 'src/a.ts\t10\t11\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"OK EtanHey/golems#42 size:M covers 21 hand-written lines"* ]]
+}
+
+@test "check warns but passes measured 401 with size:L and no why in the body" {
+  make_gh_stub '' 'size:L' $'## Summary\nLarge change.'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning::EtanHey/golems#42 has 401 hand-written lines; canon 9 wants a one-line why in the PR body"* ]]
+  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]]
+  ! grep -q -- '--json body' "$GH_LOG"
+}
+
+@test "check passes measured 401 with size:L when a why is present without parsing the body" {
+  make_gh_stub '' 'size:L' $'## Summary\nsize:L because the callers can\'t land separately.\n\n## Tests'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]]
+  ! grep -q -- '--json body' "$GH_LOG"
+}
+
+@test "check still only warns when the size label is missing" {
+  make_gh_stub '' $'bug\nenhancement'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning::EtanHey/golems#42 has no size:* label"* ]]
+}
+
+@test "check excludes generated files before validating the label" {
+  make_gh_stub '' 'size:XS'
+  printf 'dist/bundle.js\t500\t0\nsrc/a.ts\t10\t10\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"::warning::"* ]]
+  [[ "$output" == *"OK EtanHey/golems#42 size:XS covers 20 hand-written lines"* ]]
+}
+
+@test "check still rejects size:XS and size:L together on 401 measured lines" {
+  make_gh_stub '' $'size:XS\nsize:L'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::EtanHey/golems#42 has multiple size:* labels"* ]]
 }

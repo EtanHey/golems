@@ -1,12 +1,14 @@
-# Canon 9 wants a size label on every PR at open. This job is the reminder, not
-# the gate: it WARNS and exits 0.
+# Canon 9 wants a size label on every PR at open. A missing label remains a bare
+# warning, as does the reminder to include a one-line why on a diff over 400
+# hand-written lines. A label that under-reports the count or conflicts fails.
 #
 # Why warn and not fail (2026-09-05): on the day this landed the fleet merged 56
 # PRs and 39 of them had no size label, and three repos were still on the
 # retired `size/*` scheme. A failing check would have gone red on essentially
 # every in-flight PR in the fleet before `ensure` had run everywhere and before
-# /pr-loop started applying the label automatically. Flip `check` to a failing
-# gate once a full day passes with no warnings.
+# /pr-loop started applying the label automatically. That rollout rationale
+# still applies to mechanically undecidable prose; a present label must tell
+# the mechanically decidable truth.
 name: pr-size-label
 
 on:
@@ -18,14 +20,14 @@ permissions:
   pull-requests: read
 
 jobs:
-  size-label-warning:
-    name: Warn when a PR has no size label
+  size-label-check:
+    name: Check PR size label truth
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Warn on a missing size label
+      - name: Check size label against hand-written lines
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
