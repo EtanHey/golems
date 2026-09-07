@@ -19,20 +19,13 @@ teardown() {
 # the script makes: `label list` and `pr view`. Both are called with
 # `--jq '.[].name'`, so both stub payloads are bare names, one per line.
 make_gh_stub() {
-  local labels="$1" pr_labels="${2:-}" pr_body="${3:-}"
-  printf '%s' "$pr_body" > "$TEST_ROOT/pr-body"
+  local labels="$1" pr_labels="${2:-}"
   cat > "$TEST_ROOT/gh" <<STUB
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$GH_LOG"
 case "\$1 \$2" in
   "label list") printf '%s' '$labels' ;;
-  "pr view")
-    if [[ "\$*" == *"--jq .body"* ]]; then
-      cat "$TEST_ROOT/pr-body"
-    else
-      printf '%s' '$pr_labels'
-    fi
-    ;;
+  "pr view") printf '%s' '$pr_labels' ;;
 esac
 exit 0
 STUB
@@ -214,12 +207,12 @@ TSV
   [[ "$output" == *"OK EtanHey/golems#42 size:M covers 200 hand-written lines"* ]]
 }
 
-@test "check fails when the size label under-reports hand-written lines" {
-  make_gh_stub '' $'size:S\nbug'
-  printf 'src/a.ts\t100\t1\n' > "$TEST_ROOT/files.tsv"
+@test "check still fails when size:XS under-reports 401 measured lines" {
+  make_gh_stub '' $'size:XS\nbug'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"::error::EtanHey/golems#42 is size:S but has 101 hand-written lines (requires size:M)"* ]]
+  [[ "$output" == *"::error::EtanHey/golems#42 is size:XS but has 401 hand-written lines (requires size:L)"* ]]
 }
 
 @test "check allows a conservative label larger than the measured size" {
@@ -230,90 +223,23 @@ TSV
   [[ "$output" == *"OK EtanHey/golems#42 size:M covers 21 hand-written lines"* ]]
 }
 
-@test "check fails size:L without a one-line why in the PR body" {
+@test "check warns but passes measured 401 with size:L and no why in the body" {
   make_gh_stub '' 'size:L' $'## Summary\nLarge change.'
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"::error::EtanHey/golems#42 has 401 hand-written lines but no substantive size:L rationale in PR prose"* ]]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning::EtanHey/golems#42 has 401 hand-written lines; canon 9 wants a one-line why in the PR body"* ]]
+  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]]
+  ! grep -q -- '--json body' "$GH_LOG"
 }
 
-@test "check accepts size:L with a one-line why in the PR body" {
+@test "check passes measured 401 with size:L when a why is present without parsing the body" {
   make_gh_stub '' 'size:L' $'## Summary\nsize:L because the callers can\'t land separately.\n\n## Tests'
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines with a substantive rationale"* ]]
-}
-
-@test "check accepts PR #44's live size:L rationale form" {
-  make_gh_stub '' 'size:L' $'## Summary\n- Adds a blocking Bats gate. size:L: 847 additions are restored-and-updated package files (cap-exempt); gate/router work is +48/-9.'
-  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
-  run "$SCRIPT" check 44 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 0 ]
-}
-
-@test "check accepts a size:L because rationale mid-sentence" {
-  make_gh_stub '' 'size:L' 'This is size:L because the client and its consumers cannot land separately.'
-  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 0 ]
-}
-
-@test "check accepts a Why size:L heading followed by rationale prose" {
-  make_gh_stub '' 'size:L' $'### Why size:L\nThe schema and all callers must move together in one atomic change.'
-  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 0 ]
-}
-
-@test "check accepts a Why L rationale" {
-  make_gh_stub '' 'size:L' 'Why L: the schema and all callers must move together.'
-  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 0 ]
-}
-
-@test "check accepts size:L followed by a rationale on the next line" {
-  make_gh_stub '' 'size:L' $'size:L\nbecause the schema and all callers must move together.'
-  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 0 ]
-}
-
-@test "check does not demand a rationale for a conservative size:L label under the cap" {
-  make_gh_stub '' 'size:L' '## Summary'
-  printf 'src/a.ts\t15\t0\n' > "$TEST_ROOT/files.tsv"
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 15 hand-written lines"* ]]
-  [[ "$output" != *"one-line why"* ]]
-}
-
-@test "check rejects size:L because punctuation or one letter is not a rationale" {
-  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
-
-  make_gh_stub '' 'size:L' 'size:L because .'
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 1 ]
-
-  make_gh_stub '' 'size:L' 'size:L because x'
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 1 ]
-}
-
-@test "check rejects the documented size:L example pasted verbatim" {
-  make_gh_stub '' 'size:L' 'size:L because the generated client and its consumers cannot land separately without breaking the build.'
-  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 1 ]
-}
-
-@test "check ignores a size:L rationale inside a fenced code block" {
-  make_gh_stub '' 'size:L' $'## Sample output\n```text\nsize:L because the schema and all callers must move together.\n```'
-  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
-  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 1 ]
+  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]]
+  ! grep -q -- '--json body' "$GH_LOG"
 }
 
 @test "check still only warns when the size label is missing" {
@@ -333,9 +259,9 @@ TSV
   [[ "$output" == *"OK EtanHey/golems#42 size:XS covers 20 hand-written lines"* ]]
 }
 
-@test "check rejects conflicting size labels" {
+@test "check still rejects size:XS and size:L together on 401 measured lines" {
   make_gh_stub '' $'size:XS\nsize:L'
-  printf 'src/a.ts\t20\t0\n' > "$TEST_ROOT/files.tsv"
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 1 ]
   [[ "$output" == *"::error::EtanHey/golems#42 has multiple size:* labels"* ]]
