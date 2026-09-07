@@ -73,7 +73,7 @@ Read the user's request and route to the right workflow:
 
 4. **Whisper model: `ggml-small`** — Fast on Apple Silicon (~14s for 7min video), accurate enough for English QA narration. The `ggml-large-v3` is better but 5x slower — not worth it for QA.
 
-5. **Findings live in the PROJECT repo** — `docs/qa-session-YYYY-MM-DD/` in the project being tested, not in the orchestrator. Each round gets a suffix: `qa-findings-round2.md`.
+5. **Findings live in the PROJECT repo** — `docs/qa-session-YYYY-MM-DD-HHMM/` in the project being tested, not in the orchestrator. Each round gets a suffix: `qa-findings-round2.md`.
 
 6. **BrainLayer storage is mandatory** — After every video processing run, `brain_store` the findings summary with tags `["qa", "<project>", "round-N"]`.
 

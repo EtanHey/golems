@@ -64,25 +64,26 @@ jobs:
       - name: PR size-label script
         run: bats scripts/tests/test-pr-size-labels.bats
 
+      - name: qa-video package contract
+        run: bats scripts/tests/test-qa-video-package.bats
+
       # Blocking, unlike the whole-directory glob below: this suite is the guard
       # that keeps the bun pin single, and a guard that only warns does not stop
       # the drift it exists to catch.
       - name: Single bun pin, no workflow literals
         run: bats scripts/tests/test-bun-version-pin.bats
 
-      # The three steps above are a hand-kept enumeration, and that list is the
-      # bug: scripts/tests/ holds 14 .bats files, so 11 suites had no CI at all
-      # and two of them sat red on master inside a green pipeline. This step
-      # globs the directory so a suite is visible the day it lands, with no
-      # workflow edit to remember.
+      # The four steps above explicitly cover five .bats files. Every remaining
+      # suite runs in the whole-directory step below, so new tests stay visible
+      # without another hand-maintained workflow edit.
       #
       # Why warn and not fail (2026-09-06): two suites are red on master today.
       # A blocking gate over a known-red directory is worse than the gap it
       # closes — same shape and same reason as the warn job in pr-size-label.yml.
       # Drop `continue-on-error` once scripts/tests/ is green.
-      # The three steps above are a hand-kept enumeration, and that list is the
-      # bug: scripts/tests/ holds 14 .bats files, so 11 suites had no CI at all.
-      # This step globs the directory so a suite is visible the day it lands.
+      # The four steps above are a hand-kept enumeration covering five files.
+      # This step also runs every other .bats suite so each remains visible the
+      # day it lands.
       #
       # Why warn and not fail: the directory is not green yet. A blocking gate
       # over a known-red directory is worse than the gap it closes -- same shape
