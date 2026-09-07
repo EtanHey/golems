@@ -23,7 +23,8 @@
 #                          `size/*` it carries.
 #   check <pr>             Warn when the PR has no `size:*` label; fail when its
 #                          label under-reports the hand-written count, or when
-#                          multiple labels exist or `size:L` has no one-line why.
+#                          multiple labels exist or a diff over 400 lines has no
+#                          substantive `size:L` rationale.
 #   classify <lines>       Print the label for a hand-written line count.
 #
 # Sizing rule
@@ -33,8 +34,8 @@
 #     count <= 100  -> size:S
 #     count <= 400  -> size:M
 #     count >  400  -> size:L   (canon 9: needs a one-line why)
-#   400 is canon 9's split point, so `size:L` and "you owe a split rationale"
-#   are the same signal.
+#   400 is canon 9's split point, so a measured diff over that cap owes a split
+#   rationale even when its label was applied manually.
 #
 # Exit codes: 0 ok, 1 runtime failure, 2 usage error.
 
@@ -100,8 +101,8 @@ usage: pr-size-labels.sh <subcommand>
                                       [--dry-run] [--files-tsv <path>]
   check <pr> --repo <owner/name>      warn when the PR has no size:*; fail when
                                       its label under-reports the hand-written
-                                      count, multiple labels exist, or size:L
-                                      lacks a one-line why
+                                      count, multiple labels exist, or a diff
+                                      over 400 lines lacks a size:L rationale
                                       [--files-tsv <path>]
   classify <lines>                    print the label for a line count
 
@@ -150,6 +151,107 @@ size_rank() {
     size:L)  printf '3\n' ;;
     *)       die "size_rank: unknown size label: $1" ;;
   esac
+}
+
+# Accept rationale prose attached to size:L without prescribing one sentence
+# template. Markdown examples are not evidence, so fenced blocks and HTML
+# comments are removed before checking. The published example is rejected when
+# pasted verbatim, and the reason must contain at least three words / 12 letters
+# so punctuation or a one-letter passphrase cannot satisfy the gate.
+has_size_l_rationale() {
+  awk '
+    function trim(s) {
+      sub(/^[[:space:]]+/, "", s)
+      sub(/[[:space:]]+$/, "", s)
+      return s
+    }
+    function is_prose(s, parts, count, i, words, letters) {
+      s = trim(s)
+      if (tolower(s) == "the generated client and its consumers cannot land separately without breaking the build.") {
+        return 0
+      }
+      count = split(s, parts, /[^[:alnum:]]+/)
+      words = 0
+      letters = 0
+      for (i = 1; i <= count; i++) {
+        if (parts[i] != "") {
+          words++
+          letters += length(parts[i])
+        }
+      }
+      return words >= 3 && letters >= 12
+    }
+    function without_html_comments(s, start, rest, finish) {
+      while (1) {
+        if (in_comment) {
+          finish = index(s, "-->")
+          if (!finish) return ""
+          s = substr(s, finish + 3)
+          in_comment = 0
+        }
+        start = index(s, "<!--")
+        if (!start) return s
+        rest = substr(s, start + 4)
+        finish = index(rest, "-->")
+        if (!finish) {
+          in_comment = 1
+          return substr(s, 1, start - 1)
+        }
+        s = substr(s, 1, start - 1) substr(rest, finish + 3)
+      }
+    }
+    function accept(s) {
+      if (is_prose(s)) {
+        found = 1
+        exit
+      }
+    }
+    BEGIN { in_fence = 0; in_comment = 0; expect_reason = 0; found = 0 }
+    {
+      line = $0
+      if (line ~ /^[[:space:]]*(```|~~~)/) {
+        in_fence = !in_fence
+        next
+      }
+      if (in_fence) next
+
+      line = trim(without_html_comments(line))
+      if (line == "") next
+      lower = tolower(line)
+
+      if (expect_reason) {
+        reason = lower
+        sub(/^[[:space:]]*(because|:|—|--|-)[[:space:]]*/, "", reason)
+        accept(reason)
+        expect_reason = 0
+      }
+
+      if (lower ~ /^#+[[:space:]]*why[[:space:]]+(size:)?l[[:space:]]*$/) {
+        expect_reason = 1
+        next
+      }
+
+      if (lower ~ /why[[:space:]]+(size:)?l[[:space:]]*:/) {
+        reason = lower
+        sub(/^.*why[[:space:]]+(size:)?l[[:space:]]*:[[:space:]]*/, "", reason)
+        accept(reason)
+      }
+
+      marker = index(lower, "size:l")
+      if (marker) {
+        reason = substr(lower, marker + 6)
+        if (reason ~ /^[[:space:]]*$/) {
+          expect_reason = 1
+          next
+        }
+        if (reason ~ /^[[:space:]]*(because|:|—|--|-)[[:space:]]+/) {
+          sub(/^[[:space:]]*(because|:|—|--|-)[[:space:]]+/, "", reason)
+          accept(reason)
+        }
+      }
+    }
+    END { exit(found ? 0 : 1) }
+  '
 }
 
 # Reads `path<TAB>additions<TAB>deletions` on stdin, prints the hand-written total.
@@ -276,15 +378,15 @@ cmd_check() {
       return 1
     fi
 
-    if [[ "$label" == "size:L" ]]; then
+    if (( lines > M_MAX )); then
       local body
       body="$("$GH_BIN" pr view "$pr" --repo "$repo" --json body --jq '.body')"
-      if ! grep -qE '^[[:space:]]*size:L[[:space:]]+because[[:space:]]+[^[:space:]].*$' <<<"$body"; then
-        printf '::error::%s#%s uses size:L without a one-line why in the PR body (expected: size:L because <reason>).\n' \
-          "$repo" "$pr"
+      if ! has_size_l_rationale <<<"$body"; then
+        printf '::error::%s#%s has %s hand-written lines but no substantive size:L rationale in PR prose (explain why the change could not be split).\n' \
+          "$repo" "$pr" "$lines"
         return 1
       fi
-      printf 'OK %s#%s %s covers %s hand-written lines with a one-line why.\n' \
+      printf 'OK %s#%s %s covers %s hand-written lines with a substantive rationale.\n' \
         "$repo" "$pr" "$label" "$lines"
       return 0
     fi

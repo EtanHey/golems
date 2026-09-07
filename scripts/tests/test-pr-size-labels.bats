@@ -235,7 +235,7 @@ TSV
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"::error::EtanHey/golems#42 uses size:L without a one-line why in the PR body"* ]]
+  [[ "$output" == *"::error::EtanHey/golems#42 has 401 hand-written lines but no substantive size:L rationale in PR prose"* ]]
 }
 
 @test "check accepts size:L with a one-line why in the PR body" {
@@ -243,7 +243,77 @@ TSV
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines with a one-line why"* ]]
+  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines with a substantive rationale"* ]]
+}
+
+@test "check accepts PR #44's live size:L rationale form" {
+  make_gh_stub '' 'size:L' $'## Summary\n- Adds a blocking Bats gate. size:L: 847 additions are restored-and-updated package files (cap-exempt); gate/router work is +48/-9.'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 44 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+}
+
+@test "check accepts a size:L because rationale mid-sentence" {
+  make_gh_stub '' 'size:L' 'This is size:L because the client and its consumers cannot land separately.'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+}
+
+@test "check accepts a Why size:L heading followed by rationale prose" {
+  make_gh_stub '' 'size:L' $'### Why size:L\nThe schema and all callers must move together in one atomic change.'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+}
+
+@test "check accepts a Why L rationale" {
+  make_gh_stub '' 'size:L' 'Why L: the schema and all callers must move together.'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+}
+
+@test "check accepts size:L followed by a rationale on the next line" {
+  make_gh_stub '' 'size:L' $'size:L\nbecause the schema and all callers must move together.'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+}
+
+@test "check does not demand a rationale for a conservative size:L label under the cap" {
+  make_gh_stub '' 'size:L' '## Summary'
+  printf 'src/a.ts\t15\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 15 hand-written lines"* ]]
+  [[ "$output" != *"one-line why"* ]]
+}
+
+@test "check rejects size:L because punctuation or one letter is not a rationale" {
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+
+  make_gh_stub '' 'size:L' 'size:L because .'
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 1 ]
+
+  make_gh_stub '' 'size:L' 'size:L because x'
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 1 ]
+}
+
+@test "check rejects the documented size:L example pasted verbatim" {
+  make_gh_stub '' 'size:L' 'size:L because the generated client and its consumers cannot land separately without breaking the build.'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 1 ]
+}
+
+@test "check ignores a size:L rationale inside a fenced code block" {
+  make_gh_stub '' 'size:L' $'## Sample output\n```text\nsize:L because the schema and all callers must move together.\n```'
+  printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 1 ]
 }
 
 @test "check still only warns when the size label is missing" {
