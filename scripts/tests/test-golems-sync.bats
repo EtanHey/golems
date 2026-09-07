@@ -175,7 +175,7 @@ make_tracked_worktree_skills() {
     [[ "$output" != *"machine-coupled payload refused"* ]]
 }
 
-@test "copied skill is backed up once and replaced by the owned symlink" {
+@test "copied skill is backed up outside the catalog and replaced by the owned symlink" {
     make_fixture_repo
     mkdir -p "$HOST_ROOT/.claude/skills/alpha"
     mkdir -p "$HOST_ROOT/.claude/skills/unowned"
@@ -195,6 +195,8 @@ make_tracked_worktree_skills() {
 
     backup_file="$(find "$HOST_ROOT/.golems" -path '*/skills.backup-*/alpha/legacy.txt' -print)"
     [ -n "$backup_file" ]
+    [ "$(find "$HOST_ROOT/.claude/skills" -name '*.backup-*' -print | wc -l | tr -d ' ')" -eq 0 ]
+    [[ "$backup_file" != "$HOST_ROOT/.claude/skills/"* ]]
     [[ "$output" == *"backed-up=1"* ]]
 }
 

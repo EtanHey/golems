@@ -67,7 +67,7 @@ run_validate() {
   ln -s "$FAKE_HOME/gone/sync-to-mac" "$SKILLS/sync-to-mac"
   run_validate
   [ "$status" -eq 1 ]
-  [[ "$output" == *"[FAIL] no dead symlinks in ~/.claude/skills/"* ]]
+  [[ "$output" == *"[FAIL] skill catalog has no dotted directories or broken symlinks"* ]]
 }
 
 @test "--skills-only leaves unrelated commands/ entries alone" {

@@ -51,6 +51,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # scripts/ -> golem-install/ -> golem-powers/ -> skills/ -> repo root
 GOLEMS_DIR="${GOLEMS_DIR:-$(cd "$SCRIPT_DIR/../../../.." && pwd)}"
 CLEANUP_SCRIPT="$SCRIPT_DIR/cleanup-legacy-commands.sh"
+CATALOG_LINT="$SCRIPT_DIR/lint-skill-catalog.sh"
 
 PASS=0
 FAIL=0
@@ -189,8 +190,8 @@ if [ -d ~/.claude/skills ]; then
   # that knows all three — tested in scripts/tests/test-cleanup-legacy-commands.bats.
   check "no legacy golem-powers entries in ~/.claude/commands/" \
     "bash '$CLEANUP_SCRIPT' --check --only commands --golems-dir '$GOLEMS_DIR'"
-  check "no dead symlinks in ~/.claude/skills/" \
-    "bash '$CLEANUP_SCRIPT' --check --only skills --golems-dir '$GOLEMS_DIR'"
+  check "skill catalog has no dotted directories or broken symlinks" \
+    "bash '$CATALOG_LINT' --skills-root '$HOME/.claude/skills'"
 else
   echo "[SKIP] ~/.claude/skills/ not found (not using Claude Code, or not yet set up)"
 fi
