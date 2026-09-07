@@ -69,7 +69,8 @@ done
 
 Verify Claude Code: `ls ~/.claude/skills/` should show ~45 skills. Assert the invariant with
 `bash scripts/validate.sh --skills-only` (or `scripts/cleanup-legacy-commands.sh --check`) — it exits 1
-while any golem-powers entry remains under `~/.claude/commands/` or any dead symlink remains in `~/.claude/skills/`.
+while any golem-powers entry remains under `~/.claude/commands/`, or while `~/.claude/skills/`
+contains a dotted directory or broken symlink. Dotted plain files such as `.DS_Store` are ignored.
 Verify Codex/other: `ls ~/.agents/skills/` should show the installed skills.
 
 ## MCP Servers

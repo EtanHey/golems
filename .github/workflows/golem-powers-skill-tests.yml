@@ -59,7 +59,8 @@ jobs:
       - name: golem-install symlink invariants
         run: |
           bats scripts/tests/test-cleanup-legacy-commands.bats \
-               scripts/tests/test-golem-install-validate.bats
+               scripts/tests/test-golem-install-validate.bats \
+               scripts/tests/test-skill-catalog-lint.bats
 
       - name: PR size-label script
         run: bats scripts/tests/test-pr-size-labels.bats
@@ -73,7 +74,7 @@ jobs:
       - name: Single bun pin, no workflow literals
         run: bats scripts/tests/test-bun-version-pin.bats
 
-      # The four steps above explicitly cover five .bats files. Every remaining
+      # The four steps above explicitly cover six .bats files. Every remaining
       # suite runs in the whole-directory step below, so new tests stay visible
       # without another hand-maintained workflow edit.
       #
@@ -81,7 +82,7 @@ jobs:
       # A blocking gate over a known-red directory is worse than the gap it
       # closes — same shape and same reason as the warn job in pr-size-label.yml.
       # Drop `continue-on-error` once scripts/tests/ is green.
-      # The four steps above are a hand-kept enumeration covering five files.
+      # The four steps above are a hand-kept enumeration covering six files.
       # This step also runs every other .bats suite so each remains visible the
       # day it lands.
       #
