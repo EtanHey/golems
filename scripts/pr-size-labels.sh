@@ -21,8 +21,9 @@
 #   compute <pr>           Size a PR from its hand-written diff and apply exactly
 #                          one `size:*` label, removing every other `size:*` or
 #                          `size/*` it carries.
-#   check <pr>             Exit 0 always; emit a GitHub `::warning::` when the PR
-#                          has no `size:*` label. Used by CI (warn, never fail).
+#   check <pr>             Warn when the PR has no `size:*` label; fail when its
+#                          label under-reports the hand-written count, or when
+#                          multiple labels exist or `size:L` has no one-line why.
 #   classify <lines>       Print the label for a hand-written line count.
 #
 # Sizing rule
@@ -97,7 +98,11 @@ usage: pr-size-labels.sh <subcommand>
   compute <pr> --repo <owner/name>    size the PR from its hand-written diff and
                                       apply exactly one size:* label
                                       [--dry-run] [--files-tsv <path>]
-  check <pr> --repo <owner/name>      warn (never fail) when the PR has no size:*
+  check <pr> --repo <owner/name>      warn when the PR has no size:*; fail when
+                                      its label under-reports the hand-written
+                                      count, multiple labels exist, or size:L
+                                      lacks a one-line why
+                                      [--files-tsv <path>]
   classify <lines>                    print the label for a line count
 
   <repo> may be bare (`golems`); it is qualified with $PR_SIZE_LABELS_OWNER
@@ -135,6 +140,16 @@ classify() {
   elif (( n <= M_MAX  )); then printf 'size:M\n'
   else                         printf 'size:L\n'
   fi
+}
+
+size_rank() {
+  case "$1" in
+    size:XS) printf '0\n' ;;
+    size:S)  printf '1\n' ;;
+    size:M)  printf '2\n' ;;
+    size:L)  printf '3\n' ;;
+    *)       die "size_rank: unknown size label: $1" ;;
+  esac
 }
 
 # Reads `path<TAB>additions<TAB>deletions` on stdin, prints the hand-written total.
@@ -224,22 +239,57 @@ cmd_compute() {
 }
 
 cmd_check() {
-  local repo="" pr=""
+  local repo="" pr="" files_tsv=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --repo) repo="${2:-}"; shift 2 ;;
-      -*)     usage ;;
-      *)      pr="$1"; shift ;;
+      --repo)      repo="${2:-}"; shift 2 ;;
+      --files-tsv) files_tsv="${2:-}"; shift 2 ;;  # test seam: skip the files API
+      -*)          usage ;;
+      *)           pr="$1"; shift ;;
     esac
   done
   [[ -n "$pr" ]] || usage
   [[ -n "$repo" ]] || die "check: --repo <owner/name> is required"
   repo="$(qualify_repo "$repo")"
 
-  local current
+  local current label label_count
   current="$("$GH_BIN" pr view "$pr" --repo "$repo" --json labels --jq '.labels[].name')"
-  if grep -qE '^size:(XS|S|M|L)$' <<<"$current"; then
-    printf 'OK %s#%s has a size label: %s\n' "$repo" "$pr" "$(grep -E '^size:' <<<"$current" | tr '\n' ' ')"
+  label_count="$(grep -cE '^size:(XS|S|M|L)$' <<<"$current" || true)"
+  if (( label_count > 1 )); then
+    printf '::error::%s#%s has multiple size:* labels; exactly one is required.\n' "$repo" "$pr"
+    return 1
+  fi
+  label="$(grep -E '^size:(XS|S|M|L)$' <<<"$current" | head -1 || true)"
+  if [[ -n "$label" ]]; then
+    local lines required
+    if [[ -n "$files_tsv" ]]; then
+      lines="$(sum_handwritten < "$files_tsv")"
+    else
+      lines="$("$GH_BIN" api "repos/${repo}/pulls/${pr}/files" --paginate \
+        --jq '.[] | [.filename, .additions, .deletions] | @tsv' | sum_handwritten)"
+    fi
+    required="$(classify "$lines")"
+
+    if (( $(size_rank "$label") < $(size_rank "$required") )); then
+      printf '::error::%s#%s is %s but has %s hand-written lines (requires %s).\n' \
+        "$repo" "$pr" "$label" "$lines" "$required"
+      return 1
+    fi
+
+    if [[ "$label" == "size:L" ]]; then
+      local body
+      body="$("$GH_BIN" pr view "$pr" --repo "$repo" --json body --jq '.body')"
+      if ! grep -qE '^[[:space:]]*size:L[[:space:]]+because[[:space:]]+[^[:space:]].*$' <<<"$body"; then
+        printf '::error::%s#%s uses size:L without a one-line why in the PR body (expected: size:L because <reason>).\n' \
+          "$repo" "$pr"
+        return 1
+      fi
+      printf 'OK %s#%s %s covers %s hand-written lines with a one-line why.\n' \
+        "$repo" "$pr" "$label" "$lines"
+      return 0
+    fi
+
+    printf 'OK %s#%s %s covers %s hand-written lines.\n' "$repo" "$pr" "$label" "$lines"
     return 0
   fi
   if grep -qE '^size/' <<<"$current"; then
