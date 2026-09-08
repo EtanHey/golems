@@ -28,11 +28,11 @@ async function fixture(t) {
   return { runDir, calls, run };
 }
 
-test('post-stream delivers before archive even with legacy success markers', async t => {
+test('post-stream delivery owns retention and never invokes the legacy archive step', async t => {
   const { run, calls } = await fixture(t);
   const result = run();
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.equal(await readFile(calls, 'utf8'), 'process-stream\ndelivery\narchive-stream\n');
+  assert.equal(await readFile(calls, 'utf8'), 'process-stream\ndelivery\n');
 });
 
 test('a resumed process stage still validates delivery and fails before archive', async t => {
@@ -40,6 +40,17 @@ test('a resumed process stage still validates delivery and fails before archive'
   await writeFile(join(runDir, '.stage-process.done'), 'done');
   const result = run({ DELIVERY_EXIT: '75' });
   assert.equal(result.status, 75, result.stdout + result.stderr);
+  assert.equal(await readFile(calls, 'utf8'), 'delivery\n');
+});
+
+test('post-stream re-enters notified retention after the original video was offloaded', async t => {
+  const { run, runDir, calls } = await fixture(t);
+  await rm(join(runDir, 'video.mp4'));
+  await writeFile(join(runDir, '.stalker-completion.json'), JSON.stringify({
+    version: 3, runName: 'theo-2026-09-08-030512', status: 'notified',
+  }));
+  const result = run();
+  assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.equal(await readFile(calls, 'utf8'), 'delivery\n');
 });
 

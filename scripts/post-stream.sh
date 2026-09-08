@@ -132,6 +132,19 @@ notify_brainlayer_queue() {
     mark_stalker_stage_done "$stream_dir" "brainlayer-queue-notified"
 }
 
+stalker_has_durable_delivery_receipt() {
+    local stream_dir="$1"
+    node -e '
+const { basename, join } = require("node:path");
+const { readFileSync } = require("node:fs");
+try {
+  const streamDir = process.argv[1];
+  const receipt = JSON.parse(readFileSync(join(streamDir, ".stalker-completion.json"), "utf8"));
+  if (receipt.version !== 3 || receipt.runName !== basename(streamDir) || !["notified", "complete"].includes(receipt.status)) process.exit(1);
+} catch { process.exit(1); }
+' "$stream_dir"
+}
+
 if [ "$#" -ge 4 ]; then
     if [ ! -d "$1" ]; then
         echo "ERROR: Watcher mode expects stream directory as first argument, got '$1'" >&2
@@ -185,59 +198,70 @@ if [ "${STALKER_FORCE_RESCORE:-0}" = "1" ]; then
         "$STREAM_DIR/.stage-complete-notify.done"
 fi
 
+RETENTION_REENTRY=0
 if [ ! -f "$SOURCE_VIDEO" ]; then
-    log "ERROR: No video found at $SOURCE_VIDEO"
-    exit 1
-fi
-
-SOURCE_DURATION=$(video_duration_seconds "$SOURCE_VIDEO" || true)
-if ORPHAN_TAIL_REASON=$(stalker_orphan_tail_reason "$STREAM_DIR" "$CHANNEL" "$SOURCE_DURATION" "$STARTED_EPOCH"); then
-    ORPHAN_TAIL_MARKER="$STREAM_DIR/.orphan-tail"
-    {
-        printf 'status=ORPHAN_TAIL\n'
-        printf 'created_at=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-        printf 'channel=%s\n' "$CHANNEL"
-        printf 'date=%s\n' "$DATE"
-        printf 'stream_dir=%s\n' "$STREAM_DIR"
-        printf 'source_video=%s\n' "$SOURCE_VIDEO"
-        printf 'source_duration_seconds=%s\n' "$SOURCE_DURATION"
-        printf '%s\n' "$ORPHAN_TAIL_REASON"
-    } > "$ORPHAN_TAIL_MARKER"
-    mark_stalker_stage_done "$STREAM_DIR" "orphan-tail"
-    log "ORPHAN_TAIL: $ORPHAN_TAIL_REASON"
-    log "ORPHAN_TAIL: wrote $ORPHAN_TAIL_MARKER; skipping remux/process/archive/notify"
-    exit 0
-fi
-
-if [[ "$SOURCE_VIDEO" == *.ts ]] && [ "$SOURCE_VIDEO" != "$TARGET_VIDEO" ]; then
-    if stalker_stage_done "$STREAM_DIR" "0-remux" && [ -f "$TARGET_VIDEO" ]; then
-        log "Remux stage complete, using existing $TARGET_VIDEO"
+    if [ "${STALKER_FORCE_RESCORE:-0}" != "1" ] && stalker_has_durable_delivery_receipt "$STREAM_DIR"; then
+        RETENTION_REENTRY=1
+        log "Original media is offloaded; resuming verified delivery retention"
     else
-        log "Remuxing transport stream to mp4: $SOURCE_VIDEO -> $TARGET_VIDEO"
-        ffmpeg -nostdin -y -i "$SOURCE_VIDEO" -c copy "$TARGET_VIDEO" 2> "$STREAM_DIR/.remux.log"
-        mark_stalker_stage_done "$STREAM_DIR" "0-remux"
+        log "ERROR: No video found at $SOURCE_VIDEO"
+        exit 1
     fi
-elif [ -f "$TARGET_VIDEO" ]; then
-    log "Video already in place: $TARGET_VIDEO"
-else
-    TARGET_VIDEO="$SOURCE_VIDEO"
 fi
 
-if [ ! -f "$TARGET_CHAT" ]; then
-    log "WARNING: No chat log found"
-    TARGET_CHAT=""
-fi
+if [ "$RETENTION_REENTRY" -eq 0 ]; then
+    SOURCE_DURATION=$(video_duration_seconds "$SOURCE_VIDEO" || true)
+    if ORPHAN_TAIL_REASON=$(stalker_orphan_tail_reason "$STREAM_DIR" "$CHANNEL" "$SOURCE_DURATION" "$STARTED_EPOCH"); then
+        ORPHAN_TAIL_MARKER="$STREAM_DIR/.orphan-tail"
+        {
+            printf 'status=ORPHAN_TAIL\n'
+            printf 'created_at=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+            printf 'channel=%s\n' "$CHANNEL"
+            printf 'date=%s\n' "$DATE"
+            printf 'stream_dir=%s\n' "$STREAM_DIR"
+            printf 'source_video=%s\n' "$SOURCE_VIDEO"
+            printf 'source_duration_seconds=%s\n' "$SOURCE_DURATION"
+            printf '%s\n' "$ORPHAN_TAIL_REASON"
+        } > "$ORPHAN_TAIL_MARKER"
+        mark_stalker_stage_done "$STREAM_DIR" "orphan-tail"
+        log "ORPHAN_TAIL: $ORPHAN_TAIL_REASON"
+        log "ORPHAN_TAIL: wrote $ORPHAN_TAIL_MARKER; skipping remux/process/archive/notify"
+        exit 0
+    fi
 
-CHAT_LINES=$(count_chat_lines "$TARGET_CHAT")
-VIDEO_SIZE=$(du -sh "$TARGET_VIDEO" | cut -f1)
-log "Ready: ${VIDEO_SIZE} video, ${CHAT_LINES} chat messages"
+    if [[ "$SOURCE_VIDEO" == *.ts ]] && [ "$SOURCE_VIDEO" != "$TARGET_VIDEO" ]; then
+        if stalker_stage_done "$STREAM_DIR" "0-remux" && [ -f "$TARGET_VIDEO" ]; then
+            log "Remux stage complete, using existing $TARGET_VIDEO"
+        else
+            log "Remuxing transport stream to mp4: $SOURCE_VIDEO -> $TARGET_VIDEO"
+            ffmpeg -nostdin -y -i "$SOURCE_VIDEO" -c copy "$TARGET_VIDEO" 2> "$STREAM_DIR/.remux.log"
+            mark_stalker_stage_done "$STREAM_DIR" "0-remux"
+        fi
+    elif [ -f "$TARGET_VIDEO" ]; then
+        log "Video already in place: $TARGET_VIDEO"
+    else
+        TARGET_VIDEO="$SOURCE_VIDEO"
+    fi
 
-if stalker_stage_done "$STREAM_DIR" "process"; then
-    log "Process stage complete, skipping process-stream.sh"
+    if [ ! -f "$TARGET_CHAT" ]; then
+        log "WARNING: No chat log found"
+        TARGET_CHAT=""
+    fi
+
+    CHAT_LINES=$(count_chat_lines "$TARGET_CHAT")
+    VIDEO_SIZE=$(du -sh "$TARGET_VIDEO" | cut -f1)
+    log "Ready: ${VIDEO_SIZE} video, ${CHAT_LINES} chat messages"
+
+    if stalker_stage_done "$STREAM_DIR" "process"; then
+        log "Process stage complete, skipping process-stream.sh"
+    else
+        log "Starting process-stream.sh..."
+        STALKER_DEFER_DELIVERY=1 "$SCRIPT_DIR/process-stream.sh" "$TARGET_VIDEO" "$TARGET_CHAT"
+        mark_stalker_stage_done "$STREAM_DIR" "process"
+    fi
 else
-    log "Starting process-stream.sh..."
-    STALKER_DEFER_DELIVERY=1 "$SCRIPT_DIR/process-stream.sh" "$TARGET_VIDEO" "$TARGET_CHAT"
-    mark_stalker_stage_done "$STREAM_DIR" "process"
+    CHAT_LINES=$(count_chat_lines "$TARGET_CHAT")
+    VIDEO_SIZE="offloaded"
 fi
 
 GEM_COUNT=0
@@ -258,7 +282,11 @@ elif [ "${STALKER_TELEGRAM_DRY_RUN:-0}" = "1" ]; then
 fi
 DIGEST_QUALITY_STATUS=0
 # Legacy success markers never skip the live delivery contract.
-if ! stalker_require_run_quality "$STREAM_DIR" "$TARGET_CHAT" "digest"; then
+if [ "$RETENTION_REENTRY" -eq 1 ]; then
+    if ! node "${STALKER_COMPLETION_SCRIPT:-$SCRIPT_DIR/stalker-complete-run.mjs}" "$STREAM_DIR"; then
+        DIGEST_QUALITY_STATUS=75
+    fi
+elif ! stalker_require_run_quality "$STREAM_DIR" "$TARGET_CHAT" "digest"; then
     log "Stalker FAILED at stage 6: pipeline quality gate failed; delivery remains open"
     DIGEST_QUALITY_STATUS=75
     rm -f "$STREAM_DIR/.stage-brainlayer.done"
@@ -266,21 +294,6 @@ else
     log "Starting verified human digest, dashboard publication and notification..."
     if ! node "${STALKER_COMPLETION_SCRIPT:-$SCRIPT_DIR/stalker-complete-run.mjs}" "$STREAM_DIR"; then
         DIGEST_QUALITY_STATUS=75
-    fi
-fi
-
-# Compression and Drive upload are downstream of human delivery.
-if [ "$DIGEST_QUALITY_STATUS" -eq 0 ]; then
-    if [ "${STREAM_AUTO_ARCHIVE:-1}" != "0" ]; then
-        if stalker_stage_done "$STREAM_DIR" "archive"; then
-            log "Archive stage complete, skipping archive-stream.sh"
-        else
-            log "Starting archive-stream.sh..."
-            "$SCRIPT_DIR/archive-stream.sh" "$STREAM_DIR"
-            mark_stalker_stage_done "$STREAM_DIR" "archive"
-        fi
-    else
-        log "STREAM_AUTO_ARCHIVE=0 — skipping Brain Drive archive."
     fi
 fi
 
