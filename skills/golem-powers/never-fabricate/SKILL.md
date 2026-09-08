@@ -517,6 +517,42 @@ the timeline.
 
 ---
 
+## R20: CLOSURE VERIFIES AGAINST THE ARTIFACT, NOT THE DONE MARKER (golems, 2026-09-09)
+
+A DONE marker is a claim by the agent **about itself**, and a stalled or confused agent writes one just
+as easily as a finished one. Closure verifies against the contracted **artifact** — a merged PR SHA, an
+HTTP 200 with a card count, a file at the contracted path — never the marker alone.
+
+Both directions defeat marker-based closure:
+
+1. A quota death looks identical to a finished worker — the pane stops, the last report line stands.
+2. The mirror, found 2026-09-09: a **DONE artifact for work that never happened**, under a pane still
+   registered as `working`.
+
+**The dangerous variant is CARRY-OVER.** In the specimen the marker was not fabricated — it was **true for
+a previous lane** that had genuinely finished (the architecture follow-ups, whose 23 KB artifact orc
+verified himself), and it **became a lie the moment a new lane was dispatched into the same seat**. A
+stale-but-once-true marker is more dangerous than a fabricated one, because nothing about it looks wrong.
+
+**Specimen:** `golemsCodex-404113a1`. At 21:31 on 2026-09-08 its report was 2,801 bytes and carried its
+DONE marker; the research lane it had been given had never run. On waking it retracted its own report at
+00:26 — 137 bytes, no marker, "Status: WORKING. Lane had not started." Its pane said so directly: "there
+are no research calls or artifacts for it in this conversation after the request."
+
+**Positive control, same day:** seven golems workers were proven complete not by seven DONE lines but by
+seven merged PR SHAs (#77 `62e2e5f7`, #79 `ee16c6fb`, #48 `b631f406`, #80 `5ac61a16`, #72 `b83a904d`,
+#87 `2db59c70`, #89 `5d0f0a55`). That is what a closure check looks like when it holds.
+
+**Checklist:**
+
+- Name the contracted artifact BEFORE closing: which PR, which path, which served response.
+- Verify THAT — a merge SHA, an HTTP status plus a count, bytes at the contracted path.
+- Treat the DONE marker as a hint that it is time to check, never as the check.
+- Re-using a context-rich seat for a NEW lane must clear or supersede the prior marker at dispatch time;
+  otherwise the next reader harvests a marker that belongs to work already finished.
+
+---
+
 ## The Bottom Line
 
 **Read it. Parse it. Then report.**
