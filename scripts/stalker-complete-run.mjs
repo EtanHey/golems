@@ -60,6 +60,11 @@ export async function completeRun(runDir, options = {}) {
       try { return { ...(await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl })), skipped: true }; }
       catch (error) { initialError = error; }
     }
+    if (receipt?.version === 3 && receipt.status === 'complete' && initialError?.stage === 9) {
+      // Survivors cannot reconstruct the custody evidence for deleted originals.
+      preserveDeliveryReceipt = true;
+      throw initialError;
+    }
     let resumeRetention = false;
     if (receipt?.version === 3 && ['notified', 'complete'].includes(receipt.status)) {
       if (initialError?.liveVerificationFailure) {
@@ -113,9 +118,12 @@ export async function completeRun(runDir, options = {}) {
       const notification = await notify(`Stalker dashboard ready — ${channel} ${date}`, body);
       receipt.notification = { ...notification, url: publication.url };
       receipt.status = 'notified';
-      await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
+      if (notification?.accepted !== true || !Number.isSafeInteger(notification.messageId) || notification.messageId <= 0
+        || !notification.body?.includes(publication.url)) throw stageFailure(8, 'notification has no valid dashboard delivery receipt');
+      // Preserve the real send before another fallible network verification.
       await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
       preserveDeliveryReceipt = true;
+      await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
     }
     stage = 9;
     const archiveImpl = options.archiveImpl ?? createDriveArchive({ parentId: options.driveArchiveParentId ?? config.driveArchiveParentId });

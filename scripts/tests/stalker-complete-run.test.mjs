@@ -86,7 +86,7 @@ test('missing manifest fails stage 7, sends FAILED and leaves completion open', 
   options.syncImpl = async () => {};
   await assert.rejects(completeRun(runDir, options), /FAILED at stage 7/);
   assert.ok(calls.includes('Stalker FAILED at stage 7'));
-  assert.ok(!calls.some(value => value.includes('COMPLETE')));
+  assert.ok(!calls.some(value => value.startsWith('Stalker dashboard ready')));
   await assert.rejects(readFile(join(runDir, '.stalker-completion.json')));
   await assert.rejects(readFile(join(runDir, '.stage-complete-notify.done')));
   assert.equal(JSON.parse(await readFile(join(runDir, '.stalker-failure.json'))).stage, 7);
@@ -128,14 +128,45 @@ test('concurrent completion cannot double-send and a released lock remains reusa
 });
 
 
-test('a manifest lost after notification cannot leave a complete receipt or marker', async t => {
-  const { runDir, options, manifest } = await setup(t);
+test('a manifest lost after notification preserves the real receipt and retries without another send', async t => {
+  const { runDir, options, manifest, calls } = await setup(t);
   const notify = options.notifyImpl;
-  options.notifyImpl = async (...args) => { const receipt = await notify(...args); manifest.included = []; return receipt; };
+  let included;
+  options.notifyImpl = async (...args) => { const receipt = await notify(...args); included ??= manifest.included; manifest.included = []; return receipt; };
   await assert.rejects(completeRun(runDir, options), /FAILED at stage 7/);
-  for (const file of ['.stalker-completion.json', '.stage-complete-notify.done', '.stage-notified.done']) {
+  const receipt = JSON.parse(await readFile(join(runDir, '.stalker-completion.json')));
+  assert.equal(receipt.status, 'notified');
+  assert.equal(receipt.notification.messageId, 123);
+  for (const file of ['.stage-complete-notify.done', '.stage-notified.done']) {
     await assert.rejects(readFile(join(runDir, file)));
   }
+  manifest.included = included;
+  options.notifyImpl = notify;
+  assert.equal((await completeRun(runDir, options)).status, 'complete');
+  assert.equal(calls.filter(call => call.startsWith('Stalker dashboard ready')).length, 1);
+  assert.equal(calls.filter(call => call === 'generate' || call === 'sync').length, 2);
+});
+
+test('a completed run fails closed when its custody ledger is missing or invalid', async t => {
+  for (const corruption of ['missing', 'invalid']) await t.test(corruption, async t => {
+    const {runDir, options, calls} = await setup(t);
+    await writeFile(join(runDir, 'video.mp4'), 'raw original');
+    options.archiveImpl = matchingArchive(calls);
+    await completeRun(runDir, options);
+    const completionPath = join(runDir, '.stalker-completion.json');
+    const ledgerPath = join(runDir, '.stalker-media-retention.json');
+    const completed = await readFile(completionPath, 'utf8');
+    await assert.rejects(readFile(join(runDir, 'video.mp4')), {code: 'ENOENT'});
+    if (corruption === 'missing') await rm(ledgerPath);
+    else await writeFile(ledgerPath, '{invalid');
+    const before = calls.filter(call => !call.startsWith('Stalker FAILED'));
+    await assert.rejects(completeRun(runDir, options), /FAILED at stage 9/);
+    assert.equal(await readFile(completionPath, 'utf8'), completed);
+    assert.deepEqual(calls.filter(call => !call.startsWith('Stalker FAILED')), before);
+    if (corruption === 'missing') await assert.rejects(readFile(ledgerPath), {code: 'ENOENT'});
+    else assert.equal(await readFile(ledgerPath, 'utf8'), '{invalid');
+    await assert.rejects(readFile(join(runDir, '.stage-complete-notify.done')));
+  });
 });
 
 test('an obsolete digest cache is regenerated on a delivery retry', async t => {
@@ -243,7 +274,7 @@ test('a missing card clip fails publication before a completion notification', a
   const {runDir,options,calls}=await setup(t);
   options.mediaImpl=async()=>{throw new Error('missing card clip');};
   await assert.rejects(completeRun(runDir,options),/FAILED at stage 7.*missing card clip/);
-  assert.ok(!calls.some(call=>call.startsWith('Stalker COMPLETE')));
+  assert.ok(!calls.some(call=>call.startsWith('Stalker dashboard ready')));
 });
 
 test('COMPLETE waits for stage 9 retention after a truthful dashboard-ready notification', async t => {
