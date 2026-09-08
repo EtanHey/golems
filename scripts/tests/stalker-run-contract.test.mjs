@@ -113,3 +113,10 @@ test('CRLF human digest validates without changing its byte-bound hash', async t
   await save();
   assert.equal((await verifyRunDelivery(runDir)).status, 'complete');
 });
+
+test('an explicit no-claims finding does not require inventing a timestamped claim', async t => {
+  const { runDir } = await setup(t);
+  const file = join(runDir, 'digest.md');
+  await writeFile(file, (await readFile(file, 'utf8')).replace('[10:47] A claim', '- No explicit checkable claims identified.'));
+  assert.ok((await artifactHashes(runDir)).digest);
+});

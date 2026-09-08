@@ -20,12 +20,14 @@ async function requiredFile(runDir, name, stage) {
 // These are delivery artifacts; legacy processing/notification markers are not evidence.
 export async function artifactHashes(runDir) {
   const gems = await requiredFile(runDir, 'gems.md', 6);
+  const transcript = await requiredFile(runDir, 'transcript.md', 6);
   const digest = await requiredFile(runDir, 'digest.md', 6);
   const dashboard = await requiredFile(runDir, 'dashboard.html', 7);
   const text = digest.toString('utf8').replace(/\r\n/g, '\n');
   for (const heading of ['What was discussed', 'Top highlights', 'Claims worth checking']) {
     const section = text.split(`## ${heading}\n`)[1]?.split('\n## ')[0]?.trim();
-    if (!section || !/\[\d+:\d{2}(?::\d{2})?\]/.test(section)) {
+    const noClaims = heading === 'Claims worth checking' && section === '- No explicit checkable claims identified.';
+    if (!section || (!noClaims && !/\[\d+:\d{2}(?::\d{2})?\]/.test(section))) {
       throw stageFailure(6, `digest missing timestamped ${heading}`);
     }
   }
@@ -34,7 +36,7 @@ export async function artifactHashes(runDir) {
     /^(?:- |\d+\. |### ).*\[\d+:\d{2}(?::\d{2})?\].*\S/.test(line)).length;
   if (count < 5 || count > 10) throw stageFailure(6, 'digest must contain 5–10 highlights');
   if (!/<html\b|<!doctype html/i.test(dashboard.toString('utf8'))) throw stageFailure(7, 'dashboard is not HTML');
-  return { gems: sha256(gems), digest: sha256(digest), dashboard: sha256(dashboard) };
+  return { transcript: sha256(transcript), gems: sha256(gems), digest: sha256(digest), dashboard: sha256(dashboard) };
 }
 
 export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireNotification = true } = {}) {
