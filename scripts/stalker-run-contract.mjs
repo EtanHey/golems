@@ -39,10 +39,37 @@ export async function artifactHashes(runDir) {
   return { transcript: sha256(transcript), gems: sha256(gems), digest: sha256(digest), dashboard: sha256(dashboard) };
 }
 
+async function verifyCardMedia(html, publication, fetchImpl) {
+  const cards = [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/g)];
+  const refs = new Set();
+  if (!cards.length) throw new Error('dashboard has no watchable cards');
+  for (const [,card] of cards) {
+    const videos = [...card.matchAll(/<video\b[^>]*>/g)];
+    const clip = videos[0]?.[0].match(/\bsrc="([^"]+)"/)?.[1];
+    const poster = videos[0]?.[0].match(/\bposter="([^"]+)"/)?.[1];
+    if (videos.length !== 1 || !clip || !poster) throw new Error('every card requires a video and poster');
+    refs.add(clip); refs.add(poster);
+  }
+  for (const path of refs) {
+    const entry = publication.media?.find(item => item.path === path);
+    if (!entry || !Number.isSafeInteger(entry.size) || entry.size <= 0 || entry.size > 250 * 1024 * 1024
+      || !/^[a-f0-9]{64}$/.test(entry.sha256) || !/^evidence\/[a-zA-Z0-9/_.-]+$/.test(path)
+      || path.split('/').some(part => part === '..' || part === '.')) throw new Error('card media has no valid publication receipt');
+    const response = await fetchImpl(new URL(path, publication.url).href, { signal: AbortSignal.timeout(30000), redirect: 'error' });
+    const hash = createHash('sha256'); let size = 0;
+    if (response.status !== 200 || !response.body) throw new Error(`card media HTTP ${response.status}`);
+    for await (const bytes of response.body) {
+      size += bytes.length; if (size > entry.size) throw new Error('card media size mismatch');
+      hash.update(bytes);
+    }
+    if (size !== entry.size || hash.digest('hex') !== entry.sha256) throw new Error('card media size/hash mismatch');
+  }
+}
+
 export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireNotification = true } = {}) {
   const hashes = await artifactHashes(runDir);
   receipt ??= await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
-  if (receipt?.version !== 1 || receipt.runName !== basename(resolve(runDir))) {
+  if (receipt?.version !== 2 || receipt.runName !== basename(resolve(runDir))) {
     throw stageFailure(7, 'missing or wrong-run completion receipt');
   }
   if (Object.keys(hashes).some(key => hashes[key] !== receipt.artifacts?.[key])) {
@@ -69,6 +96,7 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
       row.linkPath === publication.linkPath && row.sourceRelative === publication.sourceRelative)) {
       throw new Error('dashboard absent from hub manifest');
     }
+    await verifyCardMedia(bytes.toString('utf8'), publication, fetchImpl);
   } catch (error) { throw stageFailure(7, error.message); }
   if (requireNotification && (receipt.status !== 'complete' || receipt.notification?.accepted !== true
     || !Number.isSafeInteger(receipt.notification.messageId) || receipt.notification.messageId <= 0

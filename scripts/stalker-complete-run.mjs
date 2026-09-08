@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { readFile, readdir, rm, stat } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateHumanDigest } from './stalker-human-digest.mjs';
+import { prepareCardMedia } from './stalker-card-media.mjs';
 import { buildRunDashboard } from './stalker-dashboard.mjs';
 import { parseGems } from './stalker-morning-digest.mjs';
 import { atomicWrite, configuredHubOrigin, publishRunDashboard } from './stalker-publish.mjs';
@@ -42,17 +43,6 @@ async function lockRun(runDir) {
   return async () => { child.stdin.end(); await closed; };
 }
 
-async function mediaForGems(runDir, markdown) {
-  const clips = await readdir(join(runDir, 'clips')).catch(() => []);
-  const frames = await readdir(join(runDir, 'frames')).catch(() => []);
-  const secondsAt = file => { const match = file.match(/-(\d+)m(\d+)s\.(?:mp4|jpg)$/); return match ? Number(match[1]) * 60 + Number(match[2]) : null; };
-  return Promise.all(parseGems(markdown).map(async gem => {
-    const clip = clips.find(file => secondsAt(file) === gem.seconds), frame = frames.find(file => secondsAt(file) === gem.seconds);
-    const asset = async (directory, file) => file && await stat(join(runDir, directory, file)).then(info => info.isFile() && info.size > 0).catch(() => false) ? `${directory}/${file}` : null;
-    return { ...gem, clip: await asset('clips', clip), frame: await asset('frames', frame) };
-  }));
-}
-
 export async function completeRun(runDir, options = {}) {
   runDir = resolve(runDir);
   const unlock = await lockRun(runDir);
@@ -83,12 +73,11 @@ export async function completeRun(runDir, options = {}) {
     await atomicWrite(join(runDir, 'digest.md'), digest.markdown);
     await atomicWrite(join(runDir, '.stage-6-digest.done'), new Date().toISOString());
     stage = 7;
-    const gems = await mediaForGems(runDir, gemsMarkdown);
-    const selected = gems.filter(gem => digest.summary.highlights.some(item => item.timestamp === gem.timestamp));
-    const html = buildRunDashboard({ date, channel, runName: name, summary: digest.summary, gems: selected });
+    const { items: selected } = await (options.mediaImpl ?? prepareCardMedia)({ runDir, summary: digest.summary });
+    const html = buildRunDashboard({ date, channel, runName: name, summary: digest.summary, cardMedia: selected });
     const publication = await publishRunDashboard({ runDir, repoRoot, orchestratorRoot, hubOrigin, html,
       assets: selected.flatMap(gem => [gem.clip, gem.frame].filter(Boolean)), syncImpl: options.syncImpl });
-    const receipt = { version: 1, runName: name, status: 'published', artifacts: await artifactHashes(runDir), publication };
+    const receipt = { version: 2, runName: name, status: 'published', artifacts: await artifactHashes(runDir), publication };
     await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireNotification: false });
     await atomicWrite(join(runDir, '.stage-7-publish.done'), new Date().toISOString());
     stage = 8;

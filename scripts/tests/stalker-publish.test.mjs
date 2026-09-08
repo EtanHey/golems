@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, open, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { publishRunDashboard } from '../stalker-publish.mjs';
@@ -94,4 +94,36 @@ test('failed media admission preserves the prior served HTML symlink and media',
   assert.equal(await readFile(join(served, 'page.html'), 'utf8'), old);
   assert.equal(await readFile(join(runDir, 'dashboard.html'), 'utf8'), old);
   assert.equal(await readFile(join(served, media), 'utf8'), 'old media');
+});
+
+test('every-card context media is copied independently of raw run media', async t => {
+  const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const repoRoot = join(root, 'golems'), runDir = join(root, 'theo-2026-09-08');
+  const clip = 'card-media/clips/clip-10m47s.mp4', frame = 'card-media/frames/frame-10m47s.jpg';
+  for (const asset of [clip, frame]) { await mkdir(join(runDir, asset, '..'), {recursive:true}); await writeFile(join(runDir, asset), asset); }
+  const html = `<html><video src="evidence/theo-2026-09-08/${clip}" poster="evidence/theo-2026-09-08/${frame}"></video></html>`;
+  await publishRunDashboard({runDir,repoRoot,html,assets:[clip,frame],hubOrigin:'https://hub.example',syncImpl:async()=>{}});
+  const published = await readFile(join(runDir,'dashboard.html'),'utf8');
+  const version = published.match(/evidence\/theo-2026-09-08\/([^/]+)\//)[1];
+  await rm(join(runDir,'card-media'), {recursive:true});
+  for (const asset of [clip,frame]) assert.equal(await readFile(join(repoRoot,'docs.local/dashboards/stalker/evidence/theo-2026-09-08',version,asset),'utf8'),asset);
+});
+
+
+test('oversized and empty sources are rejected before publication staging', async t => {
+  const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const repoRoot = join(root, 'golems'), runDir = join(root, 'theo-run');
+  const asset = 'clips/clip-1m00s.mp4';
+  await mkdir(join(runDir, 'clips'), { recursive: true });
+  const handle = await open(join(runDir, asset), 'w');
+  try {
+    for (const size of [0, 250 * 1024 * 1024 + 1]) {
+      await handle.truncate(size);
+      await assert.rejects(publishRunDashboard({ runDir, repoRoot, html: '<html>', assets: [asset],
+        hubOrigin: 'https://hub.example', syncImpl: async () => assert.fail('must not sync') }), /size budget|empty/);
+      await assert.rejects(stat(join(repoRoot, 'docs.local/dashboards/stalker')), { code: 'ENOENT' });
+    }
+  } finally { await handle.close(); }
 });

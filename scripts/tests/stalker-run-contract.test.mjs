@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { artifactHashes, verifyRunDelivery } from '../stalker-run-contract.mjs';
+import { artifactHashes, verifyRunDelivery, sha256 } from '../stalker-run-contract.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/stalker-2026-09-08.json', import.meta.url)));
 async function setup(t, delivered = true) {
@@ -13,13 +13,15 @@ async function setup(t, delivered = true) {
   await mkdir(runDir);
   for (const [name, body] of Object.entries(fixture.files)) await writeFile(join(runDir, name), body);
   if (!delivered) return { runDir };
-  const html = '<!doctype html><title>Theo digest</title><p>What was discussed</p>';
+  const html = '<!doctype html><title>Theo digest</title><article><video src="evidence/clip.mp4" poster="evidence/frame.jpg"></video></article><p>What was discussed</p>';
+  const mediaBytes=Buffer.from('published media');
   const highlights = Array.from({ length: 5 }, (_, i) => `- [10:${40 + i}] Highlight ${i}`).join('\n');
   await writeFile(join(runDir, 'digest.md'), `# Theo\n## What was discussed\n[10:47] A topic\n## Top highlights\n${highlights}\n## Claims worth checking\n[10:47] A claim\n`);
   await writeFile(join(runDir, 'dashboard.html'), html);
   const manifest = { included: [{ linkPath: 'dashboards/golems/stalker/run.html', sourceRelative: 'golems/docs.local/dashboards/stalker/run.html' }] };
-  const responses = { dashboardStatus: 200, html, manifest };
+  const responses = { dashboardStatus: 200, html, manifest, media: mediaBytes, mediaStatus:200 };
   const server = createServer((req, res) => {
+    if(req.url.includes('/evidence/')) { res.statusCode=responses.mediaStatus; return res.end(responses.media); }
     res.statusCode = req.url === '/manifest.json' ? 200 : responses.dashboardStatus;
     res.end(req.url === '/manifest.json' ? JSON.stringify(responses.manifest) : responses.html);
   });
@@ -28,9 +30,9 @@ async function setup(t, delivered = true) {
   const origin = `http://127.0.0.1:${server.address().port}`;
   const url = `${origin}/${manifest.included[0].linkPath}`;
   const receipt = {
-    version: 1, runName: fixture.runName, status: 'complete',
+    version: 2, runName: fixture.runName, status: 'complete',
     artifacts: await artifactHashes(runDir),
-    publication: { url, manifestUrl: `${origin}/manifest.json`, ...manifest.included[0] },
+    publication: { url, manifestUrl: `${origin}/manifest.json`, ...manifest.included[0], media:['clip.mp4','frame.jpg'].map(name=>({path:`evidence/${name}`,size:mediaBytes.length,sha256:sha256(mediaBytes)})) },
     notification: { accepted: true, messageId: 123, url, body: `Stalker complete. Dashboard: ${url}` },
   };
   const save = () => writeFile(join(runDir, '.stalker-completion.json'), JSON.stringify(receipt));
@@ -119,4 +121,19 @@ test('an explicit no-claims finding does not require inventing a timestamped cla
   const file = join(runDir, 'digest.md');
   await writeFile(file, (await readFile(file, 'utf8')).replace('[10:47] A claim', '- No explicit checkable claims identified.'));
   assert.ok((await artifactHashes(runDir)).digest);
+});
+
+test('served clips are required: a missing or replaced video cannot remain COMPLETE', async t => {
+  const {runDir,responses}=await setup(t);
+  responses.mediaStatus=404;
+  await assert.rejects(verifyRunDelivery(runDir),/stage 7.*media/);
+  responses.mediaStatus=200;responses.media=Buffer.from('replaced bytes');
+  await assert.rejects(verifyRunDelivery(runDir),/stage 7.*media/);
+});
+
+test('every dashboard card must carry a video and a published poster', async t => {
+  const {runDir,receipt,responses,save}=await setup(t);
+  responses.html=responses.html.replace('</article>','</article><article>A card with no clip</article>');
+  await writeFile(join(runDir,'dashboard.html'),responses.html);receipt.artifacts=await artifactHashes(runDir);await save();
+  await assert.rejects(verifyRunDelivery(runDir),/stage 7.*card/);
 });

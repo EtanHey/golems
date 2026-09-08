@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
+import { createServer, get } from 'node:http';
 import { chmod, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { test } from 'node:test';
 import { completeRun, notifyDelivery } from '../stalker-complete-run.mjs';
 import { validSummary } from './fixtures/stalker-digest-summary.mjs';
@@ -21,6 +21,15 @@ async function setup(t, runName = 'theo-2026-09-08-030512') {
   const manifest = { included: [] }, calls = [];
   const server = createServer(async (req, res) => {
     if (req.url === '/manifest.json') return res.end(JSON.stringify(manifest));
+    if (req.url.includes('/evidence/')) {
+      try {
+        const mediaRoot = resolve(repoRoot, 'docs.local/dashboards/stalker');
+        const asset = resolve(mediaRoot, req.url.split('/stalker/')[1]);
+        if (!asset.startsWith(mediaRoot + sep)) { res.statusCode = 404; return res.end(); }
+        return res.end(await readFile(asset));
+      }
+      catch { res.statusCode=404;return res.end(); }
+    }
     try { res.end(await readFile(join(repoRoot, 'docs.local/dashboards/stalker', `${runName}.html`))); }
     catch { res.statusCode = 404; res.end(); }
   });
@@ -28,6 +37,17 @@ async function setup(t, runName = 'theo-2026-09-08-030512') {
   t.after(() => new Promise(resolve => server.close(resolve)));
   const options = { repoRoot, orchestratorRoot: join(root, 'orc'), hubOrigin: `http://127.0.0.1:${server.address().port}`,
     generateImpl: async () => { calls.push('generate'); return digest; },
+    mediaImpl: async ({summary}) => {
+      const items=[];
+      for(const item of new Map(Object.values(summary).flat().map(item=>[item.timestamp,item])).values()) {
+        const seconds=item.timestamp.split(':').reduce((a,b)=>a*60+Number(b),0);
+        const clip=`card-media/clips/clip-${Math.floor(seconds/60)}m${seconds%60}s.mp4`;
+        const frame=`card-media/frames/frame-${Math.floor(seconds/60)}m${seconds%60}s.jpg`;
+        for(const file of [clip,frame]) { await mkdir(join(runDir,file,'..'),{recursive:true});await writeFile(join(runDir,file),file===clip?'selected clip':'poster'); }
+        items.push({timestamp:item.timestamp,clip,frame,startSeconds:Math.max(0,seconds-20),endSeconds:seconds+40,evidenceSeconds:seconds});
+      }
+      return {items};
+    },
     syncImpl: async () => { calls.push('sync'); manifest.included = [{ linkPath: `dashboards/golems/stalker/${runName}.html`, sourceRelative: `golems/docs.local/dashboards/stalker/${runName}.html` }]; },
     notifyImpl: async (title, body) => { calls.push(title); return { accepted: true, messageId: 123, body }; },
   };
@@ -39,7 +59,7 @@ test('completion publishes before notifying, preserves media and validates every
   assert.equal((await completeRun(runDir, options)).status, 'complete');
   assert.deepEqual(calls, ['generate', 'sync', 'Stalker COMPLETE — theo 2026-09-08']);
   const evidenceRoot = join(repoRoot, 'docs.local/dashboards/stalker/evidence/theo-2026-09-08-030512');
-  assert.equal(await readFile(join(evidenceRoot, (await readdir(evidenceRoot))[0], 'clips/clip-00m01s.mp4'), 'utf8'), 'selected clip');
+  assert.equal(await readFile(join(evidenceRoot, (await readdir(evidenceRoot))[0], 'card-media/clips/clip-0m1s.mp4'), 'utf8'), 'selected clip');
   assert.equal((await completeRun(runDir, options)).skipped, true);
   assert.equal(calls.length, 3);
   await writeFile(join(runDir, 'transcript.md'), 'corrected transcript');
@@ -194,4 +214,36 @@ test('completion text leads with selected highlights instead of opening chatter'
   await completeRun(runDir, options);
   assert.match(message, /Key coding discussion/);
   assert.doesNotMatch(message, /Opening chatter/);
+});
+
+test('legacy delivery receipts cannot skip the every-card clip rebuild', async t => {
+  const {runDir,options,calls}=await setup(t);
+  await completeRun(runDir,options);
+  const path=join(runDir,'.stalker-completion.json');
+  const receipt=JSON.parse(await readFile(path));receipt.version=1;await writeFile(path,JSON.stringify(receipt));
+  assert.equal((await completeRun(runDir,options)).skipped,undefined);
+  assert.equal(calls.filter(call=>call.startsWith('Stalker COMPLETE')).length,2);
+});
+
+test('a missing card clip fails publication before a completion notification', async t => {
+  const {runDir,options,calls}=await setup(t);
+  options.mediaImpl=async()=>{throw new Error('missing card clip');};
+  await assert.rejects(completeRun(runDir,options),/FAILED at stage 7.*missing card clip/);
+  assert.ok(!calls.some(call=>call.startsWith('Stalker COMPLETE')));
+});
+
+
+test('fixture media server rejects traversal outside its publication root', async t => {
+  const { repoRoot, options } = await setup(t);
+  await writeFile(join(repoRoot, 'fixture-private.txt'), 'private fixture sentinel');
+  const origin = new URL(options.hubOrigin);
+  const response = await new Promise((resolveResponse, reject) => {
+    get({ hostname: origin.hostname, port: origin.port,
+      path: '/dashboards/golems/stalker/evidence/../../../../fixture-private.txt' }, response => {
+      let body = ''; response.on('data', chunk => { body += chunk; });
+      response.on('end', () => resolveResponse({ status: response.statusCode, body }));
+    }).on('error', reject);
+  });
+  assert.equal(response.status, 404);
+  assert.doesNotMatch(response.body, /private fixture sentinel/);
 });
