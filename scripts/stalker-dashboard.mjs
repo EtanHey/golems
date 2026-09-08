@@ -1,3 +1,4 @@
+import { readableSummary } from "./stalker-digest-text.mjs";
 const escape = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
 export function buildRunDashboard({ date, channel, runName, summary, gems = [] }) {
@@ -9,7 +10,7 @@ export function buildRunDashboard({ date, channel, runName, summary, gems = [] }
     const asset = file => `evidence/${escape(runName)}/${escape(file)}`;
     const media = kind === 'highlight' && gem?.clip
       ? `<video controls preload="none" ${gem.frame ? `poster="${asset(gem.frame)}"` : ''} src="${asset(gem.clip)}" aria-label="Clip at ${escape(item.timestamp)}"></video>` : '';
-    return `<article class="card">${media}<div class="card-body"><span class="timestamp">[${escape(item.timestamp)}]</span>${item.uncertain ? '<span class="caution">Uncertain transcript</span>' : ''}<h2>${escape(item.title ?? 'Claim to check')}</h2><p>${escape(item.summary ?? item.claim)}</p><button class="source" data-source="${id}">Read source excerpt <span aria-hidden="true">↗</span></button></div></article>`;
+    return `<article class="card">${media}<div class="card-body"><span class="timestamp">[${escape(item.timestamp)}]</span>${item.uncertain ? '<span class="caution">Uncertain transcript</span>' : ''}<h2>${escape(item.title ?? 'Claim to check')}</h2><p>${escape(item.summary ? readableSummary(item.summary) : item.claim)}</p><button class="source" data-source="${id}">Read source excerpt <span aria-hidden="true">↗</span></button></div></article>`;
   }
   const topics = summary.topics.map(item => card(item, 'topic')).join('');
   const highlights = summary.highlights.map(item => card(item, 'highlight')).join('');
