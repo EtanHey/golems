@@ -71,10 +71,10 @@ case "$MODEL" in
     echo "$SUMMARY" > "$OUTFILE"
     ;;
   mlx)
-    # MLX server — local, OpenAI-compatible API on port 8080
-    MLX_URL="${MLX_URL:-http://127.0.0.1:8080}"
+    # MLX server — local, OpenAI-compatible API on port 8081
+    MLX_URL="${MLX_URL:-http://127.0.0.1:8081}"
     if ! curl -sf "${MLX_URL}/v1/models" &>/dev/null; then
-      echo "Error: MLX server not running at $MLX_URL. Start with: python3 -m mlx_lm.server --model <model> --port 8080" >&2
+      echo "Error: MLX server not running at $MLX_URL. Start with: python3 -m mlx_lm.server --model <model> --port 8081" >&2
       exit 1
     fi
     PAYLOAD=$(jq -n --arg prompt "$FULL_PROMPT" \

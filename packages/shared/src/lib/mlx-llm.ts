@@ -1,11 +1,11 @@
 /**
  * MLX LLM - Local MLX server via OpenAI-compatible HTTP API
  *
- * Uses mlx-lm.server at 127.0.0.1:8080 for Qwen2.5-Coder-14B or similar.
+ * Uses mlx-lm.server at 127.0.0.1:8081 for Qwen2.5-Coder-14B or similar.
  * Tracks usage to cost-tracker with tier: "free".
  *
  * ENV: LLM_BACKEND=mlx to enable
- * ENV: MLX_URL to override endpoint (default: http://127.0.0.1:8080)
+ * ENV: MLX_URL to override endpoint (default: http://127.0.0.1:8081)
  */
 
 import { join } from "path";
@@ -13,7 +13,13 @@ import { homedir } from "os";
 import { logCost } from "./cost-tracker";
 import { logLLMCall, logError } from "./axiom";
 
-const MLX_BASE_URL = process.env.MLX_URL || "http://127.0.0.1:8080";
+export function resolveMLXBaseURL(
+  env: Record<string, string | undefined> = process.env,
+): string {
+  return env.MLX_URL || "http://127.0.0.1:8081";
+}
+
+const MLX_BASE_URL = resolveMLXBaseURL();
 const MLX_CHAT_URL = `${MLX_BASE_URL}/v1/chat/completions`;
 const MODEL = process.env.MLX_MODEL || "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit";
 

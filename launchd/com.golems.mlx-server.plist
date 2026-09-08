@@ -14,7 +14,7 @@
         <string>--model</string>
         <string>mlx-community/Qwen2.5-Coder-14B-Instruct-4bit</string>
         <string>--port</string>
-        <string>8080</string>
+        <string>8081</string>
     </array>
 
     <!-- On-demand: don't keep alive — 14B model eats ~8GB RAM.

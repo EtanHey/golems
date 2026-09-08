@@ -177,7 +177,7 @@ SUMMARY:`;
       content: [
         {
           type: "text" as const,
-          text: `Local LLM failed to generate summary. Backend: ${GLM_BACKEND}. Ensure ${GLM_BACKEND === "mlx" ? "MLX server (port 8080) or Ollama (fallback)" : "Ollama"} is running.`,
+          text: `Local LLM failed to generate summary. Backend: ${GLM_BACKEND}. Ensure ${GLM_BACKEND === "mlx" ? "MLX server (port 8081) or Ollama (fallback)" : "Ollama"} is running.`,
         },
       ],
       isError: true,
@@ -249,7 +249,7 @@ JSON OUTPUT:`;
       content: [
         {
           type: "text" as const,
-          text: `Local LLM failed to produce valid JSON. Backend: ${GLM_BACKEND}. Ensure ${GLM_BACKEND === "mlx" ? "MLX server (port 8080) or Ollama (fallback)" : "Ollama"} is running.`,
+          text: `Local LLM failed to produce valid JSON. Backend: ${GLM_BACKEND}. Ensure ${GLM_BACKEND === "mlx" ? "MLX server (port 8081) or Ollama (fallback)" : "Ollama"} is running.`,
         },
       ],
       isError: true,

@@ -19,6 +19,11 @@ print(dangerous_shell_reason(sys.argv[1]) or "")
 ' "$1"
 }
 
+@test "reconcile profile contains no pgrep" {
+  run grep -n 'pgrep' "$REPO_ROOT/scripts/reconcile-profile.json"
+  [ "$status" -eq 1 ]
+}
+
 @test "the literal 2026-09-05 command is denied" {
   run guard_reason "pkill -f 'inbox.jsonl' -P 1"
   [ "$status" -eq 0 ]

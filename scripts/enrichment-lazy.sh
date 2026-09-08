@@ -44,7 +44,7 @@ done
 export BRAINLAYER_ENRICH_BACKEND=mlx
 
 # --- Wait for MLX (started by its own launchd plist) ---
-MLX_BASE="${MLX_URL:-http://127.0.0.1:8080}"
+MLX_BASE="${MLX_URL:-http://127.0.0.1:8081}"
 MLX_BASE="${MLX_BASE%%/v1/*}"
 
 for i in $(seq 1 90); do

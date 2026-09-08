@@ -341,13 +341,22 @@ describe("profile safety", () => {
     expect(() => validateProfile(unguarded)).toThrow("requiresGreen");
   });
 
-  test("production profile pins the public MLX model and waits for daemon restart", () => {
+  test("production profile pins and probes the served public MLX model without process discovery", () => {
     const production = JSON.parse(readFileSync(join(here, "../reconcile-profile.json"), "utf8"));
     expect(validateProfile(production)).toBe(production);
     const mlx = production.targets.m1.hostEnvCheckers.find((item) => item.id === "voicelayer-stt-polish");
+    const runtime = production.targets.m1.runtimeChecks.find((item) => item.id === "voicelayer-stt-polish-8080");
     expect(mlx.provisionCommand).toContain("--break-system-packages mlx-lm");
     expect(mlx.provisionCommand).toContain("mlx-community/Qwen3-4B-Instruct-2507-4bit");
-    expect(mlx.provisionCommand).toContain("seq 1 30");
+    expect(mlx.provisionCommand).not.toContain("pgrep");
+    expect(mlx.verifyCommand).toContain("/v1/models");
+    expect(mlx.verifyCommand).toContain("Qwen3-4B-Instruct-2507-4bit");
+    expect(mlx.verifyCommand).toContain("/v1/chat/completions");
+    expect(mlx.verifyCommand).toContain('"choices"');
+    expect(runtime.checkCommand).toContain("/v1/models");
+    expect(runtime.checkCommand).toContain("Qwen3-4B-Instruct-2507-4bit");
+    expect(runtime.checkCommand).toContain("/v1/chat/completions");
+    expect(runtime.checkCommand).toContain('"choices"');
   });
 
   test("production audio-dashboard host-tool checks resolve the non-interactive SSH PATH", () => {
