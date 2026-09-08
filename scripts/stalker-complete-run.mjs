@@ -10,7 +10,7 @@ import { atomicWrite, configuredHubOrigin, publishRunDashboard } from './stalker
 import { artifactHashes, COMPLETION_RECEIPT, sha256, stageFailure, verifyRunDelivery } from './stalker-run-contract.mjs';
 
 // Bump whenever the digest prompt, schema or grounding validator changes.
-const DIGEST_CONTRACT_VERSION = 2;
+const DIGEST_CONTRACT_VERSION = 3;
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export async function notifyDelivery(title, body, priority = 'default') {
   if (process.env.STALKER_TELEGRAM_NOTIFY === '0' || process.env.STALKER_TELEGRAM_DRY_RUN === '1') {

@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Verify delivery contract
-        run: node --test scripts/tests/stalker-run-contract.test.mjs scripts/tests/stalker-publish.test.mjs scripts/tests/stalker-dashboard.test.mjs scripts/tests/stalker-digest-runner.test.mjs scripts/tests/stalker-digest-batches.test.mjs scripts/tests/stalker-digest-evidence.test.mjs scripts/tests/stalker-human-digest.test.mjs scripts/tests/stalker-complete-run.test.mjs scripts/tests/stalker-morning-digest.test.mjs scripts/tests/stalker-pipeline-wiring.test.mjs scripts/tests/stalker-digest-curation.test.mjs
+        run: node --test scripts/tests/stalker-run-contract.test.mjs scripts/tests/stalker-publish.test.mjs scripts/tests/stalker-dashboard.test.mjs scripts/tests/stalker-digest-runner.test.mjs scripts/tests/stalker-digest-batches.test.mjs scripts/tests/stalker-digest-evidence.test.mjs scripts/tests/stalker-human-digest.test.mjs scripts/tests/stalker-complete-run.test.mjs scripts/tests/stalker-morning-digest.test.mjs scripts/tests/stalker-pipeline-wiring.test.mjs scripts/tests/stalker-digest-curation.test.mjs scripts/tests/stalker-digest-text.test.mjs
   notification-receipt:
     runs-on: ubuntu-latest
     steps:

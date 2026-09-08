@@ -111,7 +111,7 @@ test('an obsolete digest cache is regenerated on a delivery retry', async t => {
   await assert.rejects(completeRun(runDir, options));
   const path = join(runDir, '.stalker-digest.json');
   const cache = JSON.parse(await readFile(path, 'utf8'));
-  cache.contractVersion = 'obsolete';
+  cache.contractVersion = 2;
   await writeFile(path, JSON.stringify(cache));
   options.notifyImpl = notify;
   await completeRun(runDir, options);
@@ -143,8 +143,10 @@ He compared two coding models and preferred the second one's mergeable code.
   await writeFile(executable, `#!/usr/bin/env node
 import {writeFileSync} from 'node:fs';
 let input = ''; for await (const chunk of process.stdin) input += chunk;
-if (!input.includes('Creators use AI privately')) process.exit(2);
-writeFileSync(process.argv[process.argv.indexOf('--output-last-message') + 1], ${JSON.stringify(JSON.stringify(map))});
+const target = process.argv[process.argv.indexOf('--output-last-message') + 1];
+const curation = target.includes('curation');
+if (!curation && !input.includes('Creators use AI privately')) process.exit(2);
+writeFileSync(target, curation ? JSON.stringify({topicIndexes:[0,1,2],highlightIndexes:[0,1,2,3,4],claimIndexes:[0]}) : ${JSON.stringify(JSON.stringify(map))});
 console.log(JSON.stringify({type:'turn.completed'}));
 `);
   await chmod(executable, 0o755);
@@ -155,6 +157,8 @@ console.log(JSON.stringify({type:'turn.completed'}));
   assert.ok(!calls.includes('generate'));
   const diagnostics = JSON.parse(await readFile(join(runDir, '.digest-work/human-digest-map-001.stdout.log')));
   assert.equal(diagnostics.eventTypes['turn.completed'], 1);
+  const curation = JSON.parse(await readFile(join(runDir, '.digest-work/human-digest-curation.stdout.log')));
+  assert.equal(curation.eventTypes['turn.completed'], 1);
   assert.match(await readFile(join(runDir, 'digest.md'), 'utf8'), /Private AI use/);
 });
 

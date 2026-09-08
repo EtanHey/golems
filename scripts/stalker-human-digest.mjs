@@ -6,6 +6,9 @@ import { assertExactBatchCoverage, runDigestMaps } from "./stalker-digest-batche
 import { OUTPUT_SCHEMA, MAP_SCHEMA, cleanTranscript, assertText, validateSummary } from "./stalker-digest-evidence.mjs";
 export { cleanTranscript } from "./stalker-digest-evidence.mjs";
 
+import { readableSummary } from "./stalker-digest-text.mjs";
+import { curateDigest } from "./stalker-digest-curation.mjs";
+
 const MODEL = "gpt-5.6-sol";
 const REASONING_EFFORT = "medium";
 const TIMEOUT_MS = 180_000;
@@ -74,20 +77,20 @@ function validateMap(value, batch) {
   assertExactBatchCoverage(value.unusableTimestamps, batch.filter(({ usable }) => !usable));
   return { ...summary, ranked };
 }
-function renderMarkdown({ date, channel, dashboardUrl, summary }) {
+export function renderMarkdown({ date, channel, dashboardUrl, summary }) {
   const uncertainty = (item) => item.uncertain ? " _(uncertain transcript)_" : "";
   const topics = summary.topics.map((item) =>
-    `### [${item.timestamp}] ${item.title}${uncertainty(item)}\n\n${item.summary}\n\n> ${item.excerpt}`,
+    `### [${item.timestamp}] ${item.title}${uncertainty(item)}\n\n${readableSummary(item.summary)}\n\n> ${item.excerpt}`,
   ).join("\n\n");
   const highlights = summary.highlights.map((item) =>
-    `- **[${item.timestamp}] ${item.title}:** ${item.summary}${uncertainty(item)} — “${item.excerpt}”`,
+    `- **[${item.timestamp}] ${item.title}:** ${readableSummary(item.summary)}${uncertainty(item)} — “${item.excerpt}”`,
   ).join("\n");
   const claims = summary.claims.length > 0
     ? summary.claims.map((item) => `- **[${item.timestamp}]** ${item.claim}${uncertainty(item)} — “${item.excerpt}”`).join("\n")
     : "- No explicit checkable claims identified.";
   return `# Human Digest — ${channel} — ${date}\n\nDashboard: ${dashboardUrl}\n\n## What was discussed\n\n${topics}\n\n## Top highlights\n\n${highlights}\n\n## Claims worth checking\n\n${claims}\n`;
 }
-export async function generateHumanDigest({ runDir, date, channel, dashboardUrl, generateImpl }) {
+export async function generateHumanDigest({ runDir, date, channel, dashboardUrl, generateImpl, curateImpl }) {
   const absoluteRunDir = resolve(runDir ?? "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) throw new Error("date must be YYYY-MM-DD");
   assertText(channel, "channel", 100);
@@ -98,6 +101,12 @@ export async function generateHumanDigest({ runDir, date, channel, dashboardUrl,
   });
   const gems = await readFile(join(absoluteRunDir, "gems.md"), "utf8").catch(() => "");
   const segments = cleanTranscript(transcript);
+  const starts = segments.map(({ timestamp }) => {
+    const [minutes, seconds] = timestamp.split(":").map(Number);
+    return minutes * 60 + seconds;
+  });
+  const timeline = { startSeconds: Math.min(...starts),
+    endSeconds: Math.max(...segments.map((segment, index) => starts[index] + segment.durationSeconds)) };
   const workDir = join(absoluteRunDir, ".digest-work");
   const outputPath = join(workDir, "human-digest-summary.json");
   const schemaPath = join(workDir, "human-digest-schema.json");
@@ -128,12 +137,12 @@ export async function generateHumanDigest({ runDir, date, channel, dashboardUrl,
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).slice(0, 10).map(({ highlight }) => highlight);
-  const summary = {
+  }).map(({ highlight, importance }) => ({ ...highlight, importance }));
+  const summary = await (curateImpl ?? curateDigest)({ candidates: {
     topics: maps.flatMap(({ topics }) => topics),
     highlights,
     claims: maps.flatMap(({ claims }) => claims),
-  };
+  }, workDir, generateImpl, timeline });
   validateSummary(summary, segments);
   await writeFile(outputPath, `${JSON.stringify(summary)}\n`);
   return { markdown: renderMarkdown({ date, channel, dashboardUrl, summary }), summary };

@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
-import { cleanTranscript, generateHumanDigest } from "../stalker-human-digest.mjs";
+import { cleanTranscript, generateHumanDigest as generateDigest } from "../stalker-human-digest.mjs";
 import { validSummary } from "./fixtures/stalker-digest-summary.mjs";
+const generateHumanDigest = options => generateDigest({ curateImpl: async ({ candidates }) => ({
+  ...candidates, highlights: candidates.highlights.slice(0, 10).map(({ importance, ...item }) => item),
+}), ...options });
 const roots = [];
 
 afterEach(async () => {
@@ -72,6 +75,10 @@ test("cleans every transcript segment, labels repetitive ASR, and renders exact 
     date: "2026-09-08",
     channel: "Theo",
     dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
+    curateImpl: async ({ candidates, timeline }) => {
+      assert.deepEqual(timeline, { startSeconds: 0, endSeconds: 60 });
+      return { ...candidates, highlights: candidates.highlights.map(({ importance, ...item }) => item) };
+    },
     generateImpl: async (value) => {
       request = value;
       const schema = JSON.parse(await readFile(value.schemaPath, "utf8"));
