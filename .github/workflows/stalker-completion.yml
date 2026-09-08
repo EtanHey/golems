@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Verify delivery contract
-        run: node --test scripts/tests/stalker-run-contract.test.mjs
+        run: node --test scripts/tests/stalker-run-contract.test.mjs scripts/tests/stalker-publish.test.mjs scripts/tests/stalker-dashboard.test.mjs
   notification-receipt:
     runs-on: ubuntu-latest
     steps:
