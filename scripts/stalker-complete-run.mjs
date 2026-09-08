@@ -92,7 +92,7 @@ export async function completeRun(runDir, options = {}) {
     await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireNotification: false });
     await atomicWrite(join(runDir, '.stage-7-publish.done'), new Date().toISOString());
     stage = 8;
-    const body = `Dashboard: ${publication.url}\n\n${digest.summary.topics.slice(0, 3).map(item => `[${item.timestamp}] ${item.title}`).join('\n')}\n\n${digest.summary.highlights.length} highlights · ${digest.summary.claims.length} claims worth checking`;
+    const body = `Dashboard: ${publication.url}\n\n${digest.summary.highlights.slice(0, 3).map(item => `[${item.timestamp}] ${item.title}`).join('\n')}\n\n${digest.summary.highlights.length} highlights · ${digest.summary.claims.length} claims worth checking`;
     const notification = await notify(`Stalker COMPLETE — ${channel} ${date}`, body);
     receipt.notification = { ...notification, url: publication.url };
     receipt.status = 'complete';
