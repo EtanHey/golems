@@ -27,12 +27,16 @@ const colors = {
   gray: "\x1b[90m",
 };
 
-interface CheckResult {
+export interface CheckResult {
   name: string;
   status: "pass" | "fail" | "warn";
   message: string;
   fix?: string;
 }
+
+const DEFAULT_MLX_URL = "http://127.0.0.1:8081";
+const DEFAULT_MLX_MODEL =
+  "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit";
 
 const results: CheckResult[] = [];
 
@@ -146,17 +150,65 @@ async function checkOllamaModel() {
   }
 }
 
-// Check 2b: MLX Server (required when GLM_BACKEND=mlx, optional otherwise)
-async function checkMLX() {
-  const online = await httpCheck("http://127.0.0.1:8080/v1/models", 2000);
-  const isConfigured = GLM_BACKEND === "mlx";
-  if (online) {
-    results.push({
+export function evaluateMLXModelResponse(
+  payload: unknown,
+  configuredModel: string,
+  isConfigured: boolean,
+  endpoint = DEFAULT_MLX_URL,
+): CheckResult {
+  const servedModels =
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload &&
+    Array.isArray(payload.data)
+      ? payload.data.flatMap((entry) =>
+          entry &&
+          typeof entry === "object" &&
+          "id" in entry &&
+          typeof entry.id === "string"
+            ? [entry.id]
+            : [],
+        )
+      : [];
+
+  if (servedModels.includes(configuredModel)) {
+    return {
       name: "MLX Server",
       status: "pass",
-      message: `Responding on 127.0.0.1:8080${isConfigured ? " (configured backend)" : ""}`,
+      message: `Serving ${configuredModel} at ${endpoint}${isConfigured ? " (configured backend)" : ""}`,
+    };
+  }
+
+  const servedName =
+    servedModels.length > 0 ? servedModels.join(", ") : "no model reported";
+  return {
+    name: "MLX Server",
+    status: isConfigured ? "fail" : "warn",
+    message: `Wrong model served: ${servedName}; expected ${configuredModel}`,
+    fix: `Restart MLX at ${endpoint} with model ${configuredModel}`,
+  };
+}
+
+// Check 2b: MLX Server (required when GLM_BACKEND=mlx, optional otherwise)
+async function checkMLX() {
+  const isConfigured = GLM_BACKEND === "mlx";
+  const mlxUrl = process.env.MLX_URL || DEFAULT_MLX_URL;
+  const configuredModel = process.env.MLX_MODEL || DEFAULT_MLX_MODEL;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2000);
+
+  try {
+    const response = await fetch(`${mlxUrl}/v1/models`, {
+      method: "GET",
+      signal: controller.signal,
     });
-  } else {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const payload = await response.json();
+    results.push(
+      evaluateMLXModelResponse(payload, configuredModel, isConfigured, mlxUrl),
+    );
+  } catch {
     results.push({
       name: "MLX Server",
       status: isConfigured ? "fail" : "warn",
@@ -165,8 +217,10 @@ async function checkMLX() {
         : "Not running (optional — Ollama is configured backend)",
       fix: isConfigured
         ? "launchctl load ~/Library/LaunchAgents/com.golems.mlx-server.plist"
-        : "python3 -m mlx_lm.server --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit --port 8080",
+        : `python3 -m mlx_lm.server --model ${configuredModel} --port 8081`,
     });
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -538,7 +592,9 @@ async function main() {
   printResults();
 }
 
-main().catch((err) => {
-  console.error(`${colors.red}Error:${colors.reset}`, err.message);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error(`${colors.red}Error:${colors.reset}`, err.message);
+    process.exit(1);
+  });
+}

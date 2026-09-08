@@ -41,10 +41,10 @@ case "${1:-status}" in
     # Check LLM backend
     BACKEND="${ZIKARON_ENRICH_BACKEND:-ollama}"
     if [ "$BACKEND" = "mlx" ]; then
-      MLX_URL="${MLX_URL:-http://127.0.0.1:8080}"
+      MLX_URL="${MLX_URL:-http://127.0.0.1:8081}"
       if ! curl -sf "${MLX_URL}/v1/models" > /dev/null 2>&1; then
         echo "ERROR: MLX server not running at ${MLX_URL}."
-        echo "Start with: python3 -m mlx_lm.server --model <model> --port 8080"
+        echo "Start with: python3 -m mlx_lm.server --model <model> --port 8081"
         exit 1
       fi
       echo "Using MLX backend at ${MLX_URL}"

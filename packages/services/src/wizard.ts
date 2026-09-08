@@ -320,7 +320,7 @@ export async function phaseLLMBackend(log: SetupLogEntry[]): Promise<void> {
   }
 
   print("Options:");
-  print("  1) MLX  — Apple Silicon optimized, OpenAI-compatible API on port 8080");
+  print("  1) MLX  — Apple Silicon optimized, OpenAI-compatible API on port 8081");
   print("  2) Ollama — Cross-platform, runs GLM-4.7-Flash on port 11434");
   print("");
 

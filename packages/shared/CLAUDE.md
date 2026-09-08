@@ -94,7 +94,7 @@ import { runLLM, runLLMJSON } from "@golems/shared/lib/llm";
 ```
 - `ollama` (default): Local Ollama CLI, model from `OLLAMA_MODEL` env
 - `glm`: GLM-4.7-Flash via Ollama HTTP (free, local, 127.0.0.1:11434)
-- `mlx`: Local MLX server via OpenAI-compatible API (free, local, 127.0.0.1:8080)
+- `mlx`: Local MLX server via OpenAI-compatible API (free, local, 127.0.0.1:8081)
 - `haiku`: Claude Haiku 4.5 via Anthropic API (paid)
 - `gemini`: Gemini Flash-Lite via Vercel AI SDK (free tier)
 - `groq`: Groq Llama via Vercel AI SDK (free tier)
@@ -110,8 +110,8 @@ Local MLX server backend. Used when `LLM_BACKEND=mlx`. Apple Silicon optimized, 
 ```typescript
 import { runMLX, runMLXJSON } from "@golems/shared/lib/mlx-llm";
 ```
-- OpenAI-compatible API at `http://127.0.0.1:8080/v1/chat/completions`
-- Start server: `python3 -m mlx_lm.server --model <model> --port 8080`
+- OpenAI-compatible API at `http://127.0.0.1:8081/v1/chat/completions`
+- Start server: `python3 -m mlx_lm.server --model <model> --port 8081`
 - ENV: `MLX_URL` to override endpoint, `MLX_MODEL` for model name
 
 ### `lib/vercel-llm`
