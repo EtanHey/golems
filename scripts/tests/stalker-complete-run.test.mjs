@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
+import { createServer, get } from 'node:http';
 import { chmod, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { test } from 'node:test';
 import { completeRun, notifyDelivery } from '../stalker-complete-run.mjs';
 import { validSummary } from './fixtures/stalker-digest-summary.mjs';
@@ -22,7 +22,12 @@ async function setup(t, runName = 'theo-2026-09-08-030512') {
   const server = createServer(async (req, res) => {
     if (req.url === '/manifest.json') return res.end(JSON.stringify(manifest));
     if (req.url.includes('/evidence/')) {
-      try { return res.end(await readFile(join(repoRoot,'docs.local/dashboards/stalker',req.url.split('/stalker/')[1]))); }
+      try {
+        const mediaRoot = resolve(repoRoot, 'docs.local/dashboards/stalker');
+        const asset = resolve(mediaRoot, req.url.split('/stalker/')[1]);
+        if (!asset.startsWith(mediaRoot + sep)) { res.statusCode = 404; return res.end(); }
+        return res.end(await readFile(asset));
+      }
       catch { res.statusCode=404;return res.end(); }
     }
     try { res.end(await readFile(join(repoRoot, 'docs.local/dashboards/stalker', `${runName}.html`))); }
@@ -225,4 +230,20 @@ test('a missing card clip fails publication before a completion notification', a
   options.mediaImpl=async()=>{throw new Error('missing card clip');};
   await assert.rejects(completeRun(runDir,options),/FAILED at stage 7.*missing card clip/);
   assert.ok(!calls.some(call=>call.startsWith('Stalker COMPLETE')));
+});
+
+
+test('fixture media server rejects traversal outside its publication root', async t => {
+  const { repoRoot, options } = await setup(t);
+  await writeFile(join(repoRoot, 'fixture-private.txt'), 'private fixture sentinel');
+  const origin = new URL(options.hubOrigin);
+  const response = await new Promise((resolveResponse, reject) => {
+    get({ hostname: origin.hostname, port: origin.port,
+      path: '/dashboards/golems/stalker/evidence/../../../../fixture-private.txt' }, response => {
+      let body = ''; response.on('data', chunk => { body += chunk; });
+      response.on('end', () => resolveResponse({ status: response.statusCode, body }));
+    }).on('error', reject);
+  });
+  assert.equal(response.status, 404);
+  assert.doesNotMatch(response.body, /private fixture sentinel/);
 });
