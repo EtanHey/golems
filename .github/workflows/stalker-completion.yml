@@ -8,12 +8,14 @@ on:
       - 'scripts/stream-overnight-monitor.sh'
       - 'scripts/tests/stalker-*.test.mjs'
       - 'scripts/tests/fixtures/stalker-*.json'
+      - 'packages/claude/src/lib/notify-server*'
       - '.github/workflows/stalker-completion.yml'
   push:
     branches: [master]
     paths:
       - 'scripts/stalker-*.mjs'
       - 'scripts/tests/stalker-*.test.mjs'
+      - 'packages/claude/src/lib/notify-server*'
       - '.github/workflows/stalker-completion.yml'
 permissions:
   contents: read
@@ -24,3 +26,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Verify delivery contract
         run: node --test scripts/tests/stalker-run-contract.test.mjs
+  notification-receipt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - name: Verify notification HTTP delivery receipts
+        run: bun test packages/claude/src/bot-shared.test.ts packages/claude/src/lib/notify-server.test.ts
