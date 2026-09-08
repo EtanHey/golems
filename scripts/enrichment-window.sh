@@ -62,12 +62,20 @@ done
 # Running on Ollama silently is wasteful and confusing. Fix MLX instead.
 export BRAINLAYER_ENRICH_BACKEND=mlx
 
-MLX_BASE="${MLX_URL:-http://127.0.0.1:8080}"
+MLX_URL_OVERRIDDEN=false
+if [ -n "${MLX_URL:-}" ]; then
+    MLX_URL_OVERRIDDEN=true
+fi
+MLX_BASE="${MLX_URL:-http://127.0.0.1:8081}"
 MLX_BASE="${MLX_BASE%%/v1/*}"
 MLX_STARTED_BY_US=false
 if ! curl -sf "${MLX_BASE}/v1/models" > /dev/null 2>&1; then
+    if [ "$MLX_URL_OVERRIDDEN" = true ]; then
+        log "MLX server not responding at explicit MLX_URL=${MLX_BASE}; refusing to start a different endpoint."
+        exit 1
+    fi
     log "MLX server not running. Starting mlx_lm.server..."
-    nohup mlx_lm.server --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit --port 8080 > "$LOG_DIR/mlx-server.log" 2>&1 &
+    nohup mlx_lm.server --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit --port 8081 > "$LOG_DIR/mlx-server.log" 2>&1 &
     MLX_PID=$!
     MLX_STARTED_BY_US=true
     # Wait up to 60s for MLX to be ready

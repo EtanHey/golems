@@ -78,7 +78,7 @@ done
 # Check backend
 BACKEND="${ZIKARON_ENRICH_BACKEND:-ollama}"
 if [ "$BACKEND" = "mlx" ]; then
-  MLX_URL="${MLX_URL:-http://127.0.0.1:8080}"
+  MLX_URL="${MLX_URL:-http://127.0.0.1:8081}"
   if ! curl -sf "${MLX_URL}/v1/models" > /dev/null 2>&1; then
     log "ERROR: MLX server not running at ${MLX_URL}"
     exit 1

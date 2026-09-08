@@ -11,4 +11,4 @@ fi
 exec /Library/Frameworks/Python.framework/Versions/3.13/bin/python3 \
     -m mlx_lm server \
     --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit \
-    --port 8080
+    --port 8081
