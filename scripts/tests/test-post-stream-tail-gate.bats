@@ -9,6 +9,17 @@ setup() {
     STALKER_ROOT="$TMPDIR_/stalker-golem"
     mkdir -p "$STALKER_ROOT" "$TMPDIR_/bin"
 
+    STALKER_COMPLETION_SCRIPT="$TMPDIR_/synthetic-completion.mjs"
+    STALKER_COMPLETION_CALLS="$TMPDIR_/completion-calls"
+    cat > "$STALKER_COMPLETION_SCRIPT" <<'JS'
+#!/usr/bin/env node
+import { appendFileSync } from "node:fs";
+appendFileSync(process.env.STALKER_COMPLETION_CALLS, `${process.argv[2]}\n`);
+process.exit(Number(process.env.STALKER_COMPLETION_EXIT ?? 0));
+JS
+    chmod +x "$STALKER_COMPLETION_SCRIPT"
+    export STALKER_COMPLETION_SCRIPT STALKER_COMPLETION_CALLS
+
     FFMPEG_CALLED="$TMPDIR_/ffmpeg-called"
     export FFMPEG_CALLED
 
@@ -94,6 +105,7 @@ fi
 SH
 
     chmod +x "$TMPDIR_/bin/ffprobe" "$TMPDIR_/bin/ffmpeg" "$TMPDIR_/bin/notify" "$TMPDIR_/bin/curl" "$TMPDIR_/bin/brain-store" "$TMPDIR_/bin/brain-store-fail" "$TMPDIR_/bin/timeout"
+    ln -s "$(command -v node)" "$TMPDIR_/bin/node"
 }
 
 teardown() {
@@ -232,75 +244,54 @@ mark_downstream_stages_done() {
     [ ! -f "$tail_dir/.orphan-tail" ]
 }
 
-@test "post-stream sends Telegram digest using Drive target from ledger when no http URL exists" {
+@test "post-stream invokes synthetic completion and still ingests BrainLayer" {
     full_dir="$(make_run_dir theo-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
-    drive_target="$TMPDIR_/Brain Drive/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309"
-    printf '# Stalker Golem Drive Ledger\n\n- Drive Target: %s\n' "$drive_target" > "$full_dir/_DRIVE-LEDGER.md"
     printf '### [00:01] First gem\n' > "$full_dir/gems.md"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store" \
     BRAIN_STORE_CAPTURE="$TMPDIR_/brain-store.jsonl" \
-    TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    jq -r '.body' "$TMPDIR_/telegram-body.json" > "$TMPDIR_/telegram-body.txt"
-    grep -F -q "Brain Drive › stalker-golem/theo/2026-06-18" "$TMPDIR_/telegram-body.txt"
-    if grep -F -q "$drive_target" "$TMPDIR_/telegram-body.txt"; then
-        false
-    fi
-    grep -F -q "Stalker Morning Digest - 2026-06-18" "$TMPDIR_/telegram-body.json"
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
     [ -f "$full_dir/.stage-brainlayer.done" ]
     [ "$(jq -s 'length' "$TMPDIR_/brain-store.jsonl")" = "3" ]
-    if grep -F -qi "whatsapp" "$TMPDIR_/telegram-body.json"; then
-        false
-    fi
-    if grep -F -q "Full report: $full_dir" "$TMPDIR_/telegram-body.json"; then
-        false
-    fi
 }
 
-@test "post-stream keeps notified stage open when Telegram delivery queues" {
+@test "post-stream returns retryable failure when completion delivery fails" {
     full_dir="$(make_run_dir theo-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
-    cat > "$TMPDIR_/bin/curl" <<'SH'
-#!/bin/bash
-exit 7
-SH
-    chmod +x "$TMPDIR_/bin/curl"
-
     PATH="$TMPDIR_/bin:$PATH" \
+    STALKER_COMPLETION_EXIT=17 \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store" \
     BRAIN_STORE_CAPTURE="$TMPDIR_/brain-store.jsonl" \
-    STALKER_TELEGRAM_QUEUE_DIR="$TMPDIR_/telegram-queue" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
-    [ "$status" -eq 0 ]
+    [ "$status" -eq 75 ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
     [ ! -f "$full_dir/.stage-notified.done" ]
-    [ "$(find "$TMPDIR_/telegram-queue" -type f | wc -l | tr -d ' ')" = "1" ]
+    [ "$(jq -s 'length' "$TMPDIR_/brain-store.jsonl")" = "3" ]
 }
 
-@test "post-stream still sends Telegram digest when BrainLayer ingest fails" {
+@test "post-stream completion remains successful when BrainLayer ingest fails" {
     full_dir="$(make_run_dir theo-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAINLAYER_IMPORTANCE=bad \
-    TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    [ -f "$TMPDIR_/telegram-body.json" ]
-    [ -f "$full_dir/.stage-notified.done" ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
     [ ! -f "$full_dir/.stage-brainlayer.done" ]
 }
 
-@test "post-stream sends Telegram digest before starting BrainLayer ingest" {
+@test "post-stream invokes completion before starting BrainLayer ingest" {
     full_dir="$(make_run_dir theo-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
@@ -308,18 +299,19 @@ SH
     contract="$TMPDIR_/contract-order"
     cat > "$contract" <<'SH'
 #!/bin/bash
-printf '%s\n' "$1" >> "$CONTRACT_CALLS"
+printf 'ingest:%s\n' "$1" >> "$CONTRACT_CALLS"
 SH
     chmod +x "$contract"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_CONTRACT_SCRIPT="$contract" \
     CONTRACT_CALLS="$TMPDIR_/contract-calls" \
+    STALKER_COMPLETION_CALLS="$TMPDIR_/contract-calls" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    [ "$(sed -n '1p' "$TMPDIR_/contract-calls")" = "digest" ]
-    [ "$(sed -n '2p' "$TMPDIR_/contract-calls")" = "ingest-run" ]
+    [ "$(sed -n '1p' "$TMPDIR_/contract-calls")" = "$full_dir" ]
+    [ "$(sed -n '2p' "$TMPDIR_/contract-calls")" = "ingest:ingest-run" ]
 }
 
 @test "post-stream bounds BrainLayer ingest with an overridable timeout" {
@@ -499,7 +491,7 @@ SH
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    [ -f "$full_dir/.stage-notified.done" ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
     [ ! -f "$full_dir/.stage-brainlayer.done" ]
     grep -F -q 'status=queued' "$full_dir/.brainlayer-status"
     [ "$(jq -s 'length' "$full_dir/orphaned_stores.jsonl")" = "3" ]
@@ -526,7 +518,7 @@ SH
         [ "$status" -eq 0 ]
     done
 
-    [ "$(jq -s 'length' "$TMPDIR_/telegram-calls.jsonl")" = "2" ]
+    [ "$(jq -s 'length' "$TMPDIR_/telegram-calls.jsonl")" = "1" ]
     [ "$(jq -r '.title' "$TMPDIR_/telegram-body.json")" = "Stalker BrainLayer replay queued - 2026-06-18" ]
     [ -f "$full_dir/.stage-brainlayer-queue-notified.done" ]
 }
@@ -569,7 +561,7 @@ SH
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    [ -f "$full_dir/.stage-notified.done" ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
     [ ! -f "$full_dir/.stage-brainlayer.done" ]
     grep -F -q 'status=queued' "$full_dir/.brainlayer-status"
     [ "$(jq -s 'length' "$full_dir/orphaned_stores.jsonl")" = "3" ]
@@ -610,7 +602,7 @@ SH
     grep -F -q 'status=queued' "$full_dir/.brainlayer-status"
     [ -f "$full_dir/orphaned_stores.jsonl" ]
     [ ! -f "$full_dir/.stage-brainlayer.done" ]
-    [ -f "$full_dir/.stage-notified.done" ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
 }
 
 @test "post-stream Telegram dry-run does not skip BrainLayer ingest" {
@@ -628,6 +620,7 @@ SH
     [ "$status" -eq 0 ]
     [ -f "$full_dir/.stage-brainlayer.done" ]
     [ "$(jq -s 'length' "$TMPDIR_/brain-store.jsonl")" = "3" ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
     [ ! -f "$full_dir/.stage-notified.done" ]
     [ ! -f "$TMPDIR_/telegram-body.json" ]
 }
@@ -650,9 +643,11 @@ SH
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_CONTRACT_SCRIPT="$contract" \
     CONTRACT_CALLS="$TMPDIR_/contract-calls" \
+    TELEGRAM_BODY_FILE="$TMPDIR_/quality-alert.json" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 75 ]
     [ "$(cat "$TMPDIR_/contract-calls")" = "ingest-run" ]
+    [ "$(jq -r '.title' "$TMPDIR_/quality-alert.json")" = "Stalker FAILED at stage 6" ]
     [ ! -f "$full_dir/.stage-notified.done" ]
 }

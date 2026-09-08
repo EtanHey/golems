@@ -236,20 +236,8 @@ if stalker_stage_done "$STREAM_DIR" "process"; then
     log "Process stage complete, skipping process-stream.sh"
 else
     log "Starting process-stream.sh..."
-    "$SCRIPT_DIR/process-stream.sh" "$TARGET_VIDEO" "$TARGET_CHAT"
+    STALKER_DEFER_DELIVERY=1 "$SCRIPT_DIR/process-stream.sh" "$TARGET_VIDEO" "$TARGET_CHAT"
     mark_stalker_stage_done "$STREAM_DIR" "process"
-fi
-
-if [ "${STREAM_AUTO_ARCHIVE:-1}" != "0" ]; then
-    if stalker_stage_done "$STREAM_DIR" "archive"; then
-        log "Archive stage complete, skipping archive-stream.sh"
-    else
-        log "Starting archive-stream.sh..."
-        "$SCRIPT_DIR/archive-stream.sh" "$STREAM_DIR"
-        mark_stalker_stage_done "$STREAM_DIR" "archive"
-    fi
-else
-    log "STREAM_AUTO_ARCHIVE=0 — skipping Brain Drive archive."
 fi
 
 GEM_COUNT=0
@@ -269,25 +257,30 @@ elif [ "${STALKER_TELEGRAM_DRY_RUN:-0}" = "1" ]; then
     TELEGRAM_DRY_RUN=1
 fi
 DIGEST_QUALITY_STATUS=0
-if ! stalker_stage_done "$STREAM_DIR" "notified"; then
-    if ! stalker_require_run_quality "$STREAM_DIR" "$TARGET_CHAT" "digest"; then
-        log "Pipeline quality gate failed; digest and notified marker remain open"
+# Legacy success markers never skip the live delivery contract.
+if ! stalker_require_run_quality "$STREAM_DIR" "$TARGET_CHAT" "digest"; then
+    log "Stalker FAILED at stage 6: pipeline quality gate failed; delivery remains open"
+    DIGEST_QUALITY_STATUS=75
+    rm -f "$STREAM_DIR/.stage-brainlayer.done"
+else
+    log "Starting verified human digest, dashboard publication and notification..."
+    if ! node "${STALKER_COMPLETION_SCRIPT:-$SCRIPT_DIR/stalker-complete-run.mjs}" "$STREAM_DIR"; then
         DIGEST_QUALITY_STATUS=75
-        # The quality gate just wrote new failure telemetry. Reopen BrainLayer
-        # even if an earlier attempt completed; ingest-run skips already stored
-        # payload keys and exports only the newly pending records.
-        rm -f "$STREAM_DIR/.stage-brainlayer.done"
-    else
-        log "Starting Telegram digest..."
-        if "$CONTRACT_SCRIPT" digest "$(dirname "$STREAM_DIR")" "$DATE"; then
-            if [ "$TELEGRAM_DRY_RUN" = "1" ]; then
-                log "Telegram digest dry-run complete; notified stage left open"
-            else
-                mark_stalker_stage_done "$STREAM_DIR" "notified"
-            fi
+    fi
+fi
+
+# Compression and Drive upload are downstream of human delivery.
+if [ "$DIGEST_QUALITY_STATUS" -eq 0 ]; then
+    if [ "${STREAM_AUTO_ARCHIVE:-1}" != "0" ]; then
+        if stalker_stage_done "$STREAM_DIR" "archive"; then
+            log "Archive stage complete, skipping archive-stream.sh"
         else
-            log "WARNING: Telegram digest was not delivered; queued payloads are preserved for retry when available"
+            log "Starting archive-stream.sh..."
+            "$SCRIPT_DIR/archive-stream.sh" "$STREAM_DIR"
+            mark_stalker_stage_done "$STREAM_DIR" "archive"
         fi
+    else
+        log "STREAM_AUTO_ARCHIVE=0 — skipping Brain Drive archive."
     fi
 fi
 

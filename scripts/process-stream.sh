@@ -12,6 +12,7 @@
 # All output goes next to the video file (data stays together).
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Parse positional + flag arguments
 VIDEO=""
@@ -1513,35 +1514,16 @@ if [ "$SEGMENT_COUNT_FILES" -gt 0 ]; then
     rm -f "$OUT_DIR"/segment-*.wav
 fi
 
-if ! stalker_stage_done "$OUT_DIR" "complete-notify"; then
-    if ! stalker_require_run_quality "$OUT_DIR" "$CHAT_LOG" "complete-notify"; then
-        log "Pipeline quality gate failed; success notification and marker remain open"
-        exit 75
-    fi
-    DURATION_SECONDS=$(video_duration_seconds "$AUDIO" || echo "0")
-    if [[ "$DURATION_SECONDS" =~ ^[0-9]+$ ]]; then
-        DURATION_LABEL=$(printf "%d:%02d" $((DURATION_SECONDS / 3600)) $(((DURATION_SECONDS % 3600) / 60)))
-    else
-        DURATION_LABEL="unknown"
-    fi
-    FRAME_TOTAL=$(ls "$OUT_DIR/frames/" 2>/dev/null | wc -l | tr -d ' ')
-    TOP_SPIKES=$(grep -v "^#" "$SPIKES_FILE" 2>/dev/null | head -5 | awk '{print $4}' | tr '\n' ' ' | sed 's/[[:space:]]*$//' || true)
-    [ -z "$TOP_SPIKES" ] && TOP_SPIKES="none"
-    if [ -f "$GEMS_FILE" ]; then
-        GEMS_PATH="$GEMS_FILE"
-    else
-        GEMS_PATH="not generated"
-    fi
-    notify_stalker_telegram \
-        "Stalker Run Complete" \
-        "Stalker run complete for ${STREAMER}-${DATE}. Duration: ${DURATION_LABEL}. Segments: ${SEG_NUM} (${FAILED_SEGMENTS} failed). Frames: ${FRAME_TOTAL}. Top volume spikes: [${TOP_SPIKES}]. Gems: ${GEMS_PATH}." \
-        "default" \
-        "stalker-golem" || true
-    mark_stalker_stage_done "$OUT_DIR" "complete-notify"
+if ! stalker_require_run_quality "$OUT_DIR" "$CHAT_LOG" "complete-notify"; then
+    log "Stalker FAILED at stage 6: pipeline quality gate failed; delivery remains open"
+    exit 75
+fi
+if [ "${STALKER_DEFER_DELIVERY:-0}" != "1" ]; then
+    node "${STALKER_COMPLETION_SCRIPT:-$SCRIPT_DIR/stalker-complete-run.mjs}" "$OUT_DIR"
 fi
 
 log ""
-log "=== PROCESSING COMPLETE ==="
+log "=== MEDIA ANALYSIS FINISHED ==="
 log "Directory: $OUT_DIR"
 log "Transcript: $TRANSCRIPT ($SEG_NUM segments)"
 log "Volume spikes: $SPIKES_FILE"
