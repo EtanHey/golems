@@ -139,6 +139,20 @@ Checklist:
 Evidence: #257 merged at `61d6f50` before fix `750efdd` landed (recovered via
 #260); #256 same evening — stranded fixes.
 
+## Merge Receipts: commit message vs PR body (2026-09-08)
+
+> git log is where you look when you already know something is wrong; the PR page is where you look to find out.
+
+Eight PRs in one day had detailed receipts written only to merge commit messages, leaving their
+reasoning, verification, deliberate non-changes, and caveats invisible on the PR page.
+
+A receipt belongs on the PR body when it carries something a reader could act wrongly without: a
+caveat, a deliberate non-change, a "this does not make X safe" qualifier, or a limitation on what the
+merge proved. Pure narration of what changed need not be duplicated; the diff already says that.
+
+Append the receipt before merging; never replace the author's original description:
+`gh pr view <N> --json body --jq .body > f && cat addendum >> f && gh pr edit <N> --body-file f`
+
 ## Deploy Truth Gate (gen-12 weave E09)
 
 Fleet law for user-visible completion lives in canon #4. Before emitting `TASK_DONE` or any "done / deployed / green / render-complete" message, run the **false-green gate** on the turn (hook-enforced; not model-invocable) —
@@ -237,6 +251,9 @@ the blob is not mangled by shell quoting.
              ↳ Leads are ADMINS on Etan's repos: `--admin` is the DEFAULT.
                `reviewDecision: REVIEW_REQUIRED` is a GitHub LABEL, never a
                stop condition. See "Merge Authority" below.
+             ↳ `--body` on `gh pr merge` sets the MERGE COMMIT message, **not** the PR description.
+               If the receipt is meant to be read by a human, `gh pr edit <N> --body-file` it onto
+               the PR **before** merging.
 11. CLEANUP  git checkout main && git pull
 ```
 

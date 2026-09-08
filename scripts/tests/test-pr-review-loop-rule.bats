@@ -55,6 +55,11 @@ teardown() {
   [ "$status" -ne 0 ]
 }
 
+@test "PR merge receipts distinguish the commit message from the PR body" {
+  grep -F -- '--body` on `gh pr merge` sets the MERGE COMMIT message, **not** the PR description.' "$PR_LOOP"
+  grep -F 'git log is where you look when you already know something is wrong; the PR page is where you look to find out.' "$PR_LOOP"
+}
+
 @test "unique recurring and launchd guidance is preserved on demand" {
   grep -F 'import "../lib/load-env"' "$REPO_ROOT/skills/golem-powers/cmux-agents/SKILL.md"
   grep -F 'use a clean temporary worktree or sandbox' "$REPO_ROOT/skills/golem-powers/whats-new/SKILL.md"
