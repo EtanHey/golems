@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { lstat, open, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { basename, join, posix, resolve } from 'node:path';
+import { parseFragment } from 'parse5';
 export const MAX_LOCAL_MEDIA_BYTES = 2_000_000_000;
 export const MEDIA_RETENTION_RECEIPT = '.stalker-media-retention.json';
 const MEDIA_EXTENSION = /\.(?:3gp|aac|aiff?|avi|bmp|caf|flac|gif|jpe?g|m4a|m4v|mkv|mov|mp3|mp4|mpe?g|ogg|opus|pcm|png|tiff?|webm|webp|wav|wma)$/i;
@@ -20,6 +21,33 @@ function safeRelative(value, label = 'relative path') {
 function selection(value, label) {
   if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
   return new Set(value.map(item => safeRelative(item, label)));
+}
+function dashboardMediaReferences(dashboard, runName, availablePaths) {
+  const references = new Set();
+  // Parse inert HTML so quotes, comments, and character references follow browser rules.
+  const pending = [parseFragment(dashboard)];
+  while (pending.length) {
+    const node = pending.pop();
+    for (const child of node.childNodes ?? []) pending.push(child);
+    if (node.content) pending.push(node.content);
+    for (const attribute of node.attrs ?? []) {
+      if (!['src', 'poster', 'href'].includes(attribute.name)) continue;
+      let value = attribute.value.trim().split(/[?#]/, 1)[0];
+      if (!value || value.startsWith('/') || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value)) continue;
+      try { value = decodeURIComponent(value); }
+      catch { continue; }
+      while (value.startsWith('./')) value = value.slice(2);
+      try { value = safeRelative(value, 'dashboard media path'); }
+      catch { continue; }
+      const parts = value.split('/');
+      if (parts[0] === 'evidence') {
+        if (parts.length < 4 || parts[1] !== runName) continue;
+        value = parts.slice(3).join('/');
+      }
+      if (availablePaths.has(value)) references.add(value);
+    }
+  }
+  return references;
 }
 async function looksLikeText(absolutePath) {
   const handle = await open(absolutePath, 'r');
@@ -151,6 +179,7 @@ export async function retainRunMedia({ runDir, archiveImpl, keepPaths = [], publ
   }
   assertOptionPaths(keep, new Set(records.keys()), 'keepPaths');
   assertOptionPaths(published, new Set(records.keys()), 'publishedCopyPaths');
+  const dashboardReferences = dashboardMediaReferences(dashboard, runName, new Set(records.keys()));
   receipt.files = [...records.values()].sort((a, b) => a.relativePath.localeCompare(b.relativePath));
   receipt.status = 'retaining';
   delete receipt.failure;
@@ -161,7 +190,7 @@ export async function retainRunMedia({ runDir, archiveImpl, keepPaths = [], publ
       const source = await maybeStat(absolutePath);
       if (source?.isSymbolicLink()) throw new Error(`refusing symlink: ${record.relativePath}`);
       if (!source && !['verified', 'deleted'].includes(record.state)) throw new Error(`media source missing before remote verification: ${record.relativePath}`);
-      const dashboardReference = dashboard.includes(record.relativePath);
+      const dashboardReference = dashboardReferences.has(record.relativePath);
       const referenced = dashboardReference && !published.has(record.relativePath);
       if (!source && (keep.has(record.relativePath) || referenced)) throw new Error(`retained media is missing: ${record.relativePath}`);
       const expected = { absolutePath, relativePath: record.relativePath, runName, size: record.size, sha256: record.sha256 };
@@ -228,12 +257,13 @@ export async function verifyLocalMediaRetention({ runDir, maxRemainingBytes = MA
     if (error.code === 'ENOENT') return '';
     throw error;
   });
+  const dashboardReferences = dashboardMediaReferences(dashboard, runName, new Set(receipt.files.map(file => file.relativePath)));
   for (const record of receipt.files) {
     const expected = { absolutePath: join(runDir, record.relativePath), relativePath: record.relativePath, runName, size: record.size, sha256: record.sha256 };
     validateRemote(record.remote, expected);
     const local = current.get(record.relativePath);
     if (record.state === 'deleted' && local) throw new Error(`deleted media returned locally: ${record.relativePath}`);
-    if (record.state === 'deleted' && dashboard.includes(record.relativePath) && record.publishedCopyProven !== true) {
+    if (record.state === 'deleted' && dashboardReferences.has(record.relativePath) && record.publishedCopyProven !== true) {
       throw new Error(`dashboard media lacks independent-copy proof: ${record.relativePath}`);
     }
     if (record.state === 'retained') {

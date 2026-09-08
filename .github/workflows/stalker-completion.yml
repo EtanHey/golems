@@ -10,6 +10,8 @@ on:
       - 'scripts/tests/fixtures/stalker-*'
       - 'packages/claude/src/lib/notify-server*'
       - '.github/workflows/stalker-completion.yml'
+      - 'package.json'
+      - 'bun.lockb'
   push:
     branches: [master]
     paths:
@@ -21,6 +23,8 @@ on:
       - 'scripts/tests/stalker-*.test.mjs'
       - 'packages/claude/src/lib/notify-server*'
       - '.github/workflows/stalker-completion.yml'
+      - 'package.json'
+      - 'bun.lockb'
 permissions:
   contents: read
 jobs:
@@ -28,6 +32,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile --ignore-scripts
       - name: Verify delivery contract
         run: node --test scripts/tests/stalker-run-contract.test.mjs scripts/tests/stalker-publish.test.mjs scripts/tests/stalker-dashboard.test.mjs scripts/tests/stalker-digest-runner.test.mjs scripts/tests/stalker-digest-batches.test.mjs scripts/tests/stalker-digest-evidence.test.mjs scripts/tests/stalker-human-digest.test.mjs scripts/tests/stalker-complete-run.test.mjs scripts/tests/stalker-morning-digest.test.mjs scripts/tests/stalker-pipeline-wiring.test.mjs scripts/tests/stalker-digest-curation.test.mjs scripts/tests/stalker-digest-text.test.mjs scripts/tests/stalker-drive-archive.test.mjs scripts/tests/stalker-card-media.test.mjs scripts/tests/stalker-media-retention.test.mjs
   notification-receipt:

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@axiomhq/js": "^1.4.0",
+    "parse5": "7.3.0",
     "tmi.js": "^1.8.5"
   },
   "devDependencies": {
