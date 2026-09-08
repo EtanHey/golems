@@ -341,9 +341,9 @@ glob list is in the script header):
 
 | label | hand-written lines |
 |---|---|
-| `size:XS` | 0–20 |
-| `size:S` | 21–100 |
-| `size:M` | 101–400 |
+| `size:XS` | 0–50 |
+| `size:S` | 51–150 |
+| `size:M` | 151–400 |
 | `size:L` | over 400 |
 
 **A measured diff over 400 hand-written lines owes a one-line `size:L` why** in

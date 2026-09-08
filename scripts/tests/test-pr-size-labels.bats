@@ -35,10 +35,10 @@ STUB
 
 @test "classify honours the canon-9 thresholds at every boundary" {
   run "$SCRIPT" classify 0;   [ "$status" -eq 0 ]; [ "$output" = "size:XS" ]
-  run "$SCRIPT" classify 20;  [ "$status" -eq 0 ]; [ "$output" = "size:XS" ]
-  run "$SCRIPT" classify 21;  [ "$status" -eq 0 ]; [ "$output" = "size:S" ]
-  run "$SCRIPT" classify 100; [ "$status" -eq 0 ]; [ "$output" = "size:S" ]
-  run "$SCRIPT" classify 101; [ "$status" -eq 0 ]; [ "$output" = "size:M" ]
+  run "$SCRIPT" classify 50;  [ "$status" -eq 0 ]; [ "$output" = "size:XS" ]
+  run "$SCRIPT" classify 51;  [ "$status" -eq 0 ]; [ "$output" = "size:S" ]
+  run "$SCRIPT" classify 150; [ "$status" -eq 0 ]; [ "$output" = "size:S" ]
+  run "$SCRIPT" classify 151; [ "$status" -eq 0 ]; [ "$output" = "size:M" ]
   run "$SCRIPT" classify 400; [ "$status" -eq 0 ]; [ "$output" = "size:M" ]
   run "$SCRIPT" classify 401; [ "$status" -eq 0 ]; [ "$output" = "size:L" ]
 }
@@ -64,7 +64,7 @@ STUB
   run "$SCRIPT" compute 7 --repo golems --dry-run --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
   # repo	pr	old	new	lines  -> 30+5+10+0 = 45
-  [ "$output" = $'EtanHey/golems\t7\tnone\tsize:S\t45' ]
+  [ "$output" = $'EtanHey/golems\t7\tnone\tsize:XS\t45' ]
 }
 
 @test "compute excludes generated, lock, vendored and fixture files" {
@@ -114,7 +114,7 @@ TSV
   [ "$status" -eq 0 ]
 
   edit="$(grep '^pr edit' "$GH_LOG")"
-  [[ "$edit" == *"--add-label size:S"* ]]
+  [[ "$edit" == *"--add-label size:XS"* ]]
   [[ "$edit" == *"--remove-label size/XS"* ]]
   [[ "$edit" == *"--remove-label size:M"* ]]
   [[ "$edit" == *"--remove-label size:L"* ]]

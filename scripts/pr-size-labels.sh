@@ -30,8 +30,8 @@
 # Sizing rule
 #   count = additions + deletions across files that are NOT generated
 #           (see GENERATED_GLOBS below)
-#     count <=  20  -> size:XS
-#     count <= 100  -> size:S
+#     count <=  50  -> size:XS
+#     count <= 150  -> size:S
 #     count <= 400  -> size:M
 #     count >  400  -> size:L   (canon 9: needs a one-line why)
 #   400 is canon 9's split point, so a measured diff over that cap gets a
@@ -46,15 +46,15 @@ DEFAULT_OWNER="${PR_SIZE_LABELS_OWNER:-EtanHey}"
 # Test seam: bats points this at a stub so the suite never touches the network.
 GH_BIN="${PR_SIZE_LABELS_GH:-gh}"
 
-XS_MAX=20
-S_MAX=100
+XS_MAX=50
+S_MAX=150
 M_MAX=400
 
 # name|color|description -- the single source of truth for the scheme.
 LABEL_SPEC=(
-  "size:XS|0E8A16|Tight-loop PR size: 20 or fewer hand-written lines changed"
-  "size:S|FBCA04|Tight-loop PR size: 21-100 hand-written lines changed"
-  "size:M|D93F0B|Tight-loop PR size: 101-400 hand-written lines changed"
+  "size:XS|0E8A16|Tight-loop PR size: 50 or fewer hand-written lines changed"
+  "size:S|FBCA04|Tight-loop PR size: 51-150 hand-written lines changed"
+  "size:M|D93F0B|Tight-loop PR size: 151-400 hand-written lines changed"
   "size:L|B60205|Tight-loop PR size: over 400 hand-written lines changed; canon 9 needs a one-line why"
 )
 
@@ -110,7 +110,7 @@ usage: pr-size-labels.sh <subcommand>
   (default EtanHey).
 
   Sizing: additions + deletions over non-generated files.
-          <=20 XS, <=100 S, <=400 M, >400 L (canon 9's 400 split point).
+          <=50 XS, <=150 S, <=400 M, >400 L (canon 9's 400 split point).
 USAGE
   exit 2
 }
