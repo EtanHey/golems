@@ -31,7 +31,7 @@ export function createDriveArchive({ parentId, tokenImpl = driveAccessToken, fet
     const u = new URL(url);
     if (u.origin !== 'https://www.googleapis.com' || u.username || u.password) throw new Error('invalid Drive endpoint');
     try {
-      return await fetchImpl(url, { ...init, redirect: 'error', signal: AbortSignal.timeout(120000),
+      return await fetchImpl(url, { ...init, redirect: 'manual', signal: AbortSignal.timeout(120000),
         headers: { ...init.headers, Authorization: `Bearer ${await tokenImpl()}` } });
     } catch { throw new Error('Drive transport failed'); } // Never surface token/request objects.
   }
@@ -50,12 +50,20 @@ export function createDriveArchive({ parentId, tokenImpl = driveAccessToken, fet
   async function folder(parent, name) {
     const key = `${parent}/${name}`;
     if (folders.has(key)) return folders.get(key);
-    const existing = await children(parent, name);
-    if (existing[0] && existing[0].mimeType !== folderType) throw new Error('archive directory is not a folder');
-    const entry = existing[0] ?? await data(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, parents: [parent], mimeType: folderType }) });
-    if (!entry.id) throw new Error('Drive folder has no ID');
-    folders.set(key, entry.id); return entry.id;
+    const pending = (async () => {
+      const existing = await children(parent, name);
+      if (existing[0] && existing[0].mimeType !== folderType) throw new Error('archive directory is not a folder');
+      const entry = existing[0] ?? await data(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, parents: [parent], mimeType: folderType }) });
+      if (!entry.id) throw new Error('Drive folder has no ID');
+      return entry.id;
+    })();
+    folders.set(key, pending);
+    try { return await pending; }
+    catch (error) {
+      if (folders.get(key) === pending) folders.delete(key);
+      throw error;
+    }
   }
   function verified(entry, expected, parent, name) {
     if (!entry.id || entry.trashed !== false || entry.name !== name || !entry.parents?.includes(parent)

@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createDriveArchive } from '../stalker-drive-archive.mjs';
@@ -85,4 +86,70 @@ test('transient retries back off and reset after each acknowledged chunk', async
     return json({id:'uploaded',name:'video.mp4',parents:['run-folder'],size:String(size),sha256Checksum:hash,trashed:false});
   }});
   assert.equal((await archive(request)).size,size); assert.equal(delays.length,4); assert.ok(delays.every(ms=>ms>=1000&&ms<2000));
+});
+
+test('concurrent archives share one in-flight folder creation', async t => {
+  let creates = 0;
+  const { archive, request } = await fixture(t, async (url, init) => {
+    const parsed = new URL(url), query = parsed.searchParams.get('q') ?? '';
+    if (parsed.pathname.endsWith('/archive-parent')) return json({ id: parentId, mimeType: 'application/vnd.google-apps.folder', trashed: false });
+    if (query.includes("name = 'theo-2026-09-08'")) return json({ files: [] });
+    if (query.includes("name = 'video.mp4'")) return json({ files: [{ id: 'existing' }] });
+    if (init.method === 'POST') {
+      creates += 1;
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return json({ id: 'run-folder', mimeType: 'application/vnd.google-apps.folder' });
+    }
+    return json({ id: 'existing', name: 'video.mp4', parents: ['run-folder'], size: '3', sha256Checksum: hash, trashed: false });
+  });
+  const results = await Promise.all([archive(request), archive(request)]);
+  assert.deepEqual(results.map(result => result.id), ['existing', 'existing']);
+  assert.equal(creates, 1);
+});
+
+test('failed folder creation is evicted so a later archive can retry', async t => {
+  let creates = 0;
+  const { archive, request } = await fixture(t, async (url, init) => {
+    const parsed = new URL(url), query = parsed.searchParams.get('q') ?? '';
+    if (parsed.pathname.endsWith('/archive-parent')) return json({ id: parentId, mimeType: 'application/vnd.google-apps.folder', trashed: false });
+    if (query.includes("name = 'theo-2026-09-08'")) return json({ files: [] });
+    if (query.includes("name = 'video.mp4'")) return json({ files: [{ id: 'existing' }] });
+    if (init.method === 'POST') return ++creates === 1 ? json({}, 500) : json({ id: 'run-folder', mimeType: 'application/vnd.google-apps.folder' });
+    return json({ id: 'existing', name: 'video.mp4', parents: ['run-folder'], size: '3', sha256Checksum: hash, trashed: false });
+  });
+  await assert.rejects(archive(request), /Drive HTTP 500/);
+  assert.equal((await archive(request)).id, 'existing');
+  assert.equal(creates, 2);
+});
+
+test('native fetch exposes 308 Range without following its Location', async t => {
+  const unit = 262144, size = unit + 1, ranges = []; let followed = false;
+  const server = createServer(async (request, response) => {
+    for await (const _chunk of request) { /* consume request body */ }
+    const parsed = new URL(request.url, 'http://localhost'), query = parsed.searchParams.get('q') ?? '';
+    const send = (status, body, headers = {}) => { response.writeHead(status, { 'Content-Type': 'application/json', ...headers }); response.end(JSON.stringify(body)); };
+    if (parsed.pathname === '/must-not-follow') { followed = true; return send(500, {}); }
+    if (parsed.pathname.endsWith('/archive-parent')) return send(200, { id: parentId, mimeType: 'application/vnd.google-apps.folder', trashed: false });
+    if (query.includes("name = 'theo-2026-09-08'")) return send(200, { files: [{ id: 'run-folder', mimeType: 'application/vnd.google-apps.folder' }] });
+    if (query.includes("name = 'video.mp4'")) return send(200, { files: [] });
+    if (parsed.searchParams.get('uploadType') === 'resumable') return send(200, {}, { Location: 'https://www.googleapis.com/upload/drive/v3/files?upload_id=local-test' });
+    if (parsed.searchParams.get('upload_id') === 'local-test') {
+      const range = request.headers['content-range'];
+      ranges.push(range);
+      if (range === `bytes */${size}` || range.startsWith('bytes 0-')) return send(308, {}, { Range: `bytes=0-${unit - 1}`, Location: `${base}/must-not-follow` });
+      return send(200, { id: 'uploaded' });
+    }
+    if (parsed.pathname.endsWith('/uploaded')) return send(200, { id: 'uploaded', name: 'video.mp4', parents: ['run-folder'], size: String(size), sha256Checksum: hash, trashed: false });
+    return send(404, {});
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const address = server.address(), base = `http://127.0.0.1:${address.port}`;
+  const { request } = await fixture(t, () => {});
+  request.size = size; await writeFile(request.absolutePath, Buffer.alloc(size));
+  const archive = createDriveArchive({ parentId, chunkBytes: unit, tokenImpl: async () => 'token',
+    fetchImpl: (url, init) => { const parsed = new URL(url); return fetch(`${base}${parsed.pathname}${parsed.search}`, init); } });
+  assert.equal((await archive(request)).id, 'uploaded');
+  assert.deepEqual(ranges, [`bytes 0-${unit - 1}/${size}`, `bytes ${unit}-${unit}/${size}`]);
+  assert.equal(followed, false);
 });
