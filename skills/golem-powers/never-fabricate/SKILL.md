@@ -470,6 +470,53 @@ fixes and no investigation, or proposing a solution before tracing data flow.
 
 ---
 
+## R18: A TRUNCATED SWEEP IS A SAMPLE, NOT AN INVENTORY (golems X2, 2026-09-08)
+
+A claim that a list is complete — every reference, all call sites, the full
+inventory — must state the command and its limit. Output piped through `head` or
+`tail`, or only partly displayed, is a **sample** and must be called one.
+Partial visibility is never exhaustive evidence.
+
+**Concrete failure:** a `git grep 8080` sweep returned 33 hits, but only its first
+20 and last 8 were displayed and the result was called complete. The hidden
+middle contained `scripts/mlx-server-night-only.sh`, which bound a coding model
+on Etan's dictation-polish port nightly from 01:00–07:00. Earlier that day, a
+"complete" threshold inventory also missed two fixtures because the search found
+threshold statements but not threshold-dependent expectations.
+
+**Checklist:**
+
+- State the command and total hit count.
+- If less than the total was displayed, label it a sample.
+- Search for the thing's effects, not only its literal spelling.
+
+---
+
+## R19: A PROBE MUST NOT MUTATE WHAT IT CHECKS (golems X1/voicelayer P0-a, 2026-09-08)
+
+A readiness or health probe must never request a resource it does not expect to
+already be loaded. A listing endpoint is not proof of what is **serving**.
+
+**Concrete failure:** while verifying a health check, an agent POSTed to
+voicelayer's polish daemon on `:8080` asking for an unloaded model.
+`mlx_lm.server` attempted an on-demand load of an approximately 8 GB model and
+the daemon died; Etan's dictation polish was down for about three minutes until
+its supervisor respawned it. The voicelayer lead was about to build the same
+failure mode — "request the model by name" — and changed the design after seeing
+the timeline.
+
+**Checklist:**
+
+- Request only the resource you expect to be loaded; never use a foreign name,
+  even to test discrimination.
+- Treat an availability listing such as `GET /v1/models` as proof the service is
+  up, never proof of what it is serving.
+- Prove what is serving by asserting the identity echoed in the response to a
+  request for the expected resource.
+- A probe that can crash the thing it checks is worse than the gap it closes.
+
+---
+
 ## The Bottom Line
 
 **Read it. Parse it. Then report.**
