@@ -45,7 +45,7 @@
           "checkCommand": "set -euo pipefail; test \"$(uname -m)\" = arm64 || { echo 'mlx-lm disabled: MLX requires arm64'; exit 3; }; test -x /opt/homebrew/bin/mlx_lm.server || { echo 'missing mlx_lm.server -> /opt/homebrew/bin/pip3.13 install --break-system-packages mlx-lm'; exit 1; }; test -d \"$HOME/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-4bit\" || { echo 'missing model -> pull mlx-community/Qwen3-4B-Instruct-2507-4bit with huggingface_hub.snapshot_download'; exit 1; }",
           "provisionCommand": "set -euo pipefail; test \"$(uname -m)\" = arm64 || { echo 'mlx-lm disabled: MLX requires arm64'; exit 3; }; if [ ! -x /opt/homebrew/bin/mlx_lm.server ]; then /opt/homebrew/bin/pip3.13 install --break-system-packages mlx-lm; fi; if [ ! -d \"$HOME/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-4bit\" ]; then /opt/homebrew/bin/python3.13 -c 'from huggingface_hub import snapshot_download; snapshot_download(\"mlx-community/Qwen3-4B-Instruct-2507-4bit\")'; fi",
           "verifyCommand": "set -euo pipefail; curl -fsS --max-time 10 http://127.0.0.1:8080/v1/models | grep -q 'Qwen3-4B-Instruct-2507-4bit'; response=$(curl -fsS --max-time 45 http://127.0.0.1:8080/v1/chat/completions -H 'Content-Type: application/json' --data-binary '{\"model\":\"mlx-community/Qwen3-4B-Instruct-2507-4bit\",\"messages\":[{\"role\":\"user\",\"content\":\"Clean this transcript without changing meaning: um I I think this is is ready\"}],\"max_tokens\":64}'); printf '%s' \"$response\" | grep -q '\"choices\"'",
-          "installHint": "/opt/homebrew/bin/pip3.13 install --break-system-packages mlx-lm; pre-pull mlx-community/Qwen3-4B-Instruct-2507-4bit; verify :8080 serves Qwen3-4B-Instruct-2507-4bit and the completion probe returns choices."
+          "installHint": "/opt/homebrew/bin/pip3.13 install --break-system-packages mlx-lm; pre-pull mlx-community/Qwen3-4B-Instruct-2507-4bit; verify :8080 serves Qwen3-4B-Instruct-2507-4bit and the completion probe returns choices. Never request a model name you do not expect to be loaded on this port: requesting an unloaded model can trigger an on-demand load and kill the daemon (observed 2026-09-08). GET /v1/models is an availability list, not proof of what is serving."
         }
       ],
       "runtimeChecks": [
@@ -57,7 +57,7 @@
         {
           "id": "voicelayer-stt-polish-8080",
           "checkCommand": "set -euo pipefail; curl -fsS --max-time 10 http://127.0.0.1:8080/v1/models | grep -q 'Qwen3-4B-Instruct-2507-4bit'; response=$(curl -fsS --max-time 45 http://127.0.0.1:8080/v1/chat/completions -H 'Content-Type: application/json' --data-binary '{\"model\":\"mlx-community/Qwen3-4B-Instruct-2507-4bit\",\"messages\":[{\"role\":\"user\",\"content\":\"Clean this transcript without changing meaning: um I I think this is is ready\"}],\"max_tokens\":64}'); printf '%s' \"$response\" | grep -q '\"choices\"'",
-          "installHint": "verify :8080 serves Qwen3-4B-Instruct-2507-4bit and the OpenAI-compatible completion probe returns choices"
+          "installHint": "verify :8080 serves Qwen3-4B-Instruct-2507-4bit and the OpenAI-compatible completion probe returns choices. Never request a model name you do not expect to be loaded on this port: requesting an unloaded model can trigger an on-demand load and kill the daemon (observed 2026-09-08). GET /v1/models is an availability list, not proof of what is serving."
         }
       ],
       "gitInventory": {
