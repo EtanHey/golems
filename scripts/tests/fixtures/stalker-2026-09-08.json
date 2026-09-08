@@ -1,0 +1,14 @@
+{
+  "runName": "theo-2026-09-08-030512",
+  "description": "Incident artifact shape; synthetic contents, no recording data",
+  "files": {
+    "gems.md": "# Gems\n### [10:47] Segment 6 A discussion\n**Score:** 8/10\nScored: 2026-09-08\n",
+    "transcript.md": "# Transcript\n## [10:47] Segment 6\nA discussion.\n",
+    "signals-combined.md": "signals\n",
+    "volume-spikes.txt": "spikes\n",
+    ".stage-4-clips.done": "2026-09-08T08:45:50\n",
+    ".stage-scoring.done": "2026-09-08T08:27:00\n",
+    ".stage-process.done": "2026-09-08T08:45:50\n",
+    ".stage-complete-notify.done": "2026-09-08T08:45:50\n"
+  }
+}
