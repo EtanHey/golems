@@ -175,3 +175,19 @@ test('legacy date-only recordings retain their channel, date and dashboard URL',
   assert.equal(receipt.runName, 'theo-2026-09-08');
   assert.match(receipt.publication.url, /\/theo-2026-09-08\.html$/);
 });
+
+test('completion text leads with selected highlights instead of opening chatter', async t => {
+  const { runDir, options } = await setup(t);
+  const generate = options.generateImpl, send = options.notifyImpl;
+  let message;
+  options.generateImpl = async args => {
+    const digest = await generate(args);
+    digest.summary.topics = [{ ...digest.summary.topics[0], title: 'Opening chatter' }];
+    digest.summary.highlights = digest.summary.highlights.map(item => ({ ...item, title: 'Key coding discussion' }));
+    return digest;
+  };
+  options.notifyImpl = async (...args) => { message = args[1]; return send(...args); };
+  await completeRun(runDir, options);
+  assert.match(message, /Key coding discussion/);
+  assert.doesNotMatch(message, /Opening chatter/);
+});
