@@ -63,9 +63,9 @@ function idtClock(now) {
 
 async function eligibleRuns(stalkerRoot, date) {
   const entries = await readdir(stalkerRoot, { withFileTypes: true });
-  const pattern = new RegExp(`^.+-${date}(?:-\\d{6})?$`);
   const candidates = entries
-    .filter((entry) => entry.isDirectory() && pattern.test(entry.name))
+    .filter((entry) => entry.isDirectory()
+      && entry.name.match(/^.+-(\d{4}-\d{2}-\d{2})(?:-\d{6})?$/)?.[1] === date)
     .map((entry) => join(stalkerRoot, entry.name))
     .sort();
   const inspected = await Promise.all(candidates.map(async (runDir) => {
