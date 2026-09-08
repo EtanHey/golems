@@ -95,8 +95,16 @@ async function sendNotificationToTelegram(
     priority?: string;
     source?: string;
   },
-) {
-  const state = loadState();
+  getState: () => State,
+): Promise<
+  | { ok: true; delivered: true; message_id: number }
+  | {
+      ok: false;
+      delivered: false;
+      reason: "destination_unavailable" | "delivery_failed";
+    }
+> {
+  const state = getState();
   const config =
     SOURCE_CONFIG[data.source || "default"] || SOURCE_CONFIG.default;
   const priorityPrefix = data.priority === "high" ? "[!] " : "";
@@ -121,7 +129,11 @@ async function sendNotificationToTelegram(
 
   if (!chatId) {
     console.log("[Notify] No chat ID saved, skipping");
-    return;
+    return {
+      ok: false,
+      delivered: false,
+      reason: "destination_unavailable",
+    };
   }
 
   try {
@@ -130,20 +142,43 @@ async function sendNotificationToTelegram(
       sendOptions.message_thread_id = threadId;
     }
 
-    await bot.api.sendMessage(chatId, message, sendOptions);
+    const sentMessage = await bot.api.sendMessage(chatId, message, sendOptions);
     console.log(`[Notify] Sent: ${data.title} -> ${config.topic}`);
-  } catch (err) {
-    console.error("[Notify] Failed:", err);
+    return {
+      ok: true,
+      delivered: true,
+      message_id: sentMessage.message_id,
+    };
+  } catch {
+    console.error("[Notify] Telegram send failed");
+    return { ok: false, delivered: false, reason: "delivery_failed" };
   }
+}
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+interface NotifyServerOptions {
+  port?: number;
+  loadState?: () => State;
 }
 
 /**
  * Start the notification HTTP server.
  * Returns the Bun.Server instance for graceful shutdown.
  */
-export function startNotifyServer(bot: Bot) {
+export function startNotifyServer(
+  bot: Bot,
+  options: NotifyServerOptions = {},
+) {
+  const port = options.port ?? NOTIFY_PORT;
+  const getState = options.loadState ?? loadState;
   const server = Bun.serve({
-    port: NOTIFY_PORT,
+    port,
     hostname: "127.0.0.1",
     fetch: async (req) => {
       const url = new URL(req.url);
@@ -171,10 +206,28 @@ export function startNotifyServer(bot: Bot) {
               status: 400,
             });
           }
-          await sendNotificationToTelegram(bot, data);
-          return new Response("ok");
-        } catch (err) {
-          console.error("[Notify] Error:", err);
+          const result = await sendNotificationToTelegram(bot, data, getState);
+          if (result.ok) return jsonResponse(result);
+          if (result.reason === "destination_unavailable") {
+            return jsonResponse(
+              {
+                ok: false,
+                delivered: false,
+                error: "notification destination unavailable",
+              },
+              503,
+            );
+          }
+          return jsonResponse(
+            {
+              ok: false,
+              delivered: false,
+              error: "notification delivery failed",
+            },
+            502,
+          );
+        } catch {
+          console.error("[Notify] Request failed");
           return new Response("error", { status: 500 });
         }
       }
@@ -183,6 +236,6 @@ export function startNotifyServer(bot: Bot) {
     },
   });
 
-  console.log(`Notification server on port ${NOTIFY_PORT}`);
+  console.log(`Notification server on port ${server.port}`);
   return server;
 }
