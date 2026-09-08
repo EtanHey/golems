@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyLocalMediaRetention } from './stalker-media-retention.mjs';
 
 export const COMPLETION_RECEIPT = '.stalker-completion.json';
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -66,10 +67,11 @@ async function verifyCardMedia(html, publication, fetchImpl) {
   }
 }
 
-export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireNotification = true } = {}) {
+export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireNotification = true,
+  requireRetention = true } = {}) {
   const hashes = await artifactHashes(runDir);
   receipt ??= await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
-  if (receipt?.version !== 2 || receipt.runName !== basename(resolve(runDir))) {
+  if (receipt?.version !== 3 || receipt.runName !== basename(resolve(runDir))) {
     throw stageFailure(7, 'missing or wrong-run completion receipt');
   }
   if (Object.keys(hashes).some(key => hashes[key] !== receipt.artifacts?.[key])) {
@@ -97,13 +99,25 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
       throw new Error('dashboard absent from hub manifest');
     }
     await verifyCardMedia(bytes.toString('utf8'), publication, fetchImpl);
-  } catch (error) { throw stageFailure(7, error.message); }
-  if (requireNotification && (receipt.status !== 'complete' || receipt.notification?.accepted !== true
+  } catch (error) {
+    const failure = stageFailure(7, error.message);
+    failure.liveVerificationFailure = true;
+    throw failure;
+  }
+  const notificationStatus = ['notified', 'complete'].includes(receipt.status);
+  if (requireNotification && (!notificationStatus || receipt.notification?.accepted !== true
     || !Number.isSafeInteger(receipt.notification.messageId) || receipt.notification.messageId <= 0
     || receipt.notification.url !== url.href || !receipt.notification.body?.includes(url.href))) {
     throw stageFailure(8, 'successful completion notification must carry dashboard URL');
   }
-  return { status: requireNotification ? 'complete' : 'published', runName: receipt.runName, dashboardUrl: url.href };
+  let retention;
+  if (requireRetention) {
+    if (receipt.status !== 'complete') throw stageFailure(9, 'media retention is not complete');
+    try { retention = await verifyLocalMediaRetention({ runDir }); }
+    catch (error) { throw stageFailure(9, error.message); }
+  }
+  return { status: requireRetention ? 'complete' : requireNotification ? 'notified' : 'published',
+    runName: receipt.runName, dashboardUrl: url.href, ...(retention && { retentionVerification: retention.verification }) };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

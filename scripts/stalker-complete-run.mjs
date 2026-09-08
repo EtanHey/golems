@@ -9,6 +9,8 @@ import { buildRunDashboard } from './stalker-dashboard.mjs';
 import { parseGems } from './stalker-morning-digest.mjs';
 import { atomicWrite, configuredHubOrigin, publishRunDashboard } from './stalker-publish.mjs';
 import { artifactHashes, COMPLETION_RECEIPT, sha256, stageFailure, verifyRunDelivery } from './stalker-run-contract.mjs';
+import { createDriveArchive } from './stalker-drive-archive.mjs';
+import { retainRunMedia, verifyLocalMediaRetention } from './stalker-media-retention.mjs';
 
 // Bump whenever the digest prompt, schema or grounding validator changes.
 const DIGEST_CONTRACT_VERSION = 3;
@@ -47,53 +49,97 @@ export async function completeRun(runDir, options = {}) {
   runDir = resolve(runDir);
   const unlock = await lockRun(runDir);
   const notify = options.notifyImpl ?? notifyDelivery;
-  let stage = 6;
+  let stage = 6, receipt, preserveDeliveryReceipt = false;
   try {
-    try { return { ...(await verifyRunDelivery(runDir, { fetchImpl: options.fetchImpl })), skipped: true }; }
-    catch { /* Missing, stale or incomplete delivery must go through the contract again. */ }
-    for (const file of [COMPLETION_RECEIPT, '.stage-complete-notify.done', '.stage-notified.done']) await rm(join(runDir, file), { force: true });
     const name = basename(runDir), match = name.match(/^(.+)-(\d{4}-\d{2}-\d{2})(?:-\d{6})?$/);
     if (!match) throw stageFailure(6, 'run directory must be channel-YYYY-MM-DD[-HHMMSS]');
     const [, channel, date] = match;
+    receipt = await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
+    let initialError;
+    if (receipt?.status !== 'notified') {
+      try { return { ...(await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl })), skipped: true }; }
+      catch (error) { initialError = error; }
+    }
+    if (receipt?.version === 3 && receipt.status === 'complete' && initialError?.stage === 9) {
+      // Survivors cannot reconstruct the custody evidence for deleted originals.
+      preserveDeliveryReceipt = true;
+      throw initialError;
+    }
+    let resumeRetention = false;
+    if (receipt?.version === 3 && ['notified', 'complete'].includes(receipt.status)) {
+      if (initialError?.liveVerificationFailure) {
+        preserveDeliveryReceipt = true;
+        throw initialError;
+      }
+      try {
+        await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
+        resumeRetention = true;
+        preserveDeliveryReceipt = true;
+      } catch (error) {
+        if (error.liveVerificationFailure) {
+          preserveDeliveryReceipt = true;
+          throw error;
+        }
+        receipt = null;
+      }
+    }
+    for (const file of ['.stage-complete-notify.done', '.stage-notified.done']) await rm(join(runDir, file), { force: true });
     const repoRoot = resolve(options.repoRoot ?? REPO_ROOT);
     const orchestratorRoot = resolve(options.orchestratorRoot ?? join(dirname(repoRoot), 'orchestrator'));
     const config = await readFile(join(repoRoot, 'docs.local/stalker-golem/delivery-config.json'), 'utf8').then(JSON.parse).catch(() => ({}));
-    const hubOrigin = options.hubOrigin ?? ((process.env.TAILNET_HUB_HOST || process.env.STALKER_DASHBOARD_BASE)
-      ? configuredHubOrigin() : config.hubOrigin ?? configuredHubOrigin());
-    const dashboardUrl = `${new URL(hubOrigin).origin}/dashboards/${basename(repoRoot)}/stalker/${name}.html`;
-    const gemsMarkdown = await readFile(join(runDir, 'gems.md'), 'utf8');
-    if (!/Scored:|\*Scored \d+\/\d+ segments/.test(gemsMarkdown) || !parseGems(gemsMarkdown).length) throw stageFailure(6, 'completed gems are required');
-    const inputHash = sha256(Buffer.concat([await readFile(join(runDir, 'transcript.md')), Buffer.from(gemsMarkdown)]));
-    const cachePath = join(runDir, '.stalker-digest.json');
-    let digest = await readFile(cachePath, 'utf8').then(JSON.parse).catch(() => null);
-    if (digest?.contractVersion !== DIGEST_CONTRACT_VERSION || digest?.inputHash !== inputHash || digest?.dashboardUrl !== dashboardUrl) {
-      digest = { ...(await (options.generateImpl ?? generateHumanDigest)({ runDir, date, channel, dashboardUrl })), inputHash, dashboardUrl, contractVersion: DIGEST_CONTRACT_VERSION };
-      await atomicWrite(cachePath, JSON.stringify(digest));
+    if (!resumeRetention) {
+      await rm(join(runDir, COMPLETION_RECEIPT), { force: true });
+      const hubOrigin = options.hubOrigin ?? ((process.env.TAILNET_HUB_HOST || process.env.STALKER_DASHBOARD_BASE)
+        ? configuredHubOrigin() : config.hubOrigin ?? configuredHubOrigin());
+      const dashboardUrl = `${new URL(hubOrigin).origin}/dashboards/${basename(repoRoot)}/stalker/${name}.html`;
+      const gemsMarkdown = await readFile(join(runDir, 'gems.md'), 'utf8');
+      if (!/Scored:|\*Scored \d+\/\d+ segments/.test(gemsMarkdown) || !parseGems(gemsMarkdown).length) throw stageFailure(6, 'completed gems are required');
+      const inputHash = sha256(Buffer.concat([await readFile(join(runDir, 'transcript.md')), Buffer.from(gemsMarkdown)]));
+      const cachePath = join(runDir, '.stalker-digest.json');
+      let digest = await readFile(cachePath, 'utf8').then(JSON.parse).catch(() => null);
+      if (digest?.contractVersion !== DIGEST_CONTRACT_VERSION || digest?.inputHash !== inputHash || digest?.dashboardUrl !== dashboardUrl) {
+        digest = { ...(await (options.generateImpl ?? generateHumanDigest)({ runDir, date, channel, dashboardUrl })), inputHash, dashboardUrl, contractVersion: DIGEST_CONTRACT_VERSION };
+        await atomicWrite(cachePath, JSON.stringify(digest));
+      }
+      await atomicWrite(join(runDir, 'digest.md'), digest.markdown);
+      await atomicWrite(join(runDir, '.stage-6-digest.done'), new Date().toISOString());
+      stage = 7;
+      const { items: selected } = await (options.mediaImpl ?? prepareCardMedia)({ runDir, summary: digest.summary });
+      const assets = selected.flatMap(gem => [gem.clip, gem.frame].filter(Boolean));
+      const html = buildRunDashboard({ date, channel, runName: name, summary: digest.summary, cardMedia: selected });
+      const publication = await publishRunDashboard({ runDir, repoRoot, orchestratorRoot, hubOrigin, html,
+        assets, syncImpl: options.syncImpl });
+      receipt = { version: 3, runName: name, status: 'published', artifacts: await artifactHashes(runDir), publication,
+        retention: { keepPaths: assets } };
+      await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireNotification: false, requireRetention: false });
+      await atomicWrite(join(runDir, '.stage-7-publish.done'), new Date().toISOString());
+      stage = 8;
+      const body = `Dashboard: ${publication.url}\n\n${digest.summary.highlights.slice(0, 3).map(item => `[${item.timestamp}] ${item.title}`).join('\n')}\n\n${digest.summary.highlights.length} highlights · ${digest.summary.claims.length} claims worth checking`;
+      const notification = await notify(`Stalker dashboard ready — ${channel} ${date}`, body);
+      receipt.notification = { ...notification, url: publication.url };
+      receipt.status = 'notified';
+      if (notification?.accepted !== true || !Number.isSafeInteger(notification.messageId) || notification.messageId <= 0
+        || !notification.body?.includes(publication.url)) throw stageFailure(8, 'notification has no valid dashboard delivery receipt');
+      // Preserve the real send before another fallible network verification.
+      await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
+      preserveDeliveryReceipt = true;
+      await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
     }
-    await atomicWrite(join(runDir, 'digest.md'), digest.markdown);
-    await atomicWrite(join(runDir, '.stage-6-digest.done'), new Date().toISOString());
-    stage = 7;
-    const { items: selected } = await (options.mediaImpl ?? prepareCardMedia)({ runDir, summary: digest.summary });
-    const html = buildRunDashboard({ date, channel, runName: name, summary: digest.summary, cardMedia: selected });
-    const publication = await publishRunDashboard({ runDir, repoRoot, orchestratorRoot, hubOrigin, html,
-      assets: selected.flatMap(gem => [gem.clip, gem.frame].filter(Boolean)), syncImpl: options.syncImpl });
-    const receipt = { version: 2, runName: name, status: 'published', artifacts: await artifactHashes(runDir), publication };
-    await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireNotification: false });
-    await atomicWrite(join(runDir, '.stage-7-publish.done'), new Date().toISOString());
-    stage = 8;
-    const body = `Dashboard: ${publication.url}\n\n${digest.summary.highlights.slice(0, 3).map(item => `[${item.timestamp}] ${item.title}`).join('\n')}\n\n${digest.summary.highlights.length} highlights · ${digest.summary.claims.length} claims worth checking`;
-    const notification = await notify(`Stalker COMPLETE — ${channel} ${date}`, body);
-    receipt.notification = { ...notification, url: publication.url };
+    stage = 9;
+    const archiveImpl = options.archiveImpl ?? createDriveArchive({ parentId: options.driveArchiveParentId ?? config.driveArchiveParentId });
+    await retainRunMedia({ runDir, archiveImpl, keepPaths: receipt.retention?.keepPaths ?? [] });
+    await verifyLocalMediaRetention({ runDir });
     receipt.status = 'complete';
     const result = await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl });
     await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
     for (const marker of ['.stage-complete-notify.done', '.stage-notified.done']) await atomicWrite(join(runDir, marker), new Date().toISOString());
     await rm(join(runDir, '.stalker-failure.json'), { force: true });
-    console.log(`Stalker COMPLETE: ${publication.url}`);
+    console.log(`Stalker COMPLETE: ${receipt.publication.url}`);
     return result;
   } catch (error) {
-    for (const file of [COMPLETION_RECEIPT, '.stage-complete-notify.done', '.stage-notified.done']) await rm(join(runDir, file), { force: true });
     const failure = { status: 'failed', stage: error.stage ?? stage, reason: error.message, ts: new Date().toISOString() };
+    if (failure.stage !== 9 && !preserveDeliveryReceipt) await rm(join(runDir, COMPLETION_RECEIPT), { force: true });
+    for (const file of ['.stage-complete-notify.done', '.stage-notified.done']) await rm(join(runDir, file), { force: true });
     console.error(`Stalker FAILED at stage ${failure.stage}: ${failure.reason}`);
     await atomicWrite(join(runDir, '.stalker-failure.json'), JSON.stringify(failure, null, 2));
     await notify(`Stalker FAILED at stage ${failure.stage}`, `${basename(runDir)}: ${failure.reason}`.slice(0, 900), 'high').catch(() => console.error('Stalker failure notification also FAILED'));
