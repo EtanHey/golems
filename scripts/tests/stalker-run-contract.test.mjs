@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { artifactHashes, verifyRunDelivery, sha256 } from '../stalker-run-contract.mjs';
+import { MEDIA_RETENTION_RECEIPT } from '../stalker-media-retention.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/stalker-2026-09-08.json', import.meta.url)));
 async function setup(t, delivered = true) {
@@ -30,14 +31,22 @@ async function setup(t, delivered = true) {
   const origin = `http://127.0.0.1:${server.address().port}`;
   const url = `${origin}/${manifest.included[0].linkPath}`;
   const receipt = {
-    version: 2, runName: fixture.runName, status: 'complete',
+    version: 3, runName: fixture.runName, status: 'complete',
     artifacts: await artifactHashes(runDir),
     publication: { url, manifestUrl: `${origin}/manifest.json`, ...manifest.included[0], media:['clip.mp4','frame.jpg'].map(name=>({path:`evidence/${name}`,size:mediaBytes.length,sha256:sha256(mediaBytes)})) },
     notification: { accepted: true, messageId: 123, url, body: `Stalker complete. Dashboard: ${url}` },
   };
   const save = () => writeFile(join(runDir, '.stalker-completion.json'), JSON.stringify(receipt));
   await save();
+  await saveRetention(runDir);
   return { runDir, receipt, save, responses };
+}
+
+async function saveRetention(runDir) {
+  await writeFile(join(runDir, MEDIA_RETENTION_RECEIPT), JSON.stringify({
+    version: 1, runName: fixture.runName, status: 'complete', files: [],
+    totals: { beforeBytes: 0, afterBytes: 0, freedBytes: 0 },
+  }));
 }
 
 test('September 8 ratchet: processing markers and gems cannot make a run COMPLETE', async t => {
@@ -47,7 +56,9 @@ test('September 8 ratchet: processing markers and gems cannot make a run COMPLET
 
 test('COMPLETE requires matching live HTML, hub manifest, artifacts and notified URL', async t => {
   const { runDir } = await setup(t);
-  assert.equal((await verifyRunDelivery(runDir)).status, 'complete');
+  const result = await verifyRunDelivery(runDir);
+  assert.equal(result.status, 'complete');
+  assert.equal(result.retentionVerification, 'local-receipt-only');
 });
 
 test('replaced gems invalidate a previously delivered run', async t => {
@@ -136,4 +147,25 @@ test('every dashboard card must carry a video and a published poster', async t =
   responses.html=responses.html.replace('</article>','</article><article>A card with no clip</article>');
   await writeFile(join(runDir,'dashboard.html'),responses.html);receipt.artifacts=await artifactHashes(runDir);await save();
   await assert.rejects(verifyRunDelivery(runDir),/stage 7.*card/);
+});
+
+test('version 3 COMPLETE requires local retention while interim publication can explicitly opt out', async t => {
+  const {runDir,receipt,save}=await setup(t);
+  await rm(join(runDir,MEDIA_RETENTION_RECEIPT));
+  await assert.rejects(verifyRunDelivery(runDir),/stage 9/);
+  assert.equal((await verifyRunDelivery(runDir,{receipt,requireNotification:false,requireRetention:false})).status,'published');
+  await saveRetention(runDir);
+  assert.equal((await verifyRunDelivery(runDir)).status,'complete');
+});
+
+test('a valid notified receipt fails default verification at retention stage 9', async t => {
+  const {runDir,receipt,save}=await setup(t);
+  receipt.status='notified';await save();
+  await assert.rejects(verifyRunDelivery(runDir),/FAILED at stage 9.*retention/);
+});
+
+test('legacy version 2 completion receipts cannot satisfy retention-aware COMPLETE', async t => {
+  const {runDir,receipt,save}=await setup(t);
+  receipt.version=2;await save();
+  await assert.rejects(verifyRunDelivery(runDir),/missing or wrong-run completion receipt/);
 });
