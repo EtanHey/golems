@@ -10,9 +10,10 @@ set -euo pipefail
 
 CHANNEL="${1:-theo}"
 DATE="${2:-$(date +%Y-%m-%d)}"
-STREAM_DIR="$HOME/Gits/golems/docs.local/stalker-golem/${CHANNEL}-${DATE}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STREAM_ROOT="$HOME/Gits/golems/docs.local/stalker-golem"
+STREAM_DIR="${STALKER_RUN_DIR:-$STREAM_ROOT/${CHANNEL}-${DATE}}"
 CHECK_INTERVAL=600  # 10 minutes
-SUMMARY_FILE="$STREAM_DIR/morning-summary.md"
 
 log() { echo "[monitor $(date '+%H:%M:%S')] $1"; }
 
@@ -28,8 +29,30 @@ notify() {
 # Track state
 LAST_VIDEO_SIZE=0
 VIDEO_STALL_COUNT=0
-PIPELINE_DONE=false
 RECORDING_DONE=false
+
+check_delivery() {
+    if [ -z "${STALKER_RUN_DIR:-}" ]; then
+        for candidate in "$STREAM_ROOT/${CHANNEL}-${DATE}"-*; do
+            [ ! -d "$candidate" ] || STREAM_DIR="$candidate"
+        done
+    fi
+    local receipt
+    if receipt=$(node "$SCRIPT_DIR/stalker-run-contract.mjs" "$STREAM_DIR" 2>&1); then
+        local dashboard_url
+        dashboard_url=$(printf '%s' "$receipt" | node -e 'let s="";process.stdin.on("data",b=>s+=b);process.stdin.on("end",()=>console.log(JSON.parse(s).dashboardUrl))')
+        printf '# Morning Summary: %s (%s)\n\n## Pipeline Status: COMPLETE\n\nDashboard: %s\n' "$CHANNEL" "$DATE" "$dashboard_url" > "$STREAM_DIR/morning-summary.md"
+        log "PIPELINE COMPLETE — verified dashboard and notification: $dashboard_url"
+        return 0
+    fi
+    if [ "${STALKER_MONITOR_ONCE:-0}" = "1" ]; then log "$receipt"; fi
+    return 75
+}
+
+if [ "${STALKER_MONITOR_ONCE:-0}" = "1" ]; then
+    check_delivery
+    exit $?
+fi
 
 log "=== Overnight Monitor: ${CHANNEL} (${DATE}) ==="
 log "Stream dir: $STREAM_DIR"
@@ -37,6 +60,7 @@ log "Check interval: ${CHECK_INTERVAL}s"
 notify "Monitor Started" "Watching ${CHANNEL} stream overnight. Will notify when pipeline completes."
 
 while true; do
+    if check_delivery; then exit 0; fi
     # --- Check 1: Is stream-watcher process alive? ---
     WATCHER_PID=$(pgrep -f "stream-watcher.sh.*${CHANNEL}" || echo "")
     if [ -z "$WATCHER_PID" ]; then
@@ -90,83 +114,7 @@ while true; do
         log "Pipeline running (PID: $PROCESS_PID)"
     fi
 
-    # --- Check 5: Did pipeline complete? (gems.md or transcript.md exists) ---
-    GEMS_FILE="$STREAM_DIR/gems.md"
-    TRANSCRIPT="$STREAM_DIR/transcript.md"
-
-    if [ -f "$GEMS_FILE" ] && [ "$PIPELINE_DONE" = false ]; then
-        PIPELINE_DONE=true
-        log "PIPELINE COMPLETE — gems.md found!"
-
-        # Count gems and get stats
-        GEM_COUNT=$(grep -c "^### \[" "$GEMS_FILE" 2>/dev/null || echo 0)
-        CHAT_LINES=$(wc -l < "$STREAM_DIR/chat.log" 2>/dev/null || echo 0)
-        TRANSCRIPT_SEGS=$(grep -c "^## \[" "$TRANSCRIPT" 2>/dev/null || echo 0)
-        CLIP_COUNT=$(ls "$STREAM_DIR/clips/" 2>/dev/null | wc -l | tr -d ' ')
-        FRAME_COUNT=$(ls "$STREAM_DIR/frames/" 2>/dev/null | wc -l | tr -d ' ')
-        VIDEO_SIZE_MB=$(( $(stat -f%z "$VIDEO_FILE" 2>/dev/null || echo 0) / 1024 / 1024 ))
-        DISK_TOTAL=$(du -sh "$STREAM_DIR" | cut -f1)
-
-        # --- Build morning summary ---
-        log "Building morning summary..."
-        cat > "$SUMMARY_FILE" << SUMMARY_EOF
-# Morning Summary: ${CHANNEL} (${DATE})
-
-## Pipeline Status: COMPLETE
-
-| Metric | Value |
-|--------|-------|
-| Video | ${VIDEO_SIZE_MB}MB |
-| Chat messages | ${CHAT_LINES} |
-| Transcript segments | ${TRANSCRIPT_SEGS} |
-| Gems found | ${GEM_COUNT} |
-| Clips extracted | ${CLIP_COUNT} |
-| Frames captured | ${FRAME_COUNT} |
-| Total disk | ${DISK_TOTAL} |
-
-## Top Gems
-
-$(head -80 "$GEMS_FILE" | grep -A3 "^### \[" || echo "No gems found")
-
-## Files
-
-- Video: \`${VIDEO_FILE}\`
-- Gems: \`${GEMS_FILE}\`
-- Transcript: \`${TRANSCRIPT}\`
-- Chat: \`${STREAM_DIR}/chat.log\`
-- Clips: \`${STREAM_DIR}/clips/\`
-- Frames: \`${STREAM_DIR}/frames/\`
-SUMMARY_EOF
-
-        log "Morning summary written to $SUMMARY_FILE"
-
-        # --- Notify ---
-        notify "Stream Pipeline Done" "${CHANNEL}: ${GEM_COUNT} gems, ${TRANSCRIPT_SEGS} segments, ${CLIP_COUNT} clips. Summary ready."
-
-        # --- Verify nothing got deleted ---
-        MISSING=""
-        [ ! -f "$VIDEO_FILE" ] && MISSING="${MISSING} video.mp4"
-        [ ! -f "$TRANSCRIPT" ] && MISSING="${MISSING} transcript.md"
-        [ ! -f "$GEMS_FILE" ] && MISSING="${MISSING} gems.md"
-
-        if [ -n "$MISSING" ]; then
-            log "WARNING: Missing files:${MISSING}"
-            notify "Pipeline Warning" "Missing files:${MISSING}"
-        else
-            log "All pipeline outputs verified present."
-        fi
-
-        log "Monitor done. Summary at: $SUMMARY_FILE"
-        exit 0
-
-    elif [ "$RECORDING_DONE" = true ] && [ "$PIPELINE_DONE" = false ]; then
-        # Recording done but pipeline hasn't produced gems yet
-        if [ -f "$TRANSCRIPT" ]; then
-            log "Pipeline in progress: transcript exists, waiting for gems..."
-        else
-            log "Waiting for pipeline to start/complete..."
-        fi
-    fi
+    log "Delivery is not verified yet; gems or legacy markers alone do not complete a run."
 
     # --- Check 6: Video file still exists (not deleted) ---
     if [ "$RECORDING_DONE" = true ] && [ ! -f "$VIDEO_FILE" ]; then
