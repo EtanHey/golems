@@ -78,8 +78,10 @@ test("waits for in-flight workers after the first failure and schedules no more"
   const workDir = join(root, ".digest-work");
   roots.push(root);
   await mkdir(workDir, { recursive: true });
+  let startFirst;
   let startSecond;
   let releaseSecond;
+  const firstStarted = new Promise((resolve) => { startFirst = resolve; });
   const secondStarted = new Promise((resolve) => { startSecond = resolve; });
   const secondRelease = new Promise((resolve) => { releaseSecond = resolve; });
   const failure = new Error("first map failed");
@@ -94,23 +96,27 @@ test("waits for in-flight workers after the first failure and schedules no more"
     inputForBatch: JSON.stringify,
     validateResult: (value) => value,
     runImpl: async ({ diagnosticLabel, outputPath }) => {
-      calls.push(diagnosticLabel);
       if (diagnosticLabel === "human-digest-map-001") {
+        startFirst();
         await secondStarted;
+        calls.push(diagnosticLabel);
         throw failure;
       }
+      calls.push(diagnosticLabel);
       startSecond();
       await secondRelease;
       secondSettled = true;
       await writeFile(outputPath, "{}");
     },
   });
-  await secondStarted;
-  await new Promise((resolve) => setImmediate(resolve));
+  await Promise.all([firstStarted, secondStarted]);
   assert.equal(secondSettled, false);
-  assert.deepEqual(calls, ["human-digest-map-001", "human-digest-map-002"]);
+  assert.equal(calls[0], "human-digest-map-002", "test harness forces reversed startup");
+  assert.equal(calls.length, 2);
+  assert.deepEqual(new Set(calls), new Set(["human-digest-map-001", "human-digest-map-002"]));
   releaseSecond();
   await assert.rejects(running, (error) => error === failure);
   assert.equal(secondSettled, true);
-  assert.deepEqual(calls, ["human-digest-map-001", "human-digest-map-002"]);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(new Set(calls), new Set(["human-digest-map-001", "human-digest-map-002"]));
 });
