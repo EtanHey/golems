@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
-import { stageFailure } from './stalker-run-contract.mjs';
+import { sha256, stageFailure } from './stalker-run-contract.mjs';
 
 export async function atomicWrite(path, content) {
   await mkdir(dirname(path), { recursive: true });
@@ -51,11 +51,14 @@ export async function publishRunDashboard({ runDir, repoRoot, orchestratorRoot, 
     const evidenceRoot = join(sourceRoot, 'evidence', runName);
     const selected = [...new Set(assets)];
     for (const asset of selected) {
-      if (!/^(?:clips\/clip-\d+m\d+s\.mp4|frames\/frame-\d+m\d+s\.jpg)$/.test(asset)) throw new Error('invalid publication asset');
-      if (!(await stat(join(runDir, asset))).isFile()) throw new Error('publication asset is not a file');
+      if (!/^(?:card-media\/)?(?:clips\/clip-\d+m\d+s\.mp4|frames\/frame-\d+m\d+s\.jpg)$/.test(asset)) throw new Error('invalid publication asset');
+      const info = await stat(join(runDir, asset));
+      if (!info.isFile()) throw new Error('publication asset is not a file');
+      if (!info.size || info.size > 250 * 1024 * 1024) throw new Error('publication media exceeds size budget or is empty');
     }
     await mkdir(evidenceRoot, { recursive: true });
     const revision = randomUUID();
+    const media = [];
     const versionRoot = join(evidenceRoot, revision);
     const staging = await mkdtemp(join(sourceRoot, `.${runName}-new-`));
     const name = `${runName}.html`;
@@ -67,6 +70,9 @@ export async function publishRunDashboard({ runDir, repoRoot, orchestratorRoot, 
         const target = join(staging, asset);
         await mkdir(dirname(target), { recursive: true });
         await copyFile(join(runDir, asset), target);
+        const info = await stat(target);
+        if (!info.size || info.size > 250 * 1024 * 1024) throw new Error('publication media exceeds size budget or is empty');
+        media.push({ path: `evidence/${runName}/${revision}/${asset}`, size: info.size, sha256: sha256(await readFile(target)) });
       }
       await rename(staging, versionRoot);
       const publishedHtml = html.replaceAll(`evidence/${runName}/`, `evidence/${runName}/${revision}/`);
@@ -93,7 +99,7 @@ export async function publishRunDashboard({ runDir, repoRoot, orchestratorRoot, 
     const linkPath = `dashboards/${repoName}/stalker/${name}`;
     return {
       url: `${origin.origin}/${linkPath}`, manifestUrl: `${origin.origin}/manifest.json`, linkPath,
-      sourceRelative: `${repoName}/docs.local/dashboards/stalker/${name}`,
+      sourceRelative: `${repoName}/docs.local/dashboards/stalker/${name}`, media,
     };
   } catch (error) { throw stageFailure(7, error.message); }
 }
