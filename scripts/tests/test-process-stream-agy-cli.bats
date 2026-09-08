@@ -4,9 +4,10 @@
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-    PROCESS_STREAM="$REPO_ROOT/scripts/process-stream.sh"
+    REAL_PROCESS_STREAM="$REPO_ROOT/scripts/process-stream.sh"
     TMPDIR_="$(mktemp -d)"
     FAKE_BIN="$TMPDIR_/bin"
+    PROCESS_STREAM="$TMPDIR_/process-stream-scoring-only"
     AGY_ARGS_FILE="$TMPDIR_/agy-args.txt"
     CODEX_ARGS_FILE="$TMPDIR_/codex-args.txt"
     CODEX_TIMEOUT_FILE="$TMPDIR_/codex-timeout.txt"
@@ -14,6 +15,13 @@ setup() {
     mkdir -p "$TMPDIR_/home/Gits/golems"
     : > "$TMPDIR_/home/Gits/golems/.env"
     export AGY_ARGS_FILE CODEX_ARGS_FILE CODEX_TIMEOUT_FILE
+
+    # This suite owns scoring behavior only; completion has dedicated tests.
+    cat > "$PROCESS_STREAM" <<SH
+#!/bin/bash
+exec env STALKER_DEFER_DELIVERY=1 "$REAL_PROCESS_STREAM" "\$@"
+SH
+    chmod +x "$PROCESS_STREAM"
 
 cat > "$FAKE_BIN/agy" <<'SH'
 #!/bin/bash
