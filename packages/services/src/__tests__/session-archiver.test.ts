@@ -14,7 +14,9 @@ import {
 } from "bun:test";
 import {
   existsSync,
+  chmodSync,
   mkdirSync,
+  readdirSync,
   rmSync,
   writeFileSync,
   readFileSync,
@@ -23,10 +25,11 @@ import {
 } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
+import { createHash } from "crypto";
 import { decodeProjectPath } from "../session-archiver";
 
 // Test directories (isolated from production)
-const TEST_BASE = "/tmp/session-archiver-test";
+const TEST_BASE = join(__dirname, ".session-archiver-test");
 const TEST_CLAUDE_DIR = join(TEST_BASE, ".claude");
 const TEST_PROJECTS_DIR = join(TEST_CLAUDE_DIR, "projects");
 const TEST_ARCHIVE_DIR = join(TEST_BASE, ".claude-archive");
@@ -639,6 +642,11 @@ describe("Session Archiver - Zikaron Verified Cleanup", () => {
 describe("Session Archiver - Integration (Dry Run)", () => {
   // Use dirname-relative path to find the archiver source reliably
   const ARCHIVER_SRC = join(__dirname, "..", "session-archiver.ts");
+  const SERVICES_PKG_DIR = join(__dirname, "..", "..");
+
+  afterAll(() => {
+    rmSync(TEST_BASE, { recursive: true, force: true });
+  });
 
   it("should have archiver source at expected location", () => {
     expect(existsSync(ARCHIVER_SRC)).toBe(true);
@@ -655,9 +663,14 @@ describe("Session Archiver - Integration (Dry Run)", () => {
     expect(source).toContain("projects");
   });
 
+  it("routes archive batch removal through the recoverable Trash path", () => {
+    const source = readFileSync(ARCHIVER_SRC, "utf-8");
+    expect(source).not.toContain("rmSync(batchPath");
+    expect(source).toContain("moveToTrash(batchPath)");
+  });
+
   it("should run without JS runtime errors in dry-run mode", () => {
     // Use dirname to find the package root reliably
-    const servicesPkgDir = join(__dirname, "..", "..");
     const isolatedHome = join(TEST_BASE, "integration-home");
     rmSync(isolatedHome, { recursive: true, force: true });
     mkdirSync(join(isolatedHome, ".claude", "projects"), { recursive: true });
@@ -667,7 +680,7 @@ describe("Session Archiver - Integration (Dry Run)", () => {
     let result: string;
     try {
       result = execSync("bun src/session-archiver.ts 2>&1", {
-        cwd: servicesPkgDir,
+        cwd: SERVICES_PKG_DIR,
         encoding: "utf-8",
         env: {
           ...process.env,
@@ -685,5 +698,126 @@ describe("Session Archiver - Integration (Dry Run)", () => {
     expect(result).not.toContain("ReferenceError");
     expect(result).not.toContain("TypeError");
     expect(result).not.toContain("SyntaxError");
+  });
+
+  it("retains an indexed session without a verified durable copy", () => {
+    const isolatedHome = join(TEST_BASE, "retention-invariant-home");
+    const batchDir = join(
+      isolatedHome,
+      ".claude-archive",
+      "test-project",
+      "archive-2026-09-08T21-00-00",
+    );
+    const brainLayerDir = join(
+      isolatedHome,
+      ".local",
+      "share",
+      "brainlayer",
+    );
+    const fakeBinDir = join(isolatedHome, "bin");
+    const fakeSqlite = join(fakeBinDir, "sqlite3");
+
+    rmSync(isolatedHome, { recursive: true, force: true });
+    mkdirSync(join(isolatedHome, ".claude", "projects"), {
+      recursive: true,
+    });
+    mkdirSync(batchDir, { recursive: true });
+    mkdirSync(brainLayerDir, { recursive: true });
+    mkdirSync(join(isolatedHome, ".Trash"), { recursive: true });
+    mkdirSync(fakeBinDir, { recursive: true });
+
+    const sessionContent = '{"type":"user","message":"retain every byte"}\n';
+    writeFileSync(join(batchDir, "indexed-only.jsonl"), sessionContent);
+    writeFileSync(
+      join(batchDir, "manifest.json"),
+      JSON.stringify({
+        archivedAt: "2026-09-08T21:00:00.000Z",
+        projectId: "test-project",
+        originalPath: "/Users/test/project",
+        sessions: [
+          {
+            uuid: "indexed-only",
+            originalMtime: "2026-09-01T00:00:00.000Z",
+            size: Buffer.byteLength(sessionContent),
+            hasSubdir: false,
+          },
+        ],
+        metadata: {
+          archiver_version: "1.1.0",
+          sessions_kept: 7,
+          total_archived: 1,
+          total_size_bytes: Buffer.byteLength(sessionContent),
+        },
+      }),
+    );
+    writeFileSync(join(brainLayerDir, "brainlayer.db"), "fixture");
+    writeFileSync(fakeSqlite, "#!/bin/sh\nprintf '1\\n'\n");
+    chmodSync(fakeSqlite, 0o755);
+
+    const result = execSync("bun src/session-archiver.ts --execute 2>&1", {
+      cwd: SERVICES_PKG_DIR,
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        HOME: isolatedHome,
+        PATH: `${fakeBinDir}:${process.env.PATH || ""}`,
+      },
+      timeout: 30000,
+    });
+
+    expect(result).toContain("no verified durable copy — retaining 1 batches");
+    expect(existsSync(batchDir)).toBe(true);
+    expect(readFileSync(join(batchDir, "indexed-only.jsonl"), "utf-8")).toBe(
+      sessionContent,
+    );
+  });
+
+  it("records the exact session byte hash in new archive manifests", () => {
+    const isolatedHome = join(TEST_BASE, "manifest-hash-home");
+    const projectDir = join(
+      isolatedHome,
+      ".claude",
+      "projects",
+      "-missing-project",
+    );
+    const sessionPath = join(projectDir, "hash-source.jsonl");
+    const sessionContent =
+      '{"type":"user","message":"preserve bytes 🧪"}\n{"tool":"result"}\n';
+
+    rmSync(isolatedHome, { recursive: true, force: true });
+    mkdirSync(projectDir, { recursive: true });
+    mkdirSync(join(isolatedHome, ".claude-archive"), { recursive: true });
+    mkdirSync(join(isolatedHome, ".Trash"), { recursive: true });
+    writeFileSync(sessionPath, sessionContent);
+    const oldMtime = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    utimesSync(sessionPath, oldMtime, oldMtime);
+
+    const result = execSync("bun src/session-archiver.ts --execute 2>&1", {
+      cwd: SERVICES_PKG_DIR,
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        HOME: isolatedHome,
+      },
+      timeout: 30000,
+    });
+
+    const projectArchive = join(isolatedHome, ".claude-archive", "project");
+    const batches = readdirSync(projectArchive);
+    expect(batches).toHaveLength(1);
+
+    const batchDir = join(projectArchive, batches[0]);
+    const manifest = JSON.parse(
+      readFileSync(join(batchDir, "manifest.json"), "utf-8"),
+    );
+    const expectedSha256 = createHash("sha256")
+      .update(Buffer.from(sessionContent))
+      .digest("hex");
+
+    expect(manifest.sessions[0].sha256).toBe(expectedSha256);
+    expect(readFileSync(join(batchDir, "hash-source.jsonl"), "utf-8")).toBe(
+      sessionContent,
+    );
+    expect(result).toContain("no verified durable copy — retaining 1 batches");
   });
 });

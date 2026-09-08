@@ -25,7 +25,7 @@ import {
 } from "fs";
 import { join, basename, dirname } from "path";
 import { homedir } from "os";
-import { spawnSync } from "child_process";
+import { createHash } from "crypto";
 
 // Configuration
 // Keep sessions from the last N DAYS of activity (not N sessions!)
@@ -95,6 +95,7 @@ interface ArchiveManifest {
     uuid: string;
     originalMtime: string;
     size: number;
+    sha256?: string;
     hasSubdir: boolean;
     firstMessageTimestamp?: string;
     gitBranch?: string;
@@ -105,6 +106,15 @@ interface ArchiveManifest {
     total_archived: number;
     total_size_bytes: number;
   };
+}
+
+interface DurableArchiveObject {
+  objectPath: string;
+  sha256: string;
+}
+
+interface DurableArchiveRegistry {
+  findSurvivingObject(sha256: string): DurableArchiveObject | null;
 }
 
 /**
@@ -391,11 +401,15 @@ function archiveSessions(
       }
 
       const metadata = extractSessionMetadata(session.path);
+      const sha256 = createHash("sha256")
+        .update(readFileSync(session.path))
+        .digest("hex");
 
       manifestSessions.push({
         uuid: session.uuid,
         originalMtime: session.mtime.toISOString(),
         size: session.size,
+        sha256,
         hasSubdir: session.hasSubdir,
         firstMessageTimestamp: metadata.timestamp,
         gitBranch: metadata.gitBranch,
@@ -553,71 +567,37 @@ function cleanupExtraDirectories(dryRun: boolean): number {
   return totalCleaned;
 }
 
-// BrainLayer DB path (sqlite-vec with indexed sessions)
-const BRAINLAYER_DB_PATH = (() => {
-  const blPath = join(
-    homedir(),
-    ".local",
-    "share",
-    "brainlayer",
-    "brainlayer.db",
-  );
-  if (existsSync(blPath)) return blPath;
-  // Legacy fallback
-  const legacyPath = join(
-    homedir(),
-    ".local",
-    "share",
-    "zikaron",
-    "zikaron.db",
-  );
-  if (existsSync(legacyPath)) return legacyPath;
-  return blPath; // Default to new path
-})();
-
 /**
- * Check if a session UUID has been indexed by BrainLayer
- * Uses sqlite3 CLI with spawnSync to avoid shell injection
+ * No durable-copy registry exists yet. The BrainLayer retention lane owns that
+ * integration; returning null here makes local cleanup fail closed meanwhile.
  */
-function isSessionIndexedInBrainLayer(
-  sessionUuid: string,
-  projectEncodedPath: string,
-): boolean {
-  if (!existsSync(BRAINLAYER_DB_PATH)) return false;
+function getDurableArchiveRegistry(): DurableArchiveRegistry | null {
+  return null;
+}
 
-  try {
-    const sourcePath = join(
-      CLAUDE_PROJECTS_DIR,
-      projectEncodedPath,
-      `${sessionUuid}.jsonl`,
-    );
-    // Escape single quotes for SQL safety (spawnSync already prevents shell injection)
-    const escapedPath = sourcePath.replace(/'/g, "''");
-    const result = spawnSync(
-      "sqlite3",
-      [
-        BRAINLAYER_DB_PATH,
-        `SELECT COUNT(*) FROM chunks WHERE source_file = '${escapedPath}'`,
-      ],
-      { encoding: "utf-8", timeout: 5000 },
-    );
-    if (result.status !== 0) return false;
-    return parseInt((result.stdout || "").trim(), 10) > 0;
-  } catch {
-    return false;
-  }
+function hasVerifiedDurableCopy(
+  session: ArchiveManifest["sessions"][number],
+  registry: DurableArchiveRegistry | null,
+): boolean {
+  if (!session.sha256 || !registry) return false;
+
+  const archiveObject = registry.findSurvivingObject(session.sha256);
+  return (
+    archiveObject !== null &&
+    archiveObject.sha256 === session.sha256 &&
+    existsSync(archiveObject.objectPath)
+  );
 }
 
 /**
- * Clean up archived sessions that BrainLayer has already indexed.
- * Deletes local archive copies to free disk space.
+ * Clean up archived sessions only after an exact durable copy is verified.
  */
 function cleanupVerifiedArchives(dryRun: boolean): {
   deleted: number;
   sizeFreed: number;
 } {
   console.log("\n" + "=".repeat(60));
-  console.log("Cleaning Verified Archives (BrainLayer-indexed → delete local)");
+  console.log("Cleaning Verified Archives (durable-copy verified → trash local)");
   console.log("=".repeat(60));
 
   if (!existsSync(LOCAL_ARCHIVE_DIR)) {
@@ -625,13 +605,10 @@ function cleanupVerifiedArchives(dryRun: boolean): {
     return { deleted: 0, sizeFreed: 0 };
   }
 
-  if (!existsSync(BRAINLAYER_DB_PATH)) {
-    console.log("  BrainLayer DB not found — skipping cleanup");
-    return { deleted: 0, sizeFreed: 0 };
-  }
-
   let totalDeleted = 0;
   let totalSizeFreed = 0;
+  let retainedBatches = 0;
+  const durableArchiveRegistry = getDurableArchiveRegistry();
 
   const projectDirs = readdirSync(LOCAL_ARCHIVE_DIR);
 
@@ -646,53 +623,54 @@ function cleanupVerifiedArchives(dryRun: boolean): {
       if (!statSync(batchPath).isDirectory()) continue;
 
       const manifestPath = join(batchPath, "manifest.json");
-      if (!existsSync(manifestPath)) continue;
+      if (!existsSync(manifestPath)) {
+        retainedBatches++;
+        console.log(`  Keeping: ${batchPath} (missing manifest)`);
+        continue;
+      }
 
       let manifest: ArchiveManifest;
       try {
         manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
       } catch {
+        retainedBatches++;
+        console.log(`  Keeping: ${batchPath} (invalid manifest)`);
         continue;
       }
 
-      // Find the encoded project path from the original path
-      const encodedPath =
-        manifest.originalPath === "/"
-          ? "-"
-          : "-" + manifest.originalPath.slice(1).replace(/\//g, "-");
-
-      let batchAllIndexed = true;
       let batchSize = 0;
+      const batchHasVerifiedDurableCopies =
+        manifest.sessions.length > 0 &&
+        manifest.sessions.every((session) => {
+          if (!session.sha256) return false;
+          return hasVerifiedDurableCopy(session, durableArchiveRegistry);
+        });
 
       for (const session of manifest.sessions) {
-        const indexed = isSessionIndexedInBrainLayer(session.uuid, encodedPath);
-        if (!indexed) {
-          batchAllIndexed = false;
-          break;
-        }
         batchSize += session.size;
       }
 
-      if (batchAllIndexed && manifest.sessions.length > 0) {
+      if (batchHasVerifiedDurableCopies) {
         console.log(
-          `  ${dryRun ? "[DRY RUN] Would delete" : "Deleting"}: ${batchPath} (${manifest.sessions.length} sessions, ${(batchSize / 1024 / 1024).toFixed(1)} MB)`,
+          `  ${dryRun ? "[DRY RUN] Would move to Trash" : "Moving to Trash"}: ${batchPath} (${manifest.sessions.length} sessions, ${(batchSize / 1024 / 1024).toFixed(1)} MB)`,
         );
 
         if (!dryRun) {
           try {
-            rmSync(batchPath, { recursive: true });
+            moveToTrash(batchPath);
             totalDeleted += manifest.sessions.length;
             totalSizeFreed += batchSize;
           } catch (err) {
-            console.error(`    ERROR deleting ${batchPath}: ${err}`);
+            console.error(`    ERROR moving ${batchPath} to Trash: ${err}`);
           }
         } else {
           totalDeleted += manifest.sessions.length;
           totalSizeFreed += batchSize;
         }
-      } else if (!batchAllIndexed) {
+      } else {
+        retainedBatches++;
         console.log(
-          `  Keeping: ${batchPath} (not all sessions indexed by BrainLayer)`,
+          `  Keeping: ${batchPath} (no verified durable copy)`,
         );
       }
     }
@@ -708,7 +686,10 @@ function cleanupVerifiedArchives(dryRun: boolean): {
   }
 
   console.log(
-    `  ${dryRun ? "Would delete" : "Deleted"}: ${totalDeleted} verified sessions (${(totalSizeFreed / 1024 / 1024).toFixed(1)} MB)`,
+    `  ${dryRun ? "Would move" : "Moved"}: ${totalDeleted} verified sessions to Trash (${(totalSizeFreed / 1024 / 1024).toFixed(1)} MB)`,
+  );
+  console.log(
+    `  no verified durable copy — retaining ${retainedBatches} batches`,
   );
 
   return { deleted: totalDeleted, sizeFreed: totalSizeFreed };
