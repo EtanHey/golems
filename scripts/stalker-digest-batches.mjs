@@ -45,7 +45,7 @@ export async function runDigestMaps({
   if (batches.length === 0) throw new Error("cannot map an empty digest source");
   await mkdir(workDir, { recursive: true });
   const entries = await readdir(workDir);
-  await Promise.all(entries.filter((name) => /^human-digest-map-[0-9]+\.(?:json|stdout\.log|stderr\.log)$/.test(name))
+  await Promise.all(entries.filter((name) => /^human-digest-map-[0-9]+(?:-retry)?\.(?:json|stdout\.log|stderr\.log)$/.test(name))
     .map((name) => rm(join(workDir, name), { force: true })));
   const schemaPath = join(workDir, "human-digest-map-schema.json");
   await writeFile(schemaPath, `${JSON.stringify(mapSchema, null, 2)}\n`);
@@ -58,27 +58,37 @@ export async function runDigestMaps({
       const label = `human-digest-map-${String(index + 1).padStart(3, "0")}`;
       const outputPath = join(workDir, `${label}.json`);
       try {
-        await rm(outputPath, { force: true });
-        await runImpl({
-          input: inputForBatch(batches[index], index, batches.length),
-          outputPath,
-          schemaPath,
-          cwd: workDir,
-          model,
-          reasoningEffort,
-          timeoutMs,
-          diagnosticLabel: label,
-        });
-        const raw = await readFile(outputPath, "utf8").catch((error) => {
-          throw new Error(`${label} produced no output: ${error.message}`);
-        });
-        let parsed;
-        try {
-          parsed = JSON.parse(raw);
-        } catch (error) {
-          throw new Error(`${label} output is not valid JSON: ${error.message}`);
+        let feedback = '';
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (firstError) throw firstError;
+          await rm(outputPath, { force: true });
+          await runImpl({
+            input: inputForBatch(batches[index], index, batches.length) + feedback,
+            outputPath,
+            schemaPath,
+            cwd: workDir,
+            model,
+            reasoningEffort,
+            timeoutMs,
+            diagnosticLabel: attempt === 0 ? label : `${label}-retry`,
+          });
+          try {
+            const raw = await readFile(outputPath, "utf8").catch((error) => {
+              throw new Error(`${label} produced no output: ${error.message}`);
+            });
+            let parsed;
+            try {
+              parsed = JSON.parse(raw);
+            } catch (error) {
+              throw new Error(`${label} output is not valid JSON: ${error.message}`);
+            }
+            results[index] = validateResult(parsed, batches[index], index);
+            break;
+          } catch (error) {
+            if (attempt === 1) throw error;
+            feedback = `\nThe previous output failed validation: ${String(error.message).slice(0, 300)}\nReturn a corrected complete JSON object. Copy exact excerpts from their cited segments and account for every timestamp.\n`;
+          }
         }
-        results[index] = validateResult(parsed, batches[index], index);
       } catch (error) {
         firstError ??= error;
       }
