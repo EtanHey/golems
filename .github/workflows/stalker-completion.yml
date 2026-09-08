@@ -1,0 +1,26 @@
+name: stalker-completion
+on:
+  pull_request:
+    paths:
+      - 'scripts/stalker-*.mjs'
+      - 'scripts/process-stream.sh'
+      - 'scripts/post-stream.sh'
+      - 'scripts/stream-overnight-monitor.sh'
+      - 'scripts/tests/stalker-*.test.mjs'
+      - 'scripts/tests/fixtures/stalker-*.json'
+      - '.github/workflows/stalker-completion.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'scripts/stalker-*.mjs'
+      - 'scripts/tests/stalker-*.test.mjs'
+      - '.github/workflows/stalker-completion.yml'
+permissions:
+  contents: read
+jobs:
+  completion-ratchet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify delivery contract
+        run: node --test scripts/tests/stalker-run-contract.test.mjs
