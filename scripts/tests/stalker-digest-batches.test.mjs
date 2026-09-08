@@ -51,6 +51,28 @@ test("coverage requires every batch timestamp exactly once and in order", () => 
   assert.throws(() => assertExactBatchCoverage(["00:30", "00:00"], batch), /coverage mismatch/);
 });
 
+test("invalid model output gets one corrective retry without repeating valid batches", async () => {
+  const workDir = join(process.cwd(), `.test-stalker-digest-batches-${process.pid}-retry`);
+  roots.push(workDir);
+  const calls = [];
+  const request = {
+    items: [{timestamp: '00:00'}, {timestamp: '00:10'}], maxBatchBytes: 25, concurrency: 1, workDir,
+    mapSchema: {}, inputForBatch: batch => JSON.stringify(batch),
+    validateResult: value => { if (!value.valid) throw new Error('excerpt is not grounded'); return value; },
+    runImpl: async ({input, outputPath, diagnosticLabel}) => {
+      calls.push({input, diagnosticLabel});
+      await writeFile(outputPath, JSON.stringify({valid: diagnosticLabel.endsWith('001') || diagnosticLabel.endsWith('-retry')}));
+    },
+  };
+  assert.equal((await runDigestMaps(request)).length, 2);
+  assert.deepEqual(calls.map(({diagnosticLabel}) => diagnosticLabel), ['human-digest-map-001', 'human-digest-map-002', 'human-digest-map-002-retry']);
+  assert.match(calls[2].input, /excerpt is not grounded/);
+  calls.length = 0;
+  request.runImpl = async ({outputPath}) => { calls.push({}); await writeFile(outputPath, '{"valid":false}'); };
+  await assert.rejects(runDigestMaps(request), /not grounded/);
+  assert.equal(calls.length, 2);
+});
+
 test("waits for in-flight workers after the first failure and schedules no more", async () => {
   const root = join(process.cwd(), `.test-stalker-digest-batches-${process.pid}-failure`);
   const workDir = join(root, ".digest-work");
