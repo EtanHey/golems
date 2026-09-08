@@ -51,7 +51,7 @@ export async function publishRunDashboard({ runDir, repoRoot, orchestratorRoot, 
     const evidenceRoot = join(sourceRoot, 'evidence', runName);
     const selected = [...new Set(assets)];
     for (const asset of selected) {
-      if (!/^(?:card-media\/)?(?:clips\/clip-\d+m\d+s\.mp4|frames\/frame-\d+m\d+s\.jpg)$/.test(asset)) throw new Error('invalid publication asset');
+      if (!/^(?:(?:card-media|card-media-v2)\/)?(?:clips\/clip-\d+m\d+s\.mp4|frames\/frame-\d+m\d+s\.jpg)$/.test(asset)) throw new Error('invalid publication asset');
       const info = await stat(join(runDir, asset));
       if (!info.isFile()) throw new Error('publication asset is not a file');
       if (!info.size || info.size > 250 * 1024 * 1024) throw new Error('publication media exceeds size budget or is empty');

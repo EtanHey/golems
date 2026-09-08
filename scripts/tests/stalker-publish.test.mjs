@@ -59,6 +59,9 @@ test('unsafe assets, absent selected media and sync failures never report public
   await mkdir(runDir, { recursive: true });
   const options = { runDir, repoRoot, orchestratorRoot: join(root, 'orc'), hubOrigin: 'https://hub.example', html: '<!doctype html>', syncImpl: async () => {} };
   await assert.rejects(publishRunDashboard({ ...options, assets: ['../private.txt'] }), /stage 7.*asset/);
+  await assert.rejects(publishRunDashboard({ ...options, assets: ['card-media-v2/../private.txt'] }), /stage 7.*asset/);
+  await assert.rejects(publishRunDashboard({ ...options, assets: ['card-media-v20/clips/clip-1m00s.mp4'] }), /stage 7.*asset/);
+  await assert.rejects(publishRunDashboard({ ...options, assets: ['card-media-v2/clips/not-a-clip.mp4'] }), /stage 7.*asset/);
   await assert.rejects(publishRunDashboard({ ...options, assets: ['clips/clip-1m00s.mp4'] }), /stage 7/);
   await assert.rejects(publishRunDashboard({ ...options, syncImpl: async () => { throw new Error('sync failed'); } }), /stage 7.*sync failed/);
   await assert.rejects(publishRunDashboard({ ...options, hubOrigin: 'https://dashboards.example.invalid' }), /stage 7/);
@@ -100,14 +103,20 @@ test('every-card context media is copied independently of raw run media', async 
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const repoRoot = join(root, 'golems'), runDir = join(root, 'theo-2026-09-08');
-  const clip = 'card-media/clips/clip-10m47s.mp4', frame = 'card-media/frames/frame-10m47s.jpg';
-  for (const asset of [clip, frame]) { await mkdir(join(runDir, asset, '..'), {recursive:true}); await writeFile(join(runDir, asset), asset); }
-  const html = `<html><video src="evidence/theo-2026-09-08/${clip}" poster="evidence/theo-2026-09-08/${frame}"></video></html>`;
-  await publishRunDashboard({runDir,repoRoot,html,assets:[clip,frame],hubOrigin:'https://hub.example',syncImpl:async()=>{}});
+  const assets = [
+    'card-media/clips/clip-10m47s.mp4',
+    'card-media/frames/frame-10m47s.jpg',
+    'card-media-v2/clips/clip-32m13s.mp4',
+    'card-media-v2/frames/frame-32m13s.jpg',
+  ];
+  for (const asset of assets) { await mkdir(join(runDir, asset, '..'), {recursive:true}); await writeFile(join(runDir, asset), asset); }
+  const html = `<html>${assets.map(asset => `<a href="evidence/theo-2026-09-08/${asset}">${asset}</a>`).join('')}</html>`;
+  await publishRunDashboard({runDir,repoRoot,html,assets,hubOrigin:'https://hub.example',syncImpl:async()=>{}});
   const published = await readFile(join(runDir,'dashboard.html'),'utf8');
   const version = published.match(/evidence\/theo-2026-09-08\/([^/]+)\//)[1];
   await rm(join(runDir,'card-media'), {recursive:true});
-  for (const asset of [clip,frame]) assert.equal(await readFile(join(repoRoot,'docs.local/dashboards/stalker/evidence/theo-2026-09-08',version,asset),'utf8'),asset);
+  await rm(join(runDir,'card-media-v2'), {recursive:true});
+  for (const asset of assets) assert.equal(await readFile(join(repoRoot,'docs.local/dashboards/stalker/evidence/theo-2026-09-08',version,asset),'utf8'),asset);
 });
 
 

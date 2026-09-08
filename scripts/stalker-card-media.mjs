@@ -7,8 +7,15 @@ import { promisify } from "node:util";
 import { cleanTranscript } from "./stalker-digest-evidence.mjs";
 
 const execFileAsync = promisify(execFile);
-const RECEIPT_VERSION = 1;
-const CONTEXT_SECONDS = 20;
+const RECEIPT_VERSION = 2;
+const LEAD_IN_SECONDS = 20;
+const DEFAULT_FOLLOW_UP_SECONDS = 90;
+const CLIP_WINDOW_PLAN_NAME = ".stalker-clip-windows.json";
+const CLIP_POLICY = Object.freeze({
+  leadInSeconds: LEAD_IN_SECONDS,
+  defaultFollowUpSeconds: DEFAULT_FOLLOW_UP_SECONDS,
+  explicitEnds: "absolute-no-extra-tail",
+});
 const MAX_CLIP_BYTES = 250 * 1024 * 1024;
 const PROCESS_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -100,10 +107,55 @@ function stableEqual(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+async function readClipWindowPlan({ absoluteRunDir, transcriptSha256, citedTimestamps, segments, sourceDuration }) {
+  const path = join(absoluteRunDir, CLIP_WINDOW_PLAN_NAME);
+  let bytes;
+  try {
+    bytes = await readFile(path);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw new Error(`cannot read clip-window plan ${path}: ${error.message}`);
+  }
+  let plan;
+  try {
+    plan = JSON.parse(bytes.toString("utf8"));
+  } catch (error) {
+    throw new Error(`invalid clip-window plan ${path}: ${error.message}`);
+  }
+  if (!plan || Array.isArray(plan) || typeof plan !== "object" || plan.version !== 1
+    || !/^[a-f0-9]{64}$/.test(plan.transcriptSha256 ?? "")
+    || !plan.ends || Array.isArray(plan.ends) || typeof plan.ends !== "object") {
+    throw new Error(`invalid clip-window plan ${path}`);
+  }
+  if (plan.transcriptSha256 !== transcriptSha256) {
+    throw new Error("clip-window plan transcriptSha256 does not match transcript.md");
+  }
+  const cited = new Set(citedTimestamps);
+  const ends = new Map();
+  for (const [timestamp, endSeconds] of Object.entries(plan.ends)) {
+    if (!cited.has(timestamp)) throw new Error(`clip-window plan has unknown cited timestamp ${timestamp}`);
+    if (!Number.isFinite(endSeconds)) throw new Error(`clip-window plan end for ${timestamp} must be finite`);
+    const segment = segments.get(timestamp);
+    const segmentEnd = timestampSeconds(timestamp) + segment.durationSeconds;
+    if (endSeconds < segmentEnd) throw new Error(`clip-window plan end for ${timestamp} precedes transcript segment end`);
+    if (endSeconds > sourceDuration) throw new Error(`clip-window plan end for ${timestamp} exceeds source duration`);
+    ends.set(timestamp, endSeconds);
+  }
+  return {
+    ends,
+    identity: {
+      path: CLIP_WINDOW_PLAN_NAME,
+      version: 1,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      transcriptSha256: plan.transcriptSha256,
+    },
+  };
+}
+
 export async function prepareCardMedia({
   runDir,
   summary,
-  outputDir = join(resolve(runDir ?? ""), "card-media"),
+  outputDir = join(resolve(runDir ?? ""), "card-media-v2"),
   ffmpegImpl = defaultFfmpeg,
   ffprobeImpl = defaultFfprobe,
   renameImpl = rename,
@@ -116,9 +168,11 @@ export async function prepareCardMedia({
   }
   const sourcePath = join(absoluteRunDir, "video.mp4");
   const transcriptPath = join(absoluteRunDir, "transcript.md");
-  const transcript = await readFile(transcriptPath, "utf8").catch((error) => {
+  const transcriptBytes = await readFile(transcriptPath).catch((error) => {
     throw new Error(`cannot read transcript ${transcriptPath}: ${error.message}`);
   });
+  const transcript = transcriptBytes.toString("utf8");
+  const transcriptSha256 = createHash("sha256").update(transcriptBytes).digest("hex");
   const receiptPath = join(absoluteOutputDir, "receipt.json");
   const prior = await readFile(receiptPath, "utf8").then(JSON.parse).catch(() => null);
   const sourceStat = await stat(sourcePath).catch(() => null);
@@ -139,12 +193,22 @@ export async function prepareCardMedia({
   if (collections.some((items) => !Array.isArray(items))) throw new Error("summary must contain topics, highlights, and claims arrays");
   const timestamps = [...new Set(collections.flat().map(({ timestamp }) => timestamp))]
     .sort((a, b) => timestampSeconds(a) - timestampSeconds(b));
+  for (const timestamp of timestamps) {
+    if (!segments.has(timestamp)) throw new Error(`invalid timestamp ${timestamp}: no matching transcript segment`);
+  }
+  const clipWindowPlan = await readClipWindowPlan({
+    absoluteRunDir,
+    transcriptSha256,
+    citedTimestamps: timestamps,
+    segments,
+    sourceDuration: source.durationSeconds,
+  });
   const items = timestamps.map((timestamp) => {
     const evidenceSeconds = timestampSeconds(timestamp);
     const segment = segments.get(timestamp);
-    if (!segment) throw new Error(`invalid timestamp ${timestamp}: no matching transcript segment`);
-    const startSeconds = Math.max(0, evidenceSeconds - CONTEXT_SECONDS);
-    const endSeconds = Math.min(source.durationSeconds, evidenceSeconds + segment.durationSeconds + CONTEXT_SECONDS);
+    const startSeconds = Math.max(0, evidenceSeconds - LEAD_IN_SECONDS);
+    const endSeconds = clipWindowPlan?.ends.get(timestamp)
+      ?? Math.min(source.durationSeconds, evidenceSeconds + segment.durationSeconds + DEFAULT_FOLLOW_UP_SECONDS);
     if (!(endSeconds > startSeconds)) throw new Error(`invalid clip bounds for ${timestamp}`);
     const name = timestampName(timestamp);
     const prefix = outputRelative ? `${outputRelative}/` : "";
@@ -160,8 +224,9 @@ export async function prepareCardMedia({
   const provenance = {
     version: RECEIPT_VERSION,
     source,
-    transcriptSha256: createHash("sha256").update(transcript).digest("hex"),
-    contextSeconds: CONTEXT_SECONDS,
+    transcriptSha256,
+    clipPolicy: CLIP_POLICY,
+    clipWindowPlan: clipWindowPlan?.identity ?? null,
     items,
   };
   if (prior?.version === RECEIPT_VERSION && stableEqual(prior.provenance, provenance)) {
