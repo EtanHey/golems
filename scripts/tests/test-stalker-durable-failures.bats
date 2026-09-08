@@ -14,6 +14,17 @@ setup() {
     CONTRACT_CALLS="$TMPDIR_/contract-calls.txt"
     mkdir -p "$FAKE_BIN"
 
+    STALKER_COMPLETION_SCRIPT="$TMPDIR_/synthetic-completion.mjs"
+    STALKER_COMPLETION_CALLS="$TMPDIR_/completion-calls"
+    cat > "$STALKER_COMPLETION_SCRIPT" <<'JS'
+#!/usr/bin/env node
+import { appendFileSync } from "node:fs";
+appendFileSync(process.env.STALKER_COMPLETION_CALLS, `${process.argv[2]}\n`);
+process.exit(Number(process.env.STALKER_COMPLETION_EXIT ?? 0));
+JS
+    chmod +x "$STALKER_COMPLETION_SCRIPT"
+    export STALKER_COMPLETION_SCRIPT STALKER_COMPLETION_CALLS
+
     cat > "$FAKE_BIN/telegram-capture" <<'SH'
 #!/bin/bash
 cat >> "$ALERTS_FILE"
@@ -29,6 +40,7 @@ for arg in "$@"; do output="$arg"; done
 printf 'clip\n' > "$output"
 SH
     chmod +x "$FAKE_BIN/telegram-capture" "$FAKE_BIN/ffprobe" "$FAKE_BIN/ffmpeg"
+    ln -s "$(command -v node)" "$FAKE_BIN/node"
     export ALERTS_FILE
 }
 
@@ -272,11 +284,13 @@ SH
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/empty-home" \
         ALERTS_FILE="$ALERTS_FILE" \
+        STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
+        STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         "$SCRIPT_DIR/process-stream.sh" "$stream_dir/video.mp4" "$stream_dir/chat.log"
 
     [ "$status" -eq 0 ]
-    [ -f "$stream_dir/.stage-complete-notify.done" ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
     [ ! -f "$stream_dir/.stage-scoring.failed" ]
 }
 
@@ -435,6 +449,8 @@ SH
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
         CONTRACT_CALLS="$CONTRACT_CALLS" \
+        STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
+        STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_CONTRACT_SCRIPT="$contract" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
@@ -475,7 +491,7 @@ SH
     [ -f "$stream_dir/.stage-run-quality.failed" ]
     grep -F -q 'gem_count=0' "$stream_dir/.stage-run-quality.failed"
     grep -F -q 'chat_count=0' "$stream_dir/.stage-run-quality.failed"
-    [ "$(grep -c 'Stalker Pipeline Failure' "$ALERTS_FILE")" -eq 1 ]
+    [ "$(jq -s 'map(select(.title == "Stalker FAILED at stage 6")) | length' "$ALERTS_FILE")" -eq 1 ]
 }
 
 @test "morning digest reports dropped run evidence and exits retryably" {
@@ -770,7 +786,7 @@ EOF
         && "$output" == *"DROPPED (not counted above): theo-2026-08-19-2100"* ]]
 }
 
-@test "post-stream marks notified after a normal reconnect digest with an orphan tail" {
+@test "post-stream completion remains eligible beside an orphan tail" {
     stream_dir="$(make_post_fixture)"
     orphan_dir="$(dirname "$stream_dir")/theo-2026-07-10-040000"
     mkdir -p "$orphan_dir"
@@ -782,46 +798,38 @@ EOF
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
+        STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
+        STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
 
-    [[ "$status" -eq 0 \
-        && -f "$stream_dir/.stage-notified.done" \
-        && "$(grep -c 'Stalker Morning Digest - 2026-07-10' "$ALERTS_FILE")" -eq 1 \
-        && "$(grep -c 'DROPPED (not counted above): theo-2026-07-10-040000' "$ALERTS_FILE")" -eq 1 \
-        && "$(grep -c 'Stalker Morning Digest FAILED' "$ALERTS_FILE")" -eq 0 ]]
+    [ "$status" -eq 0 ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
-@test "post-stream logs digest failure branch and keeps notified retryable" {
+@test "post-stream returns retryably when completion fails" {
     stream_dir="$(make_post_fixture)"
     printf '[00:00:01] viewer: hello\n' > "$stream_dir/chat.log"
     printf '# Gems\n\n### [00:10] A real gem\n' > "$stream_dir/gems.md"
-    contract="$TMPDIR_/digest-failure-contract"
-    cat > "$contract" <<'SH'
-#!/bin/bash
-if [ "$1" = "digest" ]; then
-    exit 75
-fi
-exit 0
-SH
-    chmod +x "$contract"
-
     run env -i \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
-        STALKER_CONTRACT_SCRIPT="$contract" \
+        STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
+        STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
+        STALKER_COMPLETION_EXIT=17 \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
 
-    [[ "$status" -eq 0 \
-        && "$output" == *"WARNING: Telegram digest was not delivered; queued payloads are preserved for retry when available"* \
-        && ! -f "$stream_dir/.stage-notified.done" ]]
+    [ "$status" -eq 75 ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
+    [ ! -f "$stream_dir/.stage-notified.done" ]
 }
 
-@test "post-stream suppresses empty digest and keeps notified stage retryable" {
+@test "post-stream quality failure blocks completion and keeps notified stage retryable" {
     stream_dir="$(make_post_fixture)"
     contract="$(make_contract)"
     : > "$stream_dir/chat.log"
@@ -831,6 +839,8 @@ SH
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
         CONTRACT_CALLS="$CONTRACT_CALLS" \
+        STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
+        STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_CONTRACT_SCRIPT="$contract" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STALKER_BRAINLAYER_INGEST_TIMEOUT=1s \
@@ -839,13 +849,14 @@ SH
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
 
     [ "$status" -ne 0 ]
-    ! grep -F -q 'digest ' "$CONTRACT_CALLS"
+    [ ! -f "$STALKER_COMPLETION_CALLS" ]
+    [ "$(cat "$CONTRACT_CALLS")" = "ingest-run $stream_dir" ]
     [ ! -f "$stream_dir/.stage-notified.done" ]
     [ -f "$stream_dir/.stage-run-quality.failed" ]
-    [ "$(grep -c 'Stalker Pipeline Failure' "$ALERTS_FILE")" -eq 1 ]
+    [ "$(jq -s 'map(select(.title == "Stalker FAILED at stage 6")) | length' "$ALERTS_FILE")" -eq 1 ]
 }
 
-@test "post-stream sends real gems with empty chat and records the chat failure independently" {
+@test "post-stream invokes completion with real gems and records empty chat independently" {
     stream_dir="$(make_post_fixture)"
     contract="$(make_contract)"
     : > "$stream_dir/chat.log"
@@ -856,14 +867,15 @@ SH
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
         CONTRACT_CALLS="$CONTRACT_CALLS" \
+        STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
+        STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_CONTRACT_SCRIPT="$contract" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    grep -F -q "digest $(dirname "$stream_dir") 2026-07-10" "$CONTRACT_CALLS"
-    [ -f "$stream_dir/.stage-notified.done" ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
     [ -f "$stream_dir/.stage-chat.failed" ]
     [ ! -f "$stream_dir/.stage-run-quality.failed" ]
     grep -F -q 'chat_count=0' "$stream_dir/.stage-chat.failed"
@@ -871,7 +883,7 @@ SH
     grep -F -q 'chat_count=0' "$ALERTS_FILE"
 }
 
-@test "post-stream sends non-empty digest and marks notified" {
+@test "post-stream invokes completion for a non-empty eligible run" {
     stream_dir="$(make_post_fixture)"
     contract="$(make_contract)"
     printf '[00:00:01] viewer: hello\n' > "$stream_dir/chat.log"
@@ -886,13 +898,14 @@ EOF
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
         CONTRACT_CALLS="$CONTRACT_CALLS" \
+        STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
+        STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_CONTRACT_SCRIPT="$contract" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    grep -F -q "digest $(dirname "$stream_dir") 2026-07-10" "$CONTRACT_CALLS"
-    [ -f "$stream_dir/.stage-notified.done" ]
+    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
     [ ! -s "$ALERTS_FILE" ]
 }

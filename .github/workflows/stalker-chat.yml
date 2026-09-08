@@ -7,6 +7,9 @@ on:
       - "scripts/dist/twitch-chat-lurker.js"
       - "scripts/dist/twitch-chat-lurker.LICENSE.txt"
       - "scripts/lib/stream-helpers.sh"
+      - "scripts/post-stream.sh"
+      - "scripts/process-stream.sh"
+      - "scripts/tests/test-post-stream-tail-gate.bats"
       - "scripts/preflight-twitch-chat-lurker.sh"
       - "scripts/stream-watcher.sh"
       - "scripts/tests/test-stalker-durable-failures.bats"
@@ -21,6 +24,9 @@ on:
       - "scripts/dist/twitch-chat-lurker.js"
       - "scripts/dist/twitch-chat-lurker.LICENSE.txt"
       - "scripts/lib/stream-helpers.sh"
+      - "scripts/post-stream.sh"
+      - "scripts/process-stream.sh"
+      - "scripts/tests/test-post-stream-tail-gate.bats"
       - "scripts/preflight-twitch-chat-lurker.sh"
       - "scripts/stream-watcher.sh"
       - "scripts/tests/test-stalker-durable-failures.bats"
@@ -44,5 +50,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Install Bats
         run: sudo apt-get update && sudo apt-get install -y bats
-      - name: Verify bundled chat deploy and readiness preflight
-        run: bun run test:stalker-chat
+      - name: Verify bundled chat deploy and completion ordering
+        run: |
+          bun run test:stalker-chat
+          bats scripts/tests/test-post-stream-tail-gate.bats
