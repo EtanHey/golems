@@ -104,6 +104,14 @@ function compareVersions(left, right) {
   return 0;
 }
 
+export function fetchTags(repo, runCommand = execute) {
+  const result = runCommand("git", ["-C", repo, "fetch", "--tags"]);
+  const detail = [result.stderr, result.stdout].filter(Boolean).join("\n").trim();
+  if (result.status !== 0 || /\[rejected\].*would clobber existing tag/i.test(detail)) {
+    throw new Error(`git -C ${repo} fetch --tags failed: ${detail}`);
+  }
+}
+
 export function detectInstalledVersion(artifact, runCommand = execute) {
   let result;
   if (artifact.kind === "macos-app") {
@@ -127,12 +135,21 @@ export function detectInstalledVersion(artifact, runCommand = execute) {
 export function inspectRelease(options, runCommand = execute) {
   const repo = resolve(options.repo);
   const manifest = JSON.parse(readFileSync(options.manifest, "utf8"));
-  checked("git", ["-C", repo, "fetch", "--tags"], { runCommand });
+  fetchTags(repo, runCommand);
   const identity = remoteIdentity(checked("git", ["-C", repo, "remote", "get-url", "origin"], { runCommand }));
   const config = manifest.repositories?.[identity.slug] ?? manifest.repositories?.[identity.name];
   if (!config) throw new Error(`no manifest entry for ${identity.slug}`);
   const branch = defaultBranch(repo, runCommand);
   const remoteRef = `origin/${branch}`;
+  if (config.artifact?.kind === "none") {
+    if (typeof config.reason !== "string" || !config.reason.trim()) {
+      throw new Error(`artifact kind none requires a non-empty reason for ${identity.slug}`);
+    }
+    return {
+      verdict: "NOT_RELEASABLE", repo, repository: identity.slug, defaultBranch: branch, remoteRef,
+      artifact: config.artifact, reason: config.reason.trim(), installationCheck: "not-applicable",
+    };
+  }
   const tag = latestTag(repo, remoteRef, config.tagPattern ?? manifest.tagPattern, runCommand);
   const ignorePaths = config.ignorePaths ?? manifest.ignorePaths ?? defaultIgnores;
   const commits = commitCounts(repo, tag, remoteRef, ignorePaths, runCommand);
@@ -151,6 +168,14 @@ export function inspectRelease(options, runCommand = execute) {
 }
 
 function formatHuman(report) {
+  if (report.verdict === "NOT_RELEASABLE") {
+    return [
+      "RELEASE GATE: NOT_RELEASABLE (configured)",
+      `Repository: ${report.repository} (${report.repo})`,
+      `Remote default: ${report.remoteRef}`,
+      `Reason: ${report.reason}`,
+    ].join("\n");
+  }
   return [
     `RELEASE GATE: ${report.verdict}`,
     `Repository: ${report.repository} (${report.repo})`,
@@ -172,7 +197,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     options = parseArgs(process.argv.slice(2));
     const report = inspectRelease(options);
     console.log(options.json ? JSON.stringify(report, null, 2) : formatHuman(report));
-    process.exitCode = report.verdict === "CLEAN" ? 0 : report.verdict === "UNKNOWN" ? 2 : 1;
+    process.exitCode = ["CLEAN", "NOT_RELEASABLE"].includes(report.verdict) ? 0 : report.verdict === "UNKNOWN" ? 2 : 1;
   } catch (error) {
     options ??= { repo: process.cwd(), json: process.argv.includes("--json") };
     const report = unknownReport(options, error);

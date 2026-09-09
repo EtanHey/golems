@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { detectInstalledVersion } from "../release-gate.mjs";
+import { detectInstalledVersion, fetchTags } from "../release-gate.mjs";
 
 const repoRoot = resolve(import.meta.dir, "../..");
 const scratch = [];
@@ -16,7 +16,7 @@ function run(program, args, cwd) {
   execFileSync(program, args, { cwd, stdio: "pipe" });
 }
 
-function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly = false } = {}) {
+function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly = false, manifestEntry, tagRelease = true } = {}) {
   const root = mkdtempSync(join(repoRoot, ".release-gate-test-"));
   scratch.push(root);
   const remote = join(root, "release-fixture.git");
@@ -30,7 +30,7 @@ function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly =
   writeFileSync(join(repo, "src/index.js"), "export const released = true;\n");
   run("git", ["add", "src/index.js"], repo);
   run("git", ["commit", "-m", "release baseline"], repo);
-  run("git", ["tag", "v1.0.0"], repo);
+  if (tagRelease) run("git", ["tag", "v1.0.0"], repo);
   run("git", ["remote", "add", "origin", remote], repo);
   run("git", ["push", "-u", "origin", "main", "--tags"], repo);
   run("git", ["--git-dir", remote, "symbolic-ref", "HEAD", "refs/heads/main"], root);
@@ -49,9 +49,12 @@ function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly =
     writeFileSync(join(packageDir, "package.json"), JSON.stringify({ name: "release-fixture", version: installedVersion }));
   }
   const manifest = join(root, "release-gate.json");
+  const repositories = manifestEntry === null ? {} : {
+    "release-fixture": manifestEntry ?? { artifact: { kind: "node-npm", identifier: "release-fixture" } },
+  };
   writeFileSync(manifest, JSON.stringify({
     ignorePaths: ["docs.local/**", "**/*.md", "collab/**"],
-    repositories: { "release-fixture": { artifact: { kind: "node-npm", identifier: "release-fixture" } } },
+    repositories,
   }));
   const args = ["scripts/release-gate.mjs", repo, "--manifest", manifest, "--json"];
   if (releaseOnly) args.push("--release-only");
@@ -99,6 +102,28 @@ describe("release gate CLI exit contract", () => {
     expect(result.status).toBe(0);
     expect(result.report).toMatchObject({ verdict: "CLEAN", installationCheck: "skipped" });
   });
+
+  test("an explicitly non-releasable repo exits zero with its configured reason", () => {
+    const reason = "consumed from the repo checkout via symlinked skills; no SemVer release, no published package";
+    const result = fixture({
+      tagRelease: false,
+      manifestEntry: { artifact: { kind: "none" }, reason },
+    });
+    expect(result.status).toBe(0);
+    expect(result.report).toMatchObject({ verdict: "NOT_RELEASABLE", reason });
+  });
+
+  test("a missing manifest entry remains UNKNOWN and exits two", () => {
+    const result = fixture({ manifestEntry: null });
+    expect(result.status).toBe(2);
+    expect(result.report).toMatchObject({ verdict: "UNKNOWN" });
+  });
+
+  test("kind none without a reason remains UNKNOWN and exits two", () => {
+    const result = fixture({ manifestEntry: { artifact: { kind: "none" } } });
+    expect(result.status).toBe(2);
+    expect(result.report).toMatchObject({ verdict: "UNKNOWN" });
+  });
 });
 
 test("artifact detectors use their kind-specific commands", () => {
@@ -120,4 +145,13 @@ test("artifact detectors use their kind-specific commands", () => {
     ["python3", ["-c", "import importlib,sys; print(getattr(importlib.import_module(sys.argv[1]),sys.argv[2]))", "tool"]],
     ["npm", ["list", "--global", "--depth=0"]],
   ]);
+});
+
+test("tag fetch fails closed when git reports a rejected tag with a zero status", () => {
+  const runCommand = () => ({
+    status: 0,
+    stdout: "",
+    stderr: " ! [rejected] v1.5.11 -> v1.5.11 (would clobber existing tag)\n",
+  });
+  expect(() => fetchTags("/fixture", runCommand)).toThrow("would clobber existing tag");
 });

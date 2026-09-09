@@ -7,7 +7,8 @@
   ],
   "repositories": {
     "EtanHey/golems": {
-      "artifact": { "kind": "node-npm", "identifier": "@golems/cli" }
+      "artifact": { "kind": "none" },
+      "reason": "consumed from the repo checkout via symlinked skills; no SemVer release, no published package"
     },
     "EtanHey/voicelayer": {
       "artifact": { "kind": "macos-app", "identifier": "VoiceBar" }
