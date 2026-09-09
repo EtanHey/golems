@@ -72,7 +72,7 @@ describe("release gate CLI exit contract", () => {
 
   test("MERGED_UNRELEASED exits non-zero for shippable commits", () => {
     const result = fixture({ postTagPath: "src/new.js" });
-    expect(result.status).not.toBe(0);
+    expect(result.status).toBe(1);
     expect(result.report).toMatchObject({ verdict: "MERGED_UNRELEASED", commits: { raw: 1, shippable: 1 } });
   });
 
@@ -84,13 +84,13 @@ describe("release gate CLI exit contract", () => {
 
   test("RELEASED_UNINSTALLED exits non-zero when the installed version is older", () => {
     const result = fixture({ installedVersion: "0.9.0" });
-    expect(result.status).not.toBe(0);
+    expect(result.status).toBe(1);
     expect(result.report).toMatchObject({ verdict: "RELEASED_UNINSTALLED", installedVersion: "0.9.0" });
   });
 
   test("UNKNOWN exits non-zero when the artifact cannot be detected", () => {
     const result = fixture({ installedVersion: null });
-    expect(result.status).not.toBe(0);
+    expect(result.status).toBe(2);
     expect(result.report).toMatchObject({ verdict: "UNKNOWN", installedVersion: null });
   });
 
