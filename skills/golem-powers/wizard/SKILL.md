@@ -5,7 +5,7 @@ description: "Fresh-machine golems setup: prereqs, config, repos, MCP, BrainLaye
 
 # Golems Setup Wizard
 
-> Automated fresh-machine setup. Checks prerequisites, writes config, clones repos, wires MCP servers, verifies connections.
+> Automated fresh-machine setup. Checks prerequisites, writes role-aware config, installs artifacts, clones only explicitly checkout-backed repos, wires MCP servers, verifies connections.
 
 ## CARDINAL RULE
 
@@ -60,27 +60,33 @@ cat ~/.golems/config.yaml 2>/dev/null
 
 ### If config.yaml EXISTS:
 
-1. Display the current config to the user (reposPath, tools, features, contextProfiles)
+1. Display the current config to the user (machineRole, reposPath, tools, features, contextProfiles)
 2. Validate it: `bash <reposPath>/orchestrator/scripts/sync-config.sh --validate` (substituting the actual reposPath from config)
-3. Ask: **"Config found. Use it as-is, or reconfigure?"**
-4. If use as-is -> jump to Step 3 (clone repos)
-5. If reconfigure -> continue below
+3. If `machineRole` is missing or is not exactly `workspace` or `daemon-host`, refuse all cloning and ask the machine-role question below. Write the explicit answer before continuing.
+4. Ask: **"Config found. Use it as-is, or reconfigure?"**
+5. If use as-is -> jump to Step 3 (classify repos)
+6. If reconfigure -> continue below
 
 ### If config.yaml DOES NOT EXIST:
 
 Create it interactively:
 
-1. **Ask for workspace root** (parent dir for repos, e.g., `~/Gits`):
+1. **Ask for machine role** — there is no default:
+   - `workspace`: development machine; explicitly checkout-backed repos may be cloned
+   - `daemon-host`: installed artifacts only; repository cloning is forbidden
+   - Do not infer the role from hostname, existing directories, or an absent value.
+
+2. **Ask for workspace root** (parent dir for repos, e.g., `~/Gits`):
    - Validate the path exists: `ls -d "<expanded_path>" 2>/dev/null`
    - If invalid -> re-ask. Do NOT proceed with nonexistent path.
    - Expand `~` to full path before writing.
 
-2. **Detect tool paths** (store absolute paths for launchd compatibility):
+3. **Detect tool paths** (store absolute paths for launchd compatibility):
    ```bash
    which claude && which gh && which bun && which node && which git
    ```
 
-3. **Ask about features** (all OFF by default):
+4. **Ask about features** (all OFF by default):
 
    | Feature | Default | Description |
    |---------|---------|-------------|
@@ -88,7 +94,7 @@ Create it interactively:
    | `telegram` | **OFF** | Telegram notifications |
    | `emailGolem` | **OFF** | Email triage and scoring |
 
-4. **Write the config:**
+5. **Write the config:**
    ```bash
    mkdir -p ~/.golems
    ```
@@ -96,6 +102,7 @@ Create it interactively:
    Write `~/.golems/config.yaml` with this structure:
    ```yaml
    # Golems Configuration
+   machineRole: "<workspace-or-daemon-host>"
    reposPath: "<workspace_root>"
    stateDir: "<home>/.golems-zikaron"
 
@@ -128,36 +135,32 @@ Create it interactively:
 
 ---
 
-## Step 3: Clone Required Repos
+## Step 3: Install Artifacts or Clone Checkout-Backed Repos
 
-Read `reposPath` from config.yaml. Check which repos exist:
+`release-gate.json` is the only repository/artifact classification. Do not maintain another repo list in this skill. The installed wizard bundle includes the helper and a copy of that manifest; a golems checkout uses the root manifest directly. If either installed file is absent, stop and install/update the complete bundle from `INSTALL_PROMPT.md` — do not reconstruct a repo list in prose.
+
+Read `machineRole`, then run the decision helper from the loaded wizard directory:
 
 ```bash
-REPOS_PATH=$(python3 -c "import yaml; print(yaml.safe_load(open('$HOME/.golems/config.yaml'))['reposPath'])")
-for repo in golems orchestrator brainlayer; do
-  if [ -d "$REPOS_PATH/$repo" ]; then
-    echo "  $repo : EXISTS"
-  else
-    echo "  $repo : NOT FOUND — will clone"
-  fi
-done
+MACHINE_ROLE=$(python3 -c "import yaml; print(yaml.safe_load(open('$HOME/.golems/config.yaml')).get('machineRole', ''))")
+bun <wizard-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"
 ```
 
-### Required Repos
+The helper enumerates `release-gate.json` and returns one action per entry:
 
-| Repo | URL | Purpose |
-|------|-----|---------|
-| `golems` | `git@github.com:EtanHey/golems.git` | Main monorepo (skills, packages) |
-| `orchestrator` | `git@github.com:EtanHey/orchestrator.git` | Scripts, sync-config.sh, plans |
-| `brainlayer` | `git@github.com:EtanHey/brainlayer.git` | Memory layer (BrainBar daemon) |
+- `INSTALL`: never clone. Install or update the named artifact; if installation cannot be completed, report it as manual setup.
+- `CLONE`: permitted only for an artifact with `kind:"none"` on a `workspace` machine. Confirm `reposPath` exists, then clone only if the checkout is missing.
+- `REFUSE`: do not clone. Show the helper's reason.
 
-**For each missing repo:**
+An absent or unrecognised `machineRole` makes the helper return `REFUSE` for every repository and exit non-zero. A repository absent from `release-gate.json` is unclassified and must also be refused, not guessed.
+
+**Only for a `CLONE` result whose checkout is missing:**
 ```bash
 cd "$REPOS_PATH"
-gh repo clone EtanHey/<repo>
+gh repo clone <owner/repo>
 ```
 
-**After cloning golems, install dependencies:**
+**After cloning golems:**
 ```bash
 cd "$REPOS_PATH/golems" && bun install
 ```
@@ -180,17 +183,17 @@ If yes:
 bash "$REPOS_PATH/orchestrator/scripts/sync-config.sh" --enforce
 ```
 
-If sync-config.sh is not available (orchestrator not yet cloned or script missing), skip this step and note it in the final report.
+If sync-config.sh is not available (for example, orchestrator has no existing checkout), skip this step and note it in the final report. Never clone an unclassified repository to obtain it.
 
 ---
 
 ## Step 5: Create .claude.local.md in Each Repo
 
-For each repo in `reposPath` that has a `CLAUDE.md`, create a `.claude.local.md` with machine-specific paths:
+For each existing checkout in `reposPath` that has a `CLAUDE.md`, create a `.claude.local.md` with machine-specific paths. Do not create a checkout to perform this step.
 
 ```bash
-for repo in golems orchestrator brainlayer; do
-  repo_path="$REPOS_PATH/$repo"
+for repo_path in "$REPOS_PATH"/*; do
+  repo=$(basename "$repo_path")
   if [ -f "$repo_path/CLAUDE.md" ] && [ ! -f "$repo_path/.claude.local.md" ]; then
     echo "Creating .claude.local.md for $repo"
   fi
@@ -271,16 +274,16 @@ Prerequisites:
   git     : /usr/bin/git (2.x)
 
 Config:       ~/.golems/config.yaml
-Workspace:    ~/Gits
-State dir:    ~/.golems-zikaron
+Machine role: <actual machineRole from config>
+Workspace:    <actual reposPath from config>
+State dir:    <actual stateDir from config>
 
-Repos:
-  golems        : CLONED (bun install done)
-  orchestrator  : CLONED
-  brainlayer    : CLONED
+Release-gate actions:
+  <repo> : <INSTALL | CLONE | REFUSE> — <actual outcome or failure>; <helper reason>
+  <repo> : <INSTALL | CLONE | REFUSE> — <actual outcome or failure>; <helper reason>
 
-MCP Servers:   sync-config.sh applied (3 servers wired)
-.claude.local:  Created in 3 repos
+MCP Servers:   <actual sync-config outcome>
+.claude.local: <actual created/skipped/failed counts>
 
 BrainLayer:    CONNECTED (BrainBar running)
 
@@ -292,7 +295,7 @@ Skills:        Symlinked from golems/skills/golem-powers/
   - [ ] Enable Telegram if needed: update config.yaml features.telegram
 ```
 
-List anything that needs manual setup — secrets, tokens, services that couldn't be auto-configured.
+Render one release-gate line for every helper result. Do not replace `REFUSE`, failed installs, or skipped actions with a success sample. List anything that needs manual setup — secrets, tokens, artifacts, or services that could not be configured.
 
 ---
 
@@ -303,6 +306,8 @@ List anything that needs manual setup — secrets, tokens, services that couldn'
 - **NEVER** overwrite existing config without asking first
 - **NEVER** proceed without all 6 required tools installed
 - **NEVER** clone repos without confirming the workspace path exists
+- **NEVER** clone when `machineRole` is missing, unrecognised, or `daemon-host`
+- **NEVER** clone an installable or unclassified repository; obey the helper result from `release-gate.json`
 - **NEVER** run sync-config.sh --enforce without showing --diff first
 - **NEVER** block setup on BrainLayer — it's optional
 - **NEVER** commit .claude.local.md — it's machine-specific
