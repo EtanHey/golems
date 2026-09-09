@@ -17,6 +17,10 @@ A lead's endpoint is a merged PR plus cleanup. A worker's endpoint is a
 ready-for-review PR with review responses addressed and its URL handed to the
 lead; workers do not merge.
 
+Before either endpoint is closeable, run `scripts/release-gate.mjs <repo>`.
+`MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`, or `UNKNOWN` is a non-zero stop;
+release and install the artifact, then rerun the gate until it reports `CLEAN`.
+
 **Mechanical enforcement (gen-18 Track 1):** parking is now caught by the
 **idle-dwell gate** — a finished, approved branch left "awaiting PR approval" is
 `IDLE_SEAT_OPEN_QUEUE`. Run `/idle-dwell-gate` on the terminal turn before ending

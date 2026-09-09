@@ -1,0 +1,23 @@
+{
+  "tagPattern": "^v?\\d+\\.\\d+\\.\\d+(?:[-+].*)?$",
+  "ignorePaths": [
+    "docs.local/**",
+    "**/*.md",
+    "collab/**"
+  ],
+  "repositories": {
+    "EtanHey/golems": {
+      "artifact": { "kind": "none" },
+      "reason": "consumed from the repo checkout via symlinked skills; no SemVer release, no published package"
+    },
+    "EtanHey/voicelayer": {
+      "artifact": { "kind": "macos-app", "identifier": "VoiceBar" }
+    },
+    "EtanHey/cmuxlayer": {
+      "artifact": { "kind": "homebrew", "identifier": "cmuxlayer" }
+    },
+    "EtanHey/brainlayer": {
+      "artifact": { "kind": "macos-app", "identifier": "BrainBar" }
+    }
+  }
+}
