@@ -1,0 +1,21 @@
+name: Release gate
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  merged-unreleased:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail when shippable commits are unreleased
+        run: node scripts/release-gate.mjs . --release-only
