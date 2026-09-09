@@ -103,6 +103,32 @@ assert_no_worker_persona_markers() {
     fi
 }
 
+run_non_codex_persona_launch() {
+    local cli="$1" role="${2:-}"
+    run zsh -f -c '
+      unset GOLEM_ROLE
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+      [ -n "$4" ] && export GOLEM_ROLE="$4"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_sync_agy_workspace() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function cursor() { print -r -- "CURSOR_ARGS=$*"; }
+      function agy() { print -r -- "AGY_ARGS=$*"; }
+      function kiro-cli() { print -r -- "KIRO_ARGS=$*"; }
+      source "$3"
+      case "$5" in
+        cursor) testrepoCursor -s -p "Implement brief" ;;
+        gemini) testrepoGemini -s -p "Implement brief" ;;
+        kiro) testrepoKiro -s -p "Implement brief" ;;
+      esac
+    ' _ "$PERSONA_HOME" "$PERSONA_REGISTRY" "$SOURCE_DISPATCHER" "$role" "$cli"
+}
+
 stage_codex_session_fixtures() {
     local codex_home="$1"
     local matching_cwd="$2"
@@ -2014,6 +2040,7 @@ CLAUDE
       "$REGISTRY_FILE" > "$TMPDIR_/registry-with-agent.json"
 
     run zsh -f -c '
+      unset GOLEM_ROLE
       export HOME="$1"
       export RALPH_REGISTRY_FILE="$2"
 
@@ -2048,6 +2075,7 @@ CLAUDE
       "$REGISTRY_FILE" > "$TMPDIR_/registry-with-agent.json"
 
     run zsh -f -c '
+      unset GOLEM_ROLE
       export HOME="$1"
       export RALPH_REGISTRY_FILE="$2"
 
@@ -2083,6 +2111,7 @@ CLAUDE
       "$REGISTRY_FILE" > "$TMPDIR_/registry-with-agent.json"
 
     run zsh -f -c '
+      unset GOLEM_ROLE
       export HOME="$1"
       export RALPH_REGISTRY_FILE="$2"
 
@@ -2970,52 +2999,45 @@ JSON
     grep -F -q -- "-----END KEY-----" <<< "$output"
 }
 
-@test "tracked dispatcher source keeps GOLEM_ROLE=worker Cursor launches persona-free" {
+@test "tracked dispatcher source keeps lead personas for Cursor Gemini and Kiro" {
     [ -f "$SOURCE_DISPATCHER" ]
 
-    local fake_home="$TMPDIR_/home-cursor-worker"
-    mkdir -p "$fake_home/.claude/agents"
+    PERSONA_HOME="$TMPDIR_/home-non-codex-persona"
+    mkdir -p "$PERSONA_HOME/.claude/agents"
     printf '%s\n' \
       "# Full orchestrator protocol" \
       "BrainLayer-first boot searches." \
       "brain_store boot ceremony result." \
       "Orchestration routing protocol." \
-      > "$fake_home/.claude/agents/test-agent.md"
+      > "$PERSONA_HOME/.claude/agents/test-agent.md"
     jq '.projects.testrepo.agent = "test-agent"' \
-      "$REGISTRY_FILE" > "$TMPDIR_/registry-cursor-agent.json"
+      "$REGISTRY_FILE" > "$TMPDIR_/registry-non-codex-agent.json"
+    PERSONA_REGISTRY="$TMPDIR_/registry-non-codex-agent.json"
 
-    # RED half: without GOLEM_ROLE the persona must still be injected, or this
-    # test proves nothing. A gate that cannot go RED is not wired.
-    run zsh -f -c '
-      export HOME="$1"
-      export RALPH_REGISTRY_FILE="$2"
-      function _ralph_setup_mcps() { return 0; }
-      function _ralph_setup_secrets() { return 0; }
-      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
-      function cursor() { print -r -- "ARGS=$*"; }
-      source "$3"
-      _golem_register_wrappers
-      testrepoCursor -s
-    ' _ "$fake_home" "$TMPDIR_/registry-cursor-agent.json" "$SOURCE_DISPATCHER"
-    [ "$status" -eq 0 ]
-    grep -E -q -- "$WORKER_PERSONA_MARKERS" <<< "$output" \
-      || fail "lead Cursor launch lost its persona; the worker assertion below would be vacuous"
+    local cli
+    for cli in cursor gemini kiro; do
+      run_non_codex_persona_launch "$cli"
+      [ "$status" -eq 0 ]
+      grep -F -q -- "<agent_context>" <<< "$output"
+    done
+}
 
-    # GREEN half: GOLEM_ROLE=worker suppresses it at the shared injection point.
-    run zsh -f -c '
-      export HOME="$1"
-      export RALPH_REGISTRY_FILE="$2"
-      export GOLEM_ROLE=worker
-      function _ralph_setup_mcps() { return 0; }
-      function _ralph_setup_secrets() { return 0; }
-      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
-      function cursor() { print -r -- "ARGS=$*"; }
-      source "$3"
-      _golem_register_wrappers
-      testrepoCursor -s
-    ' _ "$fake_home" "$TMPDIR_/registry-cursor-agent.json" "$SOURCE_DISPATCHER"
-    [ "$status" -eq 0 ]
-    assert_no_worker_persona_markers "$output"
+@test "tracked dispatcher source keeps inherited GOLEM_ROLE=worker launches persona-free for Cursor Gemini and Kiro" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    PERSONA_HOME="$TMPDIR_/home-non-codex-worker"
+    mkdir -p "$PERSONA_HOME/.claude/agents"
+    printf '%s\n' "# Full orchestrator protocol" "BrainLayer-first boot searches." \
+      > "$PERSONA_HOME/.claude/agents/test-agent.md"
+    jq '.projects.testrepo.agent = "test-agent"' \
+      "$REGISTRY_FILE" > "$TMPDIR_/registry-non-codex-worker.json"
+    PERSONA_REGISTRY="$TMPDIR_/registry-non-codex-worker.json"
+
+    local cli
+    for cli in cursor gemini kiro; do
+      run_non_codex_persona_launch "$cli" worker
+      [ "$status" -eq 0 ]
+      assert_no_worker_persona_markers "$output"
+    done
 }
 
 @test "tracked dispatcher source sets claude --effort by seat: lead high, worker medium, -E wins" {
