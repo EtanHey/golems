@@ -1,0 +1,22 @@
+{
+  "tagPattern": "^v?\\d+\\.\\d+\\.\\d+(?:[-+].*)?$",
+  "ignorePaths": [
+    "docs.local/**",
+    "**/*.md",
+    "collab/**"
+  ],
+  "repositories": {
+    "EtanHey/golems": {
+      "artifact": { "kind": "node-npm", "identifier": "@golems/cli" }
+    },
+    "EtanHey/voicelayer": {
+      "artifact": { "kind": "macos-app", "identifier": "VoiceBar" }
+    },
+    "EtanHey/cmuxlayer": {
+      "artifact": { "kind": "homebrew", "identifier": "cmuxlayer" }
+    },
+    "EtanHey/brainlayer": {
+      "artifact": { "kind": "macos-app", "identifier": "BrainBar" }
+    }
+  }
+}
