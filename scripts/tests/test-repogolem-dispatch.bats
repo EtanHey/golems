@@ -2001,6 +2001,109 @@ CLAUDE
     assert_no_worker_persona_markers "$output"
 }
 
+@test "tracked dispatcher source keeps Cursor --worker boot payload persona-free" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home/.claude/agents"
+    printf '%s\n' \
+      "# Full orchestrator protocol" \
+      "BrainLayer-first boot searches." \
+      > "$fake_home/.claude/agents/test-agent.md"
+    jq '.projects.testrepo.agent = "test-agent"' \
+      "$REGISTRY_FILE" > "$TMPDIR_/registry-with-agent.json"
+
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function cursor() { print -r -- "CURSOR_ARGS=$*"; }
+
+      source "$3"
+      testrepoCursor --worker -s -p "Implement brief"
+    ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    grep -F -q -- "CURSOR_ARGS=agent" <<< "$output"
+    grep -F -q -- "Implement brief" <<< "$output"
+    assert_no_worker_persona_markers "$output"
+}
+
+@test "tracked dispatcher source keeps Gemini --worker boot payload persona-free" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home/.claude/agents"
+    printf '%s\n' \
+      "# Full orchestrator protocol" \
+      "BrainLayer-first boot searches." \
+      > "$fake_home/.claude/agents/test-agent.md"
+    jq '.projects.testrepo.agent = "test-agent"' \
+      "$REGISTRY_FILE" > "$TMPDIR_/registry-with-agent.json"
+
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_sync_agy_workspace() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function agy() { print -r -- "AGY_ARGS=$*"; }
+
+      source "$3"
+      testrepoGemini --worker -s -p "Implement brief"
+    ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    grep -F -q -- "AGY_ARGS=" <<< "$output"
+    grep -F -q -- "Implement brief" <<< "$output"
+    assert_no_worker_persona_markers "$output"
+}
+
+@test "tracked dispatcher source keeps Kiro --worker boot payload persona-free" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home/.claude/agents"
+    printf '%s\n' \
+      "# Full orchestrator protocol" \
+      "BrainLayer-first boot searches." \
+      > "$fake_home/.claude/agents/test-agent.md"
+    jq '.projects.testrepo.agent = "test-agent"' \
+      "$REGISTRY_FILE" > "$TMPDIR_/registry-with-agent.json"
+
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function kiro-cli() { print -r -- "KIRO_ARGS=$*"; }
+
+      source "$3"
+      testrepoKiro --worker -s -p "Implement brief"
+    ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    grep -F -q -- "KIRO_ARGS=chat" <<< "$output"
+    grep -F -q -- "Implement brief" <<< "$output"
+    assert_no_worker_persona_markers "$output"
+}
+
 @test "tracked dispatcher source adds no worker prompt to raw Codex arguments" {
     [ -f "$SOURCE_DISPATCHER" ]
 
