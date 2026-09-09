@@ -426,6 +426,7 @@ _golem_parse_unified_flags() {
   _flag_headless_prompt=""
   _flag_notify_mode=""
   _flag_worktree=""
+  _flag_worker=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -452,6 +453,7 @@ _golem_parse_unified_flags() {
       -w|--worktree)
         if [[ -n "$2" && "$2" != -* ]]; then _flag_worktree="${2/#\~/$HOME}"; shift 2
         else echo "Error: $1 requires a path" >&2; return 2; fi ;;
+      --worker) _flag_worker=true; shift ;;
       -QN|--quiet-notify) _flag_notify_mode="quiet"; shift ;;
       -SN|--simple-notify) _flag_notify_mode="simple"; shift ;;
       -VN|--verbose-notify) _flag_notify_mode="verbose"; shift ;;
@@ -1207,6 +1209,9 @@ _golem_launch_cursor() {
   _golem_parse_unified_flags "$@" || return $?
   _golem_refuse_agent_model_override "${project_name}Cursor" || return $?
   local cursor_args=("${_extra_args[@]}")
+  local worker_mode=false
+  $_flag_worker && worker_mode=true
+  [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
   local agent_context_file=""
   local agent_prompt=""
   local has_raw_option=false
@@ -1223,8 +1228,12 @@ _golem_launch_cursor() {
   cd "${_flag_worktree:-$project_path}" || return 1
   _golem_setup_title "$project_name" "${project_name}Cursor"
   _golem_setup_env "$project_name"
-  agent_context_file=$(_golem_inject_agent_context "$project_name" "cursor")
-  [[ -n "$agent_context_file" ]] && agent_prompt=$(_golem_build_agent_prompt "$agent_context_file")
+  if [[ "$worker_mode" == true ]]; then
+    agent_prompt=$(_golem_build_worker_prompt "$project_name" "$project_path" "$positional_prompt")
+  else
+    agent_context_file=$(_golem_inject_agent_context "$project_name" "cursor")
+    [[ -n "$agent_context_file" ]] && agent_prompt=$(_golem_build_agent_prompt "$agent_context_file")
+  fi
 
   $_flag_skip && cursor_args=("--yolo" "--approve-mcps" "${cursor_args[@]}")
   [[ -n "$_flag_model" ]] && cursor_args=("--model" "$_flag_model" "${cursor_args[@]}")
@@ -1238,7 +1247,7 @@ _golem_launch_cursor() {
   elif $_flag_continue; then
     local continue_prompt="${_flag_headless_prompt:-$positional_prompt}"
     if [[ -n "$continue_prompt" ]]; then
-      [[ -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$continue_prompt")
+      [[ "$worker_mode" != true && -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$continue_prompt")
       cursor agent --continue "${cursor_args[@]}" "$continue_prompt"
     else
       cursor agent --continue "${cursor_args[@]}"
@@ -1247,7 +1256,7 @@ _golem_launch_cursor() {
   else
     if [[ -n "$agent_prompt" && "$has_raw_option" == false ]]; then
       local launch_prompt="$agent_prompt"
-      if [[ -n "$positional_prompt" ]]; then
+      if [[ "$worker_mode" != true && -n "$positional_prompt" ]]; then
         launch_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
       fi
       cursor agent "${cursor_args[@]}" "$launch_prompt"
@@ -1271,6 +1280,9 @@ _golem_launch_gemini() {
 
   _golem_parse_unified_flags "$@" || return $?
   local agy_args=("${_extra_args[@]}")
+  local worker_mode=false
+  $_flag_worker && worker_mode=true
+  [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
   local agent_context_file=""
   local agent_prompt=""
   local has_raw_option=false
@@ -1289,8 +1301,12 @@ _golem_launch_gemini() {
   _golem_setup_title "$project_name" "${project_name}Gemini"
   _golem_setup_env "$project_name"
   _golem_sync_agy_workspace "$project_name" "$launch_dir"
-  agent_context_file=$(_golem_inject_agent_context "$project_name" "gemini")
-  [[ -n "$agent_context_file" ]] && agent_prompt=$(_golem_build_agent_prompt "$agent_context_file")
+  if [[ "$worker_mode" == true ]]; then
+    agent_prompt=$(_golem_build_worker_prompt "$project_name" "$project_path" "$positional_prompt")
+  else
+    agent_context_file=$(_golem_inject_agent_context "$project_name" "gemini")
+    [[ -n "$agent_context_file" ]] && agent_prompt=$(_golem_build_agent_prompt "$agent_context_file")
+  fi
 
   local agy_bin="agy"
   command -v agy >/dev/null 2>&1 || agy_bin="$HOME/.local/bin/agy"
@@ -1311,7 +1327,7 @@ _golem_launch_gemini() {
   elif $_flag_continue; then
     if [[ -n "$positional_prompt" ]]; then
       local continue_prompt="$positional_prompt"
-      [[ -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
+      [[ "$worker_mode" != true && -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
       "$agy_bin" "${agy_args[@]}" --prompt-interactive "$continue_prompt"
     elif [[ -n "$agent_prompt" ]]; then
       "$agy_bin" "${agy_args[@]}" --prompt-interactive "$agent_prompt"
@@ -1322,7 +1338,7 @@ _golem_launch_gemini() {
   else
     if [[ -n "$agent_prompt" && "$has_raw_option" == false ]]; then
       local launch_prompt="$agent_prompt"
-      if [[ -n "$positional_prompt" ]]; then
+      if [[ "$worker_mode" != true && -n "$positional_prompt" ]]; then
         launch_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
       fi
       "$agy_bin" "${agy_args[@]}" --prompt-interactive "$launch_prompt"
@@ -1348,6 +1364,9 @@ _golem_launch_kiro() {
 
   _golem_parse_unified_flags "$@" || return $?
   local kiro_args=("${_extra_args[@]}")
+  local worker_mode=false
+  $_flag_worker && worker_mode=true
+  [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
   local agent_context_file=""
   local agent_prompt=""
   local has_raw_option=false
@@ -1364,8 +1383,12 @@ _golem_launch_kiro() {
   cd "${_flag_worktree:-$project_path}" || return 1
   _golem_setup_title "$project_name" "${project_name}Kiro"
   _golem_setup_env "$project_name"
-  agent_context_file=$(_golem_inject_agent_context "$project_name" "kiro")
-  [[ -n "$agent_context_file" ]] && agent_prompt=$(_golem_build_agent_prompt "$agent_context_file")
+  if [[ "$worker_mode" == true ]]; then
+    agent_prompt=$(_golem_build_worker_prompt "$project_name" "$project_path" "$positional_prompt")
+  else
+    agent_context_file=$(_golem_inject_agent_context "$project_name" "kiro")
+    [[ -n "$agent_context_file" ]] && agent_prompt=$(_golem_build_agent_prompt "$agent_context_file")
+  fi
 
   [[ -n "$_flag_model" ]] && kiro_args=("--model" "$_flag_model" "${kiro_args[@]}")
   $_flag_skip && kiro_args=("--trust-all-tools" "${kiro_args[@]}")
@@ -1380,7 +1403,7 @@ _golem_launch_kiro() {
   elif $_flag_continue; then
     local continue_prompt="${_flag_headless_prompt:-$positional_prompt}"
     if [[ -n "$continue_prompt" ]]; then
-      [[ -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$continue_prompt")
+      [[ "$worker_mode" != true && -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$continue_prompt")
       kiro-cli chat "${kiro_args[@]}" "$continue_prompt"
     else
       kiro-cli chat "${kiro_args[@]}"
@@ -1389,7 +1412,7 @@ _golem_launch_kiro() {
   else
     if [[ -n "$agent_prompt" && "$has_raw_option" == false ]]; then
       local launch_prompt="$agent_prompt"
-      if [[ -n "$positional_prompt" ]]; then
+      if [[ "$worker_mode" != true && -n "$positional_prompt" ]]; then
         launch_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
       fi
       kiro-cli chat "${kiro_args[@]}" "$launch_prompt"
