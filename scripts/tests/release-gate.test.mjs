@@ -24,7 +24,7 @@ function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly =
   const prefix = join(root, "npm-prefix");
   run("git", ["init", "--bare", remote], root);
   run("git", ["init", "-b", "main", repo], root);
-  run("git", ["config", "user.email", "fixture@example.test"], repo);
+  run("git", ["config", "user.email", "fixture@example.com"], repo);
   run("git", ["config", "user.name", "Release Fixture"], repo);
   mkdirSync(join(repo, "src"));
   writeFileSync(join(repo, "src/index.js"), "export const released = true;\n");
