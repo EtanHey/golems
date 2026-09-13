@@ -5,7 +5,7 @@ description: Full fresh-machine setup workflow — step-by-step guide from prere
 
 # Fresh Machine Setup Workflow
 
-> Complete walkthrough for setting up the golems ecosystem from scratch.
+> Complete role-aware walkthrough for setting up the golems ecosystem from scratch.
 
 ## Phase 1: Prerequisites (Step 1)
 
@@ -32,20 +32,23 @@ Re-run the check after installing. Do NOT proceed until all 6 are green.
 If `~/.golems/config.yaml` exists:
 1. Read and display it
 2. Run `sync-config.sh --validate` if available
-3. Ask: use as-is or reconfigure?
+3. Require `machineRole` to be exactly `workspace` or `daemon-host`; if absent or invalid, ask and write it before any repo action
+4. Ask: use as-is or reconfigure?
 
 If it doesn't exist:
-1. Ask for workspace root (validate path exists)
-2. Detect tool paths with `which`
-3. Ask about opt-in features (all OFF by default)
-4. Write config.yaml with `mkdir -p ~/.golems`
+1. Ask for machine role (`workspace` or `daemon-host`) with no default
+2. Ask for workspace root (validate path exists)
+3. Detect tool paths with `which`
+4. Ask about opt-in features (all OFF by default)
+5. Write config.yaml, including the explicit `machineRole`, with `mkdir -p ~/.golems`
 
-## Phase 3: Repos (Step 3)
+## Phase 3: Artifacts and Repos (Step 3)
 
-For each of `golems`, `orchestrator`, `brainlayer`:
-1. Check if `$REPOS_PATH/<repo>` exists
-2. Clone missing repos: `cd $REPOS_PATH && gh repo clone EtanHey/<repo>`
-3. Run `bun install` in golems after cloning
+1. From the installed wizard bundle, run `bun <wizard-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"`; it enumerates the sole classification source, `release-gate.json`. If the helper or bundled manifest is absent, stop and install/update the complete bundle from `INSTALL_PROMPT.md`.
+2. `INSTALL`: install/update or report the named artifact. Never clone it, on either machine role.
+3. `CLONE`: only `kind:"none"` on `workspace`; check `$REPOS_PATH/<repo>` and clone only when missing.
+4. `REFUSE`: clone nothing and show the reason. Missing/invalid roles and unclassified repos fail closed.
+5. Run `bun install` in golems after cloning it.
 
 ## Phase 4: Wire MCP Servers (Step 4)
 
@@ -55,7 +58,7 @@ For each of `golems`, `orchestrator`, `brainlayer`:
 
 ## Phase 5: Machine-Specific Config (Step 5)
 
-For each repo with a `CLAUDE.md`:
+For each existing checkout with a `CLAUDE.md`:
 1. Check if `.claude.local.md` already exists — skip if so
 2. Create `.claude.local.md` with local paths, tools, platform info
 3. Verify `.gitignore` includes `.claude.local.md`

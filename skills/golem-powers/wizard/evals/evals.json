@@ -3,8 +3,8 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Run /wizard on a fresh machine. All 6 prerequisites are installed (brew, node, bun, claude, gh, git). No ~/.golems/config.yaml exists. The user's workspace root is ~/Gits. User declines all opt-in features. All 3 repos (golems, orchestrator, brainlayer) need cloning. BrainBar is running at /tmp/brainbar.sock.",
-      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with reposPath ~/Gits and all features OFF. Clones 3 repos via gh. Runs sync-config.sh --diff then --enforce. Creates .claude.local.md in each repo. Verifies BrainLayer via brain_search. Displays full setup report.",
+      "prompt": "Run /wizard on a fresh machine with role workspace. All 6 prerequisites are installed (brew, node, bun, claude, gh, git). No ~/.golems/config.yaml exists. The user explicitly chooses machineRole workspace and workspace root ~/Gits, then declines all opt-in features. No repos exist. BrainBar is running at /tmp/brainbar.sock.",
+      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with machineRole workspace, reposPath ~/Gits, and all features OFF. Reads release-gate.json through the decision helper. Clones only checkout-backed golems, installs or reports the VoiceBar, BrainBar, and cmuxlayer artifacts, and does not clone installable or unclassified repos. Skips sync-config because orchestrator is unavailable. Verifies BrainLayer via brain_search. Displays the full setup report.",
       "files": [],
       "assertions": [
         {
@@ -17,11 +17,11 @@
         },
         {
           "name": "clones-repos-to-repos-path",
-          "description": "Agent clones golems, orchestrator, and brainlayer repos to the configured reposPath using gh repo clone"
+          "description": "Agent writes the explicit workspace machineRole and clones only checkout-backed repos to reposPath"
         },
         {
-          "name": "runs-sync-config-with-diff-first",
-          "description": "Agent runs sync-config.sh --diff BEFORE --enforce, showing changes to user before applying"
+          "name": "uses-release-gate-classification",
+          "description": "Agent clones only kind:none golems, treats BrainBar and VoiceBar as installable artifacts, and does not clone orchestrator because it is unclassified"
         },
         {
           "name": "creates-claude-local-md",
@@ -59,8 +59,8 @@
     },
     {
       "id": 3,
-      "prompt": "Run /wizard on a machine where ~/.golems/config.yaml already exists with reposPath: ~/Gits, all repos are already cloned, and sync-config.sh was previously run. BrainBar is NOT running (no /tmp/brainbar.sock).",
-      "expected_output": "Agent reads existing config.yaml and displays it. Skips repo cloning since repos exist. Offers to re-run sync-config.sh --diff to check for drift. Detects BrainBar is not running and reports it as optional but recommended. Reports what's configured vs what needs manual attention.",
+      "prompt": "Run /wizard on a machine where ~/.golems/config.yaml already exists with reposPath: ~/Gits but has no machineRole. Existing checkouts are present and sync-config.sh was previously run. BrainBar is NOT running (no /tmp/brainbar.sock).",
+      "expected_output": "Agent reads existing config.yaml and displays it. Refuses all repo cloning until the user explicitly chooses workspace or daemon-host and the value is written. It then evaluates release-gate.json, offers sync-config.sh --diff if the existing script is available, detects BrainBar is not running, and reports it as optional but recommended.",
       "files": [],
       "assertions": [
         {
@@ -69,7 +69,7 @@
         },
         {
           "name": "skips-existing-repos",
-          "description": "Agent checks each repo directory and skips cloning for repos that already exist"
+          "description": "Agent refuses every clone decision until machineRole is explicit, then skips existing checkouts"
         },
         {
           "name": "offers-sync-config-diff",
@@ -87,25 +87,25 @@
     },
     {
       "id": 4,
-      "prompt": "Run /wizard on a fresh machine. Everything is installed. Config is created with reposPath ~/Gits. golems and orchestrator repos exist but brainlayer does NOT. sync-config.sh is available. After cloning brainlayer, the user wants to run sync-config.sh.",
-      "expected_output": "Agent detects golems and orchestrator exist, clones only brainlayer. Runs sync-config.sh --diff showing what will change. After user confirms, runs --enforce. Creates .claude.local.md only in repos that don't already have one. Reports partial setup with what was newly configured.",
+      "prompt": "Run /wizard on a daemon host. Everything is installed. Config is created with machineRole daemon-host and reposPath ~/Gits. No checkouts exist and BrainBar is not installed.",
+      "expected_output": "Agent reads release-gate.json through the decision helper. It refuses to clone golems because daemon hosts never clone, reports BrainBar as needing installation, and installs or reports the other named artifacts. It does not clone brainlayer, voicelayer, orchestrator, or any other repository.",
       "files": [],
       "assertions": [
         {
-          "name": "clones-only-missing-repo",
-          "description": "Agent detects golems and orchestrator exist and only clones brainlayer"
+          "name": "daemon-host-never-clones",
+          "description": "Agent refuses repository cloning on daemon-host, including kind:none golems"
         },
         {
-          "name": "shows-diff-before-enforce",
-          "description": "Agent runs sync-config.sh --diff and shows output before running --enforce"
+          "name": "installable-repos-are-install-actions",
+          "description": "Agent reports BrainBar and VoiceBar as artifacts to install and never clones their repos"
         },
         {
           "name": "creates-claude-local-only-where-needed",
           "description": "Agent creates .claude.local.md only in repos that don't already have one, skipping repos that do"
         },
         {
-          "name": "runs-bun-install-after-clone",
-          "description": "Agent runs bun install in golems repo if not already done (checks node_modules existence)"
+          "name": "names-refusal-reason",
+          "description": "Agent explains that daemon-host machines use installed artifacts and never clone repositories"
         }
       ]
     },
