@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return path.resolve(candidate); } };
 export const CANON_START = "<!-- FLEET_CANON_START -->";
 export const CANON_END = "<!-- FLEET_CANON_END -->";
 
@@ -238,6 +239,6 @@ function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   main();
 }

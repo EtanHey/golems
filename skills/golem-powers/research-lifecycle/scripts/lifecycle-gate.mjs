@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
+const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return path.resolve(candidate); } };
 const sharedDriveGate = fileURLToPath(
   new URL("../../_shared/research/drive-grounding-gate.sh", import.meta.url),
 );
@@ -347,6 +348,6 @@ function main() {
   process.exitCode = 2;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   main();
 }
