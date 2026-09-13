@@ -4,6 +4,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
+const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return path.resolve(candidate); } };
 const here = path.dirname(fileURLToPath(import.meta.url));
 const evalsPath = path.join(here, "evals.json");
 const gatePath = path.join(here, "..", "scripts", "lifecycle-gate.mjs");
@@ -120,6 +121,6 @@ async function main() {
   process.exitCode = result.passedAssertions === result.totalAssertions ? 0 : 1;
 }
 
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   await main();
 }

@@ -6,6 +6,7 @@ import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifyLocalMediaRetention } from './stalker-media-retention.mjs';
 
+const canonicalPath = candidate => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 export const COMPLETION_RECEIPT = '.stalker-completion.json';
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
@@ -121,7 +122,7 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
     runName: receipt.runName, dashboardUrl: url.href, ...(retention && { retentionVerification: retention.verification }) };
 }
 
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   verifyRunDelivery(process.argv[2] ?? '').then(result => console.log(JSON.stringify(result))).catch(error => {
     console.error(error.message);
     process.exitCode = 75;

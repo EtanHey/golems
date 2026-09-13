@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return path.resolve(candidate); } };
 export const CANON_START = "<!-- FLEET_CANON_START -->";
 export const CANON_END = "<!-- FLEET_CANON_END -->";
 
@@ -232,6 +233,6 @@ function main() {
   }
 }
 
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   main();
 }

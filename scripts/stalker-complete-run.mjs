@@ -13,6 +13,7 @@ import { artifactHashes, COMPLETION_RECEIPT, sha256, stageFailure, verifyRunDeli
 import { createDriveArchive } from './stalker-drive-archive.mjs';
 import { retainRunMedia, verifyLocalMediaRetention } from './stalker-media-retention.mjs';
 
+const canonicalPath = candidate => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 // Bump whenever the digest prompt, schema or grounding validator changes.
 const DIGEST_CONTRACT_VERSION = 3;
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -148,7 +149,7 @@ export async function completeRun(runDir, options = {}) {
   } finally { await unlock(); }
 }
 
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   const args = process.argv.slice(2), value = flag => args[args.indexOf(flag) + 1];
   const option = flag => args.includes(flag) ? value(flag) : undefined;
   completeRun(args[0] ?? '', { repoRoot: option('--repo-root'), orchestratorRoot: option('--orchestrator-root'), hubOrigin: option('--hub-origin') })

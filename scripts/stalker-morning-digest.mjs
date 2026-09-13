@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import { stageFailure } from "./stalker-run-contract.mjs";
 
+const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = resolve(SCRIPT_DIR, "..");
 const SCHEDULE_MINUTES = 7 * 60 + 30;
@@ -196,7 +197,7 @@ async function main(argv) {
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   main(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`STALKER_MORNING_DIGEST_FAILED ${error.stack ?? error}\n`);
     process.exitCode = 1;

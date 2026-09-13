@@ -4,6 +4,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 const VALID_MACHINE_ROLES = new Set(["workspace", "daemon-host"]);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const checkoutManifestPath = resolve(scriptDir, "../../../..", "release-gate.json");
@@ -79,7 +80,7 @@ export function decideAllRepoActions(manifest, machineRole) {
   });
 }
 
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   const [machineRole, manifestPath = defaultManifestPath] = process.argv.slice(2);
   try {
     const manifest = JSON.parse(readFileSync(resolve(manifestPath), "utf8"));

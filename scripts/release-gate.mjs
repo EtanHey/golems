@@ -5,6 +5,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultIgnores = ["docs.local/**", "**/*.md", "collab/**"];
 const defaultTagPattern = "^v?\\d+\\.\\d+\\.\\d+(?:[-+].*)?$";
@@ -196,7 +197,7 @@ export function releaseExitCode(verdict) {
   return verdict === "UNKNOWN" ? 2 : 1;
 }
 
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   let options;
   try {
     options = parseArgs(process.argv.slice(2));
