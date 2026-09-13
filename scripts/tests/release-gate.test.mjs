@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { detectInstalledVersion, fetchTags } from "../release-gate.mjs";
+import { detectInstalledVersion, fetchTags, releaseExitCode } from "../release-gate.mjs";
 
 const repoRoot = resolve(import.meta.dir, "../..");
 const scratch = [];
@@ -16,7 +16,7 @@ function run(program, args, cwd) {
   execFileSync(program, args, { cwd, stdio: "pipe" });
 }
 
-function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly = false, manifestEntry, tagRelease = true } = {}) {
+function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly = false, manifestEntry, tagRelease = true, viaSymlink = false } = {}) {
   const root = mkdtempSync(join(repoRoot, ".release-gate-test-"));
   scratch.push(root);
   const remote = join(root, "release-fixture.git");
@@ -56,17 +56,26 @@ function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly =
     ignorePaths: ["docs.local/**", "**/*.md", "collab/**"],
     repositories,
   }));
-  const args = ["scripts/release-gate.mjs", repo, "--manifest", manifest, "--json"];
+  const script = viaSymlink ? join(root, "release-gate.mjs") : "scripts/release-gate.mjs";
+  if (viaSymlink) symlinkSync(join(repoRoot, "scripts/release-gate.mjs"), script);
+  const args = [script, repo, "--manifest", manifest, "--json"];
   if (releaseOnly) args.push("--release-only");
-  const result = spawnSync("bun", args, {
+  const result = spawnSync(viaSymlink ? "node" : "bun", args, {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, NPM_CONFIG_PREFIX: prefix },
   });
-  return { status: result.status, report: JSON.parse(result.stdout) };
+  return { status: result.status, stdout: result.stdout, report: result.stdout.trim() ? JSON.parse(result.stdout) : null };
 }
 
 describe("release gate CLI exit contract", () => {
+  test("node CLI executes through a symlink", () => {
+    const result = fixture({ viaSymlink: true });
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).not.toBe("");
+    expect(result.report).toMatchObject({ verdict: "CLEAN" });
+  });
+
   test("CLEAN exits zero at the tag", () => {
     const result = fixture();
     expect(result.status).toBe(0);
@@ -154,4 +163,8 @@ test("tag fetch fails closed when git reports a rejected tag with a zero status"
     stderr: " ! [rejected] v1.5.11 -> v1.5.11 (would clobber existing tag)\n",
   });
   expect(() => fetchTags("/fixture", runCommand)).toThrow("would clobber existing tag");
+});
+
+test("CONTAINED is a successful release verdict", () => {
+  expect(releaseExitCode("CONTAINED")).toBe(0);
 });

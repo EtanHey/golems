@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -79,7 +79,7 @@ export function decideAllRepoActions(manifest, machineRole) {
   });
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   const [machineRole, manifestPath = defaultManifestPath] = process.argv.slice(2);
   try {
     const manifest = JSON.parse(readFileSync(resolve(manifestPath), "utf8"));

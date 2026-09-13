@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
+import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -120,7 +121,7 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
     runName: receipt.runName, dashboardUrl: url.href, ...(retention && { retentionVerification: retention.verification }) };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   verifyRunDelivery(process.argv[2] ?? '').then(result => console.log(JSON.stringify(result))).catch(error => {
     console.error(error.message);
     process.exitCode = 75;

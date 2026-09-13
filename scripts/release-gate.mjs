@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -191,13 +191,18 @@ function unknownReport(options, error) {
   return { verdict: "UNKNOWN", repo: resolve(options.repo), error: error instanceof Error ? error.message : String(error) };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+export function releaseExitCode(verdict) {
+  if (["CLEAN", "NOT_RELEASABLE", "CONTAINED"].includes(verdict)) return 0;
+  return verdict === "UNKNOWN" ? 2 : 1;
+}
+
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   let options;
   try {
     options = parseArgs(process.argv.slice(2));
     const report = inspectRelease(options);
     console.log(options.json ? JSON.stringify(report, null, 2) : formatHuman(report));
-    process.exitCode = ["CLEAN", "NOT_RELEASABLE"].includes(report.verdict) ? 0 : report.verdict === "UNKNOWN" ? 2 : 1;
+    process.exitCode = releaseExitCode(report.verdict);
   } catch (error) {
     options ??= { repo: process.cwd(), json: process.argv.includes("--json") };
     const report = unknownReport(options, error);

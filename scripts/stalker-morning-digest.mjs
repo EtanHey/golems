@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { mkdir, readdir, rename, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -195,7 +196,7 @@ async function main(argv) {
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   main(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`STALKER_MORNING_DIGEST_FAILED ${error.stack ?? error}\n`);
     process.exitCode = 1;

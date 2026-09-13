@@ -1,4 +1,9 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { decideAllRepoActions, decideRepoAction } from "./repo-action.mjs";
 
@@ -14,7 +19,30 @@ const manifest = {
   },
 };
 
+const tempDirs = [];
+
+afterEach(() => {
+  while (tempDirs.length > 0) rmSync(tempDirs.pop(), { recursive: true, force: true });
+});
+
 describe("wizard repo action", () => {
+  test("node CLI executes through a symlink and fails closed for a garbage role", () => {
+    const dir = mkdtempSync(join(tmpdir(), "repo-action-symlink-"));
+    tempDirs.push(dir);
+    const symlinkPath = join(dir, "repo-action.mjs");
+    const manifestPath = join(dir, "release-gate.json");
+    symlinkSync(fileURLToPath(new URL("./repo-action.mjs", import.meta.url)), symlinkPath);
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const valid = spawnSync("node", [symlinkPath, "daemon-host", manifestPath], { encoding: "utf8" });
+    expect(valid.status).toBe(0);
+    expect(valid.stdout.trim()).not.toBe("");
+    expect(JSON.parse(valid.stdout)).toHaveLength(2);
+
+    const garbage = spawnSync("node", [symlinkPath, "garbage", manifestPath], { encoding: "utf8" });
+    expect(garbage.status).not.toBe(0);
+  });
+
   test("installable repo on a workspace is installed, never cloned", () => {
     expect(decideRepoAction(manifest, "brainlayer", "workspace")).toEqual({
       action: "INSTALL",

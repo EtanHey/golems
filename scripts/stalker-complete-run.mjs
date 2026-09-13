@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { readFile, rm } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -147,7 +148,7 @@ export async function completeRun(runDir, options = {}) {
   } finally { await unlock(); }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   const args = process.argv.slice(2), value = flag => args[args.indexOf(flag) + 1];
   const option = flag => args.includes(flag) ? value(flag) : undefined;
   completeRun(args[0] ?? '', { repoRoot: option('--repo-root'), orchestratorRoot: option('--orchestrator-root'), hubOrigin: option('--hub-origin') })

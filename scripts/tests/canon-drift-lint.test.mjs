@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -136,6 +136,26 @@ test("--check exits zero for not-installed and non-zero for drift", () => {
   ], { encoding: "utf8" });
   expect(driftRun.status).toBe(1);
   expect(driftRun.stdout).toContain("drift");
+});
+
+test("node CLI executes through a symlink", () => {
+  const { canonPath, installedPath } = makeFixture();
+  writeFileSync(installedPath, `# User CLAUDE\n\n${canonBlock}\n`);
+  const symlinkPath = path.join(path.dirname(canonPath), "canon-drift-lint.mjs");
+  symlinkSync(scriptPath, symlinkPath);
+
+  const result = spawnSync("node", [
+    symlinkPath,
+    "--check",
+    "--canon",
+    canonPath,
+    "--installed",
+    installedPath,
+  ], { encoding: "utf8" });
+
+  expect(result.status).toBe(0);
+  expect(result.stdout.trim()).not.toBe("");
+  expect(JSON.parse(result.stdout)).toMatchObject({ status: "in-sync" });
 });
 
 test("--check fails for installed file with START marker but no END marker and keeps bytes unchanged", () => {
