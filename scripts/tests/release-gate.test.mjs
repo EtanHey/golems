@@ -16,7 +16,20 @@ function run(program, args, cwd) {
   execFileSync(program, args, { cwd, stdio: "pipe" });
 }
 
-function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly = false, manifestEntry, tagRelease = true, viaSymlink = false } = {}) {
+function fixture({
+  postTagPath = null,
+  installedVersion = "1.0.0",
+  releaseOnly = false,
+  manifestEntry,
+  tagRelease = true,
+  releaseTag = "v1.0.0",
+  annotatedTag = false,
+  sha = null,
+  localRelevantTagMismatch = false,
+  removeRemoteTag = false,
+  unrelatedTagConflict = false,
+  viaSymlink = false,
+} = {}) {
   const root = mkdtempSync(join(repoRoot, ".release-gate-test-"));
   scratch.push(root);
   const remote = join(root, "release-fixture.git");
@@ -30,7 +43,9 @@ function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly =
   writeFileSync(join(repo, "src/index.js"), "export const released = true;\n");
   run("git", ["add", "src/index.js"], repo);
   run("git", ["commit", "-m", "release baseline"], repo);
-  if (tagRelease) run("git", ["tag", "v1.0.0"], repo);
+  const releasedSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+  if (tagRelease) run("git", annotatedTag ? ["tag", "--annotate", releaseTag, "--message", "release"] : ["tag", releaseTag], repo);
+  if (unrelatedTagConflict) run("git", ["tag", "pre-rename"], repo);
   run("git", ["remote", "add", "origin", remote], repo);
   run("git", ["push", "-u", "origin", "main", "--tags"], repo);
   run("git", ["--git-dir", remote, "symbolic-ref", "HEAD", "refs/heads/main"], root);
@@ -42,6 +57,12 @@ function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly =
     run("git", ["add", postTagPath], repo);
     run("git", ["commit", "-m", `change ${postTagPath}`], repo);
     run("git", ["push"], repo);
+  }
+  const postTagSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+  if (removeRemoteTag) run("git", ["push", "origin", `:refs/tags/${releaseTag}`], repo);
+  if (localRelevantTagMismatch || unrelatedTagConflict) {
+    run("git", ["commit", "--allow-empty", "-m", "local tag conflict target"], repo);
+    run("git", ["tag", "--force", localRelevantTagMismatch ? releaseTag : "pre-rename"], repo);
   }
   if (installedVersion !== null) {
     const packageDir = join(prefix, "lib/node_modules/release-fixture");
@@ -60,12 +81,19 @@ function fixture({ postTagPath = null, installedVersion = "1.0.0", releaseOnly =
   if (viaSymlink) symlinkSync(join(repoRoot, "scripts/release-gate.mjs"), script);
   const args = [script, repo, "--manifest", manifest, "--json"];
   if (releaseOnly) args.push("--release-only");
+  if (sha) args.push("--sha", sha === "released" ? releasedSha : sha === "post-tag" ? postTagSha : sha);
   const result = spawnSync(viaSymlink ? "node" : "bun", args, {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, NPM_CONFIG_PREFIX: prefix },
   });
-  return { status: result.status, stdout: result.stdout, report: result.stdout.trim() ? JSON.parse(result.stdout) : null };
+  return {
+    status: result.status,
+    stdout: result.stdout,
+    report: result.stdout.trim() ? JSON.parse(result.stdout) : null,
+    releasedSha,
+    postTagSha,
+  };
 }
 
 describe("release gate CLI exit contract", () => {
@@ -132,6 +160,91 @@ describe("release gate CLI exit contract", () => {
     const result = fixture({ manifestEntry: { artifact: { kind: "none" } } });
     expect(result.status).toBe(2);
     expect(result.report).toMatchObject({ verdict: "UNKNOWN" });
+  });
+});
+
+describe("release gate installed artifact containment", () => {
+  test("CONTAINED exits zero when the requested merge is in the installed tag", () => {
+    const result = fixture({ sha: "released" });
+    expect(result.status).toBe(0);
+    expect(result.report).toMatchObject({
+      verdict: "CONTAINED",
+      installedVersion: "1.0.0",
+      tag: "v1.0.0",
+      tagCommit: result.releasedSha,
+      sha: result.releasedSha,
+    });
+  });
+
+  test("NOT_CONTAINED exits one when the requested merge is newer than the installed tag", () => {
+    const result = fixture({ postTagPath: "src/new.js", sha: "post-tag" });
+    expect(result.status).toBe(1);
+    expect(result.report).toMatchObject({
+      verdict: "NOT_CONTAINED",
+      installedVersion: "1.0.0",
+      tag: "v1.0.0",
+      tagCommit: result.releasedSha,
+      sha: result.postTagSha,
+    });
+  });
+
+  test("falls back to an unprefixed installed-version tag", () => {
+    const result = fixture({ sha: "released", releaseTag: "1.0.0" });
+    expect(result.report).toMatchObject({ verdict: "CONTAINED", tag: "1.0.0", tagCommit: result.releasedSha });
+  });
+
+  test("uses the peeled commit for an annotated installed-version tag", () => {
+    const result = fixture({ sha: "released", annotatedTag: true });
+    expect(result.report).toMatchObject({ verdict: "CONTAINED", tag: "v1.0.0", tagCommit: result.releasedSha });
+  });
+
+  test("UNKNOWN exits two when there is no installed version", () => {
+    const result = fixture({ installedVersion: null, sha: "released" });
+    expect(result.status).toBe(2);
+    expect(result.report).toMatchObject({ verdict: "UNKNOWN", installedVersion: null, sha: result.releasedSha });
+  });
+
+  test("UNKNOWN exits two when the requested sha is not a known commit", () => {
+    const result = fixture({ sha: "deadbeef" });
+    expect(result.status).toBe(2);
+    expect(result.report).toMatchObject({ verdict: "UNKNOWN", installedVersion: "1.0.0", tag: "v1.0.0" });
+  });
+
+  test("UNKNOWN exits two when the local installed-version tag disagrees with origin", () => {
+    const result = fixture({ sha: "released", localRelevantTagMismatch: true });
+    expect(result.status).toBe(2);
+    expect(result.report).toMatchObject({ verdict: "UNKNOWN", tag: "v1.0.0", tagCommit: result.releasedSha });
+    expect(result.report.reason).toContain("local tag");
+  });
+
+  test("UNKNOWN exits two when the installed-version tag is absent on origin", () => {
+    const result = fixture({ sha: "released", removeRemoteTag: true });
+    expect(result.status).toBe(2);
+    expect(result.report).toMatchObject({ verdict: "UNKNOWN", installedVersion: "1.0.0" });
+    expect(result.report.reason).toContain("absent on origin");
+  });
+
+  test("an unrelated conflicting local tag does not change a CONTAINED verdict", () => {
+    const result = fixture({ sha: "released", unrelatedTagConflict: true });
+    expect(result.status).toBe(0);
+    expect(result.report).toMatchObject({ verdict: "CONTAINED", tag: "v1.0.0", sha: result.releasedSha });
+  });
+
+  test("an unrelated conflicting local tag does not change a NOT_CONTAINED verdict", () => {
+    const result = fixture({ postTagPath: "src/new.js", sha: "post-tag", unrelatedTagConflict: true });
+    expect(result.status).toBe(1);
+    expect(result.report).toMatchObject({ verdict: "NOT_CONTAINED", tag: "v1.0.0", sha: result.postTagSha });
+  });
+
+  test("artifact kind none remains NOT_RELEASABLE in sha mode", () => {
+    const reason = "consumed from checkout";
+    const result = fixture({
+      tagRelease: false,
+      sha: "released",
+      manifestEntry: { artifact: { kind: "none" }, reason },
+    });
+    expect(result.status).toBe(0);
+    expect(result.report).toMatchObject({ verdict: "NOT_RELEASABLE", reason });
   });
 });
 

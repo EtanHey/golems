@@ -22,11 +22,21 @@ function checked(program, args, options = {}) {
 }
 
 function parseArgs(argv) {
-  const options = { repo: null, manifest: resolve(scriptRoot, "release-gate.json"), json: false, releaseOnly: false };
+  const options = { repo: null, manifest: resolve(scriptRoot, "release-gate.json"), json: false, releaseOnly: false, sha: null };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--json") options.json = true;
     else if (argument === "--release-only") options.releaseOnly = true;
+    else if (argument === "--sha") {
+      const value = argv[++index];
+      if (!value || value.startsWith("-")) throw new Error("--sha requires a commit");
+      options.sha = value;
+    }
+    else if (argument.startsWith("--sha=")) {
+      const value = argument.slice(6);
+      if (!value || value.startsWith("-")) throw new Error("--sha requires a commit");
+      options.sha = value;
+    }
     else if (argument === "--manifest") {
       const value = argv[++index];
       if (!value || value.startsWith("-")) throw new Error("--manifest requires a path");
@@ -133,7 +143,101 @@ export function detectInstalledVersion(artifact, runCommand = execute) {
   return cleanVersion(artifact.kind.startsWith("homebrew") ? fields.at(-1) : result.stdout);
 }
 
+function containmentUnknown(report, reason) {
+  return { ...report, verdict: "UNKNOWN", reason };
+}
+
+function remoteTagCommit(repo, tag, runCommand) {
+  const result = runCommand("git", ["-C", repo, "ls-remote", "--tags", "origin", `refs/tags/${tag}`, `refs/tags/${tag}^{}`]);
+  if (result.status !== 0) {
+    throw new Error(`git ls-remote failed for ${tag}: ${(result.stderr || result.stdout).trim()}`);
+  }
+  const refs = new Map(result.stdout.split(/\r?\n/).filter(Boolean).map((line) => {
+    const [sha, ref] = line.trim().split(/\s+/, 2);
+    return [ref, sha];
+  }));
+  return refs.get(`refs/tags/${tag}^{}`) ?? refs.get(`refs/tags/${tag}`) ?? null;
+}
+
+function inspectContainment(options, runCommand = execute) {
+  const repo = resolve(options.repo);
+  const manifest = JSON.parse(readFileSync(options.manifest, "utf8"));
+  const identity = remoteIdentity(checked("git", ["-C", repo, "remote", "get-url", "origin"], { runCommand }));
+  const config = manifest.repositories?.[identity.slug] ?? manifest.repositories?.[identity.name];
+  if (!config) throw new Error(`no manifest entry for ${identity.slug}`);
+  const branch = defaultBranch(repo, runCommand);
+  if (config.artifact?.kind === "none") {
+    if (typeof config.reason !== "string" || !config.reason.trim()) {
+      throw new Error(`artifact kind none requires a non-empty reason for ${identity.slug}`);
+    }
+    return {
+      verdict: "NOT_RELEASABLE", repo, repository: identity.slug, defaultBranch: branch,
+      remoteRef: `origin/${branch}`, artifact: config.artifact, reason: config.reason.trim(), installationCheck: "not-applicable",
+    };
+  }
+
+  const report = {
+    mode: "sha", verdict: "UNKNOWN", repo, repository: identity.slug, artifact: config.artifact,
+    installedVersion: null, tag: null, tagCommit: null, sha: null, reason: null,
+  };
+  const requested = runCommand("git", ["-C", repo, "rev-parse", "--verify", "--end-of-options", `${options.sha}^{commit}`]);
+  if (requested.status === 0) report.sha = requested.stdout.trim();
+  const installedVersion = detectInstalledVersion(config.artifact, runCommand);
+  report.installedVersion = installedVersion;
+  if (!installedVersion) return containmentUnknown(report, "installed artifact version could not be detected");
+
+  const matcher = new RegExp(config.tagPattern ?? manifest.tagPattern ?? defaultTagPattern);
+  const candidates = [...new Set([`v${installedVersion}`, installedVersion])].filter((tag) => matcher.test(tag));
+  if (candidates.length === 0) {
+    return containmentUnknown(report, `installed version ${installedVersion} has no tag matching ${matcher}`);
+  }
+
+  for (const candidate of candidates) {
+    let commit;
+    try {
+      commit = remoteTagCommit(repo, candidate, runCommand);
+    } catch (error) {
+      return containmentUnknown({ ...report, tag: candidate }, error.message);
+    }
+    if (commit) {
+      report.tag = candidate;
+      report.tagCommit = commit;
+      break;
+    }
+  }
+  if (!report.tagCommit) {
+    return containmentUnknown({ ...report, tag: candidates[0] }, `installed-version tag absent on origin: ${candidates.join(" or ")}`);
+  }
+
+  const localTag = runCommand("git", ["-C", repo, "rev-parse", "--verify", `refs/tags/${report.tag}^{commit}`]);
+  if (localTag.status === 0 && localTag.stdout.trim() !== report.tagCommit) {
+    return containmentUnknown(report, `local tag ${report.tag} points to ${localTag.stdout.trim()}, origin points to ${report.tagCommit}`);
+  }
+
+  let tagObject = runCommand("git", ["-C", repo, "cat-file", "-e", `${report.tagCommit}^{commit}`]);
+  if (tagObject.status !== 0) {
+    const fetched = runCommand("git", ["-C", repo, "fetch", "--no-tags", "origin", report.tagCommit]);
+    if (fetched.status !== 0) {
+      return containmentUnknown(report, `could not fetch installed tag commit ${report.tagCommit}: ${(fetched.stderr || fetched.stdout).trim()}`);
+    }
+    tagObject = runCommand("git", ["-C", repo, "cat-file", "-e", `${report.tagCommit}^{commit}`]);
+    if (tagObject.status !== 0) return containmentUnknown(report, `installed tag commit is unavailable locally: ${report.tagCommit}`);
+  }
+
+  if (requested.status !== 0) return containmentUnknown(report, `requested sha is not a known commit: ${options.sha}`);
+
+  const ancestor = runCommand("git", ["-C", repo, "merge-base", "--is-ancestor", report.sha, report.tagCommit]);
+  if (ancestor.status === 0) {
+    return { ...report, verdict: "CONTAINED", reason: `requested commit is contained in installed tag ${report.tag}` };
+  }
+  if (ancestor.status === 1) {
+    return { ...report, verdict: "NOT_CONTAINED", reason: `requested commit is not contained in installed tag ${report.tag}` };
+  }
+  return containmentUnknown(report, `git merge-base failed: ${(ancestor.stderr || ancestor.stdout).trim()}`);
+}
+
 export function inspectRelease(options, runCommand = execute) {
+  if (options.sha) return inspectContainment(options, runCommand);
   const repo = resolve(options.repo);
   const manifest = JSON.parse(readFileSync(options.manifest, "utf8"));
   fetchTags(repo, runCommand);
@@ -174,6 +278,17 @@ function formatHuman(report) {
       "RELEASE GATE: NOT_RELEASABLE (configured)",
       `Repository: ${report.repository} (${report.repo})`,
       `Remote default: ${report.remoteRef}`,
+      `Reason: ${report.reason}`,
+    ].join("\n");
+  }
+  if (report.mode === "sha") {
+    return [
+      `RELEASE GATE: ${report.verdict}`,
+      `Repository: ${report.repository} (${report.repo})`,
+      `Installed artifact: ${report.artifact.kind}:${report.artifact.identifier} version=${report.installedVersion ?? "UNKNOWN"}`,
+      `Installed tag: ${report.tag ?? "UNKNOWN"}`,
+      `Installed tag commit: ${report.tagCommit ?? "UNKNOWN"}`,
+      `Requested commit: ${report.sha ?? "UNKNOWN"}`,
       `Reason: ${report.reason}`,
     ].join("\n");
   }
