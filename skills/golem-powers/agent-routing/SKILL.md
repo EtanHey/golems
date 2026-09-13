@@ -34,10 +34,10 @@ Visible cmux pane workers use repoGolem launchers, not raw `cursor`/`codex`/`cla
 > migrate or ratify it. The Cursor Auto-only constraint is the sole model rule
 > this PR adds here.
 
-Effort is a mission choice, not a model personality trait. **Default to `high` so
-the seat is never accidentally too low, then pass `-E` explicitly for every
-repoGolem Codex mission.** When `high` fits, make that choice explicit with
-`-E high` and explain why it fits; do not rely on inheritance.
+Effort is a mission choice, not a model personality trait. Name effort per lane
+with a mission-shaped reason: `medium` is the floor for well-specified work, and
+`high` is only valid when the brief explicitly calls for it. Then pass `-E`
+explicitly for every repoGolem Codex mission.
 
 Do not treat omission as neutral: if you omit `-E`, inheriting the default is a
 decision you are making silently. A dispatch that does not name the effort and

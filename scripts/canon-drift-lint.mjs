@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,16 +27,25 @@ function sha256(text) {
   return createHash("sha256").update(text).digest("hex");
 }
 
-export function extractCanonBlock(text) {
+function extractCanonBlockRange(text, options = {}) {
+  const { requireEnd = true } = options;
   const start = text.indexOf(CANON_START);
   if (start === -1) return null;
 
   const end = text.indexOf(CANON_END, start + CANON_START.length);
   if (end === -1) {
+    if (!requireEnd) return null;
     throw new Error(`canon block starts with ${CANON_START} but is missing ${CANON_END}`);
   }
 
-  return normalizeBlock(text.slice(start, end + CANON_END.length));
+  const endPosition = end + CANON_END.length;
+  return { start, end: endPosition, block: text.slice(start, endPosition) };
+}
+
+export function extractCanonBlock(text) {
+  const range = extractCanonBlockRange(text, { requireEnd: true });
+  if (range == null) return null;
+  return normalizeBlock(range.block);
 }
 
 export function extractContractSections(block) {
@@ -127,6 +136,43 @@ export function lintCanonDrift(options = {}) {
   };
 }
 
+function installCanonDrift(options = {}) {
+  const canonPath = path.resolve(expandHome(options.canonPath ?? defaultCanonPath));
+  const installedPath = path.resolve(expandHome(options.installedPath ?? defaultInstalledPath));
+
+  const canonText = readTextIfExists(canonPath);
+  if (canonText == null) {
+    throw new Error(`canon source missing: ${canonPath}`);
+  }
+  const sourceRange = extractCanonBlockRange(canonText);
+  if (sourceRange == null) {
+    throw new Error(`canon source missing block markers: ${CANON_START} / ${CANON_END}`);
+  }
+  const sourceBlock = sourceRange.block;
+
+  const installedText = readTextIfExists(installedPath);
+  if (installedText == null) {
+    throw new Error(`installed file missing: ${installedPath}`);
+  }
+  const installedRange = extractCanonBlockRange(installedText);
+  if (installedRange == null) {
+    throw new Error(`installed file missing canon block markers: ${CANON_START} / ${CANON_END}`);
+  }
+
+  const nextInstalledText =
+    `${installedText.slice(0, installedRange.start)}${sourceBlock}${installedText.slice(installedRange.end)}`;
+
+  if (nextInstalledText !== installedText) {
+    writeFileSync(installedPath, nextInstalledText);
+  }
+
+  const result = lintCanonDrift({ canonPath, installedPath, check: true });
+  if (result.status !== "in-sync") {
+    throw new Error(`installed block not in-sync after --install: ${installedPath}`);
+  }
+  return result;
+}
+
 function readOption(args, index) {
   const arg = args[index];
   const equals = arg.indexOf("=");
@@ -161,6 +207,11 @@ function parseArgs(args) {
       i += parsed.consumed;
       continue;
     }
+    if (arg === "--install") {
+      options.install = true;
+      i += 1;
+      continue;
+    }
     throw new Error(`unknown argument: ${arg}`);
   }
   return options;
@@ -169,7 +220,9 @@ function parseArgs(args) {
 function main() {
   try {
     const options = parseArgs(process.argv.slice(2));
-    const result = lintCanonDrift(options);
+    const result = options.install
+      ? installCanonDrift(options)
+      : lintCanonDrift(options);
     console.log(JSON.stringify(result, null, 2));
     process.exitCode = result.exitCode;
   } catch (error) {
