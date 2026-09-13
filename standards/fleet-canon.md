@@ -77,5 +77,6 @@ or operational detail after the trim wave.
 
 - Do not edit `$HOME/Gits/CLAUDE.md` by hand. Install is Etan-gated.
 - `scripts/canon-drift-lint.mjs --check` compares the marker-delimited block above against the installed block.
+- `scripts/canon-drift-lint.mjs --install` rewrites only the marker-delimited installed block from the source.
 - Missing installed block reports `not-installed` and exits 0 so this staged PR can merge before installation.
 - Once installed, any hash or section-set mismatch reports `drift`; `--check` exits 1 for CI.

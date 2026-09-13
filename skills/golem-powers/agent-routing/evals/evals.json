@@ -666,7 +666,7 @@
         {
           "type": "content",
           "name": "selects-medium",
-          "description": "Selects medium, not the high default or xhigh, for the bounded mechanical lane.",
+          "description": "Selects medium, not high or xhigh, for the bounded mechanical lane.",
           "text": "Selects medium for the bounded mechanical lane"
         },
         {
@@ -729,16 +729,16 @@
       "id": 26,
       "name": "routine-open-ended-implementation",
       "category": "model-effort",
-      "description": "A normal implementation lane with unresolved local choices should retain the safe default.",
+      "description": "A normal implementation lane with unresolved local choices should justify high from named open-ended mission signals.",
       "prompt": "Choose a Codex model and effort for this mission: add a new import adapter across three modules. Acceptance tests and API boundaries are clear, but the internal decomposition and error-handling design are open-ended. This is normal product work, not an incident.",
       "expected_effort": "high",
       "expected_model": "gpt-5.6-sol",
-      "expected_output": "Select Sol at high. High is the safe default and the open-ended implementation choices make Sol appropriate. Pass -E high explicitly so inheriting the launcher default is deliberate, then verify the run log.",
+      "expected_output": "Select Sol at high. This is open-ended implementation work, so justify high with mission-shape: unresolved decomposition and error-design choices remain. Do not rely on 'high as default'; pass -E high explicitly so inheriting launcher default is deliberate, then verify the run log.",
       "assertions": [
         {
           "type": "content",
           "name": "selects-high",
-          "description": "Selects high for normal open-ended implementation.",
+          "description": "Selects high for open-ended implementation.",
           "text": "Selects high"
         },
         {
@@ -746,6 +746,12 @@
           "name": "selects-sol",
           "description": "Selects Sol because implementation choices remain open-ended.",
           "text": "Selects gpt-5.6-sol"
+        },
+        {
+          "type": "negative",
+          "name": "high-not-justified-as-default",
+          "description": "Fail if high is defended as a safe default, even when open-ended signals are present.",
+          "text": "high is the safe default"
         },
         {
           "type": "content",

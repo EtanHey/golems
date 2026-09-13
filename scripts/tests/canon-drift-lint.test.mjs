@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -136,4 +136,118 @@ test("--check exits zero for not-installed and non-zero for drift", () => {
   ], { encoding: "utf8" });
   expect(driftRun.status).toBe(1);
   expect(driftRun.stdout).toContain("drift");
+});
+
+test("--check fails for installed file with START marker but no END marker and keeps bytes unchanged", () => {
+  const { canonPath, installedPath } = makeFixture();
+  writeFileSync(canonPath, `# Fleet Canon Source\n\n${canonBlock}\n`);
+  const beforeText = "# User CLAUDE\n<!-- FLEET_CANON_START -->\n1. **agent-routing** - truncated\n";
+  writeFileSync(installedPath, beforeText);
+
+  const checkRun = spawnSync(process.execPath, [
+    scriptPath,
+    "--check",
+    "--canon",
+    canonPath,
+    "--installed",
+    installedPath,
+  ], { encoding: "utf8" });
+
+  expect(checkRun.status).toBe(1);
+  expect(checkRun.stderr).toContain("missing");
+  expect(checkRun.stderr).toContain(CANON_START);
+  expect(checkRun.stderr).toContain(CANON_END);
+  const afterText = readFileSync(installedPath, "utf8");
+  expect(afterText).toBe(beforeText);
+});
+
+test("--install fixes drift, preserves text outside markers, and exits in-sync", () => {
+  const { canonPath, installedPath } = makeFixture();
+  const outsidePrefix = "# User CLAUDE\nprefix outside marker block\n";
+  const outsideSuffix = "\nfooter outside marker block\n";
+  const driftedBlock = canonBlock
+    .replace("monitors/collabs", "monitors only")
+    .replace("route through leads", "route through leads quickly");
+  writeFileSync(installedPath, `${outsidePrefix}${driftedBlock}${outsideSuffix}`);
+
+  const installRun = spawnSync(process.execPath, [
+    scriptPath,
+    "--install",
+    "--canon",
+    canonPath,
+    "--installed",
+    installedPath,
+  ], { encoding: "utf8" });
+
+  expect(installRun.status).toBe(0);
+  const result = JSON.parse(installRun.stdout);
+  expect(result.status).toBe("in-sync");
+  expect(result.exitCode).toBe(0);
+
+  const afterInstallText = readFileSync(installedPath, "utf8");
+  const markerStart = afterInstallText.indexOf(CANON_START);
+  const markerEnd = afterInstallText.indexOf(CANON_END) + CANON_END.length;
+  expect(markerStart).toBe(outsidePrefix.length);
+  expect(afterInstallText.slice(0, markerStart)).toBe(outsidePrefix);
+  expect(afterInstallText.slice(markerEnd)).toBe(outsideSuffix);
+  expect(afterInstallText).toContain(canonBlock);
+});
+
+test("--install fails when installed file has no canon markers and does not modify bytes", () => {
+  const { canonPath, installedPath } = makeFixture();
+  const beforeInstallText = "# User CLAUDE\nNo markers here.\n";
+  writeFileSync(installedPath, beforeInstallText);
+
+  const installRun = spawnSync(process.execPath, [
+    scriptPath,
+    "--install",
+    "--canon",
+    canonPath,
+    "--installed",
+    installedPath,
+  ], { encoding: "utf8" });
+
+  expect(installRun.status).toBe(1);
+  expect(installRun.stderr).toContain("missing canon block markers");
+  const afterInstallText = readFileSync(installedPath, "utf8");
+  expect(afterInstallText).toBe(beforeInstallText);
+});
+
+test("--install fails when installed file is missing", () => {
+  const { canonPath, installedPath } = makeFixture();
+  rmSync(installedPath, { force: true });
+
+  const installRun = spawnSync(process.execPath, [
+    scriptPath,
+    "--install",
+    "--canon",
+    canonPath,
+    "--installed",
+    installedPath,
+  ], { encoding: "utf8" });
+
+  expect(installRun.status).toBe(1);
+  expect(installRun.stderr).toContain("installed file missing");
+  expect(existsSync(installedPath)).toBe(false);
+});
+
+test("--install fails for installed file with START marker but no END marker and keeps bytes unchanged", () => {
+  const { canonPath, installedPath } = makeFixture();
+  const beforeText = "# User CLAUDE\n<!-- FLEET_CANON_START -->\n1. **agent-routing** - truncated\n";
+  writeFileSync(installedPath, beforeText);
+
+  const installRun = spawnSync(process.execPath, [
+    scriptPath,
+    "--install",
+    "--canon",
+    canonPath,
+    "--installed",
+    installedPath,
+  ], { encoding: "utf8" });
+
+  expect(installRun.status).toBe(1);
+  expect(installRun.stderr).toContain("starts with");
+  expect(installRun.stderr).toContain("missing");
+  const afterText = readFileSync(installedPath, "utf8");
+  expect(afterText).toBe(beforeText);
 });
