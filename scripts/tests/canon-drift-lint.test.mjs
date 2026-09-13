@@ -161,6 +161,27 @@ test("--check fails for installed file with START marker but no END marker and k
   expect(afterText).toBe(beforeText);
 });
 
+test("--check fails for installed file with END marker but no START marker and keeps bytes unchanged", () => {
+  const { canonPath, installedPath } = makeFixture();
+  const beforeText = "# User CLAUDE\n1. **agent-routing** - truncated\n<!-- FLEET_CANON_END -->\n";
+  writeFileSync(installedPath, beforeText);
+
+  const checkRun = spawnSync(process.execPath, [
+    scriptPath,
+    "--check",
+    "--canon",
+    canonPath,
+    "--installed",
+    installedPath,
+  ], { encoding: "utf8" });
+
+  expect(checkRun.status).toBe(1);
+  expect(checkRun.stderr).toContain("missing");
+  expect(checkRun.stderr).toContain(CANON_START);
+  const afterText = readFileSync(installedPath, "utf8");
+  expect(afterText).toBe(beforeText);
+});
+
 test("--install fixes drift, preserves text outside markers, and exits in-sync", () => {
   const { canonPath, installedPath } = makeFixture();
   const outsidePrefix = "# User CLAUDE\nprefix outside marker block\n";

@@ -30,7 +30,13 @@ function sha256(text) {
 function extractCanonBlockRange(text, options = {}) {
   const { requireEnd = true } = options;
   const start = text.indexOf(CANON_START);
-  if (start === -1) return null;
+  if (start === -1) {
+    const end = text.indexOf(CANON_END);
+    if (end !== -1) {
+      throw new Error(`canon block ends with ${CANON_END} but is missing ${CANON_START}`);
+    }
+    return null;
+  }
 
   const end = text.indexOf(CANON_END, start + CANON_START.length);
   if (end === -1) {

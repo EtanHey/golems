@@ -751,7 +751,7 @@
           "type": "negative",
           "name": "high-not-justified-as-default",
           "description": "Fail if high is defended as a safe default, even when open-ended signals are present.",
-          "text": "high is the safe default"
+          "text": "Does NOT defend high as a safe default"
         },
         {
           "type": "content",
