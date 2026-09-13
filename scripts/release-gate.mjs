@@ -48,6 +48,7 @@ function parseArgs(argv) {
     else options.repo = resolve(argument);
   }
   options.repo ??= process.cwd();
+  if (options.sha && options.releaseOnly) throw new Error("--sha and --release-only are mutually exclusive");
   return options;
 }
 
@@ -171,14 +172,15 @@ function inspectContainment(options, runCommand = execute) {
       throw new Error(`artifact kind none requires a non-empty reason for ${identity.slug}`);
     }
     return {
-      verdict: "NOT_RELEASABLE", repo, repository: identity.slug, defaultBranch: branch,
+      mode: "sha", verdict: "NOT_RELEASABLE", repo, repository: identity.slug, defaultBranch: branch,
       remoteRef: `origin/${branch}`, artifact: config.artifact, reason: config.reason.trim(), installationCheck: "not-applicable",
+      requestedSha: options.sha,
     };
   }
 
   const report = {
     mode: "sha", verdict: "UNKNOWN", repo, repository: identity.slug, artifact: config.artifact,
-    installedVersion: null, tag: null, tagCommit: null, sha: null, reason: null,
+    installedVersion: null, tag: null, tagCommit: null, requestedSha: options.sha, sha: null, reason: null,
   };
   const requested = runCommand("git", ["-C", repo, "rev-parse", "--verify", "--end-of-options", `${options.sha}^{commit}`]);
   if (requested.status === 0) report.sha = requested.stdout.trim();
@@ -225,6 +227,14 @@ function inspectContainment(options, runCommand = execute) {
   }
 
   if (requested.status !== 0) return containmentUnknown(report, `requested sha is not a known commit: ${options.sha}`);
+
+  const shallow = runCommand("git", ["-C", repo, "rev-parse", "--is-shallow-repository"]);
+  if (shallow.status !== 0) {
+    return containmentUnknown(report, `could not determine whether repository is shallow: ${(shallow.stderr || shallow.stdout).trim()}`);
+  }
+  if (shallow.stdout.trim() === "true") {
+    return containmentUnknown(report, "shallow clone: containment cannot be decided; run git fetch --unshallow");
+  }
 
   const ancestor = runCommand("git", ["-C", repo, "merge-base", "--is-ancestor", report.sha, report.tagCommit]);
   if (ancestor.status === 0) {
@@ -288,6 +298,7 @@ function formatHuman(report) {
       `Installed artifact: ${report.artifact.kind}:${report.artifact.identifier} version=${report.installedVersion ?? "UNKNOWN"}`,
       `Installed tag: ${report.tag ?? "UNKNOWN"}`,
       `Installed tag commit: ${report.tagCommit ?? "UNKNOWN"}`,
+      `Requested input: ${report.requestedSha}`,
       `Requested commit: ${report.sha ?? "UNKNOWN"}`,
       `Reason: ${report.reason}`,
     ].join("\n");
@@ -304,7 +315,12 @@ function formatHuman(report) {
 }
 
 function unknownReport(options, error) {
-  return { verdict: "UNKNOWN", repo: resolve(options.repo), error: error instanceof Error ? error.message : String(error) };
+  return {
+    verdict: "UNKNOWN",
+    repo: resolve(options.repo),
+    ...(options.sha ? { requestedSha: options.sha } : {}),
+    error: error instanceof Error ? error.message : String(error),
+  };
 }
 
 export function releaseExitCode(verdict) {
@@ -320,7 +336,10 @@ if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLT
     console.log(options.json ? JSON.stringify(report, null, 2) : formatHuman(report));
     process.exitCode = releaseExitCode(report.verdict);
   } catch (error) {
-    options ??= { repo: process.cwd(), json: process.argv.includes("--json") };
+    const argv = process.argv.slice(2);
+    const shaIndex = argv.indexOf("--sha");
+    const requestedSha = shaIndex >= 0 ? argv[shaIndex + 1] : argv.find((argument) => argument.startsWith("--sha="))?.slice(6);
+    options ??= { repo: process.cwd(), json: process.argv.includes("--json"), sha: requestedSha || null };
     const report = unknownReport(options, error);
     console.log(options.json ? JSON.stringify(report, null, 2) : `RELEASE GATE: UNKNOWN\n${report.error}`);
     process.exitCode = 2;

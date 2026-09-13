@@ -96,6 +96,49 @@ function fixture({
   };
 }
 
+function historyCloneFixture({ shallow }) {
+  const root = mkdtempSync(join(repoRoot, ".release-gate-test-"));
+  scratch.push(root);
+  const remote = join(root, "release-fixture.git");
+  const seed = join(root, "seed");
+  const repo = join(root, shallow ? "shallow" : "full");
+  const prefix = join(root, "npm-prefix");
+  run("git", ["init", "--bare", remote], root);
+  run("git", ["init", "-b", "main", seed], root);
+  run("git", ["config", "user.email", "fixture@example.com"], seed);
+  run("git", ["config", "user.name", "Release Fixture"], seed);
+  let oldSha;
+  for (let index = 1; index <= 3; index += 1) {
+    writeFileSync(join(seed, "history.txt"), `${index}\n`);
+    run("git", ["add", "history.txt"], seed);
+    run("git", ["commit", "-m", `history ${index}`], seed);
+    if (index === 1) oldSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: seed, encoding: "utf8" }).trim();
+  }
+  run("git", ["tag", "v1.0.0"], seed);
+  run("git", ["remote", "add", "origin", remote], seed);
+  run("git", ["push", "-u", "origin", "main", "--tags"], seed);
+  run("git", ["--git-dir", remote, "symbolic-ref", "HEAD", "refs/heads/main"], root);
+  const cloneArgs = ["clone"];
+  if (shallow) cloneArgs.push("--depth", "1");
+  cloneArgs.push("--branch", "v1.0.0", `file://${remote}`, repo);
+  run("git", cloneArgs, root);
+  if (shallow) run("git", ["fetch", "--no-tags", "origin", oldSha], repo);
+
+  const packageDir = join(prefix, "lib/node_modules/release-fixture");
+  mkdirSync(packageDir, { recursive: true });
+  writeFileSync(join(packageDir, "package.json"), JSON.stringify({ name: "release-fixture", version: "1.0.0" }));
+  const manifest = join(root, "release-gate.json");
+  writeFileSync(manifest, JSON.stringify({
+    repositories: { "release-fixture": { artifact: { kind: "node-npm", identifier: "release-fixture" } } },
+  }));
+  const result = spawnSync("bun", ["scripts/release-gate.mjs", repo, "--manifest", manifest, "--json", "--sha", oldSha], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: { ...process.env, NPM_CONFIG_PREFIX: prefix },
+  });
+  return { status: result.status, report: JSON.parse(result.stdout), oldSha };
+}
+
 describe("release gate CLI exit contract", () => {
   test("node CLI executes through a symlink", () => {
     const result = fixture({ viaSymlink: true });
@@ -176,6 +219,17 @@ describe("release gate installed artifact containment", () => {
     });
   });
 
+  test("a shallow clone is UNKNOWN while its full-clone twin is CONTAINED", () => {
+    const shallow = historyCloneFixture({ shallow: true });
+    expect(shallow.status).toBe(2);
+    expect(shallow.report).toMatchObject({ verdict: "UNKNOWN", requestedSha: shallow.oldSha });
+    expect(shallow.report.reason).toContain("shallow");
+
+    const full = historyCloneFixture({ shallow: false });
+    expect(full.status).toBe(0);
+    expect(full.report).toMatchObject({ verdict: "CONTAINED", sha: full.oldSha, requestedSha: full.oldSha });
+  });
+
   test("NOT_CONTAINED exits one when the requested merge is newer than the installed tag", () => {
     const result = fixture({ postTagPath: "src/new.js", sha: "post-tag" });
     expect(result.status).toBe(1);
@@ -207,7 +261,14 @@ describe("release gate installed artifact containment", () => {
   test("UNKNOWN exits two when the requested sha is not a known commit", () => {
     const result = fixture({ sha: "deadbeef" });
     expect(result.status).toBe(2);
-    expect(result.report).toMatchObject({ verdict: "UNKNOWN", installedVersion: "1.0.0", tag: "v1.0.0" });
+    expect(result.report).toMatchObject({ verdict: "UNKNOWN", installedVersion: "1.0.0", tag: "v1.0.0", requestedSha: "deadbeef" });
+  });
+
+  test("--sha and --release-only are mutually exclusive", () => {
+    const result = fixture({ sha: "released", releaseOnly: true });
+    expect(result.status).toBe(2);
+    expect(result.report).toMatchObject({ verdict: "UNKNOWN", requestedSha: result.releasedSha });
+    expect(result.report.error).toContain("--sha and --release-only are mutually exclusive");
   });
 
   test("UNKNOWN exits two when the local installed-version tag disagrees with origin", () => {
