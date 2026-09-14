@@ -165,6 +165,25 @@ gh repo clone <owner/repo>
 cd "$REPOS_PATH/golems" && bun install
 ```
 
+### Install Codex subagent defaults
+
+Install the versioned Codex fragment and named agents after the golems artifact is available. In a
+checkout, `config/codex/` is the source of truth. In the standalone wizard bundle, use the bundled
+copy downloaded by `INSTALL_PROMPT.md`:
+
+```bash
+bun <wizard-dir>/scripts/install-codex-config.mjs \
+  --source-dir <golems-checkout-or-wizard-dir>/config/codex
+```
+
+The installer updates only `default_subagent_model`,
+`default_subagent_reasoning_effort`, and `max_concurrent_threads_per_session` inside the existing
+`[agents]` table. It preserves every unrelated top-level key, agent setting, and MCP table, then
+removes the superseded `max_threads` alias so it cannot conflict with the canonical concurrency key,
+and copies `recon.toml` and `packet.toml` into `~/.codex/agents/`. Never replace the whole user config.
+Do not use `bun --check` as a syntax check for this installer: Bun executes the entrypoint. Import it
+through the focused test, or run the installer only when an actual install is intended.
+
 ---
 
 ## Step 4: Run sync-config.sh
@@ -288,6 +307,7 @@ MCP Servers:   <actual sync-config outcome>
 BrainLayer:    CONNECTED (BrainBar running)
 
 Skills:        Symlinked from golems/skills/golem-powers/
+Codex agents:  <actual config merge and recon/packet copy outcome>
 
 === Manual Setup Needed ===
   - [ ] Configure Supabase access token in config.yaml
@@ -304,6 +324,7 @@ Render one release-gate line for every helper result. Do not replace `REFUSE`, f
 - **NEVER** enable features without explicit user consent
 - **NEVER** write config with an invalid/nonexistent workspace path
 - **NEVER** overwrite existing config without asking first
+- **NEVER** replace `~/.codex/config.toml`; merge only the managed `[agents]` keys
 - **NEVER** proceed without all 6 required tools installed
 - **NEVER** clone repos without confirming the workspace path exists
 - **NEVER** clone when `machineRole` is missing, unrecognised, or `daemon-host`

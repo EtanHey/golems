@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Run /wizard on a fresh machine with role workspace. All 6 prerequisites are installed (brew, node, bun, claude, gh, git). No ~/.golems/config.yaml exists. The user explicitly chooses machineRole workspace and workspace root ~/Gits, then declines all opt-in features. No repos exist. BrainBar is running at /tmp/brainbar.sock.",
-      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with machineRole workspace, reposPath ~/Gits, and all features OFF. Reads release-gate.json through the decision helper. Clones only checkout-backed golems, installs or reports the VoiceBar, BrainBar, and cmuxlayer artifacts, and does not clone installable or unclassified repos. Skips sync-config because orchestrator is unavailable. Verifies BrainLayer via brain_search. Displays the full setup report.",
+      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with machineRole workspace, reposPath ~/Gits, and all features OFF. Reads release-gate.json through the decision helper. Clones only checkout-backed golems, installs or reports the VoiceBar, BrainBar, and cmuxlayer artifacts, and does not clone installable or unclassified repos. Merges the versioned config/codex [agents] defaults into ~/.codex/config.toml without replacing unrelated keys and copies recon.toml plus packet.toml into ~/.codex/agents. Skips sync-config because orchestrator is unavailable. Verifies BrainLayer via brain_search. Displays the full setup report.",
       "files": [],
       "assertions": [
         {
@@ -30,6 +30,10 @@
         {
           "name": "verifies-brainlayer-connection",
           "description": "Agent checks BrainBar socket and tests MCP connection via brain_search"
+        },
+        {
+          "name": "installs-codex-subagent-defaults",
+          "description": "Agent merges only the managed config/codex [agents] keys without replacing unrelated ~/.codex config and copies recon.toml plus packet.toml"
         },
         {
           "name": "displays-final-report",

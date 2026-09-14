@@ -1,11 +1,11 @@
 ---
 name: agent-routing
-description: "Enforce Cursor=gather, Codex=implement, Claude=orchestrate. Triggers: delegate, worker assignment, routing."
+description: "Enforce Cursor=gather, Codex=implement, Claude=orchestrate. Triggers: delegate, worker assignment, routing, Codex model/effort, subagents."
 ---
 
 # Agent Routing — CLI Tool Assignment Matrix
 
-> Fleet law: canon #1 owns Cursor=gather, Codex=implement, Claude=orchestrate. This skill keeps routing mechanics, delegation checks, eval-backed anti-patterns, and prompt templates. Launcher/model law lives in canon #5/#6 plus `/repogolem`.
+> Fleet law: canon #1 owns Cursor=gather, Codex=implement, Claude=orchestrate. This skill keeps routing mechanics, delegation checks, eval-backed anti-patterns, prompt templates, and the Codex model×effort law in its Model & Effort section. Non-Codex launcher/model law stays in canon #5/#6 plus `/repogolem`.
 
 > **Auto-dispatch triggers** (canonical in orc/SKILL.md C4): batch reads ≥3, transcription ≥2,
 > web research ≥1, or any "in parallel" / "all of these" phrasing → fan out sub-agents
@@ -22,94 +22,73 @@ brainlayerCursor -s "one-sentence task prompt here"     # gather / read-only
 brainlayerCodex  -s "one-sentence task prompt here"     # implement
 ```
 
-Visible cmux pane workers use repoGolem launchers, not raw `cursor`/`codex`/`claude`, copied env vars, manual `cd`, or `--fast`. Internal ephemeral subagents are a separate harness, and `--fast` remains forbidden there too. This routing skill makes no broader non-Cursor model-selection rule. `cursor-agent` is Auto-only in every harness: never pass `-m`/`--model` or a model field, because pinned Cursor usage drains the shared subscription pool fast.
+Visible cmux pane workers use repoGolem launchers, not raw `cursor`/`codex`/`claude`, copied env vars, manual `cd`, or `--fast`. Internal ephemeral subagents are a separate harness, and `--fast` remains forbidden there too. Codex model selection follows the section below; non-Codex model policy stays with canon #5 and `/repogolem`. `cursor-agent` is Auto-only in every harness: never pass `-m`/`--model` or a model field, because pinned Cursor usage drains the shared subscription pool fast.
 
 ---
 
 ## Model & Effort: Decide From the Mission
 
-> **Ownership flag (2026-08-12):** The launcher/model-utilization law from
-> this section through the Task -> Model Override Table belongs in repoGolem,
-> not agent-routing. It remains here for a separate review; this PR does not
-> migrate or ratify it. The Cursor Auto-only constraint is the sole model rule
-> this PR adds here.
+Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort-recommendations.md`
+plus OpenAI's primary [model guide](https://learn.chatgpt.com/docs/models),
+[subagent configuration](https://learn.chatgpt.com/docs/agent-configuration/subagents),
+[API model and pricing docs](https://developers.openai.com/api/docs/models), and
+[Codex usage limits](https://help.openai.com/en/articles/11369540-codex-usage-limits). The researched fleet law is:
 
-Effort is a mission choice, not a model personality trait. Name effort per lane
-with a mission-shaped reason: `medium` is the floor for well-specified work, and
-`high` is only valid when the brief explicitly calls for it. Then pass `-E`
-explicitly for every repoGolem Codex mission.
+1. **Sol·medium implements by default.** Use `gpt-5.6-sol` at `medium` for normal product
+   implementation, including ambiguous multi-file work, architecture, decomposition, and final
+   acceptance.
+2. **Sol·high is a named escalation.** Use it for review, security, or tracing complex logic and
+   assumptions. Do not describe high as the safe implementation default.
+3. **Sol·xhigh or max is one gated hard blocker.** Name the blocker and why more reasoning can help.
+   Reachability is not evidence that the higher rung pays.
+4. **Terra·high is the Codex-child fan-out tier.** Use `gpt-5.6-terra` at `high` for read-heavy
+   recon, large-file review, or parallel Codex children that return distilled evidence. Spawn these
+   as the named `recon` agent. A standalone read-only lane still routes to Cursor under canon #1.
+   Terra·medium fits routine implementation in an established pattern.
+5. **Luna executes mechanical packets.** Luna·medium/high fits extraction, classification, and
+   mechanical edits. Luna·xhigh is the default for a bounded subagent packet. Hand Luna an
+   **outcome plus a deterministic test**, never a procedure. Luna·max is an escalation only after
+   xhigh falls short and requires a written acceptance test; this is community practice, not an
+   OpenAI recommendation. **Luna·low is banned.**
 
-Do not treat omission as neutral: if you omit `-E`, inheriting the default is a
-decision you are making silently. A dispatch that does not name the effort and
-the mission-shaped reason for it is defective.
+Effort is chosen per dispatch, not inherited as silent fleet policy. Every brief names the effort
+and gives a one-line mission-shaped reason. The model-fit line stays in every review.
 
-The failure to avoid is a whole fleet booting at `xhigh` for everything. As the
-answer shape becomes more known and the room for judgment disappears, effort
-should come down with it.
-
-Ask these questions in order:
-
-1. **Is the task below the bounded-implementation bar?** Use the literal launcher
-   value `low` (not `light`) when the answer shape is already known, the work is a
-   direct mechanical transformation, and a deterministic check can settle it
-   without judgment. A rename sweep, fixture regeneration, mechanical backfill,
-   or document reformat can fit here when there are no design choices hiding
-   inside the brief. `low` is the lowest rung for work beneath a normal
-   implementation lane, not the new default for every bounded task.
-2. **Is the lane bounded, mechanical, and independently verifiable?** Exact diff
-   shape, established pattern, focused tests, binary rubric, and trivial rollback
-   all point to `medium`. This is Etan's settled floor for well-specified
-   implementation lanes; important work does not become `xhigh` merely because it
-   matters.
-3. **Does the lane still contain open-ended implementation or judgment?** Novel
-   decomposition, error semantics, or non-trivial review defaults to Sol at
-   `high`.
-4. **Is the reasoning genuinely hard in a way more tokens can help?**
-   Nondeterministic debugging, contradictory evidence, adversarial verification,
-   or design under conflicting requirements can justify Sol at `xhigh`. Do not
-   turn that exception into a fleet default.
-5. **Would `max` materially beat `xhigh` here?** The general answer is **NOT
-   KNOWN**. Use `max` only when a mission-specific eval proves the extra spend
-   pays. repoGolem can now carry `-E max`, but reachability is not evidence that
-   the rung improves the result.
-6. **Is the model choice measured for this work shape?** Luna
-   (`gpt-5.6-luna`) is a reasonable candidate for bounded mechanical, pattern, and
-   audit work; Sol (`gpt-5.6-sol`) is the default for open-ended implementation.
-   That Luna direction rests on one qualified head-to-head at `medium`: Luna
-   scored ACCEPT and tied code taste at roughly 21x lower reported cost, but the
-   inputs were cumulative session totals including cache reads. Treat the ratio
-   as an upper-bound datapoint, measure output tokens and wall-clock as well as
-   token price, and do not generalize it into universal doctrine.
-
-What is **NOT KNOWN**: a measured Terra task-tier assignment, a broad
-per-task-class Sol/Luna benchmark, Luna-at-`max` performance, a general rule for
-choosing `max` over `xhigh`, or whether selecting supported `low`, `max`, or
-`ultra` values materially changes observed behavior. `codex debug models
---bundled` verifies those rungs are supported; launcher passthrough and
-session-config echo still do not prove behavioral effect. Do not fill those gaps
-with vendor-tier intuition.
+Quota affects concurrency choices, not acceptance standards: Luna has roughly 25× and Terra roughly
+2.5× Sol's local-message allowance per window; Spark is documented as a separate pool, but open
+Codex bugs [#23150](https://github.com/openai/codex/issues/23150) and
+[#20122](https://github.com/openai/codex/issues/20122) report it draining or depending on main quota.
+Effort changes token count, not price per token. These are planning inputs, never permission to
+accept weaker output.
 
 ### Apply the choice, then verify it
 
-- repoGolem passes effort correctly. Use, for example,
-  `brainlayerCodex -s -E low "<known-output mechanical task>"`,
-  `brainlayerCodex -s -E medium "<bounded implementation mission>"`, or
-  `brainlayerCodex -s -E high "<open-ended mission>"`.
+- repoGolem visible lanes pass effort explicitly, for example
+  `brainlayerCodex -s -E medium "<implementation outcome>"` or
+  `brainlayerCodex -s -E high "<review/security/complex-tracing outcome>"`. A Terra lane can pass
+  both values through: `brainlayerCodex -s -m gpt-5.6-terra -E medium "<patterned outcome>"`.
 - Cursor has no model-pin carve-out: visible, headless, and internal
   `cursor-agent` runs all stay on Auto with no model flag or model field.
-- cmuxlayer `spawn_agent.model` now preflights explicit Codex model names against
-  the runtime model list before spawn. For every pinned run, still record the **requested and
-  effective** model plus effort from the run log/session metadata. The effective
-  values, not the prompt or agent's self-identification, are the routing evidence.
+- Codex custom agents live in `~/.codex/agents/*.toml`; `[agents]` defaults live in
+  `~/.codex/config.toml`. The golems defaults pin Luna·xhigh for generic children, while named
+  `recon` pins Terra·high and named `packet` pins Luna·xhigh. The concurrency cap is
+  `max_concurrent_threads_per_session = 4`; never retain its legacy `max_threads` alias beside it,
+  because Codex rejects the duplicate field.
+- Recon and read-heavy fan-out children MUST use the named `recon` agent. An unnamed child inherits
+  the Luna·xhigh packet default and therefore MUST receive a bounded outcome plus deterministic test.
+- Verify every child's **effective** model and effort from the child's own `turn_context` after its
+  own `task_started` in `~/.codex/sessions/**/rollout-*.jsonl`, not from an inherited parent context
+  above it. Never use the prompt, registry, parent metadata, or model self-identification as proof.
+  A historical bug silently spawned Sol children despite routing text.
 
 Before dispatch, write one sentence for each field:
 
 ```text
 Mission shape: bounded/mechanical | open-ended | contradictory/adversarial
-Choice: <effective-model target> at <low|medium|high|xhigh|max|ultra>
+Choice: <effective-model target> at <medium|high|xhigh|max>
 Why: <signals from the mission, not task importance alone>
 Dispatch: <launcher/raw internal path and explicit effort pin>
-Verification: <where the effective model+effort will be read>
+Verification: <child session JSONL whose turn_context will be read>
 Unknowns: <anything not measured; write NOT KNOWN rather than extrapolating>
 ```
 
@@ -117,37 +96,23 @@ Unknowns: <anything not measured; write NOT KNOWN rather than extrapolating>
 
 ## Task -> Model Override Table
 
-Use this table after the role matrix chooses the worker type. It is a deliberate
-override surface, not a quota-saving excuse: defaults are not limits, judge
-output quality instead of price tag, and apply `intelligence > taste > cost`.
-Cost is a tie-breaker only; in this column, a higher score means more economical
-or more available for the task.
+Use this after the role matrix chooses Codex. It describes task fit, not a license to lower the
+quality bar.
 
-`model-pin-gate` blocks accidental Fable inheritance. When it blocks, pin one of
-the exact rows below, or use explicit Fable only from an apex orchestration seat.
-The gate block message already points here; this table points back to that pin
-law without duplicating its hook logic.
+| task shape | model · effort | dispatch rule |
+|---|---|---|
+| Default implementation, decomposition, architecture, final acceptance | `gpt-5.6-sol` · `medium` | Default implementer; brief names why medium fits. |
+| Review, security, complex tracing | `gpt-5.6-sol` · `high` | High needs one of these named reasons. |
+| One genuinely hard blocker | `gpt-5.6-sol` · `xhigh` or `max` | Gate to one blocker; state why lower effort is insufficient. |
+| Read-heavy recon, large-file review, distilled parallel fan-out | `gpt-5.6-terra` · `high` | Use the named `recon` agent; a standalone read-only lane remains Cursor. |
+| Routine implementation in an established pattern | `gpt-5.6-terra` · `medium` | Use only when the pattern and acceptance boundary are already clear. |
+| Extraction, classification, mechanical edits | `gpt-5.6-luna` · `medium` or `high` | Give an outcome and deterministic check. Never use Luna·low. |
+| Bounded mechanical subagent packet | `gpt-5.6-luna` · `xhigh` | Prefer the named `packet` agent; outcome + test are mandatory. Unnamed children are packets too. |
+| Packet escalation after xhigh falls short | `gpt-5.6-luna` · `max` | Requires a written acceptance test; community practice, not an OpenAI recommendation. |
 
-| model | cost | intelligence | taste | default work |
-|---|---:|---:|---:|---|
-| `gpt-5.5` (via `codex exec`) | 9 | 8 | 5 | Bulk/mechanical work, implementation, refactors, debugging, tests, verification, and an extra review perspective. For visible workers, still use `{repo}Codex -s`; `codex exec` is only for an internal harness/thin `sonnet` wrapper that writes a self-contained Codex prompt and returns a digest. |
-| `gpt-5.3-codex-spark` | separate pool; score pending | measure-first | measure-first | Weekly-pool wall override for implementation-shaped load only. For visible workers, still use repoGolem launcher policy; the explicit example `codex exec -m gpt-5.3-codex-spark -c model_reasoning_effort="medium" ...` is internal-harness only, as is the equivalent Codex model field. Pin `model_reasoning_effort` per call, verify the session `"model"` field, and do NOT route bulk transcript grep-and-cite mining to Spark until an effort-pinned retest clears it. |
-| `sonnet` | 5; floor ~$0.03/call | 5 | 7 | Thin Claude wrappers, low-cost coordination, routine synthesis, and user-facing work that needs taste >=7 but not Opus-level reasoning. |
-| `claude-opus-5[1m]` | NOT KNOWN for Opus 5; measure-first | measure-first | measure-first | Reviews, contested decisions, taste-sensitive writing, long-context synthesis, and reasoning where the extra judgment beats the token cost. Do not use it for token-grinding intake. **The cost and scores here are NOT KNOWN:** the prior row's `4; floor ~$0.09/call`, intelligence `7` and taste `8` were measured against **Opus 4.8** and were never re-derived for Opus 5. They are withheld rather than inherited — a renamed row carrying old figures reads as a verified current scorecard and is worse than an obviously stale one. Bench before restoring numbers. |
-| `haiku` | floor ~$0.01/call; no policy score | measure-first | measure-first | Retained only as a measurement candidate. No policy default until benched; "never Haiku" is a hypothesis to test, not dogma. |
-
-Fable is apex-orchestration only; post-2026-07-07 Fable usage spends usage
-credits. Do not add a scored Fable row for general worker routing; current
-pricing-floor lint uses ~$0.18/call as the Fable floor when it appears in gate
-configs.
-
-Reasoning effort is per tool call and should follow work shape, not model name.
-Use the Model & Effort questions above for mission-shaped escalation through
-`xhigh`. Act as though nothing right of `xhigh` exists unless a specific eval
-proves the extra spend pays for itself; `ultracode` means `high` plus more spins,
-not a blank check for `max` or `ultra` effort.
-
-Grounding: Theo Gem-6 table (`docs.local/sprint/weave-2026-07-06-drift/sources/theo-fable-video-gems.md`), runbook delta notes (`docs.local/skills-audit-notes.md:151,177`), budget-floor pricing (`skill-creator/hooks-lab/gates/budget-floor-lint/SKILL.md`), and the paired pin law in `skill-creator/hooks-lab/gates/model-pin-gate`.
+Spark remains a separate-pool interactive option, not the default subagent or a substitute for this
+matrix. Max's incremental value and a stable general max policy remain **NOT KNOWN**; reachability is
+not evidence that it pays. Non-Codex model policy remains with its owning canon and launcher skills.
 
 ---
 
@@ -170,7 +135,10 @@ Domain LEADs (brainlayerClaude, voicelayerClaude, phx-LEAD, skillCreatorClaude, 
 2. Lead goals must preserve orchestration duties: spawn/delegate, maintain health gates, synthesize, and verify.
 3. Lead topology must be managed: a lead is an `agent_id` with `role:"orchestrator"` and left-column placement.
 4. Tiny lead self-edits must be bounded, disclosed in the active collab, and isolated; larger work routes to a Codex+Claude pair.
-5. Workflow/subagent fan-out is read-only recon/verification/synthesis except audio-dashboard builds; code implementation uses visible Codex-implements + Claude-reviews pairs.
+5. Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except
+   audio-dashboard builds; code implementation uses visible Codex-implements + Claude-reviews pairs.
+   Codex children spawned by a visible Codex lane MAY edit inside that lane's worktree, and the
+   visible Codex parent owns their acceptance.
 
 ## GOAL DELEGATION CONTRACT (2026-06-26 cmux remediation)
 
@@ -338,7 +306,9 @@ After a sprint completes, check:
 
 **Pattern:** Worker launched with a specific expensive model when Auto/default would suffice.
 
-**Fix:** For visible workers, route by role here and use launcher/model policy from canon #5 plus `/repogolem`. Cursor data-gathering is Auto-only with no model override.
+**Fix:** For visible workers, route by role here. Apply this skill's Model & Effort section to Codex;
+use canon #5 plus `/repogolem` for non-Codex model policy. Cursor data-gathering is Auto-only with no
+model override.
 
 ### AP4: Claude Implements When It Should Orchestrate
 > brainClaude started implementing code fixes when it should only orchestrate — L4525-4548
@@ -391,14 +361,13 @@ This skill is a **building block** used by higher-level skills:
 **Fix:** Never trust Codex's self-identification. The **source of truth** is the session JSONL, and you must read the `"model"` field directly:
 
 ```bash
-# Today's sessions — model field is the source of truth
-grep -h -E '"model":' ~/.codex/sessions/$(date +%Y/%m/%d)/*.jsonl | sort -u
-
-# Specific date
-grep -h -E '"model":' ~/.codex/sessions/2026/04/15/*.jsonl | sort -u
+# Inspect one child rollout. Use the turn_context after the child's own task_started,
+# not the inherited parent turn_context above it.
+jq -c 'select(.type=="turn_context")|.payload|{model,effort}' <child-rollout>
 ```
 
-`"model":"gpt-5.3-codex-spark"` confirms Spark. Check immediately after the task starts — don't ask Codex.
+The child's post-`task_started` `{"model":"gpt-5.3-codex-spark",...}` confirms Spark. Check
+immediately after the task starts — don't ask Codex and do not take the first inherited match.
 
 ## AP9: Using Raw `codex` Instead of repoGolem Launchers (April 15, 2026)
 
@@ -444,7 +413,7 @@ grep -h -E '"model":' ~/.codex/sessions/2026/04/15/*.jsonl | sort -u
 {repo}{Tool} -s "prompt"
 ```
 
-Model-selection mechanics live in canon #5 plus `/repogolem`; detailed flag behavior, headless mode, worktree launching, and registry precedence live in canon #6 plus `/repogolem`. agent-routing only checks that the worker type matches the task.
+Model-selection mechanics live in canon #5 plus `/repogolem` (Codex model×effort: the Model & Effort section above); detailed flag behavior, headless mode, worktree launching, and registry precedence live in canon #6 plus `/repogolem`. agent-routing only checks that the worker type matches the task.
 
 Launchers handle cwd, MCP wiring, env vars, iTerm profile, secrets, and tab metadata; duplicating that ceremony is a routing smell.
 
@@ -512,7 +481,7 @@ PAUSE. Am I about to Write/Edit code?
 - Visible worker launch form is `{repo}{Tool} -s "prompt"`; `/repogolem` owns launcher details.
 - Reuse existing managed workers before spawning; if the mission changed, supersede with one file-backed goal contract using that harness's adapter syntax
 - Goal files preserve the full user delegation and include report path, DONE marker, and green/no-green criteria
-- Workflow/subagent fan-out is read-only recon/verification/synthesis except audio-dashboard builds; code implementation uses visible Codex-implements + Claude-reviews pairs, except for the bounded tiny-unblocker carve-out in Rule 7
+- Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except audio-dashboard builds; Codex children may edit only inside their visible Codex parent's worktree, with parent-owned acceptance
 - Leads monitor report files/DONE markers and low-frequency health, not high-frequency pane narration
 - Zero worker panes means every lane is DONE, BLOCKED/NOT_GREEN with handoff, or TRANSFERRED; never close unfinished work for cleanliness
 - Claude reviews Codex's PR, doesn't implement itself
