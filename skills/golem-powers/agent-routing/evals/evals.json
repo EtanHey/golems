@@ -3,8 +3,8 @@
   "description": "Eval cases for the agent routing matrix skill. Each case tests whether the agent correctly routes tasks to Cursor (gather), Codex (implement), or Claude (orchestrate). All cases derive from real violations in April 4, 2026 orcClaude session.",
   "effort_routing_gate": {
     "category": "model-effort",
-    "total_cases": 8,
-    "minimum_correct_effort_tiers": 7,
+    "total_cases": 9,
+    "minimum_correct_effort_tiers": 8,
     "grader_instruction": "For eval IDs 24-32, score the selected effort against expected_effort. At least 8 of 9 exact tiers must match. Also check that the answer explains its model choice, makes -E explicit when repoGolem can carry the choice, and reports effective model plus effort from the run's own turn_context; for a child, use the turn_context after the child's own task_started."
   },
   "evals": [
@@ -684,7 +684,7 @@
       "name": "bounded-pattern-audit",
       "category": "model-effort",
       "description": "A read-heavy binary-rubric audit belongs on the Terra high recon tier.",
-      "prompt": "Choose a Codex model and effort for this mission: inspect 40 generated migration diffs against four explicit invariants, emit pass/fail plus evidence for each, and make no code changes. The rubric is binary and every result is independently checkable. State what is known versus not known about the model choice.",
+      "prompt": "As a child of a Sol implementation lane, choose a Codex model and effort for this mission: inspect 40 generated migration diffs against four explicit invariants, emit pass/fail plus evidence for each, and make no code changes. The rubric is binary and every result is independently checkable. State what is known versus not known about the model choice.",
       "expected_effort": "high",
       "expected_model": "gpt-5.6-terra",
       "expected_output": "Use the named read-only recon agent at Terra high because this is read-heavy parallel review over many artifacts that should return distilled evidence. The task shape makes the intended choice known, but the effective model and effort remain NOT KNOWN until verified from the child's own session JSONL turn_context.",
@@ -864,7 +864,7 @@
       "name": "known-output-mechanical-transform",
       "category": "model-effort",
       "description": "A tiny known-output mechanical transformation uses Luna medium; Luna low remains banned.",
-      "prompt": "Choose a Codex model and effort for this mission: reformat one existing Markdown file to an exact canonical output that has already been supplied. There are no semantic edits or design choices, the answer shape is known byte-for-byte, a deterministic formatter check verifies it, and rollback is one file. State the dispatch approach and what the child's turn_context must prove if dispatched as a child.",
+      "prompt": "Choose a Codex model and effort for this mission: reformat one existing Markdown file to an exact canonical output that has already been supplied. There are no semantic edits or design choices, the answer shape is known byte-for-byte, a deterministic formatter check verifies it, and rollback is one file. State the dispatch approach and what the run's own turn_context must prove.",
       "expected_effort": "medium",
       "expected_model": "gpt-5.6-luna",
       "expected_output": "Select Luna at medium for the direct mechanical edit because the output is known and deterministic. Explicitly reject Luna low because it is banned. Pass the outcome plus formatter check and verify the effective model and effort from the run's own turn_context.",

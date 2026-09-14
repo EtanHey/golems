@@ -413,7 +413,7 @@ immediately after the task starts — don't ask Codex and do not take the first 
 {repo}{Tool} -s "prompt"
 ```
 
-Model-selection mechanics live in canon #5 plus `/repogolem`; detailed flag behavior, headless mode, worktree launching, and registry precedence live in canon #6 plus `/repogolem`. agent-routing only checks that the worker type matches the task.
+Model-selection mechanics live in canon #5 plus `/repogolem` (Codex model×effort: the Model & Effort section above); detailed flag behavior, headless mode, worktree launching, and registry precedence live in canon #6 plus `/repogolem`. agent-routing only checks that the worker type matches the task.
 
 Launchers handle cwd, MCP wiring, env vars, iTerm profile, secrets, and tab metadata; duplicating that ceremony is a routing smell.
 
