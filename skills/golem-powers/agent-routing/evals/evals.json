@@ -612,44 +612,40 @@
     },
     {
       "id": 23,
-      "prompt": "A Fable/apex seat needs to fan out mixed work: bulk codebase mining, implementation, user-facing prose, review, and an experimental Haiku run. What model table and override rules should agent-routing apply?",
-      "expected_output": "Should use the task-to-model override table keyed by exact invocation strings: `gpt-5.5` via `codex exec` for bulk/mechanical implementation-shaped work, `gpt-5.3-codex-spark` only through an explicit `-m gpt-5.3-codex-spark` plus effort pin and only after quality measurement for implementation-shaped load, `sonnet` for low-cost Claude wrappers and bulk Claude work, `claude-opus-5[1m]` for taste/review/reasoning, and `haiku` only as measure-first with no policy-default row. It should frame the table as defaults-not-limits, use intelligence > taste > cost with cost as tie-breaker, say reasoning effort is per tool call/work shape, and treat Fable as apex-orchestration only with post-2026-07-07 usage-credit costs rather than a scored general row.",
+      "prompt": "A lead needs to fan out mixed Codex work: read-heavy codebase recon, a normal multi-file implementation, a security review, and a fully specified mechanical packet with a written acceptance test. What model and effort should each receive, and what must each review preserve?",
+      "expected_output": "Should route read-heavy recon to Terra high, normal implementation to Sol medium, security review to Sol high, and the bounded mechanical packet to Luna max only because a written acceptance test already exists (otherwise use the Luna xhigh packet default). It should require a one-line model-fit reason on every brief and review, hand Luna an outcome plus test rather than a procedure, ban Luna low, and verify each child's effective model and effort from that child's session JSONL turn_context.",
       "assertions": [
         {
-          "text": "Keys the table by exact invocation strings: `gpt-5.5`, `gpt-5.3-codex-spark`, `sonnet`, `claude-opus-5[1m]`, and `haiku`",
+          "text": "Routes read-heavy recon to gpt-5.6-terra at high",
           "type": "behavioral"
         },
         {
-          "text": "Frames the table as defaults-not-limits with standing permission to override based on output quality",
+          "text": "Routes normal implementation to gpt-5.6-sol at medium",
           "type": "behavioral"
         },
         {
-          "text": "Uses the priority rule `intelligence > taste > cost` and treats cost as a tie-breaker only",
+          "text": "Routes security review to gpt-5.6-sol at high",
           "type": "behavioral"
         },
         {
-          "text": "Requires Spark to be explicit via `-m gpt-5.3-codex-spark` with a reasoning-effort pin and quality measurement before policy use",
+          "text": "Allows Luna max only because the packet has a written acceptance test",
           "type": "behavioral"
         },
         {
-          "text": "Rejects Spark for bulk transcript grep-and-cite mining based on the measured timeout/zero-output datapoint",
+          "text": "Hands Luna an outcome plus a deterministic test, never a procedure",
           "type": "behavioral"
         },
         {
-          "text": "Marks `haiku` as measure-first and not a policy default",
+          "text": "Bans gpt-5.6-luna at low",
           "type": "behavioral"
         },
         {
-          "text": "Treats Fable as apex-orchestration only and post-2026-07-07 usage credits, not a scored general routing row",
+          "text": "Keeps a one-line model-fit reason in every brief and review",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT list Fable as a normal scored row for general worker routing",
-          "type": "negative"
-        },
-        {
-          "text": "Does NOT use marketing-tier row names instead of exact invocation strings",
-          "type": "negative"
+          "text": "Verifies each child model and effort from the child's own session JSONL turn_context",
+          "type": "behavioral"
         }
       ]
     },
@@ -657,35 +653,29 @@
       "id": 24,
       "name": "bounded-mechanical-change",
       "category": "model-effort",
-      "description": "A fully specified mechanical implementation lane should use the settled bounded-work floor.",
+      "description": "A fully specified mechanical child packet should use the named Luna xhigh agent.",
       "prompt": "Choose a Codex model and effort for this mission: rename one JSON field in an adapter and update the two existing fixtures. The exact diff shape is specified, a focused regression test already fails, there are no design choices, and rollback is trivial. State the dispatch approach and what the run log must prove.",
-      "expected_effort": "medium",
-      "expected_model": "gpt-5.6-luna is a reasonable candidate pending measurement; gpt-5.6-sol remains valid when an open-ended turn appears",
-      "expected_output": "Select medium because this is bounded, mechanical, and well-tested, and pass -E medium explicitly through repoGolem. Luna may be tried as the measured bounded-work candidate, but the evidence is limited; if a Luna model pin is required, use a raw Codex spawn with an explicit medium reasoning-effort pin because repoGolem refuses agent-session model overrides. Report the effective model and effort from the run log.",
+      "expected_effort": "xhigh",
+      "expected_model": "gpt-5.6-luna",
+      "expected_output": "Use the named packet subagent at Luna xhigh because the outcome is fully specified and a deterministic acceptance test already exists. Hand it the outcome plus the failing test, never a procedure. Verify the child's effective model and effort from its own session JSONL turn_context.",
       "assertions": [
         {
           "type": "content",
-          "name": "selects-medium",
-          "description": "Selects medium, not high or xhigh, for the bounded mechanical lane.",
-          "text": "Selects medium for the bounded mechanical lane"
+          "name": "selects-luna-xhigh",
+          "description": "Selects Luna xhigh for the bounded mechanical subagent packet.",
+          "text": "Selects Luna xhigh for the packet"
         },
         {
           "type": "content",
-          "name": "qualifies-luna",
-          "description": "Treats Luna as a reasonable bounded-work candidate pending measurement, not universal doctrine.",
-          "text": "Qualifies Luna as a bounded-work candidate pending measurement"
+          "name": "outcome-plus-test",
+          "description": "Hands Luna an outcome and deterministic test rather than a procedure.",
+          "text": "Provides an outcome plus deterministic test"
         },
         {
           "type": "content",
           "name": "reports-effective-routing",
-          "description": "Requires the effective model and effort from the run log and distinguishes repoGolem effort pass-through from model refusal.",
-          "text": "Reports effective model and effort from the run log"
-        },
-        {
-          "type": "content",
-          "name": "explicit-medium-effort-pin",
-          "description": "Uses repoGolem -E medium explicitly, or an explicit medium reasoning-effort pin when a raw model override is required.",
-          "text": "Uses -E medium or an explicit raw medium effort pin"
+          "description": "Requires the effective model and effort from the child's session JSONL turn_context.",
+          "text": "Reports effective child routing from turn_context"
         }
       ]
     },
@@ -693,35 +683,29 @@
       "id": 25,
       "name": "bounded-pattern-audit",
       "category": "model-effort",
-      "description": "A binary-rubric audit over repetitive artifacts should not inherit excessive reasoning effort.",
+      "description": "A read-heavy binary-rubric audit belongs on the Terra high recon tier.",
       "prompt": "Choose a Codex model and effort for this mission: inspect 40 generated migration diffs against four explicit invariants, emit pass/fail plus evidence for each, and make no code changes. The rubric is binary and every result is independently checkable. State what is known versus not known about the model choice.",
-      "expected_effort": "medium",
-      "expected_model": "gpt-5.6-luna is Etan's measured audit candidate, but only one qualified head-to-head supports the direction",
-      "expected_output": "Select medium for the bounded, mechanical, independently verifiable audit and pass -E medium explicitly. Luna is a reasonable audit candidate, but the measured evidence is only one qualified comparison and cost-per-task must include output tokens and wall-clock. Report the effective model and effort from the run log.",
+      "expected_effort": "high",
+      "expected_model": "gpt-5.6-terra",
+      "expected_output": "Use the named read-only recon agent at Terra high because this is read-heavy parallel review over many artifacts that should return distilled evidence. Verify the child's effective model and effort from its own session JSONL turn_context.",
       "assertions": [
         {
           "type": "content",
-          "name": "selects-medium",
-          "description": "Selects medium for the bounded binary-rubric audit.",
-          "text": "Selects medium for the bounded audit"
+          "name": "selects-terra-high",
+          "description": "Selects Terra high for read-heavy review fan-out.",
+          "text": "Selects Terra high"
         },
         {
           "type": "content",
-          "name": "states-evidence-limit",
-          "description": "States that Luna's support is limited to one qualified head-to-head and does not generalize beyond measured work.",
-          "text": "Marks the Luna evidence as limited"
-        },
-        {
-          "type": "content",
-          "name": "measures-task-cost",
-          "description": "Requires output tokens and wall-clock, not token price alone.",
-          "text": "Measures output tokens and wall-clock"
+          "name": "keeps-read-only",
+          "description": "Uses the named read-only recon agent because no code changes are requested.",
+          "text": "Keeps recon read-only"
         },
         {
           "type": "content",
           "name": "explicit-effort-and-routing-proof",
-          "description": "Passes -E medium explicitly and reports the effective model and effort from the run log.",
-          "text": "Uses -E medium and reports effective routing"
+          "description": "Reports the effective model and effort from the child's session JSONL turn_context.",
+          "text": "Reports effective child routing from turn_context"
         }
       ]
     },
@@ -729,17 +713,17 @@
       "id": 26,
       "name": "routine-open-ended-implementation",
       "category": "model-effort",
-      "description": "A normal implementation lane with unresolved local choices should justify high from named open-ended mission signals.",
+      "description": "Normal implementation defaults to Sol medium even when local choices remain.",
       "prompt": "Choose a Codex model and effort for this mission: add a new import adapter across three modules. Acceptance tests and API boundaries are clear, but the internal decomposition and error-handling design are open-ended. This is normal product work, not an incident.",
-      "expected_effort": "high",
+      "expected_effort": "medium",
       "expected_model": "gpt-5.6-sol",
-      "expected_output": "Select Sol at high. This is open-ended implementation work, so justify high with mission-shape: unresolved decomposition and error-design choices remain. Do not rely on 'high as default'; pass -E high explicitly so inheriting launcher default is deliberate, then verify the run log.",
+      "expected_output": "Select Sol at medium because normal multi-file implementation, decomposition, and final acceptance use the default implementer. High requires a named review, security, or complex-tracing reason, none of which is present. Pass -E medium explicitly and verify the run log.",
       "assertions": [
         {
           "type": "content",
-          "name": "selects-high",
-          "description": "Selects high for open-ended implementation.",
-          "text": "Selects high"
+          "name": "selects-medium",
+          "description": "Selects medium for normal implementation.",
+          "text": "Selects medium"
         },
         {
           "type": "content",
@@ -750,14 +734,14 @@
         {
           "type": "negative",
           "name": "high-not-justified-as-default",
-          "description": "Fail if high is defended as a safe default, even when open-ended signals are present.",
-          "text": "Does NOT defend high as a safe default"
+          "description": "Does not escalate to high without review, security, or complex tracing.",
+          "text": "Does NOT select high without a named escalation reason"
         },
         {
           "type": "content",
           "name": "explicit-effort-choice",
-          "description": "Passes -E high explicitly and verifies the effective run-log values.",
-          "text": "Makes -E high explicit and verifies the run log"
+          "description": "Passes -E medium explicitly and verifies the effective run-log values.",
+          "text": "Makes -E medium explicit and verifies the run log"
         }
       ]
     },
@@ -873,29 +857,29 @@
       "id": 30,
       "name": "below-medium-known-output-transform",
       "category": "model-effort",
-      "description": "A tiny mechanical transformation with a byte-for-byte known answer shape belongs below the settled medium implementation floor.",
+      "description": "A tiny known-output mechanical transformation uses Luna medium; Luna low remains banned.",
       "prompt": "Choose a Codex model and effort for this mission: reformat one existing Markdown file to an exact canonical output that has already been supplied. There are no semantic edits or design choices, the answer shape is known byte-for-byte, a deterministic formatter check verifies it, and rollback is one file. State the dispatch approach and what the run log must prove.",
-      "expected_effort": "low",
-      "expected_model": "gpt-5.6-luna is a reasonable candidate pending measurement; no mission-specific model benchmark is established",
-      "expected_output": "Select low because this is below the bounded implementation bar: it is a tiny known-output transformation with no judgment and deterministic verification. Keep medium as the floor for bounded implementation lanes, pass -E low explicitly, and report the effective model and effort from the run log. Luna is only a candidate pending measurement.",
+      "expected_effort": "medium",
+      "expected_model": "gpt-5.6-luna",
+      "expected_output": "Select Luna at medium for the direct mechanical edit because the output is known and deterministic. Explicitly reject Luna low because it is banned. Pass the outcome plus formatter check and verify the effective model and effort from the run log.",
       "assertions": [
         {
           "type": "content",
-          "name": "selects-low",
-          "description": "Selects low for a tiny known-output mechanical transformation.",
-          "text": "Selects low"
+          "name": "selects-luna-medium",
+          "description": "Selects Luna medium for the tiny known-output mechanical transformation.",
+          "text": "Selects Luna medium"
         },
         {
           "type": "content",
-          "name": "preserves-medium-floor",
-          "description": "Explains that medium remains the floor for bounded implementation lanes and this task sits below that bar.",
-          "text": "Distinguishes low from the medium implementation floor"
+          "name": "bans-luna-low",
+          "description": "Explicitly rejects Luna low.",
+          "text": "Bans Luna low"
         },
         {
           "type": "content",
-          "name": "explicit-low-dispatch",
-          "description": "Passes -E low explicitly through repoGolem.",
-          "text": "Uses -E low"
+          "name": "outcome-plus-test",
+          "description": "Provides the exact outcome and deterministic formatter check.",
+          "text": "Provides outcome plus deterministic test"
         },
         {
           "type": "content",
@@ -912,8 +896,8 @@
       "description": "A dispatch that omits -E must be treated as silently choosing the launcher default rather than making no effort decision.",
       "prompt": "Review this draft dispatch for a well-specified bounded implementation lane: `golemsCodex -s \"apply the specified adapter patch and run the focused regression test\"`. The diff shape is known, the task still requires implementation, and the draft gives no effort choice or rationale. Should it ship unchanged? State the corrected dispatch and explain what the omission means.",
       "expected_effort": "medium",
-      "expected_model": "gpt-5.6-luna is a reasonable bounded-work candidate pending measurement; no model pin is required by this prompt",
-      "expected_output": "Reject the draft unchanged. Omitting -E silently chooses the launcher's high default; it is not the absence of a decision. Require a mission-specific rationale and correct the dispatch to -E medium because this is a bounded implementation lane, then verify the effective model and effort from the run log.",
+      "expected_model": "gpt-5.6-sol",
+      "expected_output": "Reject the draft unchanged. Omitting -E silently accepts an inherited value; it is not the absence of a decision. Require a mission-specific rationale and correct the default Sol implementation dispatch to -E medium, then verify the effective model and effort from the run log.",
       "assertions": [
         {
           "type": "content",

@@ -49,6 +49,10 @@ If it doesn't exist:
 3. `CLONE`: only `kind:"none"` on `workspace`; check `$REPOS_PATH/<repo>` and clone only when missing.
 4. `REFUSE`: clone nothing and show the reason. Missing/invalid roles and unclassified repos fail closed.
 5. Run `bun install` in golems after cloning it.
+6. Run `bun <wizard-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`, using
+   the golems checkout as `<source>` when present and the standalone wizard bundle otherwise. This
+   merges the managed `[agents]` defaults and copies the `recon` and `packet` agent files without
+   replacing unrelated `~/.codex/config.toml` content.
 
 ## Phase 4: Wire MCP Servers (Step 4)
 

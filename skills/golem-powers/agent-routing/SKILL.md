@@ -28,88 +28,53 @@ Visible cmux pane workers use repoGolem launchers, not raw `cursor`/`codex`/`cla
 
 ## Model & Effort: Decide From the Mission
 
-> **Ownership flag (2026-08-12):** The launcher/model-utilization law from
-> this section through the Task -> Model Override Table belongs in repoGolem,
-> not agent-routing. It remains here for a separate review; this PR does not
-> migrate or ratify it. The Cursor Auto-only constraint is the sole model rule
-> this PR adds here.
+Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort-recommendations.md`
+and OpenAI's Codex subagent documentation. The researched fleet law is:
 
-Effort is a mission choice, not a model personality trait. Name effort per lane
-with a mission-shaped reason: `medium` is the floor for well-specified work, and
-`high` is only valid when the brief explicitly calls for it. Then pass `-E`
-explicitly for every repoGolem Codex mission.
+1. **Sol·medium implements by default.** Use `gpt-5.6-sol` at `medium` for normal product
+   implementation, including ambiguous multi-file work, architecture, decomposition, and final
+   acceptance.
+2. **Sol·high is a named escalation.** Use it for review, security, or tracing complex logic and
+   assumptions. Do not describe high as the safe implementation default.
+3. **Sol·xhigh or max is one gated hard blocker.** Name the blocker and why more reasoning can help.
+   Reachability is not evidence that the higher rung pays.
+4. **Terra·high is the fan-out tier.** Use `gpt-5.6-terra` at `high` for read-heavy recon,
+   large-file review, or parallel workers that return distilled evidence. Terra·medium fits routine
+   implementation in an established pattern.
+5. **Luna executes mechanical packets.** Luna·medium/high fits extraction, classification, and
+   mechanical edits. Luna·xhigh is the default for a bounded subagent packet. Hand Luna an
+   **outcome plus a deterministic test**, never a procedure. Luna·max requires a written acceptance
+   test. **Luna·low is banned.**
 
-Do not treat omission as neutral: if you omit `-E`, inheriting the default is a
-decision you are making silently. A dispatch that does not name the effort and
-the mission-shaped reason for it is defective.
+Effort is chosen per dispatch, not inherited as silent fleet policy. Every brief names the effort
+and gives a one-line mission-shaped reason. The model-fit line stays in every review.
 
-The failure to avoid is a whole fleet booting at `xhigh` for everything. As the
-answer shape becomes more known and the room for judgment disappears, effort
-should come down with it.
-
-Ask these questions in order:
-
-1. **Is the task below the bounded-implementation bar?** Use the literal launcher
-   value `low` (not `light`) when the answer shape is already known, the work is a
-   direct mechanical transformation, and a deterministic check can settle it
-   without judgment. A rename sweep, fixture regeneration, mechanical backfill,
-   or document reformat can fit here when there are no design choices hiding
-   inside the brief. `low` is the lowest rung for work beneath a normal
-   implementation lane, not the new default for every bounded task.
-2. **Is the lane bounded, mechanical, and independently verifiable?** Exact diff
-   shape, established pattern, focused tests, binary rubric, and trivial rollback
-   all point to `medium`. This is Etan's settled floor for well-specified
-   implementation lanes; important work does not become `xhigh` merely because it
-   matters.
-3. **Does the lane still contain open-ended implementation or judgment?** Novel
-   decomposition, error semantics, or non-trivial review defaults to Sol at
-   `high`.
-4. **Is the reasoning genuinely hard in a way more tokens can help?**
-   Nondeterministic debugging, contradictory evidence, adversarial verification,
-   or design under conflicting requirements can justify Sol at `xhigh`. Do not
-   turn that exception into a fleet default.
-5. **Would `max` materially beat `xhigh` here?** The general answer is **NOT
-   KNOWN**. Use `max` only when a mission-specific eval proves the extra spend
-   pays. repoGolem can now carry `-E max`, but reachability is not evidence that
-   the rung improves the result.
-6. **Is the model choice measured for this work shape?** Luna
-   (`gpt-5.6-luna`) is a reasonable candidate for bounded mechanical, pattern, and
-   audit work; Sol (`gpt-5.6-sol`) is the default for open-ended implementation.
-   That Luna direction rests on one qualified head-to-head at `medium`: Luna
-   scored ACCEPT and tied code taste at roughly 21x lower reported cost, but the
-   inputs were cumulative session totals including cache reads. Treat the ratio
-   as an upper-bound datapoint, measure output tokens and wall-clock as well as
-   token price, and do not generalize it into universal doctrine.
-
-What is **NOT KNOWN**: a measured Terra task-tier assignment, a broad
-per-task-class Sol/Luna benchmark, Luna-at-`max` performance, a general rule for
-choosing `max` over `xhigh`, or whether selecting supported `low`, `max`, or
-`ultra` values materially changes observed behavior. `codex debug models
---bundled` verifies those rungs are supported; launcher passthrough and
-session-config echo still do not prove behavioral effect. Do not fill those gaps
-with vendor-tier intuition.
+Quota affects concurrency choices, not acceptance standards: Luna has roughly 25× and Terra roughly
+2.5× Sol's local-message allowance per window; Spark uses a separate pool. Effort changes token
+count, not price per token. These are planning inputs, never permission to accept weaker output.
 
 ### Apply the choice, then verify it
 
-- repoGolem passes effort correctly. Use, for example,
-  `brainlayerCodex -s -E low "<known-output mechanical task>"`,
-  `brainlayerCodex -s -E medium "<bounded implementation mission>"`, or
-  `brainlayerCodex -s -E high "<open-ended mission>"`.
+- repoGolem visible lanes pass effort explicitly, for example
+  `brainlayerCodex -s -E medium "<implementation outcome>"` or
+  `brainlayerCodex -s -E high "<review/security/complex-tracing outcome>"`.
 - Cursor has no model-pin carve-out: visible, headless, and internal
   `cursor-agent` runs all stay on Auto with no model flag or model field.
-- cmuxlayer `spawn_agent.model` now preflights explicit Codex model names against
-  the runtime model list before spawn. For every pinned run, still record the **requested and
-  effective** model plus effort from the run log/session metadata. The effective
-  values, not the prompt or agent's self-identification, are the routing evidence.
+- Codex custom agents live in `~/.codex/agents/*.toml`; `[agents]` defaults live in
+  `~/.codex/config.toml`. The golems defaults pin Luna·xhigh for generic children, while named
+  `recon` pins Terra·high and named `packet` pins Luna·xhigh.
+- Verify every child's **effective** model and effort from the child's own `turn_context` in
+  `~/.codex/sessions/**/rollout-*.jsonl`. Never use the prompt, registry, parent metadata, or model
+  self-identification as proof. A historical bug silently spawned Sol children despite routing text.
 
 Before dispatch, write one sentence for each field:
 
 ```text
 Mission shape: bounded/mechanical | open-ended | contradictory/adversarial
-Choice: <effective-model target> at <low|medium|high|xhigh|max|ultra>
+Choice: <effective-model target> at <medium|high|xhigh|max>
 Why: <signals from the mission, not task importance alone>
 Dispatch: <launcher/raw internal path and explicit effort pin>
-Verification: <where the effective model+effort will be read>
+Verification: <child session JSONL whose turn_context will be read>
 Unknowns: <anything not measured; write NOT KNOWN rather than extrapolating>
 ```
 
@@ -117,37 +82,22 @@ Unknowns: <anything not measured; write NOT KNOWN rather than extrapolating>
 
 ## Task -> Model Override Table
 
-Use this table after the role matrix chooses the worker type. It is a deliberate
-override surface, not a quota-saving excuse: defaults are not limits, judge
-output quality instead of price tag, and apply `intelligence > taste > cost`.
-Cost is a tie-breaker only; in this column, a higher score means more economical
-or more available for the task.
+Use this after the role matrix chooses Codex. It describes task fit, not a license to lower the
+quality bar.
 
-`model-pin-gate` blocks accidental Fable inheritance. When it blocks, pin one of
-the exact rows below, or use explicit Fable only from an apex orchestration seat.
-The gate block message already points here; this table points back to that pin
-law without duplicating its hook logic.
+| task shape | model · effort | dispatch rule |
+|---|---|---|
+| Default implementation, decomposition, architecture, final acceptance | `gpt-5.6-sol` · `medium` | Default implementer; brief names why medium fits. |
+| Review, security, complex tracing | `gpt-5.6-sol` · `high` | High needs one of these named reasons. |
+| One genuinely hard blocker | `gpt-5.6-sol` · `xhigh` or `max` | Gate to one blocker; state what lower effort failed to resolve. |
+| Read-heavy recon, large-file review, distilled parallel fan-out | `gpt-5.6-terra` · `high` | Prefer the named `recon` agent; read-only when no edits are required. |
+| Routine implementation in an established pattern | `gpt-5.6-terra` · `medium` | Use only when the pattern and acceptance boundary are already clear. |
+| Extraction, classification, mechanical edits | `gpt-5.6-luna` · `medium` or `high` | Give an outcome and deterministic check. Never use Luna·low. |
+| Bounded mechanical subagent packet | `gpt-5.6-luna` · `xhigh` | Prefer the named `packet` agent; outcome + test are mandatory. |
+| Fully specified packet with written acceptance test | `gpt-5.6-luna` · `max` | Max is allowed only when that test is already written. |
 
-| model | cost | intelligence | taste | default work |
-|---|---:|---:|---:|---|
-| `gpt-5.5` (via `codex exec`) | 9 | 8 | 5 | Bulk/mechanical work, implementation, refactors, debugging, tests, verification, and an extra review perspective. For visible workers, still use `{repo}Codex -s`; `codex exec` is only for an internal harness/thin `sonnet` wrapper that writes a self-contained Codex prompt and returns a digest. |
-| `gpt-5.3-codex-spark` | separate pool; score pending | measure-first | measure-first | Weekly-pool wall override for implementation-shaped load only. For visible workers, still use repoGolem launcher policy; the explicit example `codex exec -m gpt-5.3-codex-spark -c model_reasoning_effort="medium" ...` is internal-harness only, as is the equivalent Codex model field. Pin `model_reasoning_effort` per call, verify the session `"model"` field, and do NOT route bulk transcript grep-and-cite mining to Spark until an effort-pinned retest clears it. |
-| `sonnet` | 5; floor ~$0.03/call | 5 | 7 | Thin Claude wrappers, low-cost coordination, routine synthesis, and user-facing work that needs taste >=7 but not Opus-level reasoning. |
-| `claude-opus-5[1m]` | NOT KNOWN for Opus 5; measure-first | measure-first | measure-first | Reviews, contested decisions, taste-sensitive writing, long-context synthesis, and reasoning where the extra judgment beats the token cost. Do not use it for token-grinding intake. **The cost and scores here are NOT KNOWN:** the prior row's `4; floor ~$0.09/call`, intelligence `7` and taste `8` were measured against **Opus 4.8** and were never re-derived for Opus 5. They are withheld rather than inherited — a renamed row carrying old figures reads as a verified current scorecard and is worse than an obviously stale one. Bench before restoring numbers. |
-| `haiku` | floor ~$0.01/call; no policy score | measure-first | measure-first | Retained only as a measurement candidate. No policy default until benched; "never Haiku" is a hypothesis to test, not dogma. |
-
-Fable is apex-orchestration only; post-2026-07-07 Fable usage spends usage
-credits. Do not add a scored Fable row for general worker routing; current
-pricing-floor lint uses ~$0.18/call as the Fable floor when it appears in gate
-configs.
-
-Reasoning effort is per tool call and should follow work shape, not model name.
-Use the Model & Effort questions above for mission-shaped escalation through
-`xhigh`. Act as though nothing right of `xhigh` exists unless a specific eval
-proves the extra spend pays for itself; `ultracode` means `high` plus more spins,
-not a blank check for `max` or `ultra` effort.
-
-Grounding: Theo Gem-6 table (`docs.local/sprint/weave-2026-07-06-drift/sources/theo-fable-video-gems.md`), runbook delta notes (`docs.local/skills-audit-notes.md:151,177`), budget-floor pricing (`skill-creator/hooks-lab/gates/budget-floor-lint/SKILL.md`), and the paired pin law in `skill-creator/hooks-lab/gates/model-pin-gate`.
+Spark remains a separate-pool interactive option, not the default subagent or a substitute for this
+matrix. Non-Codex model policy remains with its owning canon and launcher skills.
 
 ---
 
