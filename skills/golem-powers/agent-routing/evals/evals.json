@@ -5,7 +5,7 @@
     "category": "model-effort",
     "total_cases": 8,
     "minimum_correct_effort_tiers": 7,
-    "grader_instruction": "For eval IDs 24-31, score the selected effort against expected_effort. At least 7 of 8 exact tiers must match. Also check that the answer explains its model choice, makes -E explicit when repoGolem can carry the choice, and reports the effective model plus effort from the run log."
+    "grader_instruction": "For eval IDs 24-32, score the selected effort against expected_effort. At least 8 of 9 exact tiers must match. Also check that the answer explains its model choice, makes -E explicit when repoGolem can carry the choice, and reports effective model plus effort from the run's own turn_context; for a child, use the turn_context after the child's own task_started."
   },
   "evals": [
     {
@@ -613,7 +613,7 @@
     {
       "id": 23,
       "prompt": "A lead needs to fan out mixed Codex work: read-heavy codebase recon, a normal multi-file implementation, a security review, and a fully specified mechanical packet with a written acceptance test. What model and effort should each receive, and what must each review preserve?",
-      "expected_output": "Should route read-heavy recon to Terra high, normal implementation to Sol medium, security review to Sol high, and the bounded mechanical packet to Luna max only because a written acceptance test already exists (otherwise use the Luna xhigh packet default). It should require a one-line model-fit reason on every brief and review, hand Luna an outcome plus test rather than a procedure, ban Luna low, and verify each child's effective model and effort from that child's session JSONL turn_context.",
+      "expected_output": "Should route read-heavy recon to the named Terra high recon agent, normal implementation to Sol medium, security review to Sol high, and the bounded mechanical packet to Luna xhigh. Luna max is only a later escalation after xhigh falls short, with a written acceptance test, and is community practice rather than an OpenAI recommendation. It should require a one-line model-fit reason on every brief and review, hand Luna an outcome plus test rather than a procedure, ban Luna low, and verify each child's effective model and effort from that child's session JSONL turn_context.",
       "assertions": [
         {
           "text": "Routes read-heavy recon to gpt-5.6-terra at high",
@@ -628,7 +628,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Allows Luna max only because the packet has a written acceptance test",
+          "text": "Routes the bounded mechanical packet to Luna xhigh",
           "type": "behavioral"
         },
         {
@@ -654,7 +654,7 @@
       "name": "bounded-mechanical-change",
       "category": "model-effort",
       "description": "A fully specified mechanical child packet should use the named Luna xhigh agent.",
-      "prompt": "Choose a Codex model and effort for this mission: rename one JSON field in an adapter and update the two existing fixtures. The exact diff shape is specified, a focused regression test already fails, there are no design choices, and rollback is trivial. State the dispatch approach and what the run log must prove.",
+      "prompt": "As a child packet spawned from a Sol implementation lane, choose a Codex model and effort for this mission: rename one JSON field in an adapter and update the two existing fixtures. The exact diff shape is specified, a focused regression test already fails, there are no design choices, and rollback is trivial. State the dispatch approach and what the child's turn_context must prove.",
       "expected_effort": "xhigh",
       "expected_model": "gpt-5.6-luna",
       "expected_output": "Use the named packet subagent at Luna xhigh because the outcome is fully specified and a deterministic acceptance test already exists. Hand it the outcome plus the failing test, never a procedure. Verify the child's effective model and effort from its own session JSONL turn_context.",
@@ -687,7 +687,7 @@
       "prompt": "Choose a Codex model and effort for this mission: inspect 40 generated migration diffs against four explicit invariants, emit pass/fail plus evidence for each, and make no code changes. The rubric is binary and every result is independently checkable. State what is known versus not known about the model choice.",
       "expected_effort": "high",
       "expected_model": "gpt-5.6-terra",
-      "expected_output": "Use the named read-only recon agent at Terra high because this is read-heavy parallel review over many artifacts that should return distilled evidence. Verify the child's effective model and effort from its own session JSONL turn_context.",
+      "expected_output": "Use the named read-only recon agent at Terra high because this is read-heavy parallel review over many artifacts that should return distilled evidence. The task shape makes the intended choice known, but the effective model and effort remain NOT KNOWN until verified from the child's own session JSONL turn_context.",
       "assertions": [
         {
           "type": "content",
@@ -706,6 +706,12 @@
           "name": "explicit-effort-and-routing-proof",
           "description": "Reports the effective model and effort from the child's session JSONL turn_context.",
           "text": "Reports effective child routing from turn_context"
+        },
+        {
+          "type": "content",
+          "name": "separates-choice-from-effective-state",
+          "description": "States that task fit supports the intended choice but effective runtime routing is not known before child turn_context verification.",
+          "text": "Marks effective routing NOT KNOWN until turn_context is read"
         }
       ]
     },
@@ -717,7 +723,7 @@
       "prompt": "Choose a Codex model and effort for this mission: add a new import adapter across three modules. Acceptance tests and API boundaries are clear, but the internal decomposition and error-handling design are open-ended. This is normal product work, not an incident.",
       "expected_effort": "medium",
       "expected_model": "gpt-5.6-sol",
-      "expected_output": "Select Sol at medium because normal multi-file implementation, decomposition, and final acceptance use the default implementer. High requires a named review, security, or complex-tracing reason, none of which is present. Pass -E medium explicitly and verify the run log.",
+      "expected_output": "Select Sol at medium because normal multi-file implementation, decomposition, and final acceptance use the default implementer. High requires a named review, security, or complex-tracing reason, none of which is present. Pass -E medium explicitly and verify the run's own turn_context.",
       "assertions": [
         {
           "type": "content",
@@ -741,7 +747,7 @@
           "type": "content",
           "name": "explicit-effort-choice",
           "description": "Passes -E medium explicitly and verifies the effective run-log values.",
-          "text": "Makes -E medium explicit and verifies the run log"
+          "text": "Makes -E medium explicit and verifies the run's own turn_context"
         }
       ]
     },
@@ -753,7 +759,7 @@
       "prompt": "Choose a Codex model and effort for this mission: review a seven-file authorization refactor for invariant preservation and missing tests. The diff is readable and the threat model is documented; the task needs judgment, but there is no contradictory evidence or live corruption.",
       "expected_effort": "high",
       "expected_model": "gpt-5.6-sol",
-      "expected_output": "Select Sol at high and pass -E high explicitly. The review needs substantial judgment, but it lacks the gnarly debugging, adversarial uncertainty, or contradiction that would justify xhigh/max. Report the effective model and effort from the run log.",
+      "expected_output": "Select Sol at high and pass -E high explicitly. The review needs substantial judgment, but it lacks one gated hard blocker that would justify xhigh/max. Report the effective model and effort from the run's own turn_context.",
       "assertions": [
         {
           "type": "content",
@@ -770,13 +776,13 @@
         {
           "type": "content",
           "name": "names-escalation-signals",
-          "description": "Names contradiction, adversarial uncertainty, or gnarly debugging as escalation signals.",
-          "text": "Names the signals that would justify xhigh"
+          "description": "Requires one explicitly gated hard blocker and a reason high is insufficient before xhigh.",
+          "text": "Names the gated blocker required for xhigh"
         },
         {
           "type": "content",
           "name": "explicit-effort-and-routing-proof",
-          "description": "Passes -E high explicitly and reports the effective model and effort from the run log.",
+          "description": "Passes -E high explicitly and reports the effective model and effort from the run's own turn_context.",
           "text": "Uses -E high and reports effective routing"
         }
       ]
@@ -789,7 +795,7 @@
       "prompt": "Choose a Codex model and effort for this mission: diagnose intermittent queue corruption across a daemon, SQLite transaction boundary, and three clients. Unit tests are green, production traces contradict each other, reproduction is nondeterministic, and a wrong fix could strand user data.",
       "expected_effort": "xhigh",
       "expected_model": "gpt-5.6-sol",
-      "expected_output": "Select Sol at xhigh and pass -E xhigh explicitly because the debugging is nondeterministic, cross-process, contradictory, and high consequence. This is the hardest-reasoning exception, not a new default. Report the effective model and effort from the run log.",
+      "expected_output": "Select Sol at xhigh and pass -E xhigh explicitly because the lead gates this nondeterministic, cross-process corruption as the lane's one hard blocker and explains why high is insufficient. This is the hardest-reasoning exception, not a new default. Report the effective model and effort from the child's turn_context when it is a child run.",
       "assertions": [
         {
           "type": "content",
@@ -812,32 +818,32 @@
         {
           "type": "content",
           "name": "explicit-effort-and-routing-proof",
-          "description": "Passes -E xhigh explicitly and reports the effective model and effort from the run log.",
+          "description": "Passes -E xhigh explicitly and reports the effective model and effort from the run's own turn_context.",
           "text": "Uses -E xhigh and reports effective routing"
         }
       ]
     },
     {
       "id": 29,
-      "name": "adversarial-design-under-contradiction",
+      "name": "contradictory-design-review",
       "category": "model-effort",
-      "description": "Adversarial design with mutually conflicting requirements belongs in the hardest-reasoning tier without inventing max doctrine.",
+      "description": "Contradictory requirements alone call for Sol high unless one hard blocker is explicitly gated.",
       "prompt": "Choose a Codex model and effort for this mission: design a recovery protocol where the written requirements conflict on whether replay may duplicate side effects. You must reconcile the contradiction, construct adversarial counterexamples, and produce a decision safe against data loss. Should this automatically use max?",
-      "expected_effort": "xhigh",
+      "expected_effort": "high",
       "expected_model": "gpt-5.6-sol",
-      "expected_output": "Select Sol at xhigh for adversarial design under contradiction and pass -E xhigh explicitly. Do not automatically select max: the incremental value and a stable max policy are NOT KNOWN. repoGolem can carry -E max, but reachability is not evidence that max pays; use it only when a mission-specific eval proves the extra effort is worthwhile. Report the effective model and effort from the run log.",
+      "expected_output": "Select Sol at high for design review and assumption checking under contradiction, because the mission does not identify one gated hard blocker or explain why high is insufficient. Do not automatically select xhigh or max: max's incremental value and a stable general max policy are NOT KNOWN, and reachability is not evidence that max pays. Report the effective model and effort from the run's own turn_context.",
       "assertions": [
         {
           "type": "content",
-          "name": "selects-xhigh",
-          "description": "Selects xhigh for adversarial reasoning under conflicting requirements.",
-          "text": "Selects xhigh"
+          "name": "selects-high",
+          "description": "Selects high for design review and assumption checking under conflicting requirements.",
+          "text": "Selects high"
         },
         {
           "type": "negative",
-          "name": "does-not-invent-max-doctrine",
-          "description": "Does not automatically select max or claim a known general max policy.",
-          "text": "Does not automatically select max"
+          "name": "does-not-invent-hard-blocker",
+          "description": "Does not automatically select xhigh or max without one gated hard blocker.",
+          "text": "Does not automatically select xhigh or max"
         },
         {
           "type": "content",
@@ -848,20 +854,20 @@
         {
           "type": "content",
           "name": "explicit-effort-and-routing-proof",
-          "description": "Passes -E xhigh explicitly and reports the effective model and effort from the run log.",
-          "text": "Uses -E xhigh and reports effective routing"
+          "description": "Passes -E high explicitly and reports the effective model and effort from the run's own turn_context.",
+          "text": "Uses -E high and reports effective routing"
         }
       ]
     },
     {
       "id": 30,
-      "name": "below-medium-known-output-transform",
+      "name": "known-output-mechanical-transform",
       "category": "model-effort",
       "description": "A tiny known-output mechanical transformation uses Luna medium; Luna low remains banned.",
-      "prompt": "Choose a Codex model and effort for this mission: reformat one existing Markdown file to an exact canonical output that has already been supplied. There are no semantic edits or design choices, the answer shape is known byte-for-byte, a deterministic formatter check verifies it, and rollback is one file. State the dispatch approach and what the run log must prove.",
+      "prompt": "Choose a Codex model and effort for this mission: reformat one existing Markdown file to an exact canonical output that has already been supplied. There are no semantic edits or design choices, the answer shape is known byte-for-byte, a deterministic formatter check verifies it, and rollback is one file. State the dispatch approach and what the child's turn_context must prove if dispatched as a child.",
       "expected_effort": "medium",
       "expected_model": "gpt-5.6-luna",
-      "expected_output": "Select Luna at medium for the direct mechanical edit because the output is known and deterministic. Explicitly reject Luna low because it is banned. Pass the outcome plus formatter check and verify the effective model and effort from the run log.",
+      "expected_output": "Select Luna at medium for the direct mechanical edit because the output is known and deterministic. Explicitly reject Luna low because it is banned. Pass the outcome plus formatter check and verify the effective model and effort from the run's own turn_context.",
       "assertions": [
         {
           "type": "content",
@@ -884,8 +890,8 @@
         {
           "type": "content",
           "name": "reports-effective-routing",
-          "description": "Requires the effective model and effort from the run log.",
-          "text": "Reports effective model and effort from the run log"
+          "description": "Requires the effective model and effort from the child's session JSONL turn_context.",
+          "text": "Reports effective model and effort from child turn_context"
         }
       ]
     },
@@ -897,7 +903,7 @@
       "prompt": "Review this draft dispatch for a well-specified bounded implementation lane: `golemsCodex -s \"apply the specified adapter patch and run the focused regression test\"`. The diff shape is known, the task still requires implementation, and the draft gives no effort choice or rationale. Should it ship unchanged? State the corrected dispatch and explain what the omission means.",
       "expected_effort": "medium",
       "expected_model": "gpt-5.6-sol",
-      "expected_output": "Reject the draft unchanged. Omitting -E silently accepts an inherited value; it is not the absence of a decision. Require a mission-specific rationale and correct the default Sol implementation dispatch to -E medium, then verify the effective model and effort from the run log.",
+      "expected_output": "Reject the draft unchanged. Omitting -E silently accepts an inherited value; it is not the absence of a decision. Require a mission-specific rationale and correct the default Sol implementation dispatch to -E medium, then verify effective model and effort from the run's own turn_context.",
       "assertions": [
         {
           "type": "content",
@@ -922,6 +928,42 @@
           "name": "corrects-to-medium",
           "description": "Corrects the bounded implementation dispatch to use -E medium explicitly.",
           "text": "Uses -E medium"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "name": "recon-child-requires-named-agent",
+      "category": "model-effort",
+      "description": "Read-heavy Codex child recon must use the named Terra high recon agent rather than the unnamed Luna packet default.",
+      "prompt": "A Sol implementation lane needs a child to inspect 30 source files, make no edits, and return a distilled evidence table. Should the parent spawn an unnamed child or a named custom agent? State the target model and effort and the proof required after spawning.",
+      "expected_effort": "high",
+      "expected_model": "gpt-5.6-terra",
+      "expected_output": "Spawn the named recon agent at Terra high. Do not use an unnamed child because unnamed children inherit the Luna xhigh packet default and require an outcome plus deterministic test. Verify the child's effective model and effort from the turn_context after the child's own task_started.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "uses-named-recon",
+          "description": "Requires the named recon custom agent for read-heavy child work.",
+          "text": "Uses the named recon agent"
+        },
+        {
+          "type": "content",
+          "name": "selects-terra-high",
+          "description": "Targets Terra high for the recon child.",
+          "text": "Selects Terra high"
+        },
+        {
+          "type": "negative",
+          "name": "rejects-unnamed-recon",
+          "description": "Does not use the unnamed Luna packet default for recon.",
+          "text": "Does not spawn recon as an unnamed child"
+        },
+        {
+          "type": "content",
+          "name": "verifies-child-context",
+          "description": "Checks the child turn_context after its own task_started.",
+          "text": "Verifies turn_context after child task_started"
         }
       ]
     }

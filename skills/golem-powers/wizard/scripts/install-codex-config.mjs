@@ -13,10 +13,19 @@ const MANAGED_AGENT_KEYS = [
 ];
 const SUPERSEDED_AGENT_KEYS = new Set(["max_threads"]);
 const AGENT_FILES = ["recon.toml", "packet.toml"];
+const AGENTS_HEADER = /^\s*\[\s*agents\s*\]\s*(?:#.*)?$/;
+
+function hasRootDottedAgentsKey(lines) {
+  for (const line of lines) {
+    if (/^\s*\[/.test(line)) return false;
+    if (/^\s*(?:agents|"agents"|'agents')\s*\./.test(line)) return true;
+  }
+  return false;
+}
 
 function parseManagedAssignments(fragment) {
   const lines = fragment.split(/\r?\n/);
-  const agentsHeader = lines.findIndex((line) => /^\s*\[agents\]\s*(?:#.*)?$/.test(line));
+  const agentsHeader = lines.findIndex((line) => AGENTS_HEADER.test(line));
   if (agentsHeader === -1) {
     throw new Error("Codex config fragment must contain an [agents] table");
   }
@@ -40,8 +49,13 @@ export function mergeCodexConfig(existing, fragment) {
   if (existing.trim() === "") return `${fragment.trimEnd()}\n`;
 
   const lines = existing.split(/\r?\n/);
-  const agentsHeader = lines.findIndex((line) => /^\s*\[agents\]\s*(?:#.*)?$/.test(line));
+  const agentsHeader = lines.findIndex((line) => AGENTS_HEADER.test(line));
   if (agentsHeader === -1) {
+    if (hasRootDottedAgentsKey(lines)) {
+      throw new Error(
+        "Refusing to install: existing config defines agents through a root dotted agents key",
+      );
+    }
     return `${existing.trimEnd()}\n\n[agents]\n${[...assignments.values()].join("\n")}\n`;
   }
 
