@@ -83,6 +83,71 @@ describe("installCodexConfig", () => {
     );
   });
 
+  test("adds agents defaults to an existing non-empty config without an agents table", async () => {
+    const root = await scratchDir();
+    const codexHome = join(root, "codex-home");
+    const sourceDir = join(root, "source");
+    await mkdir(join(sourceDir, "agents"), { recursive: true });
+    await mkdir(codexHome, { recursive: true });
+    const original = 'model = "gpt-5.6-sol"\napproval_policy = "never"\n';
+    await writeFile(join(codexHome, "config.toml"), original);
+    await writeFile(
+      join(sourceDir, "config.toml"),
+      '[agents]\ndefault_subagent_model = "gpt-5.6-luna"\ndefault_subagent_reasoning_effort = "xhigh"\nmax_concurrent_threads_per_session = 4\n',
+    );
+    await writeFile(join(sourceDir, "agents", "recon.toml"), 'name = "recon"\n');
+    await writeFile(join(sourceDir, "agents", "packet.toml"), 'name = "packet"\n');
+
+    await installCodexConfig({ sourceDir, codexHome });
+
+    const installed = await readFile(join(codexHome, "config.toml"), "utf8");
+    expect(installed).toStartWith(original);
+    expect(installed).toContain('[agents]\ndefault_subagent_model = "gpt-5.6-luna"');
+  });
+
+  test("merges a legal agents header with whitespace inside the brackets", async () => {
+    const root = await scratchDir();
+    const codexHome = join(root, "codex-home");
+    const sourceDir = join(root, "source");
+    await mkdir(join(sourceDir, "agents"), { recursive: true });
+    await mkdir(codexHome, { recursive: true });
+    await writeFile(join(codexHome, "config.toml"), '[ agents ]\nenabled = true\nmax_threads = 6\n');
+    await writeFile(
+      join(sourceDir, "config.toml"),
+      '[agents]\ndefault_subagent_model = "gpt-5.6-luna"\ndefault_subagent_reasoning_effort = "xhigh"\nmax_concurrent_threads_per_session = 4\n',
+    );
+    await writeFile(join(sourceDir, "agents", "recon.toml"), 'name = "recon"\n');
+    await writeFile(join(sourceDir, "agents", "packet.toml"), 'name = "packet"\n');
+
+    await installCodexConfig({ sourceDir, codexHome });
+
+    const installed = await readFile(join(codexHome, "config.toml"), "utf8");
+    expect(installed.match(/\[\s*agents\s*\]/g)).toHaveLength(1);
+    expect(installed).not.toContain("max_threads");
+    expect(installed).toContain("max_concurrent_threads_per_session = 4");
+  });
+
+  test("refuses a root dotted agents key without changing the live config", async () => {
+    const root = await scratchDir();
+    const codexHome = join(root, "codex-home");
+    const sourceDir = join(root, "source");
+    await mkdir(join(sourceDir, "agents"), { recursive: true });
+    await mkdir(codexHome, { recursive: true });
+    const original = 'model = "gpt-5.6-sol"\nagents.max_threads = 6\n';
+    await writeFile(join(codexHome, "config.toml"), original);
+    await writeFile(
+      join(sourceDir, "config.toml"),
+      '[agents]\ndefault_subagent_model = "gpt-5.6-luna"\ndefault_subagent_reasoning_effort = "xhigh"\nmax_concurrent_threads_per_session = 4\n',
+    );
+    await writeFile(join(sourceDir, "agents", "recon.toml"), 'name = "recon"\n');
+    await writeFile(join(sourceDir, "agents", "packet.toml"), 'name = "packet"\n');
+
+    await expect(installCodexConfig({ sourceDir, codexHome })).rejects.toThrow(
+      "root dotted agents key",
+    );
+    expect(await readFile(join(codexHome, "config.toml"), "utf8")).toBe(original);
+  });
+
   test("creates config and agent directory when Codex has no existing config", async () => {
     const root = await scratchDir();
     const codexHome = join(root, "codex-home");
