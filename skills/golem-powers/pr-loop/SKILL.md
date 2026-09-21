@@ -10,6 +10,7 @@ description: "Full PR loop plus the agent-identity signature on GitHub writes. T
 ## Scope
 
 The loop: branch, test, commit, push, PR, review, fix, merge.
+Who reviews before the PR and who opens that reviewer pane is owned by `/agent-routing` § Review routing.
 
 ## Loop Endpoint
 
@@ -509,10 +510,12 @@ ships; until then, sign them by hand like any other comment.
 
 Reviewer roster reality can degrade. If Greptile is unavailable, Cursor/Bugbot
 is billing-blocked, or CodeRabbit is rate-limited, do not burn dead mentions.
-Use Codex + Macroscope + `cr review --plain` before commit, and document which
-reviewers were unavailable in the PR.
+Use Codex + Macroscope + `cr review --plain` before commit within this PR loop
+(not a substitute for the routed pair review), and document which reviewers were unavailable in the PR.
 
 ### For private repos (no bot reviewers):
+
+Options A/B are PR-stage review run by whoever owns this PR loop. They do not authorize a worker to start its own inner-loop reviewer; that remains owned by `/agent-routing` § Review routing.
 
 ```bash
 # Option A: Use coderabbit:code-reviewer subagent

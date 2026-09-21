@@ -113,7 +113,7 @@ If yes, add a separate phase or parallel track for the non-code work. Non-code d
 
 ### Branch Lifecycle (per phase)
 
-Branch/PR law lives in canon #2 and `/pr-loop`; each implementation phase records its PR URL and follows the current lane's merge authority.
+A bounded phase ends in `/pr-loop`.
 
 ### Phase Template
 
@@ -205,7 +205,7 @@ See [workflows/collab.md](workflows/collab.md) for the full protocol, mandatory 
 
 | Skill | When | Why |
 |-------|------|-----|
-| `/pr-loop` | Every phase completion | Procedural PR checklist; canon #2 owns the branch-to-merge law. |
+| `/pr-loop` | A bounded phase ends there | Procedural branch-to-merge checklist. |
 | Failing test first (AGENTS.md law) | All implementation | Red-green-refactor. No code without a failing test first; `/tdd-guard` is the hook that enforces the edit limit. |
 | `/never-fabricate` | Before claiming "done" or reporting results | Evidence before assertions: Read() files before summarizing them, verify before claiming. Enforced by the false-green-gate hook. |
 | `/plan-council` | Review one authored plan/spec | Declared cross-family judges, live validation, measured bias, and lift round. |
@@ -214,25 +214,10 @@ See [workflows/collab.md](workflows/collab.md) for the full protocol, mandatory 
 
 | Skill | When to use |
 |-------|-------------|
-| `/coderabbit` | Verify phase output with targeted review |
+| `/coderabbit` | PR-stage bot review inside `/pr-loop` |
 | Manual QA checklist | Generate test plans per phase from the diff |
 | `/prd` | Create PRDs from phase specs |
 | `/pr-loop` step 5 | CodeRabbit review + atomic commit |
-
----
-
-## PR Review Cycle (per phase)
-
-After push, automated reviewers comment. Classify each:
-
-| Type | Action |
-|------|--------|
-| **Real bug** | FIX immediately |
-| **Style preference** | Fix if genuinely better |
-| **Over-engineering** | SKIP |
-| **Out of context** | Comment explaining why |
-
-Repeat push-fix cycle until no real bugs remain.
 
 ---
 
