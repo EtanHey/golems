@@ -78,6 +78,10 @@ class JevGateReplayTest(unittest.TestCase):
         self.assertNotIn('"violation"', serialized)
         self.assertNotIn('"specimen"', serialized)
 
+    def test_preflight_refuses_an_empty_scorable_population(self):
+        with self.assertRaisesRegex(RuntimeError, "no scorable decisions"):
+            replay.planned_call_count({"decisions": []})
+
     def test_scores_public_shadow_answer_and_usage_receipt(self):
         jev_client = replay.load_jev(REPO)
         sent = {}

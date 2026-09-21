@@ -590,6 +590,12 @@ def validate_resume(
     return completed
 
 
+def planned_call_count(preflight: dict[str, Any]) -> int:
+    if not preflight["decisions"]:
+        raise RuntimeError("Preflight found no scorable decisions")
+    return len(preflight["decisions"]) * RUNS
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
@@ -604,7 +610,7 @@ def main() -> int:
     repo = Path(__file__).resolve().parents[1]
     spec_prefix = load_spec_prefix(args.report)
     preflight = preflight_fixtures(repo)
-    planned_calls = len(preflight["decisions"]) * RUNS
+    planned_calls = planned_call_count(preflight)
     if planned_calls * MAX_REQUEST_USD > args.max_usd:
         raise RuntimeError("Conservative preflight exceeds --max-usd")
 
