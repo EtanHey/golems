@@ -10,6 +10,21 @@ import { runLLMJSON } from "@golems/shared/lib/llm";
 import { getRegistry, getRegistryForPrompt } from "./registry";
 import type { PipelineCapability, OutputFormat } from "./registry";
 import { getPerformanceStats, type PipelineStats } from "./tracker";
+import { z } from "zod";
+
+const routingResultSchema = z.object({
+  success: z.boolean(),
+  steps: z.array(z.object({
+    pipelineId: z.string(),
+    reason: z.string(),
+    input: z.string(),
+    outputFormat: z.enum(["mp4", "gif", "png", "svg", "jpg", "webp", "pdf"]),
+    params: z.record(z.string(), z.unknown()),
+  })),
+  reasoning: z.string(),
+  confidence: z.number().min(0).max(1),
+  isMultiPipeline: z.boolean(),
+});
 
 export interface RoutingRequest {
   /** The creative idea to route */
@@ -133,8 +148,9 @@ export async function routeIdea(
 
   const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
-  const result = await runLLMJSON<RoutingResult>(
+  const result = await runLLMJSON(
     fullPrompt,
+    routingResultSchema,
     "content-pipeline-router",
   );
 

@@ -19,6 +19,7 @@ import { runHaiku, runHaikuJSON } from "./cloud-llm";
 import { runGLM, runGLMJSON } from "./glm-llm";
 import { runMLX, runMLXJSON } from "./mlx-llm";
 import { runCloudFree, runCloudFreeJSON } from "./vercel-llm";
+import type { ZodType } from "zod";
 
 const LLM_BACKEND = process.env.LLM_BACKEND || "ollama";
 const USE_SANDBOX = process.env.OLLAMA_SANDBOXED === "1";
@@ -85,21 +86,29 @@ export async function runLLM(prompt: string, source = "unknown"): Promise<string
 /**
  * Run an LLM prompt and parse JSON from the response.
  */
-export async function runLLMJSON<T>(prompt: string, source = "unknown"): Promise<T | null> {
+export async function runLLMJSON<T>(
+  prompt: string,
+  schema: ZodType<T>,
+  source = "unknown",
+): Promise<T | null> {
   if (LLM_BACKEND === "haiku") {
-    return runHaikuJSON<T>(prompt, source);
+    return runHaikuJSON(prompt, schema, source);
   }
 
   if (LLM_BACKEND === "glm") {
-    return runGLMJSON<T>(prompt, source);
+    return validateJSON(await runGLMJSON<unknown>(prompt, source), schema, source);
   }
 
   if (LLM_BACKEND === "mlx") {
-    return runMLXJSON<T>(prompt, source);
+    return validateJSON(await runMLXJSON<unknown>(prompt, source), schema, source);
   }
 
   if (LLM_BACKEND === "gemini" || LLM_BACKEND === "groq") {
-    return runCloudFreeJSON<T>(prompt, source);
+    return validateJSON(
+      await runCloudFreeJSON<unknown>(prompt, source),
+      schema,
+      source,
+    );
   }
 
   const result = await runLLM(prompt, source);
@@ -109,12 +118,26 @@ export async function runLLMJSON<T>(prompt: string, source = "unknown"): Promise
   try {
     const match = result.match(/\{[\s\S]*\}/);
     if (match) {
-      return JSON.parse(match[0]) as T;
+      return validateJSON(JSON.parse(match[0]), schema, source);
     }
   } catch (e) {
     console.error("[LLM] JSON parse error:", e);
   }
 
+  return null;
+}
+
+function validateJSON<T>(
+  value: unknown,
+  schema: ZodType<T>,
+  source: string,
+): T | null {
+  const parsed = schema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  console.error(
+    `[LLM] JSON schema validation error (source: ${source})`,
+    parsed.error.issues,
+  );
   return null;
 }
 
@@ -136,17 +159,20 @@ export const findSimilar = directOllama.findSimilar;
  */
 export const forJobGolem = {
   runLLM: (prompt: string) => runLLM(prompt, "job-golem"),
-  runLLMJSON: <T>(prompt: string) => runLLMJSON<T>(prompt, "job-golem"),
+  runLLMJSON: <T>(prompt: string, schema: ZodType<T>) =>
+    runLLMJSON(prompt, schema, "job-golem"),
 };
 
 export const forNightShift = {
   runLLM: (prompt: string) => runLLM(prompt, "night-shift"),
-  runLLMJSON: <T>(prompt: string) => runLLMJSON<T>(prompt, "night-shift"),
+  runLLMJSON: <T>(prompt: string, schema: ZodType<T>) =>
+    runLLMJSON(prompt, schema, "night-shift"),
 };
 
 export const forEmailGolem = {
   runLLM: (prompt: string) => runLLM(prompt, "email-golem"),
-  runLLMJSON: <T>(prompt: string) => runLLMJSON<T>(prompt, "email-golem"),
+  runLLMJSON: <T>(prompt: string, schema: ZodType<T>) =>
+    runLLMJSON(prompt, schema, "email-golem"),
 };
 
 // Backward-compatible aliases (deprecated — use runLLM/runLLMJSON)
