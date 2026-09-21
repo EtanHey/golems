@@ -142,7 +142,9 @@ Domain LEADs (brainlayerClaude, voicelayerClaude, phx-LEAD, skillCreatorClaude, 
 ## Review routing
 
 The LEAD opens both panes for implementation: a Codex implementer and a Claude pair-reviewer. They iterate until both are happy; then Codex opens the PR and runs `/pr-loop`.
+
 A WORKER never starts any reviewer for its own work. No reviewer pane means ask the lead.
+
 This pair review happens before the PR; `/pr-loop` bot and PR reviewers are separate and unaffected.
 Pane mechanics live in `/collab-monitor` § "Completion → Reviewer Handoff".
 
@@ -487,7 +489,7 @@ PAUSE. Am I about to Write/Edit code?
 - Visible worker launch form is `{repo}{Tool} -s "prompt"`; `/repogolem` owns launcher details.
 - Reuse existing managed workers before spawning; if the mission changed, supersede with one file-backed goal contract using that harness's adapter syntax
 - Goal files preserve the full user delegation and include report path, DONE marker, and green/no-green criteria
-- Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except audio-dashboard builds; Codex children may edit only inside their visible Codex parent's worktree, with parent-owned acceptance; all other implementation follows `## Review routing`, except for the bounded tiny-unblocker carve-out in Rule 7
+- Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except audio-dashboard builds; Codex children may edit only inside their visible Codex parent's worktree, with parent-owned acceptance; all other implementation follows `## Review routing`, except for the bounded tiny-unblocker carve-out in § Lead Topology rule 4
 - Leads monitor report files/DONE markers and low-frequency health, not high-frequency pane narration
 - Zero worker panes means every lane is DONE, BLOCKED/NOT_GREEN with handoff, or TRANSFERRED; never close unfinished work for cleanliness
 - If a worker crashes, respawn within 60 seconds

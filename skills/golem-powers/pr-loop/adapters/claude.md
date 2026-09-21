@@ -21,6 +21,8 @@ Claude Code has everything needed for the complete loop:
 
 ## Review Polling Options (Claude-specific)
 
+These options are PR-stage review run by whoever owns the PR loop; who reviews before the PR is owned by `/agent-routing` § Review routing, and a worker never starts its own reviewer.
+
 ```bash
 # Option A — subagent reviewer (best)
 Agent(subagent_type="coderabbit:code-reviewer", prompt="Review PR #N in EtanHey/golems")

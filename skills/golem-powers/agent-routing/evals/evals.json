@@ -1000,7 +1000,7 @@
       "name": "lead-opens-implementation-pair",
       "category": "compliance",
       "description": "A lead receiving implementation work must create both halves of the pre-PR pair.",
-      "prompt": "You are the lead and have just been handed a bounded implementation task. Route the work according to the review contract.",
+      "prompt": "Etan asks for a --json flag on scripts/check-skill-library.mjs. You are the lead for the golems repo and have no panes open. State exactly what you do next, as a short numbered list of concrete actions or commands.",
       "expected_output": "Open both panes: a Codex implementer and a Claude pair-reviewer. Keep the reviewer lead-routed, have the pair iterate until both are happy, and only then let Codex open the PR and run `/pr-loop`.",
       "assertions": [
         {
@@ -1027,7 +1027,7 @@
       "id": 35,
       "name": "large-plan-review-owner-pointer-chain",
       "category": "structure",
-      "description": "Large-plan must point phase completion through pr-loop, which points pre-PR review ownership to agent-routing.",
+      "description": "Large-plan must point phase completion through pr-loop, which points pre-PR review ownership to agent-routing. Requires agent-routing, large-plan and pr-loop SKILL.md in context; not answerable from agent-routing alone.",
       "prompt": "Where does `/large-plan` say who reviews a bounded implementation phase? Follow the owning references and name the source of truth.",
       "expected_output": "`/large-plan` only says that a bounded implementation phase ends in `/pr-loop`. `/pr-loop` points pre-PR reviewer identity and pane ownership to `/agent-routing` § Review routing, which is the source of truth; large-plan does not restate the routing rule.",
       "assertions": [
