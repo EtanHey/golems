@@ -134,11 +134,19 @@ Domain LEADs (brainlayerClaude, voicelayerClaude, phx-LEAD, skillCreatorClaude, 
 1. LEADs delegate implementation to Codex workers and keep their own worker monitor loop (canon #1/#7).
 2. Lead goals must preserve orchestration duties: spawn/delegate, maintain health gates, synthesize, and verify.
 3. Lead topology must be managed: a lead is an `agent_id` with `role:"orchestrator"` and left-column placement.
-4. Tiny lead self-edits must be bounded, disclosed in the active collab, and isolated; larger work routes to a Codex+Claude pair.
+4. Tiny lead self-edits must be bounded, disclosed in the active collab, and isolated; all other implementation follows Review routing below.
 5. Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except
-   audio-dashboard builds; code implementation uses visible Codex-implements + Claude-reviews pairs.
-   Codex children spawned by a visible Codex lane MAY edit inside that lane's worktree, and the
-   visible Codex parent owns their acceptance.
+   audio-dashboard builds. Codex children spawned by a visible Codex lane MAY edit inside that
+   lane's worktree, and the visible Codex parent owns their acceptance.
+
+## Review routing
+
+The LEAD opens both panes for implementation: a Codex implementer and a Claude pair-reviewer. They iterate until both are happy; then Codex opens the PR and runs `/pr-loop`.
+
+A WORKER never starts any reviewer for its own work. No reviewer pane means ask the lead.
+
+This pair review happens before the PR; `/pr-loop` bot and PR reviewers are separate and unaffected.
+Pane mechanics live in `/collab-monitor` § "Completion → Reviewer Handoff".
 
 ## GOAL DELEGATION CONTRACT (2026-06-26 cmux remediation)
 
@@ -214,7 +222,7 @@ Is it a READ-ONLY operation? (query, scan, search, audit, lookup)
             Split into 2 tasks if needed.
 ```
 
-**Split rule:** If a task has BOTH a gathering phase and an implementation phase, split it into two tasks. Cursor gathers, writes findings to `docs.local/`. Codex reads findings and implements. Claude reviews.
+**Split rule:** If a task has BOTH a gathering phase and an implementation phase, split it into two tasks. Cursor gathers, writes findings to `docs.local/`. Codex reads findings and implements.
 
 **Fan-out rule (parallel units → `/cursor-multitask`):** when a task decomposes into
 N independent parallel units (classify N files, audit M things, tests+docs+examples,
@@ -335,7 +343,7 @@ This skill is a **building block** used by higher-level skills:
 | `/orc` | Iron Rules R28+ reference this routing matrix |
 | `/cmux-agents` | spawn-agent uses routing to pick CLI type |
 | `/large-plan` | Phase assignment uses routing for tool selection |
-| `/pr-loop` | Implementation phases route to Codex, review to Cursor |
+| `/pr-loop` | Implementation phases route to Codex; review routing is § Review routing |
 | `/collab` | Collab template includes routing declaration section |
 
 ---
@@ -481,9 +489,8 @@ PAUSE. Am I about to Write/Edit code?
 - Visible worker launch form is `{repo}{Tool} -s "prompt"`; `/repogolem` owns launcher details.
 - Reuse existing managed workers before spawning; if the mission changed, supersede with one file-backed goal contract using that harness's adapter syntax
 - Goal files preserve the full user delegation and include report path, DONE marker, and green/no-green criteria
-- Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except audio-dashboard builds; Codex children may edit only inside their visible Codex parent's worktree, with parent-owned acceptance
+- Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except audio-dashboard builds; Codex children may edit only inside their visible Codex parent's worktree, with parent-owned acceptance; all other implementation follows `## Review routing`, except for the bounded tiny-unblocker carve-out in § Lead Topology rule 4
 - Leads monitor report files/DONE markers and low-frequency health, not high-frequency pane narration
 - Zero worker panes means every lane is DONE, BLOCKED/NOT_GREEN with handoff, or TRANSFERRED; never close unfinished work for cleanliness
-- Claude reviews Codex's PR, doesn't implement itself
 - If a worker crashes, respawn within 60 seconds
 ```

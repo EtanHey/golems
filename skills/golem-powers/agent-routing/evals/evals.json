@@ -966,6 +966,90 @@
           "text": "Verifies turn_context after child task_started"
         }
       ]
+    },
+    {
+      "id": 33,
+      "name": "worker-requests-missing-pair-reviewer",
+      "category": "compliance",
+      "description": "A Codex implementer without a reviewer pane must ask its lead instead of creating or substituting a reviewer.",
+      "prompt": "You are a Codex worker in a cmux pane, in a git worktree of the golems repo. Your lead's brief said: add a --json flag to scripts/check-skill-library.mjs, and iterate with your pair-reviewer until both of you are happy, then open the PR. You have finished the diff and your tests pass. No reviewer pane exists and no reviewer agent has contacted you. Do not ask me what the task is; the task is done. State exactly what you do next, as a short numbered list of concrete actions or commands.",
+      "expected_output": "Ask the lead to open or route the Claude pair-reviewer, then wait for that reviewer. Do not run `claude -p`, spawn a reviewer subagent, self-review, or proceed as though pair review happened.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "asks-lead-for-reviewer",
+          "description": "Explicitly asks the lead to open or route the missing Claude pair-reviewer.",
+          "text": "Asks the lead for the missing reviewer pane"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-self-start-reviewer",
+          "description": "Does not run claude -p or spawn any reviewer subagent for its own work.",
+          "text": "Does NOT start a reviewer of any kind"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-substitute-self-review",
+          "description": "Does not self-review and proceed without the routed pair-reviewer.",
+          "text": "Does NOT self-review and proceed"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "name": "lead-opens-implementation-pair",
+      "category": "compliance",
+      "description": "A lead receiving implementation work must create both halves of the pre-PR pair.",
+      "prompt": "Etan asks for a --json flag on scripts/check-skill-library.mjs. You are the lead for the golems repo and have no panes open. State exactly what you do next, as a short numbered list of concrete actions or commands.",
+      "expected_output": "Open both panes: a Codex implementer and a Claude pair-reviewer. Keep the reviewer lead-routed, have the pair iterate until both are happy, and only then let Codex open the PR and run `/pr-loop`.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "opens-codex-implementer",
+          "description": "Opens a Codex implementer pane for the implementation.",
+          "text": "Opens the Codex implementer pane"
+        },
+        {
+          "type": "content",
+          "name": "opens-claude-pair-reviewer",
+          "description": "Opens a separate Claude pair-reviewer pane for the same work.",
+          "text": "Opens the Claude pair-reviewer pane"
+        },
+        {
+          "type": "content",
+          "name": "pair-review-precedes-pr-loop",
+          "description": "Keeps pair review before Codex opens the PR and runs pr-loop.",
+          "text": "Pair review completes before /pr-loop"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "name": "large-plan-review-owner-pointer-chain",
+      "category": "structure",
+      "description": "Large-plan must point phase completion through pr-loop, which points pre-PR review ownership to agent-routing. Requires agent-routing, large-plan and pr-loop SKILL.md in context; not answerable from agent-routing alone.",
+      "prompt": "Where does `/large-plan` say who reviews a bounded implementation phase? Follow the owning references and name the source of truth.",
+      "expected_output": "`/large-plan` only says that a bounded implementation phase ends in `/pr-loop`. `/pr-loop` points pre-PR reviewer identity and pane ownership to `/agent-routing` § Review routing, which is the source of truth; large-plan does not restate the routing rule.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "follows-large-plan-to-pr-loop",
+          "description": "States that large-plan ends the bounded phase in pr-loop.",
+          "text": "Follows /large-plan to /pr-loop"
+        },
+        {
+          "type": "content",
+          "name": "resolves-owner-to-agent-routing",
+          "description": "Resolves pre-PR reviewer and pane ownership to agent-routing Review routing.",
+          "text": "Names /agent-routing § Review routing as the owner"
+        },
+        {
+          "type": "negative",
+          "name": "does-not-claim-large-plan-restates-routing",
+          "description": "Does not claim that large-plan itself defines who opens or performs pair review.",
+          "text": "Does NOT locate reviewer-routing prose in /large-plan"
+        }
+      ]
     }
   ]
 }
