@@ -10,6 +10,13 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import type { JobListing } from "./scraper";
 import { forJobGolem } from "@golems/shared/lib/llm";
+import { z } from "zod";
+
+const matchResultSchema = z.object({
+  score: z.number(),
+  reason: z.string(),
+  highlights: z.array(z.string()),
+});
 
 // Try multiple paths — import.meta.dir can differ between local/hosted/compiled
 const PROFILE_CANDIDATES = [
@@ -57,11 +64,7 @@ function loadProfile() {
  * Call Ollama for job matching (via wrapper for sandboxed mode support)
  */
 async function callLLM(prompt: string): Promise<{ score: number; reason: string; highlights: string[] } | null> {
-  const result = await forJobGolem.runLLMJSON<{
-    score: number;
-    reason: string;
-    highlights: string[];
-  }>(prompt);
+  const result = await forJobGolem.runLLMJSON(prompt, matchResultSchema);
 
   if (result) {
     // Normalize score to 1-10 range — LLMs sometimes return 0-100 scale

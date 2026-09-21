@@ -25,6 +25,7 @@
     "@golems/recruiter": "workspace:*",
     "@golems/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "ts-jobspy": "^2.0.3"
+    "ts-jobspy": "^2.0.3",
+    "zod": "^4.3.6"
   }
 }

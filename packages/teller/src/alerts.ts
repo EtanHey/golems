@@ -3,6 +3,15 @@ import { logEvent } from "@golems/shared/lib/event-log";
 import { runLLMJSON } from "@golems/shared/lib/llm";
 import { extractVendor } from "./categorizer";
 import type { PaymentFailure, ScoredEmail } from "./types";
+import { z } from "zod";
+
+const paymentFailureSchema = z.object({
+  isFailure: z.boolean(),
+  vendor: z.string(),
+  amount: z.number().nullable(),
+  reason: z.string(),
+  actionNeeded: z.string(),
+});
 
 /** Regex patterns that indicate payment failures */
 const FAILURE_PATTERNS = [
@@ -31,13 +40,7 @@ export async function detectPaymentFailure(
   if (!regexMatch) return null;
 
   // LLM confirmation + detail extraction
-  const result = await runLLMJSON<{
-    isFailure: boolean;
-    vendor: string;
-    amount: number | null;
-    reason: string;
-    actionNeeded: string;
-  }>(
+  const result = await runLLMJSON(
     `Analyze this email for payment failure details.
 
 From: ${email.from}
@@ -46,7 +49,8 @@ Content: ${email.snippet}
 
 Is this a genuine payment failure (not a marketing email about upgrading)?
 Respond JSON: {"isFailure": true/false, "vendor": "...", "amount": null_or_number, "reason": "...", "actionNeeded": "..."}`,
-    "teller-alerts"
+    paymentFailureSchema,
+    "teller-alerts",
   );
 
   if (!result?.isFailure) return null;
@@ -60,7 +64,6 @@ Respond JSON: {"isFailure": true/false, "vendor": "...", "amount": null_or_numbe
     detectedAt: new Date().toISOString(),
   };
 }
-
 /**
  * Send a Telegram alert for a payment failure and log the event for operational visibility.
  *
@@ -86,4 +89,3 @@ export async function sendPaymentAlert(
     }, "tellergolem"),
   ]);
 }
-

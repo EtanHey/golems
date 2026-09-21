@@ -10,6 +10,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import type { ZodType } from "zod";
 import { join } from "path";
 import { homedir } from "os";
 import { logCost, type CostEntry } from "./cost-tracker";
@@ -217,6 +218,7 @@ export async function runHaiku(
  */
 export async function runHaikuJSON<T>(
   prompt: string,
+  schema: ZodType<T>,
   source = "unknown",
 ): Promise<T | null> {
   const result = await runHaiku(prompt, source);
@@ -226,7 +228,12 @@ export async function runHaikuJSON<T>(
   try {
     const match = result.match(/\{[\s\S]*\}/);
     if (match) {
-      return JSON.parse(match[0]) as T;
+      const parsed = schema.safeParse(JSON.parse(match[0]));
+      if (parsed.success) return parsed.data;
+      console.error(
+        `[Haiku] JSON schema validation error (source: ${source})`,
+        parsed.error.issues,
+      );
     }
   } catch (e) {
     console.error(`[Haiku] JSON parse error (source: ${source}):`, e);

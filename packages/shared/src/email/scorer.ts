@@ -13,6 +13,7 @@
  */
 
 import { runLLMJSON } from "../lib/llm";
+import { z } from "zod";
 
 /** Raw email input for scoring */
 export interface EmailInput {
@@ -51,6 +52,17 @@ interface OllamaScoreResult {
   reason: string;
   subscription: SubscriptionInfo | null;
 }
+
+const ollamaScoreResultSchema = z.object({
+  score: z.number().min(1).max(10),
+  category: z.string(),
+  reason: z.string(),
+  subscription: z.object({
+    serviceName: z.string(),
+    amount: z.number().nullable(),
+    frequency: z.enum(["monthly", "yearly", "one-time", "unknown"]),
+  }).nullable(),
+});
 
 /** Score thresholds for email triage actions */
 export const SCORE_THRESHOLDS = {
@@ -248,7 +260,7 @@ export async function scoreEmail(email: EmailInput): Promise<ScoredEmail> {
 
   const prompt = buildScoringPrompt(email);
 
-  const result = await runLLMJSON<OllamaScoreResult>(prompt, "email-golem");
+  const result = await runLLMJSON(prompt, ollamaScoreResultSchema, "email-golem");
 
   if (result) {
     // Try to extract subscription info locally if Ollama didn't
