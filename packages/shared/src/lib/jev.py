@@ -8,6 +8,7 @@ import math
 import os
 import queue
 import random
+import re
 import shutil
 import threading
 import time
@@ -188,6 +189,8 @@ def _run_jev(
             lambda payload, key: _http_transport(payload, key, timeout_seconds)
         )
         response = _run_transport(selected_transport, request, api_key, timeout_seconds)
+    except (KeyboardInterrupt, SystemExit):
+        raise
     except BaseException as error:
         _append_decisions(
             root,
@@ -294,9 +297,7 @@ def vote_most_cautious(
 def _site_mode(site: str) -> str:
     if os.environ.get("CI") or os.environ.get("JEV_ENABLED") == "0":
         return "off"
-    key = "JEV_SITE_" + "".join(
-        char if char.isalnum() else "_" for char in site.upper()
-    )
+    key = "JEV_SITE_" + re.sub(r"[^A-Z0-9]", "_", site.upper())
     value = os.environ.get(key, "shadow")
     return value if value in {"off", "shadow", "on"} else "shadow"
 
@@ -316,7 +317,7 @@ def _spent_today(root: Path) -> float:
     try:
         date = _now()[:10]
         total = 0.0
-        for row in map(json.loads, path.read_text().splitlines()):
+        for row in map(json.loads, filter(None, path.read_text().splitlines())):
             if not isinstance(row.get("ts"), str) or not _number(row.get("cost_usd")):
                 raise ValueError("Invalid usage row")
             if row["ts"].startswith(date):
@@ -509,11 +510,12 @@ def _append_decisions(root: Path, rows: list[dict[str, Any]]) -> bool:
 
 
 def _append_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
+    payload = "".join(
+        json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n"
+        for row in rows
+    )
     with path.open("a", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(
-                json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n"
-            )
+        handle.write(payload)
 
 
 def _canonical_json(value: Any) -> str:

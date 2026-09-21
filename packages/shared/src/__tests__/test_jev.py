@@ -7,7 +7,7 @@ import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
 MODULE_PATH = Path(__file__).parents[1] / "lib" / "jev.py"
@@ -156,6 +156,19 @@ class JevTest(unittest.TestCase):
         )
         self.assertEqual(calls, [])
 
+    def test_non_ascii_site_uses_typescript_compatible_kill_switch_name(self):
+        calls = []
+        os.environ["JEV_SITE_CAF_"] = "off"
+        jev_client.jev(
+            "state",
+            self.questions,
+            lambda value: value,
+            site="café",
+            state_dir=self.tempdir.name,
+            transport=lambda *_: calls.append(True),
+        )
+        self.assertEqual(calls, [])
+
     def test_cap_blocks_before_network(self):
         os.environ["JEV_DAILY_USD_CAP"] = "0.001"
         calls = []
@@ -168,6 +181,32 @@ class JevTest(unittest.TestCase):
             transport=lambda *_: calls.append(True),
         )
         self.assertEqual(calls, [])
+
+    def test_usage_reader_skips_blank_lines_but_fails_closed_on_torn_tail(self):
+        usage_path = Path(self.tempdir.name) / "usage.jsonl"
+        today = jev_client._now()
+        usage_path.write_text(
+            json.dumps({"ts": today, "cost_usd": 0.125}) + "\n\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(jev_client._spent_today(Path(self.tempdir.name)), 0.125)
+
+        usage_path.write_text(
+            json.dumps({"ts": today, "cost_usd": 0.125}) + '\n{"ts":',
+            encoding="utf-8",
+        )
+        self.assertEqual(jev_client._spent_today(Path(self.tempdir.name)), float("inf"))
+
+    def test_jsonl_batch_is_written_with_one_write_call(self):
+        handle = MagicMock()
+        context = MagicMock()
+        context.__enter__.return_value = handle
+        with patch.object(Path, "open", return_value=context):
+            jev_client._append_jsonl(
+                Path(self.tempdir.name) / "usage.jsonl",
+                [{"row": 1}, {"row": 2}],
+            )
+        handle.write.assert_called_once_with('{"row":1}\n{"row":2}\n')
 
     def test_reclaims_only_expired_lock_with_dead_owner(self):
         os.environ["JEV_SITE_GATE"] = "on"
@@ -417,6 +456,21 @@ class JevTest(unittest.TestCase):
         log = (Path(self.tempdir.name) / "decisions.jsonl").read_text()
         self.assertEqual(json.loads(log)["fallback_reason"], "http_error_429")
         self.assertNotIn("secret vendor message", log)
+
+    def test_transport_does_not_swallow_process_interrupts(self):
+        for interrupt in (KeyboardInterrupt, SystemExit):
+            with self.subTest(interrupt=interrupt.__name__):
+                with self.assertRaises(interrupt):
+                    jev_client.jev(
+                        "state",
+                        self.questions,
+                        lambda state: state,
+                        site="gate",
+                        state_dir=self.tempdir.name,
+                        transport=lambda *_args, interrupt=interrupt: (
+                            _ for _ in ()
+                        ).throw(interrupt()),
+                    )
 
     def test_on_mode_falls_back_if_decision_cannot_be_recorded(self):
         os.environ["JEV_SITE_GATE"] = "on"
