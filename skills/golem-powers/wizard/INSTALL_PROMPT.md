@@ -8,7 +8,8 @@ Copy this into a Claude Code session. This installs the full bundle without clon
 
 ```
 Install the wizard bundle from EtanHey/golems without cloning the repository. Download SKILL.md,
-scripts/default.sh, scripts/repo-action.mjs, and the root release-gate.json into
+scripts/default.sh, scripts/repo-action.mjs, scripts/install-codex-config.mjs, the root
+config/codex directory, and the root release-gate.json into
 ~/.claude/skills/wizard (with scripts under its scripts directory), then run /wizard.
 ```
 
@@ -30,6 +31,15 @@ curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-
   -o ~/.claude/skills/wizard/scripts/default.sh
 curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/wizard/scripts/repo-action.mjs \
   -o ~/.claude/skills/wizard/scripts/repo-action.mjs
+curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/wizard/scripts/install-codex-config.mjs \
+  -o ~/.claude/skills/wizard/scripts/install-codex-config.mjs
+mkdir -p ~/.claude/skills/wizard/config/codex/agents
+curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/config/codex/config.toml \
+  -o ~/.claude/skills/wizard/config/codex/config.toml
+curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/config/codex/agents/recon.toml \
+  -o ~/.claude/skills/wizard/config/codex/agents/recon.toml
+curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/config/codex/agents/packet.toml \
+  -o ~/.claude/skills/wizard/config/codex/agents/packet.toml
 curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/release-gate.json \
   -o ~/.claude/skills/wizard/release-gate.json
 ```
@@ -37,7 +47,11 @@ curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/release-gate.
 3. Verify:
 ```bash
 ls ~/.claude/skills/wizard/SKILL.md ~/.claude/skills/wizard/release-gate.json \
-  ~/.claude/skills/wizard/scripts/default.sh ~/.claude/skills/wizard/scripts/repo-action.mjs
+  ~/.claude/skills/wizard/scripts/default.sh ~/.claude/skills/wizard/scripts/repo-action.mjs \
+  ~/.claude/skills/wizard/scripts/install-codex-config.mjs \
+  ~/.claude/skills/wizard/config/codex/config.toml \
+  ~/.claude/skills/wizard/config/codex/agents/recon.toml \
+  ~/.claude/skills/wizard/config/codex/agents/packet.toml
 ```
 
 ## Usage
