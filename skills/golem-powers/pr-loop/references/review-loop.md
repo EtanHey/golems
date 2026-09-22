@@ -17,8 +17,8 @@ gh pr view <N> --json reviewDecision,comments
 1. After invoking reviewers → wait minimum **120 seconds** before first check
 2. If no reviews after 120s → check again at **5 minutes**
 3. If still no reviews at 5 min → re-invoke reviewers explicitly
-4. After **15 minutes** with no response → a lead with merge authority may merge
-   only if CI is green; a worker hands off the reviewed PR unmerged
+4. Fifteen minutes with no response does not waive the review gate: a lead may merge only after at
+   least one review and all required comment/review conditions pass; a worker hands off unmerged.
 
 CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 

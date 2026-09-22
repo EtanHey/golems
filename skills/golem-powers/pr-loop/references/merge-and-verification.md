@@ -2,6 +2,9 @@
 
 Read this before an authorized merge and through remote verification, release/install, tracking, and cleanup.
 
+For merge authority, the `--admin` default, and R-010, first read
+[Merge Authority](pr-creation.md#merge-authority).
+
 ## Merge Receipts: commit message vs PR body (2026-09-08)
 
 > git log is where you look when you already know something is wrong; the PR page is where you look to find out.
@@ -22,6 +25,8 @@ Fleet law for user-visible completion lives in canon #4. Before emitting `TASK_D
 `bun skills/golem-powers/false-green-gate/scripts/false-green-gate-cli.mjs <transcript|->`,
 exit 3 = FLAG. A FLAG means the claim is unearned — run the missing live probe, then claim. Compose with `/deploy-verify` and `/qa-verdict-gate` as the domain requires; for a narration render-done, also run `audio-dashboard`'s gate (`bun skills/golem-powers/audio-dashboard/scripts/render-done-gate-cli.mjs <transcript|->`).
 
+Functional self-QA happens BEFORE handoff — "merged" ≠ "converged into one verified build."
+
 ## PR-Referenced Artifacts Must Be Committed
 
 Artifacts cited in PR bodies, review threads, or merge verification **cannot live
@@ -39,11 +44,16 @@ On EtanHey repos (single GitHub account), agent PR verdicts go as **PR comments*
 — inline review comments or `gh pr comment` — NOT formal self-review
 REQUEST_CHANGES (GitHub blocks self-approve/self-request-changes).
 
+**Single-GitHub-account reality:** `reviewDecision` can never reach APPROVED on
+EtanHey repos (self-approve is structurally blocked). A clean loop with bot
+reviews replied-to is the approval.
+
 ```
 WRONG: gh pr review --request-changes on your own PR
-RIGHT: Post structured verdict as a PR comment; merge authority follows Merge
-       Authority below after a clean bot-reviewed loop
+RIGHT: Post structured verdict as a PR comment after a clean bot-reviewed loop
 ```
+
+Then follow [Merge Authority](pr-creation.md#merge-authority).
 
 ### Worktree-Locked Local Merge
 
@@ -180,7 +190,7 @@ Not every branch goes through the full PR flow. When implementation is done:
 
 | Option | When to Use | Commands |
 |--------|-------------|----------|
-| **Create PR** (default) | Most cases — full review loop | Continue with steps 7-11 above |
+| **Create PR** (default) | Most cases — full review loop | Continue with [steps 7-11](pr-creation.md#the-full-loop) |
 | **Merge locally** | Small team, already reviewed | `git checkout main && git merge <branch> && git branch -d <branch>` |
 | **Keep as-is** | Need to park work | Just stop. Worktree preserved. |
 | **Discard** | Wrong approach, start over | Requires typed "discard" confirmation. `git branch -D <branch>` |

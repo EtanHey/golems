@@ -83,6 +83,7 @@ Run the loop in this order:
 - Preparing commits, opening the PR, or sizing it? Read [references/pr-creation.md](references/pr-creation.md).
 - Invoking reviewers, receiving feedback, or re-reviewing? Read [references/review-loop.md](references/review-loop.md).
 - Merging, releasing, verifying, or cleaning up? Read [references/merge-and-verification.md](references/merge-and-verification.md).
+- Deciding merge authority, method, or R-010 status? Read [Merge Authority](references/pr-creation.md#merge-authority).
 - Writing any GitHub body/comment/review or commit trailer? Read [references/github-identity.md](references/github-identity.md).
 - Need harness-specific commands or live-model provenance? Read the matching file under [adapters/](adapters/).
 

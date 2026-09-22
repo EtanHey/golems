@@ -4,7 +4,6 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 
 ## The Full Loop
 
-```
 1. BRANCH    git checkout main && git pull && git checkout -b feat/name
 2. IMPLEMENT Write code — write the failing test FIRST (AGENTS.md law);
              the /tdd-guard hook enforces the edit limit
@@ -12,7 +11,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 4. VERIFY    Invoke /never-fabricate
              ↳ DAEMON GATE: If this PR touches daemon/socket/MCP code,
                you MUST test with a real client session before proceeding.
-               See "Daemon Verification Gate" below.
+               See [Daemon Verification Gate](merge-and-verification.md#daemon-verification-gate).
 5. COMMIT    git add <specific files> → CodeRabbit pre-commit review → commit
              ↳ Codex env: run `coderabbit review --agent` with a ~3 minute
                hard timeout BEFORE committing. If the local CLI hangs or hits
@@ -22,10 +21,10 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
                If CRITICAL issues found → fix first. If minor → proceed.
                Ralph mode: `--story=ID --message=MSG` for atomic commit + criterion.
              ↳ Commit trailer = `Co-Authored-By: <seat> running <model>
-               <noreply@anthropic.com>` (Agent Identity Signature above).
+               <noreply@anthropic.com>` ([Agent Identity Signature](github-identity.md)).
 6. PUSH      git push -u origin feat/name
 7. PR        Create PR (see "Creating the PR" below) — body ends with the signature block
-8. REVIEW    Fetch + read review comments (see "Reading Reviews" below)
+8. REVIEW    Fetch + read review comments (see [Reading Review Comments](review-loop.md#reading-review-comments))
              ↳ Every comment/reply you POST ends with the signature block
 9. FIX       Address real bugs from review
 10. MERGE    gh pr merge <N> --merge --admin --delete-branch
@@ -36,8 +35,8 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
                If the receipt is meant to be read by a human, `gh pr edit <N> --body-file` it onto
                the PR **before** merging.
 11. CLEANUP  git checkout main && git pull
-```
 
+<a id="merge-authority"></a>
 ## Merge Authority (Etan's ruling, 2026-08-04 — mechanism, not prose)
 
 > *"The reason we have branch protection on my own repos is so OTHER PEOPLE don't merge to my
@@ -158,7 +157,7 @@ measured diff over 400 hand-written lines to cover a large PR with no stated
 why. The check does not parse the PR body or judge rationale prose.
 
 The signature block goes **last** in the body, and the same block ends every PR
-comment, review, and issue comment (Agent Identity Signature above). Commits use
+comment, review, and issue comment ([Agent Identity Signature](github-identity.md)). Commits use
 the `Co-Authored-By: <seat> running <model>` trailer instead — never the block.
 
 If the PR body or comment contains backticks, use `--body-file` (or stdin).
