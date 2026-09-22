@@ -683,17 +683,17 @@
       "id": 25,
       "name": "bounded-pattern-audit",
       "category": "model-effort",
-      "description": "A read-heavy binary-rubric audit can use Luna when its checks are genuinely bounded and mechanical.",
+      "description": "A read-heavy binary-rubric audit belongs on the Sol high recon tier.",
       "prompt": "As a child of a Sol implementation lane, choose a Codex model and effort for this mission: inspect 40 generated migration diffs against four explicit invariants, emit pass/fail plus evidence for each, and make no code changes. The rubric is binary and every result is independently checkable. State what is known versus not known about the model choice.",
-      "expected_effort": "medium",
-      "expected_model": "gpt-6-luna",
-      "expected_output": "Use the named read-only recon agent targeting Luna medium because its four explicit binary invariants make this read genuinely bounded and mechanical, with independently checkable results. The task shape makes the intended choice known, but the effective model and effort remain NOT KNOWN until verified from the child's own session JSONL turn_context; the external recon agent pin may still be Terra.",
+      "expected_effort": "high",
+      "expected_model": "gpt-6-sol",
+      "expected_output": "Use the named read-only recon agent at Sol high because this is read-heavy parallel review over many artifacts that should return distilled evidence. The task shape makes the intended choice known, but the effective model and effort remain NOT KNOWN until verified from the child's own session JSONL turn_context.",
       "assertions": [
         {
           "type": "content",
-          "name": "selects-luna-medium",
-          "description": "Selects Luna medium for the bounded binary-rubric audit.",
-          "text": "Selects gpt-6-luna at medium because the audit is bounded and mechanical"
+          "name": "selects-sol-high",
+          "description": "Selects Sol high for read-heavy review fan-out.",
+          "text": "Selects gpt-6-sol at high"
         },
         {
           "type": "content",
