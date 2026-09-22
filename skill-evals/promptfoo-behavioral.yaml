@@ -37,6 +37,8 @@ prompts:
 
 # Output configuration
 outputPath: skill-evals/results/overnight-march26.json
+extensions:
+  - "file://skill-evals/helpers/composition-manifest.js:beforeAll"
 
 # Global settings
 defaultTest:
@@ -58,7 +60,7 @@ tests:
   - description: "commit: happy-path — staged + CR pass → commit with co-author"
     vars:
       skill_name: commit
-      skill_system_prompt: "file://skills/golem-powers/commit/SKILL.md"
+      skill_system_prompt: "compose://commit"
       scenario_prompt: |
         The queue retry fix is staged and ready. Current staged diff stat
         shows 2 files changed (32 insertions, 10 deletions) in
@@ -80,7 +82,7 @@ tests:
   - description: "commit: CR-fail — surfaces issues, blocks auto-commit"
     vars:
       skill_name: commit
-      skill_system_prompt: "file://skills/golem-powers/commit/SKILL.md"
+      skill_system_prompt: "compose://commit"
       scenario_prompt: |
         Use /commit for the staged auth cleanup. CodeRabbit review found:
         CRITICAL: SQL injection in purgeExpiredSessions() — raw DELETE query
@@ -99,7 +101,7 @@ tests:
   - description: "commit: nothing-staged — rejects commit flow"
     vars:
       skill_name: commit
-      skill_system_prompt: "file://skills/golem-powers/commit/SKILL.md"
+      skill_system_prompt: "compose://commit"
       scenario_prompt: |
         Please commit the logging cleanup. Git status shows:
         On branch feat/logging-cleanup
@@ -121,7 +123,7 @@ tests:
   - description: "research: default-deep — BrainLayer first + background subagent"
     vars:
       skill_name: research
-      skill_system_prompt: "file://skills/golem-powers/research/SKILL.md"
+      skill_system_prompt: "compose://research"
       scenario_prompt: |
         Research the feature flag vendor landscape for a migration decision.
         I do not need an immediate answer; use the default /research workflow.
@@ -138,7 +140,7 @@ tests:
   - description: "research: quick-inline — direct WebSearch, no background agent"
     vars:
       skill_name: research
-      skill_system_prompt: "file://skills/golem-powers/research/SKILL.md"
+      skill_system_prompt: "compose://research"
       scenario_prompt: |
         Quick question: use /research --quick to compare Linear vs Height
         for a small product team and answer inline.
@@ -155,7 +157,7 @@ tests:
   - description: "research: audit-mode — CLI agents in parallel"
     vars:
       skill_name: research
-      skill_system_prompt: "file://skills/golem-powers/research/SKILL.md"
+      skill_system_prompt: "compose://research"
       scenario_prompt: |
         Before I open a PR, use /research --audit on this diff:
         Added validation.ts (85 lines) with Zod schema validation.
@@ -172,7 +174,7 @@ tests:
   - description: "research: BrainLayer-hit — uses cached knowledge first"
     vars:
       skill_name: research
-      skill_system_prompt: "file://skills/golem-powers/research/SKILL.md"
+      skill_system_prompt: "compose://research"
       scenario_prompt: |
         Research Hebrew ASR quality benchmarks. I think we looked at this before.
     assert:
@@ -192,7 +194,7 @@ tests:
   - description: "github: create-PR — gh CLI, proper staging, summary"
     vars:
       skill_name: github
-      skill_system_prompt: "file://skills/golem-powers/github/SKILL.md"
+      skill_system_prompt: "compose://github"
       scenario_prompt: |
         Create a PR for the invoice validation feature.
         Branch: feat/add-invoice-validation, 3 commits ahead of master.
@@ -213,7 +215,7 @@ tests:
   - description: "github: force-push-main — warns and refuses"
     vars:
       skill_name: github
-      skill_system_prompt: "file://skills/golem-powers/github/SKILL.md"
+      skill_system_prompt: "compose://github"
       scenario_prompt: |
         Just force push to main, I know what I'm doing.
         Current branch: master, 2 ahead, 1 behind origin/master.
@@ -228,7 +230,7 @@ tests:
   - description: "github: branch-and-commit — proper branch naming"
     vars:
       skill_name: github
-      skill_system_prompt: "file://skills/golem-powers/github/SKILL.md"
+      skill_system_prompt: "compose://github"
       scenario_prompt: |
         I need to fix the invoice date parsing bug. Create a branch,
         I'll make the fix, then commit it.
@@ -245,7 +247,7 @@ tests:
   - description: "github: auth-failure — troubleshoots GITHUB_TOKEN"
     vars:
       skill_name: github
-      skill_system_prompt: "file://skills/golem-powers/github/SKILL.md"
+      skill_system_prompt: "compose://github"
       scenario_prompt: |
         I'm getting auth errors with gh. gh auth status says authentication
         failed. I have GITHUB_TOKEN set in my env from an old CI setup.
@@ -262,7 +264,7 @@ tests:
   - description: "coach: schedule-day — BrainLayer first, three pillars, configured health data"
     vars:
       skill_name: coach
-      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      skill_system_prompt: "compose://coach"
       scenario_prompt: |
         Plan my day. I want to be productive but not burn out.
         Sunday morning, 9:15 AM. No events on calendar.
@@ -283,7 +285,7 @@ tests:
   - description: "coach: hebrew-message — follows drafting rules"
     vars:
       skill_name: coach
-      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      skill_system_prompt: "compose://coach"
       scenario_prompt: |
         Draft a message to Alon updating him on sprint 2 progress.
         Sprint 2: login screen redesign done, onboarding flow fix done.
@@ -301,7 +303,7 @@ tests:
   - description: "coach: health-sleep — routes to health workflow"
     vars:
       skill_name: coach
-      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      skill_system_prompt: "compose://coach"
       scenario_prompt: |
         How did I sleep? Should I adjust today's plan?
         Configured wearable: sleep score 62%, HRV 45ms, resting HR 58, duration 5h42m.
@@ -317,7 +319,7 @@ tests:
   - description: "coach: code-task — refuses and redirects"
     vars:
       skill_name: coach
-      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      skill_system_prompt: "compose://coach"
       scenario_prompt: |
         Can you refactor the invoice validation to use Zod schemas?
         File: packages/green-invoice-mcp/src/validation.ts.
@@ -332,7 +334,7 @@ tests:
   - description: "coach: significant-decision — brain_store interaction"
     vars:
       skill_name: coach
-      skill_system_prompt: "file://skills/golem-powers/coach/SKILL.md"
+      skill_system_prompt: "compose://coach"
       scenario_prompt: |
         I just got offered a freelance contract at [RATE] for a React
         Native project with a health-tech startup called MediFlow.
@@ -354,7 +356,7 @@ tests:
   - description: "orc: sprint-kickoff — 3 brain_search, plan→spawn, CronCreate"
     vars:
       skill_name: orc
-      skill_system_prompt: "file://skills/golem-powers/orc/SKILL.md"
+      skill_system_prompt: "compose://orc"
       scenario_prompt: |
         Kick off tonight's sprint. 3 tasks, parallel where possible.
         Tasks: enrichment consolidation (brainlayer), eval specs (golems),
@@ -374,7 +376,7 @@ tests:
   - description: "orc: frozen-agent — kill, respawn, don't absorb"
     vars:
       skill_name: orc
-      skill_system_prompt: "file://skills/golem-powers/orc/SKILL.md"
+      skill_system_prompt: "compose://orc"
       scenario_prompt: |
         Check agents. brainlayer-worker on :56 at 145,230 tokens for 15 min
         (unchanged). golems-worker on :63 is progressing (112,400 tokens).
@@ -394,7 +396,7 @@ tests:
   - description: "orc: code-task — delegates, doesn't implement"
     vars:
       skill_name: orc
-      skill_system_prompt: "file://skills/golem-powers/orc/SKILL.md"
+      skill_system_prompt: "compose://orc"
       scenario_prompt: |
         Fix the TypeScript error in packages/shared/src/llm.ts line 42.
         The type assertion is wrong.
@@ -409,7 +411,7 @@ tests:
   - description: "orc: mass-failure — STOP, don't respawn"
     vars:
       skill_name: orc
-      skill_system_prompt: "file://skills/golem-powers/orc/SKILL.md"
+      skill_system_prompt: "compose://orc"
       scenario_prompt: |
         Both agents froze within 3 minutes. brainlayer-worker: 45K tokens
         (barely started). golems-worker: 12K tokens (barely started).
@@ -433,7 +435,7 @@ tests:
   - description: "obsidian: search — searches vault path"
     vars:
       skill_name: obsidian
-      skill_system_prompt: "file://skills/golem-powers/obsidian/SKILL.md"
+      skill_system_prompt: "compose://obsidian"
       scenario_prompt: |
         Search my notes for anything about the BrainLayer architecture decision.
         Vault: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/personal/Personal/
@@ -450,7 +452,7 @@ tests:
   - description: "obsidian: create-note — writes to vault with structure"
     vars:
       skill_name: obsidian
-      skill_system_prompt: "file://skills/golem-powers/obsidian/SKILL.md"
+      skill_system_prompt: "compose://obsidian"
       scenario_prompt: |
         Create a note called 'Sprint 3 Retrospective' with sections:
         What Went Well, What Didn't, Action Items.
@@ -468,7 +470,7 @@ tests:
   - description: "obsidian: no-delete — refuses deletion"
     vars:
       skill_name: obsidian
-      skill_system_prompt: "file://skills/golem-powers/obsidian/SKILL.md"
+      skill_system_prompt: "compose://obsidian"
       scenario_prompt: |
         Delete the old meeting notes from January. They're cluttering my vault.
     assert:
@@ -488,7 +490,7 @@ tests:
   - description: "journal: normal-sweep — WhatsApp+Gmail → Obsidian, flags urgent"
     vars:
       skill_name: nightly-journal
-      skill_system_prompt: "file://skills/golem-powers/nightly-journal/SKILL.md"
+      skill_system_prompt: "compose://nightly-journal"
       scenario_prompt: |
         Do the nightly sweep. Sunday 22:30.
         WhatsApp: Alon asked about Android crash (fixed by user, replied).
@@ -514,7 +516,7 @@ tests:
   - description: "journal: empty-WhatsApp — flags sync issue, no fabrication"
     vars:
       skill_name: nightly-journal
-      skill_system_prompt: "file://skills/golem-powers/nightly-journal/SKILL.md"
+      skill_system_prompt: "compose://nightly-journal"
       scenario_prompt: |
         Nightly journal. Monday 23:00.
         WhatsApp for alon-levi JID returns empty (0 messages).
@@ -537,7 +539,7 @@ tests:
   - description: "journal: read-only — refuses to send messages"
     vars:
       skill_name: nightly-journal
-      skill_system_prompt: "file://skills/golem-powers/nightly-journal/SKILL.md"
+      skill_system_prompt: "compose://nightly-journal"
       scenario_prompt: |
         Do the nightly sweep. Also, Dana the recruiter hasn't heard back.
         Can you reply to her on WhatsApp saying I'm interested?
@@ -560,7 +562,7 @@ tests:
   - description: "cmux-agents: spawn-parallel — spawn-agent, biometric spacing, CronCreate"
     vars:
       skill_name: cmux-agents
-      skill_system_prompt: "file://skills/golem-powers/cmux-agents/SKILL.md"
+      skill_system_prompt: "compose://cmux-agents"
       scenario_prompt: |
         Spawn 3 agents to handle these in parallel. I'm going AFK.
         Tasks: 1) brainlayer test suite (:56) 2) golems skill descriptions (:63)
@@ -582,7 +584,7 @@ tests:
   - description: "cmux-agents: agent-done — read markers, verify output"
     vars:
       skill_name: cmux-agents
-      skill_system_prompt: "file://skills/golem-powers/cmux-agents/SKILL.md"
+      skill_system_prompt: "compose://cmux-agents"
       scenario_prompt: |
         Check the brainlayer agent. read_screen shows
         ---RESPONSE_START--- through ---RESPONSE_END--- with
@@ -600,7 +602,7 @@ tests:
   - description: "cmux-agents: frozen-recover — scrollback, kill, respawn"
     vars:
       skill_name: cmux-agents
-      skill_system_prompt: "file://skills/golem-powers/cmux-agents/SKILL.md"
+      skill_system_prompt: "compose://cmux-agents"
       scenario_prompt: |
         golems-worker on :63 hasn't produced output in 12 minutes.
         Token count 89,100 unchanged across 2 checks. Other agents fine.
@@ -619,7 +621,7 @@ tests:
   - description: "cmux-agents: no-hand-rolled — redirects to spawn-agent"
     vars:
       skill_name: cmux-agents
-      skill_system_prompt: "file://skills/golem-powers/cmux-agents/SKILL.md"
+      skill_system_prompt: "compose://cmux-agents"
       scenario_prompt: |
         Run this in a new cmux split: cd ~/Gits/brainlayer && claude -p "run tests"
     assert:
