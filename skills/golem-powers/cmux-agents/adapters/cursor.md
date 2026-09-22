@@ -6,19 +6,12 @@
 
 | Mode | Command | Notes |
 |------|---------|-------|
-| **Audit (read-only)** | `cursor agent --output-format text --model "gpt-5.3-codex-xhigh" "PROMPT"` | Text output, no file edits |
-| **Work (edits files)** | `cursor agent --model "gpt-5.3-codex-xhigh" "PROMPT"` | Omit `--output-format text` |
+| **Audit (read-only)** | `cursor agent --output-format text "PROMPT"` | Text output, no file edits |
+| **Work (edits files)** | `cursor agent "PROMPT"` | Omit `--output-format text` |
 
 **Run from the target repo directory** — Cursor indexes `@codebase` from cwd.
 
-## Model Tiers
-
-| Model | Use When |
-|-------|----------|
-| `gpt-5.3-codex-xhigh` | Architecture audits, complex refactors |
-| `gpt-5.3-codex-high` | Standard code review |
-| `gpt-5.3-codex` | Quick checks |
-| `auto` | Let Cursor route (free, subscription) |
+Cursor is Auto-only in every harness. Never pass `-m`/`--model` or a model field; `/agent-routing` AP3 owns this rule.
 
 ## Worktree Capabilities
 
@@ -26,19 +19,7 @@
 
 ## Preferred cmux lifecycle
 
-For visible Cursor workers, the parent orchestrator should use `spawn_agent({cli:"cursor"})`, not a hand-typed launcher:
-
-```text
-spawn_agent({
-  repo: "golems",
-  cli: "cursor",
-  model: "codex",
-  prompt: "Audit search ranking changes. Write findings to /tmp/cursor-audit.md"
-})
-wait_for({ agent_id, target_state: "done", timeout_ms: 1800000 })
-```
-
-Use `send_to({agent_id,...})` for the rare follow-up. Keep `read_screen` for approval prompts or FR-06 parser disputes.
+For visible Cursor workers, use the lifecycle in `../SKILL.md` and parameters in `../references/tool-contracts.md`; never hand-type the launcher. Cursor-specific follow-ups use `send_to({agent_id,...})`; keep `read_screen` for approval prompts or FR-06 parser disputes.
 
 ## Prompting Style
 
@@ -49,10 +30,10 @@ Use `send_to({agent_id,...})` for the rare follow-up. Keep `read_screen` for app
 
 ## Audit Best Practices
 
-- Always include output file path: `"Write results to /tmp/cursor-audit-1.md"`
+- Always include a durable output path inside the repo or its `docs.local/`
 - Use `--output-format text` for read-only audits
 - Run multiple audits in parallel for different angles
-- Pipe output: `> /tmp/cursor-audit-N.md`
+- Pipe ephemeral terminal-only output only when no durable handoff is required
 
 ## PR Review (Bugbot)
 
@@ -109,7 +90,7 @@ Cursor CLI (`cursor agent`) is primarily a single-run tool — fewer interactive
 
 **No `/mcp`** — Cursor has no MCP support (uses `@codebase` indexing instead).
 **No `/compact`** — runs to completion, no persistent context.
-**No `/model`** — model set at launch via `--model` flag.
+**No `/model`** — Cursor stays on Auto.
 **No session resume** — each `cursor agent` invocation is a fresh run.
 
 ### Detecting Agent State via read_screen
@@ -125,8 +106,7 @@ Cursor CLI (`cursor agent`) is primarily a single-run tool — fewer interactive
 
 **Cursor is usually fire-and-forget** once launched by `spawn_agent`.
 
-**Start an audit:**
-`spawn_agent({ repo:"target-repo", cli:"cursor", model:"codex", prompt:"Audit target repo and write results to /tmp/audit-result.md" })`
+**Start an audit:** follow `../SKILL.md`; write results to an explicit repo or `docs.local/` path.
 
 **Check if done:**
 `wait_for({ agent_id:"...", target_state:"done", timeout_ms:1800000 })`

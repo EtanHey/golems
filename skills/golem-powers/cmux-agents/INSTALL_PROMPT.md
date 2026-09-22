@@ -23,20 +23,44 @@ curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-po
   -o ~/.claude/skills/cmux-agents/SKILL.md
 ```
 
+Download the routed references:
+
+```bash
+mkdir -p ~/.claude/skills/cmux-agents/references
+for name in tool-contracts delivery-and-recovery monitoring-and-collaboration platform-notes; do
+  curl -sL "https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/references/${name}.md" \
+    -o "$HOME/.claude/skills/cmux-agents/references/${name}.md"
+done
+```
+
+Download the adapters and worker-prompt workflow routed from `SKILL.md`:
+
+```bash
+mkdir -p ~/.claude/skills/cmux-agents/adapters ~/.claude/skills/cmux-agents/workflows
+for name in claude codex cursor kiro; do
+  curl -sL "https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/adapters/${name}.md" \
+    -o "$HOME/.claude/skills/cmux-agents/adapters/${name}.md"
+done
+curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/adapters/capabilities.yaml \
+  -o ~/.claude/skills/cmux-agents/adapters/capabilities.yaml
+curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/workflows/prompt-audit.md \
+  -o ~/.claude/skills/cmux-agents/workflows/prompt-audit.md
+```
+
 ### Scripts
 
 ```bash
 mkdir -p ~/.claude/skills/cmux-agents/scripts
-curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/scripts/agent-status.sh \
-  -o ~/.claude/skills/cmux-agents/scripts/agent-status.sh
-curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/scripts/watch-agent.sh \
-  -o ~/.claude/skills/cmux-agents/scripts/watch-agent.sh
+for name in agent-functions check-naming-distinction delivery-gate run watch-agent; do
+  curl -sL "https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/scripts/${name}.sh" \
+    -o "$HOME/.claude/skills/cmux-agents/scripts/${name}.sh"
+done
 chmod +x ~/.claude/skills/cmux-agents/scripts/*.sh
 ```
 
 3. Verify:
 ```bash
-ls ~/.claude/skills/cmux-agents/
+find ~/.claude/skills/cmux-agents -maxdepth 2 -type f | sort
 ```
 
 ## Usage
