@@ -13,7 +13,7 @@
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create ...` | If `gh` is installed + authenticated |
 | Trigger review bots | `gh pr comment <N> --body "@codex review"` | Shell path, not a native reviewer tool |
-| Trigger Bugbot | `gh pr comment <N> --body "@cursor @bugbot review"` | **Opt-in, core paths only** (SKILL.md Step 8a) and never where the repo's `AGENTS.md` bans it (Step 8a.0). Not part of the default panel. Re-review with `@cursor @bugbot re-review` |
+| Trigger Bugbot | `gh pr comment <N> --body "@cursor @bugbot review"` | **Opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (§ 8a.0). Not part of the default panel. Re-review with `@cursor @bugbot re-review` |
 | Read comments | `gh pr view <N> --comments` | Fetch once on state change — never in a poll loop |
 | Merge | `gh pr merge <N> --merge --delete-branch` | See worktree note below |
 
@@ -26,7 +26,7 @@
 | No `CronCreate` | Can't schedule review polling | `gh pr checks <N> --watch` blocks for CI — no scheduling, no sleep loops |
 | No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |
 | No native review-bot tool | Can't invoke Codex Cloud or Cursor Bugbot through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens, filtered by the repo's bot policy |
-| No `AGENTS.md` bot-policy check in the loop | Can summon a bot the target repo bans | Read the target repo's `AGENTS.md` PR-workflow section BEFORE the first `@mention` (SKILL.md Step 8a.0), and name the applied policy in the PR body |
+| No `AGENTS.md` bot-policy check in the loop | Can summon a bot the target repo bans | Read the target repo's `AGENTS.md` PR-workflow section BEFORE the first `@mention` ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)), and name the applied policy in the PR body |
 
 ## Worktree Merge Mechanics
 
@@ -38,7 +38,7 @@ not delete the session underneath you.
 ## Shell Review Triggers (Codex fallback)
 
 Read the target repo's bot policy first — repo law tightens the fleet default panel, never loosens it
-(SKILL.md Step 8a.0):
+([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)):
 
 ```bash
 sed -n '/## PR Workflow/,/^## /p' AGENTS.md 2>/dev/null
@@ -64,8 +64,9 @@ gh pr comment <N> --body "@cursor @bugbot review"      # core paths ONLY — opt
 gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed round 1
 ```
 
-A cheaper Cursor pass with no Bugbot quota cost is the read-only `cursor-agent -p` review (SKILL.md
-Step 8a.2) — Auto-only, no model flag, findings only, never a write pass.
+A cheaper Cursor pass with no Bugbot quota cost is the read-only `cursor-agent -p` review
+([review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-review-pass-is-read-only)) —
+Auto-only, no model flag, findings only, never a write pass.
 
 ## CI + Review Waiting (Codex — NO sleep-poll loops)
 
@@ -138,15 +139,11 @@ registers the checkpoint metadata — the signature's `session` field is what jo
 Sign with `--body-file` / heredoc, never inline `--body "…"`: the blob is JSON with quotes and
 braces, and command substitution mangles it silently.
 
-## Hierarchical Worker Mode (gen-12 weave E09)
+## Hierarchical Worker Mode
 
-When the dispatch brief says LEAD owns merge, Codex worker endpoint = PR + review
-responses — stop at TASK_DONE with PR URL; do not `gh pr merge` unless the brief
-explicitly grants merge authority. Before LEAD merges, verify `headRefOid` matches
-the worker's latest push (`gh pr view <N> --json headRefOid`).
-
-Draft PRs skip bot reviews — use `gh pr ready <N>` before `@coderabbitai review`.
-Deploy claims need a same-moment live probe (`ps`/health curl), not merge SHA alone.
+For worker endpoints, draft handling, head verification, and deploy claims, read
+[dispatch and handoffs](../references/dispatch-and-handoffs.md) and
+[merge and verification](../references/merge-and-verification.md).
 
 ## Recommended Usage
 

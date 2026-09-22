@@ -23,7 +23,7 @@
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use shell polling loop |
 | No `CronCreate` | Can't schedule review polling | `for i in $(seq 1 6); do ... sleep 30; done` |
 | No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |
-| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, core paths only** (SKILL.md Step 8a) and banned outright by some repos' `AGENTS.md` (Step 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |
+| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |
 
 ## Shell-Based Review Polling (Cursor workaround)
 
@@ -40,7 +40,7 @@ done
 ## Cursor's Unique Advantage in the Loop
 
 Cursor's `@codebase` indexing makes it strong for the **review step**, even if it can't orchestrate
-the full loop. **The Cursor review pass is READ-ONLY** (SKILL.md Step 8a.2): report findings, never
+the full loop. **The Cursor review pass is READ-ONLY** ([review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-review-pass-is-read-only)): report findings, never
 edit. Cursor gathers and verifies; Codex implements (canon #1).
 
 ```bash
@@ -56,7 +56,7 @@ the resulting `resource_exhausted` as an external finding (canon #3).
 
 Cursor **Bugbot** is a different thing and is **not** part of this pass: it is opt-in, core paths only
 (daemon/engine/transport diffs), and off entirely where the target repo's `AGENTS.md` bans it — read
-that policy first (SKILL.md Step 8a.0). On a non-core diff, do not summon it at all.
+that policy first ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)). On a non-core diff, do not summon it at all.
 
 ## Agent Identity Signature — Cursor (ratified 2026-08-08) — OPEN GAP
 
@@ -89,11 +89,10 @@ ownership marker on non-`EtanHey` repos, no `effort` field anywhere, and the com
 `Co-Authored-By: <seat> running <model> <noreply@anthropic.com>` (with `unknown` where the model is
 genuinely unavailable). Use `--body-file`, not inline `--body`, so the blob survives shell quoting.
 
-## Hierarchical Worker Mode (gen-12 weave E09)
+## Hierarchical Worker Mode
 
-When LEAD owns merge: Cursor worker endpoint = PR + review responses unless the
-brief explicitly grants merge. LEAD verifies `headRefOid` before merge. Mark PRs
-ready-for-review before bot invocation; draft PRs skip CodeRabbit.
+For worker endpoints, draft handling, and head verification, read
+[dispatch and handoffs](../references/dispatch-and-handoffs.md).
 
 ## Recommended Usage
 
