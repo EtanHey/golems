@@ -12,7 +12,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
              ↳ DAEMON GATE: If this PR touches daemon/socket/MCP code,
                you MUST test with a real client session before proceeding.
                See [Daemon Verification Gate](merge-and-verification.md#daemon-verification-gate).
-5. COMMIT    git add <specific files> → CodeRabbit pre-commit review → commit
+5. COMMIT    git add `<specific files>` → CodeRabbit pre-commit review → commit
              ↳ Codex env: run `coderabbit review --agent` with a ~3 minute
                hard timeout BEFORE committing. If the local CLI hangs or hits
                rate/review limits, stop it, record the limitation, and commit
@@ -27,7 +27,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 8. REVIEW    Fetch + read review comments (see [Reading Review Comments](review-loop.md#reading-review-comments))
              ↳ Every comment/reply you POST ends with the signature block
 9. FIX       Address real bugs from review
-10. MERGE    gh pr merge <N> --merge --admin --delete-branch
+10. MERGE    gh pr merge `<N>` --merge --admin --delete-branch
              ↳ Leads are ADMINS on Etan's repos: `--admin` is the DEFAULT.
                `reviewDecision: REVIEW_REQUIRED` is a GitHub LABEL, never a
                stop condition. See "Merge Authority" below.
