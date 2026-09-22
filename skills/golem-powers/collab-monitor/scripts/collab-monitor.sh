@@ -22,8 +22,8 @@ ACTIVE_TAIL_PID=''
 usage() {
   printf '%s\n' \
     'usage:' \
-    '  collab-monitor.sh run [--once] @listen-name file [file ...]' \
-    '  collab-monitor.sh start @listen-name file [file ...]' \
+    '  collab-monitor.sh run [--once] [--include-self] @listen-name file [file ...]' \
+    '  collab-monitor.sh start [--include-self] @listen-name file [file ...]' \
     '  collab-monitor.sh follow @listen-name' \
     '  collab-monitor.sh stop @listen-name' \
     '  collab-monitor.sh status @listen-name' >&2
@@ -603,6 +603,7 @@ scan_file() {
   local bare_name="$3"
   local state_dir="$4"
   local seen_file="$5"
+  local include_self="$6"
   local size_dir="$state_dir/sizes"
   local path_hash size_file current_size previous_size shrink_delta event_record record_kind event_line content_hash event_file seed_status extract_status hash_failed state_failed seen_status
 
@@ -685,9 +686,9 @@ scan_file() {
         break
         ;;
     esac
-    if [[ "$record_kind" == 'SELF' ]]; then
+    if [[ "$record_kind" == 'SELF' && "$include_self" -eq 1 ]]; then
       printf 'SELF-POST-%s file=%s hash=%s :: %s\n' "$listen_name" "$watched_file" "$content_hash" "$event_line"
-    else
+    elif [[ "$record_kind" != 'SELF' ]]; then
       printf 'NEW-FOR-%s file=%s hash=%s :: %s\n' "$listen_name" "$watched_file" "$content_hash" "$event_line"
     fi
     if ! persist_seen_hash "$seen_file" "$content_hash"; then
@@ -728,7 +729,7 @@ interruptible_sleep() {
 }
 
 run_monitor() {
-  local once=0
+  local once=0 include_self="${COLLAB_MONITOR_INCLUDE_SELF:-0}"
   local listen_name bare_name state_dir seen_file run_lock watched_file pid_file ready_file ready_instance_file instance_file poll_failed instance_token='' existing_size_file
 
   validate_poll_seconds
@@ -736,6 +737,10 @@ run_monitor() {
     case "${1:-}" in
       --once)
         once=1
+        shift
+        ;;
+      --include-self)
+        include_self=1
         shift
         ;;
       --instance)
@@ -747,6 +752,7 @@ run_monitor() {
       *) break ;;
     esac
   done
+  [[ "$include_self" == '0' || "$include_self" == '1' ]] || die 'invalid internal include-self setting'
   [[ "$#" -ge 2 ]] || {
     usage
     exit 2
@@ -802,7 +808,7 @@ run_monitor() {
   while true; do
     poll_failed=0
     for watched_file in "$@"; do
-      if ! scan_file "$watched_file" "$listen_name" "$bare_name" "$state_dir" "$seen_file"; then
+      if ! scan_file "$watched_file" "$listen_name" "$bare_name" "$state_dir" "$seen_file" "$include_self"; then
         poll_failed=1
       fi
     done
@@ -826,10 +832,19 @@ run_monitor() {
 }
 
 start_monitor() {
-  local listen_name bare_name state_dir start_lock pid_file ready_file ready_instance_file instance_file log_file existing_pid existing_instance child_pid index lock_owner ready_owner ready_instance temporary instance_token instance_material start_wait_iterations
+  local include_self=0 listen_name bare_name state_dir start_lock pid_file ready_file ready_instance_file instance_file log_file existing_pid existing_instance child_pid index lock_owner ready_owner ready_instance temporary instance_token instance_material start_wait_iterations
 
   validate_poll_seconds
   validate_start_timeout_seconds
+  while [[ "$#" -gt 0 ]]; do
+    case "${1:-}" in
+      --include-self)
+        include_self=1
+        shift
+        ;;
+      *) break ;;
+    esac
+  done
   [[ "$#" -ge 2 ]] || {
     usage
     exit 2
@@ -882,7 +897,7 @@ start_monitor() {
     exit 1
   fi
 
-  nohup env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
+  nohup env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 COLLAB_MONITOR_INCLUDE_SELF="$include_self" /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
   child_pid=$!
   ACTIVE_START_CHILD_PID="$child_pid"
 

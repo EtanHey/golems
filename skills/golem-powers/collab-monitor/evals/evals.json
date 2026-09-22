@@ -30,13 +30,15 @@
       "name": "self-authored-block-is-excluded",
       "category": "compliance",
       "description": "Recorded live @skillcreator failure: a post authored by the listener woke its own monitor because the post contained @skillcreator.",
-      "prompt": "Arm @skillcreator for the recorded self-authored FLEET-STANDING header, then append the recorded @review-638 body and its trailing author signature in separate writes.",
+      "prompt": "Arm @skillcreator for a fixture containing both a ### @skillcreator → @orc self block and a ### @orc → @skillcreator inbound block, then repeat with --include-self and inspect the documented Codex tail pattern.",
       "assertions": [
-        {"type": "negative", "name": "no-self-alert", "description": "Emits zero normal events for the self-authored block."},
+        {"type": "negative", "name": "default-drops-self-block", "description": "Without --include-self, the self-authored block appears nowhere in output and only the inbound block is emitted."},
+        {"type": "content", "name": "include-self-restores-block", "description": "With --include-self, the self-authored block is emitted with its SELF-POST classification."},
+        {"type": "content", "name": "codex-tail-filters-self", "description": "The copy-pasteable Codex tail snippet filters ### @<self> headers and explains that <self> is the seat's listen name."},
         {"type": "content", "name": "header-author-detected", "description": "Recognizes @skillcreator as author before the routing arrow."},
         {"type": "content", "name": "signature-author-supported", "description": "Also excludes a split-written block once its explicit @review-638 author signature arrives."},
         {"type": "content", "name": "strict-signature-grammar", "description": "Only a standalone trailing author tag closes a block or establishes authorship; contextual dash lines and cc mentions do neither."},
-        {"type": "content", "name": "self-post-classification", "description": "Own writes emit a distinct SELF-POST record rather than disappearing or looking inbound."},
+        {"type": "content", "name": "self-post-classification", "description": "The internal SELF classification remains the reason for the default drop and the opt-in SELF-POST label."},
         {"type": "content", "name": "foreign-signature-overrides-heading", "description": "A valid foreign signature keeps inbound mail visible even inside a self-authored heading block."}
       ]
     },

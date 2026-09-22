@@ -247,9 +247,16 @@ run_candidate() {
   board="$case_dir/collab.md"
   : > "$board"
   run_once "$case_dir/state" "$case_dir/seed.out" '@skillcreator' "$board"
-  append_fixture "$FIXTURES/self-authored-post.md" "$board"
+  append_fixture "$FIXTURES/default-author-filter.md" "$board"
   run_once "$case_dir/state" "$case_dir/scan.out" '@skillcreator' "$board"
   count="$(alert_count "$case_dir/scan.out")"
+  : > "$case_dir/include-collab.md"
+  run_once "$case_dir/include-state" "$case_dir/include-seed.out" '@skillcreator' "$case_dir/include-collab.md"
+  append_fixture "$FIXTURES/default-author-filter.md" "$case_dir/include-collab.md"
+  set +e
+  MONITOR_STATE_DIR="$case_dir/include-state" /bin/bash "$MONITOR" run --once --include-self '@skillcreator' "$case_dir/include-collab.md" > "$case_dir/include.out" 2>&1
+  include_rc=$?
+  set -e
   : > "$case_dir/signed-collab.md"
   run_once "$case_dir/signed-state" "$case_dir/signed-seed.out" '@review-638' "$case_dir/signed-collab.md"
   append_fixture "$FIXTURES/self-signature-body.md" "$case_dir/signed-collab.md"
@@ -272,10 +279,10 @@ run_candidate() {
   run_once "$case_dir/foreign-state" "$case_dir/foreign-held.out" '@review-638' "$case_dir/foreign-collab.md"
   printf '%s\n' '— @orc' >> "$case_dir/foreign-collab.md"
   run_once "$case_dir/foreign-state" "$case_dir/foreign-closed.out" '@review-638' "$case_dir/foreign-collab.md"
-  if [[ "$count" == "0" ]] && [[ "$(self_post_count "$case_dir/scan.out")" == "1" ]] && [[ "$(alert_count "$case_dir/body-only.out")" == "0" ]] && [[ "$(alert_count "$case_dir/with-signature.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/with-signature.out")" == "1" ]] && [[ "$(alert_count "$case_dir/context.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/context.out")" == "1" ]] && [[ "$(alert_count "$case_dir/mixed-held.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/mixed-held.out")" == "1" ]] && [[ "$(alert_count "$case_dir/mixed.out")" == "1" ]] && [[ "$(alert_count "$case_dir/foreign-held.out")" == "0" ]] && [[ "$(alert_count "$case_dir/foreign-closed.out")" == "1" ]]; then
+  if [[ "$count" == "1" ]] && grep -Fq 'inbound status update' "$case_dir/scan.out" && ! grep -Fq 'own status update' "$case_dir/scan.out" && [[ "$(self_post_count "$case_dir/scan.out")" == "0" ]] && [[ "$include_rc" -eq 0 ]] && [[ "$(alert_count "$case_dir/include.out")" == "1" ]] && [[ "$(self_post_count "$case_dir/include.out")" == "1" ]] && grep -Fq 'own status update' "$case_dir/include.out" && grep -Fq "grep -v '^### @<self>[[:space:]]'" "$SKILL_DIR/SKILL.md" && grep -Fq 'Here `<self>` is the seat' "$SKILL_DIR/SKILL.md" && [[ "$(alert_count "$case_dir/body-only.out")" == "0" ]] && [[ "$(alert_count "$case_dir/with-signature.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/with-signature.out")" == "0" ]] && [[ "$(alert_count "$case_dir/context.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/context.out")" == "0" ]] && [[ "$(alert_count "$case_dir/mixed-held.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/mixed-held.out")" == "0" ]] && [[ "$(alert_count "$case_dir/mixed.out")" == "1" ]] && [[ "$(alert_count "$case_dir/foreign-held.out")" == "0" ]] && [[ "$(alert_count "$case_dir/foreign-closed.out")" == "1" ]]; then
     pass "2 self-signature-match GREEN"
   else
-    fail "2 self-signature-match" "signature parsing flushed context early, misclassified authorship, or consumed a split-write inbound hash before closure"
+    fail "2 self-signature-match" "default filtering, --include-self, Codex tail documentation, or signature classification did not satisfy the contract"
   fi
 
   case_dir="$TMP_ROOT/dedup"

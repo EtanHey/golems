@@ -1,9 +1,9 @@
 ---
 name: collab-monitor
 description: "Arm or stop tag-scoped durable collab-file watches. Triggers: collab monitor, watch collab, listen-name, background watch. NOT for file-integrity auditing or worker-registry completion."
-version: 1.1.0
+version: 1.1.1
 type: encoded-preference
-last-eval-date: 2026-08-03
+last-eval-date: 2026-09-22
 compliance-score: "15/15 deterministic checks (not an agent-behavior score)"
 ---
 
@@ -29,6 +29,9 @@ bash "$COLLAB_MONITOR" follow @your-listen-name
 bash "$COLLAB_MONITOR" status @your-listen-name
 bash "$COLLAB_MONITOR" stop @your-listen-name
 ```
+
+Self-authored blocks are dropped by default. Use `start --include-self` or `run --include-self`
+only when auditing the watcher's own posts; those opt-in events retain their `SELF-POST` label.
 
 Use foreground mode when a parent monitor/supervisor owns the process:
 
@@ -58,8 +61,10 @@ notified. A participant without a watcher on that file will not see it, no matte
 3. **Codex agents have no Monitor tool — use a background bash tail.** This is not optional and
    not a lesser substitute:
    ```
-   tail -n0 -F <collab-path> &     # detached, then RETURN
+   tail -n0 -F <collab-path> | grep -v '^### @<self>[[:space:]]' &     # detached, then RETURN
    ```
+   Here `<self>` is the seat's listen name without the leading `@`; replace `@<self>` with the
+   exact author tag used in collab headers (for example, `@skillcreator`).
    Read what it captured when you are re-invoked. A Codex that keeps working, or keeps polling
    in the foreground, because "it has no monitor" is choosing the wrong half of the contract.
 4. **Dedup by line hash.** A collab that gets rewritten (formatting, section moves) must not
@@ -156,10 +161,13 @@ specimens from this fleet:
 The rule, in three parts:
 
 1. **Match what is addressed TO you** — the anchored routing grammar below, not a bare tag scan.
-2. **Exclude your own byline** — this monitor classifies self-authored blocks as `SELF-POST`
-   rather than inbound mail; do not defeat that by grepping the raw file for your tag.
+2. **Exclude your own byline** — this monitor classifies self-authored blocks as `SELF`, drops
+   them by default, and emits them as `SELF-POST` only with `--include-self`; do not defeat that
+   by grepping the raw file for your tag.
 3. **Re-narrow when the crisis ends.** The filter is part of the lane, and the lane's close is the
    filter's close: `bash "$CM" stop @<listen-name>`.
+
+The author filter is on by default. A lead brief that arms a watch does not need to ask for it.
 
 ### The honest limit — monitors watch artifacts, not handoffs
 
@@ -350,7 +358,7 @@ The filter is tag-scoped and anchored on both sides of a mention, so email-like 
 - a routed Markdown header such as `### @author → @your-listen-name — event`;
 - a direct line beginning `@your-listen-name:` or `→ @your-listen-name`, with the arrow form followed by end-of-line or a `:`, `-`, or `—` separator.
 
-A direct line at the end of a file is held until a standalone trailing author signature (`— @author` or `-- @author`) or later heading closes its message block. Contextual dash lines and signatures that merely cc the listener do not close or classify a block. This prevents a split write from alerting before a self-author signature arrives. A block authored by the listen name—either before the routing arrow in its header or in a trailing `— @your-listen-name` signature—is classified as `SELF-POST` rather than emitted as inbound `NEW-FOR` mail. A recognized foreign signature overrides an earlier self-authored heading so nested inbound mail remains visible.
+A direct line at the end of a file is held until a standalone trailing author signature (`— @author` or `-- @author`) or later heading closes its message block. Contextual dash lines and signatures that merely cc the listener do not close or classify a block. This prevents a split write from alerting before a self-author signature arrives. A block authored by the listen name—either before the routing arrow in its header or in a trailing `— @your-listen-name` signature—is classified as `SELF` and dropped by default; `--include-self` emits it as `SELF-POST` rather than inbound `NEW-FOR` mail. A recognized foreign signature overrides an earlier self-authored heading so nested inbound mail remains visible.
 
 Prose that merely contains the tag, `TASK_DONE`, `error`, `failed`, `PR`, or `done` is not an event. If a post matters to a listener, address it using the routing grammar.
 
@@ -360,7 +368,7 @@ Fenced and indented code is excluded from routing, so examples of the grammar do
 
 1. **Silent seed:** current matching history is hashed without alerting when a file is first watched.
 2. **Content-hash dedup:** a previously seen event line does not re-fire when any watched file grows or identical content is appended to another watched file for the same listen name. If the seen-set disappears or becomes unreadable after size baselines exist, the poll fails closed with `reason=state-failed` instead of replaying history.
-3. **Self-classification:** self-authored routed headers and trailing-signature blocks emit a distinct `SELF-POST` record, never a normal inbound alert.
+3. **Self-classification:** self-authored routed headers and trailing-signature blocks are dropped by default; `--include-self` emits their distinct `SELF-POST` record, never a normal inbound alert.
 4. **Shrink detection:** a byte-size decrease emits a distinct `SHRINK` record with its byte delta.
 5. **Bash 3.2 safety:** state lives in ordinary files; the implementation uses neither `declare -A` nor `comm`.
 6. **Durable lifecycle:** `start` reports success only after the detached runner completes its first seed/poll, allowing 30 seconds by default for a large healthy historical seed, and records a validated PID plus per-start instance identity by listen name; an interrupted pre-readiness start terminates and reaps its unpublished runner, duplicate starts fail, ambiguous live-PID conflicts preserve their state for recovery instead of signaling or orphaning a process, `stop` never signals a stale/reused PID or a same-name monitor from another state root, and a zombie runner is treated as stopped instead of timing out.
@@ -378,7 +386,7 @@ MONITOR-ARMED name=@listener files=2 state=/.../listener
 WILL-NOT-CATCH :: ...
 FOLLOWING name=@listener pid=<pid> log=/.../monitor.log
 NEW-FOR-@listener file=/path/collab.md hash=<sha256> :: <literal event line>
-SELF-POST-@listener file=/path/collab.md hash=<sha256> :: <literal own-write line>
+SELF-POST-@listener file=/path/collab.md hash=<sha256> :: <literal own-write line>  # --include-self only
 SHRINK file=/path/collab.md old_bytes=123 new_bytes=80 delta_bytes=43
 WATCH-WARN file=/path/collab.md reason=temporarily-absent|read-failed|hash-failed|state-failed|unclosed-fence action=retry
 STATE_CONFLICT name=@listener pid=<pid> action=not-started|not-signaled state=preserved
