@@ -116,6 +116,8 @@ Most Claude Code skills work in Codex without modification — same `SKILL.md` f
 
 ## Session Resume
 
+For handoff timing, follow `/session-handoff` § Measuring context.
+
 - Prefer repoGolem `-c` from the session cwd or `resume <UUID>` for launcher-managed panes. The launcher restores the selected rollout's model+effort, explicit `-m`/`-E` wins, and un-honorable resumes fail instead of silently fresh-booting.
 - Bare repoGolem `resume` picker mode is refused because the launcher cannot recover model/effort before selection; resume combined with `-p/--print` is also refused.
 - Raw fallback: `codex resume <path>` or `/resume` inside an active session.

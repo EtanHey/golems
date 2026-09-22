@@ -148,11 +148,15 @@ Then: `brain_store("Handoff complete to {new-agent} ({agent_id}). Verified: work
 
 ## WHEN TO TRIGGER
 
+### Measuring context
+
+For a saved Codex or Claude JSONL, run `scripts/context-occupancy.sh <session.jsonl>` from this skill directory. For a live pane, prefer cmuxlayer `read_screen(parsed_only)` and use its `context_pct` / `token_count`. Never use Codex `total_token_usage`: it is cumulative session input, not current occupancy. Canonical fields and model windows: sibling repo `cmuxlayer/docs/harness-jsonl-field-map.md`.
+
 | Signal | Action |
 |--------|--------|
 | Context at 45% | brain_store full state (checkpoint, not handoff yet) |
 | Context at 50-60% | Proactively compact. If quality degrades → trigger handoff. |
-| Context at 70% | **MANDATORY handoff.** Do NOT wait for 83.5% auto-compact. |
+| Context at ~75% | **MANDATORY handoff.** Do NOT wait for 83.5% auto-compact. |
 | User says "wrap up" / "hand off" | Trigger handoff immediately |
 | User going to sleep with unfinished work | Handoff to continuation agent |
 | Session has been running 4+ hours | Consider handoff to avoid context degradation |
@@ -209,7 +213,7 @@ When the outgoing window includes a weave doc, the successor orc boot doc MUST r
 | Skip brain_store | Always store — file can be deleted, BrainLayer persists |
 | Start new session fresh without handoff | Even a 5-line handoff is better than cold start |
 | Declare handoff "complete" without verification | Check: new agent working, monitoring active, corrections stored (Step 5) |
-| Hand off at 83.5% (auto-compact) | Hand off at 70% — quality degrades past 50%, auto-compact loses 60-70% (non-orc seats; see orc-seat exception) |
+| Hand off at 83.5% (auto-compact) | Hand off at ~75% (non-orc seats; see orc-seat exception) |
 | Relay only "the top things" from a weave/retro | Full-relay: link the entire weave doc, mandate full read + item-by-item ACK |
 | Spawn continuation with a model param | Launcher-only (`{repo}Claude -s`) — the launcher pins the current top Opus at 1M; verify post-boot |
 | Assume a `-c` resume continues the pre-death turn's duties | Treat resume as fresh — re-derive duties from durable artifacts; encode standing orders as machinery (watch-v6 pattern) |
