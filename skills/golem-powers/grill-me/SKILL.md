@@ -1,68 +1,84 @@
 ---
 name: grill-me
-description: "Frontier/round-based plan interview. Triggers: grill me, interview me about this plan, shared understanding, walk the design tree. NOT one-question-at-a-time."
+description: "User-invoked design-tree interview. Triggers: grill me, interview my plan, stress-test this design. Asks the whole decision frontier in voice-friendly rounds. NOT for implementation or one-question-at-a-time interviews."
+disable-model-invocation: true
 ---
 
-# /grill-me — frontier rounds, not one question at a time
+# /grill-me
 
-> Replaces the v1 stub that pointed at a `/grilling` skill which does not exist on this machine, and
-> the retired one-question-per-turn method. Source: Matt Pocock, skills v1.2 (digest
-> `docs.local/video-gems/2026-08-06-matt-pocock-skills-v1.2.0.md`). One-question-per-turn was
-> "incredibly frustrating and dead slow" once only easy yes/no questions remained.
+> Ported and adapted from Matt Pocock's `skills/productivity/grilling/SKILL.md` and
+> `skills/productivity/grill-me/SKILL.md` at upstream commit
+> `c55ee46073ed923f86ce59a5eb3b6d895095d1b7`. Upstream is Copyright (c) 2026
+> Matt Pocock and MIT licensed; see [LICENSE.upstream](LICENSE.upstream).
+>
+> Local shape: the upstream `grilling` body is folded into this user-invoked skill so a
+> one-line wrapper does not add a second always-on description to the skill roster.
+>
+> Deliberate local divergence from upstream: retain Etan's voice-friendly lettered options,
+> `1A 2C` shorthand, exactly one `Recommended` label per question, and the final <=6 frozen
+> bullets. A recommendation is never a default.
 
-## Scope
+Interview the user relentlessly until you reach a shared understanding. Map the subject as a
+**design tree**: every decision branches into the decisions that hang off it.
 
-The interview settles what is already decided, then asks ONLY the open independent decisions in numbered rounds with lettered options and one Recommended each; answer in shorthand (1A 2C).
+## Work the whole frontier
 
-## The loop
+Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already
+settled: the questions you can ask now without guessing at answers you have not heard yet.
 
-1. **Settle first.** Read the plan and the codebase. List what is already decided, with the line
-   or file that decides it. Do not ask about anything on that list. If a question can be answered by
-   exploring the codebase, explore the codebase instead of asking.
-2. **Compute the frontier.** The frontier is the set of open decisions that do not depend on another
-   open decision. Only frontier items get asked this round. Dependent items wait.
-3. **Ask one round.** Number the questions (`1.`, `2.`, …). Give each **lettered options** (`A`, `B`,
-   `C`) and mark exactly one **Recommended** with a one-line why. Three to six questions per round;
-   never one, never twelve.
-4. **Read shorthand answers.** The user answers `1A 2C 3B` or `1A, 2: something else`. Never answer
-   for them. Never treat silence as a choice. If an answer is not one of the options, take it verbatim
-   as the decision.
-5. **Recompute the frontier** with the new decisions folded in. Dependent items that just became
-   independent are the next round.
-6. **Empty frontier = stop.** Emit **≤6 frozen bullets** — the decisions, each with the round it was
-   made in — and wait for the user to say shared understanding is reached. Do not start implementing.
+Ask the **whole frontier** in one round. Do not impose a fixed question-count cap. Number every
+question, give it short **lettered options**, and mark exactly one option **Recommended** with a
+one-line reason. Then wait for the user's answers before the next round.
 
-## Rules Etan set
+Each round reshapes the tree. Fold in the user's decisions, recompute the frontier, and ask the
+next round. A question whose answer depends on another open question belongs to a later round,
+not the current one.
 
-- **Never answer for him.** A Recommended option is a recommendation, not a default. Unanswered
-  questions stay open; they do not resolve to Recommended.
-- **Options, not essays.** A question with no options is a question you have not finished thinking
-  about. Go back and finish.
-- **Voice-friendly.** The format exists so a round can be answered by dictation in one breath
-  (`1A 2B 3A`). Keep option labels short enough to say aloud.
-- **Codebase before questions.** Anything greppable is not a question.
+## Find facts without blocking the round
 
-## Output shape per round
+Finding facts is your job, never the user's. Read the plan and codebase first. When a frontier
+question needs a fact from the filesystem, tools, or another available source, dispatch a
+sub-agent to find it instead of asking the user.
 
-```
-## Round N — <frontier size> open decisions
+Do not block the whole round on that exploration. Treat the running exploration as an unsettled
+prerequisite: hold only its downstream questions and ask the rest of the frontier now. Fold the
+fact into the tree when the sub-agent reports.
 
-1. <decision, one line>
+Facts belong to the agent. Decisions belong to the user: put every decision to them and wait.
+
+## Round format
+
+Keep labels short enough to answer by voice in one breath:
+
+```text
+## Round N
+
+1. <question title>: <question body>
    A. <option>
-   B. <option>  ← Recommended: <one-line why>
+   B. <option> (Recommended: <one-line reason>)
    C. <option>
 
-2. …
+---
 
-Answer like: 1B 2A 3C
+2. <question title>: <question body>
+   A. <option> (Recommended: <one-line reason>)
+   B. <option>
+   C. <option>
+
+Answer like: 1B 2A, or 1B 2: <answer outside the options>
 ```
 
-## Termination shape
+Separate every pair of questions in a round with a horizontal rule.
 
-```
-## Frozen (Round N reached an empty frontier)
-- <decision> — R1
-- <decision> — R2
-…
-Say "shared understanding" to close, or name what is still open.
-```
+Read shorthand such as `1A 2C` as the user's decisions. If an answer is outside the options,
+take it verbatim. Never answer for him. `Recommended` is advice, not a default. Never treat
+silence as a choice; unanswered questions remain open.
+
+## Stop only at shared understanding
+
+The session is ready to close only when the frontier is empty: every branch of the design tree
+was visited and nothing remains silently assumed. Emit **<=6 frozen bullets** summarizing the
+settled decisions and the round that settled each one. Then wait.
+
+Do not act on the plan until the user explicitly confirms shared understanding. If the user names
+something still open, put it back into the tree and continue.
