@@ -25,7 +25,7 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    App-touching PRs merge only with an installed-proof release step in the same mission:
    done = the INSTALLED artifact carries the merge SHA, verified on the machine, not inferred.
 
-5. **models** - Default is the CURRENT top Opus at 1M for every fresh boot (today: Opus 5); bare
+5. **models** - Default is the CURRENT top Opus at 1M for every fresh boot (today: Opus 5.5); bare
    launchers carry the default pin. The pin tracks the newest Opus - it is not frozen to a
    version, and it is never removed, because its job is to stop a prior session's model persisting.
    Fable is used only via explicit per-invocation selection - a prior session's model never persists into the next.

@@ -2327,7 +2327,7 @@ NPX
     ! grep -F -q -- "Theo Von" <<< "$output"
 }
 
-@test "testrepoClaude defaults to Opus 5 1M-context (no manual /model flip)" {
+@test "testrepoClaude defaults to Opus 5.5 1M-context (no manual /model flip)" {
     [ -f "$DISPATCHER" ] || fail "repoGolem dispatcher fixture not found at $DISPATCHER"
 
     run zsh -f -c '
@@ -2346,7 +2346,7 @@ NPX
     ' _ "$REGISTRY_FILE" "$DISPATCHER"
 
     [ "$status" -eq 0 ]
-    grep -F -q -- "--model claude-opus-5[1m]" <<< "$output"
+    grep -F -q -- "--model claude-opus-5-5[1m]" <<< "$output"
     grep -F -q -- "--dangerously-skip-permissions" <<< "$output"
 }
 

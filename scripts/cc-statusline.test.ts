@@ -295,11 +295,11 @@ describe("cc-statusline live context payload", () => {
     expect(output).not.toContain("🧠 100.0%");
   });
 
-  // Captured verbatim from a live Opus 5 (1M context) statusline render on 2026-08-19,
+  // Usage values captured from a live 1M-context statusline render on 2026-08-19,
   // Claude Code 2.1.235: current_usage sums to 75,203 and Claude Code reported
   // used_percentage: 8 (its integer rounding of 7.52). The statusline prints one decimal,
   // so it must print the exact 7.5%, not a fake-precision 8.0%.
-  it("prints the exact percentage from a real 1M-context Opus 5 payload", async () => {
+  it("prints the exact percentage from a representative 1M-context Opus 5.5 payload", async () => {
     const proc = Bun.spawn(["bun", "scripts/cc-statusline.ts"], {
       cwd: import.meta.dir.replace(/\/scripts$/, ""),
       stdin: "pipe",
@@ -309,7 +309,7 @@ describe("cc-statusline live context payload", () => {
 
     await proc.stdin.write(
       JSON.stringify({
-        model: { id: "claude-opus-5[1m]", display_name: "Opus 5 (1M context)" },
+        model: { id: "claude-opus-5-5[1m]", display_name: "Opus 5.5 (1M context)" },
         cwd: import.meta.dir.replace(/\/scripts$/, ""),
         cost: { total_cost_usd: 0.7671765, total_duration_ms: 57244 },
         context_window: {

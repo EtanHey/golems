@@ -613,7 +613,7 @@ _golem_launch_claude() {
   # lead role) boot on the 1M model without a manual /model flip. Precedence:
   #   -m <model>  (explicit override, e.g. -m sonnet, -m claude-opus-4-8, -m fable)
   #   -S/--sonnet (Sonnet request; refused above for full panes)
-  #   default     claude-opus-5[1m]
+  #   default     claude-opus-5-5[1m]
    #
    # The pin exists to stop a PRIOR session's model (notably Fable) persisting into a
    # fresh boot — not to freeze one version. It must therefore track the current top
@@ -625,7 +625,7 @@ _golem_launch_claude() {
   elif $_flag_sonnet; then
     _claude_model="sonnet"
   else
-    _claude_model="claude-opus-5[1m]"
+    _claude_model="claude-opus-5-5[1m]"
   fi
   claude_args=("--model" "$_claude_model" "${claude_args[@]}")
   # Effort per seat (weave 5A, 2026-09-05). Precedence: -E flag > GOLEM_EFFORT env >
