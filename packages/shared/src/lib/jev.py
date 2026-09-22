@@ -10,16 +10,22 @@ import queue
 import random
 import re
 import shutil
+import ssl
 import threading
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 PRICE_PER_INPUT_TOKEN = 0.042 / 1_000_000
 MAX_REQUEST_USD = 64_000 * PRICE_PER_INPUT_TOKEN
+
+
+class _TLSCAMissingError(RuntimeError):
+    pass
 
 
 def jev(
@@ -350,8 +356,45 @@ def _http_transport(
             "Content-Type": "application/json",
         },
     )
-    with urlopen(request, timeout=timeout_seconds) as response:
-        return json.load(response)
+    context, has_certifi = _verified_ssl_context()
+    try:
+        with urlopen(request, timeout=timeout_seconds, context=context) as response:
+            return json.load(response)
+    except (URLError, ssl.SSLCertVerificationError) as error:
+        if not has_certifi and _is_certificate_verification_error(error):
+            raise _TLSCAMissingError(
+                "TLS certificate verification failed with the system CA store; "
+                "install certifi to use its CA bundle"
+            ) from error
+        raise
+
+
+def _verified_ssl_context() -> tuple[ssl.SSLContext, bool]:
+    try:
+        import certifi
+    except ImportError:
+        return ssl.create_default_context(), False
+    return ssl.create_default_context(cafile=certifi.where()), True
+
+
+def _is_certificate_verification_error(error: BaseException) -> bool:
+    pending: list[BaseException] = [error]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, ssl.SSLCertVerificationError):
+            return True
+        for nested in (
+            getattr(current, "reason", None),
+            current.__cause__,
+            current.__context__,
+        ):
+            if isinstance(nested, BaseException):
+                pending.append(nested)
+    return False
 
 
 def _run_transport(transport, payload, api_key, timeout_seconds):
@@ -630,6 +673,8 @@ def _process_alive(pid: Any) -> bool:
 
 
 def _transport_fallback_reason(error: BaseException) -> str:
+    if isinstance(error, _TLSCAMissingError):
+        return "transport_error_tls_ca_missing"
     status = getattr(error, "code", None)
     if isinstance(status, int) and 100 <= status <= 599:
         return f"http_error_{status}"
