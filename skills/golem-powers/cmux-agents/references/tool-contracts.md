@@ -5,16 +5,15 @@ This reference begins at the cmuxlayer tool boundary.
 
 ## MCP Primitives (use these for low-level ops)
 
-> **The surface is 9 tools (cmuxlayer v0.4.35, 2026-08-13).** It was 42 before that cut.
-> Anything not in this table does not exist — calling it returns tool-not-found.
+> **This table records the 9-tool cmuxlayer v0.4.35 core surface (2026-08-13).** It was 42 before that cut. The live palette may add calls such as `report_to_parent`; verify the current surface before declaring a tool absent.
 
 | Operation | MCP Tool | Notes |
 |-----------|----------|-------|
-| Spawn worker | `mcp__cmuxlayer__spawn_agent` | Default for visible Claude/Codex/Cursor/Gemini/Kiro peers. Also creates plain terminals via `type:"terminal"` |
+| Spawn worker | `mcp__cmuxlayer__spawn_agent` | Default for visible Claude/Codex/Cursor/Gemini/Kiro peers. Pass `role`, `authority`, and `placement` when needed; role defaults are inferred from launcher titles (`*Claude` → `orchestrator`, `*Codex`/`*Cursor` → `worker`). Also creates plain terminals via `type:"terminal"` |
 | Send follow-up | `mcp__cmuxlayer__send_to` | Default `mode:"agent"` keys off `agent_id` |
 | Send raw keystrokes / keys / commands | `mcp__cmuxlayer__send_to` with `mode:"surface"` / `"key"` / `"command"` | The one delivery tool for all four modes |
 | Wait for state | `mcp__cmuxlayer__wait_for` | Replaces client-side poll loops |
-| Discover workers | `mcp__cmuxlayer__list_agents` | `mine:true` for your own children; `agent_id` survives surface drift. **`mine:true` errors with `requires a managed calling agent identity` when the caller is not itself a cmuxlayer-spawned agent — verified live 2026-08-18. From an unmanaged seat, call bare `list_agents` and filter.** |
+| Discover workers | `mcp__cmuxlayer__list_agents` | `mine:true` for your own children; `agent_id` survives surface drift. Each record reports `send_via`, currently `send_to` for every agent. **`mine:true` errors with `requires a managed calling agent identity` when the caller is not itself a cmuxlayer-spawned agent — verified live 2026-08-18. From an unmanaged seat, call bare `list_agents` and filter.** |
 | Inspect state | `mcp__cmuxlayer__list_agents({agent_ids:[id], detail:"full"})` | Registry record + health diagnostics |
 | Stop worker | `mcp__cmuxlayer__close_surface({scope:"agent", agent_id})` | `force:true` to close a still-live agent |
 | Read raw pane / extract marker output | `mcp__cmuxlayer__read_screen` | Also the FR-06 adjudicator |

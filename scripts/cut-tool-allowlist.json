@@ -14,23 +14,6 @@
       "markers": ["| `cmux send` | UDS `send_input` command |"]
     },
     {
-      "file": "skills/golem-powers/cmux-agents/SKILL.md",
-      "reason": "Prose documenting the v0.4.35 cut itself — the no-replacement table and the caveats that stop an agent reaching for a tool that is gone. Deleting these would remove the warning, not the hazard.",
-      "markers": [
-        "The old single-call `spawn_in_workspace` stand-up was cut in v0.4.35",
-        "(`mine` replaces the cut `my_agents`)",
-        "| `set_status`, `set_progress` | **No replacement.**",
-        "| `stop_agent({userInitiated:false})` | **No replacement.**",
-        "| `new_surface`, `browser_surface` | **No direct replacement.**",
-        "the cut removed `stop_agent` and its `userInitiated` flag",
-        "Pre-v0.4.35 this step used `stop_agent(userInitiated:false)`",
-        "Pre-v0.4.35 this took two calls, `send_input` then `send_key(\"Return\")`",
-        "the old select_workspace was cut in v0.4.35",
-        "`rename_tab(color=...)` was cut and `update_surface` takes only",
-        "`rename_tab(color=…)`, `set_status` and `set_progress` were cut in v0.4.35"
-      ]
-    },
-    {
       "file": "skills/golem-powers/collab-routing-gate/SKILL.md",
       "reason": "Mirrors the gate's own matcher set. The matchers must keep the cut names to catch transcripts written before the cut (scope gate, ruled 2026-08-18); the prose has to name what the matcher matches.",
       "markers": [

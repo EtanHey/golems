@@ -10,6 +10,19 @@ Fleet law for guard/DONE/harvest-close lives in canon #7. This section covers ou
 every compaction, because a monitor dies with its session. Copy-pasteable arm/attach commands and
 the filter-discipline rules are in `/collab-monitor` § "Arming Is Step 0".
 
+### AGENT_REGISTRY cadence
+
+Maintain this registry after CLAUDE_COUNTER in every response with active agents. It preserves worker state across compaction.
+
+```text
+AGENT_REGISTRY:
+| Agent ID | Surface | Repo | Task | Status | Last Check |
+|----------|---------|------|------|--------|------------|
+| agent:abc123 | surface:153 | golems | Digest failures | WORKING | 12:35 |
+```
+
+Add on spawn. Update on check. Remove on kill.
+
 After spawning:
 1. Update AGENT_REGISTRY
 2. `wait_for({agent_id, target_state:"ready"|"working", timeout_ms:120000})` to verify boot

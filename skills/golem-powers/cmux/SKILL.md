@@ -183,7 +183,7 @@ checkpoint → restart → VERIFY (list_agents + read_screen) → report from ev
 - **Never carry pre-restart claims forward** — registry and your memory are stale until re-verified.
 - Status to collab/Etan cites scrollback evidence, not remembered state.
 
-Full protocol: `/cmux-agents` Post-Restart Truth-vs-Display.
+Full protocol: [cmux-agents delivery and recovery](../cmux-agents/references/delivery-and-recovery.md#post-restart-truth-vs-display-2026-06-06) § Post-Restart Truth-vs-Display.
 
 ## Composer-Wedge Runtime Doctrine (2026-06-06)
 
@@ -196,7 +196,7 @@ Delivery fields lie. **`boot_prompt_delivered`, `submit_verified`, parsed workin
 - `'Queued follow-up inputs'` on a `working` worker → full scrollback read (anomaly).
 - Idle Codex: `send_to({mode:"command"})` (atomic) or `send_to({mode:"surface"})` + verified status flip.
 
-Full doctrine: `/cmux-agents` Composer-Wedge Runtime Doctrine.
+Full doctrine: [cmux-agents delivery and recovery](../cmux-agents/references/delivery-and-recovery.md#composer-wedge-runtime-doctrine-2026-06-06) § Composer-Wedge Runtime Doctrine.
 
 ## Verify Delivery (CRITICAL — from session mining)
 
