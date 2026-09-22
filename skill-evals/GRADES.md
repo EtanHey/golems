@@ -24,7 +24,7 @@ Best quality infrastructure. Eval specs + multiple adapters.
 
 | Skill | Adapters | Evals | Assertions | Fixtures |
 |-------|----------|-------|------------|----------|
-| commit | 4 (claude, codex, cursor, +1) | 3 | 10 | Yes |
+| commit | RETIRED | RETIRED | RETIRED | Retired 2026-09-22; grade void because the skill is archived |
 | cmux-agents | 6 (claude, codex, cursor, gemini, kiro, +1) | 3 | 18 | No |
 | large-plan | 4 (claude, codex, cursor, +1) | 3 | 11 | No |
 | pr-loop | 4 (claude, codex, cursor, +1) | 3 | 11 | Yes |
@@ -48,7 +48,7 @@ Eval specs exist but no/few adapters, or knowledge-only with good structure. Inc
 | convex | 3 | 9 | 8 | Most workflows |
 | critique-waves | 3 | 10 | 3 | PAUSED - experimental |
 | figma-loop | 3 | 13 | 3 | |
-| github | 3 | 9 | 0 | |
+| github | RETIRED | RETIRED | RETIRED | Retired 2026-09-22; grade void because the skill is archived |
 | github-research | 3 | 9 | 0 | |
 | golem-install | 3 | 10 | 6 | |
 | interview-practice | 3 | 12 | 0 | |
@@ -56,7 +56,7 @@ Eval specs exist but no/few adapters, or knowledge-only with good structure. Inc
 | obsidian | 3 | 9 | 4 | |
 | prd | 3 | 9 | 0 | PAUSED - experimental |
 | presentation-builder | 3 | 7 | 0 | |
-| research | 3 | 10 | 0 | Has fixtures |
+| research | RETIRED | RETIRED | RETIRED | Retired 2026-09-22; grade void because the skill is archived |
 | skills | 3 | 12 | 0 | |
 | test-plan | 3 | 13 | 0 | |
 | video-showcase | 3 | 12 | 0 | PAUSED - experimental |

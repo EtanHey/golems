@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "skills": [
+    {
+      "skill_name": "cmux-agents",
+      "files": [
+        {
+          "path": "skills/golem-powers/cmux-agents/SKILL.md",
+          "sha256": "1f659a2b3f3084067f6b509a97208575f62a24e8bfe8ab290c996d0bf7088c98"
+        },
+        {
+          "path": "skills/golem-powers/cmux-agents/references/delivery-and-recovery.md",
+          "sha256": "cccf24509224ff1a52f05bf8aceb343988231596dd65dfa199ae1d325fac0e55"
+        },
+        {
+          "path": "skills/golem-powers/cmux-agents/references/monitoring-and-collaboration.md",
+          "sha256": "7bcb582511beaf699c686d80d79ba888de90b6980a74450260db4a6ffad1cee2"
+        },
+        {
+          "path": "skills/golem-powers/cmux-agents/references/platform-notes.md",
+          "sha256": "55625c6d91b9ba9e1a8f25ddcfde39f19d9177a96d2809e505d0026a4b71f2a7"
+        },
+        {
+          "path": "skills/golem-powers/cmux-agents/references/tool-contracts.md",
+          "sha256": "12df26e1673b86d952f91bfa214346113168c927f1c45d1da110a8c072c9fd07"
+        }
+      ]
+    },
+    {
+      "skill_name": "coach",
+      "files": [
+        {
+          "path": "skills/golem-powers/coach/SKILL.md",
+          "sha256": "bedadb160dda5b8b7092f77969f7f8bb2efaa61ad5b14688ffccf221524e9429"
+        },
+        {
+          "path": "skills/golem-powers/coach/references/handoff-template.md",
+          "sha256": "8e8dc018e593179b243805288e89ed45ff364f69734486728dc8ea22def178d7"
+        },
+        {
+          "path": "skills/golem-powers/coach/references/hebrew-style.md",
+          "sha256": "4e2e739e5a8c7dbff8256bce9caa07c9fc7527526af0c55de08e4be6d9b30ad6"
+        },
+        {
+          "path": "skills/golem-powers/coach/references/israel-business.md",
+          "sha256": "4182601dae0d5a533328f69b008d72a4907431d464889e22010ee8f82b73a55c"
+        },
+        {
+          "path": "skills/golem-powers/coach/references/scheduling-rules.md",
+          "sha256": "0e4946543f6335f0ccfea7b5182f6293712b1d608f58586e945892443e57d3d9"
+        }
+      ]
+    },
+    {
+      "skill_name": "nightly-journal",
+      "files": [
+        {
+          "path": "skills/golem-powers/nightly-journal/SKILL.md",
+          "sha256": "8085998ec5f150d30af6027c39295638c9b1387143f4f41bd4afe1d382c2f1c4"
+        },
+        {
+          "path": "skills/golem-powers/nightly-journal/references/known-jids.md",
+          "sha256": "2baa82f1257cced8f17ebc69c5edb07322852ee817438f137e1fbd93f2590177"
+        }
+      ]
+    },
+    {
+      "skill_name": "obsidian",
+      "files": [
+        {
+          "path": "skills/golem-powers/obsidian/SKILL.md",
+          "sha256": "8f7c8b486c5ae513e2227645cf6e02c0910c4d9e60a4a3d824d4437c24bfe46b"
+        }
+      ]
+    },
+    {
+      "skill_name": "orc",
+      "files": [
+        {
+          "path": "skills/golem-powers/orc/SKILL.md",
+          "sha256": "a0e3f24569b02d12c2ebe03e92bc244669265a53d5b82a9572d11ab9a231960c"
+        }
+      ]
+    }
+  ]
+}
