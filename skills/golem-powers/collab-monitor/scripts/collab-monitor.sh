@@ -18,12 +18,13 @@ ACTIVE_START_CHILD_SETTLED=0
 ACTIVE_START_PUBLISHED=0
 ACTIVE_SLEEP_PID=''
 ACTIVE_TAIL_PID=''
+INCLUDE_SELF="${COLLAB_MONITOR_INCLUDE_SELF:-0}"
 
 usage() {
   printf '%s\n' \
     'usage:' \
-    '  collab-monitor.sh run [--once] @listen-name file [file ...]' \
-    '  collab-monitor.sh start @listen-name file [file ...]' \
+    '  collab-monitor.sh run [--once] [--include-self] @listen-name file [file ...]' \
+    '  collab-monitor.sh start [--include-self] @listen-name file [file ...]' \
     '  collab-monitor.sh follow @listen-name' \
     '  collab-monitor.sh stop @listen-name' \
     '  collab-monitor.sh status @listen-name' >&2
@@ -685,9 +686,9 @@ scan_file() {
         break
         ;;
     esac
-    if [[ "$record_kind" == 'SELF' ]]; then
+    if [[ "$record_kind" == 'SELF' && "$INCLUDE_SELF" -eq 1 ]]; then
       printf 'SELF-POST-%s file=%s hash=%s :: %s\n' "$listen_name" "$watched_file" "$content_hash" "$event_line"
-    else
+    elif [[ "$record_kind" != 'SELF' ]]; then
       printf 'NEW-FOR-%s file=%s hash=%s :: %s\n' "$listen_name" "$watched_file" "$content_hash" "$event_line"
     fi
     if ! persist_seen_hash "$seen_file" "$content_hash"; then
@@ -736,6 +737,10 @@ run_monitor() {
     case "${1:-}" in
       --once)
         once=1
+        shift
+        ;;
+      --include-self)
+        INCLUDE_SELF=1
         shift
         ;;
       --instance)
@@ -882,7 +887,7 @@ start_monitor() {
     exit 1
   fi
 
-  nohup env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
+  nohup env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 COLLAB_MONITOR_INCLUDE_SELF="$INCLUDE_SELF" /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
   child_pid=$!
   ACTIVE_START_CHILD_PID="$child_pid"
 
@@ -1044,6 +1049,11 @@ command="${1:-}"
   exit 2
 }
 shift
+
+if [[ "$command" == 'start' ]] && [[ "${1:-}" == '--include-self' ]]; then
+  INCLUDE_SELF=1
+  shift
+fi
 
 case "$command" in
   run) run_monitor "$@" ;;
