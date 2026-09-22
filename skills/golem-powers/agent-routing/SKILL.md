@@ -3,494 +3,86 @@ name: agent-routing
 description: "Enforce Cursor=gather, Codex=implement, Claude=orchestrate. Triggers: delegate, worker assignment, routing, Codex model/effort, subagents."
 ---
 
-# Agent Routing — CLI Tool Assignment Matrix
+# Agent Routing
 
-> Fleet law: canon #1 owns Cursor=gather, Codex=implement, Claude=orchestrate. This skill keeps routing mechanics, delegation checks, eval-backed anti-patterns, prompt templates, and the Codex model×effort law in its Model & Effort section. Non-Codex launcher/model law stays in canon #5/#6 plus `/repogolem`.
+> Fleet law: canon #1 owns Cursor=gather, Codex=implement, Claude=orchestrate. This skill owns role selection, delegation checks, review ownership, and the Codex model x effort choice. `/repogolem` owns launcher mechanics; canon #5/#6 own non-Codex model and launcher law.
 
-> **Auto-dispatch triggers** (canonical in orc/SKILL.md C4): batch reads ≥3, transcription ≥2,
-> web research ≥1, or any "in parallel" / "all of these" phrasing → fan out sub-agents
+> **Auto-dispatch triggers** (canonical in `/orc` C4): batch reads >=3, transcription >=2,
+> web research >=1, or any "in parallel" / "all of these" phrasing -> fan out sub-agents
 > in the SAME message before asking permission.
 
----
+## Read Map
 
-## Launcher Pointer
+- Choosing a Codex model or effort, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md).
+- Launching, reusing, monitoring, recovering, or closing a worker lane? Read [references/delegation-operations.md](references/delegation-operations.md).
+- Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
 
-agent-routing chooses **who** does the work; `/repogolem` owns launch law, including default model pins, explicit `-m`/`-E`, resume continuity/failures, `-s`, `-w`, and raw-CLI escape hatches.
+Read every reference triggered by the mission before dispatch. The live reference, not this summary,
+owns its detailed procedure.
 
-```bash
-brainlayerCursor -s "one-sentence task prompt here"     # gather / read-only
-brainlayerCodex  -s "one-sentence task prompt here"     # implement
-```
+## Role Matrix
 
-Visible cmux pane workers use repoGolem launchers, not raw `cursor`/`codex`/`claude`, copied env vars, manual `cd`, or `--fast`. Internal ephemeral subagents are a separate harness, and `--fast` remains forbidden there too. Codex model selection follows the section below; non-Codex model policy stays with canon #5 and `/repogolem`. `cursor-agent` is Auto-only in every harness: never pass `-m`/`--model` or a model field, because pinned Cursor usage drains the shared subscription pool fast.
+| Tool | Role | Does | Never does |
+|---|---|---|---|
+| **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
+| **Codex** | Implement | Code/docs changes, fixes, refactors, tests, PRs | Research, data gathering, orchestration |
+| **Gemini CLI** | Visual heavy-lift | Frame batches, OCR, multi-screenshot/video analysis | Codebase changes or orchestration |
+| **Claude** | Orchestrate | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer | Bulk reads/SQL/image review or implementation |
 
----
+Decision rules:
 
-## Model & Effort: Decide From the Mission
+1. Read-only query, scan, search, audit, or lookup -> Cursor.
+2. Any code or file change -> Codex.
+3. Coordination, synthesis, monitoring, or decisions -> Claude.
+4. Mixed gather + implement work -> Cursor returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff.
+5. Independent parallel units -> `/cursor-multitask` chooses the fan-out engine; Cursor stays Auto-only.
+6. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> Gemini through `/qa-video`.
 
-Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort-recommendations.md`
-plus OpenAI's primary [model guide](https://learn.chatgpt.com/docs/models),
-[subagent configuration](https://learn.chatgpt.com/docs/agent-configuration/subagents),
-[API model and pricing docs](https://developers.openai.com/api/docs/models), and
-[Codex usage limits](https://help.openai.com/en/articles/11369540-codex-usage-limits). The researched fleet law is:
+## Dispatch Boundaries
 
-1. **Sol·medium implements by default.** Use `gpt-5.6-sol` at `medium` for normal product
-   implementation, including ambiguous multi-file work, architecture, decomposition, and final
-   acceptance.
-2. **Sol·high is a named escalation.** Use it for review, security, or tracing complex logic and
-   assumptions. Do not describe high as the safe implementation default.
-3. **Sol·xhigh or max is one gated hard blocker.** Name the blocker and why more reasoning can help.
-   Reachability is not evidence that the higher rung pays.
-4. **Terra·high is the Codex-child fan-out tier.** Use `gpt-5.6-terra` at `high` for read-heavy
-   recon, large-file review, or parallel Codex children that return distilled evidence. Spawn these
-   as the named `recon` agent. A standalone read-only lane still routes to Cursor under canon #1.
-   Terra·medium fits routine implementation in an established pattern.
-5. **Luna executes mechanical packets.** Luna·medium/high fits extraction, classification, and
-   mechanical edits. Luna·xhigh is the default for a bounded subagent packet. Hand Luna an
-   **outcome plus a deterministic test**, never a procedure. Luna·max is an escalation only after
-   xhigh falls short and requires a written acceptance test; this is community practice, not an
-   OpenAI recommendation. **Luna·low is banned.**
-
-Effort is chosen per dispatch, not inherited as silent fleet policy. Every brief names the effort
-and gives a one-line mission-shaped reason. The model-fit line stays in every review.
-
-Quota affects concurrency choices, not acceptance standards: Luna has roughly 25× and Terra roughly
-2.5× Sol's local-message allowance per window; Spark is documented as a separate pool, but open
-Codex bugs [#23150](https://github.com/openai/codex/issues/23150) and
-[#20122](https://github.com/openai/codex/issues/20122) report it draining or depending on main quota.
-Effort changes token count, not price per token. These are planning inputs, never permission to
-accept weaker output.
-
-### Apply the choice, then verify it
-
-- repoGolem visible lanes pass effort explicitly, for example
-  `brainlayerCodex -s -E medium "<implementation outcome>"` or
-  `brainlayerCodex -s -E high "<review/security/complex-tracing outcome>"`. A Terra lane can pass
-  both values through: `brainlayerCodex -s -m gpt-5.6-terra -E medium "<patterned outcome>"`.
-- Cursor has no model-pin carve-out: visible, headless, and internal
-  `cursor-agent` runs all stay on Auto with no model flag or model field.
-- Codex custom agents live in `~/.codex/agents/*.toml`; `[agents]` defaults live in
-  `~/.codex/config.toml`. The golems defaults pin Luna·xhigh for generic children, while named
-  `recon` pins Terra·high and named `packet` pins Luna·xhigh. The concurrency cap is
-  `max_concurrent_threads_per_session = 4`; never retain its legacy `max_threads` alias beside it,
-  because Codex rejects the duplicate field.
-- Recon and read-heavy fan-out children MUST use the named `recon` agent. An unnamed child inherits
-  the Luna·xhigh packet default and therefore MUST receive a bounded outcome plus deterministic test.
-- Verify every child's **effective** model and effort from the child's own `turn_context` after its
-  own `task_started` in `~/.codex/sessions/**/rollout-*.jsonl`, not from an inherited parent context
-  above it. Never use the prompt, registry, parent metadata, or model self-identification as proof.
-  A historical bug silently spawned Sol children despite routing text.
-
-Before dispatch, write one sentence for each field:
-
-```text
-Mission shape: bounded/mechanical | open-ended | contradictory/adversarial
-Choice: <effective-model target> at <medium|high|xhigh|max>
-Why: <signals from the mission, not task importance alone>
-Dispatch: <launcher/raw internal path and explicit effort pin>
-Verification: <child session JSONL whose turn_context will be read>
-Unknowns: <anything not measured; write NOT KNOWN rather than extrapolating>
-```
-
----
-
-## Task -> Model Override Table
-
-Use this after the role matrix chooses Codex. It describes task fit, not a license to lower the
-quality bar.
-
-| task shape | model · effort | dispatch rule |
-|---|---|---|
-| Default implementation, decomposition, architecture, final acceptance | `gpt-5.6-sol` · `medium` | Default implementer; brief names why medium fits. |
-| Review, security, complex tracing | `gpt-5.6-sol` · `high` | High needs one of these named reasons. |
-| One genuinely hard blocker | `gpt-5.6-sol` · `xhigh` or `max` | Gate to one blocker; state why lower effort is insufficient. |
-| Read-heavy recon, large-file review, distilled parallel fan-out | `gpt-5.6-terra` · `high` | Use the named `recon` agent; a standalone read-only lane remains Cursor. |
-| Routine implementation in an established pattern | `gpt-5.6-terra` · `medium` | Use only when the pattern and acceptance boundary are already clear. |
-| Extraction, classification, mechanical edits | `gpt-5.6-luna` · `medium` or `high` | Give an outcome and deterministic check. Never use Luna·low. |
-| Bounded mechanical subagent packet | `gpt-5.6-luna` · `xhigh` | Prefer the named `packet` agent; outcome + test are mandatory. Unnamed children are packets too. |
-| Packet escalation after xhigh falls short | `gpt-5.6-luna` · `max` | Requires a written acceptance test; community practice, not an OpenAI recommendation. |
-
-Spark remains a separate-pool interactive option, not the default subagent or a substitute for this
-matrix. Max's incremental value and a stable general max policy remain **NOT KNOWN**; reachability is
-not evidence that it pays. Non-Codex model policy remains with its owning canon and launcher skills.
-
----
-
-## The Routing Matrix
-
-| Tool | Role | What It Does | What It NEVER Does |
-|------|------|-------------|-------------------|
-| **Cursor** | Data gathering | SQL queries, file scanning, codebase search, grep, read-only lookups, audit scans | Code changes, implementations, PRs, decisions |
-| **Codex** | Implementation | Code changes, bug fixes, refactoring, test writing, PRs | Research, data gathering, orchestration |
-| **Gemini (CLI)** | Visual heavy-lift | Frame batches, OCR, image-heavy /qa-video work, screenshot review, visual UI critique | Codebase changes, multi-file refactors, long human-fluid sessions |
-| **Claude** | Orchestration | Coordination, user interaction, decisions, synthesis, BrainLayer queries, monitoring, long human-fluid sessions | SQL queries, bulk file reads, code implementation, bulk image reads |
-
-Use this matrix to split mixed tasks: Cursor gathers, Codex implements, Claude orchestrates and reviews. Keep role-specific exceptions in the goal/collab brief.
+- Visible cmux workers use `{repo}{Tool} -s`; never raw CLIs, copied env, or manual `cd`. `/repogolem` owns exact flags and recovery. `--fast` is forbidden in every harness, visible or internal.
+- Cursor is Auto-only in every harness: never pass `-m`, `--model`, or a model field.
+- Claude Workflow/Agent-tool fan-out is read-only recon, verification, or synthesis except audio-dashboard builds.
+- Codex children may edit only inside their visible Codex parent's worktree; that parent owns acceptance.
+- A standalone read-only lane remains Cursor even though a named Codex `recon` child exists for bounded fan-out inside a Codex lane.
+- Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
 
 ## Lead Topology
 
-Domain LEADs (brainlayerClaude, voicelayerClaude, phx-LEAD, skillCreatorClaude, …) are orchestrators one tier down from orc. The same routing matrix applies to them:
+Domain leads are orchestrators one tier below orc:
 
-1. LEADs delegate implementation to Codex workers and keep their own worker monitor loop (canon #1/#7).
-2. Lead goals must preserve orchestration duties: spawn/delegate, maintain health gates, synthesize, and verify.
-3. Lead topology must be managed: a lead is an `agent_id` with `role:"orchestrator"` and left-column placement.
-4. Tiny lead self-edits must be bounded, disclosed in the active collab, and isolated; all other implementation follows Review routing below.
-5. Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except
-   audio-dashboard builds. Codex children spawned by a visible Codex lane MAY edit inside that
-   lane's worktree, and the visible Codex parent owns their acceptance.
+1. Leads delegate implementation to Codex and keep their own worker monitor loop.
+2. Lead goals preserve orchestration duties: delegate, maintain health gates, synthesize, and verify.
+3. A lead is a managed `agent_id` with `role:"orchestrator"` and left-column placement.
+4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Review routing.
+5. Reuse an existing healthy worker for the same repo/workspace/role lane; supersede its goal instead of spawning a duplicate.
 
 ## Review routing
 
-The LEAD opens both panes for implementation: a Codex implementer and a Claude pair-reviewer. They iterate until both are happy; then Codex opens the PR and runs `/pr-loop`.
+The LEAD opens both implementation panes: a Codex implementer and a Claude pair-reviewer. They
+iterate until both are happy; then Codex opens the ready-for-review PR and runs `/pr-loop`.
 
 A WORKER never starts any reviewer for its own work. No reviewer pane means ask the lead.
 
-This pair review happens before the PR; `/pr-loop` bot and PR reviewers are separate and unaffected.
-Pane mechanics live in `/collab-monitor` § "Completion → Reviewer Handoff".
-
-## GOAL DELEGATION CONTRACT (2026-06-26 cmux remediation)
-
-Routing is not only tool choice. A correct route must preserve the full user mission and attach it to the right existing worker.
-
-Before delegating or re-delegating a lane:
-
-1. **Reuse before spawn.** If the user references an existing cmux pane/agent, or the same repo/workspace/role lane already has a managed worker, reuse it unless it is dead, unhealthy, or the user explicitly asks for a replacement. Do not spawn a duplicate just to get a cleaner prompt.
-2. **Supersede narrow goals, don't fork the lane.** If the existing worker has a stale or too-narrow prompt, send one explicit superseding goal to that same `agent_id`.
-3. **Preserve the full delegation.** Copy the user's whole mission into the goal contract. Do not shrink a broad baseline/cleanup/planning request to the next local blocker. For BrainLayer baseline work, include PR/branch/worktree state, service health, queue/deferred-store replay, watcher coverage, real stats, data-retention constraints, and green/no-green criteria when those are part of the ask.
-4. **Use a file-backed goal contract.** For complex or multi-hour work, write an absolute goal file first. Delivery syntax is harness-specific:
-
-```text
-Codex, only when verified: /goal Read and execute this goal file until complete: /abs/path/to/goal.md
-Gemini/Antigravity: Read and execute this goal file until complete: /abs/path/to/goal.md
-Cursor: use its verified goal command or a plain file-contract message; if the UI shows a duplicated footer prompt, verify accepted/working state before resending.
-```
-
-The goal file must include hard constraints, success criteria, report path, exact DONE marker, and green/no-green decision criteria.
-
-5. **Monitor artifacts, not vibes.** After the goal is delivered, conserve lead context: wait on the report file/DONE marker and low-frequency health checks. Do not repeatedly read large pane scrollback unless debugging delivery, registry/screen disagreement, or a wedged prompt.
-6. **File completion beats pane silence.** If the contracted report exists and ends with the required DONE marker, read the report and advance synthesis. If cmux `wait_for`/registry/pane state disagrees, record that as cmux health evidence; do not rerun the lane just because the pane did not send a final chat message.
-7. **Zero workers must mean terminal state.** Do not close/stop/archive a worker just to make a workspace clean. A lane may disappear only after its collab row records `DONE` with verified report marker, `BLOCKED`/`NOT_GREEN` with file-backed handoff, or `TRANSFERRED` with successor `agent_id` and delivery evidence. Otherwise record `closure_without_artifact` and keep the lane visible.
-8. **Green means real green.** PRs merged, CI green, or a UI showing 100% are insufficient for infra baseline claims. Verify the domain-specific health criteria in the goal file before saying green. If queue/deferred stores, unwatched roots, missing vectors, or probe/coverage gaps remain, say `NOT_GREEN`.
-9. **User confusion is a stop sign.** If the user asks why work is happening, says the agent is confused, or corrects the route, pause further spawning/patching and explain current state from evidence before taking more tool actions. Store the correction separately; do not use memory capture as permission to keep doing unrelated work.
-10. **Raw/orphan escape hatches must converge back to managed routing.** If a raw surface send, interrupted spawn, or orphan pane is used to unblock a lane, immediately recover/register or replace it with a managed `agent_id` and correct role/topology before treating it as production.
-
-## Delegated Authority
-
-Fleet law for approved queues, permission parking, and route-through-leads lives in canon #8. Routing mechanics:
-
-1. Checkpoint branch, commit/PR, worker `agent_id`, report path, DONE marker, service/MCP state, and exact blocker.
-2. If in scope and recoverable, continue through `/pr-loop`, restart/reload/re-index, or rebuild as needed.
-3. If the current agent cannot reconnect after a restart, spawn or resume a managed successor with the same goal file and handoff path.
-4. Verify with the real post-operation probe before reporting green.
-5. Ask Etan only for truly irreversible or outside-mission actions: destructive data deletion, force-push/history rewrite, unowned-work cleanup, credential/account changes, paid external actions, or human-only license/ToS acceptance.
-
-## Gemini Visual Exception
-
-The user has explicitly named Gemini for these triggers (this is policy, not Claude's preference):
-
-- User pastes a video URL + says "extract" / "analyze" / "process this video"
-- Frame-by-frame OCR / vision read across many frames (`/qa-video`)
-- Visual UI critique / screenshot review when there are multiple screenshots
-- Anything where the natural plan is "spawn `claude` to read 30 frames" — switch to `gemini` and save Claude's 1M context for orchestration
-
-`/qa-video` owns the Gemini-for-visuals workflow. Tool-surface changes (Cursor SDK, model IDs, vendor defaults) route through `/whats-new`; they do not change canon #1 without an explicit policy update.
-
----
-
-## DECISION TREE
-
-When you have a task to assign, walk this tree:
-
-```
-Is it a READ-ONLY operation? (query, scan, search, audit, lookup)
-├── YES → CURSOR
-│   Examples: SQL queries, grep patterns, file listing, codebase audit,
-│   "what does this function do?", "find all usages of X"
-│
-└── NO → Does it change code or files?
-    ├── YES → CODEX
-    │   Examples: bug fix, refactor, new feature, test writing,
-    │   "implement X", "fix the bug in Y", "add tests for Z"
-    │
-    └── NO → Is it coordination, synthesis, or decision-making?
-        ├── YES → CLAUDE (you)
-        │   Examples: plan review, collab kickoff, agent monitoring,
-        │   BrainLayer queries, user interaction, research routing
-        │
-        └── UNCLEAR → Default to CURSOR for the data-gathering phase,
-            then CODEX for any resulting implementation.
-            Split into 2 tasks if needed.
-```
-
-**Split rule:** If a task has BOTH a gathering phase and an implementation phase, split it into two tasks. Cursor gathers, writes findings to `docs.local/`. Codex reads findings and implements.
-
-**Fan-out rule (parallel units → `/cursor-multitask`):** when a task decomposes into
-N independent parallel units (classify N files, audit M things, tests+docs+examples,
-parallel verification passes), invoke `/cursor-multitask` to pick the engine —
-Cursor `/multitask` (in-editor GUI, `|||` syntax), headless `cursor-agent` shell
-fan-out, the Claude Workflow tool, or the cmux fleet (visible multi-vendor workers →
-`/cmux-agents`). A historical A/B record exists at
-`cursor-multitask/evals/results/headless-ab-2026-06-05.json`, but its effective
-runtime model and effort were not observed. It is non-comparable history and
-must not be cited as numeric evidence.
-
-Every Cursor engine in that choice is Auto-only and never model-pinned.
-
----
-
-## VERIFICATION GATES
-
-### Gate 1: Pre-Collab — Routing Declaration
-
-Every collab file MUST include a routing section that declares which tool handles which task:
-
-```markdown
-## Agent Routing
-| Task | Tool | Agent ID | Surface/Workspace | Goal File | Report Path | DONE Marker | Status |
-|------|------|----------|-------------------|-----------|-------------|-------------|--------|
-| Scan BrainLayer DB schema | Cursor | agent:abc | surface:XX / workspace:1 | goals/schema.md | reports/schema.md | DONE_SCHEMA | PENDING |
-| Implement FTS5 fix | Codex | agent:def | surface:YY / workspace:1 | goals/fts5.md | reports/fts5.md | DONE_FTS5 | PENDING |
-| Coordinate + review | Claude (orcClaude) | self | self | collab.md | final-report.md | DONE_ORC | IN_PROGRESS |
-```
-
-If a collab lacks this section, add it before spawning agents. If a row points to an existing cmux worker, reuse that `agent_id` and supersede with a full goal file instead of spawning a duplicate.
-
-### Gate 2: Mid-Sprint — Worker Utilization Check
-
-Every monitoring cycle (cron or manual), check:
-
-1. **Is the Claude agent's context >50%?** If yes:
-   - Check if its Cursor/Codex workers have received tasks
-   - If workers are idle while Claude is burning context → VIOLATION
-   - Action: nudge the Claude agent to delegate remaining data work
-
-2. **Are Cursor/Codex surfaces alive?** Run `list_surfaces`:
-   - If a worker surface is gone (crashed/closed) → respawn immediately
-   - Don't wait for the Claude to notice — orcClaude owns surface health
-
-3. **Is the Claude doing Cursor work?** Check if Claude is running:
-   - `sqlite3` or SQL queries → should be Cursor
-   - `grep` or `find` across many files → should be Cursor
-   - `git log` analysis across repos → should be Cursor
-
-4. **Does EACH dispatching LEAD have its own monitor loop on its workers?** A lead that
-   dispatched a worker and went idle without a `/loop`/cron on it = fired-and-forgot
-   violation. Flag the LEAD, not just the worker. orc's fleet monitor catches
-   lead-busy/codex-idle inversions but does not replace the lead's own loop.
-
-5. **Is the lead over-polling instead of waiting on file-backed completion?** If a goal file defines a report path and DONE marker, prefer that artifact. Large pane scrollback reads are for delivery failures, wedged prompts, or health disputes, not routine status narration.
-
-6. **Did the lead preserve the user's full delegation?** Compare the goal file to the user's ask. If a broad baseline/cleanup mission was narrowed to one issue or one PR, mark the route invalid and supersede the same worker with the full goal.
-
-### Gate 3: Post-Sprint — Utilization Audit
-
-After a sprint completes, check:
-- Did each Claude agent actually use its assigned workers?
-- What % of data-gathering was done by Cursor vs Claude?
-- If Claude did >30% of the data gathering → flag for process improvement
-
----
-
-## ANTI-PATTERNS (from real sessions)
-
-### AP1: Claude Does Everything Itself
-> "So no cursors were run, it seems. Am I correct?" — User, L4357
-> "Correct. brainClaude spawned one but never executed... skillCreatorClaude never spawned one at all." — orcClaude, L4357-4360
-
-**Pattern:** Claude agent spawns a Cursor surface but never sends it work. Does all SQL/file scanning itself, burning 70%+ context on mechanical data extraction.
-
-**Fix:** After spawning a Cursor worker, the FIRST action must be sending it a task. Verify delivery within 15 seconds (read_screen token count check).
-
-### AP2: Cursor Used for Code Changes
-> "I stopped Cursor because it seems like it sent it to do things I'm not looking for anyone to do things. This is research." — User, L4514-4517
-
-**Pattern:** Cursor agent receives a task that includes implementation instructions, starts making code changes.
-
-**Fix:** Cursor prompts must include: `"READ-ONLY: Do NOT modify any files. Report findings to [output path]. Exit when done."`
-
-### AP3: Wrong Model on Worker
-
-> "brainlayer cursor scan is GPT-5.4. What the hell?" — User, L3822
-
-**Pattern:** Worker launched with a specific expensive model when Auto/default would suffice.
-
-**Fix:** For visible workers, route by role here. Apply this skill's Model & Effort section to Codex;
-use canon #5 plus `/repogolem` for non-Codex model policy. Cursor data-gathering is Auto-only with no
-model override.
-
-### AP4: Claude Implements When It Should Orchestrate
-> brainClaude started implementing code fixes when it should only orchestrate — L4525-4548
-
-**Pattern:** A Claude agent assigned as coordinator starts writing code itself instead of dispatching to Codex.
-
-**Fix:** Claude agents in a collab with assigned Codex workers must NEVER use Write/Edit tools for implementation. Exception: collab file updates, docs, research prompts.
-
-### AP5: Orc Burns Context on Content Creation
-> orcClaude spent hundreds of lines writing research prompts, project files, and context docs directly — L343-598, 876-895
-
-**Pattern:** Orchestrator writes long documents (research prompts, project descriptions) instead of delegating to a subagent or worker.
-
-**Fix:** If a document will be >50 lines, delegate writing to a subagent. orcClaude should outline (5-10 bullet points) and assign, not draft 100-line documents.
-
----
-
-## INTEGRATION WITH OTHER SKILLS
-
-This skill is a **building block** used by higher-level skills:
-
-| Skill | How It Uses Agent Routing |
-|-------|--------------------------|
-| `/orc` | Iron Rules R28+ reference this routing matrix |
-| `/cmux-agents` | spawn-agent uses routing to pick CLI type |
-| `/large-plan` | Phase assignment uses routing for tool selection |
-| `/pr-loop` | Implementation phases route to Codex; review routing is § Review routing |
-| `/collab` | Collab template includes routing declaration section |
-
----
-
-## AP6: False Tool Limitations (April 6, 2026)
-> brainClaude: "Cursor Pro hit usage limit — can't use for audits this cycle"
-> User: "CORRECTION: Cursor Pro does NOT have a usage limit"
-
-**Pattern:** Agent assumes Auto has a usage cap and skips work. brainClaude skipped Cursor audits on PR #212-216 citing a nonexistent blanket "Cursor Pro usage limit." Pinned/Max Mode usage consumes the limited subscription pool fast; regular Auto remains the required path.
-
-**Fix:** Cursor Pro limitations:
-- `cursor agent "prompt"` (default model) — **UNLIMITED**. Use for all audits.
-- Any Cursor invocation carrying `-m`/`--model` or a model field — **FORBIDDEN**. Pinned Cursor drains the shared subscription pool fast; use Auto.
-- **NEVER skip audits citing "usage limit."** Switch to default model instead.
-
-## AP7: Trusting Codex's Text Response About Its Own Model (April 15, 2026)
-
-> Codex output: "I'm running as gpt-5.4..."
-> Actual session metadata: `"model":"gpt-5.3-codex-spark"`
-
-**Pattern:** Agent asks Codex which model it is, or reads Codex's self-description, and treats that text as authoritative. Codex's text response consistently says "gpt-5.4" regardless of which model is actually running. This masks misrouted launches because the self-id stays the same even when the actual session model changes.
-
-**Fix:** Never trust Codex's self-identification. The **source of truth** is the session JSONL, and you must read the `"model"` field directly:
-
-```bash
-# Inspect one child rollout. Use the turn_context after the child's own task_started,
-# not the inherited parent turn_context above it.
-jq -c 'select(.type=="turn_context")|.payload|{model,effort}' <child-rollout>
-```
-
-The child's post-`task_started` `{"model":"gpt-5.3-codex-spark",...}` confirms Spark. Check
-immediately after the task starts — don't ask Codex and do not take the first inherited match.
-
-## AP9: Using Raw `codex` Instead of repoGolem Launchers (April 15, 2026)
-
-> 19/19 sessions violated — 100% bypass rate.
-
-**Pattern:** Agent spawns `codex "prompt"` directly instead of using `{repo}Codex -s` launcher.
-
-**Why it's wrong:** No cd to repo dir, no iTerm profile, no model preset, no workspace isolation.
-
-**Fix:** ALWAYS use `{repo}Codex` launcher (e.g., `golemsCodex -s`, `brainlayerCodex -s`). Use `--raw` escape hatch for edge cases only.
-
-**Evidence:** `batch-M6-codex.md` — 0/19 used launchers.
-
-## AP10: Skill/Hook Authorship Bypassing skillCreator (2026-05-16, incident-2026-05-16)
-
-> Source: yashClaude + MainCodex session-mining 2026-05-16. brainbar-c95a8f3a-508 (audit), brainbar-9e70b920-079 (yashClaude mine), brainbar-fab97680-5ea (MainCodex mine), brainbar-ff137da8-e10 (routing-violation log).
-
-**Pattern:** An orchestrator agent (yashClaude here) dispatches an implementation agent (MainCodex) with a mission that includes editing or creating files under `~/.claude/skills/**` or `~/.claude/hooks/**` — bypassing skillCreator (whose domain those paths are).
-
-**Concrete example from 2026-05-16:** yashClaude at L3191 of its session sent MainCodex the full 4-layer Daemon Verification Gate mission, which included modifying `~/.claude/skills/golem-powers/pr-loop/SKILL.md` + creating `~/.claude/hooks/daemon-gate-precheck.py` + registering it in `~/.claude/settings.json`. MainCodex shipped all four layers cleanly — but the work passed through ZERO skillCreator audit before merge. Quality was fine in this case (skillCreator post-hoc audit found SHIP-grade hygiene per brainbar-c95a8f3a-508) but the ROUTING was wrong.
-
-**Why it's wrong:** Skills + hooks are skillCreator's domain. The skillCreator agent has the expertise for skill description-triggering, hook PreToolUse stdout protocol (the legacy `sys.exit(0)` empty-stdout pattern was a bug fixed at brainbar today), failure-mode catalog discipline, and `/skill-creator` audit standards. Sending these to Codex or any other agent risks shipping with a stale convention or missing audit step.
-
-**Fix — orchestrators MUST route-check before dispatch:**
-1. Before sending a mission to ANY worker, grep the mission text for path patterns: `~/.claude/skills/`, `~/.claude/hooks/`, `~/.claude/agents/`, `~/.claude/CLAUDE.md`, `settings.json`.
-2. If ANY match: re-route the touching parts of the mission to skillCreator (spawn skillCreator subagent if needed), OR add an explicit skillCreator-audit step BEFORE the worker's PR merges.
-3. If the orchestrator IS skillCreator, no re-route needed.
-
-**Fix — workers MUST route-check before patching:**
-1. When a worker receives a mission, before its first Edit/Write to a `~/.claude/skills/**` or `~/.claude/hooks/**` path, brain_search("agent-routing skillCreator domain") to confirm.
-2. If skillCreator is NOT already in the loop, send the orchestrator a route-check signal: "`This task touches skillCreator-domain files. Re-route or add skillCreator audit?`"
-3. Pause the patch until orchestrator confirms.
-
-**Evidence:** Two acknowledgements landed only POST-incident — MainCodex's retirement brain_store ("future changes under ~/.claude/skills/** and ~/.claude/hooks/** should route through skillCreator ownership") and yashClaude's handoff note. Catching it mid-flight would have prevented the routing violation (output quality was fine, but the principle matters for next time).
-
-**Test for compliance:** When you (the orchestrator OR the worker) are about to Edit a file under `~/.claude/skills/**` or `~/.claude/hooks/**`, did skillCreator review the change first? If no → STOP. Route through skillCreator.
-
-## AP11: Verbose Launcher Invocation Instead of `{repo}{Tool} -s` (2026-05-21, severity-10 user mandate)
-
-**Pattern:** Agents dispatch visible cmux pane workers with raw CLIs, manual `cd`, copied env vars, or ad hoc flags instead of repoGolem launchers.
-
-```bash
-{repo}{Tool} -s "prompt"
-```
-
-Model-selection mechanics live in canon #5 plus `/repogolem` (Codex model×effort: the Model & Effort section above); detailed flag behavior, headless mode, worktree launching, and registry precedence live in canon #6 plus `/repogolem`. agent-routing only checks that the worker type matches the task.
-
-Launchers handle cwd, MCP wiring, env vars, iTerm profile, secrets, and tab metadata; duplicating that ceremony is a routing smell.
-
-## SPAWN INFRASTRUCTURE DEFAULTS (added 2026-04-29)
-
-Launcher skip-perms and registry precedence live in canon #6 plus `/repogolem`. Routing still decides when isolation is needed:
-
-| Scenario | Use |
-|---|---|
-| Sequential specialist (one at a time, like W13 → W22 → W23) | `git checkout -b fix/foo` in main repo. No worktree, no sandbox. One canonical app. |
-| Truly parallel work, NO file overlap (Round 1-style sprint) | Native `git worktree` is fine. Verify MCP/config paths explicitly. Still no restrictive sandbox. |
-| Parallel work WITH file overlap | Force serialize. Don't try to parallelize. |
-
-### Cross-references
-- Native `git worktree`: create only for real isolation needs, then verify MCP/config paths
-- `/repogolem` skill: launcher flag reference (`-s` mappings already correct)
-- `/orc` skill: pre-relay verification rule (Rule added 2026-04-29 to stop relaying stale evidence from workers)
-
-## Usage Budget
-
-Fleet model/usage law lives in canon #5. For routing, manage usage by dispatch-counting, splitting broad work into bounded workers, and avoiding unnecessary duplicate spawns.
-
-## Self-Inflicted Quota Attribution
-
-An agent that exhausts a shared quota through its own dispatch reports that
-dispatch as the cause. It never presents the resulting `resource_exhausted`
-state as an external root-cause finding.
-
----
-
-## SELF-CHECK: Am I About to Violate R28?
-
-**Run this check before EVERY Write/Edit/Bash-with-code-changes:**
-
-```
-PAUSE. Am I about to Write/Edit code?
-├── Am I an orchestrator (orcClaude, or coordinating a collab)?
-│   ├── YES → VIOLATION. Route to Codex/Cursor via cmux.
-│   │   Exception: collab files, docs, research prompts, or Rule 7 tiny-unblocker edits
-│   └── NO → Am I a domain agent (taskowlClaude, voiceClaude, etc.)?
-│       ├── YES + no Codex worker assigned → OK (you ARE the implementer)
-│       └── YES + Codex worker assigned → VIOLATION. Send to your Codex.
-└── Does this exceed ANY Rule 7 tiny-unblocker bound? → Route to a Codex+Claude pair.
-```
-
-**From JSONL data (April 1-6, 2026):** Orchestrator sessions averaged 80+ Write/Edit calls per session. The worst had 190. The R28 target is <30 for orchestrators.
-
----
-
-## QUICK REFERENCE — Copy-Paste for Collab Templates
-
-```markdown
-## Agent Routing (MANDATORY)
-
-| Task | Tool | Rationale |
-|------|------|-----------|
-| [data gathering task] | Cursor (read-only) | Scanning, no changes needed |
-| [implementation task] | Codex | Code changes, needs reasoning |
-| [coordination task] | Claude | Orchestration, user interaction |
-
-**Rules:**
-- Cursor prompts MUST include "READ-ONLY: Do NOT modify any files"
-- Cursor runs MUST stay on Auto with no `-m`/`--model` or model field
-- Codex gets findings from Cursor's output, not raw data
-- Visible worker launch form is `{repo}{Tool} -s "prompt"`; `/repogolem` owns launcher details.
-- Reuse existing managed workers before spawning; if the mission changed, supersede with one file-backed goal contract using that harness's adapter syntax
-- Goal files preserve the full user delegation and include report path, DONE marker, and green/no-green criteria
-- Claude Workflow/Agent-tool fan-out is read-only recon/verification/synthesis except audio-dashboard builds; Codex children may edit only inside their visible Codex parent's worktree, with parent-owned acceptance; all other implementation follows `## Review routing`, except for the bounded tiny-unblocker carve-out in § Lead Topology rule 4
-- Leads monitor report files/DONE markers and low-frequency health, not high-frequency pane narration
-- Zero worker panes means every lane is DONE, BLOCKED/NOT_GREEN with handoff, or TRANSFERRED; never close unfinished work for cleanliness
-- If a worker crashes, respawn within 60 seconds
-```
+This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewers are separate.
+Pane mechanics live in `/collab-monitor` section "Completion -> Reviewer Handoff".
+
+## Goal Contract
+
+Every complex or multi-hour dispatch uses one absolute file-backed goal containing the full user
+mission, constraints, green/no-green criteria, report path, and exact DONE marker. Reuse and
+supersede before spawning. A lane may close only as verified `DONE`, file-backed
+`BLOCKED`/`NOT_GREEN`, or `TRANSFERRED` with successor evidence. A DONE marker is only a prompt to
+verify the contracted artifact.
+
+If the user questions why work is happening or corrects the route, pause spawning and patching,
+explain the evidence-backed state, and store the correction separately.
+
+## Cross-Skill Ownership
+
+- `/repogolem`: launcher flags, defaults, resume behavior, and raw escape hatches.
+- `/pr-loop`: branch through ready-for-review PR; Review routing above owns the pre-PR pair.
+- `/collab-monitor`: worker monitoring and reviewer handoff mechanics.
+- `/cursor-multitask`: parallelism-engine selection after this skill chooses the role.
+- `/qa-video`: Gemini visual workflow.
+- `/whats-new`: tool-surface changes; they do not revise canon #1 by implication.
