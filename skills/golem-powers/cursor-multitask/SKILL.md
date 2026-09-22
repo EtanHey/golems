@@ -17,8 +17,7 @@ The engines in full: Cursor /multitask, headless cursor-agent, Claude Workflow, 
 
 **Cursor `/multitask` is an in-EDITOR (GUI) slash command. It is NOT invocable from the headless `cursor-agent` CLI.** (Verified 2026-06-05 on Cursor 3.3.2 / cursor-agent 2026.06.04: absent from `cursor-agent --help`, no flag. In `-p` print mode the `/multitask` text is passed through as a PLAIN PROMPT to a single agent — transcript JSONL confirms one thread, zero subagents — and the model answers all the parts inline while *claiming* "ran in parallel." It looks like it worked. It didn't.) So if you are an orchestrator running in a terminal/cmux and you want parallelism, `/multitask` is **not your tool** — it requires a human sitting in the Cursor Agents Window. Use headless shell fan-out, the Workflow tool, or the cmux fleet instead.
 
-**Cursor is Auto-only in every engine in this skill.** Never pass `-m`/`--model` or a
-model field: pinned Cursor drains the shared subscription pool fast.
+Cursor model selection is owned by fleet canon #1.
 
 ## GUI prompt contract (when Etan asks for "a prompt")
 

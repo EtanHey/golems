@@ -171,7 +171,7 @@ non-agent terminal or a launcher invocation that isn't a `cli` enum value.
 | `cursor agent --output-format` (in cmux) | `cursor agent --trust` (in cmux) | Interactive cmux agents need `--trust` for permissions, not piped/batch output |
 
 **For visible Cursor agents:** Use `spawn_agent({cli:"cursor"})` from the parent orchestrator. These workers should boot as addressable `agent_id`s, not as manually typed launchers.
-**For batch/piped output:** Use `cursor agent --output-format text "PROMPT"` directly. Cursor is Auto-only; never pass a model flag or model field (`/agent-routing` AP3).
+**For batch/piped output:** Use `cursor agent --output-format text "PROMPT"` directly. Cursor model selection is owned by fleet canon #1.
 **For repoGolem launchers:** see **repogolem** (canonical).
 
 ### Cursor `/auto-run` fallback

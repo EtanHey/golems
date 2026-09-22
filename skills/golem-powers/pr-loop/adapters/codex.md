@@ -66,7 +66,7 @@ gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed
 
 A cheaper Cursor pass with no Bugbot quota cost is the read-only `cursor-agent -p` review
 ([review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-review-pass-is-read-only)) —
-Auto-only, no model flag, findings only, never a write pass.
+model selection is owned by fleet canon #1; findings only, never a write pass.
 
 ## CI + Review Waiting (Codex — NO sleep-poll loops)
 
@@ -125,7 +125,7 @@ TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 - **Take the LAST `turn_context`, not the first.** The first one is boot-time; a model switch mid
   session writes a new `turn_context`, and the whole point of the ratified rule is that boot-time
   values lie.
-- **AP7 applies hardest here:** Codex self-identifies incorrectly. Never write the model you believe
+- `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification applies hardest here: Codex self-identifies incorrectly. Never write the model you believe
   you are — write the one in the file.
 - `turn_context` also carries `effort` (verified: `effort: medium` alongside `model`). **Do not put
   it on GitHub** — not in the blob, not in the visible line, not in the trailer. It is captured at

@@ -5,24 +5,26 @@
 ## Launcher
 
 ```bash
-skillCreatorCodex         # codex
-skillCreatorCodex -c      # continue last session
-skillCreatorCodex --fast  # gpt-5.3-codex-spark (parallel batched work)
+skillCreatorCodex -s      # Codex in the skill-creator repo
+skillCreatorCodex -s -c   # continue last session
 ```
 
 cwd is set to `$SKILL_CREATOR_ROOT/` automatically by the repoGolem launcher.
+Model and effort selection lives in
+[`agent-routing/references/model-and-effort.md`](../../agent-routing/references/model-and-effort.md).
 
 Codex reads `AGENTS.md` (the parallel of CLAUDE.md) on session start. The mining workflow doc lives in `$HOME/.golems/skills/golem-powers/skill-creator/workflows/mine-session.md` and Codex resolves it via the skill registry like Claude does.
 
 ## What's different vs Claude
 
-Codex has typed sub-agents, but the invocation surface differs from Claude. Etan's "Spark, normal subagents, informal ones" vocabulary maps to Codex's three-layer system:
+Codex has typed sub-agents, but the invocation surface differs from Claude. Agent type and model
+selection are separate concerns:
 
 | Etan's word | Codex docs term | Where it lives | Invocation |
 |---|---|---|---|
 | **Normal subagents** | Custom agents (typed TOML) | `~/.codex/agents/<name>.toml` (user-scope) or `.codex/agents/<name>.toml` (project-scope, requires trust) | Reference `name` field in natural-language prompt |
 | **Informal ones** | Built-in agents (untyped) | None on disk — ship with Codex (`default`, `worker`, `explorer`) | Reference by built-in name OR describe role inline |
-| **Spark** | NOT a subagent type — `gpt-5.3-codex-spark` model + `spawn_agents_on_csv` fanout tool | Model field on any agent; tool callable by parent | Set `model = "gpt-5.3-codex-spark"` on a custom/built-in agent OR call `spawn_agents_on_csv` |
+| **Model choice** | Fleet routing law, not a subagent type | [`agent-routing/references/model-and-effort.md`](../../agent-routing/references/model-and-effort.md) | Choose from the mission; `spawn_agents_on_csv` is only a fan-out surface |
 
 | Concern | Claude | Codex |
 |---|---|---|
@@ -101,7 +103,9 @@ Two valid patterns, pick by batch size:
 
 > *"In parallel: session_miner mine orc.jsonl → orc-mine.md. session_miner mine voicelayer.jsonl → voicelayer-mine.md. session_miner mine brainlayer.jsonl → brainlayer-mine.md."*
 
-Codex spawns one thread per named reference, capped at `agents.max_threads` (default 6; Etan's `~/.codex/config.toml` setting is 4).
+Codex spawns one thread per named reference. Current child configuration, including the
+`max_concurrent_threads_per_session` key, lives in
+[`agent-routing/references/model-and-effort.md`](../../agent-routing/references/model-and-effort.md#dispatch-and-verification).
 
 **Large batch (5+ sessions) — `spawn_agents_on_csv`:**
 
@@ -124,7 +128,9 @@ wait
 - Read every output file — Codex equivalent of /never-fabricate.
 - For PRs: follow `AGENTS.md` rules. Don't push without explicit instruction.
 - Codex's strength is mechanical implementation; for architectural calls, hand back to skillCreatorClaude.
-- The Spark model (`gpt-5.3-codex-spark`, ChatGPT Pro tier, accessed via `skillCreatorCodex --fast`) is a small fast variant of gpt-5.3-codex (>1000 tok/s). **Not a subagent type** — it's a model you can set on ANY custom or built-in subagent via `model = "gpt-5.3-codex-spark"`. Pair Spark with `spawn_agents_on_csv` for high-throughput batched mining.
+- Model and effort choice is owned by
+  [`agent-routing/references/model-and-effort.md`](../../agent-routing/references/model-and-effort.md);
+  `spawn_agents_on_csv` changes fan-out shape, not that routing law.
 
 ## Cost calibration
 

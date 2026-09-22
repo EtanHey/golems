@@ -14,7 +14,7 @@
 
 ## Model Source
 
-For cmux **visible pane** agent sessions, the repoGolem launcher owns default pins and resume law: bare Codex pins the current top Sol, while explicit `-m`/`-E` selections are first-class. `spawn_agent` may omit `model` for Sol or pass an explicit supported Codex model. Merged cmuxlayer PR #396 validates that model against `codex debug models --bundled` before pane creation and forwards accepted model/effort values to the launcher; an unsupported model rolls back any newly prepared worktree. At read time `spawn_agent.effort` accepts `medium|high|xhigh|ultra`, while direct repoGolem `-E` also accepts `low` and `max`. Verify the effective model/effort from Codex session metadata, not from the agent's self-description. Internal ephemeral subagents (Task tool / in-session child) follow `/agent-routing` AP11.
+For cmux **visible pane** agent sessions, fleet canon #6 and `/repogolem` own launcher defaults and resume law. `spawn_agent` may omit `model` or pass an explicit supported Codex model. Merged cmuxlayer PR #396 validates that model against `codex debug models --bundled` before pane creation and forwards accepted model/effort values to the launcher; an unsupported model rolls back any newly prepared worktree. At read time `spawn_agent.effort` accepts `medium|high|xhigh|ultra`, while direct repoGolem `-E` also accepts `low` and `max`. Effective-runtime proof lives in `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification.
 
 ## Composer-Wedge Submit Verification (2026-06-06)
 

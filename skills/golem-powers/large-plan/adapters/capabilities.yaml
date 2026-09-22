@@ -34,9 +34,7 @@ adapters:
       style: output_contract    # <output_contract> tags for phase deliverables
       structure: markdown_headers
       max_skill_tokens: 4000
-    models:
-      - { id: gpt-5.4, use: "default, best for implementation phases" }
-      - { id: gpt-5.3, use: "cheaper, routine phases" }
+    model_policy: "agent-routing/references/model-and-effort.md"
 
   cursor:
     binary: cursor
@@ -58,10 +56,7 @@ adapters:
       - text_output_mode         # --output-format text for phase audits
       - pr_bugbot                # @cursor @bugbot review
     verification_needed: true    # Can report gitignored files as "committed"
-    models:
-      - { id: "gpt-5.3-codex-xhigh", use: "architecture audits, research phases" }
-      - { id: "gpt-5.3-codex-high", use: "standard phase audits" }
-      - { id: auto, use: "let Cursor route" }
+    model_policy: "fleet canon #1"
 
 # Phase routing — which CLI is best for each phase type
 routing:

@@ -4,17 +4,8 @@ This is the worker-lifecycle contract; read it before launching, reusing, monito
 
 ## Launcher Boundary
 
-Agent routing chooses who; `/repogolem` owns launch law, including model defaults, explicit `-m`/`-E`, resume continuity/failures, `-s`, `-w`, and raw escape hatches.
-
-```bash
-brainlayerCursor -s "one-sentence read-only task"
-brainlayerCodex -s "one-sentence implementation outcome"
-```
-
-Launchers handle cwd, MCP wiring, env vars, profile, secrets, and tab metadata. Never substitute raw
-`cursor`/`codex`/`claude`, copied env vars, manual `cd`, or `--fast`. Internal ephemeral children are
-a different harness, but `--fast` remains forbidden there. Use `/repogolem`'s raw escape only for
-documented edge cases. Non-Codex model law lives in canon #5.
+Fleet canon #6 owns launch law; `/repogolem` owns model flags, resume, worktrees, invocation examples,
+and raw escape hatches. `--fast` is forbidden in every harness, including internal children.
 
 ## Goal Delegation Contract
 

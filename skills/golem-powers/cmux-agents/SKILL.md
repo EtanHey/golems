@@ -38,14 +38,14 @@ cmuxlayer enforces two-column role geometry: orchestrators land LEFT, workers RI
 3. Capture `agent_id` immediately in the collab/AGENT_REGISTRY and maintain the registry cadence in [references/monitoring-and-collaboration.md](references/monitoring-and-collaboration.md#agent_registry-cadence). It is the durable handle; surface refs are for raw inspection and non-agent panes.
 4. Verify boot with `wait_for({agent_id, target_state:"ready"|"working", timeout_ms:120000})`; use `list_agents(detail:"full")` next and `read_screen` only to adjudicate parser/pane disagreement.
 5. Send follow-ups by `agent_id`, after a current health check. Verify every dispatch within 15 seconds; visible text after the composer prompt means it was not submitted.
-6. For multi-minute work, require an output file with an exact final DONE marker and wait for `target_state:"done"`. Read the artifact immediately when the worker finishes.
-7. Harvest → review → close the worker with `close_surface({scope:"agent", agent_id, force:true})`; stop its monitor too. Only live processes remain open.
+6. For multi-minute work, require an output file with an exact final DONE marker and wait for `target_state:"done"`; fleet canon #7/#9 owns DONE-versus-artifact law. Read the artifact immediately when the worker finishes.
+7. Follow [Pane Hygiene](references/monitoring-and-collaboration.md#pane-hygiene--harvest-review-close), then close the worker with `close_surface({scope:"agent", agent_id, force:true})`. Only live processes remain open.
 
 ## Hard laws
 
 - Never `read_screen` your own surface; recursive output results.
 - File artifact > `wait_for(done)` > `list_agents(detail:"full")` > `read_screen` > discovery-only `list_agents` for completion evidence. `closure` is already resolved; do not gate it on the displayed state.
-- A DONE signal is not the artifact. A stopped worker's last report write says exactly where it stopped and the next step.
+- DONE-versus-artifact law lives in fleet canon #9; a stopped worker's last report write says exactly where it stopped and the next step.
 - `read_screen` is text inspection, not a screenshot. When Etan asks to see something, use Computer Use evidence.
 - `send_to.text` and `spawn_agent.prompt` stay below 1,800 inline characters. Use a durable repo/collab file, or `boot_prompt_path` only when the target pane is already focused — unfocused panes never resolve; see [references/delivery-and-recovery.md](references/delivery-and-recovery.md#boot--deliver-focus-first-the-reliable-bundle-for-send-the-prompt-once-booted) § Boot + deliver: FOCUS-FIRST. Never use `/tmp` for durable handoffs.
 - Never send a bare `@word` into an interactive composer; it opens the file picker. Address agents by bare name or deliver a file.

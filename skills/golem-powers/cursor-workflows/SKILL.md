@@ -11,7 +11,7 @@ The implementation lives in `lib/autocursor.py` and is intentionally portable: n
 
 ## Primitives
 
-- `agent(prompt, *, schema=None, label=None, timeout=900, resume=None, model=None)` runs one headless `cursor-agent -p --force --approve-mcps --output-format json <prompt>` on Cursor Auto. The implementation still exposes the legacy `model` parameter, but callers must leave it `None`; a non-`None` value is a live out-of-scope violation at `lib/autocursor.py:58-59` to remove in a separate lane, not an authorized escape hatch. Never pass `-m`/`--model` or a model field: pinned Cursor drains the shared subscription pool fast. With `schema`, AutoCursor appends a JSON instruction, validates harness-side, retries malformed output, and records raw NDJSON logs to disk.
+- `agent(prompt, *, schema=None, label=None, timeout=900, resume=None, model=None)` runs one headless `cursor-agent -p --force --approve-mcps --output-format json <prompt>`. Fleet canon #1 owns Cursor model selection. The implementation still exposes the legacy `model` parameter; a non-`None` value is a live out-of-scope defect at `lib/autocursor.py:58-59` to remove in a separate lane, not an escape hatch. With `schema`, AutoCursor appends a JSON instruction, validates harness-side, retries malformed output, and records raw NDJSON logs to disk.
 - `parallel(thunks, *, concurrency=8)` runs a ThreadPoolExecutor barrier. Failed thunks return `None`. `MAX_CHILDREN` caps local concurrency.
 - `pipeline(items, *stages)` flows each item through stages independently. A failed item becomes `None`.
 - `phase(title)` prints an observability marker.

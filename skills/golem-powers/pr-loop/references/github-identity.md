@@ -96,7 +96,7 @@ Verbatim from the ratification record, Q1:
 Three rules fall out, and all three are hard:
 
 1. **Never the model's self-report.** An agent asked "what model are you?" answers from training
-   priors, not from fact (AP7 — Codex self-id lies are documented). Read the record, not the claim.
+   priors, not from fact; `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification owns runtime proof. Read the record, not the claim.
 2. **Never the cmux spawn registry.** That surface defaults values it never observed (the
    `xhigh` lie, cmuxlayer #359 family). It records what was *requested at spawn*, not what is
    *running now*.
@@ -159,7 +159,7 @@ Build ownership is the **golems / repoGolem lane**, not this skill. Contract as 
 
 | # | Failure | What it looks like | Rule |
 |---|---|---|---|
-| 1 | Self-reported model | `"model":"gpt-5.4"` because the agent believes it is GPT-5.4 | Read the session record; AP7 says the belief is unreliable |
+| 1 | Self-reported model | `"model":"gpt-5.4"` because the agent believes it is GPT-5.4 | Read the session record; `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification owns runtime proof |
 | 2 | Spawn-registry model/effort | model/effort copied from the cmux spawn payload | Banned surface — it produced the `xhigh` lie |
 | 3 | Cached-at-spawn model | signature says `fable` all session after Etan switched to Opus | Re-read per invocation |
 | 4 | `effort` anywhere on GitHub | `· effort:high` in the visible line, or `"effort"` in the blob/trailer | Strip it. Effort → BrainLayer checkpoint only |

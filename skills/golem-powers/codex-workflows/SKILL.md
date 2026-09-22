@@ -36,9 +36,10 @@ Run the harness through `scripts/codex-workflows.sh`. Detailed interfaces are in
    failure.
 5. Never live-grep a worker stream. Wait for process exit, then extract exact
    `TASK_DONE`, PR URLs, and failures from structured finished-log events.
-6. Pin the bounded-work default to `gpt-5.6-luna` with explicit `xhigh` or `max`
-   reasoning effort. Record the effective model/effort, output tokens, and
-   wall-clock duration in the manifest and run log.
+6. Choose the pin through
+   [`agent-routing/references/model-and-effort.md`](../agent-routing/references/model-and-effort.md),
+   which owns the routing and escalation rules. The implemented harness default remains
+   `gpt-5.6-luna`; record effective model/effort, output tokens, and wall-clock duration in the manifest and run log.
 7. Treat `TASK_DONE` as a signal, not artifact proof. Harvest only declared
    worktree-relative, non-symlink artifacts; do not clean up before harvest.
 
