@@ -23,6 +23,16 @@ curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-po
   -o ~/.claude/skills/cmux-agents/SKILL.md
 ```
 
+Download the routed references:
+
+```bash
+mkdir -p ~/.claude/skills/cmux-agents/references
+for name in tool-contracts delivery-and-recovery monitoring-and-collaboration platform-notes; do
+  curl -sL "https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/references/${name}.md" \
+    -o "$HOME/.claude/skills/cmux-agents/references/${name}.md"
+done
+```
+
 ### Scripts
 
 ```bash
@@ -36,7 +46,7 @@ chmod +x ~/.claude/skills/cmux-agents/scripts/*.sh
 
 3. Verify:
 ```bash
-ls ~/.claude/skills/cmux-agents/
+find ~/.claude/skills/cmux-agents -maxdepth 2 -type f | sort
 ```
 
 ## Usage
