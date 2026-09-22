@@ -260,7 +260,7 @@ run_candidate() {
   append_fixture "$FIXTURES/default-author-filter.md" "$case_dir/advertised-collab.md"
   advertised_rc=0
   MONITOR_STATE_DIR="$case_dir/advertised-state" /bin/bash "$MONITOR" run --once --include-self '@skillcreator' "$case_dir/advertised-collab.md" > "$case_dir/advertised.out" 2>&1 || advertised_rc=$?
-  codex_filter="$(sed -n '/tail -n0 -F <collab-path> | / { s/^[^|]*| //; s/[[:space:]]*&.*$//; p; q; }' "$SKILL_DIR/SKILL.md")"
+  codex_filter="$(sed -n '/tail -n0 -F <collab-path> | / { s/^[^|]*| //; s/[[:space:]]&$//; p; q; }' "$SKILL_DIR/SKILL.md")"
   codex_filter="${codex_filter//<self>/skillcreator}"
   codex_rc=0
   /bin/bash -c "$codex_filter" < "$FIXTURES/default-author-filter.md" > "$case_dir/codex-filter.out" 2>&1 || codex_rc=$?

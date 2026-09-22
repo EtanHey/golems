@@ -60,7 +60,7 @@ notified. A participant without a watcher on that file will not see it, no matte
 3. **Codex agents have no Monitor tool — use a background bash tail.** This is not optional and
    not a lesser substitute:
    ```
-   tail -n0 -F <collab-path> | awk -v self='<self>' '$0 ~ ("^### @" self "([[:space:]]|$)") { drop=1; next } /^### / { drop=0 } !drop' &
+   tail -n0 -F <collab-path> | awk -v self='<self>' '$1 == "###" && $2 == "@" self { drop=1; next } /^### / { drop=0 } !drop' &
    ```
    Here `<self>` is the seat's listen name without `@`; replace it with the exact header author.
    Read what it captured when you are re-invoked. A Codex that keeps working, or keeps polling
