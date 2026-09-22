@@ -13,7 +13,7 @@ description: "Enforce Cursor=gather, Codex=implement, Claude=orchestrate. Trigge
 
 ## Read Map
 
-- Choosing a Codex model or effort, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md).
+- Choosing a Codex model or effort, comparing model cost/context, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md). That reference owns the GPT-6 default, per-job Luna choice, and 5.6 fallback policy; do not duplicate them here.
 - Launching, reusing, monitoring, recovering, or closing a worker lane? Read [references/delegation-operations.md](references/delegation-operations.md).
 - Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
 

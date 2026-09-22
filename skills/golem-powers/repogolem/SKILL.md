@@ -234,22 +234,22 @@ brainlayerClaude -s -m claude-opus-4-8   # Explicit non-Sonnet full pane
 brainlayerClaude -s -S                    # Refused: Sonnet is headless/subagent-only
 brainlayerClaude -s -p "one shot" -S     # Allowed headless Sonnet run
 brainlayerCodex -s                        # Default: current top Sol
-brainlayerCodex -s -m gpt-5.6-luna -E max # Explicit Codex model + effort
+brainlayerCodex -s -m gpt-6-luna -E medium # Explicit per-job Luna choice
 ```
 
 Launcher enforcement is defined by canon #5. Claude refuses Sonnet-tier models for full panes but accepts explicit non-Sonnet models. Codex passes explicit model and effort values through; its own runtime validates the requested model. `-p` remains scripted one-shot mode, not a worker/lead session or verification gate.
 
 ### Via cmux (spawning from orchestrator)
 ```text
-spawn_agent({ repo: "brainlayer", cli: "codex", model: "gpt-5.6-luna", effort: "high", prompt: "Fix the FTS5 sync issue in search.py" })
+spawn_agent({ repo: "brainlayer", cli: "codex", model: "gpt-6-sol", effort: "high", prompt: "Fix the FTS5 sync issue in search.py" })
 → returns agent_id
 
 wait_for({ agent_id, target_state: "ready", timeout_ms: 120000 })
 send_to({ agent_id, text: "Keep the fix narrow and cite the changed file", press_enter: true })
 ```
 
-cmuxlayer PR #396 is merged: an explicit Codex `model` is checked against `codex debug models
---bundled` before a pane is created, then `model` and `effort` are passed to the repoGolem launcher
+cmuxlayer PR #396 is merged: an explicit Codex `model` is checked against the refreshed runtime
+catalog from `codex debug models` before a pane is created, then `model` and `effort` are passed to the repoGolem launcher
 as `-m` and `-E`. Omit `model` to use the launcher's bare top-Sol pin; include it when the mission
 requires a specific supported model. Unsupported models fail before surface creation; if cmuxlayer
 prepared a new worktree first, it rolls that worktree back. At read time `spawn_agent.effort` accepts

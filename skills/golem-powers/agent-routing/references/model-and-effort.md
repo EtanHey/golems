@@ -4,31 +4,51 @@ This is the detailed Codex model/effort law; read it whenever choosing, dispatch
 
 Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort-recommendations.md`, OpenAI's primary model guide, subagent configuration, API model/pricing docs, and Codex usage limits.
 
+## GPT-6 Defaults
+
+Workers default to `gpt-6-sol`; leads stay on `gpt-6-astra`. A lead may choose
+`gpt-6-luna` for a job that genuinely fits its bounded, mechanical strengths. No task category,
+including review, automatically routes to Luna. When in doubt, choose Sol. If GPT-6 is unavailable
+in the refreshed Codex runtime catalog, use the matching `gpt-5.6-sol` or `gpt-5.6-luna` fallback;
+the 5.6 IDs are not operational defaults. Do not infer runtime availability from API pages.
+
+| Model | Standard input / output per 1M tokens | API context / max output | Source |
+|---|---:|---:|---|
+| `gpt-6-sol` | $2 / $10 | 1,050,000 / 128,000 | [OpenAI model page](https://developers.openai.com/api/docs/models/gpt-6-sol) |
+| `gpt-5.6-sol` fallback | $4 / $20 | 1,050,000 / 128,000 | [OpenAI model page](https://developers.openai.com/api/docs/models/gpt-5.6-sol) |
+| `gpt-6-luna` | $0.10 / $0.50 | 1,050,000 / 128,000 | [OpenAI model page](https://developers.openai.com/api/docs/models/gpt-6-luna) |
+
+Those context figures are API maxima, not Codex-seat windows. Codex CLI seats run with a 400K
+window unless `model_context_window` is raised in `~/.codex/config.toml`; do not change that key
+without Etan. On `gpt-6-sol`, a prompt above 272K input tokens bills the full request at 2x input
+and cache rates and 1.5x output, so raising the seat window can cross the price step. Handoff at
+about 75% of the seat's actual window, read from that session's own `info.model_context_window`;
+never calculate the handoff threshold from an API spec sheet.
+
 ## Decide From the Mission
 
-1. **Sol medium implements by default.** Use `gpt-5.6-sol` at `medium` for normal product implementation, including ambiguous multi-file work, architecture, decomposition, and final acceptance.
-2. **Sol high is a named escalation.** Use it for review, security, or tracing complex logic and assumptions. Do not describe high as the safe implementation default.
-3. **Sol xhigh or max is one gated hard blocker.** Name the blocker and why more reasoning can help. Reachability is not evidence that the higher rung pays.
+1. **Sol is the worker default.** Use `gpt-6-sol` for normal product implementation, ambiguous multi-file work, architecture, decomposition, review, and final acceptance. Choose `medium` for bounded work, `high` for open-ended work, and `xhigh` for a named hard problem.
+2. **Sol high fits open-ended work.** Use it for implementation, review, security, or tracing complex logic and assumptions when the mission is open-ended.
+3. **Sol xhigh is for a named hard blocker.** Name the blocker and why more reasoning can help. `max` requires an evaluation; reachability alone is not evidence that it pays.
 4. **Terra high is the Codex-child fan-out tier.** Use `gpt-5.6-terra` at `high` for read-heavy recon, large-file review, or parallel Codex children returning distilled evidence. Spawn these as the named `recon` agent. A standalone read-only lane still routes to Cursor. Terra medium fits routine implementation in an established pattern.
-5. **Luna executes mechanical packets.** Luna medium/high fits extraction, classification, and mechanical edits. Luna xhigh is the default for a bounded subagent packet. Hand Luna an outcome plus a deterministic test, never a procedure. Luna max is an escalation only after xhigh falls short and requires a written acceptance test; this is community practice, not an OpenAI recommendation. **Luna low is banned.**
+5. **Luna is a deliberate per-job choice.** A lead can choose `gpt-6-luna` when the actual task is truly bounded and mechanical, with an outcome and deterministic check. A category label alone never selects Luna. Use `medium` for bounded work; escalate effort only for a named difficulty. `max` requires an evaluation. **Luna low is banned.**
+6. **Leads stay on Astra.** Use `gpt-6-astra` for Codex lead lanes; the Sol/Luna rollout does not move lead routing.
 
 Effort is chosen per dispatch, not inherited as silent fleet policy. Every brief names the effort
 and gives a one-line mission-shaped reason. The model-fit line stays in every review.
 
-Quota affects concurrency, not acceptance: Luna has roughly 25x and Terra roughly 2.5x Sol's local-message allowance per window. Spark is documented as a separate pool, but open Codex bugs #23150 and #20122 report it draining or depending on main quota. Effort changes token count, not price per token. Treat all of these as planning inputs, never permission for weaker output.
+Quota affects concurrency, not acceptance: the measured 5.6 fallback tiers give Luna roughly 25x and Terra roughly 2.5x Sol's local-message allowance per window; GPT-6 allowance ratios are **NOT KNOWN**. Spark is documented as a separate pool, but open Codex bugs #23150 and #20122 report it draining or depending on main quota. Effort changes token count, not price per token. Treat all of these as planning inputs, never permission for weaker output.
 
 ## Override Table
 
 | Task shape | Model x effort | Rule |
 |---|---|---|
-| Default implementation, decomposition, architecture, final acceptance | `gpt-5.6-sol` x `medium` | Default; brief says why medium fits. |
-| Review, security, complex tracing | `gpt-5.6-sol` x `high` | High needs one named reason. |
-| One genuinely hard blocker | `gpt-5.6-sol` x `xhigh` or `max` | Gate to one blocker; say why lower effort is insufficient. |
+| Default worker; bounded task | `gpt-6-sol` x `medium` | Use Sol when in doubt. |
+| Open-ended implementation or review | `gpt-6-sol` x `high` | The task, not its category, justifies high. |
+| One genuinely hard blocker | `gpt-6-sol` x `xhigh` | Name the blocker; `max` requires an evaluation. |
 | Read-heavy review or distilled Codex-child fan-out | `gpt-5.6-terra` x `high` | Use named `recon`; standalone read-only remains Cursor. |
 | Routine implementation in an established pattern | `gpt-5.6-terra` x `medium` | Pattern and acceptance boundary must already be clear. |
-| Extraction, classification, mechanical edits | `gpt-5.6-luna` x `medium` or `high` | Outcome plus deterministic check; never Luna low. |
-| Bounded mechanical child packet | `gpt-5.6-luna` x `xhigh` | Prefer named `packet`; outcome and test are mandatory. |
-| Packet escalation after xhigh fails | `gpt-5.6-luna` x `max` | Written acceptance test required; community practice only. |
+| Job specifically judged to fit Luna | `gpt-6-luna` x `medium` | Lead chooses it per job; bounded outcome and deterministic check required. Never Luna low. |
 
 Spark is a separate-pool interactive option, not the default child or a substitute for this table.
 Max's incremental value and a stable general max policy remain **NOT KNOWN**.
@@ -44,13 +64,15 @@ brainlayerCodex -s -m gpt-5.6-terra -E medium "<patterned outcome>"
 ```
 
 Codex custom agents live in `~/.codex/agents/*.toml`; defaults live in
-`~/.codex/config.toml`. Golems defaults pin Luna xhigh for generic children, named `recon` pins
-Terra high, and named `packet` pins Luna xhigh. The cap is
+`~/.codex/config.toml`. Policy selects Sol for an unnamed child unless a lead judges another model a better fit.
+The current global `default_subagent_model` and named `packet` settings outside this repo still
+pin Luna 5.6; they need a separate config update. Named `recon` pins Terra high. Choose
+`packet` only when its specific job fits Luna. The cap is
 `max_concurrent_threads_per_session = 4`; never retain legacy `max_threads` beside it because
 Codex rejects the duplicate.
 
-Recon/read-heavy fan-out children MUST use named `recon`. An unnamed child inherits the Luna xhigh
-packet default, so it MUST receive a bounded outcome plus deterministic test.
+Recon/read-heavy fan-out children MUST use named `recon`. Verify an unnamed child's effective
+model and effort rather than assuming a default from its agent name.
 
 Verify every child's effective model and effort from the child's own `turn_context` after its own
 `task_started` in `~/.codex/sessions/**/rollout-*.jsonl`. Never use prompt text, registry data,

@@ -948,7 +948,7 @@ JSON
         in_call { print }
       ' <<< "$output")
       [ "$(grep -Fxc -- "CODEX_ARG=--model" <<< "$call_output")" -eq 1 ]
-      [ "$(grep -Fxc -- "CODEX_ARG=gpt-5.6-sol" <<< "$call_output")" -eq 1 ]
+      [ "$(grep -Fxc -- "CODEX_ARG=gpt-6-sol" <<< "$call_output")" -eq 1 ]
     done
     local continue_output
     continue_output=$(awk '
@@ -983,12 +983,12 @@ JSON
       }
 
       source "$2"
-      testrepoCodex -m gpt-5.6-luna -E max
+      testrepoCodex -m gpt-6-luna -E max
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
     [ "$(grep -Fxc -- "CODEX_ARG=--model" <<< "$output")" -eq 1 ]
-    [ "$(grep -Fxc -- "CODEX_ARG=gpt-5.6-luna" <<< "$output")" -eq 1 ]
+    [ "$(grep -Fxc -- "CODEX_ARG=gpt-6-luna" <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="max"' <<< "$output")" -eq 1 ]
     ! grep -F -q -- "gpt-5.6-sol" <<< "$output"
     ! grep -F -q -- "REPOGOLEM_ALLOW_MODEL" <<< "$output"
@@ -2206,7 +2206,7 @@ CLAUDE
       | grep -Fv -- 'CODEX_ARG=-c' \
       | grep -Fv -- 'CODEX_ARG=model_reasoning_effort="high"' \
       | grep -Fv -- 'CODEX_ARG=--model' \
-      | grep -Fv -- 'CODEX_ARG=gpt-5.6-sol' \
+      | grep -Fv -- 'CODEX_ARG=gpt-6-sol' \
       | sed 's/^CODEX_ARG_COUNT=5$/CODEX_ARG_COUNT=1/')
     local actual_hash
     actual_hash=$(printf '%s' "$normalized_output" | shasum -a 256 | awk '{print $1}')
@@ -2239,7 +2239,7 @@ CLAUDE
     [ "$status" -eq 0 ]
     grep -F -q "PWD=$WORKTREE_DIR" <<< "$output"
     ! grep -F -q -- "--dangerously-bypass-approvals-and-sandbox" <<< "$output"
-    grep -F -q -- "--model gpt-5.6-sol" <<< "$output"
+    grep -F -q -- "--model gpt-6-sol" <<< "$output"
     ! grep -F -q -- "--worktree" <<< "$output"
     ! grep -F -q "unexpected argument" <<< "$output"
 }
@@ -2270,7 +2270,7 @@ CLAUDE
     [ "$status" -eq 0 ]
     grep -F -q "PWD=$PROJECT_DIR" <<< "$output"
     ! grep -F -q -- "--dangerously-bypass-approvals-and-sandbox" <<< "$output"
-    grep -F -q -- "--model gpt-5.6-sol" <<< "$output"
+    grep -F -q -- "--model gpt-6-sol" <<< "$output"
     ! grep -F -q -- "--worktree" <<< "$output"
 }
 
