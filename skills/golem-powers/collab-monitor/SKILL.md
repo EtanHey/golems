@@ -1,9 +1,9 @@
 ---
 name: collab-monitor
 description: "Arm or stop tag-scoped durable collab-file watches. Triggers: collab monitor, watch collab, listen-name, background watch. NOT for file-integrity auditing or worker-registry completion."
-version: 1.1.1
+version: 1.1.0
 type: encoded-preference
-last-eval-date: 2026-09-22
+last-eval-date: 2026-08-03
 compliance-score: "15/15 deterministic checks (not an agent-behavior score)"
 ---
 
@@ -30,8 +30,7 @@ bash "$COLLAB_MONITOR" status @your-listen-name
 bash "$COLLAB_MONITOR" stop @your-listen-name
 ```
 
-Self-authored blocks are dropped by default. Use `start --include-self` or `run --include-self`
-only when auditing the watcher's own posts; those opt-in events retain their `SELF-POST` label.
+Self-authored blocks are dropped by default; for own-post audits, `start --include-self` and `run --include-self` restore them with their `SELF-POST` label.
 
 Use foreground mode when a parent monitor/supervisor owns the process:
 
@@ -63,8 +62,7 @@ notified. A participant without a watcher on that file will not see it, no matte
    ```
    tail -n0 -F <collab-path> | grep -v '^### @<self>[[:space:]]' &     # detached, then RETURN
    ```
-   Here `<self>` is the seat's listen name without the leading `@`; replace `@<self>` with the
-   exact author tag used in collab headers (for example, `@skillcreator`).
+   Here `<self>` is the seat's listen name without `@`; replace `@<self>` with the exact author tag.
    Read what it captured when you are re-invoked. A Codex that keeps working, or keeps polling
    in the foreground, because "it has no monitor" is choosing the wrong half of the contract.
 4. **Dedup by line hash.** A collab that gets rewritten (formatting, section moves) must not
@@ -161,9 +159,8 @@ specimens from this fleet:
 The rule, in three parts:
 
 1. **Match what is addressed TO you** — the anchored routing grammar below, not a bare tag scan.
-2. **Exclude your own byline** — this monitor classifies self-authored blocks as `SELF`, drops
-   them by default, and emits them as `SELF-POST` only with `--include-self`; do not defeat that
-   by grepping the raw file for your tag.
+2. **Exclude your own byline** — this monitor drops `SELF` blocks by default and emits them as
+   `SELF-POST` only with `--include-self`; do not grep the raw file for your tag.
 3. **Re-narrow when the crisis ends.** The filter is part of the lane, and the lane's close is the
    filter's close: `bash "$CM" stop @<listen-name>`.
 
@@ -386,7 +383,7 @@ MONITOR-ARMED name=@listener files=2 state=/.../listener
 WILL-NOT-CATCH :: ...
 FOLLOWING name=@listener pid=<pid> log=/.../monitor.log
 NEW-FOR-@listener file=/path/collab.md hash=<sha256> :: <literal event line>
-SELF-POST-@listener file=/path/collab.md hash=<sha256> :: <literal own-write line>  # --include-self only
+SELF-POST-@listener file=/path/collab.md hash=<sha256> :: <literal own-write line>
 SHRINK file=/path/collab.md old_bytes=123 new_bytes=80 delta_bytes=43
 WATCH-WARN file=/path/collab.md reason=temporarily-absent|read-failed|hash-failed|state-failed|unclosed-fence action=retry
 STATE_CONFLICT name=@listener pid=<pid> action=not-started|not-signaled state=preserved

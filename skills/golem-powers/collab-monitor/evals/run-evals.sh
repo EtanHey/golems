@@ -253,10 +253,8 @@ run_candidate() {
   : > "$case_dir/include-collab.md"
   run_once "$case_dir/include-state" "$case_dir/include-seed.out" '@skillcreator' "$case_dir/include-collab.md"
   append_fixture "$FIXTURES/default-author-filter.md" "$case_dir/include-collab.md"
-  set +e
-  MONITOR_STATE_DIR="$case_dir/include-state" /bin/bash "$MONITOR" run --once --include-self '@skillcreator' "$case_dir/include-collab.md" > "$case_dir/include.out" 2>&1
-  include_rc=$?
-  set -e
+  include_rc=0
+  MONITOR_STATE_DIR="$case_dir/include-state" /bin/bash "$MONITOR" run --include-self --once '@skillcreator' "$case_dir/include-collab.md" > "$case_dir/include.out" 2>&1 || include_rc=$?
   : > "$case_dir/signed-collab.md"
   run_once "$case_dir/signed-state" "$case_dir/signed-seed.out" '@review-638' "$case_dir/signed-collab.md"
   append_fixture "$FIXTURES/self-signature-body.md" "$case_dir/signed-collab.md"
