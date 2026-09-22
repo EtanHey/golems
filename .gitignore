@@ -34,7 +34,6 @@ packages/coach/_list-*.ts
 
 # Test artifacts
 packages/shared/.test-state-store/
-skill-evals/results/*.composition.json
 __pycache__/
 *.py[cod]
 

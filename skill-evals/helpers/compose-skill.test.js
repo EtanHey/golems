@@ -62,6 +62,15 @@ test("writes a deterministic manifest with a sha256 for every measured file", ()
 });
 
 test("injects composed text only for the with-skill provider", () => {
+  assert.throws(
+    () =>
+      transformVars({
+        skill_name: "cmux-agents",
+        skill_system_prompt: "compose://cmux-agents",
+      }),
+    /provider is required/,
+  );
+
   const withSkill = transformVars(
     {
       skill_name: "cmux-agents",
@@ -81,10 +90,9 @@ test("injects composed text only for the with-skill provider", () => {
   assert.equal(withoutSkill.skill_system_prompt, "");
 });
 
-test("resolves evaluated skills retired into the tracked archive", () => {
-  const composition = composeSkill("commit", { repoRoot });
-
-  assert.deepEqual(composition.files.map((file) => file.path), [
-    "skills/golem-powers/_archive/commit/SKILL.md",
-  ]);
+test("rejects evaluated skills retired into the tracked archive", () => {
+  assert.throws(
+    () => composeSkill("commit", { repoRoot }),
+    /Skill not found: commit/,
+  );
 });

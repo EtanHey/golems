@@ -9,8 +9,12 @@
 const { composeSkill } = require("./compose-skill.js");
 
 module.exports = function transformVars(vars, context) {
+  if (!context || !context.provider) {
+    throw new Error("[transform-vars] context.provider is required");
+  }
+
   // For without_skill provider, clear the skill prompt
-  if (context.provider && context.provider.label === "without_skill") {
+  if (context.provider.label === "without_skill") {
     return { ...vars, skill_system_prompt: "" };
   }
 

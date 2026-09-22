@@ -34,17 +34,11 @@ function resolveSkillDirectory(skillName, repoRoot) {
     throw new Error(`[compose-skill] Invalid skill name: ${skillName}`);
   }
 
-  const candidates = [
-    path.join(repoRoot, "skills/golem-powers", skillName),
-    path.join(repoRoot, "skills/golem-powers/_archive", skillName),
-  ];
-  const skillDirectory = candidates.find((candidate) =>
-    fs.existsSync(path.join(candidate, "SKILL.md")),
-  );
+  const skillDirectory = path.join(repoRoot, "skills/golem-powers", skillName);
 
-  if (!skillDirectory) {
+  if (!fs.existsSync(path.join(skillDirectory, "SKILL.md"))) {
     throw new Error(
-      `[compose-skill] Skill not found: ${skillName} (checked active and _archive)`,
+      `[compose-skill] Skill not found: ${skillName} (checked active skills)`,
     );
   }
   return skillDirectory;
