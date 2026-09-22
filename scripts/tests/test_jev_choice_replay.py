@@ -19,6 +19,7 @@ class JevChoiceReplayTest(unittest.TestCase):
         root.mkdir(parents=True, exist_ok=True)
         self.tempdir = tempfile.TemporaryDirectory(dir=root)
         self.old_env = os.environ.copy()
+        os.environ.pop("CI", None)
         os.environ["TYPESAFE_API_KEY"] = "test-key"
         os.environ["JEV_SITE_JEV_E1_CHOICE_REPLAY"] = "shadow"
 
@@ -88,8 +89,11 @@ class JevChoiceReplayTest(unittest.TestCase):
         preflight = replay.preflight_corpus(self.write_corpus())
         decision = preflight["decisions"][0]
         sent = {}
+        transport_calls = 0
 
         def transport(payload, _key):
+            nonlocal transport_calls
+            transport_calls += 1
             sent.update(payload)
             return {
                 "model": "jev-test",
@@ -117,6 +121,7 @@ class JevChoiceReplayTest(unittest.TestCase):
             1,
             transport,
         )
+        self.assertEqual(transport_calls, 1)
         self.assertEqual(sent["state"], {"screen_text": decision["screen"]})
         self.assertEqual(row["answer"], decision["label"])
         self.assertEqual(row["input_tokens"], 12)
