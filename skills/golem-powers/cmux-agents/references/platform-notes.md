@@ -55,7 +55,7 @@ shadows it and exits 0 with no output, silently fabricating "no log entries" con
 
 | # | Bug | Symptom | Proposed fix |
 |---|---|---|---|
-| 5.1 | **Flat tab colors** | All tabs use the same (or default) color; agent type not visually distinguishable | Map launcher function → color in a dict (claude=blue, codex=orange, cursor=purple, gemini=green, kiro=red). Set on spawn. **Blocked on a tool affordance since v0.4.35:** `rename_tab(color=...)` was cut and `update_surface` takes only `action`/`surface`/`title` — there is no color parameter to call, so this fix needs the color channel added first. |
+| 5.1 | **Flat tab colors** | All tabs use the same (or default) color; agent type not visually distinguishable | Map launcher function → color in a dict (claude=blue, codex=orange, cursor=purple, gemini=green, kiro=red). Set on spawn. **Blocked on a tool affordance since v0.4.35:** `update_surface` takes only `action`/`surface`/`title` — there is no color parameter to call, so this fix needs the color channel added first. |
 | 5.2 | **Red-to-cyan weirdness** | Some tabs flip from red (error/warning) to cyan unexpectedly; color state machine has a bad transition | Debug: instrument the rename hook to log every color-set call with timestamp + reason. Most likely cause: one code path sets color from agent state, another sets it from default, last write wins. |
 | 5.3 | **Nested naming collapses** | Tab names for agents spawned in worktrees or nested panes lose their parent context (e.g. "golemsClaude > feat-X" → "claude") | When generating the display name, walk the surface parent chain and prepend up to 1 level of context. Truncate via ellipsis if longer than the tab width budget. |
 | 5.4 | **Weak semantic tag extraction** | Tab names don't reflect what the agent is actually WORKING on (they just say "claude" instead of e.g. "claude: PR#232 fix") | Parse the task prompt on spawn — extract PR numbers (`PR#\d+`), issue refs (`#\d+`), and the first 3-5 imperative words. Fall back to launcher name if none found. |
@@ -74,4 +74,4 @@ shadows it and exits 0 with no output, silently fabricating "no log entries" con
 4. A/B test against the current hook
 5. Ship via /pr-loop
 
-**Until then:** manually rename after spawn with `mcp__cmuxlayer__update_surface({action:"rename", surface, title})`, using the display-name conventions in the table above. **Color and status cannot be set at all:** `rename_tab(color=…)`, `set_status` and `set_progress` were cut in v0.4.35 and `update_surface` does `move` and `rename` only — there is no replacement to call.
+**Until then:** manually rename after spawn with `mcp__cmuxlayer__update_surface({action:"rename", surface, title})`, using the display-name conventions in the table above. **Color and status cannot be set at all:** `update_surface` does `move` and `rename` only — there is no replacement to call.

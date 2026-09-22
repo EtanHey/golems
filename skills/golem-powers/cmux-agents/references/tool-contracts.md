@@ -26,9 +26,9 @@ This reference begins at the cmuxlayer tool boundary.
 
 | Gone | Status |
 |---|---|
-| `set_status`, `set_progress` | **No replacement.** An agent cannot publish status/progress to its pane. `update_surface` does `move` and `rename` only. |
-| `stop_agent({userInitiated:false})` | **No replacement.** `close_surface` has no `userInitiated` flag, so the `user_killed` / recovery-eligibility distinction can no longer be set from the tool surface. |
-| `new_surface`, `browser_surface` | **No direct replacement.** Use `spawn_agent({type:"terminal"})` for a shell tab; there is no browser-surface tool. |
+| Status/progress publication | **No replacement.** An agent cannot publish status/progress to its pane. `update_surface` does `move` and `rename` only. |
+| Recovery-preserving stop | **No replacement.** `close_surface` has no `userInitiated` flag, so the `user_killed` / recovery-eligibility distinction can no longer be set from the tool surface. |
+| New terminal/browser surface | **No direct browser replacement.** Use `spawn_agent({type:"terminal"})` for a shell tab. |
 
 Use `spawn_agent` for full worker lifecycle. Keep `send_to` surface/key modes for non-agent panes and FR-06 recovery.
 
@@ -91,7 +91,7 @@ Use `spawn_agent` for full worker lifecycle. Keep `send_to` surface/key modes fo
 1. **Boot capture window** — for the first 30 seconds after spawn, the engine scans up to 80 lines of terminal output on each sweep tick for a UUID pattern (`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`). This is what every major CLI prints as its session header (`claude --session-id`, `codex session`, `cursor agent --session`). **First UUID seen wins** — the engine does not currently match against CLI-specific context markers, so any earlier UUID in boot output (e.g., a log line printing a workspace UUID, a trace ID, or a dependency version string) can steal the slot. Engine persists the first-seen UUID as `cli_session_id` on the agent record.
 2. **Crash detection** — when the PTY dies with a recoverable error (surface disappeared, shell exited unexpectedly) AND `crash_recover=true` AND `user_killed !== true` AND `cli_session_id` is set, the next sweep attempts respawn.
 3. **Respawn path** — new surface created, same launcher with the per-CLI resume command appended: `<repo>Claude -s --resume <id>` / `<repo>Codex -s resume <id>` / `cursor agent --session <id>`. Up to `MAX_RESPAWN_ATTEMPTS = 10` attempts before giving up.
-4. **`user_killed` guard** — if the user explicitly killed the agent, `crash_recover` will NOT respawn it. **Caveat since v0.4.35:** the cut removed `stop_agent` and its `userInitiated` flag, and `close_surface` has no equivalent, so an agent can no longer close a worker while *preserving* recovery eligibility. The `user_killed` record field still exists and is still honoured; there is just no supported tool call that sets it to `false`.
+4. **`user_killed` guard** — if the user explicitly killed the agent, `crash_recover` will NOT respawn it. **Caveat since v0.4.35:** `close_surface` cannot preserve recovery eligibility. The `user_killed` record field still exists and is still honoured; there is just no supported tool call that sets it to `false`.
 
 **When to pass `crash_recover: true`:**
 - Long-running Codex workers on PR loops (>30 min expected).
@@ -113,7 +113,7 @@ Use `spawn_agent` for full worker lifecycle. Keep `send_to` surface/key modes fo
    - **Claude**: look for `Session:` or `--session-id` in the header.
    - **Codex**: look for `session ` in the splash / first turn.
    - **Cursor**: look for `--session ` in the boot log.
-3. If `cli_session_id` does not match the on-screen session — or if it's `null` after 60s (capture window expired) — close the worker with `close_surface({scope:"agent", agent_id, force:true})`, then respawn fresh and re-verify. (Pre-v0.4.35 this step used `stop_agent(userInitiated:false)` to preserve recovery eligibility; that flag no longer exists, so treat the respawn as the recovery.)
+3. If `cli_session_id` does not match the on-screen session — or if it's `null` after 60s (capture window expired) — close the worker with `close_surface({scope:"agent", agent_id, force:true})`, then respawn fresh and re-verify. Treat the respawn as the recovery because the current stop surface cannot preserve eligibility.
 4. For autonomous / overnight workers: fold this check into your spawn script and fail loudly on mismatch. A wrong `cli_session_id` means `crash_recover` will respawn with the wrong `--resume` argument and the new session won't have your context.
 
 **Related agent-record fields** (visible via `list_agents({agent_ids:[id], detail:"full"})`):

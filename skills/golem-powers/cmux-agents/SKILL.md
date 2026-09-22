@@ -57,7 +57,7 @@ cmuxlayer enforces two-column role geometry: orchestrators land LEFT, workers RI
 - Skills do not hot-reload in long sessions; notify or respawn affected workers after critical edits.
 - After any cmux restart, Mac wake, BrainBar restart, or network change, prior liveness claims are stale until `list_agents` plus `read_screen` verify each reported worker.
 - Name every surface with `update_surface({action:"rename", ...})`; `update_surface` only supports `rename` and `move`.
-- Do not invent removed tools: there is no `set_status`, `set_progress`, browser-surface tool, or supported `userInitiated:false` stop replacement.
+- Do not invent removed tools: there is no status/progress publisher, browser-surface tool, or supported recovery-preserving stop replacement.
 
 ## Read the right reference
 

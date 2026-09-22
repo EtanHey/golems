@@ -194,7 +194,7 @@ Prefer the Write tool when the prompt is already in-context — it avoids shell 
 send_to({ mode: "surface", surface: "surface:N", text: "cat $HOME/Gits/orchestrator/collab/surface-N-<stamp>.md" })
 ```
 
-`send_to` presses Return for you — `press_enter` defaults to **`true`**. (Pre-v0.4.35 this took two calls, `send_input` then `send_key("Return")`, because `send_input` only typed the text. That is no longer the contract.) Pass `press_enter: false` only when you deliberately want the text left sitting on the composer line, and drive the key yourself with `send_to({mode:"key", surface, key:"Return"})`.
+`send_to` presses Return for you — `press_enter` defaults to **`true`**. Pass `press_enter: false` only when you deliberately want the text left sitting on the composer line, and drive the key yourself with `send_to({mode:"key", surface, key:"Return"})`.
 
 **Step 3 — verify the handoff landed:** after a few seconds, `read_screen` the surface and confirm you see the file contents (or the agent's response to them). If the pane is frozen despite the short pointer, the file is still safe on disk — spawn a fresh surface and re-run Step 2 against the new surface.
 
@@ -230,8 +230,8 @@ A retry without root-cause investigation is almost always wrong. After any `send
                       (focus:true so the pane is the one that initiates)
 2. LAUNCH (no boot_prompt_path):  send_to({mode:"command", surface, command:"<repo>Claude -s"})
                       (launcher/`-s`/`-m` policy lives in `/repogolem`)
-3. FOCUS so it initiates:  `cmux focus-pane --pane <pane>` (CLI — the 9-tool MCP surface has
-                      no workspace-focus tool; the old select_workspace was cut in v0.4.35)
+3. FOCUS so it initiates:  `cmux focus-pane --pane <pane>` (CLI — the MCP surface has
+                      no workspace-focus tool)
 4. WAIT ~3s, then READ:  read_screen({surface, parsed_only:true})
                       → confirm status ready/idle/working
 5. IF READY, deliver:  send_to({mode:"command", surface, command:"<the prompt>"})  — pane is focused, it lands.
