@@ -1,0 +1,78 @@
+{
+  "skill_name": "grill-me",
+  "classification": "encoded-preference",
+  "evals": [
+    {
+      "id": 1,
+      "name": "whole-frontier-with-async-fact-finding",
+      "category": "compliance",
+      "description": "The first round asks every currently independent decision while fact-dependent branches wait on non-blocking investigation.",
+      "prompt": "Grill me on a plan for adding an offline mode. Some choices depend on whether our current store supports conflict metadata; inspect the repo for that fact.",
+      "assertions": [
+        {
+          "type": "tool_usage",
+          "name": "dispatches-fact-finding",
+          "description": "Dispatches a sub-agent to inspect the repository rather than asking the user for the fact."
+        },
+        {
+          "type": "content",
+          "name": "asks-whole-ready-frontier",
+          "description": "Asks all currently independent decisions in one numbered round without a fixed question-count cap."
+        },
+        {
+          "type": "content",
+          "name": "does-not-block-unrelated-questions",
+          "description": "Asks unrelated frontier questions immediately while holding only branches downstream of the pending fact."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "voice-friendly-round-format",
+      "category": "structure",
+      "description": "A round preserves Etan's lettered shorthand and recommendation convention while separating questions visibly.",
+      "prompt": "Grill me on a release design with several independent choices.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "lettered-options",
+          "description": "Every question has short A, B, and C options with exactly one Recommended option."
+        },
+        {
+          "type": "content",
+          "name": "horizontal-rule-separators",
+          "description": "Questions within the round are separated by horizontal rules."
+        },
+        {
+          "type": "content",
+          "name": "shorthand-instruction",
+          "description": "Invites a one-breath answer in the 1A 2C shorthand."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "silence-never-selects-default",
+      "category": "compliance",
+      "description": "Recommendations remain advice and unanswered decisions remain open.",
+      "prompt": "I answered 1B but skipped questions 2 and 3. Continue the grill.",
+      "assertions": [
+        {
+          "type": "negative",
+          "name": "does-not-default-unanswered",
+          "description": "Does not select Recommended options for unanswered questions."
+        },
+        {
+          "type": "content",
+          "name": "keeps-skipped-decisions-open",
+          "description": "Keeps questions 2 and 3 open and asks for the user's decisions."
+        },
+        {
+          "type": "negative",
+          "name": "does-not-implement-before-confirmation",
+          "description": "Does not implement or act before explicit shared-understanding confirmation."
+        }
+      ]
+    }
+  ]
+}
