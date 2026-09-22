@@ -871,7 +871,7 @@ _golem_launch_codex() {
   # from the selected rollout unless the caller deliberately supplies -m/--model.
   local model="${_flag_model:-}"
   if [[ "$explicit_resume" == false && "$_flag_continue" == false && -z "$model" ]]; then
-    model="gpt-5.6-sol"
+    model="gpt-6-sol"
   fi
   local worker_mode="${_golem_codex_worker_mode:-false}"
   $_flag_codex_worker && worker_mode=true
