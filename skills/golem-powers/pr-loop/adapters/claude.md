@@ -92,12 +92,11 @@ Claude is also the seat that can `brain_store` the checkpoint metadata behind th
 the post-merge `brain_store` with the session id you signed with, so comment → JSONL → BrainLayer
 is one traceable chain.
 
-## Hierarchical Worker Mode (gen-12 weave E09)
+## Hierarchical Worker Mode
 
-When LEAD owns merge per the brief: worker stops at PR + review responses;
-LEAD merges after head SHA verification. Never leave PRs in draft when invoking
-review bots (`gh pr ready <N>`). PR-referenced artifacts must be on committed
-paths — not gitignored `docs.local/` alone.
+For worker endpoints, draft handling, head verification, and artifact rules, read
+[dispatch and handoffs](../references/dispatch-and-handoffs.md) and
+[merge and verification](../references/merge-and-verification.md).
 
 ## Unique Capabilities
 

@@ -153,7 +153,7 @@ Build ownership is the **golems / repoGolem lane**, not this skill. Contract as 
 - Agents change nothing once it lands. Zero per-use hassle was the design requirement.
 
 **Until it lands: append the block by hand on every GitHub write listed in Scope.** Use
-`--body-file` or a heredoc so the blob survives shell quoting (see pr-loop Step 7).
+`--body-file` or a heredoc so the blob survives shell quoting (see [PR creation](pr-creation.md#step-7-creating-the-pr)).
 
 ## Failure-mode catalog
 

@@ -19,15 +19,18 @@ mkdir -p ~/.claude/skills/pr-loop
 
 2. Download the skill:
 ```bash
-curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/pr-loop/SKILL.md \
+curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/pr-loop/SKILL.md \
   -o ~/.claude/skills/pr-loop/SKILL.md
 ```
 
-3. Fetch the references (the GitHub agent-identity convention lives here):
+3. Fetch the references:
 ```bash
 mkdir -p ~/.claude/skills/pr-loop/references
-curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/pr-loop/references/github-identity.md \
-  -o ~/.claude/skills/pr-loop/references/github-identity.md
+set -e
+for ref in dispatch-and-handoffs github-identity merge-and-verification pr-creation review-loop; do
+  curl -fsSL "https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/pr-loop/references/${ref}.md" \
+    -o "$HOME/.claude/skills/pr-loop/references/${ref}.md"
+done
 ```
 
 4. Verify:
