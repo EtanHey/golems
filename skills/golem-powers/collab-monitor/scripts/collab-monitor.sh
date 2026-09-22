@@ -887,7 +887,12 @@ start_monitor() {
     exit 1
   fi
 
-  nohup env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 COLLAB_MONITOR_INCLUDE_SELF="$INCLUDE_SELF" /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
+  # macOS has no setsid binary. Perl starts a new session, then exec keeps $!
+  # equal to the monitor PID checked and published below.
+  # Disable Bash job control so the background child is not already a group
+  # leader (setsid would fail with EPERM). This start script exits afterward.
+  set +m
+  nohup perl -MPOSIX=setsid -e 'setsid() >= 0 or die $!; exec @ARGV or die $!' env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 COLLAB_MONITOR_INCLUDE_SELF="$INCLUDE_SELF" /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
   child_pid=$!
   ACTIVE_START_CHILD_PID="$child_pid"
 

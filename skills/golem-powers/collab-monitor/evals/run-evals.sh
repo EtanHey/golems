@@ -915,6 +915,12 @@ run_candidate() {
     fail "15 supervisor-watch-not-poll" "repeated read_screen polling was not rejected or codex-workflows watch was not taught"
   fi
 
+  if /bin/bash "$SCRIPT_DIR/detached-launch.sh" > "$TMP_ROOT/detached-launch.out" 2>&1; then
+    pass "16 detached-launch GREEN"
+  else
+    fail "16 detached-launch" "monitor did not survive its launcher shell with an independent process group"
+  fi
+
   printf 'CANDIDATE_SUMMARY pass=%s fail=%s\n' "$pass_count" "$fail_count"
   [[ "$fail_count" -eq 0 ]]
 }
