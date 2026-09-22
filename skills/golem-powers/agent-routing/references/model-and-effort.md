@@ -30,7 +30,7 @@ never calculate the handoff threshold from an API spec sheet.
 1. **Sol is the worker default.** Use `gpt-6-sol` for normal product implementation, ambiguous multi-file work, architecture, decomposition, review, and final acceptance. Choose `medium` for bounded work, `high` for open-ended work, and `xhigh` for a named hard problem.
 2. **Sol high fits open-ended work.** Use it for implementation, review, security, or tracing complex logic and assumptions when the mission is open-ended.
 3. **Sol xhigh is for a named hard blocker.** Name the blocker and why more reasoning can help. `max` requires an evaluation; reachability alone is not evidence that it pays.
-4. **Terra high is the Codex-child fan-out tier.** Use `gpt-5.6-terra` at `high` for read-heavy recon, large-file review, or parallel Codex children returning distilled evidence. Spawn these as the named `recon` agent. A standalone read-only lane still routes to Cursor. Terra medium fits routine implementation in an established pattern.
+4. **Read-heavy Codex children follow the same model rule.** Use `gpt-6-sol` at `high` for open-ended recon, large-file review, or parallel Codex children returning distilled evidence. Choose `gpt-6-luna` only when the actual read is bounded and mechanical, with a deterministic check. Spawn read-heavy children as the named `recon` agent and verify their effective model: its external configuration may still pin Terra. A standalone read-only lane still routes to Cursor. `gpt-5.6-terra` is documented as a fallback tier only, never a prescribed choice.
 5. **Luna is a deliberate per-job choice.** A lead can choose `gpt-6-luna` when the actual task is truly bounded and mechanical, with an outcome and deterministic check. A category label alone never selects Luna. Use `medium` for bounded work; escalate effort only for a named difficulty. `max` requires an evaluation. **Luna low is banned.**
 6. **Leads stay on Astra.** Use `gpt-6-astra` for Codex lead lanes; the Sol/Luna rollout does not move lead routing.
 
@@ -46,8 +46,8 @@ Quota affects concurrency, not acceptance: the measured 5.6 fallback tiers give 
 | Default worker; bounded task | `gpt-6-sol` x `medium` | Use Sol when in doubt. |
 | Open-ended implementation or review | `gpt-6-sol` x `high` | The task, not its category, justifies high. |
 | One genuinely hard blocker | `gpt-6-sol` x `xhigh` | Name the blocker; `max` requires an evaluation. |
-| Read-heavy review or distilled Codex-child fan-out | `gpt-5.6-terra` x `high` | Use named `recon`; standalone read-only remains Cursor. |
-| Routine implementation in an established pattern | `gpt-5.6-terra` x `medium` | Pattern and acceptance boundary must already be clear. |
+| Open-ended read-heavy review or distilled Codex-child fan-out | `gpt-6-sol` x `high` | Use named `recon` and verify its effective model; standalone read-only remains Cursor. |
+| Routine implementation in an established pattern | `gpt-6-sol` x `medium` | Pattern and acceptance boundary must already be clear. |
 | Job specifically judged to fit Luna | `gpt-6-luna` x `medium` | Lead chooses it per job; bounded outcome and deterministic check required. Never Luna low. |
 
 Spark is a separate-pool interactive option, not the default child or a substitute for this table.
@@ -60,7 +60,7 @@ Visible lanes pass effort explicitly:
 ```bash
 brainlayerCodex -s -E medium "<implementation outcome>"
 brainlayerCodex -s -E high "<review/security/complex-tracing outcome>"
-brainlayerCodex -s -m gpt-5.6-terra -E medium "<patterned outcome>"
+brainlayerCodex -s -m gpt-6-luna -E medium "<bounded mechanical outcome plus deterministic check>"
 ```
 
 Codex custom agents live in `~/.codex/agents/*.toml`; defaults live in
@@ -71,8 +71,11 @@ pin Luna 5.6; they need a separate config update. Named `recon` pins Terra high.
 `max_concurrent_threads_per_session = 4`; never retain legacy `max_threads` beside it because
 Codex rejects the duplicate.
 
-Recon/read-heavy fan-out children MUST use named `recon`. Verify an unnamed child's effective
-model and effort rather than assuming a default from its agent name.
+Recon/read-heavy fan-out children MUST use named `recon`. Its external `~/.codex/agents/recon.toml`
+still pins Terra; do not treat that pin as a prescription. Select Sol by default, use Luna only for
+a genuinely bounded/mechanical read, and verify the child's effective model and effort from its
+own turn context. Verify an unnamed child's effective model and effort rather than assuming a
+default from its agent name.
 
 Verify every child's effective model and effort from the child's own `turn_context` after its own
 `task_started` in `~/.codex/sessions/**/rollout-*.jsonl`. Never use prompt text, registry data,
