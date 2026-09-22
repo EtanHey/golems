@@ -60,9 +60,9 @@ notified. A participant without a watcher on that file will not see it, no matte
 3. **Codex agents have no Monitor tool — use a background bash tail.** This is not optional and
    not a lesser substitute:
    ```
-   tail -n0 -F <collab-path> | grep -v '^### @<self>[[:space:]]' &     # detached, then RETURN
+   tail -n0 -F <collab-path> | awk -v self='<self>' '$0 ~ ("^### @" self "([[:space:]]|$)") { drop=1; next } /^### / { drop=0 } !drop' &
    ```
-   Here `<self>` is the seat's listen name without `@`; replace `@<self>` with the exact author tag.
+   Here `<self>` is the seat's listen name without `@`; replace it with the exact header author.
    Read what it captured when you are re-invoked. A Codex that keeps working, or keeps polling
    in the foreground, because "it has no monitor" is choosing the wrong half of the contract.
 4. **Dedup by line hash.** A collab that gets rewritten (formatting, section moves) must not

@@ -739,6 +739,10 @@ run_monitor() {
         once=1
         shift
         ;;
+      --include-self)
+        INCLUDE_SELF=1
+        shift
+        ;;
       --instance)
         [[ "$#" -ge 2 ]] || die 'missing --instance value'
         instance_token="$2"
@@ -1046,7 +1050,7 @@ command="${1:-}"
 }
 shift
 
-if [[ "$command" == 'run' || "$command" == 'start' ]] && [[ "${1:-}" == '--include-self' ]]; then
+if [[ "$command" == 'start' ]] && [[ "${1:-}" == '--include-self' ]]; then
   INCLUDE_SELF=1
   shift
 fi
