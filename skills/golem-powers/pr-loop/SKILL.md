@@ -51,7 +51,7 @@ Run the loop in this order:
 - Two review rounds are the normal minimum; three is the maximum for new non-critical findings.
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
 - Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for daemon/engine/transport diffs.
-- Cursor review passes are read-only and Auto-only; they never edit the PR branch.
+- Cursor review passes are read-only and never edit the PR branch; fleet canon #1 owns their model selection.
 - `--body` on `gh pr merge` sets the MERGE COMMIT message, **not** the PR description.
 - "git log is where you look when you already know something is wrong; the PR page is where you look to find out." Put actionable receipts in the PR body before merge.
 - PR-referenced artifacts must be committed or quoted inline; gitignored `docs.local/` paths alone are not reviewable.

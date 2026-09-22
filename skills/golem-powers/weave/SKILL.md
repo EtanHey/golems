@@ -22,9 +22,9 @@ and verified change is not convergence.
 - The harness, high-importance routed conclusions, conversion metrics, registry
   transitions, and retro are committed artifacts. Scratch digests and findings
   may be regenerated; conclusions may not live only in `docs.local/`.
-- Gather runs off-Claude; Claude performs judgment. Pin model and effort per
-  node, quota-probe before launch, preserve worker lineage, and announce headless
-  fan-out.
+- Gather runs off-Claude; Claude performs judgment. `/agent-routing`
+  `references/model-and-effort.md` § Decide From the Mission owns model/effort choice; quota-probe before launch,
+  preserve worker lineage, and announce headless fan-out.
 - Mine one session per miner, centerpieces first, in bounded waves. Expand one
   flat frontier per depth; never nest `parallel()` calls.
 - Loop until both gap and verification queues are dry. Caps are runaway
@@ -58,7 +58,7 @@ and verified change is not convergence.
 
 ## Phase gates
 
-1. Arm the inbound collab monitor and claim a stable name.
+1. Enter through the fleet-canon-#7 claim/guard contract; `/collab-monitor` owns the concrete watcher.
 2. Converge, discover, prepare, batch, mine, and verify files on disk.
 3. Aggregate the ledger; report both strict and refined conversion metrics.
 4. Re-score the prior run, red-team every load-bearing claim, and propagate corrections.
@@ -86,4 +86,4 @@ and verified change is not convergence.
 - `/never-fabricate` owns evidence and verification discipline.
 - `/pr-loop` owns PR conversion and review handling.
 - `/orc` owns convergence detection and miner dispatch.
-- `/cmux-agents` owns the canonical lead/orchestrator monitor law.
+- Fleet canon #7 owns lead/orchestrator monitor law; `/collab-monitor` owns the concrete watcher.

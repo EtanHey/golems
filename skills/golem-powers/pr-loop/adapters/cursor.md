@@ -50,8 +50,7 @@ cursor-agent -p --output-format text \
    Report findings only. Do NOT edit, create, or delete any file."
 ```
 
-**Auto-only, no model flag** (canon #1): never pass `-m`/`--model` — pinned Cursor drains the shared
-subscription pool fast. If this pass exhausts the shared quota, report the dispatch as the cause, not
+Model selection is owned by fleet canon #1. If this pass exhausts the shared quota, report the dispatch as the cause, not
 the resulting `resource_exhausted` as an external finding (canon #3).
 
 Cursor **Bugbot** is a different thing and is **not** part of this pass: it is opt-in, core paths only
@@ -78,7 +77,7 @@ Until a source is verified:
   boot-time/spawn-registry provenance the ratification banned ("the gh() wrapper must re-read model
   per invocation, not cache at spawn"; cmux spawn metadata is the `xhigh`-lie surface).
 - **Do NOT substitute self-report.** Cursor routes to multiple upstream models; the model's belief
-  about itself is not evidence (AP7).
+  about itself is not evidence; see `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification.
 - An honest `unknown` is the correct output. It tells a later audit "this row has no model", which
   is true — rather than fabricating one, which is the failure the convention exists to prevent.
 - If you find a verified per-turn model record for the Cursor CLI, that is a real finding: report it

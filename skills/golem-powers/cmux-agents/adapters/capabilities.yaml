@@ -16,10 +16,7 @@ adapters:
       structure: xml_tags       # <context>, <task>, <constraints>
       thinking: adaptive
       max_skill_tokens: 4000
-    models:
-      - { id: sonnet, use: "delegated tasks, research, synthesis" }
-      - { id: opus, effort: medium, use: "code review, architecture" }
-      - { id: opus, effort: high, use: "complex reasoning (your session only)" }
+    model_policy: "fleet canon #5"
 
   codex:
     binary: codex
@@ -34,9 +31,7 @@ adapters:
       structure: markdown_headers
       thinking: reasoning_effort
       max_skill_tokens: 4000
-    models:
-      - { id: gpt-5.4, use: "default, 12pts ahead of Opus on SWE-bench Pro" }
-      - { id: gpt-5.3, use: "cheaper, routine tasks" }
+    model_policy: "agent-routing/references/model-and-effort.md"
 
   cursor:
     binary: cursor
@@ -56,11 +51,7 @@ adapters:
       - pr_bugbot                # @cursor @bugbot review
       - text_output_mode         # --output-format text for audits
     verification_needed: true    # Cursor can report gitignored files as "committed"
-    models:
-      - { id: "gpt-5.3-codex-xhigh", use: "architecture audits, complex refactors" }
-      - { id: "gpt-5.3-codex-high", use: "standard code review" }
-      - { id: "gpt-5.3-codex", use: "quick checks" }
-      - { id: auto, use: "let Cursor route" }
+    model_policy: "fleet canon #1"
 
   gemini:
     binary: gemini

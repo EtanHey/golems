@@ -5,6 +5,7 @@ Read this when monitoring outbound workers, delivering envelopes, coordinating t
 > **OUTBOUND worker monitoring lives here.** Inbound lead/orchestrator monitor, cron, and loop-payload rules → see **cron-payload-discipline** (canonical).
 
 Fleet law for guard/DONE/harvest-close lives in canon #7. This section covers outbound worker waits.
+Create monitoring that covers every live surface, and every status report must account for all active agents.
 
 **Arm the inbound watch before you spawn the first worker** — step 0 of boot and step 0 again after
 every compaction, because a monitor dies with its session. Copy-pasteable arm/attach commands and
@@ -129,6 +130,8 @@ Worktree policy lives in `/pr-loop`. cmux-specific requirement: for parallel wor
 
 For finished one-shots and worker panes, treat harvest → review → close pane as one sequence. Capture the output, confirm the task result, then close/stop the pane. Only panes hosting live processes stay open (for example a dev server, log tail, or active long-running worker), and the collab/status should say why that pane is still live.
 
-**The lane's monitor closes with the lane.** Harvest → review → close pane → **stop the monitor** — a monitor outliving its collab is sprawl, and sprawl is a defect (canon #7; orc REF9). At every wave close, check that live monitors do not outnumber live lanes.
+Fleet canon #7 owns harvest/close law. Cmux mechanic: the lane's monitor closes with the lane;
+after harvest/review, close the pane and stop its monitor in the same turn.
+At every wave close, audit the count: live monitors must never outnumber live lanes.
 
 After a multi-agent sprint, `brain_store` what failed, what worked, and what the user corrected.

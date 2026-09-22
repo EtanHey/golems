@@ -11,7 +11,7 @@
 
 **Run from the target repo directory** — Cursor indexes `@codebase` from cwd.
 
-Cursor is Auto-only in every harness. Never pass `-m`/`--model` or a model field; `/agent-routing` AP3 owns this rule.
+Cursor model selection is owned by fleet canon #1.
 
 ## Worktree Capabilities
 

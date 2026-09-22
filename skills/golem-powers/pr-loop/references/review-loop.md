@@ -103,8 +103,7 @@ cursor-agent -p --output-format text \
    Report findings only. Do NOT edit, create, or delete any file."
 ```
 
-- **Auto-only, no model flag** (canon #1): never pass `-m`/`--model` or a model field — pinned Cursor
-  drains the shared subscription pool fast.
+- Model selection is owned by fleet canon #1.
 - Because it spends no Bugbot quota, this pass is still available on a repo whose policy bans Bugbot
   (8a.0) and on a non-core diff where Bugbot is correctly off the panel.
 - If the pass exhausts Cursor's shared quota through its own dispatch, report **that dispatch** as the
@@ -169,7 +168,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 |--------|------|----------------------|
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
-| Cursor (read-only pass) | Diff review through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — Auto-only, never a write pass (Step 8a.2). |
+| Cursor (read-only pass) | Diff review through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — model selection: fleet canon #1; never a write pass (Step 8a.2). |
 | Cursor Bugbot | Bug detection — **opt-in, core paths only** | Not on the default panel (see Step 8a tiering) and never where repo policy bans it (Step 8a.0). On a daemon/engine/transport diff: `gh pr comment <N> --body "@cursor @bugbot review"`. Re-review after fixes: `gh pr comment <N> --body "@cursor @bugbot re-review"`. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | Check via CI status |

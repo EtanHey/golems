@@ -203,7 +203,7 @@ cat "$ORCHESTRATOR_REPO/repoGolem/registry.json" 2>/dev/null | python3 -c "impor
 Cross-reference against:
 - **Codex CLI flags** -- `--model`, `--approval-mode`, `--quiet`, `--full-auto`. Any new flags = update launchers.
 - **Cursor CLI flags** -- `--model`, `--output-format text`, `--trust`. Any new flags = update audit scripts.
-- **Model availability** -- new models (e.g., `gpt-5.5` / `gpt-5.5-codex` rolling out from 2026-04-23, claude-opus-4-7, etc.) affect routing in `standards/agents.md` and `/agent-routing` SKILL.md. Refresh stale model-name strings when a new tier becomes the recommended default.
+- **Model availability** -- compare new models against `/agent-routing` `references/model-and-effort.md`; that reference owns current Codex model and effort strings.
 - **Agent mode changes** -- Cursor background agents, Codex sandbox mode, new permission models
 - **Rate limits / quotas** -- Codex hit OpenAI usage limit (confirmed Mar 30). Track quota changes.
 

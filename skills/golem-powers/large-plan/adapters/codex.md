@@ -5,10 +5,12 @@
 
 ## Phase Execution
 
+Choose the Codex model and effort through `/agent-routing` `references/model-and-effort.md` § Decide From the Mission.
+
 ```bash
 # Run a phase in full-auto mode from a worktree
 cd ../wt-phase-<N>
-codex --model gpt-5.4 --full-auto "$(cat phase-prompt.txt)"
+codex --full-auto "$(cat phase-prompt.txt)"
 ```
 
 Use `<output_contract>` for structured phase deliverables:
@@ -33,7 +35,7 @@ cp .env ../wt-phase-<N>/.env
 
 # Spawn
 cd ../wt-phase-<N>
-codex --model gpt-5.4 --full-auto "Execute phase N. Plan: $(cat ../plan/README.md)"
+codex --full-auto "Execute phase N. Plan: $(cat ../plan/README.md)"
 
 # Cleanup after merge
 git worktree remove ../wt-phase-<N>

@@ -25,12 +25,14 @@ The coach skill's primary value is **persistent memory across sessions** via Bra
 
 ## Workaround Pattern (if Codex must be used)
 
+Choose the Codex model and effort through `/agent-routing` `references/model-and-effort.md` § Decide From the Mission.
+
 ```bash
 # 1. Export BrainLayer context to file BEFORE spawning Codex (from Claude session)
 brain_search("coach <topic>") → save results to /tmp/coach-context.md
 
 # 2. Pass context file to Codex prompt
-codex --model gpt-5.4 --approval-mode full-auto "$(cat /tmp/coach-context.md)\n\nTask: ..."
+codex --approval-mode full-auto "$(cat /tmp/coach-context.md)\n\nTask: ..."
 
 # 3. After Codex finishes, have Claude store outcomes
 brain_store(content: "Coach outcome: ...", tags: ["coach"], importance: 7)

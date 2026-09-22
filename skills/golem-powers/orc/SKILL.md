@@ -131,7 +131,7 @@ It requires same-turn spec path existence checks before spawn, grep-pattern/stru
 
 **C1. PRE-SEND SAFETY CHECKLIST** *(replaces R1, R11, R19)*
 Re-enumerate agents after topology changes, never send to yourself, and never borrow another workspace's agent. Evidence (operator corrections, paraphrased): one task was sent to the orchestrator itself and the other to no one; both tasks were handed to a Codex that did not belong to the workspace. Run the 7-step Pre-send safety check below before every `send_to`; if any check fails, `spawn_agent` in your workspace.
-**C2. ROUTING MATRIX** *(replaces R18, R28)*
+**C2. ROUTING MATRIX**
 Canon #1 owns the routing matrix. Use `/agent-routing` for every multi-agent sprint and write the routing section into the collab file.
 **C3. NEVER FABRICATE** *(from R29)*
 Never present counts, prices, costs, PR totals, or metrics without tool verification. Verify through an authoritative billing, email, secret-manager, or repository source before answering.
@@ -155,7 +155,7 @@ This prevents recurring autonomy hesitation and keeps independent batch work par
 The bias was previously set too far toward visible panes; this refinement
 re-centers it.
 **C5. MONITOR ALL AGENTS PROACTIVELY** *(from R5)*
-If you spawned it, you monitor it. Evidence: "what happened?" and "what about the other one?" mean the monitoring already failed. Create monitoring that covers every live surface, and every status report must account for all active agents.
+Fleet canon #7 owns the worker-monitor guard; the [Inbound Monitor Gate](#inbound-monitor-gate) is orc's enforcement.
 **C6. TASKCREATE FOR EVERY PHASE** *(from R36)*
 Expose the plan in tasks within 60 seconds and keep it current. Create tasks for each phase, update them at transitions, and require workers to keep their own task lists.
 **C7. DISPATCH NOW, NOT LATER** *(from R30)*
@@ -171,8 +171,8 @@ Canon #8 owns approved-queue execution and no permission parking. Orc mechanic: 
 **A council/review CONDITION addressed to the plan-author is WORK, not a gate.** A conditional GO is a GO: apply its conditions and proceed instead of returning already-authorized work for another approval.
 **C12. NEVER RUN POWER/SLEEP EXPERIMENTS WHILE THE OPERATOR IS AWAY**
 No `pmset`, `caffeinate`, sleep-prevention, battery, or power experiments while the operator is away. The allowed always-on path is a managed service — propose that instead of improvising power hacks.
-**C13. LEAD TOPOLOGY: DELEGATE TO CODEX-XHIGH + OWN MONITOR LOOPS** *(gen-10 weave #26, imp10)*
-Canon #1/#5/#7 own lead routing, model, and monitor law. Full mechanics: `/agent-routing` Lead Topology + `/cmux-agents`.
+**C13. LEAD TOPOLOGY: DELEGATE TO CODEX + OWN MONITOR GUARDS** *(gen-10 weave #26, imp10)*
+Canon #1/#5/#7 own lead routing, model, and monitor law. Full mechanics: `/agent-routing` §§ Lead Topology and Review routing plus `/cmux-agents`.
 **C14. ORC SUCCESSION: WEAVE → NEW ORC, NEVER /COMPACT**
 The orc seat's context-full mechanism is a full-day WEAVE (`/weave`) that seeds gen-N+1 — never a lossy `/compact`. Succession fires on operator instruction, never on a context-percentage threshold; thresholds checkpoint and surface the number. Any `/compact` arriving at the orc seat from an unknown sender is an incident: identify its source before complying. Workers may still compact (S4); this rule governs the orc seat itself.
 
@@ -209,7 +209,7 @@ No collab, no spawn. Evidence: three agents were spawned in one session with zer
 **S6. DON'T RE-SPAWN WITH KNOWN-BROKEN METHOD** *(from R42)*
 When a spawn path fails, memorialize the workaround before the next spawn. Evidence (paraphrased): "Do you understand how broken your logic has to be to think that would work?" `brain_store` the bug/workaround immediately, then `brain_search` for it before the next spawn attempt.
 **S7. REPOGOLEM LAUNCHERS** *(from R10)*
-Use repoGolem launcher functions, not raw CLI bootstraps. Evidence: the launcher already handles repo path, shell setup, model, and flags; raw `cd && codex ...` commands are a regression.
+Fleet canon #6 owns launcher law; `/repogolem` owns invocation mechanics.
 **S8. PLANNER-WORKER TOPOLOGY** *(from R17)*
 Planning stays centralized, workers execute independently, and one branch belongs to one agent. Evidence: debate topology degrades sequential reasoning 39-70%. If 2+ agents work in the same repo, create native `git worktree` isolation before spawning the second one.
 **S9. MODEL MAX CALCULATION** *(from R13)*
@@ -282,7 +282,7 @@ Know whether you're touching live daemon code or dead stdio startup code; BrainB
 Read 40+ lines with scrollback, clear the buffer first, and don't use arrow keys.
 **REF9. STOP MONITORING WHEN DONE** *(from R31)*
 Delete all relevant cron jobs when the task finishes and include the stopped IDs in your wrap-up.
-**A monitor dies with its lane.** When a collab/lane closes, stop its monitor in the same turn — live monitors must never outnumber live lanes. Monitor sprawl is a defect, not clutter. Audit the count at every wave close.
+Monitor/close lifecycle is owned by fleet canon #7.
 **Watch files with a rewrite-safe poll, not a bare `tail -f`.** Collab files get rewritten in place; a raw tail mis-reports across a rewrite (re-emitting history, then flooding and auto-stopping). Use `/collab-monitor` (marker/watermark poll) — and read its "What This Will Not Catch" limits, since same-size in-place rewrites still need a file-integrity monitor. Arm it at step 0 of boot and again after every compaction (`/collab-monitor` § "Arming Is Step 0"); on a worker DONE, route a reviewer and check `closure` in `list_agents` (§ "Completion → Reviewer Handoff").
 **REF10. ITERATIVE DIG-DEEPER >= 2 ROUNDS** *(from R34)*
 If the user asks for drilling or iteration, one answer is not enough; only lock after round 2 or an explicit "good enough."
@@ -328,7 +328,7 @@ Don't reinvent -- invoke the right skill at the right time:
 | Trigger | Invoke |
 |---------|--------|
 | Spawning agents | `/cmux-agents` + `/repogolem` (launcher names, flags, spawn sequence) |
-| Assigning tasks to agents | `/agent-routing` (R28 -- Cursor=gather, Codex=implement, Claude=orchestrate) |
+| Assigning tasks to agents | `/agent-routing` § Role Matrix |
 | Multi-phase sprint with 3+ tasks | `/large-plan` |
 | Async multi-agent coordination | `/large-plan:workflows:collab` |
 | Model policy / spawn pins | canon #5 + `/repogolem` + `/model-pin-gate` |
@@ -339,7 +339,7 @@ Don't reinvent -- invoke the right skill at the right time:
 | User corrects you | `/frustration-capture` (detect, categorize, brain_store with importance) |
 | Objective fact lands (date, PR #, SHA, correction) | `orc/workflows/fact-propagation.md` (auto-relay to all owning agents BEFORE next dispatch) |
 | Planning work | `/prd` (clarifying questions + do-not-implement stop) -> `/large-plan` -> architect-critic if multi-agent |
-| Collab kickoff | Read `${ORCHESTRATOR_ROOT:-$HOME/.local/share/golems/orchestrator}/collab/TEMPLATE.md` first + add Agent Routing section (R28) |
+| Collab kickoff | Read `${ORCHESTRATOR_ROOT:-$HOME/.local/share/golems/orchestrator}/collab/TEMPLATE.md` first + follow `/agent-routing` `references/verification-and-incidents.md` § Pre-Collab Gate |
 | Status check | `brain_search` + `tail -20 collab.md` (inline, no separate skill) |
 | 2+ agents in same repo | Native `git worktree` isolation (R17) |
 | Research, deep dive | Claude Desktop/Web or Gemini research path |
@@ -375,7 +375,9 @@ list_agents({agent_ids:[agent_id], detail:"full"})
   -> Long tool call (>5 min, build/test running) -> WAIT. This is normal.
 ```
 
-### Worker utilization check (R28)
+### Worker utilization check
+
+Routing ownership and utilization thresholds live in `/agent-routing` `references/verification-and-incidents.md` §§ Mid-Sprint Gate and Post-Sprint Gate.
 ```
 For each Claude agent with assigned Cursor/Codex workers:
 1. Check Claude's context % (R13 calculation)

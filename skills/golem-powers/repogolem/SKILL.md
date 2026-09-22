@@ -321,7 +321,7 @@ selection, while its current effort enum is the four-value subset documented abo
 values from Codex session metadata rather than the agent's self-description.
 
 ### Cursor model: expect default/Auto
-User complained when Cursor defaulted to a specific model instead of Auto. Don't override with `--model` for Cursor data-gathering tasks.
+Cursor model selection is owned by fleet canon #1.
 
 ### `-p` is NOT for agent sessions
 For interactive agents (monitored via cmux), launch WITHOUT `-p`: `brainlayerCursor -s`. Then send prompt separately. This includes verification gates. `-p` remains documented only for possible non-agent scripted one-shots; that scope needs Etan confirmation before automation depends on it.

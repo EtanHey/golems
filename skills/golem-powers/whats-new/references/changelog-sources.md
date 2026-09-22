@@ -58,7 +58,7 @@
 
 ### Key Codex Subsystems to Watch
 
-- **Model routing** -- `--model gpt-5.5` (current main pool default, recommended per 2026-04-23 announcement), `--model gpt-5.4-codex-xhigh` (legacy), new model tiers, pricing changes
+- **Model routing** -- compare new model tiers and pricing against `/agent-routing` `references/model-and-effort.md`; do not restate the current pin here
 - **Approval modes** -- `--approval-mode full-auto`, `--quiet`, sandbox permissions
 - **Agent mode** -- background execution, file system access, tool availability
 - **Rate limits** -- OpenAI usage quotas per tier (hit limit Mar 30, resets 6:01 AM)

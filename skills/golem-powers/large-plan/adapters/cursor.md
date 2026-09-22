@@ -7,7 +7,7 @@
 `@codebase` gives Cursor whole-repo semantic context — best for codebase-wide research phases:
 
 ```bash
-cursor agent --model "gpt-5.3-codex-xhigh" "
+cursor agent "
 @codebase Analyze <topic> across the codebase. Write findings to <plan-dir>/phase-N/findings.md.
 <output_contract>
 Include: current state, patterns found, gaps, recommendations, file:line references.
@@ -19,11 +19,13 @@ Include: current state, patterns found, gaps, recommendations, file:line referen
 
 ```bash
 # Text output mode — read-only, no file edits
-cursor agent --output-format text --model "gpt-5.3-codex-xhigh" "
+cursor agent --output-format text "
 @codebase Audit files changed in phase N (git diff master..HEAD).
 Report: file path, line number, severity (HIGH/MEDIUM/LOW), issue description.
 " > /tmp/phase-<N>-audit.md
 ```
+
+Cursor model selection is owned by fleet canon #1.
 
 ## Worktree Setup (Manual)
 
