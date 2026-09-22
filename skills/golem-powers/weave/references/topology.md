@@ -1,5 +1,7 @@
 # Weave topology — flat-N vs staged, and the round structure
 
+Read this when choosing flat versus staged mining, batch width, centerpiece ordering, or the shape of successive rounds.
+
 > Topology is an **eval variable, not a guess** (Etan: *"maybe all 9 agents at
 > once, or 5 then 2 then 5 — we need to experiment"*). This file says when to
 > use which, and what the eval is supposed to settle.
