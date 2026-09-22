@@ -1,6 +1,8 @@
 import importlib.util
 import json
 import os
+import ssl
+import sys
 import tempfile
 import threading
 import time
@@ -8,7 +10,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 MODULE_PATH = Path(__file__).parents[1] / "lib" / "jev.py"
 SPEC = importlib.util.spec_from_file_location("jev_client", MODULE_PATH)
@@ -456,6 +458,83 @@ class JevTest(unittest.TestCase):
         log = (Path(self.tempdir.name) / "decisions.jsonl").read_text()
         self.assertEqual(json.loads(log)["fallback_reason"], "http_error_429")
         self.assertNotIn("secret vendor message", log)
+
+    def test_default_transport_uses_verified_certifi_context(self):
+        import certifi
+
+        response = MagicMock()
+        response.__enter__.return_value = MagicMock()
+        create_default_context = ssl.create_default_context
+        with (
+            patch.object(jev_client, "urlopen", return_value=response) as urlopen,
+            patch.object(jev_client.json, "load", return_value=self.response()),
+            patch.object(
+                jev_client.ssl,
+                "create_default_context",
+                wraps=create_default_context,
+            ) as create_context,
+        ):
+            jev_client._http_transport({}, "secret-test-key", 3)
+
+        create_context.assert_called_once_with(cafile=certifi.where())
+        context = urlopen.call_args.kwargs["context"]
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
+
+    def test_missing_certifi_certificate_failure_has_specific_reason_and_message(self):
+        observed = {}
+        original_reason = jev_client._transport_fallback_reason
+
+        def capture_reason(error):
+            observed["error"] = error
+            return original_reason(error)
+
+        certificate_error = ssl.SSLCertVerificationError(
+            1, "certificate verify failed: unable to get local issuer certificate"
+        )
+        with (
+            patch.dict(sys.modules, {"certifi": None}),
+            patch.object(
+                jev_client, "urlopen", side_effect=URLError(certificate_error)
+            ),
+            patch.object(
+                jev_client, "_transport_fallback_reason", side_effect=capture_reason
+            ),
+        ):
+            result = jev_client.jev(
+                "state",
+                self.questions,
+                lambda state: state,
+                site="gate",
+                state_dir=self.tempdir.name,
+            )
+
+        self.assertEqual(result[0]["source"], "fallback")
+        decision = json.loads((Path(self.tempdir.name) / "decisions.jsonl").read_text())
+        self.assertEqual(decision["fallback_reason"], "transport_error_tls_ca_missing")
+        self.assertRegex(str(observed["error"]), r"install certifi")
+
+    def test_injected_transport_bypasses_default_transport_unchanged(self):
+        calls = []
+
+        def transport(payload, key):
+            calls.append((payload, key))
+            return self.response(0.82)
+
+        with patch.object(jev_client, "urlopen") as urlopen:
+            result = jev_client.jev_shadow(
+                "state",
+                self.questions,
+                lambda state: state,
+                site="gate",
+                state_dir=self.tempdir.name,
+                transport=transport,
+            )
+
+        urlopen.assert_not_called()
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][1], "secret-test-key")
+        self.assertEqual(result[0]["answer"], 0.82)
 
     def test_transport_does_not_swallow_process_interrupts(self):
         for interrupt in (KeyboardInterrupt, SystemExit):
