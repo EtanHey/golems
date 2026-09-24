@@ -8,7 +8,6 @@ on:
   pull_request:
     paths:
       - "skills/golem-powers/*-gate/**"
-      - "skills/golem-powers/crash-resume-index/**"
       - "skills/golem-powers/audio-dashboard/**"
       - ".github/workflows/spine-gates.yml"
       - "package.json"
@@ -16,7 +15,6 @@ on:
     branches: [master]
     paths:
       - "skills/golem-powers/*-gate/**"
-      - "skills/golem-powers/crash-resume-index/**"
       - "skills/golem-powers/audio-dashboard/**"
 
 jobs:

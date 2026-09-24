@@ -108,10 +108,8 @@ Four standing lines — encode in every collab gate, succession brief, and opera
 3. **Consent-override path** — Every gate that protects operator attention MUST expose a clear override. Gates protect attention, not operator authority.
 4. **30-min stall sweep** — Maintain a periodic sweep on top of event monitors. **Recreate it on every generation succession** because session-local monitors die with the outgoing orc.
 
-**Mechanical enforcement (gen-18 Track 1 #7):** approval/comms doctrine is now gated by `/approval-comms-gate`
-(`bun skills/golem-powers/approval-comms-gate/scripts/approval-comms-gate-cli.mjs <transcript|->`, exit 3 = FLAG).
-It requires visual gates to use `SendUserFile` + Telegram `ok=true` (not `outbox.md`), CI-green in-policy PRs
-to be admin-merged instead of parked for the operator, and incident responses to lead with operator framing before logs.
+**Approval/comms doctrine (gen-18 Track 1 #7):** visual gates use `SendUserFile` + Telegram `ok=true` (not `outbox.md`), CI-green in-policy PRs
+are admin-merged instead of parked for the operator, and incident responses lead with operator framing before logs.
 
 **Notify doctrine:** notify = how we tell the operator when things are DONE —
 deliverable-completion pings (merged PR, shipped dashboard, terminal lane), hard blockers that need human action,
@@ -121,13 +119,9 @@ must be JSON with a non-empty `title` and string `body`; code should prefer `sen
 `@golems/shared/lib/notify`. The old local helper names are heritage names only; do not introduce new references
 to them, and never alias over a POSIX coreutil name.
 
-**Mechanical enforcement (gen-18 Track 1 #8):** ultracode/comprehensive/exhaustive/audit-style fan-out dispatch is gated by `/ultracode-depth-gate`
-(`bun skills/golem-powers/ultracode-depth-gate/scripts/ultracode-depth-gate-cli.mjs <transcript|->`, exit 3 = FLAG).
-It requires >=17 cheap-model gatherers, >=3 adversarial verifiers, loop-until-dry quality stop, and persistent collab routing through `large-plan:collab`.
+**Fan-out depth (gen-18 Track 1 #8):** ultracode/comprehensive/exhaustive/audit-style fan-out dispatch uses >=17 cheap-model gatherers, >=3 adversarial verifiers, loop-until-dry quality stop, and persistent collab routing through `large-plan:collab`.
 
-**Mechanical enforcement (gen-18 Track 1 #9):** spec/handoff dispatch preflight is gated by `/spec-preflight-gate`
-(`bun skills/golem-powers/spec-preflight-gate/scripts/spec-preflight-gate-cli.mjs <transcript|->`, exit 3 = FLAG).
-It requires same-turn spec path existence checks before spawn, grep-pattern/structural-invariant briefs, consistent seat identity, and user-space setup workarounds before human-only blockers.
+**Spec preflight (gen-18 Track 1 #9):** spec/handoff dispatch needs same-turn spec path existence checks before spawn, grep-pattern/structural-invariant briefs, consistent seat identity, and user-space setup workarounds before human-only blockers.
 
 **C1. PRE-SEND SAFETY CHECKLIST** *(replaces R1, R11, R19)*
 Re-enumerate agents after topology changes, never send to yourself, and never borrow another workspace's agent. Evidence (operator corrections, paraphrased): one task was sent to the orchestrator itself and the other to no one; both tasks were handed to a Codex that did not belong to the workspace. Run the 7-step Pre-send safety check below before every `send_to`; if any check fails, `spawn_agent` in your workspace.
@@ -178,8 +172,8 @@ The orc seat's context-full mechanism is a full-day WEAVE (`/weave`) that seeds 
 
 **C15. COLLAB-FIRST ROUTING + RESUME-NOT-RESPAWN** *(gen-18 Track 1 #3/#4 — the gate, not the prose)*
 
-- **Collab-first routing (R-002 substrate).** Coordination flows through the append-only collab file + event-driven waits — NEVER raw `send_to({mode:"surface"|"key"})` cross-lead chatter, an `AskUserQuestion` picker for coordination, or a sleep-poll loop on a worker's progress tick. Async decision → a collab line WITH a recommendation (never a bare open question). Per-wave checkpoint: ≥1 collab append between consecutive wave outputs. **Mechanical enforcement:** `/collab-routing-gate` (`bun skills/golem-powers/collab-routing-gate/scripts/collab-routing-gate-cli.mjs <transcript|->`, exit 3 = FLAG) flags `SLEEP_POLL_TICK`, `COORD_VIA_SEND_INPUT`, `DECISION_WITHOUT_RECOMMENDATION`. Use `wait_for(agent_id)`/`Monitor`, not sleep-poll.
-- **Resume-not-respawn (R-036).** A crashed lead is resumed when possible; `/idle-dwell-gate` flags `SPAWN_OVER_RESUMABLE`. Crash-resume mechanics live in `/crash-resume-index` and `/cmux-agents`.
+- **Collab-first routing (R-002 substrate).** Coordination flows through the append-only collab file + event-driven waits — NEVER raw `send_to({mode:"surface"|"key"})` cross-lead chatter, an `AskUserQuestion` picker for coordination, or a sleep-poll loop on a worker's progress tick. Async decision → a collab line WITH a recommendation (never a bare open question). Per-wave checkpoint: ≥1 collab append between consecutive wave outputs. Use `wait_for(agent_id)`/`Monitor`, not sleep-poll.
+- **Resume-not-respawn (R-036).** A crashed lead is resumed when possible; `/idle-dwell-gate` flags `SPAWN_OVER_RESUMABLE`. Crash-resume mechanics live in `/cmux-agents`.
 
 ---
 
@@ -506,7 +500,8 @@ Categories: agent count, monitoring cadence, merge authority, spawn tool prefere
 ## Session Start
 
 ```
-Monitor(persistent, <channel.md>: '^### |BLOCKED|@<your-name>')  # FIRST ACTION — inbound monitor (2nd cardinal rule)
+bash "$CM" start @<your-claim> <channel.md>     # FIRST ACTION — inbound monitor (2nd cardinal rule); CM=/collab-monitor script
+Monitor(persistent, 'bash "$CM" follow @<your-claim>')  # attach; fires only on mail addressed to you, never your own posts — rule: /collab-monitor
 brain_recall(mode="context")                    # What's happening now?
 brain_search("recent decisions blockers")       # What was decided?
 brain_search("orc-correction")                  # What did the user correct before?
