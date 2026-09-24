@@ -3,13 +3,16 @@
 // ARE the replayable gate — same fixtures in → same pass/fail out (R-003/R-014
 // pattern, T6 smoke-spec shape). Runs under `bun test` and `node --test`.
 
-import { test, expect } from "bun:test";
+import { test, expect, setDefaultTimeout } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 import { detectIdleDwell, hookPayloadFor } from "../src/idle-dwell-gate.mjs";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const redDir = path.join(here, "fixtures", "red");

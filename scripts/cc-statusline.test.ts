@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, setDefaultTimeout } from "bun:test";
 import {
   modelContextWindow,
   resolveContextWindow,
@@ -6,6 +6,9 @@ import {
   resolveContextWindowForStatus,
   computeContextPctForStatus,
 } from "./lib/model-context-window.ts";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 describe("model-context-window", () => {
   it("resolves 1M for current-gen Opus 4.8 (id and display forms)", () => {

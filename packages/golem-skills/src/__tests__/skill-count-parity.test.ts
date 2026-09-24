@@ -1,7 +1,10 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach, mock, setDefaultTimeout } from "bun:test";
 import { readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { listSkills } from "../github";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 // AIDEV-NOTE: parity gate for the visitor's first command. `golems-cli skills
 // list` must report the same number the README quotes, and the README number is
