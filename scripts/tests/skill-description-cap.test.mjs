@@ -26,7 +26,7 @@ const EXCEPTIONS = {
   "cursor-multitask": 222,
   "drive-usage": 250,
   eli5: 138,
-  "grill-me": 158,
+  "grill-me": 147,
   "i-have-adhd": 144,
   "install-runbook-linter": 178,
   "judge-fleet": 202,
