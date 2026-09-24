@@ -18,8 +18,10 @@ const DEFAULT_RETIRED = [
   "research-ab-test",
   "research-prompt-quality",
   "review-router",
+  "skills",
   "test-plan",
   "video-showcase",
+  "wizard",
   "worktrees",
 ];
 

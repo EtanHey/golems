@@ -11,7 +11,7 @@ description: Full fresh-machine setup workflow — step-by-step guide from prere
 
 Run the prerequisites check script:
 ```bash
-bash ~/.claude/skills/wizard/scripts/default.sh
+bash ~/.claude/skills/golem-install/scripts/wizard-preflight.sh
 ```
 
 If any tool is missing, install it:
@@ -44,13 +44,13 @@ If it doesn't exist:
 
 ## Phase 3: Artifacts and Repos (Step 3)
 
-1. From the installed wizard bundle, run `bun <wizard-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"`; it enumerates the sole classification source, `release-gate.json`. If the helper or bundled manifest is absent, stop and install/update the complete bundle from `INSTALL_PROMPT.md`.
+1. From the installed golem-install bundle, run `bun <golem-install-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"`; it enumerates the sole classification source, `release-gate.json`. If the helper or bundled manifest is absent, stop and install/update the complete bundle from `INSTALL_PROMPT.md`.
 2. `INSTALL`: install/update or report the named artifact. Never clone it, on either machine role.
 3. `CLONE`: only `kind:"none"` on `workspace`; check `$REPOS_PATH/<repo>` and clone only when missing.
 4. `REFUSE`: clone nothing and show the reason. Missing/invalid roles and unclassified repos fail closed.
 5. Run `bun install` in golems after cloning it.
-6. Run `bun <wizard-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`, using
-   the golems checkout as `<source>` when present and the standalone wizard bundle otherwise. This
+6. Run `bun <golem-install-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`, using
+   the golems checkout as `<source>` when present and the standalone golem-install bundle otherwise. This
    merges the managed `[agents]` defaults and copies the `recon` and `packet` agent files without
    replacing unrelated `~/.codex/config.toml` content.
 

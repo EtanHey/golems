@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wizard skill — prerequisites check on load
+# golem-install wizard — prerequisites preflight (was wizard/scripts/default.sh)
 set -euo pipefail
 
 echo "=== Golems Setup Wizard ==="
