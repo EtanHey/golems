@@ -152,6 +152,17 @@ describe("credential exclusion, round 2", () => {
     expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-02"]);
   });
 
+  test.each(["2026-02-21-x/.envrc", "2026-02-21-x/.env-production", "2026-02-21-x/.env_backup"])(
+    "the env rule covers every .env* name: %s",
+    (path) => {
+      const p = plan(fixture({ [path]: "API_KEY=x", "2026-02-21-x/notes.md": "notes" }));
+      expect(p.skipped.map((s) => s.path)).toContain(`docs.local/${path}`);
+      expect(uploadPaths(p)).toEqual([]);
+      expect(p.moves).toEqual([]);
+      expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-02"]);
+    },
+  );
+
   test("B1: Claude OAuth file, a hyphenless codexhome, a .claude dir and a browser profile are credentials", () => {
     const repo = fixture({
       "2026-01-05-probe/.claude/.credentials.json": "{}",

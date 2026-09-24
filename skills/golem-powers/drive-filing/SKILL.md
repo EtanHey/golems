@@ -98,8 +98,8 @@ and writes `docs.local/_drive-filing/rollup-plan-<date>.json`. **The script neve
 Upload exactly the files in that plan through the [archive procedure](references/archive-procedure.md)
 (ledger + `brain_digest`), and nothing that is not in it.
 
-**Credentials never move.** Nothing whose name contains `credential`, `token` or an env marker
-(`.env`, `deploy.env`, `.ENV.prod`), or ends in `auth.json`, `.pem` or `.key`, and nothing under a
+**Credentials never move.** Nothing whose name contains `credential`, `token` or `.env` (`.env*`,
+`deploy.env`, `.ENV.prod`, `.envrc`), or ends in `auth.json`, `.pem` or `.key`, and nothing under a
 `codexhome`/`codex-home*`, `claudehome`/`claude-home*`, `.codex`, `.claude` or `*-HOME*` directory or a
 browser profile (a dir holding `Local State`, `Cookies`, `Login Data` or `Web Data`), is uploaded,
 moved or deleted. Every name rule matches anywhere in the name, case-insensitively, because

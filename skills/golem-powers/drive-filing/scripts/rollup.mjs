@@ -36,7 +36,7 @@ const CREDENTIAL_FILE = [
   /auth\.json$/i,
   /\.pem$/i,
   /\.key$/i,
-  /(^|[-_.])\.?env(\.|$)/i,
+  /\.env/i, // anything containing .env: .env*, prod.env; .environment over-holds (fine)
   /token/i,
   BROWSER_PROFILE_FILE,
 ];
