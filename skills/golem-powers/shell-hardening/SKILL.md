@@ -38,13 +38,15 @@ jq -n --arg name "$user_input" '{"name": $name}'
 
 ### 1b. Heredoc Delimiters (CRITICAL when writing markdown)
 - [ ] ALWAYS quote the heredoc delimiter (`<<'EOF'`) when writing or appending ANY content containing backticks or `$()` — markdown code spans count
-- [ ] Unquoted `<<EOF` command-substitutes the body: every backtick span and `$()` EXECUTES
+- [ ] Unquoted `<<EOF` command-substitutes the body: every backtick span and `$()` EXECUTES, and `$VAR` expands
+- [ ] Collab, report, and brief posts ALWAYS use `cat >> <file> <<'EOF'` — never `<<EOF`. In September 2026 a lead's unquoted collab post ran a backticked `voicelayer update` and restarted VoiceBar unannounced. `scripts/tests/check-quoted-heredocs.test.mjs` fails CI on an unquoted append heredoc under `skills/golem-powers`
 
 ```bash
 # WRONG — unquoted delimiter: the shell evaluates the backtick code span.
 # Canonical incident (2026-06-07, PID 36248): writing exactly this kind of
 # markdown note launched `voicelayer serve` against the default socket — the
 # kickoff's ONE forbidden thing — while the live VoiceBar was in use.
+# heredoc-lint: allow-unquoted (deliberate WRONG example)
 cat >> notes.md <<EOF
 Run `voicelayer serve` to start the server.
 EOF

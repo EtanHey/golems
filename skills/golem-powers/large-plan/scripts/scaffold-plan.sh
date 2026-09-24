@@ -86,13 +86,13 @@ FINDEOF
 done
 
 # Finish main README
-cat >> "$PLAN_DIR/README.md" << FOOTEREOF
+cat >> "$PLAN_DIR/README.md" << 'FOOTEREOF'
 
 ---
 
 ## Execution Rules
 
-Each phase = one branch = one PR. See \`/large-plan\` skill for the full protocol.
+Each phase = one branch = one PR. See `/large-plan` skill for the full protocol.
 
 ## Cross-Phase Knowledge
 
