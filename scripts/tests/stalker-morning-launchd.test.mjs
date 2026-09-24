@@ -42,7 +42,8 @@ test("morning launchd job runs at login and 07:30 with durable repo logs", async
   assert.doesNotMatch(plist, /client_secret|refresh_token|access_token/);
 });
 
-test("focused installer renders a valid host plist without launchctl", async () => {
+// The installer validates the rendered plist with plutil, which only macOS ships.
+test("focused installer renders a valid host plist without launchctl", { skip: process.platform !== "darwin" && "plutil is macOS-only" }, async () => {
   const fixture = await mkdtemp(join(tmpdir(), "stalker-launchd-install-"));
   const home = join(fixture, "Home & Team");
   await mkdir(home);
