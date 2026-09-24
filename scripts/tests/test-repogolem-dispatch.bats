@@ -3300,3 +3300,22 @@ AGY
     grep -E -q -- 'STAGED_BEFORE_INT=.*\.claude_notify_config_testrepo\.json' <<< "$output"
     grep -E -q -- 'STAGED_AFTER_INT= *$' <<< "$output"
 }
+
+@test "agy flash aliases resolve to a Flash model agy 1.2.9 accepts" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    run zsh -f -c '
+      source "$1"
+      for alias in flash flash-high flash-med flash-medium flash-low; do
+        print -r -- "$alias=$(_golem_agy_resolve_model "$alias")"
+      done
+    ' _ "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    grep -F -x -q -- "flash=Gemini 3.8 Flash (High)" <<< "$output"
+    grep -F -x -q -- "flash-high=Gemini 3.8 Flash (High)" <<< "$output"
+    grep -F -x -q -- "flash-med=Gemini 3.8 Flash (Medium)" <<< "$output"
+    grep -F -x -q -- "flash-medium=Gemini 3.8 Flash (Medium)" <<< "$output"
+    grep -F -x -q -- "flash-low=Gemini 3.8 Flash (Low)" <<< "$output"
+    ! grep -F -q -- "Gemini 3.5 Flash" <<< "$output"
+}
