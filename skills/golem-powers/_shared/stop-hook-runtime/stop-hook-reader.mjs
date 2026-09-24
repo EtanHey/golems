@@ -325,6 +325,13 @@ function transcriptFromPayload(payload, receipt) {
 
 export function loadStopHookContext(payload, options = {}) {
   const receipt = options.receipt ?? emptyReceipt(options.stdinBytes ?? 0);
+  const sessionId = payload?.session_id ?? payload?.sessionId ?? null;
+  // Claude Code sets stop_hook_active when this stop follows a Stop-hook block.
+  // Blocking again only makes the model retry, so return no transcript: every
+  // gate allows on a null transcript, and nothing else is read.
+  if (payload?.stop_hook_active === true) {
+    return { payload, transcript: null, state: null, sessionId, receipt, stopHookActive: true };
+  }
   try {
     const transcript = transcriptFromPayload(payload, receipt);
     const state = stateFromPayload(payload, receipt, options);
@@ -332,8 +339,9 @@ export function loadStopHookContext(payload, options = {}) {
       payload,
       transcript,
       state,
-      sessionId: payload?.session_id ?? payload?.sessionId ?? null,
+      sessionId,
       receipt,
+      stopHookActive: false,
     };
   } catch (error) {
     if (error instanceof StopHookInputError) {
