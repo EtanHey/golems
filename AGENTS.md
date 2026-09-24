@@ -14,7 +14,7 @@ Always read the package-specific `CLAUDE.md` before changing a package.
 - **CoachGolem** reads getStatus() from Jobs, Recruiter, Teller (read-only)
 - **Services** (briefing) imports from Coach for daily plan generation
 - **Cloud Worker** remains a local/successor-host runnable scheduler; Railway service was deleted on 2026-07-05
-- **Most packages** depend on Shared for Supabase, LLM, state, notifications; golem-skills, golems-cli, golems-tui, green-invoice-mcp and mock-mcp do not
+- **Most packages** depend on Shared for Supabase, LLM, state, notifications; golem-skills, golems-tui, green-invoice-mcp and mock-mcp do not
 
 ## Development
 

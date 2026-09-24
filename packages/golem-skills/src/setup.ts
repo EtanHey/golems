@@ -1,5 +1,5 @@
-import { detectOS, checkDependency } from "../lib/deps";
-import type { DependencyResult } from "../lib/deps";
+import { detectOS, checkDependency } from "./deps";
+import type { DependencyResult } from "./deps";
 
 export interface ValidationResult {
   valid: boolean;

@@ -4,6 +4,7 @@
   "description": "The Golems ecosystem CLI — install skills, MCP servers, and agent configs for Claude Code",
   "type": "module",
   "bin": {
+    "golems": "./src/index.ts",
     "golems-cli": "./src/index.ts"
   },
   "scripts": {

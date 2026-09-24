@@ -38,11 +38,13 @@ bun packages/golem-skills/src/index.ts skills list
 bun packages/golem-skills/src/index.ts skills install <skill-name>
 ```
 
-The setup CLI currently exposes a dependency/configuration check:
+The same CLI checks the environment's dependencies (bun, git, claude):
 
 ```bash
-bun packages/golems-cli/src/index.ts setup --check
+bun packages/golem-skills/src/index.ts setup --check
 ```
+
+Its package is `golems-cli`, and it installs two bin names for the same entry: `golems` and `golems-cli`.
 
 ## Packages
 
@@ -51,8 +53,7 @@ bun packages/golems-cli/src/index.ts setup --check
 | `packages/claude` | Telegram notification bot and orchestration adapters |
 | `packages/coach` | Calendar, planning, and generic coaching primitives |
 | `packages/content` | Content pipelines and Remotion infrastructure |
-| `packages/golem-skills` | Skill installer and update CLI |
-| `packages/golems-cli` | Environment setup CLI |
+| `packages/golem-skills` | The `golems` CLI (npm `golems-cli`): skills, update, wizard, setup check |
 | `packages/golems-tui` | React Ink terminal interface |
 | `packages/green-invoice-mcp` | Invoice MCP integration |
 | `packages/jobs` | Job collection and matching |

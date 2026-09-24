@@ -477,7 +477,7 @@ export async function runWizard(): Promise<void> {
   console.log(`Skills:     ${skillCount} installed`);
   console.log();
   console.log("Next steps:");
-  console.log("  - Run /wizard again to reconfigure");
+  console.log("  - Run `golems wizard` again to reconfigure");
   console.log("  - Install more skills: npx golems-cli skills install <name>");
   console.log("  - List available skills: npx golems-cli skills list");
 }

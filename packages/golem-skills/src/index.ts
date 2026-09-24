@@ -20,6 +20,7 @@ import {
 } from "./config";
 import { runWizard } from "./wizard";
 import { runUpdate, printUpdateHelp } from "./update";
+import { runSetupCheck } from "./setup";
 
 const VERSION = "0.1.0";
 
@@ -29,7 +30,7 @@ const SKILLS_SUBCOMMANDS = ["install", "list", "uninstall", "status"];
 function printHelp() {
   console.log(`golems-cli v${VERSION} — The Golems ecosystem CLI
 
-Usage: golems-cli <command> [options]
+Usage: golems <command> [options]   (golems-cli <command> is the same CLI)
 
 Commands:
   skills    Copy skill files to ~/.claude/skills/
@@ -37,6 +38,7 @@ Commands:
   mcp       Add MCP servers to .mcp.json + install deps (coming soon)
   agent     Composite install: skills + MCPs + CLAUDE.md + launcher (coming soon)
   wizard    Interactive setup wizard
+  setup     Check dependencies (bun, git, claude): golems setup --check
 
 Options:
   --version, -v  Show version
@@ -97,6 +99,7 @@ function parseArgs(argv: string[]) {
     version: flags.has("--version") || flags.has("-v"),
     yes: flags.has("--yes") || flags.has("-y"),
     dryRun: flags.has("--dry-run"),
+    check: flags.has("--check"),
     verbose: flags.has("--verbose"),
     update: flags.has("--update"),
     commandsDir,
@@ -363,6 +366,16 @@ async function main() {
           "Agents are composite installs that bundle skills + MCPs + CLAUDE.md + launcher\n" +
           "into a single setup. One command to get a full agent running.",
       );
+      break;
+    case "setup":
+      if (opts.check) {
+        if (!(await runSetupCheck())) process.exit(1);
+      } else {
+        console.log(
+          "golems setup — Check that the environment has what golems needs\n\n" +
+            "Usage: golems setup --check   (bun, git, claude on PATH)",
+        );
+      }
       break;
     case "wizard":
       if (opts.update) {
