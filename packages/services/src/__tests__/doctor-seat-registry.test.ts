@@ -38,4 +38,21 @@ describe("doctor without HOME", () => {
     expect(result.stderr).not.toContain("HOME environment variable is required");
     expect(result.stdout).toContain("doctor loaded");
   });
+
+  // Axiom's import of the config module throws first; Bun then hands the
+  // seat-registry import a half-initialized module, so without a HOME
+  // pre-check the row read "Cannot access 'cachedConfig' before initialization".
+  it("reports HOME not set on the seat-registry row", () => {
+    const env = { ...process.env };
+    delete env.HOME;
+    const result = spawnSync(process.execPath, [join(import.meta.dir, "../doctor.ts")], {
+      encoding: "utf8",
+      env,
+      timeout: 60_000,
+    });
+    const row = result.stdout.split("\n").find((line) => line.startsWith("Seat registry"));
+    expect(row).toBeDefined();
+    expect(row).toContain("HOME not set");
+    expect(result.stdout).not.toContain("cachedConfig");
+  }, 60_000);
 });

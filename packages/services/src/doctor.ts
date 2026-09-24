@@ -363,10 +363,20 @@ async function checkSupabase() {
   }
 }
 
+// @golems/shared/lib/config throws at import when HOME is unset, and Bun then
+// hands every later importer a half-initialized module ("Cannot access
+// 'cachedConfig' before initialization"). Check HOME before each import so the
+// checks that need the config report the real cause.
+const HOME_NOT_SET = "HOME not set";
+function importSharedConfig() {
+  if (!process.env.HOME) return Promise.reject(new Error(HOME_NOT_SET));
+  return import("@golems/shared/lib/config");
+}
+
 // Check 8: Axiom observability
 async function checkAxiom() {
   try {
-    const { loadConfig } = await import("@golems/shared/lib/config");
+    const { loadConfig } = await importSharedConfig();
     const config = loadConfig();
     const token = process.env.AXIOM_TOKEN || config.observability.axiomToken;
     const enabled = config.observability.enabled;
@@ -392,12 +402,13 @@ async function checkAxiom() {
         message: `Configured (dataset: ${config.observability.axiomDataset || "golems"})`,
       });
     }
-  } catch {
+  } catch (err) {
+    const homeUnset = err instanceof Error && err.message === HOME_NOT_SET;
     results.push({
       name: "Axiom",
       status: "warn",
-      message: "Could not load config",
-      fix: "Run: golems wizard",
+      message: homeUnset ? HOME_NOT_SET : "Could not load config",
+      fix: homeUnset ? "Set HOME environment variable" : "Run: golems wizard",
     });
   }
 }
@@ -421,14 +432,15 @@ export function evaluatePrunedSeats(pruned: PrunedSeat[]): CheckResult {
 // rather than at the top: the rest of the doctor must still run and report.
 async function checkSeatRegistry() {
   try {
-    const { getPrunedDefaultSeats } = await import("@golems/shared/lib/config");
+    const { getPrunedDefaultSeats } = await importSharedConfig();
     results.push(evaluatePrunedSeats(getPrunedDefaultSeats()));
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     results.push({
       name: "Seat registry",
       status: "fail",
-      message: err instanceof Error ? err.message : String(err),
-      fix: "Fix seatRegistry in ~/.golems/config.yaml",
+      message,
+      fix: message === HOME_NOT_SET ? "Set HOME environment variable" : "Fix seatRegistry in ~/.golems/config.yaml",
     });
   }
 }
