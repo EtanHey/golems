@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 // These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
 setDefaultTimeout(15_000);
@@ -534,5 +534,89 @@ describe("rollup v2: secret-named files and dirs are credentials", () => {
     expect(uploadPaths(p)).toEqual([]);
     expect(p.moves).toEqual([]);
     expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-02"]);
+  });
+});
+
+// r5 round-1 F1/F2 on #201: every unit lands at its own Drive path, and an
+// empty unit is never planned.
+describe("rollup v2: Drive targets never collide (F1) and empty units are not planned (F2)", () => {
+  const touch = (repo, when, ...rels) => {
+    const t = new Date(when);
+    for (const rel of rels) utimesSync(join(repo, "docs.local", rel), t, t);
+  };
+
+  // Invariant: targets are unique, no target is a path-prefix of another,
+  // and no two uploaded files map to the same Drive path (after the moves).
+  function driveInvariant(p) {
+    const moved = new Map(p.moves.map((m) => [m.from, m.to]));
+    const afterMoves = (path) => {
+      for (const [from, to] of moved) if (path === from || path.startsWith(`${from}/`)) return to + path.slice(from.length);
+      return path;
+    };
+    const targets = p.upload.map((u) => u.driveTarget);
+    const shared = targets.filter((t, i) => targets.indexOf(t) !== i);
+    const nested = targets.filter((t) => targets.some((o) => o !== t && o.startsWith(`${t}/`)));
+    const drivePaths = p.upload.flatMap((u) =>
+      u.files.map((f) => `${u.driveTarget}/${afterMoves(f.path).slice(u.dir.length + 1)}`),
+    );
+    const collisions = drivePaths.filter((d, i) => drivePaths.indexOf(d) !== i);
+    const outside = p.upload.flatMap((u) => u.files.map((f) => afterMoves(f.path)).filter((f) => !f.startsWith(`${u.dir}/`)));
+    return { shared, nested, collisions, outside };
+  }
+  const clean = { shared: [], nested: [], collisions: [], outside: [] };
+
+  test("r5's fixture: an mtime unit and a month unit in one area no longer share a target", () => {
+    const repo = fixture({ "qa/2026-01-05-run/README.md": "run", "qa/notes/README.md": "notes" });
+    touch(repo, "2026-01-20T00:00:00Z", "qa/notes/README.md");
+    const p = plan(repo);
+    expect(p.upload.map((u) => u.driveTarget).map((t) => t.split("/").slice(-3).join("/"))).toEqual([
+      "docs-local/qa/2026-01".replace("docs-local", basename(repo)),
+      "qa/notes/2026-01",
+    ]);
+    expect(driveInvariant(p)).toEqual(clean);
+  });
+
+  test("many root-level mtime units of one month each get their own target", () => {
+    const files = {};
+    for (let i = 1; i <= 17; i += 1) files[`tree${i}/README.md`] = `r${i}`;
+    const repo = fixture(files);
+    touch(repo, "2026-03-01T00:00:00Z", ...Object.keys(files));
+    const p = plan(repo);
+    expect(p.upload).toHaveLength(17);
+    expect(driveInvariant(p)).toEqual(clean);
+  });
+
+  test("the invariant holds on a mixed tree: month units, nested areas, mtime units", () => {
+    const repo = fixture({
+      "2026-01-05-a.md": "a",
+      "2026-01/2026-01-02-b.md": "b",
+      "research/2026-02-01-c/README.md": "c",
+      "research/cache/README.md": "d",
+      "research/deep/2026-01-09-e.md": "e",
+      "research/deep/tool/README.md": "f",
+      "notes/README.md": "g",
+    });
+    touch(repo, "2026-01-15T00:00:00Z", "research/cache/README.md", "research/deep/tool/README.md", "notes/README.md");
+    const p = plan(repo);
+    expect(p.upload.length).toBeGreaterThanOrEqual(6);
+    expect(driveInvariant(p)).toEqual(clean);
+  });
+
+  test("F2: an empty dir and a dir of empty files are never planned, only counted", () => {
+    const repo = fixture({ "qa/2026-01-05-run/README.md": "run", "qa/blank/zero.txt": "" });
+    mkdirSync(join(repo, "docs.local/qa/empty-dir"));
+    touch(repo, "2026-01-20T00:00:00Z", "qa/blank/zero.txt", "qa/empty-dir");
+    const p = plan(repo);
+    expect(p.upload.map((u) => u.dir)).toEqual(["docs.local/qa/2026-01"]);
+    expect(p.upload.every((u) => u.files.length > 0 && u.bytes > 0)).toBe(true);
+    expect(p.mtimeUnits).toEqual([]);
+    expect(p.totals.emptyUnits).toBe(2);
+  });
+
+  test("F2: a month unit left with no files is not planned either", () => {
+    const repo = fixture({ "2026-01-05-empty.md": "" });
+    const p = plan(repo);
+    expect(p.upload).toEqual([]);
+    expect(p.totals.emptyUnits).toBe(1);
   });
 });

@@ -19,7 +19,7 @@
 // month) group -- the YYYY-MM/ folder plus that month's dated siblings --
 // holding ANY credential is held whole: no moves, no upload unit.
 import { lstatSync, mkdirSync, readdirSync, renameSync, writeFileSync, existsSync } from "node:fs";
-import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { basename, join, relative, resolve, sep } from "node:path";
 
 const USAGE =
   "usage: rollup.mjs --repo <path> --keep-months N [--dry-run | --apply] [--json] [--now YYYY-MM-DD]";
@@ -183,7 +183,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     held: [],
     skipped: [],
     mtimeUnits: [],
-    totals: { files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0, mtimeUnits: 0, mtimeBytes: 0 },
+    totals: { files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0, mtimeUnits: 0, mtimeBytes: 0, emptyUnits: 0 },
   };
   const allMtimeUnits = [];
   if (!existsSync(docsLocal)) return finish(plan);
@@ -258,23 +258,28 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
       });
       return;
     }
-    // An empty tree has no file to date it; its own mtime stands in.
-    const newest = found.files.length > 0
-      ? found.files.reduce((max, f) => Math.max(max, f.mtimeMs), 0)
-      : lstatSync(abs).mtimeMs;
-    const month = new Date(newest).toISOString().slice(0, 7);
+    // F2: nothing to archive (no files, or only empty ones) is counted, never planned.
     const bytes = found.files.reduce((n, f) => n + f.bytes, 0);
+    if (found.files.length === 0 || bytes === 0) {
+      plan.totals.emptyUnits += 1;
+      return;
+    }
+    const newest = found.files.reduce((max, f) => Math.max(max, f.mtimeMs), 0);
+    const month = new Date(newest).toISOString().slice(0, 7);
     const upload = isOld(month);
     allMtimeUnits.push({ path: rel(abs), month, files: found.files.length, bytes, upload });
     if (!upload) return;
     plan.totals.mtimeUnits += 1;
     plan.totals.mtimeBytes += bytes;
-    const area = rel(dirname(abs)).replace(/^docs\.local\/?/, "");
+    // F1: the unit keeps its own path in its Drive target, shaped like an
+    // area's month unit (<area>/<month>), so no two units share a target and
+    // none nests under another's (qa/2026-01 vs qa/notes/2026-01).
+    const unitPath = rel(abs).replace(/^docs\.local\/?/, "");
     plan.upload.push({
       month,
       dir: rel(abs),
       dating: "mtime",
-      driveTarget: ["Brain Drive/06_ARCHIVE/docs-local", basename(repoRoot), area, month].filter(Boolean).join("/"),
+      driveTarget: ["Brain Drive/06_ARCHIVE/docs-local", basename(repoRoot), unitPath, month].join("/"),
       files: found.files.map((f) => ({ path: rel(f.abs), bytes: f.bytes })),
       bytes,
     });
@@ -342,7 +347,12 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
   };
   walk(docsLocal);
 
-  plan.upload = [...units.values(), ...plan.upload].sort((a, b) => a.dir.localeCompare(b.dir));
+  const monthUnits = [...units.values()].filter((u) => {
+    const empty = u.files.length === 0 || u.bytes === 0; // F2
+    if (empty) plan.totals.emptyUnits += 1;
+    return !empty;
+  });
+  plan.upload = [...monthUnits, ...plan.upload].sort((a, b) => a.dir.localeCompare(b.dir));
   plan.mtimeUnits = allMtimeUnits.sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path)).slice(0, 5);
   return finish(plan);
 }
@@ -376,7 +386,7 @@ export function summaryLine(plan) {
     `files=${t.files} bytes=${t.bytes} (${human(t.bytes)}) · ` +
     `monthly-moves=${t.monthlyMoves} · ` +
     `to-drive months=${t.uploadMonths} files=${t.uploadFiles} bytes=${t.uploadBytes} (${human(t.uploadBytes)}) · ` +
-    `mtime-units=${t.mtimeUnits ?? 0} bytes=${t.mtimeBytes ?? 0} · ` +
+    `mtime-units=${t.mtimeUnits ?? 0} bytes=${t.mtimeBytes ?? 0} empty-units=${t.emptyUnits ?? 0} · ` +
     `held=${t.held} credentials-skipped=${t.credentialFiles} conflicts=${plan.conflicts.length} undated=${t.undated}`
   );
 }
