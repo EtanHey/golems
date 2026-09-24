@@ -12,7 +12,7 @@
  * 5. Return results for Telegram notification
  */
 
-import { researchCompany, extractTechStack, type CompanyInfo } from "./company-research";
+import { researchCompany, extractTechStack, type CompanyInfo, type GitHubOrgLookup } from "./company-research";
 import { findContactsForCompany, type FoundContact } from "./contact-finder";
 import { generateOutreach, getDefaultProfile, type JobContext, type OutreachContext } from "./outreach";
 import {
@@ -60,6 +60,8 @@ export interface ProcessOptions {
     linkedinUrl?: string;
     source: ContactSource;
   }>;
+  /** GitHub org lookup for company research (defaults to `gh api`) */
+  githubOrgLookup?: GitHubOrgLookup;
 }
 
 /**
@@ -88,6 +90,7 @@ export async function processHotMatch(
     const companyResearch = await researchCompany(job.company, {
       jobTechStack: techStack,
       companyUrl: job.url,
+      githubOrgLookup: options.githubOrgLookup,
     });
 
     result.companyResearch = companyResearch;
