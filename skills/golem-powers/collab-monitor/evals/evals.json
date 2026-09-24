@@ -181,10 +181,10 @@
       "id": 12,
       "name": "heading-mention-is-not-authorship",
       "category": "compliance",
-      "description": "Pair-review regression: a heading that merely mentions the listener must not suppress a foreign-authored event beneath it.",
+      "description": "Pair-review regression: a heading that merely mentions the listener must not suppress a foreign-authored event beneath it. Since 2026-09-25 the heading mention is itself an event.",
       "prompt": "Append an @skillcreator direct event beneath '## Notes for @skillcreator' and close it with an @orc signature.",
       "assertions": [
-        {"type": "content", "name": "foreign-event-visible", "description": "The event emits once because a bare heading mention is not author evidence."}
+        {"type": "content", "name": "foreign-event-visible", "description": "Both the heading mention and the direct event emit; a bare heading mention is not author evidence."}
       ]
     },
     {
@@ -223,6 +223,20 @@
         {"type": "content", "name": "process-exit-watch-taught", "description": "Supervision guidance requires a process-exit/background watch and one final read."},
         {"type": "content", "name": "codex-workflows-cross-reference", "description": "The skill points supervisors to the codex-workflows watch primitive by name."},
         {"type": "content", "name": "valid-watch-invocation", "description": "The green trace passes watch a required --run-id instead of recording a command that exits 2."}
+      ]
+    },
+    {
+      "id": 17,
+      "name": "bounded-filter-fires-only-on-addressed-mail",
+      "category": "compliance",
+      "description": "Etan 2026-09-25: the taught '^### |BLOCKED|@<name>' grep woke leads on every post while the monitor missed bare 'X → claim' headers. Ten posts must yield exactly the three addressed to the listener.",
+      "prompt": "Arm @leadX, append evals/fixtures/ten-posts-three-fires.md, then route a header to a seat id with and without --alias.",
+      "assertions": [
+        {"type": "content", "name": "mid-line-mention-fires", "description": "A word-bounded @leadX inside a body line emits."},
+        {"type": "content", "name": "bare-arrow-header-fires", "description": "A '### orcClaude → leadX' header emits without @ on either name."},
+        {"type": "content", "name": "own-worker-done-fires", "description": "A leadX-w1 DONE line emits."},
+        {"type": "negative", "name": "exactly-three", "description": "Plain posts, a self-post mentioning @leadX, @leadXtra, a leadX-w2 progress header, and an unrelated BLOCKED do not emit."},
+        {"type": "content", "name": "alias-routes-seat-id", "description": "--alias @seat-id makes a header routed to the seat id emit; without it the header stays silent."}
       ]
     }
   ]

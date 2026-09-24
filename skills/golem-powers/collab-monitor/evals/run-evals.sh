@@ -138,7 +138,14 @@ run_baseline() {
     pass "8 repeated-read-screen unexpectedly absent"
   fi
 
-  printf 'BASELINE_SUMMARY expected_red=8 observed_red=%s unexpected_green=%s\n' "$fail_count" "$pass_count"
+  raw_filter_hits="$(grep -cE '^### |BLOCKED|@leadX' "$FIXTURES/ten-posts-three-fires.md" || true)"
+  if [[ "$raw_filter_hits" -ge 10 ]]; then
+    fail "17 bounded-filter RED" "the taught '^### |BLOCKED|@leadX' grep matched $raw_filter_hits lines of 10 posts where 3 are addressed"
+  else
+    pass "17 bounded-filter unexpectedly absent"
+  fi
+
+  printf 'BASELINE_SUMMARY expected_red=9 observed_red=%s unexpected_green=%s\n' "$fail_count" "$pass_count"
   return 1
 }
 
@@ -228,7 +235,7 @@ run_candidate() {
     grep -Fq 'reason=unclosed-fence' "$case_dir/unclosed.out" &&
     [[ "$(alert_count "$case_dir/unclosed-recovered.out")" == "2" ]] &&
     [[ "$(alert_count "$case_dir/list.out")" == "1" ]] &&
-    [[ "$(alert_count "$case_dir/recipient-skillcreator.out")" == "0" ]] &&
+    [[ "$(alert_count "$case_dir/recipient-skillcreator.out")" == "1" ]] &&
     [[ "$(alert_count "$case_dir/recipient-other.out")" == "1" ]] &&
     [[ "$invalid_closer_rc" -ne 0 ]] &&
     grep -Fq 'reason=unclosed-fence' "$case_dir/invalid-closer.out" &&
@@ -796,7 +803,7 @@ run_candidate() {
   run_once "$case_dir/state" "$case_dir/seed.out" '@skillcreator' "$board"
   append_fixture "$FIXTURES/direct-event-under-mention-heading.md" "$board"
   run_once "$case_dir/state" "$case_dir/scan.out" '@skillcreator' "$board"
-  if [[ "$(alert_count "$case_dir/scan.out")" == "1" ]]; then
+  if [[ "$(alert_count "$case_dir/scan.out")" == "2" ]] && grep -Fq ':: @skillcreator: your PR broke CI' "$case_dir/scan.out"; then
     pass "12 heading-mention-is-not-authorship GREEN"
   else
     fail "12 heading-mention-is-not-authorship" "a heading that mentioned the listener swallowed a foreign-authored direct event"
@@ -919,6 +926,34 @@ run_candidate() {
     pass "16 detached-launch GREEN"
   else
     fail "16 detached-launch" "monitor did not survive its launcher shell with an independent process group"
+  fi
+
+  case_dir="$TMP_ROOT/bounded-filter"
+  mkdir -p "$case_dir/state"
+  board="$case_dir/collab.md"
+  : > "$board"
+  run_once "$case_dir/state" "$case_dir/seed.out" '@leadX' "$board"
+  append_fixture "$FIXTURES/ten-posts-three-fires.md" "$board"
+  run_once "$case_dir/state" "$case_dir/scan.out" '@leadX' "$board"
+  sed -n 's/^NEW-FOR-@leadX .* :: //p' "$case_dir/scan.out" > "$case_dir/events.out"
+  printf '%s\n' \
+    'Before I dispatch, @leadX can you confirm the lane-3 brief path?' \
+    '### orcClaude → leadX — routed ask (2026-09-25 09:20)' \
+    '> leadX-w1 PR #140 open, evals green. DONE' > "$case_dir/expected.out"
+  : > "$case_dir/alias-collab.md"
+  run_once "$case_dir/alias-state" "$case_dir/alias-seed.out" '@leadY' "$case_dir/alias-collab.md"
+  printf '%s\n' '### orcClaude → seat-1234 — routed to the seat id' 'body' >> "$case_dir/alias-collab.md"
+  run_once "$case_dir/alias-state" "$case_dir/no-alias.out" '@leadY' "$case_dir/alias-collab.md"
+  MONITOR_STATE_DIR="$case_dir/alias-state2" /bin/bash "$MONITOR" run --once --alias @seat-1234 '@leadY' "$case_dir/alias-collab.md" > "$case_dir/alias-seed2.out" 2>&1
+  printf '%s\n' '### orcClaude -> seat-1234 — second routed ask' 'body' >> "$case_dir/alias-collab.md"
+  MONITOR_STATE_DIR="$case_dir/alias-state2" /bin/bash "$MONITOR" run --once --alias @seat-1234 '@leadY' "$case_dir/alias-collab.md" > "$case_dir/alias.out" 2>&1
+  if [[ "$(alert_count "$case_dir/scan.out")" == "3" ]] && cmp -s "$case_dir/expected.out" "$case_dir/events.out" &&
+    [[ "$(self_post_count "$case_dir/scan.out")" == "0" ]] &&
+    [[ "$(alert_count "$case_dir/no-alias.out")" == "0" ]] &&
+    [[ "$(alert_count "$case_dir/alias.out")" == "1" ]] && grep -Fq 'second routed ask' "$case_dir/alias.out"; then
+    pass "17 bounded-filter GREEN"
+  else
+    fail "17 bounded-filter" "ten posts did not yield exactly the three addressed events in order, or --alias did not route a seat-id recipient"
   fi
 
   printf 'CANDIDATE_SUMMARY pass=%s fail=%s\n' "$pass_count" "$fail_count"

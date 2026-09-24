@@ -19,12 +19,13 @@ ACTIVE_START_PUBLISHED=0
 ACTIVE_SLEEP_PID=''
 ACTIVE_TAIL_PID=''
 INCLUDE_SELF="${COLLAB_MONITOR_INCLUDE_SELF:-0}"
+ALIASES="${COLLAB_MONITOR_ALIASES:-}"
 
 usage() {
   printf '%s\n' \
     'usage:' \
-    '  collab-monitor.sh run [--once] [--include-self] @listen-name file [file ...]' \
-    '  collab-monitor.sh start [--include-self] @listen-name file [file ...]' \
+    '  collab-monitor.sh run [--once] [--include-self] [--alias @seat-id ...] @listen-name file [file ...]' \
+    '  collab-monitor.sh start [--include-self] [--alias @seat-id ...] @listen-name file [file ...]' \
     '  collab-monitor.sh follow @listen-name' \
     '  collab-monitor.sh stop @listen-name' \
     '  collab-monitor.sh status @listen-name' >&2
@@ -65,6 +66,12 @@ normalize_name() {
       ;;
   esac
   printf '%s\n' "$bare_name"
+}
+
+add_alias() {
+  local alias_name
+  alias_name="$(normalize_name "$1")"
+  ALIASES="${ALIASES:+$ALIASES }$alias_name"
 }
 
 ensure_files() {
@@ -317,16 +324,111 @@ extract_events() {
   local watched_file="$1"
   local bare_name="$2"
 
-  LC_ALL=C awk -v bare="$bare_name" '
+  # AIDEV-NOTE: bounded-filter rule (Etan, 2026-09-25). An event is (a) a word-bounded @<name> on any
+  # non-signature line, (b) a heading whose arrow recipient is <name> (bare or @), (c) a DONE/BLOCKED
+  # line from <name>-wN/-rN, where <name> is the listen name or an --alias; never a self-authored block.
+  LC_ALL=C awk -v bare="$bare_name" -v aliases="$ALIASES" '
     function reset_block(    i) {
+      clear_events()
+      block_self = 0
+      block_has_heading = 0
+      block_known_author = 0
+      block_worker = 0
+      self_heading_index = 0
+    }
+    function clear_events(    i) {
       for (i = 1; i <= event_count; i++) {
         delete events[i]
         delete event_is_heading[i]
       }
       event_count = 0
-      block_self = 0
-      block_has_heading = 0
-      self_heading_index = 0
+    }
+    function is_name_char(ch) {
+      return ch != "" && ch ~ /[[:alnum:]_.-]/
+    }
+    function name_ends(value, position,    next_char) {
+      next_char = substr(value, position, 1)
+      if (next_char == ".") return !is_name_char(substr(value, position + 1, 1))
+      return !is_name_char(next_char)
+    }
+    function is_token(name,    i) {
+      for (i = 1; i <= token_count; i++) if (name == tokens[i]) return 1
+      return 0
+    }
+    function has_any_mention(value,    i) {
+      for (i = 1; i <= token_count; i++) if (has_exact_mention(value, tokens[i])) return 1
+      return 0
+    }
+    function has_name(value, name,    remaining, position, before, previous_char) {
+      remaining = value
+      while ((position = index(remaining, name)) > 0) {
+        before = substr(remaining, 1, position - 1)
+        previous_char = substr(before, length(before), 1)
+        if (previous_char == "@") {
+          before = substr(before, 1, length(before) - 1)
+          previous_char = substr(before, length(before), 1)
+        }
+        if ((previous_char == "" || previous_char !~ /[[:alnum:]_.@-]/) && name_ends(remaining, position + length(name))) return 1
+        remaining = substr(remaining, position + 1)
+      }
+      return 0
+    }
+    function has_worker_ref(value,    i, remaining, position, previous_char, rest, digits) {
+      for (i = 1; i <= token_count; i++) {
+        remaining = value
+        while ((position = index(remaining, tokens[i] "-")) > 0) {
+          previous_char = substr(remaining, position - 1, 1)
+          rest = substr(remaining, position + length(tokens[i]) + 1)
+          if ((position == 1 || previous_char !~ /[[:alnum:]_.-]/) && match(rest, /^[wr][0-9]+/) && name_ends(rest, RLENGTH + 1)) return 1
+          remaining = substr(remaining, position + 1)
+        }
+      }
+      return 0
+    }
+    function has_status_word(value) {
+      return value ~ /(^|[^[:alnum:]_])(DONE|BLOCKED)([^[:alnum:]_]|$)/
+    }
+    function is_worker_name(name,    i, rest) {
+      for (i = 1; i <= token_count; i++) {
+        if (substr(name, 1, length(tokens[i]) + 1) == tokens[i] "-") {
+          rest = substr(name, length(tokens[i]) + 2)
+          if (rest ~ /^[wr][0-9]+$/) return 1
+        }
+      }
+      return 0
+    }
+    function heading_authors(value, arrow,    field, dash, segments, segment_count, i, segment, had_at, first) {
+      heading_known = 0
+      heading_self = 0
+      heading_worker = 0
+      field = tolower(value)
+      sub(/^[[:space:]]*#+[[:space:]]+/, "", field)
+      if (arrow) field = substr(field, 1, arrow - 1)
+      gsub(/\([^)]*\)/, "", field)
+      dash = index(field, "—")
+      if (dash) field = substr(field, 1, dash - 1)
+      dash = index(field, " - ")
+      if (dash) field = substr(field, 1, dash - 1)
+      segment_count = split(field, segments, "·")
+      for (i = 1; i <= segment_count; i++) {
+        segment = trim(segments[i])
+        had_at = substr(segment, 1, 1) == "@"
+        if (had_at) segment = substr(segment, 2)
+        first = segment
+        sub(/[[:space:]].*$/, "", first)
+        if (first !~ /^[[:alnum:]_.-]+$/) continue
+        if (!had_at && trim(substr(segment, length(first) + 1)) != "") continue
+        heading_known = 1
+        if (is_token(first)) heading_self = 1
+        if (is_worker_name(first)) heading_worker = 1
+      }
+    }
+    function release_known_block(    i) {
+      if (!block_known_author || block_self || event_count == 0) return
+      for (i = 1; i <= event_count; i++) {
+        if (events[i] != "") print "INBOUND\t" events[i]
+      }
+      clear_events()
     }
     function trim(value) {
       sub(/^[[:space:]]+/, "", value)
@@ -347,13 +449,14 @@ extract_events() {
       }
       return 0
     }
-    function routed_recipient(value, token,    field, em_dash, ascii_dash) {
+    function routed_recipient(value,    field, em_dash, ascii_dash, i) {
       field = tolower(trim(clean_line(value)))
       em_dash = index(field, "—")
       ascii_dash = index(field, " - ")
       if (ascii_dash && (!em_dash || ascii_dash < em_dash)) em_dash = ascii_dash
       if (em_dash) field = substr(field, 1, em_dash - 1)
-      return has_exact_mention(field, token)
+      for (i = 1; i <= token_count; i++) if (has_name(field, tokens[i])) return 1
+      return 0
     }
     function add_event(value, is_heading) {
       event_count++
@@ -435,8 +538,20 @@ extract_events() {
       }
       return stripped
     }
+    function any_direct_event(value,    i) {
+      for (i = 1; i <= token_count; i++) if (direct_event(value, tokens[i])) return 1
+      return 0
+    }
+    function is_signature_line(value,    stripped) {
+      stripped = trim(clean_line(value))
+      return substr(stripped, 1, length("—")) == "—" || substr(stripped, 1, 2) == "--"
+    }
+    function worker_status_event(value) {
+      return has_status_word(value) && (block_worker || has_worker_ref(tolower(value)))
+    }
     BEGIN {
       token = tolower(bare)
+      token_count = split(tolower(bare " " aliases), tokens, " ")
       in_fence = 0
       fence_character = ""
       fence_length = 0
@@ -501,27 +616,28 @@ extract_events() {
           arrow = index(cleaned, "->")
           arrow_length = 2
         }
-        if (arrow) {
-          before_arrow = tolower(substr(cleaned, 1, arrow - 1))
-          after_arrow = tolower(substr(cleaned, arrow + arrow_length))
-          heading_added = 0
-          if (has_exact_mention(before_arrow, token)) {
-            block_self = 1
-            add_event(original, 1)
-            self_heading_index = event_count
-            heading_added = 1
-          }
-          if (routed_recipient(after_arrow, token) && !heading_added) add_event(original, 1)
+        heading_authors(cleaned, arrow)
+        block_known_author = heading_known
+        block_worker = heading_worker
+        heading_added = 0
+        if (heading_self || (arrow && has_any_mention(tolower(substr(cleaned, 1, arrow - 1))))) {
+          block_self = 1
+          add_event(original, 1)
+          self_heading_index = event_count
+          heading_added = 1
         }
-      } else if (direct_event(original, token)) {
+        if (!heading_added && ((arrow && routed_recipient(substr(cleaned, arrow + arrow_length))) || has_any_mention(lowered) || worker_status_event(cleaned))) add_event(original, 1)
+      } else if (any_direct_event(original) || (!is_signature_line(original) && has_any_mention(lowered)) || worker_status_event(cleaned)) {
         add_event(original, 0)
       }
 
       author = signature_name(original)
       if (author != "") {
-        block_self = author == token
+        block_self = is_token(author)
         if (!block_self && self_heading_index > 0) events[self_heading_index] = ""
         flush_block(1)
+      } else {
+        release_known_block()
       }
     }
     END {
@@ -718,7 +834,7 @@ print_contract() {
   local file_count="$3"
 
   printf 'MONITOR-ARMED name=%s files=%s state=%s\n' "$listen_name" "$file_count" "$state_dir"
-  printf '%s\n' 'WILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; process death without a supervisor; worker completion visible only in an agent registry'
+  printf '%s\n' 'WILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; process death without a supervisor; worker completion visible only in an agent registry'
 }
 
 interruptible_sleep() {
@@ -742,6 +858,11 @@ run_monitor() {
       --include-self)
         INCLUDE_SELF=1
         shift
+        ;;
+      --alias)
+        [[ "$#" -ge 2 ]] || die 'missing --alias value'
+        add_alias "$2"
+        shift 2
         ;;
       --instance)
         [[ "$#" -ge 2 ]] || die 'missing --instance value'
@@ -892,7 +1013,7 @@ start_monitor() {
   # Disable Bash job control so the background child is not already a group
   # leader (setsid would fail with EPERM). This start script exits afterward.
   set +m
-  nohup perl -MPOSIX=setsid -e 'setsid() >= 0 or die $!; exec @ARGV or die $!' env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 COLLAB_MONITOR_INCLUDE_SELF="$INCLUDE_SELF" /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
+  nohup perl -MPOSIX=setsid -e 'setsid() >= 0 or die $!; exec @ARGV or die $!' env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 COLLAB_MONITOR_INCLUDE_SELF="$INCLUDE_SELF" COLLAB_MONITOR_ALIASES="$ALIASES" /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
   child_pid=$!
   ACTIVE_START_CHILD_PID="$child_pid"
 
@@ -1055,9 +1176,21 @@ command="${1:-}"
 }
 shift
 
-if [[ "$command" == 'start' ]] && [[ "${1:-}" == '--include-self' ]]; then
-  INCLUDE_SELF=1
-  shift
+if [[ "$command" == 'start' ]]; then
+  while [[ "$#" -gt 0 ]]; do
+    case "${1:-}" in
+      --include-self)
+        INCLUDE_SELF=1
+        shift
+        ;;
+      --alias)
+        [[ "$#" -ge 2 ]] || die 'missing --alias value'
+        add_alias "$2"
+        shift 2
+        ;;
+      *) break ;;
+    esac
+  done
 fi
 
 case "$command" in
