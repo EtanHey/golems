@@ -12,6 +12,9 @@ import { join, dirname } from "path";
 const TEST_DIR = "/tmp/golems-zikaron-test/job-golem";
 const TEST_EVENT_LOG = "/tmp/golems-zikaron-test/job-golem/event-log.json";
 
+// The Greenhouse and Lever scrapers call the live ATS APIs; they run only on opt-in.
+const NETWORK_TESTS = process.env.GOLEMS_NETWORK_TESTS === "1";
+
 // Import will fail initially if code not implemented
 import { loadScrapedJobs, type JobListing, scrapeGreenhouse, scrapeLever } from "@golems/jobs/scraper";
 import { logEvent, type GolemEvent } from "@golems/shared/lib/event-log";
@@ -337,10 +340,9 @@ describe("Job Golem - Event Logging", () => {
   });
 });
 
-describe("Job Golem - Greenhouse ATS Scraper", () => {
+describe.skipIf(!NETWORK_TESTS)("Job Golem - Greenhouse ATS Scraper (live, GOLEMS_NETWORK_TESTS=1)", () => {
   it("should return jobs with correct source and ID format", async () => {
-    // This is an integration test that hits the real Greenhouse API
-    // Skip if no network (CI) — but in dev, it's a quick sanity check
+    // Integration test against the real Greenhouse API (GOLEMS_NETWORK_TESTS=1)
     const jobs = await scrapeGreenhouse();
 
     // Should find at least some jobs (companies like Taboola, JFrog have 100+ worldwide)
@@ -368,7 +370,7 @@ describe("Job Golem - Greenhouse ATS Scraper", () => {
   }, 30000);
 });
 
-describe("Job Golem - Lever ATS Scraper", () => {
+describe.skipIf(!NETWORK_TESTS)("Job Golem - Lever ATS Scraper (live, GOLEMS_NETWORK_TESTS=1)", () => {
   it("should return jobs with correct source and ID format", async () => {
     const jobs = await scrapeLever();
 
