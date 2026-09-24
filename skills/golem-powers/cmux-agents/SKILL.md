@@ -15,7 +15,7 @@ Fleet canon #5 owns model policy, #6 owns launcher naming/skip-perms, and #7 own
 
 - Engine selection and review routing → `/agent-routing` § Review routing.
 - Launcher, `-s`, `-m`, resume, and FR-01 workaround → `/repogolem`.
-- Monitor/cron/loop payloads → `/cron-payload-discipline`; inbound guards and reviewer handoff → `/collab-monitor`.
+- Monitor/cron/loop payloads, inbound guards and reviewer handoff → `/collab-monitor` (payload rules: its `references/cron-payloads.md`).
 - Full collab scaffolding → `/large-plan` `workflows/collab.md`; PR stop/end state → `/pr-loop`.
 - Visual evidence → `/never-fabricate` R7 and `/qa-verdict-gate`; shell mechanics → `/cyber` (`references/shell.md`).
 

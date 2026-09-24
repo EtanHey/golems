@@ -1,9 +1,8 @@
----
-name: cron-payload-discipline
-description: "Discipline for cron/loop/monitor payloads. Triggers: cron, /loop, recurring tick, merge queue, no-progress."
----
+# Cron / Loop Payload Discipline
 
-# Skill: Cron / Loop Payload Discipline
+> Formerly the `/cron-payload-discipline` skill; `../SKILL.md` § Cron, /loop and monitor payloads is
+> the summary. Its evals live in `../evals/` (cases tagged `absorbed_from`, fixtures under
+> `fixtures/cron-payloads/`, results as `results/cron-payloads-*`).
 
 > Cron payloads must query reality first. If the prompt already claims the state, the loop is rotten before it runs.
 
@@ -193,7 +192,7 @@ Canonical law: `/cmux-agents` → "LEAD/ORCHESTRATOR MONITOR LAW"; `/orc` → "T
 
 ## Rewrite Protocol
 
-When a payload violates this skill:
+When a payload violates these rules:
 
 1. Name the stale claim explicitly.
 2. Remove hardcoded state strings.

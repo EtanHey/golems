@@ -82,3 +82,10 @@ scripts/tests/test-golems-sync.bats
 # which is Etan's call, not a gate's.
 # WARNING: while this entry stands, NEW leaks in this file are not caught.
 docs/plans/2026-08-26-golems-sync.md
+
+# History-only: google-drive-archive/SKILL.md (a generic transcript-processing
+# procedure; raw-session pattern) moved to drive-filing/references/ in #180. No
+# live file has this path; the entry exists because the push/nightly history
+# ratchet re-scans every commit since genesis with the CURRENT allowlist, and
+# every pre-#180 commit carries the file at its old path.
+skills/golem-powers/google-drive-archive/SKILL.md
