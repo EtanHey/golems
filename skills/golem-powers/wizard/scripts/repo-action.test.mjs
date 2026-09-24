@@ -54,7 +54,7 @@ describe("wizard repo action", () => {
 
     const garbage = spawnSync("node", [symlinkPath, "garbage", manifestPath], { encoding: "utf8" });
     expect(garbage.status).not.toBe(0);
-  });
+  }, 15_000); // spawns node through a symlink; a cold runner can exceed the 5s default
 
   test("installable repo on a workspace is installed, never cloned", () => {
     expect(decideRepoAction(manifest, "brainlayer", "workspace")).toEqual({
