@@ -18,7 +18,7 @@
 // ruling): every name rule matches anywhere in the name, and a (folder,
 // month) group -- the YYYY-MM/ folder plus that month's dated siblings --
 // holding ANY credential is held whole: no moves, no upload unit.
-import { lstatSync, mkdirSync, readdirSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { closeSync, lstatSync, mkdirSync, openSync, readdirSync, readSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
 
 const USAGE =
@@ -54,6 +54,47 @@ const TOKEN = /token/i;
 const TOKEN_ALLOW = [/tokeniz/gi, /design[-_]?tokens?/gi, /trust[ _-]?tokens/gi];
 function isTokenName(name) {
   return TOKEN.test(TOKEN_ALLOW.reduce((rest, re) => rest.replace(re, ""), name));
+}
+
+// B1 (skillcreatorLead SECURITY, 2026-09-25): a planned file whose CONTENT
+// carries a high-confidence secret shape holds its whole unit. Only the path
+// and the shape name are ever reported; a matched value is never kept, logged
+// or printed. Each shape needs a non-word character (or start) before it.
+const CONTENT_SHAPES = [
+  ["supabase", /(?<![A-Za-z0-9_])sbp_[0-9a-f]{40}/],
+  ["google", /(?<![A-Za-z0-9_])AIza[0-9A-Za-z_-]{35}/],
+  ["github", /(?<![A-Za-z0-9_])gh[pousr]_[0-9A-Za-z]{36}/],
+  ["github-pat", /(?<![A-Za-z0-9_])github_pat_[0-9A-Za-z_]{22,}/],
+  ["openai", /(?<![A-Za-z0-9_-])sk-(?:proj-)?[A-Za-z0-9_-]{20,}/],
+  ["aws", /(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}/],
+  ["slack", /(?<![A-Za-z0-9])xox[abprs]-[0-9A-Za-z-]{10,}/],
+  ["private-key", /-{5}BEGIN [A-Z ]*PRIVATE KEY-{5}/],
+];
+const SCAN_CHUNK = 1024 * 1024;
+const SCAN_OVERLAP = 512; // longer than any shape above, so a split token is still seen
+
+// Shape names found in a text file's content (binary files, with a NUL in
+// the first chunk, are skipped). Reads the whole file in overlapping chunks.
+export function contentShapes(abs) {
+  const found = new Set();
+  const fd = openSync(abs, "r");
+  try {
+    const buf = Buffer.alloc(SCAN_CHUNK);
+    let carry = "";
+    let position = 0;
+    for (;;) {
+      const n = readSync(fd, buf, 0, SCAN_CHUNK, position);
+      if (n === 0) break;
+      if (position === 0 && buf.subarray(0, n).includes(0)) return [];
+      const text = carry + buf.toString("latin1", 0, n);
+      for (const [shape, re] of CONTENT_SHAPES) if (re.test(text)) found.add(shape);
+      carry = text.slice(-SCAN_OVERLAP);
+      position += n;
+    }
+  } finally {
+    closeSync(fd);
+  }
+  return CONTENT_SHAPES.map(([shape]) => shape).filter((shape) => found.has(shape));
 }
 
 // v2: every credential name rule holds a directory too (a *token* or *-env dir
@@ -183,7 +224,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     held: [],
     skipped: [],
     mtimeUnits: [],
-    totals: { files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0, mtimeUnits: 0, mtimeBytes: 0, emptyUnits: 0 },
+    totals: { files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0, mtimeUnits: 0, mtimeBytes: 0, emptyUnits: 0, contentHeld: 0 },
   };
   const allMtimeUnits = [];
   if (!existsSync(docsLocal)) return finish(plan);
@@ -267,6 +308,21 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     const newest = found.files.reduce((max, f) => Math.max(max, f.mtimeMs), 0);
     const month = new Date(newest).toISOString().slice(0, 7);
     const upload = isOld(month);
+    if (upload) {
+      // B1: an mtime unit is planned whole, so a secret-shaped file holds it whole.
+      const content = found.files.flatMap((f) => contentShapes(f.abs).map((shape) => ({ path: rel(f.abs), shape })));
+      if (content.length > 0) {
+        plan.held.push({
+          path: rel(abs),
+          reason: "credential-content",
+          members: [rel(abs)],
+          credentials: [],
+          content: content.sort((a, b) => a.path.localeCompare(b.path) || a.shape.localeCompare(b.shape)),
+        });
+        plan.totals.contentHeld += 1;
+        return;
+      }
+    }
     allMtimeUnits.push({ path: rel(abs), month, files: found.files.length, bytes, upload });
     if (!upload) return;
     plan.totals.mtimeUnits += 1;
@@ -331,6 +387,24 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
         });
         continue;
       }
+      // B1: scan only what this group would plan (a move or an upload).
+      const planned = members.some((m) => m.dated && isFinished(month)) || isOld(month);
+      const content = planned
+        ? members
+            .flatMap((m) => m.found.files)
+            .flatMap((f) => contentShapes(f.abs).map((shape) => ({ path: rel(f.abs), shape })))
+        : [];
+      if (content.length > 0) {
+        plan.held.push({
+          path: rel(join(dirAbs, month)),
+          reason: "credential-content",
+          members: members.map((m) => rel(m.abs)).sort(),
+          credentials: [],
+          content: content.sort((a, b) => a.path.localeCompare(b.path) || a.shape.localeCompare(b.shape)),
+        });
+        plan.totals.contentHeld += 1;
+        continue;
+      }
       const unitFiles = [];
       for (const m of members) {
         if (m.dated && isFinished(month)) {
@@ -388,7 +462,7 @@ export function summaryLine(plan) {
     `monthly-moves=${t.monthlyMoves} · ` +
     `to-drive months=${t.uploadMonths} files=${t.uploadFiles} bytes=${t.uploadBytes} (${human(t.uploadBytes)}) · ` +
     `mtime-units=${t.mtimeUnits ?? 0} bytes=${t.mtimeBytes ?? 0} empty-units=${t.emptyUnits ?? 0} · ` +
-    `held=${t.held} credentials-skipped=${t.credentialFiles} conflicts=${plan.conflicts.length} undated=${t.undated}`
+    `held=${t.held} content-held=${t.contentHeld ?? 0} credentials-skipped=${t.credentialFiles} conflicts=${plan.conflicts.length} undated=${t.undated}`
   );
 }
 
@@ -440,6 +514,7 @@ function main(argv) {
       `held: ${h.reason} ${h.path}`,
       ...h.members.map((m) => `  item: ${m}`),
       ...h.credentials.map((c) => `  credential: ${c}`),
+      ...(h.content ?? []).map((c) => `  content: ${c.path} (${c.shape})`),
     ]),
     ...plan.conflicts.map((c) => `conflict: ${c.from} -> ${c.to} exists`),
     summaryLine(plan),

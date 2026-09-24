@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { detectOS, checkDependency } from "../src/lib/deps";
+import { detectOS, checkDependency } from "../deps";
 
 describe("detectOS", () => {
   test("returns a known OS string", () => {

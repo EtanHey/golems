@@ -701,7 +701,8 @@ export function resetConfig(): void {
 
 /**
  * Generate a default config.yaml if one doesn't exist.
- * Called by `golems wizard` or `golems init`.
+ * No CLI command calls this today (`golems wizard` writes ~/.golems/config.json
+ * through packages/golem-skills/src/config.ts).
  */
 export function initConfig(): string {
   if (!existsSync(CONFIG_DIR)) {

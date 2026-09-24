@@ -314,18 +314,21 @@ async function handleDataVizRender(
     }
     case "brain": {
       const data = await fetchBrainData();
-      title = "Brain Growth";
+      if (data.state !== "measured") {
+        return Response.json({ error: `brain data unavailable: ${data.reason}` }, { status: 503 });
+      }
+      title = "BrainLayer";
       chartSvg = renderLineChart({
-        data: data.monthlyGrowth.map((g) => ({
-          date: g.month,
-          value: g.chunks,
+        data: data.hourly.map((h) => ({
+          date: h.hour.slice(11, 16),
+          value: h.count,
         })),
         showArea: true,
       });
       statsSvg = renderStatCards({
         stats: [
           { label: "Chunks", value: data.totalChunks },
-          { label: "Enriched", value: `${data.enrichmentPercent}%` },
+          { label: `Stored (${data.windowHours}h)`, value: data.storesInWindow },
         ],
         columns: 2,
         width: 600,

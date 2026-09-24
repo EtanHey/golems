@@ -123,7 +123,7 @@ async function checkOllama() {
       name: "Ollama",
       status: isConfigured ? "fail" : "warn",
       message: `Not responding on 127.0.0.1:11434${isConfigured ? " (configured backend!)" : " (MLX is primary)"}`,
-      fix: isConfigured ? "golems start ollama" : "ollama serve  (optional fallback for MLX)",
+      fix: isConfigured ? "ollama serve" : "ollama serve  (optional fallback for MLX)",
     });
   }
 }
@@ -237,7 +237,7 @@ async function checkNotificationServer() {
       name: "Notification Server",
       status: "fail",
       message: "Not listening on port 3847",
-      fix: "golems start telegram  (includes notification server)",
+      fix: "launchctl kickstart -k gui/$(id -u)/com.golemszikaron.telegram  (the Telegram bot hosts the notification server)",
     });
   }
 }

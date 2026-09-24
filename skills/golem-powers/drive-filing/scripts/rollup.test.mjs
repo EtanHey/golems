@@ -629,3 +629,125 @@ describe("rollup v2: Drive targets never collide (F1) and empty units are not pl
     expect(p.totals.emptyUnits).toBe(1);
   });
 });
+
+// PR-8c B1 (skillcreatorLead SECURITY, 2026-09-25): a planned file whose
+// CONTENT carries a high-confidence secret shape holds its whole unit.
+// Fake tokens are assembled at runtime from fragments: no literal token shape
+// is committed (public repo, push protection + secret scanning). Assertions
+// check paths and shape names only; a value never appears in the plan.
+describe("B1: content-scan hold", () => {
+  const rep = (s, n) => s.repeat(Math.ceil(n / s.length)).slice(0, n);
+  const FAKE = {
+    supabase: ["sb", "p_", rep("0123456789abcdef", 40)].join(""),
+    google: ["AI", "za", rep("Xy9_-", 35)].join(""),
+    github: ["gh", "p_", rep("aB3", 36)].join(""),
+    "github-pat": ["github", "_pat_", rep("Q1w_", 40)].join(""),
+    openai: ["s", "k-", "pro", "j-", rep("Zx8", 32)].join(""),
+    aws: ["AK", "IA", rep("QWE7", 16)].join(""),
+    slack: ["xo", "xb-", rep("12345-", 24)].join(""),
+    "private-key": ["-----BEG", "IN RSA PRIV", "ATE KEY-----"].join(""),
+  };
+
+  test.each(Object.entries(FAKE))("a %s token in a planned file holds its month unit", (shape, token) => {
+    const repo = fixture({
+      "2026-01-05-transcript.jsonl": `{"text":"env dump ${token} end"}\n`,
+      "2026-01-06-clean.md": "clean",
+      "2026-03-01-other.md": "other",
+    });
+    const p = plan(repo);
+    expect(p.held).toEqual([
+      {
+        path: "docs.local/2026-01",
+        reason: "credential-content",
+        members: ["docs.local/2026-01-05-transcript.jsonl", "docs.local/2026-01-06-clean.md"],
+        credentials: [],
+        content: [{ path: "docs.local/2026-01-05-transcript.jsonl", shape }],
+      },
+    ]);
+    expect(uploadPaths(p)).toEqual(["docs.local/2026-03-01-other.md"]);
+    expect(p.moves.map((m) => m.from)).toEqual(["docs.local/2026-03-01-other.md"]);
+    expect(p.totals.contentHeld).toBe(1);
+    const text = rollup(repo);
+    expect(text.stdout).not.toContain(token);
+    expect(JSON.stringify(p)).not.toContain(token);
+    expect(text.lines).toContain("held: credential-content docs.local/2026-01");
+    expect(text.lines).toContain(`  content: docs.local/2026-01-05-transcript.jsonl (${shape})`);
+    expect(text.lines.at(-1)).toContain("content-held=1");
+  });
+
+  test("a token deep inside a dated folder, past the first chunk, still holds it", () => {
+    const pad = "x".repeat(3 * 1024 * 1024);
+    const repo = fixture({ "2026-01-05-run/logs/big.log": `${pad}\n${FAKE.supabase}\n` });
+    const p = plan(repo);
+    expect(p.held.map((h) => [h.path, h.reason])).toEqual([["docs.local/2026-01", "credential-content"]]);
+    expect(p.upload).toEqual([]);
+  });
+
+  test("near-miss shapes do not hold", () => {
+    const repo = fixture({
+      "2026-01-05-notes.md": [
+        ["ta", "sk-", "abcdefghijklmnopqrstuvwxyz"].join(""), // sk- inside a word
+        ["sb", "p_", "0123"].join(""), // too short
+        ["AK", "IA", "short"].join(""),
+        "-----BEGIN PUBLIC KEY-----",
+      ].join("\n"),
+    });
+    const p = plan(repo);
+    expect(p.held).toEqual([]);
+    expect(uploadPaths(p)).toEqual(["docs.local/2026-01-05-notes.md"]);
+  });
+
+  test("binary files are not scanned", () => {
+    const repo = fixture({ "2026-01-05-blob.bin": `\u0000\u0001${FAKE.aws}` });
+    const p = plan(repo);
+    expect(p.held).toEqual([]);
+  });
+
+  test("the current month (nothing planned) is not scanned or held", () => {
+    const repo = fixture({ "2026-06-02-live.md": FAKE.github });
+    const p = plan(repo);
+    expect(p.held).toEqual([]);
+    expect(p.totals.contentHeld).toBe(0);
+  });
+
+  test("a credential-named hold still wins and is reported as before", () => {
+    const repo = fixture({ "2026-01-05-x/.env.local": FAKE.openai, "2026-01-06-y.md": FAKE.aws });
+    const p = plan(repo);
+    expect(p.held.map((h) => h.reason)).toEqual(["contains credentials"]);
+  });
+});
+
+describe("B1 x v2: the content scan covers mtime units", () => {
+  const touch = (repo, when, ...rels) => {
+    const t = new Date(when);
+    for (const rel of rels) utimesSync(join(repo, "docs.local", rel), t, t);
+  };
+  const fakeSupabase = () => ["sb", "p_", "0123456789abcdef".repeat(3).slice(0, 40)].join("");
+
+  test("an old mtime unit with a secret-shaped file is held whole, value never printed", () => {
+    const token = fakeSupabase();
+    const repo = fixture({ "weave/mine-context/orc.md": `pat ${token}`, "weave/notes.md": "n", "clean/readme.md": "r" });
+    touch(repo, "2026-01-10T00:00:00Z", "weave/mine-context/orc.md", "weave/notes.md", "clean/readme.md");
+    const p = plan(repo);
+    expect(p.held).toEqual([
+      {
+        path: "docs.local/weave",
+        reason: "credential-content",
+        members: ["docs.local/weave"],
+        credentials: [],
+        content: [{ path: "docs.local/weave/mine-context/orc.md", shape: "supabase" }],
+      },
+    ]);
+    expect(p.upload.map((u) => u.dir)).toEqual(["docs.local/clean"]);
+    expect(p.totals.contentHeld).toBe(1);
+    expect(JSON.stringify(p)).not.toContain(token);
+    expect(rollup(repo).stdout).not.toContain(token);
+  });
+
+  test("a recent mtime unit (not planned) is not read", () => {
+    const repo = fixture({ "weave/orc.md": `pat ${fakeSupabase()}` });
+    const p = plan(repo);
+    expect(p.held).toEqual([]);
+    expect(p.totals.contentHeld).toBe(0);
+  });
+});

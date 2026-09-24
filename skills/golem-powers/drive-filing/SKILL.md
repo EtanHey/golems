@@ -117,6 +117,12 @@ as `skipped: credential <path>` (a credential directory is one line plus its cre
 files), and a month group (the `YYYY-MM/` folder plus that month's dated siblings in the same
 folder) that holds one is **held whole**: no moves into or out of it, no upload unit. It is reported
 once as `held: contains credentials <path>` with its items and credentials listed under it.
+**Content scan (B1).** Every file the plan would move or upload is read (text only, in overlapping 1 MiB
+chunks; a file with a NUL in its first chunk counts as binary and is skipped) for high-confidence secret
+shapes: Supabase `sbp_`, Google `AIza`, GitHub `gh[pousr]_` / `github_pat_`, OpenAI `sk-`, AWS `AKIA`,
+Slack `xox?-`, and PEM private-key headers. A hit holds the whole month group as
+`held: credential-content <path>`, listing `content: <file> (<shape>)`. **A matched value is never kept,
+logged or printed.** The summary adds `content-held=N`.
 Cleaning them up is the owner's call.
 
 > **After creating/editing this skill it must be REGISTERED** (golem-install / symlink into `~/.claude/skills`) before any agent can invoke it — committed ≠ installed.

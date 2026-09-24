@@ -8,7 +8,7 @@ Infrastructure services — Cloud Worker, Night Shift, Morning Briefing, Doctor,
 - **Night Shift** — 4am autonomous code improvements via Claude CLI
 - **Morning Briefing** — 8am summary delivered to Telegram
 - **Bedtime Guardian** — Evening wind-down reminders
-- **Doctor** — `golems doctor` health checks for all wiring
+- **Doctor** — health checks for all wiring (`bun run packages/services/src/doctor.ts`)
 
 ## Cloud Worker Schedule
 
@@ -24,12 +24,10 @@ local or successor scheduler before assuming these jobs are active.
 
 **Health:** `GET /` | **Usage:** `GET /usage` (API stats, token counts, cost)
 
-## CLI Commands
+## Commands
 
 ```bash
-golems doctor          # Health checks for all services
-golems status          # All-golem status overview
-golems rules check     # Audit rules for a project
+bun run packages/services/src/doctor.ts   # Health checks for all services
 ```
 
 ## Night Shift

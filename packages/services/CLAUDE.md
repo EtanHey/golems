@@ -52,7 +52,7 @@ packages/services/
 │   ├── night-shift.ts           # 4am autonomous coding improvements
 │   ├── briefing.ts              # 8am morning summary
 │   ├── healthcheck.ts           # 9am service health verification
-│   ├── doctor.ts                # `golems doctor` — health checks
+│   ├── doctor.ts                # health checks (bun run src/doctor.ts)
 │   ├── run-compaction.ts        # Context compaction utilities
 │   ├── thread-compactor.ts      # Thread compaction logic
 │   └── thread-store.ts          # Thread storage
@@ -107,8 +107,7 @@ Runs at 4am via launchd. Per-repo Claude sessions:
 
 | Tool | Command | Description |
 |------|---------|-------------|
-| Doctor | `golems doctor` | Health checks for all wiring |
-| Status | `golems status` | All-golem status overview |
+| Doctor | `bun run packages/services/src/doctor.ts` | Health checks for all wiring |
 
 ## Debugging with BrainLayer MCP
 

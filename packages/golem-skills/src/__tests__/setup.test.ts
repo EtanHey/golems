@@ -1,56 +1,9 @@
-import { describe, test, expect, setDefaultTimeout } from "bun:test";
-import { join } from "node:path";
-import { validateConfig } from "../src/commands/setup";
+import { describe, test, expect } from "bun:test";
+import { validateConfig } from "../setup";
 
-// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
-setDefaultTimeout(15_000);
-
-const CLI = join(import.meta.dir, "..", "src", "index.ts");
-
-async function run(...args: string[]) {
-  const proc = Bun.spawn(["bun", CLI, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  const exitCode = await proc.exited;
-  return { stdout, stderr, exitCode };
-}
-
-describe("CLI routing", () => {
-  test("no args shows help", async () => {
-    const { stdout, exitCode } = await run();
-    expect(stdout).toContain("golems");
-    expect(stdout).toContain("setup");
-    expect(exitCode).toBe(0);
-  });
-
-  test("--help shows help", async () => {
-    const { stdout, exitCode } = await run("--help");
-    expect(stdout).toContain("golems");
-    expect(exitCode).toBe(0);
-  });
-
-  test("--version shows version", async () => {
-    const { stdout, exitCode } = await run("--version");
-    expect(stdout.trim()).toBe("0.1.0");
-    expect(exitCode).toBe(0);
-  });
-
-  test("unknown command exits with error", async () => {
-    const { stderr, exitCode } = await run("foobar");
-    expect(stderr).toContain("Unknown command");
-    expect(exitCode).toBe(1);
-  });
-
-  test("setup command runs", async () => {
-    const { stdout, exitCode } = await run("setup", "--check");
-    expect(stdout).toContain("Checking dependencies");
-    expect(exitCode).toBe(0);
-  });
-});
-
+// Moved from packages/golems-cli (folded into this CLI). Its routing cases
+// (help/version/unknown) are cli.test.ts's; `setup --check` dispatch is
+// golems-bin.test.ts's.
 describe("validateConfig", () => {
   test("valid config passes", () => {
     const result = validateConfig({
