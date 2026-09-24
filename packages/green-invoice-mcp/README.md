@@ -43,6 +43,8 @@ GREEN_INVOICE_SECRET=your-api-key-secret
 GREEN_INVOICE_SANDBOX=true
 ```
 
+Each credential can be a plain value or a 1Password `op://` reference. The server resolves `op://` values with `op read` when it requests a token, so the 1Password CLI must be signed in.
+
 ### 4. Add to .mcp.json
 
 ```json
