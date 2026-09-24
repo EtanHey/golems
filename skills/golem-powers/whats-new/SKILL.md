@@ -23,202 +23,23 @@ Fetches the latest release notes for tools you depend on, diffs them against you
 > maxCharacters: 3000 (gets only the most recent entries at the top of the page).
 > This applies to ALL products — Claude Code, Codex CLI, Cursor CLI, and Wispr Flow release pages all grow over time.
 
-## Products Tracked
+## Products Tracked and Cross-Reference Targets
 
-### 1. Claude Code
+Full per-product sources, version commands, and what to check in each surface:
+[references/products-and-targets.md](references/products-and-targets.md). Changelog URLs:
+[references/changelog-sources.md](references/changelog-sources.md).
 
-**Changelog source:** GitHub Releases API (primary), Anthropic docs (fallback)
+| Product | Changelog source |
+|---|---|
+| 1. Claude Code | GitHub Releases API (primary), Anthropic docs (fallback) |
+| 2. Wispr Flow | `https://releasebot.io/updates/wispr-flow` or `https://wisprflow.ai/changelog` |
+| 3. Codex CLI (OpenAI) | `https://developers.openai.com/codex/changelog` |
+| 4. Cursor CLI | `https://cursor.sh/changelog` or `https://www.cursor.com/changelog` |
 
-**How to fetch (tiered approach):**
-
-```bash
-# Step 0: Check installed version
-claude --version
-```
-
-```bash
-# Step 1 (PRIMARY — GitHub API): Last 5 releases with full release notes
-curl -s "https://api.github.com/repos/anthropics/claude-code/releases?per_page=5"
-```
-
-This returns structured JSON with tag_name, body (release notes), and published_at. Most reliable for recent releases.
-
-```bash
-# Step 2 (FALLBACK — exa search with freshness cascade):
-# Try last week first:
-mcp__exa__web_search_exa(query: "Claude Code changelog [INSTALLED_VERSION]", freshness: "week", includeDomains: ["docs.anthropic.com", "github.com/anthropics"])
-
-# If no results, expand to last month:
-mcp__exa__web_search_exa(query: "Claude Code changelog latest release", freshness: "month", includeDomains: ["docs.anthropic.com", "github.com/anthropics"])
-```
-
-```bash
-# Step 3 (LAST RESORT — crawl only the top of the page):
-# maxCharacters: 3000 gets only the most recent entries at the top
-mcp__exa__crawling_exa(urls: ["https://docs.anthropic.com/en/docs/claude-code/changelog"], maxCharacters: 3000)
-```
-
-### 2. Wispr Flow
-
-**Changelog source:** `https://releasebot.io/updates/wispr-flow` or `https://wisprflow.ai/changelog`
-
-**How to fetch:**
-
-```bash
-mcp__exa__crawling_exa(urls: ["https://releasebot.io/updates/wispr-flow"], maxCharacters: 3000)
-```
-
-**Alternative:**
-
-```bash
-mcp__exa__web_search_exa(query: "Wispr Flow changelog release notes latest", freshness: "month", includeDomains: ["wisprflow.ai", "releasebot.io"])
-```
-
-### 3. Codex CLI (OpenAI)
-
-**Changelog source:** `https://developers.openai.com/codex/changelog`
-
-**How to fetch (tiered approach):**
-
-```bash
-# Check installed version
-codex --version 2>/dev/null || npx @openai/codex --version
-```
-
-```bash
-# Step 1 (PRIMARY — exa search with freshness cascade):
-# Try last week first:
-mcp__exa__web_search_exa(query: "OpenAI Codex CLI changelog latest release", freshness: "week", includeDomains: ["developers.openai.com", "github.com/openai"])
-
-# If no results, expand to last month:
-mcp__exa__web_search_exa(query: "OpenAI Codex CLI changelog latest release", freshness: "month", includeDomains: ["developers.openai.com", "github.com/openai"])
-```
-
-```bash
-# Step 2 (FALLBACK — crawl only the top of the page):
-mcp__exa__crawling_exa(urls: ["https://developers.openai.com/codex/changelog"], maxCharacters: 3000)
-```
-
-### 4. Cursor CLI
-
-**Changelog source:** `https://cursor.sh/changelog` or `https://www.cursor.com/changelog`
-
-**How to fetch (tiered approach):**
-
-```bash
-# Check installed version
-cursor --version 2>/dev/null
-```
-
-```bash
-# Step 1 (PRIMARY — exa search with freshness cascade):
-# Try last week first:
-mcp__exa__web_search_exa(query: "Cursor IDE CLI changelog latest release agent mode", freshness: "week", includeDomains: ["cursor.com", "cursor.sh"])
-
-# If no results, expand to last month:
-mcp__exa__web_search_exa(query: "Cursor IDE CLI changelog latest release agent mode", freshness: "month", includeDomains: ["cursor.com", "cursor.sh"])
-```
-
-```bash
-# Step 2 (FALLBACK — crawl only the top of the page):
-mcp__exa__crawling_exa(urls: ["https://www.cursor.com/changelog"], maxCharacters: 3000)
-```
-
----
-
-## Cross-Reference Targets
-
-For each changelog entry, check it against these configuration surfaces:
-
-### A. Claude Code Settings (`~/.claude/settings.json`)
-
-```bash
-cat ~/.claude/settings.json
-```
-
-Cross-reference against:
-- **hooks** -- SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, SubagentStart/Stop, SessionEnd, Stop. Any changelog mentioning hook lifecycle, timing, or new hook types.
-- **permissions.allow** -- Tool permission patterns. Any changelog mentioning permission syntax, new tools, or security changes.
-- **enabledPlugins** -- Installed plugins. Any changelog about plugin system, marketplace, or specific plugins.
-- **mcpServers** -- MCP server configs. Any changelog about MCP protocol, OAuth, dedup, or server handling.
-- **statusLine** -- Status line config. Any changelog about status display or terminal rendering.
-- **Other settings** -- alwaysThinkingEnabled, effortLevel, voiceEnabled, autoUpdatesChannel, etc.
-
-### B. Skills (`~/.claude/skills/`)
-
-```bash
-ls ~/.claude/skills/
-```
-
-Cross-reference against:
-- Skill loading, frontmatter parsing (paths:, if:, description length caps)
-- Slash command changes
-- Conditional skill activation changes
-
-### C. Hooks (`~/.claude/hooks/`)
-
-```bash
-ls ~/.claude/hooks/
-```
-
-Cross-reference against:
-- Hook execution model changes (timeout, async, ordering)
-- New hook types (e.g., TaskCreated, WorktreeCreate)
-- Hook matching syntax changes
-- New fields (e.g., `if` conditional field, `updatedInput` in PreToolUse)
-
-### D. MCP Servers Across Repos
-
-```bash
-# Global MCP config
-cat ~/.claude/.mcp.json 2>/dev/null || echo "No global .mcp.json"
-
-# Find all repo-level MCP configs
-find ~/Gits -maxdepth 2 -name ".mcp.json" -type f 2>/dev/null
-```
-
-Cross-reference against:
-- MCP protocol changes (OAuth, tool description caps, dedup rules)
-- New MCP environment variables (CLAUDE_CODE_MCP_SERVER_NAME, etc.)
-- MCP server instruction handling changes
-- Server connection timeout or caching changes
-
-### E. VoiceBar Competitive Intel (`$HOME/Gits/voicelayer/`)
-
-For Wispr Flow changes specifically:
-- New voice features that VoiceBar should match or differentiate from
-- Platform expansions (Android, iOS, Windows) -- competitive positioning
-- Developer-focused features (variable recognition, file tagging) -- overlap with VoiceBar's target
-- Team/enterprise features -- future roadmap consideration
-
-### F. repoGolem Launchers (Codex + Cursor routing)
-
-```bash
-: "${ORCHESTRATOR_REPO:?ORCHESTRATOR_REPO must be set}"
-cat ~/.golems/config.yaml 2>/dev/null | head -50
-# Or check registry
-cat "$ORCHESTRATOR_REPO/repoGolem/registry.json" 2>/dev/null | python3 -c "import json,sys; [print(k) for k in json.load(sys.stdin).keys()]"
-```
-
-Cross-reference against:
-- **Codex CLI flags** -- `--model`, `--approval-mode`, `--quiet`, `--full-auto`. Any new flags = update launchers.
-- **Cursor CLI flags** -- `--model`, `--output-format text`, `--trust`. Any new flags = update audit scripts.
-- **Model availability** -- compare new models against `/agent-routing` `references/model-and-effort.md`; that reference owns current Codex model and effort strings.
-- **Agent mode changes** -- Cursor background agents, Codex sandbox mode, new permission models
-- **Rate limits / quotas** -- Codex hit OpenAI usage limit (confirmed Mar 30). Track quota changes.
-
-### G. Plugins (`enabledPlugins` in settings.json)
-
-```bash
-cat ~/.claude/settings.json | python3 -c "import json,sys; d=json.load(sys.stdin); [print(k) for k in d.get('enabledPlugins', {}).keys()]"
-```
-
-Cross-reference against:
-- Plugin API changes, marketplace changes
-- Specific plugin updates (coderabbit, frontend-design, skill-creator, etc.)
-- Organization policy changes affecting plugins
-
----
+Cross-reference every entry against: **A** `~/.claude/settings.json` · **B** `~/.claude/skills/` ·
+**C** `~/.claude/hooks/` · **D** MCP servers across repos · **E** VoiceBar competitive intel
+(`$HOME/Gits/voicelayer/`) · **F** repoGolem launchers (Codex + Cursor routing) · **G** plugins
+(`enabledPlugins`).
 
 ## Execution Procedure
 
@@ -294,17 +115,18 @@ if command -v codex >/dev/null 2>&1; then
   prev_codex=$(find_previous_snapshot "help-codex-*.txt" "${snapshot_dir}/help-codex-${codex_ver}.txt")
 fi
 
-# Gemini CLI snapshot
-prev_gemini=""
-if command -v gemini >/dev/null 2>&1; then
-  gemini_bin=$(command -v gemini)
-  gemini_ver=$(gemini --version 2>/dev/null | head -1)
-  [ -n "${gemini_ver}" ] || gemini_ver=unknown
-  gemini --help > "${snapshot_dir}/help-gemini-${gemini_ver}.txt" 2>&1
-  if [ -n "${gemini_bin}" ]; then
-    grep -aohE "GEMINI_[A-Z_]+" "${gemini_bin}" 2>/dev/null | sort -u > "${snapshot_dir}/envvars-gemini-${gemini_ver}.txt"
+# Antigravity CLI (agy) snapshot. The bare `gemini` CLI is dead for this
+# account; agy is the live Gemini-family CLI (flags on --help, AGY_* env vars).
+prev_agy=""
+if command -v agy >/dev/null 2>&1; then
+  agy_bin=$(command -v agy)
+  agy_ver=$(agy --version 2>/dev/null | head -1)
+  [ -n "${agy_ver}" ] || agy_ver=unknown
+  agy --help > "${snapshot_dir}/help-agy-${agy_ver}.txt" 2>&1
+  if [ -n "${agy_bin}" ]; then
+    grep -aohE "AGY_[A-Z_]+" "${agy_bin}" 2>/dev/null | sort -u > "${snapshot_dir}/envvars-agy-${agy_ver}.txt"
   fi
-  prev_gemini=$(find_previous_snapshot "help-gemini-*.txt" "${snapshot_dir}/help-gemini-${gemini_ver}.txt")
+  prev_agy=$(find_previous_snapshot "help-agy-*.txt" "${snapshot_dir}/help-agy-${agy_ver}.txt")
 fi
 
 # Cursor CLI snapshot
@@ -347,15 +169,15 @@ if [ -n "$prev_codex" ] && [ -n "${codex_ver:-}" ]; then
        "${snapshot_dir}/envvars-codex-${codex_ver}.txt" | grep '^>'
 fi
 
-if [ -n "$prev_gemini" ] && [ -n "${gemini_ver:-}" ]; then
-  prev_gemini_ver=$(basename "$prev_gemini" | sed 's/help-gemini-//;s/.txt//')
-  echo "=== Diffing Gemini ${prev_gemini_ver} -> ${gemini_ver} ==="
+if [ -n "$prev_agy" ] && [ -n "${agy_ver:-}" ]; then
+  prev_agy_ver=$(basename "$prev_agy" | sed 's/help-agy-//;s/.txt//')
+  echo "=== Diffing Antigravity (agy) ${prev_agy_ver} -> ${agy_ver} ==="
 
-  diff <(grep '^\s*--' "${snapshot_dir}/help-gemini-${prev_gemini_ver}.txt" | sort) \
-       <(grep '^\s*--' "${snapshot_dir}/help-gemini-${gemini_ver}.txt" | sort) | grep '^>'
+  diff <(grep '^\s*--' "${snapshot_dir}/help-agy-${prev_agy_ver}.txt" | sort) \
+       <(grep '^\s*--' "${snapshot_dir}/help-agy-${agy_ver}.txt" | sort) | grep '^>'
 
-  diff "${snapshot_dir}/envvars-gemini-${prev_gemini_ver}.txt" \
-       "${snapshot_dir}/envvars-gemini-${gemini_ver}.txt" | grep '^>'
+  diff "${snapshot_dir}/envvars-agy-${prev_agy_ver}.txt" \
+       "${snapshot_dir}/envvars-agy-${agy_ver}.txt" | grep '^>'
 fi
 
 if [ -n "$prev_cursor" ] && [ -n "${cursor_ver:-}" ]; then
@@ -534,10 +356,7 @@ Use this exact format:
 ---
 
 ## VoiceBar Competitive Notes
-_(Only if Wispr Flow had relevant updates)_
-- **Feature gap:** [what Wispr added that VoiceBar lacks]
-- **Differentiation opportunity:** [where VoiceBar is ahead or different]
-- **No action needed:** [parity features or irrelevant platform updates]
+_(Only if Wispr Flow had relevant updates; template in references/products-and-targets.md)_
 ```
 
 ### Step 6: Store in BrainLayer
