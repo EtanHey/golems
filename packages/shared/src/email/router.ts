@@ -11,10 +11,10 @@
  * - urgent → ClaudeGolem (needs human-facing response)
  * - newsletter, promo, social, other → EmailGolem (stays triaged, no routing)
  *
- * After routing, domain golems are invoked to process their category:
- * - TellerGolem.processSubscriptionEmail() for subscriptions
- * - RecruiterGolem handlers for jobs/interviews (see @golems/recruiter/*)
- * - ClaudeGolem handlers for tech-update/urgent (see CLAUDE.md)
+ * After routing, the caller's handler for the target golem processes the email,
+ * e.g. { tellergolem: processSubscriptionEmail } from @golems/teller. Handlers
+ * are injected because shared is the base layer: domain packages import shared,
+ * never the reverse (guarded by __tests__/no-domain-imports.test.ts).
  */
 
 import type { GolemActor } from "../lib/event-log";
@@ -35,6 +35,11 @@ for (const [golem, cats] of Object.entries(GOLEM_CATEGORIES)) {
     CATEGORY_TO_GOLEM[cat] = golem as GolemActor;
   }
 }
+
+/** Per-golem email processors, supplied by the caller. */
+export type EmailHandlers = Partial<
+  Record<GolemActor, (email: ScoredEmail) => Promise<void>>
+>;
 
 /** Result of email routing to a domain golem */
 export interface RoutingResult {
@@ -74,36 +79,29 @@ export function determineTargetGolem(
  *
  * This function:
  * 1. Determines the target golem based on category
- * 2. Invokes the golem's processor if available
+ * 2. Invokes the caller's handler for that golem, if one was given
  * 3. Handles errors gracefully to ensure single-email failures don't block the batch
  *
  * @param email - The scored email to route
+ * @param handlers - Per-golem processors (e.g. { tellergolem: processSubscriptionEmail })
  * @returns Routing result and processing status
  */
 export async function routeAndProcessEmail(
   email: ScoredEmail,
+  handlers: EmailHandlers = {},
 ): Promise<{ result: RoutingResult; success: boolean; error?: string }> {
   const result = determineTargetGolem(email.category, email.score);
 
   try {
-    // Invoke domain golem handlers based on target
-    if (result.targetGolem === "tellergolem") {
-      const { processSubscriptionEmail } = await import("@golems/teller/index");
-      await processSubscriptionEmail(email);
-    } else if (result.targetGolem === "recruitergolem") {
-      // RecruiterGolem handler - to be implemented
-      // const { processJobEmail } = await import("@golems/recruiter/index");
-      // await processJobEmail(email);
+    const handler = handlers[result.targetGolem];
+    if (handler) {
+      await handler(email);
+    } else if (result.targetGolem !== "emailgolem") {
+      // emailgolem stays with the router; any other golem without a handler is logged
       console.warn(
-        `[router] Job email routed to RecruiterGolem (handler not implemented): ${email.email?.subject || ""}`,
-      );
-    } else if (result.targetGolem === "claudegolem") {
-      // ClaudeGolem handler - to be implemented
-      console.warn(
-        `[router] Tech-update/urgent email routed to ClaudeGolem (handler not implemented): ${email.email?.subject || ""}`,
+        `[router] ${email.category} email routed to ${result.targetGolem} (no handler given): ${email.email?.subject || ""}`,
       );
     }
-    // emailgolem stays with router (no invocation needed)
 
     return { result, success: true };
   } catch (err: unknown) {

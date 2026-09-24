@@ -5,7 +5,16 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { determineTargetGolem, type RoutingResult } from "@golems/shared/email/router";
+import {
+  determineTargetGolem,
+  routeAndProcessEmail,
+  type RoutingResult,
+} from "@golems/shared/email/router";
+import type { ScoredEmail } from "@golems/shared/email/types";
+
+function scored(category: string, score = 7): ScoredEmail {
+  return { category, score, email: { subject: `a ${category} email` } } as unknown as ScoredEmail;
+}
 
 describe("EmailGolem Router", () => {
   describe("determineTargetGolem", () => {
@@ -69,6 +78,39 @@ describe("EmailGolem Router", () => {
       expect(result).toHaveProperty("reason");
       expect(typeof result.targetGolem).toBe("string");
       expect(typeof result.reason).toBe("string");
+    });
+  });
+
+  // Domain handlers are injected by the caller; shared never imports a domain package.
+  describe("routeAndProcessEmail", () => {
+    it("invokes the injected handler for the target golem", async () => {
+      const seen: ScoredEmail[] = [];
+      const email = scored("subscription");
+      const out = await routeAndProcessEmail(email, {
+        tellergolem: async (e) => {
+          seen.push(e);
+        },
+      });
+      expect(out).toEqual({
+        result: { targetGolem: "tellergolem", reason: "subscription email routed to tellergolem" },
+        success: true,
+      });
+      expect(seen).toEqual([email]);
+    });
+
+    it("succeeds without a handler for the target golem", async () => {
+      const out = await routeAndProcessEmail(scored("job"), {});
+      expect(out.success).toBe(true);
+      expect(out.result.targetGolem).toBe("recruitergolem");
+    });
+
+    it("reports a handler failure without throwing", async () => {
+      const out = await routeAndProcessEmail(scored("subscription"), {
+        tellergolem: async () => {
+          throw new Error("db down");
+        },
+      });
+      expect(out).toMatchObject({ success: false, error: "db down" });
     });
   });
 });
