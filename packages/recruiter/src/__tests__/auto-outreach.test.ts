@@ -21,6 +21,10 @@ import {
 } from "@golems/recruiter/auto-outreach";
 import { initDb, closeDb, getOutreachByJob, getCompanyResearch } from "@golems/recruiter/outreach-db";
 
+// Offline GitHub org lookup: these tests exercise the outreach flow, not
+// GitHub, so none of them may spawn `gh api` (it needs network and auth).
+const offlineGitHub = async () => null;
+
 describe("Auto-Outreach (E6)", () => {
   let testDbPath: string;
   let tempDir: string;
@@ -56,7 +60,7 @@ describe("Auto-Outreach (E6)", () => {
     };
 
     test("returns result with company research", async () => {
-      const result = await processHotMatch(mockJob, { skipContactSearch: true });
+      const result = await processHotMatch(mockJob, { skipContactSearch: true, githubOrgLookup: offlineGitHub });
 
       expect(result).toBeDefined();
       expect(result.jobId).toBe("job-123");
@@ -65,7 +69,7 @@ describe("Auto-Outreach (E6)", () => {
     });
 
     test("saves company research to database", async () => {
-      await processHotMatch(mockJob, { skipContactSearch: true });
+      await processHotMatch(mockJob, { skipContactSearch: true, githubOrgLookup: offlineGitHub });
 
       const cached = getCompanyResearch("Acme Corp");
       expect(cached).toBeDefined();
@@ -78,6 +82,7 @@ describe("Auto-Outreach (E6)", () => {
 
       // Mock contact finder to return a contact
       const result = await processHotMatch(uniqueJob, {
+        githubOrgLookup: offlineGitHub,
         mockContacts: [
           {
             name: "John Smith",
@@ -99,6 +104,7 @@ describe("Auto-Outreach (E6)", () => {
 
     test("creates multiple drafts for multiple contacts", async () => {
       const result = await processHotMatch(mockJob, {
+        githubOrgLookup: offlineGitHub,
         mockContacts: [
           { name: "John Smith", role: "Engineering Manager", email: "john@acme.com", source: "github" as const },
           { name: "Jane Doe", role: "Tech Lead", linkedinUrl: "linkedin.com/in/janedoe", source: "linkedin" as const },
@@ -110,7 +116,7 @@ describe("Auto-Outreach (E6)", () => {
     });
 
     test("handles no contacts found gracefully", async () => {
-      const result = await processHotMatch(mockJob, { skipContactSearch: true });
+      const result = await processHotMatch(mockJob, { skipContactSearch: true, githubOrgLookup: offlineGitHub });
 
       expect(result.contactsFound).toBe(0);
       expect(result.draftsCreated).toBe(0);
@@ -119,6 +125,7 @@ describe("Auto-Outreach (E6)", () => {
 
     test("skips unreachable contacts (no email AND no linkedin)", async () => {
       const result = await processHotMatch(mockJob, {
+        githubOrgLookup: offlineGitHub,
         mockContacts: [
           { name: "Reachable", role: "CTO", email: "cto@acme.com", source: "github" as const },
           { name: "Unreachable", role: "PM", source: "github" as const },
@@ -131,7 +138,7 @@ describe("Auto-Outreach (E6)", () => {
     });
 
     test("includes tech stack in company research from job posting", async () => {
-      const result = await processHotMatch(mockJob, { skipContactSearch: true });
+      const result = await processHotMatch(mockJob, { skipContactSearch: true, githubOrgLookup: offlineGitHub });
 
       // The job's tech stack should be included
       expect(result.companyResearch?.techStack).toContain("React");
@@ -140,6 +147,7 @@ describe("Auto-Outreach (E6)", () => {
 
     test("generates personalized outreach message", async () => {
       const result = await processHotMatch(mockJob, {
+        githubOrgLookup: offlineGitHub,
         mockContacts: [
           { name: "John Smith", role: "Engineering Manager", email: "john@acme.com", source: "github" as const },
         ],
@@ -150,6 +158,22 @@ describe("Auto-Outreach (E6)", () => {
       expect(outreaches[0].messageText).toContain("Senior Full Stack Developer");
     });
 
+    test("uses the injected GitHub org lookup for company research", async () => {
+      const looked: string[] = [];
+      const result = await processHotMatch(
+        { ...mockJob, id: "job-lookup", company: "Seam Test Co" },
+        {
+          skipContactSearch: true,
+          githubOrgLookup: async (name) => {
+            looked.push(name);
+            return { githubOrg: "seam-test-co", teamSize: "42" };
+          },
+        },
+      );
+      expect(looked).toEqual(["Seam Test Co"]);
+      expect(result.companyResearch?.githubOrg).toBe("seam-test-co");
+    });
+
     test("handles company research failure gracefully", async () => {
       // Use a company name that will fail GitHub lookup
       const badJob: JobMatch = {
@@ -157,7 +181,7 @@ describe("Auto-Outreach (E6)", () => {
         company: "NonexistentCompanyXYZ123456",
       };
 
-      const result = await processHotMatch(badJob, { skipContactSearch: true });
+      const result = await processHotMatch(badJob, { skipContactSearch: true, githubOrgLookup: offlineGitHub });
 
       // Should still succeed, just with minimal research
       expect(result).toBeDefined();
@@ -248,7 +272,7 @@ describe("Integration: JobGolem -> RecruiterGolem", () => {
       },
     ];
 
-    const results = await processHotMatches(jobs, { skipContactSearch: true });
+    const results = await processHotMatches(jobs, { skipContactSearch: true, githubOrgLookup: offlineGitHub });
 
     expect(results.length).toBe(2);
     expect(results[0].company).toBe("Company A");

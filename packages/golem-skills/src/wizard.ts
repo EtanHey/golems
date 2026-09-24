@@ -48,9 +48,11 @@ const FALLBACK_SKILL_CATEGORIES: Record<string, string[]> = {
 };
 
 /** Tries remote registry, falls back to static list. Adds "Other" for uncategorized. */
-export async function getSkillCategories(): Promise<Record<string, string[]>> {
+export async function getSkillCategories(
+  listRemote: () => Promise<string[]> = listRemoteSkills,
+): Promise<Record<string, string[]>> {
   try {
-    const remoteSkills = await listRemoteSkills();
+    const remoteSkills = await listRemote();
     if (remoteSkills.length === 0) return { ...FALLBACK_SKILL_CATEGORIES };
 
     const categorized = new Set<string>();

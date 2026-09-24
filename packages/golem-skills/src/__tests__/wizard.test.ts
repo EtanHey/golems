@@ -436,9 +436,11 @@ describe("wizard MCP recommendations", () => {
 });
 
 describe("wizard skill categories", () => {
+  // The remote list is injected: the default reads skills/ from GitHub, which
+  // a unit test must not depend on.
   test("getSkillCategories returns categories with skills", async () => {
     const { getSkillCategories } = await import("../wizard");
-    const categories = await getSkillCategories();
+    const categories = await getSkillCategories(async () => ["vercel"]);
     expect(typeof categories).toBe("object");
     expect(Object.keys(categories).length).toBeGreaterThan(0);
 
@@ -448,6 +450,21 @@ describe("wizard skill categories", () => {
     expect(categories.Infrastructure).toBeDefined();
 
     // Infrastructure should include vercel (added in this PR)
+    expect(categories.Infrastructure).toContain("vercel");
+  });
+
+  test("getSkillCategories files unknown remote skills under Other", async () => {
+    const { getSkillCategories } = await import("../wizard");
+    const categories = await getSkillCategories(async () => ["vercel", "brand-new-skill"]);
+    expect(categories.Other).toEqual(["brand-new-skill"]);
+  });
+
+  test("getSkillCategories falls back to the static list when the remote list fails", async () => {
+    const { getSkillCategories } = await import("../wizard");
+    const categories = await getSkillCategories(async () => {
+      throw new Error("offline");
+    });
+    expect(categories.Other).toBeUndefined();
     expect(categories.Infrastructure).toContain("vercel");
   });
 });

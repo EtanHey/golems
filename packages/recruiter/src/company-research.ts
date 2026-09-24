@@ -30,6 +30,9 @@ export interface ResearchSource {
   data: Partial<CompanyInfo>;
 }
 
+/** Looks up a company's GitHub org; injectable so tests never spawn `gh api`. */
+export type GitHubOrgLookup = (companyName: string) => Promise<Partial<CompanyInfo> | null>;
+
 /**
  * Main research function - combines multiple sources
  */
@@ -39,6 +42,7 @@ export async function researchCompany(
     jobTechStack?: string[];  // Tech mentioned in job posting
     companyUrl?: string;      // URL from job posting
     forceRefresh?: boolean;   // Skip cache
+    githubOrgLookup?: GitHubOrgLookup; // Defaults to the `gh api` lookup
   }
 ): Promise<CompanyInfo> {
   // Check cache first (unless force refresh)
@@ -58,7 +62,7 @@ export async function researchCompany(
   const sources: ResearchSource[] = [];
 
   // 1. GitHub organization info
-  const githubData = await fetchGitHubOrgInfo(companyName);
+  const githubData = await (options?.githubOrgLookup ?? fetchGitHubOrgInfo)(companyName);
   if (githubData) {
     sources.push({ source: "github", data: githubData });
   }
