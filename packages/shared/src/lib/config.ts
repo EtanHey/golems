@@ -509,6 +509,40 @@ function validateSeatRegistry(value: unknown): SeatRegistry {
   return registry;
 }
 
+/**
+ * The config file is the source of truth for the seats it names. A seat that
+ * exists only in the code defaults is dropped when the file overrides its
+ * parent's orgTree.directReports without it, and so is every default-only
+ * descendant of a dropped seat. Seats the file declares are left for
+ * validateSeatRegistry to check strictly.
+ */
+export function pruneDefaultOnlySeats(merged: unknown, fileRegistry: unknown): unknown {
+  if (!isRecord(merged) || !isRecord(fileRegistry)) return merged;
+  const result: Record<string, unknown> = { ...merged };
+  const dropped = new Set<string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [name, seat] of Object.entries(result)) {
+      if (name in fileRegistry) continue;
+      const parent = isRecord(seat) && isRecord(seat.orgTree) ? seat.orgTree.parent : null;
+      if (typeof parent !== "string") continue;
+      const fileParent = fileRegistry[parent];
+      const fileReports =
+        isRecord(fileParent) && isRecord(fileParent.orgTree)
+          ? fileParent.orgTree.directReports
+          : undefined;
+      const omittedByFile = Array.isArray(fileReports) && !fileReports.includes(name);
+      if (omittedByFile || dropped.has(parent)) {
+        delete result[name];
+        dropped.add(name);
+        changed = true;
+      }
+    }
+  }
+  return result;
+}
+
 function validateFileConfig(value: unknown): Partial<GolemsConfig> {
   if (!isRecord(value)) {
     throw new Error(`[Config] ${CONFIG_FILE} must contain a YAML object`);
@@ -516,7 +550,9 @@ function validateFileConfig(value: unknown): Partial<GolemsConfig> {
   return value as Partial<GolemsConfig>;
 }
 
-function normalizeConfig(config: GolemsConfig): GolemsConfig {
+function normalizeConfig(
+  config: Omit<GolemsConfig, "seatRegistry"> & { seatRegistry?: unknown },
+): GolemsConfig {
   return {
     ...config,
     seatRegistry: validateSeatRegistry(
@@ -556,7 +592,11 @@ export function loadConfig(): GolemsConfig {
     deepMerge(DEFAULTS, fileConfig),
     envOverrides,
   );
-  cachedConfig = normalizeConfig(mergedConfig);
+  const seatRegistry = pruneDefaultOnlySeats(
+    mergedConfig.seatRegistry,
+    fileConfig.seatRegistry,
+  );
+  cachedConfig = normalizeConfig({ ...mergedConfig, seatRegistry });
   return cachedConfig;
 }
 
