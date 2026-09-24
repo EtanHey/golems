@@ -145,7 +145,7 @@ describe("release gate CLI exit contract", () => {
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).not.toBe("");
     expect(result.report).toMatchObject({ verdict: "CLEAN" });
-  });
+  }, 15_000); // spawns node through a symlink; a cold runner can exceed the 5s default
 
   test("CLEAN exits zero at the tag", () => {
     const result = fixture();
