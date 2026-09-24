@@ -286,9 +286,9 @@ _golem_agy_resolve_model() {
   case "${1:-}" in
     ""|pro|pro-high)             print -r -- "Gemini 3.1 Pro (High)" ;;
     pro-low)                     print -r -- "Gemini 3.1 Pro (Low)" ;;
-    flash|flash-high)            print -r -- "Gemini 3.5 Flash (High)" ;;
-    flash-med|flash-medium)      print -r -- "Gemini 3.5 Flash (Medium)" ;;
-    flash-low)                   print -r -- "Gemini 3.5 Flash (Low)" ;;
+    flash|flash-high)            print -r -- "Gemini 3.8 Flash (High)" ;;
+    flash-med|flash-medium)      print -r -- "Gemini 3.8 Flash (Medium)" ;;
+    flash-low)                   print -r -- "Gemini 3.8 Flash (Low)" ;;
     opus)                        print -r -- "Claude Opus 4.6 (Thinking)" ;;
     sonnet)                      print -r -- "Claude Sonnet 4.6 (Thinking)" ;;
     oss|gpt-oss|gpt-oss-120b)    print -r -- "GPT-OSS 120B (Medium)" ;;
