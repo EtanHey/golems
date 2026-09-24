@@ -7,4 +7,7 @@ not ok 5 bash-3.2-declare-A RED :: declare -A exited 2 under macOS /bin/bash
 not ok 6 comm-unsorted RED :: comm invented a change for the same unsorted set
 not ok 7 large-plan-grep-done RED :: the exact :244 hit re-fired after one unrelated append
 not ok 8 repeated-read-screen RED :: one worker outcome triggered 7 paid screen reads instead of one process-exit watch
-BASELINE_SUMMARY expected_red=8 observed_red=8 unexpected_green=0
+not ok 17 bounded-filter RED :: the taught '^### |BLOCKED|@leadX' grep matched 14 lines of 10 posts where 3 are addressed
+not ok 18 dot-continues-name RED :: a boundary class that lets '.' continue a name matched 1 line and dropped 'thanks @leadX.'
+not ok 19 template-parity RED :: the original TEMPLATE grep matched 20 lines of the orchestrator fixture where its one-liner yields 5
+BASELINE_SUMMARY expected_red=11 observed_red=11 unexpected_green=0

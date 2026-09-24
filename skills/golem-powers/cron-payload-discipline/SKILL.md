@@ -185,8 +185,8 @@ If a cron payload exceeds 30 lines and does not run a live query in step 1, trea
 
 If the payload belongs to a lead/orchestrator/weaver (a seat that receives collab-routed work):
 
-- **An armed persistent inbound monitor is a precondition, not an option.** The seat's FIRST action is arming a native `Monitor` on its channel (`^### |BLOCKED|@<own-name>`, exclude own). A recurring tick whose seat has no armed monitor is invalid — fix the seat before the tick.
-- **"Stand by" / "keep monitoring" ticks are only valid with a live inbound monitor AND a consumed live query.** Restate the channel tail (`!tail`/grep for new `@<name>`/`###`) in step 1 and branch on it. A tick that says "still standing by" without reading the channel is the passive-output violation of Rule 5.
+- **An armed persistent inbound monitor is a precondition, not an option.** The seat's FIRST action is arming `/collab-monitor` on its channel (`collab-monitor.sh start @<own-claim> <channel.md>`, attached via `follow`) — it fires only on mail addressed to the seat, never its own posts; a raw `^### ` grep fires on every post. A recurring tick whose seat has no armed monitor is invalid — fix the seat before the tick.
+- **"Stand by" / "keep monitoring" ticks are only valid with a live inbound monitor AND a consumed live query.** Restate the channel tail (new lines addressed to you per the rule above — the `/collab-monitor` log, not a raw `###` grep) in step 1 and branch on it. A tick that says "still standing by" without reading the channel is the passive-output violation of Rule 5.
 - **Going idle-and-blind is never a valid terminal outcome.** Lane done → `dispatch` (pick up monitor-surfaced work) or an explicit `✅ DONE … monitor ARMED, standing by` that keeps the monitor running — never a stopped monitor.
 
 Canonical law: `/cmux-agents` → "LEAD/ORCHESTRATOR MONITOR LAW"; `/orc` → "THE SECOND CARDINAL RULE".
