@@ -4,7 +4,7 @@
 
 ## Role
 
-Services package contains **cross-cutting infrastructure** that doesn't belong to any single golem: the cloud worker orchestrator, night shift autonomous coding, morning briefings, health checks, and ecosystem management tools (wizard, doctor).
+Services package contains **cross-cutting infrastructure** that doesn't belong to any single golem: the cloud worker orchestrator, night shift autonomous coding, morning briefings, health checks, and ecosystem management tools (doctor). Guided setup lives in the `golem-install` skill.
 
 ---
 
@@ -52,18 +52,10 @@ packages/services/
 │   ├── night-shift.ts           # 4am autonomous coding improvements
 │   ├── briefing.ts              # 8am morning summary
 │   ├── healthcheck.ts           # 9am service health verification
-│   ├── wizard.ts                # `golems wizard` — guided setup
 │   ├── doctor.ts                # `golems doctor` — health checks
-│   ├── helpers-status.ts        # CLI helper backend status
-│   ├── skills-list.ts           # Skills discovery
-│   ├── validation-service.ts    # Input validation utilities
-│   ├── cursor-helper.ts         # Cursor CLI agent wrapper
-│   ├── gemini-helper.ts         # Gemini CLI agent wrapper
-│   ├── ollama-chat-bot.ts       # Ollama local chat wrapper
 │   ├── run-compaction.ts        # Context compaction utilities
 │   ├── thread-compactor.ts      # Thread compaction logic
-│   ├── thread-store.ts          # Thread storage
-│   └── whatsapp-index-cli.ts    # WhatsApp message indexing
+│   └── thread-store.ts          # Thread storage
 ├── .claude-plugin/plugin.json
 ├── CLAUDE.md                    # This file
 └── package.json                 # @golems/services
@@ -115,7 +107,6 @@ Runs at 4am via launchd. Per-repo Claude sessions:
 
 | Tool | Command | Description |
 |------|---------|-------------|
-| Wizard | `golems wizard` | Guided setup for new users |
 | Doctor | `golems doctor` | Health checks for all wiring |
 | Status | `golems status` | All-golem status overview |
 
