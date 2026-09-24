@@ -82,9 +82,27 @@ monthly folders (`YYYY-MM/`), and months older than N go to Brain Drive through 
 artifact, with a `_DRIVE-LEDGER.md` pointer left behind. `/fleet-wrap` is to run it at sprint close
 (skillcreator owns that call site; golems owns this skill).
 
+```bash
+node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N            # dry-run (default): report only
+node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N --json     # the full plan
+node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N --apply    # month moves + plan file
+```
+
+The last stdout line is the one-line summary `/fleet-wrap` records: `drive-filing rollup: mode=… files=…
+bytes=… · monthly-moves=… · to-drive months=… files=… bytes=… · held=… credentials-skipped=…`.
+Only items whose name starts with `YYYY-MM-DD` and existing `YYYY-MM/` folders take part; undated
+files are counted and left alone. A month rolls up once it is over; months more than N back form the
+upload plan, one unit per folder, targeting `Brain Drive/06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>`.
+`--apply` moves items into their month folders (never overwriting; a clash is reported as `conflict:`)
+and writes `docs.local/_drive-filing/rollup-plan-<date>.json`. **The script never uploads or deletes.**
+Upload exactly the files in that plan through the [archive procedure](references/archive-procedure.md)
+(ledger + `brain_digest`), and nothing that is not in it.
+
 **Credentials never move.** Nothing named `auth.json`, `*.pem`, `*.key`, `.env*`, `credentials*`,
 or containing `token`, and nothing under a `.codex-home*`, `.claude-home*` or `*-HOME*` directory,
-is uploaded, moved or deleted by the lifecycle (case-insensitive). Report each as
-`skipped: credential <path>`; cleaning them up is the owner's call.
+is uploaded, moved or deleted by the lifecycle (case-insensitive). `rollup.mjs` enforces this in code:
+each is reported as `skipped: credential <path>` (a credential directory is one line plus its
+credential-named files), and a dated item or month folder that holds one is `held:` whole. Cleaning
+them up is the owner's call.
 
 > **After creating/editing this skill it must be REGISTERED** (golem-install / symlink into `~/.claude/skills`) before any agent can invoke it — committed ≠ installed.

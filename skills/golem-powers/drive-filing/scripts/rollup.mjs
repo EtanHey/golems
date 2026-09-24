@@ -1,0 +1,316 @@
+#!/usr/bin/env node
+// drive-filing docs.local lifecycle: daily items (YYYY-MM-DD-*) roll up into
+// YYYY-MM/ folders once their month is over, and months older than
+// --keep-months become the Brain Drive upload plan.
+//
+//   node rollup.mjs --repo <path> --keep-months N [--dry-run | --apply] [--json] [--now YYYY-MM-DD]
+//
+// --dry-run (the default) only reports. --apply performs the local month
+// moves and writes docs.local/_drive-filing/rollup-plan-<date>.json. This
+// script never uploads or deletes anything: the upload itself runs through
+// references/archive-procedure.md from that plan, and nothing outside the
+// plan is uploaded.
+//
+// AIDEV-NOTE: credential exclusion is a hard requirement (skillcreatorLead,
+// 2026-09-25): a gitignored .codex-home-test/auth.json held live OAuth tokens.
+// Credentials are never moved, uploaded or deleted; each is reported as
+// "skipped: credential <path>", and a dated item or month folder holding one
+// is held whole.
+import { lstatSync, mkdirSync, readdirSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { basename, join, relative, resolve, sep } from "node:path";
+
+const USAGE =
+  "usage: rollup.mjs --repo <path> --keep-months N [--dry-run | --apply] [--json] [--now YYYY-MM-DD]";
+const PLAN_DIR = "_drive-filing";
+const DAY = /^(\d{4})-(\d{2})-(\d{2})(?!\d)/;
+const MONTH = /^(\d{4})-(\d{2})$/;
+
+const CREDENTIAL_DIR = [/^\.codex-home/i, /^\.claude-home/i, /-home/i];
+const CREDENTIAL_FILE = [/^auth\.json$/i, /\.pem$/i, /\.key$/i, /^\.env/i, /^credentials/i, /token/i];
+
+export function isCredentialDir(name) {
+  return CREDENTIAL_DIR.some((re) => re.test(name));
+}
+
+export function isCredentialFile(name) {
+  return CREDENTIAL_FILE.some((re) => re.test(name));
+}
+
+function parseArgs(argv) {
+  const args = { mode: "dry-run", json: false };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--repo") args.repo = argv[++i];
+    else if (arg === "--keep-months") args.keepMonths = argv[++i];
+    else if (arg === "--now") args.now = argv[++i];
+    else if (arg === "--dry-run") args.mode = "dry-run";
+    else if (arg === "--apply") args.mode = "apply";
+    else if (arg === "--json") args.json = true;
+    else throw new Error(`unknown argument: ${arg}`);
+  }
+  if (!args.repo) throw new Error("--repo is required");
+  if (args.keepMonths === undefined || !/^\d+$/.test(args.keepMonths)) {
+    throw new Error("--keep-months N (a whole number) is required");
+  }
+  args.keepMonths = Number(args.keepMonths);
+  const now = args.now ?? new Date().toISOString().slice(0, 10);
+  if (!DAY.test(now)) throw new Error("--now must be YYYY-MM-DD");
+  args.now = now.slice(0, 10);
+  return args;
+}
+
+const monthIndex = (month) => {
+  const [y, m] = month.split("-").map(Number);
+  return y * 12 + (m - 1);
+};
+
+function datedMonth(name) {
+  const match = DAY.exec(name);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  if (Number(m) < 1 || Number(m) > 12 || Number(d) < 1 || Number(d) > 31) return null;
+  return `${y}-${m}`;
+}
+
+function monthFolder(name) {
+  const match = MONTH.exec(name);
+  return match && Number(match[2]) >= 1 && Number(match[2]) <= 12 ? name : null;
+}
+
+// Every regular file under abs, never following symlinks.
+function allFiles(abs) {
+  const stat = lstatSync(abs);
+  if (stat.isSymbolicLink()) return [];
+  if (stat.isFile()) return [{ abs, bytes: stat.size }];
+  if (!stat.isDirectory()) return [];
+  return readdirSync(abs)
+    .sort()
+    .flatMap((child) => allFiles(join(abs, child)));
+}
+
+// Split the files under abs into ordinary files and credentials. `reports` is
+// what the report lists: one line per credential directory (its whole
+// subtree is excluded) plus every credential-named file, including those
+// inside such a directory, so e.g. .codex-home-test/auth.json is named.
+function collect(abs) {
+  const out = { files: [], credentials: [], reports: [] };
+  const stat = lstatSync(abs);
+  if (stat.isSymbolicLink()) return out;
+  const name = basename(abs);
+  if (stat.isFile()) {
+    const entry = { abs, bytes: stat.size };
+    if (isCredentialFile(name)) {
+      out.credentials.push(entry);
+      out.reports.push({ abs, kind: "file" });
+    } else {
+      out.files.push(entry);
+    }
+  } else if (stat.isDirectory() && isCredentialDir(name)) {
+    const inside = allFiles(abs);
+    out.credentials.push(...inside);
+    out.reports.push({ abs, kind: "dir", files: inside.length });
+    for (const f of inside) {
+      if (isCredentialFile(basename(f.abs))) out.reports.push({ abs: f.abs, kind: "file" });
+    }
+  } else if (stat.isDirectory()) {
+    for (const child of readdirSync(abs).sort()) {
+      const sub = collect(join(abs, child));
+      out.files.push(...sub.files);
+      out.credentials.push(...sub.credentials);
+      out.reports.push(...sub.reports);
+    }
+  }
+  return out;
+}
+
+export function buildPlan({ repo, keepMonths, now, mode }) {
+  const repoRoot = resolve(repo);
+  const docsLocal = join(repoRoot, "docs.local");
+  const rel = (abs) => relative(repoRoot, abs).split(sep).join("/");
+  const nowMonth = now.slice(0, 7);
+  const isFinished = (month) => monthIndex(month) < monthIndex(nowMonth);
+  const isOld = (month) => monthIndex(nowMonth) - monthIndex(month) > keepMonths;
+
+  const plan = {
+    version: 1,
+    repo: repoRoot,
+    now,
+    keepMonths,
+    mode,
+    moves: [],
+    conflicts: [],
+    upload: [],
+    held: [],
+    skipped: [],
+    totals: { files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0 },
+  };
+  if (!existsSync(docsLocal)) return finish(plan);
+
+  const units = new Map(); // "<parent>|<month>" -> upload unit
+  const addToUnit = (parentAbs, month, files) => {
+    const key = `${parentAbs}|${month}`;
+    if (!units.has(key)) {
+      const area = rel(parentAbs).replace(/^docs\.local\/?/, "");
+      units.set(key, {
+        month,
+        dir: rel(join(parentAbs, month)),
+        driveTarget: ["Brain Drive/06_ARCHIVE/docs-local", basename(repoRoot), area, month]
+          .filter(Boolean)
+          .join("/"),
+        files: [],
+        bytes: 0,
+      });
+    }
+    const unit = units.get(key);
+    for (const f of files) {
+      unit.files.push({ path: rel(f.abs), bytes: f.bytes });
+      unit.bytes += f.bytes;
+    }
+  };
+  const count = ({ files, credentials, reports }) => {
+    for (const f of [...files, ...credentials]) {
+      plan.totals.files += 1;
+      plan.totals.bytes += f.bytes;
+    }
+    plan.totals.credentialFiles += credentials.length;
+    for (const r of reports) {
+      plan.skipped.push(
+        r.kind === "dir"
+          ? { path: rel(r.abs), reason: "credential", kind: "dir", files: r.files }
+          : { path: rel(r.abs), reason: "credential", kind: "file" },
+      );
+    }
+  };
+
+  // Dated items and month folders are units: classified whole, never descended.
+  const walk = (dirAbs) => {
+    for (const name of readdirSync(dirAbs).sort()) {
+      const abs = join(dirAbs, name);
+      if (dirAbs === docsLocal && name === PLAN_DIR) continue;
+      const stat = lstatSync(abs);
+      if (stat.isSymbolicLink()) continue;
+      const found = collect(abs);
+      const month = datedMonth(name);
+      const folderMonth = stat.isDirectory() ? monthFolder(name) : null;
+
+      if (stat.isDirectory() && isCredentialDir(name)) {
+        count(found);
+      } else if (month || folderMonth) {
+        count(found);
+        if (month) plan.totals.dated += 1;
+        if (found.credentials.length > 0) {
+          plan.held.push({ path: rel(abs), reason: "contains credentials" });
+          continue;
+        }
+        if (month && isFinished(month)) {
+          const target = join(dirAbs, month, name);
+          if (existsSync(target)) {
+            plan.conflicts.push({ from: rel(abs), to: rel(target) });
+            continue;
+          }
+          plan.moves.push({ from: rel(abs), to: rel(target) });
+        }
+        const unitMonth = folderMonth ?? month;
+        if (isOld(unitMonth)) addToUnit(dirAbs, unitMonth, found.files);
+      } else if (stat.isDirectory()) {
+        walk(abs);
+      } else {
+        count(found);
+        plan.totals.undated += 1;
+      }
+    }
+  };
+  walk(docsLocal);
+
+  plan.upload = [...units.values()].sort((a, b) => a.dir.localeCompare(b.dir));
+  return finish(plan);
+}
+
+function finish(plan) {
+  plan.moves.sort((a, b) => a.from.localeCompare(b.from));
+  plan.skipped.sort((a, b) => a.path.localeCompare(b.path));
+  plan.totals.monthlyMoves = plan.moves.length;
+  plan.totals.uploadMonths = plan.upload.length;
+  plan.totals.uploadFiles = plan.upload.reduce((n, u) => n + u.files.length, 0);
+  plan.totals.uploadBytes = plan.upload.reduce((n, u) => n + u.bytes, 0);
+  plan.totals.held = plan.held.length;
+  return plan;
+}
+
+function human(bytes) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i += 1;
+  }
+  return `${i === 0 ? value : value.toFixed(1)} ${units[i]}`;
+}
+
+export function summaryLine(plan) {
+  const t = plan.totals;
+  return (
+    `drive-filing rollup: mode=${plan.mode} repo=${basename(plan.repo)} ` +
+    `files=${t.files} bytes=${t.bytes} (${human(t.bytes)}) · ` +
+    `monthly-moves=${t.monthlyMoves} · ` +
+    `to-drive months=${t.uploadMonths} files=${t.uploadFiles} bytes=${t.uploadBytes} (${human(t.uploadBytes)}) · ` +
+    `held=${t.held} credentials-skipped=${t.credentialFiles} conflicts=${plan.conflicts.length} undated=${t.undated}`
+  );
+}
+
+function apply(plan) {
+  const root = plan.repo;
+  for (const move of plan.moves) {
+    const to = join(root, move.to);
+    mkdirSync(join(to, ".."), { recursive: true });
+    renameSync(join(root, move.from), to);
+  }
+  // After the moves, upload paths point at the month folders.
+  const moved = new Map(plan.moves.map((m) => [m.from, m.to]));
+  for (const unit of plan.upload) {
+    for (const file of unit.files) {
+      for (const [from, to] of moved) {
+        if (file.path === from || file.path.startsWith(`${from}/`)) {
+          file.path = to + file.path.slice(from.length);
+          break;
+        }
+      }
+    }
+  }
+  const dir = join(root, "docs.local", PLAN_DIR);
+  mkdirSync(dir, { recursive: true });
+  const out = join(dir, `rollup-plan-${plan.now}.json`);
+  writeFileSync(out, `${JSON.stringify(plan, null, 2)}\n`);
+  return out;
+}
+
+function main(argv) {
+  let args;
+  try {
+    args = parseArgs(argv);
+  } catch (error) {
+    console.error(`${error.message}\n${USAGE}`);
+    return 2;
+  }
+  const plan = buildPlan(args);
+  if (args.mode === "apply") plan.planFile = apply(plan);
+  if (args.json) {
+    process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
+    return 0;
+  }
+  const lines = [
+    ...plan.skipped.map((s) =>
+      s.kind === "dir" ? `skipped: credential ${s.path}/ (${s.files} files)` : `skipped: credential ${s.path}`,
+    ),
+    ...plan.held.map((h) => `held: ${h.path} (${h.reason})`),
+    ...plan.conflicts.map((c) => `conflict: ${c.from} -> ${c.to} exists`),
+    summaryLine(plan),
+  ];
+  process.stdout.write(`${lines.join("\n")}\n`);
+  return 0;
+}
+
+if (import.meta.main ?? process.argv[1] === new URL(import.meta.url).pathname) {
+  process.exitCode = main(process.argv.slice(2));
+}

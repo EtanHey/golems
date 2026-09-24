@@ -95,7 +95,8 @@ jobs:
                    ./scripts/tests/release-gate.test.mjs \
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/cc-usage/__tests__ \
-                   ./skills/golem-powers/never-fabricate/scripts/__tests__
+                   ./skills/golem-powers/never-fabricate/scripts/__tests__ \
+                   ./skills/golem-powers/drive-filing/scripts
 
       - name: node suites
         run: |
