@@ -238,6 +238,29 @@
         {"type": "negative", "name": "exactly-three", "description": "Plain posts, a self-post mentioning @leadX, @leadXtra, a leadX-w2 progress header, and an unrelated BLOCKED do not emit."},
         {"type": "content", "name": "alias-routes-seat-id", "description": "--alias @seat-id makes a header routed to the seat id emit; without it the header stays silent."}
       ]
+    },
+    {
+      "id": 18,
+      "name": "arrowed-authors-and-fleet-tokens",
+      "category": "compliance",
+      "description": "PR #151 review r3: author detection failed on every arrowed header, DONE_<SEAT> was not a status word, and a sentence-final @name was silent.",
+      "prompt": "Arm @leadX and append evals/fixtures/arrowed-authors.md.",
+      "assertions": [
+        {"type": "negative", "name": "arrowed-own-post-silent", "description": "'### leadX → other' with a body @leadX mention or a worker BLOCKED line does not emit."},
+        {"type": "content", "name": "arrowed-worker-done-fires", "description": "A DONE line under '### leadX-w1 → orc' emits."},
+        {"type": "content", "name": "fleet-done-token-fires", "description": "DONE_LEADX_W2 in a leadX-w2 block emits."},
+        {"type": "content", "name": "sentence-final-mention-fires", "description": "'thanks @leadX.' emits; '@leadX-w2' does not emit for leadX."}
+      ]
+    },
+    {
+      "id": 19,
+      "name": "orchestrator-template-parity",
+      "category": "compliance",
+      "description": "The script and the collab/TEMPLATE.md one-liner (EtanHey/orchestrator tests/monitor-filter.test.sh) must agree on the same fourteen posts.",
+      "prompt": "Seed the orchestrator fixture's pre-watermark history, arm @leadX, and append evals/fixtures/orchestrator-fourteen-posts.md.",
+      "assertions": [
+        {"type": "content", "name": "exactly-the-one-liner-events", "description": "Exactly F1-F5 emit, in order, byte-identical to the one-liner's output."}
+      ]
     }
   ]
 }

@@ -145,7 +145,21 @@ run_baseline() {
     pass "17 bounded-filter unexpectedly absent"
   fi
 
-  printf 'BASELINE_SUMMARY expected_red=9 observed_red=%s unexpected_green=%s\n' "$fail_count" "$pass_count"
+  sentence_final_hits="$(grep -cE '@leadX([^[:alnum:]_.-]|$)' "$FIXTURES/arrowed-authors.md" || true)"
+  if grep -Fq 'thanks @leadX.' "$FIXTURES/arrowed-authors.md" && [[ "$sentence_final_hits" -eq 1 ]]; then
+    fail "18 dot-continues-name RED" "a boundary class that lets '.' continue a name matched $sentence_final_hits line and dropped 'thanks @leadX.'"
+  else
+    pass "18 dot-continues-name unexpectedly absent"
+  fi
+
+  template_old_hits="$(grep -cE '^### |BLOCKED|@leadX' "$FIXTURES/orchestrator-fourteen-posts.md" || true)"
+  if [[ "$template_old_hits" -ne 5 ]]; then
+    fail "19 template-parity RED" "the original TEMPLATE grep matched $template_old_hits lines of the orchestrator fixture where its one-liner yields 5"
+  else
+    pass "19 template-parity unexpectedly absent"
+  fi
+
+  printf 'BASELINE_SUMMARY expected_red=11 observed_red=%s unexpected_green=%s\n' "$fail_count" "$pass_count"
   return 1
 }
 
@@ -954,6 +968,44 @@ run_candidate() {
     pass "17 bounded-filter GREEN"
   else
     fail "17 bounded-filter" "ten posts did not yield exactly the three addressed events in order, or --alias did not route a seat-id recipient"
+  fi
+
+  case_dir="$TMP_ROOT/arrowed-authors"
+  mkdir -p "$case_dir/state"
+  board="$case_dir/collab.md"
+  : > "$board"
+  run_once "$case_dir/state" "$case_dir/seed.out" '@leadX' "$board"
+  append_fixture "$FIXTURES/arrowed-authors.md" "$board"
+  run_once "$case_dir/state" "$case_dir/scan.out" '@leadX' "$board"
+  sed -n 's/^NEW-FOR-@leadX .* :: //p' "$case_dir/scan.out" > "$case_dir/events.out"
+  printf '%s\n' \
+    'DONE: shipped the parser.' \
+    'Report at docs.local/report.md DONE_LEADX_W2' \
+    'Sign-off with trailing punctuation: thanks @leadX.' > "$case_dir/expected.out"
+  if cmp -s "$case_dir/expected.out" "$case_dir/events.out"; then
+    pass "18 arrowed-authors-and-tokens GREEN"
+  else
+    fail "18 arrowed-authors-and-tokens" "an arrowed own post fired, an arrowed worker DONE, a DONE_<SEAT> token, or a sentence-final @name was silent, or @name-w2 fired for the lead"
+  fi
+
+  case_dir="$TMP_ROOT/orchestrator-parity"
+  mkdir -p "$case_dir/state"
+  board="$case_dir/collab.md"
+  printf '%s\n' '# Fixture collab' '### leadY (2026-09-25 09:00)' 'old history mentioning @leadX that is BEFORE the watermark' > "$board"
+  run_once "$case_dir/state" "$case_dir/seed.out" '@leadX' "$board"
+  append_fixture "$FIXTURES/orchestrator-fourteen-posts.md" "$board"
+  run_once "$case_dir/state" "$case_dir/scan.out" '@leadX' "$board"
+  sed -n 's/^NEW-FOR-@leadX .* :: //p' "$case_dir/scan.out" > "$case_dir/events.out"
+  printf '%s\n' \
+    'F1 body mention: @leadX please review the parser diff.' \
+    '### orcClaude → leadX (2026-09-25 10:02)' \
+    'F3 Report at docs.local/report.md DONE_LEADX_W1' \
+    'F4 sign-off with trailing punctuation: thanks @leadX.' \
+    '### orcClaude → orc, leadX (2026-09-25 10:12)' > "$case_dir/expected.out"
+  if cmp -s "$case_dir/expected.out" "$case_dir/events.out"; then
+    pass "19 orchestrator-one-liner-parity GREEN"
+  else
+    fail "19 orchestrator-one-liner-parity" "the orchestrator TEMPLATE fixture did not yield exactly its one-liner's five events in order"
   fi
 
   printf 'CANDIDATE_SUMMARY pass=%s fail=%s\n' "$pass_count" "$fail_count"

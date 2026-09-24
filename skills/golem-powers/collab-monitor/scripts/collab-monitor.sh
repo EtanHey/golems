@@ -343,13 +343,9 @@ extract_events() {
       }
       event_count = 0
     }
-    function is_name_char(ch) {
-      return ch != "" && ch ~ /[[:alnum:]_.-]/
-    }
     function name_ends(value, position,    next_char) {
       next_char = substr(value, position, 1)
-      if (next_char == ".") return !is_name_char(substr(value, position + 1, 1))
-      return !is_name_char(next_char)
+      return next_char == "" || next_char !~ /[[:alnum:]_-]/
     }
     function is_token(name,    i) {
       for (i = 1; i <= token_count; i++) if (name == tokens[i]) return 1
@@ -386,7 +382,7 @@ extract_events() {
       return 0
     }
     function has_status_word(value) {
-      return value ~ /(^|[^[:alnum:]_])(DONE|BLOCKED)([^[:alnum:]_]|$)/
+      return value ~ /(^|[^[:alnum:]_])(DONE|BLOCKED)([^[:alnum:]]|$)/
     }
     function is_worker_name(name,    i, rest) {
       for (i = 1; i <= token_count; i++) {
@@ -402,8 +398,8 @@ extract_events() {
       heading_self = 0
       heading_worker = 0
       field = tolower(value)
-      sub(/^[[:space:]]*#+[[:space:]]+/, "", field)
       if (arrow) field = substr(field, 1, arrow - 1)
+      sub(/^[[:space:]]*#+[[:space:]]+/, "", field)
       gsub(/\([^)]*\)/, "", field)
       dash = index(field, "—")
       if (dash) field = substr(field, 1, dash - 1)
@@ -439,12 +435,11 @@ extract_events() {
       gsub(/`/, "", value)
       return value
     }
-    function has_exact_mention(value, token,    remaining, position, previous_char, next_char) {
+    function has_exact_mention(value, token,    remaining, position, previous_char) {
       remaining = value
       while ((position = index(remaining, "@" token)) > 0) {
         previous_char = substr(remaining, position - 1, 1)
-        next_char = substr(remaining, position + length(token) + 1, 1)
-        if ((position == 1 || previous_char !~ /[[:alnum:]_.@-]/) && (next_char == "" || next_char !~ /[[:alnum:]_.-]/)) return 1
+        if ((position == 1 || previous_char !~ /[[:alnum:]_.@-]/) && name_ends(remaining, position + length(token) + 1)) return 1
         remaining = substr(remaining, position + 1)
       }
       return 0
@@ -834,7 +829,7 @@ print_contract() {
   local file_count="$3"
 
   printf 'MONITOR-ARMED name=%s files=%s state=%s\n' "$listen_name" "$file_count" "$state_dir"
-  printf '%s\n' 'WILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; process death without a supervisor; worker completion visible only in an agent registry'
+  printf '%s\n' 'WILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry'
 }
 
 interruptible_sleep() {

@@ -16,4 +16,6 @@ ok 14 transient-vanish-retry GREEN
 ok 15 supervisor-watch-not-poll GREEN
 ok 16 detached-launch GREEN
 ok 17 bounded-filter GREEN
-CANDIDATE_SUMMARY pass=17 fail=0
+ok 18 arrowed-authors-and-tokens GREEN
+ok 19 orchestrator-one-liner-parity GREEN
+CANDIDATE_SUMMARY pass=19 fail=0

@@ -4,7 +4,7 @@ description: "Arm or stop tag-scoped durable collab-file watches. Triggers: coll
 version: 1.2.0
 type: encoded-preference
 last-eval-date: 2026-09-25
-compliance-score: "17/17 deterministic checks (not an agent-behavior score)"
+compliance-score: "19/19 deterministic checks (not an agent-behavior score)"
 ---
 
 # Collab Monitor
@@ -75,6 +75,8 @@ notified. A participant without a watcher on that file will not see it, no matte
    Here `<self>` is the seat's listen name without `@`; replace it with the exact header author.
    Read what it captured when you are re-invoked. A Codex that keeps working, or keeps polling
    in the foreground, because "it has no monitor" is choosing the wrong half of the contract.
+   This tail drops only your own blocks and captures every other post: it is not the bounded
+   rule above. Prefer `collab-monitor.sh start` + `run --once` from a scheduler when you can.
 4. **Dedup by line hash.** A collab that gets rewritten (formatting, section moves) must not
    re-emit its whole history as new events. Hash lines; emit only unseen ones.
 5. **Stop when you post your DONE — not before, not after.** The watcher's life is exactly the
@@ -360,12 +362,12 @@ For headless Codex workers, use the `codex-workflows` skill's `watch` primitive.
 
 ## Routing Grammar
 
-The filter is tag-scoped and anchored on both sides of a mention, so email-like text such as `owner@listener` and near-misses such as `@listenerTwo` or `@listener-w1` do not route. `<name>` below is the listen name or any `--alias`. It accepts:
+The filter is tag-scoped and anchored on both sides of a mention, so email-like text such as `owner@listener` and near-misses such as `@listenerTwo`, `@listener_2` or `@listener-w1` do not route. A name ends at any character outside `[[:alnum:]_-]`, so `@listener.`, `@listener,` and `(@listener)` all route, the same as the `collab/TEMPLATE.md` one-liner (eval 19 pins the two to one fixture). `<name>` below is the listen name or any `--alias`. It accepts:
 
 - a word-bounded `@<name>` anywhere in a line, including a heading's summary. Superseded 2026-09-25 (Etan): a mid-line `@<name>` IS an event. Dash-led signature lines (`— signed by @orc, cc @<name>`) are not;
 - a routed Markdown header whose recipient field names you, with or without `@`: `### author → name — event`, `### @author -> @name`. Only the recipient field between the arrow and the event-summary separator counts for a bare name;
 - a direct line beginning `@<name>:` or `→ @<name>`, with the arrow form followed by end-of-line or a `:`, `-`, or `—` separator;
-- a `DONE` or `BLOCKED` line (uppercase, word-bounded, so `TASK_DONE` does not count) inside a block headed by your own worker or reviewer (`### <name>-w<N>` / `### <name>-r<N>`), or on any line naming `<name>-w<N>`/`<name>-r<N>`. A progress header from your worker without either word is silent.
+- a `DONE` or `BLOCKED` line (uppercase; the fleet's `DONE_<SEAT>` contract token counts, `TASK_DONE` does not) inside a block headed by your own worker or reviewer (`### <name>-w<N>` / `### <name>-r<N>`), or on any line naming `<name>-w<N>`/`<name>-r<N>`. A progress header from your worker without either word is silent.
 
 The header author is the first name in the heading: `### @leadX — …`, `### leadX (ts)`, `### leadX → …`. A `· <seat-id>` segment before the arrow is an author too. A block whose header author is known and foreign is emitted as soon as its lines arrive. A block with no recognizable author, such as a bare mention at the top of a file or a `## Notes for @name` heading, keeps the held-until-closed rule below.
 
@@ -415,6 +417,7 @@ The runner prints these limits on every arm because silence is not full safety:
 - messages outside the anchored routing grammar;
 - unclosed trailing direct messages in a block with no recognizable header author, which are held until a signature or later heading closes the block;
 - a self signature under a foreign-authored header: that block was already emitted when its lines arrived;
+- a Codex seat on the Participation Law rule 3 background tail: that tail drops only self blocks, so it is unbounded;
 - inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it;
 - process death without an external supervisor;
 - worker completion represented only in an agent registry.
