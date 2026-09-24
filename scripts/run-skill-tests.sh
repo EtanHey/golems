@@ -12,10 +12,15 @@ while IFS= read -r -d '' suite; do
     PYTEST_SUITES+=("$suite")
   fi
 done < <(
-  find skills/golem-powers -type d \
-    \( -path '*/tests' -o -path '*/hooks/tests' -o -path '*/checks/tests' \) \
+  # __tests__ dirs hold pytest suites too (weave, cursor-workflows,
+  # convention-audit); ones with no test*.py are dropped by the check above.
+  # _archive/ is retired code and is not collected.
+  find skills/golem-powers -path 'skills/golem-powers/_archive' -prune -o -type d \
+    \( -path '*/tests' -o -path '*/hooks/tests' -o -path '*/checks/tests' -o -name '__tests__' \) \
     -print0 \
     | sort -z
+  # The repo's own Python tests, including this runner's.
+  printf '%s\0' scripts/tests
 )
 
 if [[ "${RUN_SKILL_TESTS_LIST_ONLY:-}" == "1" ]]; then
