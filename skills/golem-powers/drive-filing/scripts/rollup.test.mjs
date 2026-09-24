@@ -571,9 +571,18 @@ describe("rollup v2: Drive targets never collide (F1) and empty units are not pl
     const p = plan(repo);
     expect(p.upload.map((u) => u.driveTarget).map((t) => t.split("/").slice(-3).join("/"))).toEqual([
       "docs-local/qa/2026-01".replace("docs-local", basename(repo)),
-      "qa/notes/2026-01",
+      "<repo>/qa/notes".replace("<repo>", basename(repo)),
     ]);
     expect(driveInvariant(p)).toEqual(clean);
+  });
+
+  test("an mtime unit's Drive target mirrors its unmoved local path, with no month segment", () => {
+    const repo = fixture({ "research/2026-02-01-x.md": "x", "research/deep/cache/README.md": "r" });
+    touch(repo, "2026-01-15T00:00:00Z", "research/deep/cache/README.md");
+    const unit = plan(repo).upload.find((u) => u.dating === "mtime");
+    expect(unit.dir).toBe("docs.local/research/deep");
+    expect(unit.driveTarget).toBe(`Brain Drive/06_ARCHIVE/docs-local/${basename(repo)}/research/deep`);
+    expect(unit.month).toBe("2026-01");
   });
 
   test("many root-level mtime units of one month each get their own target", () => {

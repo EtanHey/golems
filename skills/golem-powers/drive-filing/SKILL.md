@@ -95,7 +95,7 @@ bytes=… · monthly-moves=… · to-drive months=… files=… bytes=… · mti
 An undated folder with a dated name somewhere below it is an *area* and is descended. An undated folder
 with none is **one mtime unit** (the highest such folder), dated by the newest file inside; it joins the
 upload plan once old but is **never moved**; its Drive target keeps its own path
-(`…/<repo>/<unit path>/<YYYY-MM>`), so no two units share a target. `--json` lists the 5 largest under
+(`…/<repo>/<area>/<unitName>`, no month segment: it mirrors the unmoved local path), so no two units share a target. `--json` lists the 5 largest under
 `mtimeUnits`. A unit with no files or only empty ones is counted (`empty-units=`) and never planned.
 Undated files are counted and left alone. A month rolls up once it is over; months more than N back form
 the upload plan, one unit per folder, targeting `Brain Drive/06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>`.

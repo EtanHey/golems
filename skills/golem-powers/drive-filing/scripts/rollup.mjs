@@ -271,15 +271,16 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     if (!upload) return;
     plan.totals.mtimeUnits += 1;
     plan.totals.mtimeBytes += bytes;
-    // F1: the unit keeps its own path in its Drive target, shaped like an
-    // area's month unit (<area>/<month>), so no two units share a target and
-    // none nests under another's (qa/2026-01 vs qa/notes/2026-01).
+    // F1 (spec owner 16:10): an mtime unit is never moved, so its Drive target
+    // mirrors its local path, <area>/<unitName>, with no month segment. An
+    // undated unit name can never be a YYYY-MM, so no two units share a target
+    // and none nests under another (qa/2026-01 vs qa/notes).
     const unitPath = rel(abs).replace(/^docs\.local\/?/, "");
     plan.upload.push({
       month,
       dir: rel(abs),
       dating: "mtime",
-      driveTarget: ["Brain Drive/06_ARCHIVE/docs-local", basename(repoRoot), unitPath, month].join("/"),
+      driveTarget: ["Brain Drive/06_ARCHIVE/docs-local", basename(repoRoot), unitPath].join("/"),
       files: found.files.map((f) => ({ path: rel(f.abs), bytes: f.bytes })),
       bytes,
     });
