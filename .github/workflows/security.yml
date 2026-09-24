@@ -111,7 +111,18 @@ jobs:
           # violations are hash-ratcheted and may burn down, never grow.
           PUBLISH_BOUNDARY_HISTORY_MODE: ratchet
           PUBLISH_BOUNDARY_HISTORY_BASE: 5857c663fe37f3dd1fba1d573f813878f3e73875
-        run: bash scripts/check-publish-boundary.sh
+        # Pushes to master and the nightly run ratchet from genesis. A pull
+        # request only adds its own commits on top of master, which already
+        # passed that ratchet, so it scans from its merge base with master (HEAD
+        # is the PR merge ref). The script still refuses a shallow checkout or
+        # a base that is not an ancestor of HEAD.
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            PUBLISH_BOUNDARY_HISTORY_BASE="$(git merge-base origin/master HEAD)"
+            export PUBLISH_BOUNDARY_HISTORY_BASE
+            echo "pull request: ratchet from merge base $PUBLISH_BOUNDARY_HISTORY_BASE"
+          fi
+          bash scripts/check-publish-boundary.sh
 
   summary:
     name: Security Summary
