@@ -1,15 +1,25 @@
 ---
 name: collab-monitor
 description: "Arm or stop tag-scoped durable collab-file watches. Triggers: collab monitor, watch collab, listen-name, background watch. NOT for file-integrity auditing or worker-registry completion."
-version: 1.1.0
+version: 1.2.0
 type: encoded-preference
-last-eval-date: 2026-08-03
-compliance-score: "15/15 deterministic checks (not an agent-behavior score)"
+last-eval-date: 2026-09-25
+compliance-score: "19/19 deterministic checks (not an agent-behavior score)"
 ---
 
 # Collab Monitor
 
 Use the packaged monitor whenever a collab lane needs forward-only delivery to a declared listen name. Do not hand-roll a `grep`/`tail` loop: the recorded fleet failures are pinned in this skill's evals.
+
+## The rule, in one paragraph
+
+A collab monitor fires ONLY on: (1) `@<claim>` anywhere, word-bounded; (2) a header addressed to you `### <author> → <claim>` / `→ @<claim>` (`->` accepted); (3) your OWN workers'/reviewers' `DONE`/`BLOCKED` lines (`<claim>-w<N>` / `<claim>-r<N>`); NEVER on your own posts (author-aware: track the current `### <author>` header). Offset-watermark, never `tail -f`; append-only `cat >>`; `monitor=<task-id>` in the claim. Reference implementation: `/collab-monitor` (`collab-monitor.sh start @<claim> <file>`); a hand-rolled `Monitor` must match this rule or be replaced by it.
+
+`<claim>` is the listen name plus every `--alias` (for example your cmuxlayer seat id), so `→ golemsClaude-0000abcd` reaches the seat that claimed `golemsLead`.
+
+## Why bounded
+
+Ratified 2026-09-25 (Etan). The law text taught `^### |BLOCKED|@<your-name>`, which matches every post: leads woke on every `### ` header with nothing to do. This monitor had the opposite gap, and orc missed `→ orc` headers written without `@`. Ten posts must produce exactly the three addressed to you (eval 17, `evals/fixtures/ten-posts-three-fires.md`); the raw grep matches 14 lines of that fixture.
 
 ## Start and Stop
 
@@ -17,8 +27,8 @@ Use the packaged monitor whenever a collab lane needs forward-only delivery to a
 COLLAB_MONITOR=$HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh
 : "${ORCHESTRATOR_REPO:?ORCHESTRATOR_REPO must be set}"
 
-# Durable background monitor over N explicit files
-bash "$COLLAB_MONITOR" start @your-listen-name \
+# Durable background monitor over N explicit files; add --alias @<seat-id> so headers routed to your seat id reach you
+bash "$COLLAB_MONITOR" start --alias @your-seat-id @your-listen-name \
   "$ORCHESTRATOR_REPO/collab/FLEET-STANDING.md" \
   "$ORCHESTRATOR_REPO/collab/ARM-MONITORS.md"
 
@@ -65,6 +75,8 @@ notified. A participant without a watcher on that file will not see it, no matte
    Here `<self>` is the seat's listen name without `@`; replace it with the exact header author.
    Read what it captured when you are re-invoked. A Codex that keeps working, or keeps polling
    in the foreground, because "it has no monitor" is choosing the wrong half of the contract.
+   This tail drops only your own blocks and captures every other post: it is not the bounded
+   rule above. Prefer `collab-monitor.sh start` + `run --once` from a scheduler when you can.
 4. **Dedup by line hash.** A collab that gets rewritten (formatting, section moves) must not
    re-emit its whole history as new events. Hash lines; emit only unseen ones.
 5. **Stop when you post your DONE — not before, not after.** The watcher's life is exactly the
@@ -350,14 +362,18 @@ For headless Codex workers, use the `codex-workflows` skill's `watch` primitive.
 
 ## Routing Grammar
 
-The filter is tag-scoped and anchored on both sides of a mention, so email-like text such as `owner@listener` does not route. For routed headings, only mentions in the recipient field between the arrow and event-summary separator qualify; a listener mentioned later in the summary is not a recipient. It accepts:
+The filter is tag-scoped and anchored on both sides of a mention, so email-like text such as `owner@listener` and near-misses such as `@listenerTwo`, `@listener_2` or `@listener-w1` do not route. A name ends at any character outside `[[:alnum:]_-]`, so `@listener.`, `@listener,` and `(@listener)` all route, the same as the `collab/TEMPLATE.md` one-liner (eval 19 pins the two to one fixture). `<name>` below is the listen name or any `--alias`. It accepts:
 
-- a routed Markdown header such as `### @author → @your-listen-name — event`;
-- a direct line beginning `@your-listen-name:` or `→ @your-listen-name`, with the arrow form followed by end-of-line or a `:`, `-`, or `—` separator.
+- a word-bounded `@<name>` anywhere in a line, including a heading's summary. Superseded 2026-09-25 (Etan): a mid-line `@<name>` IS an event. Dash-led signature lines (`— signed by @orc, cc @<name>`) are not;
+- a routed Markdown header whose recipient field names you, with or without `@`: `### author → name — event`, `### @author -> @name`. Only the recipient field between the arrow and the event-summary separator counts for a bare name;
+- a direct line beginning `@<name>:` or `→ @<name>`, with the arrow form followed by end-of-line or a `:`, `-`, or `—` separator;
+- a `DONE` or `BLOCKED` line (uppercase; the fleet's `DONE_<SEAT>` contract token counts, `TASK_DONE` does not) inside a block headed by your own worker or reviewer (`### <name>-w<N>` / `### <name>-r<N>`), or on any line naming `<name>-w<N>`/`<name>-r<N>`. A progress header from your worker without either word is silent.
 
-A direct line at the end of a file is held until a standalone trailing author signature (`— @author` or `-- @author`) or later heading closes its message block. Contextual dash lines and signatures that merely cc the listener do not close or classify a block. This prevents a split write from alerting before a self-author signature arrives. A block authored by the listen name—either before the routing arrow in its header or in a trailing `— @your-listen-name` signature—is classified as `SELF` and dropped by default; `--include-self` emits it as `SELF-POST` rather than inbound `NEW-FOR` mail. A recognized foreign signature overrides an earlier self-authored heading so nested inbound mail remains visible.
+The header author is the first name in the heading: `### @leadX — …`, `### leadX (ts)`, `### leadX → …`. A `· <seat-id>` segment before the arrow is an author too. A block whose header author is known and foreign is emitted as soon as its lines arrive. A block with no recognizable author, such as a bare mention at the top of a file or a `## Notes for @name` heading, keeps the held-until-closed rule below.
 
-Prose that merely contains the tag, `TASK_DONE`, `error`, `failed`, `PR`, or `done` is not an event. If a post matters to a listener, address it using the routing grammar.
+In a block with no recognizable header author, a direct line at the end of a file is held until a standalone trailing author signature (`— @author` or `-- @author`) or later heading closes its message block. Contextual dash lines and signatures that merely cc the listener do not close or classify a block. This prevents a split write from alerting before a self-author signature arrives. A block authored by the listen name—either before the routing arrow in its header or in a trailing `— @your-listen-name` signature—is classified as `SELF` and dropped by default; `--include-self` emits it as `SELF-POST` rather than inbound `NEW-FOR` mail. A recognized foreign signature overrides an earlier self-authored heading so nested inbound mail remains visible.
+
+Prose that contains `TASK_DONE`, `error`, `failed`, `PR`, lowercase `done`, or a bare name without `@` outside a header recipient field is not an event. Everything outside the four forms above stays anchored, not a bare tag scan. If a post matters to a listener, address it using the routing grammar.
 
 Fenced and indented code is excluded from routing, so examples of the grammar do not wake the monitor, including four-space fenced blocks nested beneath a Markdown list item and fences opened directly on a list-marker line. Backtick markers whose info remainder contains another backtick are treated as inline content, not as fence openers. A four-space routed reply immediately nested beneath a list item remains prose and can route normally. An unclosed fence emits `WATCH-WARN reason=unclosed-fence`, makes the poll incomplete, and is retried until the fence closes; `start` does not publish readiness while that condition exists.
 
@@ -365,7 +381,7 @@ Fenced and indented code is excluded from routing, so examples of the grammar do
 
 1. **Silent seed:** current matching history is hashed without alerting when a file is first watched.
 2. **Content-hash dedup:** a previously seen event line does not re-fire when any watched file grows or identical content is appended to another watched file for the same listen name. If the seen-set disappears or becomes unreadable after size baselines exist, the poll fails closed with `reason=state-failed` instead of replaying history.
-3. **Self-classification:** self-authored routed headers and trailing-signature blocks are dropped by default; `--include-self` emits their distinct `SELF-POST` record, never a normal inbound alert.
+3. **Self-classification:** blocks whose header author is the listen name or an alias, self-authored routed headers, and trailing-signature blocks are dropped by default; `--include-self` emits their distinct `SELF-POST` record, never a normal inbound alert.
 4. **Shrink detection:** a byte-size decrease emits a distinct `SHRINK` record with its byte delta.
 5. **Bash 3.2 safety:** state lives in ordinary files; the implementation uses neither `declare -A` nor `comm`.
 6. **Durable lifecycle:** `start` reports success only after the detached runner completes its first seed/poll, allowing 30 seconds by default for a large healthy historical seed, and records a validated PID plus per-start instance identity by listen name; an interrupted pre-readiness start terminates and reaps its unpublished runner, duplicate starts fail, ambiguous live-PID conflicts preserve their state for recovery instead of signaling or orphaning a process, `stop` never signals a stale/reused PID or a same-name monitor from another state root, and a zombie runner is treated as stopped instead of timing out.
@@ -399,7 +415,9 @@ The runner prints these limits on every arm because silence is not full safety:
 
 - same-size rewrites in place; growth rewrites trigger a scan but may look like appends;
 - messages outside the anchored routing grammar;
-- unclosed trailing direct messages, which are held until a signature or later heading closes the block;
+- unclosed trailing direct messages in a block with no recognizable header author, which are held until a signature or later heading closes the block;
+- a self signature under a foreign-authored header: that block was already emitted when its lines arrived;
+- a Codex seat on the Participation Law rule 3 background tail: that tail drops only self blocks, so it is unbounded;
 - inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it;
 - process death without an external supervisor;
 - worker completion represented only in an agent registry.

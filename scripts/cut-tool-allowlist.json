@@ -14,31 +14,9 @@
       "markers": ["| `cmux send` | UDS `send_input` command |"]
     },
     {
-      "file": "skills/golem-powers/collab-routing-gate/SKILL.md",
-      "reason": "Mirrors the gate's own matcher set. The matchers must keep the cut names to catch transcripts written before the cut (scope gate, ruled 2026-08-18); the prose has to name what the matcher matches.",
-      "markers": [
-        "no send_input coordination, no sleep-poll ticks",
-        "NOT send_input chatter,",
-        "(read_screen/get_agent_state) instead of `wait_for(agent_id)`",
-        "| `COORD_VIA_SEND_INPUT` |",
-        "`send_input` used to BOOT a worker with its task",
-        "NOT a message bus driven by send_input)"
-      ]
-    },
-    {
-      "file": "skills/golem-powers/spec-preflight-gate/SKILL.md",
-      "reason": "Matcher set for detecting dispatch calls in historical transcripts; same scope-gate ruling as collab-routing-gate.",
-      "markers": ["- Dispatch calls: `spawn_agent`, `Task`, `send_to`, `send_to_agent`"]
-    },
-    {
       "file": "skills/golem-powers/never-fabricate/SKILL.md",
       "reason": "Names a provenance CLASS of an already-written message ('was this typed, or send_command'd by an assistant?'). It is not an instruction to call anything.",
       "markers": ["`send_command` authored by an assistant."]
-    },
-    {
-      "file": "skills/golem-powers/pr-queue-gate/SKILL.md",
-      "reason": "Records the `set_status` gap honestly rather than inventing a mapping — exactly what the brief asked for.",
-      "markers": ["the pre-v0.4.35 `set_status` tool it used to name no longer exists"]
     },
     {
       "file": "skills/golem-powers/skill-creator/agents/session-miner.md",

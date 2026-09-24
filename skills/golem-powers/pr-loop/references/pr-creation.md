@@ -134,9 +134,10 @@ scripts/pr-size-labels.sh ensure <owner/repo>
 scripts/pr-size-labels.sh compute <pr> --repo <owner/repo>
 ```
 
-Sizing is additions + deletions over non-generated files (locks, `dist/`,
+Sizing is additions over non-generated files (locks, `dist/`,
 `node_modules/`, snapshots, fixtures and `testdata/` are excluded — the full
-glob list is in the script header):
+glob list is in the script header). Deletions never count, so a big deletion
+stays small:
 
 | label | hand-written lines |
 |---|---|
