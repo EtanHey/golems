@@ -29,6 +29,27 @@ def test_runner_lists_python_skill_test_suites_only():
     assert "skills/golem-powers/eas-prebuild-check/tests" not in suites
 
 
+def test_runner_collects_python_dunder_tests_dirs_and_scripts_tests():
+    env = {**os.environ, "RUN_SKILL_TESTS_LIST_ONLY": "1"}
+    result = subprocess.run(
+        [str(RUNNER)],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    suites = set(result.stdout.splitlines())
+
+    assert "skills/golem-powers/weave/scripts/__tests__" in suites
+    assert "skills/golem-powers/cursor-workflows/__tests__" in suites
+    assert "skills/golem-powers/convention-audit/scripts/__tests__" in suites
+    assert "scripts/tests" in suites
+    # Shell-only __tests__ dirs are not pytest suites.
+    assert "skills/golem-powers/_shared/research/__tests__" not in suites
+    assert not any("/_archive/" in suite for suite in suites)
+
+
 def test_workflow_runs_the_shared_skill_test_runner():
     workflow = WORKFLOW.read_text()
 
