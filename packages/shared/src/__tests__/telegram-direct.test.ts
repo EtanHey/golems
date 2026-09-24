@@ -12,12 +12,14 @@ globalThis.fetch = mock(async (url: string | URL | Request, options?: any) => {
   const urlStr = typeof url === "string" ? url : url.toString();
   fetchCalls.push({ url: urlStr, options });
 
+  const target = new URL(urlStr);
+
   // Simulate Telegram API success
-  if (urlStr.includes("api.telegram.org")) {
+  if (target.hostname === "api.telegram.org") {
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
   // Simulate local notify success
-  if (urlStr.includes("localhost:3847")) {
+  if (target.hostname === "localhost" && target.port === "3847") {
     return new Response("ok", { status: 200 });
   }
   return new Response("not found", { status: 404 });
@@ -239,7 +241,7 @@ describe("telegram-direct", () => {
         const urlStr = typeof url === "string" ? url : url.toString();
         fetchCalls.push({ url: urlStr, options });
 
-        if (urlStr.includes("api.telegram.org")) {
+        if (new URL(urlStr).hostname === "api.telegram.org") {
           const bodyObj = JSON.parse(options?.body || "{}");
           if (bodyObj.message_thread_id) {
             return new Response(

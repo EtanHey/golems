@@ -91,7 +91,8 @@ export function parseEmail(raw: RawEmail): GmailEmail {
   const emailMatch = fromRaw.match(/<([^>]+)>/);
   if (emailMatch) {
     from = emailMatch[1];
-    fromName = fromRaw.replace(/<[^>]+>/, "").trim();
+    const start = emailMatch.index ?? 0;
+    fromName = (fromRaw.slice(0, start) + fromRaw.slice(start + emailMatch[0].length)).trim();
   }
 
   // Parse date from internalDate (Unix timestamp in milliseconds)

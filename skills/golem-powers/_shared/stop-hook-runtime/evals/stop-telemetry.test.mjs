@@ -84,20 +84,24 @@ test("decision telemetry schema covers advisory, skipped, and error outcomes", (
   const root = mkdtempSync(path.join(tmpdir(), "stop-telemetry-outcomes-"));
   scratch.push(root);
   const logPath = path.join(root, "decisions.jsonl");
-  const outputAfterInput = (payload) =>
-    `process.stdin.resume(); process.stdin.on("end", () => process.stdout.write(${JSON.stringify(JSON.stringify(payload))}));`;
+  // Fixed hook source; the payload travels as data in the env, never as code.
+  const outputAfterInput =
+    'process.stdin.resume(); process.stdin.on("end", () => process.stdout.write(process.env.SYNTHETIC_HOOK_OUTPUT));';
+  const withOutput = (payload) => ({ env: { SYNTHETIC_HOOK_OUTPUT: JSON.stringify(payload) } });
 
   const advisory = runSyntheticTelemetry(
     logPath,
     "advisory-hook",
-    outputAfterInput({ systemMessage: "operator attention requested" }),
+    outputAfterInput,
+    withOutput({ systemMessage: "operator attention requested" }),
   );
   expect(advisory.status, advisory.stderr).toBe(0);
 
   const skipped = runSyntheticTelemetry(
     logPath,
     "skipped-hook",
-    outputAfterInput({ systemMessage: "gate skipped: unsupported oversized input" }),
+    outputAfterInput,
+    withOutput({ systemMessage: "gate skipped: unsupported oversized input" }),
   );
   expect(skipped.status, skipped.stderr).toBe(0);
 
