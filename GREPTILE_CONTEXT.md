@@ -111,5 +111,4 @@ All packages depend on `@golems/shared` for Supabase, LLM, email, state, and not
 | `packages/zikaron/src/zikaron/daemon.py` | FastAPI daemon (MCP + HTTP) |
 | `packages/zikaron/src/zikaron/pipeline/brain_graph.py` | Brain graph generation |
 | `packages/dashboard/src/app/` | Next.js pages |
-| `Dockerfile` | Root workspace Dockerfile for generic scheduler containers |
 | `.claude/rules/` | Auto-loaded rules for Claude Code sessions |
