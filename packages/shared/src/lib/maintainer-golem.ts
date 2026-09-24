@@ -11,7 +11,7 @@
  * Or scheduled via launchd for weekly checks
  */
 
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import { existsSync, statSync, readdirSync } from "fs";
 import { join } from "path";
 
@@ -277,8 +277,11 @@ export function checkServiceRunning(
   const name = `Service: ${label}`;
 
   try {
-    const output = execSync(`pgrep -f "${processName}" 2>/dev/null`, {
+    // No shell: under `sh -c 'pgrep -f name'`, Linux pgrep matches the sh
+    // wrapper's own command line, so every service read as running.
+    const output = execFileSync("pgrep", ["-f", processName], {
       encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
     }).trim();
 
     if (output) {

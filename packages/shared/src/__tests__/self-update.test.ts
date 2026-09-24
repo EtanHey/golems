@@ -39,7 +39,7 @@ describe("getVersionInfo", () => {
     // Create a git repo with package.json
     execSync("git init", { cwd: testDir, stdio: "pipe" });
     writeFileSync(join(testDir, "package.json"), JSON.stringify({ version: "1.2.3" }));
-    execSync("git add . && git commit -m 'init' --allow-empty", { cwd: testDir, stdio: "pipe" });
+    execSync("git add . && git -c user.name=test -c user.email=test@example.com commit -m 'init' --allow-empty", { cwd: testDir, stdio: "pipe" });
 
     const info = getVersionInfo(testDir);
     expect(info.version).toBe("1.2.3");
@@ -50,7 +50,7 @@ describe("getVersionInfo", () => {
 
   test("returns 0.0.0 when no package.json", () => {
     execSync("git init", { cwd: testDir, stdio: "pipe" });
-    execSync("git commit --allow-empty -m 'init'", { cwd: testDir, stdio: "pipe" });
+    execSync("git -c user.name=test -c user.email=test@example.com commit --allow-empty -m 'init'", { cwd: testDir, stdio: "pipe" });
 
     const info = getVersionInfo(testDir);
     expect(info.version).toBe("0.0.0");
@@ -59,7 +59,7 @@ describe("getVersionInfo", () => {
   test("handles invalid package.json", () => {
     execSync("git init", { cwd: testDir, stdio: "pipe" });
     writeFileSync(join(testDir, "package.json"), "not json");
-    execSync("git add . && git commit -m 'init'", { cwd: testDir, stdio: "pipe" });
+    execSync("git add . && git -c user.name=test -c user.email=test@example.com commit -m 'init'", { cwd: testDir, stdio: "pipe" });
 
     const info = getVersionInfo(testDir);
     expect(info.version).toBe("0.0.0");

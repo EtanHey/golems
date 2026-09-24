@@ -50,6 +50,16 @@ jobs:
             'test("docs.local canary must never be collected", () => { expect("collected").toBe("ignored"); });' \
             > docs.local/ci-canary/packages/shared/src/__tests__/canary.test.ts
 
+      # golems-cli's `setup --check` test needs a `claude` binary on PATH
+      # (REQUIRED_DEPS is bun, git, claude) and the runner has none. A stub
+      # meets that precondition without installing Claude Code.
+      - name: Stub the claude CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/bin/sh\necho "claude 0.0.0 (CI stub)"\n' > "$RUNNER_TEMP/bin/claude"
+          chmod +x "$RUNNER_TEMP/bin/claude"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
       - name: Run package tests
         run: bun run test
 
