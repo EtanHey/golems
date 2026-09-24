@@ -35,8 +35,10 @@ On Codex panes, **`submit_verified` and `token_count` are untrusted** — scroll
 cd $HOME/Gits/TARGET_REPO
 git worktree add -b feat/agent-1 ../wt-agent-1 main
 
-# Link node_modules (avoid re-install)
-ln -s ../TARGET_REPO/node_modules ../wt-agent-1/node_modules
+# Install dependencies in the worktree from the lockfile. Never symlink
+# node_modules: in a workspace monorepo, cross-package imports would then run
+# the main checkout's code instead of the branch's.
+(cd ../wt-agent-1 && bun install --frozen-lockfile)   # or npm ci / pnpm install --frozen-lockfile
 
 # Copy .env if needed
 cp .env ../wt-agent-1/.env

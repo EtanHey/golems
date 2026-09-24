@@ -30,7 +30,10 @@ After completing this phase:
 ```bash
 # Set up before spawning phase agents
 git worktree add -b feature/phase-<N>-<name> ../wt-phase-<N> master
-ln -s ../$(basename $PWD)/node_modules ../wt-phase-<N>/node_modules
+# Install dependencies in the worktree from the lockfile. Never symlink
+# node_modules: in a workspace monorepo, cross-package imports would then run
+# the main checkout's code instead of the branch's.
+(cd ../wt-phase-<N> && bun install --frozen-lockfile)   # or npm ci / pnpm install --frozen-lockfile
 cp .env ../wt-phase-<N>/.env
 
 # Spawn

@@ -33,8 +33,8 @@ Same as Codex — no native worktree support:
 
 ```bash
 git worktree add -b feature/phase-<N>-<name> ../wt-phase-<N> master
-ln -s ../$(basename $PWD)/node_modules ../wt-phase-<N>/node_modules
 cd ../wt-phase-<N>
+bun install --frozen-lockfile   # never symlink node_modules; or npm ci / pnpm install --frozen-lockfile
 cursor agent "phase prompt"
 ```
 

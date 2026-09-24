@@ -142,6 +142,26 @@
           "description": "Agent checks TaskList or TaskGet for progress visibility"
         }
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "Phase 2 of the plan runs in Cursor, which has no native worktrees. Set up the phase-2 worktree in this bun workspace monorepo so the agent can run the package tests.",
+      "expected_output": "Agent creates the worktree with git worktree add and runs bun install --frozen-lockfile inside it. It does not symlink node_modules from the main checkout, and says a symlink would make cross-package imports test the main checkout's code.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "frozen-install-in-worktree",
+          "description": "Runs the package manager's frozen install inside the worktree"
+        },
+        {
+          "name": "no-node-modules-symlink",
+          "description": "Does NOT ln -s node_modules from the main checkout"
+        },
+        {
+          "name": "explains-cross-package-risk",
+          "description": "Explains that a symlinked node_modules resolves workspace packages to the main checkout"
+        }
+      ]
     }
   ]
 }
