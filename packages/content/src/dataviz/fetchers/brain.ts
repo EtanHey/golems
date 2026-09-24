@@ -43,7 +43,10 @@ export interface BrainData {
   fetchedAt: string;
 }
 
+const SUPPORTED_SCHEMA = 1;
+
 interface ObservabilityDoc {
+  schema_version?: number;
   generated_at?: string;
   window_hours?: number;
   stores?: {
@@ -85,6 +88,14 @@ export async function fetchBrainData(
   }
 
   const generatedAt = doc.generated_at ?? null;
+  // A future schema may move or rename fields; charting it as "measured"
+  // zeros is the silent-empty failure this fetcher replaced.
+  if (doc.schema_version !== SUPPORTED_SCHEMA) {
+    return unavailable(
+      `unsupported observability schema_version ${doc.schema_version ?? "missing"} (expected ${SUPPORTED_SCHEMA}): ${path}`,
+      generatedAt,
+    );
+  }
   const stores = doc.stores;
   if (!stores || stores.state !== "measured") {
     return unavailable(

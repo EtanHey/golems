@@ -88,6 +88,18 @@ describe("fetchBrainData (BrainLayer observability document)", () => {
     expect(data.reason).toContain("database locked");
   });
 
+  it.each([
+    ["an unknown schema_version", { ...DOC, schema_version: 2 }, "schema_version 2"],
+    ["a missing schema_version", (({ schema_version: _v, ...rest }) => rest)(DOC), "schema_version missing"],
+  ])("refuses %s instead of mis-reading it", async (_label, doc, expected) => {
+    const path = writeDoc(doc);
+    const data = await fetchBrainData({ path });
+    expect(data.state).toBe("unavailable");
+    expect(data.reason).toContain(expected);
+    expect(data.reason).toContain("expected 1");
+    expect(data.totalChunks).toBe(0);
+  });
+
   it("never opens a database itself", () => {
     const source = readFileSync(join(import.meta.dir, "../dataviz/fetchers/brain.ts"), "utf8");
     expect(source).not.toMatch(/bun:sqlite|better-sqlite3|\.db["'`]/);
