@@ -26,7 +26,7 @@ DEFAULT_OBSIDIAN_ROOT = (
     / "Claude Web Research"
     / "research-to-run"
 )
-SHARED_DRIVE_HELPER = REPO_ROOT / "skills" / "golem-powers" / "research" / "_shared" / "drive-paths.py"
+SHARED_DRIVE_HELPER = REPO_ROOT / "skills" / "golem-powers" / "_shared" / "research" / "drive-paths.py"
 
 
 def _load_drive_module():

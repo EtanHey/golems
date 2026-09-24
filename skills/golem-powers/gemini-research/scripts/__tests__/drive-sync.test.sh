@@ -122,6 +122,20 @@ run_account_failure_case() {
   rm -rf "$tmp_dir"
 }
 
+# The live verify_account() branch shells out to VERIFY_ACCOUNT_SCRIPT; every
+# fixture case returns before that path is used, so pin it directly.
+run_shared_helper_paths_case() {
+  python3 - "$ROOT_DIR/scripts/drive_sync.py" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("drive_sync_under_test", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert module.SHARED_DRIVE_HELPER.is_file(), module.SHARED_DRIVE_HELPER
+assert module.VERIFY_ACCOUNT_SCRIPT.is_file(), module.VERIFY_ACCOUNT_SCRIPT
+PY
+}
+
+run_shared_helper_paths_case
 run_new_project_case
 run_existing_project_case
 run_account_failure_case
