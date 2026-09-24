@@ -64,10 +64,9 @@ _golem_dispatch() {
     codex-worker) _golem_launch_codex_worker "$project_name" "$project_path" "$@" ;;
     cursor)  _golem_launch_cursor  "$project_name" "$project_path" "$@" ;;
     gemini)  _golem_launch_gemini  "$project_name" "$project_path" "$@" ;;
-    kiro)    _golem_launch_kiro    "$project_name" "$project_path" "$@" ;;
     run)     _golem_launch_run     "$project_name" "$project_path" "$@" ;;
     open)    cd "$project_path" && echo "Changed to: $(pwd)" ;;
-    *)       echo "Unknown CLI: $cli_name (use: claude, codex, cursor, gemini, kiro, run, open)" >&2; return 1 ;;
+    *)       echo "Unknown CLI: $cli_name (use: claude, codex, cursor, gemini, run, open)" >&2; return 1 ;;
   esac
 }
 
@@ -176,7 +175,7 @@ _golem_staging_dir() {
 
 _golem_inject_agent_context() {
   # Personas are a LEAD affordance. A worker seat gets its brief, not a boot ritual.
-  # Gates all four CLIs (codex/cursor/gemini/kiro) at the single shared injection point;
+  # Gates all three CLIs (codex/cursor/gemini) at the single shared injection point;
   # _golem_launch_codex's own worker_mode check remains as belt-and-braces.
   [[ "${GOLEM_ROLE:-}" == "worker" ]] && return 0
   local project_name="$1" cli_name="$2"
@@ -1355,78 +1354,6 @@ _golem_launch_gemini() {
   return "$agy_exit"
 }
 
-# ── Kiro launcher ─────────────────────────────────────────────────
-
-_golem_launch_kiro() {
-  local project_name="$1" project_path="$2"; shift 2
-  local -x MCP_CONNECTION_NONBLOCKING=1
-  local -x CLAUDE_CODE_NO_FLICKER=1
-
-  _golem_parse_unified_flags "$@" || return $?
-  local kiro_args=("${_extra_args[@]}")
-  local worker_mode=false
-  $_flag_worker && worker_mode=true
-  [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
-  local agent_context_file=""
-  local agent_prompt=""
-  local has_raw_option=false
-  local arg
-  for arg in "${kiro_args[@]}"; do
-    [[ "$arg" == -* ]] && has_raw_option=true
-  done
-  local positional_prompt=""
-  if [[ "$has_raw_option" == false && ${#kiro_args[@]} -gt 0 ]]; then
-    positional_prompt="${(j: :)kiro_args}"
-    kiro_args=()
-  fi
-
-  cd "${_flag_worktree:-$project_path}" || return 1
-  _golem_setup_title "$project_name" "${project_name}Kiro"
-  _golem_setup_env "$project_name"
-  if [[ "$worker_mode" == true ]]; then
-    agent_prompt=$(_golem_build_worker_prompt "$project_name" "$project_path" "$positional_prompt")
-  else
-    agent_context_file=$(_golem_inject_agent_context "$project_name" "kiro")
-    [[ -n "$agent_context_file" ]] && agent_prompt=$(_golem_build_agent_prompt "$agent_context_file")
-  fi
-
-  [[ -n "$_flag_model" ]] && kiro_args=("--model" "$_flag_model" "${kiro_args[@]}")
-  $_flag_skip && kiro_args=("--trust-all-tools" "${kiro_args[@]}")
-  $_flag_continue && kiro_args=("--resume" "${kiro_args[@]}")
-
-  local kiro_exit=0
-  if $_flag_headless && [[ -n "$_flag_headless_prompt" ]]; then
-    local exec_prompt="$_flag_headless_prompt"
-    [[ -n "$agent_prompt" ]] && exec_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$_flag_headless_prompt")
-    kiro-cli chat "${kiro_args[@]}" --no-interactive "$exec_prompt"
-    kiro_exit=$?
-  elif $_flag_continue; then
-    local continue_prompt="${_flag_headless_prompt:-$positional_prompt}"
-    if [[ -n "$continue_prompt" ]]; then
-      [[ "$worker_mode" != true && -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$continue_prompt")
-      kiro-cli chat "${kiro_args[@]}" "$continue_prompt"
-    else
-      kiro-cli chat "${kiro_args[@]}"
-    fi
-    kiro_exit=$?
-  else
-    if [[ -n "$agent_prompt" && "$has_raw_option" == false ]]; then
-      local launch_prompt="$agent_prompt"
-      if [[ "$worker_mode" != true && -n "$positional_prompt" ]]; then
-        launch_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
-      fi
-      kiro-cli chat "${kiro_args[@]}" "$launch_prompt"
-    else
-      kiro-cli chat "${kiro_args[@]}"
-    fi
-    kiro_exit=$?
-  fi
-
-  _golem_cleanup_agent_context "$agent_context_file"
-  _golem_reset_title
-  return "$kiro_exit"
-}
-
 # ── Run launcher (dev server) ─────────────────────────────────────
 
 _golem_launch_run() {
@@ -1479,7 +1406,6 @@ _golem_register_wrappers() {
     eval "function ${lower}CodexWorker() { _golem_dispatch '$lower' codex-worker \"\$@\"; }"
     eval "function ${lower}Cursor()   { _golem_dispatch '$lower' cursor  \"\$@\"; }"
     eval "function ${lower}Gemini()   { _golem_dispatch '$lower' gemini  \"\$@\"; }"
-    eval "function ${lower}Kiro()     { _golem_dispatch '$lower' kiro    \"\$@\"; }"
     eval "function run${cap}()        { _golem_dispatch '$lower' run     \"\$@\"; }"
     eval "function open${cap}()       { _golem_dispatch '$lower' open    \"\$@\"; }"
 
@@ -1496,7 +1422,6 @@ _golem_register_wrappers() {
           codex) suffix="Codex" ;;
           gemini) suffix="Gemini" ;;
           cursor) suffix="Cursor" ;;
-          kiro) suffix="Kiro" ;;
           *) suffix="" ;;
         esac
         [[ -z "$suffix" ]] && continue
@@ -1523,7 +1448,6 @@ _golem_register_wrappers() {
         eval "function ${_hyphenated_dir}CodexWorker() { _golem_dispatch '$lower' codex-worker \"\$@\"; }"
         eval "function ${_hyphenated_dir}Cursor() { _golem_dispatch '$lower' cursor  \"\$@\"; }"
         eval "function ${_hyphenated_dir}Gemini() { _golem_dispatch '$lower' gemini  \"\$@\"; }"
-        eval "function ${_hyphenated_dir}Kiro()   { _golem_dispatch '$lower' kiro    \"\$@\"; }"
       fi
     fi
   done

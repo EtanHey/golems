@@ -7,7 +7,7 @@ description: "Launch repoGolem agents in any repo. Triggers: spawn agent, launch
 
 > Fleet law: canon #5 owns model policy; canon #6 owns launcher naming, registry override precedence, and skip-perms. This skill keeps invocation mechanics, examples, and troubleshooting.
 
-> Every project has launchers: `{name}Claude`, `{name}Codex`, `{name}Cursor`, `{name}Gemini`, `{name}Kiro`.
+> Every project has launchers: `{name}Claude`, `{name}Codex`, `{name}Cursor`, `{name}Gemini`.
 > The launcher handles EVERYTHING: cd to repo, MCP wiring, secrets, iTerm profile, badge.
 > You NEVER need `source ~/.zshrc && cd $HOME/Gits/X && claude -s`. Just: `brainlayerClaude -s`.
 
@@ -58,15 +58,15 @@ Registry entries can include an `agent` field:
   "yash": {
     "path": "$HOME/Gits/golems",
     "agent": "yash",
-    "clis": ["claude", "codex", "cursor", "gemini", "kiro"]
+    "clis": ["claude", "codex", "cursor", "gemini"]
   }
 }
 ```
 
 Claude launchers pass this through as `--agent <name>`.
-Codex, Cursor, Gemini, and Kiro do not read Claude Agent SDK files directly, so repoGolem reads `~/.claude/agents/<name>.md` and injects it as the launcher's initial prompt.
+Codex, Cursor, and Gemini do not read Claude Agent SDK files directly, so repoGolem reads `~/.claude/agents/<name>.md` and injects it as the launcher's initial prompt.
 It preserves the frontmatter `initialPrompt` block when present, strips the rest of the YAML metadata, then appends the Markdown body.
-This is intentional: `yashCodex`, `yashCursor`, `yashGemini`, and `yashKiro` should inherit the same agent protocol instead of acting like generic shells in the project directory.
+This is intentional: `yashCodex`, `yashCursor`, and `yashGemini` should inherit the same agent protocol instead of acting like generic shells in the project directory.
 
 ### Plain Codex worker mode
 
