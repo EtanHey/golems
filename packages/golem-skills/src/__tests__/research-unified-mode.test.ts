@@ -11,15 +11,6 @@ const SKILL = join(
   "research",
   "SKILL.md",
 );
-const ARCHIVED_SCRIPT = join(
-  REPO_ROOT,
-  "skills",
-  "golem-powers",
-  "_archive",
-  "research",
-  "scripts",
-  "unified-dispatch.sh",
-);
 const CLAUDE_DESKTOP_SKILL = join(
   REPO_ROOT,
   "skills",
@@ -39,10 +30,5 @@ describe("research unified mode", () => {
     expect(content).toContain("Run this skill plus `/gemini-research`");
     expect(content).toContain("Drive/Research/<project>/context/");
     expect(content).toContain("R{NN}-claude-desktop-result.md");
-  });
-
-  test("retired unified dispatch script remains archived", async () => {
-    const content = await readFile(ARCHIVED_SCRIPT, "utf8");
-    expect(content).toContain("unified_dispatch.py");
   });
 });

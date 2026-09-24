@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-11
 **Issue:** #90
-**Status:** Complete
+**Status:** Complete. `rules-library/` was deleted on 2026-09-24 (GO-2); its last contents are at tag `archive/skills-2026-09-24`, and the owner-profile template moved to `scripts/templates/owner-profile.md`.
 
 ## Context
 
