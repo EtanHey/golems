@@ -24,7 +24,9 @@ if [[ -z "$devices_output" || "$devices_output" == "[]" ]]; then
     return 0
   else
     # Non-empty non-json output — count lines that look like devices (udid-ish)
-    count=$(echo "$devices_output" | grep -cE '[a-f0-9]{40}|[0-9A-Z]{8}-[0-9A-Z]{16}' || echo 0)
+    # grep -c already prints 0 when nothing matches (and exits 1); `|| echo 0`
+    # made that "0<newline>0".
+    count=$(echo "$devices_output" | grep -cE '[a-f0-9]{40}|[0-9A-Z]{8}-[0-9A-Z]{16}' || true)
   fi
 else
   # JSON output
