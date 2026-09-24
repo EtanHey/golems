@@ -27,6 +27,7 @@ temp?... What the fuck is this?" — orchestrator__10d0e9da [6219], A5 [21]).
 """
 
 import json
+import time
 import os
 import shutil
 import subprocess
@@ -3753,3 +3754,77 @@ def test_scratchpad_chain_must_sit_directly_under_a_temp_root(durable_path):
     assert_denied(
         run_hook(bash_payload(f"printf x > {path}"), cwd=str(durable_path))
     )
+
+
+def test_quote_with_many_escapes_in_a_comment_is_linear():
+    # CodeQL py/redos #3/#4: an unclosed `"` followed by many `\!` made the
+    # raw-line tokenizer backtrack exponentially (7.8s at 24 pairs).
+    start = time.perf_counter()
+    proc = run_hook(bash_payload('echo hi # "' + "\\!" * 32))
+    elapsed = time.perf_counter() - start
+    assert_allowed(proc)
+    assert elapsed < 3, f"hook took {elapsed:.1f}s on a pathological comment"
+
+
+def _load_hook_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("tmp_block_pretooluse", HOOK)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# Golden token streams: what master's tokenizers produced for each input before
+# the py/redos fix, pasted as data (the vulnerable patterns stay out of the tree).
+# Each row is (source, _RAW_SHELL_TOKEN_RE tokens, _RAW_FOR_WORD_RE tokens).
+@pytest.mark.parametrize(
+    ("source", "expected_shell", "expected_words"),
+    [
+        (
+            'case x in "a\\\nb") echo;; esac',
+            ['case', 'x', 'in', '"a\\\nb"', ')', 'echo', ';;', 'esac'],
+            ['case', 'x', 'in', '"a\\\nb"', ')', 'echo;;', 'esac'],
+        ),
+        (
+            'x "p\\\n q" y',
+            ['x', '"p\\\n q"', 'y'],
+            ['x', '"p\\\n q"', 'y'],
+        ),
+        (
+            'for w in "a\\\nb" c; do echo "$w"; done',
+            ['for', 'w', 'in', '"a\\\nb"', 'c', ';', 'do', 'echo', '"$w"', ';', 'done'],
+            ['for', 'w', 'in', '"a\\\nb"', 'c;', 'do', 'echo', '"$w"', ';', 'done'],
+        ),
+        (
+            'echo "abc\\"',
+            ['echo', '"abc\\"'],
+            ['echo', '"abc\\"'],
+        ),
+        (
+            'echo "a\\\\" b',
+            ['echo', '"a\\\\"', 'b'],
+            ['echo', '"a\\\\"', 'b'],
+        ),
+        (
+            'case $1 in "x y"|z) true;; *) false;; esac',
+            ['case', '$1', 'in', '"x y"', '|', 'z', ')', 'true', ';;', '*', ')', 'false', ';;', 'esac'],
+            ['case', '$1', 'in', '"x y"', '|z)', 'true;;', '*)', 'false;;', 'esac'],
+        ),
+        (
+            'for x in \'a b\' "c d" e; do :; done',
+            ['for', 'x', 'in', "'a b'", '"c d"', 'e', ';', 'do', ':', ';', 'done'],
+            ['for', 'x', 'in', "'a b'", '"c d"', 'e;', 'do', ':;', 'done'],
+        ),
+    ],
+)
+def test_bounded_tokenizers_keep_masters_token_stream(source, expected_shell, expected_words):
+    hook = _load_hook_module()
+    assert hook._RAW_SHELL_TOKEN_RE.findall(source) == expected_shell
+    assert hook._RAW_FOR_WORD_RE.findall(source) == expected_words
+
+
+def test_quoted_backslash_newline_stays_one_token():
+    hook = _load_hook_module()
+    tokens = hook._RAW_SHELL_TOKEN_RE.findall('case x in "a\\\nb") echo;; esac')
+    assert '"a\\\nb"' in tokens

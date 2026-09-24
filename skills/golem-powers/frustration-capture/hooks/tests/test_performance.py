@@ -39,3 +39,20 @@ def test_all_prompts_under_500ms():
         assert result.returncode == 0
 
     assert max(timings) < 500, timings
+
+
+def test_pathological_no_context_prompt_is_linear():
+    # CodeQL py/redos #2: "no commit" + many '-' with no "yet" made the
+    # negative-context regex backtrack exponentially.
+    start = time.perf_counter()
+    result = subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=json.dumps({"user_prompt": "no commit" + "-" * 40 + "!"}),
+        text=True,
+        capture_output=True,
+        timeout=5,
+        check=False,
+    )
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    assert result.returncode == 0
+    assert elapsed_ms < 1000, elapsed_ms
