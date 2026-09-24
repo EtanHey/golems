@@ -77,3 +77,26 @@ load helpers/test-helper.bash
   [[ "$output" == *"[9/9]"* ]]
   [[ "$output" == *".easignore exists"* ]]
 }
+
+@test "check 6 counts zero devices in non-JSON eas output without an arithmetic error" {
+  # Non-JSON device:list output with no UDID made `grep -c … || echo 0` print
+  # "0" twice, so `[[ "0<newline>0" -ge 1 ]]` raised a syntax error.
+  run bash -c '
+    PROFILE=preview
+    run_with_timeout() { shift; "$@"; }
+    eas() {
+      case "$*" in
+        "device:list --json") echo "[]" ;;
+        "device:list") echo "Fetching devices for account example" ;;
+      esac
+    }
+    record_result() { printf "%s|%s|%s\n" "$1" "$2" "$3"; }
+    run_check() { source "$1"; }
+    run_check "$1"
+  ' _ "$SKILL_DIR/scripts/checks/06-ios-devices.sh"
+
+  [ "$status" -eq 0 ]
+  grep -F -q "|FAIL|0 devices registered" <<< "$output"
+  run grep -F "syntax error" <<< "$output"
+  [ "$status" -ne 0 ]
+}
