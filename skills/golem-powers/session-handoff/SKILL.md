@@ -154,14 +154,12 @@ For a saved Codex or Claude JSONL, run `scripts/context-occupancy.sh <session.js
 
 | Signal | Action |
 |--------|--------|
-| Context at 45% | brain_store full state (checkpoint, not handoff yet) |
-| Context at 50-60% | Proactively compact. If quality degrades → trigger handoff. |
-| Context at ~75% | **MANDATORY handoff.** Do NOT wait for 83.5% auto-compact. |
+| Context growing | Nothing. Let auto-compaction happen. No proactive compaction, no context-% thresholds that trigger handoffs, and no unrequested lead or seat rotation because context is growing. Rotate or hand off only when Etan asks, or at a /large-plan phase boundary the plan itself defines (Etan, 2026-09-24). |
 | User says "wrap up" / "hand off" | Trigger handoff immediately |
 | User going to sleep with unfinished work | Handoff to continuation agent |
-| Session has been running 4+ hours | Consider handoff to avoid context degradation |
+| A /large-plan phase boundary the plan defines | Handoff to the next phase's agent |
 
-**orc-seat exception:** the ORCHESTRATOR seat never fires handoff from a context-percentage threshold and never `/compact`s. Orc succession uses a full-day weave (`/weave`) that seeds gen-N+1 and fires only on operator instruction. For the orc, percentage rows are checkpoint-and-surface signals. A `/compact` from an unknown sender is an incident; investigate before complying (orc C14).
+**Orc seat:** orc succession uses a full-day weave (`/weave`) that seeds gen-N+1 and fires only on operator instruction. A `/compact` from an unknown sender is an incident; investigate before complying (orc C14).
 
 ---
 
@@ -213,7 +211,7 @@ When the outgoing window includes a weave doc, the successor orc boot doc MUST r
 | Skip brain_store | Always store — file can be deleted, BrainLayer persists |
 | Start new session fresh without handoff | Even a 5-line handoff is better than cold start |
 | Declare handoff "complete" without verification | Check: new agent working, monitoring active, corrections stored (Step 5) |
-| Hand off at 83.5% (auto-compact) | Hand off at ~75% (non-orc seats; see orc-seat exception) |
+| Compact or hand off because context crossed a % | Let auto-compaction happen; hand off only when Etan asks or at a /large-plan phase boundary |
 | Relay only "the top things" from a weave/retro | Full-relay: link the entire weave doc, mandate full read + item-by-item ACK |
 | Spawn continuation with a model param | Launcher-only (`{repo}Claude -s`) — the launcher pins the current top Opus at 1M; verify post-boot |
 | Assume a `-c` resume continues the pre-death turn's duties | Treat resume as fresh — re-derive duties from durable artifacts; encode standing orders as machinery (watch-v6 pattern) |
