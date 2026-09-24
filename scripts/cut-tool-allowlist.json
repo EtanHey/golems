@@ -1,9 +1,6 @@
 {
   "_comment": "Exclusions for check-cut-tool-references.mjs. Every entry states its reason; there are no silent skips. Matching is by content marker, not line number, so ordinary edits above a line do not silently re-open or falsely fail it.",
   "excluded_dirs": [
-    "skills/golem-powers/orc-workspace/",
-    "skills/golem-powers/cmux-workspace/",
-    "skills/golem-powers/cmux-agents-workspace/",
     "skills/golem-powers/_archive/"
   ],
   "excluded_dirs_reason": "Eval corpora, dated research records, and retired skills. None has a root SKILL.md, so check-skill-library.mjs never loads them and no agent is ever instructed from them. They pin historical behaviour on purpose.",
