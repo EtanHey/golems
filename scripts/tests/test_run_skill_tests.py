@@ -61,16 +61,3 @@ def test_workflow_runs_the_shared_skill_test_runner():
 
 def test_skill_test_requirements_do_not_pull_optional_trace_deps():
     assert not REQUIREMENTS.exists()
-
-
-def test_optional_phoenix_trace_suite_skips_without_heavy_deps():
-    test_module = (
-        ROOT
-        / "skills"
-        / "golem-powers"
-        / "skill-creator"
-        / "tests"
-        / "test_jsonl_to_phoenix_traces.py"
-    ).read_text()
-
-    assert 'pytest.importorskip("opentelemetry")' in test_module

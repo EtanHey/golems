@@ -8,7 +8,7 @@ Read this for the macOS and launchd mechanics inherited from mac-systems, or whe
 
 One-liners every worker and launchd plist author must internalize:
 
-1. **Tailnet IP bind ban** — NEVER hardcode tailnet IPs in launchd plists or worker-prompt URLs. Bind `127.0.0.1` / loopback or resolve at start. Three live catches: Phoenix phantom listener (two eras), W10 dead `:8852` URL.
+1. **Tailnet IP bind ban** — NEVER hardcode tailnet IPs in launchd plists or worker-prompt URLs. Bind `127.0.0.1` / loopback or resolve at start. Live catch: W10 dead `:8852` URL.
 2. **Codex detached-child reap** — Codex `exec` reaps detached children (`&` / `nohup` die). **`launchctl submit`** is the surviving detach path; clean up leftover runners after.
 3. **pipefail + early-exit consumer** — Under `set -o pipefail`, piping into an early-exit consumer (`awk '{exit}'`) SIGPIPE-kills the producer (exit 141). Buffer first, then consume. See `/shell-hardening`.
 4. **zsh read-only specials** — Never use zsh read-only specials (`status`, etc.) as variable names.
