@@ -9,8 +9,6 @@ Infrastructure services — Cloud Worker, Night Shift, Morning Briefing, Doctor,
 - **Morning Briefing** — 8am summary delivered to Telegram
 - **Bedtime Guardian** — Evening wind-down reminders
 - **Doctor** — `golems doctor` health checks for all wiring
-- **Wizard** — `golems wizard` guided setup for new users
-- **CLI Agent Wrappers** — Cursor, Gemini, Kiro helpers for multi-agent orchestration
 
 ## Cloud Worker Schedule
 
@@ -29,10 +27,8 @@ local or successor scheduler before assuming these jobs are active.
 ## CLI Commands
 
 ```bash
-golems wizard          # Guided setup — picks services, wires keys
 golems doctor          # Health checks for all services
 golems status          # All-golem status overview
-golems skills          # List all available skills
 golems rules check     # Audit rules for a project
 ```
 
@@ -55,10 +51,7 @@ packages/services/
 │   ├── night-shift.ts         # 4am autonomous coding
 │   ├── briefing.ts            # 8am morning summary
 │   ├── healthcheck.ts         # 9am service verification
-│   ├── wizard.ts              # Guided setup
-│   ├── doctor.ts              # Health checks
-│   ├── cursor-helper.ts       # Cursor CLI agent wrapper
-│   └── gemini-helper.ts       # Gemini CLI agent wrapper
+│   └── doctor.ts              # Health checks
 └── CLAUDE.md
 ```
 
