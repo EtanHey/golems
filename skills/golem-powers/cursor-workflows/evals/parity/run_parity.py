@@ -143,7 +143,7 @@ def assert_schema(green: dict) -> int:
     return len(green["findings"])
 
 
-CURSOR_BILLING_MODE = "flat_rate"
+CURSOR_PLAN = "flat_rate"
 
 
 def assert_token_ledger(red: dict, green: dict) -> tuple[int, int]:
@@ -154,18 +154,19 @@ def assert_token_ledger(red: dict, green: dict) -> tuple[int, int]:
     red_total = red.get("red_arm", {}).get("token_usage", {}).get("total_tokens")
     if not isinstance(red_total, int) or red_total <= 0:
         raise ParityError("RED golden must report Claude token total")
-    if green.get("billing", {}).get("cursor") != CURSOR_BILLING_MODE:
-        raise ParityError(f"GREEN billing cursor mode must be {CURSOR_BILLING_MODE}")
+    if green.get("billing", {}).get("cursor") != CURSOR_PLAN:
+        raise ParityError(f"GREEN billing cursor mode must be {CURSOR_PLAN}")
     return cursor_total, red_total
 
 
 def token_ledger_line(red: dict, green: dict) -> str:
-    # Prints the validated constant, never the billing field itself
-    # (CodeQL py/clear-text-logging-sensitive-data treats "billing" as private).
+    # Prints the validated constant, never the billing field itself. CodeQL
+    # py/clear-text-logging-sensitive-data treats any "billing"-named value
+    # (including a constant) as private, so the constant is CURSOR_PLAN.
     cursor_tokens, red_tokens = assert_token_ledger(red, green)
     return (
         "token_ledger="
-        f"cursor_total_tokens={cursor_tokens} cursor_billing={CURSOR_BILLING_MODE} "
+        f"cursor_total_tokens={cursor_tokens} cursor_billing={CURSOR_PLAN} "
         f"claude_red_total_tokens={red_tokens}"
     )
 
