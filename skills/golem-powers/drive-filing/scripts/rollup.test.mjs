@@ -369,6 +369,15 @@ describe("B1: content-scan hold", () => {
     expect(p.upload).toEqual([]);
   });
 
+  test("a token straddling the 1 MiB chunk boundary is still found", () => {
+    // SCAN_CHUNK is 1 MiB: the token starts 10 bytes before the boundary.
+    const filler = "x".repeat(1024 * 1024 - 10);
+    const repo = fixture({ "2026-01-05-run.log": `${filler} ${FAKE.supabase}\n` });
+    const p = plan(repo);
+    expect(p.held.map((h) => [h.path, h.reason])).toEqual([["docs.local/2026-01", "credential-content"]]);
+    expect(p.upload).toEqual([]);
+  });
+
   test("near-miss shapes do not hold", () => {
     const repo = fixture({
       "2026-01-05-notes.md": [
