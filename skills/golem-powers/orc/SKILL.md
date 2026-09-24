@@ -500,7 +500,8 @@ Categories: agent count, monitoring cadence, merge authority, spawn tool prefere
 ## Session Start
 
 ```
-Monitor(persistent, <channel.md>: '^### |BLOCKED|@<your-name>')  # FIRST ACTION — inbound monitor (2nd cardinal rule)
+bash "$CM" start @<your-claim> <channel.md>     # FIRST ACTION — inbound monitor (2nd cardinal rule); CM=/collab-monitor script
+Monitor(persistent, 'bash "$CM" follow @<your-claim>')  # attach; fires only on mail addressed to you, never your own posts — rule: /collab-monitor
 brain_recall(mode="context")                    # What's happening now?
 brain_search("recent decisions blockers")       # What was decided?
 brain_search("orc-correction")                  # What did the user correct before?
