@@ -249,9 +249,9 @@ export function evaluateLifecycleReceipt(receipt, preflight, canonicalLocalFiles
   const checks = {
     DRIVE_ROUTE: check(
       value.driveRoute?.canonical === true &&
-        routeTools.has("/drive-usage") &&
+        routeTools.has("/drive-filing") &&
         routeTools.has("/braindrive"),
-      "canonical route must be resolved with /drive-usage and /braindrive",
+      "canonical route must be resolved with /drive-filing and /braindrive",
     ),
     DRIVE_AUTH: check(
       value.driveAuth?.callSucceeded === true && value.driveAuth?.authed === true,

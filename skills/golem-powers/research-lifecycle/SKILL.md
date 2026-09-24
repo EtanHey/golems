@@ -173,7 +173,7 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
    ```
    Save the successful JSON output in the lifecycle receipt. A call failure or account mismatch is blocking; switch profiles and rerun verification instead of reconciling the wrong Drive corpus.
 
-2. **Resolve the canonical destination.** Use `/drive-usage` for the correct numbered folder and naming convention. Use `/braindrive` to resolve current folder IDs and the Gemini-facing corpus; do not trust stale hard-coded IDs.
+2. **Resolve the canonical destination.** Use `/drive-filing` for the correct numbered folder and naming convention (its folder model and decision tree own the Drive paths; this skill does not restate them). Use `/braindrive` to resolve current folder IDs and the Gemini-facing corpus; do not trust stale hard-coded IDs.
 
 3. **Reconcile the managed Drive corpus to local truth.** Upload or replace every current local context file under the canonical project corpus, keeping local and Drive relative names identical. Track the complete lifecycle-managed file set. Delete only previously managed Drive files that are absent locally; never delete unrelated Drive documents. Unexpected duplicate managed names fail the gate.
 
@@ -223,7 +223,7 @@ Write the verification evidence to a receipt, then run the same executable gate:
 
 ```json
 {
-  "driveRoute": {"canonical": true, "resolvedWith": ["/drive-usage", "/braindrive"]},
+  "driveRoute": {"canonical": true, "resolvedWith": ["/drive-filing", "/braindrive"]},
   "driveAuth": {"callSucceeded": true, "authed": true},
   "accountVerification": {
     "callSucceeded": true,
@@ -259,7 +259,7 @@ The lifecycle may be marked complete only when the command exits 0 and every row
 
 | Check | PASS criterion |
 |-------|----------------|
-| `DRIVE_ROUTE` | Receipt names the canonical destination resolved through `/drive-usage` and `/braindrive` |
+| `DRIVE_ROUTE` | Receipt names the canonical destination resolved through `/drive-filing` and `/braindrive` |
 | `DRIVE_AUTH` | A real `authGetStatus` call succeeds and returns authed |
 | `DRIVE_ACCOUNT` | `verify-account.sh` succeeds and records the intended active Drive identity |
 | `LOCAL_INVENTORY` | Receipt local names/digests/timestamps exactly equal the inventory derived from `--local-root` |
@@ -308,7 +308,7 @@ find docs.local/claude-web/projects/PROJECT/research-context/ -name "*.md" -mtim
 | Skill | How Research Lifecycle Uses It |
 |-------|------------------------------|
 | Claude/Gemini research runs | Create research results → lifecycle manages them afterward |
-| `/drive-usage` | Select the canonical Drive folder and stable artifact names |
+| `/drive-filing` | Select the canonical Drive folder and stable artifact names; archive heavy originals; docs.local lifecycle |
 | `/braindrive` | Resolve current Drive corpus locations and verify Gemini-facing files |
 | `/gemini-research` | Enforce Drive grounding preflight and NotebookLM mirroring rules |
 | Nightly/project maintenance | Should check research context staleness during sweeps |

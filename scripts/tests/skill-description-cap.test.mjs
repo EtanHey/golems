@@ -20,10 +20,10 @@ const CAP = 120;
 const EXCEPTIONS = {
   "agent-routing": 259 /* absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259 */,
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
+  "drive-filing": 282 /* absorbed drive-usage (250), google-drive-archive (105), archive (107): 462 -> 282 */,
   "codex-workflows": 142,
   "collab-monitor": 185,
   "convention-audit": 237,
-  "drive-usage": 250,
   eli5: 138,
   "grill-me": 147,
   "i-have-adhd": 144,

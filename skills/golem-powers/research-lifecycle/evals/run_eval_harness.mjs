@@ -66,7 +66,7 @@ export async function runEvalCase(caseId) {
   const withoutDriveUsage = structuredClone(fixture.receipt);
   withoutDriveUsage.driveRoute.resolvedWith = ["/braindrive"];
   const withoutBrainDrive = structuredClone(fixture.receipt);
-  withoutBrainDrive.driveRoute.resolvedWith = ["/drive-usage"];
+  withoutBrainDrive.driveRoute.resolvedWith = ["/drive-filing"];
   const failedAuthCall = structuredClone(fixture.receipt);
   failedAuthCall.driveAuth.callSucceeded = false;
   const notAuthed = structuredClone(fixture.receipt);
