@@ -151,6 +151,54 @@ features:
     expect(result.stderr).toContain("does not include newClaude");
   });
 
+  function runConfigCode(yaml: string, body: string) {
+    writeFileSync(configFile, yaml);
+    const configModule = join(import.meta.dir, "../lib/config.ts");
+    return spawnSync(
+      process.execPath,
+      ["-e", `const config = await import(${JSON.stringify(configModule)}); ${body}`],
+      { encoding: "utf8", env: { ...process.env, HOME: testDir } },
+    );
+  }
+
+  const omitDashboardAndAftercode = [
+    "golemsLead", "skillcreatorLead", "cmuxlayerLead", "brainClaude", "coachClaude", "voiceClaude",
+  ];
+
+  test("getPrunedDefaultSeats names each pruned default seat and why", () => {
+    const result = runConfigCode(
+      orcOverride(omitDashboardAndAftercode),
+      "console.log(JSON.stringify(config.getPrunedDefaultSeats()));",
+    );
+    expect(result.status).toBe(0);
+    const pruned: Array<{ seat: string; reason: string }> = JSON.parse(result.stdout);
+    expect(pruned).toContainEqual({
+      seat: "aftercodeClaude",
+      reason: "orcClaude.orgTree.directReports in your config omits it",
+    });
+    expect(pruned).toContainEqual({
+      seat: "dashboardLead",
+      reason: "orcClaude.orgTree.directReports in your config omits it",
+    });
+    expect(pruned).toContainEqual({ seat: "dashboardClaude", reason: "its parent dashboardLead was pruned" });
+  });
+
+  test("an unknown-seat error names the prune when the missing seat was pruned", () => {
+    const result = runConfigCode(
+      orcOverride(omitDashboardAndAftercode) +
+        `  dashboardClaude:
+    orgTree:
+      parent: dashboardLead
+`,
+      "config.loadConfig();",
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("references unknown seat dashboardLead");
+    expect(result.stderr).toContain(
+      "dashboardLead is a default seat pruned because orcClaude.orgTree.directReports in your config omits it",
+    );
+  });
+
   test("config file can be written and read back", () => {
     const yaml = `reposPath: "/test/path"\n`;
     writeFileSync(configFile, yaml);
