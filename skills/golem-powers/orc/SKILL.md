@@ -449,7 +449,7 @@ For each Claude agent with assigned Cursor/Codex workers:
 ## Collab Protocol
 
 1. **Always start from TEMPLATE.md** -- never write collab from scratch
-2. **Append-only writes**: `echo >> collab.md`, never Edit/Write (collab-guard.py blocks violations)
+2. **Append-only writes**: `echo >> collab.md` or `cat >> collab.md <<'EOF'`, never Edit/Write (collab-guard.py blocks violations). Always quote the heredoc delimiter — an unquoted `<<EOF` executes the post's backticks and `$()` (`/shell-hardening` §1b)
 3. **Update at every gate**: before starting, before every commit, after PR merge, if blocked
 4. **orcClaude owns the header** -- workers only append to Messages section
 

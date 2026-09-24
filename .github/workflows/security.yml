@@ -69,6 +69,9 @@ jobs:
       - name: Test skill library metadata checks
         run: node --test scripts/tests/check-skill-library.test.mjs
 
+      - name: Check skills use quoted append heredocs
+        run: node --test scripts/tests/check-quoted-heredocs.test.mjs
+
       # Reads the committed snapshot in scripts/cmuxlayer-tool-surface.json, so it
       # runs without a cmuxlayer checkout. Refresh the snapshot with --refresh when
       # cmuxlayer's tool surface changes.
