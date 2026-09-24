@@ -331,6 +331,13 @@ const DEFAULTS: GolemsConfig = {
 // ─── Loader ────────────────────────────────────────────────────────
 
 let cachedConfig: GolemsConfig | null = null;
+let cachedPrunedSeats: PrunedSeat[] = [];
+
+/** A default seat that pruneDefaultOnlySeats dropped, and why. */
+export interface PrunedSeat {
+  seat: string;
+  reason: string;
+}
 
 export function deepMerge<T extends Record<string, unknown>>(
   defaults: T,
@@ -435,7 +442,12 @@ function validateSeatEntry(value: unknown, path: string): SeatEntry {
   };
 }
 
-function validateSeatRegistry(value: unknown): SeatRegistry {
+function prunedNote(seatName: string, pruned: PrunedSeat[]): string {
+  const entry = pruned.find((p) => p.seat === seatName);
+  return entry ? ` (${seatName} is a default seat pruned because ${entry.reason})` : "";
+}
+
+function validateSeatRegistry(value: unknown, pruned: PrunedSeat[] = []): SeatRegistry {
   if (!isRecord(value)) {
     throw new Error("[Config] seatRegistry must be an object");
   }
@@ -481,7 +493,7 @@ function validateSeatRegistry(value: unknown): SeatRegistry {
       const parentSeat = registry[parent];
       if (!parentSeat) {
         throw new Error(
-          `[Config] seatRegistry.${seatName}.orgTree.parent references unknown seat ${parent}`,
+          `[Config] seatRegistry.${seatName}.orgTree.parent references unknown seat ${parent}${prunedNote(parent, pruned)}`,
         );
       }
       if (!parentSeat.orgTree.directReports.includes(seatName)) {
@@ -495,7 +507,7 @@ function validateSeatRegistry(value: unknown): SeatRegistry {
       const child = registry[childName];
       if (!child) {
         throw new Error(
-          `[Config] seatRegistry.${seatName}.orgTree.directReports references unknown seat ${childName}`,
+          `[Config] seatRegistry.${seatName}.orgTree.directReports references unknown seat ${childName}${prunedNote(childName, pruned)}`,
         );
       }
       if (child.orgTree.parent !== seatName) {
@@ -514,9 +526,14 @@ function validateSeatRegistry(value: unknown): SeatRegistry {
  * exists only in the code defaults is dropped when the file overrides its
  * parent's orgTree.directReports without it, and so is every default-only
  * descendant of a dropped seat. Seats the file declares are left for
- * validateSeatRegistry to check strictly.
+ * validateSeatRegistry to check strictly. Each dropped seat and its reason
+ * is appended to `pruned` when given.
  */
-export function pruneDefaultOnlySeats(merged: unknown, fileRegistry: unknown): unknown {
+export function pruneDefaultOnlySeats(
+  merged: unknown,
+  fileRegistry: unknown,
+  pruned: PrunedSeat[] = [],
+): unknown {
   if (!isRecord(merged) || !isRecord(fileRegistry)) return merged;
   const result: Record<string, unknown> = { ...merged };
   const dropped = new Set<string>();
@@ -536,6 +553,12 @@ export function pruneDefaultOnlySeats(merged: unknown, fileRegistry: unknown): u
       if (omittedByFile || dropped.has(parent)) {
         delete result[name];
         dropped.add(name);
+        pruned.push({
+          seat: name,
+          reason: omittedByFile
+            ? `${parent}.orgTree.directReports in your config omits it`
+            : `its parent ${parent} was pruned`,
+        });
         changed = true;
       }
     }
@@ -552,11 +575,13 @@ function validateFileConfig(value: unknown): Partial<GolemsConfig> {
 
 function normalizeConfig(
   config: Omit<GolemsConfig, "seatRegistry"> & { seatRegistry?: unknown },
+  pruned: PrunedSeat[] = [],
 ): GolemsConfig {
   return {
     ...config,
     seatRegistry: validateSeatRegistry(
       config.seatRegistry ?? DEFAULTS.seatRegistry,
+      pruned,
     ),
   };
 }
@@ -567,7 +592,7 @@ function normalizeConfig(
  */
 export function loadConfig(): GolemsConfig {
   if (cachedConfig) {
-    cachedConfig = normalizeConfig(cachedConfig);
+    cachedConfig = normalizeConfig(cachedConfig, cachedPrunedSeats);
     return cachedConfig;
   }
 
@@ -592,12 +617,21 @@ export function loadConfig(): GolemsConfig {
     deepMerge(DEFAULTS, fileConfig),
     envOverrides,
   );
+  const pruned: PrunedSeat[] = [];
   const seatRegistry = pruneDefaultOnlySeats(
     mergedConfig.seatRegistry,
     fileConfig.seatRegistry,
+    pruned,
   );
-  cachedConfig = normalizeConfig({ ...mergedConfig, seatRegistry });
+  cachedConfig = normalizeConfig({ ...mergedConfig, seatRegistry }, pruned);
+  cachedPrunedSeats = pruned;
   return cachedConfig;
+}
+
+/** Default seats the user's config pruned in the last loadConfig(), with reasons. */
+export function getPrunedDefaultSeats(): PrunedSeat[] {
+  loadConfig();
+  return cachedPrunedSeats.map((p) => ({ ...p }));
 }
 
 function loadSeatRegistry(): SeatRegistry {
@@ -662,6 +696,7 @@ function defaultSeatRegistryYaml(options?: { commented?: boolean }): string {
 /** Reset cached config (for testing) */
 export function resetConfig(): void {
   cachedConfig = null;
+  cachedPrunedSeats = [];
 }
 
 /**

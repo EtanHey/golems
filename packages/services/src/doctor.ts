@@ -16,6 +16,7 @@
 
 import { promises as fs, existsSync } from "fs";
 import { execSync } from "child_process";
+import { getPrunedDefaultSeats, type PrunedSeat } from "@golems/shared/lib/config";
 
 // Color codes
 const colors = {
@@ -407,6 +408,34 @@ async function checkAxiom() {
   }
 }
 
+/** Default seats pruned by the user's config are intended (the file wins), but
+ *  a new default seat that never appears should be discoverable. */
+export function evaluatePrunedSeats(pruned: PrunedSeat[]): CheckResult {
+  if (pruned.length === 0) {
+    return { name: "Seat registry", status: "pass", message: "No default seats pruned by your config" };
+  }
+  return {
+    name: "Seat registry",
+    status: "warn",
+    message: `Default seats pruned by your config: ${pruned.map((p) => `${p.seat} (${p.reason})`).join(", ")}`,
+    fix: "To keep one, list it in its parent's orgTree.directReports in ~/.golems/config.yaml",
+  };
+}
+
+// Check: seat registry loads, and which default seats the config pruned
+function checkSeatRegistry() {
+  try {
+    results.push(evaluatePrunedSeats(getPrunedDefaultSeats()));
+  } catch (err) {
+    results.push({
+      name: "Seat registry",
+      status: "fail",
+      message: err instanceof Error ? err.message : String(err),
+      fix: "Fix seatRegistry in ~/.golems/config.yaml",
+    });
+  }
+}
+
 // Check 10: Golem Profiles
 async function checkGolemProfiles() {
   const home = process.env.HOME;
@@ -586,6 +615,7 @@ async function main() {
   await checkEnvFile();
   await checkSupabase();
   await checkAxiom();
+  checkSeatRegistry();
   await checkGolemProfiles();
   await checkEnrichmentQueue();
 
