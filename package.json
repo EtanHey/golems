@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "bun test packages/*/src/__tests__/",
+    "test": "bun test ./packages",
     "test:stalker-chat": "bats scripts/tests/test-stalker-durable-failures.bats",
     "test:skill-symlinks": "bats scripts/tests/test-cleanup-legacy-commands.bats scripts/tests/test-golem-install-validate.bats",
     "test:pr-size-labels": "bats scripts/tests/test-pr-size-labels.bats",
