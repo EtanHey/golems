@@ -215,7 +215,7 @@ _NEGATIVE_NO_CONTEXTS = (
     re.compile(r"\bno[- ]op\b", re.IGNORECASE),
     re.compile(r"\bno\s+need\b", re.IGNORECASE),
     re.compile(r"\bfor\s+no\s+reason\b", re.IGNORECASE),
-    re.compile(r"\bno\s+(?:commit|push|pr|change|update|result)s?(?:[/\w-]+)*\s+yet\b", re.IGNORECASE),
+    re.compile(r"\bno\s+(?:commit|push|pr|change|update|result)s?[/\w-]*\s+yet\b", re.IGNORECASE),
     re.compile(r"\bno\s+longer\b", re.IGNORECASE),
     re.compile(
         r"\bno\s+(?:rush|problem|worries|hurry|idea|preference|budget|way)\b",

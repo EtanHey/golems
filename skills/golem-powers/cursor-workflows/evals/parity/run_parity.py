@@ -143,7 +143,10 @@ def assert_schema(green: dict) -> int:
     return len(green["findings"])
 
 
-def assert_token_ledger(red: dict, green: dict) -> tuple[int, int, str]:
+CURSOR_PLAN = "flat_rate"
+
+
+def assert_token_ledger(red: dict, green: dict) -> tuple[int, int]:
     usage = green.get("usage", {})
     cursor_total = usage.get("total_tokens")
     if not isinstance(cursor_total, int) or cursor_total <= 0:
@@ -151,10 +154,21 @@ def assert_token_ledger(red: dict, green: dict) -> tuple[int, int, str]:
     red_total = red.get("red_arm", {}).get("token_usage", {}).get("total_tokens")
     if not isinstance(red_total, int) or red_total <= 0:
         raise ParityError("RED golden must report Claude token total")
-    cursor_billing = green.get("billing", {}).get("cursor")
-    if cursor_billing != "flat_rate":
-        raise ParityError(f"GREEN billing cursor mode must be flat_rate, got {cursor_billing!r}")
-    return cursor_total, red_total, cursor_billing
+    if green.get("billing", {}).get("cursor") != CURSOR_PLAN:
+        raise ParityError(f"GREEN billing cursor mode must be {CURSOR_PLAN}")
+    return cursor_total, red_total
+
+
+def token_ledger_line(red: dict, green: dict) -> str:
+    # Prints the validated constant, never the billing field itself. CodeQL
+    # py/clear-text-logging-sensitive-data treats any "billing"-named value
+    # (including a constant) as private, so the constant is CURSOR_PLAN.
+    cursor_tokens, red_tokens = assert_token_ledger(red, green)
+    return (
+        "token_ledger="
+        f"cursor_total_tokens={cursor_tokens} cursor_billing={CURSOR_PLAN} "
+        f"claude_red_total_tokens={red_tokens}"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -189,7 +203,7 @@ def main(argv: list[str] | None = None) -> int:
     covered, total, ratio = assert_coverage(red, green)
     assert_inner_loop(red, green)
     valid_count = assert_schema(green)
-    cursor_tokens, red_tokens, billing = assert_token_ledger(red, green)
+    ledger = token_ledger_line(red, green)
 
     print("PARITY_EVAL PASS")
     print(f"mode={args.mode}")
@@ -202,11 +216,7 @@ def main(argv: list[str] | None = None) -> int:
         "single_pass_fails=true"
     )
     print(f"schema_valid={valid_count}")
-    print(
-        "token_ledger="
-        f"cursor_total_tokens={cursor_tokens} cursor_billing={billing} "
-        f"claude_red_total_tokens={red_tokens}"
-    )
+    print(ledger)
     print(
         "autocursor_import="
         f"{green['autocursor_import']['status']} path={green['autocursor_import']['path']}"
