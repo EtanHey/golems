@@ -45,7 +45,9 @@ done
 msg="iOS: ${ios_id:-<missing>} | Android: ${android_id:-<missing>}"
 
 if [[ -n "$suspicious_ios" || -n "$suspicious_android" ]]; then
-  record_result "$name" "WARN" "$msg — matches suspicious scaffold default" "Edit app.json: expo.ios.bundleIdentifier and expo.android.package"
+  # --fix never rewrites a bundle ID: it is the app's store identity, so the
+  # choice needs user judgment (eval 9).
+  record_result "$name" "WARN" "$msg — matches suspicious scaffold default" "Needs user judgment (--fix never changes a bundle ID): edit app.json expo.ios.bundleIdentifier and expo.android.package"
 elif [[ "$ios_id" != "$android_id" && -n "$ios_id" && -n "$android_id" ]]; then
   # Not strictly wrong — iOS and Android IDs can differ — but worth flagging for consistency
   record_result "$name" "INFO" "$msg — iOS and Android bundle IDs differ (intentional?)" ""

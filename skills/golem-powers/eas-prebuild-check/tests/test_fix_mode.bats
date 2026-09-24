@@ -23,6 +23,6 @@ load helpers/test-helper.bash
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"Bundle ID consistency"* ]]
-  [[ "$output" == *"user judgment"* || "$output" == *"user action"* ]]
+  [[ "$output" == *"user judgment"* || "$output" == *"user action"* ]] || false
   [ "$(cat "$PROJECT_DIR/app.json")" = "$original_app_json" ]
 }
