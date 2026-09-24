@@ -3,6 +3,7 @@ set -euo pipefail
 
 script_dir="${0:A:h}"
 source_file="${script_dir}/golem-dispatch.zsh"
+bootstrap_file="${script_dir}/worktree-bootstrap.sh"
 force=false
 
 if [[ "${1:-}" == "--force" ]]; then
@@ -16,6 +17,10 @@ home_dir="${HOME:A}"
 
 if [[ ! -f "$source_file" ]]; then
   echo "Missing dispatcher source: $source_file" >&2
+  exit 1
+fi
+if [[ ! -f "$bootstrap_file" ]]; then
+  echo "Missing worktree bootstrap: $bootstrap_file" >&2
   exit 1
 fi
 
@@ -47,3 +52,7 @@ mkdir -p "${target_file:h}"
 cp "$source_file" "$target_file"
 chmod +x "$target_file"
 echo "Installed repoGolem dispatcher: $target_file"
+# -w launches run this from the dispatcher's own directory.
+cp "$bootstrap_file" "${target_file:h}/worktree-bootstrap.sh"
+chmod +x "${target_file:h}/worktree-bootstrap.sh"
+echo "Installed worktree bootstrap: ${target_file:h}/worktree-bootstrap.sh"

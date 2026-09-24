@@ -7,6 +7,10 @@
 # Registry file path
 : ${RALPH_REGISTRY_FILE:="$HOME/.config/ralphtools/registry.json"}
 
+# Directory this file was sourced from. install-golem-dispatch.sh ships
+# worktree-bootstrap.sh next to it, so -w launches can find it installed or not.
+typeset -g _GOLEM_DISPATCH_DIR="${${(%):-%x}:A:h}"
+
 # Thin bootstrap so `repoGolem` exists in shells that source golem-dispatch.zsh
 # but not the full registry library. First call loads the real implementation.
 if ! typeset -f repoGolem >/dev/null 2>&1; then
@@ -134,6 +138,22 @@ _golem_copy_mcp_to_worktree() {
 
   cp "$source_mcp" "$target_mcp" || return 1
   echo "[repogolem] copied .mcp.json into worktree" >&2
+}
+
+# -w worktrees get their own dependencies before an agent starts in them
+# (never a node_modules symlink into the main checkout). A failed install is
+# reported and the launch continues: the agent sees the warning, and a missing
+# dependency then fails loudly in the worktree itself.
+_golem_bootstrap_worktree() {
+  local worktree_dir="$1"
+  [[ -z "$worktree_dir" ]] && return 0
+  local bootstrap="${_GOLEM_DISPATCH_DIR}/worktree-bootstrap.sh"
+  if [[ ! -x "$bootstrap" ]]; then
+    echo "[repogolem] worktree-bootstrap.sh not found next to the dispatcher (${_GOLEM_DISPATCH_DIR}); dependencies not installed" >&2
+    return 0
+  fi
+  "$bootstrap" "$worktree_dir" || echo "[repogolem] worktree bootstrap failed; launching anyway" >&2
+  return 0
 }
 
 # ── Launch staging directory ──────────────────────────────────────
@@ -560,6 +580,7 @@ _golem_launch_claude() {
 
   if [[ -n "$_flag_worktree" ]]; then
     _golem_copy_mcp_to_worktree "$project_path" "$_flag_worktree" || return $?
+    _golem_bootstrap_worktree "$_flag_worktree"
   fi
   cd "${_flag_worktree:-$project_path}" || return 1
   _golem_setup_title "$project_name" "${project_name}Claude"
@@ -890,6 +911,7 @@ _golem_launch_codex() {
 
   if [[ -n "$_flag_worktree" ]]; then
     _golem_copy_mcp_to_worktree "$project_path" "$_flag_worktree" || return $?
+    _golem_bootstrap_worktree "$_flag_worktree"
   fi
   cd "${_flag_worktree:-$project_path}" || return 1
   if [[ "$worker_mode" == true ]]; then
@@ -1224,6 +1246,7 @@ _golem_launch_cursor() {
     cursor_args=()
   fi
 
+  [[ -n "$_flag_worktree" ]] && _golem_bootstrap_worktree "$_flag_worktree"
   cd "${_flag_worktree:-$project_path}" || return 1
   _golem_setup_title "$project_name" "${project_name}Cursor"
   _golem_setup_env "$project_name"
@@ -1295,6 +1318,7 @@ _golem_launch_gemini() {
     agy_args=()
   fi
 
+  [[ -n "$_flag_worktree" ]] && _golem_bootstrap_worktree "$_flag_worktree"
   local launch_dir="${_flag_worktree:-$project_path}"
   cd "$launch_dir" || return 1
   _golem_setup_title "$project_name" "${project_name}Gemini"
