@@ -71,7 +71,6 @@ teardown() {
     .claude/agents/migration-worker.md \
     .claude/rules/tech-supabase.md \
     GREPTILE_CONTEXT.md \
-    golems.registry.json \
     scripts/migrate-to-kg.py; do
     run grep -E '(Project ID|projectId|project_id|project:)[^[:cntrl:]]*[a-z0-9]{20}' "$REPO_ROOT/$file"
     [ "$status" -ne 0 ]
@@ -80,7 +79,6 @@ teardown() {
   grep -F 'GOLEMS_SUPABASE_PROJECT_REF' "$REPO_ROOT/.claude/agents/migration-worker.md"
   grep -F 'GOLEMS_SUPABASE_PROJECT_REF' "$REPO_ROOT/.claude/rules/tech-supabase.md"
   grep -F 'GOLEMS_SUPABASE_PROJECT_REF' "$REPO_ROOT/GREPTILE_CONTEXT.md"
-  grep -F 'GOLEMS_SUPABASE_PROJECT_REF' "$REPO_ROOT/golems.registry.json"
   grep -F 'GOLEMS_SUPABASE_PROJECT_REF' "$REPO_ROOT/scripts/migrate-to-kg.py"
   run grep -F '<SUPABASE_PROJECT_REF>' "$REPO_ROOT/scripts/migrate-to-kg.py"
   [ "$status" -ne 0 ]

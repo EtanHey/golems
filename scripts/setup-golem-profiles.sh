@@ -18,7 +18,7 @@ set -e
 GITS_DIR="$HOME/Gits"
 PROFILES_DIR="$GITS_DIR/golem-profiles"
 GOLEMS_DIR="$GITS_DIR/golems"
-TEMPLATE_PROFILE="$GOLEMS_DIR/rules-library/owner-profile.md"
+TEMPLATE_PROFILE="$GOLEMS_DIR/scripts/templates/owner-profile.md"
 
 # Golem definitions: parallel arrays (name -> dir name)
 GOLEM_NAMES=(recruiter content monitor teller)

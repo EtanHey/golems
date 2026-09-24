@@ -1,33 +1,5 @@
 # Exact file-and-token exceptions for shipped skill payload coupling checks.
 # Fields: relative path<TAB>literal token<TAB>one-line reason.
-_archive/claude-web-research/SKILL.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/cli-agents/SKILL.md	~/Gits/X	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/cli-agents/evals/evals.json	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/cli-agents/scripts/run.sh	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/cli-agents/scripts/run.sh	~/Gits/rudy	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/cli-agents/scripts/run.sh	~/Gits/songscript	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/cli-agents/scripts/run.sh	~/Gits/taskowl	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/cli-agents/scripts/run.sh	~/Gits/union	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/code-review/workflows/blue-team.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/code-review/workflows/red-team.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/content/SKILL.md	~/Gits/golems-zikaron	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/content/workflows/draft.md	~/Gits/golems-zikaron	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/email-golem/SKILL.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/linkedin-post/workflows/topic.md	~/Gits/etanheyman.com	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/linkedin-post/workflows/topic.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/nightly-docs-update/SKILL.md	~/Gits/etanheyman.com	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/nightly-docs-update/SKILL.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/nightly-docs-update/evals/evals.json	/Users/example	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/nightly-docs-update/evals/fixtures/stats-output-partial-failure.txt	/Users/example	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/nightly-docs-update/scripts/default.sh	~/Gits/etanheyman.com	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/orchestrator-status/SKILL.md	~/Gits/brainlayer	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/orchestrator-status/SKILL.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/research-prompt-quality/evals/fixtures/pos-2-rrf-correct.md	~/Gits/brainlayer	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/research-prompt-quality/references/ground-template.md	~/Gits/...	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/video-showcase/SKILL.md	~/Gits/contentGolem	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/worktrees/SKILL.md	/Users/me	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/worktrees/workflows/list.md	/Users/me	Archived historical artifact; literal retained as non-runtime evidence.
-_archive/writing-skills/workflows/create.md	~/Gits/golems	Archived historical artifact; literal retained as non-runtime evidence.
 agada-bench/evals/fixtures/tiny-session.jsonl	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 agent-routing/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
 agent-routing/evals/results/live-2026-08-02-effort-routing-with-skill.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
