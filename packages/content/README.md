@@ -11,6 +11,6 @@ ContentGolem — LinkedIn posts, Soltome publishing, and ghostwriting.
 
 ## Current State
 
-Logic lives in skills (`golem-powers/content/`, `golem-powers/linkedin-post/`) and services (`soltome-client.ts`, `post-generator.ts`). Will migrate to `src/` in a future phase.
+Logic lives in skills (`golem-powers/content/`) and services (`soltome-client.ts`, `post-generator.ts`). Will migrate to `src/` in a future phase.
 
 See [CLAUDE.md](./CLAUDE.md) for the content pipeline and Soltome API.
