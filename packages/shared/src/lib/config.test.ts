@@ -169,6 +169,8 @@ describe("seatRegistry", () => {
     }
   });
 
+  // golemsClaude is declared in the file, so the strict check applies; a seat
+  // present only in the defaults would be pruned instead (pruneDefaultOnlySeats).
   test("rejects child parent links missing from parent directReports", () => {
     const result = runConfigModuleWithHome({
       yaml: `
@@ -176,6 +178,9 @@ seatRegistry:
   golemsLead:
     orgTree:
       directReports: []
+  golemsClaude:
+    orgTree:
+      parent: golemsLead
 `,
       code: `
         import { loadConfig } from ${JSON.stringify(configModuleUrl)};

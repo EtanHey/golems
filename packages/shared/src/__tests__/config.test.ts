@@ -95,6 +95,62 @@ features:
     expect(result.status).toBe(0);
   });
 
+  function loadConfigUnderHome(yaml: string) {
+    writeFileSync(configFile, yaml);
+    const configModule = join(import.meta.dir, "../lib/config.ts");
+    return spawnSync(
+      process.execPath,
+      ["-e", `const { loadConfig } = await import(${JSON.stringify(configModule)}); console.log(JSON.stringify(Object.keys(loadConfig().seatRegistry)));`],
+      { encoding: "utf8", env: { ...process.env, HOME: testDir } },
+    );
+  }
+
+  const orcOverride = (directReports: string[]) => `seatRegistry:
+  orcClaude:
+    repo: orc
+    launchers: { claude: orcClaude, codex: orcCodex, cursor: orcCursor, gemini: orcGemini, kiro: orcKiro }
+    lane: orc
+    aliases: [HappyCamper, Cantaloupe-AI, happyCampr]
+    role: orc
+    orgTree:
+      parent: null
+      directReports: [${directReports.join(", ")}]
+`;
+
+  // A default seat the file never mentions must not break a file that overrides
+  // its parent's directReports: the file is the source of truth, so the
+  // default-only seat (and its default-only descendants) is dropped.
+  test("loadConfig drops default-only children a file override of their parent omits", () => {
+    const result = loadConfigUnderHome(
+      orcOverride(["golemsLead", "skillcreatorLead", "cmuxlayerLead", "brainClaude", "coachClaude", "voiceClaude"]),
+    );
+    expect(result.stderr).not.toContain("does not include");
+    expect(result.status).toBe(0);
+    const seats: string[] = JSON.parse(result.stdout);
+    expect(seats).not.toContain("aftercodeClaude");
+    expect(seats).not.toContain("dashboardLead");
+    expect(seats).not.toContain("dashboardClaude");
+    expect(seats).toContain("golemsClaude");
+  });
+
+  test("loadConfig stays strict for a seat the file itself declares", () => {
+    const result = loadConfigUnderHome(
+      orcOverride(["golemsLead", "skillcreatorLead", "cmuxlayerLead", "dashboardLead", "brainClaude", "coachClaude", "voiceClaude", "aftercodeClaude"]) +
+        `  newClaude:
+    repo: new
+    launchers: { claude: newClaude, codex: newCodex, cursor: newCursor, gemini: newGemini, kiro: newKiro }
+    lane: new
+    aliases: []
+    role: lead
+    orgTree:
+      parent: orcClaude
+      directReports: []
+`,
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("does not include newClaude");
+  });
+
   test("config file can be written and read back", () => {
     const yaml = `reposPath: "/test/path"\n`;
     writeFileSync(configFile, yaml);
