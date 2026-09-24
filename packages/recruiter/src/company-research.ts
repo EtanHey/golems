@@ -62,7 +62,14 @@ export async function researchCompany(
   const sources: ResearchSource[] = [];
 
   // 1. GitHub organization info
-  const githubData = await (options?.githubOrgLookup ?? fetchGitHubOrgInfo)(companyName);
+  // The default lookup never throws (it logs and returns null); hold an
+  // injected lookup to the same contract.
+  let githubData: Partial<CompanyInfo> | null = null;
+  try {
+    githubData = await (options?.githubOrgLookup ?? fetchGitHubOrgInfo)(companyName);
+  } catch (err) {
+    console.warn(`[CompanyResearch] GitHub org lookup failed for ${companyName}:`, err);
+  }
   if (githubData) {
     sources.push({ source: "github", data: githubData });
   }

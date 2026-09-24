@@ -16,7 +16,7 @@
 
 import { promises as fs, existsSync } from "fs";
 import { execSync } from "child_process";
-import { getPrunedDefaultSeats, type PrunedSeat } from "@golems/shared/lib/config";
+import type { PrunedSeat } from "@golems/shared/lib/config";
 
 // Color codes
 const colors = {
@@ -423,8 +423,11 @@ export function evaluatePrunedSeats(pruned: PrunedSeat[]): CheckResult {
 }
 
 // Check: seat registry loads, and which default seats the config pruned
-function checkSeatRegistry() {
+// The config module throws at import when HOME is unset, so load it here
+// rather than at the top: the rest of the doctor must still run and report.
+async function checkSeatRegistry() {
   try {
+    const { getPrunedDefaultSeats } = await import("@golems/shared/lib/config");
     results.push(evaluatePrunedSeats(getPrunedDefaultSeats()));
   } catch (err) {
     results.push({
@@ -615,7 +618,7 @@ async function main() {
   await checkEnvFile();
   await checkSupabase();
   await checkAxiom();
-  checkSeatRegistry();
+  await checkSeatRegistry();
   await checkGolemProfiles();
   await checkEnrichmentQueue();
 
