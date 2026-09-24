@@ -124,12 +124,6 @@ This project is part of the Golem ecosystem. Key components:
 - \`~/.config/ralph/\` - Ralph runtime config
 - \`~/.claude/\` - Claude Code state
 
-### Skills
-Main skills in \`~/Gits/claude-golem/skills/golem-powers/\`:
-- \`/prd\` - Create PRDs for Ralph
-- \`/commit\` - Atomic commit with CodeRabbit review
-- \`/notify\` - Send Telegram notification
-
 EOF
     echo -e "${GREEN}Created CLAUDE.md${NC}"
 fi
