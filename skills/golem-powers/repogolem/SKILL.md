@@ -196,6 +196,12 @@ golemsCodex -s -w $HOME/Gits/golems/.worktrees/my-task
 The launcher consumes `-w/--worktree`, **`cd`s to the literal argument**, and does
 not pass `--worktree` to the underlying CLI.
 
+Before the agent starts, `-w` runs `worktree-bootstrap.sh <worktree>` (installed next
+to the dispatcher). It picks the installer from the lockfile: bun, pnpm, `npm ci`, `uv sync`,
+or a no-op for SwiftPM. A `node_modules` **symlink** into the main checkout is replaced
+by a real install. It prints one timed line; a failed install warns and the launch
+continues.
+
 **`-w` contract (gen-12 weave E16):** the path must be a **pre-created absolute
 worktree directory** that already exists on disk. The launcher does NOT resolve
 bare names, create worktrees, or fall back to the main checkout.

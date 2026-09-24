@@ -158,6 +158,9 @@ jobs:
       - name: PR size-label script
         run: bats scripts/tests/test-pr-size-labels.bats
 
+      - name: repoGolem worktree bootstrap
+        run: bats scripts/tests/test-worktree-bootstrap.bats
+
       - name: qa-video package contract
         run: bats scripts/tests/test-qa-video-package.bats
 
@@ -167,7 +170,7 @@ jobs:
       - name: Single bun pin, no workflow literals
         run: bats scripts/tests/test-bun-version-pin.bats
 
-      # The four steps above explicitly cover six .bats files. Every remaining
+      # The five steps above explicitly cover seven .bats files. Every remaining
       # suite runs in the whole-directory step below, so new tests stay visible
       # without another hand-maintained workflow edit.
       #
@@ -175,7 +178,7 @@ jobs:
       # A blocking gate over a known-red directory is worse than the gap it
       # closes — same shape and same reason as the warn job in pr-size-label.yml.
       # Drop `continue-on-error` once scripts/tests/ is green.
-      # The four steps above are a hand-kept enumeration covering six files.
+      # The five steps above are a hand-kept enumeration covering seven files.
       # This step also runs every other .bats suite so each remains visible the
       # day it lands.
       #
