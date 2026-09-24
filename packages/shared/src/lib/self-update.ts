@@ -156,6 +156,11 @@ export function pullLatest(repoPath: string): UpdateResult {
   return { step: "pull", success: true, output: pull.output };
 }
 
+export function detectPackageManager(repoPath: string): "bun" | "npm" {
+  const hasBunLock = ["bun.lock", "bun.lockb"].some((f) => existsSync(join(repoPath, f)));
+  return hasBunLock ? "bun" : "npm";
+}
+
 export function installDeps(repoPath: string): UpdateResult {
   const pkgPath = join(repoPath, "package.json");
   if (!existsSync(pkgPath)) {
@@ -167,8 +172,7 @@ export function installDeps(repoPath: string): UpdateResult {
     };
   }
 
-  // Detect package manager
-  const hasBunLock = existsSync(join(repoPath, "bun.lockb"));
+  const hasBunLock = detectPackageManager(repoPath) === "bun";
   const cmd = hasBunLock ? "bun install" : "npm install";
 
   const install = shellExec(cmd, repoPath, 60000);
