@@ -158,4 +158,4 @@ import "@golems/shared/lib/load-env"; // FIRST import
 
 - `@supabase/supabase-js` — Database client
 - `googleapis` — Gmail API
-- External: no internal @golems/* dependencies (except teller for MCP reports)
+- No internal @golems/* dependencies: shared is the base layer (guarded by `src/__tests__/no-domain-imports.test.ts`)

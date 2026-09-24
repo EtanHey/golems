@@ -1,14 +1,18 @@
 /**
- * Layering guard: @golems/shared is the base layer. Domain packages import it,
- * so it must never import them back (statically, dynamically, or as a dependency).
+ * Layering guard: @golems/shared is the base layer. Other workspace packages
+ * import it, so it must never import them back (statically, dynamically, by a
+ * relative path that climbs out of packages/shared, or as a dependency).
+ *
+ * An allow-list, not a deny-list (r5 on #197): the only @golems/* specifier
+ * shared may use is @golems/shared itself, so a package added later is covered.
  */
 
 import { describe, it, expect } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "fs";
-import { join, relative } from "path";
+import { dirname, join, relative, resolve, sep } from "path";
 
 const SHARED_ROOT = join(import.meta.dir, "..", "..");
-const DOMAIN = /@golems\/(teller|recruiter|coach|jobs|claude|content|services)\b/;
+const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|^import\s+)["'`]([^"'`]+)["'`]/g;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -18,24 +22,54 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-describe("shared has no domain-package imports", () => {
-  it("no source file imports a domain package", () => {
-    const hits: string[] = [];
-    for (const file of sourceFiles(join(SHARED_ROOT, "src"))) {
-      readFileSync(file, "utf8").split("\n").forEach((line, i) => {
-        const code = line.replace(/\/\/.*$/, "").trim();
-        if (code.startsWith("*") || code.startsWith("/*")) return;
-        if (/(from|import\(|require\()\s*["'`]/.test(code) && DOMAIN.test(code)) {
-          hits.push(`${relative(SHARED_ROOT, file)}:${i + 1}: ${code}`);
-        }
-      });
+const isWorkspaceOther = (spec: string) => spec.startsWith("@golems/") && !/^@golems\/shared(\/|$)/.test(spec);
+
+function climbsOut(file: string, spec: string): boolean {
+  if (!spec.startsWith(".")) return false;
+  const target = resolve(dirname(file), spec);
+  return target !== SHARED_ROOT && !target.startsWith(SHARED_ROOT + sep);
+}
+
+/** Import specifiers in `text` (a file at `file`) that leave the shared layer. */
+export function layerViolations(file: string, text: string): string[] {
+  const hits: string[] = [];
+  text.split("\n").forEach((line, i) => {
+    const code = line.replace(/\/\/.*$/, "").trim();
+    if (code.startsWith("*") || code.startsWith("/*")) return;
+    for (const [, spec] of code.matchAll(SPECIFIER)) {
+      if (isWorkspaceOther(spec) || climbsOut(file, spec)) hits.push(`${relative(SHARED_ROOT, file)}:${i + 1}: ${spec}`);
     }
+  });
+  return hits;
+}
+
+describe("shared imports nothing but itself from the workspace", () => {
+  it("no source file imports another workspace package or climbs out of packages/shared", () => {
+    const hits = sourceFiles(join(SHARED_ROOT, "src")).flatMap((file) => layerViolations(file, readFileSync(file, "utf8")));
     expect(hits).toEqual([]);
   });
 
-  it("package.json declares no domain package", () => {
+  it("package.json declares no other workspace package", () => {
     const pkg = JSON.parse(readFileSync(join(SHARED_ROOT, "package.json"), "utf8"));
     const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies });
-    expect(deps.filter((name) => DOMAIN.test(name))).toEqual([]);
+    expect(deps.filter(isWorkspaceOther)).toEqual([]);
+  });
+
+  it("the checker catches any other @golems package and relative escapes, and allows shared's own paths", () => {
+    const file = join(SHARED_ROOT, "src", "email", "a.ts");
+    const text = [
+      'import { x } from "@golems/golems-tui/foo";',
+      'const t = await import("../../../teller/src/index");',
+      'import "@golems/green-invoice-mcp";',
+      'import { y } from "@golems/shared/lib/event-log";',
+      'import { z } from "../lib/config";',
+      'import "./types";',
+      "// import { no } from \"@golems/teller\";",
+    ].join("\n");
+    expect(layerViolations(file, text).map((h) => h.split(": ")[1])).toEqual([
+      "@golems/golems-tui/foo",
+      "../../../teller/src/index",
+      "@golems/green-invoice-mcp",
+    ]);
   });
 });

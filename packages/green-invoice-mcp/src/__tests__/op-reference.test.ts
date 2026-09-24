@@ -86,6 +86,65 @@ describe("resolveOpReference", () => {
   });
 });
 
+// r5's #195 nits (GO-4 PR-2b).
+describe("resolveOpReference edge cases", () => {
+  it("throws on an empty value instead of sending \"\" as a credential", async () => {
+    const op = fakeOp(() => ({ code: 0, out: "\n" }));
+    try {
+      await expect(resolveOpReference("op://development/green-invoice/id")).rejects.toThrow(
+        "op read returned an empty value for op://development/green-invoice/id",
+      );
+    } finally {
+      op.restore();
+    }
+  });
+
+  it("mentions the timeout only when op was killed by it (exit 143)", async () => {
+    const op = fakeOp(() => ({ code: 1 }));
+    try {
+      const err = await resolveOpReference("op://development/green-invoice/id").catch((e: Error) => e);
+      expect(String(err)).toContain("op exited 1 with no output; is the 1Password CLI signed in?");
+      expect(String(err)).not.toContain("timeout");
+    } finally {
+      op.restore();
+    }
+  });
+
+  it("drains stdout while op is still running (no pipe-buffer deadlock)", async () => {
+    const originalSpawn = Bun.spawn;
+    // op exits only after its whole stdout has been consumed, like a child
+    // blocked on a full pipe. Awaiting exit before reading would hang.
+    Bun.spawn = ((args: string[]) => {
+      let exit!: (code: number) => void;
+      const exited = new Promise<number>((resolve) => (exit = resolve));
+      const chunks = ["resolved-", "secret"].map((t) => new TextEncoder().encode(t));
+      return {
+        exited,
+        stdout: new ReadableStream({
+          pull(controller) {
+            const next = chunks.shift();
+            if (next) controller.enqueue(next);
+            else {
+              controller.close();
+              exit(0);
+            }
+          },
+        }),
+        stderr: streamOf(""),
+      };
+    }) as unknown as typeof Bun.spawn;
+    try {
+      const result = await Promise.race([
+        resolveOpReference("op://development/green-invoice/id"),
+        Bun.sleep(1000).then(() => "DEADLOCK"),
+      ]);
+      expect(result).toBe("resolved-secret");
+    } finally {
+      Bun.spawn = originalSpawn;
+    }
+  });
+});
+
 describe("getToken with op:// credentials", () => {
   const originalEnv = { ...process.env };
   let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">> | null = null;
