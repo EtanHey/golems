@@ -150,6 +150,15 @@ _APPLY_PATCH_TARGET_RE = re.compile(
 # of each simple command for the per-segment inline escape hatch.
 _ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
+# Raw-line tokenizers for case arms and `for ... in` word lists. A double-quoted
+# token consumes a backslash only as an escape pair (\\[\s\S], which includes
+# backslash-newline), so there is exactly one way to match it: no exponential
+# backtracking on an unclosed quote (CodeQL py/redos #3/#4).
+_RAW_SHELL_TOKEN_RE = re.compile(
+    r"'[^']*'|\"(?:\\[\s\S]|[^\"\\])*\"|;;&|;&|;;|\|\||&&|[;|&()]|[^\s;|&()]+"
+)
+_RAW_FOR_WORD_RE = re.compile(r"'[^']*'|\"(?:\\[\s\S]|[^\"\\])*\"|\S+")
+
 # $TMPDIR token with an identifier boundary: `$TMPDIR/x`, `${TMPDIR}/x`,
 # `${TMPDIR:-/tmp}/x`, `${TMPDIR%/}/x` — but not `$TMPDIR_EXTRA`/`${TMPDIR2}`.
 _TMPDIR_TOKEN_RE = re.compile(r"^\$(?:TMPDIR(?![A-Za-z0-9_])|\{TMPDIR(?![A-Za-z0-9_]))")
@@ -2562,10 +2571,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
 
     def case_pattern_groups(source):
         """Return raw-aware alternative patterns for each case arm in source."""
-        raw_tokens = re.findall(
-            r"'[^']*'|\"(?:\\.|[^\"\\])*\"|;;&|;&|;;|\|\||&&|[;|&()]|[^\s;|&()]+",
-            source,
-        )
+        raw_tokens = _RAW_SHELL_TOKEN_RE.findall(source)
         groups = []
         stack = []
         for token in raw_tokens:
@@ -2608,7 +2614,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
             source,
             re.DOTALL,
         ):
-            words = re.findall(r"'[^']*'|\"(?:\\.|[^\"\\])*\"|\S+", match.group("words"))
+            words = _RAW_FOR_WORD_RE.findall(match.group("words"))
             definite = 0
             dynamic = False
             for word in words:

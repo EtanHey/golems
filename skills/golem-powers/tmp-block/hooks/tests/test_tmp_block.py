@@ -27,6 +27,7 @@ temp?... What the fuck is this?" — orchestrator__10d0e9da [6219], A5 [21]).
 """
 
 import json
+import re
 import time
 import os
 import shutil
@@ -3764,3 +3765,42 @@ def test_quote_with_many_escapes_in_a_comment_is_linear():
     elapsed = time.perf_counter() - start
     assert_allowed(proc)
     assert elapsed < 3, f"hook took {elapsed:.1f}s on a pathological comment"
+
+
+def _load_hook_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("tmp_block_pretooluse", HOOK)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# Master's tokenizers before the py/redos fix; the bounded ones must produce the
+# same token stream on every non-pathological input.
+_MASTER_SHELL_TOKEN = r"'[^']*'|\"(?:\\.|[^\"])*\"|;;&|;&|;;|\|\||&&|[;|&()]|[^\s;|&()]+"
+_MASTER_FOR_WORD = r"'[^']*'|\"(?:\\.|[^\"])*\"|\S+"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'case x in "a\\\nb") echo;; esac',
+        'x "p\\\n q" y',
+        'for w in "a\\\nb" c; do echo "$w"; done',
+        'echo "abc\\"',
+        'echo "a\\\\" b',
+        'case $1 in "x y"|z) true;; *) false;; esac',
+        "for x in 'a b' \"c d\" e; do :; done",
+    ],
+)
+def test_bounded_tokenizers_keep_masters_token_stream(source):
+    hook = _load_hook_module()
+    assert hook._RAW_SHELL_TOKEN_RE.findall(source) == re.findall(_MASTER_SHELL_TOKEN, source)
+    assert hook._RAW_FOR_WORD_RE.findall(source) == re.findall(_MASTER_FOR_WORD, source)
+
+
+def test_quoted_backslash_newline_stays_one_token():
+    hook = _load_hook_module()
+    tokens = hook._RAW_SHELL_TOKEN_RE.findall('case x in "a\\\nb") echo;; esac')
+    assert '"a\\\nb"' in tokens
