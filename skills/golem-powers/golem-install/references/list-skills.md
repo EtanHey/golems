@@ -1,15 +1,12 @@
----
-name: skills
-description: "List golem skills/descriptions/grades/status. Triggers: list/search/show skills. NOT invoking skills."
----
+# List Installed Skills
 
-# Skills Discovery
-
-> List and search your installed Claude Code skills.
+> Absorbed from the former `skills` skill. List and search your installed Claude Code skills.
+> This answers "what skills do I have"; to use a skill, invoke it directly.
+> Catalog truth for the repo itself is `node scripts/check-skill-library.mjs`, not this listing.
 
 ## Usage
 
-When invoked via `/skills`, scan and display all available skills. If the user provides arguments like `--search <keyword>`, filter accordingly.
+When asked to list, search or show skills, scan and display all available skills. If the user gives a keyword (`--search <keyword>`), filter accordingly.
 
 ## Instructions
 
@@ -172,12 +169,12 @@ print_skills "Domain" "${domain_skills[@]}"
 print_skills "Custom" "${custom_skills[@]}"
 
 echo "---"
-echo "*Use \`/skills --search <keyword>\` to filter skills*"
+echo "*Filter with: --search <keyword>*"
 ```
 
 ### Step 2: Handle Search Filter
 
-If the user invoked `/skills --search <keyword>`, modify the output to filter:
+If the user asked for a keyword search, modify the output to filter:
 
 ```bash
 SEARCH="$1"  # e.g., "git" or "browser"
@@ -213,23 +210,15 @@ For each skill, show:
 
 | Skill | Description | Source | Workflows |
 |-------|-------------|--------|-----------|
-| **github** | Git and GitHub CLI operations | golem-powers | 4 |
-| **1password** | Secret management with 1Password | golem-powers | 5 |
-
-## Domain
-
-| Skill | Description | Source | Workflows |
-|-------|-------------|--------|-----------|
-| **brave** | Browser automation via brave-manager | golem-powers | - |
-| **prd** | Generate Product Requirements Documents | golem-powers | - |
-| **archive** | Archive completed PRD stories | golem-powers | - |
+| **1password** | Manage 1Password op secrets/env. Triggers: API keys, .env, op auth. | golem-powers | 6 |
+| **pr-loop** | Full PR loop plus the agent-identity signature on GitHub writes. Triggers: … | golem-powers | - |
 
 ---
-*Use `/skills --search <keyword>` to filter skills*
+*Filter with: --search <keyword>*
 ```
 
 ## Quick Reference
 
-- `/skills` - List all installed skills
-- `/skills --search git` - Find skills related to git
-- `/skills --search secret` - Find skills for secrets management
+- "list my skills" - List all installed skills
+- "search skills for git" - Find skills related to git
+- "show skills for secrets" - Find skills for secrets management

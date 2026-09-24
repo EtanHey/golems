@@ -1,11 +1,53 @@
 ---
 name: golem-install
-description: "First-time golems install: check CLIs, wire MCP, symlink skills. Triggers: set up/install golems, new machine."
+description: "Setup wizard + skill lister. Triggers: setup, wizard, set up/install golems, new machine, list/search/show skills."
 ---
 
 # Golem Setup Wizard
 
 > First-time setup for the golems ecosystem on a new Mac. Checks deps, wires MCPs, symlinks skills.
+> Also the role-aware fresh-machine wizard (formerly `wizard`) and the installed-skill lister
+> (formerly `skills`).
+
+| Ask | Go to |
+|-----|-------|
+| "set up golems", "new machine", "install golems" | this page, top to bottom |
+| "run the wizard", role-aware config + repo actions | [§ Fresh-machine wizard](#fresh-machine-wizard) → [references/wizard.md](references/wizard.md) |
+| "list / search / show my skills" | [§ List installed skills](#list-installed-skills) → [references/list-skills.md](references/list-skills.md) |
+
+## Fresh-machine wizard
+
+**CARDINAL RULE: all opt-in features are OFF by default.** The user explicitly enables each one.
+
+Full procedure: [references/wizard.md](references/wizard.md); phase checklist:
+[workflows/wizard-setup.md](workflows/wizard-setup.md). Preflight:
+`bash <golem-install-dir>/scripts/wizard-preflight.sh`.
+
+1. **Prerequisites:** `brew node bun claude gh git`, all 6 required; then `gh auth status`.
+2. **Config:** read or create `~/.golems/config.yaml`. `machineRole` is `workspace` or
+   `daemon-host`, asked, never inferred; the workspace root must exist.
+3. **Artifacts and repos:** `bun <golem-install-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"`
+   reads `release-gate.json` (the only classification): `INSTALL` never clones, `CLONE` only for
+   `kind:"none"` on a workspace, `REFUSE` clones nothing. Then
+   `bun <golem-install-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`
+   merges the managed `[agents]` keys only.
+4. **MCP:** `sync-config.sh --diff`, confirm, then `--enforce`.
+5. **`.claude.local.md`** in each existing checkout that has a `CLAUDE.md` (gitignored).
+6. **BrainLayer:** check BrainBar + `brain_search`; never block setup on it.
+7. **Report:** one line per release-gate result, including `REFUSE` and failures.
+
+Never: enable a feature without consent · write config with a nonexistent path · overwrite config
+without asking · replace `~/.codex/config.toml` · proceed without all 6 tools · clone without a
+confirmed workspace path, or when `machineRole` is missing/unrecognised/`daemon-host`, or an
+installable/unclassified repo · `--enforce` before showing `--diff` · commit `.claude.local.md`.
+
+## List installed skills
+
+"What skills do I have?", "search skills for git", "show my skills": run the scan in
+[references/list-skills.md](references/list-skills.md) over `~/.claude/skills/` and present one
+table per category (Infrastructure / Domain / Custom) with name, description, source, workflow
+count. Show descriptions, never full SKILL.md bodies. This is not for invoking a skill; invoke
+that skill directly. The repo's catalog truth is `node scripts/check-skill-library.mjs`.
 
 ## Required CLIs
 

@@ -236,8 +236,8 @@ if [ $FAIL -eq 0 ]; then
     echo -e "${GREEN}SUCCESS: Installation validated${NC}"
     echo ""
     echo "Next steps:"
-    echo "  Claude Code: restart the session, then test with /github or /commit"
-    echo "  Codex:       restart session, then invoke \$commit or reference skills by name"
+    echo "  Claude Code: restart the session, then test with /pr-loop or /golem-install"
+    echo "  Codex:       restart session, then invoke \$pr-loop or reference skills by name"
     echo "  Cursor/Gemini: reference skills by name in your prompts"
     exit 0
 else

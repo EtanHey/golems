@@ -43,7 +43,7 @@ Options:
   --help, -h     Show help
 
 Examples:
-  golems-cli skills install commit
+  golems-cli skills install pr-loop
   golems-cli skills list
   golems-cli skills install --all`);
 }
