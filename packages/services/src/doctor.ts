@@ -251,10 +251,6 @@ async function checkLaunchd() {
     { name: "telegram", label: "com.golemszikaron.telegram" },
     { name: "nightshift", label: "com.golemszikaron.nightshift" },
     { name: "briefing", label: "com.golemszikaron.briefing" },
-    { name: "healthcheck", label: "com.golemszikaron.healthcheck" },
-    { name: "compactor", label: "com.golemszikaron.compactor" },
-    { name: "session-archiver", label: "com.golems.session-archiver" },
-    { name: "auto-index", label: "com.golems.auto-index" },
   ];
   const launchResult = runCommand("launchctl list 2>/dev/null | grep -E 'golem|zikaron' || true");
   const loadedOutput = launchResult.output;
