@@ -61,7 +61,11 @@ describe("credential exclusion (hard requirement)", () => {
     const uploads = uploadPaths(p);
     expect(uploads.some((f) => f.includes("auth.json"))).toBe(false);
     expect(uploads.some((f) => f.includes(".env.local"))).toBe(false);
-    expect(uploads).toContain("docs.local/2026-01-07-z/plan.md");
+    // Round 2: z is clean but shares January with x and y, so the whole
+    // January group is held (no moves, no upload unit).
+    expect(uploads).toEqual([]);
+    expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-01"]);
+    expect(p.held[0].members).toContain("docs.local/2026-01-07-z");
 
     const text = rollup(repo);
     expect(text.lines).toContain("skipped: credential docs.local/2026-01-05-x/.codex-home-test/ (1 files)");
@@ -75,7 +79,8 @@ describe("credential exclusion (hard requirement)", () => {
       "2026-01-05-x/report.md": "report",
     });
     const p = plan(repo);
-    expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-01-05-x"]);
+    expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-01"]);
+    expect(p.held[0].members).toEqual(["docs.local/2026-01-05-x"]);
     expect(p.moves).toEqual([]);
     expect(uploadPaths(p)).toEqual([]);
   });
@@ -118,6 +123,100 @@ describe("credential exclusion (hard requirement)", () => {
     rollup(repo, "--apply");
     expect(existsSync(join(repo, "docs.local/2026-01-05-x/.codex-home-test/auth.json"))).toBe(true);
     expect(existsSync(join(repo, "docs.local/2026-01-06-y/.env.local"))).toBe(true);
+  });
+});
+
+// Round 2 (r6 B1/B2, r4 F1/F2, spec-owner ruling): one structural rule. A
+// (folder, month) group holding ANY credential is held whole: nothing in it
+// moves, no upload unit is emitted for it, and it is reported once.
+describe("credential exclusion, round 2", () => {
+  const credentialFree = (p) => {
+    const uploads = uploadPaths(p);
+    const moved = p.moves.map((m) => m.from);
+    return { uploads, moved };
+  };
+
+  test.each([
+    "2026-02-21-credentials.txt",
+    "2026-02-21-auth.json",
+    "2026-02-21-deploy.env",
+    "2026-02-21-api.pem",
+    "2026-02-21-signing.key",
+    "2026-02-21-my_token.txt",
+  ])("F1: every name rule matches a date-prefixed name: %s", (name) => {
+    const p = plan(fixture({ [name]: "secret", "2026-02-22-plain.md": "plain" }));
+    const { uploads, moved } = credentialFree(p);
+    expect(p.skipped.map((s) => s.path)).toContain(`docs.local/${name}`);
+    expect(uploads).toEqual([]);
+    expect(moved).toEqual([]);
+    expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-02"]);
+  });
+
+  test("B1: Claude OAuth file, a hyphenless codexhome, a .claude dir and a browser profile are credentials", () => {
+    const repo = fixture({
+      "2026-01-05-probe/.claude/.credentials.json": "{}",
+      "2026-01-06-codex/lastprobe1/codexhome/config.toml": "x",
+      "2026-01-06-codex/lastprobe1/codexhome/sessions/rollout.jsonl": "x",
+      "2026-01-07-browser/Profile 1/Login Data": "x",
+      "2026-01-07-browser/Local State": "x",
+      "2026-01-08-helium/.helium-profile/Local State": "x",
+      "2026-01-08-helium/.helium-profile/Default/Cookies": "x",
+      "2026-01-08-helium/.helium-profile/Default/Web Data": "x",
+    });
+    const p = plan(repo);
+    expect(uploadPaths(p)).toEqual([]);
+    expect(p.moves).toEqual([]);
+    const skipped = p.skipped.map((s) => s.path);
+    for (const path of [
+      "docs.local/2026-01-05-probe/.claude",
+      "docs.local/2026-01-06-codex/lastprobe1/codexhome",
+      "docs.local/2026-01-07-browser",
+      "docs.local/2026-01-08-helium/.helium-profile",
+    ]) {
+      expect(skipped).toContain(path);
+    }
+  });
+
+  test("B2: a month folder holding a credential takes no sibling moves and is no upload unit", () => {
+    const repo = fixture({
+      "2026-01/.ENV.prod": "API_KEY=x",
+      "2026-01/2026-01-02-notes.md": "notes",
+      "2026-01-15-plain.md": "plain",
+      "2026-01-20-clean.md": "clean",
+    });
+    const p = plan(repo);
+    expect(p.moves).toEqual([]);
+    expect(p.upload).toEqual([]);
+    expect(p.held).toEqual([
+      {
+        path: "docs.local/2026-01",
+        reason: "contains credentials",
+        members: ["docs.local/2026-01", "docs.local/2026-01-15-plain.md", "docs.local/2026-01-20-clean.md"],
+        credentials: ["docs.local/2026-01/.ENV.prod"],
+      },
+    ]);
+    const text = rollup(repo);
+    expect(text.lines).toContain("held: contains credentials docs.local/2026-01");
+    expect(text.lines).toContain("  credential: docs.local/2026-01/.ENV.prod");
+  });
+
+  test("F2: a held dated item holds its whole month; a clean sibling does not move", () => {
+    const repo = fixture({
+      "2026-01-05-x/.env.local": "API_KEY=x",
+      "2026-01-15-plain.md": "plain",
+      "2026-03-01-other.md": "other",
+    });
+    const p = plan(repo);
+    expect(p.moves).toEqual([{ from: "docs.local/2026-03-01-other.md", to: "docs.local/2026-03/2026-03-01-other.md" }]);
+    expect(p.upload.map((u) => u.dir)).toEqual(["docs.local/2026-03"]);
+    expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-01"]);
+  });
+
+  test("--apply on a held month moves nothing into it", () => {
+    const repo = fixture({ "2026-01/.ENV.prod": "x", "2026-01-15-plain.md": "plain" });
+    rollup(repo, "--apply");
+    expect(existsSync(join(repo, "docs.local/2026-01-15-plain.md"))).toBe(true);
+    expect(existsSync(join(repo, "docs.local/2026-01/2026-01-15-plain.md"))).toBe(false);
   });
 });
 

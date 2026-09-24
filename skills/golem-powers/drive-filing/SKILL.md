@@ -98,11 +98,16 @@ and writes `docs.local/_drive-filing/rollup-plan-<date>.json`. **The script neve
 Upload exactly the files in that plan through the [archive procedure](references/archive-procedure.md)
 (ledger + `brain_digest`), and nothing that is not in it.
 
-**Credentials never move.** Nothing named `auth.json`, `*.pem`, `*.key`, `.env*`, `credentials*`,
-or containing `token`, and nothing under a `.codex-home*`, `.claude-home*` or `*-HOME*` directory,
-is uploaded, moved or deleted by the lifecycle (case-insensitive). `rollup.mjs` enforces this in code:
-each is reported as `skipped: credential <path>` (a credential directory is one line plus its
-credential-named files), and a dated item or month folder that holds one is `held:` whole. Cleaning
-them up is the owner's call.
+**Credentials never move.** Nothing whose name contains `credential`, `token` or an env marker
+(`.env`, `deploy.env`, `.ENV.prod`), or ends in `auth.json`, `.pem` or `.key`, and nothing under a
+`codexhome`/`codex-home*`, `claudehome`/`claude-home*`, `.codex`, `.claude` or `*-HOME*` directory or a
+browser profile (a dir holding `Local State`, `Cookies`, `Login Data` or `Web Data`), is uploaded,
+moved or deleted. Every name rule matches anywhere in the name, case-insensitively, because
+docs.local names are date-prefixed. `rollup.mjs` enforces this in code: each credential is reported
+as `skipped: credential <path>` (a credential directory is one line plus its credential-named
+files), and a month group (the `YYYY-MM/` folder plus that month's dated siblings in the same
+folder) that holds one is **held whole**: no moves into or out of it, no upload unit. It is reported
+once as `held: contains credentials <path>` with its items and credentials listed under it.
+Cleaning them up is the owner's call.
 
 > **After creating/editing this skill it must be REGISTERED** (golem-install / symlink into `~/.claude/skills`) before any agent can invoke it — committed ≠ installed.

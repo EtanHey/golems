@@ -14,8 +14,10 @@
 // AIDEV-NOTE: credential exclusion is a hard requirement (skillcreatorLead,
 // 2026-09-25): a gitignored .codex-home-test/auth.json held live OAuth tokens.
 // Credentials are never moved, uploaded or deleted; each is reported as
-// "skipped: credential <path>", and a dated item or month folder holding one
-// is held whole.
+// "skipped: credential <path>". Round 2 (r6 B1/B2, r4 F1/F2, spec-owner
+// ruling): every name rule matches anywhere in the name, and a (folder,
+// month) group -- the YYYY-MM/ folder plus that month's dated siblings --
+// holding ANY credential is held whole: no moves, no upload unit.
 import { lstatSync, mkdirSync, readdirSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
 
@@ -25,11 +27,28 @@ const PLAN_DIR = "_drive-filing";
 const DAY = /^(\d{4})-(\d{2})-(\d{2})(?!\d)/;
 const MONTH = /^(\d{4})-(\d{2})$/;
 
-const CREDENTIAL_DIR = [/^\.codex-home/i, /^\.claude-home/i, /-home/i];
-const CREDENTIAL_FILE = [/^auth\.json$/i, /\.pem$/i, /\.key$/i, /^\.env/i, /^credentials/i, /token/i];
+// Name rules match anywhere in the name, case-insensitively (spec-owner
+// ruling: docs.local names are date-prefixed, so ^-anchors never fire).
+const CREDENTIAL_DIR = [/codex-?home/i, /claude-?home/i, /^\.(codex|claude)$/i, /-home/i];
+const BROWSER_PROFILE_FILE = /^(login data( for account)?|cookies(-journal)?|local state|web data)$/i;
+const CREDENTIAL_FILE = [
+  /credential/i,
+  /auth\.json$/i,
+  /\.pem$/i,
+  /\.key$/i,
+  /(^|[-_.])\.?env(\.|$)/i,
+  /token/i,
+  BROWSER_PROFILE_FILE,
+];
 
 export function isCredentialDir(name) {
   return CREDENTIAL_DIR.some((re) => re.test(name));
+}
+
+// A Chromium/Helium profile root (or its Default/ dir) holds a Local State,
+// Cookies, Login Data or Web Data file; the whole directory is a credential.
+function isBrowserProfile(abs) {
+  return readdirSync(abs).some((child) => BROWSER_PROFILE_FILE.test(child));
 }
 
 export function isCredentialFile(name) {
@@ -105,7 +124,7 @@ function collect(abs) {
     } else {
       out.files.push(entry);
     }
-  } else if (stat.isDirectory() && isCredentialDir(name)) {
+  } else if (stat.isDirectory() && (isCredentialDir(name) || isBrowserProfile(abs))) {
     const inside = allFiles(abs);
     out.credentials.push(...inside);
     out.reports.push({ abs, kind: "dir", files: inside.length });
@@ -182,42 +201,61 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     }
   };
 
-  // Dated items and month folders are units: classified whole, never descended.
+  // Dated items and month folders are units, classified whole and never
+  // descended. They are grouped per (folder, month): the YYYY-MM/ folder plus
+  // that month's dated siblings. A group holding any credential is held whole.
   const walk = (dirAbs) => {
+    const groups = new Map(); // month -> [{ abs, name, found, dated }]
     for (const name of readdirSync(dirAbs).sort()) {
       const abs = join(dirAbs, name);
       if (dirAbs === docsLocal && name === PLAN_DIR) continue;
       const stat = lstatSync(abs);
       if (stat.isSymbolicLink()) continue;
-      const found = collect(abs);
       const month = datedMonth(name);
       const folderMonth = stat.isDirectory() ? monthFolder(name) : null;
 
-      if (stat.isDirectory() && isCredentialDir(name)) {
-        count(found);
-      } else if (month || folderMonth) {
-        count(found);
-        if (month) plan.totals.dated += 1;
-        if (found.credentials.length > 0) {
-          plan.held.push({ path: rel(abs), reason: "contains credentials" });
-          continue;
-        }
-        if (month && isFinished(month)) {
-          const target = join(dirAbs, month, name);
-          if (existsSync(target)) {
-            plan.conflicts.push({ from: rel(abs), to: rel(target) });
-            continue;
-          }
-          plan.moves.push({ from: rel(abs), to: rel(target) });
-        }
-        const unitMonth = folderMonth ?? month;
-        if (isOld(unitMonth)) addToUnit(dirAbs, unitMonth, found.files);
+      if (month || folderMonth) {
+        const key = folderMonth ?? month;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push({ abs, name, found: collect(abs), dated: Boolean(month) });
+      } else if (stat.isDirectory() && (isCredentialDir(name) || isBrowserProfile(abs))) {
+        count(collect(abs));
       } else if (stat.isDirectory()) {
         walk(abs);
       } else {
-        count(found);
+        count(collect(abs));
         plan.totals.undated += 1;
       }
+    }
+
+    for (const [month, members] of [...groups.entries()].sort()) {
+      for (const m of members) {
+        count(m.found);
+        if (m.dated) plan.totals.dated += 1;
+      }
+      const credentials = members.flatMap((m) => m.found.credentials);
+      if (credentials.length > 0) {
+        plan.held.push({
+          path: rel(join(dirAbs, month)),
+          reason: "contains credentials",
+          members: members.map((m) => rel(m.abs)).sort(),
+          credentials: credentials.map((c) => rel(c.abs)).sort(),
+        });
+        continue;
+      }
+      const unitFiles = [];
+      for (const m of members) {
+        if (m.dated && isFinished(month)) {
+          const target = join(dirAbs, month, m.name);
+          if (existsSync(target)) {
+            plan.conflicts.push({ from: rel(m.abs), to: rel(target) });
+            continue;
+          }
+          plan.moves.push({ from: rel(m.abs), to: rel(target) });
+        }
+        unitFiles.push(...m.found.files);
+      }
+      if (isOld(month)) addToUnit(dirAbs, month, unitFiles);
     }
   };
   walk(docsLocal);
@@ -303,7 +341,11 @@ function main(argv) {
     ...plan.skipped.map((s) =>
       s.kind === "dir" ? `skipped: credential ${s.path}/ (${s.files} files)` : `skipped: credential ${s.path}`,
     ),
-    ...plan.held.map((h) => `held: ${h.path} (${h.reason})`),
+    ...plan.held.flatMap((h) => [
+      `held: ${h.reason} ${h.path}`,
+      ...h.members.map((m) => `  item: ${m}`),
+      ...h.credentials.map((c) => `  credential: ${c}`),
+    ]),
     ...plan.conflicts.map((c) => `conflict: ${c.from} -> ${c.to} exists`),
     summaryLine(plan),
   ];
