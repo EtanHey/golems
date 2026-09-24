@@ -2,7 +2,7 @@
 
 setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-  SKILL="$REPO_ROOT/skills/golem-powers/never-fabricate/SKILL.md"
+  SKILL="$REPO_ROOT/skills/golem-powers/never-fabricate/references/rules.md"
 }
 
 @test "never-fabricate documents artifact-based closure" {

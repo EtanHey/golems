@@ -21,6 +21,9 @@ mkdir -p ~/.claude/skills/never-fabricate
 ```bash
 curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/never-fabricate/SKILL.md \
   -o ~/.claude/skills/never-fabricate/SKILL.md
+mkdir -p ~/.claude/skills/never-fabricate/references
+curl -sL https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/never-fabricate/references/rules.md \
+  -o ~/.claude/skills/never-fabricate/references/rules.md
 ```
 
 3. Verify:
