@@ -513,10 +513,7 @@ async function checkGolemProfiles() {
 
 // Check enrichment queue depth
 async function checkEnrichmentQueue() {
-  // Try brainlayer path first (new), fall back to zikaron (legacy)
-  const brainlayerDb = `${process.env.HOME}/.local/share/brainlayer/brainlayer.db`;
-  const zikaronDb = `${process.env.HOME}/.local/share/zikaron/zikaron.db`;
-  const dbPath = existsSync(brainlayerDb) ? brainlayerDb : zikaronDb;
+  const dbPath = `${process.env.HOME}/.local/share/brainlayer/brainlayer.db`;
   const cmd = runCommand(
     `python3 -c "import apsw; db=apsw.Connection('${dbPath}', flags=apsw.SQLITE_OPEN_READONLY); print(list(db.cursor().execute('SELECT COUNT(*) FROM chunks WHERE enriched_at IS NULL'))[0][0]); db.close()"`
   );
