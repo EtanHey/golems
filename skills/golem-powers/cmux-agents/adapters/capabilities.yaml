@@ -73,20 +73,6 @@ adapters:
     models:
       - { id: "gemini-2.5-pro", use: "default, large context research" }
 
-  kiro:
-    binary: kiro-cli
-    worktree: manual
-    session_resume: false
-    mcp_access: false
-    hooks: false
-    subagents: false
-    background_tasks: false
-    prompting:
-      style: natural_language
-      max_skill_tokens: 3000
-    models:
-      - { id: default, use: "text-only" }
-
 # Task routing — which CLI is best for what
 routing:
   deep_reasoning: claude          # Best reasoning, MCP access, session continuity
@@ -138,87 +124,73 @@ cli_commands:
       codex: "/mcp"            # Lists configured MCP tools (no interactive menu)
       gemini: "/mcp"           # List/manage MCP servers
       cursor: null             # No MCP support
-      kiro: null               # No MCP support
     compact:
       claude: "/compact"       # Manual context compaction
       codex: "/compact"        # Summarize conversation to free tokens
       gemini: null             # Auto-managed (1M context)
       cursor: null             # Fire-and-forget, no persistent context
-      kiro: null               # No compaction
     model_switch:
       claude: "/model"         # Interactive picker menu
       codex: "/model"          # Interactive picker with reasoning effort
       gemini: null             # Set at launch only
       cursor: null             # Set at launch only (--model flag)
-      kiro: null               # Set at launch only
     clear:
       claude: "/clear"
       codex: "/clear"
       gemini: "/clear"
       cursor: null
-      kiro: "/clear"
     exit:
       claude: "/exit"
       codex: "/exit or /quit"
       gemini: "/quit"
       cursor: "Ctrl+C"
-      kiro: "Ctrl+C"
     skills_list:
       claude: "Skill tool"     # Skills auto-discovered from system-reminder
       codex: "/skills"         # Lists skills, invoke with $name
       gemini: "/skills"        # Lists agent skills
       cursor: null
-      kiro: null
     skill_invoke:
       claude: "/skill-name"    # Slash prefix
       codex: "$skill-name"     # Dollar prefix
       gemini: "/skill-name"    # Slash prefix (TOML commands)
       cursor: null
-      kiro: null
     file_reference:
       claude: "Read tool"      # Explicit tool call
       codex: "@path"           # Inline file mention
       gemini: "@path"          # Inline file/dir reference
       cursor: "@codebase"      # Whole-repo semantic search
-      kiro: null               # No inline file reference
     shell_execute:
       claude: "Bash tool"      # Explicit tool call
       codex: "!command"        # Inline shell execution
       gemini: null             # Via tool approval
       cursor: null             # Via tool approval
-      kiro: null               # Via tool approval
     code_review:
       claude: "via prompt"     # No built-in command
       codex: "/review"         # Built-in code review
       gemini: null
       cursor: "cursor agent --output-format text"  # Audit mode
-      kiro: null
     plan_mode:
       claude: "via prompt"     # No built-in plan mode
       codex: "/plan"           # Read-only exploration mode
       gemini: null
       cursor: null
-      kiro: null
   # Project instructions file per CLI
   project_instructions:
     claude: "CLAUDE.md"
     codex: "AGENTS.md"
     gemini: "GEMINI.md"        # or AGENTS.md
     cursor: ".cursorrules"     # or AGENTS.md
-    kiro: "AGENTS.md"
   # How to detect agent state via read_screen
   idle_prompt_patterns:
     claude: "❯"                # Unicode prompt char
     codex: "❯"                 # Same unicode prompt
     gemini: ">"                # Simple angle bracket
     cursor: "$"                # Shell prompt (cursor exits to shell when done)
-    kiro: ">"                  # Simple prompt
   working_patterns:
     claude: "⏺"               # Filled circle = generating
     codex: "⠋⠙⠹"              # Braille spinner
     gemini: "(streaming text)" # No specific indicator — text appearing
     cursor: "(streaming text)"
-    kiro: "(streaming text)"
 
 # Worktree gap handling — what to do when CLI lacks native worktrees
 worktree_fallback:
@@ -227,4 +199,4 @@ worktree_fallback:
     - "cd ../<wt-dir> && bun install --frozen-lockfile  # or npm ci / pnpm install --frozen-lockfile / uv sync --frozen; never symlink node_modules (in a workspace monorepo, cross-package imports would run the main checkout's code)"
     - "cp .env ../<wt-dir>/.env"
   cleanup: "git worktree remove ../<wt-dir>"
-  applies_to: [codex, cursor, gemini, kiro]
+  applies_to: [codex, cursor, gemini]

@@ -11,7 +11,7 @@
 # PROMPT FROM FILE: use @filepath to read prompt from a file
 #   run.sh --workspace $HOME/Gits/golems cursor @/tmp/my-prompt.txt [output-file]
 #
-# Agents: gemini, cursor, codex, kiro, kilo
+# Agents: gemini, cursor, codex, kilo
 #
 # SAFETY: kilo has full file access — blocked from golems/personal dirs
 
@@ -31,7 +31,7 @@ while [[ "${1:-}" == --* ]]; do
   esac
 done
 
-AGENT="${1:?Usage: run.sh [--work] [--workspace <path>] <gemini|cursor|codex|kiro|kilo> \"prompt\" [output-file]}"
+AGENT="${1:?Usage: run.sh [--work] [--workspace <path>] <gemini|cursor|codex|kilo> \"prompt\" [output-file]}"
 PROMPT_ARG="${2:?Missing prompt}"
 OUTPUT="${3:-/tmp/cli-agent-${AGENT}-$(date +%s).md}"
 
@@ -100,13 +100,6 @@ case "$AGENT" in
     fi
     ;;
 
-  kiro)
-    if [[ "$MODE" == "work" ]]; then
-      echo "Note: Kiro is text-only, can't modify files. Running research mode." >&2
-    fi
-    kiro-cli chat --no-interactive "$PROMPT" 2>/dev/null | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g; s/\x1b\[[0-9;]*m//g; s/^> //' > "$OUTPUT"
-    ;;
-
   kilo)
     KILO_BIN="${KILO_BIN:-$(which kilo 2>/dev/null || echo "$HOME/.nvm/versions/node/$(node -v)/bin/kilo")}"
     KILO_MODEL="${KILO_MODEL:-kilo/qwen/qwen3-coder:free}"
@@ -133,7 +126,7 @@ case "$AGENT" in
 
   *)
     echo "Unknown agent: ${AGENT}" >&2
-    echo "Available: gemini, cursor, codex, kiro, kilo" >&2
+    echo "Available: gemini, cursor, codex, kilo" >&2
     exit 1
     ;;
 esac

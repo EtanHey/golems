@@ -60,7 +60,6 @@ packages/services/
 │   ├── validation-service.ts    # Input validation utilities
 │   ├── cursor-helper.ts         # Cursor CLI agent wrapper
 │   ├── gemini-helper.ts         # Gemini CLI agent wrapper
-│   ├── kiro-helper.ts           # Kiro CLI agent wrapper
 │   ├── ollama-chat-bot.ts       # Ollama local chat wrapper
 │   ├── run-compaction.ts        # Context compaction utilities
 │   ├── thread-compactor.ts      # Thread compaction logic
