@@ -57,13 +57,9 @@ packages/shared/src/
 │   ├── event-log.ts             # Golem action logging ("while you were down")
 │   ├── load-env.ts              # .env loader for launchd (import FIRST)
 │   ├── shared-types.ts          # GolemStatus, TopicStyle, GolemActor
-│   ├── wizard-state.ts          # Wizard/doctor health check functions
 │   ├── config.ts                # Centralized config paths
 │   ├── cost-tracker.ts          # API cost logging (JSONL)
-│   ├── helpers.ts               # CLI helper layer (gemini/cursor/codex/kiro)
-│   ├── agent-runner.ts          # Research workflows on helpers
 │   ├── ascii-mascots.ts         # Guardian golem ANSI truecolor renderer (2 variants: 16-line + 22-line)
-│   ├── style-export.ts          # Communication style export
 │   └── i18n.ts                  # Internationalization utilities
 ├── email/
 │   ├── index.ts                 # Email golem entry point (10min cron)
