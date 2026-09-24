@@ -38,11 +38,6 @@ import {
 } from "./sender-tracker";
 import type { Email } from "./types";
 
-// Lazy-imported at call time to break shared↔teller circular dependency
-async function getTellerReport() {
-  return import("@golems/teller/report");
-}
-
 const server = new Server(
   { name: "golems-email", version: "1.0.0" },
   { capabilities: { tools: {} } },
@@ -296,36 +291,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
-    {
-      name: "teller_monthlyReport",
-      description:
-        "Generate monthly spending report. Returns total spend, breakdown by category and vendor, and subscription count.",
-      inputSchema: {
-        type: "object" as const,
-        properties: {
-          month: {
-            type: "string",
-            description: "Month in YYYY-MM format (default: current month)",
-            default: new Date().toISOString().slice(0, 7),
-          },
-        },
-      },
-    },
-    {
-      name: "teller_taxSummary",
-      description:
-        "Generate annual tax report. Returns deductible totals by IRS Schedule C category with line items.",
-      inputSchema: {
-        type: "object" as const,
-        properties: {
-          year: {
-            type: "number",
-            description: "Tax year (default: current year)",
-            default: new Date().getFullYear(),
-          },
-        },
-      },
-    },
   ],
 }));
 
@@ -360,10 +325,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return handleSendersByCategory(args);
       case "email_unsubscribeHistory":
         return handleUnsubscribeHistory(args);
-      case "teller_monthlyReport":
-        return handleMonthlyReport(args);
-      case "teller_taxSummary":
-        return handleTaxSummary(args);
       default:
         return {
           content: [{ type: "text" as const, text: `Unknown tool: ${name}` }],
@@ -796,35 +757,6 @@ async function handleUnsubscribeHistory(args: McpArgs) {
   ];
 
   return { content: [{ type: "text" as const, text: lines.join("\n") }] };
-}
-
-/**
- * Generate and format a monthly spending report.
- * @param args - Optional month parameter in YYYY-MM format (defaults to current month)
- */
-async function handleMonthlyReport(args: Record<string, unknown> | undefined) {
-  const month = (args?.month as string) ?? new Date().toISOString().slice(0, 7);
-
-  const { generateMonthlyReport, formatMonthlyReportText } =
-    await getTellerReport();
-  const report = await generateMonthlyReport(month);
-  const formatted = formatMonthlyReportText(report);
-
-  return { content: [{ type: "text" as const, text: formatted }] };
-}
-
-/**
- * Generate and format an annual tax report.
- * @param args - Optional year parameter (defaults to current year)
- */
-async function handleTaxSummary(args: Record<string, unknown> | undefined) {
-  const year = (args?.year as number) ?? new Date().getFullYear();
-
-  const { generateTaxReport, formatTaxReportText } = await getTellerReport();
-  const report = await generateTaxReport(year);
-  const formatted = formatTaxReportText(report);
-
-  return { content: [{ type: "text" as const, text: formatted }] };
 }
 
 // --- Start server ---
