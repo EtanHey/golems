@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: "User-invoked design-tree interview. Triggers: grill me, interview my plan, stress-test this design. Asks the whole decision frontier in voice-friendly rounds. NOT for implementation or one-question-at-a-time interviews."
+description: "Design-tree interview. Triggers: grill me, interview my plan, stress-test this design. NOT for implementation or one-question-at-a-time interviews."
 disable-model-invocation: true
 ---
 

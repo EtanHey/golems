@@ -51,6 +51,10 @@ def autocursor_import_status(eval_dir: Path) -> dict:
     return status
 
 
+class SmokeReplaySkipped(Exception):
+    """The replay harness is absent (private skill-creator repo); carries the reason."""
+
+
 def run_smoke_replay(eval_dir: Path) -> dict:
     script = eval_dir / "smoke_replay_cursor.mjs"
     spec = eval_dir / "replay" / "cursor-smoke-spec.json"
@@ -66,6 +70,8 @@ def run_smoke_replay(eval_dir: Path) -> dict:
             "smoke replay failed "
             f"exit={result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         )
+    if result.stdout.startswith("SKIP "):
+        raise SmokeReplaySkipped(result.stdout[len("SKIP "):].strip())
     try:
         report = json.loads(result.stdout)
     except json.JSONDecodeError as exc:
