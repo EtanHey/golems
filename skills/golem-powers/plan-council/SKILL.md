@@ -1,6 +1,6 @@
 ---
 name: plan-council
-description: "Cross-family judge council over ONE authored plan or spec. Triggers: council, review my plan, score the plan, judge the plan, cross-family judges, lift round, exact-head review, conditional GO, MUST_FIX. NOT for anonymized candidate ranking (/adversarial-council) or bulk verdict fleets (/judge-fleet)."
+description: "Plan councils, anonymized candidate ranking, bulk judge fleets, assumption checks. Triggers: council, review my plan, score the plan, judge the plan, validate plan, check assumptions, cross-family judges, lift round, exact-head review, conditional GO, MUST_FIX, peer ranking, anonymized review, adversarial verification, score multiple candidates, judge fleet, bulk judge, R3 verdicts, kg-judge, RT gate, evidence_degraded. NOT for one-off PR/code review."
 ---
 
 # Plan Council
@@ -21,9 +21,21 @@ EVERY artifact this protocol emits — ballot, lift table, convener report — l
 
 | Need | Use |
 |---|---|
-| Review one authored plan/spec with declared judge families and measured bias | `/plan-council` |
-| Rank multiple anonymized candidates without authorship signals | `/adversarial-council` |
-| Fan out bulk verdict production over many prompts/items | `/judge-fleet` |
+| Review one authored plan/spec with declared judge families and measured bias | this page (Five laws below) |
+| Rank multiple anonymized candidates without authorship signals | [references/anonymized-ranking.md](references/anonymized-ranking.md) + its own validator, `anonymized_ranking/council_lint_cli.py` |
+| Fan out bulk verdict production over many prompts/items | [references/bulk-judging.md](references/bulk-judging.md) (seven rules + dispatcher checklist) |
+| Check a multi-agent plan's claims before running it (VERIFIED / ESTIMATED / PHANTOM), then rewrite it | [references/assumption-check.md](references/assumption-check.md) |
+
+Load-bearing rules from those references, so a router that stops here still gets them right:
+- **Anonymized ranking:** no authorship leak (never name a participant engine or say "my
+  proposal"), a numeric `Score:` per candidate, an `## Inputs read` section, and the sentinel as the
+  last line. Resolve every cited symbol/line against the code before hand-off.
+- **Bulk judging:** probe `brain_search` before fan-out (an enrichment-locked DB → HOLD); stage under
+  a durable `eval_results/<campaign>/`, never `/tmp`; reason per prompt (scripts may validate, never
+  produce verdicts); completion = `DONE/<worker>.done` files; append-only collab sections; flag
+  `evidence_degraded` and filter it before bulk-apply; red-team gate before any bulk-apply.
+- **Assumption check:** run it before any overnight or multi-agent sprint. Every PHANTOM claim is
+  killed or verified; quantitative claims need a source.
 
 ## Five laws
 

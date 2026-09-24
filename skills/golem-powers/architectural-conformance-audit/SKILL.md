@@ -146,7 +146,7 @@ If audits routinely come back MATCH for everything with no friction, suspect fal
 - **`/never-fabricate`** — audit verdicts cite specific file paths + line ranges; never-fabricate enforces that those citations are real. This skill is the architectural-level fabrication guard; never-fabricate is the file-level guard.
 - **`/brain-store-fallback`** (SHIP-2, merged) — audit verdicts get stored at importance ≥8; brain-store-fallback handles transport failures during storage. Mandatory composition.
 - **`/coderabbit`** — composes downstream; coderabbit fires per-PR, this skill fires per-sprint.
-- **`/plan-validate`** — adjacent skill (general assumption checks); plan-validate is general, this is architecture-specific.
+- **`/plan-council`** assumption check ([references/assumption-check.md](../plan-council/references/assumption-check.md), formerly `/plan-validate`): the general assumption check; this skill is the architecture-specific one.
 - **`/large-plan/workflows/scaffold`** — the audit is a pre-R0 step in scaffold.md so it isn't skipped by oversight.
 - **`/orc`** — orc invokes this skill at sprint kickoff when Tier-1 triggers fire.
 

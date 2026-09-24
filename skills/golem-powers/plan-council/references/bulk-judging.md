@@ -1,15 +1,10 @@
----
-name: judge-fleet
-description: "Bulk LLM-judging protocol for fleet-dispatched verdict runs. Triggers: judge fleet, bulk judge, R3 verdicts, kg-judge, RT gate, evidence_degraded. NOT for single reviews or non-judge evals."
----
+# Bulk Judging (formerly `/judge-fleet`) — bulk LLM-judging protocol
 
-# /judge-fleet — bulk LLM-judging protocol
-
-Routing: use `/judge-fleet` for bulk verdict fan-out; use `/plan-council` for a visible 3-seat cross-family review of one authored plan/spec.
+Routing: this reference covers bulk verdict fan-out; `../SKILL.md` covers a visible 3-seat cross-family review of one authored plan/spec.
 
 > Three R3 runs (morning + evening 2026-06-06) proved seven non-negotiables.
 > A generic "judge these N items" dispatch loses artifacts, degrades silently,
-> and bulk-applies refuted merges. This skill encodes what the rerun briefs
+> and bulk-applies refuted merges. This reference encodes what the rerun briefs
 > already harden — so agents don't re-learn from /tmp wipes and DB locks.
 
 ## Scope
