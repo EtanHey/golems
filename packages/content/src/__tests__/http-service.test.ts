@@ -152,4 +152,41 @@ describe("Input validation — DataViz", () => {
     const data = (await res.json()) as Record<string, unknown>;
     expect(data.error).toContain("Unknown type");
   });
+
+  it("POST /api/dataviz/render type=brain returns 503 for an unsupported observability schema_version", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("fs");
+    const { join } = await import("path");
+    const { tmpdir } = await import("os");
+    const dir = mkdtempSync(join(tmpdir(), "brain-obs-v2-"));
+    const path = join(dir, "observability.json");
+    writeFileSync(path, JSON.stringify({ schema_version: 2, stores: { state: "measured", total_chunks: 1 } }));
+    const previous = process.env.BRAINLAYER_OBSERVABILITY_PATH;
+    process.env.BRAINLAYER_OBSERVABILITY_PATH = path;
+    try {
+      const res = await handleRequest(makeRequest("POST", "/api/dataviz/render", { type: "brain" }));
+      expect(res.status).toBe(503);
+      const data = (await res.json()) as Record<string, unknown>;
+      expect(data.error).toContain("schema_version 2");
+    } finally {
+      if (previous === undefined) delete process.env.BRAINLAYER_OBSERVABILITY_PATH;
+      else process.env.BRAINLAYER_OBSERVABILITY_PATH = previous;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("POST /api/dataviz/render type=brain returns 503 with the reason when BrainLayer data is unavailable", async () => {
+    const previous = process.env.BRAINLAYER_OBSERVABILITY_PATH;
+    process.env.BRAINLAYER_OBSERVABILITY_PATH = "/nonexistent/brainlayer/observability.json";
+    try {
+      const res = await handleRequest(
+        makeRequest("POST", "/api/dataviz/render", { type: "brain" }),
+      );
+      expect(res.status).toBe(503);
+      const data = (await res.json()) as Record<string, unknown>;
+      expect(data.error).toContain("/nonexistent/brainlayer/observability.json");
+    } finally {
+      if (previous === undefined) delete process.env.BRAINLAYER_OBSERVABILITY_PATH;
+      else process.env.BRAINLAYER_OBSERVABILITY_PATH = previous;
+    }
+  });
 });

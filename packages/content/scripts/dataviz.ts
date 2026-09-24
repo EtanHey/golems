@@ -46,7 +46,7 @@ Usage: bun run dataviz <type> [options]
 Types:
   jobs       Job market stats (top tags, status distribution)
   finance    LLM costs, subscriptions, email categories
-  brain      Zikaron knowledge base growth and coverage
+  brain      BrainLayer size and store rate (its observability document)
   activity   Golem events, service run stats
   all        Generate all data viz types
 
@@ -123,11 +123,12 @@ async function generateFinanceViz(): Promise<string> {
 async function generateBrainViz(): Promise<string> {
   console.log("Fetching brain data...");
   const data = await fetchBrainData();
-  console.log(`  ${data.totalChunks} chunks, ${data.totalSessions} sessions, ${data.totalProjects} projects`);
+  if (data.state !== "measured") throw new Error(`brain data unavailable: ${data.reason}`);
+  console.log(`  ${data.totalChunks} chunks, ${data.storesInWindow} stored in ${data.windowHours}h (as of ${data.generatedAt})`);
 
   const chartSvg = renderLineChart({
-    title: "Knowledge Base Growth",
-    data: data.monthlyGrowth.map((g) => ({ date: g.month, value: g.chunks })),
+    title: `Stores per Hour, Last ${data.windowHours}h`,
+    data: data.hourly.map((h) => ({ date: h.hour.slice(11, 16), value: h.count })),
     showArea: true,
     yAxisLabel: "Chunks",
   });
@@ -135,15 +136,14 @@ async function generateBrainViz(): Promise<string> {
   const statsSvg = renderStatCards({
     stats: [
       { label: "Total Chunks", value: data.totalChunks },
-      { label: "Sessions", value: data.totalSessions },
-      { label: "Projects", value: data.totalProjects },
-      { label: "Enriched", value: `${data.enrichmentPercent}%` },
+      { label: `Stored (${data.windowHours}h)`, value: data.storesInWindow },
+      { label: "Content Classes", value: data.contentClasses.length },
     ],
-    columns: 4,
+    columns: 3,
     width: format === "story" ? 1000 : format === "instagram" ? 1000 : 1120,
   });
 
-  return wrapInTemplate("Brain Growth", `${data.enrichmentPercent}% enriched`, chartSvg, statsSvg);
+  return wrapInTemplate("BrainLayer", `as of ${data.generatedAt?.slice(0, 16).replace("T", " ")}Z`, chartSvg, statsSvg);
 }
 
 async function generateActivityViz(): Promise<string> {
