@@ -6,6 +6,7 @@ import { execSync } from "child_process";
 import {
   getVersionInfo,
   installDeps,
+  detectPackageManager,
   formatUpdateReport,
   saveUpdateHistory,
   getUpdateHistory,
@@ -85,6 +86,20 @@ describe("installDeps", () => {
     const result = installDeps(testDir);
     // Either succeeds or fails — we just check it ran
     expect(result.step).toBe("install");
+  });
+
+  test("detectPackageManager picks bun for a text bun.lock", () => {
+    writeFileSync(join(testDir, "bun.lock"), "{}");
+    expect(detectPackageManager(testDir)).toBe("bun");
+  });
+
+  test("detectPackageManager picks bun for a binary bun.lockb", () => {
+    writeFileSync(join(testDir, "bun.lockb"), "");
+    expect(detectPackageManager(testDir)).toBe("bun");
+  });
+
+  test("detectPackageManager falls back to npm without a bun lockfile", () => {
+    expect(detectPackageManager(testDir)).toBe("npm");
   });
 });
 

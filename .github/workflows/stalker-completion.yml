@@ -11,7 +11,7 @@ on:
       - 'packages/claude/src/lib/notify-server*'
       - '.github/workflows/stalker-completion.yml'
       - 'package.json'
-      - 'bun.lockb'
+      - 'bun.lock'
   push:
     branches: [master]
     paths:
@@ -24,7 +24,7 @@ on:
       - 'packages/claude/src/lib/notify-server*'
       - '.github/workflows/stalker-completion.yml'
       - 'package.json'
-      - 'bun.lockb'
+      - 'bun.lock'
 permissions:
   contents: read
 jobs:
