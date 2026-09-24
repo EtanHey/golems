@@ -14,9 +14,12 @@ The default gate is replay-only. It does not call `cursor-agent`, Claude, the
 network, or any live model. The checked-in replay transcript is raw
 cursor-agent-style NDJSON passed through the `skill-creator`
 `src/smoke-harness.js` replay API by `smoke_replay_cursor.mjs`.
-skill-creator is a private repo: when no `smoke-harness.js` is found (set
-`SMOKE_HARNESS_JS` to point at one), the gate prints `PARITY_EVAL SKIP: <reason>`
-and exits 0 instead of failing.
+The harness is found at `SMOKE_HARNESS_JS`, else `$SKILL_CREATOR_ROOT/src/`,
+else in a `skill-creator` checkout next to the main golems checkout (resolved
+through `git rev-parse --git-common-dir`, so linked worktrees find it too). An
+env var that is set but does not resolve fails the run. skill-creator is a
+private repo: when no harness is found, the gate prints
+`PARITY_EVAL SKIP: <reason>` and exits 0 instead of failing.
 
 ## What GREEN Means
 
