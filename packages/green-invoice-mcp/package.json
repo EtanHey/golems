@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "MCP server for Green Invoice (Morning) — Israeli invoicing, receipts, and client management via REST API.",
   "author": "EtanHey",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "repository": {

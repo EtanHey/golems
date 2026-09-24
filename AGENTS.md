@@ -10,17 +10,17 @@ Always read the package-specific `CLAUDE.md` before changing a package.
 
 ## Key Relationships
 
-- **ClaudeGolem** registers Composers from Jobs + Recruiter for Telegram commands
+- **ClaudeGolem** registers one Telegram Composer, `claudeComposer` (`packages/claude/src/telegram-bot.ts`)
 - **CoachGolem** reads getStatus() from Jobs, Recruiter, Teller (read-only)
 - **Services** (briefing) imports from Coach for daily plan generation
 - **Cloud Worker** remains a local/successor-host runnable scheduler; Railway service was deleted on 2026-07-05
-- **All packages** depend on Shared for Supabase, LLM, state, notifications
+- **Most packages** depend on Shared for Supabase, LLM, state, notifications; golem-skills, golems-cli, golems-tui, green-invoice-mcp and mock-mcp do not
 
 ## Development
 
 ```bash
 bun install              # Install all workspace deps
-bun test                 # Run all tests
+bun run test             # Package suite (bun test ./packages), as CI runs it
 ```
 
 CI runs on PRs into any base branch, so a stacked PR gets the full suite.

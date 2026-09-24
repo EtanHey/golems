@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "ClaudeGolem — central orchestrator and Telegram router for the Golems ecosystem, coordinating domain-specific golems via Grammy composers.",
   "author": "EtanHey",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "repository": {

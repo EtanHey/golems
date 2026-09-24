@@ -234,7 +234,7 @@ Verdicts on research plans (GO / HOLD / rewrite / kill) are made jointly by the 
 
 ### Compaction DISCARD allowlist (preserve coordination, drop noise)
 
-When context climbs past 30%, proactively drop from working memory:
+Drop these from working memory as soon as they have served their purpose:
 - ps/pgrep/lsof output (raw process tables)
 - Daemon log polls (>3 lines of poll output)
 - `read_screen` returns older than the last 5 events

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "RecruiterGolem — active job search with contact finding, style-adapted outreach, interview practice, and Elo-rated skill tracking.",
   "author": "EtanHey",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "repository": {
