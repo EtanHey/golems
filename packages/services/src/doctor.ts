@@ -14,7 +14,7 @@
  * - Supabase connectivity (if configured)
  */
 
-import { promises as fs, existsSync } from "fs";
+import { promises as fs } from "fs";
 import { execSync } from "child_process";
 import type { PrunedSeat } from "@golems/shared/lib/config";
 
