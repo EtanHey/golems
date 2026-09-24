@@ -1,9 +1,11 @@
----
-name: surface-sweep
-description: "Sweep every surface a change touches before calling it done. Triggers: change done, frontend change, multi-client or multi-provider change, works on my path but may not elsewhere, adding a setting/command/keybinding/provider adapter, wire-contract change. NOT for single-file leaf fixes with no shared consumer, adapter, entry point, state transition, or user-facing surface."
----
-
 # Surface Sweep
+
+> Formerly the `/surface-sweep` skill; `../SKILL.md` § Surface sweep is the summary. Fixtures and
+> the mechanical grader now live in `../evals/` (`fixture_grader` in `evals.json`,
+> `fixtures/surface-sweep/`).
+>
+> **Not for** single-file leaf fixes with no shared consumer, adapter, entry point, state
+> transition, or user-facing surface.
 
 ## Purpose
 

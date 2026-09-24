@@ -23,6 +23,7 @@ const DEFAULT_RETIRED = [
   "research-prompt-quality",
   "review-router",
   "skills",
+  "surface-sweep",
   "test-plan",
   "video-showcase",
   "wizard",
