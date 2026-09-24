@@ -22,7 +22,7 @@ const EXCEPTIONS = {
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
   "drive-filing": 282 /* absorbed drive-usage (250), google-drive-archive (105), archive (107): 462 -> 282 */,
   "codex-workflows": 142,
-  "collab-monitor": 185,
+  "collab-monitor": 286 /* absorbed cron-payload-discipline (107) and its triggers: 185 + 107 -> 286 */,
   "convention-audit": 237,
   eli5: 138,
   "grill-me": 147,

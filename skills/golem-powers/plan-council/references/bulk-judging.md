@@ -109,7 +109,7 @@ MERGE: RT gate complete; REFUTE re-judged; filter degraded before bulk-apply
 | Skill | Relationship |
 |---|---|
 | `/never-fabricate` | Read verdict files before claiming counts; no synthesized completion times |
-| `/cron-payload-discipline` | Monitor ticks waiting on judge fleet use live file counts + DONE sentinels, not hardcoded "154/154 done" |
+| `/collab-monitor` (cron payloads) | Monitor ticks waiting on judge fleet use live file counts + DONE sentinels, not hardcoded "154/154 done" |
 | `/cmux-agents` | Dispatch briefs must inline absolute staging paths and precondition steps |
 | `/pr-loop` | Skill changes ship through full PR loop with eval scorecard in body |
 | `/skill-creator` | RED/GREEN evals required before merge |

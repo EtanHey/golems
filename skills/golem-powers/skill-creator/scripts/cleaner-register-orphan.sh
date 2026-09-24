@@ -23,7 +23,6 @@ ORPHANS_TO_REGISTER=(
     "brain-store-fallback"
     "architectural-conformance-audit"
     "deploy-verify"
-    "cron-payload-discipline"
 )
 
 # Ambiguous skills (have archive duplicates or project-scoped) — NOT auto-registered

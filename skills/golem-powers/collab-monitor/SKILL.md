@@ -1,6 +1,6 @@
 ---
 name: collab-monitor
-description: "Arm or stop tag-scoped durable collab-file watches. Triggers: collab monitor, watch collab, listen-name, background watch. NOT for file-integrity auditing or worker-registry completion."
+description: "Arm or stop tag-scoped durable collab-file watches; keep cron/loop/monitor payloads live-queried. Triggers: collab monitor, watch collab, listen-name, background watch, cron, /loop, recurring tick, merge queue, no-progress. NOT for file-integrity auditing or worker-registry completion."
 version: 1.2.0
 type: encoded-preference
 last-eval-date: 2026-09-25
@@ -359,6 +359,21 @@ later. Sample twice before you believe either field.
 A supervisor **MUST NOT poll `read_screen` in a loop** for one worker outcome. Repeated screen reads are a defect, not diligence: arm a process-exit or background-log watch, let it wake the supervisor, and read the finished screen/log once.
 
 For headless Codex workers, use the `codex-workflows` skill's `watch` primitive. It observes process exit first and parses the completed log once. For this monitor, keep `follow` attached to the supervisor's monitored long-running command session; do not replace it with repeated screen inspection.
+
+## Cron, /loop and monitor payloads
+
+A recurring tick that restates yesterday's state is rotten before it runs. Full rules, rewrite
+protocol and anti-patterns: [references/cron-payloads.md](references/cron-payloads.md).
+
+- **Live query first.** Step 1 of every cron/`/loop`/monitor payload runs a live `!` query (`gh pr
+  view`, `list_surfaces`, `find -newer`, `brain_search`). Never hardcode a state string the tick
+  could query (`PR #123 is BLOCKED`, `surface:7 is idle`, `3 PRs waiting`).
+- **Frame every tick:** `$(date -Iseconds)`, cycle, last-action-timestamp; monitors add
+  last-genuine-dispatch-time, consecutive no-change / no-push counts and a park threshold.
+- The decision tree consumes the rendered output and ends in `dispatch`, `verify-and-decrement` or
+  `escalate-park`. A counter resets only on a verified side effect, never on a "looking" reply.
+- Review dispatch pins the PR head SHA. Idle or frozen verdicts need a rotating full read, because
+  parsed-only wrapper text is telemetry, not truth.
 
 ## Routing Grammar
 
