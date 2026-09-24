@@ -216,9 +216,7 @@ async function checkMLX() {
       message: isConfigured
         ? "Not running — configured as primary backend (Ollama used as fallback)"
         : "Not running (optional — Ollama is configured backend)",
-      fix: isConfigured
-        ? "launchctl load ~/Library/LaunchAgents/com.golems.mlx-server.plist"
-        : `python3 -m mlx_lm.server --model ${configuredModel} --port 8081`,
+      fix: `python3 -m mlx_lm.server --model ${configuredModel} --port 8081`,
     });
   } finally {
     clearTimeout(timeout);
@@ -534,14 +532,12 @@ async function checkEnrichmentQueue() {
         name: "Enrichment Queue",
         status: "fail",
         message: `${unenriched.toLocaleString()} unenriched — about ${days} days behind`,
-        fix: "./scripts/auto-enrich.sh --max-hours 6",
       });
     } else if (unenriched > 1000) {
       results.push({
         name: "Enrichment Queue",
         status: "warn",
         message: `${unenriched.toLocaleString()} unenriched — could use a catch-up run`,
-        fix: "./scripts/enrich.sh start",
       });
     } else {
       results.push({

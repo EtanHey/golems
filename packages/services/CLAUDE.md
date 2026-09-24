@@ -52,7 +52,6 @@ packages/services/
 │   ├── night-shift.ts           # 4am autonomous coding improvements
 │   ├── briefing.ts              # 8am morning summary
 │   ├── healthcheck.ts           # 9am service health verification
-│   ├── session-archiver.ts      # Archive Claude session transcripts
 │   ├── wizard.ts                # `golems wizard` — guided setup
 │   ├── doctor.ts                # `golems doctor` — health checks
 │   ├── helpers-status.ts        # CLI helper backend status
