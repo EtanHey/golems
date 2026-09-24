@@ -394,7 +394,7 @@ SH
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'BrainLayer contract ingest timed out'* ]]
+    [[ "$output" == *'BrainLayer contract ingest timed out'* ]] || false
     if child_pid="$(pgrep -f '^/bin/sleep 37\.86429$' | head -1)" && [ -n "$child_pid" ]; then
         kill "$child_pid" 2>/dev/null || true
         false
@@ -445,7 +445,7 @@ SH
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'BrainLayer contract ingest timed out'* ]]
+    [[ "$output" == *'BrainLayer contract ingest timed out'* ]] || false
     [ "$(cat "$TMPDIR_/queue-reason")" = "brain_store_timeout" ]
     if child_pid="$(pgrep -f '^/bin/sleep 37\.97531$' | head -1)" && [ -n "$child_pid" ]; then
         kill "$child_pid" 2>/dev/null || true
@@ -582,7 +582,7 @@ SH
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'record:run-summary'* ]]
+    [[ "$output" == *'record:run-summary'* ]] || false
     [ ! -f "$full_dir/.stage-brainlayer.done" ]
 }
 

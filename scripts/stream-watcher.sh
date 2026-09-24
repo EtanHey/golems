@@ -36,6 +36,12 @@ mkdir -p "$STREAM_DIR"
 
 log() { echo "[stream-watcher $(date '+%H:%M:%S')] $1"; }
 
+if ! stalker_ensure_lurker_bundle "$LURKER_SCRIPT" "$SCRIPT_DIR/twitch-chat-lurker.ts" \
+    "$REPO_ROOT/bun.lock" "$SCRIPT_DIR/build-twitch-chat-lurker.sh"; then
+    log "ERROR: could not build $LURKER_SCRIPT"
+    exit 1
+fi
+
 cleanup() {
     log "Cleaning up..."
     [ -n "$WATCHDOG_PID" ] && kill "$WATCHDOG_PID" 2>/dev/null || true

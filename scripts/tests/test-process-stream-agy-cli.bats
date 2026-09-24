@@ -1170,7 +1170,7 @@ EOF
     [ "$status" -eq 75 ]
     [ ! -f "$stream_dir/gems.md" ]
     [ ! -s "$AGY_ARGS_FILE" ]
-    [[ "$output" == *"no transcript text after cleaning diagnostics"* ]]
+    [[ "$output" == *"no transcript text after cleaning diagnostics"* ]] || false
     [ -f "$stream_dir/.stage-scoring.failed" ]
 }
 
@@ -1188,7 +1188,7 @@ EOF
     [ "$status" -eq 75 ]
     [ ! -f "$stream_dir/gems.md" ]
     [ ! -s "$AGY_ARGS_FILE" ]
-    [[ "$output" == *"No candidate segments near spikes; removed empty gems.md so retry can run after signal/window changes"* ]]
+    [[ "$output" == *"No candidate segments near spikes; removed empty gems.md so retry can run after signal/window changes"* ]] || false
     [ -f "$stream_dir/.stage-run-quality.failed" ]
 }
 
@@ -1206,7 +1206,7 @@ EOF
 
     [ "$status" -eq 0 ]
     grep -F -q '### [00:10] Segment 1 (30s) Spike Chat Goes Wild' "$stream_dir/gems.md"
-    [[ "$output" == *"Removing incomplete gems.md before scorer retry"* ]]
+    [[ "$output" == *"Pass 0: gems.md is incomplete (no completion footer / partial scoring) — removing so scoring re-runs"* ]] || false
     [ ! -f "$stream_dir/.stage-run-quality.failed" ]
 }
 
@@ -1251,7 +1251,7 @@ SH
 
     [ "$status" -eq 75 ]
     [ ! -f "$stream_dir/gems.md" ]
-    [[ "$output" == *"Auto-scoring had 1 failed candidate segment(s); removed incomplete gems.md so retry can run"* ]]
+    [[ "$output" == *"Auto-scoring had 1 failed candidate segment(s); removed incomplete gems.md so retry can run"* ]] || false
     [ -f "$stream_dir/.stage-scoring.failed" ]
     grep -F -q 'retryable=true' "$stream_dir/.stage-scoring.failed"
 }
@@ -1316,8 +1316,8 @@ SH
     grep -F -q '### [00:10] Segment 1 (30s) Fallback Finds The Moment' "$stream_dir/gems.md"
     grep -F -q '**Score:** 8/10 | **Type:** reaction' "$stream_dir/gems.md"
     grep -F -q '**Gist:** The codex fallback identifies the moment after agy fails.' "$stream_dir/gems.md"
-    [[ "$output" == *"agy failed"* ]]
-    [[ "$output" == *"codex exec fallback scored segment after agy failure"* ]]
+    [[ "$output" == *"agy failed"* ]] || false
+    [[ "$output" == *"codex exec fallback scored segment after agy failure"* ]] || false
     grep -F -x -q -- '-m' "$CODEX_ARGS_FILE"
     grep -F -x -q 'gpt-5.6-sol' "$CODEX_ARGS_FILE"
     grep -F -x -q -- '-c' "$CODEX_ARGS_FILE"
@@ -1426,8 +1426,8 @@ SH
     [ "$status" -eq 75 ]
     [ ! -f "$stream_dir/gems.md" ]
     [ "$(cat "$CODEX_TIMEOUT_FILE")" = "7s" ]
-    [[ "$output" == *"codex exec fallback timed out after 7s"* ]]
-    [[ "$output" == *"scoring failure counted for [00:10] Segment 1 (30s)"* ]]
+    [[ "$output" == *"codex exec fallback timed out after 7s"* ]] || false
+    [[ "$output" == *"scoring failure counted for [00:10] Segment 1 (30s)"* ]] || false
     [ -f "$stream_dir/.stage-scoring.failed" ]
     grep -F -q 'available scorers failed for 1 candidate segment(s)' "$stream_dir/.stage-scoring.failed"
 }
@@ -1478,7 +1478,7 @@ SH
 
     [ "$status" -eq 75 ]
     [ ! -f "$stream_dir/gems.md" ]
-    [[ "$output" == *"Auto-scoring failed for all candidate segments; removed incomplete gems.md so retry can run"* ]]
+    [[ "$output" == *"Auto-scoring failed for all candidate segments; removed incomplete gems.md so retry can run"* ]] || false
     [ -f "$stream_dir/.stage-scoring.failed" ]
     grep -F -q 'retryable=true' "$stream_dir/.stage-scoring.failed"
 }

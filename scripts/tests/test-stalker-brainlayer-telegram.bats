@@ -375,7 +375,7 @@ EOF
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Top moments:"* ]]
-    [[ "$output" == *"No highlights found — no gems.md found for processed runs"* ]]
+    [[ "$output" == *"Top moments:"* ]] || false
+    [[ "$output" == *"No highlights found — no gems.md found for processed runs"* ]] || false
     [ ! -f "$TMPDIR_/telegram.json" ]
 }

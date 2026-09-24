@@ -73,8 +73,8 @@ make_tracked_worktree_skills() {
     run_sync --dry-run --only skills
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"DRY RUN"* ]]
-    [[ "$output" == *"added=2 updated=0 unchanged=0 backed-up=0"* ]]
+    [[ "$output" == *"DRY RUN"* ]] || false
+    [[ "$output" == *"added=2 updated=0 unchanged=0 backed-up=0"* ]] || false
     [ ! -e "$HOST_ROOT/.golems" ]
     [ ! -e "$HOST_ROOT/.claude" ]
 }
@@ -122,10 +122,10 @@ make_tracked_worktree_skills() {
     run_sync --dry-run --only skills
 
     [ "$status" -ne 0 ]
-    [[ "$output" == *"machine-coupled payload refused"* ]]
-    [[ "$output" == *"1 occurrence(s) across 1 file(s)"* ]]
-    [[ "$output" == *"unsafe/SKILL.md:1"* ]]
-    [[ "$output" == *"/Users/testuser/.local/bin/codex"* ]]
+    [[ "$output" == *"machine-coupled payload refused"* ]] || false
+    [[ "$output" == *"1 occurrence(s) across 1 file(s)"* ]] || false
+    [[ "$output" == *"unsafe/SKILL.md:1"* ]] || false
+    [[ "$output" == *"/Users/testuser/.local/bin/codex"* ]] || false
     [ ! -e "$HOST_ROOT/.golems" ]
 }
 
@@ -157,8 +157,8 @@ make_tracked_worktree_skills() {
     run_fixture_sync --allow-dirty --dry-run --only skills
 
     [ "$status" -ne 0 ]
-    [[ "$output" == *"machine-coupled payload refused"* ]]
-    [[ "$output" == *"alpha/SKILL.md:1"* ]]
+    [[ "$output" == *"machine-coupled payload refused"* ]] || false
+    [[ "$output" == *"alpha/SKILL.md:1"* ]] || false
     [ ! -e "$HOST_ROOT/.golems" ]
 }
 
@@ -171,7 +171,7 @@ make_tracked_worktree_skills() {
         "$SYNC_SCRIPT" local --allow-dirty --dry-run --only skills
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"DRY RUN"* ]]
+    [[ "$output" == *"DRY RUN"* ]] || false
     [[ "$output" != *"machine-coupled payload refused"* ]]
 }
 
@@ -196,7 +196,7 @@ make_tracked_worktree_skills() {
     backup_file="$(find "$HOST_ROOT/.golems" -path '*/skills.backup-*/alpha/legacy.txt' -print)"
     [ -n "$backup_file" ]
     [ "$(find "$HOST_ROOT/.claude/skills" -name '*.backup-*' -print | wc -l | tr -d ' ')" -eq 0 ]
-    [[ "$backup_file" != "$HOST_ROOT/.claude/skills/"* ]]
+    [[ "$backup_file" != "$HOST_ROOT/.claude/skills/"* ]] || false
     [[ "$output" == *"backed-up=1"* ]]
 }
 
@@ -210,7 +210,7 @@ make_tracked_worktree_skills() {
     run_fixture_sync --only skills
 
     [ "$status" -ne 0 ]
-    [[ "$output" == *"symlinked skills mirror component"* ]]
+    [[ "$output" == *"symlinked skills mirror component"* ]] || false
     [ -f "$outside/sentinel" ]
     [ ! -e "$outside/alpha" ]
 }
@@ -240,12 +240,12 @@ make_tracked_worktree_skills() {
     run_fixture_sync --only skills
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"added=0 updated=0 unchanged=2 backed-up=0"* ]]
+    [[ "$output" == *"added=0 updated=0 unchanged=2 backed-up=0"* ]] || false
     [ "$(find "$HOST_ROOT/.golems" -maxdepth 1 -type d -name 'skills.backup-*' | wc -l | tr -d ' ')" -eq 0 ]
     [ "$(jq -r '.counts.unchanged' "$HOST_ROOT/.golems/INSTALLED.json")" -eq 2 ]
     [ "$(jq -r '.commit' "$HOST_ROOT/.golems/INSTALLED.json")" = "$(git -C "$FIXTURE_REPO" rev-parse HEAD)" ]
     [ "$(jq -r '.dirty' "$HOST_ROOT/.golems/INSTALLED.json")" = false ]
-    [[ "$(jq -r '.payload_sha256' "$HOST_ROOT/.golems/INSTALLED.json")" =~ ^[a-f0-9]{64}$ ]]
+    [[ "$(jq -r '.payload_sha256' "$HOST_ROOT/.golems/INSTALLED.json")" =~ ^[a-f0-9]{64}$ ]] || false
     [ -n "$(jq -r '.ts' "$HOST_ROOT/.golems/INSTALLED.json")" ]
     [ -n "$(jq -r '.source_host' "$HOST_ROOT/.golems/INSTALLED.json")" ]
 
@@ -253,7 +253,7 @@ make_tracked_worktree_skills() {
     run_fixture_sync --only skills --allow-dirty
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"added=0 updated=0 unchanged=2 backed-up=0"* ]]
+    [[ "$output" == *"added=0 updated=0 unchanged=2 backed-up=0"* ]] || false
     [ "$(jq -r '.dirty' "$HOST_ROOT/.golems/INSTALLED.json")" = true ]
     [ "$(jq -r '.payload_sha256' "$HOST_ROOT/.golems/INSTALLED.json")" = "$first_payload_hash" ]
     [ ! -e "$HOST_ROOT/.golems/skills/golem-powers/alpha/secret.json" ]
@@ -268,7 +268,7 @@ make_tracked_worktree_skills() {
     cmp -s \
         "$REPO_ROOT/scripts/repogolem/golem-dispatch.zsh" \
         "$HOST_ROOT/.config/ralphtools/golem-dispatch.zsh"
-    [[ "$output" == *"launcher hash verified"* ]]
+    [[ "$output" == *"launcher hash verified"* ]] || false
     [ "$(jq -r '.counts.added' "$HOST_ROOT/.golems/INSTALLED.json")" -eq 1 ]
 }
 
@@ -282,6 +282,6 @@ make_tracked_worktree_skills() {
     run_sync --only launcher
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"added=0 updated=0 unchanged=1 backed-up=0"* ]]
+    [[ "$output" == *"added=0 updated=0 unchanged=1 backed-up=0"* ]] || false
     [ "$(portable_stat mtime "$dispatcher")" = "$first_mtime" ]
 }

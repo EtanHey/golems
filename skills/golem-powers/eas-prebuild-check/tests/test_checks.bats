@@ -6,9 +6,9 @@ load helpers/test-helper.bash
   run_skill "missing-easignore"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"[1/9]"* ]]
-  [[ "$output" == *"✗ FAIL"* ]]
-  [[ "$output" == *".easignore"* ]]
+  [[ "$output" == *"[1/9]"* ]] || false
+  [[ "$output" == *"✗ FAIL"* ]] || false
+  [[ "$output" == *".easignore"* ]] || false
   [[ "$output" == *"DO NOT run"* ]]
 }
 
@@ -16,8 +16,8 @@ load helpers/test-helper.bash
   run_skill "partial-easignore"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"[1/9]"* ]]
-  [[ "$output" == *"⚠ WARN"* ]]
+  [[ "$output" == *"[1/9]"* ]] || false
+  [[ "$output" == *"⚠ WARN"* ]] || false
   [[ "$output" == *"node_modules"* ]]
 }
 
@@ -25,10 +25,10 @@ load helpers/test-helper.bash
   run_skill "bundle-id-default"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"Bundle ID consistency"* ]]
-  [[ "$output" == *"⚠ WARN"* ]]
-  [[ "$output" == *"suspicious"* ]]
-  [[ "$output" == *"app.json"* ]]
+  [[ "$output" == *"Bundle ID consistency"* ]] || false
+  [[ "$output" == *"⚠ WARN"* ]] || false
+  [[ "$output" == *"suspicious"* ]] || false
+  [[ "$output" == *"app.json"* ]] || false
   [[ "$output" == *"bundleIdentifier"* ]]
 }
 
@@ -36,9 +36,9 @@ load helpers/test-helper.bash
   run_skill "no-version-fields"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"Version sync"* ]]
-  [[ "$output" == *"✗ FAIL"* ]]
-  [[ "$output" == *"ios.buildNumber"* ]]
+  [[ "$output" == *"Version sync"* ]] || false
+  [[ "$output" == *"✗ FAIL"* ]] || false
+  [[ "$output" == *"ios.buildNumber"* ]] || false
   [[ "$output" == *"android.versionCode"* ]]
 }
 
@@ -46,8 +46,8 @@ load helpers/test-helper.bash
   run_skill "no-ios-devices" --platform ios --profile preview
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"iOS devices registered"* ]]
-  [[ "$output" == *"✗ FAIL"* ]]
+  [[ "$output" == *"iOS devices registered"* ]] || false
+  [[ "$output" == *"✗ FAIL"* ]] || false
   [[ "$output" == *"eas device:create"* ]]
 }
 
@@ -55,8 +55,8 @@ load helpers/test-helper.bash
   run_skill "no-ios-devices" --platform ios --profile production
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"iOS devices registered"* ]]
-  [[ "$output" == *"⊘ SKIPPED"* ]]
+  [[ "$output" == *"iOS devices registered"* ]] || false
+  [[ "$output" == *"⊘ SKIPPED"* ]] || false
   [[ "$output" == *"ad-hoc distribution not required"* ]]
 }
 
@@ -64,8 +64,8 @@ load helpers/test-helper.bash
   run_skill "happy-path"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"eas-cli version up to date"* ]]
-  [[ "$output" == *"⚠ WARN"* ]]
+  [[ "$output" == *"eas-cli version up to date"* ]] || false
+  [[ "$output" == *"⚠ WARN"* ]] || false
   [[ "$output" == *"npm install -g eas-cli@latest"* ]]
 }
 
@@ -73,7 +73,7 @@ load helpers/test-helper.bash
   run_skill "managed-workflow"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"[1/9]"* ]]
-  [[ "$output" == *"[9/9]"* ]]
+  [[ "$output" == *"[1/9]"* ]] || false
+  [[ "$output" == *"[9/9]"* ]] || false
   [[ "$output" == *".easignore exists"* ]]
 }

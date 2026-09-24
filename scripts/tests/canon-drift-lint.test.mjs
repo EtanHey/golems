@@ -156,7 +156,7 @@ test("node CLI executes through a symlink", () => {
   expect(result.status).toBe(0);
   expect(result.stdout.trim()).not.toBe("");
   expect(JSON.parse(result.stdout)).toMatchObject({ status: "in-sync" });
-});
+}, 15_000); // spawns node through a symlink; a cold runner can exceed the 5s default
 
 test("module import tolerates a missing virtual argv path", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "canon-drift-import-"));

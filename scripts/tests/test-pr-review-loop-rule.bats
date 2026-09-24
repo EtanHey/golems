@@ -118,7 +118,7 @@ teardown() {
     _ "$REPO_ROOT" "$HOOK"
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *'"decision": "block"'* ]]
+  [[ "$output" == *'"decision": "block"'* ]] || false
   [[ "$output" == *'Kilo blocked'* ]]
 }
 

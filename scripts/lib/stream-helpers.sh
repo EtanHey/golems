@@ -659,6 +659,24 @@ stalker_require_run_quality() {
     return 0
 }
 
+# The chat lurker bundle is generated (scripts/dist/ is gitignored). Build it
+# when it is missing or older than its source or the lockfile; a fresh bundle
+# is left alone. Fails loud without bun rather than launching a missing file.
+stalker_ensure_lurker_bundle() {
+    local bundle="$1"
+    local source_file="$2"
+    local lockfile="$3"
+    local build_script="$4"
+    if [ -f "$bundle" ] && [ ! "$source_file" -nt "$bundle" ] && [ ! "$lockfile" -nt "$bundle" ]; then
+        return 0
+    fi
+    if ! command -v bun >/dev/null 2>&1; then
+        echo "ERROR: bun is required to build the chat lurker bundle $bundle" >&2
+        return 1
+    fi
+    "$build_script" "$bundle"
+}
+
 stalker_require_lurker_ready() {
     local out_dir="$1"
     local pid="$2"
