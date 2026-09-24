@@ -89,21 +89,28 @@ node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N --apply
 ```
 
 The last stdout line is the one-line summary `/fleet-wrap` records: `drive-filing rollup: mode=… files=…
-bytes=… · monthly-moves=… · to-drive months=… files=… bytes=… · held=… credentials-skipped=…`.
-Only items whose name starts with `YYYY-MM-DD` and existing `YYYY-MM/` folders take part; undated
-files are counted and left alone. A month rolls up once it is over; months more than N back form the
-upload plan, one unit per folder, targeting `Brain Drive/06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>`.
+bytes=… · monthly-moves=… · to-drive months=… files=… bytes=… · mtime-units=… bytes=… · held=… credentials-skipped=…`.
+**Dating (v2):** an item's month is the first `YYYY-MM-DD` anywhere in its own name, else the first
+`YYYY-MM` (`theo-2026-09-19-015034/`, `probe-2026-03/`); an exact `YYYY-MM/` folder is the month itself.
+An undated folder with a dated name somewhere below it is an *area* and is descended. An undated folder
+with none is **one mtime unit** (the highest such folder), dated by the newest file inside; it joins the
+upload plan once old but is **never moved**, and `--json` lists the 5 largest under `mtimeUnits`.
+Undated files are counted and left alone. A month rolls up once it is over; months more than N back form
+the upload plan, one unit per folder, targeting `Brain Drive/06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>`.
 `--apply` moves items into their month folders (never overwriting; a clash is reported as `conflict:`)
 and writes `docs.local/_drive-filing/rollup-plan-<date>.json`. **The script never uploads or deletes.**
 Upload exactly the files in that plan through the [archive procedure](references/archive-procedure.md)
 (ledger + `brain_digest`), and nothing that is not in it.
 
 **Credentials never move.** Nothing whose name contains `credential`, `token` or `.env` (`.env*`,
-`deploy.env`, `.ENV.prod`, `.envrc`), or ends in `auth.json`, `.pem` or `.key`, and nothing under a
+`deploy.env`, `.ENV.prod`, `.envrc`) or has `env` as a word (`prod-env.json`, `app-env.yml`,
+`staging_env`), or ends in `auth.json`, `.pem` or `.key` — file **or directory** — and nothing under a
 `codexhome`/`codex-home*`, `claudehome`/`claude-home*`, `.codex`, `.claude` or `*-HOME*` directory or a
 browser profile (a dir holding `Local State`, `Cookies`, `Login Data` or `Web Data`), is uploaded,
 moved or deleted. Every name rule matches anywhere in the name, case-insensitively, because
-docs.local names are date-prefixed. `rollup.mjs` enforces this in code: each credential is reported
+docs.local names are date-prefixed. `token` releases only proven-safe words: `tokeniz*`,
+`design-token(s)` and `Trust Tokens` are stripped first, so `tokenizer-remap.md` passes and
+`github_token_tokenizer.txt` does not (a browser profile is still held whole). Holds run before dating. `rollup.mjs` enforces this in code: each credential is reported
 as `skipped: credential <path>` (a credential directory is one line plus its credential-named
 files), and a month group (the `YYYY-MM/` folder plus that month's dated siblings in the same
 folder) that holds one is **held whole**: no moves into or out of it, no upload unit. It is reported
