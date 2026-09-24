@@ -387,7 +387,7 @@ commit_fixture_file() {
 @test "normal H index tags are not hidden flags under C locale" {
   repo="$(make_fixture_repo normal-index-c)"
   worktree="$(add_branch_worktree "$repo" normal-index-c-branch)"
-  [[ "$(env LC_ALL=C LANG=C git -C "$worktree" ls-files -v fixture.txt)" == H\ * ]]
+  [[ "$(env LC_ALL=C LANG=C git -C "$worktree" ls-files -v fixture.txt)" == H\ * ]] || false
 
   run env LC_ALL=C LANG=C "$WORKTREE_GC" --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
@@ -399,7 +399,7 @@ commit_fixture_file() {
 @test "normal H index tags are not hidden flags under en_US.UTF-8 locale" {
   repo="$(make_fixture_repo normal-index-utf8)"
   worktree="$(add_branch_worktree "$repo" normal-index-utf8-branch)"
-  [[ "$(env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 git -C "$worktree" ls-files -v fixture.txt)" == H\ * ]]
+  [[ "$(env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 git -C "$worktree" ls-files -v fixture.txt)" == H\ * ]] || false
 
   run env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 "$WORKTREE_GC" --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
@@ -413,7 +413,7 @@ commit_fixture_file() {
   worktree="$(add_branch_worktree "$repo" assume-hidden-branch)"
   git -C "$worktree" update-index --assume-unchanged fixture.txt
   printf 'assume-unchanged local content\n' > "$worktree/fixture.txt"
-  [[ "$(git -C "$worktree" ls-files -v fixture.txt)" == h\ * ]]
+  [[ "$(git -C "$worktree" ls-files -v fixture.txt)" == h\ * ]] || false
   [ -z "$(git -C "$worktree" -c status.showUntrackedFiles=all \
     status --porcelain --ignored --untracked-files=all)" ]
 
@@ -430,7 +430,7 @@ commit_fixture_file() {
   worktree="$(add_branch_worktree "$repo" skip-hidden-branch)"
   git -C "$worktree" update-index --skip-worktree fixture.txt
   printf 'skip-worktree local content\n' > "$worktree/fixture.txt"
-  [[ "$(git -C "$worktree" ls-files -v fixture.txt)" == S\ * ]]
+  [[ "$(git -C "$worktree" ls-files -v fixture.txt)" == S\ * ]] || false
   [ -z "$(git -C "$worktree" -c status.showUntrackedFiles=all \
     status --porcelain --ignored --untracked-files=all)" ]
 

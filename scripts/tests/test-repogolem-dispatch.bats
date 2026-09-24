@@ -499,9 +499,9 @@ AGENT
     grep -F -q -- "Cannot combine Codex resume with -p/--print" <<< "$output"
     grep -F -q -- "CURSOR_ARGS=agent --print --output-format text" <<< "$output"
     grep -F -q -- "KIRO_ARGS=chat --resume --no-interactive" <<< "$output"
-    ! grep -F -q -- "CODEX_ARGS=" <<< "$output"
-    ! grep -F -q -- "CODEX_ARGS=resume --last" <<< "$output"
-    ! grep -F -q -- "CURSOR_ARGS=agent --continue" <<< "$output"
+    ! grep -F -q -- "CODEX_ARGS=" <<< "$output" || false
+    ! grep -F -q -- "CODEX_ARGS=resume --last" <<< "$output" || false
+    ! grep -F -q -- "CURSOR_ARGS=agent --continue" <<< "$output" || false
     ! grep -F -q -- "KIRO_ARGS=chat --resume one shot" <<< "$output"
 }
 
@@ -582,7 +582,7 @@ NPM
     [ "$status" -eq 0 ]
     [ "$(grep -Fxc -- "CLAUDE_ARG=--model" <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- "CLAUDE_ARG=claude-opus-4-8" <<< "$output")" -eq 1 ]
-    ! grep -F -q -- "CLAUDE_ARG=--print" <<< "$output"
+    ! grep -F -q -- "CLAUDE_ARG=--print" <<< "$output" || false
     ! grep -F -q -- "REPOGOLEM_ALLOW_MODEL" <<< "$output"
 }
 
@@ -613,7 +613,7 @@ NPM
     [ "$(grep -Fxc -- "CLAUDE_ARG=--model" <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- "CLAUDE_ARG=claude-fable-5-1[1m]" <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- "RESOLVED=claude-fable-5-1[1m]" <<< "$output")" -eq 1 ]
-    ! grep -F -q -- "CLAUDE_ARG=fable" <<< "$output"
+    ! grep -F -q -- "CLAUDE_ARG=fable" <<< "$output" || false
     ! grep -F -q -- "CLAUDE_ARG=--print" <<< "$output"
 }
 
@@ -639,7 +639,7 @@ NPM
 
     [ "$status" -eq 0 ]
     [ "$(grep -Fc -- "refuse Sonnet-tier models for full panes" <<< "$output")" -eq 2 ]
-    ! grep -F -q -- "CLAUDE_LAUNCHED=" <<< "$output"
+    ! grep -F -q -- "CLAUDE_LAUNCHED=" <<< "$output" || false
     ! grep -F -q -- "REPOGOLEM_ALLOW_MODEL" <<< "$output"
 }
 
@@ -990,7 +990,7 @@ JSON
     [ "$(grep -Fxc -- "CODEX_ARG=--model" <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- "CODEX_ARG=gpt-6-luna" <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="max"' <<< "$output")" -eq 1 ]
-    ! grep -F -q -- "gpt-5.6-sol" <<< "$output"
+    ! grep -F -q -- "gpt-5.6-sol" <<< "$output" || false
     ! grep -F -q -- "REPOGOLEM_ALLOW_MODEL" <<< "$output"
 }
 
@@ -1076,14 +1076,14 @@ JSON
     [ "$(grep -Fxc -- "CODEX_ARG=--model" <<< "$preserved_output")" -eq 1 ]
     [ "$(grep -Fxc -- "CODEX_ARG=gpt-5.6-terra" <<< "$preserved_output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$preserved_output")" -eq 1 ]
-    ! grep -F -q -- "gpt-5.6-luna" <<< "$preserved_output"
+    ! grep -F -q -- "gpt-5.6-luna" <<< "$preserved_output" || false
     [ "$(grep '^CODEX_ARG=' <<< "$preserved_output")" = $'CODEX_ARG=resume\nCODEX_ARG=--last\nCODEX_ARG=-c\nCODEX_ARG=model_reasoning_effort="high"\nCODEX_ARG=--model\nCODEX_ARG=gpt-5.6-terra' ]
     grep -F -q -- "CODEX_ARG=resume" <<< "$model_output"
     grep -F -q -- "CODEX_ARG=--last" <<< "$model_output"
     [ "$(grep -Fxc -- "CODEX_ARG=--model" <<< "$model_output")" -eq 1 ]
     [ "$(grep -Fxc -- "CODEX_ARG=gpt-5.6-luna" <<< "$model_output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$model_output")" -eq 1 ]
-    ! grep -F -q -- "gpt-5.6-terra" <<< "$model_output"
+    ! grep -F -q -- "gpt-5.6-terra" <<< "$model_output" || false
     grep -F -q -- "CODEX_ARG=resume" <<< "$effort_output"
     grep -F -q -- "CODEX_ARG=--last" <<< "$effort_output"
     [ "$(grep -Fxc -- "CODEX_ARG=--model" <<< "$effort_output")" -eq 1 ]
@@ -1143,7 +1143,7 @@ JSON
 
     [ "$status" -eq 0 ]
     [ "$(grep -Fxc -- "CODEX_LAUNCHED=1" <<< "$output")" -eq 1 ]
-    ! grep -F -q -- "CODEX_ARG=--dangerously-bypass-approvals-and-sandbox" <<< "$output"
+    ! grep -F -q -- "CODEX_ARG=--dangerously-bypass-approvals-and-sandbox" <<< "$output" || false
     ! grep -F -q -- "CODEX_ARG=--dangerously-bypass-hook-trust" <<< "$output"
 }
 
@@ -1266,8 +1266,8 @@ JSON
     [ "$(grep -Fxc -- 'CODEX_ARG=--model' <<< "$override_output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=gpt-5.6-luna' <<< "$override_output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="max"' <<< "$override_output")" -eq 1 ]
-    ! grep -F -q -- "gpt-5.6-sol" <<< "$override_output"
-    ! grep -F -q -- 'model_reasoning_effort="xhigh"' <<< "$override_output"
+    ! grep -F -q -- "gpt-5.6-sol" <<< "$override_output" || false
+    ! grep -F -q -- 'model_reasoning_effort="xhigh"' <<< "$override_output" || false
     [ "$(grep '^CODEX_ARG=' <<< "$override_output")" = $'CODEX_ARG=resume\nCODEX_ARG=019fec96-588d-7000-8000-000000000000\nCODEX_ARG=-c\nCODEX_ARG=model_reasoning_effort="max"\nCODEX_ARG=--model\nCODEX_ARG=gpt-5.6-luna' ]
 }
 
@@ -1310,7 +1310,7 @@ JSON
     ' _ "$codex_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
-    ! grep -F -q -- "RECOVERY_CALLED" <<< "$output"
+    ! grep -F -q -- "RECOVERY_CALLED" <<< "$output" || false
     grep -F -q -- "STATUSES=0,0" <<< "$output"
     [ "$(grep -Fxc -- "CODEX_CALL=1" <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- "CODEX_CALL=2" <<< "$output")" -eq 1 ]
@@ -1368,7 +1368,7 @@ JSONL
     [ "$(grep -Fxc -- "CODEX_ARG=gpt-5.6-luna" <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$output")" -eq 3 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="max"' <<< "$output")" -eq 1 ]
-    ! grep -F -q -- "gpt-broken-rollout" <<< "$output"
+    ! grep -F -q -- "gpt-broken-rollout" <<< "$output" || false
     ! grep -F -q -- "turbo" <<< "$output"
 }
 
@@ -1573,7 +1573,7 @@ JSONL
       [ "$(grep -Fxc -- "CODEX_ARG=model_reasoning_effort=\"$effort\"" <<< "$output")" -eq 2 ]
     done
     [ "$(grep -Fxc -- 'CODEX_ARG=-c' <<< "$output")" -eq 12 ]
-    ! grep -F -q -- "CODEX_ARG=-E" <<< "$output"
+    ! grep -F -q -- "CODEX_ARG=-E" <<< "$output" || false
     ! grep -F -q -- "CODEX_ARG=--effort" <<< "$output"
 }
 
@@ -1679,7 +1679,7 @@ JSONL
       grep -F -q -- "CODEX_ARG=$arg" <<< "$output"
     done
     [ "$(grep -Fxc -- 'CODEX_ARG=--' <<< "$output")" -eq 0 ]
-    ! grep -F -q -- "CODEX_ARG=resume" <<< "$output"
+    ! grep -F -q -- "CODEX_ARG=resume" <<< "$output" || false
     ! grep -F -q -- "CODEX_ARG=exec" <<< "$output"
 }
 
@@ -2238,9 +2238,9 @@ CLAUDE
 
     [ "$status" -eq 0 ]
     grep -F -q "PWD=$WORKTREE_DIR" <<< "$output"
-    ! grep -F -q -- "--dangerously-bypass-approvals-and-sandbox" <<< "$output"
+    ! grep -F -q -- "--dangerously-bypass-approvals-and-sandbox" <<< "$output" || false
     grep -F -q -- "--model gpt-6-sol" <<< "$output"
-    ! grep -F -q -- "--worktree" <<< "$output"
+    ! grep -F -q -- "--worktree" <<< "$output" || false
     ! grep -F -q "unexpected argument" <<< "$output"
 }
 
@@ -2269,7 +2269,7 @@ CLAUDE
 
     [ "$status" -eq 0 ]
     grep -F -q "PWD=$PROJECT_DIR" <<< "$output"
-    ! grep -F -q -- "--dangerously-bypass-approvals-and-sandbox" <<< "$output"
+    ! grep -F -q -- "--dangerously-bypass-approvals-and-sandbox" <<< "$output" || false
     grep -F -q -- "--model gpt-6-sol" <<< "$output"
     ! grep -F -q -- "--worktree" <<< "$output"
 }

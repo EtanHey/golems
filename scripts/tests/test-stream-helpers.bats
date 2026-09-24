@@ -172,7 +172,7 @@ SH
     run transcribe_segment_with_fallback "$TMPDIR_/segment.wav" "$TMPDIR_/model.bin" 7 "$TMPDIR_"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"segment text after retry"* ]]
+    [[ "$output" == *"segment text after retry"* ]] || false
     [ "$(cat "$TMPDIR_/attempts")" = "3" ]
 }
 
@@ -180,24 +180,24 @@ SH
     run stalker_ytdlp_record_args "best" "$TMPDIR_/video.ts" "https://www.twitch.tv/theo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"--hls-use-mpegts"* ]]
+    [[ "$output" == *"--hls-use-mpegts"* ]] || false
     [[ "$output" == *"--downloader
-native"* ]]
+native"* ]] || false
     [[ "$output" == *"--socket-timeout
-30"* ]]
+30"* ]] || false
     [[ "$output" == *"--retries
-infinite"* ]]
+infinite"* ]] || false
     [[ "$output" == *"--fragment-retries
-infinite"* ]]
+infinite"* ]] || false
     [[ "$output" == *"--retry-sleep
-fragment:exp=1:20"* ]]
-    [[ "$output" == *"--abort-on-unavailable-fragment"* ]]
-    [[ "$output" == *"--no-part"* ]]
+fragment:exp=1:20"* ]] || false
+    [[ "$output" == *"--abort-on-unavailable-fragment"* ]] || false
+    [[ "$output" == *"--no-part"* ]] || false
     [[ "$output" == *"--concurrent-fragments
-1"* ]]
-    [[ "$output" == *"--no-continue"* ]]
+1"* ]] || false
+    [[ "$output" == *"--no-continue"* ]] || false
     [[ "$output" == *"-f
-best"* ]]
+best"* ]] || false
     [[ "$output" == *"-o
 $TMPDIR_/video.ts"* ]]
 }
@@ -213,7 +213,7 @@ $TMPDIR_/video.ts"* ]]
 
     [ "$status" -eq 0 ]
     wait "$recorder_pid" 2>/dev/null || true
-    ! kill -0 "$recorder_pid" 2>/dev/null
+    ! kill -0 "$recorder_pid" 2>/dev/null || false
     grep -q "No file growth" "$TMPDIR_/watchdog.log"
 }
 

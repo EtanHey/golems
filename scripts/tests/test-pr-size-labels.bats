@@ -52,7 +52,7 @@ STUB
 @test "no subcommand and unknown subcommands print usage and exit 2" {
   run "$SCRIPT"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"usage: pr-size-labels.sh"* ]]
+  [[ "$output" == *"usage: pr-size-labels.sh"* ]] || false
 
   run "$SCRIPT" frobnicate
   [ "$status" -eq 2 ]
@@ -114,12 +114,12 @@ TSV
   [ "$status" -eq 0 ]
 
   edit="$(grep '^pr edit' "$GH_LOG")"
-  [[ "$edit" == *"--add-label size:XS"* ]]
-  [[ "$edit" == *"--remove-label size/XS"* ]]
-  [[ "$edit" == *"--remove-label size:M"* ]]
-  [[ "$edit" == *"--remove-label size:L"* ]]
-  [[ "$edit" != *"--remove-label size:S"* ]]
-  [[ "$edit" != *"enhancement"* ]]
+  [[ "$edit" == *"--add-label size:XS"* ]] || false
+  [[ "$edit" == *"--remove-label size/XS"* ]] || false
+  [[ "$edit" == *"--remove-label size:M"* ]] || false
+  [[ "$edit" == *"--remove-label size:L"* ]] || false
+  [[ "$edit" != *"--remove-label size:S"* ]] || false
+  [[ "$edit" != *"enhancement"* ]] || false
   # exactly one add-label
   [ "$(grep -o -- '--add-label' <<<"$edit" | wc -l | tr -d ' ')" = "1" ]
 }
@@ -157,7 +157,7 @@ TSV
 
   grep -qF 'label edit size/XS --repo EtanHey/golems --name size:XS' "$GH_LOG"
   grep -qF 'label edit size/S --repo EtanHey/golems --name size:S' "$GH_LOG"
-  [[ "$output" == *"RENAMED EtanHey/golems: size/XS -> size:XS"* ]]
+  [[ "$output" == *"RENAMED EtanHey/golems: size/XS -> size:XS"* ]] || false
 
   # a rename, never a delete -- deleting would strip the label off old PRs
   run grep -c 'label delete' "$GH_LOG"
@@ -168,7 +168,7 @@ TSV
   make_gh_stub $'size/XS\nsize:XS' ''
   run "$SCRIPT" ensure golems
   [ "$status" -eq 0 ]
-  [[ "$output" == *"both size/XS and size:XS exist"* ]]
+  [[ "$output" == *"both size/XS and size:XS exist"* ]] || false
 
   run grep -c 'label edit' "$GH_LOG"
   [ "$output" = "0" ]
@@ -194,7 +194,7 @@ TSV
   make_gh_stub '' $'size/M'
   run "$SCRIPT" check 42 --repo golems
   [ "$status" -eq 0 ]
-  [[ "$output" == *"::warning::"* ]]
+  [[ "$output" == *"::warning::"* ]] || false
   [[ "$output" == *"retired size/* scheme"* ]]
 }
 
@@ -203,7 +203,7 @@ TSV
   printf 'src/a.ts\t200\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" != *"::warning::"* ]]
+  [[ "$output" != *"::warning::"* ]] || false
   [[ "$output" == *"OK EtanHey/golems#42 size:M covers 200 hand-written lines"* ]]
 }
 
@@ -228,8 +228,8 @@ TSV
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"::warning::EtanHey/golems#42 has 401 hand-written lines; canon 9 wants a one-line why in the PR body"* ]]
-  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]]
+  [[ "$output" == *"::warning::EtanHey/golems#42 has 401 hand-written lines; canon 9 wants a one-line why in the PR body"* ]] || false
+  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]] || false
   ! grep -q -- '--json body' "$GH_LOG"
 }
 
@@ -238,7 +238,7 @@ TSV
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]]
+  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]] || false
   ! grep -q -- '--json body' "$GH_LOG"
 }
 
@@ -255,7 +255,7 @@ TSV
   printf 'dist/bundle.js\t500\t0\nsrc/a.ts\t10\t10\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" != *"::warning::"* ]]
+  [[ "$output" != *"::warning::"* ]] || false
   [[ "$output" == *"OK EtanHey/golems#42 size:XS covers 20 hand-written lines"* ]]
 }
 

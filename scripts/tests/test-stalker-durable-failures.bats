@@ -127,8 +127,8 @@ write_scoring_marker() {
     run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$SCRIPT_DIR/dist/twitch-chat-lurker.js"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"chat_lurker_preflight=PASS"* ]]
-    [[ "$output" == *"output_open=true"* ]]
+    [[ "$output" == *"chat_lurker_preflight=PASS"* ]] || false
+    [[ "$output" == *"output_open=true"* ]] || false
     [[ "$output" == *"connected_sentinel=true"* ]]
 }
 
@@ -139,7 +139,7 @@ write_scoring_marker() {
     run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$isolated_source"
 
     [ "$status" -ne 0 ]
-    [[ "$output" == *"Cannot find package 'tmi.js'"* ]]
+    [[ "$output" == *"Cannot find package 'tmi.js'"* ]] || false
     [[ "$output" == *"chat_lurker_preflight=FAIL"* ]]
 }
 
@@ -251,7 +251,7 @@ SH
         "$SCRIPT_DIR/process-stream.sh" "$stream_dir/video.mp4"
 
     [ "$status" -eq 75 ]
-    [[ "$output" == *"Codex scorer requires timeout or gtimeout"* ]]
+    [[ "$output" == *"Codex scorer requires timeout or gtimeout"* ]] || false
     [ -f "$stream_dir/.stage-scoring.failed" ]
     grep -F -q 'codex timeout preflight failed before expensive processing' "$stream_dir/.stage-scoring.failed"
     grep -F -q 'retryable=true' "$stream_dir/.stage-scoring.failed"

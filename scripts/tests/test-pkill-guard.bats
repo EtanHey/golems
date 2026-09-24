@@ -27,7 +27,7 @@ print(dangerous_shell_reason(sys.argv[1]) or "")
 @test "the literal 2026-09-05 command is denied" {
   run guard_reason "pkill -f 'inbox.jsonl' -P 1"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"options must precede the pattern"* ]]
+  [[ "$output" == *"options must precede the pattern"* ]] || false
   [[ "$output" == *"pgrep -f 'pattern'"* ]]
 }
 

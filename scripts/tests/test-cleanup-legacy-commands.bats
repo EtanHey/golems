@@ -83,7 +83,7 @@ run_cleanup() { run bash "$SCRIPT" "$@"; }
   run_cleanup
   [ "$status" -eq 0 ]
   [ -d "$COMMANDS/prd" ]
-  [[ "$output" == *"WARN"* ]]
+  [[ "$output" == *"WARN"* ]] || false
   [[ "$output" == *"prd"* ]]
 }
 

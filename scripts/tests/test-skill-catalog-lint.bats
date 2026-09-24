@@ -52,7 +52,7 @@ run_lint() {
   run_lint
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"broken symlink: alpha"* ]]
+  [[ "$output" == *"broken symlink: alpha"* ]] || false
   [[ "$output" == *"broken symlink: .backup-alpha"* ]]
 }
 

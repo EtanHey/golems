@@ -6,8 +6,8 @@ load helpers/test-helper.bash
   run_skill "missing-easignore" --fix
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *".easignore exists"* ]]
-  [[ "$output" == *"✓ PASS"* ]]
+  [[ "$output" == *".easignore exists"* ]] || false
+  [[ "$output" == *"✓ PASS"* ]] || false
   [ -f "$PROJECT_DIR/.easignore" ]
   grep -q "node_modules" "$PROJECT_DIR/.easignore"
   assert_file_unchanged "missing-easignore" "app.json"
@@ -22,7 +22,9 @@ load helpers/test-helper.bash
   run_skill "bundle-id-default" --fix
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"Bundle ID consistency"* ]]
+  [[ "$output" == *"Bundle ID consistency"* ]] || false
+  # Still vacuous on purpose: check.sh never prints this wording, a gap eval 9's
+  # spec requires. The fix and the || false land together in a separate PR.
   [[ "$output" == *"user judgment"* || "$output" == *"user action"* ]]
   [ "$(cat "$PROJECT_DIR/app.json")" = "$original_app_json" ]
 }

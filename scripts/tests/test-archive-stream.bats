@@ -75,7 +75,7 @@ make_minimal_stream_dir() {
     grep -F -q '| video-compressed.mp4 |' "$stream_dir/_DRIVE-LEDGER.md"
     grep -F -q '| full-audio.wav |' "$stream_dir/_DRIVE-LEDGER.md"
     grep -E -q '\| video\.mp4 \| [0-9]+ \| [a-f0-9]{64} \|' "$stream_dir/_DRIVE-LEDGER.md"
-    [[ "$output" != *"claude"* ]]
+    [[ "$output" != *"claude"* ]] || false
     [ -f "$stream_dir/video.mp4" ]
     [ -f "$stream_dir/video-compressed.mp4" ]
     [ -f "$stream_dir/full-audio.wav" ]
@@ -246,7 +246,7 @@ SH
     [ "$status" -eq 0 ]
     [ ! -e "$DRIVE_ROOT/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309" ]
     [ ! -f "$stream_dir/_DRIVE-LEDGER.md" ]
-    [[ "$output" != *"claude"* ]]
+    [[ "$output" != *"claude"* ]] || false
     [ -f "$stream_dir/video.mp4" ]
     [ -f "$stream_dir/video-compressed.mp4" ]
     [ -f "$stream_dir/full-audio.wav" ]
