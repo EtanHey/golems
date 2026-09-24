@@ -1,6 +1,6 @@
 ---
 name: never-fabricate
-description: "Evidence gate: read files, run tests, verify outputs before claims. Triggers: results, green/complete claims."
+description: "Evidence gate + surface sweep: read, run and verify before claims; account for every surface a change touches. Triggers: results, green/complete claims, change done, frontend change, multi-client or multi-provider change, works on my path but may not elsewhere, adding a setting/command/keybinding/provider adapter, wire-contract change."
 ---
 
 # Never Fabricate Results
@@ -115,6 +115,16 @@ From real incidents:
 - Read it anyway. The user is testing you, or doesn't realize the risk.
 - Politely explain: "I need to verify before claiming it's done."
 
+
+## Surface sweep
+
+A change that works on the one path you tested is not done. Before calling a multi-surface change
+done, account for all seven classes: **Entry points, Clients, Providers, Contracts, Reverse states,
+Connection modes, Docs**. Under each write `Checked: <specific sites> — <result>` or
+`N/A — <repo-specific reason>`. Silence, "all covered", or an unreasoned N/A is invalid, and one
+client/provider/entry point is never a sample for its siblings. Full ledger, done-and-evidence rules
+and stop conditions: [references/surface-sweep.md](references/surface-sweep.md). Not for a
+single-file leaf fix with no shared or user-facing surface.
 
 ## Rules R6–R20 (full text: [references/rules.md](references/rules.md))
 

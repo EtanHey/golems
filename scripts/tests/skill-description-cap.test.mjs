@@ -29,9 +29,9 @@ const EXCEPTIONS = {
   "i-have-adhd": 144,
   "install-runbook-linter": 178,
   "launchd-secret-linter": 151,
+  "never-fabricate": 337 /* absorbed surface-sweep (pinned 375) and its triggers: 109 + 375 -> 337 */,
   "plan-council": 455 /* absorbed adversarial-council (234), judge-fleet (202), plan-validate (106): 844 -> 455 */,
   "pr-loop": 165,
-  "surface-sweep": 375,
   "tmp-block": 223,
   unslop: 251,
 };
