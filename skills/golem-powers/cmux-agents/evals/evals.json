@@ -1125,6 +1125,31 @@
           "description": "Does NOT leave the merged, purposeless worker running"
         }
       ]
+    },
+    {
+      "id": 48,
+      "name": "worktree-frozen-install-not-symlink",
+      "category": "setup",
+      "description": "Setting up a manual worktree for a Codex/Cursor worker in a bun workspace monorepo installs dependencies in the worktree from the lockfile; it never symlinks node_modules, which would make cross-package imports run the main checkout's code.",
+      "prompt": "Spawn a Codex worker on golems in its own git worktree for the packages/services change. Codex has no native worktrees, so set it up by hand and get its tests running.",
+      "root_cause_tested": "symlinked_node_modules_tests_main_checkout",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "frozen-install-in-worktree",
+          "description": "Runs the package manager's frozen install inside the worktree (bun install --frozen-lockfile, or npm ci / pnpm install --frozen-lockfile)"
+        },
+        {
+          "type": "negative",
+          "name": "no-node-modules-symlink",
+          "description": "Does NOT ln -s the main checkout's node_modules into the worktree"
+        },
+        {
+          "type": "content",
+          "name": "explains-cross-package-risk",
+          "description": "Says why: a symlinked node_modules resolves workspace packages to the main checkout, so the branch's cross-package changes go untested"
+        }
+      ]
     }
   ],
   "with_skill_vs_without_skill": {

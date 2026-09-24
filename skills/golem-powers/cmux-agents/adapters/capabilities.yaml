@@ -20,7 +20,7 @@ adapters:
 
   codex:
     binary: codex
-    worktree: manual            # No native. git worktree add + ln -s node_modules
+    worktree: manual            # No native. git worktree add + a frozen install in the worktree
     session_resume: true        # `codex resume <path>` or `/resume` in session
     mcp_access: true            # `codex mcp add` — BrainLayer + Exa wired globally
     hooks: true                 # Defined in SKILL.md or config.toml
@@ -224,7 +224,7 @@ cli_commands:
 worktree_fallback:
   manual_steps:
     - "git worktree add -b <branch> ../<wt-dir> <base>"
-    - "ln -s ../<repo>/node_modules ../<wt-dir>/node_modules"
+    - "cd ../<wt-dir> && bun install --frozen-lockfile  # or npm ci / pnpm install --frozen-lockfile / uv sync --frozen; never symlink node_modules (in a workspace monorepo, cross-package imports would run the main checkout's code)"
     - "cp .env ../<wt-dir>/.env"
   cleanup: "git worktree remove ../<wt-dir>"
   applies_to: [codex, cursor, gemini, kiro]
