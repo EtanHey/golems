@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { jev, jevShadow, voteMostCautious, type JevTransport } from "../lib/jev";
 
@@ -16,7 +17,7 @@ const questions = [
 ];
 
 beforeEach(() => {
-  stateDir = mkdtempSync(join(process.cwd(), "docs.local", "jev-test-"));
+  stateDir = mkdtempSync(join(tmpdir(), "jev-test-"));
   process.env = { ...ORIGINAL_ENV, TYPESAFE_API_KEY: "secret-test-key" };
   delete process.env.CI;
   delete process.env.JEV_ENABLED;
