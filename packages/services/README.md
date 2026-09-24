@@ -58,8 +58,7 @@ packages/services/
 │   ├── wizard.ts              # Guided setup
 │   ├── doctor.ts              # Health checks
 │   ├── cursor-helper.ts       # Cursor CLI agent wrapper
-│   ├── gemini-helper.ts       # Gemini CLI agent wrapper
-│   └── kiro-helper.ts         # Kiro CLI agent wrapper
+│   └── gemini-helper.ts       # Gemini CLI agent wrapper
 └── CLAUDE.md
 ```
 

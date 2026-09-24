@@ -1,6 +1,6 @@
 # Install: cmux-agents
 
-> Spawn AI agents in cmux panes — Claude workers as splits, audits/research as surfaces. Covers Claude, Cursor, Gemini, Codex, Kiro, T3 Code. Includes monitoring, prompt delivery, and collab patterns. Use this skill whenever the user mentions cmux agents, terminal agents, split agents, multi-agent orchestration, or wants to spawn AI workers in visible terminal panes.
+> Spawn AI agents in cmux panes — Claude workers as splits, audits/research as surfaces. Covers Claude, Cursor, Gemini, Codex, T3 Code. Includes monitoring, prompt delivery, and collab patterns. Use this skill whenever the user mentions cmux agents, terminal agents, split agents, multi-agent orchestration, or wants to spawn AI workers in visible terminal panes.
 
 ## One-Paste Install
 
@@ -37,7 +37,7 @@ Download the adapters and worker-prompt workflow routed from `SKILL.md`:
 
 ```bash
 mkdir -p ~/.claude/skills/cmux-agents/adapters ~/.claude/skills/cmux-agents/workflows
-for name in claude codex cursor kiro; do
+for name in claude codex cursor; do
   curl -sL "https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/cmux-agents/adapters/${name}.md" \
     -o "$HOME/.claude/skills/cmux-agents/adapters/${name}.md"
 done

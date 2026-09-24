@@ -38,7 +38,7 @@ _agent_repos_path() {
 #   spawn-agent golems surface:117 'T4 cursor-audit' 'Audit security' --cli cursor-audit
 # ---------------------------------------------------------------------------
 spawn-agent() {
-  local repo="${1:?Usage: spawn-agent <repo> <surface> <tab-name> <prompt> [--model M] [--launcher L] [--cli gemini|cursor-audit|cursor-work|codex|kiro]}"
+  local repo="${1:?Usage: spawn-agent <repo> <surface> <tab-name> <prompt> [--model M] [--launcher L] [--cli gemini|cursor-audit|cursor-work|codex]}"
   local surface="${2:?Missing surface (e.g. surface:114)}"
   local tab_name="${3:?Missing tab name}"
   local prompt="${4:?Missing prompt}"
@@ -80,17 +80,15 @@ spawn-agent() {
   if [[ -n "$cli" ]]; then
     # Non-Claude CLI agent — prompt goes inline, no two-step boot
     # Use absolute paths from ~/.golems/config.yaml to avoid sourcing zshrc (which triggers 1Password biometric)
-    local gemini_bin cursor_bin codex_bin kiro_bin
+    local gemini_bin cursor_bin codex_bin
     if [[ -f ~/.golems/config.yaml ]]; then
       gemini_bin=$(grep '^\s*gemini:' ~/.golems/config.yaml | sed 's/.*: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/' | head -1)
       cursor_bin=$(grep '^\s*cursor:' ~/.golems/config.yaml | sed 's/.*: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/' | head -1)
       codex_bin=$(grep '^\s*codex:' ~/.golems/config.yaml | sed 's/.*: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/' | head -1)
-      kiro_bin=$(grep '^\s*kiro:' ~/.golems/config.yaml | sed 's/.*: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/' | head -1)
     fi
     gemini_bin="${gemini_bin:-gemini}"
     cursor_bin="${cursor_bin:-cursor}"
     codex_bin="${codex_bin:-codex}"
-    kiro_bin="${kiro_bin:-kiro-cli}"
 
     local cli_cmd="cd $repo_path"
     case "$cli" in
@@ -106,11 +104,8 @@ spawn-agent() {
       codex)
         cli_cmd="$cli_cmd && $codex_bin --full-auto --model gpt-5.4 \"$prompt\""
         ;;
-      kiro)
-        cli_cmd="$cli_cmd && $kiro_bin chat --no-interactive \"$prompt\""
-        ;;
       *)
-        echo "spawn-agent: unknown CLI agent: $cli (use: gemini, cursor-audit, cursor-work, codex, kiro)" >&2
+        echo "spawn-agent: unknown CLI agent: $cli (use: gemini, cursor-audit, cursor-work, codex)" >&2
         return 1
         ;;
     esac
