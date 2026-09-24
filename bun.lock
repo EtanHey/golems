@@ -69,16 +69,6 @@
         "@types/bun": "latest",
       },
     },
-    "packages/golems-cli": {
-      "name": "@golems/cli",
-      "version": "0.1.0",
-      "bin": {
-        "golems": "./src/index.ts",
-      },
-      "devDependencies": {
-        "@types/bun": "latest",
-      },
-    },
     "packages/golems-tui": {
       "name": "golems-tui",
       "version": "1.0.0",
@@ -210,8 +200,6 @@
     "@emnapi/runtime": ["@emnapi/runtime@1.11.3", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA=="],
 
     "@golems/claude": ["@golems/claude@workspace:packages/claude"],
-
-    "@golems/cli": ["@golems/cli@workspace:packages/golems-cli"],
 
     "@golems/coach": ["@golems/coach@workspace:packages/coach"],
 
