@@ -14,6 +14,11 @@ plus one boundary byte used to discard a partial first record, preserves
 top-level durable state, and emits a private read receipt on the telemetry file
 descriptor. The hook's public stdout remains the Claude Code decision schema.
 
+When the Stop payload has `stop_hook_active: true` (Claude Code sets it when
+this stop already follows a Stop-hook block), the reader returns a null
+transcript without reading the transcript or state, so every gate allows.
+Blocking again would only make the model retry the same stop.
+
 `stop-telemetry.mjs` captures that stdout decision without changing it and
 appends one `golems.stop-decision.v1` JSONL row. Rows classify the outcome as
 `allow`, `block`, `advisory`, `skipped`, or `error` and include actual stdin,
