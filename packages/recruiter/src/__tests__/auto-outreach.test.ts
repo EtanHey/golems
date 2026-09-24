@@ -174,6 +174,21 @@ describe("Auto-Outreach (E6)", () => {
       expect(result.companyResearch?.githubOrg).toBe("seam-test-co");
     });
 
+    test("treats a throwing GitHub org lookup like no GitHub data", async () => {
+      const result = await processHotMatch(
+        { ...mockJob, id: "job-lookup-throws", company: "Throwing Lookup Co" },
+        {
+          skipContactSearch: true,
+          githubOrgLookup: async () => {
+            throw new Error("gh: network unreachable");
+          },
+        },
+      );
+      expect(result.error).toBeUndefined();
+      expect(result.companyResearch?.githubOrg ?? null).toBeNull();
+      expect(result.companyResearch?.techStack).toEqual(mockJob.techStack);
+    });
+
     test("handles company research failure gracefully", async () => {
       // Use a company name that will fail GitHub lookup
       const badJob: JobMatch = {
