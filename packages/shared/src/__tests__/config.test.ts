@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
+import { spawnSync } from "child_process";
 import { join } from "path";
 import { tmpdir } from "os";
 import { deepMerge } from "@golems/shared/lib/config";
@@ -66,6 +67,32 @@ features:
     expect(parsed.nightshift.rotation).toEqual(["repo-a", "repo-b"]);
     expect(parsed.nightshift.timeout).toBe(60000);
     expect(parsed.features.soltome).toBe(false);
+  });
+
+  // Live ~/.golems/config.yaml shape (2026-09-24): it overrides orcClaude with its
+  // own directReports, so a seat that exists only in the code defaults and names
+  // orcClaude as parent fails validateSeatRegistry and loadConfig() throws.
+  test("loadConfig accepts a file registry that overrides orcClaude.directReports", () => {
+    const yaml = `seatRegistry:
+  orcClaude:
+    repo: orc
+    launchers: { claude: orcClaude, codex: orcCodex, cursor: orcCursor, gemini: orcGemini, kiro: orcKiro }
+    lane: orc
+    aliases: [HappyCamper, Cantaloupe-AI, happyCampr]
+    role: orc
+    orgTree:
+      parent: null
+      directReports: [golemsLead, skillcreatorLead, cmuxlayerLead, dashboardLead, brainClaude, coachClaude, voiceClaude, aftercodeClaude]
+`;
+    writeFileSync(configFile, yaml);
+    const configModule = join(import.meta.dir, "../lib/config.ts");
+    const result = spawnSync(
+      process.execPath,
+      ["-e", `const { loadConfig } = await import(${JSON.stringify(configModule)}); console.log(Object.keys(loadConfig().seatRegistry).length);`],
+      { encoding: "utf8", env: { ...process.env, HOME: testDir } },
+    );
+    expect(result.stderr).not.toContain("does not include");
+    expect(result.status).toBe(0);
   });
 
   test("config file can be written and read back", () => {
