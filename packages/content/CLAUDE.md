@@ -412,7 +412,6 @@ Fully implemented: brand system, Remotion compositions, ComfyUI image gen, data 
 ### Text Publishing (in skills + services)
 Logic is currently spread across other packages:
 - **`golem-powers/content/`** skill — draft workflow (draft → critique → refine → publish)
-- **`golem-powers/linkedin-post/`** skill — LinkedIn-specific drafting with 2026 algorithm rules
 - **Soltome client** — `@golems/services/soltome-client.ts` (API client for soltome.com)
 - **Post generator** — `@golems/services/post-generator.ts` (critique-waves pattern)
 - **Soltome learner** — `@golems/services/soltome-learner.ts` (2am: scrape + learn patterns)

@@ -14,7 +14,6 @@ export const SKILL_MCP_MAP: Record<
   research: { required: ["exa"], complement: ["brainlayer"] },
   "whats-new": { required: ["exa"], complement: ["brainlayer"] },
   "youtube-pipeline": { required: ["exa"], complement: [] },
-  "voice-sessions": { required: ["voicelayer"], complement: [] },
   "1password": { required: ["1password"], complement: [] },
   railway: { required: [], complement: ["railway"] },
   convex: { required: ["convex"], complement: ["supabase"] },
