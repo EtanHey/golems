@@ -1,9 +1,12 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach, setDefaultTimeout } from "bun:test";
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
 import { spawnSync } from "child_process";
 import { join } from "path";
 import { tmpdir } from "os";
 import { deepMerge } from "@golems/shared/lib/config";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 describe("config", () => {
   const testDir = join(tmpdir(), `golems-config-test-${Date.now()}`);

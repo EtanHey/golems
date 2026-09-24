@@ -4,7 +4,7 @@
 // out (R-003/R-014 pattern, T6 smoke-spec shape). Runs under `bun test` and
 // `node --test`.
 
-import { test, expect } from "bun:test";
+import { test, expect, setDefaultTimeout } from "bun:test";
 import {
   mkdirSync,
   mkdtempSync,
@@ -19,6 +19,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { detectFleetWrap } from "../src/fleet-wrap-gate.mjs";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const redDir = path.join(here, "fixtures", "red");

@@ -1,8 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 const ROLLUP = join(import.meta.dir, "rollup.mjs");
 const NOW = "2026-06-15";

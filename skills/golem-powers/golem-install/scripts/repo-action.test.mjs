@@ -37,7 +37,7 @@ describe("wizard repo action", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("imported\n");
     expect(result.stderr).toBe("");
-  });
+  }, 15_000); // spawns node through a virtual argv path; a cold runner can exceed the 5s default
 
   test("node CLI executes through a symlink and fails closed for a garbage role", () => {
     const dir = mkdtempSync(join(tmpdir(), "repo-action-symlink-"));

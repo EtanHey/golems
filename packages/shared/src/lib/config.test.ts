@@ -1,9 +1,12 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, setDefaultTimeout } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import { deepMerge } from "./config";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 type TestSeatEntry = {
   repo: string;

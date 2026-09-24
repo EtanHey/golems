@@ -1,8 +1,11 @@
-import { expect, test } from "bun:test";
+import { expect, test, setDefaultTimeout } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 // Claude Code sets stop_hook_active when this stop already follows a Stop-hook
 // block. A gate that blocks again makes the model retry in a loop (up to 7

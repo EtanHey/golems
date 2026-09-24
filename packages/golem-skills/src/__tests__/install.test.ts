@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach, mock, setDefaultTimeout } from "bun:test";
 import {
   mkdtemp,
   rm,
@@ -11,6 +11,9 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installAllSkills, installSkill } from "../install";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 describe("installSkill()", () => {
   let tmpDir: string;

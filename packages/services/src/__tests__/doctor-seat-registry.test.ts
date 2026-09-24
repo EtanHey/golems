@@ -1,8 +1,11 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, setDefaultTimeout } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
 import { evaluatePrunedSeats } from "../doctor";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 describe("seat registry prune report", () => {
   it("passes when the config prunes no default seat", () => {

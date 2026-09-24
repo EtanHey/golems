@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test, setDefaultTimeout } from "bun:test";
 import {
   cpSync,
   existsSync,
@@ -12,6 +12,9 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import { materializeOversizeTranscript, readFixture } from "./helpers.mjs";
+
+// These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
+setDefaultTimeout(15_000);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const runtimeRoot = path.resolve(here, "..");
