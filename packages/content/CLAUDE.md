@@ -263,7 +263,7 @@ console.log(result.scoreSummary);
 |---------|--------|-------------|
 | `jobs` | `golem_jobs`, `scrape_activity` | Top tags, status distribution, weekly trends, scrape stats |
 | `finance` | `llm_usage`, `subscriptions` | LLM costs by model, daily costs, subscription totals |
-| `brain` | BrainLayer SQLite DB | Chunk growth, project coverage, content types, enrichment % |
+| `brain` | BrainLayer's observability document (`~/.local/share/brainlayer/observability.json`, rewritten every 5 min; never the DB) | Total chunks, content classes, stores per hour (last 24h) |
 | `activity` | `golem_events`, `service_runs` | Golem activity, event types, service health |
 
 ### Static Infographics (SVG → PNG)

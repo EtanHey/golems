@@ -152,4 +152,20 @@ describe("Input validation — DataViz", () => {
     const data = (await res.json()) as Record<string, unknown>;
     expect(data.error).toContain("Unknown type");
   });
+
+  it("POST /api/dataviz/render type=brain returns 503 with the reason when BrainLayer data is unavailable", async () => {
+    const previous = process.env.BRAINLAYER_OBSERVABILITY_PATH;
+    process.env.BRAINLAYER_OBSERVABILITY_PATH = "/nonexistent/brainlayer/observability.json";
+    try {
+      const res = await handleRequest(
+        makeRequest("POST", "/api/dataviz/render", { type: "brain" }),
+      );
+      expect(res.status).toBe(503);
+      const data = (await res.json()) as Record<string, unknown>;
+      expect(data.error).toContain("/nonexistent/brainlayer/observability.json");
+    } finally {
+      if (previous === undefined) delete process.env.BRAINLAYER_OBSERVABILITY_PATH;
+      else process.env.BRAINLAYER_OBSERVABILITY_PATH = previous;
+    }
+  });
 });

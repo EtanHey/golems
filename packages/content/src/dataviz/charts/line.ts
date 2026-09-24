@@ -82,7 +82,9 @@ export function renderLineChart(opts: LineChartOptions): string {
   // X axis labels (show ~6 evenly spaced)
   let xLabels = "";
   const step = Math.max(1, Math.floor(opts.data.length / 6));
-  for (let i = 0; i < opts.data.length; i += step) {
+  // The last point gets its own end-anchored label below; stop short of it here.
+  const lastStepped = opts.data.length > 1 ? opts.data.length - 1 : opts.data.length;
+  for (let i = 0; i < lastStepped; i += step) {
     const p = points[i];
     xLabels += `<text x="${p.x}" y="${height - padding.bottom + 16}" fill="${theme.textMuted}" font-size="10" font-family="${theme.labelFont}" text-anchor="middle">${escapeXml(p.date)}</text>`;
   }
