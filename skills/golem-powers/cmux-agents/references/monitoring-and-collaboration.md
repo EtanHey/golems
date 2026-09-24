@@ -2,7 +2,7 @@ Read this when monitoring outbound workers, delivering envelopes, coordinating t
 
 ## Monitoring Protocol
 
-> **OUTBOUND worker monitoring lives here.** Inbound lead/orchestrator monitor, cron, and loop-payload rules → see **cron-payload-discipline** (canonical).
+> **OUTBOUND worker monitoring lives here.** Inbound lead/orchestrator monitor, cron, and loop-payload rules → see **collab-monitor** (canonical; payload rules in its `references/cron-payloads.md`).
 
 Fleet law for guard/DONE/harvest-close lives in canon #7. This section covers outbound worker waits.
 Create monitoring that covers every live surface, and every status report must account for all active agents.

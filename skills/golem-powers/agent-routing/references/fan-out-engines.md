@@ -31,7 +31,7 @@ Evidence: corrected twice in 3 min — *"I am using the GUI, give me a full prom
 1. **Never hardcode file-derived numbers** into async worker prompts (counts, baselines, finding totals). Instruct workers to **read the file** — stale `838/47/29`-class numbers corrupted census synthesis twice.
 2. **Validate scope/ownership with the human BEFORE expensive per-repo fan-out** — confirm repos/domains in scope; don't burn a full cmux fork audit on out-of-scope repos.
 3. **Slow ≠ stalled** — read why a worker is slow (`read_screen`, collab, PR activity) before spawning a duplicate; duplicate auditors overwrite originals.
-4. **Never mandate sleep-poll loops** in dispatched prompts — use `wait_for`, file contracts, or cron with live-query-first frames (`/cron-payload-discipline`).
+4. **Never mandate sleep-poll loops** in dispatched prompts — use `wait_for`, file contracts, or cron with live-query-first frames (`/collab-monitor` § Cron, /loop and monitor payloads).
 
 ## WHEN-TO-USE MATRIX
 

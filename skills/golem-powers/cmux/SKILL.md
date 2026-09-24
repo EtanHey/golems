@@ -245,7 +245,7 @@ Bottom 15 lines = status bars and thinking indicators. Actual work (file edits, 
 
 ## Rules
 
-0. **Monitor/cron/loop-payload rules** → see **cron-payload-discipline** (canonical). cmux stays pane-primitive only.
+0. **Monitor/cron/loop-payload rules** → see **collab-monitor** § Cron, /loop and monitor payloads (canonical). cmux stays pane-primitive only.
 1. **Always detect cmux first** — don't assume you're in cmux
 2. **Use envelope format** for agent messages — prevents cross-pane confusion
 3. **Set sidebar status** at task start + end — gives user visibility
