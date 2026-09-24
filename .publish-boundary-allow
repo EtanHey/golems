@@ -50,7 +50,7 @@ skills/golem-powers/weave/registry/validate-registry.sh
 packages/content/prompts/launch/text/reddit-localllama-bl.md
 packages/services/CLAUDE.md
 skills/golem-powers/agada-bench/workflows/build-new-domain.md
-skills/golem-powers/google-drive-archive/SKILL.md
+skills/golem-powers/drive-filing/references/archive-procedure.md
 skills/golem-powers/orc-workspace/iteration-1/eval-3-frozen-gems/without_skill/outputs/response.md
 skills/golem-powers/orc/SKILL.md
 skills/golem-powers/skill-creator/agents/session-miner.toml

@@ -16,7 +16,7 @@ function validReceipt() {
   return {
     driveRoute: {
       canonical: true,
-      resolvedWith: ["/drive-usage", "/braindrive"],
+      resolvedWith: ["/drive-filing", "/braindrive"],
     },
     driveAuth: { callSucceeded: true, authed: true },
     accountVerification: {

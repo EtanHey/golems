@@ -38,7 +38,7 @@ or wants durable insights/takeaways from a video instead of QA findings.
 8. Run `brain_digest` on the full transcript/note, then `brain_store` the
    structured gems with tags like `["video-gems", "<topic>", "<source>"]`.
 9. If heavy raw media or transcripts should be kept, route them through
-   `/google-drive-archive` and record the Drive location in the note.
+   `/drive-filing` (§ Archive a heavy artifact) and record the Drive location in the note.
 
 ## Failure Handling
 

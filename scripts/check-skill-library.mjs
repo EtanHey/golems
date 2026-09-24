@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 
 const DEFAULT_RETIRED = [
   "adversarial-council",
+  "archive",
   "brave",
   "catchup",
   "claude-web-research",
@@ -12,7 +13,9 @@ const DEFAULT_RETIRED = [
   "convex",
   "critique-waves",
   "cursor-multitask",
+  "drive-usage",
   "github",
+  "google-drive-archive",
   "interview-practice",
   "judge-fleet",
   "maintenance",

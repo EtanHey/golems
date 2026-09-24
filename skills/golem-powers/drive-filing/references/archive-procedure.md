@@ -1,13 +1,10 @@
----
-name: google-drive-archive
-description: "Archive >100KB research/media to Brain Drive. Triggers: Drive upload, archive this, post-digest archival."
----
+# Archive Procedure — Brain Drive as Source of Truth
 
-# /google-drive-archive — Brain Drive as Source of Truth
+> Formerly the `/google-drive-archive` skill; `../SKILL.md` § Archive a heavy artifact is the summary.
 
 > **Pattern:** Brain Drive holds **forever**. `docs.local/` holds **latest only**. BrainLayer **indexes both**. A `_DRIVE-LEDGER.md` per `docs.local/` subdir maps local → Drive.
 
-This skill is for **putting things INTO Drive**. To **query Drive content** via Gemini, use `/braindrive`. To **research the web** with Drive sources, use `/gemini-research`.
+This procedure is for **putting things INTO Drive**. To **query Drive content** via Gemini, use `/braindrive`. To **research the web** with Drive sources, use `/gemini-research`.
 
 ---
 
@@ -52,14 +49,14 @@ This skill is for **putting things INTO Drive**. To **query Drive content** via 
 
 ## Triggers
 
-Invoke this skill when:
+Run this procedure when:
 
 1. **Pre-write hint:** about to save anything >100KB to `docs.local/research/`, `docs.local/audits/`, or `docs.local/plans/` — especially if it contains transcripts, audio, video, or large logs.
 2. **Explicit user request:** "save this to Drive", "archive this", "this should be in Brain Drive", "put this in the archive".
 3. **Post-digest:** a research output has been `brain_digest`'d into BrainLayer and the raw file is a candidate for archival (BrainLayer indexes it; Drive holds the original).
-4. **/tmp cleanup:** about to `rm -rf /tmp/<heavy-stuff>` — if any of it is forever-knowledge, route it through this skill first.
+4. **/tmp cleanup:** about to `rm -rf /tmp/<heavy-stuff>` — if any of it is forever-knowledge, route it through this procedure first.
 
-**Skip this skill** when:
+**Skip this procedure** when:
 - The artifact is genuinely ephemeral (CLI test output, throwaway diff, audit prompt that's already digested).
 - The content is already covered by another archive flow (e.g. PR merges live in git, not Drive).
 - File is <100KB markdown that's the canonical doc kept in `docs.local/` (no need to upload markdown notes).
@@ -183,8 +180,8 @@ Skip for routine archives (one transcript, one report). Store for unusual decisi
 
 ## Composability
 
-- **`/research-lifecycle`** — when condensing/archiving stale research files, use this skill to push originals to Drive before deleting locally.
-- **`/qa-video`** — video gems and QA processing produce transcripts, frames, and heavy media; this skill is where they land long-term. The qa-video gems output is in `/tmp/` by default; route to Drive on completion.
+- **`/research-lifecycle`** — when condensing/archiving stale research files, use this procedure to push originals to Drive before deleting locally.
+- **`/qa-video`** — video gems and QA processing produce transcripts, frames, and heavy media; this procedure is where they land long-term. The qa-video gems output is in `/tmp/` by default; route to Drive on completion.
 - **`/large-plan`** — when a plan completes, archive the full plan folder to `Brain Drive/06_ARCHIVE/plans/<name>-<date>/`.
 - **Nightly sweep** — scan `docs.local/` for >100KB files lacking ledger entries and prompt to archive.
 

@@ -11,7 +11,7 @@
     "driveRoute": {
       "canonical": true,
       "resolvedWith": [
-        "/drive-usage",
+        "/drive-filing",
         "/braindrive"
       ]
     },

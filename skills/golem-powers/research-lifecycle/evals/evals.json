@@ -166,7 +166,7 @@
         },
         {
           "name": "drive-route-required",
-          "text": "Requires pushing the current local corpus to the correct Drive folder via /drive-usage",
+          "text": "Requires pushing the current local corpus to the correct Drive folder via /drive-filing",
           "type": "behavioral"
         },
         {

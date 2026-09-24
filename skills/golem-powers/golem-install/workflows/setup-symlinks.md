@@ -156,7 +156,7 @@ ls -la ~/.agents/skills/ | grep "^l"
 Expected output (one symlink per skill):
 ```
 1password -> $HOME/golems/skills/golem-powers/1password/
-archive -> $HOME/golems/skills/golem-powers/archive/
+drive-filing -> $HOME/golems/skills/golem-powers/drive-filing/
 pr-loop -> $HOME/golems/skills/golem-powers/pr-loop/
 ...
 ```

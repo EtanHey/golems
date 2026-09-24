@@ -1,0 +1,39 @@
+{
+  "skill_name": "drive-filing",
+  "description": "Trigger cases for the merged skill (drive-usage + google-drive-archive + the archive skill repurposed as the docs.local lifecycle). None of the three had filing/archival evals; the archive skill's Ralph-PRD evals were removed with it (Q-H).",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just finished a 40-page audit and three research prompts in docs.local/. Where should each go in Brain Drive, and what should they be named?",
+      "expected_output": "Uses the Brain Drive folder model and decision tree: research prompts/results to 03_RESEARCH/Active/<topic>/, the finished heavy audit through the archive procedure to 06_ARCHIVE/audits/<topic>/<date>/, date-prefixed kebab-case names, and a _DRIVE-LEDGER.md pointer left in docs.local/.",
+      "files": [],
+      "assertions": [
+        {"name": "routes-research-to-03", "description": "Research prompts/results go to 03_RESEARCH/Active/<topic>/"},
+        {"name": "heavy-audit-to-06-archive", "description": "The heavy audit goes through the archive procedure to 06_ARCHIVE"},
+        {"name": "ledger-pointer", "description": "Leaves a _DRIVE-LEDGER.md pointer in docs.local/"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Archive this: a 300MB interview recording, its transcript, and a 16kHz downsample I made for whisper.",
+      "expected_output": "Runs the archive procedure: uploads the original recording and the transcript (not the regeneratable downsample, which is listed with its ffmpeg command), brain_digests the transcript, writes the _DRIVE-LEDGER.md row, and deletes the local heavy copy only after listFolder confirms the upload.",
+      "files": [],
+      "assertions": [
+        {"name": "originals-only", "description": "Uploads originals; lists the downsample as regeneratable instead of uploading it"},
+        {"name": "digests-transcript", "description": "brain_digest runs on the transcript"},
+        {"name": "delete-after-verify", "description": "Local deletion only after listFolder confirms the upload and the ledger is written"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "docs.local cleanup: this repo's docs.local is a wall of dated MD files and a .codex-home-test folder with an auth.json in it. Tidy it up.",
+      "expected_output": "Applies the docs.local lifecycle: dated daily items roll up into YYYY-MM/ folders and months older than N go to Brain Drive through the archive procedure. The .codex-home-test directory and its auth.json are credentials: never uploaded, moved or deleted, and reported as skipped: credential <path> for the owner to decide.",
+      "files": [],
+      "assertions": [
+        {"name": "monthly-rollup", "description": "Daily items roll up into YYYY-MM/ folders"},
+        {"name": "old-months-to-drive", "description": "Months older than N go to Brain Drive via the archive procedure"},
+        {"name": "credentials-untouched", "description": "auth.json / .codex-home* are skipped and reported, never uploaded, moved or deleted"}
+      ]
+    }
+  ]
+}
