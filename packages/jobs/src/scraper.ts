@@ -696,10 +696,6 @@ function parseGoozaliMessage(text: string, channelLabel: string): JobListing | n
   };
 }
 
-/**
- * Scrape Goozali Telegram channels (public ones only)
- * Extracts actual job URLs from the posts
- */
 const GOOZALI_ENTITIES: Record<string, string> = {
   amp: "&",
   quot: '"',
@@ -732,6 +728,10 @@ export function isGoozaliJobLink(url: string): boolean {
   return host !== "t.me" && host !== "goozali.com" && !host.endsWith(".goozali.com");
 }
 
+/**
+ * Scrape Goozali Telegram channels (public ones only)
+ * Extracts actual job URLs from the posts
+ */
 export async function scrapeGoozali(): Promise<JobListing[]> {
   console.log("[Goozali] Scraping Telegram channels...");
 
