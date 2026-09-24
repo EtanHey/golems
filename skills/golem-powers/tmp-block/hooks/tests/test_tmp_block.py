@@ -27,6 +27,7 @@ temp?... What the fuck is this?" — orchestrator__10d0e9da [6219], A5 [21]).
 """
 
 import json
+import time
 import os
 import shutil
 import subprocess
@@ -3753,3 +3754,13 @@ def test_scratchpad_chain_must_sit_directly_under_a_temp_root(durable_path):
     assert_denied(
         run_hook(bash_payload(f"printf x > {path}"), cwd=str(durable_path))
     )
+
+
+def test_quote_with_many_escapes_in_a_comment_is_linear():
+    # CodeQL py/redos #3/#4: an unclosed `"` followed by many `\!` made the
+    # raw-line tokenizer backtrack exponentially (7.8s at 24 pairs).
+    start = time.perf_counter()
+    proc = run_hook(bash_payload('echo hi # "' + "\\!" * 32))
+    elapsed = time.perf_counter() - start
+    assert_allowed(proc)
+    assert elapsed < 3, f"hook took {elapsed:.1f}s on a pathological comment"

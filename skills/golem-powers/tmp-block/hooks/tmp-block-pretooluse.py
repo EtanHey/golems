@@ -2563,7 +2563,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
     def case_pattern_groups(source):
         """Return raw-aware alternative patterns for each case arm in source."""
         raw_tokens = re.findall(
-            r"'[^']*'|\"(?:\\.|[^\"])*\"|;;&|;&|;;|\|\||&&|[;|&()]|[^\s;|&()]+",
+            r"'[^']*'|\"(?:\\.|[^\"\\])*\"|;;&|;&|;;|\|\||&&|[;|&()]|[^\s;|&()]+",
             source,
         )
         groups = []
@@ -2608,7 +2608,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
             source,
             re.DOTALL,
         ):
-            words = re.findall(r"'[^']*'|\"(?:\\.|[^\"])*\"|\S+", match.group("words"))
+            words = re.findall(r"'[^']*'|\"(?:\\.|[^\"\\])*\"|\S+", match.group("words"))
             definite = 0
             dynamic = False
             for word in words:
