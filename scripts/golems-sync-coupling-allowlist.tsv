@@ -26,11 +26,11 @@ html-dashboard/templates/template.html	~/Gits/brainlayer	Display template contai
 idle-dwell-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 install-runbook-linter/fixtures/green-runbook.md	/opt/homebrew/bin/brew	Test or evaluation evidence intentionally preserves this machine-path specimen.
 install-runbook-linter/tests/test_runbook_lint.py	/opt/homebrew/bin/brew	Test or evaluation evidence intentionally preserves this machine-path specimen.
-launchd-secret-linter/fixtures/green-plist.plist	/Users/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
-launchd-secret-linter/fixtures/green-plist.plist	/opt/homebrew/bin/mysvc	Test or evaluation evidence intentionally preserves this machine-path specimen.
-launchd-secret-linter/fixtures/red-plist.plist	/Users/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
-launchd-secret-linter/tests/test_plist_secret_lint.py	/Users/x	Test or evaluation evidence intentionally preserves this machine-path specimen.
-launchd-secret-linter/tests/test_plist_secret_lint.py	/opt/homebrew/bin/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
+cyber/scripts/launchd-secret-linter/fixtures/green-plist.plist	/Users/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
+cyber/scripts/launchd-secret-linter/fixtures/green-plist.plist	/opt/homebrew/bin/mysvc	Test or evaluation evidence intentionally preserves this machine-path specimen.
+cyber/scripts/launchd-secret-linter/fixtures/red-plist.plist	/Users/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
+cyber/scripts/launchd-secret-linter/tests/test_plist_secret_lint.py	/Users/x	Test or evaluation evidence intentionally preserves this machine-path specimen.
+cyber/scripts/launchd-secret-linter/tests/test_plist_secret_lint.py	/opt/homebrew/bin/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
 model-pin-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 monitor-law-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 never-fabricate/evals/evals.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.

@@ -3,6 +3,14 @@
 scripts/tests/check-publish-boundary.test.sh
 
 # Authored adversarial fixture for the launchd secret detector.
+skills/golem-powers/cyber/scripts/launchd-secret-linter/tests/test_plist_secret_lint.py
+# Its synthetic plist fixtures (mundane placeholder values). At their old paths
+# they were baseline-known; the move to cyber/ needs exact entries.
+skills/golem-powers/cyber/scripts/launchd-secret-linter/fixtures/green-plist.plist
+skills/golem-powers/cyber/scripts/launchd-secret-linter/fixtures/red-plist.plist
+# History-only: the same file before it moved into cyber/ (GO-3 PR-6). No live
+# file has this path; the push/nightly ratchet re-scans older commits with the
+# current allowlist, so the old path must stay.
 skills/golem-powers/launchd-secret-linter/tests/test_plist_secret_lint.py
 
 # Synthetic health/schedule prompts used by behavioral evaluations.
