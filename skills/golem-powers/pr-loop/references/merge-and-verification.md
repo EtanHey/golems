@@ -153,7 +153,7 @@ For non-VoiceLayer daemon PRs:
 ## Visual Self-QA Gate — builders click IN before merge
 
 **Triggers when:** the PR touches anything a human SEES — UI views, dashboards,
-HTML pages, menu-bar apps (BrainBar/VoiceBar), Phoenix views, TUI surfaces.
+HTML pages, menu-bar apps (BrainBar/VoiceBar), TUI surfaces.
 
 **The rule:** the BUILDER clicks INTO a real running session and screenshots it
 BEFORE merge. Mechanical checks (PID running, commit-matches, server responds)

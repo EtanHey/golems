@@ -21,20 +21,22 @@
 #   compute <pr>           Size a PR from its hand-written diff and apply exactly
 #                          one `size:*` label, removing every other `size:*` or
 #                          `size/*` it carries.
-#   check <pr>             Warn when the PR has no `size:*` label or its measured
-#                          diff exceeds 400 lines; fail when its label
+#   check <pr>             Warn when the PR has no `size:*` label or it adds
+#                          over 400 hand-written lines; fail when its label
 #                          under-reports the hand-written count or multiple
 #                          labels exist.
 #   classify <lines>       Print the label for a hand-written line count.
 #
 # Sizing rule
-#   count = additions + deletions across files that are NOT generated
-#           (see GENERATED_GLOBS below)
+#   count = additions across files that are NOT generated
+#           (see GENERATED_GLOBS below). Deletions never count: removing code
+#           is not hand-written work, and canon 9 welcomes big deletions
+#           (Etan's R2-2 ruling, 2026-09-24).
 #     count <=  50  -> size:XS
 #     count <= 150  -> size:S
 #     count <= 400  -> size:M
 #     count >  400  -> size:L   (canon 9: needs a one-line why)
-#   400 is canon 9's split point, so a measured diff over that cap gets a
+#   400 is canon 9's split point, so a count over that cap gets a
 #   non-fatal reminder to include a one-line why in the PR body.
 #
 # Exit codes: 0 ok, 1 runtime failure, 2 usage error.
@@ -52,10 +54,10 @@ M_MAX=400
 
 # name|color|description -- the single source of truth for the scheme.
 LABEL_SPEC=(
-  "size:XS|0E8A16|Tight-loop PR size: 50 or fewer hand-written lines changed"
-  "size:S|FBCA04|Tight-loop PR size: 51-150 hand-written lines changed"
-  "size:M|D93F0B|Tight-loop PR size: 151-400 hand-written lines changed"
-  "size:L|B60205|Tight-loop PR size: over 400 hand-written lines changed; canon 9 needs a one-line why"
+  "size:XS|0E8A16|Tight-loop PR size: 50 or fewer hand-written lines added"
+  "size:S|FBCA04|Tight-loop PR size: 51-150 hand-written lines added"
+  "size:M|D93F0B|Tight-loop PR size: 151-400 hand-written lines added"
+  "size:L|B60205|Tight-loop PR size: over 400 hand-written lines added; canon 9 needs a one-line why"
 )
 
 # Files whose lines are NOT hand-written and are excluded from the count.
@@ -109,7 +111,7 @@ usage: pr-size-labels.sh <subcommand>
   <repo> may be bare (`golems`); it is qualified with $PR_SIZE_LABELS_OWNER
   (default EtanHey).
 
-  Sizing: additions + deletions over non-generated files.
+  Sizing: additions over non-generated files; deletions never count.
           <=50 XS, <=150 S, <=400 M, >400 L (canon 9's 400 split point).
 USAGE
   exit 2
@@ -153,13 +155,14 @@ size_rank() {
   esac
 }
 
-# Reads `path<TAB>additions<TAB>deletions` on stdin, prints the hand-written total.
+# Reads `path<TAB>additions<TAB>deletions` on stdin, prints the hand-written
+# total: additions only, so deletions are read and ignored.
 sum_handwritten() {
-  local path add del total=0
-  while IFS=$'\t' read -r path add del; do
+  local path add _del total=0
+  while IFS=$'\t' read -r path add _del; do
     [[ -n "$path" ]] || continue
     is_generated "$path" && continue
-    total=$(( total + ${add:-0} + ${del:-0} ))
+    total=$(( total + ${add:-0} ))
   done
   printf '%s\n' "$total"
 }

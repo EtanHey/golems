@@ -1,6 +1,6 @@
 ---
 name: judge-fleet
-description: "Bulk LLM-judging protocol for fleet-dispatched verdict runs. Triggers: judge fleet, bulk judge, R3 verdicts, kg-judge, RT gate, evidence_degraded. NOT for single reviews, Phoenix UX, or non-judge evals."
+description: "Bulk LLM-judging protocol for fleet-dispatched verdict runs. Triggers: judge fleet, bulk judge, R3 verdicts, kg-judge, RT gate, evidence_degraded. NOT for single reviews or non-judge evals."
 ---
 
 # /judge-fleet — bulk LLM-judging protocol
@@ -23,7 +23,7 @@ Fleet-dispatched verdict runs means the KG cluster and the eval harness.
 - **Bulk-apply** or triage after a judge fleet completes
 - Dispatcher writing worker briefs for brainlayer eval_results/ campaigns
 
-NOT for: one-off PR review, Phoenix annotation UX, or skills that don't produce verdict artifacts.
+NOT for: one-off PR review or skills that don't produce verdict artifacts.
 
 ## The seven rules (in dispatch order)
 

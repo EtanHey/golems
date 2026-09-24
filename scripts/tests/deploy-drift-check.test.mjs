@@ -33,7 +33,6 @@ describe("launchd plist semantics", () => {
     expect(isManagedLabel("com.golems.render-service")).toBe(true);
     expect(isManagedLabel("com.golemszikaron.telegram")).toBe(true);
     expect(isManagedLabel("com.cmuxlayer.server")).toBe(false);
-    expect(isManagedLabel("com.brainlayer.phoenix-eval")).toBe(false);
   });
 
   test("normalizes host paths and removes accepted host/secret environment overrides", () => {
