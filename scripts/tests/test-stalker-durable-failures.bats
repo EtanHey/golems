@@ -93,38 +93,90 @@ write_scoring_marker() {
     } > "$dir/.stage-scoring.started"
 }
 
-@test "stream watcher launches the committed self-contained Twitch chat bundle" {
-    [ -f "$SCRIPT_DIR/dist/twitch-chat-lurker.js" ]
-    grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/dist/twitch-chat-lurker.js"' "$SCRIPT_DIR/stream-watcher.sh"
-    ! grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"' "$SCRIPT_DIR/stream-watcher.sh"
+# The bundle is generated, not tracked: scripts/dist/ is gitignored and the
+# watcher builds it on start when it is missing or stale.
+build_fresh_bundle() {
+    fresh_bundle="$TMPDIR_/fresh/twitch-chat-lurker.js"
+    fresh_license="$TMPDIR_/fresh/twitch-chat-lurker.LICENSE.txt"
+    "$SCRIPT_DIR/build-twitch-chat-lurker.sh" "$fresh_bundle"
 }
 
-@test "committed Twitch chat bundle matches a fresh dependency-inclusive build" {
-    # build-twitch-chat-lurker.sh calls a bare `bun build`, so it uses whatever
-    # bun is on PATH. bun bakes its own runtime prelude into the output, so this
-    # comparison is only meaningful on the pinned version -- skip rather than
-    # fail on a machine that is off the pin, and say which versions are in play.
-    mismatch="$(bun_pin_mismatch_reason)"
-    if [ -n "$mismatch" ]; then
-        skip "$mismatch"
-    fi
+fake_lurker_build() {
+    FAKE_BUILD="$TMPDIR_/fake-build.sh"
+    BUILD_CALLS="$TMPDIR_/build-calls"
+    cat > "$FAKE_BUILD" <<SH
+#!/bin/bash
+echo built >> "$BUILD_CALLS"
+mkdir -p "\$(dirname "\$1")"
+echo '// bundle' > "\$1"
+SH
+    chmod +x "$FAKE_BUILD"
+    LURKER_SRC="$TMPDIR_/twitch-chat-lurker.ts"
+    LURKER_LOCK="$TMPDIR_/bun.lock"
+    LURKER_BUNDLE="$TMPDIR_/dist/twitch-chat-lurker.js"
+    echo 'src' > "$LURKER_SRC"
+    echo 'lock' > "$LURKER_LOCK"
+}
 
-    rebuilt="$TMPDIR_/twitch-chat-lurker.js"
-    rebuilt_license="$TMPDIR_/twitch-chat-lurker.LICENSE.txt"
+@test "stream watcher ensures the generated Twitch chat bundle before watching" {
+    grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/dist/twitch-chat-lurker.js"' "$SCRIPT_DIR/stream-watcher.sh"
+    ! grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"' "$SCRIPT_DIR/stream-watcher.sh"
+    grep -F -q 'stalker_ensure_lurker_bundle "$LURKER_SCRIPT"' "$SCRIPT_DIR/stream-watcher.sh"
+    run git -C "$REPO_ROOT" ls-files --error-unmatch scripts/dist/twitch-chat-lurker.js
+    [ "$status" -ne 0 ]
+}
 
-    run "$SCRIPT_DIR/build-twitch-chat-lurker.sh" "$rebuilt"
-
+@test "lurker bundle helper builds a missing bundle" {
+    fake_lurker_build
+    run stalker_ensure_lurker_bundle "$LURKER_BUNDLE" "$LURKER_SRC" "$LURKER_LOCK" "$FAKE_BUILD"
     [ "$status" -eq 0 ]
-    cmp -s "$rebuilt" "$SCRIPT_DIR/dist/twitch-chat-lurker.js"
-    cmp -s "$rebuilt_license" "$SCRIPT_DIR/dist/twitch-chat-lurker.LICENSE.txt"
-    grep -F -q 'node_modules/tmi.js/index.js' "$rebuilt"
-    grep -F -q 'Permission is hereby granted' "$rebuilt_license"
-    [ ! -x "$rebuilt_license" ]
-    [ ! -x "$SCRIPT_DIR/dist/twitch-chat-lurker.LICENSE.txt" ]
+    [ -f "$LURKER_BUNDLE" ]
+    [ "$(wc -l < "$BUILD_CALLS")" -eq 1 ]
+}
+
+@test "lurker bundle helper keeps a bundle newer than its source and lockfile" {
+    fake_lurker_build
+    mkdir -p "$(dirname "$LURKER_BUNDLE")"
+    echo '// bundle' > "$LURKER_BUNDLE"
+    touch -t 202601010000 "$LURKER_SRC" "$LURKER_LOCK"
+    run stalker_ensure_lurker_bundle "$LURKER_BUNDLE" "$LURKER_SRC" "$LURKER_LOCK" "$FAKE_BUILD"
+    [ "$status" -eq 0 ]
+    [ ! -f "$BUILD_CALLS" ]
+}
+
+@test "lurker bundle helper rebuilds a bundle older than its source or lockfile" {
+    fake_lurker_build
+    mkdir -p "$(dirname "$LURKER_BUNDLE")"
+    echo '// bundle' > "$LURKER_BUNDLE"
+    touch -t 202601010000 "$LURKER_BUNDLE" "$LURKER_SRC"
+    run stalker_ensure_lurker_bundle "$LURKER_BUNDLE" "$LURKER_SRC" "$LURKER_LOCK" "$FAKE_BUILD"
+    [ "$status" -eq 0 ]
+    [ "$(wc -l < "$BUILD_CALLS")" -eq 1 ]
+}
+
+@test "lurker bundle helper fails loud when bun is missing" {
+    fake_lurker_build
+    run env PATH="/usr/bin:/bin" bash -c 'source "$1"; stalker_ensure_lurker_bundle "$2" "$3" "$4" "$5"' _ \
+        "$SCRIPT_DIR/lib/stream-helpers.sh" "$LURKER_BUNDLE" "$LURKER_SRC" "$LURKER_LOCK" "$FAKE_BUILD"
+    [ "$status" -ne 0 ]
+    grep -F -q "bun is required" <<< "$output"
+    [ ! -f "$BUILD_CALLS" ]
+}
+
+@test "a fresh dependency-inclusive build passes the chat deploy preflight" {
+    build_fresh_bundle
+    grep -F -q 'node_modules/tmi.js/index.js' "$fresh_bundle"
+    grep -F -q 'Permission is hereby granted' "$fresh_license"
+    [ ! -x "$fresh_license" ]
+
+    run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$fresh_bundle"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"chat_lurker_preflight=PASS"* ]]
 }
 
 @test "chat deploy preflight opens output and reaches a connected sentinel" {
-    run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$SCRIPT_DIR/dist/twitch-chat-lurker.js"
+    build_fresh_bundle
+    run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$fresh_bundle"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"chat_lurker_preflight=PASS"* ]]
@@ -166,8 +218,9 @@ write_scoring_marker() {
 }
 
 @test "bundled preflight stays ready without node_modules" {
+    build_fresh_bundle
     isolated_bundle="$TMPDIR_/twitch-chat-lurker.js"
-    cp "$SCRIPT_DIR/dist/twitch-chat-lurker.js" "$isolated_bundle"
+    cp "$fresh_bundle" "$isolated_bundle"
 
     run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$isolated_bundle"
 

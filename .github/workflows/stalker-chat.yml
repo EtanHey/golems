@@ -4,8 +4,6 @@ on:
   pull_request:
     paths:
       - "scripts/build-twitch-chat-lurker.sh"
-      - "scripts/dist/twitch-chat-lurker.js"
-      - "scripts/dist/twitch-chat-lurker.LICENSE.txt"
       - "scripts/lib/stream-helpers.sh"
       - "scripts/post-stream.sh"
       - "scripts/process-stream.sh"
@@ -21,8 +19,6 @@ on:
     branches: [master]
     paths:
       - "scripts/build-twitch-chat-lurker.sh"
-      - "scripts/dist/twitch-chat-lurker.js"
-      - "scripts/dist/twitch-chat-lurker.LICENSE.txt"
       - "scripts/lib/stream-helpers.sh"
       - "scripts/post-stream.sh"
       - "scripts/process-stream.sh"
