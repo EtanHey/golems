@@ -6,6 +6,7 @@
  * document CRUD, and client management.
  *
  * ENV: GREEN_INVOICE_ID, GREEN_INVOICE_SECRET
+ *   — plain values or 1Password op:// references (resolved with `op read`)
  * Optional: GREEN_INVOICE_SANDBOX=true for sandbox environment
  */
 
@@ -22,6 +23,7 @@ const SANDBOX_BASE = "https://sandbox.d.greeninvoice.co.il/api/v1";
 const MAX_429_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;
 const FETCH_TIMEOUT_MS = 30_000;
+const OP_READ_TIMEOUT_MS = 10_000;
 
 let cachedToken: string | null = null;
 let tokenExpiry = 0;
@@ -36,6 +38,31 @@ export function getBaseUrl(): string {
   return process.env.GREEN_INVOICE_SANDBOX === "true"
     ? SANDBOX_BASE
     : LIVE_BASE;
+}
+
+/**
+ * Resolve a value that may be a 1Password op:// reference via `op read`.
+ * Any other value is returned unchanged.
+ */
+export async function resolveOpReference(value: string): Promise<string> {
+  if (!value.startsWith("op://")) {
+    return value;
+  }
+  const proc = Bun.spawn(["op", "read", value], {
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: OP_READ_TIMEOUT_MS,
+  });
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    // `op read` waiting on an approval prompt prints nothing and is killed by the timeout.
+    const stderr = (await new Response(proc.stderr).text()).trim();
+    const reason =
+      stderr ||
+      `op exited ${exitCode} with no output; is the 1Password CLI signed in? (${OP_READ_TIMEOUT_MS / 1000}s timeout)`;
+    throw new Error(`Failed to resolve 1Password reference ${value}: ${reason}`);
+  }
+  return (await new Response(proc.stdout).text()).trim();
 }
 
 export function getCredentials(): { id: string; secret: string } {
@@ -60,7 +87,11 @@ export async function getToken(): Promise<string> {
     return cachedToken;
   }
 
-  const { id, secret } = getCredentials();
+  const raw = getCredentials();
+  const [id, secret] = await Promise.all([
+    resolveOpReference(raw.id),
+    resolveOpReference(raw.secret),
+  ]);
   const base = getBaseUrl();
 
   const res = await fetch(`${base}/account/token`, {
