@@ -11,7 +11,7 @@
       "markers": ["| `cmux send` | UDS `send_input` command |"]
     },
     {
-      "file": "skills/golem-powers/never-fabricate/SKILL.md",
+      "file": "skills/golem-powers/never-fabricate/references/rules.md",
       "reason": "Names a provenance CLASS of an already-written message ('was this typed, or send_command'd by an assistant?'). It is not an instruction to call anything.",
       "markers": ["`send_command` authored by an assistant."]
     },

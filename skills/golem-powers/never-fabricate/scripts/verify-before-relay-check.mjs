@@ -163,7 +163,7 @@ function handoffFramingAccepted(turn, ev, claimText) {
 
 // A disambiguation record = a brain_store/brain_entity call whose captured
 // content carries distinct-entity language. Captured for BOTH the current turn
-// (ev) and the whole session (sessionDisambig), because SKILL.md requires a
+// (ev) and the whole session (sessionDisambig), because references/rules.md R16 requires a
 // SESSION-START brain_store — a prior-turn disambiguation must still clear a later
 // relay (cursor MEDIUM).
 function namedEntityConflation(turn, ev, claimText, ctx) {
@@ -251,7 +251,7 @@ export function detectVerifyBeforeRelay(transcript) {
     .join("\n");
 
   // Session-wide disambiguation: a brain_store/brain_entity recording distinct
-  // entities ANYWHERE in the transcript (SKILL.md: a session-START record clears
+  // entities ANYWHERE in the transcript (references/rules.md R16: a session-START record clears
   // later relays). Built from the full event stream, not just the current turn.
   const sessionEv = buildEvidence(events);
   const sessionDisambig = DISAMBIG_TOOL_RE.test(sessionEv.cmd) && DISAMBIG_TEXT_RE.test(sessionEv.all);
