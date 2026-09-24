@@ -102,7 +102,7 @@ and writes `docs.local/_drive-filing/rollup-plan-<date>.json`. **The script neve
 Upload exactly the files in that plan through the [archive procedure](references/archive-procedure.md)
 (ledger + `brain_digest`), and nothing that is not in it.
 
-**Credentials never move.** Nothing whose name contains `credential`, `token` or `.env` (`.env*`,
+**Credentials never move.** Nothing whose name contains `credential`, `secret`, `token` or `.env` (`.env*`,
 `deploy.env`, `.ENV.prod`, `.envrc`) or has `env` as a word (`prod-env.json`, `app-env.yml`,
 `staging_env`), or ends in `auth.json`, `.pem` or `.key` — file **or directory** — and nothing under a
 `codexhome`/`codex-home*`, `claudehome`/`claude-home*`, `.codex`, `.claude` or `*-HOME*` directory or a

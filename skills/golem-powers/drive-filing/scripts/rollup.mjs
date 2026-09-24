@@ -43,6 +43,7 @@ const CREDENTIAL_FILE = [
   /\.key$/i,
   /\.env/i, // anything containing .env: .env*, prod.env; .environment over-holds (fine)
   /(^|[-_.])env([-_.]|$)/i, // N-C1: env-named config (prod-env.json, app-env.yml, staging_env)
+  /secret/i, // client_secret.json, app-secrets.yml, secrets/ (spec addition 2026-09-25)
   BROWSER_PROFILE_FILE,
 ];
 // /token/i stays exactly as broad. A name is released from it only when every

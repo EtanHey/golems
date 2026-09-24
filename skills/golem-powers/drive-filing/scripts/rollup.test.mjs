@@ -526,3 +526,13 @@ describe("rollup v2: credential name rules hold directories as well", () => {
     expect(p.skipped).toEqual([]);
   });
 });
+
+// Spec addition (skillcreatorLead, 2026-09-25 15:00): /secret/i, unanchored.
+describe("rollup v2: secret-named files and dirs are credentials", () => {
+  test.each(["2026-02-21-x/client_secret.json", "2026-02-21-x/app-secrets.yml", "2026-02-21-x/SECRETS/a.md"])("%s is held", (path) => {
+    const p = plan(fixture({ [path]: "s", "2026-02-21-x/notes.md": "notes" }));
+    expect(uploadPaths(p)).toEqual([]);
+    expect(p.moves).toEqual([]);
+    expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-02"]);
+  });
+});
