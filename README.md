@@ -12,9 +12,9 @@ that work together for a bounded job. A **skill** is a `SKILL.md` workflow that
 an AI coding agent can load and follow. Skills may also ship scripts,
 references, adapters, fixtures, and executable evals.
 
-At commit `72d907ec` the tree has 13 workspace packages and 88 skills that
+At commit `f42d5ca5` the tree has 13 workspace packages and 86 skills that
 carry a top-level `SKILL.md` under `skills/golem-powers/`. That directory holds
-95 entries; the other 7 are shared, archived, or workspace scaffolding rather
+93 entries; the other 7 are shared, archived, or workspace scaffolding rather
 than installable skills. Run `node scripts/check-skill-library.mjs` to
 re-derive the skill count instead of trusting this paragraph.
 
@@ -26,7 +26,7 @@ Requirements: [Bun](https://bun.sh/) and Git.
 git clone https://github.com/EtanHey/golems.git
 cd golems
 bun install
-bun test
+bun run test
 ```
 
 List or install skills. Both commands read `skills/golem-powers/` from
@@ -85,21 +85,28 @@ coding-agent session in a chosen repo; `-E, --effort <low|medium|high|xhigh|max|
 sets the effort for a single dispatch. The launchers assume the author's own
 machine layout, so read them as a reference rather than a supported product.
 
-Pull requests and pushes to `master` run CodeQL, secret scanning, a dependency
-audit, a publish-boundary guard, a `docs.local` guard, the Python skill suites
-(`scripts/run-skill-tests.sh`), and the bats suites in `scripts/tests/`.
-`bun test` is not one of those gates.
+Pull requests and pushes to `master` run CodeQL, a dependency audit
+(`bun audit`, failing at high severity), a publish-boundary guard, a
+`docs.local` guard, the package test suite (`bun run test`), the Python skill
+suites (`scripts/run-skill-tests.sh`), and the bats suites in `scripts/tests/`.
+Secret scanning also runs but does not fail the build, and only 6 of the 23 bats
+files are blocking; the rest of `scripts/tests/*.bats` runs as a non-blocking
+report until that directory is green.
 
 ## Development
 
 ```bash
 bun install
-bun test
+bun run test
 ```
 
-`bun test` runs 2130 tests across 158 files. At `72d907ec` it reports 2124
-passing, 4 skipped, and 2 failing; both failures predate this checkout, so a
-clean clone shows them too.
+`bun run test` runs the package suite (`bun test ./packages`), the same command
+CI runs. Use it rather than a bare `bun test`, which also collects tests from
+anything checked out under the gitignored `docs.local/`. On a clean clone at
+`f42d5ca5` with the pinned Bun (1.3.14) it runs 1284 tests across 108 files:
+1265 pass, 2 skip, and 17 fail. All 17 are in
+`packages/shared/src/__tests__/jev.test.ts`, which creates its scratch directory
+under `docs.local/` and fails when that directory does not exist.
 
 Eight of the 13 packages carry a `CLAUDE.md` with package-specific
 instructions. Contribution guidance is in [CONTRIBUTING.md](CONTRIBUTING.md),

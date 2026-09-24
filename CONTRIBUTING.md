@@ -14,19 +14,19 @@ bun install
 
 1. **Fork the repo** and create a branch from `master`
 2. **Write tests first** when adding new functionality
-3. **Run tests** before pushing: `bun test`
+3. **Run tests** before pushing: `bun run test` (the package suite CI runs)
 4. **Keep commits focused** — one logical change per commit, conventional format (`feat:`, `fix:`, `docs:`)
 5. **Open a PR** against `master`
 
 ## Pull Request Process
 
 1. Create a PR with a clear description of what and why
-2. Tests must pass — CI runs automatically
+2. Tests must pass — CI runs the package suite, the Python skill suites, and the blocking bats suites on every PR
 3. **CodeRabbit** reviews every PR automatically:
    - Fix CRITICAL/HIGH issues before merge
    - MEDIUM issues are judgment calls
    - Style-only comments can be skipped with rationale
-4. PRs are squash-merged
+4. PRs are merged with a merge commit (not squashed), so each commit stays traceable
 
 ## Vouching Model
 
@@ -49,7 +49,7 @@ This project uses AI coding tools extensively. When AI agents contribute code:
 
 - TypeScript for all new code
 - No `any` types — use proper interfaces
-- Tests live next to source files: `foo.ts` has `foo.test.ts`
+- Package tests live in `packages/<package>/src/__tests__/`: `src/foo.ts` is tested by `src/__tests__/foo.test.ts`
 - Use `@golems/shared` for Supabase, LLM, and notification utilities
 
 ## Reporting Issues

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "ContentGolem — content creation and publishing for LinkedIn, Soltome, and ghostwriting with critique-wave refinement.",
   "author": "EtanHey",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "repository": {

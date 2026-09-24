@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "CoachGolem — life planning with daily scheduling, calendar integration, habit tracking, and ecosystem coordination.",
   "author": "EtanHey",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "repository": {

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Golems Services — infrastructure including cloud worker, night shift, morning briefing, and ecosystem tooling.",
   "author": "EtanHey",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "repository": {

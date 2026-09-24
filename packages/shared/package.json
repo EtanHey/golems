@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Shared infrastructure for the Golems autonomous AI agent ecosystem — Supabase, LLM integrations, email routing, state management, and MCP server utilities.",
   "author": "EtanHey",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "repository": {
