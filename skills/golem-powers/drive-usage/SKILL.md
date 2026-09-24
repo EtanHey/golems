@@ -26,7 +26,7 @@ configuration; never copy live Drive IDs into this skill.
 
 ## Decision tree (where does THIS artifact go?)
 
-1. **A research prompt or its results?** → `03_RESEARCH/Active/<topic>/` (e.g. `skills-eval-phoenix/`). Drive-ground prompts by uploading the real artifacts beside them.
+1. **A research prompt or its results?** → `03_RESEARCH/Active/<topic>/` (e.g. `skills-eval/`). Drive-ground prompts by uploading the real artifacts beside them.
 2. **A finished heavy artifact (>100KB / media / raw transcript / big audit)?** → invoke **`/google-drive-archive`** → lands in `06_ARCHIVE/<area>/<topic>/<date>/`, leaves a `_DRIVE-LEDGER.md` pointer in `docs.local/`.
 3. **A canonical standard / spec / locked schema?** → `01_STANDARDS/`.
 4. **Grounding corpus / reference data?** → `02_GROUNDING/`.
@@ -34,7 +34,7 @@ configuration; never copy live Drive IDs into this skill.
 6. **Lightweight, session-scoped scratch?** → fine to leave in `docs.local/` — but if anyone else (or future-you) needs it, FILE it per 1–5.
 
 ## Naming convention
-`YYYY-MM-DD-<topic>[-<surface/agent>].<ext>` — date-prefixed, kebab-case, topic-first. Folders: `<topic>-<domain>/` (e.g. `weave-eval-phoenix/`). Keep the local mirror name identical to the Drive name so the ledger maps 1:1.
+`YYYY-MM-DD-<topic>[-<surface/agent>].<ext>` — date-prefixed, kebab-case, topic-first. Folders: `<topic>-<domain>/` (e.g. `weave-eval/`). Keep the local mirror name identical to the Drive name so the ledger maps 1:1.
 
 ## The discipline (the one rule)
 **Before you finish a task that produced a durable artifact: did you FILE it in the right Brain Drive folder, or leave it scattered in `docs.local/`?** If durable and still only local → file it now (this skill or `/google-drive-archive`) and drop a one-line `_DRIVE-LEDGER.md` pointer. "It's in docs.local" is not "it's saved."
