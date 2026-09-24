@@ -58,13 +58,27 @@ STUB
   [ "$status" -eq 2 ]
 }
 
-@test "compute counts additions plus deletions on hand-written files" {
+@test "compute counts only additions on hand-written files" {
   make_gh_stub '' ''
   printf 'src/a.ts\t30\t5\nsrc/b.ts\t10\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" compute 7 --repo golems --dry-run --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  # repo	pr	old	new	lines  -> 30+5+10+0 = 45
-  [ "$output" = $'EtanHey/golems\t7\tnone\tsize:XS\t45' ]
+  # repo	pr	old	new	lines  -> 30+10 = 40; the 5 deletions are exempt
+  [ "$output" = $'EtanHey/golems\t7\tnone\tsize:XS\t40' ]
+}
+
+@test "compute exempts deletions: 7 added + 7,254 deleted is size:XS (#160 shape)" {
+  make_gh_stub '' ''
+  cat > "$TEST_ROOT/files.tsv" <<'TSV'
+package.json	1	1
+skills/golem-powers/orc/SKILL.md	6	12
+scripts/cut-tool-allowlist.json	0	22
+skills/golem-powers/pane-liveness-check/SKILL.md	0	3000
+skills/golem-powers/crash-resume-index/src/index.mjs	0	4219
+TSV
+  run "$SCRIPT" compute 160 --repo golems --dry-run --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  [ "$output" = $'EtanHey/golems\t160\tnone\tsize:XS\t7' ]
 }
 
 @test "compute excludes generated, lock, vendored and fixture files" {
@@ -92,8 +106,8 @@ src/real.ts	7	4
 TSV
   run "$SCRIPT" compute 7 --repo golems --dry-run --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  # only src/real.ts counts: 7 + 4 = 11
-  [ "$output" = $'EtanHey/golems\t7\tnone\tsize:XS\t11' ]
+  # only src/real.ts counts, and only its 7 additions
+  [ "$output" = $'EtanHey/golems\t7\tnone\tsize:XS\t7' ]
 }
 
 @test "compute reports the existing labels it found and stays dry on --dry-run" {
@@ -145,6 +159,10 @@ TSV
   [ "$(grep -c -- '--force' "$GH_LOG")" -eq 4 ]
   # L carries the canon-9 one-liner requirement in its description
   grep -qF 'canon 9 needs a one-line why' "$GH_LOG"
+  # descriptions say what is counted: added lines, not changed lines
+  [ "$(grep -c 'hand-written lines added' "$GH_LOG")" -eq 4 ]
+  run grep -c 'lines changed' "$GH_LOG"
+  [ "$output" = "0" ]
   # nothing was renamed: there were no legacy labels
   run grep -c 'label edit' "$GH_LOG"
   [ "$output" = "0" ]
@@ -220,7 +238,7 @@ TSV
   printf 'src/a.ts\t10\t11\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"OK EtanHey/golems#42 size:M covers 21 hand-written lines"* ]]
+  [[ "$output" == *"OK EtanHey/golems#42 size:M covers 10 hand-written lines"* ]]
 }
 
 @test "check warns but passes measured 401 with size:L and no why in the body" {
@@ -256,7 +274,24 @@ TSV
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
   [[ "$output" != *"::warning::"* ]] || false
-  [[ "$output" == *"OK EtanHey/golems#42 size:XS covers 20 hand-written lines"* ]]
+  [[ "$output" == *"OK EtanHey/golems#42 size:XS covers 10 hand-written lines"* ]]
+}
+
+@test "check passes size:XS on a deletion-heavy PR and does not warn" {
+  make_gh_stub '' 'size:XS'
+  printf 'src/a.ts\t7\t7254\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 160 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"::"* ]] || false
+  [[ "$output" == *"OK EtanHey/golems#160 size:XS covers 7 hand-written lines"* ]]
+}
+
+@test "check still fails size:S on 200 added lines (requires size:M)" {
+  make_gh_stub '' 'size:S'
+  printf 'src/a.ts\t200\t300\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::EtanHey/golems#42 is size:S but has 200 hand-written lines (requires size:M)"* ]]
 }
 
 @test "check still rejects size:XS and size:L together on 401 measured lines" {
