@@ -1,6 +1,6 @@
 # Head-to-Head: Cursor /multitask vs Workflow-tool / headless fan-out
 
-> Evidence backing the cursor-multitask skill. Captured 2026-06-05, Cursor 3.3.2 (arm64, build 2026.06.03).
+> Evidence backing [fan-out-engines.md](fan-out-engines.md) (formerly the cursor-multitask skill). Captured 2026-06-05, Cursor 3.3.2 (arm64, build 2026.06.03).
 
 ## Q1: Is `/multitask` invocable headlessly via the `cursor-agent` / `cursor` CLI?
 

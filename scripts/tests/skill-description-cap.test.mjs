@@ -19,11 +19,11 @@ const CAP = 120;
 
 const EXCEPTIONS = {
   "adversarial-council": 234,
+  "agent-routing": 259 /* absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259 */,
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
   "codex-workflows": 142,
   "collab-monitor": 185,
   "convention-audit": 237,
-  "cursor-multitask": 222,
   "drive-usage": 250,
   eli5: 138,
   "grill-me": 147,
