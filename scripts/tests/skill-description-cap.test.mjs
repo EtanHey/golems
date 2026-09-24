@@ -22,7 +22,6 @@ const EXCEPTIONS = {
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
   "codex-workflows": 142,
   "collab-monitor": 185,
-  "conference-recruiting": 240,
   "convention-audit": 237,
   "cursor-multitask": 222,
   "drive-usage": 250,

@@ -43,8 +43,7 @@ const FALLBACK_SKILL_CATEGORIES: Record<string, string[]> = {
   Research: ["research", "youtube-pipeline", "call-debrief"],
   Operations: ["coach", "catchup", "ecosystem-health", "orchestrator-status"],
   Infrastructure: ["1password", "railway", "convex", "vercel"],
-  Voice: ["voice-sessions"],
-  Content: ["video-showcase", "presentation-builder"],
+  Content: ["video-showcase"],
 };
 
 /** Tries remote registry, falls back to static list. Adds "Other" for uncategorized. */

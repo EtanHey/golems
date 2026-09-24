@@ -28,5 +28,5 @@ Draft content using the critique-waves pipeline.
 ## Platform-Specific
 
 - **Soltome**: 2 credits per post, focus on AI/agents community
-- **LinkedIn**: 2026 algorithm rules (see linkedin-post skill)
+- **LinkedIn**: 2026 algorithm rules
 - **Blog**: Long-form, can include code examples

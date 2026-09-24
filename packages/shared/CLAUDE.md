@@ -58,7 +58,6 @@ packages/shared/src/
 │   ├── load-env.ts              # .env loader for launchd (import FIRST)
 │   ├── shared-types.ts          # GolemStatus, TopicStyle, GolemActor
 │   ├── wizard-state.ts          # Wizard/doctor health check functions
-│   ├── session-registry.ts      # Claude session tracking
 │   ├── config.ts                # Centralized config paths
 │   ├── cost-tracker.ts          # API cost logging (JSONL)
 │   ├── helpers.ts               # CLI helper layer (gemini/cursor/codex/kiro)
