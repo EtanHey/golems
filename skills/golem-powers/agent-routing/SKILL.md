@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Enforce Cursor=gather, Codex=implement, Claude=orchestrate. Triggers: delegate, worker assignment, routing, Codex model/effort, subagents."
+description: "Route work across Cursor, Codex, Claude. Triggers: delegate, worker assignment, routing, Codex model/effort, subagents."
 ---
 
 # Agent Routing
