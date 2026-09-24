@@ -119,12 +119,10 @@ run_non_codex_persona_launch() {
       function _golem_reset_title() { return 0; }
       function cursor() { print -r -- "CURSOR_ARGS=$*"; }
       function agy() { print -r -- "AGY_ARGS=$*"; }
-      function kiro-cli() { print -r -- "KIRO_ARGS=$*"; }
       source "$3"
       case "$5" in
         cursor) testrepoCursor -s -p "Implement brief" ;;
         gemini) testrepoGemini -s -p "Implement brief" ;;
-        kiro) testrepoKiro -s -p "Implement brief" ;;
       esac
     ' _ "$PERSONA_HOME" "$PERSONA_REGISTRY" "$SOURCE_DISPATCHER" "$role" "$cli"
 }
@@ -424,7 +422,7 @@ AGY
     ! grep -F -q -- "Theo Von" <<< "$output"
 }
 
-@test "tracked dispatcher source keeps ambiguity gate on Codex Cursor and Kiro continue prompts" {
+@test "tracked dispatcher source keeps ambiguity gate on Codex and Cursor continue prompts" {
     [ -f "$SOURCE_DISPATCHER" ]
 
     local fake_home="$TMPDIR_/home"
@@ -455,25 +453,22 @@ AGENT
       function _golem_reset_title() { return 0; }
       function codex() { print -r -- "CODEX_ARGS=$*"; }
       function cursor() { print -r -- "CURSOR_ARGS=$*"; }
-      function kiro-cli() { print -r -- "KIRO_ARGS=$*"; }
 
       source "$3"
       testrepoCodex -c "Prep Theo voice pairs"
       testrepoCursor -c "Prep Theo voice pairs"
-      testrepoKiro -c "Prep Theo voice pairs"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
     grep -F -q -- "CODEX_ARGS=resume --last" <<< "$output"
     grep -F -q -- "CURSOR_ARGS=agent --continue" <<< "$output"
-    grep -F -q -- "KIRO_ARGS=chat --resume" <<< "$output"
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
     grep -F -q -- "BLOCKED_BRAINLAYER_UNAVAILABLE" <<< "$output"
     grep -F -q -- "Theo Brown / T3.gg / existing Theo voice artifacts" <<< "$output"
     ! grep -F -q -- "Theo Von" <<< "$output"
 }
 
-@test "tracked dispatcher source refuses Codex resume plus print while Cursor and Kiro keep print precedence" {
+@test "tracked dispatcher source refuses Codex resume plus print while Cursor keeps print precedence" {
     [ -f "$SOURCE_DISPATCHER" ]
 
     run zsh -f -c '
@@ -487,22 +482,18 @@ AGENT
       function _golem_reset_title() { return 0; }
       function codex() { print -r -- "CODEX_ARGS=$*"; }
       function cursor() { print -r -- "CURSOR_ARGS=$*"; }
-      function kiro-cli() { print -r -- "KIRO_ARGS=$*"; }
 
       source "$2"
       testrepoCodex -c -p "one shot"
       testrepoCursor -c -p "one shot"
-      testrepoKiro -c -p "one shot"
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
     grep -F -q -- "Cannot combine Codex resume with -p/--print" <<< "$output"
     grep -F -q -- "CURSOR_ARGS=agent --print --output-format text" <<< "$output"
-    grep -F -q -- "KIRO_ARGS=chat --resume --no-interactive" <<< "$output"
     ! grep -F -q -- "CODEX_ARGS=" <<< "$output" || false
     ! grep -F -q -- "CODEX_ARGS=resume --last" <<< "$output" || false
-    ! grep -F -q -- "CURSOR_ARGS=agent --continue" <<< "$output" || false
-    ! grep -F -q -- "KIRO_ARGS=chat --resume one shot" <<< "$output"
+    ! grep -F -q -- "CURSOR_ARGS=agent --continue" <<< "$output"
 }
 
 @test "tracked dispatcher source run launcher prefers bun when bun.lockb exists" {
@@ -2098,41 +2089,6 @@ CLAUDE
     assert_no_worker_persona_markers "$output"
 }
 
-@test "tracked dispatcher source keeps Kiro --worker boot payload persona-free" {
-    [ -f "$SOURCE_DISPATCHER" ]
-
-    local fake_home="$TMPDIR_/home"
-    mkdir -p "$fake_home/.claude/agents"
-    printf '%s\n' \
-      "# Full orchestrator protocol" \
-      "BrainLayer-first boot searches." \
-      > "$fake_home/.claude/agents/test-agent.md"
-    jq '.projects.testrepo.agent = "test-agent"' \
-      "$REGISTRY_FILE" > "$TMPDIR_/registry-with-agent.json"
-
-    run zsh -f -c '
-      unset GOLEM_ROLE
-      export HOME="$1"
-      export RALPH_REGISTRY_FILE="$2"
-
-      function _ralph_setup_mcps() { return 0; }
-      function _ralph_setup_secrets() { return 0; }
-      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
-      function _golem_setup_env() { return 0; }
-      function _golem_setup_title() { return 0; }
-      function _golem_reset_title() { return 0; }
-      function kiro-cli() { print -r -- "KIRO_ARGS=$*"; }
-
-      source "$3"
-      testrepoKiro --worker -s -p "Implement brief"
-    ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
-
-    [ "$status" -eq 0 ]
-    grep -F -q -- "KIRO_ARGS=chat" <<< "$output"
-    grep -F -q -- "Implement brief" <<< "$output"
-    assert_no_worker_persona_markers "$output"
-}
-
 @test "tracked dispatcher source adds no worker prompt to raw Codex arguments" {
     [ -f "$SOURCE_DISPATCHER" ]
 
@@ -2999,7 +2955,7 @@ JSON
     grep -F -q -- "-----END KEY-----" <<< "$output"
 }
 
-@test "tracked dispatcher source keeps lead personas for Cursor Gemini and Kiro" {
+@test "tracked dispatcher source keeps lead personas for Cursor and Gemini" {
     [ -f "$SOURCE_DISPATCHER" ]
 
     PERSONA_HOME="$TMPDIR_/home-non-codex-persona"
@@ -3015,14 +2971,14 @@ JSON
     PERSONA_REGISTRY="$TMPDIR_/registry-non-codex-agent.json"
 
     local cli
-    for cli in cursor gemini kiro; do
+    for cli in cursor gemini; do
       run_non_codex_persona_launch "$cli"
       [ "$status" -eq 0 ]
       grep -F -q -- "<agent_context>" <<< "$output"
     done
 }
 
-@test "tracked dispatcher source keeps inherited GOLEM_ROLE=worker launches persona-free for Cursor Gemini and Kiro" {
+@test "tracked dispatcher source keeps inherited GOLEM_ROLE=worker launches persona-free for Cursor and Gemini" {
     [ -f "$SOURCE_DISPATCHER" ]
     PERSONA_HOME="$TMPDIR_/home-non-codex-worker"
     mkdir -p "$PERSONA_HOME/.claude/agents"
@@ -3033,11 +2989,40 @@ JSON
     PERSONA_REGISTRY="$TMPDIR_/registry-non-codex-worker.json"
 
     local cli
-    for cli in cursor gemini kiro; do
+    for cli in cursor gemini; do
       run_non_codex_persona_launch "$cli" worker
       [ "$status" -eq 0 ]
       assert_no_worker_persona_markers "$output"
     done
+}
+
+@test "tracked dispatcher source defines no Kiro launchers (Q-E)" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    jq '.projects.testrepo.clis = ["claude", "kiro"] | .projects.testrepo.launcherAliasPrefix = "tr"' \
+      "$REGISTRY_FILE" > "$TMPDIR_/registry-with-kiro.json"
+
+    run zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function kiro-cli() { print -r -- "KIRO_ARGS=$*"; }
+      source "$2"
+      (( $+functions[trClaude] )) && print -r -- "PREFIX_LOOP_RAN"
+      (( $+functions[testrepoKiro] )) && print -r -- "DEFINED testrepoKiro"
+      (( $+functions[trKiro] )) && print -r -- "DEFINED trKiro"
+      (( $+functions[_golem_launch_kiro] )) && print -r -- "DEFINED _golem_launch_kiro"
+      _golem_dispatch testrepo kiro -p "probe" </dev/null
+    ' _ "$TMPDIR_/registry-with-kiro.json" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 1 ]
+    grep -F -q -- "PREFIX_LOOP_RAN" <<< "$output" || false
+    ! grep -F -q -- "DEFINED" <<< "$output" || false
+    grep -F -q -- "Unknown CLI: kiro" <<< "$output" || false
+    ! grep -F -q -- "kiro, run" <<< "$output"
 }
 
 @test "tracked dispatcher source sets claude --effort by seat: lead high, worker medium, -E wins" {
