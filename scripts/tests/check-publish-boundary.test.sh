@@ -992,6 +992,9 @@ expect_workflow_history_fail_closed() {
     record_fail "workflow history evidence: ratchet base is missing" "$workflow"
   elif ! grep -Fq '${{ needs.publish-boundary.result }}' "$workflow"; then
     record_fail "workflow history evidence: required aggregate ignores publish-boundary result" "$workflow"
+  elif ! grep -Fq 'PUBLISH_BOUNDARY_HISTORY_BASE="$(git merge-base origin/master HEAD)"' "$workflow" \
+    || ! grep -Fq '"$GITHUB_EVENT_NAME" == pull_request' "$workflow"; then
+    record_fail "workflow history evidence: pull requests are not scoped to their merge base with master" "$workflow"
   else
     record_pass "workflow requires history evidence and aggregates publish-boundary failure"
   fi
