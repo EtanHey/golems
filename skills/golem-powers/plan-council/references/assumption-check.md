@@ -1,11 +1,6 @@
----
-name: plan-validate
-description: "Validate assumptions in multi-agent plans; rewrite weak plans. Triggers: validate plan, check assumptions."
----
+# Assumption Check (formerly `/plan-validate`)
 
-# Plan Validation
-
-**Invoke BEFORE executing any multi-agent sprint.** This skill saved the March 26 overnight
+**Run BEFORE executing any multi-agent sprint.** This check saved the March 26 overnight
 sprint — v1→v3 killed 7 phantom assumptions that would have wasted all work.
 
 ## Process

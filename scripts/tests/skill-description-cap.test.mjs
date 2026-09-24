@@ -18,7 +18,6 @@ import { fileURLToPath } from "node:url";
 const CAP = 120;
 
 const EXCEPTIONS = {
-  "adversarial-council": 234,
   "agent-routing": 259 /* absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259 */,
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
   "codex-workflows": 142,
@@ -29,9 +28,8 @@ const EXCEPTIONS = {
   "grill-me": 147,
   "i-have-adhd": 144,
   "install-runbook-linter": 178,
-  "judge-fleet": 202,
   "launchd-secret-linter": 151,
-  "plan-council": 302,
+  "plan-council": 455 /* absorbed adversarial-council (234), judge-fleet (202), plan-validate (106): 844 -> 455 */,
   "pr-loop": 165,
   "surface-sweep": 375,
   "tmp-block": 223,

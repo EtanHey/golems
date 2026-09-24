@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const DEFAULT_RETIRED = [
+  "adversarial-council",
   "brave",
   "catchup",
   "claude-web-research",
@@ -13,8 +14,10 @@ const DEFAULT_RETIRED = [
   "cursor-multitask",
   "github",
   "interview-practice",
+  "judge-fleet",
   "maintenance",
   "notebooklm-research",
+  "plan-validate",
   "research",
   "research-ab-test",
   "research-prompt-quality",

@@ -1,17 +1,13 @@
----
-name: adversarial-council
-description: "Multi-tier anonymized-peer-ranking council: run and validate. Triggers: peer ranking, anonymized review, adversarial verification, score multiple candidates. NOT for one authored plan/spec with declared judge families (/plan-council)."
----
+# Anonymized Candidate Ranking (formerly `/adversarial-council`)
 
-# Adversarial Council
-
-Routing: use `/adversarial-council` for anonymized candidate ranking; use `/plan-council` for one authored plan/spec with declared judge families and measured same-family bias.
+Routing: this reference covers ranking N anonymized candidates; `../SKILL.md` covers one authored plan/spec with declared judge families and measured same-family bias.
 
 The multi-tier **anonymized-peer-ranking council** — N agents each produce a candidate, then
 judge the *anonymized* set on merit, no authorship leak, ending with a sentinel line — is a
-KEEP-the-win discipline that decays to folklore unless it is **gate-shaped**. This skill
-codifies the protocol and ships a mechanical validator (`council_lint.py`) for the ballot a
-judge produces, with RED→GREEN fixtures (`fixtures/`, `tests/`).
+KEEP-the-win discipline that decays to folklore unless it is **gate-shaped**. This reference
+codifies the protocol; the mechanical validator for the ballot a judge produces is
+`anonymized_ranking/council_lint.py`, with RED→GREEN fixtures (`anonymized_ranking/fixtures/`,
+`anonymized_ranking/tests/`). It is a different validator from the plan-council one.
 
 ## The protocol (judge-on-merit)
 
@@ -30,14 +26,15 @@ judge produces, with RED→GREEN fixtures (`fixtures/`, `tests/`).
 
 Before a finding or brief is handed off, resolve every cited symbol/line against the actual
 code (the symbol exists, the line says what the finding claims). A council verdict that
-cites `file:line` or a function name must be checkable — pair this skill with
+cites `file:line` or a function name must be checkable — pair this protocol with
 `/never-fabricate` (read-before-cite) so a verdict is never folklore.
 
 ## Validate a ballot
 
 ```bash
-python3 council_lint_cli.py ballot.md --require specs/spec.md --require designs/design.md
-python3 -m pytest tests/      # the RED→GREEN gate (10 cases)
+python3 <plan-council-skill-dir>/anonymized_ranking/council_lint_cli.py ballot.md \
+  --require specs/spec.md --require designs/design.md
+python3 -m pytest <plan-council-skill-dir>/anonymized_ranking/tests/   # the RED→GREEN gate (10 cases)
 ```
 
 | Rule | Catches |
