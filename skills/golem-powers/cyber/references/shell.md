@@ -1,9 +1,7 @@
----
-name: shell-hardening
-description: "Bash security checklist: injection, set -euo, printf, quoting. Triggers: shell hardening, bash security."
----
-
 # Shell Hardening Checklist
+
+> Formerly the `/shell-hardening` skill; `../SKILL.md` § Shell and launchd is the summary. Its eval
+> cases live in `../evals/evals.json` (`absorbed_from: shell-hardening`).
 
 **Apply to EVERY bash script before committing.** The March 26 overnight sprint found
 security issues in every orchestrator worker PR (D-R1 through D-R6). Common patterns:

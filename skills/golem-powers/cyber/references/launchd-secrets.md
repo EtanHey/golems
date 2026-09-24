@@ -1,15 +1,13 @@
----
-name: launchd-secret-linter
-description: "Lint launchd plists for hardcoded secrets. Triggers: launchd plist, LaunchAgents, plist secret, raw API key in plist, secrets hygiene, op:// reference."
----
-
 # launchd-secret Linter
+
+> Formerly the `/launchd-secret-linter` skill. The linter lives in
+> `../scripts/launchd-secret-linter/` (paths below are relative to that directory).
 
 A launchd plist that hardcodes a secret in `EnvironmentVariables` **leaks it into the
 user-agent environment on first load and contaminates the whole fleet** — the gen-18
 specimen was a raw `GOOGLE_API_KEY` leaked exactly this way. A hardened plist carries only
 an **`op://` 1Password reference** or **`$VAR` env-indirection**, never the literal. This
-skill makes that rule a mechanical, replayable gate.
+linter makes that rule a mechanical, replayable gate.
 
 ## Scope
 

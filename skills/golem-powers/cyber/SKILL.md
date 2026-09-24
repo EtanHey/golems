@@ -1,6 +1,6 @@
 ---
 name: cyber
-description: "Security audit for MCP, TS, Swift, shell. Triggers: security, vulnerability, hardening, traversal, injection."
+description: "Security audit for MCP, TS, Swift, shell, launchd plists. Triggers: security, vulnerability, hardening, traversal, injection, shell hardening, bash security, launchd plist, LaunchAgents, plist secret, raw API key in plist, secrets hygiene, op:// reference."
 paths:
   - "**/server.ts"
   - "**/mcp-server.*"
@@ -50,6 +50,27 @@ Route to the appropriate workflow based on what you're auditing:
 | Audit an MCP server | `/cyber:workflows:mcp-audit` |
 | Review a PR for security | `/cyber:workflows:pr-review` |
 | Full repo security scan | `/cyber:workflows:repo-scan` |
+| Harden a bash script | [references/shell.md](references/shell.md) |
+| Lint launchd plists for hardcoded secrets | [references/launchd-secrets.md](references/launchd-secrets.md) |
+
+---
+
+## Shell and launchd
+
+**Bash** (full checklist: [references/shell.md](references/shell.md), formerly `/shell-hardening`),
+applied to every script before committing:
+- `set -euo pipefail`; quote every path; `mktemp` + `trap` cleanup; `shellcheck` clean.
+- Build JSON with `jq --arg`, never `printf`; build commands as arrays; never `eval` or
+  `bash -c "$string"` with input.
+- Quote heredoc delimiters (`<<'EOF'`) whenever the body has backticks or `$()`, and always for
+  collab/report/brief appends. An unquoted body executes.
+- Under `pipefail`, buffer before an early-exit consumer (`head -1`, `grep -m1`,
+  `awk '{exit}'`), because SIGPIPE turns into exit 141.
+
+**launchd plists**: `python3 scripts/launchd-secret-linter/lint_cli.py ~/Library/LaunchAgents/*.plist`
+exits 1 on a hardcoded secret in `EnvironmentVariables`. Values are never printed. Only an
+`op://` reference or `$VAR` indirection is hardened. Flag a finding, never auto-rotate. Details:
+[references/launchd-secrets.md](references/launchd-secrets.md).
 
 ---
 
@@ -189,7 +210,7 @@ server.tool("delete_file", schema, handler, {
 
 ## INTERACTION WITH OTHER SKILLS
 
-- **`/shell-hardening`** covers bash-specific patterns in depth. cyberClaude defers to it for `.sh` files but still flags shell injection in TypeScript `exec()` calls.
+- **`references/shell.md`** (formerly `/shell-hardening`) covers bash-specific patterns in depth. cyberClaude applies it to `.sh` files and still flags shell injection in TypeScript `exec()` calls.
 - **`/coderabbit`** handles functional code review. cyberClaude focuses exclusively on security findings.
 - **`/never-fabricate`** applies: Read() every file before reporting a finding. NEVER report a vulnerability from grep output alone --- verify in context.
 - **`/pr-loop`** should invoke cyberClaude before merge for any PR touching MCP servers.
