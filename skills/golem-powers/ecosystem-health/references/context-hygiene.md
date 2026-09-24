@@ -1,10 +1,7 @@
----
-name: context-check
-description: "Audit/fix AI context hygiene vs ~/.golems/config.yaml. Triggers: context check/bloat, MCP/skill/hook hygiene."
-user-invocable: true
----
+# Context Hygiene (formerly `/context-check`)
 
-# context-check
+> `../SKILL.md` § Context hygiene is the summary. Adapters: `../adapters/`; the audit script:
+> `../scripts/audit.sh`; eval cases: `../evals/evals.json` (`absorbed_from: context-check`).
 
 Audit what's loaded vs what SHOULD be loaded for this project.
 
@@ -160,7 +157,7 @@ Formula: `waste = (extra_skills * 150) + (blocked_mcps_tools * 100) + (hooks_if_
 ## Platform Features vs Universal Fallbacks
 
 > Claude Code has full audit + fix. Other CLIs have partial support.
-> Full adapter docs: [adapters/](adapters/)
+> Full adapter docs: [../adapters/](../adapters/)
 
 | Feature | Claude Code | Universal Fallback |
 |---------|-------------|-------------------|
@@ -179,4 +176,4 @@ Formula: `waste = (extra_skills * 150) + (blocked_mcps_tools * 100) + (hooks_if_
 This skill is Component C2 of the Maintenance Golem (Wave 8).
 Design doc: `$ORCHESTRATOR_REPO/designs/maintenance-golem.md`
 
-The nightly maintenance squad (C4) runs this skill across ALL projects weekly to detect config drift.
+The nightly maintenance squad (C4) was designed to run this weekly across ALL projects to detect config drift. As of 2026-09-25 (GO-3 PR-8 recon) no launchd job, hook, cron or other repo calls it; run it by hand.
