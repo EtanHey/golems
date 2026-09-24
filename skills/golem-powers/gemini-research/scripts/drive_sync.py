@@ -16,7 +16,7 @@ from urllib.parse import quote
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[3]
-SHARED_DRIVE_HELPER = REPO_ROOT / "skills" / "golem-powers" / "research" / "_shared" / "drive-paths.py"
+SHARED_DRIVE_HELPER = REPO_ROOT / "skills" / "golem-powers" / "_shared" / "research" / "drive-paths.py"
 STATE_FILE = pathlib.Path(os.environ.get("GEMINI_RESEARCH_STATE_FILE", pathlib.Path.home() / ".golems" / "research-state.json"))
 DEFAULT_PROFILE = os.environ.get("GEMINI_RESEARCH_PROFILE", "etanface")
 
@@ -227,7 +227,7 @@ def verify_account(fixture: dict[str, Any] | None) -> None:
     result = run_cli(
         [
             "bash",
-            str(REPO_ROOT / "skills" / "golem-powers" / "research" / "_shared" / "verify-account.sh"),
+            str(REPO_ROOT / "skills" / "golem-powers" / "_shared" / "research" / "verify-account.sh"),
             "--expect",
             "research-account@example.com",
         ]

@@ -63,10 +63,7 @@ jobs:
       - name: Run package tests
         run: bun run test
 
-  # Suites that sat in no workflow. Each list is explicit: the orphans left out
-  # are red today and listed in the PR that added this job
-  # (the two research drive-sync/migrate shell tests, which point at a moved
-  # skills/golem-powers/research/_shared/).
+  # Suites that sat in no workflow. Each list is explicit.
   script-tests:
     name: Script test suites (bun, node, sh)
     runs-on: ubuntu-latest
@@ -107,6 +104,8 @@ jobs:
         run: |
           bash scripts/tests/claude-learning-workflow.test.sh
           bash scripts/tests/materialize-deep-security-plan.test.sh
+          bash skills/golem-powers/gemini-research/scripts/__tests__/drive-sync.test.sh
+          bash skills/golem-powers/claude-desktop-research/scripts/__tests__/migrate-obsidian-to-drive.test.sh
 
   python-skill-tests:
     name: Python skill test suites
