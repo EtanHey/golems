@@ -85,7 +85,7 @@ test("decision telemetry schema covers advisory, skipped, and error outcomes", (
   scratch.push(root);
   const logPath = path.join(root, "decisions.jsonl");
   const outputAfterInput = (payload) =>
-    `process.stdin.resume(); process.stdin.on("end", () => process.stdout.write(${JSON.stringify(JSON.stringify(payload))}));`;
+    `process.stdin.resume(); process.stdin.on("end", () => process.stdout.write(Buffer.from("${Buffer.from(JSON.stringify(payload)).toString("base64")}", "base64")));`;
 
   const advisory = runSyntheticTelemetry(
     logPath,

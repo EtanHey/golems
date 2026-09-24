@@ -700,6 +700,38 @@ function parseGoozaliMessage(text: string, channelLabel: string): JobListing | n
  * Scrape Goozali Telegram channels (public ones only)
  * Extracts actual job URLs from the posts
  */
+const GOOZALI_ENTITIES: Record<string, string> = {
+  amp: "&",
+  quot: '"',
+  "#39": "'",
+  nbsp: " ",
+};
+
+/** Plain text of a Goozali Telegram message body. */
+export function goozaliHtmlToText(html: string): string {
+  let text = html.replace(/<br\/?>/gi, "\n");
+  // Repeat until stable: removing one tag can join its neighbours into a new one.
+  let previous;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]*>/g, "");
+  } while (text !== previous);
+  text = text.replace(/</g, "");
+  // One pass, so "&amp;quot;" decodes to "&quot;" and not on to '"'.
+  return text.replace(/&(amp|quot|#39|nbsp);/g, (_, name: string) => GOOZALI_ENTITIES[name]).trim();
+}
+
+/** True for an external job link: not Telegram, not Goozali itself. */
+export function isGoozaliJobLink(url: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return host !== "t.me" && host !== "goozali.com" && !host.endsWith(".goozali.com");
+}
+
 export async function scrapeGoozali(): Promise<JobListing[]> {
   console.log("[Goozali] Scraping Telegram channels...");
 
@@ -736,14 +768,7 @@ export async function scrapeGoozali(): Promise<JobListing[]> {
         const textMatch = blockHtml.match(/<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/);
         if (!textMatch) continue;
 
-        let text = textMatch[1]
-          .replace(/<br\/?>/gi, "\n")
-          .replace(/<[^>]+>/g, "")
-          .replace(/&amp;/g, "&")
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/&nbsp;/g, " ")
-          .trim();
+        const text = goozaliHtmlToText(textMatch[1]);
 
         // Extract job URL from the block (careers page links)
         let jobUrl = "https://goozali.com/#jobopenings";
@@ -751,7 +776,7 @@ export async function scrapeGoozali(): Promise<JobListing[]> {
         for (const urlMatch of urlMatches) {
           const url = urlMatch[1];
           // Skip telegram links, prefer actual job/careers URLs
-          if (!url.includes("t.me/") && !url.includes("goozali.com")) {
+          if (isGoozaliJobLink(url)) {
             jobUrl = url.replace(/&amp;/g, "&");
             break;
           }
