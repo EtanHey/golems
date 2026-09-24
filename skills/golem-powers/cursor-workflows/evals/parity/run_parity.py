@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 from claude_reference import load_reference
-from green_autocursor_runner import load_green_replay
+from green_autocursor_runner import SmokeReplaySkipped, load_green_replay
 
 HERE = Path(__file__).resolve().parent
 SCHEMA_PATH = HERE / "schema" / "finding.schema.json"
@@ -198,7 +198,11 @@ def main(argv: list[str] | None = None) -> int:
     validate_corpus()
 
     red = load_reference(HERE / "golden" / "expected.json")
-    green = load_green_replay(HERE)
+    try:
+        green = load_green_replay(HERE)
+    except SmokeReplaySkipped as skip:
+        print(f"PARITY_EVAL SKIP: {skip}")
+        return 0
 
     covered, total, ratio = assert_coverage(red, green)
     assert_inner_loop(red, green)

@@ -46,11 +46,14 @@ for (const candidate of smokeHarnessCandidates) {
     break;
   }
 }
+// smoke-harness.js ships in the private skill-creator repo, so an outside
+// cloner has none: skip with a reason instead of failing.
 if (!smokeHarnessPath) {
-  console.error(
-    "Cannot find smoke-harness.js. Set SMOKE_HARNESS_JS to the module exporting replaySmoke.",
+  process.stdout.write(
+    "SKIP smoke replay: skill-creator's smoke-harness.js is not available (private repo). " +
+      "Set SMOKE_HARNESS_JS to the module exporting replaySmoke to run it.\n",
   );
-  process.exit(1);
+  process.exit(0);
 }
 
 const { replaySmoke } = await import(pathToFileURL(smokeHarnessPath).href);
