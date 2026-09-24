@@ -17,7 +17,7 @@ setup() {
   [ -f "$PIN_FILE" ]
 
   pinned="$(tr -d '[:space:]' < "$PIN_FILE")"
-  [[ "$pinned" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+  [[ "$pinned" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || false
 
   # A trailing newline and nothing else -- setup-bun feeds this file verbatim.
   [ "$(wc -l < "$PIN_FILE" | tr -d ' ')" -eq 1 ]
