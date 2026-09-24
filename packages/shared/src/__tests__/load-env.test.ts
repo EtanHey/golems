@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync } from "fs";
+import { copyFileSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -29,7 +29,12 @@ describe("loadEnv", () => {
     };
 
     try {
-      const { loadEnv } = await import(`../lib/load-env.ts?railway-retired=${Date.now()}`);
+      // loadEnv also walks up from its own file, so importing it in place finds
+      // any .env above the checkout (a worktree under a configured repo has one).
+      // A copy in the temp dir has no .env ancestors on either search path.
+      const isolatedModule = join(tempDir, "load-env.ts");
+      copyFileSync(join(import.meta.dir, "..", "lib", "load-env.ts"), isolatedModule);
+      const { loadEnv } = await import(`${isolatedModule}?railway-retired=${Date.now()}`);
 
       expect(loadEnv()).toBe(false);
       expect(warnings.some((warning) => warning.includes("No .env file found"))).toBe(true);

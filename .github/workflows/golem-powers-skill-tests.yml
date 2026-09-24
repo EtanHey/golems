@@ -23,6 +23,46 @@ jobs:
       - name: Run focused composition tests
         run: node --test skill-evals/helpers/compose-skill.test.js
 
+  # Every packages/* test file. Before this job, 106 of the 108 ran in no workflow.
+  package-tests:
+    name: Package test suite (bun)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+
+      - run: bun install --frozen-lockfile
+
+      # A bun test arg without a leading ./ is a substring FILTER, not a path:
+      # `bun test packages/*/src/__tests__/` also collected every copy of the
+      # repo checked out under the gitignored docs.local/ on a dev machine.
+      # The root script is `bun test ./packages`, a real path.
+      # This planted failing test proves it: if docs.local/ is ever collected
+      # again, the job goes red. It sits under a real package name because the
+      # old filter only matched paths containing packages/<existing>/src/__tests__/.
+      - name: Plant docs.local canary
+        run: |
+          mkdir -p docs.local/ci-canary/packages/shared/src/__tests__
+          printf '%s\n' 'import { expect, test } from "bun:test";' \
+            'test("docs.local canary must never be collected", () => { expect("collected").toBe("ignored"); });' \
+            > docs.local/ci-canary/packages/shared/src/__tests__/canary.test.ts
+
+      # golems-cli's `setup --check` test needs a `claude` binary on PATH
+      # (REQUIRED_DEPS is bun, git, claude) and the runner has none. A stub
+      # meets that precondition without installing Claude Code.
+      - name: Stub the claude CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/bin/sh\necho "claude 0.0.0 (CI stub)"\n' > "$RUNNER_TEMP/bin/claude"
+          chmod +x "$RUNNER_TEMP/bin/claude"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Run package tests
+        run: bun run test
+
   # Suites that sat in no workflow. Each list is explicit: the orphans left out
   # are red today and listed in the PR that added this job
   # (skill-description-cap, and the two research drive-sync/migrate shell tests,

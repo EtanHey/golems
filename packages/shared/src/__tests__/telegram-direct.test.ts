@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
 
 // Save original env
 const originalEnv = { ...process.env };
@@ -296,7 +296,8 @@ describe("telegram-direct", () => {
   });
 });
 
-// Restore fetch after all tests
-afterEach(() => {
-  // Keep mock active during test run
+// Restore fetch after all tests. Every test file shares one process, so a
+// mock left in place makes later files' real fetch calls get this 404.
+afterAll(() => {
+  globalThis.fetch = originalFetch;
 });

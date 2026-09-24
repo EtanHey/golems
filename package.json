@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "bun test packages/*/src/__tests__/",
+    "test": "bun test ./packages",
     "test:stalker-chat": "bats scripts/tests/test-stalker-durable-failures.bats",
     "test:skill-symlinks": "bats scripts/tests/test-cleanup-legacy-commands.bats scripts/tests/test-golem-install-validate.bats",
     "test:pr-size-labels": "bats scripts/tests/test-pr-size-labels.bats",
@@ -29,7 +29,7 @@
     "body-parser": "2.3.0",
     "brace-expansion": "2.1.4",
     "express-rate-limit": "8.6.2",
-    "fast-uri": "3.1.5",
+    "fast-uri": "3.1.6",
     "form-data": "4.0.6",
     "hono": "4.13.2",
     "ip-address": "10.5.0",

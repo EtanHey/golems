@@ -324,7 +324,7 @@ describe("evals.json structure", () => {
     }
   });
 
-  test("total assertion count is 23", async () => {
+  test("total assertion count is 24", async () => {
     const evalsPath = join(
       import.meta.dir,
       "..",
@@ -343,7 +343,7 @@ describe("evals.json structure", () => {
     for (const ev of data.evals) {
       totalAssertions += ev.assertions.length;
     }
-    expect(totalAssertions).toBe(23);
+    expect(totalAssertions).toBe(24);
   });
 });
 
