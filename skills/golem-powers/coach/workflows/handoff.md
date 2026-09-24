@@ -4,7 +4,7 @@
 
 ## When this fires
 
-- **No context-% trigger:** let auto-compaction happen. Never fire this workflow because context is growing (Etan, 2026-09-24).
+- **No context-% trigger:** let auto-compaction happen. Never fire this workflow because context is growing (owner ruling, 2026-09-24).
 - **Manual:** user types `/coach:workflows:handoff` (e.g., before a planned break, or when they sense degradation early).
 
 ## Step 1 — Anchor the clock + count active topics
@@ -15,10 +15,10 @@ date '+%A %Y-%m-%d %H:%M %Z'
 
 Then count active topics from this session — topics where ≥10 substantive turns happened in the last 24h, OR an unresolved 🔴 fire from the prior handoff. Coach domain candidates:
 
-- **taskowl** (legal settlement, Alon, Dana)
+- **client-project** (contract dispute, Sam, Riley)
 - **resume** (CV iteration, distribution)
 - **interview** (prep, drills, feedback calls)
-- **outreach** (Tal Shemesh, TechGym, recruiter pipeline)
+- **outreach** (Morgan Lee, BootcampCo, recruiter pipeline)
 - **health** (wearable data, sleep, journal)
 - **admin** (accountant, banks, government)
 - **freelance** (active client work, invoices)
@@ -28,7 +28,7 @@ Then count active topics from this session — topics where ≥10 substantive tu
 | Active topics | Strategy | Why |
 |---|---|---|
 | **1-2** | Single monolithic handoff | One file is enough; new session can hold the whole thing |
-| **3+** | **Fork by topic** — one handoff per topic, recommend dedicated continuation sessions | Audit of `feb75b2b-...7216ac` proved monolithic compaction destroys per-track state; the Apr 15 forced auto-compact lost feature-branch context mid-TaskOwl-crisis |
+| **3+** | **Fork by topic** — one handoff per topic, recommend dedicated continuation sessions | Audit of `feb75b2b-...7216ac` proved monolithic compaction destroys per-track state; the Apr 15 forced auto-compact lost feature-branch context mid-Client project-crisis |
 
 ## Step 3 — Write the handoff file(s)
 
@@ -71,15 +71,15 @@ For **single handoff (1-2 topics)**, print this for the user to copy-paste into 
 ```text
 Picking up from handoff: $COACH_ROOT/docs.local/handoffs/handoff-{YYYY-MM-DD}-coach-{topic-slug}.md
 First action: {Next Steps #1 from the handoff}
-Hard constraints from outgoing session: {anti-patterns + active comms freezes, e.g., "Do NOT reply to Alon until Dana's email lands"}
+Hard constraints from outgoing session: {anti-patterns + active comms freezes, e.g., "Do NOT reply to Sam until Riley's email lands"}
 ```
 
 For **fork (3+ topics)**, print one block per topic — user spawns N sessions:
 
 ```text
-=== Topic 1: taskowl ===
+=== Topic 1: client-project ===
 coachClaude
-Then: Read $COACH_ROOT/docs.local/handoffs/handoff-{date}-coach-taskowl.md in full. First action: {...}.
+Then: Read $COACH_ROOT/docs.local/handoffs/handoff-{date}-coach-client-project.md in full. First action: {...}.
 
 === Topic 2: resume ===
 coachClaude
@@ -97,7 +97,7 @@ Do NOT continue accepting new substantive work in the bloated session unless the
 
 ## Anti-Patterns (don't do these)
 
-- ❌ **Don't compose handoff sections from memory.** Re-Read the relevant source files (prior handoff, recent diaries, taskowl thread, etc.) BEFORE writing each section. Fabrication-by-summarization is the #1 handoff failure mode.
+- ❌ **Don't compose handoff sections from memory.** Re-Read the relevant source files (prior handoff, recent diaries, client-project thread, etc.) BEFORE writing each section. Fabrication-by-summarization is the #1 handoff failure mode.
 - ❌ **Don't use generic tags.** `tags: ["handoff"]` won't be findable — date-anchored tags are mandatory (CR0 boot queries by date).
 - ❌ **Don't fork prematurely.** 1 active fire + 1 routine = 2 topics, not "fork it." Fork is for ≥3 SIMULTANEOUSLY active fires.
 - ❌ **Don't skip the anti-patterns section.** Every session learns something. Recording it is how coach gets smarter.
@@ -105,4 +105,4 @@ Do NOT continue accepting new substantive work in the bloated session unless the
 
 ## Reference exemplar
 
-The 2026-04-26 taskowl-interview-prep handoff at `$COACH_ROOT/docs.local/handoffs/handoff-2026-04-26-coach-taskowl-interview-prep.md` is the canonical structure. Match its quality.
+The canonical example is the best past handoff your private overlay names (see `$COACH_ROOT/docs.local/handoffs/`). Match its quality.

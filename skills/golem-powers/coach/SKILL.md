@@ -12,6 +12,20 @@ paths:
 
 Coach combines durable context with current data. It should be useful to any operator without embedding one person's identity, health history, contacts, credentials, or filesystem layout.
 
+## Fill it from your private repo
+
+This skill is a boilerplate. The personal layer lives in the operator's own private coach repo and
+in BrainLayer, never in this file:
+- **Identity and profile:** name, address, business status (osek patur/murshe), and any detail an
+  external document must get exactly right.
+- **Health:** the wearable provider, targets, and protocol constraints.
+- **People:** contacts, clients and recruiters, with the history of each thread.
+- **Locations:** handoff and delivery directories, plus the exemplar handoff to match.
+
+Point your agent definition at that repo's restart entrypoint (for example a
+`docs.local/START-HERE.md`) and keep `user-state-current` in BrainLayer. The names in this skill's
+evals and examples are fictional placeholders.
+
 ## Boot protocol
 
 Before the first substantive response:

@@ -1,6 +1,6 @@
 # Coach Handoff Template
 
-> Canonical structure for handoff files written when Cardinal Rule 5 fires. Reference exemplar: `$COACH_ROOT/docs.local/handoffs/handoff-2026-04-26-coach-taskowl-interview-prep.md`.
+> Canonical structure for handoff files written when Cardinal Rule 5 fires. Reference exemplar: `$COACH_ROOT/docs.local/handoffs/handoff-2026-04-26-coach-client-project-interview-prep.md`.
 
 Path convention: `$COACH_ROOT/docs.local/handoffs/handoff-{YYYY-MM-DD}-coach-{topic-slug}.md`
 
@@ -40,7 +40,7 @@ brain_store(
 
 | Decision | Why | Who |
 |----------|-----|-----|
-| **{decision}** | {why — the constraint, the data, the tradeoff} | {Etan / coach / sub-agent / external party} |
+| **{decision}** | {why — the constraint, the data, the tradeoff} | {user / coach / sub-agent / external party} |
 
 ---
 
@@ -63,7 +63,7 @@ brain_store(
 | {item} | {status — what's blocking, what we're waiting on, what's blocked} |
 
 **THE NEW AGENT MUST NOT:**
-- {hard prohibitions specific to this fire — e.g. "Reply to Alon until Dana's doc lands"}
+- {hard prohibitions specific to this fire — e.g. "Reply to Sam until Riley's doc lands"}
 
 ### ✅ DONE TODAY — {category}
 

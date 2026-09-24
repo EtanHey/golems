@@ -83,9 +83,9 @@ tests:
       skill_name: coach
       skill_system_prompt: "compose://coach"
       scenario_prompt: |
-        Draft a message to Alon updating him on sprint 2 progress.
+        Draft a message to Sam updating him on sprint 2 progress.
         Sprint 2: login screen redesign done, onboarding flow fix done.
-        Client: Alon Levi (TaskOwl app). Rate: [RATE].
+        Client: Sam Carter (a client app). Rate: [RATE].
     assert:
       - type: llm-rubric
         value: "Response searches BrainLayer for client context before drafting"
@@ -141,7 +141,7 @@ tests:
       - type: llm-rubric
         value: "Response presents options with pros/cons rather than deciding for the user"
       - type: llm-rubric
-        value: "Response factors in existing Alon/TaskOwl contract and job search status"
+        value: "Response factors in existing Sam/client-project contract and job search status"
       - type: llm-rubric
         value: "Response stores this significant career decision context in BrainLayer"
 

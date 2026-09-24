@@ -56,7 +56,7 @@ Hi [Name],
 [1 sentence — clear, low-pressure ask]
 
 Best,
-Etan
+{your name}
 ```
 
 After sending, store:
