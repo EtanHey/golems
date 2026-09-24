@@ -23,8 +23,6 @@ load helpers/test-helper.bash
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"Bundle ID consistency"* ]] || false
-  # Still vacuous on purpose: check.sh never prints this wording, a gap eval 9's
-  # spec requires. The fix and the || false land together in a separate PR.
-  [[ "$output" == *"user judgment"* || "$output" == *"user action"* ]]
+  [[ "$output" == *"user judgment"* || "$output" == *"user action"* ]] || false
   [ "$(cat "$PROJECT_DIR/app.json")" = "$original_app_json" ]
 }
