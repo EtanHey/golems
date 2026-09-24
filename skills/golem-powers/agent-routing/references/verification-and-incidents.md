@@ -43,7 +43,7 @@ artifact, not worker narration or a DONE marker.
 - **AP9/AP11: raw or verbose launch.** Fleet canon #6 owns launcher law; `/repogolem` owns invocation mechanics.
 - **AP10: skillCreator bypass.** Skill/hook/agent/global-setting work pauses until skillCreator is in the loop.
 
-The historical `cursor-multitask/evals/results/headless-ab-2026-06-05.json` did not observe effective
+The historical `evals/results/cursor-multitask-headless-ab-2026-06-05.json` did not observe effective
 runtime model/effort. It is non-comparable history and MUST NOT support numeric evidence.
 
 Verbatim user corrections retained from the incidents:

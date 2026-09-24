@@ -10,6 +10,7 @@ const DEFAULT_RETIRED = [
   "context7",
   "convex",
   "critique-waves",
+  "cursor-multitask",
   "github",
   "interview-practice",
   "maintenance",
