@@ -1,17 +1,14 @@
----
-name: cursor-multitask
-description: "Route fan-out work to the right engine: /multitask, cursor-agent, Claude Workflow, or cmux. Triggers: multitask, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
----
+# Fan-Out Engines — Parallel Routing
 
-# cursor-multitask — Parallel Fan-Out Routing
-
-> Encoded-preference skill. Picks the right parallelism engine for a fan-out task.
+> Absorbed from the former `cursor-multitask` skill; `../SKILL.md` § Fan-out engine holds the
+> routing table. Picks the right parallelism engine for a fan-out task.
 > The expensive mistake is reaching for an in-editor GUI feature when a headless,
 > deterministic, observable fan-out is what the task actually needs.
 
 ## Scope
 
 The engines in full: Cursor /multitask, headless cursor-agent, Claude Workflow, cmux.
+Measured evidence (the 14s vs 28s run, the headless `/multitask` pass-through): [fan-out-head-to-head.md](fan-out-head-to-head.md).
 
 ## TL;DR — the one decision
 
@@ -80,17 +77,17 @@ wait
 - Use the Claude Workflow/Agent tools when you have 2+ independent, no-shared-state tasks and want Claude to fan them out. Subagents return summaries to the parent; counts against your plan rate limit, not usage billing.
 
 ### D. cmux fleet (visible multi-vendor)
-- Invoke `/cmux-agents`. Use when the human wants to watch heterogeneous workers. See also `/agent-routing` (Cursor=gather, Codex=implement, Claude=orchestrate).
+- Invoke `/cmux-agents`. Use when the human wants to watch heterogeneous workers. See also `../SKILL.md` § Role Matrix (Cursor=gather, Codex=implement, Claude=orchestrate).
 
 ## GOTCHAS / ANTI-PATTERNS
-- **Do NOT** tell a headless agent or a terminal orchestrator to "use `/multitask`" — the slash command is not recognized; the text degrades to a plain prompt handled by ONE agent that may falsely report it parallelized. Success-looking output ≠ subagents ran. This is the #1 misroute this skill exists to prevent.
+- **Do NOT** tell a headless agent or a terminal orchestrator to "use `/multitask`" — the slash command is not recognized; the text degrades to a plain prompt handled by ONE agent that may falsely report it parallelized. Success-looking output ≠ subagents ran. This is the #1 misroute this reference exists to prevent.
 - **Do NOT** model-pin any Cursor path, including internal/headless fan-out.
 - **Do NOT** parallelize sequentially-dependent steps — wasted tokens.
 - **`/multitask` v0 has no write-conflict locking** — keep parallel writes to disjoint files, or prefer worktrees (Cursor's own worktree feature, or headless fan-out into separate dirs).
 - Each subagent ≈ one parent-context-window of overhead. On usage-based pricing this adds up — cap with `--max`/`--budget` (GUI) or a `-P` semaphore (headless).
 - Discovery-then-change pattern: fan out the *discovery* phase (read-heavy, naturally parallel), then make the *changes* in a single agent holding the whole picture.
 
-If this skill's own dispatch exhausts a shared quota, report that dispatch as
+If this procedure's own dispatch exhausts a shared quota, report that dispatch as
 the cause; never relabel the resulting error as an external finding.
 
 ## Compact Instructions
@@ -99,6 +96,6 @@ the cause; never relabel the resulting error as an external finding.
 - **Re-verify on Cursor version bump:** whether `/multitask` ever gains a headless CLI surface (`cursor-agent --help | grep -i multitask`). If it does, update the matrix.
 
 ## Integration Points
-- `/agent-routing` — decides Cursor vs Codex vs Claude by task TYPE (gather/implement/orchestrate). This skill decides the PARALLELISM ENGINE once you know it's a fan-out. Use together.
+- `/agent-routing` § Role Matrix — decides Cursor vs Codex vs Claude by task TYPE (gather/implement/orchestrate). This reference decides the PARALLELISM ENGINE once you know it's a fan-out.
 - `/cmux-agents` — the visible-fleet implementation referenced in row 4.
 - Claude's built-in Workflow/Agent tools — the in-session fan-out path (row 3).

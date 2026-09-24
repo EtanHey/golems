@@ -182,24 +182,34 @@ describe("wizard module", () => {
   });
 });
 
+// The wizard skill was absorbed into golem-install (GO-3 PR-1); its five eval
+// cases live in golem-install's evals.json, tagged absorbed_from: "wizard" and
+// keeping their original numbers as absorbed_id.
+async function loadWizardEvals() {
+  const evalsPath = join(
+    import.meta.dir,
+    "..",
+    "..",
+    "..",
+    "..",
+    "skills",
+    "golem-powers",
+    "golem-install",
+    "evals",
+    "evals.json",
+  );
+  const data = JSON.parse(await readFile(evalsPath, "utf8"));
+  const evals = data.evals
+    .filter((ev: { absorbed_from?: string }) => ev.absorbed_from === "wizard")
+    .map((ev: { absorbed_id: number }) => ({ ...ev, id: ev.absorbed_id }));
+  return { ...data, evals };
+}
+
 describe("evals.json structure", () => {
   test("evals.json is valid and has all required fields", async () => {
-    const evalsPath = join(
-      import.meta.dir,
-      "..",
-      "..",
-      "..",
-      "..",
-      "skills",
-      "golem-powers",
-      "wizard",
-      "evals",
-      "evals.json",
-    );
-    const raw = await readFile(evalsPath, "utf8");
-    const data = JSON.parse(raw);
+    const data = await loadWizardEvals();
 
-    expect(data.skill_name).toBe("wizard");
+    expect(data.skill_name).toBe("golem-install");
     expect(data.evals).toBeArray();
     expect(data.evals).toHaveLength(5);
 
@@ -219,19 +229,7 @@ describe("evals.json structure", () => {
   });
 
   test("eval 1 covers fresh machine with all prerequisites", async () => {
-    const evalsPath = join(
-      import.meta.dir,
-      "..",
-      "..",
-      "..",
-      "..",
-      "skills",
-      "golem-powers",
-      "wizard",
-      "evals",
-      "evals.json",
-    );
-    const data = JSON.parse(await readFile(evalsPath, "utf8"));
+    const data = await loadWizardEvals();
     const eval1 = data.evals[0];
 
     expect(eval1.id).toBe(1);
@@ -249,19 +247,7 @@ describe("evals.json structure", () => {
   });
 
   test("eval 3 covers already-configured scenario", async () => {
-    const evalsPath = join(
-      import.meta.dir,
-      "..",
-      "..",
-      "..",
-      "..",
-      "skills",
-      "golem-powers",
-      "wizard",
-      "evals",
-      "evals.json",
-    );
-    const data = JSON.parse(await readFile(evalsPath, "utf8"));
+    const data = await loadWizardEvals();
     const eval3 = data.evals[2];
 
     expect(eval3.id).toBe(3);
@@ -277,19 +263,7 @@ describe("evals.json structure", () => {
   });
 
   test("eval 5 covers invalid workspace path", async () => {
-    const evalsPath = join(
-      import.meta.dir,
-      "..",
-      "..",
-      "..",
-      "..",
-      "skills",
-      "golem-powers",
-      "wizard",
-      "evals",
-      "evals.json",
-    );
-    const data = JSON.parse(await readFile(evalsPath, "utf8"));
+    const data = await loadWizardEvals();
     const eval5 = data.evals[4];
 
     expect(eval5.id).toBe(5);
@@ -305,19 +279,7 @@ describe("evals.json structure", () => {
   });
 
   test("evals do not reference missing fixture files", async () => {
-    const evalsPath = join(
-      import.meta.dir,
-      "..",
-      "..",
-      "..",
-      "..",
-      "skills",
-      "golem-powers",
-      "wizard",
-      "evals",
-      "evals.json",
-    );
-    const data = JSON.parse(await readFile(evalsPath, "utf8"));
+    const data = await loadWizardEvals();
 
     for (const ev of data.evals) {
       expect(ev.files).toEqual([]);
@@ -325,19 +287,7 @@ describe("evals.json structure", () => {
   });
 
   test("total assertion count is 24", async () => {
-    const evalsPath = join(
-      import.meta.dir,
-      "..",
-      "..",
-      "..",
-      "..",
-      "skills",
-      "golem-powers",
-      "wizard",
-      "evals",
-      "evals.json",
-    );
-    const data = JSON.parse(await readFile(evalsPath, "utf8"));
+    const data = await loadWizardEvals();
 
     let totalAssertions = 0;
     for (const ev of data.evals) {
@@ -493,19 +443,7 @@ describe("execution mode detection", () => {
 
 describe("fixture consistency", () => {
   test("wizard evals are self-contained", async () => {
-    const evalsPath = join(
-      import.meta.dir,
-      "..",
-      "..",
-      "..",
-      "..",
-      "skills",
-      "golem-powers",
-      "wizard",
-      "evals",
-      "evals.json",
-    );
-    const data = JSON.parse(await readFile(evalsPath, "utf8"));
+    const data = await loadWizardEvals();
 
     for (const ev of data.evals) {
       expect(ev.files).toEqual([]);

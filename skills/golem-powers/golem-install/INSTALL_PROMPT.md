@@ -1,6 +1,6 @@
 # Install: golem-install
 
-> Set up the golems ecosystem for the first time on a new machine. Checks CLI dependencies, wires MCP servers, creates skill symlinks. Use when: "set up golems", "install golems", "new machine setup", "wire skills". NOT for daily usage.
+> Set up the golems ecosystem for the first time on a new machine. Checks CLI dependencies, wires MCP servers, creates skill symlinks, runs the role-aware fresh-machine wizard, and lists installed skills. Use when: "set up golems", "install golems", "new machine setup", "wire skills", "wizard", "list my skills". NOT for daily usage.
 
 ## Skill Paths by CLI
 
@@ -25,12 +25,15 @@ Run this in a terminal:
 ```bash
 BASE=https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/golem-install
 SKILLS_DIR=~/.agents/skills
-mkdir -p "$SKILLS_DIR/golem-install/workflows" "$SKILLS_DIR/golem-install/scripts"
+mkdir -p "$SKILLS_DIR/golem-install/workflows" "$SKILLS_DIR/golem-install/scripts" "$SKILLS_DIR/golem-install/references"
 curl -sL "$BASE/SKILL.md" -o "$SKILLS_DIR/golem-install/SKILL.md"
-for wf in check-deps install-deps setup-symlinks setup-tokens validate wire-project; do
+for ref in wizard list-skills; do
+  curl -sL "$BASE/references/$ref.md" -o "$SKILLS_DIR/golem-install/references/$ref.md"
+done
+for wf in check-deps install-deps setup-symlinks setup-tokens validate wire-project wizard-setup; do
   curl -sL "$BASE/workflows/$wf.md" -o "$SKILLS_DIR/golem-install/workflows/$wf.md"
 done
-for sc in check-deps install-deps validate; do
+for sc in check-deps install-deps validate wizard-preflight; do
   curl -sL "$BASE/scripts/$sc.sh" -o "$SKILLS_DIR/golem-install/scripts/$sc.sh"
   chmod +x "$SKILLS_DIR/golem-install/scripts/$sc.sh"
 done
@@ -90,6 +93,38 @@ chmod +x ~/.claude/skills/golem-install/scripts/validate.sh
 5. Verify:
 ```bash
 ls ~/.claude/skills/golem-install/
+```
+
+## Wizard Bundle (no clone)
+
+The fresh-machine wizard needs its helpers and the canonical artifact manifest next to the skill.
+Paste into a Claude Code session to install the complete bundle without cloning the repository:
+
+```
+Install the golem-install bundle from EtanHey/golems without cloning the repository. Download
+SKILL.md, references/wizard.md, references/list-skills.md, workflows/wizard-setup.md,
+scripts/wizard-preflight.sh, scripts/repo-action.mjs, scripts/install-codex-config.mjs, the root
+config/codex directory, and the root release-gate.json into ~/.claude/skills/golem-install
+(keeping each file's subdirectory), then run /golem-install and ask for the wizard.
+```
+
+Manual equivalent:
+```bash
+set -euo pipefail
+RAW=https://raw.githubusercontent.com/EtanHey/golems/master
+BASE=$RAW/skills/golem-powers/golem-install
+DEST=~/.claude/skills/golem-install
+mkdir -p "$DEST/references" "$DEST/workflows" "$DEST/scripts" "$DEST/config/codex/agents"
+curl -fsSL "$BASE/SKILL.md" -o "$DEST/SKILL.md"
+for f in references/wizard.md references/list-skills.md workflows/wizard-setup.md \
+         scripts/wizard-preflight.sh scripts/repo-action.mjs scripts/install-codex-config.mjs; do
+  curl -fsSL "$BASE/$f" -o "$DEST/$f"
+done
+for f in config/codex/config.toml config/codex/agents/recon.toml config/codex/agents/packet.toml release-gate.json; do
+  curl -fsSL "$RAW/$f" -o "$DEST/$f"
+done
+ls "$DEST/SKILL.md" "$DEST/release-gate.json" "$DEST/scripts/repo-action.mjs" \
+  "$DEST/scripts/install-codex-config.mjs" "$DEST/config/codex/agents/packet.toml"
 ```
 
 ## Usage

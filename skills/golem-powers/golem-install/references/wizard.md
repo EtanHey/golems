@@ -1,10 +1,6 @@
----
-name: wizard
-description: "Fresh-machine golems setup: prereqs, config, repos, MCP, BrainLayer. Triggers: setup, wizard, install golems."
----
+# Fresh-Machine Wizard (full procedure)
 
-# Golems Setup Wizard
-
+> Absorbed from the former `wizard` skill; `../SKILL.md` § Fresh-machine wizard is the summary.
 > Automated fresh-machine setup. Checks prerequisites, writes role-aware config, installs artifacts, clones only explicitly checkout-backed repos, wires MCP servers, verifies connections.
 
 ## CARDINAL RULE
@@ -137,13 +133,13 @@ Create it interactively:
 
 ## Step 3: Install Artifacts or Clone Checkout-Backed Repos
 
-`release-gate.json` is the only repository/artifact classification. Do not maintain another repo list in this skill. The installed wizard bundle includes the helper and a copy of that manifest; a golems checkout uses the root manifest directly. If either installed file is absent, stop and install/update the complete bundle from `INSTALL_PROMPT.md` — do not reconstruct a repo list in prose.
+`release-gate.json` is the only repository/artifact classification. Do not maintain another repo list in this skill. The installed golem-install bundle includes the helper and a copy of that manifest; a golems checkout uses the root manifest directly. If either installed file is absent, stop and install/update the complete bundle from `INSTALL_PROMPT.md` — do not reconstruct a repo list in prose.
 
-Read `machineRole`, then run the decision helper from the loaded wizard directory:
+Read `machineRole`, then run the decision helper from the loaded golem-install directory:
 
 ```bash
 MACHINE_ROLE=$(python3 -c "import yaml; print(yaml.safe_load(open('$HOME/.golems/config.yaml')).get('machineRole', ''))")
-bun <wizard-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"
+bun <golem-install-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"
 ```
 
 The helper enumerates `release-gate.json` and returns one action per entry:
@@ -168,12 +164,12 @@ cd "$REPOS_PATH/golems" && bun install
 ### Install Codex subagent defaults
 
 Install the versioned Codex fragment and named agents after the golems artifact is available. In a
-checkout, `config/codex/` is the source of truth. In the standalone wizard bundle, use the bundled
+checkout, `config/codex/` is the source of truth. In the standalone golem-install bundle, use the bundled
 copy downloaded by `INSTALL_PROMPT.md`:
 
 ```bash
-bun <wizard-dir>/scripts/install-codex-config.mjs \
-  --source-dir <golems-checkout-or-wizard-dir>/config/codex
+bun <golem-install-dir>/scripts/install-codex-config.mjs \
+  --source-dir <golems-checkout-or-golem-install-dir>/config/codex
 ```
 
 The installer updates only `default_subagent_model`,
@@ -336,7 +332,7 @@ Render one release-gate line for every helper result. Do not replace `REFUSE`, f
 ## Composability
 
 This skill is invoked by:
-- `/wizard` slash command in Claude Code
+- `/golem-install` in Claude Code ("wizard", "setup", "new machine")
 - `INSTALL_PROMPT.md` paste into a Claude session
 - Fresh machine setup flow
 

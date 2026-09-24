@@ -11,6 +11,7 @@ const DEFAULT_RETIRED = [
   "context7",
   "convex",
   "critique-waves",
+  "cursor-multitask",
   "github",
   "interview-practice",
   "judge-fleet",
@@ -21,8 +22,10 @@ const DEFAULT_RETIRED = [
   "research-ab-test",
   "research-prompt-quality",
   "review-router",
+  "skills",
   "test-plan",
   "video-showcase",
+  "wizard",
   "worktrees",
 ];
 

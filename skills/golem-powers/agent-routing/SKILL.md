@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Route work across Cursor, Codex, Claude. Triggers: delegate, worker assignment, routing, Codex model/effort, subagents."
+description: "Route work to Cursor/Codex/Claude; pick the fan-out engine. Triggers: delegate, worker assignment, routing, Codex model/effort, subagents, multitask, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
 ---
 
 # Agent Routing
@@ -16,6 +16,7 @@ description: "Route work across Cursor, Codex, Claude. Triggers: delegate, worke
 - Choosing a Codex model or effort, comparing model cost/context, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md). That reference owns the GPT-6 default, per-job Luna choice, and 5.6 fallback policy; do not duplicate them here.
 - Launching, reusing, monitoring, recovering, or closing a worker lane? Read [references/delegation-operations.md](references/delegation-operations.md).
 - Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
+- Fanning out independent units, or asked about Cursor `/multitask`? Read [references/fan-out-engines.md](references/fan-out-engines.md) (recipes, gotchas, GUI prompt contract, dispatch hygiene).
 
 Read every reference triggered by the mission before dispatch. The live reference, not this summary,
 owns its detailed procedure.
@@ -35,8 +36,27 @@ Decision rules:
 2. Any code or file change -> Codex.
 3. Coordination, synthesis, monitoring, or decisions -> Claude.
 4. Mixed gather + implement work -> Cursor returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff.
-5. Independent parallel units -> `/cursor-multitask` chooses the fan-out engine; fleet canon #1 owns Cursor model selection.
+5. Independent parallel units -> § Fan-out engine chooses the engine; fleet canon #1 owns Cursor model selection.
 6. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> Gemini through `/qa-video`.
+
+## Fan-out engine
+
+Once the work is known to be N independent units, pick the parallelism engine. Full recipes and
+evidence: [references/fan-out-engines.md](references/fan-out-engines.md).
+
+**Cursor `/multitask` is an in-editor GUI slash command, not a `cursor-agent` CLI feature.** Sent to
+a headless agent, it degrades to one plain prompt answered by ONE agent that may claim it ran in
+parallel. A terminal/cmux orchestrator never uses it.
+
+| Task shape | Engine |
+|---|---|
+| Human in the Cursor editor, independent read-heavy prompts | Cursor `/multitask` (GUI; `\|\|\|`-separated; no write locking) |
+| Headless / scripted / CI / terminal orchestrator; want determinism + per-agent tokens | `cursor-agent -p --force --output-format json … &` + `wait` (Auto model, never `-m`) |
+| Inside a Claude session; let the parent decide the split | Claude Workflow / Agent tools |
+| Visible, multi-vendor, long-running, human-watchable workers | cmux fleet (`/cmux-agents`) |
+| One coherent edit, or step B needs step A's output | None: run serially in one agent |
+
+Fan out the read-heavy discovery; make the changes in one agent that holds the whole picture.
 
 ## Dispatch Boundaries
 
@@ -87,6 +107,5 @@ explain the evidence-backed state, and store the correction separately.
 - `/repogolem`: launcher flags, defaults, resume behavior, and raw escape hatches.
 - `/pr-loop`: branch through ready-for-review PR; Review routing above owns the pre-PR pair.
 - `/collab-monitor`: worker monitoring and reviewer handoff mechanics.
-- `/cursor-multitask`: parallelism-engine selection after this skill chooses the role.
 - `/qa-video`: Gemini visual workflow.
 - `/whats-new`: tool-surface changes; they do not revise canon #1 by implication.
