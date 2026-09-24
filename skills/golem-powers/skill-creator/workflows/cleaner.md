@@ -64,7 +64,7 @@ Run via `$HOME/.golems/skills/golem-powers/skill-creator/scripts/cleaner-<rule>.
 **Script:** `cleaner-detect-orphan-symlinks.sh`
 **Detects:** any `$HOME/.golems/skills/golem-powers/<skill>/SKILL.md` that has NO corresponding symlink at `~/.claude/skills/<skill>`.
 **Severity:** BLOCKER (the skill is invisible to the harness — cannot trigger).
-**Known orphans** (per recon-04 Section F, after the loop consolidation): cron-payload-discipline, architectural-conformance-audit, brain-store-fallback, deploy-verify. Retired loop-monitor guidance now lives inside cron-payload-discipline. **This includes our own SHIP-2 (brain-store-fallback) and SHIP-4 (architectural-conformance-audit) — the most embarrassing class.**
+**Known orphans** (per recon-04 Section F, after the loop consolidation): cron-payload-discipline, architectural-conformance-audit, brain-store-fallback, deploy-verify. Retired loop-monitor guidance lived inside cron-payload-discipline, which is now `collab-monitor/references/cron-payloads.md` (GO-3 PR-5). **This includes our own SHIP-2 (brain-store-fallback) and SHIP-4 (architectural-conformance-audit) — the most embarrassing class.**
 **Fix:** symlink them into `~/.claude/skills/` via the install script. One-line fix per orphan; biggest immediate ROI in the library.
 
 ### Rule 9 — SoT (Source-of-Truth) violation
