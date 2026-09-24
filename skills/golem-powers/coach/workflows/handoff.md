@@ -1,10 +1,10 @@
 # Coach Handoff Workflow
 
-> Triggered by Cardinal Rule 5 when context crosses 45%, OR manually by the user via `/coach:workflows:handoff`. Automates the full handoff dance so coachClaude never has to remember the steps under context pressure.
+> Triggered by Cardinal Rule 5 when work crosses sessions, OR manually by the user via `/coach:workflows:handoff`. Automates the full handoff dance so coachClaude never has to remember the steps under context pressure.
 
 ## When this fires
 
-- **Auto:** the agent itself detects ≥45% context (visible in cmux status bar / `/status`) and invokes this workflow per CR5.
+- **No context-% trigger:** let auto-compaction happen. Never fire this workflow because context is growing (Etan, 2026-09-24).
 - **Manual:** user types `/coach:workflows:handoff` (e.g., before a planned break, or when they sense degradation early).
 
 ## Step 1 — Anchor the clock + count active topics

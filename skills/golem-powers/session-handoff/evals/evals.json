@@ -101,22 +101,18 @@
     {
       "id": 5,
       "prompt": "I'm at 76% context. Should I compact first or hand off directly?",
-      "expected_output": "At 76%, should hand off directly — NOT compact. Compaction loses 60-70% of context, and quality already degrades past 50%. A structured handoff to a fresh agent preserves more knowledge than a compaction.",
+      "expected_output": "Neither. Let auto-compaction happen and keep working. No proactive compaction, no context-% handoff, no unrequested lead or seat rotation. Hand off only when Etan asks, or at a /large-plan phase boundary the plan defines (Etan, 2026-09-24).",
       "assertions": [
         {
-          "text": "Recommends handoff over compaction at 76% context",
+          "text": "Says to keep working and let auto-compaction happen",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT recommend compacting at 76% (too late, loses too much)",
+          "text": "Does NOT recommend a proactive /compact or a handoff because of the 76% figure",
           "type": "negative"
         },
         {
-          "text": "Mentions that compaction loses 60-70% of context",
-          "type": "behavioral"
-        },
-        {
-          "text": "Explains that structured handoff preserves more than compaction",
+          "text": "Names the real handoff triggers: Etan asks, or a /large-plan phase boundary",
           "type": "behavioral"
         }
       ]

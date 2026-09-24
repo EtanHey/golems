@@ -80,7 +80,5 @@ TaskList()                       # Any open tasks?
 
 ## Context Budget
 
-- At 70% → brain_store full state + checkpoint
-- At 80% → compact
-- At 85% → spawn continuation agent with full handoff
+- Let auto-compaction happen. No proactive compaction, no context-% thresholds that trigger handoffs, and no unrequested lead or seat rotation because context is growing. Rotate or hand off only when Etan asks, or at a /large-plan phase boundary the plan itself defines (Etan, 2026-09-24).
 - Heavy file work → spawn haiku subagent, keep YOUR context clean
