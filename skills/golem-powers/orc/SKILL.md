@@ -250,13 +250,9 @@ Preserve:
 - Live PR/branch state (current SHA only, not history)
 - Live cmux surface map (current — drop historical snapshots)
 
-**Auto-trigger:** `~/.claude/hooks/orc-precompact-trigger.py` (UserPromptSubmit) fires
-stderr nudges at 45% / 60% and hard-blocks at 75% when cwd contains `/Gits/orchestrator`.
-Ratio is computed from the latest assistant `usage` block in the session transcript
-(input + cache_creation + cache_read) divided by a 1M-token model max.
-
-The auto-trigger surfaces the configured threshold to the agent before context
-pressure degrades coordination quality.
+**Auto-trigger: retired.** `~/.claude/hooks/orc-precompact-trigger.py` (45% / 60% nudges,
+75% hard-block) was unregistered from `~/.claude/settings.json` per Etan, 2026-09-24.
+Let auto-compaction happen; no context-% trigger replaces it.
 
 ---
 
@@ -527,9 +523,7 @@ tail -20 <active-collab-file>                   # Collab state
 - Approaching compaction warning -> brain_store full state (surface IDs, cron IDs, open PRs, repo locks, user's last instruction)
 - Heavy file work -> spawn haiku subagent, keep YOUR context clean
 - If you're writing more than 20 lines of code -> you should have spawned an agent
-- **CALCULATE context usage** (R13): token_count / model_max_tokens. Don't guess.
-- 45% -> brain_store full state + checkpoint + agent resume table
-- 50%+ -> keep checkpointing and surface the number to the operator. Workers may compact (S4); the orc seat NEVER `/compact`s (C14)
+- Let auto-compaction happen. No proactive compaction, no context-% thresholds that trigger handoffs, and no unrequested lead or seat rotation because context is growing. Rotate or hand off only when Etan asks, or at a /large-plan phase boundary the plan itself defines (Etan, 2026-09-24). Workers may compact (S4); the orc seat NEVER `/compact`s (C14)
 - Succession: full-day weave that seeds gen-N+1, fired on operator instruction — never on a percentage threshold (C14).
 
 ---
