@@ -39,6 +39,13 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      # reconcile-to-mac: the retire-law tests spawn zsh, and the CLI dry run
+      # resolves its profile's sourceRef (origin/master), which a PR checkout lacks.
+      - name: reconcile-to-mac prerequisites
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+          git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
+
       - name: bun suites
         run: |
           bun test ./scripts/tests/canon-drift-lint.test.mjs \
