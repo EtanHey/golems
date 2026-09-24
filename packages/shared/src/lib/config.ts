@@ -196,7 +196,6 @@ const DEFAULT_SEAT_REGISTRY: SeatRegistry = {
       "coachClaude",
       "voiceClaude",
       "aftercodeClaude",
-      "taskowlClaude",
     ],
   }),
   golemsLead: makeSeat({
@@ -288,13 +287,6 @@ const DEFAULT_SEAT_REGISTRY: SeatRegistry = {
     lane: "aftercode",
     role: "lead",
     parent: "orcClaude",
-  }),
-  taskowlClaude: makeSeat({
-    repo: "TaskOwl-app",
-    lane: "taskowl",
-    role: "lead",
-    parent: "orcClaude",
-    launcherPrefix: "taskowl",
   }),
 };
 
