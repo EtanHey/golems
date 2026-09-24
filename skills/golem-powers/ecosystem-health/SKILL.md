@@ -1,11 +1,15 @@
 ---
 name: ecosystem-health
-description: "Health checks for MCP, BrainLayer, skills, friction. Triggers: health check, whats broken, MCP/BL status."
+description: "Health checks for MCP, BrainLayer, skills, friction, and AI context hygiene vs ~/.golems/config.yaml. Triggers: health check, whats broken, MCP/BL status, context check/bloat, MCP/skill/hook hygiene."
 ---
 
 # Ecosystem Health Check
 
 Audit the golems ecosystem: MCP servers, BrainLayer, VoiceLayer daemon, JSONL watcher, enrichment, git status, Axiom telemetry, open PRs. Run at session start AND end.
+
+> The automated sweep is orchestrator-owned: launchd `com.golems.ecosystem-health` runs
+> `orchestrator/scripts/ecosystem-health-sweep.sh` weekly, and orchestrator's own Start/Stop hooks run
+> separately. Neither reads this skill; this skill is the manual procedure.
 
 ## Why This Exists
 
@@ -246,6 +250,19 @@ done
 - 0 open PRs = GREEN
 - 1-3 open PRs = YELLOW (review and merge or close)
 - PR open > 7 days = RED (stale — close or merge)
+
+## Context hygiene (formerly `/context-check`)
+
+Audit what is loaded against what this project SHOULD load, per the `contextProfiles` in
+`~/.golems/config.yaml`. Full procedure: [references/context-hygiene.md](references/context-hygiene.md);
+per-CLI adapters: [adapters/](adapters/); scripted audit: `scripts/audit.sh`.
+
+1. Read `~/.golems/config.yaml` → `contextProfiles`, and match the cwd to a project. Unknown
+   project: say so and offer repo discovery. Never guess.
+2. List what is loaded: skills (`~/.claude/skills/`), MCPs, hooks, agents.
+3. Compare against the profile and report the waste (tokens, attention dilution).
+4. Only with `--fix`: generate `.claude/settings.local.json` plus a CLAUDE.md section.
+   Other CLIs get the CLAUDE.md section only; see the adapters.
 
 ## Report Format
 

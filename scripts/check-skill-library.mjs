@@ -9,6 +9,7 @@ const DEFAULT_RETIRED = [
   "catchup",
   "claude-web-research",
   "commit",
+  "context-check",
   "context7",
   "convex",
   "critique-waves",

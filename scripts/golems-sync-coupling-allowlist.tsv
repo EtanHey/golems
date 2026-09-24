@@ -14,9 +14,9 @@ codex-workflows/evals/evals.json	/Users/example	Test or evaluation evidence inte
 codex-workflows/evals/run-false-green.sh	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 codex-workflows/tests/test_codex_workflows.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 content-demo-creation/voicebar-visual-reference.md	~/Gits/voicelayer	Historical reference preserves observed source text and is not executed.
-context-check/evals/evals.json	~/Gits/TaskOwl-app	Test or evaluation evidence intentionally preserves this machine-path specimen.
-context-check/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
-context-check/evals/evals.json	~/Gits/some-new-app	Test or evaluation evidence intentionally preserves this machine-path specimen.
+ecosystem-health/evals/evals.json	~/Gits/TaskOwl-app	Test or evaluation evidence intentionally preserves this machine-path specimen.
+ecosystem-health/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
+ecosystem-health/evals/evals.json	~/Gits/some-new-app	Test or evaluation evidence intentionally preserves this machine-path specimen.
 deploy-verify/evals/evals.json	/Users/me	Test or evaluation evidence intentionally preserves this machine-path specimen.
 false-green-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 fleet-wrap-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
