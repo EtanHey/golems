@@ -41,7 +41,7 @@ done
 
 Cursor's `@codebase` indexing makes it strong for the **review step**, even if it can't orchestrate
 the full loop. **The Cursor review pass is READ-ONLY** ([review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-review-pass-is-read-only)): report findings, never
-edit. Cursor gathers and verifies; Codex implements (canon #1).
+edit. Cursor or a Gemini gatherer gathers and verifies; Codex implements (canon #1).
 
 ```bash
 # Read-only pre-PR audit — report only, zero Bugbot quota

@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Route work to Cursor/Codex/Claude; pick the fan-out engine. Triggers: delegate, worker assignment, routing, Codex model/effort, subagents, multitask, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
+description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine. Triggers: delegate, who gathers, gemini gatherer, worker assignment, routing, Codex model/effort, subagents, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
 ---
 
 # Agent Routing
@@ -36,7 +36,7 @@ Decision rules:
 1. Read-only query, scan, search, audit, or lookup -> Cursor or a Gemini Flash-Low gatherer.
 2. Any code or file change -> Codex.
 3. Coordination, synthesis, monitoring, or decisions -> Claude.
-4. Mixed gather + implement work -> Cursor returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff.
+4. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff.
 5. Independent parallel units -> § Fan-out engine chooses the engine; fleet canon #1 owns Cursor model selection.
 6. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a Gemini Pro-High gatherer through `/qa-video`.
 7. UX/UI and design judgment stays on Opus 5.5. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
