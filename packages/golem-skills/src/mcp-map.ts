@@ -11,13 +11,8 @@ export const SKILL_MCP_MAP: Record<
     required: ["google-calendar"],
     complement: ["sophtron", "brainlayer", "supabase"],
   },
-  research: { required: ["exa"], complement: ["brainlayer"] },
   "whats-new": { required: ["exa"], complement: ["brainlayer"] },
-  "youtube-pipeline": { required: ["exa"], complement: [] },
   "1password": { required: ["1password"], complement: [] },
-  railway: { required: [], complement: ["railway"] },
-  convex: { required: ["convex"], complement: ["supabase"] },
-  catchup: { required: ["brainlayer"], complement: [] },
   "cmux-agents": { required: [], complement: ["voicelayer"] },
   "ecosystem-health": {
     required: ["supabase"],

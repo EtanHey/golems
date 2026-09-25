@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach, setDefaultTimeout } from "bun:test";
 import { mkdtemp, rm, writeFile, readFile, mkdir } from "node:fs/promises";
+import { existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -363,7 +364,7 @@ describe("wizard MCP recommendations", () => {
 
   test("recommendMcps returns empty for non-MCP skills", async () => {
     const { recommendMcps } = await import("../wizard");
-    const recs = recommendMcps(["commit", "github"], new Set());
+    const recs = recommendMcps(["pr-loop", "unslop"], new Set());
     expect(recs).toHaveLength(0);
   });
 
@@ -388,27 +389,37 @@ describe("wizard MCP recommendations", () => {
   });
 });
 
+// The 13 skills the wizard used to offer that were never in skills/golem-powers.
+const PHANTOM_SKILLS = [
+  "commit", "github", "test-plan", "simplify", "research", "youtube-pipeline",
+  "call-debrief", "catchup", "orchestrator-status", "railway", "convex",
+  "vercel", "video-showcase",
+];
+
+// The real catalog: the same rule as listSkills (a directory with a SKILL.md).
+function catalogSkills(): string[] {
+  const root = join(import.meta.dir, "..", "..", "..", "..", "skills", "golem-powers");
+  return readdirSync(root).filter((name) => existsSync(join(root, name, "SKILL.md")));
+}
+
 describe("wizard skill categories", () => {
   // The remote list is injected: the default reads skills/ from GitHub, which
   // a unit test must not depend on.
-  test("getSkillCategories returns categories with skills", async () => {
+  test("getSkillCategories offers only skills in the remote catalog", async () => {
     const { getSkillCategories } = await import("../wizard");
-    const categories = await getSkillCategories(async () => ["vercel"]);
-    expect(typeof categories).toBe("object");
-    expect(Object.keys(categories).length).toBeGreaterThan(0);
-
-    // Should have at least the static categories
-    expect(categories.Development).toBeDefined();
-    expect(categories.Research).toBeDefined();
-    expect(categories.Infrastructure).toBeDefined();
-
-    // Infrastructure should include vercel (added in this PR)
-    expect(categories.Infrastructure).toContain("vercel");
+    const categories = await getSkillCategories(async () => ["pr-loop", "unslop", "coach"]);
+    const offered = Object.values(categories).flat();
+    for (const phantom of PHANTOM_SKILLS) expect(offered).not.toContain(phantom);
+    expect(offered.sort()).toEqual(["coach", "pr-loop", "unslop"]);
+    expect(categories.Development).toEqual(["pr-loop"]);
+    expect(categories.Operations).toEqual(["coach"]);
+    expect(categories.Other).toEqual(["unslop"]);
+    expect(categories.Research).toBeUndefined();
   });
 
   test("getSkillCategories files unknown remote skills under Other", async () => {
     const { getSkillCategories } = await import("../wizard");
-    const categories = await getSkillCategories(async () => ["vercel", "brand-new-skill"]);
+    const categories = await getSkillCategories(async () => ["pr-loop", "brand-new-skill"]);
     expect(categories.Other).toEqual(["brand-new-skill"]);
   });
 
@@ -418,7 +429,33 @@ describe("wizard skill categories", () => {
       throw new Error("offline");
     });
     expect(categories.Other).toBeUndefined();
-    expect(categories.Infrastructure).toContain("vercel");
+    expect(categories.Development).toContain("pr-loop");
+  });
+
+  test("the offline fallback lists only skills that exist in skills/golem-powers", async () => {
+    const { getSkillCategories } = await import("../wizard");
+    const fallback = await getSkillCategories(async () => []);
+    const catalog = new Set(catalogSkills());
+    for (const skill of Object.values(fallback).flat()) {
+      expect(catalog.has(skill), `${skill} is not in skills/golem-powers`).toBe(true);
+    }
+  });
+
+  test("the (r)ecommended install set lists only skills that exist in skills/golem-powers", async () => {
+    const { RECOMMENDED_SKILLS } = await import("../wizard");
+    const catalog = new Set(catalogSkills());
+    expect(RECOMMENDED_SKILLS.length).toBeGreaterThan(0);
+    for (const skill of RECOMMENDED_SKILLS) {
+      expect(catalog.has(skill), `${skill} is not in skills/golem-powers`).toBe(true);
+    }
+  });
+
+  test("SKILL_MCP_MAP only maps skills that exist in skills/golem-powers", async () => {
+    const { SKILL_MCP_MAP } = await import("../mcp-map");
+    const catalog = new Set(catalogSkills());
+    for (const skill of Object.keys(SKILL_MCP_MAP)) {
+      expect(catalog.has(skill), `${skill} is not in skills/golem-powers`).toBe(true);
+    }
   });
 });
 

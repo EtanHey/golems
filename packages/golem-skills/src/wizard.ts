@@ -31,41 +31,57 @@ export { SKILL_MCP_MAP, recommendMcps } from "./mcp-map";
 
 // --- Fallback skill categories (Task 5) ---
 
+// Every entry must be a skill in skills/golem-powers (wizard.test.ts checks).
 const FALLBACK_SKILL_CATEGORIES: Record<string, string[]> = {
   Development: [
-    "commit",
-    "github",
     "pr-loop",
-    "test-plan",
     "coderabbit",
-    "simplify",
+    "git-guardian",
+    "tdd-guard",
+    "never-fabricate",
   ],
-  Research: ["research", "youtube-pipeline", "call-debrief"],
-  Operations: ["coach", "catchup", "ecosystem-health", "orchestrator-status"],
-  Infrastructure: ["1password", "railway", "convex", "vercel"],
-  Content: ["video-showcase"],
+  Research: ["gemini-research", "github-research", "whats-new"],
+  Operations: ["coach", "ecosystem-health", "cmux-agents", "orc"],
+  Infrastructure: ["1password", "deploy-verify"],
+  Content: ["html-dashboard", "qa-video"],
 };
 
-/** Tries remote registry, falls back to static list. Adds "Other" for uncategorized. */
+/** The (r)ecommended install set: the README's starter skills. */
+export const RECOMMENDED_SKILLS = [
+  "pr-loop",
+  "never-fabricate",
+  "large-plan",
+  "git-guardian",
+  "unslop",
+];
+
+/**
+ * Tries the remote catalog, falls back to the static list. With a catalog,
+ * each category keeps only skills in it and unknown ones go under "Other".
+ */
 export async function getSkillCategories(
   listRemote: () => Promise<string[]> = listRemoteSkills,
 ): Promise<Record<string, string[]>> {
+  let remoteSkills: string[];
   try {
-    const remoteSkills = await listRemote();
-    if (remoteSkills.length === 0) return { ...FALLBACK_SKILL_CATEGORIES };
-
-    const categorized = new Set<string>();
-    for (const skills of Object.values(FALLBACK_SKILL_CATEGORIES)) {
-      for (const s of skills) categorized.add(s);
-    }
-
-    const other = remoteSkills.filter((s) => !categorized.has(s));
-    const result = { ...FALLBACK_SKILL_CATEGORIES };
-    if (other.length > 0) result.Other = other;
-    return result;
+    remoteSkills = await listRemote();
   } catch {
     return { ...FALLBACK_SKILL_CATEGORIES };
   }
+  if (remoteSkills.length === 0) return { ...FALLBACK_SKILL_CATEGORIES };
+
+  const remote = new Set(remoteSkills);
+  const categorized = new Set<string>();
+  const result: Record<string, string[]> = {};
+  for (const [category, skills] of Object.entries(FALLBACK_SKILL_CATEGORIES)) {
+    const present = skills.filter((s) => remote.has(s));
+    for (const s of present) categorized.add(s);
+    if (present.length > 0) result[category] = present;
+  }
+
+  const other = remoteSkills.filter((s) => !categorized.has(s));
+  if (other.length > 0) result.Other = other;
+  return result;
 }
 
 async function runMcpRecommendationStep(): Promise<void> {
@@ -190,7 +206,6 @@ async function installSkillsInteractive(): Promise<void> {
     "Install skills?\n  (a)ll — install all skills\n  (r)ecommended — install popular skills\n  (b)rowse — browse by category\n  (s)kip — install later\nChoice [s]: ",
   );
 
-  const recommended = ["commit", "coach", "github", "catchup", "research"];
   const failedInstalls: string[] = [];
 
   if (
@@ -220,7 +235,7 @@ async function installSkillsInteractive(): Promise<void> {
     installChoice.toLowerCase() === "recommended"
   ) {
     console.log("\nInstalling recommended skills...");
-    for (const skill of recommended) {
+    for (const skill of RECOMMENDED_SKILLS) {
       try {
         const result = await installSkill(skill);
         if (result?.skipped) {
