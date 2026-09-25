@@ -30,7 +30,9 @@ Full procedure: [references/wizard.md](references/wizard.md); phase checklist:
    reads `release-gate.json` (the only classification): `INSTALL` never clones, `CLONE` only for
    `kind:"none"` on a workspace, `REFUSE` clones nothing. Then
    `bun <golem-install-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`
-   merges the managed `[agents]` keys only.
+   merges the managed `[agents]` keys only. Then
+   `bun <golem-install-dir>/scripts/install-cmuxlayer-fleet.mjs` writes cmuxlayer's
+   `~/.config/cmuxlayer/fleet.json` (golems coordination/outbox/launcher paths) only if absent.
 4. **MCP:** `sync-config.sh --diff`, confirm, then `--enforce`.
 5. **`.claude.local.md`** in each existing checkout that has a `CLAUDE.md` (gitignored).
 6. **BrainLayer:** check BrainBar + `brain_search`; never block setup on it.
