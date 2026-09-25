@@ -6,7 +6,8 @@
 // Walks ~/.claude/skills, ~/.agents/skills and ~/.codex/skills. For each entry:
 //   ok       a link that resolves into --source
 //   repoint  a link into ~/.golems/skills/<name> whose <name> exists in --source
-//   dangling a link whose target is gone (removed with --apply)
+//   dangling a link whose target is gone and whose name is not in --source (removed with --apply);
+//            a dangling link whose name IS in --source is a repoint (repaired, never deleted)
 //   other    anything else (real dirs, links elsewhere, retired names), left alone
 // Dry-run is the default; --apply rewrites repoint links and removes dangling ones.
 import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, symlinkSync, unlinkSync } from "node:fs";
@@ -27,7 +28,12 @@ function classify(entry, sourceReal, staleRoot) {
   const stat = lstatSync(entry);
   if (!stat.isSymbolicLink()) return { kind: "other" };
   const target = path.resolve(path.dirname(entry), readlinkSync(entry));
-  if (!existsSync(entry)) return { kind: "dangling" };
+  if (!existsSync(entry)) {
+    // r7 on #232: a dangling link whose NAME exists in the clone is repaired,
+    // never deleted (the MBP's collab-monitor pointed into a deleted worktree).
+    const byName = path.join(sourceReal, path.basename(entry));
+    return existsSync(byName) ? { kind: "repoint", replacement: byName } : { kind: "dangling" };
+  }
   if (realpathSync(entry).startsWith(`${sourceReal}${path.sep}`)) return { kind: "ok" };
   const replacement = path.join(sourceReal, path.basename(target));
   if (target.startsWith(`${staleRoot}${path.sep}`) && existsSync(replacement)) {

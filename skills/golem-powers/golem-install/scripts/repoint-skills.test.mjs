@@ -76,3 +76,23 @@ test("refuses a --source that is not a golem-powers skills directory", () => {
   expect(r.status).not.toBe(0);
   expect(`${r.stdout}${r.stderr}`).toContain("not a golem-powers skills directory");
 });
+
+test("a DANGLING link whose name exists in the clone is repointed, never deleted (the MBP collab-monitor shape)", () => {
+  // r7 on #232: ~/.agents/skills/collab-monitor pointed into a deleted worktree
+  // (golems.wt/collab-monitor-skill/...), and ~/.codex/skills/collab-monitor chains
+  // through it. Deleting it would remove the skill; the clone has it, so repoint.
+  const fx = fixture();
+  mkdirSync(path.join(fx.source, "collab-monitor"));
+  const gone = path.join(fx.home, "Gits", "golems.wt", "collab-monitor-skill", "skills", "golem-powers", "collab-monitor");
+  symlinkSync(gone, path.join(fx.agents, "collab-monitor"));
+  symlinkSync(path.join(fx.agents, "collab-monitor"), path.join(fx.codex, "collab-monitor"));
+  symlinkSync(path.join(fx.source, "railway"), path.join(fx.agents, "railway")); // retired: no source -> removed
+
+  const dry = run(fx);
+  expect(dry.out).toMatch(/\.agents\/skills: ok=0 repoint=2 dangling=1 other=0/);
+
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(readlinkSync(path.join(fx.agents, "collab-monitor"))).toBe(path.join(fx.source, "collab-monitor"));
+  expect(realpathSync(path.join(fx.codex, "collab-monitor"))).toBe(path.join(fx.source, "collab-monitor"));
+  expect(() => lstatSync(path.join(fx.agents, "railway"))).toThrow();
+});
