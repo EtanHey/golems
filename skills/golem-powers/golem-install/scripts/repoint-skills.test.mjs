@@ -96,3 +96,34 @@ test("a DANGLING link whose name exists in the clone is repointed, never deleted
   expect(realpathSync(path.join(fx.codex, "collab-monitor"))).toBe(path.join(fx.source, "collab-monitor"));
   expect(() => lstatSync(path.join(fx.agents, "railway"))).toThrow();
 });
+
+test("the Antigravity root ~/.gemini/antigravity/skills is walked with the same rules", () => {
+  // #269: the Antigravity (Gemini) CLI reads a fourth skill root.
+  const fx = fixture();
+  const antigravity = path.join(fx.home, ".gemini", "antigravity", "skills");
+  mkdirSync(antigravity, { recursive: true });
+  const gone = path.join(fx.home, "Gits", "golems.wt", "dead", "skills", "golem-powers", "pr-loop");
+  symlinkSync(gone, path.join(antigravity, "pr-loop"));                                  // dangling, name in source -> repoint
+  symlinkSync(path.join(fx.home, "gone", "y"), path.join(antigravity, "no-such-skill")); // dangling, no source -> removed
+  symlinkSync(path.join(fx.source, "eli5"), path.join(antigravity, "eli5"));             // already right -> ok
+
+  const dry = run(fx);
+  expect(dry.status).toBe(0);
+  expect(dry.out).toMatch(/\.gemini\/antigravity\/skills: ok=1 repoint=1 dangling=1 other=0/);
+
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(readlinkSync(path.join(antigravity, "pr-loop"))).toBe(path.join(fx.source, "pr-loop"));
+  expect(() => lstatSync(path.join(antigravity, "no-such-skill"))).toThrow();
+  expect(run(fx).out).toMatch(/\.gemini\/antigravity\/skills: ok=2 repoint=0 dangling=0 other=0/);
+});
+
+test("a missing root is skipped with a one-line note, not an error", () => {
+  const fx = fixture(); // no ~/.gemini/antigravity/skills
+  rmSync(fx.codex, { recursive: true, force: true });
+  const r = run(fx, "--apply");
+  expect(r.status).toBe(0);
+  expect(r.out).toMatch(/^~\/\.gemini\/antigravity\/skills: skipped \(missing\)$/m);
+  expect(r.out).toMatch(/^~\/\.codex\/skills: skipped \(missing\)$/m);
+  expect(existsSync(path.join(fx.home, ".gemini"))).toBe(false);
+  expect(r.out).toMatch(/\.claude\/skills: ok=1 repoint=1 dangling=1 other=3/);
+});

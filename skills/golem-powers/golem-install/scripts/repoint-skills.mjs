@@ -3,7 +3,8 @@
 //
 //   bun repoint-skills.mjs --source <golems clone>/skills/golem-powers [--apply]
 //
-// Walks ~/.claude/skills, ~/.agents/skills and ~/.codex/skills. For each entry:
+// Walks ~/.claude/skills, ~/.agents/skills, ~/.codex/skills and ~/.gemini/antigravity/skills
+// (the Antigravity CLI's root); a missing root is skipped with a one-line note. For each entry:
 //   ok       a link that resolves into --source
 //   repoint  a link into ~/.golems/skills/<name> whose <name> exists in --source
 //   dangling a link whose target is gone and whose name is not in --source (removed with --apply);
@@ -13,6 +14,8 @@
 import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, symlinkSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+
+const SKILL_ROOTS = [".claude/skills", ".agents/skills", ".codex/skills", ".gemini/antigravity/skills"];
 
 function parseArgs(argv) {
   const options = { apply: false, source: null };
@@ -49,21 +52,23 @@ export function repointSkills({ home = homedir(), source, apply = false }) {
   const sourceReal = realpathSync(source);
   const staleRoot = path.join(home, ".golems", "skills");
   const report = [];
-  for (const root of [".claude/skills", ".agents/skills", ".codex/skills"]) {
+  for (const root of SKILL_ROOTS) {
     const dir = path.join(home, root);
+    if (!existsSync(dir)) {
+      report.push({ root, missing: true });
+      continue;
+    }
     const counts = { ok: 0, repoint: 0, dangling: 0, other: 0 };
-    if (existsSync(dir)) {
-      for (const name of readdirSync(dir)) {
-        if (name.startsWith(".")) continue;
-        const entry = path.join(dir, name);
-        const verdict = classify(entry, sourceReal, staleRoot);
-        counts[verdict.kind] += 1;
-        if (!apply) continue;
-        if (verdict.kind === "dangling") unlinkSync(entry);
-        if (verdict.kind === "repoint") {
-          unlinkSync(entry);
-          symlinkSync(verdict.replacement, entry);
-        }
+    for (const name of readdirSync(dir)) {
+      if (name.startsWith(".")) continue;
+      const entry = path.join(dir, name);
+      const verdict = classify(entry, sourceReal, staleRoot);
+      counts[verdict.kind] += 1;
+      if (!apply) continue;
+      if (verdict.kind === "dangling") unlinkSync(entry);
+      if (verdict.kind === "repoint") {
+        unlinkSync(entry);
+        symlinkSync(verdict.replacement, entry);
       }
     }
     report.push({ root, ...counts });
@@ -75,6 +80,10 @@ if (import.meta.main) {
   try {
     const options = parseArgs(process.argv.slice(2));
     for (const row of repointSkills(options)) {
+      if (row.missing) {
+        console.log(`~/${row.root}: skipped (missing)`);
+        continue;
+      }
       console.log(`~/${row.root}: ok=${row.ok} repoint=${row.repoint} dangling=${row.dangling} other=${row.other}`);
     }
     console.log(options.apply ? "applied" : "dry-run: nothing changed (pass --apply)");
