@@ -10,10 +10,6 @@ usage() {
     printf 'Usage: %s <host> [--dry-run] [--only skills|launcher|all] [--allow-dirty]\n' "${0##*/}"
 }
 
-sha256_file() {
-    shasum -a 256 "$1" | awk '{print $1}'
-}
-
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../.." && pwd)"
 source_helper="$repo_root/scripts/repogolem/golems-sync-install.sh"
@@ -238,10 +234,10 @@ while IFS= read -r skill; do
 done < "$skills_list"
 
 if [[ "$host_shell" == "local" ]]; then
-    HOME="$host_root" bash "$helper" inspect "$scope" \
+    HOME="$host_root" bash "$helper" inspect "$scope" "${launcher_files[@]}" -- \
         ${skill_args[@]+"${skill_args[@]}"} > "$inspect_file"
 else
-    ssh "$host" bash -s -- inspect "$scope" \
+    ssh "$host" bash -s -- inspect "$scope" "${launcher_files[@]}" -- \
         ${skill_args[@]+"${skill_args[@]}"} < "$helper" > "$inspect_file"
 fi
 
@@ -279,7 +275,8 @@ fi
 
 source_launcher_hash=""
 if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
-    source_launcher_hash="$(sha256_file "$launcher_dir/golem-dispatch.zsh")"
+    # Key over every shipped launcher file, so a bootstrap-only change still reinstalls.
+    source_launcher_hash="$(bash "$helper" launcher-hash "$launcher_dir" "${launcher_files[@]}")"
     installed_launcher_hash="$(awk -F '\t' '$1 == "LAUNCHER" {print $2}' "$inspect_file")"
     if [[ "$installed_launcher_hash" == "missing" ]]; then
         added=$((added + 1))
