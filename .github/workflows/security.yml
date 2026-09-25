@@ -8,6 +8,13 @@ on:
   schedule:
     # Run daily at 2 AM UTC
     - cron: "0 2 * * *"
+  workflow_dispatch:
+
+# A newer run on the same ref (and event) supersedes an older one. A push run
+# cancelled here leaves its commits to the nightly full ratchet.
+concurrency:
+  group: security-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -23,6 +30,7 @@ jobs:
   bun-audit:
     name: Bun Dependency Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
@@ -39,6 +47,7 @@ jobs:
   secret-scan:
     name: Secret Scanning
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -60,6 +69,7 @@ jobs:
   placeholder-guard:
     name: Broken Placeholder Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
@@ -97,6 +107,9 @@ jobs:
   publish-boundary:
     name: Publish Boundary Guard
     runs-on: ubuntu-latest
+    # The full ratchet from genesis (nightly, manual) took 53 minutes at 465
+    # commits and grows with every commit; PR and push ranges take seconds.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 120 || 30 }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -104,6 +117,9 @@ jobs:
 
       - name: Test publication boundary fixtures
         run: bash scripts/tests/check-publish-boundary.test.sh
+
+      - name: Test ratchet base selection
+        run: bash scripts/tests/boundary-history-base.test.sh
 
       - name: Enforce publication boundary
         env:
@@ -114,22 +130,23 @@ jobs:
           # violations are hash-ratcheted and may burn down, never grow.
           PUBLISH_BOUNDARY_HISTORY_MODE: ratchet
           PUBLISH_BOUNDARY_HISTORY_BASE: 5857c663fe37f3dd1fba1d573f813878f3e73875
-        # Pushes to master and the nightly run ratchet from genesis. A pull
+          PUSH_BEFORE: ${{ github.event.before }}
+        # The nightly schedule and workflow_dispatch ratchet from genesis. A pull
         # request only adds its own commits on top of master, which already
         # passed that ratchet, so it scans from its merge base with master (HEAD
-        # is the PR merge ref). The script still refuses a shallow checkout or
-        # a base that is not an ancestor of HEAD.
+        # is the PR merge ref). A push scans only the commits it added
+        # (before..HEAD), falling back to genesis for a new branch or a force
+        # push. The script still refuses a shallow checkout or a base that is
+        # not an ancestor of HEAD.
         run: |
-          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
-            PUBLISH_BOUNDARY_HISTORY_BASE="$(git merge-base origin/master HEAD)"
-            export PUBLISH_BOUNDARY_HISTORY_BASE
-            echo "pull request: ratchet from merge base $PUBLISH_BOUNDARY_HISTORY_BASE"
-          fi
+          PUBLISH_BOUNDARY_HISTORY_BASE="$(bash scripts/ci/boundary-history-base.sh "$GITHUB_EVENT_NAME" "$PUBLISH_BOUNDARY_HISTORY_BASE" "$PUSH_BEFORE")"
+          export PUBLISH_BOUNDARY_HISTORY_BASE
           bash scripts/check-publish-boundary.sh
 
   summary:
     name: Security Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [bun-audit, secret-scan, placeholder-guard, publish-boundary]
     if: always()
     steps:
