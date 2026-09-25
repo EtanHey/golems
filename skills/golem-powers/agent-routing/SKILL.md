@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Route work to Cursor/Gemini gatherers, Codex, Claude; pick the fan-out engine. Triggers: delegate, worker assignment, routing, who gathers, gemini gatherer, Flash-Low/Pro-High, Codex model/effort, subagents, multitask, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
+description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine. Triggers: delegate, who gathers, gemini gatherer, worker assignment, routing, Codex model/effort, subagents, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
 ---
 
 # Agent Routing

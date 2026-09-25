@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 const CAP = 120;
 
 const EXCEPTIONS = {
-  "agent-routing": 259 /* absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259 */,
+  "agent-routing": 285 /* absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259; +26 for the #208 Gemini-gatherer ruling ("who gathers", "gemini gatherer"; bare "multitask" dropped as a substring of "/multitask") */,
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
   "drive-filing": 282 /* absorbed drive-usage (250), google-drive-archive (105), archive (107): 462 -> 282 */,
   "ecosystem-health": 199 /* absorbed context-check (109) and its triggers: 105 + 109 -> 199 */,
