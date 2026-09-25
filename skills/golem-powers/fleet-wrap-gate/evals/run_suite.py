@@ -4,7 +4,7 @@
 Feeds every RED/GREEN fixture to the Claude Stop hook wrapper on stdin and
 asserts the hook stdout schema:
   allow: {}
-  block: {"decision":"block","reason":"..."}
+  advisory: {"systemMessage":"<GATE> advisory: ..."}  (never a block: GO-5 E2)
 
 The suite is local-only and bounded by a short per-case timeout.
 """
@@ -68,17 +68,18 @@ def run_hook(fixture: dict) -> tuple[bool, str]:
             return True, "allow"
         return False, f"expected allow {{}}, got {parsed!r}"
     if expect == "FLAG":
-        if parsed.get("decision") != "block":
-            return False, f"expected block decision, got {parsed!r}"
-        reason = parsed.get("reason")
-        if not isinstance(reason, str) or not reason.strip():
-            return False, f"block reason missing: {parsed!r}"
+        # GO-5 E2: a flag is an advisory systemMessage, never a block.
+        if "decision" in parsed:
+            return False, f"an advisory gate must not decide, got {parsed!r}"
+        reason = parsed.get("systemMessage")
+        if not isinstance(reason, str) or not reason.startswith("FLEET-WRAP-GATE advisory"):
+            return False, f"expected a FLEET-WRAP-GATE advisory, got {parsed!r}"
         violation = fixture.get("violation")
         if violation and violation not in reason:
             return False, f"reason missing {violation}: {reason!r}"
         if "delete cron " not in reason and "TaskStop " not in reason:
             return False, f"reason missing exact cleanup action: {reason!r}"
-        return True, "block"
+        return True, "advisory"
     return False, f"unknown expect={expect!r}"
 
 
@@ -173,12 +174,12 @@ def verify_transcript_path_jsonl_and_state_path() -> tuple[bool, str]:
         parsed = json.loads(proc.stdout or "{}")
     except json.JSONDecodeError as exc:
         return False, f"transcript_path/state_path stdout not JSON: {exc}: {proc.stdout!r}"
-    reason = parsed.get("reason", "")
-    if parsed.get("decision") != "block":
-        return False, f"expected transcript_path/state_path block, got {parsed!r}"
+    reason = parsed.get("systemMessage", "")
+    if "decision" in parsed or not reason.startswith("FLEET-WRAP-GATE advisory"):
+        return False, f"expected transcript_path/state_path advisory, got {parsed!r}"
     if "FLEETWRAP_CRON_ALIVE" not in reason or "delete cron cron-state-path" not in reason:
         return False, f"expected typed cron cleanup reason, got {reason!r}"
-    return True, "block"
+    return True, "advisory"
 
 
 def main() -> int:

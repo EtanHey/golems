@@ -4,7 +4,7 @@
 Feeds every RED/GREEN fixture to the Claude hook wrapper on stdin and asserts
 the hook stdout schema:
   allow: {}
-  block: {"decision":"block","reason":"..."}
+  advisory: {"systemMessage":"<GATE> advisory: ..."}  (never a block: GO-5 E2)
 The suite is intentionally local-only and bounded by a short per-case timeout.
 """
 
@@ -66,15 +66,16 @@ def run_hook(fixture: dict) -> tuple[bool, str]:
             return True, "allow"
         return False, f"expected allow {{}}, got {parsed!r}"
     if expect == "FLAG":
-        if parsed.get("decision") != "block":
-            return False, f"expected block decision, got {parsed!r}"
-        reason = parsed.get("reason")
-        if not isinstance(reason, str) or not reason.strip():
-            return False, f"block reason missing: {parsed!r}"
+        # GO-5 E2: a flag is an advisory systemMessage, never a block.
+        if "decision" in parsed:
+            return False, f"an advisory gate must not decide, got {parsed!r}"
+        reason = parsed.get("systemMessage")
+        if not isinstance(reason, str) or not reason.startswith("FALSE-GREEN-GATE advisory"):
+            return False, f"expected a FALSE-GREEN-GATE advisory, got {parsed!r}"
         violation = fixture.get("violation")
         if violation and violation not in reason:
             return False, f"reason missing {violation}: {reason!r}"
-        return True, "block"
+        return True, "advisory"
     return False, f"unknown expect={expect!r}"
 
 
@@ -148,9 +149,9 @@ def verify_transcript_path_jsonl() -> tuple[bool, str]:
         parsed = json.loads(proc.stdout or "{}")
     except json.JSONDecodeError as exc:
         return False, f"transcript_path JSONL stdout not JSON: {exc}: {proc.stdout!r}"
-    if parsed.get("decision") != "block":
-        return False, f"expected transcript_path JSONL block, got {parsed!r}"
-    return True, "block"
+    if "decision" in parsed or not parsed.get("systemMessage", "").startswith("FALSE-GREEN-GATE advisory"):
+        return False, f"expected transcript_path JSONL advisory, got {parsed!r}"
+    return True, "advisory"
 
 
 def main() -> int:
