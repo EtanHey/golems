@@ -53,16 +53,25 @@ export async function resolveOpReference(value: string): Promise<string> {
     stderr: "pipe",
     timeout: OP_READ_TIMEOUT_MS,
   });
-  const exitCode = await proc.exited;
+  // Read both pipes while op runs: a child blocked on a full pipe never exits.
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
   if (exitCode !== 0) {
-    // `op read` waiting on an approval prompt prints nothing and is killed by the timeout.
-    const stderr = (await new Response(proc.stderr).text()).trim();
+    // `op read` waiting on an approval prompt prints nothing and is killed by the timeout (143).
     const reason =
-      stderr ||
-      `op exited ${exitCode} with no output; is the 1Password CLI signed in? (${OP_READ_TIMEOUT_MS / 1000}s timeout)`;
+      stderr.trim() ||
+      `op exited ${exitCode} with no output; is the 1Password CLI signed in?` +
+        (exitCode === 143 ? ` (${OP_READ_TIMEOUT_MS / 1000}s timeout)` : "");
     throw new Error(`Failed to resolve 1Password reference ${value}: ${reason}`);
   }
-  return (await new Response(proc.stdout).text()).trim();
+  const resolved = stdout.trim();
+  if (!resolved) {
+    throw new Error(`op read returned an empty value for ${value}`);
+  }
+  return resolved;
 }
 
 export function getCredentials(): { id: string; secret: string } {
