@@ -37,7 +37,8 @@ Full procedure: [references/wizard.md](references/wizard.md); phase checklist:
 4. **MCP:** `sync-config.sh --diff`, confirm, then `--enforce`.
 5. **`.claude.local.md`** in each existing checkout that has a `CLAUDE.md` (gitignored).
    A machine whose skill links point at a stale `~/.golems/skills` copy: `bun <golem-install-dir>/scripts/repoint-skills.mjs
-   --source <clone>/skills/golem-powers` (dry-run; `--apply` repoints and drops dangling links, per-root counts).
+   --source <clone>/skills/golem-powers` (dry-run; `--apply` repoints and drops dangling links, per-root counts
+   for `~/.claude/skills`, `~/.agents/skills`, `~/.codex/skills`, `~/.gemini/antigravity/skills`; a missing root is skipped).
 6. **BrainLayer:** check BrainBar + `brain_search`; never block setup on it.
 7. **Report:** one line per release-gate result, including `REFUSE` and failures.
 
