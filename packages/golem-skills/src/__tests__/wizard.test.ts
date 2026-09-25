@@ -491,3 +491,14 @@ describe("fixture consistency", () => {
     }
   });
 });
+
+describe("wizard CLI hints", () => {
+  // The npm package golems-cli is behind this repo (README "CLI"), so the
+  // wizard points at the from-source command the README documents.
+  test("hints print the README's run-from-source command, not npx", async () => {
+    const { CLI_COMMAND } = await import("../wizard");
+    expect(CLI_COMMAND).toBe("bun packages/golem-skills/src/index.ts");
+    const source = await readFile(join(import.meta.dir, "..", "wizard.ts"), "utf8");
+    expect(source).not.toContain("npx golems-cli");
+  });
+});

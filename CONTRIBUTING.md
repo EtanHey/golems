@@ -14,7 +14,7 @@ Thanks for your interest in contributing!
 
 1. Create a PR with a clear description of what and why, and fill in the PR template's checks
 2. Six checks must pass on the PR's latest commit before it can merge: Publish Boundary Guard, Package test suite (bun), Python skill test suites, Check PR size label truth, Secret Scanning, and No new tracked docs.local. The other CI jobs run on every PR too; fix a red one before asking for review
-3. A maintainer reviews every PR. No review bot runs on this repo
+3. Reviews are agent-assisted, and the maintainer merges. No review bot runs on this repo
 4. PRs are merged with a merge commit (not squashed), so each commit stays traceable
 
 ## First-time Contributors
@@ -28,7 +28,7 @@ This project uses AI coding tools extensively. When AI agents contribute code:
 
 - Credit them with a `Co-Authored-By:` trailer. The maintainer's agents use `Co-Authored-By: <agent> running <model> <noreply@anthropic.com>`; your tool's standard trailer is fine
 - AI-generated code goes through the same review process as human code
-- No distinction in quality standards: all code must pass the required checks and maintainer review
+- No distinction in quality standards: all code must pass the required checks and review
 
 ## Reporting Issues
 

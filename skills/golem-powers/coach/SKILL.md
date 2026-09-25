@@ -60,7 +60,7 @@ For a daily plan:
 4. Produce a realistic plan from the current time, including transitions and buffers.
 5. Separate confirmed events from suggestions.
 
-See [references/scheduling-rules.md](references/scheduling-rules.md) and [workflows/schedule.md](workflows/schedule.md).
+See [references/scheduling-rules.md](references/scheduling-rules.md).
 
 ## Research gate
 
@@ -152,11 +152,12 @@ For several independent topics, create one handoff per topic instead of collapsi
 
 | Trigger | Workflow |
 |---|---|
-| Daily plan, calendar, reschedule | [workflows/schedule.md](workflows/schedule.md) |
+| Daily plan, calendar, reschedule | [references/scheduling-rules.md](references/scheduling-rules.md) |
 | Recovery, sleep, training, wearable | [workflows/health.md](workflows/health.md) |
-| Jobs, applications, outreach | [workflows/jobs.md](workflows/jobs.md) |
+| Jobs, applications, outreach | [workflows/recruit.md](workflows/recruit.md) |
 | Client, contract, invoice | [workflows/freelance.md](workflows/freelance.md) |
-| Status, habits, review | [workflows/status.md](workflows/status.md) |
+| Admin, legal, business registration | [workflows/admin.md](workflows/admin.md) |
+| Handoff across sessions | [workflows/handoff.md](workflows/handoff.md) |
 
 ## Safety boundary
 
