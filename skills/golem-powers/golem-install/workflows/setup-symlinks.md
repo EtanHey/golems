@@ -121,22 +121,22 @@ mkdir -p ~/.agents/skills && for d in /path/to/golems/skills/golem-powers/*/; do
 
 ## Symlink Hooks — Claude Code
 
-Some golems ship Claude Code hooks (versioned under `golems/hooks/`). The PreCompact
-safety-net checkpoint hook (`precompact-checkpoint.py`) is wired to its versioned source
-so fixes are reviewable and the live file never drifts:
+Wired hooks are symlinked from ONE pinned tree, `golems/.worktrees/hooks-live` (a detached,
+locked worktree only the installer moves), per host role (`mbp` or `m1`,
+`scripts/hooks/manifest.json`):
 
 ```bash
-GOLEMS_DIR="${GOLEMS_DIR:-$HOME/path/to/golems}" bash "$GOLEMS_DIR/hooks/install-hooks.sh"
+~/Gits/golems/scripts/hooks/install-hooks.sh --host mbp            # dry-run (default)
+~/Gits/golems/scripts/hooks/install-hooks.sh --host mbp --apply    # link + register
 ```
 
-`install-hooks.sh` is idempotent — it backs up any pre-existing real file as
-`*.pre-k1.<ts>.bak`, then symlinks `~/.claude/hooks/precompact-checkpoint.py` →
-`golems/hooks/precompact-checkpoint.py`. It does NOT edit `settings.json` (the hook is
-already registered there for the live path; this only repoints the file at the source).
+It backs up `settings.json` (dated `.bak`) before any change and renames a real file in a
+link's way to `.bak-<stamp>`. Other keys stay byte-identical. It never links or registers an
+E1-deleted hook.
 
 Verify:
 ```bash
-ls -la ~/.claude/hooks/precompact-checkpoint.py   # should point into golems/hooks/
+~/Gits/golems/scripts/hooks/install-hooks.sh --host mbp   # dry-run: every link line says ok
 ```
 
 ---

@@ -1,0 +1,35 @@
+{
+  "about": "Per-host hook sets for scripts/hooks/install-hooks.sh (GO-5). kind=golems: linked from hooks-live + registered. kind=external: another repo owns it; registration left untouched. Matchers and timeouts are carried over verbatim from the 2026-09-25 MBP settings.json.",
+  "hosts": {
+    "mbp": [
+      { "id": "model-pin-gate", "kind": "golems", "event": "PreToolUse", "matcher": "Task|Agent|Workflow|mcp__cmux(layer)?__(spawn_agent|dispatch_to_agent|new_split)", "link": "model-pin-gate", "source": "skills/golem-powers/model-pin-gate", "match": "model-pin-gate-hook.mjs", "timeout": 1, "command": "{node} {hooks}/model-pin-gate/scripts/model-pin-gate-hook.mjs" },
+      { "id": "block-dangerous-commands", "kind": "golems", "event": "PreToolUse", "matcher": "Bash|Write|Edit|mcp__supabase__execute_sql", "link": "block-dangerous-commands.py", "source": ".claude/hooks/block-dangerous-commands.py", "match": "block-dangerous-commands.py", "command": "{python} {hooks}/golems-fail-open.py {hooks}/block-dangerous-commands.py" },
+      { "id": "collab-guard", "kind": "golems", "event": "PreToolUse", "matcher": "Write", "link": "collab-guard", "source": "skills/golem-powers/collab-guard", "match": "collab-guard.py", "command": "{python} {hooks}/golems-fail-open.py {hooks}/collab-guard/hooks/collab-guard.py" },
+      { "id": "tdd-guard", "kind": "golems", "event": "PreToolUse", "matcher": "Write|Edit", "link": "tdd-guard", "source": "skills/golem-powers/tdd-guard", "match": "tdd-guard.py", "timeout": 1000, "command": "{python} {hooks}/golems-fail-open.py {hooks}/tdd-guard/hooks/tdd-guard.py" },
+      { "id": "tmp-block", "kind": "golems", "event": "PreToolUse", "matcher": "Write|Edit|NotebookEdit|Bash", "link": "tmp-block", "source": "skills/golem-powers/tmp-block", "match": "tmp-block-pretooluse.py", "timeout": 5000, "command": "{python} {hooks}/golems-fail-open.py {hooks}/tmp-block/hooks/tmp-block-pretooluse.py" },
+      { "id": "stamp-lint", "kind": "golems", "event": "PostToolUse", "matcher": "Write|Edit", "link": "never-fabricate", "source": "skills/golem-powers/never-fabricate", "match": "stamp-lint.py", "timeout": 5000, "command": "{python} {hooks}/golems-fail-open.py {hooks}/never-fabricate/hooks/stamp-lint.py" },
+      { "id": "precompact-checkpoint", "kind": "golems", "event": "PreCompact", "link": "precompact-checkpoint.py", "source": "hooks/precompact-checkpoint.py", "match": "precompact-checkpoint.py", "timeout": 60000, "command": "{python} {hooks}/golems-fail-open.py {hooks}/precompact-checkpoint.py" },
+      { "id": "frustration-capture", "kind": "golems", "event": "UserPromptSubmit", "link": "frustration-capture", "source": "skills/golem-powers/frustration-capture", "match": "frustration-capture-prompt.py", "timeout": 1000, "command": "{python} {hooks}/golems-fail-open.py {hooks}/frustration-capture/hooks/frustration-capture-prompt.py" },
+      { "id": "false-green-gate", "kind": "golems", "event": "Stop", "link": "false-green-gate", "source": "skills/golem-powers/false-green-gate", "match": "false-green-gate-hook.mjs", "timeout": 5, "command": "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs false-green-gate -- {node} {hooks}/false-green-gate/scripts/false-green-gate-hook.mjs" },
+      { "id": "fleet-wrap-gate", "kind": "golems", "event": "Stop", "link": "fleet-wrap-gate", "source": "skills/golem-powers/fleet-wrap-gate", "match": "fleet-wrap-gate-hook.mjs", "timeout": 5, "command": "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs fleet-wrap-gate -- {node} {hooks}/fleet-wrap-gate/scripts/fleet-wrap-gate-hook.mjs" },
+      { "id": "qa-verdict-gate", "kind": "golems", "event": "Stop", "link": "qa-verdict-gate", "source": "skills/golem-powers/qa-verdict-gate", "match": "qa-verdict-gate-hook.mjs", "timeout": 5, "command": "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs qa-verdict-gate -- {node} {hooks}/qa-verdict-gate/scripts/qa-verdict-gate-hook.mjs" },
+      { "id": "cc-axiom-reporter", "kind": "external", "owner": "golems main checkout (needs node_modules; hooks-live has none)", "event": "SessionEnd", "match": "cc-axiom-reporter.ts" },
+      { "id": "send-size-gate", "kind": "external", "owner": "skill-creator/hooks-lab (unhomed in golems)", "event": "PreToolUse", "match": "send-size-gate-hook.mjs" },
+      { "id": "daemon-gate-precheck", "kind": "external", "owner": "none: exists only in ~/.claude/hooks", "event": "PreToolUse", "match": "daemon-gate-precheck.py" },
+      { "id": "pre_tool_use", "kind": "external", "owner": "none: exists only in ~/.claude/hooks", "event": "PreToolUse", "match": "pre_tool_use.py" },
+      { "id": "session-cleanup", "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "session-cleanup.py" },
+      { "id": "brainlayer-session-start", "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "brainlayer-session-start.py" },
+      { "id": "cmux-self-register", "kind": "external", "owner": "cmuxlayer", "event": "SessionStart", "match": "cmux-self-register.py" },
+      { "id": "brainbar-stop-index", "kind": "external", "owner": "brainlayer", "event": "Stop", "match": "brainbar-stop-index.py" },
+      { "id": "brainlayer-prompt-search", "kind": "external", "owner": "brainlayer", "event": "UserPromptSubmit", "match": "brainlayer-prompt-search.py" }
+    ],
+    "m1": [
+      { "id": "model-pin-gate", "kind": "golems", "event": "PreToolUse", "matcher": "Task|Agent|Workflow|mcp__cmux(layer)?__(spawn_agent|dispatch_to_agent|new_split)", "link": "model-pin-gate", "source": "skills/golem-powers/model-pin-gate", "match": "model-pin-gate-hook.mjs", "timeout": 1, "command": "{node} {hooks}/model-pin-gate/scripts/model-pin-gate-hook.mjs" },
+      { "id": "precompact-checkpoint", "kind": "golems", "event": "PreCompact", "link": "precompact-checkpoint.py", "source": "hooks/precompact-checkpoint.py", "match": "precompact-checkpoint.py", "timeout": 60000, "command": "{python} {hooks}/golems-fail-open.py {hooks}/precompact-checkpoint.py" },
+      { "id": "send-size-gate", "kind": "external", "owner": "skill-creator/hooks-lab (unhomed in golems; not on the M1 yet)", "event": "PreToolUse", "match": "send-size-gate-hook.mjs" },
+      { "id": "daemon-gate-precheck", "kind": "external", "owner": "none: exists only in the MBP ~/.claude/hooks; not on the M1 yet", "event": "PreToolUse", "match": "daemon-gate-precheck.py" },
+      { "id": "brainlayer-session-start", "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "brainlayer-session-start.py" },
+      { "id": "brainlayer-prompt-search", "kind": "external", "owner": "brainlayer", "event": "UserPromptSubmit", "match": "brainlayer-prompt-search.py" }
+    ]
+  }
+}
