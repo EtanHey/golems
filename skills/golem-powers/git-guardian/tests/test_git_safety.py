@@ -857,3 +857,73 @@ def test_pr4_ansi_c_quotes_disable_masking_rather_than_desync():
     # ` ; psql … ; echo ` as one quoted echo argument, hiding executed SQL.
     command = "echo $'a\\'' ; psql -c \"DROP TABLE t\" ; echo 'x'"
     assert "DROP TABLE" in git_safety.shell_text_without_heredoc_bodies(command)
+
+
+def test_pr4_fixture4_loop_over_literal_names_resolves_each_value(tmp_path):
+    # Hook false positive #4 (w6): a loop-local target built from a literal loop list.
+    sbx = tmp_path / "sbx"
+    sbx.mkdir()
+    command = f"for s in a b; do T={sbx}/wh-$s; rm -rf $T; done"
+    assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is None
+
+
+def test_pr4_fixture4_every_loop_value_is_checked_and_non_literal_lists_stay_blocked(tmp_path):
+    gits = tmp_path / "Gits"
+    (gits / "golems" / ".git").mkdir(parents=True)
+    for command in (
+        f"for d in foo golems; do rm -rf {gits}/$d; done",   # the 2nd value is a repo root
+        f"for d in a ..; do rm -rf {gits}/golems/x/$d; done",  # traversal is not a literal name
+        "for d in $(ls); do rm -rf $d; done",
+        f"for d in a b; do rm -rf {gits}/golems/$d; done; rm -rf ~",
+    ):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env={"HOME": os.path.expanduser("~")}
+        ) is not None, command
+
+
+def test_pr4_fixture5_worktree_of_a_nested_throwaway_clone_is_disposable(tmp_path):
+    # Hook false positive #5 (r7): a sandbox clone inside the repo's gitignored
+    # docs.local, removing that clone's own worktree via a same-command variable.
+    outer = tmp_path / "outer"
+    (outer / ".git").mkdir(parents=True)
+    clone = outer / "docs.local" / "r7-sbx" / "golems"
+    (clone / ".git" / "worktrees" / "hooks-live").mkdir(parents=True)
+    worktree = clone / ".worktrees" / "hooks-live"
+    worktree.mkdir(parents=True)
+    (worktree / ".git").write_text(f"gitdir: {clone}/.git/worktrees/hooks-live\n")
+    command = "S=docs.local/r7-sbx; rm -rf $S/golems/.worktrees/hooks-live"
+    assert git_safety.dangerous_shell_reason(command, cwd=str(outer), env={}) is None
+
+
+def test_pr4_fixture6_quoted_heredoc_data_for_tee_and_gh_is_not_executed(tmp_path):
+    # Hook false positive #6 (r7): review prose naming a forced push, fed as data.
+    body = "the forced push `git push --force origin main` stays blocked\n"
+    for command in (
+        f"tee r.md >/dev/null <<'EOF'\n{body}EOF",
+        f"gh pr review 1 --approve --body-file - <<'EOF'\n{body}EOF",
+        f"cat > r.md <<'EOF'\n{body}EOF",
+    ):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is None, command
+
+
+def test_pr4_fixture6_executed_forms_stay_blocked(tmp_path):
+    body = "`git push --force origin main`\n"
+    for command in (
+        f"cat > r.md <<EOF\n{body}EOF",            # unquoted: backticks really run
+        f"tee r.md <<'EOF' | sh\n{body}EOF",        # piped into a shell
+        f"bash <<'EOF'\ngit push --force origin main\nEOF",
+        "git push --force origin main",
+    ):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is not None, command
+
+
+def test_pr4_fixture4_a_loop_body_that_changes_directory_is_not_unrolled(tmp_path):
+    # Iterations share one cwd: the 2nd `cd ..` lands on the repo root, so the
+    # 2nd rm removes a top-level directory. Checking each value from the start
+    # cwd would miss that, so such loops keep the unresolved-target block.
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    deeper = repo / "sub" / "deeper"
+    deeper.mkdir(parents=True)
+    command = "for d in keep sub; do cd ..; rm -rf $d; done"
+    assert git_safety.dangerous_shell_reason(command, cwd=str(deeper), env={}) is not None

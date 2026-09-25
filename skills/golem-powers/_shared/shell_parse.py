@@ -3800,8 +3800,9 @@ def _executable_expansions(line: str) -> str:
 
 
 # GO-5 PR-4: heredoc bodies a non-shell interpreter reads are its program text,
-# not shell. Bash itself only runs their unquoted `$()`/backticks.
-_HEREDOC_INTERPRETERS = {"python", "python3", "node", "bun", "deno", "ruby", "perl"}
+# and `tee`/`gh` read them as data (a file, a PR body). None of it is shell;
+# Bash itself only runs an unquoted heredoc's `$()`/backticks.
+_HEREDOC_INTERPRETERS = {"python", "python3", "node", "bun", "deno", "ruby", "perl", "tee", "gh"}
 
 # Commands whose quoted arguments are data (messages, bodies, printed text).
 # Anything else keeps its quoted text: `psql -c '…'`, `bash -c '…'`, `eval`.
@@ -3810,8 +3811,8 @@ _GIT_DATA_SUBCOMMANDS = {"commit", "tag", "notes"}
 
 
 def _interpreter_heredoc_header(header: str, *, piped: bool = False) -> bool:
-    """True when a non-shell interpreter consumes the heredoc (and its output
-    is not piped on, e.g. into `sh`)."""
+    """True when a non-shell reader (_HEREDOC_INTERPRETERS) consumes the
+    heredoc and its output is not piped on, e.g. into `sh`."""
     if piped:
         return False
     try:
