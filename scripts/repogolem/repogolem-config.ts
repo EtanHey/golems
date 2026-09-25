@@ -91,26 +91,27 @@ export interface ImportResult {
   projects: number;
   mcpDefinitions: number;
   dropped: number;
-  // Key paths (never values) of secret/env values that are not op:// refs.
+  // Key paths (never values) of secret/env values that are not op:// or $ refs.
   literals: string[];
 }
 
 // Secrets belong in 1Password; a literal here is copied into the config file.
-function literalPaths(imported: JsonObject): string[] {
-  const found: string[] = [];
-  const scan = (where: string, values: Json | undefined) => {
-    if (!isObject(values)) return;
-    for (const [key, value] of Object.entries(values)) {
-      if (!(typeof value === "string" && value.startsWith("op://"))) found.push(`${where}.${key}`);
-    }
-  };
-  for (const [name, project] of Object.entries(imported.projects as JsonObject)) {
-    if (isObject(project)) scan(`projects.${name}.secrets`, project.secrets);
-  }
-  if (isObject(imported.global)) scan("global.env", imported.global.env);
-  if (isObject(imported.mcpDefinitions)) {
-    for (const [name, definition] of Object.entries(imported.mcpDefinitions)) {
-      if (isObject(definition)) scan(`mcpDefinitions.${name}.env`, definition.env);
+// Every `env` or `secrets` mapping anywhere in the imported sections counts.
+// op:// (1Password) and $VAR / ${VAR} (resolved at launch) are references.
+function literalPaths(value: Json, where: string, found: string[] = []): string[] {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => literalPaths(item, `${where}.${index}`, found));
+  } else if (isObject(value)) {
+    for (const [key, child] of Object.entries(value)) {
+      const path = where ? `${where}.${key}` : key;
+      if ((key === "env" || key === "secrets") && isObject(child)) {
+        for (const [name, entry] of Object.entries(child)) {
+          const isRef = typeof entry === "string" && (entry.startsWith("op://") || entry.startsWith("$"));
+          if (!isRef) found.push(`${path}.${name}`);
+        }
+      } else {
+        literalPaths(child, path, found);
+      }
     }
   }
   return found;
@@ -185,7 +186,7 @@ export function buildImport(registryText: string, seatsText: string, dropClis: s
     projects: Object.keys(projects).length,
     mcpDefinitions: isObject(imported.mcpDefinitions) ? Object.keys(imported.mcpDefinitions).length : 0,
     dropped,
-    literals: literalPaths(imported),
+    literals: literalPaths(imported, ""),
   };
 }
 
@@ -382,7 +383,7 @@ function runImport(argv: string[]) {
   const summary = `projects ${result.projects}, mcpDefinitions ${result.mcpDefinitions}, dropped ${result.dropped}, literals ${result.literals.length}`;
   if (result.literals.length > 0) {
     console.error(
-      `warning: ${result.literals.length} literal (non-op://) secret/env value(s) will be copied into ${out}:\n  ${result.literals.join("\n  ")}`,
+      `warning: ${result.literals.length} literal (non-op://, non-$) secret/env value(s) will be copied into ${out}:\n  ${result.literals.join("\n  ")}`,
     );
   }
   if (!args.write) {
