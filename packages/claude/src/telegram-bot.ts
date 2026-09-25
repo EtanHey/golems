@@ -6,7 +6,7 @@
  * No domain composers, no conversational UX, no personas.
  *
  * Infrastructure:
- * - composers/claude-composer.ts  — /status, /trigger, /tonight, /schedule + free text → Claude CLI
+ * - composers/claude-composer.ts  — /status, /trigger, /morning + free text → Claude CLI
  * - lib/bot-shared.ts             — Shared state, Claude CLI spawning, queue
  * - lib/notify-server.ts          — HTTP notification server (port 3847)
  */

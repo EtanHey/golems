@@ -11,7 +11,6 @@ NODE_BIN="$(command -v node)"
 
 PLISTS=(
     "com.golemszikaron.ollama.plist"
-    "com.golemszikaron.nightshift.plist"
     "com.golemszikaron.briefing.plist"
 )
 
@@ -64,12 +63,10 @@ done
 echo ""
 echo "✅ Installed! Schedules:"
 echo "  - Ollama: Always running (KeepAlive)"
-echo "  - Night Shift: 3:00 AM daily"
 echo "  - Briefing: 8:00 AM daily"
 echo "  - Google Drive OAuth guard: login + every 5 minutes"
 echo ""
 echo "📋 Commands:"
 echo "  View logs: tail -f /tmp/golemszikaron-*.log"
-echo "  Test night shift: bun ~/Gits/golems-zikaron/src/night-shift.ts"
 echo "  Test briefing: bun ~/Gits/golems-zikaron/src/briefing.ts"
 echo "  Uninstall: $0 --uninstall"

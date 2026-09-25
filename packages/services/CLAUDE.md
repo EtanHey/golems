@@ -1,10 +1,10 @@
 # Golems Services
 
-> Infrastructure services — Night Shift, Bedtime Guardian, Morning Briefing, Cloud Worker, and ecosystem tooling.
+> Infrastructure services — Bedtime Guardian, Morning Briefing, Cloud Worker, and ecosystem tooling.
 
 ## Role
 
-Services package contains **cross-cutting infrastructure** that doesn't belong to any single golem: the cloud worker orchestrator, night shift autonomous coding, morning briefings, health checks, and ecosystem management tools (doctor). Guided setup lives in the `golem-install` skill.
+Services package contains **cross-cutting infrastructure** that doesn't belong to any single golem: the cloud worker orchestrator, morning briefings, health checks, and ecosystem management tools (doctor). Guided setup lives in the `golem-install` skill.
 
 ---
 
@@ -49,7 +49,6 @@ When compacting this session, follow these rules strictly:
 packages/services/
 ├── src/
 │   ├── cloud-worker.ts          # Runnable scheduler for email/jobs/briefing/soltome
-│   ├── night-shift.ts           # 4am autonomous coding improvements
 │   ├── briefing.ts              # 8am morning summary
 │   ├── healthcheck.ts           # 9am service health verification
 │   ├── doctor.ts                # health checks (bun run src/doctor.ts)
@@ -94,14 +93,6 @@ GOOGLE_GENERATIVE_AI_API_KEY=<your-key>
 SUPABASE_URL=...
 SUPABASE_SERVICE_KEY=...
 ```
-
-## Night Shift
-
-Runs at 4am via launchd. Per-repo Claude sessions:
-- Scans for TODOs, issues, improvements
-- Creates worktree, implements, runs tests
-- CodeRabbit review → PR
-- Tracks PRs in `state.nightShiftPRs[]`
 
 ## Ecosystem Tools
 

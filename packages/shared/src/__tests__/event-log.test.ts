@@ -271,8 +271,9 @@ describe("Event Log - formatEventsForClaude()", () => {
     expect(formatted).toContain("routed");
   });
 
-  it("should format nightshift_pr", () => {
-    const events: GolemEvent[] = [
+  // Night Shift is retired (gL = A); an old log line still formats generically.
+  it("formats a legacy nightshift_pr event from old logs generically", () => {
+    const events = [
       {
         id: "5",
         timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8h ago
@@ -280,13 +281,12 @@ describe("Event Log - formatEventsForClaude()", () => {
         type: "nightshift_pr",
         data: { repo: "songscript", prNumber: 42 },
       },
-    ];
+    ] as unknown as GolemEvent[];
 
     const formatted = formatEventsForClaude(events);
 
-    expect(formatted).toContain("NightShift");
-    expect(formatted).toContain("created PR");
-    expect(formatted).toContain("songscript#42");
+    expect(formatted).toContain("nightshift performed nightshift_pr");
+    expect(formatted).not.toContain("created PR");
   });
 
   it("should format multiple events in chronological order", () => {

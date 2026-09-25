@@ -130,7 +130,9 @@ describe("telegram-direct", () => {
       expect(body.message_thread_id).toBeUndefined();
     });
 
-    it("routes nightshift to nightshift topic", async () => {
+    // Night Shift is retired (gL = A): its source has no topic of its own any
+    // more, so even with TELEGRAM_TOPIC_NIGHTSHIFT set it lands in alerts.
+    it("routes the retired nightshift source to the alerts topic", async () => {
       await sendNotification({
         title: "PR Created",
         body: "songscript#42",
@@ -138,7 +140,7 @@ describe("telegram-direct", () => {
       });
 
       const body = JSON.parse(fetchCalls[0].options.body);
-      expect(body.message_thread_id).toBe(4);
+      expect(body.message_thread_id).toBe(3);
     });
 
     it("routes unknown source to alerts topic", async () => {
@@ -232,7 +234,6 @@ describe("telegram-direct", () => {
       process.env.TELEGRAM_BOT_TOKEN = "test-token-123";
       process.env.TELEGRAM_CHAT_ID = "-1001234567890"; // obvious synthetic supergroup ID
       process.env.TELEGRAM_TOPIC_ALERTS = "3";
-      process.env.TELEGRAM_TOPIC_NIGHTSHIFT = "4";
     });
 
     /** Mock fetch that fails on thread_id, succeeds without */

@@ -30,16 +30,11 @@ export const SOUL_FILE = join(GITS, "golems/packages/claude/SOUL.md");
 // ═══════════════════════════════════════════════════════
 
 export interface State {
-  nightShiftTarget: string;
-  rotation: string[];
   telegramChatId: number | null;
-  nightShiftPRs: Array<{ url: string; repo: string; createdAt: string }>;
-  lastNightShift: string | null;
   groupChatId?: number;
   topics?: {
     alerts?: number;
   };
-  weeklySchedule?: Record<string, string>;
 }
 
 export function loadState(): State {
@@ -51,11 +46,7 @@ export function loadState(): State {
       (err as Error).message,
     );
     return {
-      nightShiftTarget: "songscript",
-      rotation: ["songscript", "brainlayer", "claude-golem"],
       telegramChatId: null,
-      nightShiftPRs: [],
-      lastNightShift: null,
     };
   }
 }

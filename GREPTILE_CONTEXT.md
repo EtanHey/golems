@@ -28,7 +28,7 @@ shared (foundation — no internal deps)
   ├── teller (finance)
   ├── content (LinkedIn, Soltome)
   ├── coach (calendar, schedule)
-  ├── services (NightShift, Briefing, Cloud Worker)
+  ├── services (Briefing, Cloud Worker)
   ├── dashboard (Next.js — no @golems/* deps, uses API proxy)
   └── autonomous (legacy stranglers — 1-line re-exports only)
 ```

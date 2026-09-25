@@ -24,10 +24,8 @@ Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_IDS` env vars.
 |---------|-------------|
 | `/start` | Welcome message + command list |
 | `/status` | Health, queue, daily stats |
-| `/trigger <svc>` | Manual runs (email/jobs/briefing/nightshift) |
+| `/trigger <svc>` | Manual runs (email/jobs/briefing) |
 | `/morning` | Morning briefing |
-| `/tonight` | Night Shift target selection |
-| `/schedule` | Weekly Night Shift rotation |
 | Free text | Spawn Claude CLI conversation |
 
 ## Notify Server
@@ -64,5 +62,5 @@ packages/claude/
 
 - `@golems/shared` — Supabase, event log, state store
 - `@golems/jobs` — `runJobSearch` (used by `/trigger jobs`)
-- `@golems/services` — Night Shift, briefing triggers
+- `@golems/services` — briefing triggers
 - `grammy` — Telegram Bot Framework

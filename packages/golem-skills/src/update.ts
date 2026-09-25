@@ -60,11 +60,7 @@ export interface FullConfig extends GolemConfig {
   features?: Record<string, boolean>;
 }
 
-const EXPECTED_FEATURES = [
-  "proactiveNudges",
-  "nightShift",
-  "telegram",
-] as const;
+const EXPECTED_FEATURES = ["proactiveNudges", "telegram"] as const;
 
 // --- Pure functions (testable) ---
 

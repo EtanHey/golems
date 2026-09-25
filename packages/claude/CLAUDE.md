@@ -50,7 +50,7 @@ packages/claude/
 ├── src/
 │   ├── telegram-bot.ts          # Auth (fail-closed) + rate limit → composer → shutdown
 │   ├── composers/
-│   │   └── claude-composer.ts   # /status, /trigger, /tonight, /schedule + free text → Claude CLI
+│   │   └── claude-composer.ts   # /status, /trigger, /morning + free text → Claude CLI
 │   └── lib/
 │       ├── bot-shared.ts        # State, Claude CLI spawning, queue processing
 │       └── notify-server.ts     # HTTP notification server (port 3847)
@@ -63,7 +63,7 @@ packages/claude/
 
 - `@golems/shared` — Supabase, event log, state store, Axiom, email infra
 - `@golems/jobs` — runJobSearch (used by /trigger jobs)
-- `@golems/services` — Night shift, briefing (used by /trigger)
+- `@golems/services` — briefing (used by /trigger and /morning)
 - `grammy` — Telegram Bot Framework
 
 ## Key Patterns
@@ -89,11 +89,8 @@ packages/claude/
 |---------|-------------|
 | `/start` | Welcome + command list |
 | `/status` | Health, queue, daily stats |
-| `/trigger <svc>` | Manual runs (email/jobs/briefing/nightshift) |
+| `/trigger <svc>` | Manual runs (email/jobs/briefing) |
 | `/morning` | Morning briefing |
-| `/tonight` | Night Shift target selection |
-| `/schedule` | Weekly Night Shift rotation |
-| `/repos` | List available repos |
 | Free text | Spawn Claude CLI |
 
 ## Notify Server

@@ -96,23 +96,6 @@ try {
     .length;
 } catch {}
 
-// --- Night Shift result (from state file) ---
-let nightShiftResult = "";
-try {
-  const stateFile = Bun.file(`${process.env.HOME}/.golems-zikaron/state.json`);
-  if (await stateFile.exists()) {
-    const state = JSON.parse(await stateFile.text());
-    if (state.nightShift?.lastResult) {
-      const ns = state.nightShift;
-      const ageMs = Date.now() - new Date(ns.lastRun || 0).getTime();
-      if (ageMs < 24 * 60 * 60 * 1000) {
-        // Only show if from today
-        nightShiftResult = ns.lastResult === "success" ? "✅" : "❌";
-      }
-    }
-  }
-} catch {}
-
 // --- Context % from transcript ---
 let contextPct = "";
 let contextColor = c.green;
@@ -212,11 +195,7 @@ const servicesStr =
     ? ` ${c.gray}|${c.reset} ${c.green}🔧 ${activeServices}${c.reset}`
     : "";
 
-const nightStr = nightShiftResult
-  ? ` ${c.gray}|${c.reset} 🌙${nightShiftResult}`
-  : "";
-
-const line1 = `${c.cyan}⎇${c.reset} ${c.bold}${gitBranch}${c.reset}${linesStr}${servicesStr}${nightStr}`;
+const line1 = `${c.cyan}⎇${c.reset} ${c.bold}${gitBranch}${c.reset}${linesStr}${servicesStr}`;
 
 const sep = ` ${c.gray}|${c.reset} `;
 const parts = [

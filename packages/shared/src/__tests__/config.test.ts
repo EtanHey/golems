@@ -57,18 +57,16 @@ describe("config", () => {
 
     const yaml = `
 reposPath: "/custom/path"
-nightshift:
-  rotation:
-    - repo-a
-    - repo-b
-  timeout: 60000
+costs:
+  logPath: "/tmp/costs.jsonl"
+  budgetAlertUSD: 25
 features:
   soltome: false
 `;
     const parsed = parse(yaml);
     expect(parsed.reposPath).toBe("/custom/path");
-    expect(parsed.nightshift.rotation).toEqual(["repo-a", "repo-b"]);
-    expect(parsed.nightshift.timeout).toBe(60000);
+    expect(parsed.costs.logPath).toBe("/tmp/costs.jsonl");
+    expect(parsed.costs.budgetAlertUSD).toBe(25);
     expect(parsed.features.soltome).toBe(false);
   });
 

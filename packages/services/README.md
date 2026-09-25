@@ -1,11 +1,10 @@
 # @golems/services
 
-Infrastructure services — Cloud Worker, Night Shift, Morning Briefing, Doctor, Wizard, and CLI agent wrappers.
+Infrastructure services — Cloud Worker, Morning Briefing, Bedtime Guardian and Doctor.
 
 ## What It Does
 
 - **Cloud Worker** — scheduler entry point for email/jobs/briefing/soltome runs
-- **Night Shift** — 4am autonomous code improvements via Claude CLI
 - **Morning Briefing** — 8am summary delivered to Telegram
 - **Bedtime Guardian** — Evening wind-down reminders
 - **Doctor** — health checks for all wiring (`bun run packages/services/src/doctor.ts`)
@@ -30,23 +29,12 @@ local or successor scheduler before assuming these jobs are active.
 bun run packages/services/src/doctor.ts   # Health checks for all services
 ```
 
-## Night Shift
-
-Runs at 4am via macOS launchd:
-
-1. Scans repos for TODOs, issues, improvements
-2. Creates git worktree for isolated work
-3. Implements changes, runs tests
-4. CodeRabbit review gate
-5. Creates PR, tracks in state
-
 ## Architecture
 
 ```
 packages/services/
 ├── src/
 │   ├── cloud-worker.ts        # Scheduler entry point
-│   ├── night-shift.ts         # 4am autonomous coding
 │   ├── briefing.ts            # 8am morning summary
 │   ├── healthcheck.ts         # 9am service verification
 │   └── doctor.ts              # Health checks
@@ -57,7 +45,7 @@ packages/services/
 
 | Environment | What Runs |
 |-------------|-----------|
-| **Mac (launchd)** | Night Shift, Telegram bot, notification server |
+| **Mac (launchd)** | Telegram bot, notification server, briefing |
 | **Local/successor scheduler** | Cloud Worker (email, jobs, briefing) |
 
 ## Dependencies

@@ -53,7 +53,7 @@ describe("sendTelegram", () => {
 
   it("should not send if no chat ID configured", async () => {
     // Create state without chat ID
-    writeFileSync(TEST_STATE_FILE, JSON.stringify({ nightShiftTarget: "test" }));
+    writeFileSync(TEST_STATE_FILE, JSON.stringify({ telegramChatId: null }));
 
     // Import the module (need to do this dynamically to use our test state)
     const { sendTelegramTest } = await createTestModule(TEST_STATE_FILE);

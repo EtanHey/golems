@@ -86,7 +86,6 @@ Create it interactively:
 
    | Feature | Default | Description |
    |---------|---------|-------------|
-   | `nightShift` | **OFF** | Autonomous improvement loop at 3am |
    | `telegram` | **OFF** | Telegram notifications |
    | `emailGolem` | **OFF** | Email triage and scoring |
 
@@ -108,7 +107,6 @@ Create it interactively:
      # ... other detected tools
 
    features:
-     nightShift: false
      telegram: false
      emailGolem: false
 

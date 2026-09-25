@@ -99,7 +99,6 @@ describe("translation", () => {
   test("golem names are translated", () => {
     expect(t("golem.claude", "en")).toBe("ClaudeGolem");
     expect(t("golem.claude", "he")).toBe("גולם-קלוד");
-    expect(t("golem.nightshift", "he")).toBe("משמרת לילה");
   });
 
   test("dashboard strings are translated", () => {
