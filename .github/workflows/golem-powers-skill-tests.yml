@@ -90,6 +90,7 @@ jobs:
                    ./scripts/tests/launchd-portability.test.mjs \
                    ./scripts/tests/reconcile-to-mac.test.mjs \
                    ./scripts/tests/release-gate.test.mjs \
+                   ./scripts/tests/repogolem-config.test.ts \
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/cc-usage/__tests__ \
                    ./skills/golem-powers/never-fabricate/scripts/__tests__ \

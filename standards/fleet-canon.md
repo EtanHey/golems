@@ -8,7 +8,9 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
 > Source: `golems/standards/fleet-canon.md`. Installed copy; edits here are drift.
 > Scope: golems-ecosystem work. More-specific repo law may tighten, never loosen, these contracts.
 
-1. **agent-routing** - Cursor gathers and verifies; Codex implements; Claude orchestrates and reviews.
+1. **agent-routing** - Cursor or a Gemini gatherer gathers and verifies (Gemini for the shapes the
+   skill-creator eval marked helper-eligible; Cursor Auto-only as before); Codex implements; Claude
+   orchestrates and reviews. A gatherer never implements or reviews.
    Leads route work through visible panes and keep implementation authority in Codex lanes. Cursor,
    including `cursor-agent`, is Auto-only: never pass a model flag or model field because pinned Cursor
    drains its subscription pool fast.

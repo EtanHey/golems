@@ -1,0 +1,105 @@
+{
+  "version": "1.0.0",
+  "coderabbit": null,
+  "global": {
+    "mcps": {
+      "context7": {
+        "command": "npx",
+        "args": ["-y", "@upstash/context7-mcp@1.0.0"]
+      }
+    },
+    "env": {
+      "FIXTURE_FLAG": "1"
+    }
+  },
+  "projects": {
+    "alpha": {
+      "path": "/fixture/gits/alpha",
+      "displayName": "Alpha",
+      "emoji": "🅰️",
+      "mcps": ["context7"],
+      "mcpsLight": [],
+      "contexts": ["base", "tech/bun"],
+      "secrets": {},
+      "created": "2026-01-01T00:00:00Z",
+      "disableChrome": true,
+      "ttydPort": 7681,
+      "clis": ["claude", "codex", "gemini", "cursor", "kiro"],
+      "agent": "orc",
+      "funcAlias": "alfClaude",
+      "launcherAliasPrefix": "alphaCore"
+    },
+    "beta": {
+      "path": "~/Gits/beta",
+      "displayName": "Beta",
+      "mcps": [],
+      "mcpsLight": ["context7"],
+      "contexts": [],
+      "secrets": {
+        "FIXTURE_TOKEN": "op://Fixture/Beta/token"
+      },
+      "created": "2026-02-02",
+      "disableChrome": false,
+      "ttydPort": 7682,
+      "clis": ["claude", "kiro"],
+      "mcpInheritFrom": "alpha",
+      "funcAlias": "betaClaude"
+    },
+    "gamma": {
+      "path": "/fixture/gits/gamma",
+      "description": "no clis, no secrets key, yes-like and number-like strings",
+      "mcps": ["context7", "browser-tools"],
+      "contexts": ["yes", "0123", "on"],
+      "created": "2026-03-03T03:03:03Z",
+      "launcher": "custom",
+      "env": {
+        "GAMMA_LITERAL": "fixture-gamma-value"
+      }
+    },
+    "6pm-svc": {
+      "path": "/fixture/gits/6pm svc",
+      "displayName": "6pm service",
+      "emoji": "🕕",
+      "mcps": ["figma-remote"],
+      "mcpsLight": [],
+      "contexts": ["base"],
+      "secrets": {},
+      "created": "2026-04-04T04:04:04Z",
+      "ttydPort": 7684,
+      "clis": ["claude", "codex", "opencode", "kiro"],
+      "mcpInheritFrom": "beta",
+      "launcherAliasPrefix": "sixPm"
+    }
+  },
+  "mcpDefinitions": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@1.0.0"]
+    },
+    "browser-tools": {
+      "command": "npx",
+      "args": ["@agentdeskai/browser-tools-mcp@1.2.0"]
+    },
+    "figma-remote": {
+      "transport": "http",
+      "value": "https://fixture.invalid/mcp"
+    },
+    "literal-mcp": {
+      "command": "node",
+      "args": ["literal.js"],
+      "env": {
+        "FIXTURE_LITERAL": "fixture-literal-value",
+        "FIXTURE_ENV_REF": "$FIXTURE_FROM_ENV",
+        "FIXTURE_BRACED_REF": "${FIXTURE_FROM_ENV}"
+      }
+    },
+    "secret-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["server.js"],
+      "env": {
+        "FIXTURE_API_KEY": "op://Fixture/SecretMcp/credential"
+      }
+    }
+  }
+}

@@ -22,6 +22,7 @@ setup() {
 tool="$(basename "$0")"
 echo "$tool $* @ $PWD" >> "$CALLS"
 if [ "${STUB_FAIL:-0}" = 1 ]; then echo "$tool: lockfile out of date" >&2; exit 3; fi
+if [ -n "${STUB_SLEEP:-}" ]; then sleep "$STUB_SLEEP"; fi
 case "$tool" in
   uv) mkdir -p .venv ;;
   *) mkdir -p node_modules && touch node_modules/.installed ;;
@@ -252,4 +253,75 @@ JSON
     [ "$status" -eq 0 ]
     [ -x "$fake_home/.config/ralphtools/worktree-bootstrap.sh" ]
     cmp -s "$BOOTSTRAP" "$fake_home/.config/ralphtools/worktree-bootstrap.sh"
+}
+
+# ── r5's #198 probes, pinned (GO-4 PR-2c) ─────────────────────────
+
+@test "a hung installer is killed at WORKTREE_BOOTSTRAP_TIMEOUT and reported FAILED" {
+    touch "$WT/bun.lock"
+    local start=$SECONDS
+    run env PATH="$STUB_PATH" STUB_SLEEP=47 WORKTREE_BOOTSTRAP_TIMEOUT=1 "$BOOTSTRAP" "$WT"
+    [ "$status" -ne 0 ]
+    [ $((SECONDS - start)) -lt 10 ]
+    # the installer's own children die with it (process-group kill)
+    sleep 1
+    [ -z "$(pgrep -f 'sleep 47' || true)" ]
+    [[ "$output" == *"FAILED: bun install --frozen-lockfile (timed out after 1s)"* ]] || false
+}
+
+@test "a trailing-slash link target: the link is replaced, the target keeps its files" {
+    touch "$WT/bun.lock"
+    mkdir -p "$TMPDIR_/main/node_modules/dep" && touch "$TMPDIR_/main/node_modules/dep/SENTINEL"
+    ln -s "$TMPDIR_/main/node_modules/" "$WT/node_modules"
+    bootstrap "$WT"
+    [ "$status" -eq 0 ]
+    [ ! -L "$WT/node_modules" ]
+    [ -f "$TMPDIR_/main/node_modules/dep/SENTINEL" ]
+    [ ! -e "$TMPDIR_/main/node_modules/.installed" ]
+}
+
+@test "a trailing-slash worktree argument: same result" {
+    touch "$WT/bun.lock"
+    mkdir -p "$TMPDIR_/main/node_modules/dep" && touch "$TMPDIR_/main/node_modules/dep/SENTINEL"
+    ln -s "$TMPDIR_/main/node_modules" "$WT/node_modules"
+    bootstrap "$WT/"
+    [ "$status" -eq 0 ]
+    [ ! -L "$WT/node_modules" ]
+    [ -f "$TMPDIR_/main/node_modules/dep/SENTINEL" ]
+}
+
+@test "a real node_modules directory is left alone" {
+    touch "$WT/bun.lock"
+    mkdir -p "$WT/node_modules/dep" && touch "$WT/node_modules/dep/SENTINEL"
+    bootstrap "$WT"
+    [ "$status" -eq 0 ]
+    [ -f "$WT/node_modules/dep/SENTINEL" ]
+    [[ "$output" != *"replaced node_modules symlink"* ]] || false
+}
+
+@test "the INSTALLED dispatcher runs the INSTALLED bootstrap copy, not the repo's" {
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home" "$TMPDIR_/project"
+    run env HOME="$fake_home" "$INSTALL_DISPATCHER" --force "$fake_home/.config/ralphtools/golem-dispatch.zsh"
+    [ "$status" -eq 0 ]
+    printf '#!/usr/bin/env bash\necho INSTALLED_COPY_RAN\n' > "$fake_home/.config/ralphtools/worktree-bootstrap.sh"
+    cat > "$TMPDIR_/registry.json" <<JSON
+{ "projects": { "testrepo": { "path": "$TMPDIR_/project", "mcps": [], "mcpsLight": [],
+  "secrets": {}, "disableChrome": true, "clis": ["claude"] } } }
+JSON
+    run env HOME="$fake_home" RALPH_REGISTRY_FILE="$TMPDIR_/registry.json" WT="$WT" zsh -f -c '
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function claude() { print -r -- "CLAUDE_PWD=$PWD"; }
+      source "$HOME/.config/ralphtools/golem-dispatch.zsh"
+      _golem_register_wrappers
+      testrepoClaude -s -w "$WT"
+    '
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"INSTALLED_COPY_RAN"* ]] || false
+    [[ "$output" == *"CLAUDE_PWD=$WT"* ]] || false
 }

@@ -200,7 +200,8 @@ Before the agent starts, `-w` runs `worktree-bootstrap.sh <worktree>` (installed
 to the dispatcher). It picks the installer from the lockfile: bun, pnpm, `npm ci`, `uv sync`,
 or a no-op for SwiftPM. A `node_modules` **symlink** into the main checkout is replaced
 by a real install. It prints one timed line; a failed install warns and the launch
-continues.
+continues. Each installer is killed (with its children) after `WORKTREE_BOOTSTRAP_TIMEOUT` seconds
+(default 900) and reported `FAILED … (timed out after Ns)`.
 
 **`-w` contract (gen-12 weave E16):** the path must be a **pre-created absolute
 worktree directory** that already exists on disk. The launcher does NOT resolve

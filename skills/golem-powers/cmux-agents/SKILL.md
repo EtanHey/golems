@@ -41,6 +41,19 @@ cmuxlayer enforces two-column role geometry: orchestrators land LEFT, workers RI
 6. For multi-minute work, require an output file with an exact final DONE marker and wait for `target_state:"done"`; fleet canon #7/#9 owns DONE-versus-artifact law. Read the artifact immediately when the worker finishes.
 7. Follow [Pane Hygiene](references/monitoring-and-collaboration.md#pane-hygiene--harvest-review-close), then close the worker with `close_surface({scope:"agent", agent_id, force:true})`. Only live processes remain open.
 
+## Spawn a Gemini gatherer
+
+Routing (which shapes go to Flash-Low vs Pro-High) lives in `/agent-routing` § Role Matrix.
+
+1. Write the brief to a file. Boot payloads are always one-line pointers to a brief file.
+2. Check the cmuxlayer version. `control_health` has no version field; read it from `cmuxlayer --version` or the Cellar path in `control_health({detail:"full"})` → `health.current_process.script_path`.
+3. Spawn: `spawn_agent({cli:"gemini", role:"gatherer", authority:"worker", placement:"right", repo, model:"flash-low" | "pro", boot_prompt_path:<brief>})`.
+   - **< 0.4.88:** the spawn times out on boot readiness although the pane is ready. Deliver the brief with `send_to({mode:"surface", surface, text:"Read and follow <brief> ; your agent id is <id> (contract <path>)"})`. The Antigravity readiness/submit fixes (cmuxlayer #803, #809) are merged but ship in 0.4.88.
+   - **≥ 0.4.88:** use `spawn_agent` directly (proven only after cmuxlayer's CX-4 soak).
+4. `mcp_profile:"sterile"` skips the contract pointer, so the lead must relay the report path and DONE marker itself.
+
+Gatherer brief rules: prompts only (answer keys stay with the lead); READ-ONLY; one answer/result file plus the contract's DONE report. The lead scores with mechanical keys and takes wall-clock from file mtimes, because Antigravity's self-reported times can be wrong. If `close_surface` says the agent is not found, close by `surface`.
+
 ## Hard laws
 
 - Never `read_screen` your own surface; recursive output results.

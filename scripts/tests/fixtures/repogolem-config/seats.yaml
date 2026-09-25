@@ -1,0 +1,41 @@
+# Golems configuration (synthetic fixture shaped like ~/.golems/config.yaml)
+# Comments, quoting and key order below must survive the import byte-for-byte.
+
+reposPath: "/fixture/gits"
+
+# State lives outside the repo.
+stateDir: '/fixture/state'
+
+tools:
+  claude: true   # inline comment
+  codex: yes
+
+nightshift:
+  enabled: false
+  targets: [alpha, beta]
+
+contextProfiles:
+  base:
+    description: >
+      Folded text that the importer
+      must not reflow.
+    files:
+      - base.md
+
+seatRegistry:
+  alphaClaude:
+    repo: alpha
+    lane: alpha
+    # seat comment
+    launchers:
+      claude: alphaClaude
+      codex: alphaCodex
+    aliases: [alfClaude]
+  betaClaude:
+    repo: beta
+    lane: "beta"
+    launchers:
+      claude: betaClaude
+
+features:
+  telemetry: off
