@@ -38,6 +38,10 @@ Order: handoff → stop monitors → final dashboard (if fleet-wide wrap) → cl
 
 1. **VERIFY done.** Per worker: state check + independent claim verification
    (`/never-fabricate` R8). A fleet is not wrapped because it looks quiet.
+   - **Live guards:** run `bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <mbp|m1> --status` (read-only) and parse every line: `missing`/`unregistered` exit 0 with the gate off, so the exit code alone is not the check.
+     **Wrap-blocking:** `hooks-live=absent`; `drift` not `0` (incl. `?`); a hook line other than `ok`/`external(registered)`; `golems-fail-open` not `ok`; any `E1 … PRESENT`.
+     Quote each blocking line on the dashboard and in the one message.
+     Never run `--apply`/`--update` during a wrap: that is the hooks owner's (golemsLead).
 2. **KILL ALL POLLING.** `CronList` → `CronDelete` every monitor/heartbeat/status
    cron you own; `TaskStop` background monitors; report the stopped IDs in the
    wrap-up (orc REF9). Zero exceptions — a "harmless" 5-minute status cron is
@@ -77,6 +81,7 @@ Order: handoff → stop monitors → final dashboard (if fleet-wide wrap) → cl
 | Skill | Relationship |
 |---|---|
 | `/fleet-wrap-gate` | The MECHANICAL check for step 2: at this terminal state, asserts cron-count==0 (no health-watch/`/loop`/sleep-poll cron left armed). Run `bun skills/golem-powers/fleet-wrap-gate/scripts/fleet-wrap-gate-cli.mjs <transcript\|->` before going silent; exit 3 = a cron is still armed |
+| `install-hooks.sh --status` | The live-guard check in step 1: parse the lines (hook state, drift, fail-open, E1), never trust the exit code alone |
 | `/orc` | Composition-map row "Fleet wraps / sprint close" routes here; REF9 (stop monitoring when done) is step 2 |
 | `/session-handoff` | Successor spawn happens BEFORE wrap; the outgoing agent then wraps silently |
 | `/weave` | The weave fires at convergence — a weave run ends with its own fleet-wrap |
