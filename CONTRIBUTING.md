@@ -39,7 +39,11 @@ This project uses AI coding tools extensively. When AI agents contribute code:
 
 ## Reporting Issues
 
-Open an issue with: what you expected, what happened, steps to reproduce, and your environment (OS, runtime versions).
+Open an issue from the [bug report or feature request form](https://github.com/EtanHey/golems/issues/new/choose): what you expected, what happened, steps to reproduce, and your environment (OS, runtime versions). Report security vulnerabilities privately, as [SECURITY.md](SECURITY.md) describes, never in a public issue.
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant 2.1](CODE_OF_CONDUCT.md). Report conduct problems through the private channel it names.
 
 ## License
 

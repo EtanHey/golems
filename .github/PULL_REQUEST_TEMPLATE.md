@@ -1,10 +1,20 @@
 ## Summary
 
-<!-- What does this PR do? Why? -->
+<!-- What does this PR do, and why? One logical change per PR. -->
 
-## Test Plan
+## Size
 
-- [ ] Tests pass (`bun test`)
+<!-- size:XS (0-50) · size:S (51-150) · size:M (151-400) · size:L (over 400) hand-written added lines.
+     Deletions and generated files don't count. A maintainer applies the label and CI checks it.
+     Over 400? Split the PR, or add one line saying why it can't be split. -->
+
+## Checks
+
+<!-- Paste the output lines, not just ticks. -->
+
+- [ ] `bun run test` passes (the package suite CI runs)
+- [ ] `bash scripts/check-publish-boundary.sh` → PASS
+- [ ] Touched `skills/`? `node scripts/check-skill-library.mjs` → OK, and `bash scripts/run-skill-tests.sh` passes
 - [ ] Manually verified (if applicable)
 
 ## Vouched By

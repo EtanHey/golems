@@ -110,7 +110,8 @@ anything checked out under the gitignored `docs.local/`. On a clean clone at
 
 Eight of the 13 packages carry a `CLAUDE.md` with package-specific
 instructions. Contribution guidance is in [CONTRIBUTING.md](CONTRIBUTING.md),
-and vulnerability reporting is in [SECURITY.md](SECURITY.md).
+vulnerability reporting is in [SECURITY.md](SECURITY.md), and community
+expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
 
