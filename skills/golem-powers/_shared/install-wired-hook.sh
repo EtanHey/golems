@@ -48,6 +48,12 @@ SRC="$POWERS_DIR/$skill"
 DEST="$HOOKS_ROOT/$skill"
 
 [[ -f "$SRC/$hook_rel" ]] || { echo "FATAL: source hook missing: $SRC/$hook_rel" >&2; exit 1; }
+# A symlinked DEST points into golems/.worktrees/hooks-live; rsync would write
+# into that pinned tree. Those hooks are owned by scripts/hooks/install-hooks.sh.
+if [[ -L "$DEST" ]]; then
+  echo "FATAL: $DEST is a symlink managed by scripts/hooks/install-hooks.sh; use that installer" >&2
+  exit 1
+fi
 
 # Caches and test scratch are build artifacts, not part of the installed hook.
 EXCLUDES=(--exclude '__pycache__' --exclude '.pytest_cache' --exclude '*.pyc')

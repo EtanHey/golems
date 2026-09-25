@@ -120,6 +120,14 @@ process_worktree_block() {
     branch_display="(detached)"
   fi
 
+  # AIDEV-NOTE: hooks-live is the pinned source of every wired hook; removing it
+  # dangles them all. Kept even if someone unlocked it.
+  if [[ "$canonical_worktree" == "$repo_root/.worktrees/hooks-live" ]]; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
+      "not-checked" "KEEP-pinned" "hook source pinned by scripts/hooks/install-hooks.sh"
+    return 0
+  fi
+
   if [[ -n "$locked_reason" ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "undetermined" "KEEP-undetermined" "worktree is locked: $locked_reason"

@@ -92,6 +92,7 @@ jobs:
                    ./scripts/tests/release-gate.test.mjs \
                    ./scripts/tests/repogolem-config.test.ts \
                    ./scripts/tests/skill-description-cap.test.mjs \
+                   ./scripts/tests/hooks-fail-open.test.mjs \
                    ./scripts/cc-usage/__tests__ \
                    ./skills/golem-powers/never-fabricate/scripts/__tests__ \
                    ./skills/golem-powers/drive-filing/scripts
@@ -165,13 +166,16 @@ jobs:
       - name: qa-video package contract
         run: bats scripts/tests/test-qa-video-package.bats
 
+      - name: hook installer guards (hooks-live gc exemption, wired-hook symlink refusal)
+        run: bats scripts/tests/test-worktree-gc.bats scripts/tests/test-install-wired-hook.bats
+
       # Blocking, unlike the whole-directory glob below: this suite is the guard
       # that keeps the bun pin single, and a guard that only warns does not stop
       # the drift it exists to catch.
       - name: Single bun pin, no workflow literals
         run: bats scripts/tests/test-bun-version-pin.bats
 
-      # The five steps above explicitly cover seven .bats files. Every remaining
+      # The six steps above explicitly cover nine .bats files. Every remaining
       # suite runs in the whole-directory step below, so new tests stay visible
       # without another hand-maintained workflow edit.
       #

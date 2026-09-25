@@ -473,3 +473,15 @@ commit_fixture_file() {
     [ "$row" = "hidden-index-race · $worktree · hidden-index-race-branch · dirty=not-checked · ahead=undetermined · KEEP-undetermined · tracked paths use an assume-unchanged or skip-worktree index flag" ] &&
     [[ "$row" != *" · REMOVE · "* ]]
 }
+
+@test "keeps the installer-pinned hooks-live worktree even when unlocked and clean" {
+  repo="$(make_fixture_repo hooks-live-repo)"
+  git -C "$repo" worktree add -q --detach "$repo/.worktrees/hooks-live" origin/main
+  worktree="$(cd "$repo/.worktrees/hooks-live" && pwd -P)"
+
+  run "$WORKTREE_GC" --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · (detached) · "*"KEEP-pinned"*"install-hooks"* ]] &&
+    [[ "$output" != *" · $worktree · "*" · REMOVE · "* ]]
+}
