@@ -1,7 +1,7 @@
 """pre_tool_use.py (vendored GO-5 PR-2b): git_safety comes from the hook's own tree.
 
-The unversioned copy imported git_safety from the MAIN checkout
-(~/Gits/golems/...), so every pull or branch switch there changed a live guard.
+The unversioned copy imported git_safety from the golems MAIN checkout,
+so every pull or branch switch there changed a live guard.
 Installed as a symlink into hooks-live, it must resolve git_safety next to its
 real path and ignore whatever the main checkout holds.
 """
