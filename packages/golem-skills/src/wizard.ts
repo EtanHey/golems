@@ -26,6 +26,9 @@ export function detectExecutionMode(): ExecutionMode {
   return process.env.CLAUDE_CODE ? "skill" : "cli";
 }
 
+/** How to run this CLI: from a clone, since the npm package is behind (README "CLI"). */
+export const CLI_COMMAND = "bun packages/golem-skills/src/index.ts";
+
 // Re-export for backward compat (tests import from wizard)
 export { SKILL_MCP_MAP, recommendMcps } from "./mcp-map";
 
@@ -106,7 +109,8 @@ async function runMcpRecommendationStep(): Promise<void> {
     }
   }
   console.log(
-    "\nConfigure MCPs in ~/.claude/.mcp.json or via: npx golems-cli mcp\n",
+    // `golems mcp` is still a stub, so point at the file itself.
+    "\nConfigure MCPs in ~/.claude/.mcp.json\n",
   );
 }
 
@@ -271,7 +275,7 @@ async function installSkillsInteractive(): Promise<void> {
     }
   } else {
     console.log(
-      "\nSkipping skill installation. Install later with: npx golems-cli skills install <name>",
+      `\nSkipping skill installation. Install later with: ${CLI_COMMAND} skills install <name>`,
     );
   }
 
@@ -279,7 +283,7 @@ async function installSkillsInteractive(): Promise<void> {
     console.log(
       `\nNote: ${failedInstalls.length} skill(s) failed to install: ${failedInstalls.join(", ")}`,
     );
-    console.log("Retry with: npx golems-cli skills install <name>");
+    console.log(`Retry with: ${CLI_COMMAND} skills install <name>`);
   }
 }
 
@@ -287,7 +291,7 @@ export async function runWizard(): Promise<void> {
   // Skill mode: emit guidance and exit (no interactive prompts)
   if (detectExecutionMode() === "skill") {
     console.log(
-      "Running as a Claude Code skill. Use the CLI for interactive setup:\n  npx golems-cli wizard",
+      `Running as a Claude Code skill. Use the CLI for interactive setup:\n  ${CLI_COMMAND} wizard`,
     );
     return;
   }
@@ -452,7 +456,7 @@ export async function runWizard(): Promise<void> {
   } else {
     console.log(
       "Skipping skill installation (Claude Code not detected).\n" +
-        "Install Claude Code first, then run: npx golems-cli skills install <name>\n",
+        `Install Claude Code first, then run: ${CLI_COMMAND} skills install <name>\n`,
     );
   }
 
@@ -477,6 +481,6 @@ export async function runWizard(): Promise<void> {
   console.log();
   console.log("Next steps:");
   console.log("  - Run `golems wizard` again to reconfigure");
-  console.log("  - Install more skills: npx golems-cli skills install <name>");
-  console.log("  - List available skills: npx golems-cli skills list");
+  console.log(`  - Install more skills: ${CLI_COMMAND} skills install <name>`);
+  console.log(`  - List available skills: ${CLI_COMMAND} skills list`);
 }
