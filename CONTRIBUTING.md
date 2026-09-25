@@ -12,30 +12,23 @@ Thanks for your interest in contributing!
 
 ## Pull Request Process
 
-1. Create a PR with a clear description of what and why
-2. CI must pass on the PR's latest commit
-3. **CodeRabbit** reviews every PR automatically:
-   - Fix CRITICAL/HIGH issues before merge
-   - MEDIUM issues are judgment calls
-   - Style-only comments can be skipped with rationale
+1. Create a PR with a clear description of what and why, and fill in the PR template's checks
+2. Six checks must pass on the PR's latest commit before it can merge: Publish Boundary Guard, Package test suite (bun), Python skill test suites, Check PR size label truth, Secret Scanning, and No new tracked docs.local. The other CI jobs run on every PR too; fix a red one before asking for review
+3. A maintainer reviews every PR. No review bot runs on this repo
 4. PRs are merged with a merge commit (not squashed), so each commit stays traceable
 
-## Vouching Model
+## First-time Contributors
 
-We use a **vouching system** for new contributors, inspired by the t3-oss community:
-
-- **First PR?** An existing contributor or maintainer reviews and vouches for you
-- **Vouched contributors** get faster review cycles on subsequent PRs
-- **No CLA required** — your contributions are licensed under the repository's license by submitting them
-- Add `Vouched-by: @username` to your PR description if someone invited you
+- **No CLA required**: your contributions are licensed under the repository's license by submitting them
+- If someone invited you, or you agreed the approach in an issue first, add `Vouched-by: @username` to your PR description
 
 ## AI Contributions
 
 This project uses AI coding tools extensively. When AI agents contribute code:
 
-- Add `Co-Authored-By: <agent> <agent@example.com>` to commit messages
+- Credit them with a `Co-Authored-By:` trailer. The maintainer's agents use `Co-Authored-By: <agent> running <model> <noreply@anthropic.com>`; your tool's standard trailer is fine
 - AI-generated code goes through the same review process as human code
-- No distinction in quality standards — all code must pass tests and review
+- No distinction in quality standards: all code must pass the required checks and maintainer review
 
 ## Reporting Issues
 

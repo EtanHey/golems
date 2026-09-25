@@ -1,4 +1,4 @@
-<!-- IDENTITY: golems monorepo, EtanHey, autonomous AI agent ecosystem -->
+<!-- IDENTITY: golems monorepo, EtanHey, AI agent packages and skills -->
 # Golems Monorepo
 
 > Bun workspace of reusable agent packages, CLIs, and evaluated workflow skills.
@@ -6,7 +6,7 @@
 ## Packages
 
 The current workspace inventory and package purposes live in `README.md`.
-Always read the package-specific `CLAUDE.md` before changing a package.
+Before changing a package, read its `CLAUDE.md` if it has one.
 
 ## Key Relationships
 
