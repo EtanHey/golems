@@ -1186,6 +1186,31 @@
           "type": "behavioral"
         }
       ]
+    },
+    {
+      "id": 42,
+      "name": "deletion-decision-stays-on-opus",
+      "prompt": "Find all callers of these 12 tools so we can delete the unused ones",
+      "expected_output": "Opus decides which tools are safe to delete. A gatherer (Gemini or Cursor) may only list raw grep hits per tool; it never concludes callers=0 or 'safe to delete'. Deletion needs reachability reasoning (by-name lookups, policy tables, agent-facing text), which a literal grep misses.",
+      "root_cause_tested": "deletion_misroute: cmuxlayer CX-3 slice A, where Flash-High called all 28 tools safe to delete and missed a by-name accessor used by 23 test files",
+      "assertions": [
+        {
+          "text": "Assigns the delete/keep decision for each tool to Opus (the lead or an Opus agent), not to a gatherer",
+          "type": "behavioral"
+        },
+        {
+          "text": "If a gatherer is used, limits it to returning raw grep hits per tool, with no safe-to-delete verdict",
+          "type": "behavioral"
+        },
+        {
+          "text": "Names at least one reachability path a literal grep misses (by-name/string lookup, policy or dispatch table, test files, agent-facing text)",
+          "type": "content"
+        },
+        {
+          "text": "Does NOT route the whole callers=0 decision to a Gemini or Cursor gatherer",
+          "type": "negative"
+        }
+      ]
     }
   ]
 }
