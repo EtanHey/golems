@@ -15,8 +15,8 @@ Screen Recording (.mov)
   → ffmpeg audio extraction
     → whisper-cli transcription (SRT + TXT)
       → LLM reads SRT, identifies QA-relevant segments
-        → Frame extraction at hotspot timestamps + regular intervals
-          → Claude Vision reads frames + correlates with transcript
+        → Dense action windows (5–20 fps contact sheets) + 30s coverage frames
+          → Claude Vision reads every sheet + correlates with transcript
             → Structured QA findings document
               → Agent handoff (Codex/Claude worker via cmux)
 
@@ -67,9 +67,16 @@ Read the user's request and route to the right workflow:
 
 1. **LLM reads the SRT directly** — no automated hotspot detection (sox/ImageMagick). Claude reading the transcript is a better hotspot detector than volume spikes or frame diffs. The automated signals (from the original Twitch stalker pipeline) are unnecessary for QA narration.
 
-2. **Regular interval + hotspot frames** — Extract one frame every 30 seconds for full visual coverage, PLUS frames at each identified hotspot. Hotspot-only extraction misses visual bugs described after the fact.
+2. **Dense action windows (mandatory)** — In QA mode, every action cue gets a dense-frame window, not a single frame. A click's target, hover state and resulting animation all happen in under a second; one frame every 30s plus ±5s hotspot frames cannot show what was clicked or how the UI reacted, and a 10-run eval found every "pixel-only" finding from that method was hallucinated or mis-scoped.
+   - **Build `cues.tsv`** (`start_s<TAB>end_s<TAB>label`) from:
+     - (a) every transcript segment whose text matches action language: click, clicking, press, tap, hover, drag, drop, scroll, open, close, select, toggle, switch, type, "when I", "now I", "this", "here", "look", "watch"
+     - (b) `scripts/scene-cues.sh <video>` output — visual changes catch silent clicks and UI changes the narrator never mentions
+     - (c) click logs, if `qa_click_logger` data exists for the session
+   - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (5–20 allowed; use 20 fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`). Tile *i* (row-major, 0-based) is at `window_start_s + i/fps`.
+   - **Read EVERY contact sheet, in order.** For each window, state: what the cursor targets, the before/after UI state, and any visual defect.
+   - **Cite or label.** A visual finding must cite `sheet + tile index → timestamp` (e.g. `sheet_004.jpg tile 7 → 12.7s`). A finding with no sheet citation is transcript-only and must be labelled **transcript-only**.
 
-3. **Before/after context frames** — At each hotspot, extract frames at -5s and +5s in addition to the hotspot timestamp. The user may explain an issue THEN show it, or show it THEN explain.
+3. **Interval frames are a coverage pass only** — Still extract one frame every 30 seconds so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
 
 4. **Whisper model: `ggml-small`** — Fast on Apple Silicon (~14s for 7min video), accurate enough for English QA narration. The `ggml-large-v3` is better but 5x slower — not worth it for QA.
 
@@ -131,9 +138,16 @@ ffmpeg -i "$VIDEO" -vn -acodec pcm_s16le -ar 16000 -ac 1 "$WORKDIR/audio.wav"
 whisper-cli -m ~/.cache/whisper/ggml-small.bin -f "$WORKDIR/audio.wav" \
   --output-srt --output-txt -of "$WORKDIR/transcript" -l auto
 
-# 3. Read transcript.srt → identify hotspot timestamps
-# 4. Extract frames (hotspots + every 30s)
-# 5. Read frames with Claude Vision
+# 3. Build cues.tsv: action-language transcript segments + scene cues + click logs
+SCRIPTS="<qa-video skill dir>/scripts"
+"$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
+
+# 4. Dense action windows (mandatory): 10 fps default, 5-20 allowed, 20 for animations
+"$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
+#    plus one coverage frame every 30s into $WORKDIR/frames
+
+# 5. Read EVERY sheet in index.tsv order; per window: cursor target, before/after
+#    state, visual defects. Cite sheet + tile -> timestamp, else label transcript-only
 # 6. Compile findings doc
 ```
 
