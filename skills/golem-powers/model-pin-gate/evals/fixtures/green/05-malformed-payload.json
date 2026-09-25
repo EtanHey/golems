@@ -1,0 +1,9 @@
+{
+  "specimen": "malformed-payload-fails-open",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Agent",
+    "tool_input": "not-an-object"
+  }
+}

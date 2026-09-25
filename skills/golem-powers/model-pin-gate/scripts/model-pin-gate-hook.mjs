@@ -25,9 +25,17 @@ function block(result) {
   const details = result.violations
     .map((v) => `${v.code}: ${v.evidence}. Fix: ${v.action}.`)
     .join(" ");
+  // Sources:
+  // docs.local/sprint/2026-07-05-fleet-sprint-plan.md:322
+  // docs.local/sprint/weave-2026-07-06-drift/sources/etan-dashboard-answers.md:5
   process.stdout.write(JSON.stringify({
     decision: "block",
-    reason: `MODEL-PIN-GATE blocked unpinned or disallowed model spawn (${codes}). ${details}`,
+    reason: [
+      `MODEL-PIN-GATE (the gate that stops Fable being picked by accident) caught ${codes}.`,
+      "Pin this spawn to the model it should run on: model:'sonnet' for bulk/mechanical work, model:'opus' for reasoning/review, or an explicit Fable pin only from an apex seat (orchestrator/skillcreatorLead).",
+      "Fable leaves the subscription window around Jul-7; an accidental Fable spawn spends usage credits. See the agent-routing table for what needs which model.",
+      details,
+    ].join(" "),
   }));
 }
 

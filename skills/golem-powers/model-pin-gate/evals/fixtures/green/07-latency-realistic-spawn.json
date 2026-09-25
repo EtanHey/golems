@@ -1,0 +1,19 @@
+{
+  "specimen": "latency-realistic-spawn",
+  "expect": "PASS",
+  "assert_latency_under_ms": 50,
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "seat_id": "skillcreatorWorker",
+    "transcript": [
+      { "type": "assistant", "message": { "model": "claude-fable-5" }, "content": "Prepare a broad repo fan-out with explicit pins." },
+      { "type": "user", "message": { "content": "Run a cheap scanner." } },
+      { "type": "assistant", "message": { "model": "claude-fable-5" }, "content": "Dispatching a pinned worker." }
+    ],
+    "tool_name": "Agent",
+    "tool_input": {
+      "model": "claude-sonnet-5",
+      "prompt": "Inspect every gate fixture and report only gaps with file paths."
+    }
+  }
+}

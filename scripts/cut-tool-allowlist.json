@@ -11,6 +11,15 @@
       "markers": ["| `cmux send` | UDS `send_input` command |"]
     },
     {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "reason": "Gate matcher docs, not usage: these lines name the cmux spawn tools the model-pin gate INTERCEPTS (its PreToolUse matcher), not tools an agent is told to call. Vendored from skill-creator hooks-lab @ 3c2671ad; kept byte-identical (GO-5 PR-2).",
+      "markers": [
+        "and, with the prepared settings matcher, cmux `spawn_agent`, `dispatch_to_agent`,",
+        "and repoGolem-style `new_split` launches.",
+        "| cmux `spawn_agent`, `dispatch_to_agent`, or `new_split` targeting Fable from a non-apex seat |"
+      ]
+    },
+    {
       "file": "skills/golem-powers/never-fabricate/references/rules.md",
       "reason": "Names a provenance CLASS of an already-written message ('was this typed, or send_command'd by an assistant?'). It is not an instruction to call anything.",
       "markers": ["`send_command` authored by an assistant."]

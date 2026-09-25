@@ -1,0 +1,22 @@
+{
+  "specimen": "fable-in-workflow-during-amnesty",
+  "expect": "ADVISORY",
+  "violation": "MODELPIN_FABLE_IN_WORKFLOW",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "now": "2026-09-05T20:00:00Z",
+    "seat_id": "skillcreatorLead",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-fable-5"
+        }
+      }
+    ],
+    "tool_name": "Workflow",
+    "tool_input": {
+      "script": "export const meta={name:'x',description:'y'}; await agent('judge', {model:'claude-fable-5'})"
+    }
+  }
+}

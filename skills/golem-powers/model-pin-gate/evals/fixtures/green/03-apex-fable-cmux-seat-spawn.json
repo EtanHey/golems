@@ -1,0 +1,22 @@
+{
+  "specimen": "apex-seat-may-spawn-a-fable-pane-seat",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "now": "2026-09-06T03:00:00Z",
+    "seat_id": "skillcreatorLead",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-fable-5"
+        }
+      }
+    ],
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": {
+      "model": "claude-fable-5",
+      "prompt": "reviewer seat"
+    }
+  }
+}

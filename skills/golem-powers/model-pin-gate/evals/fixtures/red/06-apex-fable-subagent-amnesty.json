@@ -1,0 +1,23 @@
+{
+  "specimen": "apex-fable-subagent-during-amnesty",
+  "expect": "ADVISORY",
+  "violation": "MODELPIN_FABLE_SUBAGENT",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "now": "2026-09-05T20:00:00Z",
+    "seat_id": "skillcreatorLead",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-fable-5"
+        }
+      }
+    ],
+    "tool_name": "Agent",
+    "tool_input": {
+      "model": "claude-fable-5",
+      "prompt": "apex eval during the amnesty"
+    }
+  }
+}
