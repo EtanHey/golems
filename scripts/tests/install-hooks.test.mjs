@@ -1,8 +1,8 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import {
-  existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync,
-  writeFileSync,
+  chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync,
+  statSync, symlinkSync, writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -51,6 +51,7 @@ function fixture({ settings } = {}) {
   git(root, "clone", "-q", origin, repo);
   mkdirSync(path.join(repo, "skills/golem-powers/demo-gate/hooks"), { recursive: true });
   writeFileSync(path.join(repo, "skills/golem-powers/demo-gate/hooks/demo-gate.py"), "print('{}')\n");
+  writeFileSync(path.join(repo, "skills/golem-powers/demo-gate/hooks/demo.mjs"), "process.stdout.write('{}');\n");
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "seed");
   git(repo, "push", "-q", "origin", "HEAD:master");
@@ -64,8 +65,9 @@ function fixture({ settings } = {}) {
 }
 
 function run(fx, ...args) {
+  const env = { ...process.env, HOME: fx.home, ...(fx.env ?? {}) };
   const r = spawnSync("node", [installer, "--repo", fx.repo, "--manifest", fx.manifest, "--host", "mbp", ...args], {
-    encoding: "utf8", env: { ...process.env, HOME: fx.home },
+    encoding: "utf8", env,
   });
   return { status: r.status, out: `${r.stdout}${r.stderr}` };
 }
@@ -179,4 +181,47 @@ test("the shipped manifest names no E1 hook and carries the ruled M1 set exactly
     "precompact-checkpoint", "send-size-gate",
   ]);
   expect(realManifest.hosts.m1.some((h) => h.event === "Stop")).toBe(false);
+});
+
+test("{node} is the PATH node (`command -v node`), so a node upgrade that removes the old realpath keeps hooks running", () => {
+  const fx = fixture();
+  const m = manifestFor();
+  m.hosts.mbp.push({ id: "demo-node", kind: "golems", event: "Stop", link: "demo-gate", source: "skills/golem-powers/demo-gate",
+    match: "demo.mjs", command: "{node} {hooks}/demo-gate/hooks/demo.mjs" });
+  writeFileSync(fx.manifest, JSON.stringify(m));
+  // A version-manager layout: bin/node is a stable symlink to a versioned wrapper.
+  const realNode = spawnSync("node", ["-p", "process.execPath"], { encoding: "utf8" }).stdout.trim();
+  const bin = path.join(fx.root, "bin");
+  const v1 = path.join(fx.root, "versions/v1");
+  mkdirSync(bin);
+  mkdirSync(v1, { recursive: true });
+  writeFileSync(path.join(v1, "node"), `#!/bin/sh\nexec "${realNode}" "$@"\n`);
+  chmodSync(path.join(v1, "node"), 0o755);
+  symlinkSync(path.join(v1, "node"), path.join(bin, "node"));
+  fx.env = { PATH: `${bin}:${process.env.PATH}` };
+  expect(run(fx, "--apply").status).toBe(0);
+
+  const cmd = JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.Stop[0].hooks[0].command;
+  expect(cmd.startsWith(`${path.join(bin, "node")} `)).toBe(true);
+
+  // "Upgrade": the old versioned node disappears; bin/node now points at v2.
+  const v2 = path.join(fx.root, "versions/v2");
+  mkdirSync(v2);
+  cpSync(path.join(v1, "node"), path.join(v2, "node"));
+  rmSync(path.join(fx.root, "versions/v1"), { recursive: true });
+  rmSync(path.join(bin, "node"));
+  symlinkSync(path.join(v2, "node"), path.join(bin, "node"));
+  const r = spawnSync("sh", ["-c", cmd], { encoding: "utf8", input: "{}" });
+  expect(r.status).toBe(0);
+  expect(r.stdout).toBe("{}");
+});
+
+test("--apply preserves settings.json's mode (0600 stays 0600) on the file and its .bak", () => {
+  const fx = fixture();
+  chmodSync(fx.settingsPath, 0o600);
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(statSync(fx.settingsPath).mode & 0o777).toBe(0o600);
+  const baks = bakFiles(fx);
+  expect(baks.length).toBe(1);
+  expect(statSync(path.join(fx.home, ".claude", baks[0])).mode & 0o777).toBe(0o600);
 });

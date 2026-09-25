@@ -19,7 +19,7 @@
 // checkouts; hooks-live is not a working tree anyone checks out.
 import { spawnSync } from "node:child_process";
 import {
-  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, symlinkSync,
+  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, statSync, symlinkSync,
   unlinkSync, writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -81,19 +81,30 @@ function context(o) {
   if (!Array.isArray(entries)) die(`manifest ${o.manifest} has no host "${o.host}"`);
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");
+  const node = entries.some((e) => e.command?.includes("{node}")) ? pathNode() : "";
   const expand = (s) => s.replaceAll("{hooks}", hooksDir).replaceAll("{live}", live)
-    .replaceAll("{node}", process.execPath).replaceAll("{python}", "python3");
+    .replaceAll("{node}", node).replaceAll("{python}", "python3");
   const golems = entries.filter((e) => e.kind === "golems").map((e) => ({
     ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: expand(e.command),
   }));
   return { entries, golems, hooksDir, live, settingsPath: path.join(homedir(), ".claude", "settings.json") };
 }
 
+// The node on PATH (e.g. a version manager's stable shim), not process.execPath:
+// execPath is the versioned realpath, which a node upgrade deletes.
+function pathNode() {
+  const r = spawnSync("sh", ["-c", "command -v node"], { encoding: "utf8" });
+  const found = r.status === 0 ? r.stdout.trim() : "";
+  if (!found.startsWith("/")) die("no absolute `node` on PATH; node hooks need one");
+  return found;
+}
+
 function readSettings(settingsPath) {
-  if (!existsSync(settingsPath)) return { text: "", json: {}, canonical: true };
+  if (!existsSync(settingsPath)) return { text: "", json: {}, canonical: true, mode: 0o600 };
   const text = readFileSync(settingsPath, "utf8");
   const json = JSON.parse(text);
-  return { text, json, canonical: `${JSON.stringify(json, null, 2)}\n` === text };
+  const mode = statSync(settingsPath).mode & 0o777;
+  return { text, json, canonical: `${JSON.stringify(json, null, 2)}\n` === text, mode };
 }
 
 // Replace each golems hook's command in place (same event + matcher), drop
@@ -192,11 +203,15 @@ function install(o) {
     if (settings.text) {
       let bak = `${ctx.settingsPath}.bak-${new Date().toISOString().slice(0, 10)}-hooks`;
       if (existsSync(bak)) bak = `${ctx.settingsPath}.bak-${stamp()}-hooks`;
-      writeFileSync(bak, settings.text);
+      writeFileSync(bak, settings.text, { mode: settings.mode });
+      chmodSync(bak, settings.mode);
       console.log(`backup: ${bak}`);
     }
-    writeFileSync(`${ctx.settingsPath}.install-hooks-tmp`, nextText);
-    renameSync(`${ctx.settingsPath}.install-hooks-tmp`, ctx.settingsPath);
+    // settings.json can hold secrets (env); keep its mode (often 0600) exactly.
+    const tmp = `${ctx.settingsPath}.install-hooks-tmp`;
+    writeFileSync(tmp, nextText, { mode: settings.mode });
+    chmodSync(tmp, settings.mode);
+    renameSync(tmp, ctx.settingsPath);
   }
   console.log("applied");
   return 0;
