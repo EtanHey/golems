@@ -935,7 +935,7 @@ def test_pr4_fixture6_executed_forms_stay_blocked(tmp_path):
     for command in (
         f"cat > r.md <<EOF\n{body}EOF",            # unquoted: backticks really run
         f"tee r.md <<'EOF' | sh\n{body}EOF",        # piped into a shell
-        f"bash <<'EOF'\ngit push --force origin main\nEOF",
+        "bash <<'EOF'\ngit push --force origin main\nEOF",
         "git push --force origin main",
     ):
         assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is not None, command
@@ -951,3 +951,60 @@ def test_pr4_fixture4_a_loop_body_that_changes_directory_is_not_unrolled(tmp_pat
     deeper.mkdir(parents=True)
     command = "for d in keep sub; do cd ..; rm -rf $d; done"
     assert git_safety.dangerous_shell_reason(command, cwd=str(deeper), env={}) is not None
+
+
+# ── GO-5 guard gaps (r7 on #222): forms that execute text, never blocked on master ──
+# Each is a TIGHTENING, so every rule has a false-positive guard next to it.
+
+GAP_MUST_BLOCK = (
+    'echo "done: $(rm -rf ~)"',                      # $() inside double quotes runs
+    'git commit -m "wip $(rm -rf ~)"',
+    "eval 'rm -rf ~'",
+    'eval "rm -rf ~"',
+    "echo 'rm -rf ~' | sh",                          # data piped into a shell runs
+    "printf 'rm -rf ~\\n' | bash",
+    "sh <(echo 'rm -rf ~')",                         # a process substitution as the script
+    "bash <(printf 'git push --force origin main')",
+    "git -c alias.x='!rm -rf ~' x",                  # a `!` alias is a shell command
+    "python3 - <<'PY' | sh\nprint('rm -rf ~')\nPY",  # interpreter output piped into a shell
+)
+
+GAP_MUST_ALLOW = (
+    "echo 'rm -rf ~ is dangerous' >> notes.md",
+    'echo "today: $(date)"',
+    'eval "$(ssh-agent -s)"',
+    "echo 'ls -la' | sh",
+    "git -c alias.st=status st",
+    "git -c core.editor=vim commit",
+    "sh <(echo 'ls')",
+    "python3 - <<'PY'\nprint('rm -rf ~')\nPY",
+    "echo 'rm -rf ~' | grep rm",
+    "echo 'rm -rf ~' | wc -l",                        # a non-shell reader with only flags
+    "grep -n '$(rm -rf ~)' notes.md",                # single quotes stop $() (and grep is not data)
+    "eval",
+)
+
+
+def _home_env():
+    return {"HOME": os.path.expanduser("~")}
+
+
+def test_go5_gap_forms_that_execute_text_are_blocked(tmp_path):
+    for command in GAP_MUST_BLOCK:
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()), command
+
+
+def test_go5_gap_false_positive_guards_stay_allowed(tmp_path):
+    for command in GAP_MUST_ALLOW:
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()) is None, command
+
+
+def test_go5_gap_recursion_is_bounded_and_fails_closed(tmp_path):
+    def nest(inner, depth):
+        # Unquoted `eval eval … cmd`: each level peels one eval, no quoting growth.
+        return "eval " * depth + inner
+
+    assert git_safety.dangerous_shell_reason(nest("rm -rf ~", 3), cwd=str(tmp_path), env=_home_env())
+    assert git_safety.dangerous_shell_reason(nest("ls", 3), cwd=str(tmp_path), env=_home_env()) is None
+    reason = git_safety.dangerous_shell_reason(nest("ls", 30), cwd=str(tmp_path), env=_home_env())
+    assert reason and "too deep" in reason
