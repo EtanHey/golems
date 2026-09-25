@@ -9,13 +9,13 @@ This reference begins at the cmuxlayer tool boundary.
 
 | Operation | MCP Tool | Notes |
 |-----------|----------|-------|
-| Spawn worker | `mcp__cmuxlayer__spawn_agent` | Default for visible Claude/Codex/Cursor/Gemini peers. Pass `role`, `authority`, and `placement` when needed; role defaults are inferred from launcher titles (`*Claude` → `orchestrator`, `*Codex`/`*Cursor` → `worker`); `*Gemini` titles are not inferred, so for Gemini pass `role` explicitly. Also creates plain terminals via `type:"terminal"` |
+| Spawn worker | `mcp__cmuxlayer__spawn_agent` | Default for visible Claude/Codex/Cursor/Gemini peers. Always pass `role` and `authority`. `role` is `implementor`, `reviewer` or `gatherer` (legacy `orchestrator`/`worker` still accepted; `"implementer"` is rejected); `authority` is `lead` or `worker`, and reviewer/gatherer must be `worker`. A roleless Claude spawn errors (`ROLE_REQUIRED`); any other roleless spawn becomes a worker. `placement` is derived from authority (lead=left, worker=right) and must agree if passed. Launcher titles never set the spawn role; title inference only affects placement and topology of existing panes. Also creates plain terminals via `type:"terminal"` |
 | Send follow-up | `mcp__cmuxlayer__send_to` | Default `mode:"agent"` keys off `agent_id` |
 | Send raw keystrokes / keys / commands | `mcp__cmuxlayer__send_to` with `mode:"surface"` / `"key"` / `"command"` | The one delivery tool for all four modes |
 | Wait for state | `mcp__cmuxlayer__wait_for` | Replaces client-side poll loops |
 | Discover workers | `mcp__cmuxlayer__list_agents` | `mine:true` for your own children; `agent_id` survives surface drift. Each record reports `send_via`, currently `send_to` for every agent. **`mine:true` errors with `requires a managed calling agent identity` when the caller is not itself a cmuxlayer-spawned agent — verified live 2026-08-18. From an unmanaged seat, call bare `list_agents` and filter.** |
 | Inspect state | `mcp__cmuxlayer__list_agents({agent_ids:[id], detail:"full"})` | Registry record + health diagnostics |
-| Stop worker | `mcp__cmuxlayer__close_surface({scope:"agent", agent_id})` | `force:true` to close a still-live agent |
+| Stop worker | `mcp__cmuxlayer__close_surface({scope:"agent", agent_id})` | `scope:"agent"` is required: the default scope is `surface`, which errors without `surface`. `force:true` to close a still-live agent |
 | Read raw pane / extract marker output | `mcp__cmuxlayer__read_screen` | Also the FR-06 adjudicator |
 | List surfaces | `mcp__cmuxlayer__list_surfaces` | Topology inspection |
 | Rename / move a tab | `mcp__cmuxlayer__update_surface` | `action:"rename"` or `action:"move"` — **these two actions only** |
