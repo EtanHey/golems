@@ -3,8 +3,7 @@
 //
 // Stdout schema:
 //   allow: {}
-//   block: {"decision":"block","reason":"..."}
-//   advisory: {"systemMessage":"..."}
+//   advisory: {"systemMessage":"..."}  (never a block: GO-5 E2)
 //
 // Hang-safety contract: no network, no BrainLayer, bounded tail/state reads,
 // no subprocesses, and fail-open on malformed input or internal errors.
@@ -20,12 +19,13 @@ function allow() {
   process.stdout.write("{}");
 }
 
-function block(result) {
+// GO-5 E2: a Stop block makes the model continue its turn, so a flag reaches
+// it as an advisory systemMessage instead.
+function advise(result) {
   const codes = result.violations.map((v) => v.code).join(", ");
   const details = result.violations.map((v) => `${v.code}: ${v.evidence}`).join(" ");
   process.stdout.write(JSON.stringify({
-    decision: "block",
-    reason: `QA-VERDICT-GATE blocked an unearned QA verdict (${codes}). ${details}`,
+    systemMessage: `QA-VERDICT-GATE advisory: flagged an unearned QA verdict (${codes}). ${details}`,
   }));
 }
 
@@ -40,7 +40,7 @@ function main() {
     if (context.transcript == null) return allow();
 
     const result = detectQaVerdict(context.transcript);
-    if (result.verdict === "FLAG") return block(result);
+    if (result.verdict === "FLAG") return advise(result);
     return allow();
   } catch (error) {
     publishStopHookReceipt(error?.receipt);

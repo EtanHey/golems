@@ -19,7 +19,7 @@ A deterministic detector over an agent transcript plus durable cron/loop state: 
 turn reaches a **terminal / stand-down state** (fleet wrap, sprint close, "back to
 silent", "only an Etan decision pending", "all work merged", `DONE`), **cron-count
 MUST == 0**. If a durable registry/state file still contains a live cron or `/loop`,
-the turn is blocked with a typed cleanup reason: **`FLEETWRAP_CRON_ALIVE`** or
+the hook adds an advisory (a `systemMessage`, never a Stop block since GO-5 E2) with a typed cleanup reason: **`FLEETWRAP_CRON_ALIVE`** or
 **`FLEETWRAP_LOOP_ALIVE`**. This is the MECHANICAL gate that `/fleet-wrap` describes
 in prose — "manual gates drift, automated gates don't." The pinned RED/GREEN transcript
 and state fixtures ARE the replayable gate (R-003/R-014 pattern).
@@ -31,8 +31,8 @@ is excused only by the monitor-law:
 
 | At a terminal state, this... | Verdict |
 |---|---|
-| **banned poller** armed: `/loop` timer, `while true`/`for…seq`/`nohup … sleep` poll loop, or a durable live loop state entry | `FLEETWRAP_LOOP_ALIVE` — block with `TaskStop <id>` |
-| **generic / periodic cron** live in durable state, or a same-turn `CronCreate` / `schedule_task` not cleared and not the inbound monitor | `FLEETWRAP_CRON_ALIVE` — block with `delete cron <id>` |
+| **banned poller** armed: `/loop` timer, `while true`/`for…seq`/`nohup … sleep` poll loop, or a durable live loop state entry | `FLEETWRAP_LOOP_ALIVE` — advise `TaskStop <id>` |
+| **generic / periodic cron** live in durable state, or a same-turn `CronCreate` / `schedule_task` not cleared and not the inbound monitor | `FLEETWRAP_CRON_ALIVE` — advise `delete cron <id>` |
 | **crons cleared** — durable cron/loop state has zero live periodic entries | PASS |
 | **ONE inbound standby monitor** (even via a `CronCreate` framed as inbound), no health-watch/poll/loop | PASS |
 | not a terminal turn (mid-sprint, still driving, more work queued) | PASS (N/A) |
@@ -76,8 +76,7 @@ reads, and fail-open on malformed input or internal errors. It emits the Claude 
 stdout schema:
 
 - allow: `{}`
-- block: `{"decision":"block","reason":"..."}`
-- advisory: `{"systemMessage":"..."}`
+- advisory: `{"systemMessage":"FLEET-WRAP-GATE advisory: ..."}` (a flag; never a block)
 
 `install-snippet.json` pins the absolute Node path:
 `$HOME/.nvm/versions/node/v22.22.0/bin/node`.
