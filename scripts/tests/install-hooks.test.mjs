@@ -287,3 +287,24 @@ test("--update moves the pin to a new sha and re-locks; nothing else moves it", 
   expect(git(live(fx), "rev-parse", "HEAD")).not.toBe(first);
   expect(git(fx.repo, "worktree", "list", "--porcelain")).toMatch(/hooks-live\nHEAD \w+\ndetached\nlocked .+/);
 });
+
+test("--status reads only registered hook commands: an E1 or external name elsewhere in settings is not a hit", () => {
+  const fx = fixture();
+  const s = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  s.hooks = {};
+  s.permissions.deny = ["Bash(node /h/idle-dwell-gate/hook.mjs)", "Read(/x/brainlayer-session-start.py)"];
+  writeFileSync(fx.settingsPath, `${JSON.stringify(s, null, 2)}\n`);
+  const r = run(fx, "--status");
+  expect(r.status).toBe(0);
+  expect(r.out).not.toContain("PRESENT");
+  expect(r.out).toContain("brainlayer-session-start external(unregistered)");
+});
+
+test("--status: a linked hook whose command is no longer registered reports unregistered", () => {
+  const fx = fixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const s = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  delete s.hooks.PreToolUse;
+  writeFileSync(fx.settingsPath, `${JSON.stringify(s, null, 2)}\n`);
+  expect(run(fx, "--status").out).toMatch(/demo-gate unregistered/);
+});
