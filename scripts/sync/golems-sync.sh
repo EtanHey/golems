@@ -78,12 +78,14 @@ trap 'rm -rf "$work_dir"' EXIT
 payload_root="$work_dir/payload"
 mkdir -p "$payload_root"
 
+# install-golem-dispatch.sh installs worktree-bootstrap.sh next to the dispatcher and refuses without it.
+launcher_files=(golem-dispatch.zsh install-golem-dispatch.sh worktree-bootstrap.sh)
 archive_paths=(scripts/repogolem/golems-sync-install.sh)
 if [[ "$scope" == "skills" || "$scope" == "all" ]]; then
     archive_paths+=(skills/golem-powers scripts/sync/golems-sync-coupling-allowlist.tsv)
 fi
 if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
-    archive_paths+=(scripts/repogolem/golem-dispatch.zsh scripts/repogolem/install-golem-dispatch.sh)
+    archive_paths+=("${launcher_files[@]/#/scripts/repogolem/}")
 fi
 git -C "$repo_root" archive --format=tar "$commit" -- "${archive_paths[@]}" \
     | tar -xf - -C "$payload_root"
@@ -111,14 +113,14 @@ offenders="$work_dir/offenders.txt"
 : > "$changed_skills"
 : > "$offenders"
 
-payload_sha256="$(python3 - "$scope" "$skills_source" "$launcher_dir" <<'PY'
+payload_sha256="$(python3 - "$scope" "$skills_source" "$launcher_dir" "${launcher_files[@]}" <<'PY'
 import hashlib
 import os
 from pathlib import Path
 import stat
 import sys
 
-scope, skills_arg, launcher_arg = sys.argv[1:]
+scope, skills_arg, launcher_arg = sys.argv[1:4]
 skills_root = Path(skills_arg)
 launcher_root = Path(launcher_arg)
 digest = hashlib.sha256()
@@ -149,7 +151,7 @@ if scope in {"skills", "all"}:
 
 add_path(launcher_root / "golems-sync-install.sh", "transport/golems-sync-install.sh")
 if scope in {"launcher", "all"}:
-    for name in ("golem-dispatch.zsh", "install-golem-dispatch.sh"):
+    for name in sys.argv[4:]:
         add_path(launcher_root / name, f"launcher/{name}")
 
 print(digest.hexdigest())
@@ -213,7 +215,7 @@ PY
 fi
 transport_files=("$helper")
 if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
-    transport_files+=("$launcher_dir/golem-dispatch.zsh" "$launcher_dir/install-golem-dispatch.sh")
+    transport_files+=("${launcher_files[@]/#/$launcher_dir/}")
 fi
 for file in "${transport_files[@]}"; do
         while IFS= read -r line; do
@@ -314,12 +316,10 @@ fi
 if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
     if [[ "$host_shell" == "local" ]]; then
         mkdir -p "$host_root/.golems/launcher"
-        rsync -a "$launcher_dir/golem-dispatch.zsh" "$launcher_dir/install-golem-dispatch.sh" \
-            "$host_root/.golems/launcher/"
+        rsync -a "${launcher_files[@]/#/$launcher_dir/}" "$host_root/.golems/launcher/"
     else
         ssh "$host" mkdir -p .golems/launcher
-        rsync -a "$launcher_dir/golem-dispatch.zsh" "$launcher_dir/install-golem-dispatch.sh" \
-            "$host:.golems/launcher/"
+        rsync -a "${launcher_files[@]/#/$launcher_dir/}" "$host:.golems/launcher/"
     fi
 fi
 
