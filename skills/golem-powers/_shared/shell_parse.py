@@ -3998,3 +3998,43 @@ def _backtick_bodies(command: str) -> list[str]:
         else:
             break
     return bodies
+
+
+def dollar_paren_bodies(text: str) -> list[str]:
+    """Bodies of `$( … )` command substitutions outside single quotes (GO-5).
+
+    Double quotes do not stop Bash from running a `$()`, so `echo "x $(cmd)"`
+    yields `cmd`. `$((` arithmetic is skipped. Nested substitutions come back
+    as part of their outer body and are found again when that body is checked.
+    """
+    bodies = []
+    quote = None
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == "\\" and quote != "'":
+            index += 2
+            continue
+        if quote == "'":
+            if char == "'":
+                quote = None
+            index += 1
+            continue
+        if char == "'" and quote is None:
+            quote = "'"
+        elif char == '"':
+            quote = None if quote == '"' else '"'
+        elif text.startswith("$(", index) and not text.startswith("$((", index):
+            depth = 1
+            end = index + 2
+            while end < len(text) and depth:
+                if text[end] == "(":
+                    depth += 1
+                elif text[end] == ")":
+                    depth -= 1
+                end += 1
+            bodies.append(text[index + 2:end - 1] if depth == 0 else text[index + 2:end])
+            index = end
+            continue
+        index += 1
+    return bodies
