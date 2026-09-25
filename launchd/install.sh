@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install GolemsZikaron launchd agents
+# Install the golems launchd agents
 #
 # Usage: ./install.sh [--uninstall]
 
@@ -14,7 +14,7 @@ PLISTS=(
 )
 
 if [[ "${1:-}" == "--uninstall" ]]; then
-    echo "🗑️  Uninstalling GolemsZikaron launchd agents..."
+    echo "🗑️  Uninstalling golems launchd agents..."
 
     "$NODE_BIN" "$SCRIPT_DIR/../scripts/install-google-drive-oauth-guard.mjs" uninstall
 
@@ -34,7 +34,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     exit 0
 fi
 
-echo "🚀 Installing GolemsZikaron launchd agents..."
+echo "🚀 Installing golems launchd agents..."
 
 # Ensure LaunchAgents directory exists
 mkdir -p "$LAUNCH_AGENTS"
@@ -66,5 +66,5 @@ echo "  - Google Drive OAuth guard: login + every 5 minutes"
 echo ""
 echo "📋 Commands:"
 echo "  View logs: tail -f /tmp/golemszikaron-*.log"
-echo "  Test briefing: bun ~/Gits/golems-zikaron/src/briefing.ts"
+echo "  Test briefing: bun packages/services/src/briefing.ts"
 echo "  Uninstall: $0 --uninstall"
