@@ -30,7 +30,7 @@ import {
 
 const RETIRED_LABELS = ["com.golems.mcp-reaper"];
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const defaultSourceRoot = resolve(scriptDir, "..");
+const defaultSourceRoot = resolve(scriptDir, "../..");
 
 export function execute(program, args, options = {}) {
   const result = spawnSync(program, args, {
@@ -402,7 +402,7 @@ export function auditDeployDrift(options = {}, dependencies = {}) {
 }
 
 function helpText() {
-  return `Usage: node scripts/deploy-drift-check.mjs [options]\n\n` +
+  return `Usage: node scripts/sync/deploy-drift-check.mjs [options]\n\n` +
     `Read-only audit of golems launchd jobs and managed Claude hooks.\n\n` +
     `Options:\n` +
     `  --json                 emit only the versioned JSON report\n` +

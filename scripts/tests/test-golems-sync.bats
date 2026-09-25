@@ -4,7 +4,7 @@ setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
     # shellcheck source=../lib/portable-stat.sh
     source "$REPO_ROOT/scripts/lib/portable-stat.sh"
-    SYNC_SCRIPT="$REPO_ROOT/scripts/golems-sync.sh"
+    SYNC_SCRIPT="$REPO_ROOT/scripts/sync/golems-sync.sh"
     HOST_ROOT="$BATS_TEST_TMPDIR/host-home"
     SKILLS_SOURCE="$BATS_TEST_TMPDIR/skills/golem-powers"
 
@@ -24,21 +24,21 @@ run_sync() {
 
 make_fixture_repo() {
     FIXTURE_REPO="$BATS_TEST_TMPDIR/source-repo"
-    mkdir -p "$FIXTURE_REPO/scripts/repogolem" \
+    mkdir -p "$FIXTURE_REPO/scripts/repogolem" "$FIXTURE_REPO/scripts/sync" \
         "$FIXTURE_REPO/skills/golem-powers/alpha" \
         "$FIXTURE_REPO/skills/golem-powers/beta"
-    cp "$SYNC_SCRIPT" "$FIXTURE_REPO/scripts/golems-sync.sh"
+    cp "$SYNC_SCRIPT" "$FIXTURE_REPO/scripts/sync/golems-sync.sh"
     cp "$REPO_ROOT/scripts/repogolem/golems-sync-install.sh" \
         "$REPO_ROOT/scripts/repogolem/golem-dispatch.zsh" \
         "$REPO_ROOT/scripts/repogolem/install-golem-dispatch.sh" \
         "$FIXTURE_REPO/scripts/repogolem/"
-    if [[ -f "$REPO_ROOT/scripts/golems-sync-coupling-allowlist.tsv" ]]; then
-        cp "$REPO_ROOT/scripts/golems-sync-coupling-allowlist.tsv" "$FIXTURE_REPO/scripts/"
+    if [[ -f "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" ]]; then
+        cp "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" "$FIXTURE_REPO/scripts/sync/"
     fi
     printf '# Alpha\n' > "$FIXTURE_REPO/skills/golem-powers/alpha/SKILL.md"
     printf '# Beta\n' > "$FIXTURE_REPO/skills/golem-powers/beta/SKILL.md"
     printf 'skills/golem-powers/**/secret.json\n*.pyc\n' > "$FIXTURE_REPO/.gitignore"
-    chmod +x "$FIXTURE_REPO/scripts/golems-sync.sh" \
+    chmod +x "$FIXTURE_REPO/scripts/sync/golems-sync.sh" \
         "$FIXTURE_REPO/scripts/repogolem/golems-sync-install.sh" \
         "$FIXTURE_REPO/scripts/repogolem/golem-dispatch.zsh" \
         "$FIXTURE_REPO/scripts/repogolem/install-golem-dispatch.sh"
@@ -52,7 +52,7 @@ make_fixture_repo() {
 
 run_fixture_sync() {
     run env HOST_SHELL=local HOST_ROOT="$HOST_ROOT" \
-        "$FIXTURE_REPO/scripts/golems-sync.sh" local "$@"
+        "$FIXTURE_REPO/scripts/sync/golems-sync.sh" local "$@"
     return 0
 }
 
@@ -88,11 +88,11 @@ make_tracked_worktree_skills() {
 
 @test "feature branch is refused without the explicit source override" {
     fixture="$BATS_TEST_TMPDIR/feature-checkout"
-    mkdir -p "$fixture/scripts/repogolem"
-    cp "$SYNC_SCRIPT" "$fixture/scripts/golems-sync.sh"
+    mkdir -p "$fixture/scripts/repogolem" "$fixture/scripts/sync"
+    cp "$SYNC_SCRIPT" "$fixture/scripts/sync/golems-sync.sh"
     cp "$REPO_ROOT/scripts/repogolem/golems-sync-install.sh" \
         "$fixture/scripts/repogolem/golems-sync-install.sh"
-    chmod +x "$fixture/scripts/golems-sync.sh" \
+    chmod +x "$fixture/scripts/sync/golems-sync.sh" \
         "$fixture/scripts/repogolem/golems-sync-install.sh"
     git init --quiet --initial-branch=master "$fixture"
     git -C "$fixture" config user.email test@example.com
@@ -105,7 +105,7 @@ make_tracked_worktree_skills() {
         HOST_SHELL=local \
         HOST_ROOT="$HOST_ROOT" \
         GOLEMS_SYNC_SKILLS_SOURCE="$SKILLS_SOURCE" \
-        "$fixture/scripts/golems-sync.sh" local --dry-run --only skills
+        "$fixture/scripts/sync/golems-sync.sh" local --dry-run --only skills
 
     [ "$status" -ne 0 ]
     [[ "$output" == *"expected master"* ]] || return 1
@@ -152,7 +152,7 @@ make_tracked_worktree_skills() {
     git -C "$FIXTURE_REPO" commit --quiet -m 'add coupled payload'
     git -C "$FIXTURE_REPO" update-ref refs/remotes/origin/master HEAD
     printf 'alpha/SKILL.md\t/Users/testuser\tuncommitted bypass\n' \
-        >> "$FIXTURE_REPO/scripts/golems-sync-coupling-allowlist.tsv"
+        >> "$FIXTURE_REPO/scripts/sync/golems-sync-coupling-allowlist.tsv"
 
     run_fixture_sync --allow-dirty --dry-run --only skills
 
