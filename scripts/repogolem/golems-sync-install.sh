@@ -198,6 +198,7 @@ apply_target() {
     if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
         [[ -f "$launcher_root/golem-dispatch.zsh" ]] || die "shipped dispatcher missing"
         [[ -x "$launcher_root/install-golem-dispatch.sh" ]] || die "shipped launcher installer missing"
+        [[ -x "$launcher_root/worktree-bootstrap.sh" ]] || die "shipped worktree bootstrap missing"
         local source_hash installed_hash
         source_hash="$(sha256_file "$launcher_root/golem-dispatch.zsh")"
         installed_hash=missing

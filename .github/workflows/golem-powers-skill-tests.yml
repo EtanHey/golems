@@ -173,13 +173,18 @@ jobs:
       - name: hook installer guards (hooks-live gc exemption, wired-hook symlink refusal)
         run: bats scripts/tests/test-worktree-gc.bats scripts/tests/test-install-wired-hook.bats scripts/tests/test-wired-hook-shared-parser.bats
 
+      # Blocking since GO-6: its launcher tests went red on master (the payload
+      # omitted worktree-bootstrap.sh) and only the warn-only glob below saw it.
+      - name: golems-sync installer contract
+        run: bats scripts/tests/test-golems-sync.bats
+
       # Blocking, unlike the whole-directory glob below: this suite is the guard
       # that keeps the bun pin single, and a guard that only warns does not stop
       # the drift it exists to catch.
       - name: Single bun pin, no workflow literals
         run: bats scripts/tests/test-bun-version-pin.bats
 
-      # The six steps above explicitly cover ten .bats files. Every remaining
+      # The seven steps above explicitly cover eleven .bats files. Every remaining
       # suite runs in the whole-directory step below, so new tests stay visible
       # without another hand-maintained workflow edit.
       #
@@ -187,7 +192,6 @@ jobs:
       # A blocking gate over a known-red directory is worse than the gap it
       # closes — same shape and same reason as the warn job in pr-size-label.yml.
       # Drop `continue-on-error` once scripts/tests/ is green.
-      # The five steps above are a hand-kept enumeration covering seven files.
       # This step also runs every other .bats suite so each remains visible the
       # day it lands.
       #
