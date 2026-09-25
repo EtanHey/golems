@@ -88,9 +88,9 @@ carries a residual for dynamic suffixes the hook cannot evaluate, but a visible
 The ledger and temp-dir scan remain the detectors for opaque substitutions that
 do not contain visible traversal.
 
-Exit codes: 0 = allow ({} on stdout) · 2 = deny ({"decision": "block", ...}).
-There is no third code: the two-valued contract removed the ask path, so
-`hookSpecificOutput` is never emitted.
+Exit codes: 0 = allow ({} on stdout, or {"systemMessage": "TMP-BLOCK advisory: …"}
+for an unknown target with no temp hint, GO-5 E2) · 2 = deny
+({"decision": "block", ...}). There is no prompt: the ask path stays removed.
 """
 
 import json
@@ -218,6 +218,49 @@ class Unresolvable(Exception):
 def allow():
     json.dump({}, sys.stdout)
     sys.exit(0)
+
+
+def advise(reason):
+    """Allow with an advisory systemMessage (GO-5 E2). Never a prompt, never a block."""
+    json.dump({"systemMessage": reason}, sys.stdout)
+    sys.exit(0)
+
+
+# GO-5 E2: an unresolvable target is only refused when the command itself shows
+# a temp hint (`P=$(mktemp); echo x > $P`, `${TMPDIR:-/tmp}/x`). A target that is
+# unreadable for any other reason (a conditional assignment, a loop value) gets
+# an advisory: an unknown value with no temp hint is not evidence of a temp write.
+_TEMP_HINT_RE = re.compile(r"\bmktemp\b|\bTMPDIR\w*|/tmp\b|/var/folders\b")
+# Literal temp-rooted paths in the command; a harness-scratchpad one is the
+# sanctioned location, so it is not a temp hint (the live GO-5 fixture).
+_TEMP_PATH_TOKEN_RE = re.compile(r"(?:/private)?(?:/tmp|/var/folders)/[^\s'\";|&)<>]*")
+
+
+def _has_temp_hint(text):
+    unsanctioned = _TEMP_PATH_TOKEN_RE.sub(
+        lambda m: "" if is_harness_scratchpad(m.group(0)) else m.group(0), text or ""
+    )
+    return bool(_TEMP_HINT_RE.search(unsanctioned))
+
+
+def refuse_or_advise_dynamic(dynamic_targets, command):
+    verb, path, _seg = dynamic_targets[0]
+    reason = (
+        f"⛔ TMP-BLOCK: cannot resolve this {verb.removeprefix('dynamic ')} "
+        f"target statically — {path} contains an unresolvable shell expansion."
+    )
+    if _has_temp_hint(command):
+        refuse_unresolvable(
+            f"{reason} The command references a temp location (mktemp/TMPDIR//tmp), "
+            "so it is refused rather than guessed. Write durable content in the repo or "
+            "its docs.local/. Genuinely ephemeral? Re-run with WEAVE_ALLOW_TMP=1 — it is "
+            "allowed AND logged to the durable ledger."
+        )
+    advise(
+        f"TMP-BLOCK advisory: {path} could not be resolved statically; allowed because "
+        "nothing in the command points at a temp location. Keep durable content in "
+        "the repo or its docs.local/."
+    )
 
 
 def refuse_unresolvable(reason):
@@ -2791,12 +2834,10 @@ def escape_hatch_covers(tool_name, tool_input, segments, var=HATCH_TMP):
 
 
 def log_bypass(tool_name, tool_input, targets, session_id, hatch=f"{HATCH_TMP}=1"):
-    """Append the escape-hatch use to the durable ledger. Any failure here
-    propagates -> DENY: an unlogged bypass must not proceed."""
+    """Append the escape-hatch use to the durable ledger. A failure to write it
+    is an explicit DENY: an unlogged bypass must not proceed."""
     ledger = os.path.expanduser(os.environ.get("TMP_BLOCK_LEDGER", DEFAULT_LEDGER))
     ledger_dir = os.path.dirname(ledger)
-    if ledger_dir:
-        os.makedirs(ledger_dir, exist_ok=True)
     entry = {
         "ts": datetime.now().astimezone().isoformat(),
         "tool": tool_name,
@@ -2816,13 +2857,26 @@ def log_bypass(tool_name, tool_input, targets, session_id, hatch=f"{HATCH_TMP}=1
         entry["file_path"] = str(
             tool_input.get("file_path") or tool_input.get("notebook_path") or ""
         )[:300]
-    with open(ledger, "a") as f:
-        f.write(json.dumps(entry) + "\n")
+    try:
+        if ledger_dir:
+            os.makedirs(ledger_dir, exist_ok=True)
+        with open(ledger, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError as exc:
+        # GO-5 E2 keeps this a hard deny on its own: the generic hook-error path
+        # is advisory now, and an unlogged bypass must never proceed.
+        deny(
+            f"⛔ TMP-BLOCK: {hatch} was set but the bypass ledger {ledger} could not be "
+            f"written ({exc.__class__.__name__}: {exc}). An unlogged bypass must not "
+            "proceed; fix the ledger path or drop the hatch."
+        )
 
 
 def main():
+    raw_input = ""
     try:
-        hook_input = json.load(sys.stdin)
+        raw_input = sys.stdin.read()
+        hook_input = json.loads(raw_input)
         if not isinstance(hook_input, dict):
             raise ValueError("hook input is not a JSON object")
         host_tool_name = hook_input.get("tool_name")
@@ -2899,11 +2953,7 @@ def main():
                     hatch=f"{HATCH_WT}=1",
                 )
                 if dynamic_targets and not dynamic_targets_hatched:
-                    verb, path, _seg = dynamic_targets[0]
-                    refuse_unresolvable(
-                        f"⛔ TMP-BLOCK: cannot resolve this {verb.removeprefix('dynamic ')} "
-                        f"target statically — {path} contains an unresolvable shell expansion."
-                    )
+                    refuse_or_advise_dynamic(dynamic_targets, tool_input.get("command", ""))
                 allow()
             if deny_hits:
                 # A resolved violation outranks an unresolvable one: it names
@@ -2933,27 +2983,25 @@ def main():
             )
 
         if dynamic_targets and not dynamic_targets_hatched:
-            verb, path, _seg = dynamic_targets[0]
-            refuse_unresolvable(
-                f"⛔ TMP-BLOCK: cannot resolve this {verb.removeprefix('dynamic ')} "
-                f"target statically — {path} contains an unresolvable shell expansion. "
-                "An unreadable target could expand into /tmp, /private/tmp, "
-                "/var/folders or $TMPDIR, so it is refused rather than guessed. "
-                "Write durable content in the repo or its docs.local/. Genuinely "
-                "ephemeral? Re-run with WEAVE_ALLOW_TMP=1 — it is allowed AND "
-                "logged to the durable ledger."
-            )
+            refuse_or_advise_dynamic(dynamic_targets, tool_input.get("command", ""))
 
         allow()
     except SystemExit:
         raise
-    except Exception as exc:  # FAIL CLOSED — the S04 half-fire class.
-        deny(
-            f"⛔ TMP-BLOCK FAIL-CLOSED: hook error ({exc.__class__.__name__}: {exc}) — "
-            "denying instead of allowing. The S04 specimen broke exactly here: the era's "
-            "/tmp guard hit a validation error and let the write through (A5 [21]; "
-            "cross-cutting #2 [207]). If this is a false fire, fix the hook or use "
-            "WEAVE_ALLOW_TMP=1 after verifying the target is genuinely ephemeral."
+    except Exception as exc:  # GO-5 E2: a hook bug is an advisory, not a block on every call ...
+        if _has_temp_hint(raw_input):
+            # ... unless the payload itself points at a temp location: the S04
+            # class ("validation error, write proceeded") stays a hard deny.
+            deny(
+                f"⛔ TMP-BLOCK FAIL-CLOSED: hook error ({exc.__class__.__name__}: {exc}) on a "
+                "payload that mentions a temp location — denying instead of allowing (S04). "
+                "If this is a false fire, fix the hook or use WEAVE_ALLOW_TMP=1 after "
+                "verifying the target is genuinely ephemeral."
+            )
+        advise(
+            f"TMP-BLOCK advisory: hook error ({exc.__class__.__name__}: {exc}); this call "
+            "was NOT checked for temp writes. Keep durable content in the repo or its "
+            "docs.local/, and report the error so the hook gets fixed."
         )
 
 

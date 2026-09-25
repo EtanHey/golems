@@ -1,6 +1,6 @@
 ---
 name: tmp-block
-description: "Fail-CLOSED guard denying durable writes to /tmp, /private/tmp, /var/folders, $TMPDIR; enforces <repo>/.worktrees/<name>. Triggers: tmp guard, TMP-BLOCK deny, WORKTREE-CONVENTION deny, bypass ledger. NOT for storage policy."
+description: "Guard denying durable writes to /tmp, /private/tmp, /var/folders, $TMPDIR; enforces <repo>/.worktrees/<name>. Triggers: tmp guard, TMP-BLOCK deny, WORKTREE-CONVENTION deny, bypass ledger. NOT for storage policy."
 ---
 
 # tmp-block — durable staging only, NEVER /tmp
@@ -37,8 +37,16 @@ away from useless."
 > *"none of y'all would be able to write to temp, but also not ask me so we
 > don't get agent stuck."*
 
-**Provably outside the temp class -> ALLOW. Everything else -> DENY, with a
-reason the agent can act on. This hook NEVER emits a PreToolUse prompt.**
+**Provably outside the temp class -> ALLOW. Provably inside, or pointing at a
+temp location -> DENY, with a reason the agent can act on. This hook NEVER
+emits a PreToolUse prompt.**
+
+GO-5 E2 (2026-09-25) softened the unknowns. A target the hook cannot read
+statically, in a command that shows no temp hint (`mktemp`, `TMPDIR*`, `/tmp`,
+`/var/folders`), is ALLOWED with a `TMP-BLOCK advisory` systemMessage, and so
+is a hook error on a payload with no temp hint. Denying those blocked honest
+work (a conditional `cd … && P=<static path>` assignment, an unset variable)
+without evidence of a temp write.
 
 A prompt suspends the pane until a human answers it, and a headless Codex or
 Cursor worker has no human in its pane at all — 2026-08-14/17 lost hours to
@@ -54,9 +62,12 @@ recoverable one.
 | `git worktree add` into the class | DENY + redirect to `<repo>/.worktrees/` |
 | `git worktree add` outside any `.worktrees/` parent | DENY + the exact fixed command (Rule 2) |
 | `git worktree add` whose target can't be resolved | **DENY**, naming the exact resolution failure (golems#676's requirement, minus the prompt) |
-| Any target the hook cannot read statically | **DENY** — rewrite it with a literal path, or a variable whose value has a literal head |
+| Any target the hook cannot read statically, command shows a temp hint | **DENY** — rewrite it with a literal path, or a variable whose value has a literal head |
+| Any target the hook cannot read statically, no temp hint | **ALLOW + advisory** (GO-5 E2) |
 | Reads/deletes (`ls`, `cat`, `grep`, `rm`, `worktree list`) | NEVER denied |
-| Any hook/validation error (incl. unwritable ledger) | **DENY — fail CLOSED** (the S04 half-fire class) |
+| Hook/validation error on a payload that mentions a temp location | **DENY — fail CLOSED** (the S04 half-fire class) |
+| Hook/validation error, no temp hint in the payload | **ALLOW + advisory** (GO-5 E2) |
+| Escape hatch whose ledger can't be written | **DENY** (explicit; an unlogged bypass never proceeds) |
 | `CLAUDE_WORKER` | does NOT exempt (S04's violator was a worker) |
 | The harness session scratchpad | **ALLOW** — the one sanctioned temp location (below) |
 

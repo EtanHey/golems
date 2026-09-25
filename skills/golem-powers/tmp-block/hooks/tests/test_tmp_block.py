@@ -128,6 +128,21 @@ def assert_allowed(proc):
     )
 
 
+def assert_advised(proc, must_mention=()):
+    """GO-5 E2: an unresolvable target with no temp hint is ALLOWED with an
+    advisory systemMessage -- never a block, never a prompt."""
+    assert proc.returncode == 0, (
+        f"expected ADVISORY (exit 0), got exit {proc.returncode} "
+        f"(stdout={proc.stdout[:300]!r} stderr={proc.stderr[:300]!r})"
+    )
+    out = json.loads(proc.stdout)
+    assert "decision" not in out, f"an advisory must not carry a decision: {out!r}"
+    message = out.get("systemMessage", "")
+    assert message.startswith("TMP-BLOCK advisory"), f"expected an advisory, got {out!r}"
+    for needle in must_mention:
+        assert needle in message, f"advisory must mention {needle!r}, got: {message!r}"
+
+
 def assert_refused(proc, must_mention=()):
     """Unresolvable target -> DENY, and never a PROMPT.
 
@@ -2577,14 +2592,18 @@ def test_malformed_stdin_fails_closed():
     """S04: 'hook JSON output validation failed, write proceeded'. Inverted:
     any validation error means DENY (A5 cross-cutting #2 [207])."""
     proc = run_hook(raw_stdin="this is not json {{{")
-    assert_denied(proc)
+    # GO-5 E2: a hook error with no temp hint in the payload is an advisory.
+    assert proc.returncode == 0 and "TMP-BLOCK advisory: hook error" in proc.stdout, proc.stdout
+    # ... but a broken payload that names a temp location still denies (S04).
+    assert_denied(run_hook(raw_stdin='{"tool_input": {"file_path": "/tmp/x"'), must_mention=("FAIL-CLOSED",))
 
 
 def test_invalid_payload_shape_fails_closed():
     proc = run_hook(
         {"tool_name": "Write", "tool_input": "not-a-dict", "session_id": "x"}
     )
-    assert_denied(proc)
+    # GO-5 E2: no temp hint in the payload -> advisory.
+    assert proc.returncode == 0 and "TMP-BLOCK advisory: hook error" in proc.stdout, proc.stdout
 
 
 def test_missing_tool_name_fails_closed():
@@ -2593,7 +2612,7 @@ def test_missing_tool_name_fails_closed():
     proc = run_hook(
         {"tool_input": {"file_path": "/tmp/x.md", "content": "x"}, "session_id": "x"}
     )
-    assert_denied(proc)
+    assert_denied(proc, must_mention=("FAIL-CLOSED",))  # a temp path in the payload: S04 stays a deny
 
 
 def test_tee_in_argument_position_not_denied():
@@ -2621,7 +2640,8 @@ def test_missing_file_path_fails_closed():
     proc = run_hook(
         {"tool_name": "Write", "tool_input": {"content": "x"}, "session_id": "x"}
     )
-    assert_denied(proc)
+    # GO-5 E2: no temp hint in the payload -> advisory.
+    assert proc.returncode == 0 and "TMP-BLOCK advisory: hook error" in proc.stdout, proc.stdout
 
 
 def test_bare_process_substitution_tee_denied():
@@ -2714,7 +2734,7 @@ def test_mutated_literal_array_is_not_treated_as_its_stale_value(durable_path):
         ),
         cwd=str(durable_path),
     )
-    assert_refused(proc)
+    assert_advised(proc)  # GO-5 E2: unknown, no temp hint
 
 
 def test_loop_or_case_binding_is_overridden_by_body_assignment(durable_path):
@@ -2879,12 +2899,13 @@ def test_indirect_cwd_changes_before_subshell_keep_anchor_unresolved(
         assert_refused(run_hook(bash_payload(command), cwd=str(durable_path)))
 
 
-def test_unbounded_loop_and_unset_redirect_are_refused(durable_path):
+def test_unbounded_loop_and_unset_redirect_are_advised(durable_path):
+    # GO-5 E2: unknown values with no temp hint are an advisory, not a block.
     for command in (
         'for f in $LIST; do printf x > "$f"; done',
         'printf x > "$UNSET"',
     ):
-        assert_refused(run_hook(bash_payload(command), cwd=str(durable_path)))
+        assert_advised(run_hook(bash_payload(command), cwd=str(durable_path)))
 
 
 def test_statically_empty_loop_value_set_allows_silently(durable_path):
@@ -2939,7 +2960,7 @@ def test_literal_case_patterns_bound_the_subject_value(durable_path):
         ),
         cwd=str(durable_path),
     )
-    assert_refused(unbounded)
+    assert_advised(unbounded)  # GO-5 E2
 
 
 def test_static_loop_values_feed_tee_and_worktree_judgment(durable_path):
@@ -3543,11 +3564,17 @@ def test_tmpdir_variable_head_is_denied_with_or_without_tmpdir(durable_path):
 
 
 def test_variable_without_a_literal_head_proves_nothing(durable_path):
-    """No head, no proof -- an unknown value is refused, never guessed."""
+    """No head, no proof. GO-5 E2: an unknown value is an advisory, unless the
+    command itself points at a temp location (mktemp, TMPDIR*, /tmp, /var/folders)."""
     for command in (
         'P=$UNSET_TARGET/logs; printf x > "$P/f.log"',
-        'P=$(mktemp); printf x > "$P"',
         'P=$(printf %s /some/where); printf x > "$P/f.log"',
+    ):
+        assert_advised(run_hook(bash_payload(command), cwd=str(durable_path)))
+    for command in (
+        'P=$(mktemp); printf x > "$P"',
+        'P=$(mktemp -d); printf x > "$P/f.log"',
+        'P=${TMPDIR_ALT:-x}/y; printf x > "$P"',
     ):
         assert_refused(run_hook(bash_payload(command), cwd=str(durable_path)))
 
@@ -3561,6 +3588,22 @@ def test_conditional_assignment_cannot_lend_its_literal_head(durable_path):
     """
     command = 'false && P=~/Documents/x_$$.txt; printf x > "$P"'
 
+    assert_advised(run_hook(bash_payload(command), cwd=str(durable_path)))  # GO-5 E2
+
+
+def test_go5_live_fixture_conditional_static_scratchpad_target_is_advised(durable_path):
+    # Live FP (w6, GO-5): `cd X && P=<static scratchpad path>; cat > $P` was refused,
+    # because the && makes the assignment conditional. An unset P is an ambiguous
+    # redirect, never a temp write, and nothing in the command points at a temp dir.
+    scratch = (
+        "/private/tmp/claude-501/-Users-example-Gits-golems/"
+        "00000000-0000-0000-0000-000000000000/scratchpad/pr-body.md"
+    )
+    for target in (f"{durable_path}/docs.local/pr-body.md", scratch):
+        command = f"cd {durable_path} && P={target}; cat > $P <<'EOF'\nbody\nEOF"
+        assert_advised(run_hook(bash_payload(command), cwd=str(durable_path)))
+    # A scratchpad path does not launder a real temp hint elsewhere in the command.
+    command = f"cd {durable_path} && P=$(mktemp); cat {scratch} > $P"
     assert_refused(run_hook(bash_payload(command), cwd=str(durable_path)))
 
 

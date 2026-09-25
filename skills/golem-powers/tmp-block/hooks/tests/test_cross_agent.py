@@ -238,7 +238,8 @@ def test_codex_apply_patch_non_string_command_fails_closed(durable_path):
     payload = codex_apply_patch_payload("")
     payload["tool_input"]["command"] = {"not": "a string"}
     proc = run_hook(payload, cwd=str(durable_path))
-    assert_denied(proc, must_mention=("FAIL-CLOSED",))
+    # GO-5 E2: an unreadable envelope with no temp hint is an advisory, not a block.
+    assert proc.returncode == 0 and "TMP-BLOCK advisory: hook error" in proc.stdout, proc.stdout
 
 
 # ── The refusal dialect all three harnesses have to read ─────────────────────
