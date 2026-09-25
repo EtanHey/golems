@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
-Collab Guard Hook — blocks collab file writes missing PR Loop or TDD mandate.
-Runs as a PreToolUse hook on Write/Edit to collab/**/*.md files.
+Collab Guard Hook: a PreToolUse hook on Write/Edit to collab/**/*.md files.
+
+- Refuses a Write/Edit that would SHRINK an existing collab (unless the
+  incoming content carries a `<!-- COLLAB-SHRINK-OK: reason -->` marker).
+- Flags every other in-place Write/Edit of an existing collab as an advisory
+  (hookSpecificOutput.additionalContext): collabs are append-only (`cat >>`),
+  and any in-place rewrite, identical bytes included, replays every `tail -F`
+  watcher.
+GO-5 E2 removed the old PR-Loop/TDD keyword check.
 """
 
 import json
@@ -9,11 +16,6 @@ import os
 import re
 import sys
 from datetime import datetime
-
-REQUIRED_SECTIONS = [
-    ("PR Loop", ["PR Loop", "pr loop", "PR loop", "branch → commit → push → PR"]),
-    ("TDD Red-Green-Refactor", ["TDD", "Red-Green-Refactor", "red-green-refactor", "RED —", "failing test FIRST"]),
-]
 
 SHRINK_OVERRIDE_RE = re.compile(
     r"^<!-- COLLAB-SHRINK-OK: (\S(?:[^\r\n]*\S)?) -->$",
@@ -121,24 +123,7 @@ def main():
     else:
         sys.exit(0)
 
-    if tool_name == "Write":
-        # Check for required sections
-        missing = []
-        for section_name, keywords in REQUIRED_SECTIONS:
-            found = any(kw in content for kw in keywords)
-            if not found:
-                missing.append(section_name)
-
-        if missing:
-            missing_str = ", ".join(missing)
-            print(
-                f"BLOCKED: Collab file missing mandatory sections: {missing_str}\n"
-                f"Copy from $ORCHESTRATOR_REPO/collab/TEMPLATE.md first.\n"
-                f"Every collab MUST include PR Loop and TDD mandate.",
-                file=sys.stderr,
-            )
-            sys.exit(2)
-
+    existed = os.path.isfile(file_path)
     old_size = os.path.getsize(file_path) if os.path.isfile(file_path) else 0
     if tool_name == "Write":
         new_size = len(content.encode("utf-8"))
@@ -146,6 +131,20 @@ def main():
         new_size = _edit_resulting_size(file_path, tool_input, old_size)
     _check_shrink(file_path, content, new_size)
 
+    if existed:
+        message = (
+            f"COLLAB-GUARD advisory: {tool_name} rewrites the existing collab {file_path} in "
+            "place, which makes every `tail -F` watcher replay the file. Collabs are "
+            "append-only: post with `printf '### <you> (<date -u>)\\n' >> <collab>` plus "
+            "`cat >> <collab> <<'EOF'`."
+        )
+        json.dump(
+            {
+                "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": message},
+                "systemMessage": message,
+            },
+            sys.stdout,
+        )
     sys.exit(0)
 
 
