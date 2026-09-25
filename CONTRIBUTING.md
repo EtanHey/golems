@@ -1,8 +1,3 @@
-<!-- Everything between the SYNCED CONTRIBUTING markers is copied to the other
-     EtanHey repos by .github/workflows/sync-contributing.yml. Keep it
-     repo-neutral: no repo names, commands, paths, or license names (the job
-     fails if it finds any). Repo-specific guidance goes below the END marker. -->
-<!-- BEGIN SYNCED CONTRIBUTING -->
 # Contributing
 
 Thanks for your interest in contributing!
@@ -49,7 +44,6 @@ Open an issue with: what you expected, what happened, steps to reproduce, and yo
 ## License
 
 By contributing, you agree that your contributions will be licensed under the license in this repository's `LICENSE` file.
-<!-- END SYNCED CONTRIBUTING -->
 
 ## Golems specifics
 
