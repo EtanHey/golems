@@ -9,6 +9,10 @@
 # The one transformation: that dir's path is replaced with /home/fixture, the
 # HOME the test passes to repogolem-config.ts (expands the fixture's ~/ path).
 #
+# Ralph's generator also runs _repogolem_generate_context_files, which copies
+# CLAUDE.md/AGENTS.md/GEMINI.md into every project dir that exists. It is
+# stubbed so a fixture path that happens to exist is never written to.
+#
 # Usage: zsh scripts/tests/fixtures/repogolem-config/make-golden.zsh
 #        RALPH_LIB=<dir> overrides the lib (default ~/.config/ralphtools/lib).
 set -euo pipefail
@@ -24,6 +28,7 @@ trap 'rm -rf -- "$fake_home"' EXIT
 
 HOME="$fake_home" RALPH_REGISTRY_FILE="$here/registry.json" zsh -f -c '
   source "$1/ralph-registry.zsh"
+  _repogolem_generate_context_files() { :; }
   _ralph_generate_launchers_from_registry >/dev/null
 ' _ "$ralph_lib"
 

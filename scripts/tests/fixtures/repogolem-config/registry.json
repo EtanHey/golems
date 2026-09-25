@@ -51,7 +51,10 @@
       "mcps": ["context7", "browser-tools"],
       "contexts": ["yes", "0123", "on"],
       "created": "2026-03-03T03:03:03Z",
-      "launcher": "custom"
+      "launcher": "custom",
+      "env": {
+        "GAMMA_LITERAL": "fixture-gamma-value"
+      }
     },
     "6pm-svc": {
       "path": "/fixture/gits/6pm svc",
@@ -85,7 +88,9 @@
       "command": "node",
       "args": ["literal.js"],
       "env": {
-        "FIXTURE_LITERAL": "fixture-literal-value"
+        "FIXTURE_LITERAL": "fixture-literal-value",
+        "FIXTURE_ENV_REF": "$FIXTURE_FROM_ENV",
+        "FIXTURE_BRACED_REF": "${FIXTURE_FROM_ENV}"
       }
     },
     "secret-mcp": {

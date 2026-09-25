@@ -91,14 +91,19 @@ describe("import", () => {
   test("warns about non-op:// secret/env literals by key path, never by value", () => {
     const r = runImport(join(dir, "c.yaml"));
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain("literals 2");
-    expect(r.stderr).toContain("warning: 2 literal (non-op://) secret/env value(s)");
+    expect(r.stdout).toContain("literals 3");
+    expect(r.stderr).toContain("warning: 3 literal (non-op://, non-$) secret/env value(s)");
     expect(r.stderr).toContain("global.env.FIXTURE_FLAG");
     expect(r.stderr).toContain("mcpDefinitions.literal-mcp.env.FIXTURE_LITERAL");
-    // op:// refs are not literals, and no value is ever printed.
+    // Any `env`/`secrets` mapping counts, not only the three known locations.
+    expect(r.stderr).toContain("projects.gamma.env.GAMMA_LITERAL");
+    // op:// and $ refs are not literals, and no value is ever printed.
     expect(r.stderr).not.toContain("FIXTURE_TOKEN");
     expect(r.stderr).not.toContain("FIXTURE_API_KEY");
+    expect(r.stderr).not.toContain("FIXTURE_ENV_REF");
+    expect(r.stderr).not.toContain("FIXTURE_BRACED_REF");
     expect(r.stdout + r.stderr).not.toContain("fixture-literal-value");
+    expect(r.stdout + r.stderr).not.toContain("fixture-gamma-value");
   });
 
   test("(ii) the seat file survives byte-for-byte; new keys are additive", () => {
