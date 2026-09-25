@@ -1029,8 +1029,62 @@ export function buildSyncOptions(args: string[]): SyncOptions {
   };
 }
 
+const SYNC_USAGE = `Usage: bun scripts/cc/cc-usage-sync.ts [options]
+
+Syncs local Claude Code, Codex and Cursor session usage into Supabase llm_usage.
+With no options it syncs the last 7 days and WRITES to Supabase.
+
+  --dry-run                        show what would be synced; write nothing
+  --days N | --days=N              sync the last N days (default 7)
+  --provider=claude|codex|cursor   sync one provider only
+  --no-archives                    skip the default local archive roots
+  --archive-root=PATH              add a Claude archive root (also --claude-archive-root=)
+  --codex-archive-root=PATH        add a Codex archive root
+  --cursor-archive-root=PATH       add a Cursor archive root
+  --include-archive-tars           extract and scan the default tar.gz backups
+  --archive-tar=PATH               add a tar.gz backup to scan
+  --repair-native-synced-at=TS     dry-run cleanup of rows with that synced_at marker
+  --repair-cursor-synced-at=TS     same, for Cursor estimate rows
+  --apply-repair                   apply the repair (needs a --repair-* marker)
+  -h, --help                       print this help and exit`;
+
+const SYNC_BOOLEAN_FLAGS = new Set(["--dry-run", "--no-archives", "--include-archive-tars", "--apply-repair"]);
+const SYNC_VALUE_FLAGS = new Set([
+  "--days", "--provider", "--archive-root", "--claude-archive-root", "--codex-archive-root",
+  "--cursor-archive-root", "--archive-tar", "--repair-native-synced-at", "--repair-cursor-synced-at",
+]);
+
+export type SyncCli = { kind: "help" } | { kind: "run" } | { kind: "unknown"; arg: string };
+
+/** Classify argv before anything scans or writes: help, a runnable sync, or a refusal. */
+export function parseSyncCli(args: string[]): SyncCli {
+  if (args.some((arg) => arg === "--help" || arg === "-h")) return { kind: "help" };
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i] ?? "";
+    const [name, value] = arg.includes("=") ? [arg.slice(0, arg.indexOf("=")), arg.slice(arg.indexOf("=") + 1)] : [arg, undefined];
+    if (SYNC_BOOLEAN_FLAGS.has(name) && value === undefined) continue;
+    if (SYNC_VALUE_FLAGS.has(name) && value) continue;
+    // `--days N` is the one flag that also takes its value as the next token.
+    if (name === "--days" && value === undefined && /^\d+$/.test(args[i + 1] ?? "")) {
+      i++;
+      continue;
+    }
+    return { kind: "unknown", arg };
+  }
+  return { kind: "run" };
+}
+
 async function main() {
   const args = process.argv.slice(2);
+  const cli = parseSyncCli(args);
+  if (cli.kind === "help") {
+    console.log(SYNC_USAGE);
+    return;
+  }
+  if (cli.kind === "unknown") {
+    console.error(`Unknown argument: ${cli.arg}\n\n${SYNC_USAGE}`);
+    process.exit(2);
+  }
   const repairNativeSyncedAt = args
     .find((arg) => arg.startsWith("--repair-native-synced-at="))
     ?.split("=")[1];
