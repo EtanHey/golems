@@ -3840,17 +3840,30 @@ def _is_data_command(words: list[str]) -> bool:
 
 def _mask_data_argument_quotes(text: str) -> str:
     """Blank the quoted arguments of data-only commands (echo/printf/gh, git
-    commit|tag|notes), keeping any `$()`/backticks Bash runs inside "…"."""
+    commit|tag|notes), keeping any `$()`/backticks Bash runs inside "…".
+
+    A data command piped onward (`echo '…' | psql`) feeds an executor, so its
+    segment is kept verbatim, mirroring the heredoc `piped` rule.
+    """
     if "$'" in text:
         return text  # ANSI-C quoting is not modelled; never risk a desync
     out = []
+    raw: list[str] = []      # the current segment, verbatim
+    masked: list[str] = []   # the same segment with data prose blanked
     words: list[str] = []
     word = ""
     index = 0
+
+    def close_segment(piped: bool) -> None:
+        out.extend(raw if piped else masked)
+        raw.clear()
+        masked.clear()
+
     while index < len(text):
         char = text[index]
         if char == "\\" and index + 1 < len(text):
-            out.append(text[index:index + 2])
+            raw.append(text[index:index + 2])
+            masked.append(text[index:index + 2])
             word += text[index:index + 2]
             index += 2
             continue
@@ -3858,14 +3871,18 @@ def _mask_data_argument_quotes(text: str) -> str:
             end = index + 1
             while end < len(text) and text[end] != char:
                 end += 2 if char == '"' and text[end] == "\\" else 1
+            quoted = text[index:end + 1]
             body = text[index + 1:end]
             if words and _is_data_command(words):
                 body = "" if char == "'" else _executable_expansions(body)
-            out.append(char + body + (char if end < len(text) else ""))
+            raw.append(quoted)
+            masked.append(char + body + (char if end < len(text) else ""))
             word += char
             index = end + 1
             continue
         if char in ";|&()\n":
+            pipe = char == "|" and text[index + 1:index + 2] != "|"  # `|` or `|&`, not `||`
+            close_segment(pipe)
             words, word = [], ""
         elif char in " \t":
             if word:
@@ -3873,8 +3890,10 @@ def _mask_data_argument_quotes(text: str) -> str:
             word = ""
         else:
             word += char
-        out.append(char)
+        raw.append(char)
+        masked.append(char)
         index += 1
+    close_segment(False)
     return "".join(out)
 
 

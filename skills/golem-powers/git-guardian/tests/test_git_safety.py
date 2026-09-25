@@ -815,6 +815,8 @@ def test_pr4_data_command_prose_is_masked_for_the_sql_and_credential_scans():
         "gh pr comment 12 --body \"no DROP TABLE anywhere\"",
         "printf '### post: we never DROP TABLE users here\\n' >> collab.md",
         "git commit -m 'docs: explain why DROP TABLE is blocked'",
+        "echo 'DROP TABLE is prose' || true",   # `||` is not a pipe
+        "true || echo 'DROP TABLE is prose'",
         "echo 'never cat > credentials.json by hand' >> notes.md",
         "python3 - <<'PY'\nprint('DROP TABLE users; rm -rf /tmp/extract/')\nPY",
     ):
@@ -826,6 +828,11 @@ def test_pr4_executed_sql_and_substitutions_are_still_visible():
     for command, needle in (
         ("psql -c 'DROP TABLE users'", "DROP TABLE"),
         ("sqlite3 db.sqlite 'drop table x'", "drop table"),
+        # r7 round-1 blocker: a data command piped onward feeds an executor.
+        ("echo 'DROP TABLE users;' | psql", "DROP TABLE"),
+        ("printf 'drop table x;' | sqlite3 db", "drop table"),
+        ("echo 'DROP TABLE t;' | tee /x/log | psql", "DROP TABLE"),
+        ("echo 'DROP TABLE t;' |& psql", "DROP TABLE"),
         ("bash <<'EOF'\npsql -c 'DROP TABLE users'\nEOF", "DROP TABLE"),
         ("echo \"$(psql -c 'DROP TABLE users')\"", "DROP TABLE"),
         ("echo `rm -rf ~`", "rm -rf ~"),
