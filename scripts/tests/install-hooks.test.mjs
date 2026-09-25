@@ -225,3 +225,65 @@ test("--apply preserves settings.json's mode (0600 stays 0600) on the file and i
   expect(baks.length).toBe(1);
   expect(statSync(path.join(fx.home, ".claude", baks[0])).mode & 0o777).toBe(0o600);
 });
+
+test("--status: ok, drift, then copy(not link) and dangling exit nonzero; missing does not", () => {
+  const fx = fixture();
+  let r = run(fx, "--status");
+  expect(r.status).toBe(0);
+  expect(r.out).toContain("hooks-live=absent");
+  expect(r.out).toMatch(/demo-gate missing/);
+
+  expect(run(fx, "--apply").status).toBe(0);
+  const sha = git(fx.repo, "rev-parse", "origin/master");
+  r = run(fx, "--status");
+  expect(r.status).toBe(0);
+  expect(r.out).toContain(`hooks-live=${sha} master=${sha} drift=0`);
+  expect(r.out).toMatch(/demo-gate ok/);
+  expect(r.out).toMatch(/brainlayer-session-start external/);
+
+  git(fx.repo, "commit", "-q", "--allow-empty", "-m", "next");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  git(fx.repo, "fetch", "-q", "origin");
+  expect(run(fx, "--status").out).toContain("drift=1");
+
+  const link = path.join(fx.home, ".claude/hooks/demo-gate");
+  rmSync(link);
+  cpSync(path.join(live(fx), "skills/golem-powers/demo-gate"), link, { recursive: true });
+  r = run(fx, "--status");
+  expect(r.status).not.toBe(0);
+  expect(r.out).toMatch(/demo-gate copy\(not link\)/);
+
+  rmSync(link, { recursive: true });
+  spawnSync("ln", ["-s", path.join(fx.root, "nowhere"), link]);
+  r = run(fx, "--status");
+  expect(r.status).not.toBe(0);
+  expect(r.out).toMatch(/demo-gate dangling/);
+
+  const fx2 = fixture();
+  const s = JSON.parse(readFileSync(fx2.settingsPath, "utf8"));
+  s.hooks.Stop = [{ hooks: [{ type: "command", command: "node /h/idle-dwell-gate/hook.mjs" }] }];
+  writeFileSync(fx2.settingsPath, `${JSON.stringify(s, null, 2)}\n`);
+  r = run(fx2, "--status");
+  expect(r.status).not.toBe(0);
+  expect(r.out).toContain("E1 idle-dwell-gate PRESENT");
+});
+
+test("--update moves the pin to a new sha and re-locks; nothing else moves it", () => {
+  const fx = fixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const first = git(live(fx), "rev-parse", "HEAD");
+  git(fx.repo, "commit", "-q", "--allow-empty", "-m", "next");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(first);
+  writeFileSync(path.join(live(fx), "local-edit.txt"), "x\n");
+  const dirty = run(fx, "--apply", "--update");
+  expect(dirty.status).not.toBe(0);
+  expect(dirty.out).toContain("local changes");
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(first);
+  rmSync(path.join(live(fx), "local-edit.txt"));
+  expect(run(fx, "--apply", "--update").status).toBe(0);
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(git(fx.repo, "rev-parse", "origin/master"));
+  expect(git(live(fx), "rev-parse", "HEAD")).not.toBe(first);
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toMatch(/hooks-live\nHEAD \w+\ndetached\nlocked .+/);
+});

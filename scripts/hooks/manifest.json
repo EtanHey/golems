@@ -1,5 +1,5 @@
 {
-  "about": "Per-host hook sets for scripts/hooks/install-hooks.sh (GO-5). kind=golems: linked from hooks-live + registered. kind=external: another repo owns it; registration left untouched. Matchers and timeouts are carried over verbatim from the 2026-09-25 MBP settings.json.",
+  "about": "Per-host hook sets for scripts/hooks/install-hooks.sh (GO-5). kind=golems: linked from hooks-live + registered. kind=external: another repo owns it; registration left untouched, --status reports it. Matchers and timeouts are carried over verbatim from the 2026-09-25 MBP settings.json.",
   "hosts": {
     "mbp": [
       { "id": "model-pin-gate", "kind": "golems", "event": "PreToolUse", "matcher": "Task|Agent|Workflow|mcp__cmux(layer)?__(spawn_agent|dispatch_to_agent|new_split)", "link": "model-pin-gate", "source": "skills/golem-powers/model-pin-gate", "match": "model-pin-gate-hook.mjs", "timeout": 1, "command": "{node} {hooks}/model-pin-gate/scripts/model-pin-gate-hook.mjs" },
