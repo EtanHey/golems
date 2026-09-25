@@ -4,6 +4,7 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, realpathSy
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { GEMINI_SKILLS_ROOT, SKILL_ROOTS } from "./repoint-skills.mjs";
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "repoint-skills.mjs");
 const dirs = [];
@@ -97,79 +98,97 @@ test("a DANGLING link whose name exists in the clone is repointed, never deleted
   expect(() => lstatSync(path.join(fx.agents, "railway"))).toThrow();
 });
 
-test("the Antigravity root ~/.gemini/antigravity/skills is walked with the same rules", () => {
-  // #269: the Antigravity (Gemini) CLI reads a fourth skill root.
+test("the managed Gemini root is ~/.gemini/config/skills, not ~/.gemini/antigravity/skills", () => {
+  // #277: the Gemini CLI loads global skills from ~/.gemini/config/skills only.
+  expect(GEMINI_SKILLS_ROOT).toBe(".gemini/config/skills");
+  expect(SKILL_ROOTS).toContain(".gemini/config/skills");
+  expect(SKILL_ROOTS.some((root) => root.includes("antigravity"))).toBe(false);
+});
+
+test("~/.gemini/antigravity/skills is not walked and nothing there is deleted", () => {
   const fx = fixture();
-  const antigravity = path.join(fx.home, ".gemini", "antigravity", "skills");
-  mkdirSync(antigravity, { recursive: true });
+  const legacy = path.join(fx.home, ".gemini", "antigravity", "skills");
+  mkdirSync(legacy, { recursive: true });
+  symlinkSync(path.join(fx.home, "gone", "y"), path.join(legacy, "no-such-skill")); // dangling, would be removed if managed
+  const r = run(fx, "--apply");
+  expect(r.status).toBe(0);
+  expect(r.out).not.toMatch(/antigravity/);
+  expect(lstatSync(path.join(legacy, "no-such-skill")).isSymbolicLink()).toBe(true);
+});
+
+test("the Gemini root ~/.gemini/config/skills is walked with the same rules", () => {
+  // #269/#277: the Gemini CLI reads a fourth skill root.
+  const fx = fixture();
+  const gemini = path.join(fx.home, ".gemini", "config", "skills");
+  mkdirSync(gemini, { recursive: true });
   const gone = path.join(fx.home, "Gits", "golems.wt", "dead", "skills", "golem-powers", "pr-loop");
-  symlinkSync(gone, path.join(antigravity, "pr-loop"));                                  // dangling, name in source -> repoint
-  symlinkSync(path.join(fx.home, "gone", "y"), path.join(antigravity, "no-such-skill")); // dangling, no source -> removed
-  symlinkSync(path.join(fx.source, "eli5"), path.join(antigravity, "eli5"));             // already right -> ok
+  symlinkSync(gone, path.join(gemini, "pr-loop"));                                  // dangling, name in source -> repoint
+  symlinkSync(path.join(fx.home, "gone", "y"), path.join(gemini, "no-such-skill")); // dangling, no source -> removed
+  symlinkSync(path.join(fx.source, "eli5"), path.join(gemini, "eli5"));             // already right -> ok
 
   const dry = run(fx);
   expect(dry.status).toBe(0);
-  expect(dry.out).toMatch(/\.gemini\/antigravity\/skills: ok=1 repoint=1 dangling=1 other=0/);
+  expect(dry.out).toMatch(/\.gemini\/config\/skills: ok=1 repoint=1 dangling=1 other=0/);
 
   expect(run(fx, "--apply").status).toBe(0);
-  expect(readlinkSync(path.join(antigravity, "pr-loop"))).toBe(path.join(fx.source, "pr-loop"));
-  expect(() => lstatSync(path.join(antigravity, "no-such-skill"))).toThrow();
-  expect(run(fx).out).toMatch(/\.gemini\/antigravity\/skills: ok=2 repoint=0 dangling=0 other=0/);
+  expect(readlinkSync(path.join(gemini, "pr-loop"))).toBe(path.join(fx.source, "pr-loop"));
+  expect(() => lstatSync(path.join(gemini, "no-such-skill"))).toThrow();
+  expect(run(fx).out).toMatch(/\.gemini\/config\/skills: ok=2 repoint=0 dangling=0 other=0/);
 });
 
 test("a missing root is skipped with a one-line note, not an error", () => {
-  const fx = fixture(); // no ~/.gemini/antigravity/skills
+  const fx = fixture(); // no ~/.gemini/config/skills
   rmSync(fx.codex, { recursive: true, force: true });
   const r = run(fx, "--apply");
   expect(r.status).toBe(0);
-  expect(r.out).toMatch(/^~\/\.gemini\/antigravity\/skills: skipped \(missing\)$/m);
+  expect(r.out).toMatch(/^~\/\.gemini\/config\/skills: skipped \(missing\)$/m);
   expect(r.out).toMatch(/^~\/\.codex\/skills: skipped \(missing\)$/m);
   expect(existsSync(path.join(fx.home, ".gemini"))).toBe(false);
   expect(r.out).toMatch(/\.claude\/skills: ok=1 repoint=1 dangling=1 other=3/);
 });
 
-// #272: --link-missing mirrors golems links from ~/.agents/skills into the Antigravity root.
-function antigravityFixture() {
+// #272/#277: --link-missing mirrors golems links from ~/.agents/skills into the Gemini root.
+function geminiFixture() {
   const fx = fixture();
   for (const name of ["pr-loop", "orc", "eli5"]) writeFileSync(path.join(fx.source, name, "SKILL.md"), `# ${name}\n`);
   symlinkSync(path.join(fx.source, "pr-loop"), path.join(fx.agents, "pr-loop"));
   symlinkSync(path.join(fx.source, "eli5"), path.join(fx.agents, "eli5"));
-  const antigravity = path.join(fx.home, ".gemini", "antigravity", "skills");
-  mkdirSync(antigravity, { recursive: true });
-  return { ...fx, antigravity };
+  const gemini = path.join(fx.home, ".gemini", "config", "skills");
+  mkdirSync(gemini, { recursive: true });
+  return { ...fx, gemini };
 }
 
-test("--link-missing links a golems skill that ~/.agents/skills has and Antigravity lacks", () => {
-  const fx = antigravityFixture();
+test("--link-missing links a golems skill that ~/.agents/skills has and ~/.gemini/config/skills lacks", () => {
+  const fx = geminiFixture();
   const dry = run(fx, "--link-missing");
   expect(dry.status).toBe(0);
   expect(dry.out).toMatch(/linked=3/); // pr-loop, eli5, and orc (a stale link the walk repoints)
-  expect(() => lstatSync(path.join(fx.antigravity, "pr-loop"))).toThrow();
+  expect(() => lstatSync(path.join(fx.gemini, "pr-loop"))).toThrow();
 
   const r = run(fx, "--link-missing", "--apply");
   expect(r.status).toBe(0);
   expect(r.out).toMatch(/linked=3/);
-  expect(readlinkSync(path.join(fx.antigravity, "pr-loop"))).toBe("../../../.agents/skills/pr-loop");
-  expect(realpathSync(path.join(fx.antigravity, "pr-loop"))).toBe(path.join(fx.source, "pr-loop"));
-  expect(readlinkSync(path.join(fx.antigravity, "eli5"))).toBe("../../../.agents/skills/eli5");
-  expect(realpathSync(path.join(fx.antigravity, "orc"))).toBe(path.join(fx.source, "orc"));
+  expect(readlinkSync(path.join(fx.gemini, "pr-loop"))).toBe("../../../.agents/skills/pr-loop");
+  expect(realpathSync(path.join(fx.gemini, "pr-loop"))).toBe(path.join(fx.source, "pr-loop"));
+  expect(readlinkSync(path.join(fx.gemini, "eli5"))).toBe("../../../.agents/skills/eli5");
+  expect(realpathSync(path.join(fx.gemini, "orc"))).toBe(path.join(fx.source, "orc"));
   expect(run(fx, "--link-missing").out).toMatch(/linked=0/);
 });
 
-test("--link-missing never overwrites an existing Antigravity entry", () => {
-  const fx = antigravityFixture();
+test("--link-missing never overwrites an existing Gemini entry", () => {
+  const fx = geminiFixture();
   mkdirSync(path.join(fx.home, "elsewhere", "pr-loop"), { recursive: true });
-  symlinkSync(path.join(fx.home, "elsewhere", "pr-loop"), path.join(fx.antigravity, "pr-loop"));
-  mkdirSync(path.join(fx.antigravity, "eli5"));
+  symlinkSync(path.join(fx.home, "elsewhere", "pr-loop"), path.join(fx.gemini, "pr-loop"));
+  mkdirSync(path.join(fx.gemini, "eli5"));
   const r = run(fx, "--link-missing", "--apply");
   expect(r.status).toBe(0);
   expect(r.out).toMatch(/linked=1/); // only orc; pr-loop and eli5 already have entries
-  expect(readlinkSync(path.join(fx.antigravity, "pr-loop"))).toBe(path.join(fx.home, "elsewhere", "pr-loop"));
-  expect(lstatSync(path.join(fx.antigravity, "eli5")).isDirectory()).toBe(true);
+  expect(readlinkSync(path.join(fx.gemini, "pr-loop"))).toBe(path.join(fx.home, "elsewhere", "pr-loop"));
+  expect(lstatSync(path.join(fx.gemini, "eli5")).isDirectory()).toBe(true);
 });
 
 test("--link-missing does not mirror a non-golems entry in ~/.agents/skills", () => {
-  const fx = antigravityFixture();
+  const fx = geminiFixture();
   const foreign = path.join(fx.home, "Gits", "other-repo", "skills", "foreign");
   mkdirSync(foreign, { recursive: true });
   writeFileSync(path.join(foreign, "SKILL.md"), "# foreign\n");
@@ -177,15 +196,17 @@ test("--link-missing does not mirror a non-golems entry in ~/.agents/skills", ()
   const r = run(fx, "--link-missing", "--apply");
   expect(r.status).toBe(0);
   expect(r.out).toMatch(/linked=3/);
-  expect(() => lstatSync(path.join(fx.antigravity, "foreign"))).toThrow();
+  expect(() => lstatSync(path.join(fx.gemini, "foreign"))).toThrow();
 });
 
-test("--link-missing skips entirely when ~/.gemini/antigravity does not exist", () => {
-  const fx = antigravityFixture();
-  rmSync(path.join(fx.home, ".gemini"), { recursive: true, force: true });
+test("--link-missing skips entirely when ~/.gemini/config does not exist", () => {
+  const fx = geminiFixture();
+  rmSync(path.join(fx.home, ".gemini", "config"), { recursive: true, force: true });
+  mkdirSync(path.join(fx.home, ".gemini", "antigravity"), { recursive: true }); // does not count
   const r = run(fx, "--link-missing", "--apply");
   expect(r.status).toBe(0);
-  expect(r.out).toMatch(/^~\/\.gemini\/antigravity: link-missing skipped \(missing\)$/m);
+  expect(r.out).toMatch(/^~\/\.gemini\/config: link-missing skipped \(missing\)$/m);
   expect(r.out).not.toMatch(/linked=/);
-  expect(existsSync(path.join(fx.home, ".gemini"))).toBe(false);
+  expect(existsSync(path.join(fx.home, ".gemini", "config"))).toBe(false);
+  expect(existsSync(path.join(fx.home, ".gemini", "antigravity", "skills"))).toBe(false);
 });

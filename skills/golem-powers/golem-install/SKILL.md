@@ -38,10 +38,11 @@ Full procedure: [references/wizard.md](references/wizard.md); phase checklist:
 5. **`.claude.local.md`** in each existing checkout that has a `CLAUDE.md` (gitignored).
    A machine whose skill links point at a stale `~/.golems/skills` copy: `bun <golem-install-dir>/scripts/repoint-skills.mjs
    --source <clone>/skills/golem-powers` (dry-run; `--apply` repoints and drops dangling links, per-root counts
-   for `~/.claude/skills`, `~/.agents/skills`, `~/.codex/skills`, `~/.gemini/antigravity/skills`; a missing root is skipped).
-   Gemini sees only a few skills: add `--link-missing` to create `~/.gemini/antigravity/skills/<name>` →
+   for `~/.claude/skills`, `~/.agents/skills`, `~/.codex/skills`, `~/.gemini/config/skills`; a missing root is skipped).
+   Gemini sees only a few skills: add `--link-missing` to create `~/.gemini/config/skills/<name>` →
    `../../../.agents/skills/<name>` for each golems skill linked in `~/.agents/skills` but absent there (never
-   overwrites; skipped without `~/.gemini/antigravity`; dry-run unless `--apply`; reports `linked=N`).
+   overwrites; skipped without `~/.gemini/config`; dry-run unless `--apply`; reports `linked=N`).
+   The Gemini CLI reads global skills only from `~/.gemini/config/skills`; `~/.gemini/antigravity/skills` is left alone.
 6. **BrainLayer:** check BrainBar + `brain_search`; never block setup on it.
 7. **Report:** one line per release-gate result, including `REFUSE` and failures.
 
