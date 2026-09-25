@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,4 +126,66 @@ test("a missing root is skipped with a one-line note, not an error", () => {
   expect(r.out).toMatch(/^~\/\.codex\/skills: skipped \(missing\)$/m);
   expect(existsSync(path.join(fx.home, ".gemini"))).toBe(false);
   expect(r.out).toMatch(/\.claude\/skills: ok=1 repoint=1 dangling=1 other=3/);
+});
+
+// #272: --link-missing mirrors golems links from ~/.agents/skills into the Antigravity root.
+function antigravityFixture() {
+  const fx = fixture();
+  for (const name of ["pr-loop", "orc", "eli5"]) writeFileSync(path.join(fx.source, name, "SKILL.md"), `# ${name}\n`);
+  symlinkSync(path.join(fx.source, "pr-loop"), path.join(fx.agents, "pr-loop"));
+  symlinkSync(path.join(fx.source, "eli5"), path.join(fx.agents, "eli5"));
+  const antigravity = path.join(fx.home, ".gemini", "antigravity", "skills");
+  mkdirSync(antigravity, { recursive: true });
+  return { ...fx, antigravity };
+}
+
+test("--link-missing links a golems skill that ~/.agents/skills has and Antigravity lacks", () => {
+  const fx = antigravityFixture();
+  const dry = run(fx, "--link-missing");
+  expect(dry.status).toBe(0);
+  expect(dry.out).toMatch(/linked=3/); // pr-loop, eli5, and orc (a stale link the walk repoints)
+  expect(() => lstatSync(path.join(fx.antigravity, "pr-loop"))).toThrow();
+
+  const r = run(fx, "--link-missing", "--apply");
+  expect(r.status).toBe(0);
+  expect(r.out).toMatch(/linked=3/);
+  expect(readlinkSync(path.join(fx.antigravity, "pr-loop"))).toBe("../../../.agents/skills/pr-loop");
+  expect(realpathSync(path.join(fx.antigravity, "pr-loop"))).toBe(path.join(fx.source, "pr-loop"));
+  expect(readlinkSync(path.join(fx.antigravity, "eli5"))).toBe("../../../.agents/skills/eli5");
+  expect(realpathSync(path.join(fx.antigravity, "orc"))).toBe(path.join(fx.source, "orc"));
+  expect(run(fx, "--link-missing").out).toMatch(/linked=0/);
+});
+
+test("--link-missing never overwrites an existing Antigravity entry", () => {
+  const fx = antigravityFixture();
+  mkdirSync(path.join(fx.home, "elsewhere", "pr-loop"), { recursive: true });
+  symlinkSync(path.join(fx.home, "elsewhere", "pr-loop"), path.join(fx.antigravity, "pr-loop"));
+  mkdirSync(path.join(fx.antigravity, "eli5"));
+  const r = run(fx, "--link-missing", "--apply");
+  expect(r.status).toBe(0);
+  expect(r.out).toMatch(/linked=1/); // only orc; pr-loop and eli5 already have entries
+  expect(readlinkSync(path.join(fx.antigravity, "pr-loop"))).toBe(path.join(fx.home, "elsewhere", "pr-loop"));
+  expect(lstatSync(path.join(fx.antigravity, "eli5")).isDirectory()).toBe(true);
+});
+
+test("--link-missing does not mirror a non-golems entry in ~/.agents/skills", () => {
+  const fx = antigravityFixture();
+  const foreign = path.join(fx.home, "Gits", "other-repo", "skills", "foreign");
+  mkdirSync(foreign, { recursive: true });
+  writeFileSync(path.join(foreign, "SKILL.md"), "# foreign\n");
+  symlinkSync(foreign, path.join(fx.agents, "foreign"));
+  const r = run(fx, "--link-missing", "--apply");
+  expect(r.status).toBe(0);
+  expect(r.out).toMatch(/linked=3/);
+  expect(() => lstatSync(path.join(fx.antigravity, "foreign"))).toThrow();
+});
+
+test("--link-missing skips entirely when ~/.gemini/antigravity does not exist", () => {
+  const fx = antigravityFixture();
+  rmSync(path.join(fx.home, ".gemini"), { recursive: true, force: true });
+  const r = run(fx, "--link-missing", "--apply");
+  expect(r.status).toBe(0);
+  expect(r.out).toMatch(/^~\/\.gemini\/antigravity: link-missing skipped \(missing\)$/m);
+  expect(r.out).not.toMatch(/linked=/);
+  expect(existsSync(path.join(fx.home, ".gemini"))).toBe(false);
 });
