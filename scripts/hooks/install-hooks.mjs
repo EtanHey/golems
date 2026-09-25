@@ -232,7 +232,10 @@ function status(o) {
   const master = git(o.repo, "rev-parse", "--verify", "origin/master");
   const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
   console.log(`hooks-live=${current ?? "absent"} master=${master ?? "unknown"} drift=${drift}`);
-  const text = existsSync(ctx.settingsPath) ? readFileSync(ctx.settingsPath, "utf8") : "";
+  // Only registered hook commands count: a hook name in permissions or env is not a registration.
+  const hooks = existsSync(ctx.settingsPath) ? JSON.parse(readFileSync(ctx.settingsPath, "utf8")).hooks ?? {} : {};
+  const commands = Object.values(hooks).flat().flatMap((g) => g.hooks ?? []).map((h) => String(h.command ?? ""));
+  const text = commands.join("\n");
   let bad = false;
   for (const e of ctx.entries) {
     if (e.kind !== "golems") {
@@ -241,7 +244,7 @@ function status(o) {
     }
     const g = ctx.golems.find((x) => x.id === e.id);
     let state = linkState(g.at, g.to);
-    if (state === "ok" && !text.includes(JSON.stringify(g.cmd).slice(1, -1))) state = "unregistered";
+    if (state === "ok" && !commands.includes(g.cmd)) state = "unregistered";
     if (state === "dangling" || state === "copy(not link)") bad = true;
     console.log(`${e.id} ${state}`);
   }
