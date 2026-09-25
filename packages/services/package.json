@@ -1,7 +1,7 @@
 {
   "name": "@golems/services",
   "version": "1.0.0",
-  "description": "Golems Services — infrastructure including cloud worker, night shift, morning briefing, and ecosystem tooling.",
+  "description": "Golems Services — infrastructure including cloud worker, morning briefing, and ecosystem tooling.",
   "author": "EtanHey",
   "license": "Apache-2.0",
   "private": true,
@@ -23,7 +23,6 @@
   },
   "scripts": {
     "cloud-worker": "bun run src/cloud-worker.ts",
-    "night-shift": "bun run src/night-shift.ts",
     "briefing": "bun run src/briefing.ts"
   },
   "dependencies": {

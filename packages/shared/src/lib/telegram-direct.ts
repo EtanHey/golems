@@ -26,12 +26,11 @@ let cachedTopics: Record<string, number> | null = null;
 
 /**
  * Source → topic mapping (aligned with notify-server.ts SOURCE_CONFIG).
- * The Telegram group has: general, alerts, nightshift, recruiter.
+ * The Telegram group has: general, alerts, recruiter.
  * Most sources route to "alerts" — only interactive chat goes to "general".
  */
 const SOURCE_TO_TOPIC: Record<string, string> = {
   claude: "general",
-  nightshift: "nightshift",
   email: "alerts",
   jobs: "alerts",
   recruiter: "recruiter",
@@ -48,7 +47,6 @@ const SOURCE_FORMAT: Record<
   { icon: string; format: (t: string, b: string) => string }
 > = {
   claude: { icon: "🤖", format: (t, b) => `🤖 *${t}*\n${b}` },
-  nightshift: { icon: "🌙", format: (t, b) => `🌙 *Night Shift*\n${t}\n${b}` },
   email: { icon: "📧", format: (t, b) => `📧 *${t}*\n\n${b}` },
   jobs: { icon: "🎯", format: (t, b) => `🎯 *${t}*\n\n${b}` },
   recruiter: { icon: "👔", format: (t, b) => `👔 *${t}*\n\n${b}` },

@@ -71,18 +71,6 @@ export interface GolemsConfig {
     kiro: string;
   };
 
-  /** NightShift settings */
-  nightshift: {
-    /** Repo rotation order */
-    rotation: string[];
-    /** Claude timeout in ms */
-    timeout: number;
-    /** Enable Gemini pre-scan */
-    geminiPreScan: boolean;
-    /** Enable self-healing fix list */
-    selfHealing: boolean;
-  };
-
   /** Telegram settings */
   telegram: {
     /** Bot token (prefer env var TELEGRAM_BOT_TOKEN) */
@@ -115,7 +103,6 @@ export interface GolemsConfig {
     jobGolem: boolean;
     recruiterGolem: boolean;
     tellerGolem: boolean;
-    nightShift: boolean;
     soltome: boolean;
   };
 
@@ -301,12 +288,6 @@ const DEFAULTS: GolemsConfig = {
     codex: `${HOME}/.nvm/versions/node/v22.0.0/bin/npx`,
     kiro: `${HOME}/.local/bin/kiro-cli`,
   },
-  nightshift: {
-    rotation: ["golems", "brainlayer", "voicelayer"],
-    timeout: 300000,
-    geminiPreScan: true,
-    selfHealing: true,
-  },
   telegram: {
     notifyPort: 3847,
   },
@@ -322,7 +303,6 @@ const DEFAULTS: GolemsConfig = {
     jobGolem: true,
     recruiterGolem: true,
     tellerGolem: true,
-    nightShift: true,
     soltome: true,
   },
   seatRegistry: DEFAULT_SEAT_REGISTRY,
@@ -731,16 +711,6 @@ tools:
   codex: "${HOME}/.nvm/versions/node/v22.0.0/bin/npx"
   kiro: "${HOME}/.local/bin/kiro-cli"
 
-# NightShift configuration
-nightshift:
-  rotation:
-    - songscript
-    - zikaron
-    - claude-golem
-  timeout: 300000     # 5 minutes
-  geminiPreScan: true
-  selfHealing: true
-
 # Telegram bot
 telegram:
   notifyPort: 3847
@@ -763,7 +733,6 @@ features:
   jobGolem: true
   recruiterGolem: true
   tellerGolem: true
-  nightShift: true
   soltome: true
 
 # Canonical fleet seat registry defaults live in packages/shared/src/lib/config.ts.

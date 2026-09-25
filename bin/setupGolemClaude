@@ -115,7 +115,6 @@ This project is part of the Golem ecosystem. Key components:
 
 ### Active LaunchAgents
 - \`com.golemszikaron.telegram\` - Telegram bot (always on)
-- \`com.golemszikaron.nightshift\` - 3am autonomous work
 - \`com.golemszikaron.briefing\` - 8am briefings
 - \`com.zikaron.watcher\` - File watcher for indexing
 

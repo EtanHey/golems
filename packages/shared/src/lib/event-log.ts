@@ -59,7 +59,6 @@ function persistEventToSupabase(event: GolemEvent): void {
 export type GolemActor =
   | "claudegolem"
   | "ollamagolem"
-  | "nightshift"
   | "jobgolem"
   | "emailgolem"
   | "recruitergolem"
@@ -74,8 +73,6 @@ export type EventType =
   | "email_unsubscribe_attempt"
   // Job pipeline
   | "job_match"
-  // Night Shift
-  | "nightshift_pr"
   // Telegram chat
   | "telegram_message_in"
   | "telegram_message_out"
@@ -232,8 +229,6 @@ function formatActor(actor: GolemActor): string {
       return "YOU";
     case "ollamagolem":
       return "OllamaGolem";
-    case "nightshift":
-      return "NightShift";
     case "jobgolem":
       return "JobGolem";
     case "emailgolem":
@@ -257,12 +252,6 @@ function formatAction(event: GolemEvent): string {
     case "email_alert": {
       const subject = data.subject || "(no subject)";
       return `sent alert: "${subject}"`;
-    }
-
-    case "nightshift_pr": {
-      const repo = data.repo || "unknown";
-      const pr = data.prNumber ? `#${data.prNumber}` : "";
-      return `created PR: ${repo}${pr}`;
     }
 
     case "job_match": {

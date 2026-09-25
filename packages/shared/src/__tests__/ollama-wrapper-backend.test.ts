@@ -20,7 +20,7 @@ describe("LLM facade (llm.ts)", () => {
     expect(typeof mod.forJobGolem.runLLM).toBe("function");
     expect(typeof mod.forJobGolem.runLLMJSON).toBe("function");
     expect(typeof mod.forEmailGolem.runLLM).toBe("function");
-    expect(typeof mod.forNightShift.runLLM).toBe("function");
+    expect("forNightShift" in mod).toBe(false); // retired (gL = A)
   });
 
   it("exports embedding functions", async () => {

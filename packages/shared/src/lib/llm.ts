@@ -163,12 +163,6 @@ export const forJobGolem = {
     runLLMJSON(prompt, schema, "job-golem"),
 };
 
-export const forNightShift = {
-  runLLM: (prompt: string) => runLLM(prompt, "night-shift"),
-  runLLMJSON: <T>(prompt: string, schema: ZodType<T>) =>
-    runLLMJSON(prompt, schema, "night-shift"),
-};
-
 export const forEmailGolem = {
   runLLM: (prompt: string) => runLLM(prompt, "email-golem"),
   runLLMJSON: <T>(prompt: string, schema: ZodType<T>) =>

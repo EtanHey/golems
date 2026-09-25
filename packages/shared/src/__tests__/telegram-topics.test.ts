@@ -8,12 +8,11 @@ import { describe, it, expect } from "bun:test";
 
 // Source to topic routing configuration (mirrors telegram-bot.ts)
 // Note: "claude" goes to "general" (no thread ID, uses General topic)
-type TopicKey = "general" | "alerts" | "nightshift" | "email" | "jobs";
+type TopicKey = "general" | "alerts" | "email" | "jobs";
 
 const SOURCE_TO_TOPIC: Record<string, TopicKey> = {
   claude: "general",  // Goes to General topic (no thread ID)
   ralph: "alerts",
-  nightshift: "nightshift",
   email: "email",
   jobs: "jobs",
   healthcheck: "alerts",
@@ -31,10 +30,6 @@ describe("Telegram Topics - Source Routing", () => {
 
   it("should route ralph to alerts", () => {
     expect(getTopicForSource("ralph")).toBe("alerts");
-  });
-
-  it("should route nightshift to nightshift", () => {
-    expect(getTopicForSource("nightshift")).toBe("nightshift");
   });
 
   it("should route email to email", () => {
@@ -61,7 +56,6 @@ describe("Telegram Topics - State Structure", () => {
   // Note: "chat" removed - ClaudeGolem goes to General (no thread ID needed)
   interface TopicsState {
     alerts?: number;
-    nightshift?: number;
     email?: number;
     jobs?: number;
   }
@@ -69,14 +63,12 @@ describe("Telegram Topics - State Structure", () => {
   it("should have correct topics state structure", () => {
     const topics: TopicsState = {
       alerts: 3,
-      nightshift: 4,
       email: 5,
       jobs: 7,
     };
 
     // Note: no "chat" - claude goes to General (no thread ID)
     expect(topics.alerts).toBe(3);
-    expect(topics.nightshift).toBe(4);
     expect(topics.email).toBe(5);
     expect(topics.jobs).toBe(7);
   });
@@ -87,7 +79,7 @@ describe("Telegram Topics - State Structure", () => {
     };
 
     expect(topics.alerts).toBe(3);
-    expect(topics.nightshift).toBeUndefined();
+    expect(topics.email).toBeUndefined();
   });
 
   it("should handle empty topics", () => {
@@ -148,7 +140,6 @@ describe("Telegram Topics - Thread ID Selection", () => {
   // Note: "chat" removed - ClaudeGolem goes to General (no thread ID)
   interface TopicsState {
     alerts?: number;
-    nightshift?: number;
     email?: number;
     jobs?: number;
   }

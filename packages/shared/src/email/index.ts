@@ -64,8 +64,6 @@ const CATEGORY_EMOJIS: Record<string, string> = {
 
 // State interface
 interface State {
-  nightShiftTarget?: string;
-  rotation?: string[];
   telegramChatId?: number | null;
   lastEmailCheck?: string;
   processedEmailIds?: string[];

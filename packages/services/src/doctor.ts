@@ -247,7 +247,6 @@ async function checkLaunchd() {
   // Map service names to their launchd label prefixes
   const golems: Array<{ name: string; label: string }> = [
     { name: "telegram", label: "com.golemszikaron.telegram" },
-    { name: "nightshift", label: "com.golemszikaron.nightshift" },
     { name: "briefing", label: "com.golemszikaron.briefing" },
   ];
   const launchResult = runCommand("launchctl list 2>/dev/null | grep -E 'golem|zikaron' || true");
@@ -277,18 +276,18 @@ async function checkStateFile() {
   try {
     await fs.access(stateFile);
     const content = await fs.readFile(stateFile, "utf-8");
-    const state = JSON.parse(content);
+    JSON.parse(content);
     results.push({
       name: "State File",
       status: "pass",
-      message: `Exists (target: ${state.nightShiftTarget || "none"})`,
+      message: "Exists (valid JSON)",
     });
   } catch {
     results.push({
       name: "State File",
       status: "warn",
       message: "Missing or invalid JSON",
-      fix: `mkdir -p ~/.golems-zikaron && echo '{"nightShiftTarget":"songscript"}' > ~/.golems-zikaron/state.json`,
+      fix: `mkdir -p ~/.golems-zikaron && echo '{}' > ~/.golems-zikaron/state.json`,
     });
   }
 }

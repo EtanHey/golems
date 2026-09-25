@@ -27,11 +27,6 @@ const SOURCE_CONFIG: Record<
     topic: "general",
     format: (t, b) => `${t}\n${b}`,
   },
-  nightshift: {
-    icon: "moon",
-    topic: "alerts",
-    format: (t, b) => `Night Shift\n${t}\n${b}`,
-  },
   email: {
     icon: "mail",
     topic: "alerts",

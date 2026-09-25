@@ -5,11 +5,7 @@ import { startNotifyServer } from "./notify-server";
 import type { State } from "./bot-shared";
 
 const baseState: State = {
-  nightShiftTarget: "songscript",
-  rotation: [],
   telegramChatId: null,
-  nightShiftPRs: [],
-  lastNightShift: null,
 };
 
 const servers: Bun.Server<undefined>[] = [];

@@ -46,33 +46,12 @@ async function countClaudeSessions(): Promise<number> {
   }
 }
 
-async function getNightShiftTarget(): Promise<string> {
-  try {
-    const stateFile = `${process.env.HOME}/.golems-zikaron/state.json`;
-    const file = Bun.file(stateFile);
-    if (await file.exists()) {
-      const state = await file.json();
-      return state.nightShiftTarget || "none";
-    }
-  } catch {}
-  return "none";
-}
-
 export async function fetchGolemStatuses(): Promise<GolemInfo[]> {
-  const [
-    telegramRunning,
-    nightshiftStatus,
-    emailStatus,
-    jobStatus,
-    claudeSessions,
-    nightTarget,
-  ] = await Promise.all([
+  const [telegramRunning, emailStatus, jobStatus, claudeSessions] = await Promise.all([
     checkPort(3847),
-    checkLaunchAgent("nightshift"),
     checkLaunchAgent("email-golem"),
     checkLaunchAgent("job-golem"),
     countClaudeSessions(),
-    getNightShiftTarget(),
   ]);
 
   return [
@@ -85,7 +64,6 @@ export async function fetchGolemStatuses(): Promise<GolemInfo[]> {
       trailerLines: [
         "$ claude -c --resume",
         "🤖 Resuming session... context loaded",
-        `📂 Working on: ${nightTarget}`,
         `🔄 Active sessions: ${claudeSessions}`,
         "💾 Memory: Zikaron (sqlite-vec + bge-large)",
       ],
@@ -145,20 +123,6 @@ export async function fetchGolemStatuses(): Promise<GolemInfo[]> {
         "  → Staff Eng @ Linear (88%)",
         "  → Founding Eng @ stealth AI (86%)",
         "📬 Applied: 12 this week, 3 interviews",
-      ],
-    },
-    {
-      name: "NightShift",
-      emoji: "🌙",
-      status: nightshiftStatus,
-      detail: nightshiftStatus === "running" ? `target: ${nightTarget}` : "sleeping",
-      description: "Autonomous 4am worker. PRs, fixes, improvements while you sleep.",
-      trailerLines: [
-        "$ golems nightshift --status",
-        `🌙 Target: ${nightTarget}`,
-        "⏰ Next run: 4:00 AM",
-        "📝 Last run: 3 PRs created, 2 merged",
-        "🔧 Fix list: 2 items (broken test, stale dep)",
       ],
     },
   ];

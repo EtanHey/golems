@@ -3,7 +3,6 @@
  * Morning Briefing - 8 AM summary of overnight work
  *
  * Compiles:
- * - Night Shift PRs (if created)
  * - 24h Email digest (urgent, job updates, payments)
  * - Monthly subscription summary (on 1st of month)
  * - Soltome activity (posts, credits)
@@ -12,9 +11,6 @@
 
 import "@golems/shared/lib/load-env"; // MUST be first — loads .env for credentials
 
-import { readFileSync, writeFileSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
 import { sendNotification } from "@golems/shared/lib/telegram-direct";
 import {
   createDbClient,
@@ -32,30 +28,6 @@ import {
   formatPlanForTelegram,
 } from "@golems/coach/index";
 
-const HOME = process.env.HOME || homedir();
-const STATE_FILE = join(HOME, ".golems-zikaron/state.json");
-
-
-interface State {
-  nightShiftTarget: string;
-  rotation: string[];
-  telegramChatId: number | null;
-  lastNightShift?: string;
-  lastPrUrl?: string; // deprecated
-  nightShiftPRs?: { url: string; repo: string; createdAt: string }[];
-}
-
-function loadState(): State {
-  try {
-    return JSON.parse(readFileSync(STATE_FILE, "utf-8"));
-  } catch {
-    return {
-      nightShiftTarget: "songscript",
-      rotation: ["songscript", "brainlayer", "claude-golem"],
-      telegramChatId: null,
-    };
-  }
-}
 
 /**
  * Fetch 24h email digest from Supabase
@@ -219,35 +191,10 @@ async function sendBriefing() {
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   console.log(`[${timestamp}] ☀️ Generating morning briefing...\n`);
 
-  const state = loadState();
-
   // Build briefing - concise and useful
   let msg = `☀️ *Morning Briefing*\n\n`;
 
   const separator = "━━━━━━━━━━━━━━━━━━━━━\n\n";
-
-  // PR Section
-  const prs = state.nightShiftPRs || [];
-  const recentPRs = prs.filter((pr) => {
-    const prDate = new Date(pr.createdAt);
-    const hoursAgo = (Date.now() - prDate.getTime()) / (1000 * 60 * 60);
-    return hoursAgo < 24;
-  });
-
-  if (recentPRs.length > 0) {
-    msg += `🔧 *Night Shift*\n`;
-    msg += `→ ${recentPRs.length} PR${recentPRs.length > 1 ? "s" : ""}:`;
-    recentPRs.forEach((pr) => {
-      msg += ` [${pr.repo}](${pr.url})`;
-    });
-    msg += `\n\n`;
-  } else if (state.lastPrUrl) {
-    const repoMatch = state.lastPrUrl.match(/github\.com\/[^/]+\/([^/]+)/);
-    const repoName = repoMatch ? repoMatch[1] : "repo";
-    msg += `🔧 *Night Shift*\n→ 1 PR: [${repoName}](${state.lastPrUrl})\n\n`;
-  }
-
-  msg += separator;
 
   // TellerGolem Spending Section (current month)
   const tellerSummary = await formatTellerSummary();
@@ -305,12 +252,6 @@ async function sendBriefing() {
   // Report run to dashboard
   await reportServiceRun("lastBriefing");
 
-  // Only clear overnight PRs if briefing was sent (don't lose data on send failure)
-  if (sent) {
-    const updatedState2 = loadState();
-    updatedState2.nightShiftPRs = [];
-    writeFileSync(STATE_FILE, JSON.stringify(updatedState2, null, 2));
-  }
 }
 
 // CLI
