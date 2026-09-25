@@ -241,7 +241,12 @@ def advise(reason):
 # a temp hint (`P=$(mktemp); echo x > $P`, `${TMPDIR:-/tmp}/x`). A target that is
 # unreadable for any other reason (a conditional assignment, a loop value) gets
 # an advisory: an unknown value with no temp hint is not evidence of a temp write.
-_TEMP_HINT_RE = re.compile(r"\bmktemp\b|\bTMPDIR\w*|/tmp\b|/var/folders\b")
+_TEMP_HINT_RE = re.compile(
+    r"\bmktemp\b|\bTMPDIR\w*|/tmp\b|/var/folders\b"
+    # GO-5 #226 r2 (lead ruling): library/OS spellings of the temp location.
+    r"|\btempfile\b|\bmkdtemp\b|\bgettempdir\b|\bDARWIN_USER_TEMP_DIR\b|\.tmpdir\s*\("
+    r"|\$\{?(?:TMP|TEMP)\b"
+)
 # Literal temp-rooted paths in the command; a harness-scratchpad one is the
 # sanctioned location, so it is not a temp hint (the live GO-5 fixture).
 _TEMP_PATH_TOKEN_RE = re.compile(r"(?:/private)?(?:/tmp|/var/folders)/[^\s'\";|&)<>]*")

@@ -49,6 +49,15 @@ is a hook error on a payload with no temp hint. Denying those blocked honest
 work (a conditional `cd … && P=<static path>` assignment, an unset variable)
 without evidence of a temp write.
 
+Temp hints (#226 r2): `mktemp`, `mkdtemp`, `tempfile`, `gettempdir`, `.tmpdir(` (Node
+`os.tmpdir()`), `DARWIN_USER_TEMP_DIR`, `TMPDIR*`, `$TMP`, `$TEMP`, `/tmp`, `/var/folders`.
+
+**Residual (documented, not closed):** the hint check is lexical. A command that builds
+a temp path without naming one (`P=$(printf '/t''mp')`, a base64-decoded path, a value
+read from a file or from another command's output) gets the advisory, not a refusal.
+The ledger and the temp-dir scan remain the detectors for that class; closing it
+statically would mean refusing every unknown value again, which is what E2 removed.
+
 A prompt suspends the pane until a human answers it, and a headless Codex or
 Cursor worker has no human in its pane at all — 2026-08-14/17 lost hours to
 `~/Documents` probes stranding panes overnight. A deny comes back as a readable

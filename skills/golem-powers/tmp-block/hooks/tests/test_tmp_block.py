@@ -3875,3 +3875,32 @@ def test_quoted_backslash_newline_stays_one_token():
     hook = _load_hook_module()
     tokens = hook._RAW_SHELL_TOKEN_RE.findall('case x in "a\\\nb") echo;; esac')
     assert '"a\\\nb"' in tokens
+
+
+# GO-5 #226 r2 (lead ruling 03:14Z): more temp-location words make an
+# unresolvable target a hard refusal. Each command carries exactly ONE hint.
+TEMP_HINT_WORD_CASES = {
+    "tempfile": 'P=$(helper tempfile); printf x > "$P"',
+    "mkdtemp": 'P=$(helper mkdtemp); printf x > "$P"',
+    "gettempdir": "P=$(python3 -c 'import x; print(x.gettempdir())'); printf x > \"$P/f\"",
+    "DARWIN_USER_TEMP_DIR": 'P=$(getconf DARWIN_USER_TEMP_DIR); printf x > "$P/f"',
+    "os.tmpdir": "P=$(node -p 'require(\"os\").tmpdir()'); printf x > \"$P/f\"",
+    "$TMP": 'printf x > "$TMP/f"',
+    "$TEMP": 'printf x > "${TEMP}/f"',
+}
+
+
+@pytest.mark.parametrize("word", sorted(TEMP_HINT_WORD_CASES))
+def test_each_extra_temp_word_makes_an_unresolvable_target_a_refusal(word, durable_path, monkeypatch):
+    monkeypatch.delenv("TMP", raising=False)
+    monkeypatch.delenv("TEMP", raising=False)
+    assert_refused(run_hook(bash_payload(TEMP_HINT_WORD_CASES[word]), cwd=str(durable_path)))
+
+
+def test_temp_like_prose_words_are_not_hints(durable_path):
+    for command in (
+        'P=$(render template); printf x > "$P"',
+        'P=$(echo temporary); printf x > "$P"',
+        'P=$TEMPLATE_DIR/x; printf x > "$P"',
+    ):
+        assert_advised(run_hook(bash_payload(command), cwd=str(durable_path)))
