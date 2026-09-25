@@ -15,7 +15,9 @@
 #
 # Prints exactly one line, "[worktree-bootstrap] <dir>: <what> (<N>s)". On an
 # installer failure the line says FAILED, the installer's output follows on
-# stderr, and the exit status is the installer's.
+# stderr, and the exit status is the installer's. Each installer is killed
+# after WORKTREE_BOOTSTRAP_TIMEOUT seconds (default 900): a hung install
+# (no network, a lock wait) must not block an agent launch forever.
 #
 # Called by repoGolem launchers for -w (golem-dispatch.zsh
 # _golem_bootstrap_worktree); install-golem-dispatch.sh ships it next to the
@@ -30,6 +32,7 @@ fi
 cd "$wt" || exit 2
 wt="$PWD"
 start=$SECONDS
+limit="${WORKTREE_BOOTSTRAP_TIMEOUT:-900}"
 
 done_line() {
   echo "[worktree-bootstrap] ${wt}: $1 ($((SECONDS - start))s)"
@@ -66,9 +69,26 @@ for step in "$js" "$py"; do
   [[ -z "$step" ]] && continue
   # Word-splitting is intended: each step is a fixed command line from above.
   # shellcheck disable=SC2086
-  out="$($step 2>&1)"
+  # The installer runs in its own process group under a perl timer (perl is on
+  # macOS and Linux alike; no coreutils timeout needed). On timeout the whole
+  # group is killed, children included, since an orphaned child would keep
+  # the output pipe open, and the status is 142.
+  out="$(perl -e '
+    my $limit = shift;
+    my $pid = fork() // exit 126;
+    if (!$pid) { setpgrp(0, 0); exec @ARGV or exit 127 }
+    setpgrp($pid, $pid);
+    local $SIG{ALRM} = sub { kill "TERM", -$pid; sleep 1; kill "KILL", -$pid; exit 142 };
+    alarm $limit;
+    waitpid($pid, 0);
+    exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
+  ' "$limit" $step 2>&1)"
   rc=$?
-  if [[ $rc -ne 0 ]]; then
+  if [[ $rc -eq 142 ]]; then
+    done_line "FAILED: ${step} (timed out after ${limit}s)${notes}"
+    printf '%s\n' "$out" >&2
+    exit "$rc"
+  elif [[ $rc -ne 0 ]]; then
     done_line "FAILED: ${step} (exit ${rc})${notes}"
     printf '%s\n' "$out" >&2
     exit "$rc"
