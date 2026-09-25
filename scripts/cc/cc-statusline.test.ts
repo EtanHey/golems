@@ -466,3 +466,39 @@ describe("cc-statusline live context payload", () => {
     expect(output).toContain("🧠 10.0%");
   });
 });
+
+// AIDEV-NOTE: GO-6 moved the cc-* scripts into scripts/cc/. ~/.claude/settings.json
+// still calls the old paths, so these shims must keep working until it is repointed.
+describe("scripts/ compat shims for settings.json callers", () => {
+  const repoRoot = import.meta.dir.replace(/\/scripts\/cc$/, "");
+  const payload = JSON.stringify({
+    model: { id: "claude-opus-5", display_name: "Opus 5" },
+    cwd: repoRoot,
+    cost: { total_cost_usd: 0, total_duration_ms: 0 },
+    context_window: {
+      context_window_size: 1_000_000,
+      current_usage: { input_tokens: 100_000, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+    },
+  });
+
+  async function render(script: string) {
+    const proc = Bun.spawn(["bun", script], { cwd: repoRoot, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+    await proc.stdin.write(payload);
+    proc.stdin.end();
+    return { output: await new Response(proc.stdout).text(), exitCode: await proc.exited };
+  }
+
+  it("old scripts/cc-statusline.ts renders the same line as scripts/cc/cc-statusline.ts", async () => {
+    const moved = await render("scripts/cc/cc-statusline.ts");
+    const shim = await render("scripts/cc-statusline.ts");
+    expect(shim.exitCode).toBe(0);
+    expect(moved.output).toContain("🧠 10.0%");
+    expect(shim.output).toBe(moved.output);
+  });
+
+  it("old scripts/cc-axiom-reporter.ts forwards to scripts/cc/cc-axiom-reporter.ts", async () => {
+    const shim = await Bun.file(`${repoRoot}/scripts/cc-axiom-reporter.ts`).text();
+    expect(shim).toContain('import "./cc/cc-axiom-reporter.ts";');
+    expect(await Bun.file(`${repoRoot}/scripts/cc/cc-axiom-reporter.ts`).exists()).toBe(true);
+  });
+});
