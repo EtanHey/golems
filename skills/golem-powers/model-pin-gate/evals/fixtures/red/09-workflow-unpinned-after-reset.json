@@ -1,0 +1,21 @@
+{
+  "specimen": "workflow-unpinned-agents-after-weekly-reset",
+  "expect": "FLAG",
+  "violation": "MODELPIN_WORKFLOW_AGENT_UNPINNED",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "now": "2026-09-06T03:00:00Z",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-fable-5"
+        }
+      }
+    ],
+    "tool_name": "Workflow",
+    "tool_input": {
+      "script": "agent({prompt:'a'}); agent({prompt:'b'}); agent({prompt:'c'});"
+    }
+  }
+}

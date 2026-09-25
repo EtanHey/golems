@@ -1,0 +1,23 @@
+{
+  "specimen": "orcclaude-seat-is-apex-and-may-spawn-a-fable-pane-seat",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "now": "2026-09-24T17:00:00Z",
+    "seat_id": "orcClaude",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-opus-5-5"
+        }
+      }
+    ],
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": {
+      "model": "claude-fable-5-1",
+      "role": "orchestrator",
+      "prompt": "golems lead seat"
+    }
+  }
+}

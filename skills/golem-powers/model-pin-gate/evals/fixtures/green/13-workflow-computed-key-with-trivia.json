@@ -1,0 +1,20 @@
+{
+  "specimen": "workflow-computed-model-key-with-comments-and-long-whitespace-is-a-pin",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "now": "2026-09-06T03:00:00Z",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-fable-5"
+        }
+      }
+    ],
+    "tool_name": "Workflow",
+    "tool_input": {
+      "script": "agent('w', { [ /* a very long comment a very long comment a very long comment a very long comment a very long comment a very long comment  */ 'model' ]: 'opus' });\nagent('x', { ['model'] /* c */ : 'sonnet' });\n"
+    }
+  }
+}

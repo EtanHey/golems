@@ -1,16 +1,15 @@
 {
-  "specimen": "unpinned-spawn-from-fable-seat",
-  "expect": "FLAG",
-  "violation": "MODELPIN_AGENT_UNPINNED",
+  "specimen": "non-spawn-tool",
+  "expect": "PASS",
   "payload": {
     "hook_event_name": "PreToolUse",
     "seat_id": "skillcreatorWorker",
     "transcript": [
       { "type": "assistant", "message": { "model": "claude-fable-5" } }
     ],
-    "tool_name": "Agent",
+    "tool_name": "Read",
     "tool_input": {
-      "prompt": "survey the repo"
+      "file_path": "README.md"
     }
   }
 }

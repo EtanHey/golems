@@ -1,16 +1,16 @@
 {
-  "specimen": "unpinned-spawn-from-fable-seat",
-  "expect": "FLAG",
-  "violation": "MODELPIN_AGENT_UNPINNED",
+  "specimen": "deliberate-opus-pick",
+  "expect": "PASS",
   "payload": {
     "hook_event_name": "PreToolUse",
     "seat_id": "skillcreatorWorker",
     "transcript": [
       { "type": "assistant", "message": { "model": "claude-fable-5" } }
     ],
-    "tool_name": "Agent",
+    "tool_name": "Task",
     "tool_input": {
-      "prompt": "survey the repo"
+      "model": "claude-opus-4-8",
+      "prompt": "reasoning review"
     }
   }
 }

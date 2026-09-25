@@ -1,0 +1,20 @@
+{
+  "specimen": "cmux-spawn-carries-fable-target-from-non-apex-seat",
+  "expect": "FLAG",
+  "violation": "MODELPIN_CMUX_FABLE_TARGET",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "seat_id": "skillcreatorWorker",
+    "transcript": [
+      { "type": "assistant", "message": { "model": "claude-opus-4-8" } }
+    ],
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": {
+      "cli": "claude",
+      "repo": "skill-creator",
+      "launcher_name": "skillCreatorClaude",
+      "model": "claude-fable-5",
+      "task": "normal worker lane"
+    }
+  }
+}

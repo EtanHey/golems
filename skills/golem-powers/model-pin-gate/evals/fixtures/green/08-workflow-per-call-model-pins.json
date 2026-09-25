@@ -1,0 +1,20 @@
+{
+  "specimen": "workflow-every-agent-call-pins-its-own-model",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "now": "2026-09-06T03:00:00Z",
+    "transcript": [
+      {
+        "type": "assistant",
+        "message": {
+          "model": "claude-fable-5"
+        }
+      }
+    ],
+    "tool_name": "Workflow",
+    "tool_input": {
+      "script": "const defaults = { label: 'recon' };\nconst reviews = await parallel(FILES.map((f) => () =>\n  agent(`review ${f}`, { ...defaults, model: 'opus' })\n));\nawait agent('synthesize the reviews', { model: 'sonnet', phase: 'Synthesis' });\n"
+    }
+  }
+}

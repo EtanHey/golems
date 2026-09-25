@@ -1,0 +1,11 @@
+{
+  "specimen": "undetectable-seat-fails-open",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Agent",
+    "tool_input": {
+      "prompt": "seat model absent"
+    }
+  }
+}

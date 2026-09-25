@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -39,6 +40,7 @@ def load_cases() -> list[tuple[str, Path, dict]]:
 def run_hook(fixture: dict) -> tuple[bool, str]:
     payload = fixture["payload"]
     try:
+        started = time.perf_counter()
         proc = subprocess.run(
             [NODE, str(HOOK)],
             input=json.dumps(payload),
@@ -48,10 +50,14 @@ def run_hook(fixture: dict) -> tuple[bool, str]:
             timeout=TIMEOUT_SECONDS,
             check=False,
         )
+        elapsed_ms = (time.perf_counter() - started) * 1000
     except subprocess.TimeoutExpired:
         return False, f"hook timed out after {TIMEOUT_SECONDS}s"
     except FileNotFoundError:
         return False, f"node executable not found: {NODE}"
+    latency_budget = fixture.get("assert_latency_under_ms")
+    if latency_budget is not None and elapsed_ms >= float(latency_budget):
+        return False, f"hook took {elapsed_ms:.2f}ms, expected <{latency_budget}ms"
     if proc.returncode != 0:
         return False, f"hook exited {proc.returncode}: stderr={proc.stderr.strip()!r}"
     try:
@@ -73,7 +79,11 @@ def run_hook(fixture: dict) -> tuple[bool, str]:
         violation = fixture.get("violation")
         if violation and violation not in reason:
             return False, f"reason missing {violation}: {reason!r}"
-        if "model:'opus'|'sonnet'|'haiku'" not in reason and violation == "MODELPIN_AGENT_UNPINNED":
+        lowered = reason.lower()
+        for bad in (" never ", " don't ", " do not "):
+            if bad in f" {lowered} ":
+                return False, f"reason uses negative framing {bad.strip()!r}: {reason!r}"
+        if ("model:'sonnet'" not in reason or "model:'opus'" not in reason) and violation == "MODELPIN_AGENT_UNPINNED":
             return False, f"reason missing pin fix: {reason!r}"
         return True, "block"
     if expect == "ADVISORY":
