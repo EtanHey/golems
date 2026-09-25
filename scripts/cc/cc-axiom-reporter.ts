@@ -19,7 +19,7 @@ import { readFileSync, appendFileSync, mkdirSync } from "fs";
 import { join, basename } from "path";
 import { execSync } from "child_process";
 import { hostname } from "os";
-import { logCCUsage, flushAxiom } from "../packages/shared/src/lib/axiom";
+import { logCCUsage, flushAxiom } from "../../packages/shared/src/lib/axiom";
 
 // ─── Model Pricing (per MTok, synced from cc-usage.ts) ──────────
 

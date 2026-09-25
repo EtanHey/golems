@@ -5,7 +5,7 @@ import {
   computeContextPct,
   resolveContextWindowForStatus,
   computeContextPctForStatus,
-} from "./lib/model-context-window.ts";
+} from "../lib/model-context-window.ts";
 
 // These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
 setDefaultTimeout(15_000);
@@ -263,8 +263,8 @@ describe("cc-statusline live context payload", () => {
   });
 
   it("uses current_usage before total_input_tokens when both are present", async () => {
-    const proc = Bun.spawn(["bun", "scripts/cc-statusline.ts"], {
-      cwd: import.meta.dir.replace(/\/scripts$/, ""),
+    const proc = Bun.spawn(["bun", "scripts/cc/cc-statusline.ts"], {
+      cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
@@ -273,7 +273,7 @@ describe("cc-statusline live context payload", () => {
     await proc.stdin.write(
       JSON.stringify({
         model: { id: "claude-opus-5", display_name: "Opus 5" },
-        cwd: import.meta.dir.replace(/\/scripts$/, ""),
+        cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
         cost: { total_cost_usd: 0, total_duration_ms: 0 },
         context_window: {
           context_window_size: 1_000_000,
@@ -303,8 +303,8 @@ describe("cc-statusline live context payload", () => {
   // used_percentage: 8 (its integer rounding of 7.52). The statusline prints one decimal,
   // so it must print the exact 7.5%, not a fake-precision 8.0%.
   it("prints the exact percentage from a representative 1M-context Opus 5.5 payload", async () => {
-    const proc = Bun.spawn(["bun", "scripts/cc-statusline.ts"], {
-      cwd: import.meta.dir.replace(/\/scripts$/, ""),
+    const proc = Bun.spawn(["bun", "scripts/cc/cc-statusline.ts"], {
+      cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
@@ -313,7 +313,7 @@ describe("cc-statusline live context payload", () => {
     await proc.stdin.write(
       JSON.stringify({
         model: { id: "claude-opus-5-5[1m]", display_name: "Opus 5.5 (1M context)" },
-        cwd: import.meta.dir.replace(/\/scripts$/, ""),
+        cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
         cost: { total_cost_usd: 0.7671765, total_duration_ms: 57244 },
         context_window: {
           total_input_tokens: 75_203,
@@ -344,8 +344,8 @@ describe("cc-statusline live context payload", () => {
   // NO context_window_size. Before #730 this printed 75.0%; #730 made it 15.0%* — a 5x
   // UNDER-report wearing a green inferred-window asterisk that is easy to miss.
   it("renders the reviewer's inferred-window payload as 75.0%, not 15.0%", async () => {
-    const proc = Bun.spawn(["bun", "scripts/cc-statusline.ts"], {
-      cwd: import.meta.dir.replace(/\/scripts$/, ""),
+    const proc = Bun.spawn(["bun", "scripts/cc/cc-statusline.ts"], {
+      cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
@@ -354,7 +354,7 @@ describe("cc-statusline live context payload", () => {
     await proc.stdin.write(
       JSON.stringify({
         model: { id: "claude-opus-9", display_name: "Opus 9" },
-        cwd: import.meta.dir.replace(/\/scripts$/, ""),
+        cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
         cost: { total_cost_usd: 0, total_duration_ms: 0 },
         context_window: {
           current_usage: { input_tokens: 150_000 },
@@ -378,8 +378,8 @@ describe("cc-statusline live context payload", () => {
   // if claude-haiku-4-5 were mapped to 1M. This one drops the size so the 200K must come from
   // MODEL_WINDOW_RULES, with no used_percentage available to fall back to.
   it("resolves 200K from the model table when no window size is sent", async () => {
-    const proc = Bun.spawn(["bun", "scripts/cc-statusline.ts"], {
-      cwd: import.meta.dir.replace(/\/scripts$/, ""),
+    const proc = Bun.spawn(["bun", "scripts/cc/cc-statusline.ts"], {
+      cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
@@ -388,7 +388,7 @@ describe("cc-statusline live context payload", () => {
     await proc.stdin.write(
       JSON.stringify({
         model: { id: "claude-haiku-4-5", display_name: "Haiku 4.5" },
-        cwd: import.meta.dir.replace(/\/scripts$/, ""),
+        cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
         cost: { total_cost_usd: 0, total_duration_ms: 0 },
         context_window: { current_usage: { input_tokens: 77_624 } },
       }),
@@ -402,8 +402,8 @@ describe("cc-statusline live context payload", () => {
 
   // Same arithmetic must still hold for a genuinely 200K model: 75,203 / 200,000 = 37.6%.
   it("still reports the small-window percentage for a non-1M model", async () => {
-    const proc = Bun.spawn(["bun", "scripts/cc-statusline.ts"], {
-      cwd: import.meta.dir.replace(/\/scripts$/, ""),
+    const proc = Bun.spawn(["bun", "scripts/cc/cc-statusline.ts"], {
+      cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
@@ -412,7 +412,7 @@ describe("cc-statusline live context payload", () => {
     await proc.stdin.write(
       JSON.stringify({
         model: { id: "claude-haiku-4-5", display_name: "Haiku 4.5" },
-        cwd: import.meta.dir.replace(/\/scripts$/, ""),
+        cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
         cost: { total_cost_usd: 0, total_duration_ms: 0 },
         context_window: {
           total_input_tokens: 75_203,
@@ -436,8 +436,8 @@ describe("cc-statusline live context payload", () => {
   });
 
   it("falls back to total_input_tokens when current_usage has no numeric token fields", async () => {
-    const proc = Bun.spawn(["bun", "scripts/cc-statusline.ts"], {
-      cwd: import.meta.dir.replace(/\/scripts$/, ""),
+    const proc = Bun.spawn(["bun", "scripts/cc/cc-statusline.ts"], {
+      cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
@@ -446,7 +446,7 @@ describe("cc-statusline live context payload", () => {
     await proc.stdin.write(
       JSON.stringify({
         model: { id: "claude-opus-5", display_name: "Opus 5" },
-        cwd: import.meta.dir.replace(/\/scripts$/, ""),
+        cwd: import.meta.dir.replace(/\/scripts\/cc$/, ""),
         cost: { total_cost_usd: 0, total_duration_ms: 0 },
         context_window: {
           context_window_size: 1_000_000,

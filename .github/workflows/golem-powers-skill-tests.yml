@@ -94,7 +94,8 @@ jobs:
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/tests/hooks-fail-open.test.mjs \
                    ./scripts/tests/install-hooks.test.mjs \
-                   ./scripts/cc-usage/__tests__ \
+                   ./scripts/cc/cc-usage/__tests__ \
+                   ./scripts/cc/cc-statusline.test.ts \
                    ./skills/golem-powers/never-fabricate/scripts/__tests__ \
                    ./skills/golem-powers/drive-filing/scripts
 

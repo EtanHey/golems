@@ -15,7 +15,7 @@
 import {
   computeContextPctForStatus,
   resolveContextWindowForStatus,
-} from "./lib/model-context-window.ts";
+} from "../lib/model-context-window.ts";
 
 // ANSI color codes
 const c = {

@@ -6,21 +6,21 @@
  * parsing local JSONL files. See cc-usage-sync.ts for the ingestion pipeline.
  *
  * Usage:
- *   bun scripts/cc-usage.ts                          # This month summary
- *   bun scripts/cc-usage.ts --period=today            # Today only
- *   bun scripts/cc-usage.ts --period=week             # This week
- *   bun scripts/cc-usage.ts --period=month            # This month (default)
- *   bun scripts/cc-usage.ts --period=all              # All time with monthly breakdown
- *   bun scripts/cc-usage.ts --daily                   # Daily breakdown
- *   bun scripts/cc-usage.ts --by-project              # By project
- *   bun scripts/cc-usage.ts --by-model                # By model
- *   bun scripts/cc-usage.ts --by-provider             # By provider (NEW)
- *   bun scripts/cc-usage.ts --hypothetical            # Show optimized API cost (NEW)
- *   bun scripts/cc-usage.ts --roi                     # Subscription ROI (NEW)
- *   bun scripts/cc-usage.ts --cache-ratio=0.85        # Override cache assumption (NEW)
- *   bun scripts/cc-usage.ts --export=json|csv         # Structured export (NEW)
- *   bun scripts/cc-usage.ts --json                    # JSON for statusline
- *   bun scripts/cc-usage.ts --snapshot                # Write monthly snapshot to Supabase
+ *   bun scripts/cc/cc-usage.ts                          # This month summary
+ *   bun scripts/cc/cc-usage.ts --period=today            # Today only
+ *   bun scripts/cc/cc-usage.ts --period=week             # This week
+ *   bun scripts/cc/cc-usage.ts --period=month            # This month (default)
+ *   bun scripts/cc/cc-usage.ts --period=all              # All time with monthly breakdown
+ *   bun scripts/cc/cc-usage.ts --daily                   # Daily breakdown
+ *   bun scripts/cc/cc-usage.ts --by-project              # By project
+ *   bun scripts/cc/cc-usage.ts --by-model                # By model
+ *   bun scripts/cc/cc-usage.ts --by-provider             # By provider (NEW)
+ *   bun scripts/cc/cc-usage.ts --hypothetical            # Show optimized API cost (NEW)
+ *   bun scripts/cc/cc-usage.ts --roi                     # Subscription ROI (NEW)
+ *   bun scripts/cc/cc-usage.ts --cache-ratio=0.85        # Override cache assumption (NEW)
+ *   bun scripts/cc/cc-usage.ts --export=json|csv         # Structured export (NEW)
+ *   bun scripts/cc/cc-usage.ts --json                    # JSON for statusline
+ *   bun scripts/cc/cc-usage.ts --snapshot                # Write monthly snapshot to Supabase
  */
 
 import {
@@ -783,7 +783,7 @@ async function main() {
 
   // Load env for Supabase access
   try {
-    await import("../packages/shared/src/lib/load-env");
+    await import("../../packages/shared/src/lib/load-env");
   } catch {
     /* ok if not in repo root */
   }

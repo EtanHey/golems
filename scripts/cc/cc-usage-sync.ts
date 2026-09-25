@@ -12,18 +12,18 @@
  * Dedup: uses metadata.project + metadata.session_id to skip already-synced sessions.
  *
  * Usage:
- *   bun scripts/cc-usage-sync.ts                  # Sync last 7 days (default)
- *   bun scripts/cc-usage-sync.ts --days 30        # Sync last 30 days
- *   bun scripts/cc-usage-sync.ts --days 1         # Sync today only
- *   bun scripts/cc-usage-sync.ts --dry-run        # Show what would be synced
- *   bun scripts/cc-usage-sync.ts --provider=claude # Sync only Claude
- *   bun scripts/cc-usage-sync.ts --provider=codex  # Sync only Codex
- *   bun scripts/cc-usage-sync.ts --provider=cursor  # Sync only Cursor
- *   bun scripts/cc-usage-sync.ts --no-archives    # Skip local archive roots
- *   bun scripts/cc-usage-sync.ts --cursor-archive-root=... # Add Cursor archive root
- *   bun scripts/cc-usage-sync.ts --include-archive-tars # Extract and scan tar.gz backups
- *   bun scripts/cc-usage-sync.ts --repair-native-synced-at=... # Dry-run exact-marker cleanup
- *   bun scripts/cc-usage-sync.ts --repair-native-synced-at=... --apply-repair # Apply cleanup
+ *   bun scripts/cc/cc-usage-sync.ts                  # Sync last 7 days (default)
+ *   bun scripts/cc/cc-usage-sync.ts --days 30        # Sync last 30 days
+ *   bun scripts/cc/cc-usage-sync.ts --days 1         # Sync today only
+ *   bun scripts/cc/cc-usage-sync.ts --dry-run        # Show what would be synced
+ *   bun scripts/cc/cc-usage-sync.ts --provider=claude # Sync only Claude
+ *   bun scripts/cc/cc-usage-sync.ts --provider=codex  # Sync only Codex
+ *   bun scripts/cc/cc-usage-sync.ts --provider=cursor  # Sync only Cursor
+ *   bun scripts/cc/cc-usage-sync.ts --no-archives    # Skip local archive roots
+ *   bun scripts/cc/cc-usage-sync.ts --cursor-archive-root=... # Add Cursor archive root
+ *   bun scripts/cc/cc-usage-sync.ts --include-archive-tars # Extract and scan tar.gz backups
+ *   bun scripts/cc/cc-usage-sync.ts --repair-native-synced-at=... # Dry-run exact-marker cleanup
+ *   bun scripts/cc/cc-usage-sync.ts --repair-native-synced-at=... --apply-repair # Apply cleanup
  */
 
 import {
@@ -40,7 +40,7 @@ import { join } from "path";
 
 // ─── Load env ─────────────────────────────────────────────────────
 try {
-  await import("../packages/shared/src/lib/load-env");
+  await import("../../packages/shared/src/lib/load-env");
 } catch {
   /* ok if not in repo root */
 }
