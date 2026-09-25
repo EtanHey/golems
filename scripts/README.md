@@ -23,8 +23,9 @@ pipeline. Nothing here is imported by the packages.
 `publish-boundary-known-violations.sha256` guard what may be published.
 The nightly CI run re-checks every commit since the public genesis commit
 against the current baseline. The baseline hashes each known violation together with its path.
-Moving these files passes a PR's own check but fails that full re-check on
-about 440 older commits. So they stay here.
+Every commit since genesis has them at this path, so moving them passes a
+PR's own check but fails that full re-check on every older commit. So they
+stay here.
 
 ## Compatibility shims
 
