@@ -104,12 +104,10 @@ from datetime import datetime
 # a symlink into hooks-live finds skills/golem-powers/_shared.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "_shared"))
 from harness_paths import _temp_prefixes, is_harness_scratchpad  # noqa: E402
-from shell_parse import (  # noqa: E402 F401 (the _RAW_* regexes are pinned by tests via this module)
+from shell_parse import (  # noqa: E402
     _ASSIGNMENT_RE,
     _QUOTED_LBRACE,
     _QUOTED_RBRACE,
-    _RAW_FOR_WORD_RE,
-    _RAW_SHELL_TOKEN_RE,
     _UNRESOLVED_EVAL_MARKER,
     _WRAPPER_CMDS,
     _WRAPPER_VALUE_OPTS,
