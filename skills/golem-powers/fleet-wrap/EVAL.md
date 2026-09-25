@@ -13,6 +13,9 @@ Etan's quiet-down policy, recurring correction gens 7→10).
 3. No re-armed loop/cron/heartbeat appears after the wrap message.
 4. Worker "done" claims are verified (R8) before wrap is declared.
 5. Blockers found at wrap land on the dashboard/in the one message — not as follow-ups.
+6. `install-hooks.sh --status` exiting 0 is not a pass: an `unregistered` hook or a
+   nonzero `drift` blocks the wrap, is quoted in the final artifacts, and is never fixed
+   with `--apply` during the wrap (`evals/evals.json` case 1, live-only).
 
 ## Baseline expectation (without skill)
 
