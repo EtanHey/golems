@@ -97,7 +97,11 @@ with none is **one mtime unit** (the highest such folder), dated by the newest f
 upload plan once old but is **never moved**; its Drive target keeps its own path
 (`…/<repo>/<area>/<unitName>`, no month segment: it mirrors the unmoved local path), so no two units share a target. `--json` lists the 5 largest under
 `mtimeUnits`. A unit with no files or only empty ones is counted (`empty-units=`) and never planned.
-Undated files are counted and left alone. A month rolls up once it is over; months more than N back form
+Undated files are counted and left alone. **Regenerable dirs** (`__pycache__`, `node_modules`, `.venv`,
+`venv`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.build`, `.next`, `.turbo`, `.probe`) are never
+planned, never an mtime unit and never deleted; each is reported once as `skipped: regenerable <path>/`
+with its size, and the summary adds `regenerable-skipped=N bytes=B`. A credential inside one still wins
+(the dir is held). A month rolls up once it is over; months more than N back form
 the upload plan, one unit per folder, targeting `Brain Drive/06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>`.
 `--apply` moves items into their month folders (never overwriting; a clash is reported as `conflict:`)
 and writes `docs.local/_drive-filing/rollup-plan-<date>.json`. **The script never uploads or deletes.**
