@@ -88,9 +88,9 @@ Notes:
 
 - Hook settings are snapshotted at session start — already-running sessions
   will not pick this up; new sessions (and their Task subagents) will.
-- The hook **fails CLOSED**: any internal error denies the tool call with a
-  `TMP-BLOCK FAIL-CLOSED` reason. If that ever false-fires fleet-wide, remove
-  the settings entry (do NOT silently patch the hook to fail open).
+- An internal error on a payload that mentions a temp location **fails CLOSED**
+  (`TMP-BLOCK FAIL-CLOSED`); any other internal error is a `TMP-BLOCK advisory`
+  (GO-5 E2), so a hook bug no longer blocks every Bash/Write call.
 - Escape hatch for genuinely-ephemeral writes: `WEAVE_ALLOW_TMP=1` —
   allowed AND logged to `~/.claude/logs/tmp-block-ledger.jsonl`
   (override path with `TMP_BLOCK_LEDGER`). An unwritable ledger denies.

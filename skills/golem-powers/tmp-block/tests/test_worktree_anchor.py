@@ -416,9 +416,11 @@ def test_unset_variable_only_redirect_remains_unresolvable(monkeypatch):
     monkeypatch.delenv("UNSET_VAR", raising=False)
     command = 'echo complete > "$UNSET_VAR/x.log"'
 
-    decision, exit_code, _output = decision_for(command, monkeypatch)
+    decision, exit_code, output = decision_for(command, monkeypatch)
 
-    assert (decision, exit_code) == ("deny", 2)
+    # GO-5 E2: still unresolvable, now an advisory (no temp hint in the command).
+    assert (decision, exit_code) == ("allow", 0)
+    assert output["hookSpecificOutput"]["additionalContext"].startswith("TMP-BLOCK advisory")
 
 
 def test_every_dynamic_suffix_under_repo_is_silently_allowed(monkeypatch):
@@ -480,9 +482,11 @@ def test_targets_without_any_class_proof_are_refused(monkeypatch):
         'git worktree add "$UNSET/worktree" HEAD',
     )
 
+    # GO-5 E2: the tee target is an advisory now; the worktree rule is unchanged.
+    expected = {commands[0]: ("allow", 0), commands[1]: ("deny", 2)}
     for command in commands:
         decision, exit_code, _output = decision_for(command, monkeypatch)
-        assert (decision, exit_code) == ("deny", 2), command
+        assert (decision, exit_code) == expected[command], command
 
 
 def test_absolute_prefix_outside_every_repo_is_allowed(monkeypatch):
@@ -551,9 +555,11 @@ def test_assignment_with_unknown_reference_cannot_fake_repo_containment(monkeypa
         'D=$UNSET/logs; git worktree add "$D/lane" HEAD',
     )
 
+    # GO-5 E2: redirect/tee targets are advisories; the worktree rule is unchanged.
     for command in commands:
         decision, exit_code, _output = decision_for(command, monkeypatch)
-        assert (decision, exit_code) == ("deny", 2), command
+        want = ("deny", 2) if "worktree add" in command else ("allow", 0)
+        assert (decision, exit_code) == want, command
 
 
 def test_skipped_assignment_cannot_fake_repo_containment(monkeypatch):
@@ -631,7 +637,7 @@ def test_literal_parent_escape_redirect_remains_unresolvable(monkeypatch):
 
     decision, exit_code, _output = decision_for(command, monkeypatch)
 
-    assert (decision, exit_code) == ("deny", 2)
+    assert (decision, exit_code) == ("allow", 0)  # GO-5 E2: advisory, no temp hint
 
 
 def test_temp_tee_target_remains_denied(monkeypatch):
