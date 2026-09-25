@@ -395,7 +395,23 @@ setup_dash_encoded_private_structure() {
 }
 
 setup_dash_encoded_private_subdirectory() {
-  printf '%s\n' '-Users-etanheyman-Gits-orchestrator-docs' > "$1/path.txt"
+  printf '%s\n' '-Users-example-Gits-orchestrator-docs' > "$1/path.txt"
+}
+
+# Claude Code names project and scratch dirs after the cwd with / turned into
+# -, so /Users/<name>/Gits/<repo> becomes -Users-<name>-Gits-<repo>.
+setup_dash_encoded_home_slug() {
+  printf '%s\n' '/private/tmp/claude-501/-Users-someowner-Gits-somerepo/x.txt' > "$1/path.txt"
+}
+
+setup_dash_encoded_home_slug_bare() {
+  printf '%s\n' 'ls ~/.claude/projects/-Users-someowner/' > "$1/path.txt"
+}
+
+setup_clean_dash_encoded_placeholders() {
+  printf '%s\n' \
+    '~/.claude/projects/-Users-example-Gits-golems/session.jsonl' \
+    '/private/tmp/claude-501/-Users-x-Gits-golems/x.txt' > "$1/path.txt"
 }
 
 setup_telegram_chat_id() {
@@ -1089,6 +1105,8 @@ expect_reject "credential-adjacent marker" "credential-adjacent" setup_credentia
 expect_reject "private structure marker" "private-structure" setup_private_structure
 expect_reject "dash-encoded private structure marker" "private-structure" setup_dash_encoded_private_structure
 expect_reject "dash-encoded private subdirectory marker" "private-structure" setup_dash_encoded_private_subdirectory
+expect_reject "dash-encoded home slug" "publication-operational-data" setup_dash_encoded_home_slug
+expect_reject "dash-encoded bare home slug" "publication-operational-data" setup_dash_encoded_home_slug_bare
 expect_reject "Telegram chat ID" "telegram_chat_id" setup_telegram_chat_id "config.ts"
 expect_reject "Telegram snake-case user ID" "telegram_chat_id" setup_telegram_snake_case_user_id "config.py"
 expect_reject "Telegram camel-case assignment" "telegram_chat_id" setup_telegram_camel_case_assignment "config.ts"
@@ -1133,6 +1151,7 @@ expect_accept "base64 project fixture is not a Supabase ref" setup_clean_synthet
 expect_accept "document identifier placeholder" setup_clean_drive_placeholder
 expect_accept "publication metadata placeholders" setup_publication_metadata_placeholders
 expect_accept "content-free finding hash manifest" setup_content_free_finding_hash_manifest
+expect_accept "dash-encoded placeholder home slugs" setup_clean_dash_encoded_placeholders
 expect_accept "pinned and local GitHub Actions" setup_pinned_and_local_github_actions
 expect_accept "exact npx MCP executable versions" setup_exact_mcp_executables
 expect_accept "unversioned local runner binaries" setup_local_runner_binaries
