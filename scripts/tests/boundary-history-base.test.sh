@@ -66,13 +66,19 @@ workflow=${BOUNDARY_WORKFLOW:-"$repo_root/.github/workflows/security.yml"}
 if shape=$(ruby -ryaml -e '
   wf = YAML.safe_load(File.read(ARGV[0]), aliases: false)
   c = wf["concurrency"] || {}
-  abort "no concurrency group" unless c["group"].to_s.include?("github.ref")
-  abort "cancel-in-progress is not set" unless c.key?("cancel-in-progress")
+  group = c["group"].to_s
+  abort "no concurrency group" unless group.include?("github.ref")
+  # A push must never cancel the nightly genesis ratchet, or vice versa.
+  abort "concurrency group does not lead with github.event_name" unless group.start_with?("security-${{ github.event_name }}-")
+  # Each push checks only before..after, so a newer push must not cancel an
+  # older one: push groups are per commit SHA.
+  abort "push concurrency groups are not per-SHA" unless group.include?("github.event_name == \x27push\x27 && github.sha")
+  abort "cancel-in-progress is not true" unless c["cancel-in-progress"] == true
   missing = wf["jobs"].reject { |_, j| j.key?("timeout-minutes") }.keys
   abort "jobs without timeout-minutes: #{missing.join(", ")}" unless missing.empty?
 ' "$workflow" 2>&1); then
   pass_count=$((pass_count + 1))
-  printf 'PASS workflow cancels superseded runs and bounds every job\n'
+  printf 'PASS workflow de-duplicates runs without skipping push ranges, and bounds every job\n'
 else
   fail_count=$((fail_count + 1))
   printf 'FAIL workflow shape: %s\n' "$shape"

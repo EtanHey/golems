@@ -10,10 +10,13 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch:
 
-# A newer run on the same ref (and event) supersedes an older one. A push run
-# cancelled here leaves its commits to the nightly full ratchet.
+# A newer run supersedes an older one on the same PR ref, schedule or dispatch.
+# Push groups are per commit SHA instead: each push checks only its own
+# before..after range, so a newer push must never cancel an older one (its
+# range would wait for the nightly). The event name keeps pushes and the
+# nightly genesis ratchet from cancelling each other.
 concurrency:
-  group: security-${{ github.event_name }}-${{ github.ref }}
+  group: security-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: true
 
 permissions:
