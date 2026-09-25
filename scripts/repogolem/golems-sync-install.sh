@@ -10,6 +10,28 @@ sha256_file() {
     shasum -a 256 "$1" | awk '{print $1}'
 }
 
+# Change key for the shipped launcher set: one line per file, in the given order.
+# A missing file yields "missing" so it never matches a source hash.
+launcher_set_hash() {
+    local dir="$1" name
+    shift
+    for name in "$@"; do
+        [[ -f "$dir/$name" ]] || { printf 'missing\n'; return 0; }
+    done
+    for name in "$@"; do
+        printf '%s\t%s\n' "$name" "$(sha256_file "$dir/$name")"
+    done | shasum -a 256 | awk '{print $1}'
+}
+
+# The dispatcher and bootstrap copies the installer deploys from the launcher set.
+deployed_matches_staged() {
+    local launcher_root="$1" dispatcher="$2" name
+    for name in golem-dispatch.zsh worktree-bootstrap.sh; do
+        [[ -f "${dispatcher%/*}/$name" ]] || return 1
+        cmp -s "$launcher_root/$name" "${dispatcher%/*}/$name" || return 1
+    done
+}
+
 contains_skill() {
     local wanted="$1"
     shift
@@ -39,8 +61,16 @@ validate_target() {
 inspect_target() {
     local scope="$1"
     shift
+    local launcher_files=()
+    while [[ "$#" -gt 0 && "$1" != "--" ]]; do
+        launcher_files+=("$1")
+        shift
+    done
+    [[ "${1:-}" == "--" ]] || die "missing launcher-file separator"
+    shift
     local skills_root="$HOME/.golems/skills/golem-powers"
     local links_root="$HOME/.claude/skills"
+    local launcher_root="$HOME/.golems/launcher"
     local dispatcher="$HOME/.config/ralphtools/golem-dispatch.zsh"
     local name destination link status exists
 
@@ -75,10 +105,13 @@ inspect_target() {
     fi
 
     if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
-        if [[ -f "$dispatcher" ]]; then
-            printf 'LAUNCHER\t%s\n' "$(sha256_file "$dispatcher")"
-        else
+        if [[ ! -f "$dispatcher" ]]; then
             printf 'LAUNCHER\tmissing\n'
+        elif ! deployed_matches_staged "$launcher_root" "$dispatcher"; then
+            printf 'LAUNCHER\tchanged\n'
+        else
+            printf 'LAUNCHER\t%s\n' \
+                "$(launcher_set_hash "$launcher_root" ${launcher_files[@]+"${launcher_files[@]}"})"
         fi
     fi
 }
@@ -199,19 +232,12 @@ apply_target() {
         [[ -f "$launcher_root/golem-dispatch.zsh" ]] || die "shipped dispatcher missing"
         [[ -x "$launcher_root/install-golem-dispatch.sh" ]] || die "shipped launcher installer missing"
         [[ -x "$launcher_root/worktree-bootstrap.sh" ]] || die "shipped worktree bootstrap missing"
-        local source_hash installed_hash
-        source_hash="$(sha256_file "$launcher_root/golem-dispatch.zsh")"
-        installed_hash=missing
-        if [[ -f "$dispatcher" ]]; then
-            installed_hash="$(sha256_file "$dispatcher")"
-        fi
-        if [[ "$source_hash" != "$installed_hash" ]]; then
+        if ! deployed_matches_staged "$launcher_root" "$dispatcher"; then
             HOME="$HOME" zsh "$launcher_root/install-golem-dispatch.sh" --force "$dispatcher"
-            installed_hash="$(sha256_file "$dispatcher")"
         fi
-        [[ "$source_hash" == "$installed_hash" ]] || \
-            die "launcher hash mismatch: source=$source_hash installed=$installed_hash"
-        printf 'launcher hash verified: %s\n' "$installed_hash"
+        deployed_matches_staged "$launcher_root" "$dispatcher" || \
+            die "launcher mismatch: installed dispatcher or bootstrap differs from the shipped copy"
+        printf 'launcher hash verified: %s\n' "$(sha256_file "$dispatcher")"
     fi
 
     write_manifest "$commit" "$source_host" "$scope" "$dirty_flag" "$payload_sha256" \
@@ -224,5 +250,6 @@ case "$command" in
     validate) validate_target "$@" ;;
     inspect) inspect_target "$@" ;;
     apply) apply_target "$@" ;;
-    *) die "usage: golems-sync-install.sh validate|inspect|apply ..." ;;
+    launcher-hash) launcher_set_hash "$@" ;;
+    *) die "usage: golems-sync-install.sh validate|inspect|apply|launcher-hash ..." ;;
 esac

@@ -31,6 +31,7 @@ make_fixture_repo() {
     cp "$REPO_ROOT/scripts/repogolem/golems-sync-install.sh" \
         "$REPO_ROOT/scripts/repogolem/golem-dispatch.zsh" \
         "$REPO_ROOT/scripts/repogolem/install-golem-dispatch.sh" \
+        "$REPO_ROOT/scripts/repogolem/worktree-bootstrap.sh" \
         "$FIXTURE_REPO/scripts/repogolem/"
     if [[ -f "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" ]]; then
         cp "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" "$FIXTURE_REPO/scripts/sync/"
@@ -41,7 +42,8 @@ make_fixture_repo() {
     chmod +x "$FIXTURE_REPO/scripts/sync/golems-sync.sh" \
         "$FIXTURE_REPO/scripts/repogolem/golems-sync-install.sh" \
         "$FIXTURE_REPO/scripts/repogolem/golem-dispatch.zsh" \
-        "$FIXTURE_REPO/scripts/repogolem/install-golem-dispatch.sh"
+        "$FIXTURE_REPO/scripts/repogolem/install-golem-dispatch.sh" \
+        "$FIXTURE_REPO/scripts/repogolem/worktree-bootstrap.sh"
     git init --quiet --initial-branch=master "$FIXTURE_REPO"
     git -C "$FIXTURE_REPO" config user.email test@example.com
     git -C "$FIXTURE_REPO" config user.name Test
@@ -289,4 +291,34 @@ make_tracked_worktree_skills() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"added=0 updated=0 unchanged=1 backed-up=0"* ]] || false
     [ "$(portable_stat mtime "$dispatcher")" = "$first_mtime" ]
+}
+
+@test "bootstrap-only change reinstalls the launcher" {
+    make_fixture_repo
+    run_fixture_sync --only launcher
+    [ "$status" -eq 0 ]
+
+    bootstrap="$FIXTURE_REPO/scripts/repogolem/worktree-bootstrap.sh"
+    printf '# bootstrap-only change\n' >> "$bootstrap"
+    git -C "$FIXTURE_REPO" commit --quiet -am 'change bootstrap only'
+    git -C "$FIXTURE_REPO" update-ref refs/remotes/origin/master HEAD
+
+    run_fixture_sync --dry-run --only launcher
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"added=0 updated=1 unchanged=0 backed-up=0"* ]] || false
+
+    run_fixture_sync --only launcher
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"added=0 updated=1 unchanged=0 backed-up=0"* ]] || false
+    cmp -s "$bootstrap" "$HOST_ROOT/.config/ralphtools/worktree-bootstrap.sh"
+}
+
+@test "untouched launcher file set reports unchanged" {
+    make_fixture_repo
+    run_fixture_sync --only launcher
+    [ "$status" -eq 0 ]
+
+    run_fixture_sync --dry-run --only launcher
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"added=0 updated=0 unchanged=1 backed-up=0"* ]] || false
 }
