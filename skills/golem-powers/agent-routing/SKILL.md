@@ -27,21 +27,24 @@ owns its detailed procedure.
 |---|---|---|---|
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
 | **Codex** | Implement | Code/docs changes, fixes, refactors, tests, PRs | Research, data gathering, orchestration |
-| **Gemini Flash-Low gatherer** (`{repo}Gemini -m flash-low`) | Gather (text) | Recon, callers=0/usage greps, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Implementing, reviewing, deciding, UX/UI judgment |
+| **Gemini Flash-Low gatherer** (`{repo}Gemini -m flash-low`) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
 | **Gemini Pro-High gatherer** (`{repo}Gemini -m pro`) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Implementing, reviewing, deciding, UX/UI judgment |
 | **Claude** | Orchestrate | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer, and performs UX-taste review passes | Bulk reads/SQL or implementation |
 
 Decision rules:
 
-1. Read-only query, scan, search, audit, or lookup -> Cursor or a Gemini Flash-Low gatherer.
-2. Any code or file change -> Codex.
-3. Coordination, synthesis, monitoring, or decisions -> Claude.
-4. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff.
-5. Independent parallel units -> § Fan-out engine chooses the engine; fleet canon #1 owns Cursor model selection.
-6. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a Gemini Pro-High gatherer through `/qa-video`.
-7. UX/UI and design judgment stays on Opus 5.5. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
+1. Read-only query, scan, search, audit, or lookup -> Cursor; a Gemini Flash-Low gatherer only for docs/link/copy/inventory gathers.
+2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> Opus. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
+3. Any code or file change -> Codex.
+4. Coordination, synthesis, monitoring, or decisions -> Claude.
+5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff. A deletion or test edit gets its Opus decision (rule 2) before Codex implements.
+6. Independent parallel units -> § Fan-out engine chooses the engine; fleet canon #1 owns Cursor model selection.
+7. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a Gemini Pro-High gatherer through `/qa-video`.
+8. UX/UI and design judgment stays on Opus 5.5. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
 
 **Evidence (skill-creator eval, 2026-09-25; visible cmux workers, mechanical answer keys, lead-scored):** 40 bounded text-gather tasks: Flash-Low 40/40 and Opus 5.5 40/40, 0 fabricated claims each; higher Gemini effort on text gave the same accuracy 2.8–4.7× slower. 20 mixed tasks (8 image reads, 4 video): Opus 20/20, Pro-High 20/20 (2:35), Flash-High 20/20 (6:17), Flash-Low 19/20 (missed counting distinct screens across a video). An open-ended Pro research draft had a dead citation, a stale "recent" item, and missed the key release. Limits: screening sample (n=60) on one Mac; not evidence for judgment, design, review, or code.
+
+**Evidence for rule 2 (cmuxlayer CX-3 real recon slices; one repo, 28 tools, scored against a truth table from fresh `rg`):** callers=0 for 28 tools about to be deleted: Opus surfaced 3/3 deletion hazards; Flash-High and Haiku 0/3 (Flash-Low, a lower tier, was not run on this slice), and Flash-High called all 28 safe, which would have broken a by-name engine accessor used by 23 test files; Pro made 59 false positives. Tool→test-file map errors: Opus 1, Flash-High 16, Pro 21, Haiku 23. Docs/link audit: Opus, Flash-High and Flash-Low 0 errors (82 s, 87 s, ≈270 s); Pro 47 false positives from a gitignored build directory; Haiku 20 errors (16 misses, 4 substring-match false positives). The eval above passed callers=0 because its tasks were literal greps against a known answer key; deciding a deletion needs reachability reasoning (by-name lookups, policy tables, agent-facing text).
 
 ## Fan-out engine
 

@@ -83,7 +83,7 @@ Read the user's request and route to the right workflow:
 
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-10. **Gemini handles visual-heavy frame batches** — Per `/agent-routing` rule 6, route bulk frame/OCR/visual reads to the **Gemini Pro-High gatherer** (`{repo}Gemini -m pro`). Claude wraps up with synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival.
+10. **Gemini handles visual-heavy frame batches** — Per `/agent-routing` rule 7, route bulk frame/OCR/visual reads to the **Gemini Pro-High gatherer** (`{repo}Gemini -m pro`). Claude wraps up with synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival.
 
 ---
 
