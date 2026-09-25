@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 #
-# Covers scripts/pr-size-labels.sh. Every gh call goes through the
+# Covers scripts/ci/pr-size-labels.sh. Every gh call goes through the
 # PR_SIZE_LABELS_GH seam and lands in a stub, so the suite never hits GitHub.
 
 setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-  SCRIPT="$REPO_ROOT/scripts/pr-size-labels.sh"
+  SCRIPT="$REPO_ROOT/scripts/ci/pr-size-labels.sh"
   TEST_ROOT="$(mktemp -d)"
   GH_LOG="$TEST_ROOT/gh.log"
   export PR_SIZE_LABELS_OWNER=EtanHey

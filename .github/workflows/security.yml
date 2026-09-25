@@ -64,7 +64,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Check skill description load limits
-        run: node scripts/check-skill-library.mjs --max-description=1024
+        run: node scripts/ci/check-skill-library.mjs --max-description=1024
 
       - name: Test skill library metadata checks
         run: node --test scripts/tests/check-skill-library.test.mjs
@@ -72,11 +72,11 @@ jobs:
       - name: Check skills use quoted append heredocs
         run: node --test scripts/tests/check-quoted-heredocs.test.mjs
 
-      # Reads the committed snapshot in scripts/cmuxlayer-tool-surface.json, so it
+      # Reads the committed snapshot in scripts/ci/cmuxlayer-tool-surface.json, so it
       # runs without a cmuxlayer checkout. Refresh the snapshot with --refresh when
       # cmuxlayer's tool surface changes.
       - name: Check skill prose does not teach cut cmuxlayer tools
-        run: node scripts/check-cut-tool-references.mjs
+        run: node scripts/ci/check-cut-tool-references.mjs
 
       - name: Check for unresolved placeholders in public-facing files
         run: |

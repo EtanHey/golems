@@ -26,7 +26,7 @@ Etan ratified this ruling with “Sounds right to me” on 2026-08-01 (R2, inclu
 
 ## Conformance is a shape check
 
-Conformance is enforced by `scripts/check-instruction-shape.sh`, not by prose or by hoping that another check notices drift. Etan's standard was: “I am sure we dont need to 'hope' ci catches drift.”
+Conformance is enforced by `scripts/ci/check-instruction-shape.sh`, not by prose or by hoping that another check notices drift. Etan's standard was: “I am sure we dont need to 'hope' ci catches drift.”
 
 For each repository, the gate checks only this shape:
 
@@ -52,7 +52,7 @@ The shape is shared, but the contents are repository-specific: define terms for 
 
 Etan approved this convention with “yes” on 2026-08-11, routed via maintenanceClaude from the Theo-gems adoption sprint.
 
-This convention is advisory, not gated: `scripts/check-instruction-shape.sh` is not extended to require a glossary, because a hard gate would turn every repository in the fleet red on day one.
+This convention is advisory, not gated: `scripts/ci/check-instruction-shape.sh` is not extended to require a glossary, because a hard gate would turn every repository in the fleet red on day one.
 
 Installing glossary wording in a core repository's `AGENTS.md` remains subject to the content installation gate above, including read-aloud ratification before the wording lands.
 

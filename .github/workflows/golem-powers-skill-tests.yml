@@ -103,7 +103,8 @@ jobs:
         run: |
           node --test scripts/tests/google-drive-oauth-guard.test.mjs \
                       scripts/tests/stalker-morning-launchd.test.mjs \
-                      scripts/tests/scripts-compat-shims-sync.test.mjs
+                      scripts/tests/scripts-compat-shims-sync.test.mjs \
+                      scripts/tests/scripts-compat-shims.test.mjs
 
       - name: shell suites
         run: |
@@ -126,7 +127,7 @@ jobs:
         run: python -m pip install --upgrade pip pytest
 
       - name: Run golem-powers Python skill suites
-        run: scripts/run-skill-tests.sh
+        run: scripts/ci/run-skill-tests.sh
 
   shell-skill-tests:
     name: Shell skill test suites (bats)

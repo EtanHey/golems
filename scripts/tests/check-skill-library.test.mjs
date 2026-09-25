@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import { afterEach, test } from "node:test";
 
 const checker = fileURLToPath(
-  new URL("../check-skill-library.mjs", import.meta.url),
+  new URL("../ci/check-skill-library.mjs", import.meta.url),
 );
 const temporaryRoots = [];
 

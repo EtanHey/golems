@@ -2,7 +2,7 @@
 
 > Absorbed from the former `skills` skill. List and search your installed Claude Code skills.
 > This answers "what skills do I have"; to use a skill, invoke it directly.
-> Catalog truth for the repo itself is `node scripts/check-skill-library.mjs`, not this listing.
+> Catalog truth for the repo itself is `node scripts/ci/check-skill-library.mjs`, not this listing.
 
 ## Usage
 

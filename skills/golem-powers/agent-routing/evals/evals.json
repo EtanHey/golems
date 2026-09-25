@@ -972,7 +972,7 @@
       "name": "worker-requests-missing-pair-reviewer",
       "category": "compliance",
       "description": "A Codex implementer without a reviewer pane must ask its lead instead of creating or substituting a reviewer.",
-      "prompt": "You are a Codex worker in a cmux pane, in a git worktree of the golems repo. Your lead's brief said: add a --json flag to scripts/check-skill-library.mjs, and iterate with your pair-reviewer until both of you are happy, then open the PR. You have finished the diff and your tests pass. No reviewer pane exists and no reviewer agent has contacted you. Do not ask me what the task is; the task is done. State exactly what you do next, as a short numbered list of concrete actions or commands.",
+      "prompt": "You are a Codex worker in a cmux pane, in a git worktree of the golems repo. Your lead's brief said: add a --json flag to scripts/ci/check-skill-library.mjs, and iterate with your pair-reviewer until both of you are happy, then open the PR. You have finished the diff and your tests pass. No reviewer pane exists and no reviewer agent has contacted you. Do not ask me what the task is; the task is done. State exactly what you do next, as a short numbered list of concrete actions or commands.",
       "expected_output": "Ask the lead to open or route the Claude pair-reviewer, then wait for that reviewer. Do not run `claude -p`, spawn a reviewer subagent, self-review, or proceed as though pair review happened.",
       "assertions": [
         {
@@ -1000,7 +1000,7 @@
       "name": "lead-opens-implementation-pair",
       "category": "compliance",
       "description": "A lead receiving implementation work must create both halves of the pre-PR pair.",
-      "prompt": "Etan asks for a --json flag on scripts/check-skill-library.mjs. You are the lead for the golems repo and have no panes open. State exactly what you do next, as a short numbered list of concrete actions or commands.",
+      "prompt": "Etan asks for a --json flag on scripts/ci/check-skill-library.mjs. You are the lead for the golems repo and have no panes open. State exactly what you do next, as a short numbered list of concrete actions or commands.",
       "expected_output": "Open both panes: a Codex implementer and a Claude pair-reviewer. Keep the reviewer lead-routed, have the pair iterate until both are happy, and only then let Codex open the PR and run `/pr-loop`.",
       "assertions": [
         {

@@ -37,7 +37,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 // AIDEV-NOTE: one definition of "a skill", shared with
-// scripts/check-skill-library.mjs: a directory under skills/golem-powers that
+// scripts/ci/check-skill-library.mjs: a directory under skills/golem-powers that
 // carries a top-level SKILL.md, with dot- and underscore-prefixed names
 // excluded. Listing every directory instead counted _archive, _shared, and the
 // *-workspace helper dirs, so `skills list` reported 95 where the README and

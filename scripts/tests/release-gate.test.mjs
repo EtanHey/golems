@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { detectInstalledVersion, fetchTags, releaseExitCode } from "../release-gate.mjs";
+import { detectInstalledVersion, fetchTags, releaseExitCode } from "../ci/release-gate.mjs";
 
 // These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
 setDefaultTimeout(15_000);
@@ -80,8 +80,8 @@ function fixture({
     ignorePaths: ["docs.local/**", "**/*.md", "collab/**"],
     repositories,
   }));
-  const script = viaSymlink ? join(root, "release-gate.mjs") : "scripts/release-gate.mjs";
-  if (viaSymlink) symlinkSync(join(repoRoot, "scripts/release-gate.mjs"), script);
+  const script = viaSymlink ? join(root, "release-gate.mjs") : "scripts/ci/release-gate.mjs";
+  if (viaSymlink) symlinkSync(join(repoRoot, "scripts/ci/release-gate.mjs"), script);
   const args = [script, repo, "--manifest", manifest, "--json"];
   if (releaseOnly) args.push("--release-only");
   if (sha) args.push("--sha", sha === "released" ? releasedSha : sha === "post-tag" ? postTagSha : sha);
@@ -134,7 +134,7 @@ function historyCloneFixture({ shallow }) {
   writeFileSync(manifest, JSON.stringify({
     repositories: { "release-fixture": { artifact: { kind: "node-npm", identifier: "release-fixture" } } },
   }));
-  const result = spawnSync("bun", ["scripts/release-gate.mjs", repo, "--manifest", manifest, "--json", "--sha", oldSha], {
+  const result = spawnSync("bun", ["scripts/ci/release-gate.mjs", repo, "--manifest", manifest, "--json", "--sha", oldSha], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, NPM_CONFIG_PREFIX: prefix },

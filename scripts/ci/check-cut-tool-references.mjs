@@ -27,18 +27,18 @@
  * it is a plain word — not a per-term opinion, so a future cut that removes
  * another one-word tool is handled without editing this file.
  *
- *   node scripts/check-cut-tool-references.mjs            # check
- *   node scripts/check-cut-tool-references.mjs --refresh  # re-derive the sets
- *   node scripts/check-cut-tool-references.mjs --list     # print the term list
+ *   node scripts/ci/check-cut-tool-references.mjs            # check
+ *   node scripts/ci/check-cut-tool-references.mjs --refresh  # re-derive the sets
+ *   node scripts/ci/check-cut-tool-references.mjs --list     # print the term list
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const SNAPSHOT = join(REPO, "scripts", "cmuxlayer-tool-surface.json");
-const ALLOWLIST = join(REPO, "scripts", "cut-tool-allowlist.json");
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const SNAPSHOT = join(REPO, "scripts", "ci", "cmuxlayer-tool-surface.json");
+const ALLOWLIST = join(REPO, "scripts", "ci", "cut-tool-allowlist.json");
 const SCAN_ROOT = join(REPO, "skills", "golem-powers");
 
 // The last cmuxlayer release before the 2026-08-13 v0.4.35 tool cut.

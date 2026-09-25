@@ -52,7 +52,7 @@ installable/unclassified repo · `--enforce` before showing `--diff` · commit `
 [references/list-skills.md](references/list-skills.md) over `~/.claude/skills/` and present one
 table per category (Infrastructure / Domain / Custom) with name, description, source, workflow
 count. Show descriptions, never full SKILL.md bodies. This is not for invoking a skill; invoke
-that skill directly. The repo's catalog truth is `node scripts/check-skill-library.mjs`.
+that skill directly. The repo's catalog truth is `node scripts/ci/check-skill-library.mjs`.
 
 ## Required CLIs
 

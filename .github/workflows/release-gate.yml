@@ -18,4 +18,4 @@ jobs:
         with:
           fetch-depth: 0
       - name: Fail when shippable commits are unreleased
-        run: node scripts/release-gate.mjs . --release-only
+        run: node scripts/ci/release-gate.mjs . --release-only

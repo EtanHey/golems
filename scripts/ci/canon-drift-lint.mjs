@@ -10,7 +10,7 @@ export const CANON_START = "<!-- FLEET_CANON_START -->";
 export const CANON_END = "<!-- FLEET_CANON_END -->";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(scriptDir, "..");
+const repoRoot = path.resolve(scriptDir, "../..");
 const defaultCanonPath = path.join(repoRoot, "standards", "fleet-canon.md");
 const defaultInstalledPath = path.join(homedir(), "Gits", "CLAUDE.md");
 

@@ -32,4 +32,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_REPO: ${{ github.repository }}
-        run: bash scripts/pr-size-labels.sh check "$PR_NUMBER" --repo "$PR_REPO"
+        run: bash scripts/ci/pr-size-labels.sh check "$PR_NUMBER" --repo "$PR_REPO"
