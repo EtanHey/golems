@@ -126,9 +126,10 @@ locked worktree only the installer moves), per host role (`mbp` or `m1`,
 `scripts/hooks/manifest.json`):
 
 ```bash
-~/Gits/golems/scripts/hooks/install-hooks.sh --host mbp            # dry-run (default)
-~/Gits/golems/scripts/hooks/install-hooks.sh --host mbp --apply    # link + register
-~/Gits/golems/scripts/hooks/install-hooks.sh --host mbp --apply --update   # move pin to origin/master
+GOLEMS_DIR="${GOLEMS_DIR:-$HOME/path/to/golems}"
+"$GOLEMS_DIR"/scripts/hooks/install-hooks.sh --host mbp            # dry-run (default)
+"$GOLEMS_DIR"/scripts/hooks/install-hooks.sh --host mbp --apply    # link + register
+"$GOLEMS_DIR"/scripts/hooks/install-hooks.sh --host mbp --apply --update   # move pin to origin/master
 ```
 
 It backs up `settings.json` (dated `.bak`) before any change and renames a real file in a
@@ -137,7 +138,7 @@ E1-deleted hook.
 
 Verify:
 ```bash
-~/Gits/golems/scripts/hooks/install-hooks.sh --host mbp --status   # nonzero on dangling / copy / E1 present
+"$GOLEMS_DIR"/scripts/hooks/install-hooks.sh --host mbp --status   # nonzero on dangling / copy / E1 present
 ```
 
 ---

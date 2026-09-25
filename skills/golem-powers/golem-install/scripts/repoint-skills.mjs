@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Repoint skill links from the stale ~/.golems/skills copy to a real golems clone (GO-5 PR-7).
 //
-//   bun repoint-skills.mjs --source ~/Gits/golems/skills/golem-powers [--apply]
+//   bun repoint-skills.mjs --source <golems clone>/skills/golem-powers [--apply]
 //
 // Walks ~/.claude/skills, ~/.agents/skills and ~/.codex/skills. For each entry:
 //   ok       a link that resolves into --source
