@@ -23,12 +23,11 @@ describe("LLM facade (llm.ts)", () => {
     expect("forNightShift" in mod).toBe(false); // retired (gL = A)
   });
 
-  it("exports embedding functions", async () => {
+  it("no longer exports the Ollama-only embedding API (its only caller was retired)", async () => {
     const mod = await import("@golems/shared/lib/llm");
-    expect(typeof mod.getEmbedding).toBe("function");
-    expect(typeof mod.batchEmbed).toBe("function");
-    expect(typeof mod.cosineSimilarity).toBe("function");
-    expect(typeof mod.findSimilar).toBe("function");
+    for (const name of ["getEmbedding", "batchEmbed", "cosineSimilarity", "findSimilar"]) {
+      expect(name in mod).toBe(false);
+    }
   });
 
   it("exports backward-compat aliases", async () => {

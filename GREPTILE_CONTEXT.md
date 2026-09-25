@@ -70,7 +70,7 @@ All packages depend on `@golems/shared` for Supabase, LLM, email, state, and not
 1. **1-line re-exports in `packages/autonomous/src/`** — These are intentional backward-compat stranglers. They re-export from the real package. Don't suggest removing them.
 2. **`any` types in test files** — Test files can use `any` for mocking. Don't flag unless it's production code.
 3. **Catch-all error handlers with `() => {}`** in client-side `fetch().catch()` — Dashboard pages intentionally swallow fetch errors and show loading skeletons.
-4. **Multiple LLM backends** — The codebase supports Ollama, GLM, Haiku, Gemini, Groq. This is intentional, not over-engineering.
+4. **Multiple LLM backends** — The codebase supports Ollama (the local default), MLX, Haiku, Gemini, Groq. This is intentional, not over-engineering.
 5. **Hebrew text in strings** — This is a bilingual (Hebrew/English) project. Hebrew strings are expected.
 
 ### Python-Specific (Zikaron package only)

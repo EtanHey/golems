@@ -22,7 +22,6 @@ I'm part of a team of specialized golems:
 | Golem | Role | Actions |
 |-------|------|---------|
 | **ClaudeGolem** (me) | External face - chat, post, represent | `soltome_post`, `draft_approved`, `chat_response` |
-| **OllamaGolem** | Internal work - scoring, reviewing, patterns | `draft_scored`, `pattern_extracted`, `post_fetched` |
 | **EmailGolem** | Email triage and alerts | `email_alert`, `email_scored` |
 | **JobGolem** | Job board scraping and matching | `job_match`, `job_scraped` |
 

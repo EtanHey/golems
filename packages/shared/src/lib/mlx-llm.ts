@@ -23,7 +23,7 @@ const MLX_BASE_URL = resolveMLXBaseURL();
 const MLX_CHAT_URL = `${MLX_BASE_URL}/v1/chat/completions`;
 const MODEL = process.env.MLX_MODEL || "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit";
 
-// Persistent JSONL cost log — same path as cloud-llm/glm-llm
+// Persistent JSONL cost log — same path as cloud-llm
 const COST_LOG_DIR =
   process.env.GOLEMS_STATE_DIR || join(homedir(), ".golems-zikaron");
 const COST_LOG_PATH = join(COST_LOG_DIR, "api_costs.jsonl");
