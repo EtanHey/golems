@@ -80,3 +80,9 @@ scripts/tests/test-golems-sync.bats
 # ratchet re-scans every commit since genesis with the CURRENT allowlist, and
 # every pre-#180 commit carries the file at its old path.
 skills/golem-powers/google-drive-archive/SKILL.md
+
+# Synthetic parser fixtures (`/Users/example/...` cwd/archive paths). At their
+# old paths under scripts/cc-usage/ they were baseline-known; the GO-6 move into
+# scripts/cc/ needs exact entries.
+scripts/cc/cc-usage/__tests__/claude-parser.test.ts
+scripts/cc/cc-usage/__tests__/codex-parser.test.ts
