@@ -78,3 +78,16 @@ def test_runner_also_runs_every_gate_eval_suite():
     assert on_disk, "expected gate eval suites on disk"
     assert on_disk <= listed, sorted(on_disk - listed)
     assert "skills/golem-powers/false-green-gate/evals/run_suite.py" in listed
+
+
+def test_runner_runs_top_level_script_tests():
+    # N+1: scripts/test_precompact.py (a stdlib script, exit 0 = pass) sat at
+    # scripts/ top level where no CI job ran it.
+    env = {**os.environ, "RUN_SKILL_TESTS_LIST_ONLY": "1"}
+    result = subprocess.run(
+        [str(RUNNER)], cwd=ROOT, env=env, text=True, capture_output=True, check=True,
+    )
+    listed = set(result.stdout.splitlines())
+    on_disk = {str(path.relative_to(ROOT)) for path in (ROOT / "scripts").glob("test_*.py")}
+    assert "scripts/test_precompact.py" in on_disk
+    assert on_disk <= listed, sorted(on_disk - listed)

@@ -31,6 +31,10 @@ while IFS= read -r -d '' suite; do
 done < <(
   find skills/golem-powers -path 'skills/golem-powers/_archive' -prune -o \
     -path '*/evals/run_suite.py' -type f -print0 | sort -z
+  # Stdlib test scripts at scripts/ top level (exit 0 = pass), e.g.
+  # test_precompact.py for hooks/precompact-checkpoint.py. They run the same
+  # way as the gate suites.
+  find scripts -maxdepth 1 -name 'test_*.py' -type f -print0 | sort -z
 )
 
 if [[ "${RUN_SKILL_TESTS_LIST_ONLY:-}" == "1" ]]; then
