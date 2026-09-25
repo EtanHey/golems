@@ -9,7 +9,7 @@ This reference begins at the cmuxlayer tool boundary.
 
 | Operation | MCP Tool | Notes |
 |-----------|----------|-------|
-| Spawn worker | `mcp__cmuxlayer__spawn_agent` | Default for visible Claude/Codex/Cursor/Gemini peers. Pass `role`, `authority`, and `placement` when needed; role defaults are inferred from launcher titles (`*Claude` → `orchestrator`, `*Codex`/`*Cursor` → `worker`). Also creates plain terminals via `type:"terminal"` |
+| Spawn worker | `mcp__cmuxlayer__spawn_agent` | Default for visible Claude/Codex/Cursor/Gemini peers. Pass `role`, `authority`, and `placement` when needed; role defaults are inferred from launcher titles (`*Claude` → `orchestrator`, `*Codex`/`*Cursor` → `worker`); `*Gemini` titles are not inferred, so for Gemini pass `role` explicitly. Also creates plain terminals via `type:"terminal"` |
 | Send follow-up | `mcp__cmuxlayer__send_to` | Default `mode:"agent"` keys off `agent_id` |
 | Send raw keystrokes / keys / commands | `mcp__cmuxlayer__send_to` with `mode:"surface"` / `"key"` / `"command"` | The one delivery tool for all four modes |
 | Wait for state | `mcp__cmuxlayer__wait_for` | Replaces client-side poll loops |

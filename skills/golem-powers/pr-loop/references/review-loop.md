@@ -93,8 +93,9 @@ Trigger: Bugbot answered `usage limit reached` on skill-creator #51, a non-core 
 #### 8a.2 — The Cursor review pass is READ-ONLY
 
 When the loop wants Cursor's eyes on a diff, that is a `cursor-workflows` / `cursor-agent -p` **review**
-pass — never a write pass, never an implementation pass. Cursor gathers and verifies; Codex implements
-(canon #1). A Cursor pass that edits files inside the PR loop is a routing violation, not a shortcut.
+pass — never a write pass, never an implementation pass. Cursor or a Gemini gatherer gathers and
+verifies; Codex implements (canon #1). A Cursor pass that edits files inside the PR loop is a routing
+violation, not a shortcut.
 
 ```bash
 # Read-only Cursor review — costs no Bugbot quota, needs no @mention
