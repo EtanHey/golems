@@ -72,12 +72,17 @@ forbidden_classes:
     patterns:
       - '/Users/[[:alnum:]_.-]+/'
       - '(/Users/[^/]+/Gits/golems/(docs[.]local|[.]worktrees)([^[:alnum:]]|$)|-Users-[[:alnum:]_.-]+-Gits-golems-(docs[.]local|[.]worktrees)([^[:alnum:]]|$))'
+      # Claude Code's dash-encoded cwd (/Users/<name>/x -> -Users-<name>-x) in
+      # project and scratch dir names.
+      - '(^|[^[:alnum:]_-])-Users-[[:alnum:]_.]+([-/]|$)'
       - '((golems|cmuxlayer|brainlayer|voicelayer)(Codex|Claude)-[0-9a-f]{8}[^[:cntrl:]]{0,100}surface:[0-9]+|surface:[0-9]+[^[:cntrl:]]{0,100}(golems|cmuxlayer|brainlayer|voicelayer)(Codex|Claude)-[0-9a-f]{8})'
       - '(client engagement incident:|real client relationship:|stealth product (purpose|usage|metric):)'
       - '((archive|drive|root)[ _-]?folder[ _-]?id|archive_folder_id)[^[:cntrl:]]{0,40}[:=][^[:cntrl:]]{0,8}[[:alnum:]_-]{20,}'
       - '[|][[:space:]]*0[1-9]_[A-Z_]+[[:space:]]*[|][[:space:]]*[[:alnum:]_-]{20,}[[:space:]]*[|]'
     allowed_patterns:
       - '\$\{[A-Z0-9_]+\}'
+      # Placeholder users in dash-encoded paths: example, or one letter.
+      - '-Users-(example|[a-z])[-/]'
   private-structure:
     patterns:
       - '/Users/[^/]+/Gits/(orchestrator|skill-creator|coach)(/|$)'

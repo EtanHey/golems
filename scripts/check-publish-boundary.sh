@@ -44,8 +44,8 @@ symlink_paths="$scratch_dir/symlink-paths.txt"
 grep_paths_file="$scratch_dir/grep-paths.bin"
 new_violations_file="$scratch_dir/new-violations.txt"
 history_diagnostics="$scratch_dir/history-diagnostics.txt"
-expected_public_policy_fingerprint='dcae1580b07b2fd737e4e53e721940a4c7f4124f30308f63d2722151be20ff10'
-expected_known_violation_baseline_fingerprint='2372ecc96a7bb9103136a1355566d81702945447cbfbd314bddaa1ea15cde1df'
+expected_public_policy_fingerprint='83302e1d208727a5a5457a893528ded805742194d1678d876dbc702510958322'
+expected_known_violation_baseline_fingerprint='c9755fb30a77942e8b9af46c748c21feed1c440f3b75223462e82e39ed5d7ba1'
 expected_forbidden_classes='client-or-third-party credential-adjacent finance-rate finding-content github_action_full_sha health identity-pii mcp_executable_exact_version operator-verbatim private-structure private_structure_slash_suffix publication-operational-data raw-session real-identifiers substance synthetic_personal_fixture telegram_chat_id'
 # Bash 3.2 + `set -u` rejects expansion of a truly empty array. The empty
 # sentinel keeps exact-path lookup portable and can never match a tracked path.

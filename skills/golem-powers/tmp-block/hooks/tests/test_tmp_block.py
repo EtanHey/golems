@@ -3624,7 +3624,7 @@ def test_go5_live_fixture_conditional_static_scratchpad_target_is_advised(durabl
 
 SCRATCHPAD_UUID = "8c1f0b2e-5a44-4d19-9f3b-71ac0d2e6f58"
 SCRATCHPAD_DIR = (
-    f"/private/tmp/claude-501/-Users-etanheyman-Gits-brainlayer/"
+    f"/private/tmp/claude-501/-Users-example-Gits-brainlayer/"
     f"{SCRATCHPAD_UUID}/scratchpad"
 )
 
@@ -3697,7 +3697,7 @@ def test_claude_uid_dir_without_a_scratchpad_component_is_denied(durable_path):
     assert_denied(
         run_hook(
             write_payload(
-                f"/private/tmp/claude-501/-Users-etanheyman-Gits-golems/"
+                f"/private/tmp/claude-501/-Users-example-Gits-golems/"
                 f"{SCRATCHPAD_UUID}/x.txt"
             )
         )
@@ -3715,7 +3715,7 @@ def test_scratchpad_shape_requires_a_session_uuid(durable_path):
     assert_denied(
         run_hook(
             write_payload(
-                "/private/tmp/claude-501/-Users-etanheyman-Gits-golems/"
+                "/private/tmp/claude-501/-Users-example-Gits-golems/"
                 "not-a-uuid/scratchpad/x.txt"
             )
         )
@@ -3760,7 +3760,7 @@ def test_scratchpad_component_must_be_exact_not_a_prefix_or_suffix(durable_path)
     """
     for evil in ("scratchpad-evil", "myscratchpad", "scratchpad.bak"):
         path = (
-            f"/private/tmp/claude-501/-Users-etanheyman-Gits-golems/"
+            f"/private/tmp/claude-501/-Users-example-Gits-golems/"
             f"{SCRATCHPAD_UUID}/{evil}/x.txt"
         )
         assert_denied(run_hook(write_payload(path)))
@@ -3778,7 +3778,7 @@ def test_uid_dir_must_be_claude_plus_digits(durable_path):
     """
     for uid_dir in ("claude-abc", "claude-", "claude", "notclaude-501", "attacker"):
         path = (
-            f"/private/tmp/{uid_dir}/-Users-etanheyman-Gits-golems/"
+            f"/private/tmp/{uid_dir}/-Users-example-Gits-golems/"
             f"{SCRATCHPAD_UUID}/scratchpad/x.txt"
         )
         assert_denied(run_hook(write_payload(path)))
@@ -3794,7 +3794,7 @@ def test_scratchpad_chain_must_sit_directly_under_a_temp_root(durable_path):
     attacker-controlled subdirectory could carry a well-formed chain.
     """
     path = (
-        f"/private/tmp/nested/claude-501/-Users-etanheyman-Gits-golems/"
+        f"/private/tmp/nested/claude-501/-Users-example-Gits-golems/"
         f"{SCRATCHPAD_UUID}/scratchpad/x.txt"
     )
     assert_denied(run_hook(write_payload(path)))
