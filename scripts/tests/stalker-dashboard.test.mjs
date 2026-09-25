@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildRunDashboard } from '../stalker-dashboard.mjs';
+import { buildRunDashboard } from '../stalker/stalker-dashboard.mjs';
 
 test('digest dashboard starts with topics and exposes timestamped excerpts and usable clips', () => {
   const item = { timestamp: '10:47', title: 'AI & creators', summary: 'A discussion <script>unsafe()</script>', excerpt: 'We use tools.', uncertain: false };

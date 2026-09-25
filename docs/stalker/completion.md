@@ -23,7 +23,7 @@ The runner requires Node, Python 3 for its kernel-owned run lock, and authentica
 Run the canonical post-stream handler with its existing video and chat paths. To deliver without repeating the optional archive operation:
 
 ```bash
-STREAM_AUTO_ARCHIVE=0 scripts/post-stream.sh \
+STREAM_AUTO_ARCHIVE=0 scripts/stalker/post-stream.sh \
   docs.local/stalker-golem/theo-YYYY-MM-DD-HHMMSS \
   docs.local/stalker-golem/theo-YYYY-MM-DD-HHMMSS/video.mp4 \
   docs.local/stalker-golem/theo-YYYY-MM-DD-HHMMSS/chat.log theo
@@ -34,8 +34,8 @@ Existing processing/scoring markers preserve earlier work. Delivery always reche
 Check a run without sending another message:
 
 ```bash
-node scripts/stalker-run-contract.mjs path/to/run
-STALKER_MONITOR_ONCE=1 STALKER_RUN_DIR=path/to/run scripts/stream-overnight-monitor.sh
+node scripts/stalker/stalker-run-contract.mjs path/to/run
+STALKER_MONITOR_ONCE=1 STALKER_RUN_DIR=path/to/run scripts/stalker/stream-overnight-monitor.sh
 ```
 
 The optional morning command enumerates each eligible run and invokes the same completion contract. Its date summary cannot replace per-run validation, and skip-notify/skip-sync/skip-live-verify cannot certify completion.

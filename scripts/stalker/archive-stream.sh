@@ -25,7 +25,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/stream-helpers.sh
-source "$SCRIPT_DIR/lib/stream-helpers.sh"
+source "$SCRIPT_DIR/../lib/stream-helpers.sh"
 
 DEFAULT_BRAIN_DRIVE_ROOT="$HOME/Library/CloudStorage/GoogleDrive-${RESEARCH_ACCOUNT:-research-account@example.com}/My Drive/Brain Drive"
 BRAIN_DRIVE_ROOT="${STALKER_BRAIN_DRIVE_ROOT:-$DEFAULT_BRAIN_DRIVE_ROOT}"

@@ -3,7 +3,8 @@
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
     SCRIPT_DIR="$REPO_ROOT/scripts"
-    POST_STREAM="$SCRIPT_DIR/post-stream.sh"
+    STALKER_DIR="$REPO_ROOT/scripts/stalker"
+    POST_STREAM="$STALKER_DIR/post-stream.sh"
     # shellcheck source=../lib/stream-helpers.sh
     source "$SCRIPT_DIR/lib/stream-helpers.sh"
     # shellcheck source=../lib/bun-version.sh
@@ -98,7 +99,7 @@ write_scoring_marker() {
 build_fresh_bundle() {
     fresh_bundle="$TMPDIR_/fresh/twitch-chat-lurker.js"
     fresh_license="$TMPDIR_/fresh/twitch-chat-lurker.LICENSE.txt"
-    "$SCRIPT_DIR/build-twitch-chat-lurker.sh" "$fresh_bundle"
+    "$STALKER_DIR/build-twitch-chat-lurker.sh" "$fresh_bundle"
 }
 
 fake_lurker_build() {
@@ -119,9 +120,9 @@ SH
 }
 
 @test "stream watcher ensures the generated Twitch chat bundle before watching" {
-    grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/dist/twitch-chat-lurker.js"' "$SCRIPT_DIR/stream-watcher.sh"
-    ! grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"' "$SCRIPT_DIR/stream-watcher.sh"
-    grep -F -q 'stalker_ensure_lurker_bundle "$LURKER_SCRIPT"' "$SCRIPT_DIR/stream-watcher.sh"
+    grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/dist/twitch-chat-lurker.js"' "$STALKER_DIR/stream-watcher.sh"
+    ! grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"' "$STALKER_DIR/stream-watcher.sh"
+    grep -F -q 'stalker_ensure_lurker_bundle "$LURKER_SCRIPT"' "$STALKER_DIR/stream-watcher.sh"
     run git -C "$REPO_ROOT" ls-files --error-unmatch scripts/dist/twitch-chat-lurker.js
     [ "$status" -ne 0 ]
 }
@@ -169,14 +170,14 @@ SH
     grep -F -q 'Permission is hereby granted' "$fresh_license"
     [ ! -x "$fresh_license" ]
 
-    run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$fresh_bundle"
+    run "$STALKER_DIR/preflight-twitch-chat-lurker.sh" "$fresh_bundle"
     [ "$status" -eq 0 ]
     [[ "$output" == *"chat_lurker_preflight=PASS"* ]]
 }
 
 @test "chat deploy preflight opens output and reaches a connected sentinel" {
     build_fresh_bundle
-    run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$fresh_bundle"
+    run "$STALKER_DIR/preflight-twitch-chat-lurker.sh" "$fresh_bundle"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"chat_lurker_preflight=PASS"* ]] || false
@@ -186,9 +187,9 @@ SH
 
 @test "source preflight fails when tmi.js is unavailable" {
     isolated_source="$TMPDIR_/twitch-chat-lurker.ts"
-    cp "$SCRIPT_DIR/twitch-chat-lurker.ts" "$isolated_source"
+    cp "$STALKER_DIR/twitch-chat-lurker.ts" "$isolated_source"
 
-    run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$isolated_source"
+    run "$STALKER_DIR/preflight-twitch-chat-lurker.sh" "$isolated_source"
 
     [ "$status" -ne 0 ]
     [[ "$output" == *"Cannot find package 'tmi.js'"* ]] || false
@@ -199,7 +200,7 @@ SH
     stream_dir="$TMPDIR_/missing-dependency"
     isolated_source="$TMPDIR_/twitch-chat-lurker.ts"
     mkdir -p "$stream_dir"
-    cp "$SCRIPT_DIR/twitch-chat-lurker.ts" "$isolated_source"
+    cp "$STALKER_DIR/twitch-chat-lurker.ts" "$isolated_source"
 
     STALKER_CHAT_PREFLIGHT=1 \
     TWITCH_CHANNEL=__golems_preflight__ \
@@ -222,7 +223,7 @@ SH
     isolated_bundle="$TMPDIR_/twitch-chat-lurker.js"
     cp "$fresh_bundle" "$isolated_bundle"
 
-    run "$SCRIPT_DIR/preflight-twitch-chat-lurker.sh" "$isolated_bundle"
+    run "$STALKER_DIR/preflight-twitch-chat-lurker.sh" "$isolated_bundle"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"chat_lurker_preflight=PASS"* ]]
@@ -266,7 +267,7 @@ SH
         HOME="$TMPDIR_/empty-home" \
         ALERTS_FILE="$ALERTS_FILE" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
-        "$SCRIPT_DIR/process-stream.sh" "$stream_dir/video.mp4"
+        "$STALKER_DIR/process-stream.sh" "$stream_dir/video.mp4"
 
     [ "$status" -eq 75 ]
     [ -f "$stream_dir/.stage-scoring.failed" ]
@@ -301,7 +302,7 @@ SH
         HOME="$TMPDIR_/empty-home" \
         CODEX_CALLS="$codex_calls" \
         STALKER_TELEGRAM_NOTIFY=0 \
-        "$SCRIPT_DIR/process-stream.sh" "$stream_dir/video.mp4"
+        "$STALKER_DIR/process-stream.sh" "$stream_dir/video.mp4"
 
     [ "$status" -eq 75 ]
     [[ "$output" == *"Codex scorer requires timeout or gtimeout"* ]] || false
@@ -340,7 +341,7 @@ SH
         STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
-        "$SCRIPT_DIR/process-stream.sh" "$stream_dir/video.mp4" "$stream_dir/chat.log"
+        "$STALKER_DIR/process-stream.sh" "$stream_dir/video.mp4" "$stream_dir/chat.log"
 
     [ "$status" -eq 0 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
@@ -479,8 +480,8 @@ SH
 }
 
 @test "process-stream arms scoring only inside the scorer-present branch" {
-    scorer_branch_line=$(grep -n 'if \[ -n "$AGY_BIN" \] || \[ -n "$CODEX_BIN" \]; then' "$SCRIPT_DIR/process-stream.sh" | head -n 1 | cut -d: -f1)
-    marker_line=$(grep -n 'stalker_mark_scoring_started "$OUT_DIR" "\$\$"' "$SCRIPT_DIR/process-stream.sh" | head -n 1 | cut -d: -f1)
+    scorer_branch_line=$(grep -n 'if \[ -n "$AGY_BIN" \] || \[ -n "$CODEX_BIN" \]; then' "$STALKER_DIR/process-stream.sh" | head -n 1 | cut -d: -f1)
+    marker_line=$(grep -n 'stalker_mark_scoring_started "$OUT_DIR" "\$\$"' "$STALKER_DIR/process-stream.sh" | head -n 1 | cut -d: -f1)
 
     [[ "$scorer_branch_line" =~ ^[0-9]+$ \
         && "$marker_line" =~ ^[0-9]+$ \
@@ -523,7 +524,7 @@ SH
     printf '[00:00:01] viewer: old run\n' > "$stale_dir/chat.log"
 
     STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
 
     [ -f "$stale_dir/.stage-scoring.failed" ]
     [ ! -f "$stale_dir/gems.md" ]
@@ -555,7 +556,7 @@ SH
     printf '### [00:10:00] A real moment\n**Score:** 9/10 | **Type:** insight\n**Gist:** something good\n' > "$run_dir/gems.md"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"Stalker Morning Digest FAILED - 2026-08-19"* \
@@ -572,7 +573,7 @@ SH
     mkdir -p "$root"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"Stalker Morning Digest - 2026-08-19"* \
@@ -591,7 +592,7 @@ SH
     printf '### [00:03:00] Tail gem\n**Score:** 8/10 | **Type:** insight\n' > "$run_dir/gems.md"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"theo-2026-08-19-0300: .orphan-tail present"* \
@@ -605,7 +606,7 @@ SH
     printf '### [00:10:00] A real moment\n**Score:** 9/10 | **Type:** insight\n' > "$run_dir/gems.md"
 
     STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
 
     grep -F -q 'Stalker Morning Digest FAILED - 2026-08-19' "$ALERTS_FILE" \
         && grep -F -q 'etan-2026-08-19-2100' "$ALERTS_FILE" \
@@ -635,7 +636,7 @@ SH
     CAPTURED_PAYLOAD="$captured_payload" \
     STALKER_TELEGRAM_CMD="$rejecting_sender" \
     STALKER_TELEGRAM_QUEUE_DIR="$queue_dir" \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
 
     payload_bytes="$(LC_ALL=C wc -c < "$captured_payload" | tr -d ' ')"
     body="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["body"])' "$captured_payload")"
@@ -679,7 +680,7 @@ SH
     CAPTURED_PAYLOAD="$captured_payload" \
     STALKER_TELEGRAM_CMD="$rejecting_sender" \
     STALKER_TELEGRAM_QUEUE_DIR="$queue_dir" \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
 
     body="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["body"])' "$captured_payload")"
     payload_bytes="$(LC_ALL=C wc -c < "$captured_payload" | tr -d ' ')"
@@ -726,7 +727,7 @@ SH
 
     CAPTURED_PAYLOAD="$captured_payload" \
     STALKER_TELEGRAM_CMD="$capturing_sender" \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-20
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-20
 
     body_metrics="$(python3 - "$captured_payload" <<'PY'
 import json
@@ -760,7 +761,7 @@ PY
     done
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-20 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-20 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"theo-2026-08-20-052009"* \
@@ -791,7 +792,7 @@ EOF
 )"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 0 && "$output" = "$expected" ]]
 }
@@ -808,7 +809,7 @@ EOF
     printf '### [00:10:00] Dropped moment\n**Score:** 10/10 | **Type:** insight\n**Gist:** must not be counted\n' > "$dropped_dir/gems.md"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"Stalker Morning Digest FAILED - 2026-08-19"* \
@@ -829,7 +830,7 @@ EOF
     printf 'status=ORPHAN_TAIL\n' > "$orphan_dir/.orphan-tail"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$SCRIPT_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 0 \
         && "$output" == *"Stalker Morning Digest - 2026-08-19"* \

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, open, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { publishRunDashboard } from '../stalker-publish.mjs';
+import { publishRunDashboard } from '../stalker/stalker-publish.mjs';
 
 test('publication writes an admitted source before sync and only explicitly selected media', async t => {
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));

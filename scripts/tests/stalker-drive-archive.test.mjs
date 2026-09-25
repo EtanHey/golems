@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createDriveArchive } from '../stalker-drive-archive.mjs';
+import { createDriveArchive } from '../stalker/stalker-drive-archive.mjs';
 
 const parentId = 'archive-parent';
 const hash = 'a'.repeat(64);

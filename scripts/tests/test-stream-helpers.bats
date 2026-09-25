@@ -288,7 +288,7 @@ SH
         CHECK_INTERVAL=0 \
         STALL_SECONDS=0 \
         RESTART_COOLDOWN=999999 \
-        "$SCRIPT_DIR/stalker-live-guard.sh" theo best > "$guard_output" 2>&1 &
+        "$SCRIPT_DIR/stalker/stalker-live-guard.sh" theo best > "$guard_output" 2>&1 &
     local guard_pid=$!
     for _ in {1..200}; do
         grep -F -q "kickstart -k $expected_service" "$launchctl_calls" 2>/dev/null && break

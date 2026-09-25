@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {readableSummary} from '../stalker-digest-text.mjs';
+import {readableSummary} from '../stalker/stalker-digest-text.mjs';
 
 test('capped generated descriptions display their complete sentences without altering source text', () => {
   const first = 'Fable 5.1 needed two follow-ups, while Astra needed six.';

@@ -60,7 +60,7 @@ test("focused installer renders a valid host plist without launchctl", { skip: p
     "utf8",
   );
   assert.ok(rendered.includes(`<string>${process.execPath}</string>`));
-  assert.ok(rendered.includes(`<string>${root}/scripts/stalker-morning-digest.mjs</string>`));
+  assert.ok(rendered.includes(`<string>${root}/scripts/stalker/stalker-morning-digest.mjs</string>`));
   assert.match(rendered, /Home &amp; Team\/Gits\/orchestrator/);
   assert.doesNotMatch(rendered, /@[A-Z][A-Z0-9_]*@/);
 

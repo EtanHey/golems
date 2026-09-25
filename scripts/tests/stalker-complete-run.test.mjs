@@ -3,7 +3,7 @@ import { createServer, get } from 'node:http';
 import { chmod, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { test } from 'node:test';
-import { completeRun, notifyDelivery } from '../stalker-complete-run.mjs';
+import { completeRun, notifyDelivery } from '../stalker/stalker-complete-run.mjs';
 import { validSummary } from './fixtures/stalker-digest-summary.mjs';
 
 async function setup(t, runName = 'theo-2026-09-08-030512') {

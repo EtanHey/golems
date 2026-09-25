@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cleanTranscript, validateSummary } from '../stalker-digest-evidence.mjs';
+import { cleanTranscript, validateSummary } from '../stalker/stalker-digest-evidence.mjs';
 import { validSummary } from './fixtures/stalker-digest-summary.mjs';
 
 const transcript = `## [00:00] Segment 1 (10s)

@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>@NODE_BIN@</string>
-    <string>@GOLEMS_ROOT@/scripts/stalker-morning-digest.mjs</string>
+    <string>@GOLEMS_ROOT@/scripts/stalker/stalker-morning-digest.mjs</string>
     <string>--repo-root</string>
     <string>@GOLEMS_ROOT@</string>
     <string>--orchestrator-root</string>

@@ -5,7 +5,7 @@ import { chmod, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterEach, test } from "node:test";
-import { resolveCodexProgram, runDigestCodex } from "../stalker-digest-runner.mjs";
+import { resolveCodexProgram, runDigestCodex } from "../stalker/stalker-digest-runner.mjs";
 
 const roots = [];
 afterEach(async () => {

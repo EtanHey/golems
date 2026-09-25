@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
-import { curateDigest } from "../stalker-digest-curation.mjs";
+import { curateDigest } from "../stalker/stalker-digest-curation.mjs";
 
 const roots = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
