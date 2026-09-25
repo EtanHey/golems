@@ -6,7 +6,7 @@ import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
-const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const defaultIgnores = ["docs.local/**", "**/*.md", "collab/**"];
 const defaultTagPattern = "^v?\\d+\\.\\d+\\.\\d+(?:[-+].*)?$";
 

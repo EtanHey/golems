@@ -63,7 +63,7 @@ for (const arg of process.argv.slice(2)) {
   args.set(key, value ?? "true");
 }
 
-const repoRoot = resolve(new URL("..", import.meta.url).pathname);
+const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
 const skillsRoot = resolve(
   args.get("--skills-root") ?? join(repoRoot, "skills", "golem-powers"),
 );

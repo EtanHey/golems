@@ -17,7 +17,7 @@ This skill begins at branch preparation and ends at the authority-appropriate en
 - Worker whose brief says the lead owns merge: ready-for-review PR, review responses addressed, URL handed to the lead, unmerged.
 - A worker must hand the reviewed PR to its lead unmerged.
 
-Before closing either endpoint, run `scripts/release-gate.mjs <repo>`. `MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`, or `UNKNOWN` is a stop; release/install and rerun until `CLEAN`.
+Before closing either endpoint, run `scripts/ci/release-gate.mjs <repo>`. `MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`, or `UNKNOWN` is a stop; release/install and rerun until `CLEAN`.
 
 ## Required Sequence
 

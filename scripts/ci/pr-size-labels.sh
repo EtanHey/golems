@@ -289,11 +289,11 @@ cmd_check() {
     return 0
   fi
   if grep -qE '^size/' <<<"$current"; then
-    printf '::warning::%s#%s uses the retired size/* scheme. Run scripts/pr-size-labels.sh ensure %s, then compute %s --repo %s.\n' \
+    printf '::warning::%s#%s uses the retired size/* scheme. Run scripts/ci/pr-size-labels.sh ensure %s, then compute %s --repo %s.\n' \
       "$repo" "$pr" "$repo" "$pr" "$repo"
     return 0
   fi
-  printf '::warning::%s#%s has no size:* label (canon 9 wants one at open). Run: scripts/pr-size-labels.sh compute %s --repo %s\n' \
+  printf '::warning::%s#%s has no size:* label (canon 9 wants one at open). Run: scripts/ci/pr-size-labels.sh compute %s --repo %s\n' \
     "$repo" "$pr" "$pr" "$repo"
   return 0
 }

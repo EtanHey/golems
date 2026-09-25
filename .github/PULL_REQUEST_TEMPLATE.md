@@ -14,7 +14,7 @@
 
 - [ ] `bun run test` passes (the package suite CI runs)
 - [ ] `bash scripts/check-publish-boundary.sh` → PASS
-- [ ] Touched `skills/`? `node scripts/check-skill-library.mjs` → OK, and `bash scripts/run-skill-tests.sh` passes
+- [ ] Touched `skills/`? `node scripts/ci/check-skill-library.mjs` → OK, and `bash scripts/ci/run-skill-tests.sh` passes
 - [ ] Manually verified (if applicable)
 
 ## Vouched By

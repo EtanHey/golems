@@ -127,11 +127,11 @@ Immediately after `gh pr create` returns the PR number:
 
 ```bash
 # creates/normalizes the four labels in the repo (idempotent, safe to re-run)
-scripts/pr-size-labels.sh ensure <owner/repo>
+scripts/ci/pr-size-labels.sh ensure <owner/repo>
 
 # sizes the PR from its hand-written diff and applies exactly one size:* label,
 # removing any other size:* or size/* it carries
-scripts/pr-size-labels.sh compute <pr> --repo <owner/repo>
+scripts/ci/pr-size-labels.sh compute <pr> --repo <owner/repo>
 ```
 
 Sizing is additions over non-generated files (locks, `dist/`,

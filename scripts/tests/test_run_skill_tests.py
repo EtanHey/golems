@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNNER = ROOT / "scripts" / "run-skill-tests.sh"
+RUNNER = ROOT / "scripts" / "ci" / "run-skill-tests.sh"
 WORKFLOW = ROOT / ".github" / "workflows" / "golem-powers-skill-tests.yml"
 REQUIREMENTS = ROOT / "scripts" / "skill-test-requirements.txt"
 
@@ -56,7 +56,7 @@ def test_workflow_runs_the_shared_skill_test_runner():
     assert "golem-powers-skill-tests" in workflow
     assert "python-version: \"3.11\"" in workflow
     assert "python -m pip install --upgrade pip pytest" in workflow
-    assert "scripts/run-skill-tests.sh" in workflow
+    assert "scripts/ci/run-skill-tests.sh" in workflow
 
 
 def test_skill_test_requirements_do_not_pull_optional_trace_deps():

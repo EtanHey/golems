@@ -8,7 +8,7 @@ setDefaultTimeout(15_000);
 
 // AIDEV-NOTE: parity gate for the visitor's first command. `golems-cli skills
 // list` must report the same number the README quotes, and the README number is
-// whatever scripts/check-skill-library.mjs counts. Both sides answer to one
+// whatever scripts/ci/check-skill-library.mjs counts. Both sides answer to one
 // rule: a directory under skills/golem-powers carrying a top-level SKILL.md,
 // with dot- and underscore-prefixed names excluded. This test drives the real
 // GitHub client over a fake API backed by the real repo tree, so it fails the
@@ -72,7 +72,7 @@ function skillsOnDisk(): string[] {
 
 /** The number check-skill-library.mjs itself prints — the README's source. */
 async function checkSkillLibraryCount(): Promise<number> {
-  const proc = Bun.spawn(["node", "scripts/check-skill-library.mjs"], {
+  const proc = Bun.spawn(["node", "scripts/ci/check-skill-library.mjs"], {
     cwd: repoRoot,
     stdout: "pipe",
     stderr: "pipe",

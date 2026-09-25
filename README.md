@@ -80,7 +80,7 @@ skill-name/
 To count the skills, run the checker instead of trusting a number in a README:
 
 ```bash
-node scripts/check-skill-library.mjs   # prints skills=<n> and description-size totals
+node scripts/ci/check-skill-library.mjs   # prints skills=<n> and description-size totals
 ```
 
 Some skills to start with:
@@ -97,7 +97,7 @@ Some skills to start with:
 An eval checks only the behavior it asserts. It is regression evidence. It
 does not prove a skill works in every setup.
 
-The Python skill suites and gate evals run with `bash scripts/run-skill-tests.sh`.
+The Python skill suites and gate evals run with `bash scripts/ci/run-skill-tests.sh`.
 You need `python3` with `pytest` installed.
 
 ## CLI

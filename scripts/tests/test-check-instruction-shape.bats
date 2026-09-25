@@ -2,7 +2,7 @@
 
 setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-  CHECKER="$REPO_ROOT/scripts/check-instruction-shape.sh"
+  CHECKER="$REPO_ROOT/scripts/ci/check-instruction-shape.sh"
   TEST_ROOT="$(mktemp -d)"
 }
 
