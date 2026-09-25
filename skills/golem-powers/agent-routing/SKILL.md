@@ -5,7 +5,7 @@ description: "Route work to Cursor/Codex/Claude; pick the fan-out engine. Trigge
 
 # Agent Routing
 
-> Fleet law: canon #1 owns Cursor=gather, Codex=implement, Claude=orchestrate. This skill owns role selection, delegation checks, review ownership, and the Codex model x effort choice. `/repogolem` owns launcher mechanics; canon #5/#6 own non-Codex model and launcher law.
+> Fleet law: canon #1 owns Cursor/Gemini-gatherer=gather, Codex=implement, Claude=orchestrate. This skill owns role selection, delegation checks, review ownership, and the Codex model x effort choice. `/repogolem` owns launcher mechanics; canon #5/#6 own non-Codex model and launcher law.
 
 > **Auto-dispatch triggers** (canonical in `/orc` C4): batch reads >=3, transcription >=2,
 > web research >=1, or any "in parallel" / "all of these" phrasing -> fan out sub-agents
@@ -27,17 +27,21 @@ owns its detailed procedure.
 |---|---|---|---|
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
 | **Codex** | Implement | Code/docs changes, fixes, refactors, tests, PRs | Research, data gathering, orchestration |
-| **Gemini CLI** | Visual heavy-lift | Frame batches, OCR, multi-screenshot/video analysis | Codebase changes or orchestration |
+| **Gemini Flash-Low gatherer** (`{repo}Gemini -m flash-low`) | Gather (text) | Recon, callers=0/usage greps, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Implementing, reviewing, deciding, UX/UI judgment |
+| **Gemini Pro-High gatherer** (`{repo}Gemini -m pro`) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Implementing, reviewing, deciding, UX/UI judgment |
 | **Claude** | Orchestrate | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer, and performs UX-taste review passes | Bulk reads/SQL or implementation |
 
 Decision rules:
 
-1. Read-only query, scan, search, audit, or lookup -> Cursor.
+1. Read-only query, scan, search, audit, or lookup -> Cursor or a Gemini Flash-Low gatherer.
 2. Any code or file change -> Codex.
 3. Coordination, synthesis, monitoring, or decisions -> Claude.
 4. Mixed gather + implement work -> Cursor returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff.
 5. Independent parallel units -> § Fan-out engine chooses the engine; fleet canon #1 owns Cursor model selection.
-6. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> Gemini through `/qa-video`.
+6. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a Gemini Pro-High gatherer through `/qa-video`.
+7. UX/UI and design judgment stays on Opus 5.5. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
+
+**Evidence (skill-creator eval, 2026-09-25; visible cmux workers, mechanical answer keys, lead-scored):** 40 bounded text-gather tasks: Flash-Low 40/40 and Opus 5.5 40/40, 0 fabricated claims each; higher Gemini effort on text gave the same accuracy 2.8–4.7× slower. 20 mixed tasks (8 image reads, 4 video): Opus 20/20, Pro-High 20/20 (2:35), Flash-High 20/20 (6:17), Flash-Low 19/20 (missed counting distinct screens across a video). An open-ended Pro research draft had a dead citation, a stale "recent" item, and missed the key release. Limits: screening sample (n=60) on one Mac; not evidence for judgment, design, review, or code.
 
 ## Fan-out engine
 
