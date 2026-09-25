@@ -58,7 +58,6 @@ function persistEventToSupabase(event: GolemEvent): void {
 /** Golem actors that can produce events */
 export type GolemActor =
   | "claudegolem"
-  | "ollamagolem"
   | "jobgolem"
   | "emailgolem"
   | "recruitergolem"
@@ -227,8 +226,6 @@ function formatActor(actor: GolemActor): string {
   switch (actor) {
     case "claudegolem":
       return "YOU";
-    case "ollamagolem":
-      return "OllamaGolem";
     case "jobgolem":
       return "JobGolem";
     case "emailgolem":

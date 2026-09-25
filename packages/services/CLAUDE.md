@@ -51,10 +51,7 @@ packages/services/
 │   ├── cloud-worker.ts          # Runnable scheduler for email/jobs/briefing/soltome
 │   ├── briefing.ts              # 8am morning summary
 │   ├── healthcheck.ts           # 9am service health verification
-│   ├── doctor.ts                # health checks (bun run src/doctor.ts)
-│   ├── run-compaction.ts        # Context compaction utilities
-│   ├── thread-compactor.ts      # Thread compaction logic
-│   └── thread-store.ts          # Thread storage
+│   └── doctor.ts                # health checks (bun run src/doctor.ts)
 ├── .claude-plugin/plugin.json
 ├── CLAUDE.md                    # This file
 └── package.json                 # @golems/services

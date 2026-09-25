@@ -7,13 +7,6 @@
     "voicelayer": {
       "command": "voicelayer-mcp"
     },
-    "golems-glm": {
-      "command": "bun",
-      "args": [
-        "run",
-        "packages/shared/src/glm/mcp-server.ts"
-      ]
-    },
     "supabase": {
       "command": "npx",
       "args": [

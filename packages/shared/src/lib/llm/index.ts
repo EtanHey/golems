@@ -9,17 +9,10 @@
  *
  * Backend-specific imports:
  *   import { runHaiku } from "@golems/shared/lib/llm/cloud";
- *   import { runGLM } from "@golems/shared/lib/llm/glm";
  */
 
 // Primary multi-backend runner (the main entry point)
-export {
-  runLLM,
-  runLLMJSON,
-  getEmbedding,
-  batchEmbed,
-  cosineSimilarity,
-} from "../llm";
+export { runLLM, runLLMJSON } from "../llm";
 
 // Error handling + retry
 export {

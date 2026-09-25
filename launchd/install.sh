@@ -10,7 +10,6 @@ LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 NODE_BIN="$(command -v node)"
 
 PLISTS=(
-    "com.golemszikaron.ollama.plist"
     "com.golemszikaron.briefing.plist"
 )
 
@@ -62,7 +61,6 @@ done
 
 echo ""
 echo "✅ Installed! Schedules:"
-echo "  - Ollama: Always running (KeepAlive)"
 echo "  - Briefing: 8:00 AM daily"
 echo "  - Google Drive OAuth guard: login + every 5 minutes"
 echo ""

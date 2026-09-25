@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
-import { readFileSync } from "node:fs";
-import { runGLM } from "@golems/shared/lib/glm-llm";
 import { runMLX } from "@golems/shared/lib/mlx-llm";
 import {
   _resetProviders,
@@ -32,28 +30,6 @@ afterEach(() => {
   _resetProviders();
 });
 
-describe("GLM return contract", () => {
-  it("returns null when the API request fails", async () => {
-    globalThis.fetch = mockProviderFailure({
-      error: {
-        code: 400,
-        message: "bad request",
-        status: "INVALID_ARGUMENT",
-      },
-    });
-
-    expect(await runGLM("hello", "test")).toBeNull();
-  });
-
-  it("preserves a valid empty generation", async () => {
-    globalThis.fetch = mock(async () =>
-      Response.json({ response: "", eval_count: 0 }),
-    ) as unknown as typeof globalThis.fetch;
-
-    expect(await runGLM("hello", "test")).toBe("");
-  });
-});
-
 describe("MLX return contract", () => {
   it("returns null when the API request fails", async () => {
     globalThis.fetch = mockProviderFailure({
@@ -75,21 +51,6 @@ describe("MLX return contract", () => {
     ) as unknown as typeof globalThis.fetch;
 
     expect(await runMLX("hello", "test")).toBe("");
-  });
-});
-
-describe("GLM MCP fallback contract", () => {
-  it("does not fall back when MLX returns a valid empty generation", () => {
-    const source = readFileSync(
-      new URL("../glm/mcp-server.ts", import.meta.url),
-      "utf8",
-    );
-    const rawFallback = source.slice(
-      source.indexOf("async function runLocalWithFallback"),
-      source.indexOf("async function runLocalJSONWithFallback"),
-    );
-
-    expect(rawFallback).toContain("if (result !== null) return result;");
   });
 });
 
