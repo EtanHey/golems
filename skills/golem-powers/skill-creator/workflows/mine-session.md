@@ -33,7 +33,7 @@ orc cannot spawn `session-miner` directly — the agent is repo-scoped to skill-
 ### 1. Identify the JSONL(s)
 
 ```bash
-ls -la ~/.claude/projects/-Users-etanheyman-Gits-<repo>/*.jsonl
+ls -la ~/.claude/projects/-Users-example-Gits-<repo>/*.jsonl
 ```
 
 For end-of-day waves: one JSONL per active surface (orc, brainlayer, voicelayer, coach, etc.).
