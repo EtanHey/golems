@@ -31,6 +31,7 @@ import sys
 # policy. shell_text_without_heredoc_bodies stays importable from here
 # (~/.claude/hooks/pre_tool_use.py imports it by this name).
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "_shared"))
+from harness_paths import is_harness_scratchpad  # noqa: E402
 from shell_parse import _backtick_bodies, shell_text_without_heredoc_bodies  # noqa: E402 F401
 
 
@@ -106,6 +107,29 @@ def _outermost_repo_root(path: str) -> str | None:
         current = parent
 
 
+def _within(path: str, root: str) -> bool:
+    try:
+        return os.path.commonpath((path, root)) == root
+    except ValueError:
+        return False
+
+
+def _gitfile_owner(checkout: str) -> str | None:
+    """The repo owning a gitfile checkout (`gitdir: <owner>/.git/worktrees/…`)."""
+    try:
+        with open(os.path.join(checkout, ".git"), encoding="utf-8") as handle:
+            line = handle.readline().strip()
+    except OSError:
+        return None
+    if not line.startswith("gitdir:"):
+        return None
+    gitdir = os.path.normpath(os.path.join(checkout, line[len("gitdir:"):].strip()))
+    parts = gitdir.split(os.sep)
+    if ".git" not in parts:
+        return None
+    return os.sep.join(parts[:parts.index(".git")]) or os.sep
+
+
 def _literal_tail_after_unresolved_var(
     target: str, variables: dict[str, str]
 ) -> bool:
@@ -171,6 +195,11 @@ def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str |
         return "rm targeting home directory"
 
     repo = _outermost_repo_root(resolved)
+    # GO-5 PR-4: a repo living inside the harness session scratchpad (a throwaway
+    # clone or rehearsal) is disposable. Matched by the scratchpad's exact
+    # structure, never by a substring, so ~/Gits/<repo> stays protected.
+    if repo is not None and is_harness_scratchpad(repo):
+        repo = None
     if repo is not None:
         # W16: measuring breadth against the OUTERMOST root makes a worktree's own
         # contents disposable (the point of the fix) — but the worktree ROOT itself is
@@ -178,7 +207,11 @@ def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str |
         # gitfile `.git` means "checkout belonging to another repo": a worktree or a
         # submodule. A nested independent clone (`.git` is a directory, own object
         # store) is the throwaway-fixture case and stays exempt.
-        if resolved != repo and os.path.isfile(os.path.join(resolved, ".git")):
+        owner = _gitfile_owner(resolved)
+        # GO-5 PR-4 (#5): a worktree of a NESTED throwaway clone belongs to that
+        # clone, not to the outer checkout, so it is as disposable as the clone.
+        nested_owner = owner not in (None, repo) and _within(owner, repo)
+        if resolved != repo and os.path.isfile(os.path.join(resolved, ".git")) and not nested_owner:
             return (
                 "rm target too broad within repo (0 path components): "
                 f"{target}"
@@ -838,8 +871,36 @@ def _dangerous_git_reason(command: str) -> str | None:
     return None
 
 
+# GO-5 PR-4 (#4): a whole command that is one `for V in <plain names>; do …; done`
+# is checked once per value with V bound, so a loop-local target resolves. The
+# body must not change directory (iterations share a cwd).
+_LITERAL_FOR_LOOP_RE = re.compile(
+    r"for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([^;\n]*?)\s*[;\n]\s*do\s+(.*?)\s*;?\s*done", re.DOTALL
+)
+_LITERAL_LOOP_VALUE_RE = re.compile(r"[A-Za-z0-9._+-]+")
+
+
+def _literal_loop(command: str):
+    loop = _LITERAL_FOR_LOOP_RE.fullmatch(command.strip())
+    if loop is None or re.search(r"\b(?:cd|pushd|popd)\b", loop.group(3)):
+        return None
+    values = loop.group(2).split()
+    if not values or not all(_LITERAL_LOOP_VALUE_RE.fullmatch(value) for value in values):
+        return None
+    return loop.group(1), values, loop.group(3)
+
+
 def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None):
     """Return the tracked git-guardian block reason, or None."""
+    loop = _literal_loop(command)
+    if loop is not None:
+        name, values, body = loop
+        base = dict(os.environ if env is None else env)
+        for value in values:
+            reason = dangerous_shell_reason(body, cwd=cwd, env={**base, name: value})
+            if reason:
+                return reason
+        return None
     active = shell_text_without_heredoc_bodies(command)
     for body in _backtick_bodies(active):
         nested_reason = dangerous_shell_reason(body, cwd=cwd, env=env)

@@ -3799,8 +3799,126 @@ def _executable_expansions(line: str) -> str:
     return " ".join(found)
 
 
+# GO-5 PR-4: heredoc bodies a non-shell interpreter reads are its program text,
+# and `tee`/`gh` read them as data (a file, a PR body). None of it is shell;
+# Bash itself only runs an unquoted heredoc's `$()`/backticks.
+_HEREDOC_INTERPRETERS = {"python", "python3", "node", "bun", "deno", "ruby", "perl", "tee", "gh"}
+
+# Commands whose quoted arguments are data (messages, bodies, printed text).
+# Anything else keeps its quoted text: `psql -c '…'`, `bash -c '…'`, `eval`.
+_DATA_COMMANDS = {"echo", "printf", "gh"}
+_GIT_DATA_SUBCOMMANDS = {"commit", "tag", "notes"}
+
+
+def _interpreter_heredoc_header(header: str, *, piped: bool = False) -> bool:
+    """True when a non-shell reader (_HEREDOC_INTERPRETERS) consumes the
+    heredoc and its output is not piped on, e.g. into `sh`."""
+    if piped:
+        return False
+    try:
+        lexer = shlex.shlex(header, posix=True, punctuation_chars=";&|()<>")
+        lexer.whitespace_split = True
+        words = [w for w in lexer if "=" not in w]
+    except ValueError:
+        return False
+    return bool(words) and os.path.basename(words[0]) in _HEREDOC_INTERPRETERS
+
+
+def _is_data_command(words: list[str]) -> bool:
+    words = [w for w in words if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w)]
+    if not words:
+        return False
+    name = os.path.basename(words[0])
+    if name in _DATA_COMMANDS:
+        return True
+    rest = [w for w in words[1:] if not w.startswith("-")]
+    # A config override (`-c k=v`, `-ck=v`, `--config-env`) can name a program
+    # git then runs (core.editor, alias.x=!…); any override makes git non-data.
+    overrides = any(w.startswith(("-c", "--config-env")) for w in words[1:])
+    return name == "git" and not overrides and bool(rest) and rest[0] in _GIT_DATA_SUBCOMMANDS
+
+
+# Executors named anywhere in a command (as a word, or a path ending in one),
+# plus `.` in command position. `ssh`, `shell`, `bash_profile` do not match.
+_EXECUTOR_RE = re.compile(
+    r"(?<![\w.-])(?:psql|sqlite3|mysql|sh|bash|zsh|eval|source)(?![\w-])"
+    r"|(?:^|[;&|(\n])\s*\.\s"
+)
+
+
+def _has_unquoted_pipe(text: str) -> bool:
+    """True when `text` has a single `|` (or `|&`) outside quotes; `||` is not one."""
+    quote = None
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == "\\" and quote != "'":
+            index += 2
+            continue
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in "'\"":
+            quote = char
+        elif char == "|" and text[index + 1:index + 2] != "|" and text[index - 1:index] != "|":
+            return True
+        index += 1
+    return False
+
+
+def _mask_data_argument_quotes(text: str) -> str:
+    """Blank the quoted arguments of data-only commands (echo/printf/gh, git
+    commit|tag|notes), keeping any `$()`/backticks Bash runs inside "…".
+
+    Fail-visible (GO-5 PR-4 round 3): nothing is masked when the command has
+    an unquoted pipe or names an executor, since the data may reach it. A file
+    written here and run by a LATER command is out of scope (never covered).
+    """
+    if "$'" in text:
+        return text  # ANSI-C quoting is not modelled; never risk a desync
+    if _has_unquoted_pipe(text) or _EXECUTOR_RE.search(text):
+        return text
+    out = []
+    words: list[str] = []
+    word = ""
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == "\\" and index + 1 < len(text):
+            out.append(text[index:index + 2])
+            word += text[index:index + 2]
+            index += 2
+            continue
+        if char in "'\"":
+            end = index + 1
+            while end < len(text) and text[end] != char:
+                end += 2 if char == '"' and text[end] == "\\" else 1
+            body = text[index + 1:end]
+            if words and _is_data_command(words):
+                body = "" if char == "'" else _executable_expansions(body)
+            out.append(char + body + (char if end < len(text) else ""))
+            word += char
+            index = end + 1
+            continue
+        if char in ";|&()\n":
+            words, word = [], ""
+        elif char in " \t":
+            if word:
+                words.append(word)
+            word = ""
+        else:
+            word += char
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
 def shell_text_without_heredoc_bodies(command: str) -> str:
     """Remove heredoc prose while retaining executable substitutions.
+
+    GO-5 PR-4: also drops heredoc bodies read by a non-shell interpreter and
+    the quoted prose of data-only commands (see _DATA_COMMANDS), so callers'
+    SQL/credential text scans see only what Bash would execute.
 
     The F8 reports were file-write heredocs whose prose quoted destructive
     commands. Scanning that prose blocks the act of reporting the bug. Quoted
@@ -3835,16 +3953,15 @@ def shell_text_without_heredoc_bodies(command: str) -> str:
                 header = _HEREDOC_RE.sub(
                     "", line[segment_start + 1:segment_end]
                 )
+                piped = segment_end < len(line) and line[segment_end] == "|"
                 file_write = _literal_file_heredoc_header(
-                    header,
-                    piped=segment_end < len(line)
-                    and line[segment_end] == "|",
-                )
+                    header, piped=piped
+                ) or _interpreter_heredoc_header(header, piped=piped)
                 pending.append(
                     (delimiter, quoted, bool(match.group(1)), file_write)
                 )
         output.append(source_line)
-    return "".join(output)
+    return _mask_data_argument_quotes("".join(output))
 
 
 def _backtick_bodies(command: str) -> list[str]:

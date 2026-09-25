@@ -773,3 +773,181 @@ def test_w27_correct_kill_forms_stay_allowed():
     )
     for command in allowed:
         assert git_safety.dangerous_shell_reason(command) is None, command
+
+
+# ── GO-5 PR-4: text-grep false positives → parse ───────────────────────────────
+# pre_tool_use.py runs its SQL and credential regexes over
+# shell_text_without_heredoc_bodies(), so these pin what that text keeps.
+
+def _harness_scratchpad(tmp_path, monkeypatch):
+    # The harness scratchpad shape directly under a temp root; TMPDIR makes
+    # tmp_path a temp root for the structural check.
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    pad = tmp_path / "claude-501" / "-Users-x-Gits-golems" / "f5dda6e0-2c6f-4cc9-8394-e7752be953e5" / "scratchpad"
+    pad.mkdir(parents=True)
+    return pad
+
+
+def test_pr4_repo_clone_inside_the_harness_scratchpad_is_disposable(tmp_path, monkeypatch):
+    pad = _harness_scratchpad(tmp_path, monkeypatch)
+    clone = pad / "rehearsal" / "golems"
+    (clone / ".git").mkdir(parents=True)
+    for command in (f'rm -rf "{clone}"', f'rm -rf "{clone}/.worktrees/hooks-live"'):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is None, command
+
+
+def test_pr4_repo_roots_outside_the_exact_scratchpad_shape_stay_protected(tmp_path, monkeypatch):
+    pad = _harness_scratchpad(tmp_path, monkeypatch)
+    near_misses = (
+        pad.parent / "scratchpad-evil" / "golems",   # component must be exactly `scratchpad`
+        pad.parent / "notes" / "golems",             # no scratchpad component
+        tmp_path / "Gits" / "golems",                # an ordinary checkout
+    )
+    for repo in near_misses:
+        (repo / ".git").mkdir(parents=True)
+        assert git_safety.dangerous_shell_reason(
+            f'rm -rf "{repo}"', cwd=str(tmp_path), env={}
+        ) is not None, repo
+
+
+def test_pr4_data_command_prose_is_masked_for_the_sql_and_credential_scans():
+    for command in (
+        "gh pr comment 12 --body \"no DROP TABLE anywhere\"",
+        "printf '### post: we never DROP TABLE users here\\n' >> collab.md",
+        "git commit -m 'docs: explain why DROP TABLE is blocked'",
+        "echo 'DROP TABLE is prose' || true",   # `||` is not a pipe
+        # A `|` inside quotes (a markdown table row) is not a pipe (round 3, rule 1).
+        "printf '| col | DROP TABLE |\\n' >> table.md",
+        # Near-miss words are not executors (round 3, rule 2).
+        "gh pr comment 1 --body \"over ssh, in a shell, via ~/.bash_profile: no DROP TABLE\"",
+        "true || echo 'DROP TABLE is prose'",
+        "echo 'never cat > credentials.json by hand' >> notes.md",
+        "python3 - <<'PY'\nprint('DROP TABLE users; rm -rf /tmp/extract/')\nPY",
+    ):
+        text = git_safety.shell_text_without_heredoc_bodies(command)
+        assert "DROP TABLE" not in text and "credentials.json" not in text, (command, text)
+
+
+def test_pr4_executed_sql_and_substitutions_are_still_visible():
+    for command, needle in (
+        ("psql -c 'DROP TABLE users'", "DROP TABLE"),
+        ("sqlite3 db.sqlite 'drop table x'", "drop table"),
+        # r7 round-1 blocker: a data command piped onward feeds an executor.
+        ("echo 'DROP TABLE users;' | psql", "DROP TABLE"),
+        ("printf 'drop table x;' | sqlite3 db", "drop table"),
+        ("echo 'DROP TABLE t;' | tee /x/log | psql", "DROP TABLE"),
+        ("echo 'DROP TABLE t;' |& psql", "DROP TABLE"),
+        # Round 3, rule 1: any unquoted single `|` disables masking, so a compound
+        # piped into an executor (listed or not) keeps its text.
+        ("( echo 'DROP TABLE t;' ) | duckdb db", "DROP TABLE"),
+        ("{ echo 'DROP TABLE t;'; } | duckdb db", "DROP TABLE"),
+        ("for x in 1; do echo 'DROP TABLE t;'; done | duckdb db", "DROP TABLE"),
+        # Round 3, rule 2: an executor named in the same command disables masking.
+        ("echo 'DROP TABLE t;' > q.sql; psql -f q.sql", "DROP TABLE"),
+        ("printf 'DROP TABLE t;' > q.sql && sqlite3 db < q.sql", "DROP TABLE"),
+        ("echo 'DROP TABLE t;' > q.sh; bash q.sh", "DROP TABLE"),
+        ("echo 'DROP TABLE t;' > q.sh; . q.sh", "DROP TABLE"),
+        ("echo 'DROP TABLE t;' > q.sql; /usr/bin/mysql < q.sql", "DROP TABLE"),
+        ("bash <<'EOF'\npsql -c 'DROP TABLE users'\nEOF", "DROP TABLE"),
+        ("echo \"$(psql -c 'DROP TABLE users')\"", "DROP TABLE"),
+        ("echo `rm -rf ~`", "rm -rf ~"),
+        ("echo \"done: $(rm -rf ~)\"", "rm -rf ~"),   # $() inside "…" of a data command runs
+        ("python3 - <<'PY' | sh\nprint('rm -rf ~')\nPY", "rm -rf ~"),
+        ("python3 - <<PY\n$(psql -c 'DROP TABLE users')\nPY", "DROP TABLE"),
+        ("git -c alias.x='!psql -c \"DROP TABLE t\"' x", "DROP TABLE"),
+        # git config can name a program git then RUNS (core.editor): never data.
+        ("git -c core.editor='psql -c \"DROP TABLE t\"' commit", "DROP TABLE"),
+        ("git -ccore.editor='psql -c \"DROP TABLE t\"' commit -m x", "DROP TABLE"),
+        ("git --config-env=core.editor=E commit -m 'DROP TABLE t'", "DROP TABLE"),
+    ):
+        assert needle in git_safety.shell_text_without_heredoc_bodies(command), command
+
+
+def test_pr4_fleet_fixtures_quoting_rm_are_allowed(tmp_path):
+    # w5 (01:03Z): a bats MUTATION edit whose replacement text holds `rm -rf …/*`.
+    # r5 (01:07Z): a `gh pr review` whose --body prose names a link removal.
+    for command in (
+        "sed -i '' 's|keep|rm -rf \"$TEST_ROOT\"/*|' scripts/tests/x.bats",
+        "gh pr review 12 --comment --body \"the fix removes the link: rm -rf ~/.claude/hooks/tmp-block\"",
+    ):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is None, command
+
+
+def test_pr4_ansi_c_quotes_disable_masking_rather_than_desync():
+    # `$'…\'…'` has quote rules the data-arg scanner does not model; a desynced
+    # scanner could swallow executed text, so the whole command stays visible.
+    # Without the bail-out, the scanner closes `$'a\'` early and then treats
+    # ` ; rm … ; echo ` as one quoted echo argument, hiding an executed rm.
+    # (An executor like psql would short-circuit via round 3's rule 2; rm is not one.)
+    command = "echo $'a\\'' ; rm -rf ~ ; echo 'x'"
+    assert "rm -rf ~" in git_safety.shell_text_without_heredoc_bodies(command)
+
+
+def test_pr4_fixture4_loop_over_literal_names_resolves_each_value(tmp_path):
+    # Hook false positive #4 (w6): a loop-local target built from a literal loop list.
+    sbx = tmp_path / "sbx"
+    sbx.mkdir()
+    command = f"for s in a b; do T={sbx}/wh-$s; rm -rf $T; done"
+    assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is None
+
+
+def test_pr4_fixture4_every_loop_value_is_checked_and_non_literal_lists_stay_blocked(tmp_path):
+    gits = tmp_path / "Gits"
+    (gits / "golems" / ".git").mkdir(parents=True)
+    for command in (
+        f"for d in foo golems; do rm -rf {gits}/$d; done",   # the 2nd value is a repo root
+        f"for d in a ..; do rm -rf {gits}/golems/x/$d; done",  # traversal is not a literal name
+        "for d in $(ls); do rm -rf $d; done",
+        f"for d in a b; do rm -rf {gits}/golems/$d; done; rm -rf ~",
+    ):
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env={"HOME": os.path.expanduser("~")}
+        ) is not None, command
+
+
+def test_pr4_fixture5_worktree_of_a_nested_throwaway_clone_is_disposable(tmp_path):
+    # Hook false positive #5 (r7): a sandbox clone inside the repo's gitignored
+    # docs.local, removing that clone's own worktree via a same-command variable.
+    outer = tmp_path / "outer"
+    (outer / ".git").mkdir(parents=True)
+    clone = outer / "docs.local" / "r7-sbx" / "golems"
+    (clone / ".git" / "worktrees" / "hooks-live").mkdir(parents=True)
+    worktree = clone / ".worktrees" / "hooks-live"
+    worktree.mkdir(parents=True)
+    (worktree / ".git").write_text(f"gitdir: {clone}/.git/worktrees/hooks-live\n")
+    command = "S=docs.local/r7-sbx; rm -rf $S/golems/.worktrees/hooks-live"
+    assert git_safety.dangerous_shell_reason(command, cwd=str(outer), env={}) is None
+
+
+def test_pr4_fixture6_quoted_heredoc_data_for_tee_and_gh_is_not_executed(tmp_path):
+    # Hook false positive #6 (r7): review prose naming a forced push, fed as data.
+    body = "the forced push `git push --force origin main` stays blocked\n"
+    for command in (
+        f"tee r.md >/dev/null <<'EOF'\n{body}EOF",
+        f"gh pr review 1 --approve --body-file - <<'EOF'\n{body}EOF",
+        f"cat > r.md <<'EOF'\n{body}EOF",
+    ):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is None, command
+
+
+def test_pr4_fixture6_executed_forms_stay_blocked(tmp_path):
+    body = "`git push --force origin main`\n"
+    for command in (
+        f"cat > r.md <<EOF\n{body}EOF",            # unquoted: backticks really run
+        f"tee r.md <<'EOF' | sh\n{body}EOF",        # piped into a shell
+        f"bash <<'EOF'\ngit push --force origin main\nEOF",
+        "git push --force origin main",
+    ):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is not None, command
+
+
+def test_pr4_fixture4_a_loop_body_that_changes_directory_is_not_unrolled(tmp_path):
+    # Iterations share one cwd: the 2nd `cd ..` lands on the repo root, so the
+    # 2nd rm removes a top-level directory. Checking each value from the start
+    # cwd would miss that, so such loops keep the unresolved-target block.
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    deeper = repo / "sub" / "deeper"
+    deeper.mkdir(parents=True)
+    command = "for d in keep sub; do cd ..; rm -rf $d; done"
+    assert git_safety.dangerous_shell_reason(command, cwd=str(deeper), env={}) is not None

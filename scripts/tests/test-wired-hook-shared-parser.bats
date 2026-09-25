@@ -15,7 +15,8 @@ teardown() {
   [ "$status" -eq 0 ] &&
     [[ "$output" == *"Install verified."* ]] &&
     [ -f "$TEST_ROOT/hooks/_shared/shell_parse.py" ] &&
-    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py"
+    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py" &&
+    cmp -s "$TEST_ROOT/hooks/_shared/harness_paths.py" "$REPO_ROOT/skills/golem-powers/_shared/harness_paths.py"
 }
 
 @test "a hook dir symlinked into a hooks root (install-hooks layout) resolves the shared parser" {
