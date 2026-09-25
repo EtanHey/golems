@@ -113,8 +113,21 @@ run_guard_history_ratchet() {
     "$guard" >"$output_file" 2>&1
 }
 
-violation_hash() {
-  printf '%s\n' "$1" | shasum -a 256 | awk '{print $1}'
+# Declare every current violation of a fixture as known, via the guard's own
+# digest printer (content classes digest their matched tokens, GO-5).
+declare_baseline() {
+  local test_repo=$1
+  local manifest="$test_repo/scripts/publish-boundary-known-violations.sha256"
+
+  local printed="$test_repo/printed-digests.txt"
+
+  PUBLISH_BOUNDARY_PRINT_DIGESTS=1 \
+    PUBLISH_BOUNDARY_ROOT="$test_repo" \
+    PUBLISH_BOUNDARY_POLICY="$test_repo/scripts/publish-boundary-policy.yaml" \
+    PUBLISH_BOUNDARY_ALLOWLIST="$test_repo/.publish-boundary-allow" \
+    "$guard" > "$printed" 2>&1 || return 1
+  awk '$1 ~ /^[0-9a-f]{64}$/ {print $1}' "$printed" | LC_ALL=C sort -u > "$manifest"
+  [[ -s $manifest ]]
 }
 
 record_pass() {
@@ -920,14 +933,17 @@ expect_known_violation_ratchet() {
   local baseline_output
   local growth_output
   local burndown_output
-  local known_line='[publication-operational-data] legacy-path.txt'
 
   test_repo=$(new_repo "known violation ratchet")
   baseline_output="$test_repo/baseline-output.txt"
   growth_output="$test_repo/growth-output.txt"
   burndown_output="$test_repo/burndown-output.txt"
   printf '%s\n' '/Users/legacy-fixture/.config/tool/settings.json' > "$test_repo/legacy-path.txt"
-  violation_hash "$known_line" > "$test_repo/scripts/publish-boundary-known-violations.sha256"
+  git -C "$test_repo" add -A
+  if ! declare_baseline "$test_repo"; then
+    record_fail "$(basename "$test_repo"): the guard could not print baseline digests" "$test_repo/printed-digests.txt"
+    return
+  fi
   git -C "$test_repo" add -A
 
   if ! run_guard_with_baseline "$test_repo" "$baseline_output"; then
@@ -954,16 +970,57 @@ expect_known_violation_ratchet() {
   fi
 }
 
+expect_known_violation_content_ratchet() {
+  local test_repo
+  local edit_output
+  local growth_output
+
+  # r14 (GO-5): the baseline used to digest only "[class] path", so a baselined
+  # file could gain a NEW private literal and still pass. The digest now covers
+  # the matched tokens too.
+  test_repo=$(new_repo "known violation content ratchet")
+  edit_output="$test_repo/edit-output.txt"
+  growth_output="$test_repo/growth-output.txt"
+  printf '%s\n' '/Users/legacy-fixture/.config/tool/settings.json' > "$test_repo/legacy-path.txt"
+  git -C "$test_repo" add -A
+  if ! declare_baseline "$test_repo"; then
+    record_fail "$(basename "$test_repo"): the guard could not print baseline digests" "$test_repo/printed-digests.txt"
+    return
+  fi
+  git -C "$test_repo" add -A
+
+  printf '%s\n' 'an unrelated prose line' >> "$test_repo/legacy-path.txt"
+  git -C "$test_repo" add -A
+  if ! run_guard_with_baseline "$test_repo" "$edit_output"; then
+    record_fail "known violation content ratchet: an edit adding no new literal was rejected" "$edit_output"
+    return
+  fi
+
+  printf '%s\n' '/Users/second-fixture/.ssh/config' >> "$test_repo/legacy-path.txt"
+  git -C "$test_repo" add -A
+  if run_guard_with_baseline "$test_repo" "$growth_output"; then
+    record_fail "known violation content ratchet: a second literal in a baselined file was accepted" "$growth_output"
+  elif grep -Fq '[publication-operational-data] legacy-path.txt' "$growth_output" \
+    && ! grep -Fq 'second-fixture' "$growth_output"; then
+    record_pass "known violation content ratchet rejects a new literal in a baselined file"
+  else
+    record_fail "known violation content ratchet: rejection lacked the path, or printed the literal" "$growth_output"
+  fi
+}
+
 expect_history_ratchet_rejects_add_then_delete() {
   local test_repo
   local history_base
   local output_file
-  local known_line='[publication-operational-data] legacy-path.txt'
 
   test_repo=$(new_repo "history ratchet add then delete")
   output_file="$test_repo/output.txt"
   printf '%s\n' '/Users/legacy-fixture/.config/tool/settings.json' > "$test_repo/legacy-path.txt"
-  violation_hash "$known_line" > "$test_repo/scripts/publish-boundary-known-violations.sha256"
+  git -C "$test_repo" add -A
+  if ! declare_baseline "$test_repo"; then
+    record_fail "$(basename "$test_repo"): the guard could not print baseline digests" "$test_repo/printed-digests.txt"
+    return
+  fi
   git -C "$test_repo" add -A
   git -C "$test_repo" commit -qm 'fixture: declare known publication baseline'
   history_base=$(git -C "$test_repo" rev-parse HEAD)
@@ -1099,6 +1156,7 @@ expect_missing_private_override_reject
 expect_reachable_history_reject
 expect_single_root_history_accept
 expect_known_violation_ratchet
+expect_known_violation_content_ratchet
 expect_history_ratchet_rejects_add_then_delete
 expect_workflow_history_fail_closed
 

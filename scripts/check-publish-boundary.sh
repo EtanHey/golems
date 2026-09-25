@@ -45,7 +45,7 @@ grep_paths_file="$scratch_dir/grep-paths.bin"
 new_violations_file="$scratch_dir/new-violations.txt"
 history_diagnostics="$scratch_dir/history-diagnostics.txt"
 expected_public_policy_fingerprint='dcae1580b07b2fd737e4e53e721940a4c7f4124f30308f63d2722151be20ff10'
-expected_known_violation_baseline_fingerprint='f3db6b8d5c7b51687104a3c00a0e91d0c81ac49980fac025edde1fb05fa0edfa'
+expected_known_violation_baseline_fingerprint='2372ecc96a7bb9103136a1355566d81702945447cbfbd314bddaa1ea15cde1df'
 expected_forbidden_classes='client-or-third-party credential-adjacent finance-rate finding-content github_action_full_sha health identity-pii mcp_executable_exact_version operator-verbatim private-structure private_structure_slash_suffix publication-operational-data raw-session real-identifiers substance synthetic_personal_fixture telegram_chat_id'
 # Bash 3.2 + `set -u` rejects expansion of a truly empty array. The empty
 # sentinel keeps exact-path lookup portable and can never match a tracked path.
@@ -444,6 +444,46 @@ index_content_matches() {
   fi
 }
 
+# GO-5 (r14): the known-violation digest covers WHAT matched, not only where.
+# A content-class violation digests its sorted, unique, lowercased matched
+# tokens (after the class's allowed patterns are stripped), so a baselined file
+# that gains a new literal becomes a new violation. Tokens are hashed, never
+# printed. Path-only classes keep the `[class] path` digest.
+content_tokens() {
+  local class_name=$1
+  local tracked_path=$2
+  local allowed_regex
+  local pattern
+
+  git -C "$repo_root" cat-file -e ":$tracked_path" 2>/dev/null || return 0
+  allowed_regex=$(awk -F '\t' -v wanted="$class_name" '$1 == wanted { if (found++) printf "|"; printf "%s", $2 }' "$allowed_patterns_file")
+  while IFS=$'\t' read -r pattern_class pattern; do
+    [[ $pattern_class == "$class_name" && -n $pattern ]] || continue
+    git -C "$repo_root" show ":$tracked_path" \
+      | if [[ -n $allowed_regex ]]; then
+          ALLOWED_REGEX="$allowed_regex" perl -0pe 'BEGIN { $allowed = qr/$ENV{ALLOWED_REGEX}/i } s/$allowed//g'
+        else
+          cat
+        fi \
+      | { grep -a -i -o -E -e "$pattern" || [[ $? -eq 1 ]]; } \
+      || fail_config "content token scan failed for $tracked_path"
+  done < "$patterns_file" | LC_ALL=C tr '[:upper:]' '[:lower:]' | LC_ALL=C sort -u
+}
+
+violation_digest() {
+  local violation_line=$1
+  local class_name=${violation_line#\[}
+  local tokens
+
+  class_name=${class_name%%\]*}
+  tokens=$(content_tokens "$class_name" "${violation_line#*\] }")
+  if [[ -n $tokens ]]; then
+    printf '%s\n%s\n' "$violation_line" "$tokens" | shasum -a 256 | awk '{print $1}'
+  else
+    printf '%s\n' "$violation_line" | shasum -a 256 | awk '{print $1}'
+  fi
+}
+
 github_action_full_sha_violations() {
   "$ruby_bin" - "$repo_root" <<'RUBY'
 require "open3"
@@ -738,6 +778,15 @@ elif [[ $history_mode == single-root ]]; then
   fi
 fi
 
+if [[ ${PUBLISH_BOUNDARY_PRINT_DIGESTS:-} == 1 ]]; then
+  # Baseline maintenance: `<digest>  [class] path` per current violation.
+  while IFS= read -r violation_line; do
+    [[ -n $violation_line ]] || continue
+    printf '%s  %s\n' "$(violation_digest "$violation_line")" "$violation_line"
+  done < <(LC_ALL=C sort -u "$violations_file")
+  exit 0
+fi
+
 if [[ -f $baseline_manifest ]]; then
   : > "$new_violations_file"
   known_violation_count=0
@@ -745,8 +794,8 @@ if [[ -f $baseline_manifest ]]; then
   if [[ -s $violations_file ]]; then
     while IFS= read -r violation_line; do
       [[ -n $violation_line ]] || continue
-      violation_digest=$(printf '%s\n' "$violation_line" | shasum -a 256 | awk '{print $1}')
-      if grep -Fqx -- "$violation_digest" "$baseline_manifest"; then
+      digest=$(violation_digest "$violation_line")
+      if grep -Fqx -- "$digest" "$baseline_manifest"; then
         known_violation_count=$((known_violation_count + 1))
       else
         printf '%s\n' "$violation_line" >> "$new_violations_file"
