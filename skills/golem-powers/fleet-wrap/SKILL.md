@@ -39,7 +39,7 @@ Order: handoff → stop monitors → final dashboard (if fleet-wide wrap) → cl
 1. **VERIFY done.** Per worker: state check + independent claim verification
    (`/never-fabricate` R8). A fleet is not wrapped because it looks quiet.
    - **Live guards:** run `bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <mbp|m1> --status` (read-only) and parse every line: `missing`/`unregistered` exit 0 with the gate off, so the exit code alone is not the check.
-     **Wrap-blocking:** `hooks-live=absent`; `drift` not `0` (incl. `?`); a hook line other than `ok`/`external(registered)`; `golems-fail-open` not `ok`; any `E1 … PRESENT`.
+     **Wrap-blocking:** `hooks-live=absent`; `drift` not `0` (incl. `?`); a hook line other than `ok`/`external(registered)`; `golems-fail-open` not `ok`; any `E1 … PRESENT`; a nonzero exit or no `hooks-live=` header at all (the installer died before reporting).
      Quote each blocking line on the dashboard and in the one message.
      Never run `--apply`/`--update` during a wrap: that is the hooks owner's (golemsLead).
 2. **KILL ALL POLLING.** `CronList` → `CronDelete` every monitor/heartbeat/status
