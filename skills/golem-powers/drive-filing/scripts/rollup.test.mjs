@@ -760,3 +760,94 @@ describe("B1 x v2: the content scan covers mtime units", () => {
     expect(p.totals.contentHeld).toBe(0);
   });
 });
+
+// PR-8b (spec owner, 2026-09-25 15:00): regenerable dirs are never planned,
+// never mtime units, never deleted; reported once with bytes. Holds win.
+describe("rollup: regenerable dirs are skipped, not archived", () => {
+  const touch = (repo, when, ...rels) => {
+    const t = new Date(when);
+    for (const rel of rels) utimesSync(join(repo, "docs.local", rel), t, t);
+  };
+
+  test.each(["__pycache__", "node_modules", ".venv", "venv", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".build", ".next", ".turbo", ".probe"])(
+    "%s is regenerable",
+    async (name) => {
+      const { isRegenerableDir } = await import("./rollup.mjs");
+      expect(isRegenerableDir(name)).toBe(true);
+    },
+  );
+
+  test("near-miss names are not regenerable", async () => {
+    const { isRegenerableDir } = await import("./rollup.mjs");
+    for (const name of ["build", "next-steps", "venv-notes", "my_node_modules_audit", "probe"]) {
+      expect(isRegenerableDir(name)).toBe(false);
+    }
+  });
+
+  test("__pycache__ under an old undated dir is not in the plan, and is reported once with bytes", () => {
+    const repo = fixture({ "tool/a.py": "print(1)", "tool/__pycache__/a.cpython-313.pyc": "0123456789" });
+    touch(repo, "2026-01-10T00:00:00Z", "tool/a.py", "tool/__pycache__/a.cpython-313.pyc");
+    const p = plan(repo);
+    expect(uploadPaths(p)).toEqual(["docs.local/tool/a.py"]);
+    expect(p.regenerable).toEqual([{ path: "docs.local/tool/__pycache__", files: 1, bytes: 10 }]);
+    const lines = rollup(repo).lines;
+    expect(lines).toContain("skipped: regenerable docs.local/tool/__pycache__/ (1 files, 10 bytes)");
+    expect(lines.at(-1)).toContain("regenerable-skipped=1 bytes=10");
+  });
+
+  test("dashboards/.probe/.helium-profile stays held: holds win over the skip list", () => {
+    const repo = fixture({
+      "dashboards/2026-01-05-board.html": "b",
+      "dashboards/.probe/.helium-profile/Local State": "x",
+      "dashboards/.probe/.helium-profile/Default/Cookies": "x",
+    });
+    const p = plan(repo);
+    expect(p.held.map((h) => h.path)).toContain("docs.local/dashboards/.probe");
+    expect(p.regenerable).toEqual([]);
+    expect(uploadPaths(p).some((f) => f.includes(".probe"))).toBe(false);
+  });
+
+  test("node_modules inside a dated item: the item still moves, node_modules is never uploaded and is reported once", () => {
+    const repo = fixture({
+      "2026-01-05-app/src.ts": "code",
+      "2026-01-05-app/node_modules/x/index.js": "js",
+      "2026-01-05-app/node_modules/x/node_modules/y/index.js": "js",
+    });
+    const p = plan(repo);
+    expect(p.moves).toEqual([{ from: "docs.local/2026-01-05-app", to: "docs.local/2026-01/2026-01-05-app" }]);
+    expect(uploadPaths(p)).toEqual(["docs.local/2026-01-05-app/src.ts"]);
+    expect(p.regenerable.map((r) => r.path)).toEqual(["docs.local/2026-01-05-app/node_modules"]);
+  });
+
+  test("a regenerable dir directly in an area is not an mtime unit", () => {
+    const repo = fixture({ "research/2026-02-01-x.md": "x", "research/.venv/lib/site.py": "s" });
+    touch(repo, "2026-01-01T00:00:00Z", "research/.venv/lib/site.py");
+    const p = plan(repo);
+    expect(p.mtimeUnits).toEqual([]);
+    expect(p.totals.emptyUnits).toBe(0);
+    expect(p.regenerable.map((r) => r.path)).toEqual(["docs.local/research/.venv"]);
+    expect(uploadPaths(p).some((f) => f.includes(".venv"))).toBe(false);
+  });
+
+  test("a dated name inside a regenerable dir does not make it an area", () => {
+    const p = plan(fixture({ "research/2026-02-01-x.md": "x", "research/node_modules/pkg-2026-01-01/index.js": "js" }));
+    expect(p.regenerable.map((r) => r.path)).toEqual(["docs.local/research/node_modules"]);
+    expect(p.moves.map((m) => m.from)).toEqual(["docs.local/research/2026-02-01-x.md"]);
+    expect(uploadPaths(p).some((f) => f.includes("node_modules"))).toBe(false);
+  });
+
+  test("a dated name only inside node_modules does not turn its parent into an area", () => {
+    const repo = fixture({ "tool/a.py": "print(1)", "tool/node_modules/pkg-2026-01-01/x.js": "js" });
+    touch(repo, "2026-01-10T00:00:00Z", "tool/a.py");
+    const p = plan(repo);
+    expect(p.upload.map((u) => [u.dir, u.dating])).toEqual([["docs.local/tool", "mtime"]]);
+    expect(uploadPaths(p)).toEqual(["docs.local/tool/a.py"]);
+    expect(p.totals.undated).toBe(0);
+  });
+
+  test("--apply deletes no regenerable file", () => {
+    const repo = fixture({ "2026-01-05-app/src.ts": "code", "2026-01-05-app/node_modules/x/index.js": "js" });
+    rollup(repo, "--apply");
+    expect(existsSync(join(repo, "docs.local/2026-01/2026-01-05-app/node_modules/x/index.js"))).toBe(true);
+  });
+});

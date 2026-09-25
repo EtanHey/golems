@@ -97,6 +97,18 @@ export function contentShapes(abs) {
   return CONTENT_SHAPES.map(([shape]) => shape).filter((shape) => found.has(shape));
 }
 
+// PR-8b: tool output that any checkout regenerates. Never archived, never an
+// mtime unit, never deleted; reported once with its size. Holds win: a
+// regenerable dir that holds a credential is handled like any other dir.
+const REGENERABLE_DIR = new Set([
+  "__pycache__", "node_modules", ".venv", "venv", ".pytest_cache", ".mypy_cache",
+  ".ruff_cache", ".build", ".next", ".turbo", ".probe",
+]);
+
+export function isRegenerableDir(name) {
+  return REGENERABLE_DIR.has(name);
+}
+
 // v2: every credential name rule holds a directory too (a *token* or *-env dir
 // is held whole), found when mtime units first let such a dir's files upload.
 export function isCredentialDir(name) {
@@ -174,7 +186,7 @@ function allFiles(abs) {
 // subtree is excluded) plus every credential-named file, including those
 // inside such a directory, so e.g. .codex-home-test/auth.json is named.
 function collect(abs) {
-  const out = { files: [], credentials: [], reports: [] };
+  const out = { files: [], credentials: [], reports: [], regenerable: [] };
   const stat = lstatSync(abs);
   if (stat.isSymbolicLink()) return out;
   const name = basename(abs);
@@ -194,11 +206,17 @@ function collect(abs) {
       if (isCredentialFile(basename(f.abs))) out.reports.push({ abs: f.abs, kind: "file" });
     }
   } else if (stat.isDirectory()) {
+    const inner = { files: [], credentials: [], reports: [], regenerable: [] };
     for (const child of readdirSync(abs).sort()) {
       const sub = collect(join(abs, child));
-      out.files.push(...sub.files);
-      out.credentials.push(...sub.credentials);
-      out.reports.push(...sub.reports);
+      for (const key of Object.keys(inner)) inner[key].push(...sub[key]);
+    }
+    if (isRegenerableDir(name) && inner.credentials.length === 0) {
+      // Reported once at its top; nested regenerable dirs fold into it.
+      const all = allFiles(abs);
+      out.regenerable.push({ abs, files: all.length, bytes: all.reduce((n, f) => n + f.bytes, 0) });
+    } else {
+      for (const key of Object.keys(inner)) out[key].push(...inner[key]);
     }
   }
   return out;
@@ -224,7 +242,11 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     held: [],
     skipped: [],
     mtimeUnits: [],
-    totals: { files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0, mtimeUnits: 0, mtimeBytes: 0, emptyUnits: 0, contentHeld: 0 },
+    regenerable: [],
+    totals: {
+      files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0, mtimeUnits: 0, mtimeBytes: 0,
+      emptyUnits: 0, contentHeld: 0, regenerable: 0, regenerableBytes: 0,
+    },
   };
   const allMtimeUnits = [];
   if (!existsSync(docsLocal)) return finish(plan);
@@ -250,10 +272,17 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
       unit.bytes += f.bytes;
     }
   };
-  const count = ({ files, credentials, reports }) => {
+  const count = ({ files, credentials, reports, regenerable }) => {
     for (const f of [...files, ...credentials]) {
       plan.totals.files += 1;
       plan.totals.bytes += f.bytes;
+    }
+    for (const r of regenerable) {
+      plan.regenerable.push({ path: rel(r.abs), files: r.files, bytes: r.bytes });
+      plan.totals.files += r.files;
+      plan.totals.bytes += r.bytes;
+      plan.totals.regenerable += 1;
+      plan.totals.regenerableBytes += r.bytes;
     }
     plan.totals.credentialFiles += credentials.length;
     for (const r of reports) {
@@ -274,7 +303,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     for (const name of readdirSync(abs)) {
       const child = join(abs, name);
       const stat = lstatSync(child);
-      if (stat.isSymbolicLink()) continue;
+      if (stat.isSymbolicLink() || (stat.isDirectory() && isRegenerableDir(name))) continue;
       if (datedMonth(name) || (stat.isDirectory() && monthFolder(name))) found = true;
       else if (stat.isDirectory()) found = datedBelow(child);
       if (found) break;
@@ -299,6 +328,8 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
       });
       return;
     }
+    // PR-8b: a regenerable dir at area level is already reported; it is no unit.
+    if (isRegenerableDir(basename(abs))) return;
     // F2: nothing to archive (no files, or only empty ones) is counted, never planned.
     const bytes = found.files.reduce((n, f) => n + f.bytes, 0);
     if (found.files.length === 0 || bytes === 0) {
@@ -362,6 +393,8 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
         groups.get(key).push({ abs, name, found: collect(abs), dated: Boolean(month) });
       } else if (stat.isDirectory() && (isCredentialDir(name) || isBrowserProfile(abs))) {
         count(collect(abs));
+      } else if (stat.isDirectory() && isRegenerableDir(name)) {
+        mtimeUnit(abs); // held if it holds a credential; otherwise reported as regenerable, no unit
       } else if (stat.isDirectory() && datedBelow(abs)) {
         walk(abs);
       } else if (stat.isDirectory()) {
@@ -435,6 +468,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
 function finish(plan) {
   plan.moves.sort((a, b) => a.from.localeCompare(b.from));
   plan.skipped.sort((a, b) => a.path.localeCompare(b.path));
+  plan.regenerable.sort((a, b) => a.path.localeCompare(b.path));
   plan.totals.monthlyMoves = plan.moves.length;
   plan.totals.uploadMonths = plan.upload.filter((u) => u.dating !== "mtime").length;
   plan.totals.uploadFiles = plan.upload.reduce((n, u) => n + u.files.length, 0);
@@ -462,6 +496,7 @@ export function summaryLine(plan) {
     `monthly-moves=${t.monthlyMoves} · ` +
     `to-drive months=${t.uploadMonths} files=${t.uploadFiles} bytes=${t.uploadBytes} (${human(t.uploadBytes)}) · ` +
     `mtime-units=${t.mtimeUnits ?? 0} bytes=${t.mtimeBytes ?? 0} empty-units=${t.emptyUnits ?? 0} · ` +
+    `regenerable-skipped=${t.regenerable ?? 0} bytes=${t.regenerableBytes ?? 0} · ` +
     `held=${t.held} content-held=${t.contentHeld ?? 0} credentials-skipped=${t.credentialFiles} conflicts=${plan.conflicts.length} undated=${t.undated}`
   );
 }
@@ -510,6 +545,7 @@ function main(argv) {
     ...plan.skipped.map((s) =>
       s.kind === "dir" ? `skipped: credential ${s.path}/ (${s.files} files)` : `skipped: credential ${s.path}`,
     ),
+    ...plan.regenerable.map((r) => `skipped: regenerable ${r.path}/ (${r.files} files, ${r.bytes} bytes)`),
     ...plan.held.flatMap((h) => [
       `held: ${h.reason} ${h.path}`,
       ...h.members.map((m) => `  item: ${m}`),
