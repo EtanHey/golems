@@ -268,6 +268,11 @@ make_tracked_worktree_skills() {
     cmp -s \
         "$REPO_ROOT/scripts/repogolem/golem-dispatch.zsh" \
         "$HOST_ROOT/.config/ralphtools/golem-dispatch.zsh"
+    # -w launches need the bootstrap next to the dispatcher; the payload must ship it.
+    [ -x "$HOST_ROOT/.config/ralphtools/worktree-bootstrap.sh" ]
+    cmp -s \
+        "$REPO_ROOT/scripts/repogolem/worktree-bootstrap.sh" \
+        "$HOST_ROOT/.config/ralphtools/worktree-bootstrap.sh"
     [[ "$output" == *"launcher hash verified"* ]] || false
     [ "$(jq -r '.counts.added' "$HOST_ROOT/.golems/INSTALLED.json")" -eq 1 ]
 }
