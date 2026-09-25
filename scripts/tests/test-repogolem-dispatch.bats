@@ -3304,3 +3304,79 @@ AGY
     grep -F -x -q -- "flash-low=Gemini 3.8 Flash (Low)" <<< "$output"
     ! grep -F -q -- "Gemini 3.5 Flash" <<< "$output"
 }
+
+# BSD mktemp (macOS) only substitutes TRAILING X's: `name.XXXXXX.json` is
+# created literally, so a second concurrent launch for the same project hits
+# `mkstemp failed ... File exists` (#268). GNU mktemp substitutes the X run
+# wherever it sits, so the shim below reproduces BSD semantics on Linux CI.
+# The barrier holds every call until both launches have attempted that
+# template, forcing the overlap the real race depends on.
+BSD_MKTEMP_SHIM='function mktemp() {
+        local tmpl="${@[-1]}"
+        print -r -- "$tmpl" >> "$MKTEMP_ATTEMPTS"
+        local -i tries=0
+        while (( $(grep -c -x -F -- "$tmpl" "$MKTEMP_ATTEMPTS") < 2 && tries < 60 )); do
+          sleep 0.05
+          (( tries += 1 ))
+        done
+        local out
+        if [[ "$tmpl" == *XXX ]]; then
+          out=$(command mktemp "$tmpl") || return 1
+        else
+          out="$tmpl"
+          if ! ( set -o noclobber; : > "$out" ) 2>/dev/null; then
+            print -u2 -- "mktemp: mkstemp failed on ${tmpl}: File exists"
+            return 1
+          fi
+        fi
+        print -r -- "$out" >> "$MKTEMP_CREATED"
+        print -r -- "$out"
+      }'
+
+@test "tracked dispatcher source: concurrent agy workspace syncs for one project do not collide on BSD mktemp" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home" xdg="$TMPDIR_/xdg-runtime"
+    mkdir -p "$fake_home" "$xdg"
+    export MKTEMP_ATTEMPTS="$TMPDIR_/mktemp-attempts" MKTEMP_CREATED="$TMPDIR_/mktemp-created"
+    : > "$MKTEMP_ATTEMPTS"
+    : > "$MKTEMP_CREATED"
+    printf '%s\n' '{"mcpServers":{"local":{"command":"true"}}}' > "$PROJECT_DIR/.mcp.json"
+
+    run zsh -f -c '
+      export HOME="$1" XDG_RUNTIME_DIR="$2"
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      '"$BSD_MKTEMP_SHIM"'
+      source "$3"
+      _golem_sync_agy_workspace testrepo "$4" & local pid_a=$!
+      _golem_sync_agy_workspace testrepo "$4" & local pid_b=$!
+      wait $pid_a; print -r -- "RUN_A=$?"
+      wait $pid_b; print -r -- "RUN_B=$?"
+    ' _ "$fake_home" "$xdg" "$SOURCE_DISPATCHER" "$PROJECT_DIR"
+
+    [ "$status" -eq 0 ]
+    grep -F -x -q -- "RUN_A=0" <<< "$output"
+    grep -F -x -q -- "RUN_B=0" <<< "$output"
+    ! grep -F -q -- "mkstemp failed" <<< "$output"
+
+    # Four temp files per launch, eight in all, and no two launches shared one.
+    [ "$(wc -l < "$MKTEMP_CREATED")" -eq 8 ]
+    [ -z "$(sort "$MKTEMP_CREATED" | uniq -d)" ]
+    ! grep -F -q -- "XXXXXX" "$MKTEMP_CREATED"
+    [ -z "$(find "$xdg" "$fake_home" "$PROJECT_DIR" -name '*XXXXXX*' -print)" ]
+
+    jq -e '.mcpServers.local.command == "true"' "$PROJECT_DIR/.agents/mcp_config.json"
+    jq -e '.mcpServers.local.command == "true"' "$fake_home/.gemini/config/mcp_config.json"
+}
+
+@test "tracked dispatcher source ends every mktemp template in X's" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    # BSD mktemp leaves X's that are followed by anything else unsubstituted.
+    run grep -n -E 'mktemp[^)]*XXX[^X"]' "$SOURCE_DISPATCHER"
+    if [ "$status" -eq 0 ]; then
+        echo "mktemp templates with a suffix after the X's:" >&2
+        echo "$output" >&2
+        return 1
+    fi
+}
