@@ -14,7 +14,8 @@ async function checkPort(port: number): Promise<boolean> {
 // (packages/services/src/cloud-worker.ts) schedules both.
 async function checkCloudWorker(): Promise<boolean> {
   try {
-    const result = await $`pgrep -f cloud-worker.ts`.quiet().nothrow();
+    // Match the bun process only, not an editor or grep with the name open.
+    const result = await $`pgrep -f ${"bun.*cloud-worker\\.ts"}`.quiet().nothrow();
     return result.exitCode === 0;
   } catch {
     return false;

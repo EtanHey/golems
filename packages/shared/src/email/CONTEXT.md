@@ -255,7 +255,7 @@ SUPABASE_ANON_KEY=...
 
 ## Related Files
 
-- `../briefing.ts` - Morning briefing integration
-- `@golems/shared/lib/llm` (`../lib/llm.ts`) - Unified LLM facade and JSON helper
+- `packages/services/src/briefing.ts` - Morning briefing integration
+- `packages/shared/src/lib/llm.ts` (`@golems/shared/lib/llm`) - Unified LLM facade and JSON helper
 - `packages/services/src/cloud-worker.ts` - Scheduler
-- `../../supabase/migrations/001_email_golem_tables.sql` - Schema
+- Schema: the Supabase migration for these tables is not tracked in this repo

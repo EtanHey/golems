@@ -23,6 +23,9 @@ STATE_FILE = pathlib.Path(os.environ.get("GEMINI_RESEARCH_STATE_FILE", pathlib.P
 # The nlm profile every live NotebookLM call runs under. No default: main()
 # refuses to run live mode without it.
 NLM_PROFILE = os.environ.get("GEMINI_RESEARCH_PROFILE", "")
+# The Google account live mode must be signed in as; verify-account.sh reads
+# the same variable. No default: a placeholder would fail every real account.
+RESEARCH_ACCOUNT = os.environ.get("RESEARCH_ACCOUNT", "")
 
 
 def _load_drive_module():
@@ -233,7 +236,7 @@ def verify_account(fixture: dict[str, Any] | None) -> None:
             "bash",
             str(VERIFY_ACCOUNT_SCRIPT),
             "--expect",
-            "research-account@example.com",
+            RESEARCH_ACCOUNT,
         ]
     )
     payload = json.loads(result.stdout)
@@ -414,6 +417,13 @@ def main() -> int:
         print(
             "GEMINI_RESEARCH_PROFILE is not set: export it as the nlm profile to run under "
             "(the name you gave `nlm login --profile`).",
+            file=sys.stderr,
+        )
+        return 1
+    if fixture is None and not RESEARCH_ACCOUNT:
+        print(
+            "RESEARCH_ACCOUNT is not set: export it as the Google account Drive and "
+            "NotebookLM should be signed in as.",
             file=sys.stderr,
         )
         return 1
