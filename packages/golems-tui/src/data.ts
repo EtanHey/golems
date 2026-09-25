@@ -10,29 +10,14 @@ async function checkPort(port: number): Promise<boolean> {
   }
 }
 
-async function checkProcess(name: string): Promise<boolean> {
+// EmailGolem and JobGolem have no LaunchAgent of their own: the cloud worker
+// (packages/services/src/cloud-worker.ts) schedules both.
+async function checkCloudWorker(): Promise<boolean> {
   try {
-    const result = await $`pgrep -q ${name}`.quiet();
+    const result = await $`pgrep -f cloud-worker.ts`.quiet().nothrow();
     return result.exitCode === 0;
   } catch {
     return false;
-  }
-}
-
-async function checkLaunchAgent(svc: string): Promise<"running" | "stopped" | "error"> {
-  try {
-    const result = await $`launchctl list 2>/dev/null`.quiet();
-    const lines = result.stdout.toString();
-    const match = lines.split("\n").find(
-      (l) => l.includes(`com.golemszikaron.${svc}`) || l.includes(`com.golems.${svc}`)
-    );
-    if (!match) return "stopped";
-    const pid = match.trim().split(/\s+/)[0];
-    // PID column: "-" means not running, a number means running
-    if (pid === "-") return "stopped";
-    return /^\d+$/.test(pid) ? "running" : "error";
-  } catch {
-    return "stopped";
   }
 }
 
@@ -46,13 +31,21 @@ async function countClaudeSessions(): Promise<number> {
   }
 }
 
-export async function fetchGolemStatuses(): Promise<GolemInfo[]> {
-  const [telegramRunning, emailStatus, jobStatus, claudeSessions] = await Promise.all([
-    checkPort(3847),
-    checkLaunchAgent("email-golem"),
-    checkLaunchAgent("job-golem"),
-    countClaudeSessions(),
+export interface StatusProbe {
+  checkPort(port: number): Promise<boolean>;
+  checkCloudWorker(): Promise<boolean>;
+  countClaudeSessions(): Promise<number>;
+}
+
+const liveProbe: StatusProbe = { checkPort, checkCloudWorker, countClaudeSessions };
+
+export async function fetchGolemStatuses(probe: StatusProbe = liveProbe): Promise<GolemInfo[]> {
+  const [telegramRunning, cloudWorkerRunning, claudeSessions] = await Promise.all([
+    probe.checkPort(3847),
+    probe.checkCloudWorker(),
+    probe.countClaudeSessions(),
   ]);
+  const scheduled = cloudWorkerRunning ? "running" : "stopped";
 
   return [
     {
@@ -65,14 +58,14 @@ export async function fetchGolemStatuses(): Promise<GolemInfo[]> {
         "$ claude -c --resume",
         "🤖 Resuming session... context loaded",
         `🔄 Active sessions: ${claudeSessions}`,
-        "💾 Memory: Zikaron (sqlite-vec + bge-large)",
+        "💾 Memory: BrainLayer",
       ],
     },
     {
       name: "EmailGolem",
       emoji: "📧",
-      status: emailStatus,
-      detail: emailStatus === "running" ? "polling" : "inactive",
+      status: scheduled,
+      detail: cloudWorkerRunning ? "polling" : "cloud worker not running",
       description: "Routes emails to domain golems. Drafts replies. Tracks follow-ups.",
       trailerLines: [
         "$ golems email --triage",
@@ -113,8 +106,8 @@ export async function fetchGolemStatuses(): Promise<GolemInfo[]> {
     {
       name: "JobGolem",
       emoji: "🎯",
-      status: jobStatus,
-      detail: jobStatus === "running" ? "scraping" : "inactive",
+      status: scheduled,
+      detail: cloudWorkerRunning ? "scraping" : "cloud worker not running",
       description: "Job board scraper. Matches by skills + preferences. Scores fit.",
       trailerLines: [
         "$ golems jobs --matches",
