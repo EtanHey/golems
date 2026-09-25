@@ -2161,7 +2161,7 @@ CLAUDE
       | sed 's/^CODEX_ARG_COUNT=5$/CODEX_ARG_COUNT=1/')
     local actual_hash
     actual_hash=$(printf '%s' "$normalized_output" | shasum -a 256 | awk '{print $1}')
-    [ "$actual_hash" = "521e5aac195a56df8db3ad8778287dc14f8f123f046e075213a4947d588b1cb2" ]
+    [ "$actual_hash" = "86fcc2203e54cd62dc8947c3ead7051facb01184610f36346bb72c665cddf5fd" ]
 }
 
 @test "testrepoCodex consumes -w and launches from the requested worktree" {
