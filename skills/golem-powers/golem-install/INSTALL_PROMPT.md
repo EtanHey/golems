@@ -103,7 +103,8 @@ Paste into a Claude Code session to install the complete bundle without cloning 
 ```
 Install the golem-install bundle from EtanHey/golems without cloning the repository. Download
 SKILL.md, references/wizard.md, references/list-skills.md, workflows/wizard-setup.md,
-scripts/wizard-preflight.sh, scripts/repo-action.mjs, scripts/install-codex-config.mjs, the root
+scripts/wizard-preflight.sh, scripts/repo-action.mjs, scripts/install-codex-config.mjs,
+scripts/install-cmuxlayer-fleet.mjs, the root
 config/codex directory, and the root release-gate.json into ~/.claude/skills/golem-install
 (keeping each file's subdirectory), then run /golem-install and ask for the wizard.
 ```
@@ -117,7 +118,8 @@ DEST=~/.claude/skills/golem-install
 mkdir -p "$DEST/references" "$DEST/workflows" "$DEST/scripts" "$DEST/config/codex/agents"
 curl -fsSL "$BASE/SKILL.md" -o "$DEST/SKILL.md"
 for f in references/wizard.md references/list-skills.md workflows/wizard-setup.md \
-         scripts/wizard-preflight.sh scripts/repo-action.mjs scripts/install-codex-config.mjs; do
+         scripts/wizard-preflight.sh scripts/repo-action.mjs scripts/install-codex-config.mjs \
+         scripts/install-cmuxlayer-fleet.mjs; do
   curl -fsSL "$BASE/$f" -o "$DEST/$f"
 done
 for f in config/codex/config.toml config/codex/agents/recon.toml config/codex/agents/packet.toml release-gate.json; do
