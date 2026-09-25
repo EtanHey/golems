@@ -31,6 +31,7 @@ import sys
 # policy. shell_text_without_heredoc_bodies stays importable from here
 # (~/.claude/hooks/pre_tool_use.py imports it by this name).
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "_shared"))
+from harness_paths import is_harness_scratchpad  # noqa: E402
 from shell_parse import _backtick_bodies, shell_text_without_heredoc_bodies  # noqa: E402 F401
 
 
@@ -171,6 +172,11 @@ def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str |
         return "rm targeting home directory"
 
     repo = _outermost_repo_root(resolved)
+    # GO-5 PR-4: a repo living inside the harness session scratchpad (a throwaway
+    # clone or rehearsal) is disposable. Matched by the scratchpad's exact
+    # structure, never by a substring, so ~/Gits/<repo> stays protected.
+    if repo is not None and is_harness_scratchpad(repo):
+        repo = None
     if repo is not None:
         # W16: measuring breadth against the OUTERMOST root makes a worktree's own
         # contents disposable (the point of the fix) — but the worktree ROOT itself is

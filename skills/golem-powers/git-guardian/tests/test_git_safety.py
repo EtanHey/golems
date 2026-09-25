@@ -773,3 +773,87 @@ def test_w27_correct_kill_forms_stay_allowed():
     )
     for command in allowed:
         assert git_safety.dangerous_shell_reason(command) is None, command
+
+
+# ── GO-5 PR-4: text-grep false positives → parse ───────────────────────────────
+# pre_tool_use.py runs its SQL and credential regexes over
+# shell_text_without_heredoc_bodies(), so these pin what that text keeps.
+
+def _harness_scratchpad(tmp_path, monkeypatch):
+    # The harness scratchpad shape directly under a temp root; TMPDIR makes
+    # tmp_path a temp root for the structural check.
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    pad = tmp_path / "claude-501" / "-Users-x-Gits-golems" / "f5dda6e0-2c6f-4cc9-8394-e7752be953e5" / "scratchpad"
+    pad.mkdir(parents=True)
+    return pad
+
+
+def test_pr4_repo_clone_inside_the_harness_scratchpad_is_disposable(tmp_path, monkeypatch):
+    pad = _harness_scratchpad(tmp_path, monkeypatch)
+    clone = pad / "rehearsal" / "golems"
+    (clone / ".git").mkdir(parents=True)
+    for command in (f'rm -rf "{clone}"', f'rm -rf "{clone}/.worktrees/hooks-live"'):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is None, command
+
+
+def test_pr4_repo_roots_outside_the_exact_scratchpad_shape_stay_protected(tmp_path, monkeypatch):
+    pad = _harness_scratchpad(tmp_path, monkeypatch)
+    near_misses = (
+        pad.parent / "scratchpad-evil" / "golems",   # component must be exactly `scratchpad`
+        pad.parent / "notes" / "golems",             # no scratchpad component
+        tmp_path / "Gits" / "golems",                # an ordinary checkout
+    )
+    for repo in near_misses:
+        (repo / ".git").mkdir(parents=True)
+        assert git_safety.dangerous_shell_reason(
+            f'rm -rf "{repo}"', cwd=str(tmp_path), env={}
+        ) is not None, repo
+
+
+def test_pr4_data_command_prose_is_masked_for_the_sql_and_credential_scans():
+    for command in (
+        "gh pr comment 12 --body \"no DROP TABLE anywhere\"",
+        "printf '### post: we never DROP TABLE users here\\n' >> collab.md",
+        "git commit -m 'docs: explain why DROP TABLE is blocked'",
+        "echo 'never cat > credentials.json by hand' >> notes.md",
+        "python3 - <<'PY'\nprint('DROP TABLE users; rm -rf /tmp/extract/')\nPY",
+    ):
+        text = git_safety.shell_text_without_heredoc_bodies(command)
+        assert "DROP TABLE" not in text and "credentials.json" not in text, (command, text)
+
+
+def test_pr4_executed_sql_and_substitutions_are_still_visible():
+    for command, needle in (
+        ("psql -c 'DROP TABLE users'", "DROP TABLE"),
+        ("sqlite3 db.sqlite 'drop table x'", "drop table"),
+        ("bash <<'EOF'\npsql -c 'DROP TABLE users'\nEOF", "DROP TABLE"),
+        ("echo \"$(psql -c 'DROP TABLE users')\"", "DROP TABLE"),
+        ("echo `rm -rf ~`", "rm -rf ~"),
+        ("python3 - <<'PY' | sh\nprint('rm -rf ~')\nPY", "rm -rf ~"),
+        ("python3 - <<PY\n$(psql -c 'DROP TABLE users')\nPY", "DROP TABLE"),
+        ("git -c alias.x='!psql -c \"DROP TABLE t\"' x", "DROP TABLE"),
+        # git config can name a program git then RUNS (core.editor): never data.
+        ("git -c core.editor='psql -c \"DROP TABLE t\"' commit", "DROP TABLE"),
+        ("git -ccore.editor='psql -c \"DROP TABLE t\"' commit -m x", "DROP TABLE"),
+        ("git --config-env=core.editor=E commit -m 'DROP TABLE t'", "DROP TABLE"),
+    ):
+        assert needle in git_safety.shell_text_without_heredoc_bodies(command), command
+
+
+def test_pr4_fleet_fixtures_quoting_rm_are_allowed(tmp_path):
+    # w5 (01:03Z): a bats MUTATION edit whose replacement text holds `rm -rf …/*`.
+    # r5 (01:07Z): a `gh pr review` whose --body prose names a link removal.
+    for command in (
+        "sed -i '' 's|keep|rm -rf \"$TEST_ROOT\"/*|' scripts/tests/x.bats",
+        "gh pr review 12 --comment --body \"the fix removes the link: rm -rf ~/.claude/hooks/tmp-block\"",
+    ):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env={}) is None, command
+
+
+def test_pr4_ansi_c_quotes_disable_masking_rather_than_desync():
+    # `$'…\'…'` has quote rules the data-arg scanner does not model; a desynced
+    # scanner could swallow executed text, so the whole command stays visible.
+    # Without the bail-out, the scanner closes `$'a\'` early and then treats
+    # ` ; psql … ; echo ` as one quoted echo argument, hiding executed SQL.
+    command = "echo $'a\\'' ; psql -c \"DROP TABLE t\" ; echo 'x'"
+    assert "DROP TABLE" in git_safety.shell_text_without_heredoc_bodies(command)
