@@ -6,9 +6,7 @@ import path from "node:path";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const skillsRoot = path.resolve(here, "..", "..");
 const stopPolicyGates = [
-  "idle-dwell-gate",
   "fleet-wrap-gate",
-  "monitor-law-gate",
   "false-green-gate",
   "qa-verdict-gate",
 ];

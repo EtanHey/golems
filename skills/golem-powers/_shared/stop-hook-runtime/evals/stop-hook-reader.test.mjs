@@ -11,7 +11,6 @@ import {
   StopHookInputError,
 } from "../stop-hook-reader.mjs";
 import { detectFalseGreen } from "../../../false-green-gate/src/false-green-gate.mjs";
-import { detectIdleDwell } from "../../../idle-dwell-gate/src/idle-dwell-gate.mjs";
 import { materializeOversizeTranscript, readFixture } from "./helpers.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -39,15 +38,16 @@ test("bounded reader evaluates the JSONL tail instead of silently allowing an ov
   expect(context.receipt.transcriptBytesRead).toBeGreaterThan(0);
 });
 
+// GO-5: these used idle-dwell-gate's detector as the consumer; that gate is
+// deleted (E1), so they assert the reader's own output instead.
 test("bounded reader returns top-level durable state to the detector", () => {
   const fixture = readFixture(path.join(fixtureRoot, "durable-state.json"));
   const context = loadStopHookContext({
     transcript: fixture.transcript,
     state: fixture.state,
   });
-  const result = detectIdleDwell(context.transcript, { state: context.state });
-  expect(result.hookDecision).toBe("block");
-  expect(result.violations.map((item) => item.code)).toContain(fixture.expectedReason);
+  expect(context.state).toEqual(fixture.state);
+  expect(context.transcript.events.length).toBe(fixture.transcript.events.length);
 });
 
 test("bounded reader loads durable state from an explicit state path and accounts for its bytes", () => {
@@ -62,9 +62,7 @@ test("bounded reader loads durable state from an explicit state path and account
     transcript: fixture.transcript,
     state_path: statePath,
   });
-  const result = detectIdleDwell(context.transcript, { state: context.state });
-  expect(result.hookDecision).toBe("block");
-  expect(result.violations.map((item) => item.code)).toContain(fixture.expectedReason);
+  expect(context.state).toEqual(fixture.state);
   expect(context.receipt.stateBytesRead).toBe(Buffer.byteLength(stateText));
   expect(context.receipt.bytesRead).toBe(Buffer.byteLength(stateText));
 });

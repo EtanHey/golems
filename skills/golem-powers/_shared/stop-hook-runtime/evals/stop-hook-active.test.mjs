@@ -19,8 +19,6 @@ const ADVISORY = new Set(["false-green-gate", "fleet-wrap-gate", "qa-verdict-gat
 const GATES = [
   ["false-green-gate", "01-stale-app-stamp.json"],
   ["fleet-wrap-gate", "01-healthwatch-cron-left-armed.json"],
-  ["idle-dwell-gate", "09-done-workers-unharvested.json"],
-  ["monitor-law-gate", "01-monitor-absent.json"],
   ["qa-verdict-gate", "01-fail-page-never-loaded.json"],
 ];
 

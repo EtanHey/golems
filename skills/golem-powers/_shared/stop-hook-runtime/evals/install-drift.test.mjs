@@ -65,11 +65,6 @@ const oversizeCases = [
     expectedReason: "FALSE_GREEN_LIVE_PROBE",
   },
   {
-    gate: "monitor-law-gate",
-    fixture: path.join(powersRoot, "monitor-law-gate", "evals", "fixtures", "red", "01-monitor-absent.json"),
-    expectedReason: "MONITOR_ABSENT",
-  },
-  {
     gate: "fleet-wrap-gate",
     advisory: true, // GO-5 E2
     fixture: path.join(powersRoot, "fleet-wrap-gate", "evals", "fixtures", "red", "06-wrap-narrative-healthwatch-no-tool.json"),
@@ -104,74 +99,6 @@ for (const testCase of oversizeCases) {
     }
   });
 }
-
-test("installed-shape idle-dwell hook preserves top-level durable state and blocks an unstarted approved item", () => {
-  const fixture = readFixture(path.join(fixtureRoot, "durable-state.json"));
-  const root = makeInstalledShape("idle-dwell-gate");
-
-  const result = runHook(root, "idle-dwell-gate", {
-    transcript: fixture.transcript,
-    state: fixture.state,
-  });
-  expect(result.decision).toBe(fixture.expectedDecision);
-  expect(result.reason).toContain(fixture.expectedReason);
-});
-
-test("installed-shape monitor-law hook uses top-level durable registry state", () => {
-  const fixture = readFixture(path.join(
-    powersRoot,
-    "monitor-law-gate",
-    "evals",
-    "fixtures",
-    "green",
-    "07-claimed-monitor-live-heartbeat.json",
-  ));
-  const root = makeInstalledShape("monitor-law-gate");
-
-  const result = runHook(root, "monitor-law-gate", {
-    transcript: { events: fixture.events },
-    state: fixture.monitorRegistry,
-  });
-  expect(result).toEqual({});
-});
-
-test("installed-shape monitor-law hook keeps transcript registry when durable state is unrelated", () => {
-  const fixture = readFixture(path.join(
-    powersRoot,
-    "monitor-law-gate",
-    "evals",
-    "fixtures",
-    "green",
-    "07-claimed-monitor-live-heartbeat.json",
-  ));
-  const root = makeInstalledShape("monitor-law-gate");
-
-  const result = runHook(root, "monitor-law-gate", {
-    transcript: {
-      events: fixture.events,
-      monitorRegistry: fixture.monitorRegistry,
-    },
-    state: { queue: [{ id: "unrelated", status: "pending" }] },
-  });
-  expect(result).toEqual({});
-});
-
-test("installed-shape idle-dwell hook evaluates an oversized transcript tail with durable state", () => {
-  const fixture = readFixture(path.join(fixtureRoot, "durable-state.json"));
-  const root = makeInstalledShape("idle-dwell-gate");
-  const transcriptPath = path.join(makeScratchDir("stop-hook-fixture-"), "oversize.jsonl");
-  materializeOversizeTranscript(transcriptPath, {
-    paddingBytes: 614400,
-    tailEvents: fixture.transcript.events,
-  });
-
-  const result = runHook(root, "idle-dwell-gate", {
-    transcript_path: transcriptPath,
-    state: fixture.state,
-  });
-  expect(result.decision).toBe(fixture.expectedDecision);
-  expect(result.reason).toContain(fixture.expectedReason);
-});
 
 test("oversized inline stdin is explicit skipped telemetry rather than silent allow", () => {
   const root = makeInstalledShape("false-green-gate");

@@ -94,4 +94,4 @@ Run the loop in this order:
 - `/never-fabricate` owns verification receipts and claim discipline.
 - `/deploy-verify` owns post-merge deployed/live proof.
 - `/tdd-guard` enforces the repository's failing-test-first edit limit.
-- `/idle-dwell-gate`, `/false-green-gate`, and `/qa-verdict-gate` enforce their respective stop conditions.
+- `/false-green-gate` and `/qa-verdict-gate` flag their respective stop conditions (advisory).
