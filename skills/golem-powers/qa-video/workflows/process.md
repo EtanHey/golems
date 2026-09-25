@@ -79,6 +79,8 @@ done
 ```
 
 ### 3b. Hotspot Frames (with context)
+> **QA mode:** superseded by the mandatory dense action windows (`scripts/dense-windows.sh`, SKILL.md Key Design Decision #2). Single ±5s frames cannot show a click's target or the UI's reaction; use them only outside QA mode.
+
 For each identified hotspot timestamp:
 ```bash
 # Example: hotspot at 154 seconds
