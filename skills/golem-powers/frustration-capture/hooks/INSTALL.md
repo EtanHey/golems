@@ -6,7 +6,13 @@ The committed source of truth is:
 skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py
 ```
 
-## Install / refresh — an installed COPY, never a symlink
+## Install / refresh
+
+**Since GO-5 this hook is linked, not copied:** `scripts/hooks/install-hooks.sh --host <mbp|m1> --apply`
+symlinks `~/.claude/hooks/frustration-capture` to the pinned, locked `.worktrees/hooks-live` tree (a
+`git checkout` can no longer swap it) and `--status` reports drift. Moving the pin to a
+merge is `--update --apply`. `scripts/install.sh` below is the legacy COPY installer for
+hosts that don't use install-hooks; it refuses once the hook dir is a symlink.
 
 ```bash
 skills/golem-powers/frustration-capture/scripts/install.sh          # install or refresh

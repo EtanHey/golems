@@ -9,12 +9,12 @@ Hook-carried skill. The enforcing artifact is `hooks/tmp-block-pretooluse.py`
 (PreToolUse on `Write|Edit|NotebookEdit|Bash`); this page is its contract and
 audit guide.
 
-**Wired location:** an installed **copy** at
-`~/.claude/hooks/tmp-block/hooks/tmp-block-pretooluse.py` — never a symlink into
-a working tree, which would make the live fleet-wide guard whatever branch
-happens to be checked out. Install, refresh, and drift-check with
-`scripts/install.sh` (`--check` exits 1 when stale). **A merge does not deploy
-this hook; re-run the installer.** Details in `hooks/INSTALL.md`.
+**Wired location:** `~/.claude/hooks/tmp-block`, a symlink into the pinned, locked
+`golems/.worktrees/hooks-live` tree (GO-5), never into a working tree, which would make
+the live fleet-wide guard whatever branch happens to be checked out. Install with
+`scripts/hooks/install-hooks.sh --host <mbp|m1> --apply`; `--status` reports drift.
+**A merge does not deploy this hook; `--update --apply` moves the pin.** The legacy copy
+installer `scripts/install.sh` is described in `hooks/INSTALL.md`.
 
 ## Scope
 
