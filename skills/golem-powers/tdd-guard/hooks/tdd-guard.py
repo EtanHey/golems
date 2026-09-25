@@ -3,12 +3,13 @@
 TDD Guard - PreToolUse hook for Write/Edit.
 
 Enforces test-driven development by tracking implementation file modifications
-per session and blocking after 3+ modifications without a corresponding test file.
+per session and flagging (advisory, never blocking) after 3+ modifications without a
+corresponding test file.
 
 Behavior:
   - ALLOW + WARN: New file (doesn't exist yet) without a test
   - ALLOW + WARN: Existing file modified 1-2 times without a test
-  - BLOCK: Existing file modified 3+ times without a test file
+  - ALLOW + ADVISORY: Existing file modified 3+ times without a test file
   - ALLOW silently: Test files, config, docs, generated, skills, hooks, scripts
 """
 
@@ -285,24 +286,25 @@ def main():
     count = increment_modification_count(session_id, file_path)
 
     if count >= 3:
+        # GO-5 E2: advisory, never a block. A block made the model retry, and the
+        # name-based test lookup misses tests that live elsewhere.
         basename = os.path.basename(file_path)
         result = {
-            "decision": "block",
-            "reason": (
-                f"TDD violation: {basename} has been modified {count} times this session "
+            "systemMessage": (
+                f"TDD ADVISORY: {basename} has been modified {count} times this session "
                 f"without a test file. Create {expected_test_path} first. "
                 f"Red-Green-Refactor: write a failing test, then make it pass."
             ),
         }
         json.dump(result, sys.stdout)
-        sys.exit(2)
+        sys.exit(0)
 
     remaining = 3 - count
     basename = os.path.basename(file_path)
     result = {
         "systemMessage": (
             f"TDD WARNING: {basename} modified {count}x without a test file. "
-            f"{remaining} more edit(s) before this is blocked. "
+            f"{remaining} more edit(s) before the advisory. "
             f"Expected: {os.path.basename(expected_test_path)}"
         ),
     }

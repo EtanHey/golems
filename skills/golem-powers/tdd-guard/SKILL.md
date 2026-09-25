@@ -1,10 +1,10 @@
 ---
 name: tdd-guard
-description: "TDD edit-limit hook. Triggers: tdd guard, test-first hook, untested implementation block, snapshot/golden carve-out."
+description: "TDD edit-limit hook (advisory). Triggers: tdd guard, test-first hook, untested edits, snapshot/golden carve-out."
 hooks:
   PreToolUse:
     - hook: hooks/tdd-guard.py
-      description: Block implementation files edited 3+ times without a matching test.
+      description: Flag (advisory) implementation files edited 3+ times without a matching test.
 ---
 
 # tdd-guard - versioned TDD enforcement hook
@@ -22,8 +22,9 @@ A PreToolUse hook on Write/Edit. The limits apply to implementation files.
   session.
 - Existing implementation files edited 1-2 times without a matching test emit a
   warning.
-- Existing implementation files edited 3+ times without a matching test are
-  blocked.
+- Existing implementation files edited 3+ times without a matching test get a
+  `TDD ADVISORY` systemMessage. Never a block (GO-5 E2): a block made the model
+  retry, and the name-based lookup misses tests that live elsewhere.
 - Test files, docs/config/generated paths, hooks, scripts, skills, and skipped
   path segments are not classified as implementation.
 
@@ -45,7 +46,7 @@ gate when edited 3+ times without a test.
 `hooks/tests/test_tdd_guard.py` pins:
 
 - snapshot/golden/approval artifacts are allowed after three edits
-- a real `Service.ts` implementation file still blocks after three untested edits
+- a real `Service.ts` implementation file is still flagged after three untested edits
 - marker words embedded inside real implementation filenames are not carved out
 
 Run:
