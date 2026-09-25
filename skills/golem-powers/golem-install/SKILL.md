@@ -39,6 +39,9 @@ Full procedure: [references/wizard.md](references/wizard.md); phase checklist:
    A machine whose skill links point at a stale `~/.golems/skills` copy: `bun <golem-install-dir>/scripts/repoint-skills.mjs
    --source <clone>/skills/golem-powers` (dry-run; `--apply` repoints and drops dangling links, per-root counts
    for `~/.claude/skills`, `~/.agents/skills`, `~/.codex/skills`, `~/.gemini/antigravity/skills`; a missing root is skipped).
+   Gemini sees only a few skills: add `--link-missing` to create `~/.gemini/antigravity/skills/<name>` →
+   `../../../.agents/skills/<name>` for each golems skill linked in `~/.agents/skills` but absent there (never
+   overwrites; skipped without `~/.gemini/antigravity`; dry-run unless `--apply`; reports `linked=N`).
 6. **BrainLayer:** check BrainBar + `brain_search`; never block setup on it.
 7. **Report:** one line per release-gate result, including `REFUSE` and failures.
 
