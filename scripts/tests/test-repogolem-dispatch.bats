@@ -173,7 +173,7 @@ TOML
     [ "$status" -eq 0 ]
     [ -x "$fake_home/.config/ralphtools/golem-dispatch.zsh" ]
     grep -F -q -- "Installed repoGolem dispatcher:" <<< "$output"
-    rg -q "BrainLayer-first ambiguity gate|Theo Brown|BLOCKED_BRAINLAYER_UNAVAILABLE" "$fake_home/.config/ralphtools/golem-dispatch.zsh"
+    rg -q "BrainLayer-first ambiguity gate|BLOCKED_BRAINLAYER_UNAVAILABLE" "$fake_home/.config/ralphtools/golem-dispatch.zsh"
 }
 
 @test "install helper refuses targets outside HOME" {
@@ -257,7 +257,7 @@ AGY
       function _golem_reset_title() { return 0; }
 
       source "$4"
-      testrepoGemini -s "Prep Theo voice pairs"
+      testrepoGemini -s "Prep examplechannel voice pairs"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$TMPDIR_/bin" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -268,8 +268,7 @@ AGY
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
     grep -F -q -- "BrainLayer/user/project context before public web or popularity inference" <<< "$output"
     grep -F -q -- "BLOCKED_BRAINLAYER_UNAVAILABLE" <<< "$output"
-    grep -F -q -- "Theo Brown / T3.gg / existing Theo voice artifacts" <<< "$output"
-    ! grep -F -q -- "Theo Von" <<< "$output"
+    grep -F -q -- "resolve them from BrainLayer context and existing voice artifacts" <<< "$output"
 }
 
 @test "tracked dispatcher source keeps ambiguity gate on Gemini/agy continue prompts" {
@@ -310,7 +309,7 @@ AGY
       function _golem_reset_title() { return 0; }
 
       source "$4"
-      testrepoGemini -c "Prep Theo voice pairs"
+      testrepoGemini -c "Prep examplechannel voice pairs"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$TMPDIR_/bin" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -318,8 +317,7 @@ AGY
     grep -F -q -- "--prompt-interactive" <<< "$output"
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
     grep -F -q -- "BLOCKED_BRAINLAYER_UNAVAILABLE" <<< "$output"
-    grep -F -q -- "Theo Brown / T3.gg / existing Theo voice artifacts" <<< "$output"
-    ! grep -F -q -- "Theo Von" <<< "$output"
+    grep -F -q -- "resolve them from BrainLayer context and existing voice artifacts" <<< "$output"
 }
 
 @test "tracked dispatcher source keeps ambiguity gate on Gemini/agy continue without prompt" {
@@ -368,8 +366,7 @@ AGY
     grep -F -q -- "--prompt-interactive" <<< "$output"
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
     grep -F -q -- "BLOCKED_BRAINLAYER_UNAVAILABLE" <<< "$output"
-    grep -F -q -- "Theo Brown / T3.gg / existing Theo voice artifacts" <<< "$output"
-    ! grep -F -q -- "Theo Von" <<< "$output"
+    grep -F -q -- "resolve them from BrainLayer context and existing voice artifacts" <<< "$output"
 }
 
 @test "tracked dispatcher source keeps ambiguity gate on Gemini/agy continue print prompts" {
@@ -410,7 +407,7 @@ AGY
       function _golem_reset_title() { return 0; }
 
       source "$4"
-      testrepoGemini -c -p "Prep Theo voice pairs"
+      testrepoGemini -c -p "Prep examplechannel voice pairs"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$TMPDIR_/bin" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -418,8 +415,7 @@ AGY
     grep -F -q -- "--print" <<< "$output"
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
     grep -F -q -- "BLOCKED_BRAINLAYER_UNAVAILABLE" <<< "$output"
-    grep -F -q -- "Theo Brown / T3.gg / existing Theo voice artifacts" <<< "$output"
-    ! grep -F -q -- "Theo Von" <<< "$output"
+    grep -F -q -- "resolve them from BrainLayer context and existing voice artifacts" <<< "$output"
 }
 
 @test "tracked dispatcher source keeps ambiguity gate on Codex and Cursor continue prompts" {
@@ -455,8 +451,8 @@ AGENT
       function cursor() { print -r -- "CURSOR_ARGS=$*"; }
 
       source "$3"
-      testrepoCodex -c "Prep Theo voice pairs"
-      testrepoCursor -c "Prep Theo voice pairs"
+      testrepoCodex -c "Prep examplechannel voice pairs"
+      testrepoCursor -c "Prep examplechannel voice pairs"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -464,8 +460,7 @@ AGENT
     grep -F -q -- "CURSOR_ARGS=agent --continue" <<< "$output"
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
     grep -F -q -- "BLOCKED_BRAINLAYER_UNAVAILABLE" <<< "$output"
-    grep -F -q -- "Theo Brown / T3.gg / existing Theo voice artifacts" <<< "$output"
-    ! grep -F -q -- "Theo Von" <<< "$output"
+    grep -F -q -- "resolve them from BrainLayer context and existing voice artifacts" <<< "$output"
 }
 
 @test "tracked dispatcher source refuses Codex resume plus print while Cursor keeps print precedence" {
@@ -1718,7 +1713,7 @@ AGY
       export PATH="$2:$PATH"
 
       source "$3"
-      testrepoGemini "Prep Theo voice pairs"
+      testrepoGemini "Prep examplechannel voice pairs"
     ' _ "$TMPDIR_/registry-missing-path.json" "$TMPDIR_/bin" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 1 ]
@@ -2273,14 +2268,13 @@ NPX
 
       source "$5"
       _golem_register_wrappers
-      testrepoGemini -s "Prep Theo voice pairs"
+      testrepoGemini -s "Prep examplechannel voice pairs"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$TMPDIR_/bin" "$WORKTREE_DIR" "$DISPATCHER"
 
     [ "$status" -eq 0 ]
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
-    grep -F -q -- "Theo Brown / T3.gg / existing Theo voice artifacts" <<< "$output"
+    grep -F -q -- "resolve them from BrainLayer context and existing voice artifacts" <<< "$output"
     grep -F -q -- "BLOCKED_BRAINLAYER_UNAVAILABLE" <<< "$output"
-    ! grep -F -q -- "Theo Von" <<< "$output"
 }
 
 @test "testrepoClaude defaults to Opus 5.5 1M-context (no manual /model flip)" {

@@ -15,7 +15,7 @@
         {
           "name": "Bash",
           "input": {
-            "command": "narrate --speaker1 --reference theo-c4 --speaker2 -o out/dialogue.mp3"
+            "command": "narrate --speaker1 --reference examplechannel-c4 --speaker2 -o out/dialogue.mp3"
           }
         },
         { "name": "Bash", "input": { "command": "ls -l out/dialogue.mp3" } },
@@ -29,7 +29,7 @@
     },
     {
       "role": "tool",
-      "text": "speaker1 resolved --reference theo-c4 (registered clone); speaker2 no profile — falling back to system TTS neutral-reader"
+      "text": "speaker1 resolved --reference examplechannel-c4 (registered clone); speaker2 no profile — falling back to system TTS neutral-reader"
     },
     {
       "role": "tool",

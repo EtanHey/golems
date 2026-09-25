@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Stream Watcher — record a Twitch stream, auto-process when it ends.
 # Usage: stream-watcher.sh <channel> [quality]
-# Example: stream-watcher.sh theo best
+# Example: stream-watcher.sh examplechannel best
 #
 # Records video+audio via yt-dlp, chat via tmi.js lurker.
 # When stream ends (yt-dlp exits or watchdog kills it), detaches post-stream.sh.

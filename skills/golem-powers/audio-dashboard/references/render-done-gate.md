@@ -23,8 +23,8 @@ narration-SPECIALIZED, stricter **composite probe** a "give it a play" actually 
 2. A **reachable-surface** check — the artifact is located where it is claimed (file-on-disk at the claimed
    path), or — when the claim points the listener at a **served surface** (dashboard / URL) — an **HTTP-200**
    on the served audio URL **or** an **embedded-clickable** player a browser actually drove.
-3. A **voice-profile** gate — the resolved `--reference` is a **REGISTERED clone** (`theo-c4` / `theo-c4s` /
-   `ben-c1`), **FAIL-CLOSED** on a missing profile and on a silent system-TTS / neutral-reader fallback
+3. A **voice-profile** gate — the resolved `--reference` is a **REGISTERED clone** (`<expert>-c4` / `<expert>-c4s` /
+   `ben-c1`, with `<expert>` from `GOLEMS_EXPERT_VOICE`, placeholder `examplechannel`), **FAIL-CLOSED** on a missing profile and on a silent system-TTS / neutral-reader fallback
    (never fail-open).
 4. An **AUDIO-not-SCRIPT** contract — relaying the **script text** in place of the rendered audio artifact is
    not a render-done.
@@ -86,6 +86,6 @@ RED specimens: narrationlayer/e3a91210#1 ('give it a play', no mp3), narrationla
 script-relay (script text instead of audio). Evasion REDs: ffprobe-only-no-ls, surface-unreachable-dashboard,
 prose-bypass-no-tools, narrate-write-supplies-path (the path-tie binds to the ffprobe/ls COMMANDS, not any
 command — a `narrate -o <path>` write can't supply the match; cursor HIGH). GREEN references: composite-probe
-+ theo-c4 resolved, no-render (N/A), MCP-Bash-name-normalized + sub-second duration, served-surface verified
++ examplechannel-c4 resolved, no-render (N/A), MCP-Bash-name-normalized + sub-second duration, served-surface verified
 (HTTP-200 + embedded-click), embedded-wording-local-file (bare "embedded" prose must not force served-only
 verification; cursor MEDIUM).

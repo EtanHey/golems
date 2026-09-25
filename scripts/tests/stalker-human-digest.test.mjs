@@ -17,7 +17,7 @@ async function fixture(name = "complete") {
   const root = join(process.cwd(), `.test-stalker-human-digest-${process.pid}-${name}`);
   roots.push(root);
   await mkdir(root, { recursive: true });
-  await writeFile(join(root, "transcript.md"), `# Stream Transcript: theo (2026-09-08)
+  await writeFile(join(root, "transcript.md"), `# Stream Transcript: examplechannel (2026-09-08)
 
 ## [00:00] Segment 1 (10s)
 
@@ -73,7 +73,7 @@ test("cleans every transcript segment, labels repetitive ASR, and renders exact 
   const result = await generateHumanDigest({
     runDir,
     date: "2026-09-08",
-    channel: "Theo",
+    channel: "examplechannel",
     dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
     curateImpl: async ({ candidates, timeline }) => {
       assert.deepEqual(timeline, { startSeconds: 0, endSeconds: 60 });
@@ -115,7 +115,7 @@ test("rejects output whose supporting excerpt is not in its timestamped source",
     generateHumanDigest({
       runDir,
       date: "2026-09-08",
-      channel: "Theo",
+      channel: "examplechannel",
       dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
       generateImpl: async ({ outputPath }) => writeMap(outputPath, summary),
     }),
@@ -130,7 +130,7 @@ test("repairs case-only quote drift to an exact source excerpt", async () => {
   const result = await generateHumanDigest({
     runDir,
     date: "2026-09-08",
-    channel: "Theo",
+    channel: "examplechannel",
     dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
     generateImpl: async ({ outputPath }) => writeMap(outputPath, summary),
   });
@@ -149,7 +149,7 @@ test("anchors a grouped topic to the covered segment containing its quote", asyn
   const result = await generateHumanDigest({
     runDir,
     date: "2026-09-08",
-    channel: "Theo",
+    channel: "examplechannel",
     dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
     generateImpl: async ({ outputPath }) => writeFile(outputPath, JSON.stringify(mapped)),
   });
@@ -163,7 +163,7 @@ test("fails loudly on malformed output and missing transcript", async () => {
     generateHumanDigest({
       runDir,
       date: "2026-09-08",
-      channel: "Theo",
+      channel: "examplechannel",
       dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
       generateImpl: async ({ outputPath }) => writeFile(outputPath, "not json"),
     }),
@@ -177,7 +177,7 @@ test("fails loudly on malformed output and missing transcript", async () => {
     generateHumanDigest({
       runDir: missing,
       date: "2026-09-08",
-      channel: "Theo",
+      channel: "examplechannel",
       dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
       generateImpl: async () => assert.fail("generator must not run"),
     }),
@@ -196,7 +196,7 @@ test("rejects duplicate highlight evidence", async () => {
     generateHumanDigest({
       runDir,
       date: "2026-09-08",
-      channel: "Theo",
+      channel: "examplechannel",
       dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
       generateImpl: async ({ outputPath }) => writeMap(outputPath, summary),
     }),
@@ -215,7 +215,7 @@ test("marks unavailable transcription uncertain and refuses it as evidence", asy
   await assert.rejects(generateHumanDigest({
     runDir,
     date: "2026-09-08",
-    channel: "Theo",
+    channel: "examplechannel",
     dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
     generateImpl: async ({ outputPath }) => {
       const mapped = mapSummary();
@@ -238,7 +238,7 @@ test("rejects a map that omits any usable segment from coverage", async () => {
   await assert.rejects(generateHumanDigest({
     runDir,
     date: "2026-09-08",
-    channel: "Theo",
+    channel: "examplechannel",
     dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
     generateImpl: async ({ outputPath }) => {
       const mapped = mapSummary();
@@ -255,7 +255,7 @@ test("renders the contract's honest human sentence when there are no claims", as
   const result = await generateHumanDigest({
     runDir,
     date: "2026-09-08",
-    channel: "Theo",
+    channel: "examplechannel",
     dashboardUrl: "https://dash.example/stalker/2026-09-08.html",
     generateImpl: async ({ outputPath }) => writeMap(outputPath, summary),
   });

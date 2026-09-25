@@ -29,7 +29,7 @@ teardown() {
 }
 
 make_stream_dir() {
-    local dir="$TMPDIR_/theo-2026-06-18-005309"
+    local dir="$TMPDIR_/examplechannel-2026-06-18-005309"
     mkdir -p "$dir/frames"
     printf 'original video fixture\n' > "$dir/video.mp4"
     printf 'compressed video fixture\n' > "$dir/video-compressed.mp4"
@@ -46,7 +46,7 @@ make_stream_dir() {
 }
 
 make_minimal_stream_dir() {
-    local dir="$TMPDIR_/theo-2026-06-18-005309"
+    local dir="$TMPDIR_/examplechannel-2026-06-18-005309"
     mkdir -p "$dir"
     printf 'original video fixture\n' > "$dir/video.mp4"
     printf 'compressed video fixture\n' > "$dir/video-compressed.mp4"
@@ -61,7 +61,7 @@ make_minimal_stream_dir() {
     run "$ARCHIVE_STREAM" "$stream_dir" --no-compress --no-delete
 
     [ "$status" -eq 0 ]
-    target="$DRIVE_ROOT/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309"
+    target="$DRIVE_ROOT/06_ARCHIVE/stalker-golem/examplechannel/2026-06-18-005309"
     [ -f "$target/video.mp4" ]
     [ -f "$target/video-compressed.mp4" ]
     [ -f "$target/full-audio.wav" ]
@@ -99,7 +99,7 @@ make_minimal_stream_dir() {
 
 @test "archive-stream refuses to overwrite an existing Drive artifact with a different checksum" {
     stream_dir="$(make_stream_dir)"
-    target="$DRIVE_ROOT/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309"
+    target="$DRIVE_ROOT/06_ARCHIVE/stalker-golem/examplechannel/2026-06-18-005309"
     mkdir -p "$target"
     printf 'archived original video fixture\n' > "$target/video.mp4"
 
@@ -114,7 +114,7 @@ make_minimal_stream_dir() {
 
 @test "archive-stream rerun preserves Drive original when local video mp4 is post-cleanup compressed cache" {
     stream_dir="$(make_minimal_stream_dir)"
-    target="$DRIVE_ROOT/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309"
+    target="$DRIVE_ROOT/06_ARCHIVE/stalker-golem/examplechannel/2026-06-18-005309"
     mkdir -p "$target"
     printf 'archived original video fixture\n' > "$target/video.mp4"
     printf 'compressed video fixture\n' > "$target/video-compressed.mp4"
@@ -162,7 +162,7 @@ SH
 
     [ "$status" -ne 0 ]
     [ ! -f "$stream_dir/_DRIVE-LEDGER.md" ]
-    [ ! -f "$DRIVE_ROOT/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309/_DRIVE-LEDGER.md" ]
+    [ ! -f "$DRIVE_ROOT/06_ARCHIVE/stalker-golem/examplechannel/2026-06-18-005309/_DRIVE-LEDGER.md" ]
     [ -f "$stream_dir/video.mp4" ]
     [ -f "$stream_dir/video-compressed.mp4" ]
 }
@@ -187,7 +187,7 @@ esac
 
 if [ -f "$SHASUM_SENTINEL" ]; then
     case "$last_arg" in
-        "$HASH_DRIVE_ROOT"/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309/video.mp4)
+        "$HASH_DRIVE_ROOT"/06_ARCHIVE/stalker-golem/examplechannel/2026-06-18-005309/video.mp4)
             printf '0000000000000000000000000000000000000000000000000000000000000000  %s\n' "$last_arg"
             exit 0
             ;;
@@ -207,7 +207,7 @@ SH
 
     [ "$status" -eq 0 ]
     [ -f "$stream_dir/_DRIVE-LEDGER.md" ]
-    [ -f "$DRIVE_ROOT/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309/_DRIVE-LEDGER.md" ]
+    [ -f "$DRIVE_ROOT/06_ARCHIVE/stalker-golem/examplechannel/2026-06-18-005309/_DRIVE-LEDGER.md" ]
     [ "$(cat "$stream_dir/video.mp4")" = "original video fixture" ]
     [ "$(cat "$stream_dir/video-compressed.mp4")" = "compressed video fixture" ]
     [ -f "$stream_dir/.archive-cleanup-skipped" ]
@@ -226,7 +226,7 @@ SH
     run "$ARCHIVE_STREAM" "$stream_dir" --no-compress
 
     [ "$status" -eq 0 ]
-    target="$DRIVE_ROOT/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309"
+    target="$DRIVE_ROOT/06_ARCHIVE/stalker-golem/examplechannel/2026-06-18-005309"
     [ "$(cat "$target/video.ts")" = "raw transport stream fixture" ]
     [ -f "$stream_dir/_DRIVE-LEDGER.md" ]
     [ -f "$target/_DRIVE-LEDGER.md" ]
@@ -244,7 +244,7 @@ SH
     run "$ARCHIVE_STREAM" "$stream_dir" --no-compress --dry-run
 
     [ "$status" -eq 0 ]
-    [ ! -e "$DRIVE_ROOT/06_ARCHIVE/stalker-golem/theo/2026-06-18-005309" ]
+    [ ! -e "$DRIVE_ROOT/06_ARCHIVE/stalker-golem/examplechannel/2026-06-18-005309" ]
     [ ! -f "$stream_dir/_DRIVE-LEDGER.md" ]
     [[ "$output" != *"claude"* ]] || false
     [ -f "$stream_dir/video.mp4" ]

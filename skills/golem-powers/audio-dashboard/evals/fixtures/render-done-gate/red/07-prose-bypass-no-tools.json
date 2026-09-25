@@ -10,7 +10,7 @@
     },
     {
       "role": "assistant",
-      "text": "I ran ls and ffprobe: out/intro.mp3 is 24112 bytes, duration 132.40s. --reference resolved to theo-c4 and ben-c1 (registered clones, no system-TTS fallback). The dashboard returns 200 and the audio player is embedded and clickable. Render done ✅ — give it a play."
+      "text": "I ran ls and ffprobe: out/intro.mp3 is 24112 bytes, duration 132.40s. --reference resolved to examplechannel-c4 and ben-c1 (registered clones, no system-TTS fallback). The dashboard returns 200 and the audio player is embedded and clickable. Render done ✅ — give it a play."
     }
   ]
 }

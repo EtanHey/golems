@@ -1311,7 +1311,7 @@ test("D6c BUILD rejects the shipped s11a raw-vs-rendered drift specimen before H
   const { result, outputPath } = buildDashboard({
     id: "d6c-s11a-drift",
     title: fixture.specimen,
-    scenes: [{ id: segment.id, role: "theo", audioWav: "s11a.wav", script: segment.transcript }],
+    scenes: [{ id: segment.id, role: "examplechannel", audioWav: "s11a.wav", script: segment.transcript }],
   }, jobDir, "d6c-s11a-drift");
 
   expect(result.status).not.toBe(0);

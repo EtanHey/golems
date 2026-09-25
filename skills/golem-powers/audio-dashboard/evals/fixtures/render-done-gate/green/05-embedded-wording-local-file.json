@@ -9,11 +9,11 @@
     },
     {
       "role": "assistant",
-      "text": "Rendering with theo-c4, then the composite probe.",
+      "text": "Rendering with examplechannel-c4, then the composite probe.",
       "tools": [
         {
           "name": "Bash",
-          "input": { "command": "narrate --reference theo-c4 -o out/seg.mp3" }
+          "input": { "command": "narrate --reference examplechannel-c4 -o out/seg.mp3" }
         },
         { "name": "Bash", "input": { "command": "ls -l out/seg.mp3" } },
         {
@@ -26,13 +26,13 @@
     },
     {
       "role": "tool",
-      "text": "resolved --reference theo-c4 (registered clone)"
+      "text": "resolved --reference examplechannel-c4 (registered clone)"
     },
     { "role": "tool", "text": "-rw-r--r-- 1 user staff 19245 out/seg.mp3" },
     { "role": "tool", "text": "size=19245\nduration=168.62" },
     {
       "role": "assistant",
-      "text": "Render done ✅ — out/seg.mp3 is 19245 bytes, 168.62s, theo-c4 resolved, and it's embedded in the bundle. Give it a play."
+      "text": "Render done ✅ — out/seg.mp3 is 19245 bytes, 168.62s, examplechannel-c4 resolved, and it's embedded in the bundle. Give it a play."
     }
   ]
 }

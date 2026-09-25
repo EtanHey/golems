@@ -412,16 +412,19 @@ Typed failures use the plain-language `TELEPROMPTER_DRIFT` name and a positive
 runbook: regenerate the segment with real STT word timings, rebuild, then rerun
 the drift gate.
 
-## Voice Roles — Ben HOSTS, Theo EXPLAINS
+## Voice Roles — Ben HOSTS, the stream author EXPLAINS
 
-> Public voice-role contract: **Ben is the HOST. Theo is the EXPERT. Ben asks,
-> Theo explains unless a job explicitly overrides the roles.**
+> Public voice-role contract: **Ben is the HOST. The stream author is the EXPERT.
+> Ben asks, the stream author explains unless a job explicitly overrides the roles.**
 
 `src/voice-role-gate.mjs` owns this as two constants — `HOST_VOICE = "ben"`,
-`EXPERT_VOICE = "theo"` — and nothing else in the build path may re-state it.
+`EXPERT_VOICE` — and nothing else in the build path may re-state it. The repo
+never names the stream author: `EXPERT_VOICE` is read from `GOLEMS_EXPERT_VOICE`
+(one `<person>` segment) and falls back to the neutral `examplechannel` when unset.
 They are PERSONS, not profile ids: a person owns many profiles over time
-(`theo-c4`, `theo-c4s`, `theo-n4a`), so pinning an id would rot on the next
-cadence experiment while the ruling would not have changed.
+(`<expert>-c4`, `<expert>-c4s`, `<expert>-n4a`), so pinning an id would rot on the next
+cadence experiment while the ruling would not have changed. The render-done gate
+and `/false-green-gate` derive their registered expert clones from the same variable.
 
 A scene is gated when it declares BOTH a `role` of `host`/`expert` AND a voice
 (`reference` or `profile`). The person is read from the profile prefix

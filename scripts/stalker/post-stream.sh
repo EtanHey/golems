@@ -2,7 +2,7 @@
 # Post-stream handler — remuxes, processes, archives, and notifies.
 #
 # Usage: post-stream.sh <channel> <date>
-# Example: post-stream.sh theo 2026-02-23
+# Example: post-stream.sh examplechannel 2026-02-23
 #
 # New watcher mode:
 #   post-stream.sh <stream-dir> <video-file> <chat-log> <channel> [started-epoch]

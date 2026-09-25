@@ -265,7 +265,7 @@ _golem_build_agent_prompt() {
 For ambiguous proper nouns, named people, private voices, repo-local entities, projects, and artifacts:
 1. Search or use BrainLayer/user/project context before public web or popularity inference.
 2. If the task depends on a named person, voice, or private entity and BrainLayer is unavailable, stop with BLOCKED_BRAINLAYER_UNAVAILABLE instead of guessing.
-3. If the prompt mentions only `Theo` in a private voice/person task, resolve from BrainLayer context as Theo Brown / T3.gg / existing Theo voice artifacts unless verified context says otherwise.'
+3. If the prompt names a person only by first name in a private voice/person task, resolve them from BrainLayer context and existing voice artifacts unless verified context says otherwise.'
 
   if [[ -n "$user_prompt" ]]; then
     print -r -- "Adopt the following launcher agent context for this session. Treat it as the active agent protocol for this non-Claude CLI.

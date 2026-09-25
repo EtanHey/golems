@@ -382,10 +382,10 @@ describe("rollup v2: token allow-list (spec owner: keep /token/i, release proven
 });
 
 describe("rollup v2: a date anywhere in the item's name dates it", () => {
-  test("stalker-golem/theo-2026-03-19-015034/ is a March item: moved and, once old, uploaded", () => {
-    const p = plan(fixture({ "stalker-golem/theo-2026-03-19-015034/run.json": "{}" }));
+  test("stalker-golem/examplechannel-2026-03-19-015034/ is a March item: moved and, once old, uploaded", () => {
+    const p = plan(fixture({ "stalker-golem/examplechannel-2026-03-19-015034/run.json": "{}" }));
     expect(p.moves).toEqual([
-      { from: "docs.local/stalker-golem/theo-2026-03-19-015034", to: "docs.local/stalker-golem/2026-03/theo-2026-03-19-015034" },
+      { from: "docs.local/stalker-golem/examplechannel-2026-03-19-015034", to: "docs.local/stalker-golem/2026-03/examplechannel-2026-03-19-015034" },
     ]);
     expect(p.upload.map((u) => [u.dir, u.month])).toEqual([["docs.local/stalker-golem/2026-03", "2026-03"]]);
     expect(p.totals.undated).toBe(0);

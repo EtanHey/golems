@@ -25,7 +25,7 @@ T6 deterministic-CU smoke-spec shape).
 | Claim domain | Required live probe (same turn) | Violation if missing |
 |---|---|---|
 | render / audio / mp3 | `ffprobe` proving **size>0 AND duration>0** on the claimed path | `FALSE_GREEN_FFPROBE` |
-| …cloned / 2-voice render | `--reference` resolves to a registered clone (theo-c4/ben-c1), no system-TTS fallback | `FALSE_GREEN_VOICE` |
+| …cloned / 2-voice render | `--reference` resolves to a registered clone (`<GOLEMS_EXPERT_VOICE>-c4`/ben-c1; placeholder `examplechannel`), no system-TTS fallback | `FALSE_GREEN_VOICE` |
 | dashboard / UI / site | **HTTP 200** on the served URL | `FALSE_GREEN_DASHBOARD_200` |
 | | **AND** a signed-in **click-through** (200 alone is not enough) | `FALSE_GREEN_CLICK_THROUGH` |
 | deploy / merged / installed | build-stamp that **POST-DATES the merge** | `FALSE_GREEN_STAMP` |

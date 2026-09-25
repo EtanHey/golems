@@ -177,7 +177,7 @@ SH
 }
 
 @test "stalker_ytdlp_record_args: uses native HLS mpegts livestream-safe flags" {
-    run stalker_ytdlp_record_args "best" "$TMPDIR_/video.ts" "https://www.twitch.tv/theo"
+    run stalker_ytdlp_record_args "best" "$TMPDIR_/video.ts" "https://www.twitch.tv/examplechannel"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"--hls-use-mpegts"* ]] || false
@@ -220,24 +220,24 @@ $TMPDIR_/video.ts"* ]]
 @test "stalker_latest_stamped_stream_dir: exact rapid cascades ignore older directory mutations" {
     local root="$TMPDIR_/streams"
     mkdir -p \
-        "$root/theo-2026-08-20-032306" \
-        "$root/theo-2026-08-20-032307" \
-        "$root/theo-2026-08-20-032309" \
-        "$root/theo-2026-08-20-052008" \
-        "$root/theo-2026-08-20-052009" \
-        "$root/theo-2026-08-20-052010"
+        "$root/examplechannel-2026-08-20-032306" \
+        "$root/examplechannel-2026-08-20-032307" \
+        "$root/examplechannel-2026-08-20-032309" \
+        "$root/examplechannel-2026-08-20-052008" \
+        "$root/examplechannel-2026-08-20-052009" \
+        "$root/examplechannel-2026-08-20-052010"
 
     # Detached post-processing mutates an older run after the active run starts.
-    touch -t 203001010101 "$root/theo-2026-08-20-032306"
-    run stalker_latest_stamped_stream_dir "$root" theo
+    touch -t 203001010101 "$root/examplechannel-2026-08-20-032306"
+    run stalker_latest_stamped_stream_dir "$root" examplechannel
     [ "$status" -eq 0 ]
-    [ "$output" = "$root/theo-2026-08-20-052010" ]
+    [ "$output" = "$root/examplechannel-2026-08-20-052010" ]
 
-    rm -rf "$root/theo-2026-08-20-05"*
-    touch -t 203001010101 "$root/theo-2026-08-20-032306"
-    run stalker_latest_stamped_stream_dir "$root" theo
+    rm -rf "$root/examplechannel-2026-08-20-05"*
+    touch -t 203001010101 "$root/examplechannel-2026-08-20-032306"
+    run stalker_latest_stamped_stream_dir "$root" examplechannel
     [ "$status" -eq 0 ]
-    [ "$output" = "$root/theo-2026-08-20-032309" ]
+    [ "$output" = "$root/examplechannel-2026-08-20-032309" ]
 }
 
 @test "stalker live guard still restarts the watcher for a genuine newest-run stall" {
@@ -247,13 +247,13 @@ $TMPDIR_/video.ts"* ]]
     local launchctl_calls="$TMPDIR_/launchctl-calls"
     local guard_output="$TMPDIR_/guard-output"
     local expected_service="gui/$(id -u)/com.golems.stream-watcher"
-    mkdir -p "$log_dir/theo-2026-08-20-032306" \
-        "$log_dir/theo-2026-08-20-032309" \
+    mkdir -p "$log_dir/examplechannel-2026-08-20-032306" \
+        "$log_dir/examplechannel-2026-08-20-032309" \
         "$home/Gits/golems/scripts" \
         "$fake_bin"
-    truncate -s 2000000 "$log_dir/theo-2026-08-20-032306/video.ts"
-    truncate -s 2000000 "$log_dir/theo-2026-08-20-032309/video.ts"
-    touch -t 203001010101 "$log_dir/theo-2026-08-20-032306"
+    truncate -s 2000000 "$log_dir/examplechannel-2026-08-20-032306/video.ts"
+    truncate -s 2000000 "$log_dir/examplechannel-2026-08-20-032309/video.ts"
+    touch -t 203001010101 "$log_dir/examplechannel-2026-08-20-032306"
 
     cat > "$fake_bin/yt-dlp" <<'SH'
 #!/bin/bash
@@ -262,8 +262,8 @@ SH
     cat > "$fake_bin/pgrep" <<'SH'
 #!/bin/bash
 case "$*" in
-  *"stream-watcher.sh theo best"*) printf '101\n' ;;
-  *"yt-dlp.*theo"*) printf '202\n' ;;
+  *"stream-watcher.sh examplechannel best"*) printf '101\n' ;;
+  *"yt-dlp.*examplechannel"*) printf '202\n' ;;
   *"stream-watcher|yt-dlp|ffmpeg|twitch-lurk|process-stream"*) printf '101\n202\n' ;;
 esac
 SH
@@ -288,7 +288,7 @@ SH
         CHECK_INTERVAL=0 \
         STALL_SECONDS=0 \
         RESTART_COOLDOWN=999999 \
-        "$SCRIPT_DIR/stalker/stalker-live-guard.sh" theo best > "$guard_output" 2>&1 &
+        "$SCRIPT_DIR/stalker/stalker-live-guard.sh" examplechannel best > "$guard_output" 2>&1 &
     local guard_pid=$!
     for _ in {1..200}; do
         grep -F -q "kickstart -k $expected_service" "$launchctl_calls" 2>/dev/null && break
@@ -298,7 +298,7 @@ SH
     wait "$guard_pid" 2>/dev/null || true
 
     grep -F -q "video has not grown for" "$guard_output"
-    grep -F -q "$log_dir/theo-2026-08-20-032309/video.ts" "$guard_output"
+    grep -F -q "$log_dir/examplechannel-2026-08-20-032309/video.ts" "$guard_output"
     grep -F -x -q "kickstart -k $expected_service" "$launchctl_calls"
     ! grep -F -q "kickstart -k gui/$(id -u)/com.golems.heavy-ml-guardian" "$launchctl_calls"
 }
@@ -693,7 +693,7 @@ SH
 
 @test "stalker_gems_complete: header-only gems.md (no gems) is incomplete" {
     f="$TMPDIR_/gems.md"
-    printf '# Gems: theo (2026-07-23)\n\n' > "$f"
+    printf '# Gems: examplechannel (2026-07-23)\n\n' > "$f"
     run stalker_gems_complete "$f"
     [ "$status" -ne 0 ]
 }
@@ -709,4 +709,16 @@ SH
     printf '# Gems\n\n---\nGems found: 0\nScored: Wed Jul 23 2026\n' > "$f"
     run stalker_gems_complete "$f"
     [ "$status" -ne 0 ]
+}
+
+@test "stalker-live-guard: no default channel — a missing channel is a usage error" {
+    run bash "$SCRIPT_DIR/stalker/stalker-live-guard.sh"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Usage: stalker-live-guard.sh <channel>"* ]]
+}
+
+@test "stream-overnight-monitor: no default channel — a missing channel is a usage error" {
+    run bash "$SCRIPT_DIR/stalker/stream-overnight-monitor.sh"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Usage: stream-overnight-monitor.sh <channel>"* ]]
 }

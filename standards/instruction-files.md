@@ -50,7 +50,7 @@ At the top of `AGENTS.md`, below its title and above its body, a small glossary 
 
 The shape is shared, but the contents are repository-specific: define terms for the local fleet, omit terms that do not collide there, and do not invent a `provider` line in a repository with no providers.
 
-Etan approved this convention with “yes” on 2026-08-11, routed via maintenanceClaude from the Theo-gems adoption sprint.
+Etan approved this convention with “yes” on 2026-08-11, routed via maintenanceClaude from the stream-gems adoption sprint.
 
 This convention is advisory, not gated: `scripts/ci/check-instruction-shape.sh` is not extended to require a glossary, because a hard gate would turn every repository in the fleet red on day one.
 

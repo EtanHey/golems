@@ -8,31 +8,31 @@ test('publication writes an admitted source before sync and only explicitly sele
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const repoRoot = join(root, 'golems');
-  const runDir = join(repoRoot, 'docs.local/stalker-golem/theo-2026-09-08-030512');
+  const runDir = join(repoRoot, 'docs.local/stalker-golem/examplechannel-2026-09-08-030512');
   await mkdir(join(runDir, 'clips'), { recursive: true });
   await writeFile(join(runDir, 'clips/clip-10m47s.mp4'), 'media');
   await writeFile(join(runDir, 'clips/clip-20m00s.mp4'), 'old selection');
   await writeFile(join(runDir, 'private-log.txt'), 'must not be published');
-  const source = join(repoRoot, 'docs.local/dashboards/stalker/theo-2026-09-08-030512.html');
-  const evidenceRoot = join(repoRoot, 'docs.local/dashboards/stalker/evidence/theo-2026-09-08-030512');
+  const source = join(repoRoot, 'docs.local/dashboards/stalker/examplechannel-2026-09-08-030512.html');
+  const evidenceRoot = join(repoRoot, 'docs.local/dashboards/stalker/evidence/examplechannel-2026-09-08-030512');
   const assetPath = async asset => join(evidenceRoot, (await readdir(evidenceRoot))[0], asset);
   let syncCalls = 0;
   const result = await publishRunDashboard({
     runDir, repoRoot, orchestratorRoot: join(root, 'orchestrator'), hubOrigin: 'https://hub.example',
-    html: '<!doctype html><title>Theo</title>', assets: ['clips/clip-10m47s.mp4'],
+    html: '<!doctype html><title>examplechannel</title>', assets: ['clips/clip-10m47s.mp4'],
     syncImpl: async () => {
       syncCalls++;
-      assert.match(await readFile(source, 'utf8'), /Theo/);
+      assert.match(await readFile(source, 'utf8'), /examplechannel/);
       assert.equal(await readFile(await assetPath('clips/clip-10m47s.mp4'), 'utf8'), 'media');
       await assert.rejects(readFile(await assetPath('private-log.txt')));
     },
   });
   assert.equal(syncCalls, 1);
-  assert.equal(result.url, 'https://hub.example/dashboards/golems/stalker/theo-2026-09-08-030512.html');
-  assert.equal(result.sourceRelative, 'golems/docs.local/dashboards/stalker/theo-2026-09-08-030512.html');
+  assert.equal(result.url, 'https://hub.example/dashboards/golems/stalker/examplechannel-2026-09-08-030512.html');
+  assert.equal(result.sourceRelative, 'golems/docs.local/dashboards/stalker/examplechannel-2026-09-08-030512.html');
   assert.equal(await readFile(join(runDir, 'dashboard.html'), 'utf8'), await readFile(source, 'utf8'));
   const republish = assets => publishRunDashboard({ runDir, repoRoot, orchestratorRoot: join(root, 'orchestrator'),
-    hubOrigin: 'https://hub.example', html: '<!doctype html><title>Theo</title>', assets, syncImpl: async () => {} });
+    hubOrigin: 'https://hub.example', html: '<!doctype html><title>examplechannel</title>', assets, syncImpl: async () => {} });
   await republish(['clips/clip-10m47s.mp4', 'clips/clip-20m00s.mp4']);
   await assert.rejects(republish(['clips/clip-10m47s.mp4', 'clips/clip-99m00s.mp4']));
   assert.equal(await readFile(await assetPath('clips/clip-20m00s.mp4'), 'utf8'), 'old selection');
@@ -48,14 +48,14 @@ test('publication writes an admitted source before sync and only explicitly sele
   await rm(localDashboard, { recursive: true });
   await republish(['clips/clip-10m47s.mp4']);
   await assert.rejects(readFile(await assetPath('clips/clip-20m00s.mp4')));
-  assert.equal(await readFile(source, 'utf8'), '<!doctype html><title>Theo</title>');
+  assert.equal(await readFile(source, 'utf8'), '<!doctype html><title>examplechannel</title>');
 });
 
 test('unsafe assets, absent selected media and sync failures never report publication', async t => {
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const repoRoot = join(root, 'golems');
-  const runDir = join(repoRoot, 'docs.local/stalker-golem/theo-run');
+  const runDir = join(repoRoot, 'docs.local/stalker-golem/examplechannel-run');
   await mkdir(runDir, { recursive: true });
   const options = { runDir, repoRoot, orchestratorRoot: join(root, 'orc'), hubOrigin: 'https://hub.example', html: '<!doctype html>', syncImpl: async () => {} };
   await assert.rejects(publishRunDashboard({ ...options, assets: ['../private.txt'] }), /stage 7.*asset/);
@@ -70,7 +70,7 @@ test('unsafe assets, absent selected media and sync failures never report public
 test('failed media admission preserves the prior served HTML symlink and media', async t => {
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const repoRoot = join(root, 'golems'), runDir = join(repoRoot, 'docs.local/stalker-golem/theo-run');
+  const repoRoot = join(root, 'golems'), runDir = join(repoRoot, 'docs.local/stalker-golem/examplechannel-run');
   await mkdir(join(runDir, 'clips'), { recursive: true });
   await writeFile(join(runDir, 'clips/clip-1m00s.mp4'), 'old media');
   const sourceRoot = join(repoRoot, 'docs.local/dashboards/stalker'), served = join(root, 'served');
@@ -80,20 +80,20 @@ test('failed media admission preserves the prior served HTML symlink and media',
     if (fail) throw new Error('hub unavailable');
     if (first) {
       first = false;
-      await symlink(join(sourceRoot, 'theo-run.html'), join(served, 'page.html'));
+      await symlink(join(sourceRoot, 'examplechannel-run.html'), join(served, 'page.html'));
     }
-    const revisions = await readdir(join(sourceRoot, 'evidence/theo-run'));
+    const revisions = await readdir(join(sourceRoot, 'evidence/examplechannel-run'));
     for (const revision of revisions) {
-      const directory = join(served, 'evidence/theo-run', revision, 'clips');
+      const directory = join(served, 'evidence/examplechannel-run', revision, 'clips');
       await mkdir(directory, { recursive: true });
-      await symlink(join(sourceRoot, 'evidence/theo-run', revision, 'clips/clip-1m00s.mp4'), join(directory, 'clip-1m00s.mp4')).catch(error => { if (error.code !== 'EEXIST') throw error; });
+      await symlink(join(sourceRoot, 'evidence/examplechannel-run', revision, 'clips/clip-1m00s.mp4'), join(directory, 'clip-1m00s.mp4')).catch(error => { if (error.code !== 'EEXIST') throw error; });
     }
   };
   const options = { runDir, repoRoot, hubOrigin: 'https://hub.example', assets: ['clips/clip-1m00s.mp4'], syncImpl };
-  await publishRunDashboard({ ...options, html: '<html>old<video src="evidence/theo-run/clips/clip-1m00s.mp4"></video></html>' });
+  await publishRunDashboard({ ...options, html: '<html>old<video src="evidence/examplechannel-run/clips/clip-1m00s.mp4"></video></html>' });
   const old = await readFile(join(served, 'page.html'), 'utf8'), media = old.match(/src="([^"]+)"/)[1];
   fail = true;
-  await assert.rejects(publishRunDashboard({ ...options, html: '<html>new<video src="evidence/theo-run/clips/clip-1m00s.mp4"></video></html>' }));
+  await assert.rejects(publishRunDashboard({ ...options, html: '<html>new<video src="evidence/examplechannel-run/clips/clip-1m00s.mp4"></video></html>' }));
   assert.equal(await readFile(join(served, 'page.html'), 'utf8'), old);
   assert.equal(await readFile(join(runDir, 'dashboard.html'), 'utf8'), old);
   assert.equal(await readFile(join(served, media), 'utf8'), 'old media');
@@ -102,7 +102,7 @@ test('failed media admission preserves the prior served HTML symlink and media',
 test('every-card context media is copied independently of raw run media', async t => {
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const repoRoot = join(root, 'golems'), runDir = join(root, 'theo-2026-09-08');
+  const repoRoot = join(root, 'golems'), runDir = join(root, 'examplechannel-2026-09-08');
   const assets = [
     'card-media/clips/clip-10m47s.mp4',
     'card-media/frames/frame-10m47s.jpg',
@@ -110,20 +110,20 @@ test('every-card context media is copied independently of raw run media', async 
     'card-media-v2/frames/frame-32m13s.jpg',
   ];
   for (const asset of assets) { await mkdir(join(runDir, asset, '..'), {recursive:true}); await writeFile(join(runDir, asset), asset); }
-  const html = `<html>${assets.map(asset => `<a href="evidence/theo-2026-09-08/${asset}">${asset}</a>`).join('')}</html>`;
+  const html = `<html>${assets.map(asset => `<a href="evidence/examplechannel-2026-09-08/${asset}">${asset}</a>`).join('')}</html>`;
   await publishRunDashboard({runDir,repoRoot,html,assets,hubOrigin:'https://hub.example',syncImpl:async()=>{}});
   const published = await readFile(join(runDir,'dashboard.html'),'utf8');
-  const version = published.match(/evidence\/theo-2026-09-08\/([^/]+)\//)[1];
+  const version = published.match(/evidence\/examplechannel-2026-09-08\/([^/]+)\//)[1];
   await rm(join(runDir,'card-media'), {recursive:true});
   await rm(join(runDir,'card-media-v2'), {recursive:true});
-  for (const asset of assets) assert.equal(await readFile(join(repoRoot,'docs.local/dashboards/stalker/evidence/theo-2026-09-08',version,asset),'utf8'),asset);
+  for (const asset of assets) assert.equal(await readFile(join(repoRoot,'docs.local/dashboards/stalker/evidence/examplechannel-2026-09-08',version,asset),'utf8'),asset);
 });
 
 
 test('oversized and empty sources are rejected before publication staging', async t => {
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-publish-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const repoRoot = join(root, 'golems'), runDir = join(root, 'theo-run');
+  const repoRoot = join(root, 'golems'), runDir = join(root, 'examplechannel-run');
   const asset = 'clips/clip-1m00s.mp4';
   await mkdir(join(runDir, 'clips'), { recursive: true });
   const handle = await open(join(runDir, asset), 'w');

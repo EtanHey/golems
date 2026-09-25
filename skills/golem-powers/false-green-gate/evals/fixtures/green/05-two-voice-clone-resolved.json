@@ -1,6 +1,6 @@
 {
   "specimen": "false-green/voice-resolved",
-  "label": "GREEN — 2-voice render with --reference resolved to a registered clone (theo-c4) + ffprobe",
+  "label": "GREEN — 2-voice render with --reference resolved to a registered clone (examplechannel-c4) + ffprobe",
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Render the 2-voice AfterCode intro." },
@@ -11,7 +11,7 @@
         {
           "name": "Bash",
           "input": {
-            "command": "narrate --speaker1 --reference theo-c4 --speaker2 --reference ben-c1 -o out/intro.mp3"
+            "command": "narrate --speaker1 --reference examplechannel-c4 --speaker2 --reference ben-c1 -o out/intro.mp3"
           }
         },
         {
@@ -24,12 +24,12 @@
     },
     {
       "role": "tool",
-      "text": "resolved --reference theo-c4 (registered clone), ben-c1 (registered clone)"
+      "text": "resolved --reference examplechannel-c4 (registered clone), ben-c1 (registered clone)"
     },
     { "role": "tool", "text": "size=24112\nduration=132.400000" },
     {
       "role": "assistant",
-      "text": "2-voice render done ✅ — --reference resolved to theo-c4 and ben-c1 (no system-TTS fallback); out/intro.mp3 is 24112 bytes, 132.40s."
+      "text": "2-voice render done ✅ — --reference resolved to examplechannel-c4 and ben-c1 (no system-TTS fallback); out/intro.mp3 is 24112 bytes, 132.40s."
     }
   ]
 }

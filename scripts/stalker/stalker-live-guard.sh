@@ -5,7 +5,7 @@ LIVE_GUARD_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/stream-helpers.sh
 source "$LIVE_GUARD_SCRIPT_DIR/../lib/stream-helpers.sh"
 
-CHANNEL="${1:-theo}"
+CHANNEL="${1:?Usage: stalker-live-guard.sh <channel> [quality]}"
 QUALITY="${2:-best}"
 
 if [[ ! "$CHANNEL" =~ ^[a-zA-Z0-9_]+$ ]]; then

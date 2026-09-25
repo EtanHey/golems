@@ -256,7 +256,7 @@ Before synthesis: sweep `~/Desktop` + `~/Downloads` (Claude-side: `compass_artif
 
 ### Context-file hygiene — standing weave step (Etan via orc, 2026-06-09: "Whenever we do the weave, this might be something we send to the skillCreator who does the weave")
 
-Every weave checks whether context files need surgical improvement and routes it: audit the CLAUDE.md/AGENTS.md hierarchy against the 3-layer model (Letter ≤~50 lines intent prose / path-scoped `.claude/rules/` / BrainLayer episodic), flag accumulation-bloat violations, and **promote recurring registry families (`recurring=true`, BROKEN-OPEN) into `.claude/rules/` files at §4c (verification-and-discharge.md)** — Theo's "only encode repeated mistakes," mechanized. Findings route through the ledger like everything else.
+Every weave checks whether context files need surgical improvement and routes it: audit the CLAUDE.md/AGENTS.md hierarchy against the 3-layer model (Letter ≤~50 lines intent prose / path-scoped `.claude/rules/` / BrainLayer episodic), flag accumulation-bloat violations, and **promote recurring registry families (`recurring=true`, BROKEN-OPEN) into `.claude/rules/` files at §4c (verification-and-discharge.md)** — the stream author's "only encode repeated mistakes," mechanized. Findings route through the ledger like everything else.
 
 ### Corpus discovery — deliberate self-exclusion + orcui attribution
 

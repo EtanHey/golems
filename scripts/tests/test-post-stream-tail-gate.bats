@@ -31,19 +31,19 @@ for arg in "$@"; do
 done
 
 case "$last_arg" in
-    *theo-2026-06-18-005309/video.ts|*theo-2026-06-18-005309/video.mp4)
+    *examplechannel-2026-06-18-005309/video.ts|*examplechannel-2026-06-18-005309/video.mp4)
         printf '15039.886656\n'
         ;;
-    *theo-2026-06-18-050228/video.ts|*theo-2026-06-18-050228/video.mp4)
+    *examplechannel-2026-06-18-050228/video.ts|*examplechannel-2026-06-18-050228/video.mp4)
         printf '29.939334\n'
         ;;
-    *theo-2026-06-18-060000/video.ts|*theo-2026-06-18-060000/video.mp4)
+    *examplechannel-2026-06-18-060000/video.ts|*examplechannel-2026-06-18-060000/video.mp4)
         printf '29.000000\n'
         ;;
-    *theo-2026-06-18-045847/video.ts|*theo-2026-06-18-045847/video.mp4|\
-    *theo-2026-06-18-045848/video.ts|*theo-2026-06-18-045848/video.mp4|\
-    *theo-2026-06-18-051848/video.ts|*theo-2026-06-18-051848/video.mp4|\
-    *theo-2026-06-18-051849/video.ts|*theo-2026-06-18-051849/video.mp4)
+    *examplechannel-2026-06-18-045847/video.ts|*examplechannel-2026-06-18-045847/video.mp4|\
+    *examplechannel-2026-06-18-045848/video.ts|*examplechannel-2026-06-18-045848/video.mp4|\
+    *examplechannel-2026-06-18-051848/video.ts|*examplechannel-2026-06-18-051848/video.mp4|\
+    *examplechannel-2026-06-18-051849/video.ts|*examplechannel-2026-06-18-051849/video.mp4)
         printf '29.000000\n'
         ;;
     *)
@@ -132,14 +132,14 @@ mark_downstream_stages_done() {
 }
 
 @test "post-stream tail gate: June 18 full run remains eligible" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
     STALKER_TELEGRAM_NOTIFY=0 \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ ! -f "$full_dir/.orphan-tail" ]
@@ -147,47 +147,47 @@ mark_downstream_stages_done() {
 }
 
 @test "post-stream tail gate: June 18 residual tail is quarantined before remux" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
-    tail_dir="$(make_run_dir theo-2026-06-18-050228)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
+    tail_dir="$(make_run_dir examplechannel-2026-06-18-050228)"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
     STALKER_TELEGRAM_NOTIFY=0 \
-    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" theo 0
+    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ -f "$tail_dir/.orphan-tail" ]
     grep -q 'status=ORPHAN_TAIL' "$tail_dir/.orphan-tail"
-    grep -q 'theo-2026-06-18-005309' "$tail_dir/.orphan-tail"
+    grep -q 'examplechannel-2026-06-18-005309' "$tail_dir/.orphan-tail"
     [ ! -f "$tail_dir/.stage-0-remux.done" ]
     [ ! -f "$tail_dir/video.mp4" ]
     [ ! -f "$FFMPEG_CALLED" ]
 }
 
 @test "post-stream tail gate: tiny standalone stream with no adjacent full run remains eligible" {
-    tiny_dir="$(make_run_dir theo-2026-06-18-060000)"
+    tiny_dir="$(make_run_dir examplechannel-2026-06-18-060000)"
     mark_downstream_stages_done "$tiny_dir"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
     STALKER_TELEGRAM_NOTIFY=0 \
-    run "$POST_STREAM" "$tiny_dir" "$tiny_dir/video.ts" "$tiny_dir/chat.log" theo 0
+    run "$POST_STREAM" "$tiny_dir" "$tiny_dir/video.ts" "$tiny_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ ! -f "$tiny_dir/.orphan-tail" ]
 }
 
 @test "post-stream tail gate: gap at 900s is in-window and quarantined" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
-    tail_dir="$(make_run_dir theo-2026-06-18-051848)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
+    tail_dir="$(make_run_dir examplechannel-2026-06-18-051848)"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
     STALKER_TELEGRAM_NOTIFY=0 \
-    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" theo 0
+    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ -f "$tail_dir/.orphan-tail" ]
@@ -198,29 +198,29 @@ mark_downstream_stages_done() {
 }
 
 @test "post-stream tail gate: gap at 901s is outside window and remains eligible" {
-    make_run_dir theo-2026-06-18-005309 >/dev/null
-    tail_dir="$(make_run_dir theo-2026-06-18-051849)"
+    make_run_dir examplechannel-2026-06-18-005309 >/dev/null
+    tail_dir="$(make_run_dir examplechannel-2026-06-18-051849)"
     mark_downstream_stages_done "$tail_dir"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
     STALKER_TELEGRAM_NOTIFY=0 \
-    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" theo 0
+    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ ! -f "$tail_dir/.orphan-tail" ]
 }
 
 @test "post-stream tail gate: overlap at -300s is in-window and quarantined" {
-    make_run_dir theo-2026-06-18-005309 >/dev/null
-    tail_dir="$(make_run_dir theo-2026-06-18-045848)"
+    make_run_dir examplechannel-2026-06-18-005309 >/dev/null
+    tail_dir="$(make_run_dir examplechannel-2026-06-18-045848)"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
     STALKER_TELEGRAM_NOTIFY=0 \
-    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" theo 0
+    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ -f "$tail_dir/.orphan-tail" ]
@@ -230,29 +230,29 @@ mark_downstream_stages_done() {
 }
 
 @test "post-stream tail gate: overlap at -301s is outside window and remains eligible" {
-    make_run_dir theo-2026-06-18-005309 >/dev/null
-    tail_dir="$(make_run_dir theo-2026-06-18-045847)"
+    make_run_dir examplechannel-2026-06-18-005309 >/dev/null
+    tail_dir="$(make_run_dir examplechannel-2026-06-18-045847)"
     mark_downstream_stages_done "$tail_dir"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
     STALKER_TELEGRAM_NOTIFY=0 \
-    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" theo 0
+    run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ ! -f "$tail_dir/.orphan-tail" ]
 }
 
 @test "post-stream invokes synthetic completion and still ingests BrainLayer" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '### [00:01] First gem\n' > "$full_dir/gems.md"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store" \
     BRAIN_STORE_CAPTURE="$TMPDIR_/brain-store.jsonl" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
@@ -261,7 +261,7 @@ mark_downstream_stages_done() {
 }
 
 @test "post-stream returns retryable failure when completion delivery fails" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -269,7 +269,7 @@ mark_downstream_stages_done() {
     STALKER_COMPLETION_EXIT=17 \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store" \
     BRAIN_STORE_CAPTURE="$TMPDIR_/brain-store.jsonl" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 75 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
@@ -278,13 +278,13 @@ mark_downstream_stages_done() {
 }
 
 @test "post-stream completion remains successful when BrainLayer ingest fails" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAINLAYER_IMPORTANCE=bad \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
@@ -292,7 +292,7 @@ mark_downstream_stages_done() {
 }
 
 @test "post-stream invokes completion before starting BrainLayer ingest" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -307,7 +307,7 @@ SH
     STALKER_CONTRACT_SCRIPT="$contract" \
     CONTRACT_CALLS="$TMPDIR_/contract-calls" \
     STALKER_COMPLETION_CALLS="$TMPDIR_/contract-calls" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(sed -n '1p' "$TMPDIR_/contract-calls")" = "$full_dir" ]
@@ -315,7 +315,7 @@ SH
 }
 
 @test "post-stream bounds BrainLayer ingest with an overridable timeout" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -330,14 +330,14 @@ SH
     STALKER_CONTRACT_SCRIPT="$contract" \
     STALKER_BRAINLAYER_INGEST_TIMEOUT=23m \
     STALKER_TIMEOUT_CAPTURE="$TMPDIR_/timeout-duration" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$TMPDIR_/timeout-duration")" = "23m" ]
 }
 
 @test "post-stream external timeout escalates to KILL after TERM" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -356,7 +356,7 @@ SH
     STALKER_CONTRACT_SCRIPT="$TMPDIR_/bin/brain-store-fail" \
     STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0 \
     STALKER_TIMEOUT_ARGS="$TMPDIR_/timeout-args" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     grep -F -q -- '--kill-after=1s' "$TMPDIR_/timeout-args"
@@ -368,7 +368,7 @@ SH
         skip "GNU timeout is unavailable"
     fi
 
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
     mv "$TMPDIR_/bin/timeout" "$TMPDIR_/bin/timeout.disabled"
@@ -391,7 +391,7 @@ SH
     STALKER_CONTRACT_SCRIPT="$contract" \
     STALKER_BRAINLAYER_INGEST_TIMEOUT=1s \
     STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0 \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'BrainLayer contract ingest timed out'* ]] || false
@@ -402,7 +402,7 @@ SH
 }
 
 @test "post-stream classifies exit 137 after killing a TERM-ignoring ingest as timeout" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -442,7 +442,7 @@ SH
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_CONTRACT_SCRIPT="$contract" \
     QUEUE_REASON_CAPTURE="$TMPDIR_/queue-reason" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'BrainLayer contract ingest timed out'* ]] || false
@@ -454,7 +454,7 @@ SH
 }
 
 @test "post-stream defaults the BrainLayer ingest timeout to fifteen minutes" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -468,14 +468,14 @@ SH
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_CONTRACT_SCRIPT="$contract" \
     STALKER_TIMEOUT_CAPTURE="$TMPDIR_/timeout-duration" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$TMPDIR_/timeout-duration")" = "15m" ]
 }
 
 @test "post-stream queues unfinished BrainLayer payloads when ingest times out" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -488,7 +488,7 @@ SH
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store-fail" \
     TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
@@ -499,7 +499,7 @@ SH
 }
 
 @test "post-stream sends one separate alert when BrainLayer payloads are queued" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -514,7 +514,7 @@ SH
         STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store-fail" \
         TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
         TELEGRAM_CALL_LOG="$TMPDIR_/telegram-calls.jsonl" \
-        run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+        run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
         [ "$status" -eq 0 ]
     done
 
@@ -524,7 +524,7 @@ SH
 }
 
 @test "post-stream uses a bounded fallback when timeout utilities are unavailable" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
     mv "$TMPDIR_/bin/timeout" "$TMPDIR_/bin/timeout.disabled"
@@ -533,7 +533,7 @@ SH
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store" \
     BRAIN_STORE_CAPTURE="$TMPDIR_/brain-store.jsonl" \
     TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ -f "$full_dir/.stage-brainlayer.done" ]
@@ -541,7 +541,7 @@ SH
 }
 
 @test "post-stream built-in watchdog times out and queues unfinished payloads" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
     mv "$TMPDIR_/bin/timeout" "$TMPDIR_/bin/timeout.disabled"
@@ -558,7 +558,7 @@ SH
     STALKER_BRAINLAYER_INGEST_TIMEOUT=1s \
     STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0 \
     TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
@@ -572,14 +572,14 @@ SH
 }
 
 @test "post-stream BrainLayer dry-run still runs when timeout utilities are unavailable" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
     mv "$TMPDIR_/bin/timeout" "$TMPDIR_/bin/timeout.disabled"
 
     PATH="$TMPDIR_/bin:/usr/bin:/bin" \
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'record:run-summary'* ]] || false
@@ -587,14 +587,14 @@ SH
 }
 
 @test "post-stream leaves queued BrainLayer stores retryable" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store-fail" \
     TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ -f "$TMPDIR_/telegram-body.json" ]
@@ -606,7 +606,7 @@ SH
 }
 
 @test "post-stream Telegram dry-run does not skip BrainLayer ingest" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
@@ -615,7 +615,7 @@ SH
     BRAIN_STORE_CAPTURE="$TMPDIR_/brain-store.jsonl" \
     STALKER_TELEGRAM_DRY_RUN=1 \
     TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ -f "$full_dir/.stage-brainlayer.done" ]
@@ -626,7 +626,7 @@ SH
 }
 
 @test "post-stream ingests failure telemetry before returning a digest quality error" {
-    full_dir="$(make_run_dir theo-2026-06-18-005309)"
+    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     rm -f "$full_dir/gems.md"
     : > "$full_dir/chat.log"
@@ -644,7 +644,7 @@ SH
     STALKER_CONTRACT_SCRIPT="$contract" \
     CONTRACT_CALLS="$TMPDIR_/contract-calls" \
     TELEGRAM_BODY_FILE="$TMPDIR_/quality-alert.json" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" theo 0
+    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 75 ]
     [ "$(cat "$TMPDIR_/contract-calls")" = "ingest-run" ]

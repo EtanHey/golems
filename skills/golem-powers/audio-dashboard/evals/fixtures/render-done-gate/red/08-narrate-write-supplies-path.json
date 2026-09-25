@@ -11,7 +11,7 @@
       "tools": [
         {
           "name": "Bash",
-          "input": { "command": "narrate --reference theo-c4 -o out/new.mp3" }
+          "input": { "command": "narrate --reference examplechannel-c4 -o out/new.mp3" }
         },
         { "name": "Bash", "input": { "command": "ls -l out/old.mp3" } },
         {
@@ -24,7 +24,7 @@
     },
     {
       "role": "tool",
-      "text": "resolved --reference theo-c4 (registered clone); rendered out/new.mp3"
+      "text": "resolved --reference examplechannel-c4 (registered clone); rendered out/new.mp3"
     },
     { "role": "tool", "text": "-rw-r--r-- 1 user staff 19245 out/old.mp3" },
     { "role": "tool", "text": "size=19245\nduration=168.62" },
