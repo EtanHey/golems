@@ -32,6 +32,8 @@ function classifyDecision(output, { exitCode, timedOut, spawnError }) {
   if (spawnError || timedOut || exitCode !== 0 || !output || typeof output !== "object") return "error";
   if (output.decision === "block") return "block";
   if (typeof output.systemMessage === "string") {
+    // A gate advisory (GO-5 E2) quotes transcript evidence; its words are not a status.
+    if (/^[A-Z][A-Z-]* advisory\b/.test(output.systemMessage)) return "advisory";
     if (/\bskipp?ed\b/i.test(output.systemMessage)) return "skipped";
     if (/\berror\b/i.test(output.systemMessage)) return "error";
     return "advisory";

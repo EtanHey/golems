@@ -52,7 +52,7 @@ function runSyntheticTelemetry(logPath, hookName, source, options = {}) {
   );
 }
 
-test("decision telemetry distinguishes block from allow and records actual reader bytes", () => {
+test("decision telemetry distinguishes a gate advisory from allow and records actual reader bytes", () => {
   const fixture = readFixture(path.join(fixtureRoot, "oversize-tail.json"));
   const root = mkdtempSync(path.join(tmpdir(), "stop-telemetry-"));
   scratch.push(root);
@@ -60,9 +60,9 @@ test("decision telemetry distinguishes block from allow and records actual reade
   const totalBytes = materializeOversizeTranscript(transcriptPath, fixture);
   const logPath = path.join(root, "decisions.jsonl");
 
-  const blocked = runTelemetry(logPath, { transcript_path: transcriptPath });
-  expect(blocked.status, blocked.stderr).toBe(0);
-  expect(JSON.parse(blocked.stdout).decision).toBe("block");
+  const flagged = runTelemetry(logPath, { transcript_path: transcriptPath });
+  expect(flagged.status, flagged.stderr).toBe(0);
+  expect(JSON.parse(flagged.stdout).systemMessage).toStartWith("FALSE-GREEN-GATE advisory");
 
   const allowed = runTelemetry(logPath, {
     transcript: { events: [{ role: "assistant", text: "Work is still in progress." }] },
@@ -75,7 +75,7 @@ test("decision telemetry distinguishes block from allow and records actual reade
     .split(/\r?\n/)
     .map((line) => JSON.parse(line));
   expect(rows).toHaveLength(2);
-  expect(rows.map((row) => row.decision)).toEqual(["block", "allow"]);
+  expect(rows.map((row) => row.decision)).toEqual(["advisory", "allow"]);
   expect(rows[0].schema).toBe("golems.stop-decision.v1");
   expect(rows[0].bytesRead).toBeGreaterThan(rows[0].stdinBytes);
   expect(rows[0].transcriptBytesTotal).toBe(totalBytes);
@@ -100,6 +100,23 @@ test("decision telemetry schema covers advisory, skipped, and error outcomes", (
   );
   expect(advisory.status, advisory.stderr).toBe(0);
 
+  // GO-5 E2: a gate advisory quoting evidence like "error"/"skipped" is still an advisory.
+  const gateAdvisory = runSyntheticTelemetry(
+    logPath,
+    "gate-advisory-hook",
+    outputAfterInput,
+    withOutput({ systemMessage: "FALSE-GREEN-GATE advisory: flagged (X). X: said the error was skipped" }),
+  );
+  expect(gateAdvisory.status, gateAdvisory.stderr).toBe(0);
+
+  const blocked = runSyntheticTelemetry(
+    logPath,
+    "block-hook",
+    outputAfterInput,
+    withOutput({ decision: "block", reason: "synthetic" }),
+  );
+  expect(blocked.status, blocked.stderr).toBe(0);
+
   const skipped = runSyntheticTelemetry(
     logPath,
     "skipped-hook",
@@ -119,7 +136,7 @@ test("decision telemetry schema covers advisory, skipped, and error outcomes", (
     .trim()
     .split(/\r?\n/)
     .map((line) => JSON.parse(line));
-  expect(rows.map((row) => row.decision)).toEqual(["advisory", "skipped", "error"]);
+  expect(rows.map((row) => row.decision)).toEqual(["advisory", "advisory", "block", "skipped", "error"]);
   for (const row of rows) {
     expect(row.schema).toBe("golems.stop-decision.v1");
     expect(row.bytesRead).toBe(row.stdinBytes);

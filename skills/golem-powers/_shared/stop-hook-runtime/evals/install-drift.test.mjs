@@ -60,6 +60,7 @@ function runHook(root, gate, payload) {
 const oversizeCases = [
   {
     gate: "false-green-gate",
+    advisory: true, // GO-5 E2
     fixture: path.join(fixtureRoot, "oversize-tail.json"),
     expectedReason: "FALSE_GREEN_LIVE_PROBE",
   },
@@ -70,18 +71,20 @@ const oversizeCases = [
   },
   {
     gate: "fleet-wrap-gate",
+    advisory: true, // GO-5 E2
     fixture: path.join(powersRoot, "fleet-wrap-gate", "evals", "fixtures", "red", "06-wrap-narrative-healthwatch-no-tool.json"),
     expectedReason: "FLEETWRAP_CRON_ALIVE",
   },
   {
     gate: "qa-verdict-gate",
+    advisory: true, // GO-5 E2
     fixture: path.join(powersRoot, "qa-verdict-gate", "evals", "fixtures", "red", "03-fail-no-observation.json"),
     expectedReason: "QA_FAIL_WITHOUT_OBSERVATION",
   },
 ];
 
 for (const testCase of oversizeCases) {
-  test(`installed-shape ${testCase.gate} blocks when its decisive turn is after 512KiB`, () => {
+  test(`installed-shape ${testCase.gate} flags when its decisive turn is after 512KiB`, () => {
     const fixture = readFixture(testCase.fixture);
     const root = makeInstalledShape(testCase.gate);
     const transcriptPath = path.join(makeScratchDir("stop-hook-fixture-"), "oversize.jsonl");
@@ -92,8 +95,13 @@ for (const testCase of oversizeCases) {
     expect(size).toBeGreaterThan(512 * 1024);
 
     const result = runHook(root, testCase.gate, { transcript_path: transcriptPath });
-    expect(result.decision).toBe("block");
-    expect(result.reason).toContain(testCase.expectedReason);
+    if (testCase.advisory) {
+      expect(result.decision).toBeUndefined();
+      expect(result.systemMessage).toContain(testCase.expectedReason);
+    } else {
+      expect(result.decision).toBe("block");
+      expect(result.reason).toContain(testCase.expectedReason);
+    }
   });
 }
 

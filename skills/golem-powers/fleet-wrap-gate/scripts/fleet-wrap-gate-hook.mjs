@@ -3,8 +3,7 @@
 //
 // Stdout schema:
 //   allow: {}
-//   block: {"decision":"block","reason":"..."}
-//   advisory: {"systemMessage":"..."}
+//   advisory: {"systemMessage":"..."}  (never a block: GO-5 E2)
 //
 // Hang-safety contract: no network, no BrainLayer, bounded tail/state reads,
 // no subprocesses, and fail-open on malformed input or internal errors.
@@ -20,14 +19,15 @@ function allow() {
   process.stdout.write("{}");
 }
 
-function block(result) {
+// GO-5 E2: a Stop block makes the model continue its turn, so a flag reaches
+// it as an advisory systemMessage instead.
+function advise(result) {
   const codes = result.violations.map((violation) => violation.code).join(", ");
   const details = result.violations
     .map((violation) => `${violation.code}: ${violation.evidence} Cleanup: ${violation.action}.`)
     .join(" ");
   process.stdout.write(JSON.stringify({
-    decision: "block",
-    reason: `FLEET-WRAP-GATE blocked terminal silence with live periodic work (${codes}). ${details}`,
+    systemMessage: `FLEET-WRAP-GATE advisory: flagged terminal silence with live periodic work (${codes}). ${details}`,
   }));
 }
 
@@ -45,7 +45,7 @@ function main() {
       state: context.state,
       sessionId: context.sessionId,
     });
-    if (result.verdict === "FLAG") return block(result);
+    if (result.verdict === "FLAG") return advise(result);
     return allow();
   } catch (error) {
     publishStopHookReceipt(error?.receipt);
