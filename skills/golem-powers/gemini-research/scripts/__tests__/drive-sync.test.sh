@@ -135,7 +135,34 @@ assert module.VERIFY_ACCOUNT_SCRIPT.is_file(), module.VERIFY_ACCOUNT_SCRIPT
 PY
 }
 
+# Live mode has no default nlm profile: with GEMINI_RESEARCH_PROFILE unset it
+# must stop with a clear error before running any command.
+run_live_mode_requires_profile_case() {
+  env -u GEMINI_RESEARCH_PROFILE -u GEMINI_DRIVE_SYNC_FIXTURE \
+    python3 - "$ROOT_DIR/scripts/drive_sync.py" <<'PY'
+import contextlib, importlib.util, io, sys
+spec = importlib.util.spec_from_file_location("drive_sync_under_test", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert module.NLM_PROFILE == "", f"unset profile must not fall back to a default: {module.NLM_PROFILE!r}"
+
+calls = []
+def record(args, check=True):
+    calls.append(args)
+    raise module.GeminiDriveSyncError("stubbed command")
+module.run_cli = record
+sys.argv = ["drive_sync.py", "--project", "brainlayer", "--prompt", "R82-memory.md"]
+stderr = io.StringIO()
+with contextlib.redirect_stderr(stderr):
+    code = module.main()
+assert code == 1, code
+assert calls == [], f"ran commands without a profile: {calls}"
+assert "GEMINI_RESEARCH_PROFILE" in stderr.getvalue(), stderr.getvalue()
+PY
+}
+
 run_shared_helper_paths_case
+run_live_mode_requires_profile_case
 run_new_project_case
 run_existing_project_case
 run_account_failure_case

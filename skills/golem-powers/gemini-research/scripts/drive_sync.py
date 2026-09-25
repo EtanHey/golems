@@ -20,7 +20,9 @@ SHARED_RESEARCH_DIR = REPO_ROOT / "skills" / "golem-powers" / "_shared" / "resea
 SHARED_DRIVE_HELPER = SHARED_RESEARCH_DIR / "drive-paths.py"
 VERIFY_ACCOUNT_SCRIPT = SHARED_RESEARCH_DIR / "verify-account.sh"
 STATE_FILE = pathlib.Path(os.environ.get("GEMINI_RESEARCH_STATE_FILE", pathlib.Path.home() / ".golems" / "research-state.json"))
-DEFAULT_PROFILE = os.environ.get("GEMINI_RESEARCH_PROFILE", "etanface")
+# The nlm profile every live NotebookLM call runs under. No default: main()
+# refuses to run live mode without it.
+NLM_PROFILE = os.environ.get("GEMINI_RESEARCH_PROFILE", "")
 
 
 def _load_drive_module():
@@ -269,7 +271,7 @@ def ensure_notebook(project: str, state: dict[str, Any], fixture: dict[str, Any]
         fixture.setdefault("notebooks", {})[notebook_id] = {"title": f"Research: {project}", "sources": []}
         fixture_record(fixture, {"op": "notebook_create", "project": project, "notebook_id": notebook_id})
     else:
-        result = run_cli(["nlm", "notebook", "create", f"Research: {project}", "--profile", DEFAULT_PROFILE])
+        result = run_cli(["nlm", "notebook", "create", f"Research: {project}", "--profile", NLM_PROFILE])
         notebook_id = parse_labeled_uuid(result.stdout, "ID")
 
     state[project] = {"notebook_id": notebook_id}
@@ -297,7 +299,7 @@ def add_context_sources(notebook_id: str, context_files: list[dict[str, Any]], f
                     str(temp_path),
                     "--wait",
                     "--profile",
-                    DEFAULT_PROFILE,
+                    NLM_PROFILE,
                 ]
             )
 
@@ -322,7 +324,7 @@ def run_research(notebook_id: str, prompt_content: str, fixture: dict[str, Any] 
             "--notebook-id",
             notebook_id,
             "--profile",
-            DEFAULT_PROFILE,
+            NLM_PROFILE,
         ],
         check=False,
     )
@@ -341,7 +343,7 @@ def run_research(notebook_id: str, prompt_content: str, fixture: dict[str, Any] 
             "--max-wait",
             "60",
             "--profile",
-            DEFAULT_PROFILE,
+            NLM_PROFILE,
         ],
         check=False,
     )
@@ -354,7 +356,7 @@ def run_research(notebook_id: str, prompt_content: str, fixture: dict[str, Any] 
                 notebook_id,
                 task_id,
                 "--profile",
-                DEFAULT_PROFILE,
+                NLM_PROFILE,
             ],
             check=False,
         )
@@ -375,7 +377,7 @@ def query_summary(notebook_id: str, prompt_name: str, fixture: dict[str, Any] | 
             query,
             "--json",
             "--profile",
-            DEFAULT_PROFILE,
+            NLM_PROFILE,
         ]
     )
     payload = json.loads(result.stdout)
@@ -408,6 +410,13 @@ def main() -> int:
     args = parser.parse_args()
 
     fixture = load_fixture() if os.environ.get("GEMINI_DRIVE_SYNC_FIXTURE") else None
+    if fixture is None and not NLM_PROFILE:
+        print(
+            "GEMINI_RESEARCH_PROFILE is not set: export it as the nlm profile to run under "
+            "(the name you gave `nlm login --profile`).",
+            file=sys.stderr,
+        )
+        return 1
 
     try:
         verify_account(fixture)
