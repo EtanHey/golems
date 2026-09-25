@@ -11,7 +11,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/stream-helpers.sh
-source "$SCRIPT_DIR/lib/stream-helpers.sh"
+source "$SCRIPT_DIR/../lib/stream-helpers.sh"
 
 log() { echo "[post-stream $(date '+%H:%M:%S')] $1"; }
 

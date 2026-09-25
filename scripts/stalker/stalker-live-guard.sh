@@ -3,7 +3,7 @@ set -euo pipefail
 
 LIVE_GUARD_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/stream-helpers.sh
-source "$LIVE_GUARD_SCRIPT_DIR/lib/stream-helpers.sh"
+source "$LIVE_GUARD_SCRIPT_DIR/../lib/stream-helpers.sh"
 
 CHANNEL="${1:-theo}"
 QUALITY="${2:-best}"
@@ -14,7 +14,7 @@ if [[ ! "$CHANNEL" =~ ^[a-zA-Z0-9_]+$ ]]; then
 fi
 
 ROOT="${HOME}/Gits/golems"
-SCRIPT="${ROOT}/scripts/stream-watcher.sh"
+SCRIPT="${ROOT}/scripts/stalker/stream-watcher.sh"
 LOG_DIR="${ROOT}/docs.local/stalker-golem"
 PLIST="${HOME}/Library/LaunchAgents/com.golems.stream-watcher.plist"
 LABEL="com.golems.stream-watcher"

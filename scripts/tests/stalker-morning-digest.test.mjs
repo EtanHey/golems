@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { test } from "node:test";
 
-import { parseGems, runMorningDigest } from "../stalker-morning-digest.mjs";
+import { parseGems, runMorningDigest } from "../stalker/stalker-morning-digest.mjs";
 
 const DATE = "2026-09-08";
 const GEMS = `# Gems: theo (${DATE})

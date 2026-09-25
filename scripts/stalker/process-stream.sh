@@ -78,7 +78,7 @@ FAILED_SEGMENTS=0
 mkdir -p "$OUT_DIR/frames" "$OUT_DIR/clips"
 
 # shellcheck source=lib/stream-helpers.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib/stream-helpers.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/stream-helpers.sh"
 
 log() { echo "[$(date '+%H:%M:%S')] $1"; }
 

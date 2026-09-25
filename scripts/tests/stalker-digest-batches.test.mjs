@@ -6,7 +6,7 @@ import {
   assertExactBatchCoverage,
   runDigestMaps,
   splitDigestBatches,
-} from "../stalker-digest-batches.mjs";
+} from "../stalker/stalker-digest-batches.mjs";
 
 const roots = [];
 afterEach(async () => {

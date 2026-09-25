@@ -16,7 +16,7 @@ import { retainRunMedia, verifyLocalMediaRetention } from './stalker-media-reten
 const canonicalPath = candidate => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 // Bump whenever the digest prompt, schema or grounding validator changes.
 const DIGEST_CONTRACT_VERSION = 3;
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export async function notifyDelivery(title, body, priority = 'default') {
   if (process.env.STALKER_TELEGRAM_NOTIFY === '0' || process.env.STALKER_TELEGRAM_DRY_RUN === '1') {
     throw stageFailure(8, 'notifications disabled; completion cannot be certified');

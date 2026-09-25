@@ -4,7 +4,7 @@ import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { MAX_LOCAL_MEDIA_BYTES, retainRunMedia, verifyLocalMediaRetention,
-  verifyRunMediaRetention } from '../stalker-media-retention.mjs';
+  verifyRunMediaRetention } from '../stalker/stalker-media-retention.mjs';
 async function fixture(t, name) {
   const root = join(import.meta.dirname, `.retention-${process.pid}-${name}`);
   await rm(root, { recursive: true, force: true });
@@ -167,7 +167,7 @@ test('a stray slash before a real media attribute cannot hang retention', async 
   await mkdir(join(runDir, 'clips'));
   await writeFile(join(runDir, 'clips/selected.mp4'), 'selected');
   await writeFile(join(runDir, 'dashboard.html'), '<video / src="clips/selected.mp4"></video>');
-  const moduleUrl = new URL('../stalker-media-retention.mjs', import.meta.url).href;
+  const moduleUrl = new URL('../stalker/stalker-media-retention.mjs', import.meta.url).href;
   const code = [
     'import { retainRunMedia, verifyLocalMediaRetention } from ' + JSON.stringify(moduleUrl) + ';',
     'const runDir = process.argv[1];',

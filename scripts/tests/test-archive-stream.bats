@@ -4,7 +4,7 @@
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-    ARCHIVE_STREAM="$REPO_ROOT/scripts/archive-stream.sh"
+    ARCHIVE_STREAM="$REPO_ROOT/scripts/stalker/archive-stream.sh"
     TMPDIR_="$(mktemp -d)"
     FAKE_BIN="$TMPDIR_/bin"
     DRIVE_ROOT="$TMPDIR_/Brain Drive"

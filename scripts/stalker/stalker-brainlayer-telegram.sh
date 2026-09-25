@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/stream-helpers.sh
-source "$SCRIPT_DIR/lib/stream-helpers.sh"
+source "$SCRIPT_DIR/../lib/stream-helpers.sh"
 
 AGENT_TAG="${STALKER_AGENT_TAG:-stalker-golem-codex-trackB}"
 PROJECT="${STALKER_BRAINLAYER_PROJECT:-golems}"

@@ -4,7 +4,7 @@
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-    POST_STREAM="$REPO_ROOT/scripts/post-stream.sh"
+    POST_STREAM="$REPO_ROOT/scripts/stalker/post-stream.sh"
     TMPDIR_="$(mktemp -d)"
     STALKER_ROOT="$TMPDIR_/stalker-golem"
     mkdir -p "$STALKER_ROOT" "$TMPDIR_/bin"

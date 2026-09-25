@@ -4,7 +4,7 @@
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-    CONTRACT="$REPO_ROOT/scripts/stalker-brainlayer-telegram.sh"
+    CONTRACT="$REPO_ROOT/scripts/stalker/stalker-brainlayer-telegram.sh"
     TMPDIR_="$(mktemp -d)"
     STALKER_ROOT="$TMPDIR_/stalker-golem"
     FAKE_BIN="$TMPDIR_/bin"

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
-import { cleanTranscript, generateHumanDigest as generateDigest } from "../stalker-human-digest.mjs";
+import { cleanTranscript, generateHumanDigest as generateDigest } from "../stalker/stalker-human-digest.mjs";
 import { validSummary } from "./fixtures/stalker-digest-summary.mjs";
 const generateHumanDigest = options => generateDigest({ curateImpl: async ({ candidates }) => ({
   ...candidates, highlights: candidates.highlights.slice(0, 10).map(({ importance, ...item }) => item),

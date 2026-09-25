@@ -3,8 +3,8 @@ import { createServer } from 'node:http';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { artifactHashes, verifyRunDelivery, sha256 } from '../stalker-run-contract.mjs';
-import { MEDIA_RETENTION_RECEIPT } from '../stalker-media-retention.mjs';
+import { artifactHashes, verifyRunDelivery, sha256 } from '../stalker/stalker-run-contract.mjs';
+import { MEDIA_RETENTION_RECEIPT } from '../stalker/stalker-media-retention.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/stalker-2026-09-08.json', import.meta.url)));
 async function setup(t, delivered = true) {

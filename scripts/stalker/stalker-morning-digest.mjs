@@ -9,7 +9,7 @@ import { stageFailure } from "./stalker-run-contract.mjs";
 
 const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
-const DEFAULT_REPO_ROOT = resolve(SCRIPT_DIR, "..");
+const DEFAULT_REPO_ROOT = resolve(SCRIPT_DIR, "../..");
 const SCHEDULE_MINUTES = 7 * 60 + 30;
 
 function timestampSeconds(timestamp) {

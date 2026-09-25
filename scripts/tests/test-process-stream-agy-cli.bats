@@ -4,7 +4,7 @@
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-    REAL_PROCESS_STREAM="$REPO_ROOT/scripts/process-stream.sh"
+    REAL_PROCESS_STREAM="$REPO_ROOT/scripts/stalker/process-stream.sh"
     TMPDIR_="$(mktemp -d)"
     FAKE_BIN="$TMPDIR_/bin"
     PROCESS_STREAM="$TMPDIR_/process-stream-scoring-only"

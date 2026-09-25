@@ -3,9 +3,9 @@ on:
   pull_request:
     paths:
       - 'scripts/stalker-*.mjs'
-      - 'scripts/process-stream.sh'
-      - 'scripts/post-stream.sh'
-      - 'scripts/stream-overnight-monitor.sh'
+      - 'scripts/stalker/process-stream.sh'
+      - 'scripts/stalker/post-stream.sh'
+      - 'scripts/stalker/stream-overnight-monitor.sh'
       - 'scripts/tests/stalker-*.test.mjs'
       - 'scripts/tests/fixtures/stalker-*'
       - 'packages/claude/src/lib/notify-server*'
@@ -15,9 +15,9 @@ on:
   push:
     branches: [master]
     paths:
-      - 'scripts/process-stream.sh'
-      - 'scripts/post-stream.sh'
-      - 'scripts/stream-overnight-monitor.sh'
+      - 'scripts/stalker/process-stream.sh'
+      - 'scripts/stalker/post-stream.sh'
+      - 'scripts/stalker/stream-overnight-monitor.sh'
       - 'scripts/tests/fixtures/stalker-*'
       - 'scripts/stalker-*.mjs'
       - 'scripts/tests/stalker-*.test.mjs'
