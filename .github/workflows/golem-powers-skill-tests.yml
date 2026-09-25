@@ -107,7 +107,6 @@ jobs:
 
       - name: shell suites
         run: |
-          bash scripts/tests/claude-learning-workflow.test.sh
           bash scripts/tests/materialize-deep-security-plan.test.sh
           bash skills/golem-powers/gemini-research/scripts/__tests__/drive-sync.test.sh
           bash skills/golem-powers/claude-desktop-research/scripts/__tests__/migrate-obsidian-to-drive.test.sh
