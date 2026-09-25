@@ -17,7 +17,7 @@ import {
   plistsMatch,
   reportExitCode,
   selectManagedTarget,
-} from "../deploy-drift-check-lib.mjs";
+} from "../sync/deploy-drift-check-lib.mjs";
 import {
   discoverGitRepositories,
   discoverInstalledPlists,
@@ -26,7 +26,7 @@ import {
   parseArgs,
   readPlist,
   sha256File,
-} from "../deploy-drift-check.mjs";
+} from "../sync/deploy-drift-check.mjs";
 
 describe("launchd plist semantics", () => {
   test("scopes only golems-owned labels", () => {

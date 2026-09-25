@@ -15,7 +15,7 @@ sha256_file() {
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$script_dir/.." && pwd)"
+repo_root="$(cd "$script_dir/../.." && pwd)"
 source_helper="$repo_root/scripts/repogolem/golems-sync-install.sh"
 host="${1:-}"
 [[ -n "$host" ]] || { usage >&2; exit 2; }
@@ -80,7 +80,7 @@ mkdir -p "$payload_root"
 
 archive_paths=(scripts/repogolem/golems-sync-install.sh)
 if [[ "$scope" == "skills" || "$scope" == "all" ]]; then
-    archive_paths+=(skills/golem-powers scripts/golems-sync-coupling-allowlist.tsv)
+    archive_paths+=(skills/golem-powers scripts/sync/golems-sync-coupling-allowlist.tsv)
 fi
 if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
     archive_paths+=(scripts/repogolem/golem-dispatch.zsh scripts/repogolem/install-golem-dispatch.sh)
@@ -90,7 +90,7 @@ git -C "$repo_root" archive --format=tar "$commit" -- "${archive_paths[@]}" \
 
 helper="$payload_root/scripts/repogolem/golems-sync-install.sh"
 launcher_dir="$payload_root/scripts/repogolem"
-allowlist_file="$payload_root/scripts/golems-sync-coupling-allowlist.tsv"
+allowlist_file="$payload_root/scripts/sync/golems-sync-coupling-allowlist.tsv"
 skills_source="$payload_root/skills/golem-powers"
 if [[ -n "${GOLEMS_SYNC_SKILLS_SOURCE:-}" ]]; then
     skills_source="$GOLEMS_SYNC_SKILLS_SOURCE"

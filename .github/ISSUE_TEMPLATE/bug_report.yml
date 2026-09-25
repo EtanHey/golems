@@ -11,7 +11,7 @@ body:
     id: area
     attributes:
       label: Package, skill, or script
-      description: The path, e.g. `packages/jobs`, `skills/golem-powers/pr-loop`, `scripts/golems-sync.sh`.
+      description: The path, e.g. `packages/jobs`, `skills/golem-powers/pr-loop`, `scripts/sync/golems-sync.sh`.
     validations:
       required: true
   - type: textarea

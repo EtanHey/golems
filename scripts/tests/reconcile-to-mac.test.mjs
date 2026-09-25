@@ -20,7 +20,7 @@ import {
   shellQuote,
   summarizeDrift,
   validateProfile,
-} from "../reconcile-to-mac-lib.mjs";
+} from "../sync/reconcile-to-mac-lib.mjs";
 
 // These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
 setDefaultTimeout(15_000);
@@ -345,7 +345,7 @@ describe("profile safety", () => {
   });
 
   test("production profile pins and probes the served public MLX model without process discovery", () => {
-    const production = JSON.parse(readFileSync(join(here, "../reconcile-profile.json"), "utf8"));
+    const production = JSON.parse(readFileSync(join(here, "../sync/reconcile-profile.json"), "utf8"));
     expect(validateProfile(production)).toBe(production);
     const mlx = production.targets.m1.hostEnvCheckers.find((item) => item.id === "voicelayer-stt-polish");
     const runtime = production.targets.m1.runtimeChecks.find((item) => item.id === "voicelayer-stt-polish-8080");
@@ -363,7 +363,7 @@ describe("profile safety", () => {
   });
 
   test("production audio-dashboard host-tool checks resolve the non-interactive SSH PATH", () => {
-    const production = JSON.parse(readFileSync(join(here, "../reconcile-profile.json"), "utf8"));
+    const production = JSON.parse(readFileSync(join(here, "../sync/reconcile-profile.json"), "utf8"));
     const target = production.targets.m1;
     const pathPrefix = 'export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; ';
     const hardDeps = target.hostEnvCheckers.find((item) => item.id === "audio-dashboard-hard-deps");
@@ -377,7 +377,7 @@ describe("profile safety", () => {
   });
 
   test("production profile packages all canonical skills and guards every checkout retirement", () => {
-    const production = JSON.parse(readFileSync(join(here, "../reconcile-profile.json"), "utf8"));
+    const production = JSON.parse(readFileSync(join(here, "../sync/reconcile-profile.json"), "utf8"));
     expect(validateProfile(production)).toBe(production);
     const target = production.targets.m1;
     expect(target.skills).toEqual([]);
@@ -424,7 +424,7 @@ describe("CLI mode", () => {
   test("default CLI run executes nothing and prints exact planned commands in its JSON receipt", () => {
     const result = spawnSync(
       process.execPath,
-      [join(here, "../reconcile-to-mac.mjs"), "--profile", join(here, "fixtures/reconcile/profile.json")],
+      [join(here, "../sync/reconcile-to-mac.mjs"), "--profile", join(here, "fixtures/reconcile/profile.json")],
       { encoding: "utf8" },
     );
 

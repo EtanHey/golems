@@ -20,7 +20,7 @@ print(dangerous_shell_reason(sys.argv[1]) or "")
 }
 
 @test "reconcile profile contains no pgrep" {
-  run grep -n 'pgrep' "$REPO_ROOT/scripts/reconcile-profile.json"
+  run grep -n 'pgrep' "$REPO_ROOT/scripts/sync/reconcile-profile.json"
   [ "$status" -eq 1 ]
 }
 
