@@ -32,7 +32,12 @@ import sys
 # (~/.claude/hooks/pre_tool_use.py imports it by this name).
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "_shared"))
 from harness_paths import is_harness_scratchpad  # noqa: E402
-from shell_parse import _backtick_bodies, dollar_paren_bodies, shell_text_without_heredoc_bodies  # noqa: E402 F401
+from shell_parse import (  # noqa: E402 F401
+    _backtick_bodies,
+    dollar_paren_bodies,
+    shell_text_without_heredoc_bodies,
+    without_dollar_paren_bodies,
+)
 
 
 def _norm(path: str) -> str:
@@ -985,7 +990,10 @@ def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _d
                 return reason
         return None
     active = shell_text_without_heredoc_bodies(command)
-    for body in _backtick_bodies(active) + _executed_payloads(command, active):
+    # Top-level backticks only: `$()` bodies are recursed into via
+    # _executed_payloads, where their own quoted heredocs are stripped first.
+    outer = without_dollar_paren_bodies(active)
+    for body in _backtick_bodies(outer) + _executed_payloads(command, active):
         nested_reason = dangerous_shell_reason(body, cwd=cwd, env=env, _depth=_depth + 1)
         if nested_reason:
             return nested_reason

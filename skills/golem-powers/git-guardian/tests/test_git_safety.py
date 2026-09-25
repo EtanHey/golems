@@ -1008,3 +1008,29 @@ def test_go5_gap_recursion_is_bounded_and_fails_closed(tmp_path):
     assert git_safety.dangerous_shell_reason(nest("ls", 3), cwd=str(tmp_path), env=_home_env()) is None
     reason = git_safety.dangerous_shell_reason(nest("ls", 30), cwd=str(tmp_path), env=_home_env())
     assert reason and "too deep" in reason
+
+
+# GO-5 (r7 on #233): markdown code spans in a PR body / commit recipe written
+# as "$(cat <<'EOF' … EOF)" are prose. The quoted heredoc inside the $() runs
+# nothing, so its backticks must not be read as command substitutions.
+def _body_recipe(span, quoted=True):
+    delim = "'EOF'" if quoted else "EOF"
+    return f'gh pr create --title t --body "$(cat <<{delim}\nNever run `{span}` here.\nEOF\n)"'
+
+
+def test_code_spans_in_a_quoted_heredoc_inside_dollar_paren_are_prose(tmp_path):
+    for span in ("rm -rf ~", "eval 'rm -rf ~'", "echo 'rm -rf ~' | sh"):
+        assert git_safety.dangerous_shell_reason(
+            _body_recipe(span), cwd=str(tmp_path), env=_home_env()
+        ) is None, span
+    commit = "git commit -m \"$(cat <<'EOF'\nfix: guard `rm -rf ~` spans\nEOF\n)\""
+    assert git_safety.dangerous_shell_reason(commit, cwd=str(tmp_path), env=_home_env()) is None
+
+
+def test_backticks_that_really_run_still_block(tmp_path):
+    for command in (
+        _body_recipe("rm -rf ~", quoted=False),  # unquoted heredoc: backticks run
+        "echo `rm -rf ~`",
+        'echo "$(rm -rf ~)"',
+    ):
+        assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()), command

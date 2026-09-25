@@ -4000,14 +4000,10 @@ def _backtick_bodies(command: str) -> list[str]:
     return bodies
 
 
-def dollar_paren_bodies(text: str) -> list[str]:
-    """Bodies of `$( … )` command substitutions outside single quotes (GO-5).
-
-    Double quotes do not stop Bash from running a `$()`, so `echo "x $(cmd)"`
-    yields `cmd`. `$((` arithmetic is skipped. Nested substitutions come back
-    as part of their outer body and are found again when that body is checked.
-    """
-    bodies = []
+def _dollar_paren_spans(text: str) -> list[tuple[int, int]]:
+    """(start, end) of each outermost `$( … )` outside single quotes; the body is
+    text[start + 2:end - 1] (or text[start + 2:end] when unclosed)."""
+    spans = []
     quote = None
     index = 0
     while index < len(text):
@@ -4033,8 +4029,35 @@ def dollar_paren_bodies(text: str) -> list[str]:
                 elif text[end] == ")":
                     depth -= 1
                 end += 1
-            bodies.append(text[index + 2:end - 1] if depth == 0 else text[index + 2:end])
+            spans.append((index, end))
             index = end
             continue
         index += 1
+    return spans
+
+
+def dollar_paren_bodies(text: str) -> list[str]:
+    """Bodies of `$( … )` command substitutions outside single quotes (GO-5).
+
+    Double quotes do not stop Bash from running a `$()`, so `echo "x $(cmd)"`
+    yields `cmd`. `$((` arithmetic is skipped. Nested substitutions come back
+    as part of their outer body and are found again when that body is checked.
+    """
+    bodies = []
+    for start, end in _dollar_paren_spans(text):
+        closed = end - 1 < len(text) and text[end - 1] == ")"
+        bodies.append(text[start + 2:end - 1] if closed else text[start + 2:end])
     return bodies
+
+
+def without_dollar_paren_bodies(text: str) -> str:
+    """`text` with every `$( … )` body blanked to `$()`. The bodies are checked
+    on their own (where their quoted heredocs are stripped), so a caller scanning
+    the outer text must not re-read what is inside them (GO-5, r7 on #233)."""
+    out = []
+    cursor = 0
+    for start, end in _dollar_paren_spans(text):
+        out.append(text[cursor:start] + "$()")
+        cursor = end
+    out.append(text[cursor:])
+    return "".join(out)
