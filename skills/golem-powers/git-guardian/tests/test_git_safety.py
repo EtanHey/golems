@@ -816,6 +816,10 @@ def test_pr4_data_command_prose_is_masked_for_the_sql_and_credential_scans():
         "printf '### post: we never DROP TABLE users here\\n' >> collab.md",
         "git commit -m 'docs: explain why DROP TABLE is blocked'",
         "echo 'DROP TABLE is prose' || true",   # `||` is not a pipe
+        # A `|` inside quotes (a markdown table row) is not a pipe (round 3, rule 1).
+        "printf '| col | DROP TABLE |\\n' >> table.md",
+        # Near-miss words are not executors (round 3, rule 2).
+        "gh pr comment 1 --body \"over ssh, in a shell, via ~/.bash_profile: no DROP TABLE\"",
         "true || echo 'DROP TABLE is prose'",
         "echo 'never cat > credentials.json by hand' >> notes.md",
         "python3 - <<'PY'\nprint('DROP TABLE users; rm -rf /tmp/extract/')\nPY",
@@ -833,9 +837,21 @@ def test_pr4_executed_sql_and_substitutions_are_still_visible():
         ("printf 'drop table x;' | sqlite3 db", "drop table"),
         ("echo 'DROP TABLE t;' | tee /x/log | psql", "DROP TABLE"),
         ("echo 'DROP TABLE t;' |& psql", "DROP TABLE"),
+        # Round 3, rule 1: any unquoted single `|` disables masking, so a compound
+        # piped into an executor (listed or not) keeps its text.
+        ("( echo 'DROP TABLE t;' ) | duckdb db", "DROP TABLE"),
+        ("{ echo 'DROP TABLE t;'; } | duckdb db", "DROP TABLE"),
+        ("for x in 1; do echo 'DROP TABLE t;'; done | duckdb db", "DROP TABLE"),
+        # Round 3, rule 2: an executor named in the same command disables masking.
+        ("echo 'DROP TABLE t;' > q.sql; psql -f q.sql", "DROP TABLE"),
+        ("printf 'DROP TABLE t;' > q.sql && sqlite3 db < q.sql", "DROP TABLE"),
+        ("echo 'DROP TABLE t;' > q.sh; bash q.sh", "DROP TABLE"),
+        ("echo 'DROP TABLE t;' > q.sh; . q.sh", "DROP TABLE"),
+        ("echo 'DROP TABLE t;' > q.sql; /usr/bin/mysql < q.sql", "DROP TABLE"),
         ("bash <<'EOF'\npsql -c 'DROP TABLE users'\nEOF", "DROP TABLE"),
         ("echo \"$(psql -c 'DROP TABLE users')\"", "DROP TABLE"),
         ("echo `rm -rf ~`", "rm -rf ~"),
+        ("echo \"done: $(rm -rf ~)\"", "rm -rf ~"),   # $() inside "…" of a data command runs
         ("python3 - <<'PY' | sh\nprint('rm -rf ~')\nPY", "rm -rf ~"),
         ("python3 - <<PY\n$(psql -c 'DROP TABLE users')\nPY", "DROP TABLE"),
         ("git -c alias.x='!psql -c \"DROP TABLE t\"' x", "DROP TABLE"),
@@ -861,9 +877,10 @@ def test_pr4_ansi_c_quotes_disable_masking_rather_than_desync():
     # `$'…\'…'` has quote rules the data-arg scanner does not model; a desynced
     # scanner could swallow executed text, so the whole command stays visible.
     # Without the bail-out, the scanner closes `$'a\'` early and then treats
-    # ` ; psql … ; echo ` as one quoted echo argument, hiding executed SQL.
-    command = "echo $'a\\'' ; psql -c \"DROP TABLE t\" ; echo 'x'"
-    assert "DROP TABLE" in git_safety.shell_text_without_heredoc_bodies(command)
+    # ` ; rm … ; echo ` as one quoted echo argument, hiding an executed rm.
+    # (An executor like psql would short-circuit via round 3's rule 2; rm is not one.)
+    command = "echo $'a\\'' ; rm -rf ~ ; echo 'x'"
+    assert "rm -rf ~" in git_safety.shell_text_without_heredoc_bodies(command)
 
 
 def test_pr4_fixture4_loop_over_literal_names_resolves_each_value(tmp_path):

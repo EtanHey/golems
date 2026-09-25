@@ -3838,32 +3838,54 @@ def _is_data_command(words: list[str]) -> bool:
     return name == "git" and not overrides and bool(rest) and rest[0] in _GIT_DATA_SUBCOMMANDS
 
 
+# Executors named anywhere in a command (as a word, or a path ending in one),
+# plus `.` in command position. `ssh`, `shell`, `bash_profile` do not match.
+_EXECUTOR_RE = re.compile(
+    r"(?<![\w.-])(?:psql|sqlite3|mysql|sh|bash|zsh|eval|source)(?![\w-])"
+    r"|(?:^|[;&|(\n])\s*\.\s"
+)
+
+
+def _has_unquoted_pipe(text: str) -> bool:
+    """True when `text` has a single `|` (or `|&`) outside quotes; `||` is not one."""
+    quote = None
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == "\\" and quote != "'":
+            index += 2
+            continue
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in "'\"":
+            quote = char
+        elif char == "|" and text[index + 1:index + 2] != "|" and text[index - 1:index] != "|":
+            return True
+        index += 1
+    return False
+
+
 def _mask_data_argument_quotes(text: str) -> str:
     """Blank the quoted arguments of data-only commands (echo/printf/gh, git
     commit|tag|notes), keeping any `$()`/backticks Bash runs inside "…".
 
-    A data command piped onward (`echo '…' | psql`) feeds an executor, so its
-    segment is kept verbatim, mirroring the heredoc `piped` rule.
+    Fail-visible (GO-5 PR-4 round 3): nothing is masked when the command has
+    an unquoted pipe or names an executor, since the data may reach it. A file
+    written here and run by a LATER command is out of scope (never covered).
     """
     if "$'" in text:
         return text  # ANSI-C quoting is not modelled; never risk a desync
+    if _has_unquoted_pipe(text) or _EXECUTOR_RE.search(text):
+        return text
     out = []
-    raw: list[str] = []      # the current segment, verbatim
-    masked: list[str] = []   # the same segment with data prose blanked
     words: list[str] = []
     word = ""
     index = 0
-
-    def close_segment(piped: bool) -> None:
-        out.extend(raw if piped else masked)
-        raw.clear()
-        masked.clear()
-
     while index < len(text):
         char = text[index]
         if char == "\\" and index + 1 < len(text):
-            raw.append(text[index:index + 2])
-            masked.append(text[index:index + 2])
+            out.append(text[index:index + 2])
             word += text[index:index + 2]
             index += 2
             continue
@@ -3871,18 +3893,14 @@ def _mask_data_argument_quotes(text: str) -> str:
             end = index + 1
             while end < len(text) and text[end] != char:
                 end += 2 if char == '"' and text[end] == "\\" else 1
-            quoted = text[index:end + 1]
             body = text[index + 1:end]
             if words and _is_data_command(words):
                 body = "" if char == "'" else _executable_expansions(body)
-            raw.append(quoted)
-            masked.append(char + body + (char if end < len(text) else ""))
+            out.append(char + body + (char if end < len(text) else ""))
             word += char
             index = end + 1
             continue
         if char in ";|&()\n":
-            pipe = char == "|" and text[index + 1:index + 2] != "|"  # `|` or `|&`, not `||`
-            close_segment(pipe)
             words, word = [], ""
         elif char in " \t":
             if word:
@@ -3890,10 +3908,8 @@ def _mask_data_argument_quotes(text: str) -> str:
             word = ""
         else:
             word += char
-        raw.append(char)
-        masked.append(char)
+        out.append(char)
         index += 1
-    close_segment(False)
     return "".join(out)
 
 
