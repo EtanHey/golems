@@ -1,117 +1,124 @@
 # Golems
 
-Golems is a Bun monorepo of reusable AI-agent packages, command-line tooling,
-and evaluated workflow skills. It includes domain packages for recruiting,
-finance, scheduling, jobs, content, and shared infrastructure, plus the
-`golem-powers` skill library.
+[![CI](https://github.com/EtanHey/golems/actions/workflows/golem-powers-skill-tests.yml/badge.svg?branch=master)](https://github.com/EtanHey/golems/actions/workflows/golem-powers-skill-tests.yml)
+[![License: Apache-2.0](https://img.shields.io/github/license/EtanHey/golems)](LICENSE)
 
-## Concepts
+Golems is a Bun monorepo with two parts: a set of TypeScript agent packages, and
+`golem-powers`, a library of `SKILL.md` workflows for AI coding agents. Many
+skills ship executable evals.
 
-A **golem** is a domain-focused agent package: code, prompts, and integrations
-that work together for a bounded job. A **skill** is a `SKILL.md` workflow that
-an AI coding agent can load and follow. Skills may also ship scripts,
-references, adapters, fixtures, and executable evals.
+It is for two kinds of reader. The first builds with AI coding agents (Claude
+Code, Codex, Cursor) and wants skills and evals to reuse or copy. The second
+wants to see how one developer runs a fleet of coding agents day to day.
 
-At commit `3c568589` the tree has 13 workspace packages and 86 skills that
-carry a top-level `SKILL.md` under `skills/golem-powers/`. That directory holds
-93 entries; the other 7 are shared, archived, or workspace scaffolding rather
-than installable skills. Run `node scripts/check-skill-library.mjs` to
-re-derive the skill count instead of trusting this paragraph.
+This is one person's working setup, published in the open. Many
+packages and skills assume the author's machine, accounts, and tools. Read them
+as working examples, not as a supported product.
+
+Two terms:
+
+- A **golem** is a package that handles one domain (jobs, finance, planning).
+  It holds the code, prompts, and integrations for that domain.
+- A **skill** is a `SKILL.md` file that an agent loads and follows. It can come
+  with scripts, references, and evals.
 
 ## Quick start
 
-Requirements: [Bun](https://bun.sh/) and Git.
+You need [Bun](https://bun.sh/), [Node.js](https://nodejs.org/), and Git. CI
+reads its Bun version from `.bun-version`, so install that version locally too.
+One test checks for the `claude` CLI on your `PATH`. CI stubs it, and you can
+do the same.
 
 ```bash
 git clone https://github.com/EtanHey/golems.git
-cd golems
-bun install
+cd golems && bun install
 bun run test
 ```
 
-List or install skills. Both commands read `skills/golem-powers/` from
-`master` through the GitHub API, so they need network access and report what is
-published rather than what is in your working tree:
-
-```bash
-bun packages/golem-skills/src/index.ts skills list
-bun packages/golem-skills/src/index.ts skills install <skill-name>
-```
-
-The same CLI checks the environment's dependencies (bun, git, claude):
-
-```bash
-bun packages/golem-skills/src/index.ts setup --check
-```
-
-Its package is `golems-cli`, and it installs two bin names for the same entry: `golems` and `golems-cli`.
+`bun run test` runs `bun test ./packages`, the same package suite CI runs. Use
+it instead of a bare `bun test`, which also picks up tests from any local
+untracked folders.
 
 ## Packages
 
-| Package | Purpose |
+There are 12 workspace packages under `packages/`:
+
+| Package | What it is |
 |---|---|
-| `packages/claude` | Telegram notification bot and orchestration adapters |
-| `packages/coach` | Calendar, planning, and generic coaching primitives |
-| `packages/content` | Content pipelines and Remotion infrastructure |
-| `packages/golem-skills` | The `golems` CLI (npm `golems-cli`): skills, update, wizard, setup check |
-| `packages/golems-tui` | React Ink terminal interface |
-| `packages/green-invoice-mcp` | Invoice MCP integration |
-| `packages/jobs` | Job collection and matching |
-| `packages/mock-mcp` | MCP test fixture package |
-| `packages/recruiter` | Outreach and interview-practice workflows |
-| `packages/services` | Briefing, scheduler, doctor, and local services |
-| `packages/shared` | Shared state, LLM, email, and notification utilities |
-| `packages/teller` | Finance and transaction categorization |
+| `claude` | Telegram bot and notification server |
+| `coach` | Daily scheduling, calendar sync, habit tracking, briefings |
+| `content` | Content pipelines (LinkedIn, ghostwriting) and Remotion video rendering |
+| `golem-skills` | The CLI, published as `golems-cli`: installs and lists skills, checks setup |
+| `golems-tui` | Terminal dashboard built on React Ink |
+| `green-invoice-mcp` | MCP server for Green Invoice, an Israeli invoicing service |
+| `jobs` | Job-board scraping, matching, and application tracking |
+| `mock-mcp` | Mock MCP server for testing agent skills |
+| `recruiter` | Outreach drafting, interview practice, Elo-rated skill tracking |
+| `services` | Morning briefing, scheduler worker, `doctor` health checks |
+| `shared` | Supabase, LLM, email, state, and MCP helpers the other packages share |
+| `teller` | Subscription tracking, payment categorization, spending reports, payment-failure alerts |
 
-## Skill library and evals
+The package tests need no credentials; CI runs them with no secrets. Running
+the domain packages for real is different: they call outside services
+(Supabase, Telegram, calendar and job-board APIs) and read credentials from
+the environment. Where a package
+has its own `README.md` or `CLAUDE.md`, that file says what it needs.
 
-Skills live under `skills/golem-powers/<skill-name>/`. The common shape is:
+## Skill library
+
+Each skill lives in `skills/golem-powers/<skill-name>/`:
 
 ```text
 skill-name/
-├── SKILL.md
-├── adapters/      # optional harness-specific guidance
-├── references/    # optional supporting material
-├── scripts/       # optional executable helpers
-└── evals/         # optional fixtures and behavior checks
+├── SKILL.md       # the workflow the agent reads
+├── adapters/      # optional: notes for a specific agent harness
+├── references/    # optional: supporting material
+├── scripts/       # optional: helpers the skill runs
+└── evals/         # optional: fixtures and behavior checks
 ```
 
-An eval demonstrates only the behavior asserted by that eval. It is regression
-evidence, not a claim that a skill or agent is correct in every environment.
-
-## Launchers and CI gates
-
-`scripts/repogolem/` installs `golem-dispatch.zsh`, a zsh function that starts a
-coding-agent session in a chosen repo; `-E, --effort <low|medium|high|xhigh|max|ultra>`
-sets the effort for a single dispatch. The launchers assume the author's own
-machine layout, so read them as a reference rather than a supported product.
-
-Pull requests and pushes to `master` run CodeQL, a dependency audit
-(`bun audit`, failing at high severity), a publish-boundary guard, a
-`docs.local` guard, the package test suite (`bun run test`), the Python skill
-suites (`scripts/run-skill-tests.sh`), the bun/node/shell script suites listed
-in the `script-tests` job, and the bats suites in `scripts/tests/`.
-Secret scanning also runs but does not fail the build, and only 6 of the 23 bats
-files are blocking; the rest of `scripts/tests/*.bats` runs as a non-blocking
-report until that directory is green.
-
-## Development
+To count the skills, run the checker instead of trusting a number in a README:
 
 ```bash
-bun install
-bun run test
+node scripts/check-skill-library.mjs   # prints skills=<n> and description-size totals
 ```
 
-`bun run test` runs the package suite (`bun test ./packages`), the same command
-CI runs. Use it rather than a bare `bun test`, which also collects tests from
-anything checked out under the gitignored `docs.local/`. On a clean clone at
-`3c568589` with the pinned Bun (1.3.14) it runs 1290 tests across 109 files:
-1288 pass, 2 skip, 0 fail.
+Some skills to start with:
 
-Eight of the 13 packages carry a `CLAUDE.md` with package-specific
-instructions. Contribution guidance is in [CONTRIBUTING.md](CONTRIBUTING.md),
-vulnerability reporting is in [SECURITY.md](SECURITY.md), and community
-expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- `pr-loop`: branch, commit, PR, review, and merge, with agent attribution on commits
+- `never-fabricate`: read, run, and verify before claiming something is done
+- `large-plan`: split a big change into phases for parallel agents
+- `plan-council`: judges from several model families review a plan, or rank anonymized candidates
+- `git-guardian`: a safety gate in front of force-push, reset, and branch deletes
+- `tmp-block`: a hook that blocks durable writes to `/tmp`
+- `skill-creator`: create, audit, and eval skills
+- `unslop`: cut AI-sounding filler and keep the facts
+
+An eval checks only the behavior it asserts. It is regression evidence. It
+does not prove a skill works in every setup.
+
+The Python skill suites and gate evals run with `bash scripts/run-skill-tests.sh`.
+You need `python3` with `pytest` installed.
+
+## CLI
+
+The CLI lives in `packages/golem-skills`. Run it from a clone:
+
+```bash
+bun packages/golem-skills/src/index.ts skills list      # skills on the default branch, via the GitHub API
+bun packages/golem-skills/src/index.ts setup --check    # checks for bun, git, and claude
+bun packages/golem-skills/src/index.ts skills install <skill-name>   # copies into ~/.claude/skills/
+```
+
+`skills list` and `skills install` read the published default branch over the
+network. They do not read your working tree. The npm package `golems-cli` is
+behind this repo, so for now run the CLI from source.
+
+## Contributing
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): workflow, commit format, test layout
+- [SECURITY.md](SECURITY.md): report vulnerabilities privately
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): Contributor Covenant
 
 ## License
 
