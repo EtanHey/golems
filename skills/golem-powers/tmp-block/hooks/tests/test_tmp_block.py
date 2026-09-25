@@ -3904,3 +3904,25 @@ def test_temp_like_prose_words_are_not_hints(durable_path):
         'P=$TEMPLATE_DIR/x; printf x > "$P"',
     ):
         assert_advised(run_hook(bash_payload(command), cwd=str(durable_path)))
+
+
+# GO-5 (found on #226): a literal temp head with an unknown suffix glued on
+# (`/tmp$UNSET`) was a clean ALLOW. The probe read it as `/tmpXYZ`, outside the
+# class, but `UNSET=/x` makes it `/tmp/x`. Ambiguous heads prove nothing.
+def test_a_temp_head_with_a_glued_unknown_suffix_is_not_proven_outside(durable_path, monkeypatch):
+    monkeypatch.delenv("UNSET", raising=False)
+    for command in (
+        'D=/tmp; P=$D$UNSET; printf x > "$P"',
+        'D=/tmp; printf x > "$D$UNSET"',
+        'printf x > "/tmp$UNSET"',
+        'printf x > "/tmp${UNSET}"',
+    ):
+        assert_refused(run_hook(bash_payload(command), cwd=str(durable_path)))
+
+
+def test_glued_suffixes_that_stay_in_one_class_are_still_judged(durable_path, monkeypatch):
+    monkeypatch.delenv("UNSET", raising=False)
+    # Both readings are durable (repo) or both outside: the head still proves the class.
+    assert_allowed(run_hook(bash_payload('printf x > "docs.local/post-$UNSET.log"'), cwd=str(durable_path)))
+    assert_allowed(run_hook(bash_payload('P=~/Documents/x_$$.txt; printf x > "$P"'), cwd=str(durable_path)))
+    assert_allowed(run_hook(bash_payload('printf x > "/tmpfoo/x"'), cwd=str(durable_path)))

@@ -2478,6 +2478,15 @@ def _literal_prefix_class(
     # whichever way that lands.
     # Only Rule 1 consumes it; worktree-convention callers still require repo
     # membership and get None, exactly as they do for `outside`.
+    # GO-5: a dynamic suffix glued onto the last component (`/tmp$X`) can also
+    # start a new component (`X=/y` -> `/tmp/y`). Judge both readings; if they
+    # land in different temp classes, the head proves nothing (unresolvable).
+    glued = os.path.basename(probe)
+    if glued != "__tmp_block_dynamic_suffix__" and glued.endswith("__tmp_block_dynamic_suffix__"):
+        head = glued[: -len("__tmp_block_dynamic_suffix__")]
+        segment_probe = os.path.join(os.path.dirname(probe), head, "__tmp_block_dynamic_suffix__")
+        if in_temp_class(segment_probe) != in_temp_class(probe):
+            return None
     if is_harness_scratchpad(probe):
         return None if require_worktree else "scratchpad"
     if in_temp_class(probe):
