@@ -47,3 +47,19 @@ test("a deliberate block (exit 2 + stdout) passes through; sibling imports resol
   expect(r.status).toBe(2);
   expect(r.stdout.trim()).toBe("deny");
 });
+
+test("a runtime error and a syntax error in the hook also fail open with one stderr line", () => {
+  // r7 on #215: an `except ImportError`-only wrapper survived the import-error test.
+  const d = scratch();
+  for (const [name, body, errorName] of [
+    ["crash.py", "import sys\nsys.stdin.read()\nraise RuntimeError('boom')\n", "RuntimeError"],
+    ["typo.py", "def broken(:\n    pass\n", "SyntaxError"],
+  ]) {
+    const target = path.join(d, name);
+    writeFileSync(target, body);
+    const r = wrap(target);
+    expect(r.status).toBe(0);
+    expect(r.stderr.trim().split("\n").length).toBe(1);
+    expect(r.stderr).toContain(errorName);
+  }
+});
