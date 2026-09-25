@@ -420,7 +420,7 @@ def test_unset_variable_only_redirect_remains_unresolvable(monkeypatch):
 
     # GO-5 E2: still unresolvable, now an advisory (no temp hint in the command).
     assert (decision, exit_code) == ("allow", 0)
-    assert output.get("systemMessage", "").startswith("TMP-BLOCK advisory")
+    assert output["hookSpecificOutput"]["additionalContext"].startswith("TMP-BLOCK advisory")
 
 
 def test_every_dynamic_suffix_under_repo_is_silently_allowed(monkeypatch):

@@ -43,7 +43,8 @@ emits a PreToolUse prompt.**
 
 GO-5 E2 (2026-09-25) softened the unknowns. A target the hook cannot read
 statically, in a command that shows no temp hint (`mktemp`, `TMPDIR*`, `/tmp`,
-`/var/folders`), is ALLOWED with a `TMP-BLOCK advisory` systemMessage, and so
+`/var/folders`), is ALLOWED with a `TMP-BLOCK advisory` in
+`hookSpecificOutput.additionalContext` (the channel the model reads), and so
 is a hook error on a payload with no temp hint. Denying those blocked honest
 work (a conditional `cd … && P=<static path>` assignment, an unset variable)
 without evidence of a temp write.

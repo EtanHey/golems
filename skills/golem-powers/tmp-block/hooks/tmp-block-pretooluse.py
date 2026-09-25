@@ -88,7 +88,7 @@ carries a residual for dynamic suffixes the hook cannot evaluate, but a visible
 The ledger and temp-dir scan remain the detectors for opaque substitutions that
 do not contain visible traversal.
 
-Exit codes: 0 = allow ({} on stdout, or {"systemMessage": "TMP-BLOCK advisory: …"}
+Exit codes: 0 = allow ({} on stdout, or a "TMP-BLOCK advisory" in hookSpecificOutput.additionalContext
 for an unknown target with no temp hint, GO-5 E2) · 2 = deny
 ({"decision": "block", ...}). There is no prompt: the ask path stays removed.
 """
@@ -221,8 +221,19 @@ def allow():
 
 
 def advise(reason):
-    """Allow with an advisory systemMessage (GO-5 E2). Never a prompt, never a block."""
-    json.dump({"systemMessage": reason}, sys.stdout)
+    """Allow with an advisory (GO-5 E2). Never a prompt, never a block.
+
+    The model reads PreToolUse `hookSpecificOutput.additionalContext`; a bare
+    `systemMessage` is shown to the human only (lead ruling: an advisory the
+    model cannot see is a deleted gate). No `permissionDecision` is sent.
+    """
+    json.dump(
+        {
+            "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": reason},
+            "systemMessage": reason,
+        },
+        sys.stdout,
+    )
     sys.exit(0)
 
 

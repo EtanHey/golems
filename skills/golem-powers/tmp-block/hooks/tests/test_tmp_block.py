@@ -137,7 +137,11 @@ def assert_advised(proc, must_mention=()):
     )
     out = json.loads(proc.stdout)
     assert "decision" not in out, f"an advisory must not carry a decision: {out!r}"
-    message = out.get("systemMessage", "")
+    # The model reads PreToolUse additionalContext (systemMessage is the human's copy).
+    context = out.get("hookSpecificOutput", {})
+    assert context.get("hookEventName") == "PreToolUse", out
+    assert "permissionDecision" not in context, f"an advisory must not decide: {out!r}"
+    message = context.get("additionalContext", "")
     assert message.startswith("TMP-BLOCK advisory"), f"expected an advisory, got {out!r}"
     for needle in must_mention:
         assert needle in message, f"advisory must mention {needle!r}, got: {message!r}"
