@@ -241,13 +241,46 @@ def test_edit_requires_marker_in_incoming_new_string(tmp_path):
     )
 
 
-def test_existing_write_section_validation_behavior_is_preserved(tmp_path):
+def test_a_new_collab_without_the_pr_loop_and_tdd_keywords_is_allowed(tmp_path):
+    # GO-5 E2: the PR-Loop/TDD keyword check is gone (hooks-audit: it only ever
+    # saw Write, and `cat >>` posts never reach it). The shrink guard stays.
     collab = tmp_path / "collab" / "missing-sections.md"
     result = run_hook(write_payload(collab, "notes only"), tmp_path)
 
-    assert result.returncode == 2
-    assert "missing mandatory sections: PR Loop, TDD Red-Green-Refactor" in result.stderr
-    assert "Copy from $ORCHESTRATOR_REPO/collab/TEMPLATE.md first." in result.stderr
+    assert result.returncode == 0, result.stderr
+    assert "missing mandatory sections" not in result.stderr + result.stdout
+
+
+def _advisory(result):
+    out = json.loads(result.stdout or "{}")
+    return out.get("hookSpecificOutput", {}).get("additionalContext", "")
+
+
+def test_rewriting_an_existing_collab_in_place_is_flagged_even_with_identical_content(tmp_path):
+    # GO-5: a collab rewritten in place (≈22:55Z) made every `tail -F` watcher
+    # replay, even though nothing shrank. Collabs are append-only (`cat >>`), so
+    # ANY Write/Edit of an existing collab is flagged -- identical bytes included.
+    collab = tmp_path / "collab" / "live.md"
+    collab.parent.mkdir(parents=True)
+    content = sized_collab_content(120)
+    collab.write_text(content, encoding="utf-8")
+
+    for payload in (
+        write_payload(collab, content),                      # identical rewrite
+        write_payload(collab, content + "more\n"),          # growing rewrite
+        edit_payload(collab, "x", "y"),                      # in-place edit
+    ):
+        result = run_hook(payload, tmp_path)
+        assert result.returncode == 0, result.stderr
+        assert "COLLAB-GUARD advisory" in _advisory(result), result.stdout
+        assert "cat >>" in _advisory(result)
+
+
+def test_a_brand_new_collab_file_is_not_flagged(tmp_path):
+    collab = tmp_path / "collab" / "brand-new.md"
+    result = run_hook(write_payload(collab, "fresh collab\n"), tmp_path)
+    assert result.returncode == 0
+    assert _advisory(result) == ""
 
 
 def test_existing_edit_section_validation_behavior_is_preserved(tmp_path):
