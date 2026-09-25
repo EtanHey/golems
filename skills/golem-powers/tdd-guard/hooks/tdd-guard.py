@@ -231,6 +231,22 @@ def increment_modification_count(session_id: str, file_path: str) -> int:
     return count
 
 
+def advise(message: str) -> None:
+    """Allow, with the advisory where the MODEL sees it (GO-5 ruling).
+
+    PreToolUse `systemMessage` is shown to the human only; the model reads
+    `hookSpecificOutput.additionalContext`. Both are sent.
+    """
+    json.dump(
+        {
+            "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": message},
+            "systemMessage": message,
+        },
+        sys.stdout,
+    )
+    sys.exit(0)
+
+
 def main():
     if os.environ.get("BRAINLAYER_HOOKS_DISABLED") == "1":
         json.dump({}, sys.stdout)
@@ -273,15 +289,11 @@ def main():
     file_exists = os.path.isfile(file_path)
 
     if not file_exists:
-        result = {
-            "systemMessage": (
-                f"TDD NOTICE: Creating {os.path.basename(file_path)} without a test file. "
-                f"Consider writing {os.path.basename(expected_test_path)} first (Red-Green-Refactor)."
-            ),
-        }
         increment_modification_count(session_id, file_path)
-        json.dump(result, sys.stdout)
-        sys.exit(0)
+        advise(
+            f"TDD NOTICE: Creating {os.path.basename(file_path)} without a test file. "
+            f"Consider writing {os.path.basename(expected_test_path)} first (Red-Green-Refactor)."
+        )
 
     count = increment_modification_count(session_id, file_path)
 
@@ -289,27 +301,19 @@ def main():
         # GO-5 E2: advisory, never a block. A block made the model retry, and the
         # name-based test lookup misses tests that live elsewhere.
         basename = os.path.basename(file_path)
-        result = {
-            "systemMessage": (
-                f"TDD ADVISORY: {basename} has been modified {count} times this session "
-                f"without a test file. Create {expected_test_path} first. "
-                f"Red-Green-Refactor: write a failing test, then make it pass."
-            ),
-        }
-        json.dump(result, sys.stdout)
-        sys.exit(0)
+        advise(
+            f"TDD ADVISORY: {basename} has been modified {count} times this session "
+            f"without a test file. Create {expected_test_path} first. "
+            f"Red-Green-Refactor: write a failing test, then make it pass."
+        )
 
     remaining = 3 - count
     basename = os.path.basename(file_path)
-    result = {
-        "systemMessage": (
-            f"TDD WARNING: {basename} modified {count}x without a test file. "
-            f"{remaining} more edit(s) before the advisory. "
-            f"Expected: {os.path.basename(expected_test_path)}"
-        ),
-    }
-    json.dump(result, sys.stdout)
-    sys.exit(0)
+    advise(
+        f"TDD WARNING: {basename} modified {count}x without a test file. "
+        f"{remaining} more edit(s) before the advisory. "
+        f"Expected: {os.path.basename(expected_test_path)}"
+    )
 
 
 if __name__ == "__main__":

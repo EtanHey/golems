@@ -23,7 +23,8 @@ A PreToolUse hook on Write/Edit. The limits apply to implementation files.
 - Existing implementation files edited 1-2 times without a matching test emit a
   warning.
 - Existing implementation files edited 3+ times without a matching test get a
-  `TDD ADVISORY` systemMessage. Never a block (GO-5 E2): a block made the model
+  `TDD ADVISORY` in `hookSpecificOutput.additionalContext` (the channel the model
+  reads; `systemMessage` is the human's copy). Never a block (GO-5 E2): a block made the model
   retry, and the name-based lookup misses tests that live elsewhere.
 - Test files, docs/config/generated paths, hooks, scripts, skills, and skipped
   path segments are not classified as implementation.

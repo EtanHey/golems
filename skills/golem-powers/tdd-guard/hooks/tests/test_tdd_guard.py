@@ -68,7 +68,7 @@ def assert_allowed(proc):
     )
     body = parse_stdout(proc)
     assert body.get("decision") != "block"
-    assert "TDD ADVISORY" not in body.get("systemMessage", "")
+    assert "TDD ADVISORY" not in json.dumps(body)
 
 
 def assert_flagged(proc):
@@ -80,8 +80,11 @@ def assert_flagged(proc):
     )
     body = parse_stdout(proc)
     assert "decision" not in body
-    assert body.get("systemMessage", "").startswith("TDD ADVISORY")
-    assert "without a test file" in body["systemMessage"]
+    # The model only sees PreToolUse additionalContext; systemMessage is the human's copy.
+    context = body.get("hookSpecificOutput", {})
+    assert context.get("hookEventName") == "PreToolUse"
+    assert context.get("additionalContext", "").startswith("TDD ADVISORY")
+    assert "without a test file" in context["additionalContext"]
 
 
 def touch_project_file(project: Path, relative: str) -> Path:
@@ -235,3 +238,11 @@ def test_relative_swift_sources_path_finds_tests_at_package_root(tmp_path: Path)
     results = run_three_edits("Sources/App/Foo.swift", tmp_path, cwd=project)
 
     assert_allowed(results[-1])
+
+
+def test_first_edit_warning_reaches_the_model(tmp_path: Path):
+    # GO-5 ruling: a PreToolUse advisory the model cannot see is a deleted gate.
+    project = make_project(tmp_path)
+    impl = touch_project_file(project, "src/Service.ts")
+    body = parse_stdout(run_three_edits(impl, tmp_path)[0])
+    assert "TDD WARNING" in body.get("hookSpecificOutput", {}).get("additionalContext", "")
