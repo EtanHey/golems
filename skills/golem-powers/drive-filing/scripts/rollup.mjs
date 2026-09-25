@@ -26,6 +26,11 @@ const USAGE =
 const PLAN_DIR = "_drive-filing";
 const DAY = /^(\d{4})-(\d{2})-(\d{2})(?!\d)/;
 const MONTH = /^(\d{4})-(\d{2})$/;
+// v2 dating (cleanliness-standard.md N1): the first full date anywhere in the
+// item's own name, else the first YYYY-MM anywhere. Digits must not touch either
+// end, so build numbers and hashes never read as dates.
+const NAME_DAY = /(?<!\d)(20\d{2})-(\d{2})-(\d{2})(?!\d)/g;
+const NAME_MONTH = /(?<!\d)(20\d{2})-(\d{2})(?![\d])/g;
 
 // Name rules match anywhere in the name, case-insensitively (spec-owner
 // ruling: docs.local names are date-prefixed, so ^-anchors never fire).
@@ -37,9 +42,19 @@ const CREDENTIAL_FILE = [
   /\.pem$/i,
   /\.key$/i,
   /\.env/i, // anything containing .env: .env*, prod.env; .environment over-holds (fine)
-  /token/i,
+  /(^|[-_.])env([-_.]|$)/i, // N-C1: env-named config (prod-env.json, app-env.yml, staging_env)
+  /secret/i, // client_secret.json, app-secrets.yml, secrets/ (spec addition 2026-09-25)
   BROWSER_PROFILE_FILE,
 ];
+// /token/i stays exactly as broad. A name is released from it only when every
+// "token" in it belongs to a proven-safe word (spec owner, 2026-09-25): the
+// allow-listed words are removed first, then /token/i runs on what is left, so
+// github_token_tokenizer.txt stays held. Other rules and profile holds still win.
+const TOKEN = /token/i;
+const TOKEN_ALLOW = [/tokeniz/gi, /design[-_]?tokens?/gi, /trust[ _-]?tokens/gi];
+function isTokenName(name) {
+  return TOKEN.test(TOKEN_ALLOW.reduce((rest, re) => rest.replace(re, ""), name));
+}
 
 // B1 (skillcreatorLead SECURITY, 2026-09-25): a planned file whose CONTENT
 // carries a high-confidence secret shape holds its whole unit. Only the path
@@ -82,8 +97,10 @@ export function contentShapes(abs) {
   return CONTENT_SHAPES.map(([shape]) => shape).filter((shape) => found.has(shape));
 }
 
+// v2: every credential name rule holds a directory too (a *token* or *-env dir
+// is held whole), found when mtime units first let such a dir's files upload.
 export function isCredentialDir(name) {
-  return CREDENTIAL_DIR.some((re) => re.test(name));
+  return CREDENTIAL_DIR.some((re) => re.test(name)) || isCredentialFile(name);
 }
 
 // A Chromium/Helium profile root (or its Default/ dir) holds a Local State,
@@ -93,7 +110,7 @@ function isBrowserProfile(abs) {
 }
 
 export function isCredentialFile(name) {
-  return CREDENTIAL_FILE.some((re) => re.test(name));
+  return CREDENTIAL_FILE.some((re) => re.test(name)) || isTokenName(name);
 }
 
 function parseArgs(argv) {
@@ -124,12 +141,16 @@ const monthIndex = (month) => {
   return y * 12 + (m - 1);
 };
 
+const validMonth = (m) => Number(m) >= 1 && Number(m) <= 12;
+
 function datedMonth(name) {
-  const match = DAY.exec(name);
-  if (!match) return null;
-  const [, y, m, d] = match;
-  if (Number(m) < 1 || Number(m) > 12 || Number(d) < 1 || Number(d) > 31) return null;
-  return `${y}-${m}`;
+  for (const [, y, m, d] of name.matchAll(NAME_DAY)) {
+    if (validMonth(m) && Number(d) >= 1 && Number(d) <= 31) return `${y}-${m}`;
+  }
+  for (const [, y, m] of name.matchAll(NAME_MONTH)) {
+    if (validMonth(m)) return `${y}-${m}`;
+  }
+  return null;
 }
 
 function monthFolder(name) {
@@ -158,7 +179,7 @@ function collect(abs) {
   if (stat.isSymbolicLink()) return out;
   const name = basename(abs);
   if (stat.isFile()) {
-    const entry = { abs, bytes: stat.size };
+    const entry = { abs, bytes: stat.size, mtimeMs: stat.mtimeMs };
     if (isCredentialFile(name)) {
       out.credentials.push(entry);
       out.reports.push({ abs, kind: "file" });
@@ -202,8 +223,10 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     upload: [],
     held: [],
     skipped: [],
-    totals: { files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0, contentHeld: 0 },
+    mtimeUnits: [],
+    totals: { files: 0, bytes: 0, dated: 0, undated: 0, credentialFiles: 0, mtimeUnits: 0, mtimeBytes: 0, emptyUnits: 0, contentHeld: 0 },
   };
+  const allMtimeUnits = [];
   if (!existsSync(docsLocal)) return finish(plan);
 
   const units = new Map(); // "<parent>|<month>" -> upload unit
@@ -242,6 +265,83 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     }
   };
 
+  // Does any name below abs carry a date (or is a YYYY-MM folder)? Memoized:
+  // an undated dir with a dated descendant is an area and is descended.
+  const datedBelowMemo = new Map();
+  const datedBelow = (abs) => {
+    if (datedBelowMemo.has(abs)) return datedBelowMemo.get(abs);
+    let found = false;
+    for (const name of readdirSync(abs)) {
+      const child = join(abs, name);
+      const stat = lstatSync(child);
+      if (stat.isSymbolicLink()) continue;
+      if (datedMonth(name) || (stat.isDirectory() && monthFolder(name))) found = true;
+      else if (stat.isDirectory()) found = datedBelow(child);
+      if (found) break;
+    }
+    datedBelowMemo.set(abs, found);
+    return found;
+  };
+
+  // v2 (spec-owner ruling R-a/R-b/R-c): an undated dir with no dated name below
+  // it is ONE unit, the highest such dir, dated by the newest file mtime inside.
+  // Holds run first: a unit holding a credential is held whole and its mtimes
+  // are never read. Old units join the upload plan; they are never moved.
+  const mtimeUnit = (abs) => {
+    const found = collect(abs);
+    count(found);
+    if (found.credentials.length > 0) {
+      plan.held.push({
+        path: rel(abs),
+        reason: "contains credentials",
+        members: [rel(abs)],
+        credentials: found.credentials.map((c) => rel(c.abs)).sort(),
+      });
+      return;
+    }
+    // F2: nothing to archive (no files, or only empty ones) is counted, never planned.
+    const bytes = found.files.reduce((n, f) => n + f.bytes, 0);
+    if (found.files.length === 0 || bytes === 0) {
+      plan.totals.emptyUnits += 1;
+      return;
+    }
+    const newest = found.files.reduce((max, f) => Math.max(max, f.mtimeMs), 0);
+    const month = new Date(newest).toISOString().slice(0, 7);
+    const upload = isOld(month);
+    if (upload) {
+      // B1: an mtime unit is planned whole, so a secret-shaped file holds it whole.
+      const content = found.files.flatMap((f) => contentShapes(f.abs).map((shape) => ({ path: rel(f.abs), shape })));
+      if (content.length > 0) {
+        plan.held.push({
+          path: rel(abs),
+          reason: "credential-content",
+          members: [rel(abs)],
+          credentials: [],
+          content: content.sort((a, b) => a.path.localeCompare(b.path) || a.shape.localeCompare(b.shape)),
+        });
+        plan.totals.contentHeld += 1;
+        return;
+      }
+    }
+    allMtimeUnits.push({ path: rel(abs), month, files: found.files.length, bytes, upload });
+    if (!upload) return;
+    plan.totals.mtimeUnits += 1;
+    plan.totals.mtimeBytes += bytes;
+    // F1 (spec owner 16:10): an mtime unit is never moved, so its Drive target
+    // mirrors its local path, <area>/<unitName>, with no month segment. An
+    // undated unit name can never be a YYYY-MM, so no two units share a target
+    // and none nests under another (qa/2026-01 vs qa/notes).
+    const unitPath = rel(abs).replace(/^docs\.local\/?/, "");
+    plan.upload.push({
+      month,
+      dir: rel(abs),
+      dating: "mtime",
+      driveTarget: ["Brain Drive/06_ARCHIVE/docs-local", basename(repoRoot), unitPath].join("/"),
+      files: found.files.map((f) => ({ path: rel(f.abs), bytes: f.bytes })),
+      bytes,
+    });
+  };
+
   // Dated items and month folders are units, classified whole and never
   // descended. They are grouped per (folder, month): the YYYY-MM/ folder plus
   // that month's dated siblings. A group holding any credential is held whole.
@@ -252,7 +352,8 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
       if (dirAbs === docsLocal && name === PLAN_DIR) continue;
       const stat = lstatSync(abs);
       if (stat.isSymbolicLink()) continue;
-      const month = datedMonth(name);
+      // An exact YYYY-MM name is the month group itself, never a dated item.
+      const month = MONTH.test(name) ? null : datedMonth(name);
       const folderMonth = stat.isDirectory() ? monthFolder(name) : null;
 
       if (month || folderMonth) {
@@ -261,8 +362,10 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
         groups.get(key).push({ abs, name, found: collect(abs), dated: Boolean(month) });
       } else if (stat.isDirectory() && (isCredentialDir(name) || isBrowserProfile(abs))) {
         count(collect(abs));
-      } else if (stat.isDirectory()) {
+      } else if (stat.isDirectory() && datedBelow(abs)) {
         walk(abs);
+      } else if (stat.isDirectory()) {
+        mtimeUnit(abs);
       } else {
         count(collect(abs));
         plan.totals.undated += 1;
@@ -319,7 +422,13 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
   };
   walk(docsLocal);
 
-  plan.upload = [...units.values()].sort((a, b) => a.dir.localeCompare(b.dir));
+  const monthUnits = [...units.values()].filter((u) => {
+    const empty = u.files.length === 0 || u.bytes === 0; // F2
+    if (empty) plan.totals.emptyUnits += 1;
+    return !empty;
+  });
+  plan.upload = [...monthUnits, ...plan.upload].sort((a, b) => a.dir.localeCompare(b.dir));
+  plan.mtimeUnits = allMtimeUnits.sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path)).slice(0, 5);
   return finish(plan);
 }
 
@@ -327,7 +436,7 @@ function finish(plan) {
   plan.moves.sort((a, b) => a.from.localeCompare(b.from));
   plan.skipped.sort((a, b) => a.path.localeCompare(b.path));
   plan.totals.monthlyMoves = plan.moves.length;
-  plan.totals.uploadMonths = plan.upload.length;
+  plan.totals.uploadMonths = plan.upload.filter((u) => u.dating !== "mtime").length;
   plan.totals.uploadFiles = plan.upload.reduce((n, u) => n + u.files.length, 0);
   plan.totals.uploadBytes = plan.upload.reduce((n, u) => n + u.bytes, 0);
   plan.totals.held = plan.held.length;
@@ -352,6 +461,7 @@ export function summaryLine(plan) {
     `files=${t.files} bytes=${t.bytes} (${human(t.bytes)}) · ` +
     `monthly-moves=${t.monthlyMoves} · ` +
     `to-drive months=${t.uploadMonths} files=${t.uploadFiles} bytes=${t.uploadBytes} (${human(t.uploadBytes)}) · ` +
+    `mtime-units=${t.mtimeUnits ?? 0} bytes=${t.mtimeBytes ?? 0} empty-units=${t.emptyUnits ?? 0} · ` +
     `held=${t.held} content-held=${t.contentHeld ?? 0} credentials-skipped=${t.credentialFiles} conflicts=${plan.conflicts.length} undated=${t.undated}`
   );
 }
