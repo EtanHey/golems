@@ -25,6 +25,13 @@ import os
 import posixpath
 import re
 import shlex
+import sys
+
+# S13 (GO-5): shell parsing lives in _shared/shell_parse.py; this module keeps
+# policy. shell_text_without_heredoc_bodies stays importable from here
+# (~/.claude/hooks/pre_tool_use.py imports it by this name).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "_shared"))
+from shell_parse import _backtick_bodies, shell_text_without_heredoc_bodies  # noqa: E402 F401
 
 
 def _norm(path: str) -> str:
@@ -35,7 +42,6 @@ def _norm(path: str) -> str:
 
 # ── F8. Safe rm breadth + heredoc-aware destructive scanning ────────────────────
 
-_HEREDOC_RE = re.compile(r"(?<!<)<<(-?)\s*([^\s;|&<>]+)")
 _FILE_REDIRECT_RE = re.compile(r"(?<![<>])(?:>>|>)(?![>&])")
 _SHELL_VAR_RE = re.compile(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
 _ASSIGNMENT_RE = re.compile(
@@ -45,178 +51,6 @@ _ASSIGNMENT_RE = re.compile(
 _SHELL_CONTROL_PREFIXES = {
     "!", "if", "then", "elif", "else", "while", "until", "do", "fi", "done",
 }
-
-
-def _heredoc_word(raw: str) -> tuple[str, bool]:
-    quoted = any(char in raw for char in "'\"\\")
-    return raw.replace("'", "").replace('"', "").replace("\\", ""), quoted
-
-
-def _literal_file_heredoc_header(header: str, *, piped: bool = False) -> bool:
-    """True when `cat` consumes heredoc data without executing it as code."""
-    try:
-        lexer = shlex.shlex(
-            header,
-            posix=True,
-            punctuation_chars=";&|()<>",
-        )
-        lexer.whitespace_split = True
-        lexer.commenters = "#"
-        words = list(lexer)
-    except ValueError:
-        return False
-    command = next(
-        (
-            word
-            for word in words
-            if "=" not in word
-            and not word.startswith("-")
-            and word not in {";", "&", "|", "(", ")", "<", ">", ">>", "<<"}
-        ),
-        "",
-    )
-    if os.path.basename(command) != "cat":
-        return False
-    literal_file_redirect = False
-    safe_process_sink = False
-    for index, word in enumerate(words[:-1]):
-        if word not in {">", ">>"}:
-            continue
-        target = words[index + 1]
-        if target in {">(", "<("}:
-            sink = words[index + 2] if index + 2 < len(words) else ""
-            if os.path.basename(sink) in {"cat", "tee"}:
-                safe_process_sink = True
-                continue
-            return False
-        if target.startswith(">(") or target.startswith("<("):
-            continue
-        if target == "&" or target.isdigit():
-            continue
-        literal_file_redirect = True
-    if literal_file_redirect or safe_process_sink:
-        return True
-    return not piped
-
-
-def _simple_command_end(line: str, start: int) -> int:
-    """Find the next unquoted top-level shell-list separator."""
-    quote = None
-    escaped = False
-    paren_depth = 0
-    index = start
-    while index < len(line):
-        char = line[index]
-        if escaped:
-            escaped = False
-            index += 1
-            continue
-        if char == "\\" and quote != "'":
-            escaped = True
-            index += 1
-            continue
-        if quote:
-            if char == quote:
-                quote = None
-            index += 1
-            continue
-        if char in {"'", '"'}:
-            quote = char
-            index += 1
-            continue
-        if char == "(" and index and line[index - 1] in {"$", "<", ">"}:
-            paren_depth += 1
-            index += 1
-            continue
-        if char == ")" and paren_depth:
-            paren_depth -= 1
-            index += 1
-            continue
-        if not paren_depth and char in ";|&":
-            return index
-        index += 1
-    return len(line)
-
-
-def _executable_expansions(line: str) -> str:
-    """Keep command substitutions Bash executes in an unquoted heredoc."""
-    found = []
-    i = 0
-    while i < len(line):
-        if line.startswith("$(", i):
-            depth = 1
-            j = i + 2
-            while j < len(line) and depth:
-                if line.startswith("$(", j):
-                    depth += 1
-                    j += 2
-                    continue
-                if line[j] == ")":
-                    depth -= 1
-                j += 1
-            found.append(line[i:j])
-            i = j
-            continue
-        if line[i] == "`":
-            j = i + 1
-            while j < len(line):
-                if line[j] == "`" and line[j - 1] != "\\":
-                    j += 1
-                    break
-                j += 1
-            found.append(line[i:j])
-            i = j
-            continue
-        i += 1
-    return " ".join(found)
-
-
-def shell_text_without_heredoc_bodies(command: str) -> str:
-    """Remove heredoc prose while retaining executable substitutions.
-
-    The F8 reports were file-write heredocs whose prose quoted destructive
-    commands. Scanning that prose blocks the act of reporting the bug. Quoted
-    heredocs execute nothing; unquoted heredocs expose only `$()`/backticks.
-    """
-    output = []
-    pending: list[tuple[str, bool, bool, bool]] = []
-    for source_line in command.splitlines(keepends=True):
-        line = source_line.rstrip("\r\n")
-        ending = source_line[len(line):]
-        if pending:
-            delimiter, quoted, strip_tabs, mask_body = pending[0]
-            candidate = line.lstrip("\t") if strip_tabs else line
-            if candidate == delimiter:
-                pending.pop(0)
-                output.append(ending if mask_body else source_line)
-            else:
-                if mask_body:
-                    kept = "" if quoted else _executable_expansions(line)
-                    output.append(kept + ending)
-                else:
-                    output.append(source_line)
-            continue
-        for match in _HEREDOC_RE.finditer(line):
-            delimiter, quoted = _heredoc_word(match.group(2))
-            if delimiter:
-                segment_start = max(
-                    line.rfind(separator, 0, match.start())
-                    for separator in (";", "|", "&")
-                )
-                segment_end = _simple_command_end(line, match.end())
-                header = _HEREDOC_RE.sub(
-                    "", line[segment_start + 1:segment_end]
-                )
-                file_write = _literal_file_heredoc_header(
-                    header,
-                    piped=segment_end < len(line)
-                    and line[segment_end] == "|",
-                )
-                pending.append(
-                    (delimiter, quoted, bool(match.group(1)), file_write)
-                )
-        output.append(source_line)
-    return "".join(output)
 
 
 def _expand_known_vars(value: str, variables: dict[str, str]) -> tuple[str, bool]:
@@ -240,42 +74,6 @@ def _expand_known_vars(value: str, variables: dict[str, str]) -> tuple[str, bool
         out.append(replacement)
         cursor = match.end()
     return "".join(out), True
-
-
-def _backtick_bodies(command: str) -> list[str]:
-    """Extract executable legacy command substitutions, excluding single quotes."""
-    bodies = []
-    quote = None
-    index = 0
-    while index < len(command):
-        char = command[index]
-        if char == "\\":
-            index += 2
-            continue
-        if char == "'" and quote != '"':
-            quote = None if quote == "'" else "'"
-            index += 1
-            continue
-        if char == '"' and quote != "'":
-            quote = None if quote == '"' else '"'
-            index += 1
-            continue
-        if char != "`" or quote == "'":
-            index += 1
-            continue
-        end = index + 1
-        while end < len(command):
-            if command[end] == "\\":
-                end += 2
-                continue
-            if command[end] == "`":
-                bodies.append(command[index + 1:end].replace("\\`", "`"))
-                index = end + 1
-                break
-            end += 1
-        else:
-            break
-    return bodies
 
 
 def _outermost_repo_root(path: str) -> str | None:

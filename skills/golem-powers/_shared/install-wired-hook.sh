@@ -82,6 +82,10 @@ fi
 
 mkdir -p "$DEST"
 rsync -rlti --delete "${EXCLUDES[@]}" "$SRC/" "$DEST/"
+# Hooks import the shared shell parser from ../../_shared (GO-5 S13), which a
+# copy of the skill dir alone does not carry.
+mkdir -p "$HOOKS_ROOT/_shared"
+install -m 644 "$SHARED_DIR/shell_parse.py" "$HOOKS_ROOT/_shared/shell_parse.py"
 chmod +x "$DEST/$hook_rel"
 
 if [[ -n "$legacy" ]]; then
