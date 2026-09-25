@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // install-hooks — wire Claude Code hooks from ONE pinned golems tree (GO-5 S14).
 //
-//   scripts/hooks/install-hooks.sh --host mbp|m1 [--apply]
+//   scripts/hooks/install-hooks.sh --host mbp|m1 [--apply] [--update [<sha>]]
+//   scripts/hooks/install-hooks.sh --host mbp|m1 --status
 //
-// Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`, created at
-// origin/master and never moved by a `git checkout` in the main checkout. Every golems hook in the host's manifest
+// Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
+// `--update` moves it (default origin/master), so a `git checkout` in the main
+// checkout can never swap a live hook. Every golems hook in the host's manifest
 // entry is SYMLINKED from hooks-live into ~/.claude/hooks (copies silently break
 // the gates' `../../_shared` imports) and registered in ~/.claude/settings.json.
 // `external` manifest entries are owned by another repo: never linked, their
-// registration left byte-identical.
+// registration left byte-identical, reported by --status.
 //
 // Dry-run is the default; --apply writes: hooks-live, the fail-open wrapper
 // copy, the links (a real file/dir in the way is renamed to .bak-<stamp>), and
@@ -36,7 +38,7 @@ export const E1_DELETED = [
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WRAPPER_SRC = path.join(here, "fail-open.py");
-const LOCK_REASON = "GO-5 pinned hook source; moved only by scripts/hooks/install-hooks.sh";
+const LOCK_REASON = "GO-5 pinned hook source; move only with scripts/hooks/install-hooks.sh --update";
 
 function die(message, code = 1) {
   process.stderr.write(`install-hooks: ${message}\n`);
@@ -55,12 +57,14 @@ function mustGit(cwd, ...args) {
 }
 
 function parseArgs(argv) {
-  const o = { apply: false, host: null,
+  const o = { apply: false, status: false, update: null, host: null,
     repo: path.join(homedir(), "Gits/golems"), manifest: path.join(here, "manifest.json") };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--apply") o.apply = true;
     else if (a === "--dry-run") o.apply = false;
+    else if (a === "--status") o.status = true;
+    else if (a === "--update") o.update = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : "origin/master";
     else if (["--host", "--repo", "--manifest"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
     else die(`unknown or incomplete argument: ${a}`, 64);
   }
@@ -145,15 +149,20 @@ function linkState(at, to) {
 
 function pinLive(o, live) {
   const current = existsSync(live) ? git(live, "rev-parse", "HEAD") : null;
-  if (current) {
+  if (current && !o.update) {
     if (o.apply) relock(o.repo, live);
     return `hooks-live: keep ${current}`;
   }
   if (o.apply) mustGit(o.repo, "fetch", "-q", "origin", "master");
-  const sha = git(o.repo, "rev-parse", "--verify", "origin/master^{commit}");
-  if (!sha) die(`cannot resolve origin/master in ${o.repo}`);
-  if (!o.apply) return `hooks-live: create at ${sha}`;
-  mustGit(o.repo, "worktree", "add", "-q", "--detach", live, sha);
+  const sha = git(o.repo, "rev-parse", "--verify", `${o.update ?? "origin/master"}^{commit}`);
+  if (!sha) die(`cannot resolve ${o.update ?? "origin/master"} in ${o.repo}`);
+  if (!o.apply) return current ? `hooks-live: move ${current} -> ${sha}` : `hooks-live: create at ${sha}`;
+  if (!current) {
+    mustGit(o.repo, "worktree", "add", "-q", "--detach", live, sha);
+  } else if (current !== sha) {
+    if (git(live, "status", "--porcelain")) die(`${live} has local changes; refusing to move it`);
+    mustGit(live, "checkout", "-q", "--detach", sha);
+  }
   relock(o.repo, live);
   return `hooks-live: pinned at ${sha}`;
 }
@@ -217,7 +226,41 @@ function install(o) {
   return 0;
 }
 
+function status(o) {
+  const ctx = context(o);
+  const current = existsSync(ctx.live) ? git(ctx.live, "rev-parse", "HEAD") : null;
+  const master = git(o.repo, "rev-parse", "--verify", "origin/master");
+  const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
+  console.log(`hooks-live=${current ?? "absent"} master=${master ?? "unknown"} drift=${drift}`);
+  const text = existsSync(ctx.settingsPath) ? readFileSync(ctx.settingsPath, "utf8") : "";
+  let bad = false;
+  for (const e of ctx.entries) {
+    if (e.kind !== "golems") {
+      console.log(`${e.id} external(${text.includes(e.match) ? "registered" : "unregistered"})`);
+      continue;
+    }
+    const g = ctx.golems.find((x) => x.id === e.id);
+    let state = linkState(g.at, g.to);
+    if (state === "ok" && !text.includes(JSON.stringify(g.cmd).slice(1, -1))) state = "unregistered";
+    if (state === "dangling" || state === "copy(not link)") bad = true;
+    console.log(`${e.id} ${state}`);
+  }
+  const wrapper = path.join(ctx.hooksDir, "golems-fail-open.py");
+  if (text.includes(wrapper)) {
+    const w = !existsSync(wrapper) ? "dangling" : readFileSync(wrapper).equals(readFileSync(WRAPPER_SRC)) ? "ok" : "stale";
+    if (w === "dangling") bad = true;
+    console.log(`golems-fail-open ${w}`);
+  }
+  for (const name of E1_DELETED) {
+    if (text.includes(name)) {
+      bad = true;
+      console.log(`E1 ${name} PRESENT in settings.json`);
+    }
+  }
+  return bad ? 1 : 0;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const o = parseArgs(process.argv.slice(2));
-  process.exit(install(o));
+  process.exit(o.status ? status(o) : install(o));
 }
