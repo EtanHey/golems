@@ -43,11 +43,11 @@ cmuxlayer enforces two-column role geometry: orchestrators land LEFT, workers RI
 
 ## Spawn a Gemini gatherer
 
-Routing (which shapes go to Flash-Low vs Pro-High) lives in `/agent-routing` § Role Matrix.
+Routing (which shapes go to Flash-High vs Pro-High) lives in `/agent-routing` § Role Matrix.
 
 1. Write the brief to a file. Boot payloads are always one-line pointers to a brief file.
 2. Check the cmuxlayer version. `control_health` has no version field; read it from `cmuxlayer --version` or the Cellar path in `control_health({detail:"full"})` → `health.current_process.script_path`.
-3. Spawn: `spawn_agent({cli:"gemini", role:"gatherer", authority:"worker", placement:"right", repo, model:"flash-low" | "pro", boot_prompt_path:<brief>})`.
+3. Spawn: `spawn_agent({cli:"gemini", role:"gatherer", authority:"worker", placement:"right", repo, model:"flash-high" | "pro", boot_prompt_path:<brief>})`.
    - **< 0.4.88:** the spawn times out on boot readiness although the pane is ready. Deliver the brief with `send_to({mode:"surface", surface, text:"Read and follow <brief> ; your agent id is <id> (contract <path>)"})`. The Antigravity readiness/submit fixes (cmuxlayer #803, #809) are merged but ship in 0.4.88.
    - **≥ 0.4.88:** use `spawn_agent` directly (proven only after cmuxlayer's CX-4 soak).
 4. `mcp_profile:"sterile"` skips the contract pointer, so the lead must relay the report path and DONE marker itself.
