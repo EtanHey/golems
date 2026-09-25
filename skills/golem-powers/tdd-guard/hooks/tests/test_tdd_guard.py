@@ -1,7 +1,7 @@
 """Regression tests for the tdd-guard PreToolUse hook.
 
-The hook blocks implementation files on the third edit when no matching test
-exists. Snapshot/golden/approval artifacts are test data, so they must not be
+The hook flags implementation files on the third edit when no matching test
+exists: an advisory systemMessage, never a block (GO-5 E2). Snapshot/golden/approval artifacts are test data, so they must not be
 classified as implementation even when their final extension is an impl suffix.
 """
 
@@ -66,17 +66,25 @@ def assert_allowed(proc):
         f"expected allow, got exit {proc.returncode}; "
         f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
     )
-    assert parse_stdout(proc).get("decision") != "block"
+    body = parse_stdout(proc)
+    assert body.get("decision") != "block"
+    assert "TDD ADVISORY" not in json.dumps(body)
 
 
-def assert_blocked(proc):
-    assert proc.returncode == 2, (
-        f"expected block on third edit, got exit {proc.returncode}; "
+def assert_flagged(proc):
+    # GO-5 E2: the third edit is an advisory, never a block (a block made the
+    # model retry, and the name matching misses tests living elsewhere).
+    assert proc.returncode == 0, (
+        f"expected an advisory (exit 0) on third edit, got exit {proc.returncode}; "
         f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
     )
     body = parse_stdout(proc)
-    assert body.get("decision") == "block"
-    assert "without a test file" in body.get("reason", "")
+    assert "decision" not in body
+    # The model only sees PreToolUse additionalContext; systemMessage is the human's copy.
+    context = body.get("hookSpecificOutput", {})
+    assert context.get("hookEventName") == "PreToolUse"
+    assert context.get("additionalContext", "").startswith("TDD ADVISORY")
+    assert "without a test file" in context["additionalContext"]
 
 
 def touch_project_file(project: Path, relative: str) -> Path:
@@ -110,7 +118,7 @@ def test_snapshot_and_golden_artifacts_are_not_blocked_after_three_edits(tmp_pat
         assert_allowed(results[-1])
 
 
-def test_real_impl_file_without_test_still_blocks_after_three_edits(tmp_path: Path):
+def test_real_impl_file_without_test_is_still_flagged_after_three_edits(tmp_path: Path):
     project = make_project(tmp_path)
     service = touch_project_file(project, "src/Service.ts")
 
@@ -118,7 +126,7 @@ def test_real_impl_file_without_test_still_blocks_after_three_edits(tmp_path: Pa
 
     assert_allowed(results[0])
     assert_allowed(results[1])
-    assert_blocked(results[2])
+    assert_flagged(results[2])
 
 
 def test_marker_words_inside_real_filenames_are_still_impl_files(tmp_path: Path):
@@ -130,7 +138,7 @@ def test_marker_words_inside_real_filenames_are_still_impl_files(tmp_path: Path)
 
     for file_path in impl_files:
         results = run_three_edits(file_path, tmp_path)
-        assert_blocked(results[-1])
+        assert_flagged(results[-1])
 
 
 def test_embedded_test_substring_inside_real_filenames_is_still_impl(tmp_path: Path):
@@ -143,7 +151,7 @@ def test_embedded_test_substring_inside_real_filenames_is_still_impl(tmp_path: P
 
     for file_path in impl_files:
         results = run_three_edits(file_path, tmp_path)
-        assert_blocked(results[-1])
+        assert_flagged(results[-1])
 
 
 def test_swift_prefix_collision_does_not_count_as_matching_test(tmp_path: Path):
@@ -153,7 +161,7 @@ def test_swift_prefix_collision_does_not_count_as_matching_test(tmp_path: Path):
 
     results = run_three_edits(foo, tmp_path)
 
-    assert_blocked(results[-1])
+    assert_flagged(results[-1])
 
 
 def test_swift_related_suffix_test_still_counts(tmp_path: Path):
@@ -183,7 +191,7 @@ def test_typescript_test_does_not_satisfy_python_impl(tmp_path: Path):
 
     results = run_three_edits(service, tmp_path)
 
-    assert_blocked(results[-1])
+    assert_flagged(results[-1])
 
 
 def test_xctest_and_jvm_test_files_are_not_impl_files(tmp_path: Path):
@@ -230,3 +238,11 @@ def test_relative_swift_sources_path_finds_tests_at_package_root(tmp_path: Path)
     results = run_three_edits("Sources/App/Foo.swift", tmp_path, cwd=project)
 
     assert_allowed(results[-1])
+
+
+def test_first_edit_warning_reaches_the_model(tmp_path: Path):
+    # GO-5 ruling: a PreToolUse advisory the model cannot see is a deleted gate.
+    project = make_project(tmp_path)
+    impl = touch_project_file(project, "src/Service.ts")
+    body = parse_stdout(run_three_edits(impl, tmp_path)[0])
+    assert "TDD WARNING" in body.get("hookSpecificOutput", {}).get("additionalContext", "")
