@@ -5,7 +5,7 @@ const WRONG_GENERATOR_RE =
 const ESTIMATED_RE =
   /(wpm|even[- ]split|estimated|fake timing|line[- ]level|hardcoded\s+dur|duration\s*[\/÷]\s*word|word_count\s*[\/÷]\s*2\.4|realWordTiming["']?\s*:\s*false)/i;
 const PLACEHOLDER_RE =
-  /(no gist available yet|real theo stream audio for|placeholder|recap pending|TODO recap|lorem ipsum|meta[- ]copy)/i;
+  /(no gist available yet|real \w+ stream audio for|placeholder|recap pending|TODO recap|lorem ipsum|meta[- ]copy)/i;
 const DOCSLOCAL_DASHBOARD_RE = /\/docs\.local\/dashboards\/.+\.html$/i;
 const SERVE_TREE_RE = /\/dashboards-serve\/dashboards\//i;
 const TAILNET_SYNC_RE =

@@ -12,7 +12,7 @@ async function fixture(t, fetchImpl) {
   const root = await mkdtemp(join(import.meta.dirname, '.drive-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const absolutePath = join(root, 'video.mp4'); await writeFile(absolutePath, 'abc');
-  return { request: { absolutePath, relativePath: 'video.mp4', runName: 'theo-2026-09-08', size: 3, sha256: hash },
+  return { request: { absolutePath, relativePath: 'video.mp4', runName: 'examplechannel-2026-09-08', size: 3, sha256: hash },
     archive: createDriveArchive({ parentId, tokenImpl: async () => 'private-test-token', fetchImpl, delayImpl: async () => {} }) };
 }
 test('Drive verification reads remote size and hash; matching existing file is reused', async t => {
@@ -93,7 +93,7 @@ test('concurrent archives share one in-flight folder creation', async t => {
   const { archive, request } = await fixture(t, async (url, init) => {
     const parsed = new URL(url), query = parsed.searchParams.get('q') ?? '';
     if (parsed.pathname.endsWith('/archive-parent')) return json({ id: parentId, mimeType: 'application/vnd.google-apps.folder', trashed: false });
-    if (query.includes("name = 'theo-2026-09-08'")) return json({ files: [] });
+    if (query.includes("name = 'examplechannel-2026-09-08'")) return json({ files: [] });
     if (query.includes("name = 'video.mp4'")) return json({ files: [{ id: 'existing' }] });
     if (init.method === 'POST') {
       creates += 1;
@@ -112,7 +112,7 @@ test('failed folder creation is evicted so a later archive can retry', async t =
   const { archive, request } = await fixture(t, async (url, init) => {
     const parsed = new URL(url), query = parsed.searchParams.get('q') ?? '';
     if (parsed.pathname.endsWith('/archive-parent')) return json({ id: parentId, mimeType: 'application/vnd.google-apps.folder', trashed: false });
-    if (query.includes("name = 'theo-2026-09-08'")) return json({ files: [] });
+    if (query.includes("name = 'examplechannel-2026-09-08'")) return json({ files: [] });
     if (query.includes("name = 'video.mp4'")) return json({ files: [{ id: 'existing' }] });
     if (init.method === 'POST') return ++creates === 1 ? json({}, 500) : json({ id: 'run-folder', mimeType: 'application/vnd.google-apps.folder' });
     return json({ id: 'existing', name: 'video.mp4', parents: ['run-folder'], size: '3', sha256Checksum: hash, trashed: false });
@@ -130,7 +130,7 @@ test('native fetch exposes 308 Range without following its Location', async t =>
     const send = (status, body, headers = {}) => { response.writeHead(status, { 'Content-Type': 'application/json', ...headers }); response.end(JSON.stringify(body)); };
     if (parsed.pathname === '/must-not-follow') { followed = true; return send(500, {}); }
     if (parsed.pathname.endsWith('/archive-parent')) return send(200, { id: parentId, mimeType: 'application/vnd.google-apps.folder', trashed: false });
-    if (query.includes("name = 'theo-2026-09-08'")) return send(200, { files: [{ id: 'run-folder', mimeType: 'application/vnd.google-apps.folder' }] });
+    if (query.includes("name = 'examplechannel-2026-09-08'")) return send(200, { files: [{ id: 'run-folder', mimeType: 'application/vnd.google-apps.folder' }] });
     if (query.includes("name = 'video.mp4'")) return send(200, { files: [] });
     if (parsed.searchParams.get('uploadType') === 'resumable') return send(200, {}, { Location: 'https://www.googleapis.com/upload/drive/v3/files?upload_id=local-test' });
     if (parsed.searchParams.get('upload_id') === 'local-test') {

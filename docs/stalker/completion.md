@@ -24,9 +24,9 @@ Run the canonical post-stream handler with its existing video and chat paths. To
 
 ```bash
 STREAM_AUTO_ARCHIVE=0 scripts/stalker/post-stream.sh \
-  docs.local/stalker-golem/theo-YYYY-MM-DD-HHMMSS \
-  docs.local/stalker-golem/theo-YYYY-MM-DD-HHMMSS/video.mp4 \
-  docs.local/stalker-golem/theo-YYYY-MM-DD-HHMMSS/chat.log theo
+  docs.local/stalker-golem/examplechannel-YYYY-MM-DD-HHMMSS \
+  docs.local/stalker-golem/examplechannel-YYYY-MM-DD-HHMMSS/video.mp4 \
+  docs.local/stalker-golem/examplechannel-YYYY-MM-DD-HHMMSS/chat.log examplechannel
 ```
 
 Existing processing/scoring markers preserve earlier work. Delivery always rechecks the receipt and live hub. A failed notification retry reuses only a matching, versioned digest cache. Transcript or gems changes invalidate its input hash. Do not remove scoring markers or use `STALKER_FORCE_RESCORE` merely to repair delivery.

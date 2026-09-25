@@ -23,7 +23,7 @@ But **only Claude Desktop has local MCP connections** (wired via `claude_desktop
 
 So the skill has **two dispatch modes**:
 - **Research mode** — web sweeps + Drive connector grounding only. No local MCPs. Use for citation-heavy external research.
-- **Chat-bench mode** — a benchmark-style prompt in a REGULAR Desktop chat: full local MCP access (brain_search, filesystem, voicelayer, …). This is the proven pattern for MCP-grounded deep work (2026-06-09 2nd-pass runs: context-hygiene, theo-audio, m1-sync — all called brain_search + filesystem from chat).
+- **Chat-bench mode** — a benchmark-style prompt in a REGULAR Desktop chat: full local MCP access (brain_search, filesystem, voicelayer, …). This is the proven pattern for MCP-grounded deep work (2026-06-09 2nd-pass runs: context-hygiene, examplechannel-audio, m1-sync — all called brain_search + filesystem from chat).
 
 If Gemini Desktop ever ships an MCP connections file, that gap closes — for now (2026-04-30) only Claude Desktop has it.
 

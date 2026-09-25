@@ -91,7 +91,7 @@ node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N --apply
 The last stdout line is the one-line summary `/fleet-wrap` records: `drive-filing rollup: mode=… files=…
 bytes=… · monthly-moves=… · to-drive months=… files=… bytes=… · mtime-units=… bytes=… · held=… credentials-skipped=…`.
 **Dating (v2):** an item's month is the first `YYYY-MM-DD` anywhere in its own name, else the first
-`YYYY-MM` (`theo-2026-09-19-015034/`, `probe-2026-03/`); an exact `YYYY-MM/` folder is the month itself.
+`YYYY-MM` (`examplechannel-2026-09-19-015034/`, `probe-2026-03/`); an exact `YYYY-MM/` folder is the month itself.
 An undated folder with a dated name somewhere below it is an *area* and is descended. An undated folder
 with none is **one mtime unit** (the highest such folder), dated by the newest file inside; it joins the
 upload plan once old but is **never moved**; its Drive target keeps its own path

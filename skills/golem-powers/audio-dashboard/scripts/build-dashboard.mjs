@@ -279,7 +279,7 @@ function main() {
   rmSync(outPath, { force: true });
   rmSync(buildReceiptsPath(outPath), { force: true });
 
-  // VOICE-ROLE gate (Etan's ruling 2026-08-04: Ben is the HOST, Theo is the EXPERT).
+  // VOICE-ROLE gate (Etan's ruling 2026-08-04: Ben is the HOST, the stream author is the EXPERT).
   // Runs on the SPEC, before any synthesis: a role/voice inversion is knowable from
   // the job file alone, so there is no reason to spend a full TTS render discovering
   // it. Fail-closed — a contradiction rejects, it does not warn.

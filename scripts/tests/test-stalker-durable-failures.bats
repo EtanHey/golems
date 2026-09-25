@@ -61,7 +61,7 @@ SH
 }
 
 make_post_fixture() {
-    local dir="$TMPDIR_/theo-2026-07-10-030737"
+    local dir="$TMPDIR_/examplechannel-2026-07-10-030737"
     mkdir -p "$dir"
     printf 'video\n' > "$dir/video.mp4"
     printf 'done\n' > "$dir/.stage-process.done"
@@ -258,7 +258,7 @@ SH
 }
 
 @test "process-stream fails retryably before expensive work when all scorers are absent" {
-    stream_dir="$TMPDIR_/theo-2026-07-10-030737"
+    stream_dir="$TMPDIR_/examplechannel-2026-07-10-030737"
     mkdir -p "$stream_dir" "$TMPDIR_/empty-home"
     printf 'video\n' > "$stream_dir/video.mp4"
 
@@ -278,7 +278,7 @@ SH
 }
 
 @test "process-stream fails before expensive work when codex has no timeout utility" {
-    stream_dir="$TMPDIR_/theo-2026-07-10-030738"
+    stream_dir="$TMPDIR_/examplechannel-2026-07-10-030738"
     codex_calls="$TMPDIR_/codex-calls.txt"
     mkdir -p "$stream_dir" "$TMPDIR_/empty-home"
     printf 'video\n' > "$stream_dir/video.mp4"
@@ -314,7 +314,7 @@ SH
 }
 
 @test "process-stream does not require a scorer when durable gems already exist" {
-    stream_dir="$TMPDIR_/theo-2026-07-10-030737"
+    stream_dir="$TMPDIR_/examplechannel-2026-07-10-030737"
     mkdir -p "$stream_dir/frames" "$stream_dir/clips" "$TMPDIR_/empty-home"
     printf 'video\n' > "$stream_dir/video.mp4"
     printf 'audio\n' > "$stream_dir/full-audio.wav"
@@ -490,7 +490,7 @@ SH
 
 @test "post-stream entry reconciles a SIGKILLed sibling scoring run" {
     stream_dir="$(make_post_fixture)"
-    stale_dir="$(dirname "$stream_dir")/theo-2026-07-10-010000"
+    stale_dir="$(dirname "$stream_dir")/examplechannel-2026-07-10-010000"
     contract="$(make_contract)"
     write_dead_scoring_marker "$stale_dir"
     printf '# partial gems\n' > "$stale_dir/gems.md"
@@ -508,7 +508,7 @@ SH
         STALKER_CONTRACT_SCRIPT="$contract" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
-        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
+        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ -f "$stale_dir/.stage-scoring.failed" ]
@@ -518,7 +518,7 @@ SH
 
 @test "digest entry reconciles a SIGKILLed scoring run before reporting" {
     root="$TMPDIR_/stalker-sigkill"
-    stale_dir="$root/theo-2026-08-19-010000"
+    stale_dir="$root/examplechannel-2026-08-19-010000"
     write_dead_scoring_marker "$stale_dir"
     printf '# partial gems\n' > "$stale_dir/gems.md"
     printf '[00:00:01] viewer: old run\n' > "$stale_dir/chat.log"
@@ -585,7 +585,7 @@ SH
 
 @test "morning digest names orphan-tail drops and their on-disk gems" {
     root="$TMPDIR_/stalker-orphan"
-    run_dir="$root/theo-2026-08-19-0300"
+    run_dir="$root/examplechannel-2026-08-19-0300"
     mkdir -p "$run_dir"
     printf 'orphaned\n' > "$run_dir/.orphan-tail"
     printf 'done\n' > "$run_dir/.stage-process.done"
@@ -595,7 +595,7 @@ SH
     run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
-        && "$output" == *"theo-2026-08-19-0300: .orphan-tail present"* \
+        && "$output" == *"examplechannel-2026-08-19-0300: .orphan-tail present"* \
         && "$output" == *"gems.md exists on disk (1 curated heading)"* ]]
 }
 
@@ -659,7 +659,7 @@ SH
     captured_payload="$TMPDIR_/captured-partial-payload.json"
     queue_dir="$TMPDIR_/partial-telegram-queue"
     rejecting_sender="$FAKE_BIN/telegram-reject-partial-oversized"
-    processed_dir="$root/theo-2026-08-19-0000"
+    processed_dir="$root/examplechannel-2026-08-19-0000"
     long_suffix="$(printf '%0180d' 0 | tr '0' 'x')"
 
     cat > "$rejecting_sender" <<'SH'
@@ -674,7 +674,7 @@ SH
     printf 'healthy chat\n' > "$processed_dir/chat.log"
     printf '### [00:05:00] Counted moment\n**Score:** 8/10 | **Type:** insight\n**Gist:** counted\n' > "$processed_dir/gems.md"
     for index in $(seq -w 1 20); do
-        mkdir -p "$root/theo-$long_suffix-$index-2026-08-19"
+        mkdir -p "$root/examplechannel-$long_suffix-$index-2026-08-19"
     done
 
     CAPTURED_PAYLOAD="$captured_payload" \
@@ -703,7 +703,7 @@ SH
     root="$TMPDIR_/stalker-real-shape"
     captured_payload="$TMPDIR_/captured-real-shape.json"
     capturing_sender="$FAKE_BIN/telegram-capture-real-shape"
-    processed_dir="$root/theo-2026-08-20-010000"
+    processed_dir="$root/examplechannel-2026-08-20-010000"
 
     cat > "$capturing_sender" <<'SH'
 #!/bin/bash
@@ -720,7 +720,7 @@ SH
     done
 
     for suffix in 031841 032306 032307 032309 051534 052008 052009; do
-        run_dir="$root/theo-2026-08-20-$suffix"
+        run_dir="$root/examplechannel-2026-08-20-$suffix"
         mkdir -p "$run_dir"
         printf 'orphaned\n' > "$run_dir/.orphan-tail"
     done
@@ -736,7 +736,7 @@ import sys
 body = json.load(open(sys.argv[1]))["body"]
 utf16_units = len(body.encode("utf-16-le")) // 2
 server_kept = body.encode("utf-16-le")[:4000].decode("utf-16-le", errors="ignore")
-print(f"{utf16_units}|{'theo-2026-08-20-032309' in server_kept}|{'digest truncated' in server_kept}")
+print(f"{utf16_units}|{'examplechannel-2026-08-20-032309' in server_kept}|{'digest truncated' in server_kept}")
 PY
 )"
     printf '# notify_status=%s body_metrics=%s\n' "$status" "$body_metrics" >&3
@@ -748,7 +748,7 @@ PY
 
 @test "failed digest does not claim dropped details were omitted when every name survives" {
     root="$TMPDIR_/stalker-all-drops-shown"
-    processed_dir="$root/theo-2026-08-20-010000"
+    processed_dir="$root/examplechannel-2026-08-20-010000"
 
     mkdir -p "$processed_dir"
     printf 'done\n' > "$processed_dir/.stage-process.done"
@@ -757,14 +757,14 @@ PY
             "$index" "$index" "$(printf '%0220d' 0 | tr '0' 'g')" >> "$processed_dir/gems.md"
     done
     for suffix in 031841 032306 032307 051534 052008 052009; do
-        mkdir -p "$root/theo-2026-08-20-$suffix"
+        mkdir -p "$root/examplechannel-2026-08-20-$suffix"
     done
 
     STALKER_TELEGRAM_DRY_RUN=1 \
     run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-20 --dry-run
 
     [[ "$status" -eq 75 \
-        && "$output" == *"theo-2026-08-20-052009"* \
+        && "$output" == *"examplechannel-2026-08-20-052009"* \
         && "$output" == *"digest truncated to fit notification limit"* \
         && "$output" != *"details truncated: 6 of 6"* ]]
 }
@@ -799,8 +799,8 @@ EOF
 
 @test "morning digest reports partial drops without counting their evidence" {
     root="$TMPDIR_/stalker-partial"
-    processed_dir="$root/theo-2026-08-19-2000"
-    dropped_dir="$root/theo-2026-08-19-2100"
+    processed_dir="$root/examplechannel-2026-08-19-2000"
+    dropped_dir="$root/examplechannel-2026-08-19-2100"
     mkdir -p "$processed_dir" "$dropped_dir"
     printf 'done\n' > "$processed_dir/.stage-process.done"
     printf 'healthy chat\n' > "$processed_dir/chat.log"
@@ -816,13 +816,13 @@ EOF
         && "$output" == *"💎 1 gems · 1 chat"* \
         && "$output" == *"Counted moment"* \
         && "$output" != *"Dropped moment"* \
-        && "$output" == *"DROPPED (not counted above): theo-2026-08-19-2100"* ]]
+        && "$output" == *"DROPPED (not counted above): examplechannel-2026-08-19-2100"* ]]
 }
 
 @test "morning digest does not fail a healthy reconnect day for an orphan tail" {
     root="$TMPDIR_/stalker-reconnect"
-    processed_dir="$root/theo-2026-08-19-2000"
-    orphan_dir="$root/theo-2026-08-19-2100"
+    processed_dir="$root/examplechannel-2026-08-19-2000"
+    orphan_dir="$root/examplechannel-2026-08-19-2100"
     mkdir -p "$processed_dir" "$orphan_dir"
     printf 'done\n' > "$processed_dir/.stage-process.done"
     printf 'healthy chat\n' > "$processed_dir/chat.log"
@@ -837,12 +837,12 @@ EOF
         && "$output" == *"💎 1 gems · 1 chat"* \
         && "$output" == *"Counted moment"* \
         && "$output" != *"FAILED"* \
-        && "$output" == *"DROPPED (not counted above): theo-2026-08-19-2100"* ]]
+        && "$output" == *"DROPPED (not counted above): examplechannel-2026-08-19-2100"* ]]
 }
 
 @test "post-stream completion remains eligible beside an orphan tail" {
     stream_dir="$(make_post_fixture)"
-    orphan_dir="$(dirname "$stream_dir")/theo-2026-07-10-040000"
+    orphan_dir="$(dirname "$stream_dir")/examplechannel-2026-07-10-040000"
     mkdir -p "$orphan_dir"
     printf 'status=ORPHAN_TAIL\n' > "$orphan_dir/.orphan-tail"
     printf '[00:00:01] viewer: hello\n' > "$stream_dir/chat.log"
@@ -856,7 +856,7 @@ EOF
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
-        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
+        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
@@ -876,7 +876,7 @@ EOF
         STALKER_COMPLETION_EXIT=17 \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
-        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
+        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 75 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
@@ -900,7 +900,7 @@ EOF
         STALKER_BRAINLAYER_INGEST_TIMEOUT=1s \
         STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0 \
         STREAM_AUTO_ARCHIVE=1 \
-        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
+        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
     [ "$status" -ne 0 ]
     [ ! -f "$STALKER_COMPLETION_CALLS" ]
@@ -926,7 +926,7 @@ EOF
         STALKER_CONTRACT_SCRIPT="$contract" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
-        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
+        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]
@@ -957,7 +957,7 @@ EOF
         STALKER_CONTRACT_SCRIPT="$contract" \
         STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
-        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" theo 0
+        "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$stream_dir" ]

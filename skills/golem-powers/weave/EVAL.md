@@ -35,7 +35,7 @@ any finding routed to a disposition outside the vocabulary, or DROPPED without a
 The 2026-05-17 web-weave produced 6 citation-backed deep-research artifacts at
 `$SKILL_CREATOR_ROOT/docs.local/handoffs/2026-05-17/web-weave/` (`gen-eval-safety.md`,
 `launchd-python-plist.md`, `mcp-orphan-reaping.md`, `rrf-k-tuning.md`,
-`sqlite-wal-busy.md`, `theo-video-mystery.md`). **That path is gitignored and
+`sqlite-wal-busy.md`, `examplechannel-video-mystery.md`). **That path is gitignored and
 decaying** — to make the RED baseline reproducible, copy those 6 into the skill's
 committed `evals/fixtures/baseline-2026-05-17/` before relying on the backtest.
 

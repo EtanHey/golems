@@ -1,6 +1,6 @@
 # Stalker Pipeline — Full Technical Reference
 
-> Originally built for Theo's Twitch streams, adapted for QA screen recordings.
+> Originally built for the monitored channel's Twitch streams, adapted for QA screen recordings.
 
 ## Complete Command Reference
 

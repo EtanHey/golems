@@ -91,7 +91,7 @@ test("uses a transcript-bound explicit end without adding a fixed tail", async (
   const { runDir, summary } = await fixture("explicit-end");
   await writeFile(join(runDir, "transcript.md"), [
     "## [32:13] Segment 1 (58s)",
-    "Theo sends the agent prompt; its response and reaction settle by 36:22.",
+    "The stream author sends the agent prompt; its response and reaction settle by 36:22.",
   ].join("\n"));
   const item = { timestamp: "32:13", title: "Agent response", summary: "Summary", excerpt: "Response.", uncertain: false };
   summary.topics = [item];

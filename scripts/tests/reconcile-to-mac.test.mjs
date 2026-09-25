@@ -304,7 +304,7 @@ describe("profile safety", () => {
     expect(validateProfile(valid)).toBe(valid);
   });
 
-  test.each(["Theo", "Ben", "Huberman", "voice-clone", "voices/"])(
+  test.each(["Ben", "Huberman", "voice-clone", "voices/"])(
     "rejects private carveout content: %s",
     (privateName) => {
       const unsafe = structuredClone(valid);

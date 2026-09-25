@@ -6,6 +6,7 @@
 
 import { test, expect } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -106,8 +107,19 @@ test("a non-render completion claim is N/A (the generic false-green-gate covers 
   expect(detectRenderDone(nonRender).verdict).toBe("PASS");
 });
 
-test("theo-c4s is a registered clone (same family as theo-c4)", () => {
-  expect(REGISTERED_CLONES).toContain("theo-c4s");
-  expect(REGISTERED_CLONES).toContain("theo-c4");
+test("examplechannel-c4s is a registered clone (same family as examplechannel-c4)", () => {
+  expect(REGISTERED_CLONES).toContain("examplechannel-c4s");
+  expect(REGISTERED_CLONES).toContain("examplechannel-c4");
   expect(REGISTERED_CLONES).toContain("ben-c1");
+});
+
+test("the expert clone family comes from GOLEMS_EXPERT_VOICE, never from the repo", () => {
+  const gate = path.join(here, "..", "src", "render-done-gate.mjs");
+  const probe = `const m = await import(${JSON.stringify(gate)}); console.log(JSON.stringify(m.REGISTERED_CLONES));`;
+  const result = spawnSync(process.execPath, ["-e", probe], {
+    encoding: "utf8",
+    env: { ...process.env, GOLEMS_EXPERT_VOICE: "someauthor" },
+  });
+  expect(result.status).toBe(0);
+  expect(JSON.parse(result.stdout)).toEqual(["someauthor-c4s", "someauthor-c4", "ben-c1"]);
 });

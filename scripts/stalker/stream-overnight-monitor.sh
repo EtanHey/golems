@@ -3,12 +3,12 @@
 # Watches the stalker-golem pipeline, ensures nothing dies, and
 # prepares a summary when the stream ends and pipeline completes.
 #
-# Usage: stream-overnight-monitor.sh [channel] [date]
-# Example: stream-overnight-monitor.sh theo 2026-03-12
+# Usage: stream-overnight-monitor.sh <channel> [date]
+# Example: stream-overnight-monitor.sh examplechannel 2026-03-12
 
 set -euo pipefail
 
-CHANNEL="${1:-theo}"
+CHANNEL="${1:?Usage: stream-overnight-monitor.sh <channel> [date]}"
 DATE="${2:-$(date +%Y-%m-%d)}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STREAM_ROOT="$HOME/Gits/golems/docs.local/stalker-golem"

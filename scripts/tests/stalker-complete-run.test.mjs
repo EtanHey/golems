@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { completeRun, notifyDelivery } from '../stalker/stalker-complete-run.mjs';
 import { validSummary } from './fixtures/stalker-digest-summary.mjs';
 
-async function setup(t, runName = 'theo-2026-09-08-030512') {
+async function setup(t, runName = 'examplechannel-2026-09-08-030512') {
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-completion-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const repoRoot = join(root, 'golems'), runDir = join(repoRoot, 'docs.local/stalker-golem', runName);
@@ -71,8 +71,8 @@ function matchingArchive(calls, failOnceAt) {
 test('completion publishes before notifying, preserves media and validates every retry', async t => {
   const { runDir, repoRoot, calls, options } = await setup(t);
   assert.equal((await completeRun(runDir, options)).status, 'complete');
-  assert.deepEqual(calls, ['generate', 'sync', 'Stalker dashboard ready — theo 2026-09-08']);
-  const evidenceRoot = join(repoRoot, 'docs.local/dashboards/stalker/evidence/theo-2026-09-08-030512');
+  assert.deepEqual(calls, ['generate', 'sync', 'Stalker dashboard ready — examplechannel 2026-09-08']);
+  const evidenceRoot = join(repoRoot, 'docs.local/dashboards/stalker/evidence/examplechannel-2026-09-08-030512');
   assert.equal(await readFile(join(evidenceRoot, (await readdir(evidenceRoot))[0], 'card-media/clips/clip-0m1s.mp4'), 'utf8'), 'selected clip');
   assert.equal((await completeRun(runDir, options)).skipped, true);
   assert.equal(calls.length, 3);
@@ -229,20 +229,20 @@ console.log(JSON.stringify({type:'turn.completed'}));
 
 
 test('legacy date-only recordings retain their channel, date and dashboard URL', async t => {
-  const { runDir, options, calls } = await setup(t, 'theo-2026-09-08');
+  const { runDir, options, calls } = await setup(t, 'examplechannel-2026-09-08');
   const generate = options.generateImpl;
   options.generateImpl = async args => {
-    assert.equal(args.channel, 'theo');
+    assert.equal(args.channel, 'examplechannel');
     assert.equal(args.date, '2026-09-08');
-    assert.match(args.dashboardUrl, /\/dashboards\/golems\/stalker\/theo-2026-09-08\.html$/);
+    assert.match(args.dashboardUrl, /\/dashboards\/golems\/stalker\/examplechannel-2026-09-08\.html$/);
     return generate(args);
   };
   const result = await completeRun(runDir, options);
   assert.equal(result.status, 'complete');
-  assert.ok(calls.includes('Stalker dashboard ready — theo 2026-09-08'));
+  assert.ok(calls.includes('Stalker dashboard ready — examplechannel 2026-09-08'));
   const receipt = JSON.parse(await readFile(join(runDir, '.stalker-completion.json')));
-  assert.equal(receipt.runName, 'theo-2026-09-08');
-  assert.match(receipt.publication.url, /\/theo-2026-09-08\.html$/);
+  assert.equal(receipt.runName, 'examplechannel-2026-09-08');
+  assert.match(receipt.publication.url, /\/examplechannel-2026-09-08\.html$/);
 });
 
 test('completion text leads with selected highlights instead of opening chatter', async t => {

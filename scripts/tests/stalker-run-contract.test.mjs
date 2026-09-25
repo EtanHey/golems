@@ -14,10 +14,10 @@ async function setup(t, delivered = true) {
   await mkdir(runDir);
   for (const [name, body] of Object.entries(fixture.files)) await writeFile(join(runDir, name), body);
   if (!delivered) return { runDir };
-  const html = '<!doctype html><title>Theo digest</title><article><video src="evidence/clip.mp4" poster="evidence/frame.jpg"></video></article><p>What was discussed</p>';
+  const html = '<!doctype html><title>examplechannel digest</title><article><video src="evidence/clip.mp4" poster="evidence/frame.jpg"></video></article><p>What was discussed</p>';
   const mediaBytes=Buffer.from('published media');
   const highlights = Array.from({ length: 5 }, (_, i) => `- [10:${40 + i}] Highlight ${i}`).join('\n');
-  await writeFile(join(runDir, 'digest.md'), `# Theo\n## What was discussed\n[10:47] A topic\n## Top highlights\n${highlights}\n## Claims worth checking\n[10:47] A claim\n`);
+  await writeFile(join(runDir, 'digest.md'), `# examplechannel\n## What was discussed\n[10:47] A topic\n## Top highlights\n${highlights}\n## Claims worth checking\n[10:47] A claim\n`);
   await writeFile(join(runDir, 'dashboard.html'), html);
   const manifest = { included: [{ linkPath: 'dashboards/golems/stalker/run.html', sourceRelative: 'golems/docs.local/dashboards/stalker/run.html' }] };
   const responses = { dashboardStatus: 200, html, manifest, media: mediaBytes, mediaStatus:200 };

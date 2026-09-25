@@ -88,7 +88,7 @@ If you cannot use an adequate tool (Playwright not available, no browser access)
 
 Never label a URL based on surrounding context. A URL is its own identity.
 
-- **WRONG:** "Theo's video (https://youtu.be/9d5bzxVsocw)" — if you haven't fetched it
+- **WRONG:** "The stream author's video (https://youtu.be/9d5bzxVsocw)" — if you haven't fetched it
 - **RIGHT:** "URL: https://youtu.be/9d5bzxVsocw" — let the fetcher determine the title
 - This applies to compaction summaries, handoff artifacts, and collab messages
 

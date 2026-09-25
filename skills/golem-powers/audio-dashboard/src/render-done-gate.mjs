@@ -12,7 +12,7 @@
 //   (b) a REACHABLE-SURFACE check — the artifact is where it is claimed / is
 //       embedded-clickable in the dashboard the listener is pointed at;
 //   (c) a VOICE-PROFILE gate — the resolved `--reference` is a REGISTERED clone
-//       (theo-c4 / theo-c4s / ben-c1), FAIL-CLOSED on a missing profile and on a
+//       (<expert>-c4 / <expert>-c4s / ben-c1), FAIL-CLOSED on a missing profile and on a
 //       silent system-TTS / neutral-reader fallback (never fail-open);
 //   (d) an AUDIO-not-SCRIPT contract — relaying the script TEXT ("here's the
 //       script") in place of the rendered audio artifact is not a render-done.
@@ -28,6 +28,7 @@
 // of `/false-green-gate` (the generic FALSE_GREEN_FFPROBE / FALSE_GREEN_VOICE).
 
 import { normalizeTranscript, currentTurn } from "../lib/transcript.mjs";
+import { EXPERT_VOICE } from "./voice-role-gate.mjs";
 
 // ── A render-done completion claim ──────────────────────────────────────────
 // The narration-flavoured completion phrasings: "render done/complete", "give
@@ -85,15 +86,20 @@ const SURFACE_CLAIM_RE =
   /(https?:\/\/|tailnet|\bdashboard\b|\bhub\b|\bpanel\b|on the (site|page|dashboard|hub|panel)|in the (dashboard|hub|panel|site|page))/i;
 
 // ── Voice-profile gate (fail-closed) ────────────────────────────────────────
-// The registered clones. theo-c4s is the same clone family as theo-c4.
-const REGISTERED_CLONES = ["theo-c4s", "theo-c4", "ben-c1"];
+// The registered clones. <expert>-c4s is the same clone family as <expert>-c4;
+// the expert person comes from GOLEMS_EXPERT_VOICE (see voice-role-gate.mjs).
+const REGISTERED_CLONES = [`${EXPERT_VOICE}-c4s`, `${EXPERT_VOICE}-c4`, "ben-c1"];
 // A clone/2-voice render is REQUIRED to resolve a registered --reference.
-const VOICE_REQUIRED_RE =
-  /(2-?voice|two-?voice|cloned? voice|clone[ds]?\b|--reference|theo-c4s?|ben-c1|speaker ?[12]|narrator|voice[- ]?profile)/i;
+const VOICE_REQUIRED_RE = new RegExp(
+  `(2-?voice|two-?voice|cloned? voice|clone[ds]?\\b|--reference|${EXPERT_VOICE}-c4s?|ben-c1|speaker ?[12]|narrator|voice[- ]?profile)`,
+  "i",
+);
 // The resolved reference names a registered clone (in a command or in a probe
 // output that reports the RESOLVED reference).
-const VOICE_RESOLVED_RE =
-  /((--reference|ref(erence)?[_ ]?audio|resolved[\s\S]{0,20}reference|voice[- ]?profile)[\s\S]{0,40}(theo-c4s?|ben-c1))/i;
+const VOICE_RESOLVED_RE = new RegExp(
+  `((--reference|ref(erence)?[_ ]?audio|resolved[\\s\\S]{0,20}reference|voice[- ]?profile)[\\s\\S]{0,40}(${EXPERT_VOICE}-c4s?|ben-c1))`,
+  "i",
+);
 // The fail-open shapes this gate exists to fail CLOSED on: a silent system-TTS
 // or neutral-reader fallback, or a missing/unregistered profile.
 const VOICE_FALLBACK_RE =
@@ -308,7 +314,7 @@ export function detectRenderDone(transcript) {
     violations.push({
       code: "RENDER_WRONG_OR_MISSING_VOICE",
       evidence:
-        "cloned/2-voice render without `--reference` resolving to a REGISTERED clone (theo-c4 / theo-c4s / ben-c1) — a system-TTS/neutral-reader fallback or a missing profile fails CLOSED, never a silent fallback.",
+        `cloned/2-voice render without \`--reference\` resolving to a REGISTERED clone (${REGISTERED_CLONES.join(" / ")}) — a system-TTS/neutral-reader fallback or a missing profile fails CLOSED, never a silent fallback.`,
     });
   }
 

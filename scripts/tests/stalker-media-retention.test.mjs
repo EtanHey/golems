@@ -9,7 +9,7 @@ async function fixture(t, name) {
   const root = join(import.meta.dirname, `.retention-${process.pid}-${name}`);
   await rm(root, { recursive: true, force: true });
   t.after(() => rm(root, { recursive: true, force: true }));
-  const runDir = join(root, 'theo-2026-09-08-030512');
+  const runDir = join(root, 'examplechannel-2026-09-08-030512');
   await mkdir(runDir, { recursive: true });
   return { root, runDir };
 }
@@ -99,7 +99,7 @@ test('preserves permanent text plus dashboard and caller-selected media', async 
   await writeFile(join(runDir, 'transcript.md'), 'forever');
   await writeFile(join(runDir, 'chat.log'), 'forever');
   await writeFile(join(runDir, 'signals.json'), '{}');
-  await writeFile(join(runDir, 'dashboard.html'), '<video src="evidence/theo-2026-09-08-030512/revision/clips/selected.mp4"></video>');
+  await writeFile(join(runDir, 'dashboard.html'), '<video src="evidence/examplechannel-2026-09-08-030512/revision/clips/selected.mp4"></video>');
   const calls = [];
   const receipt = await retainRunMedia({ runDir, archiveImpl: matchingArchive(calls), keepPaths: ['frames/keep.jpg'] });
   await assert.rejects(readFile(join(runDir, 'video.mp4')), { code: 'ENOENT' });
@@ -112,7 +112,7 @@ test('preserves permanent text plus dashboard and caller-selected media', async 
 });
 test('matches exact dashboard asset identities without retaining suffix collisions', async t => {
   const { runDir } = await fixture(t, 'reference-identity');
-  const runName = 'theo-2026-09-08-030512';
+  const runName = 'examplechannel-2026-09-08-030512';
   const rawCollision = 'clips/clip-105m41s.mp4';
   const publishedV2 = 'card-media-v2/clips/clip-105m41s.mp4';
   const directReference = 'frames/direct.jpg';

@@ -2,7 +2,8 @@
  * VOICE-ROLE BUILD gate.
  *
  * ETAN'S RULING (2026-08-04), verbatim:
- *   "Ben is the HOST. Theo is the EXPERT. Ben asks, Theo explains. ~90% of the
+ *   "Ben is the HOST. <the stream author> is the EXPERT. Ben asks, <the stream
+ *    author> explains. ~90% of the
  *    time, treat as always unless a job explicitly overrides."
  *
  * WHY THIS EXISTS — the blind spot it covers
@@ -18,7 +19,7 @@
  * The convention held for months by habit. The first agent to build a dashboard
  * without having absorbed it inverted the roles, and it shipped twice
  * (2026-08-03-since-the-weave, 2026-08-04-night-of-aug-3): every `role: host`
- * scene rendered in `theo-c4s` and every `role: expert` scene in `ben-c1`.
+ * scene rendered in `<expert>-c4s` and every `role: expert` scene in `ben-c1`.
  * Etan caught it by ear. This gate exists so that never has to happen again.
  *
  * FAIL-CLOSED. A role/voice contradiction REJECTs the build; it does not warn.
@@ -27,11 +28,25 @@
 /**
  * The ruling, as the only two constants in the build path that encode it.
  * These are PERSONS, not profile ids — a person owns many profiles over time
- * (theo-c4, theo-c4s, theo-n4a, ...), and pinning a profile id would rot on the
- * next cadence experiment while the ruling itself would not have changed.
+ * (<expert>-c4, <expert>-c4s, <expert>-n4a, ...), and pinning a profile id would
+ * rot on the next cadence experiment while the ruling itself would not have changed.
+ *
+ * AIDEV-NOTE: the expert person is the stream author, which the repo never names.
+ * It comes from GOLEMS_EXPERT_VOICE (a single `<person>` segment, no `-`); the
+ * neutral default only exists so tests and evals run without config.
  */
 export const HOST_VOICE = "ben";
-export const EXPERT_VOICE = "theo";
+export const EXPERT_VOICE = expertVoiceFromEnv(process.env.GOLEMS_EXPERT_VOICE);
+
+/** The configured expert person, lowercased; neutral placeholder when unset. */
+export function expertVoiceFromEnv(value) {
+  const person = String(value ?? "").trim().toLowerCase();
+  if (!person) return "examplechannel";
+  if (!/^[a-z0-9_]+$/.test(person)) {
+    throw new Error(`GOLEMS_EXPERT_VOICE must be a single <person> segment, got "${value}"`);
+  }
+  return person;
+}
 
 /** Derived: person -> the one role that person is allowed to speak. */
 export const ROLE_BY_VOICE_PERSON = Object.freeze({
@@ -49,7 +64,7 @@ export const VOICE_PERSON_BY_ROLE = Object.freeze({
 const GATED_ROLES = Object.freeze(["host", "expert"]);
 
 /**
- * Voice profile ids are `<person>-<variant>` by convention (theo-c4s, ben-c1).
+ * Voice profile ids are `<person>-<variant>` by convention (examplechannel-c4s, ben-c1).
  * Returns the lowercased person segment, or "" when there is nothing to read.
  */
 export function voicePersonFromProfile(reference) {

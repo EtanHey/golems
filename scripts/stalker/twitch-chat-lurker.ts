@@ -1,8 +1,13 @@
 import tmi from "tmi.js";
 import { createWriteStream } from "fs";
 
-const channel = process.env.TWITCH_CHANNEL ?? "theo";
+const channel = process.env.TWITCH_CHANNEL;
 const output = process.env.CHAT_OUTPUT;
+if (!channel) {
+  console.error("[lurk] TWITCH_CHANNEL is required");
+  process.exit(2);
+}
+
 const preflightMode =
   process.env.STALKER_CHAT_PREFLIGHT === "1" && channel === "__golems_preflight__";
 

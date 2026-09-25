@@ -7,7 +7,7 @@ import { test } from 'node:test';
 async function fixture(t) {
   const root = await mkdtemp(join(import.meta.dirname, '.stalker-wiring-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const scripts = join(root, 'scripts'), stalker = join(scripts, 'stalker'), runDir = join(root, 'theo-2026-09-08-030512'), bin = join(root, 'bin');
+  const scripts = join(root, 'scripts'), stalker = join(scripts, 'stalker'), runDir = join(root, 'examplechannel-2026-09-08-030512'), bin = join(root, 'bin');
   await Promise.all([mkdir(stalker, { recursive: true }), mkdir(runDir), mkdir(bin)]);
   await cp(join(import.meta.dirname, '../lib'), join(scripts, 'lib'), { recursive: true });
   await cp(join(import.meta.dirname, '../stalker/post-stream.sh'), join(stalker, 'post-stream.sh'));
@@ -22,7 +22,7 @@ async function fixture(t) {
   await writeFile(join(bin, 'ffprobe'), '#!/bin/bash\necho 24000\n', { mode: 0o755 });
   await writeFile(join(bin, 'notify'), '#!/bin/bash\nexit 0\n', { mode: 0o755 });
   const calls = join(root, 'calls');
-  const run = extra => spawnSync('bash', [join(stalker, 'post-stream.sh'), runDir, join(runDir, 'video.mp4'), join(runDir, 'chat.log'), 'theo'], {
+  const run = extra => spawnSync('bash', [join(stalker, 'post-stream.sh'), runDir, join(runDir, 'video.mp4'), join(runDir, 'chat.log'), 'examplechannel'], {
     encoding: 'utf8', timeout: 10000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CALLS: calls, ...extra },
   });
   return { runDir, calls, run };
@@ -47,7 +47,7 @@ test('post-stream re-enters notified retention after the original video was offl
   const { run, runDir, calls } = await fixture(t);
   await rm(join(runDir, 'video.mp4'));
   await writeFile(join(runDir, '.stalker-completion.json'), JSON.stringify({
-    version: 3, runName: 'theo-2026-09-08-030512', status: 'notified',
+    version: 3, runName: 'examplechannel-2026-09-08-030512', status: 'notified',
   }));
   const result = run();
   assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -56,7 +56,7 @@ test('post-stream re-enters notified retention after the original video was offl
 
 test('overnight monitor rejects the incident shape instead of announcing gems as complete', async t => {
   const { runDir } = await fixture(t);
-  const result = spawnSync('bash', [join(import.meta.dirname, '../stalker/stream-overnight-monitor.sh')], {
+  const result = spawnSync('bash', [join(import.meta.dirname, '../stalker/stream-overnight-monitor.sh'), 'examplechannel'], {
     encoding: 'utf8', timeout: 5000, env: { ...process.env, STALKER_MONITOR_ONCE: '1', STALKER_RUN_DIR: runDir },
   });
   assert.equal(result.status, 75, result.stdout + result.stderr);

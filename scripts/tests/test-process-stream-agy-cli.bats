@@ -69,7 +69,7 @@ mark_stage_done() {
 }
 
 make_scoring_fixture() {
-    local dir="${1:-$TMPDIR_/theo-2026-06-25-040516}"
+    local dir="${1:-$TMPDIR_/examplechannel-2026-06-25-040516}"
     local video_name="${2:-video.mp4}"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/$video_name"
@@ -81,7 +81,7 @@ make_scoring_fixture() {
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     printf '[04:05:00] viewer: fixture chat\n' > "$dir/chat.log"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [00:10] Segment 1 (30s)
 
@@ -116,7 +116,7 @@ assert_stream_labels() {
 }
 
 make_long_segment_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-050000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-050000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -127,7 +127,7 @@ make_long_segment_fixture() {
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     printf '[04:05:00] viewer: fixture chat\n' > "$dir/chat.log"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [00:00] Segment 1 (60s)
 
@@ -145,7 +145,7 @@ EOF
 }
 
 make_no_candidate_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-060000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-060000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -156,7 +156,7 @@ make_no_candidate_fixture() {
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     printf '[04:05:00] viewer: fixture chat\n' > "$dir/chat.log"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [00:10] Segment 1 (30s)
 
@@ -174,7 +174,7 @@ EOF
 }
 
 make_volume_spike_beyond_top20_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-063000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-063000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -198,7 +198,7 @@ make_volume_spike_beyond_top20_fixture() {
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     printf '[04:05:00] viewer: fixture chat\n' > "$dir/chat.log"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [03:40] Segment 1 (20s)
 
@@ -216,7 +216,7 @@ EOF
 }
 
 make_chat_stream_offset_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-070000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-070000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -227,7 +227,7 @@ make_chat_stream_offset_fixture() {
     printf '[04:00:01] viewer: fixture chat\n' > "$dir/chat.log"
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [01:20] Segment 1 (20s)
 
@@ -245,7 +245,7 @@ EOF
 }
 
 make_json_relative_chat_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-070000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-070000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -264,7 +264,7 @@ make_json_relative_chat_fixture() {
 ]
 EOF
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [01:20] Segment 1 (20s)
 
@@ -281,7 +281,7 @@ EOF
 }
 
 make_directory_chat_fallback_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-070000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-070000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -300,7 +300,7 @@ make_directory_chat_fallback_fixture() {
 EOF
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [01:20] Segment 1 (20s)
 
@@ -318,7 +318,7 @@ EOF
 }
 
 make_stale_chat_velocity_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-070000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-070000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -337,7 +337,7 @@ make_stale_chat_velocity_fixture() {
 EOF
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [01:20] Segment 1 (20s)
 
@@ -355,7 +355,7 @@ EOF
 }
 
 make_missing_chat_velocity_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-070000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-070000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -373,7 +373,7 @@ make_missing_chat_velocity_fixture() {
 EOF
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [01:20] Segment 1 (20s)
 
@@ -391,7 +391,7 @@ EOF
 }
 
 make_post_midnight_chat_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-120000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-120000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -409,7 +409,7 @@ make_post_midnight_chat_fixture() {
 EOF
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [12:10:00] Segment 1 (20s)
 
@@ -426,7 +426,7 @@ EOF
 }
 
 make_multi_day_chat_fixture() {
-    local dir="$TMPDIR_/theo-2026-06-25-120000"
+    local dir="$TMPDIR_/examplechannel-2026-06-25-120000"
     mkdir -p "$dir/frames" "$dir/clips"
     printf 'fake video\n' > "$dir/video.mp4"
     printf 'fake audio\n' > "$dir/full-audio.wav"
@@ -447,7 +447,7 @@ make_multi_day_chat_fixture() {
 EOF
     printf '# Combined Signals\n\n## Transcript\nfixture\n' > "$dir/signals-combined.md"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [42:00:00] Segment 1 (20s)
 
@@ -475,7 +475,7 @@ make_parallel_candidate_fixture() {
     dir="$(make_scoring_fixture)"
     printf '# Average RMS: 0.100000  Threshold: 0.130000\n10 0.900000 9.0x [00:10]\n40 0.900000 9.0x [00:40]\n70 0.900000 9.0x [01:10]\n100 0.900000 9.0x [01:40]\n130 0.900000 9.0x [02:10]\n' > "$dir/volume-spikes.txt"
     cat > "$dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [00:10] Segment 1 (20s)
 
@@ -544,7 +544,7 @@ make_parallel_circuit_fixture() {
     : > "$dir/volume-spikes.txt"
     printf '# Average RMS: 0.100000  Threshold: 0.130000\n' > "$dir/volume-spikes.txt"
     : > "$dir/transcript.md"
-    printf '# Stream Transcript: theo (2026-06-25)\n\n' > "$dir/transcript.md"
+    printf '# Stream Transcript: examplechannel (2026-06-25)\n\n' > "$dir/transcript.md"
     local index timestamp
     for index in 1 2 3 4 5 6 7 8; do
         timestamp=$((index * 30))
@@ -835,7 +835,7 @@ SH
 }
 
 @test "process-stream labels video.mp4 from recording directory name" {
-    stream_dir="$(make_scoring_fixture "$TMPDIR_/theo-2026-06-25-040516" "video.mp4")"
+    stream_dir="$(make_scoring_fixture "$TMPDIR_/examplechannel-2026-06-25-040516" "video.mp4")"
 
     run env -i \
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -848,11 +848,11 @@ SH
     [ "$status" -eq 0 ]
     [ -f "$stream_dir/gems.md" ]
     [ -f "$stream_dir/gems-manifest.json" ]
-    assert_stream_labels "$stream_dir" "theo" "2026-06-25"
+    assert_stream_labels "$stream_dir" "examplechannel" "2026-06-25"
 }
 
 @test "process-stream keeps legacy twitch channel-date filename labels" {
-    stream_dir="$(make_scoring_fixture "$TMPDIR_/legacy" "twitch-theo-2026-06-24.mp4")"
+    stream_dir="$(make_scoring_fixture "$TMPDIR_/legacy" "twitch-examplechannel-2026-06-24.mp4")"
 
     run env -i \
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -860,12 +860,12 @@ SH
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
         STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
-        "$PROCESS_STREAM" "$stream_dir/twitch-theo-2026-06-24.mp4" --json-output
+        "$PROCESS_STREAM" "$stream_dir/twitch-examplechannel-2026-06-24.mp4" --json-output
 
     [ "$status" -eq 0 ]
     [ -f "$stream_dir/gems.md" ]
     [ -f "$stream_dir/gems-manifest.json" ]
-    assert_stream_labels "$stream_dir" "theo" "2026-06-24"
+    assert_stream_labels "$stream_dir" "examplechannel" "2026-06-24"
 }
 
 @test "process-stream fallback labels strip file extensions" {
@@ -1091,7 +1091,7 @@ SH
 @test "process-stream prefers final scorer JSON over echoed segment JSON" {
     stream_dir="$(make_scoring_fixture)"
     cat > "$stream_dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [00:10] Segment 1 (30s)
 
@@ -1150,7 +1150,7 @@ SH
 @test "process-stream skips scorer when diagnostics clean to empty text" {
     stream_dir="$(make_scoring_fixture)"
     cat > "$stream_dir/transcript.md" <<'EOF'
-# Stream Transcript: theo (2026-06-25)
+# Stream Transcript: examplechannel (2026-06-25)
 
 ## [00:10] Segment 1 (30s)
 

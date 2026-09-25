@@ -6,16 +6,16 @@ import { test } from "node:test";
 import { parseGems, runMorningDigest } from "../stalker/stalker-morning-digest.mjs";
 
 const DATE = "2026-09-08";
-const GEMS = `# Gems: theo (${DATE})
+const GEMS = `# Gems: examplechannel (${DATE})
 
 ### [95:25] Segment 139 (60s) Surprising Truth Behind Ox Alpha Model Revealed
 **Score:** 7/10 | **Type:** take
-**Gist:** Theo reveals the model and its cost-performance.
+**Gist:** The stream author reveals the model and its cost-performance.
 **Volume spike:** yes
 
 ### [148:24] Segment 226 (40s) Absurd Value For The Money
 **Score:** 9/10 | **Type:** hype
-**Gist:** Theo praises the model's value.
+**Gist:** The stream author praises the model's value.
 
 Scored: Tue Sep 8 06:50:52 IDT 2026
 `;
@@ -55,7 +55,7 @@ test("parseGems preserves timestamps, scores, titles, types, and spike flags", (
     title: "Surprising Truth Behind Ox Alpha Model Revealed",
     score: 7,
     type: "take",
-    gist: "Theo reveals the model and its cost-performance.",
+    gist: "The stream author reveals the model and its cost-performance.",
     volumeSpike: true,
     chatSpike: false,
   });
@@ -63,11 +63,11 @@ test("parseGems preserves timestamps, scores, titles, types, and spike flags", (
 
 test("checks every eligible run on every invocation and includes a later same-day run", async (t) => {
   const { repoRoot, stalkerRoot, receiptPath } = await setup(t, "later-run");
-  await eligibleRun(stalkerRoot, `theo-${DATE}`);
-  await eligibleRun(stalkerRoot, `theo-${DATE}-030512`);
-  await eligibleRun(stalkerRoot, `theo-${DATE}-081500`);
-  await mkdir(join(stalkerRoot, `theo-${DATE}-unfinished`), { recursive: true });
-  await eligibleRun(stalkerRoot, "theo-2026-09-07-235959");
+  await eligibleRun(stalkerRoot, `examplechannel-${DATE}`);
+  await eligibleRun(stalkerRoot, `examplechannel-${DATE}-030512`);
+  await eligibleRun(stalkerRoot, `examplechannel-${DATE}-081500`);
+  await mkdir(join(stalkerRoot, `examplechannel-${DATE}-unfinished`), { recursive: true });
+  await eligibleRun(stalkerRoot, "examplechannel-2026-09-07-235959");
   await writeFile(receiptPath, JSON.stringify({
     status: "success",
     dashboard_url: `https://legacy.invalid/stalker/${DATE}.html`,
@@ -80,27 +80,27 @@ test("checks every eligible run on every invocation and includes a later same-da
   };
   const first = await runMorningDigest({ date: DATE, repoRoot, completeImpl });
   assert.equal(first.status, "complete");
-  assert.deepEqual(calls, [`theo-${DATE}`, `theo-${DATE}-030512`, `theo-${DATE}-081500`]);
+  assert.deepEqual(calls, [`examplechannel-${DATE}`, `examplechannel-${DATE}-030512`, `examplechannel-${DATE}-081500`]);
 
-  await eligibleRun(stalkerRoot, `theo-${DATE}-101501`);
+  await eligibleRun(stalkerRoot, `examplechannel-${DATE}-101501`);
   const second = await runMorningDigest({ date: DATE, repoRoot, completeImpl });
   assert.equal(second.status, "complete");
   assert.deepEqual(calls, [
-    `theo-${DATE}`,
-    `theo-${DATE}-030512`,
-    `theo-${DATE}-081500`,
-    `theo-${DATE}`,
-    `theo-${DATE}-030512`,
-    `theo-${DATE}-081500`,
-    `theo-${DATE}-101501`,
+    `examplechannel-${DATE}`,
+    `examplechannel-${DATE}-030512`,
+    `examplechannel-${DATE}-081500`,
+    `examplechannel-${DATE}`,
+    `examplechannel-${DATE}-030512`,
+    `examplechannel-${DATE}-081500`,
+    `examplechannel-${DATE}-101501`,
   ]);
   const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
   assert.equal(receipt.status, "complete");
   assert.deepEqual(receipt.runs.map((run) => run.run_name), [
-    `theo-${DATE}`,
-    `theo-${DATE}-030512`,
-    `theo-${DATE}-081500`,
-    `theo-${DATE}-101501`,
+    `examplechannel-${DATE}`,
+    `examplechannel-${DATE}-030512`,
+    `examplechannel-${DATE}-081500`,
+    `examplechannel-${DATE}-101501`,
   ]);
 });
 
@@ -137,7 +137,7 @@ test("pre-schedule absence is not success; post-schedule absence persists and al
 
 test("a run-level failure persists FAILED without a duplicate wrapper alert", async (t) => {
   const { repoRoot, stalkerRoot, receiptPath } = await setup(t, "run-failure");
-  await eligibleRun(stalkerRoot, `theo-${DATE}-030512`);
+  await eligibleRun(stalkerRoot, `examplechannel-${DATE}-030512`);
   let wrapperNotifications = 0;
   await assert.rejects(
     runMorningDigest({
@@ -154,12 +154,12 @@ test("a run-level failure persists FAILED without a duplicate wrapper alert", as
   const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
   assert.equal(receipt.status, "failed");
   assert.equal(receipt.stage, 7);
-  assert.equal(receipt.run_name, `theo-${DATE}-030512`);
+  assert.equal(receipt.run_name, `examplechannel-${DATE}-030512`);
 });
 
 test("legacy skip options are rejected before completion can be certified", async (t) => {
   const { repoRoot, stalkerRoot, receiptPath } = await setup(t, "disabled");
-  await eligibleRun(stalkerRoot, `theo-${DATE}-030512`);
+  await eligibleRun(stalkerRoot, `examplechannel-${DATE}-030512`);
   let completions = 0;
   const completeImpl = async (runDir) => { completions += 1; return verified(runDir); };
   const notifications = [];

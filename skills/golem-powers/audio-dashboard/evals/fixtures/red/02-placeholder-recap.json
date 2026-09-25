@@ -8,6 +8,6 @@
       { "word": "Tonight", "start": 0.11, "end": 0.42 },
       { "word": "we", "start": 0.45, "end": 0.58 }
     ],
-    "html": "<script id=\"tpdata\" type=\"application/json\">[{\"realWordTiming\":true,\"script\":\"No gist available yet.\",\"words\":[{\"word\":\"Tonight\",\"start\":0.11,\"end\":0.42},{\"word\":\"we\",\"start\":0.45,\"end\":0.58}]}]</script><section class=\"transcript\">No gist available yet. Real Theo stream audio for this title.</section><script>word.addEventListener('click', () => { audio.currentTime = Number(word.dataset.ws); });</script>"
+    "html": "<script id=\"tpdata\" type=\"application/json\">[{\"realWordTiming\":true,\"script\":\"No gist available yet.\",\"words\":[{\"word\":\"Tonight\",\"start\":0.11,\"end\":0.42},{\"word\":\"we\",\"start\":0.45,\"end\":0.58}]}]</script><section class=\"transcript\">No gist available yet. Real examplechannel stream audio for this title.</section><script>word.addEventListener('click', () => { audio.currentTime = Number(word.dataset.ws); });</script>"
   }
 }

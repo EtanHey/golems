@@ -64,7 +64,7 @@ make_processed_run() {
     printf 'chat one\nchat two\n' > "$dir/chat.log"
     printf '# Transcript\nUseful discussion about deterministic pipelines.\n' > "$dir/transcript.md"
     cat > "$dir/gems.md" <<'EOF'
-# Gems: theo (2026-06-18)
+# Gems: examplechannel (2026-06-18)
 
 ### [00:01] Segment 1 (12s) First gem
 **Score:** 7/10 | **Type:** take
@@ -82,7 +82,7 @@ EOF
 }
 
 @test "stalker contract stores structured BrainLayer records with traceability metadata" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
 
     STALKER_BRAIN_STORE_CMD="$FAKE_BIN/brain-store" \
     BRAIN_STORE_CAPTURE="$TMPDIR_/stores.jsonl" \
@@ -103,7 +103,7 @@ EOF
 }
 
 @test "stalker contract opens VectorStore once for all payloads" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
     fake_src="$TMPDIR_/fake-brainlayer"
     mkdir -p "$fake_src/brainlayer"
     : > "$fake_src/brainlayer/__init__.py"
@@ -149,7 +149,7 @@ PY
 }
 
 @test "stalker contract queues every payload when the batch python cannot import BrainLayer" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
     fake_src="$TMPDIR_/broken-brainlayer"
     mkdir -p "$fake_src/brainlayer"
     : > "$fake_src/brainlayer/__init__.py"
@@ -167,7 +167,7 @@ PY
 }
 
 @test "stalker contract persists completed payload state before a batch is interrupted" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
     fake_src="$TMPDIR_/slow-brainlayer"
     mkdir -p "$fake_src/brainlayer"
     : > "$fake_src/brainlayer/__init__.py"
@@ -222,7 +222,7 @@ PY
 }
 
 @test "stalker contract emits failures payload when transcription failures are present" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
 
     STALKER_BRAINLAYER_DRY_RUN=1 \
     run "$CONTRACT" ingest-run "$run_dir"
@@ -245,7 +245,7 @@ PY
 }
 
 @test "stalker contract queues replay records when BrainLayer store fails" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
 
     STALKER_BRAIN_STORE_CMD="$FAKE_BIN/brain-store-fail" \
     run "$CONTRACT" ingest-run "$run_dir"
@@ -260,7 +260,7 @@ PY
 }
 
 @test "stalker contract retries only non-stored BrainLayer records after partial failure" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
 
     STALKER_BRAIN_STORE_CMD="$FAKE_BIN/brain-store-fail-after-first" \
     BRAIN_STORE_CAPTURE="$TMPDIR_/stores.jsonl" \
@@ -285,23 +285,23 @@ PY
 }
 
 @test "stalker digest sends readable Telegram highlight reel with short backup path and warnings only when needed" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
     printf 'done\n' > "$run_dir/.stage-brainlayer.done"
     printf 'status=stored\nstored_count=4\nqueued_count=0\n' > "$run_dir/.brainlayer-status"
 
-    tail_dir="$STALKER_ROOT/theo-2026-06-18-050228"
+    tail_dir="$STALKER_ROOT/examplechannel-2026-06-18-050228"
     mkdir -p "$tail_dir"
     printf 'status=ORPHAN_TAIL\n' > "$tail_dir/.orphan-tail"
 
-    missing_drive_dir="$STALKER_ROOT/theo-2026-06-18-070000"
+    missing_drive_dir="$STALKER_ROOT/examplechannel-2026-06-18-070000"
     mkdir -p "$missing_drive_dir"
     printf 'done\n' > "$missing_drive_dir/.stage-process.done"
 
-    empty_watcher_dir="$STALKER_ROOT/theo-2026-06-18-090000"
+    empty_watcher_dir="$STALKER_ROOT/examplechannel-2026-06-18-090000"
     mkdir -p "$empty_watcher_dir"
     printf 'in-flight media\n' > "$empty_watcher_dir/video.mp4"
 
-    active_process_dir="$STALKER_ROOT/theo-2026-06-18-100000"
+    active_process_dir="$STALKER_ROOT/examplechannel-2026-06-18-100000"
     mkdir -p "$active_process_dir"
     printf '# partial transcript\n' > "$active_process_dir/transcript.md"
     printf '### [00:01] In-flight gem\n' > "$active_process_dir/gems.md"
@@ -316,16 +316,16 @@ PY
     [[ "$status" -eq 75 \
         && "$title" = "Stalker Morning Digest FAILED - 2026-06-18" \
         && "$source" = "stalker-golem" \
-        && "$body" == *'🎬 Theo — Jun 18 · duration unknown'* \
+        && "$body" == *'🎬 Examplechannel — Jun 18 · duration unknown'* \
         && "$body" == *'💎 2 gems · 2 chat · ⚠️ not backed up'* \
         && "$body" == *'Top moments:'* \
         && "$body" == *'🔥 8/10 · 00:02 · Second gem (rant)'* \
         && "$body" == *'The second moment is a sharper rant that should lead the digest.'* \
         && "$body" == *'💎 7/10 · 00:01 · First gem (take)'* \
         && "$body" == *'The first moment explains a useful take clearly enough to save.'* \
-        && "$body" == *'📁 Brain Drive › stalker-golem/theo/2026-06-18'* \
-        && "$body" == *'Missing Drive ledger: theo-2026-06-18-070000'* \
-        && "$body" == *'DROPPED (not counted above): theo-2026-06-18-050228, theo-2026-06-18-090000, theo-2026-06-18-100000'* \
+        && "$body" == *'📁 Brain Drive › stalker-golem/examplechannel/2026-06-18'* \
+        && "$body" == *'Missing Drive ledger: examplechannel-2026-06-18-070000'* \
+        && "$body" == *'DROPPED (not counted above): examplechannel-2026-06-18-050228, examplechannel-2026-06-18-090000, examplechannel-2026-06-18-100000'* \
         && "$body" != *'Stream status:'* \
         && "$body" != *'Tail suppression:'* \
         && "$body" != *'BrainLayer:'* \
@@ -333,7 +333,7 @@ PY
 }
 
 @test "stalker digest warns when archive cleanup was skipped after Drive re-verify failed" {
-    run_dir="$(make_processed_run theo-2026-06-18-005309)"
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
     printf 'done\n' > "$run_dir/.stage-brainlayer.done"
     printf 'status=stored\nstored_count=4\nqueued_count=0\n' > "$run_dir/.brainlayer-status"
     cat > "$run_dir/.archive-cleanup-skipped" <<'EOF'
@@ -347,11 +347,11 @@ EOF
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
-    grep -F -q 'WARNING: cleanup skipped - originals retained; Drive re-verify failed: theo-2026-06-18-005309' "$TMPDIR_/telegram.json"
+    grep -F -q 'WARNING: cleanup skipped - originals retained; Drive re-verify failed: examplechannel-2026-06-18-005309' "$TMPDIR_/telegram.json"
 }
 
 @test "stalker digest is not coupled to BrainLayer ingest status" {
-    make_processed_run theo-2026-06-18-005309 >/dev/null
+    make_processed_run examplechannel-2026-06-18-005309 >/dev/null
 
     STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
     TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
@@ -364,7 +364,7 @@ EOF
 }
 
 @test "stalker digest states an explicit no-gems reason and dry-run does not send Telegram" {
-    run_dir="$STALKER_ROOT/theo-2026-06-18-005309"
+    run_dir="$STALKER_ROOT/examplechannel-2026-06-18-005309"
     mkdir -p "$run_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$run_dir/_DRIVE-LEDGER.md"
     printf 'done\n' > "$run_dir/.stage-brainlayer.done"

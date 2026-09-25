@@ -100,10 +100,25 @@ const ENTRYPOINT_CMD_RE =
 const ENTRYPOINT_OUT_RE =
   /(manifest valid|contract test result:?\s*ok|integration test (pass|ok|green)|e2e (pass|ok|green)|round-?trip ok|\.verified\b|\.mov\b|exit 0)/i;
 
-const VOICE_REQUIRED_RE =
-  /(2-?voice|two-?voice|cloned? voice|--reference|theo-c4|ben-c1|speaker 2)/i;
-const VOICE_RESOLVED_RE =
-  /((--reference|ref(erence)?[_ ]?audio)[\s\S]{0,40}(theo-c4s?|ben-c1))/i;
+// AIDEV-NOTE: the expert clone family is `<person>-c4`, where <person> is the
+// stream author from GOLEMS_EXPERT_VOICE — the repo never names them. Same
+// contract as audio-dashboard/src/voice-role-gate.mjs (expertVoiceFromEnv).
+const EXPERT_VOICE = (() => {
+  const person = String(process.env.GOLEMS_EXPERT_VOICE ?? "").trim().toLowerCase();
+  if (!person) return "examplechannel";
+  if (!/^[a-z0-9_]+$/.test(person)) {
+    throw new Error(`GOLEMS_EXPERT_VOICE must be a single <person> segment, got "${person}"`);
+  }
+  return person;
+})();
+const VOICE_REQUIRED_RE = new RegExp(
+  `(2-?voice|two-?voice|cloned? voice|--reference|${EXPERT_VOICE}-c4|ben-c1|speaker 2)`,
+  "i",
+);
+const VOICE_RESOLVED_RE = new RegExp(
+  `((--reference|ref(erence)?[_ ]?audio)[\\s\\S]{0,40}(${EXPERT_VOICE}-c4s?|ben-c1))`,
+  "i",
+);
 const VOICE_FALLBACK_RE =
   /(system tts|neutral reader|silent fallback|fallback to (system )?tts)/i;
 
@@ -274,7 +289,7 @@ export function detectFalseGreen(transcript) {
   // Voice-profile gate: a clone/2-voice render must resolve to a registered clone.
   if (domains.includes("render") && (VOICE_REQUIRED_RE.test(claimText) || VOICE_REQUIRED_RE.test(ev.cmd))) {
     if (!voiceResolved(ev)) {
-      violations.push({ code: "FALSE_GREEN_VOICE", evidence: "cloned/2-voice render without --reference resolving to a registered clone (theo-c4/ben-c1) — silent system-TTS fallback is fail-open." });
+      violations.push({ code: "FALSE_GREEN_VOICE", evidence: `cloned/2-voice render without --reference resolving to a registered clone (${EXPERT_VOICE}-c4/ben-c1) — silent system-TTS fallback is fail-open.` });
     }
   }
   // Manual-verification prose substitute with NO probe at all → ranked last.
