@@ -161,8 +161,42 @@ assert "GEMINI_RESEARCH_PROFILE" in stderr.getvalue(), stderr.getvalue()
 PY
 }
 
+# Live mode checks the signed-in account against RESEARCH_ACCOUNT (the same
+# variable verify-account.sh reads). A hardcoded placeholder would fail every
+# real account, so it must be set, and it must be what verify is asked for.
+run_live_mode_account_case() {
+  env -u RESEARCH_ACCOUNT -u GEMINI_DRIVE_SYNC_FIXTURE GEMINI_RESEARCH_PROFILE=research \
+    python3 - "$ROOT_DIR/scripts/drive_sync.py" <<'PY'
+import contextlib, importlib.util, io, os, sys
+spec = importlib.util.spec_from_file_location("drive_sync_under_test", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+calls = []
+def record(args, check=True):
+    calls.append(args)
+    raise module.GeminiDriveSyncError("stubbed command")
+module.run_cli = record
+sys.argv = ["drive_sync.py", "--project", "brainlayer", "--prompt", "R82-memory.md"]
+
+stderr = io.StringIO()
+with contextlib.redirect_stderr(stderr):
+    code = module.main()
+assert code == 1, code
+assert calls == [], f"ran commands without an account: {calls}"
+assert "RESEARCH_ACCOUNT" in stderr.getvalue(), stderr.getvalue()
+
+module.RESEARCH_ACCOUNT = "someone@example.org"
+with contextlib.redirect_stderr(io.StringIO()):
+    module.main()
+verify = calls[0]
+assert verify[verify.index("--expect") + 1] == "someone@example.org", verify
+PY
+}
+
 run_shared_helper_paths_case
 run_live_mode_requires_profile_case
+run_live_mode_account_case
 run_new_project_case
 run_existing_project_case
 run_account_failure_case

@@ -49,7 +49,7 @@ const FALLBACK_SKILL_CATEGORIES: Record<string, string[]> = {
   Content: ["html-dashboard", "qa-video"],
 };
 
-/** The (r)ecommended install set: the README's starter skills. */
+/** The (r)ecommended install set: five of the README's eight starter skills. */
 export const RECOMMENDED_SKILLS = [
   "pr-loop",
   "never-fabricate",
@@ -495,7 +495,7 @@ export async function runWizard(): Promise<void> {
   console.log(`Skills:     ${skillCount} installed`);
   console.log();
   console.log("Next steps:");
-  console.log("  - Run `golems wizard` again to reconfigure");
+  console.log(`  - Run \`${CLI_COMMAND} wizard\` again to reconfigure`);
   console.log(`  - Install more skills: ${CLI_COMMAND} skills install <name>`);
   console.log(`  - List available skills: ${CLI_COMMAND} skills list`);
 }

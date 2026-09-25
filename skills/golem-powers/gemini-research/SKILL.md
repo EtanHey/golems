@@ -189,9 +189,11 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
    Drive/Research/<project>/results/R{NN}-gemini-result.md
 ```
 
-Wrapper:
+Wrapper (live mode needs both variables, and stops with an error if either is unset):
 
 ```bash
+export GEMINI_RESEARCH_PROFILE=<nlm profile>   # the name you gave `nlm login --profile`
+export RESEARCH_ACCOUNT=<google account>       # Drive/NotebookLM must be signed in as this
 bash skills/golem-powers/gemini-research/scripts/drive-sync.sh --project cmux --prompt R36-R38-cmux-mobile-prompts.md
 ```
 
