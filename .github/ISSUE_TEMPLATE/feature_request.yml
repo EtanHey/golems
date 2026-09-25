@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a new package, skill, or change to an existing one.
+labels: [enhancement]
+body:
+  - type: input
+    id: area
+    attributes:
+      label: Package, skill, or script
+      description: Where the change would land, or "new" for a new package or skill.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What you are trying to do and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The change you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

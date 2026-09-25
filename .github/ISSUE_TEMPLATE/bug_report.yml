@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in a package, skill, or script does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problem? Do not file it here. Use the private channel in [SECURITY.md](https://github.com/EtanHey/golems/blob/master/SECURITY.md).
+        Do not paste secrets, tokens, or personal data into this issue.
+  - type: input
+    id: area
+    attributes:
+      label: Package, skill, or script
+      description: The path, e.g. `packages/jobs`, `skills/golem-powers/pr-loop`, `scripts/golems-sync.sh`.
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Commands you ran, from a fresh clone if you can.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS and version, `bun --version`, and the commit (`git rev-parse --short HEAD`).
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or output
+      render: text
