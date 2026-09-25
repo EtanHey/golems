@@ -504,13 +504,13 @@ async function main() {
 
     if (!query) {
       console.log(`
-Usage: bun run src/email-golem/index.ts search <query> [--max=N]
+Usage: bun packages/shared/src/email/index.ts search <query> [--max=N]
 
 Examples:
-  bun run src/email-golem/index.ts search "from:united.com confirmation"
-  bun run src/email-golem/index.ts search "from:britishairways.com" --max=10
-  bun run src/email-golem/index.ts search "subject:receipt after:2025/01/01"
-  bun run src/email-golem/index.ts search "anthropic OR firecrawl"
+  bun packages/shared/src/email/index.ts search "from:united.com confirmation"
+  bun packages/shared/src/email/index.ts search "from:britishairways.com" --max=10
+  bun packages/shared/src/email/index.ts search "subject:receipt after:2025/01/01"
+  bun packages/shared/src/email/index.ts search "anthropic OR firecrawl"
 `);
       process.exit(1);
     }
@@ -530,8 +530,8 @@ Examples:
 EmailGolem - Smart Email Triage
 
 Usage:
-  bun run src/email-golem/index.ts [options]
-  bun run src/email-golem/index.ts search <query> [--max=N]
+  bun packages/shared/src/email/index.ts [options]
+  bun packages/shared/src/email/index.ts search <query> [--max=N]
 
 Commands:
   search <query>   Search emails using Gmail query syntax
@@ -542,10 +542,10 @@ Options:
   --help, -h       Show this help
 
 Examples:
-  bun run src/email-golem/index.ts --dry-run
-  bun run src/email-golem/index.ts --max=50
-  bun run src/email-golem/index.ts search "from:united.com"
-  bun run src/email-golem/index.ts search "subject:receipt" --max=10
+  bun packages/shared/src/email/index.ts --dry-run
+  bun packages/shared/src/email/index.ts --max=50
+  bun packages/shared/src/email/index.ts search "from:united.com"
+  bun packages/shared/src/email/index.ts search "subject:receipt" --max=10
 `);
     process.exit(0);
   }

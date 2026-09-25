@@ -7,7 +7,7 @@
 ## What Is This?
 
 EmailGolem is an automated email triage system that:
-1. Polls Gmail every 10 minutes via launchd
+1. Polls Gmail hourly in the daytime, via the cloud worker (`packages/services/src/cloud-worker.ts`)
 2. Scores emails using Ollama (qwen2.5-coder:32b)
 3. Stores results in Supabase with offline resilience
 4. Sends immediate Telegram alerts for urgent emails (score 10)
@@ -191,10 +191,10 @@ const newEmails = emails.filter((e) => !processedIds.has(e.id));
 bun test email-golem
 
 # Dry run (no DB writes, no notifications)
-bun run src/email-golem/index.ts --dry-run
+bun packages/shared/src/email/index.ts --dry-run
 
 # With max emails
-bun run src/email-golem/index.ts --dry-run --max=5
+bun packages/shared/src/email/index.ts --dry-run --max=5
 ```
 
 Tests mock `googleapis` and Supabase - no real API calls.
@@ -257,5 +257,5 @@ SUPABASE_ANON_KEY=...
 
 - `../briefing.ts` - Morning briefing integration
 - `@golems/shared/lib/llm` (`../lib/llm.ts`) - Unified LLM facade and JSON helper
-- `../../launchd/com.golemszikaron.email-golem.plist` - Scheduler
+- `packages/services/src/cloud-worker.ts` - Scheduler
 - `../../supabase/migrations/001_email_golem_tables.sql` - Schema

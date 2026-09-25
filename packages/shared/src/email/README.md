@@ -60,23 +60,20 @@ Run the migration in Supabase SQL editor:
 
 ```bash
 # Dry run - no writes, no notifications
-bun run src/email-golem/index.ts --dry-run
+bun packages/shared/src/email/index.ts --dry-run
 
 # With specific count
-bun run src/email-golem/index.ts --dry-run --max=5
+bun packages/shared/src/email/index.ts --dry-run --max=5
 ```
 
 ### 6. Enable Scheduler
 
+EmailGolem has no LaunchAgent of its own. The cloud worker
+(`packages/services/src/cloud-worker.ts`) runs it hourly from 6am to 7pm
+(skipping noon), once at 10pm, and not overnight:
+
 ```bash
-# Copy plist to LaunchAgents
-cp launchd/com.golemszikaron.email-golem.plist ~/Library/LaunchAgents/
-
-# Enable (runs every 10 minutes)
-launchctl load ~/Library/LaunchAgents/com.golemszikaron.email-golem.plist
-
-# Check status
-launchctl list | grep email-golem
+cd packages/services && bun run cloud-worker
 ```
 
 ---
@@ -86,7 +83,7 @@ launchctl list | grep email-golem
 ### CLI Options
 
 ```bash
-bun run src/email-golem/index.ts [options]
+bun packages/shared/src/email/index.ts [options]
 
 Options:
   --dry-run, -n    Don't save to DB or send notifications
@@ -98,10 +95,10 @@ Options:
 
 ```bash
 # Full run
-bun run src/email-golem/index.ts
+bun packages/shared/src/email/index.ts
 
 # Check specific number of emails
-bun run src/email-golem/index.ts --max=50
+bun packages/shared/src/email/index.ts --max=50
 ```
 
 ### View Logs
@@ -222,17 +219,9 @@ _3 job updates • 1 alert • 2 payments_
 ### Scheduler Issues
 
 **Not running**
-```bash
-# Check if loaded
-launchctl list | grep email-golem
-
-# Check for errors
-cat /tmp/golemszikaron-email-golem.log
-
-# Reload
-launchctl unload ~/Library/LaunchAgents/com.golemszikaron.email-golem.plist
-launchctl load ~/Library/LaunchAgents/com.golemszikaron.email-golem.plist
-```
+- Check the cloud worker is running (`pgrep -fl cloud-worker`) and read its
+  output for `EmailGolem` lines.
+- Run one pass by hand: `bun packages/shared/src/email/index.ts --dry-run`
 
 ---
 
@@ -257,18 +246,13 @@ email-golem/
 |------|---------|
 | `~/.golems-zikaron/state.json` | Last check time, processed IDs |
 | `~/.golems-zikaron/offline-queue.json` | Queued items when offline |
-| `/tmp/golemszikaron-email-golem.log` | Runtime logs |
 
 ---
 
 ## Disable/Remove
 
 ```bash
-# Disable scheduler
-launchctl unload ~/Library/LaunchAgents/com.golemszikaron.email-golem.plist
-
-# Remove scheduler
-rm ~/Library/LaunchAgents/com.golemszikaron.email-golem.plist
+# Disable: stop the cloud worker, or remove EmailGolem from its schedule
 
 # Clear state (start fresh)
 rm ~/.golems-zikaron/offline-queue.json

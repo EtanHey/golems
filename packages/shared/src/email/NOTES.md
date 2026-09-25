@@ -1,5 +1,10 @@
 # Gmail Client - Implementation Notes
 
+> Historical build log. The `com.golemszikaron.email-golem.plist` and the
+> `src/email-golem/` paths below no longer exist: the code lives in
+> `packages/shared/src/email/`, and the cloud worker
+> (`packages/services/src/cloud-worker.ts`) schedules it. See README.md.
+
 ## Session A Complete
 
 **Tests:** 11 pass
