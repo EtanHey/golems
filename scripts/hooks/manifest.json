@@ -16,7 +16,7 @@
       { "id": "cc-axiom-reporter", "kind": "external", "owner": "golems main checkout (needs node_modules; hooks-live has none)", "event": "SessionEnd", "match": "cc-axiom-reporter.ts" },
       { "id": "send-size-gate", "kind": "external", "owner": "skill-creator/hooks-lab (unhomed in golems)", "event": "PreToolUse", "match": "send-size-gate-hook.mjs" },
       { "id": "daemon-gate-precheck", "kind": "golems", "event": "PreToolUse", "matcher": "Bash", "link": "daemon-gate-precheck.py", "source": "hooks/daemon-gate-precheck.py", "match": "daemon-gate-precheck.py", "command": "{python} {hooks}/golems-fail-open.py {hooks}/daemon-gate-precheck.py" },
-      { "id": "pre_tool_use", "kind": "golems", "event": "PreToolUse", "matcher": "Bash|Edit|Write|NotebookEdit|Task", "link": "pre_tool_use.py", "source": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py", "match": "pre_tool_use.py", "command": "{python} {hooks}/golems-fail-open.py {hooks}/pre_tool_use.py" },
+      { "id": "pre_tool_use", "kind": "golems", "event": "PreToolUse", "matcher": "Bash|Edit|Write|NotebookEdit", "link": "pre_tool_use.py", "source": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py", "match": "pre_tool_use.py", "command": "{python} {hooks}/golems-fail-open.py {hooks}/pre_tool_use.py" },
       { "id": "session-cleanup", "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "session-cleanup.py" },
       { "id": "brainlayer-session-start", "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "brainlayer-session-start.py" },
       { "id": "cmux-self-register", "kind": "external", "owner": "cmuxlayer", "event": "SessionStart", "match": "cmux-self-register.py" },
