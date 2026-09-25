@@ -3,8 +3,10 @@
 //
 //   bun repoint-skills.mjs --source <golems clone>/skills/golem-powers [--link-missing] [--apply]
 //
-// Walks ~/.claude/skills, ~/.agents/skills, ~/.codex/skills and ~/.gemini/antigravity/skills
-// (the Antigravity CLI's root); a missing root is skipped with a one-line note. For each entry:
+// Walks ~/.claude/skills, ~/.agents/skills, ~/.codex/skills and ~/.gemini/config/skills
+// (the Gemini CLI's global root, #277); a missing root is skipped with a one-line note.
+// ~/.gemini/antigravity/skills is NOT read by the CLI, so it is not managed (and never touched).
+// For each entry:
 //   ok       a link that resolves into --source
 //   repoint  a link into ~/.golems/skills/<name> whose <name> exists in --source
 //   dangling a link whose target is gone and whose name is not in --source (removed with --apply);
@@ -14,14 +16,17 @@
 //
 // --link-missing (#272): for each --source skill (a dir with SKILL.md) whose ~/.agents/skills
 // link is a golems link (ok, or a repoint that --apply fixes first) but has no
-// ~/.gemini/antigravity/skills entry, create
-// ~/.gemini/antigravity/skills/<name> -> ../../../.agents/skills/<name>. Never overwrites an
-// existing entry; skipped when ~/.gemini/antigravity is missing. Reports linked=N.
+// ~/.gemini/config/skills entry, create
+// ~/.gemini/config/skills/<name> -> ../../../.agents/skills/<name>. Never overwrites an
+// existing entry; skipped when ~/.gemini/config is missing. Reports linked=N.
 import { existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, realpathSync, symlinkSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-const SKILL_ROOTS = [".claude/skills", ".agents/skills", ".codex/skills", ".gemini/antigravity/skills"];
+// AIDEV-NOTE: the Gemini CLI loads global skills from ~/.gemini/config/skills, not
+// ~/.gemini/antigravity/skills (#277) -- keep the latter out of SKILL_ROOTS.
+export const GEMINI_SKILLS_ROOT = ".gemini/config/skills";
+export const SKILL_ROOTS = [".claude/skills", ".agents/skills", ".codex/skills", GEMINI_SKILLS_ROOT];
 
 function parseArgs(argv) {
   const options = { apply: false, linkMissing: false, source: null };
@@ -63,10 +68,10 @@ function lexists(entry) {
 
 export function linkMissing({ home, sourceReal, apply }) {
   const staleRoot = path.join(home, ".golems", "skills");
-  const antigravityHome = path.join(home, ".gemini", "antigravity");
-  if (!existsSync(antigravityHome)) return { missing: true };
+  const geminiHome = path.join(home, path.dirname(GEMINI_SKILLS_ROOT));
+  if (!existsSync(geminiHome)) return { missing: true };
   const agents = path.join(home, ".agents", "skills");
-  const antigravity = path.join(antigravityHome, "skills");
+  const gemini = path.join(home, GEMINI_SKILLS_ROOT);
   let linked = 0;
   for (const name of readdirSync(sourceReal).sort()) {
     if (name.startsWith(".") || !existsSync(path.join(sourceReal, name, "SKILL.md"))) continue;
@@ -75,11 +80,11 @@ export function linkMissing({ home, sourceReal, apply }) {
     // already fixed it, so dry-run and --apply report the same linked=N).
     if (!lexists(agentsEntry)) continue;
     if (!["ok", "repoint"].includes(classify(agentsEntry, sourceReal, staleRoot).kind)) continue;
-    const entry = path.join(antigravity, name);
+    const entry = path.join(gemini, name);
     if (lexists(entry)) continue;
     linked += 1;
     if (!apply) continue;
-    mkdirSync(antigravity, { recursive: true });
+    mkdirSync(gemini, { recursive: true });
     symlinkSync(path.join("..", "..", "..", ".agents", "skills", name), entry);
   }
   return { linked };
@@ -129,8 +134,8 @@ if (import.meta.main) {
     }
     if (options.linkMissing) {
       const result = linkMissing({ home, sourceReal: realpathSync(options.source), apply: options.apply });
-      if (result.missing) console.log("~/.gemini/antigravity: link-missing skipped (missing)");
-      else console.log(`~/.gemini/antigravity/skills: linked=${result.linked}`);
+      if (result.missing) console.log(`~/${path.dirname(GEMINI_SKILLS_ROOT)}: link-missing skipped (missing)`);
+      else console.log(`~/${GEMINI_SKILLS_ROOT}: linked=${result.linked}`);
     }
     console.log(options.apply ? "applied" : "dry-run: nothing changed (pass --apply)");
   } catch (error) {
