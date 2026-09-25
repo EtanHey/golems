@@ -1,13 +1,12 @@
 # Stop hook runtime
 
-This directory is the shared installed runtime for the five synchronous policy
-Stop hooks:
+This directory is the shared installed runtime for the three synchronous policy
+Stop hooks (advisory since GO-5 E2; `monitor-law-gate` and `idle-dwell-gate`
+were deleted in E1):
 
 - `false-green-gate`
-- `monitor-law-gate`
 - `fleet-wrap-gate`
 - `qa-verdict-gate`
-- `idle-dwell-gate`
 
 `stop-hook-reader.mjs` reads the last 512 KiB of an oversized JSONL transcript
 plus one boundary byte used to discard a partial first record, preserves
@@ -30,22 +29,13 @@ The installed layout must preserve the relative imports:
 ~/.claude/hooks/
 ├── _shared/stop-hook-runtime/
 ├── false-green-gate/
-├── monitor-law-gate/
 ├── fleet-wrap-gate/
-├── qa-verdict-gate/
-└── idle-dwell-gate/
+└── qa-verdict-gate/
 ```
 
-After merge, the hook owner can install the exact source trees without using a
-mutable checkout:
-
-```bash
-git -C $HOME/Gits/golems fetch origin
-git -C $HOME/Gits/golems archive origin/master:skills/golem-powers \
-  _shared/stop-hook-runtime \
-  false-green-gate monitor-law-gate fleet-wrap-gate qa-verdict-gate idle-dwell-gate \
-  | tar -x -C $HOME/.claude/hooks
-```
+They are installed by `scripts/hooks/install-hooks.sh`, which symlinks each
+gate from the pinned `.worktrees/hooks-live` tree (so the relative imports
+resolve into it) and never installs an E1-deleted gate.
 
 Live settings must only be changed in the separately approved post-merge step.
 At that point, point each telemetry wrapper at

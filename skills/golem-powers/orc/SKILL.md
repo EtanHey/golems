@@ -25,7 +25,7 @@ Your conversation context is a **cache**. The collab file is the **source of tru
 
 ## Inbound Monitor Gate
 
-Canon #7 owns monitor/collab law. Orc mechanic: after spawning any worker, run `/monitor-law-gate` (`bun skills/golem-powers/monitor-law-gate/scripts/monitor-law-gate-cli.mjs <transcript|->`, exit 3 = FLAG). A FLAG means arm a persistent monitor on the active channel before going quiet.
+Canon #7 owns monitor/collab law. Orc mechanic: after spawning any worker, arm a persistent monitor on the active channel before going quiet. (The `/monitor-law-gate` check that flagged this was deleted in GO-5 E1.)
 
 ## State Machine
 
@@ -161,7 +161,7 @@ Never accept "done" or "tests pass" at face value. Evidence: a parser regression
 **C10. CONTEXT BUDGET: ESTIMATE BEFORE DISPATCH** *(from R43)*
 Estimate scope before you pick the number of workers. Evidence: one 2-PR, ~2.6K-line sprint drove a worker to 96% context and forced a respawn. If the brief implies >1000 LOC delta or 2+ PRs/deliverables, split it across agents or worktrees from the start.
 **C11. AUTONOMOUS SNOWBALL: EXECUTE THE QUEUE** *(gen-10 weave #1, imp10, 2026-06-05)*
-Canon #8 owns approved-queue execution and no permission parking. Orc mechanic: before ending a turn with an open queue, run `/idle-dwell-gate` (`bun skills/golem-powers/idle-dwell-gate/scripts/idle-dwell-gate-cli.mjs <transcript|->`, exit 3 = FLAG). A FLAG means dispatch, resume, or drive the queued work unless a real hard gate exists.
+Canon #8 owns approved-queue execution and no permission parking. Orc mechanic: before ending a turn with an open queue, dispatch, resume, or drive the queued work unless a real hard gate exists. (The `/idle-dwell-gate` check that flagged this was deleted in GO-5 E1.)
 **A council/review CONDITION addressed to the plan-author is WORK, not a gate.** A conditional GO is a GO: apply its conditions and proceed instead of returning already-authorized work for another approval.
 **C12. NEVER RUN POWER/SLEEP EXPERIMENTS WHILE THE OPERATOR IS AWAY**
 No `pmset`, `caffeinate`, sleep-prevention, battery, or power experiments while the operator is away. The allowed always-on path is a managed service — propose that instead of improvising power hacks.
@@ -173,7 +173,7 @@ The orc seat's context-full mechanism is a full-day WEAVE (`/weave`) that seeds 
 **C15. COLLAB-FIRST ROUTING + RESUME-NOT-RESPAWN** *(gen-18 Track 1 #3/#4 — the gate, not the prose)*
 
 - **Collab-first routing (R-002 substrate).** Coordination flows through the append-only collab file + event-driven waits — NEVER raw `send_to({mode:"surface"|"key"})` cross-lead chatter, an `AskUserQuestion` picker for coordination, or a sleep-poll loop on a worker's progress tick. Async decision → a collab line WITH a recommendation (never a bare open question). Per-wave checkpoint: ≥1 collab append between consecutive wave outputs. Use `wait_for(agent_id)`/`Monitor`, not sleep-poll.
-- **Resume-not-respawn (R-036).** A crashed lead is resumed when possible; `/idle-dwell-gate` flags `SPAWN_OVER_RESUMABLE`. Crash-resume mechanics live in `/cmux-agents`.
+- **Resume-not-respawn (R-036).** A crashed lead is resumed when possible, never respawned over a resumable one. Crash-resume mechanics live in `/cmux-agents`.
 
 ---
 

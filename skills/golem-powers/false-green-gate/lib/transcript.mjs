@@ -1,7 +1,7 @@
 // Transcript normalizer — turns any of the transcript shapes the spine gates
 // see into ONE uniform event stream, so the detectors read ground-truth, not an
 // invented schema. (Vendored per-skill for self-containment; identical to the
-// copy in idle-dwell-gate.) Shapes handled:
+// copies in the other spine gates.) Shapes handled:
 //
 //   1. A spine fixture object: { events: [{ role, text, tools }] } — already
 //      normalized; passed through (tools default []).

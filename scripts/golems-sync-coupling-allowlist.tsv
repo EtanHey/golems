@@ -23,7 +23,6 @@ fleet-wrap-gate/install-snippet.json	/Users/example	Test or evaluation evidence 
 git-guardian/tests/test_git_safety.py	/opt/homebrew/bin/git	Test or evaluation evidence intentionally preserves this machine-path specimen.
 golem-install/evals/evals.json	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
 html-dashboard/templates/template.html	~/Gits/brainlayer	Display template contains a non-executed sample path.
-idle-dwell-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 install-runbook-linter/fixtures/green-runbook.md	/opt/homebrew/bin/brew	Test or evaluation evidence intentionally preserves this machine-path specimen.
 install-runbook-linter/tests/test_runbook_lint.py	/opt/homebrew/bin/brew	Test or evaluation evidence intentionally preserves this machine-path specimen.
 cyber/scripts/launchd-secret-linter/fixtures/green-plist.plist	/Users/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
@@ -32,7 +31,6 @@ cyber/scripts/launchd-secret-linter/fixtures/red-plist.plist	/Users/worker	Test 
 cyber/scripts/launchd-secret-linter/tests/test_plist_secret_lint.py	/Users/x	Test or evaluation evidence intentionally preserves this machine-path specimen.
 cyber/scripts/launchd-secret-linter/tests/test_plist_secret_lint.py	/opt/homebrew/bin/worker	Test or evaluation evidence intentionally preserves this machine-path specimen.
 model-pin-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
-monitor-law-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 never-fabricate/evals/evals.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 never-fabricate/evals/fixtures/pytest-output.txt	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 obsidian/evals/evals.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.

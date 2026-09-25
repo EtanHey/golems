@@ -72,7 +72,7 @@ or operational detail after the trim wave.
 | done = user-visible | PR-loop deploy truth gate; `false-green-gate`; `qa-verdict-gate`; collab DONE markers | Canon owns the completion definition | Gates keep FP/FN mechanics; trim repeated "merged is not shipped" prose |
 | models | `model-pin-gate`; repoGolem launcher docs; launcher setup notes | Canon owns fleet model policy and no ad hoc model flags | Remove stale spawn-pin wording; gates enforce policy from one source |
 | launchers | `repogolem` skill; launcher scripts; W0.2 seat registry | Canon owns default launcher naming, registry override precedence, and skip-perms law | Registry validates names; skill keeps invocation examples |
-| monitors/collabs | `cmux-agents`; `monitor-law-gate`; `fleet-wrap`; collab workflow docs | Canon owns claim/guard/DONE/harvest-close, with cmux-agents folded | cmux-agents keeps pane mechanics only unless Etan splits the contract back out |
+| monitors/collabs | `cmux-agents`; `collab-monitor`; `fleet-wrap`; collab workflow docs | Canon owns claim/guard/DONE/harvest-close, with cmux-agents folded | cmux-agents keeps pane mechanics only unless Etan splits the contract back out |
 | orchestration | `orc`; `large-plan`; fleet-wrap guidance; hub collabs | Canon owns cluster workflow and lead-routing law | Skills keep workflows; trim generic "ask before acting" loops |
 
 ## Install And Drift Notes
