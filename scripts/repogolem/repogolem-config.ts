@@ -3,9 +3,12 @@
 //
 //   import   --registry <registry.json> --seats <config.yaml> --out <path>
 //            [--drop-cli <cli>]... [--write [--force]]
+//   generate --config <config.yaml> --out-dir <dir> [--home <dir>] [--check]
 //
 // `import` writes ONE YAML: the seat-registry file copied verbatim, plus the
-// Ralph registry's sections appended as new top-level keys.
+// Ralph registry's sections appended as new top-level keys. `generate` turns
+// that file back into the registry.json golem-dispatch.zsh reads today and
+// the launchers.zsh Ralph's _ralph_generate_launchers_from_registry emits.
 //
 // AIDEV-NOTE: the config file is LOCAL (Etan, 2026-09-25: "config is local,
 // generation function can be committed"). Never commit one; tests use the
@@ -24,7 +27,8 @@ import {
   renameSync,
   writeFileSync,
 } from "node:fs";
-import { dirname } from "node:path";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { parse as parseYaml, parseAllDocuments, stringify as stringifyYaml } from "yaml";
 
@@ -39,6 +43,22 @@ const CONFIG_KEY: Record<(typeof REGISTRY_KEYS)[number], string> = {
   projects: "projects",
   mcpDefinitions: "mcpDefinitions",
 };
+const CLI_SUFFIX: Record<string, string> = {
+  claude: "Claude",
+  codex: "Codex",
+  gemini: "Gemini",
+  cursor: "Cursor",
+  kiro: "Kiro",
+};
+const BAR = `# ${"═".repeat(67)}`;
+const BOOTSTRAP = [
+  "# Bootstrap repoGolem when this file is sourced directly.",
+  'if ! typeset -f repoGolem >/dev/null 2>&1 && [[ -f "$HOME/.config/ralphtools/ralph.zsh" ]]; then',
+  '  source "$HOME/.config/ralphtools/ralph.zsh"',
+  "fi",
+  "",
+];
+
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type JsonObject = { [key: string]: Json };
 
@@ -180,6 +200,149 @@ function writeAtomic(path: string, text: string) {
   renameSync(tmp, path);
 }
 
+// ── generate ──────────────────────────────────────────────────────────────
+
+const SAFE_WORD = /^[A-Za-z0-9._-]+$/;
+const SAFE_MCP = /^[A-Za-z0-9._@/-]+$/;
+const UNSAFE_PATH = /["\\$`|\n]/;
+
+function optionalString(project: JsonObject, field: string, where: string): string {
+  const value = project[field];
+  if (value === undefined || value === null || value === false) return "";
+  if (typeof value !== "string") fail(`${where}.${field}: must be a string`);
+  if (value !== "" && !SAFE_WORD.test(value)) fail(`${where}.${field}: unsafe characters`);
+  return value;
+}
+
+// Same order and probe as Ralph's _repogolem_installed_clis (gemini runs via npx).
+function installedClis(): string[] {
+  const probes: [string, string][] = [
+    ["claude", "claude"],
+    ["codex", "codex"],
+    ["gemini", "npx"],
+    ["cursor", "cursor"],
+  ];
+  return probes.filter(([, bin]) => Bun.which(bin) !== null).map(([cli]) => cli);
+}
+
+export function launchersBody(projects: JsonObject, home: string): string {
+  const names = Object.keys(projects);
+  if (names.length === 0) return "# No projects registered\n";
+
+  const lines: string[] = [];
+  const aliasLines: string[] = [];
+  for (const name of names) {
+    const where = `projects.${name}`;
+    const project = projects[name];
+    if (!isObject(project)) fail(`${where}: must be an object`);
+    if (!SAFE_WORD.test(name)) fail(`${where}: unsafe project name`);
+    if (typeof project.path !== "string") fail(`${where}.path: must be a string`);
+    if (UNSAFE_PATH.test(project.path)) fail(`${where}.path: unsafe characters`);
+    const mcps = project.mcps ?? [];
+    if (!Array.isArray(mcps) || !mcps.every((m) => typeof m === "string" && SAFE_MCP.test(m))) {
+      fail(`${where}.mcps: must be a list of plain MCP names`);
+    }
+
+    const base = name.toLowerCase();
+    const path = project.path.startsWith("~") ? `${home}${project.path.slice(1)}` : project.path;
+    lines.push(`repoGolem ${name} "${path}" ${mcps.join(" ")}`);
+
+    const funcAlias = optionalString(project, "funcAlias", where);
+    const prefix = optionalString(project, "launcherAliasPrefix", where);
+    let clis = project.clis ?? [];
+    if (!Array.isArray(clis) || !clis.every((c) => typeof c === "string")) {
+      fail(`${where}.clis: must be a list of strings`);
+    }
+    if (clis.length === 0) clis = installedClis();
+
+    if (funcAlias) aliasLines.push(`alias ${funcAlias}=${base}Claude`);
+    if (prefix) {
+      aliasLines.push(`function ${prefix}() { ${base}Claude "$@"; }`);
+      for (const cli of clis as string[]) {
+        const suffix = CLI_SUFFIX[cli];
+        if (!suffix) continue;
+        aliasLines.push(`function ${prefix}${suffix}() { ${base}${suffix} "$@"; }`);
+      }
+    }
+  }
+
+  return [
+    ...lines,
+    "",
+    "# Aliases (from funcAlias / launcherAliasPrefix in registry)",
+    ...aliasLines,
+    "",
+  ].join("\n");
+}
+
+export interface Generated {
+  registryJson: string;
+  launchersZsh: string;
+}
+
+export function buildGenerated(configText: string, home: string, sourceSha: string): Generated {
+  const config: unknown = parseYaml(configText);
+  if (!isObject(config) || !isObject(config.projects)) {
+    fail("config: no top-level projects mapping (run `import` first)");
+  }
+  assertOrderSafeKeys("projects", config.projects);
+  if (isObject(config.mcpDefinitions)) assertOrderSafeKeys("mcpDefinitions", config.mcpDefinitions);
+  const configSha = sha256(configText);
+
+  const registry: JsonObject = {
+    _generated: { generator: GENERATOR_ID, sourceSha, configSha256: configSha },
+  };
+  for (const key of REGISTRY_KEYS) {
+    const configKey = CONFIG_KEY[key];
+    if (configKey in config) registry[key] = config[configKey];
+  }
+
+  const header = [
+    BAR,
+    `# AUTO-GENERATED by ${GENERATOR_ID} - do not edit manually`,
+    "# Regenerate with: bun scripts/repogolem/repogolem-config.ts generate --config <config.yaml> --out-dir <dir>",
+    `# generator-sha: ${sourceSha}`,
+    `# config-sha256: ${configSha}`,
+    BAR,
+    "",
+    ...BOOTSTRAP,
+  ].join("\n");
+
+  return {
+    registryJson: `${JSON.stringify(registry, null, 2)}\n`,
+    launchersZsh: `${header}\n${launchersBody(config.projects, home)}`,
+  };
+}
+
+function currentSourceSha(): string {
+  if (process.env.REPOGOLEM_SOURCE_SHA) return process.env.REPOGOLEM_SOURCE_SHA;
+  const cwd = import.meta.dir;
+  const head = Bun.spawnSync(["git", "-C", cwd, "rev-parse", "HEAD"], { stderr: "ignore" });
+  if (head.exitCode !== 0) return "unknown";
+  const sha = head.stdout.toString().trim();
+  const dirty = Bun.spawnSync(["git", "-C", cwd, "status", "--porcelain", "--", import.meta.path], {
+    stderr: "ignore",
+  });
+  return dirty.stdout.toString().trim() ? `${sha}-dirty` : sha;
+}
+
+// The source SHA each output recorded. --check regenerates with it, so a new
+// golems commit alone never reads as stale; only the config or the file can.
+function recordedSourceSha(registryText: string | null, launchersText: string | null): string | null {
+  if (registryText !== null) {
+    try {
+      const parsed: unknown = JSON.parse(registryText);
+      if (isObject(parsed) && isObject(parsed._generated) && typeof parsed._generated.sourceSha === "string") {
+        return parsed._generated.sourceSha;
+      }
+    } catch {
+      // fall through to the launchers header
+    }
+  }
+  const match = launchersText?.match(/^# generator-sha: (\S+)$/m);
+  return match ? match[1] : null;
+}
+
 // ── CLI ───────────────────────────────────────────────────────────────────
 
 function parseArgs(argv: string[], flags: string[], values: string[], repeated: string[] = []) {
@@ -237,13 +400,48 @@ function runImport(argv: string[]) {
   return 0;
 }
 
+function runGenerate(argv: string[]) {
+  const args = parseArgs(argv, ["check"], ["config", "out-dir", "home"]);
+  const configText = readFileSync(required(args, "config"), "utf8");
+  const outDir = required(args, "out-dir");
+  const home = typeof args.home === "string" ? args.home : homedir();
+  const registryPath = join(outDir, "registry.json");
+  const launchersPath = join(outDir, "launchers.zsh");
+
+  if (!args.check) {
+    const generated = buildGenerated(configText, home, currentSourceSha());
+    writeAtomic(registryPath, generated.registryJson);
+    writeAtomic(launchersPath, generated.launchersZsh);
+    console.log(`wrote ${registryPath}\nwrote ${launchersPath}`);
+    return 0;
+  }
+
+  const read = (path: string) => (existsSync(path) ? readFileSync(path, "utf8") : null);
+  const registryText = read(registryPath);
+  const launchersText = read(launchersPath);
+  const expected = buildGenerated(configText, home, recordedSourceSha(registryText, launchersText) ?? "unknown");
+  const stale: string[] = [];
+  if (registryText !== expected.registryJson) stale.push(registryText === null ? `${registryPath} (missing)` : registryPath);
+  if (launchersText !== expected.launchersZsh) {
+    stale.push(launchersText === null ? `${launchersPath} (missing)` : launchersPath);
+  }
+  if (stale.length > 0) {
+    console.error(`stale vs ${required(args, "config")}:\n  ${stale.join("\n  ")}\nrerun generate`);
+    return 1;
+  }
+  console.log(`fresh: ${registryPath}, ${launchersPath}`);
+  return 0;
+}
+
 function main(argv: string[]) {
   const [command, ...rest] = argv;
   if (command === "import") return runImport(rest);
-  fail("usage: repogolem-config.ts import [options] (see the header comment)");
+  if (command === "generate") return runGenerate(rest);
+  fail("usage: repogolem-config.ts import|generate [options] (see the header comment)");
 }
 
-// Exit codes: 0 ok · 2 any error (1 is reserved for a staleness verdict).
+// Exit codes: 0 ok · 1 stale (generate --check) · 2 any error. An unreadable
+// or unparseable input must never exit 1, or a --check caller reads it as stale.
 if (import.meta.main) {
   try {
     process.exit(main(process.argv.slice(2)));
