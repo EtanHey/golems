@@ -61,3 +61,20 @@ def test_workflow_runs_the_shared_skill_test_runner():
 
 def test_skill_test_requirements_do_not_pull_optional_trace_deps():
     assert not REQUIREMENTS.exists()
+
+
+def test_runner_also_runs_every_gate_eval_suite():
+    # GO-5: the Stop-gate run_suite.py suites drifted (17/38, 16/38, 10/23) because
+    # no CI job ran them. The runner now runs every evals/run_suite.py.
+    env = {**os.environ, "RUN_SKILL_TESTS_LIST_ONLY": "1"}
+    result = subprocess.run(
+        [str(RUNNER)], cwd=ROOT, env=env, text=True, capture_output=True, check=True,
+    )
+    listed = set(result.stdout.splitlines())
+    on_disk = {
+        str(path.relative_to(ROOT))
+        for path in (ROOT / "skills" / "golem-powers").glob("*/evals/run_suite.py")
+    }
+    assert on_disk, "expected gate eval suites on disk"
+    assert on_disk <= listed, sorted(on_disk - listed)
+    assert "skills/golem-powers/false-green-gate/evals/run_suite.py" in listed

@@ -23,8 +23,19 @@ done < <(
   printf '%s\0' scripts/tests
 )
 
+# Gate eval suites (evals/run_suite.py): contract tables for the hook gates.
+# GO-5: no CI job ran them, so a contract change drifted silently (#223).
+EVAL_SUITES=()
+while IFS= read -r -d '' suite; do
+  EVAL_SUITES+=("$suite")
+done < <(
+  find skills/golem-powers -path 'skills/golem-powers/_archive' -prune -o \
+    -path '*/evals/run_suite.py' -type f -print0 | sort -z
+)
+
 if [[ "${RUN_SKILL_TESTS_LIST_ONLY:-}" == "1" ]]; then
   printf '%s\n' "${PYTEST_SUITES[@]}"
+  printf '%s\n' "${EVAL_SUITES[@]}"
   exit 0
 fi
 
@@ -37,3 +48,18 @@ printf 'Running %d golem-powers Python skill test suite(s):\n' "${#PYTEST_SUITES
 printf '  %s\n' "${PYTEST_SUITES[@]}"
 
 "$PYTHON_BIN" -m pytest "${PYTEST_SUITES[@]}" -q
+
+eval_failures=0
+for suite in "${EVAL_SUITES[@]}"; do
+  printf '\n== %s\n' "$suite"
+  if output="$("$PYTHON_BIN" "$suite" 2>&1)"; then
+    printf '%s\n' "$output" | tail -1
+  else
+    printf '%s\n' "$output"
+    eval_failures=$((eval_failures + 1))
+  fi
+done
+if [[ "$eval_failures" -ne 0 ]]; then
+  echo "Gate eval suites failing: $eval_failures" >&2
+  exit 1
+fi
