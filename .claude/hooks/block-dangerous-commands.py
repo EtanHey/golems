@@ -19,12 +19,10 @@ Branch safety:
 Rules enforced:
   1. git push on main/master without AUTONOMOUS=1 → BLOCK
   2. git commit on main/master without AUTONOMOUS=1 → BLOCK
-  3. npm commands → BLOCK (use bun)
-  4. python (not python3) → BLOCK
   5. Chrome/Brave → BLOCK (use Helium; Safari allowed for OAuth popups)
-  6. git status -uall → BLOCK
   7. Supabase DDL via execute_sql → BLOCK (use apply_migration)
   8. Kilo in blocked directories → BLOCK
+  (3 npm, 4 python, 6 `git status -uall` were removed in GO-5 E2: style, not safety.)
 
 Source rules (now enforced by hook, removed from rule files):
   - ~/.claude/CLAUDE.md: commit rules, tool preferences
@@ -96,14 +94,9 @@ def check_bash(command):
             "Feature branches are allowed automatically."
         )
 
-    # 3. npm commands → use bun
-    if re.match(r"npm\s+(install|run|test|ci|init|start|build|exec)\b", stripped):
-        bun_cmd = re.sub(r"^npm\b", "bun", stripped, count=1)
-        block(f"Use bun instead of npm. Try: {bun_cmd}")
-
-    # 4. python (not python3) — catch both "python script.py" and bare "python"
-    if re.match(r"python(\s|$)", stripped) and not stripped.startswith("python3"):
-        block("Use python3, not python.")
+    # GO-5 E2: the npm / python / `git status -uall` style rules are gone. They
+    # blocked `npm run smoke:gate`, which skill-creator/AGENTS.md instructs, and
+    # a style preference is not worth a retry loop.
 
     # 5. Chrome/Brave → Helium (Etan's standing browser law; Safari allowed for OAuth popups)
     # Anchored to a command boundary — start of string, or after a shell separator
@@ -112,10 +105,6 @@ def check_bash(command):
     # blocked, while a real launch on any line of a multi-line script still is.
     if re.search(r'(?:^|[;&|\n]\s*)open\s+-a\s+["\']?(Google Chrome|Brave Browser|Brave)\b', stripped):
         block("Use Helium, not Chrome/Brave. Try: open -a Helium")
-
-    # 6. git status -uall (match actual command, not substrings in commit messages)
-    if re.match(r"git\s+status\b", stripped) and "-uall" in stripped:
-        block("Don't use -uall — can cause memory issues on large repos. Use: git status -u")
 
     # 8. Kilo in blocked directories
     if re.match(r"kilo\b", stripped) or "run.sh kilo" in stripped:
