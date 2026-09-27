@@ -841,11 +841,11 @@ JSON
     grep -F -q -- "AFTER_HTTP_TOKEN=" <<< "$output"
     grep -F -q -- "AFTER_SERVER_TOKEN=" <<< "$output"
     grep -F -q -- "AFTER_REGISTRY_TOKEN=" <<< "$output"
-    ! grep -F -q -- "AFTER_HTTP_TOKEN=http-token" <<< "$output"
-    ! grep -F -q -- "AFTER_SERVER_TOKEN=server-token" <<< "$output"
-    ! grep -F -q -- "AFTER_REGISTRY_TOKEN=registry-token" <<< "$output"
-    ! grep -F -q -- "mcp_servers.httpRemote.env.HTTP_TOKEN" <<< "$output"
-    ! grep -F -q -- "mcp_servers.serverRemote.env.SERVER_TOKEN" <<< "$output"
+    ! grep -F -q -- "AFTER_HTTP_TOKEN=http-token" <<< "$output" || false
+    ! grep -F -q -- "AFTER_SERVER_TOKEN=server-token" <<< "$output" || false
+    ! grep -F -q -- "AFTER_REGISTRY_TOKEN=registry-token" <<< "$output" || false
+    ! grep -F -q -- "mcp_servers.httpRemote.env.HTTP_TOKEN" <<< "$output" || false
+    ! grep -F -q -- "mcp_servers.serverRemote.env.SERVER_TOKEN" <<< "$output" || false
     ! grep -F -q -- "mcp_servers.registryRemote.env.REGISTRY_TOKEN" <<< "$output"
 }
 
@@ -3351,12 +3351,12 @@ BSD_MKTEMP_SHIM='function mktemp() {
     [ "$status" -eq 0 ]
     grep -F -x -q -- "RUN_A=0" <<< "$output"
     grep -F -x -q -- "RUN_B=0" <<< "$output"
-    ! grep -F -q -- "mkstemp failed" <<< "$output"
+    ! grep -F -q -- "mkstemp failed" <<< "$output" || false
 
     # Four temp files per launch, eight in all, and no two launches shared one.
     [ "$(wc -l < "$MKTEMP_CREATED")" -eq 8 ]
     [ -z "$(sort "$MKTEMP_CREATED" | uniq -d)" ]
-    ! grep -F -q -- "XXXXXX" "$MKTEMP_CREATED"
+    ! grep -F -q -- "XXXXXX" "$MKTEMP_CREATED" || false
     [ -z "$(find "$xdg" "$fake_home" "$PROJECT_DIR" -name '*XXXXXX*' -print)" ]
 
     jq -e '.mcpServers.local.command == "true"' "$PROJECT_DIR/.agents/mcp_config.json"
