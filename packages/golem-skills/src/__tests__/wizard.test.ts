@@ -502,3 +502,34 @@ describe("wizard CLI hints", () => {
     expect(source).not.toContain("npx golems-cli");
   });
 });
+
+describe("wizard sync-config path", () => {
+  // AIDEV-NOTE: golems' scripts/sync/sync-config.sh is the canonical copy. The
+  // wizard is public and must not run the private orchestrator repo's copy.
+  const repoRoot = join(import.meta.dir, "..", "..", "..", "..");
+  const installDir = join(repoRoot, "skills", "golem-powers", "golem-install");
+
+  function installDocs(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return installDocs(path);
+      return /\.(md|json)$/.test(entry.name) ? [path] : [];
+    });
+  }
+
+  test("golem-install never points at the orchestrator copy of sync-config.sh", async () => {
+    for (const path of installDocs(installDir)) {
+      const text = await readFile(path, "utf8");
+      expect(text, path).not.toMatch(/orchestrator\/scripts\/sync-config/);
+      expect(text, path).not.toMatch(/sync-config\.sh from orchestrator/);
+    }
+  });
+
+  test("the wizard runs golems' scripts/sync/sync-config.sh, which exists", async () => {
+    expect(existsSync(join(repoRoot, "scripts", "sync", "sync-config.sh"))).toBe(true);
+    const wizard = await readFile(join(installDir, "references", "wizard.md"), "utf8");
+    expect(wizard).toContain("golems/scripts/sync/sync-config.sh\" --diff");
+    expect(wizard).toContain("golems/scripts/sync/sync-config.sh\" --enforce");
+    expect(wizard).toContain("golems/scripts/sync/sync-config.sh\" --validate");
+  });
+});

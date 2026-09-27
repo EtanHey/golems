@@ -34,7 +34,7 @@ Full procedure: [references/wizard.md](references/wizard.md); phase checklist:
    `bun <golem-install-dir>/scripts/install-cmuxlayer-fleet.mjs` writes cmuxlayer's
    `~/.config/cmuxlayer/fleet.json` (golems coordination/outbox/launcher paths) only if absent;
    add `--with-worktree-bootstrap` only once the installed cmuxlayer supports that key (after #857).
-4. **MCP:** `sync-config.sh --diff`, confirm, then `--enforce`.
+4. **MCP:** `golems/scripts/sync/sync-config.sh --diff`, confirm, then `--enforce`.
 5. **`.claude.local.md`** in each existing checkout that has a `CLAUDE.md` (gitignored).
    A machine whose skill links point at a stale `~/.golems/skills` copy: `bun <golem-install-dir>/scripts/repoint-skills.mjs
    --source <clone>/skills/golem-powers` (dry-run; `--apply` repoints and drops dangling links, per-root counts
