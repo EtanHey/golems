@@ -207,6 +207,9 @@ export async function runHaiku(
       service: source,
       error_message: (err as Error).message,
       error_type: `haiku_${errorType}`,
+      status_code: typeof (err as { status?: unknown }).status === "number"
+        ? (err as { status: number }).status
+        : undefined,
     });
     return null;
   }

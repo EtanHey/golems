@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { createHash } from "node:crypto";
 
 // Capture what actually leaves through the client.
 const ingested: unknown[][] = [];
@@ -22,6 +23,7 @@ mock.module("@golems/shared/lib/config", () => ({
 }));
 
 const {
+  logCCUsage,
   logError,
   logLLMCall,
   logMessagePipeline,
@@ -30,8 +32,13 @@ const {
   sanitizeAxiomEvent,
 } = await import("@golems/shared/lib/axiom");
 
-const PROMPT = "PROMPT-TEXT-FIXTURE the quick brown fox jumps over the lazy dog. ".repeat(40);
+// Markers: if either ever appears in a payload, input text or a name leaked.
+const PROMPT = "PROMPT-TEXT-FIXTURE the quick brown fox";
+const PERSON = "PERSON-NAME-FIXTURE";
+const SHORT_PROMPT = "PROMPT-TEXT-FIXTURE";
 const STACK = "Error: boom\n    at fixtureFrame (fixture.ts:1:1)";
+const HOST = `${PERSON} Laptop`;
+const HOST_ID = createHash("sha256").update(HOST).digest("hex").slice(0, 12);
 
 beforeEach(() => {
   ingested.length = 0;
@@ -39,27 +46,27 @@ beforeEach(() => {
 });
 
 describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
-  it("drops stack, truncates error_message to 120, keeps only numeric/boolean metadata", () => {
+  it("error: drops raw error text (even short), stack and all metadata; keeps type + status code", () => {
     const out = sanitizeAxiomEvent({
       _type: "error",
       service: "claudegolem",
-      error_message: PROMPT,
-      error_type: "processing_error",
+      error_message: SHORT_PROMPT,
+      error_type: "mlx_api_error",
+      status_code: 500,
       stack: STACK,
-      metadata: { prompt: PROMPT, retries: 3, ok: false, nested: { text: PROMPT }, bad: Number.NaN },
+      metadata: { retries: 3, [PROMPT]: 1 },
     } as never);
 
     expect(out).toEqual({
       _type: "error",
       service: "claudegolem",
-      error_message: PROMPT.slice(0, 120),
-      error_type: "processing_error",
-      metadata: { retries: 3, ok: false },
+      error_type: "mlx_api_error",
+      status_code: 500,
     });
   });
 
-  it("drops fields outside the event type's allowlist", () => {
-    const out = sanitizeAxiomEvent({
+  it("llm_call and message_pipeline: raw error strings never leave", () => {
+    const llm = sanitizeAxiomEvent({
       _type: "llm_call",
       model: "haiku",
       source: "email-router",
@@ -69,30 +76,16 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
       cost_usd: 0.001,
       duration_ms: 12,
       tier: "paid",
-      success: true,
+      success: false,
+      error: SHORT_PROMPT,
+      status_code: 429,
       prompt: PROMPT,
-      response: PROMPT,
     } as never);
+    expect(llm).not.toHaveProperty("error");
+    expect(llm).not.toHaveProperty("prompt");
+    expect(llm).toMatchObject({ model: "haiku", input_tokens: 10, success: false, status_code: 429 });
 
-    expect(out).not.toHaveProperty("prompt");
-    expect(out).not.toHaveProperty("response");
-    expect(out).toMatchObject({ model: "haiku", input_tokens: 10, success: true });
-  });
-
-  it("drops string-only metadata entirely", () => {
-    const out = sanitizeAxiomEvent({
-      _type: "service",
-      service: "email-golem",
-      event: "run",
-      status: "failure",
-      duration_ms: 5,
-      metadata: { error: PROMPT, subject: "SUBJECT-FIXTURE" },
-    });
-    expect(out).not.toHaveProperty("metadata");
-  });
-
-  it("truncates every string field, not just error_message", () => {
-    const out = sanitizeAxiomEvent({
+    const pipe = sanitizeAxiomEvent({
       _type: "message_pipeline",
       message_id: "tg-1",
       golem_name: "claudegolem",
@@ -100,9 +93,55 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
       latency_ms: 10,
       success: false,
       error_type: "processing_error",
-      error_message: PROMPT,
-    }) as Record<string, unknown>;
-    expect((out.error_message as string).length).toBe(120);
+      error_message: SHORT_PROMPT,
+    });
+    expect(pipe).not.toHaveProperty("error_message");
+    expect(pipe).toMatchObject({ error_type: "processing_error" });
+  });
+
+  it("service metadata: only named metric keys survive; dynamic keys are dropped, not length-checked", () => {
+    const out = sanitizeAxiomEvent({
+      _type: "service",
+      service: "jobgolem",
+      event: "run",
+      status: "success",
+      duration_ms: 5,
+      metadata: { scraped: 40, matched: 2, [PROMPT]: 1, [PERSON]: 2, x: 1, date: "2026-09-27" },
+    });
+    expect(out).toEqual({
+      _type: "service",
+      service: "jobgolem",
+      event: "run",
+      status: "success",
+      duration_ms: 5,
+      metadata: { scraped: 40, matched: 2 },
+    });
+  });
+
+  it("cc_usage: hostname becomes an opaque host_id, branch is dropped, project stays", () => {
+    const out = sanitizeAxiomEvent({
+      _type: "cc_usage",
+      model: "claude-opus-5-5",
+      project: "golems",
+      input_tokens: 1,
+      output_tokens: 1,
+      cost_estimate_usd: 0,
+      hostname: HOST,
+      branch: `feat/${PERSON}-thing`,
+    });
+    expect(out).toMatchObject({ project: "golems", host_id: HOST_ID });
+    expect(out).not.toHaveProperty("hostname");
+    expect(out).not.toHaveProperty("branch");
+    expect(HOST_ID).toMatch(/^[0-9a-f]{12}$/);
+  });
+
+  it("ID fields must look like IDs: whitespace-bearing text is dropped", () => {
+    const out = sanitizeAxiomEvent({
+      _type: "error",
+      service: `${PERSON} free text`,
+      error_type: "not an identifier",
+    } as never);
+    expect(out).toEqual({ _type: "error" });
   });
 
   it("drops unknown event types", () => {
@@ -110,13 +149,14 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
   });
 });
 
-describe("send path", () => {
-  it("every log helper sends only the sanitized shape", () => {
+describe("send path — all five helpers, adversarial", () => {
+  it("nothing but allowlisted IDs and metrics reaches the client", () => {
     logError({
       service: "claudegolem",
-      error_message: PROMPT,
+      error_message: SHORT_PROMPT,
       error_type: "uncaught_exception",
       stack: STACK,
+      metadata: { [PROMPT]: 1, [PERSON]: 1 },
     } as never);
     logMessagePipeline({
       message_id: "tg-2",
@@ -124,14 +164,15 @@ describe("send path", () => {
       phase: "respond",
       latency_ms: 1,
       success: false,
-      error_message: PROMPT,
+      error_type: "processing_error",
+      error_message: SHORT_PROMPT,
     });
     logServiceEvent({
       service: "cloud-worker",
       event: "run",
       status: "success",
       duration_ms: 3,
-      metadata: { summary: PROMPT, jobs_found: 4 },
+      metadata: { summary: PROMPT, [PROMPT]: 7, [PERSON]: 8, matched: 4 },
     });
     logLLMCall({
       model: "haiku",
@@ -143,21 +184,32 @@ describe("send path", () => {
       duration_ms: 0,
       tier: "paid",
       success: false,
-      error: PROMPT,
+      error: SHORT_PROMPT,
       prompt: PROMPT,
     } as never);
+    logCCUsage({
+      model: "claude-opus-5-5",
+      project: "golems",
+      input_tokens: 1,
+      output_tokens: 1,
+      cost_estimate_usd: 0,
+      session_id: "fixture-session",
+      hostname: HOST,
+      branch: `feat/${PERSON}`,
+      transcript: PROMPT,
+    } as never);
 
+    expect(ingested.length).toBe(5);
     const sent = JSON.stringify(ingested);
-    expect(ingested.length).toBe(4);
-    expect(sent).not.toContain("stack");
-    expect(sent).not.toContain("fixtureFrame");
-    expect(sent).not.toContain('"prompt"');
-    expect(sent).not.toContain('"summary"');
-    for (const [event] of ingested as Record<string, unknown>[][]) {
-      for (const v of Object.values(event)) {
-        if (typeof v === "string") expect(v.length).toBeLessThanOrEqual(120);
-      }
+    const leakedKeys = ['"stack":', '"branch":', '"hostname":', '"error_message":', '"error":', '"prompt":', '"transcript":', '"summary":'];
+    for (const marker of ["PROMPT-TEXT-FIXTURE", PERSON, "fixtureFrame", ...leakedKeys]) {
+      expect(sent).not.toContain(marker);
     }
-    expect(ingested[2][0]).toMatchObject({ metadata: { jobs_found: 4 } });
+    const [err, pipe, svc, llm, cc] = ingested.map((batch) => batch[0] as Record<string, unknown>);
+    expect(err).not.toHaveProperty("metadata");
+    expect(pipe).toMatchObject({ error_type: "processing_error" });
+    expect(svc.metadata).toEqual({ matched: 4 });
+    expect(llm).toMatchObject({ success: false });
+    expect(cc).toMatchObject({ host_id: HOST_ID, session_id: "fixture-session" });
   });
 });

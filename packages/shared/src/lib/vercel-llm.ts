@@ -187,6 +187,7 @@ export async function runCloudFree(
         service: source,
         error_message: errMsg || String(err),
         error_type: `${p.name}_api_error`,
+        status_code: typeof errObj?.statusCode === "number" ? errObj.statusCode : undefined,
       });
 
       // Alert on consecutive failures (once per batch)

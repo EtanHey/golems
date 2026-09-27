@@ -9,13 +9,16 @@
  *
  * Privacy posture (same as skill-creator's emitter): IDs and metrics only.
  * Every event passes sanitizeAxiomEvent() on the send path — per-type field
- * allowlist, strings cut to 120 chars, metadata reduced to numeric/boolean
- * values. No prompt/message/transcript text, stack traces or file contents.
+ * allowlist, ID strings only (no whitespace, <=120 chars), raw error text
+ * dropped (error_type + status_code kept), metadata limited to named metric
+ * keys, hostname hashed to host_id. No prompt/message/transcript text, stack
+ * traces, file contents or personal names.
  *
  * Config: ~/.golems/config.yaml → observability section
  * Token: AXIOM_TOKEN env var or config.yaml
  */
 
+import { createHash } from "node:crypto";
 import { Axiom } from "@axiomhq/js";
 import { loadConfig } from "./config";
 
@@ -61,7 +64,9 @@ export interface LLMCallEvent {
   duration_ms: number;
   tier: "paid" | "free" | "subscription";
   success: boolean;
+  /** Not sent: raw error text is dropped at the send boundary. */
   error?: string;
+  status_code?: number;
 }
 
 export interface ServiceEvent {
@@ -76,8 +81,11 @@ export interface ServiceEvent {
 export interface ErrorEvent {
   _type: "error";
   service: string;
+  /** Not sent: raw error text is dropped at the send boundary. */
   error_message: string;
   error_type: string;
+  status_code?: number;
+  /** Not sent: no error metric keys are allowlisted. */
   metadata?: Record<string, unknown>;
 }
 
@@ -96,7 +104,9 @@ export interface CCUsageEvent {
   started_at?: string;
   ended_at?: string;
   source?: string;
+  /** Sent only as host_id = first 12 hex of sha256(hostname). */
   hostname?: string;
+  /** Not sent: branch names are user-chosen labels. */
   branch?: string;
 }
 
@@ -108,8 +118,10 @@ export interface MessagePipelineEvent {
   latency_ms: number;
   success: boolean;
   error_type?: string;
+  /** Not sent: raw error text is dropped at the send boundary. */
   error_message?: string;
   response_length?: number;
+  status_code?: number;
 }
 
 type AxiomEvent =
@@ -122,65 +134,69 @@ type AxiomEvent =
 // ─── Privacy Allowlist ──────────────────────────────────────────
 
 // AIDEV-NOTE: this allowlist IS the privacy contract. A field not listed here
-// never leaves the process. Add only IDs and metrics — never free text.
-type FieldKind = "string" | "number" | "boolean" | "metrics";
+// never leaves the process. Add only IDs and metrics — never free text:
+// raw error strings (llm_call.error, *.error_message) are deliberately absent,
+// metadata keys are named per event type, hostname leaves only as a hash.
+type FieldKind = "id" | "number" | "boolean" | "host-hash" | { metrics: readonly string[] };
 
-const MAX_STRING = 120;
-const MAX_METRIC_KEYS = 32;
-const MAX_METRIC_KEY_LENGTH = 64;
+const MAX_ID = 120;
+// An ID has no whitespace: anything that reads like a sentence is dropped.
+const ID_PATTERN = /^[A-Za-z0-9_.:@/+-]+$/;
+
+// Metric keys real callers send today (cloud-worker safeRun results:
+// jobs → scraped/filtered/matched, calendar sync → synced).
+const SERVICE_METRICS = ["scraped", "filtered", "matched", "synced"] as const;
 
 const ALLOWED_FIELDS: Record<AxiomEvent["_type"], Record<string, FieldKind>> = {
   llm_call: {
-    model: "string",
-    source: "string",
-    backend: "string",
+    model: "id",
+    source: "id",
+    backend: "id",
     input_tokens: "number",
     output_tokens: "number",
     cost_usd: "number",
     duration_ms: "number",
-    tier: "string",
+    tier: "id",
     success: "boolean",
-    error: "string",
+    status_code: "number",
   },
   service: {
-    service: "string",
-    event: "string",
-    status: "string",
+    service: "id",
+    event: "id",
+    status: "id",
     duration_ms: "number",
-    metadata: "metrics",
+    metadata: { metrics: SERVICE_METRICS },
   },
   error: {
-    service: "string",
-    error_message: "string",
-    error_type: "string",
-    metadata: "metrics",
+    service: "id",
+    error_type: "id",
+    status_code: "number",
   },
   cc_usage: {
-    model: "string",
-    project: "string",
+    model: "id",
+    project: "id",
     input_tokens: "number",
     output_tokens: "number",
     cache_read_tokens: "number",
     cache_write_tokens: "number",
     cost_estimate_usd: "number",
-    session_id: "string",
+    session_id: "id",
     duration_seconds: "number",
     message_count: "number",
-    started_at: "string",
-    ended_at: "string",
-    source: "string",
-    hostname: "string",
-    branch: "string",
+    started_at: "id",
+    ended_at: "id",
+    source: "id",
+    hostname: "host-hash",
   },
   message_pipeline: {
-    message_id: "string",
-    golem_name: "string",
-    phase: "string",
+    message_id: "id",
+    golem_name: "id",
+    phase: "id",
     latency_ms: "number",
     success: "boolean",
-    error_type: "string",
-    error_message: "string",
+    error_type: "id",
     response_length: "number",
+    status_code: "number",
   },
 };
 
@@ -188,17 +204,22 @@ function isMetric(v: unknown): v is number | boolean {
   return typeof v === "boolean" || (typeof v === "number" && Number.isFinite(v));
 }
 
-function metricsOnly(value: unknown): Record<string, number | boolean> | undefined {
+function namedMetrics(
+  value: unknown,
+  keys: readonly string[],
+): Record<string, number | boolean> | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
   const out: Record<string, number | boolean> = {};
-  let kept = 0;
-  for (const [k, v] of Object.entries(value)) {
-    if (kept >= MAX_METRIC_KEYS) break;
-    if (k.length > MAX_METRIC_KEY_LENGTH || !isMetric(v)) continue;
-    out[k] = v;
-    kept++;
+  for (const key of keys) {
+    if (Object.hasOwn(source, key) && isMetric(source[key])) out[key] = source[key];
   }
-  return kept > 0 ? out : undefined;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Opaque, stable machine id: first 12 hex of sha256(hostname). */
+function hostId(hostname: string): string {
+  return createHash("sha256").update(hostname).digest("hex").slice(0, 12);
 }
 
 /**
@@ -213,14 +234,16 @@ export function sanitizeAxiomEvent(event: AxiomEvent): Record<string, unknown> |
   for (const [key, value] of Object.entries(event)) {
     const kind = allowed[key];
     if (!kind) continue;
-    if (kind === "string" && typeof value === "string") {
-      out[key] = value.slice(0, MAX_STRING);
-    } else if (kind === "number" && typeof value === "number" && Number.isFinite(value)) {
-      out[key] = value;
-    } else if (kind === "boolean" && typeof value === "boolean") {
-      out[key] = value;
-    } else if (kind === "metrics") {
-      const metrics = metricsOnly(value);
+    if (kind === "id") {
+      if (typeof value === "string" && value.length <= MAX_ID && ID_PATTERN.test(value)) out[key] = value;
+    } else if (kind === "number") {
+      if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
+    } else if (kind === "boolean") {
+      if (typeof value === "boolean") out[key] = value;
+    } else if (kind === "host-hash") {
+      if (typeof value === "string" && value) out.host_id = hostId(value);
+    } else {
+      const metrics = namedMetrics(value, kind.metrics);
       if (metrics) out[key] = metrics;
     }
   }

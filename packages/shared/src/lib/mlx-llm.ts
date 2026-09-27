@@ -91,6 +91,7 @@ export async function runMLX(
         service: source,
         error_message: `MLX API ${resp.status}: ${errBody.slice(0, 200)}`,
         error_type: "mlx_api_error",
+        status_code: resp.status,
       });
       return null;
     }
