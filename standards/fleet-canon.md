@@ -15,7 +15,7 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    doc/deletion PRs - Claude cloud implements, Codex reviews. The reviewer is always the other vendor.
    The inner loop is sequential: the implementer goes first, and the reviewer is spawned or briefed only after
    the implementer reports done (its DONE marker or report line; for a cloud implementer, PR head stable >=10 min
-   with checks finished). A reviewer never reads a half-finished diff. Security work (pending owner ratification):
+   with checks finished). A reviewer never reads a half-finished diff. Security work:
    Opus implements; the reviewer is a security-specialised other-vendor model (Daybreak Blue), falling back to
    Codex Sol at high effort plus a `codex-security` deep scan per security PR.
    Claude leads orchestrate and route work through visible panes. Each PR body records its implementer,
