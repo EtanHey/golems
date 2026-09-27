@@ -19,8 +19,9 @@ PID/random components; JSON payload/artifact formatting is byte-sensitive.
 Cases cover dry-run flags and both aliases, record order, successful and partial
 stores, batch startup failures, repeated queue/retry idempotency, empty and
 malformed inputs, healthy/empty/mixed/refused digests and Python exceptions.
-Raw digest exception fixtures are Python-version-specific (3.11 and 3.13);
-unrecorded interpreter versions explicitly skip only that exception case.
+Raw processed and unprocessed digest exception fixtures are
+Python-version-specific (3.11 and 3.13); unrecorded interpreter versions
+explicitly skip only those two exception cases.
 Payload exception bytes are common to both recorded interpreters.
 
 Before extraction, changing queue `intended_brain_store` from true to false in

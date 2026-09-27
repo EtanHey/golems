@@ -143,6 +143,12 @@ def scenario(name, data, env):
         elif name == "digest-exception":
             (run / "gems.md").unlink()
             (run / "gems.md").mkdir()
+        elif name == "digest-unprocessed-exception":
+            (run / ".stage-process.done").unlink()
+            (run / ".stage-archive.done").unlink()
+            (run / "_DRIVE-LEDGER.md").unlink()
+            (run / "gems.md").unlink()
+            (run / "gems.md").mkdir()
         elif name == "digest-refusal":
             env["TELEGRAM_FAIL"] = "1"
         steps = [(digest + ["--dry-run"], {}), (digest, {})]
@@ -151,7 +157,8 @@ def scenario(name, data, env):
 
 CASES = ("usage", "dry-run", "store-success", "partial-retry", "queue-idempotent",
          "batch-success", "batch-partial", "batch-startup-failure", "payload-exception",
-         "empty-run", "digest-empty", "digest-mixed", "digest-no-scored-gems", "digest-refusal", "digest-exception")
+         "empty-run", "digest-empty", "digest-mixed", "digest-no-scored-gems", "digest-refusal", "digest-exception",
+         "digest-unprocessed-exception")
 
 
 def capture(root, case):
@@ -203,12 +210,13 @@ def main():
     if record:
         assert (root / ENTRY).read_bytes() == subprocess.check_output(["git", "show", f"{BASE}:{ENTRY}"], cwd=ROOT)
         FIXTURES.mkdir(parents=True, exist_ok=True)
-    for case in CASES:
+    for case in (os.environ.get("BRAIN_CONTRACT_CASE"),) if os.environ.get("BRAIN_CONTRACT_CASE") else CASES:
         version = f"py{sys.version_info.major}{sys.version_info.minor}"
-        suffix = f"-{version}" if case == "digest-exception" else ""
+        versioned = case in {"digest-exception", "digest-unprocessed-exception"}
+        suffix = f"-{version}" if versioned else ""
         path = FIXTURES / f"{case}{suffix}.json"
-        if case == "digest-exception" and not record and not path.exists():
-            print(f"digest-exception: SKIP (no untouched-base traceback for {version})")
+        if versioned and not record and not path.exists():
+            print(f"{case}: SKIP (no untouched-base traceback for {version})")
             continue
         actual = capture(root, case)
         if record:

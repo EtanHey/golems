@@ -276,11 +276,16 @@ def render_digest(data):
     return message, 75 if failed_drops else 0
 
 def _legacy_gems_traceback(error):
-    """Keep the pre-split stdin traceback for a gems.md read failure."""
+    """Keep the pre-split stdin traceback for malformed run-file reads."""
     frames = traceback.extract_tb(error.__traceback__)
-    if not isinstance(error, IsADirectoryError) or not any(
-        frame.name == "parse_gems" for frame in frames
-    ):
+    if not isinstance(error, IsADirectoryError):
+        return False
+    parsed_gems = any(frame.name == "parse_gems" for frame in frames)
+    collection_read = next((152 if "gems_file.read_text" in (frame.line or "") else 160
+                            for frame in frames if frame.name == "collect_digest" and
+                            ("gems_file.read_text" in (frame.line or "") or
+                             "chat_file.read_text" in (frame.line or ""))), None)
+    if not parsed_gems and collection_read is None:
         return False
     # Original digest read this file at heredoc lines 294 and 243. Keep the
     # actual library frames (including Python-version-specific source carets).
@@ -288,8 +293,11 @@ def _legacy_gems_traceback(error):
     if not library:
         return False
     sys.stderr.write('Traceback (most recent call last):\n')
-    sys.stderr.write('  File "<stdin>", line 294, in <module>\n')
-    sys.stderr.write('  File "<stdin>", line 243, in parse_gems\n')
+    if parsed_gems:
+        sys.stderr.write('  File "<stdin>", line 294, in <module>\n')
+        sys.stderr.write('  File "<stdin>", line 243, in parse_gems\n')
+    else:
+        sys.stderr.write(f'  File "<stdin>", line {collection_read}, in <module>\n')
     sys.stderr.write(''.join(traceback.StackSummary.from_list(library).format()))
     sys.stderr.write(''.join(traceback.format_exception_only(type(error), error)))
     return True
