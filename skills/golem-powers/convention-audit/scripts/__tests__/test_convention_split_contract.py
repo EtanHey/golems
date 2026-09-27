@@ -1,8 +1,9 @@
-"""Goldens captured from unchanged cfe1ab39 before extraction."""
+"""Contract goldens from unchanged cfe1ab39; artifact captures added at R2."""
 
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 from unittest import mock
@@ -85,6 +86,26 @@ def test_comparator_rejects_changed_pin(tmp_path):
     assert changed != json.loads(GOLDEN.read_text())
 
 
+def emitted_artifacts(root, completed):
+    """Preserve bytes except fixture root, timestamp run ID and wall-clock values.
+
+    The empty Git repo fixes revision to "unknown"; no SHA is scrubbed.
+    """
+    runs = list((root / "output").iterdir())
+    assert len(runs) == 1 and re.fullmatch(r"repo-\d{8}T\d{6}Z", runs[0].name)
+    run = runs[0]
+
+    def normalize(raw):
+        raw = raw.replace(str(root).encode(), b"<ROOT>").replace(run.name.encode(), b"repo-<RUN_ID>")
+        raw = re.sub(rb'("wall_seconds": )[0-9]+(?:\.[0-9]+)?', rb'\g<1><WALL>', raw)
+        raw = re.sub(rb'(?m)^(- Wall-clock: )[0-9]+\.[0-9]+s$', rb'\g<1><WALL>s', raw)
+        return raw.decode("utf-8")
+
+    return {"exit": completed.returncode, "stdout": normalize(completed.stdout),
+            "stderr": normalize(completed.stderr),
+            "files": {p.name: normalize(p.read_bytes()) for p in sorted(run.iterdir()) if p.is_file()}}
+
+
 @pytest.mark.parametrize("mutate", [False, True])
 def test_real_cli_preserves_target_state_gate(tmp_path, mutate):
     repo = tmp_path / "repo"
@@ -94,20 +115,22 @@ def test_real_cli_preserves_target_state_gate(tmp_path, mutate):
     source = (GOLDEN.parent / "fake-codex.py").read_text()
     fake.write_text(source.replace("MUTATE = False", f"MUTATE = {mutate}"))
     fake.chmod(0o755)
-    completed = subprocess.run([sys.executable, str(SCRIPTS / "convention_audit.py"), "--repo", str(repo), "--output-dir", str(tmp_path / "output"), "--codex-binary", str(fake)], capture_output=True, text=True, timeout=15)
+    completed = subprocess.run([sys.executable, str(SCRIPTS / "convention_audit.py"), "--repo", str(repo), "--output-dir", str(tmp_path / "output"), "--codex-binary", str(fake)], capture_output=True, timeout=15)
+    golden = GOLDEN.with_name("emitted-refusal.json" if mutate else "emitted-success.json")
+    assert emitted_artifacts(tmp_path, completed) == json.loads(golden.read_text())
     logs = list((tmp_path / "output").glob("*/run-log.json"))
     assert len(logs) == 1
     log = json.loads(logs[0].read_text())
     assert log["target_git_state_unchanged"] is not mutate
     if mutate:
         assert completed.returncode == 1
-        assert completed.stderr == "convention-audit: audit mutated target repository state; refusing report\n"
+        assert completed.stderr == b"convention-audit: audit mutated target repository state; refusing report\n"
         assert log["status"] == "failed"
         assert log["failure"]["stage"] == "target-verification"
         assert not list((tmp_path / "output").glob("*/report.json"))
     else:
         assert completed.returncode == 0, completed.stderr
-        assert completed.stderr == ""
+        assert completed.stderr == b""
         assert log["status"] == "complete"
         assert json.loads(completed.stdout)["findings"] == 0
 
@@ -132,5 +155,4 @@ def test_two_copies_and_symlink_resolve_their_own_code(tmp_path):
     empty.mkdir()
     assert first.detect_sqlite_recent_window_candidates(empty)["worker"] == "static-sqlite-recent-window-detector"
     assert second.detect_sqlite_recent_window_candidates(empty)["worker"] == "copy-b-detector"
-    if hasattr(second, "_detector"):
-        assert Path(second._detector.__file__).resolve() == source
+    assert Path(second.detect_sqlite_recent_window_candidates.__code__.co_filename).resolve() == source
