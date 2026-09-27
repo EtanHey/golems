@@ -1,0 +1,31 @@
+{
+  "run": [
+    "test-archive-stream.bats",
+    "test-bun-version-pin.bats",
+    "test-check-instruction-shape.bats",
+    "test-cleanup-legacy-commands.bats",
+    "test-golem-install-validate.bats",
+    "test-golems-sync.bats",
+    "test-grill-me-upstream-port.bats",
+    "test-install-wired-hook.bats",
+    "test-never-fabricate-r20.bats",
+    "test-pkill-guard.bats",
+    "test-portable-stat.bats",
+    "test-post-stream-tail-gate.bats",
+    "test-pr-review-loop-rule.bats",
+    "test-pr-size-labels.bats",
+    "test-process-stream-agy-cli.bats",
+    "test-qa-video-dense-windows.bats",
+    "test-qa-video-package.bats",
+    "test-repogolem-dispatch.bats",
+    "test-session-handoff-context-occupancy.bats",
+    "test-skill-catalog-lint.bats",
+    "test-stalker-brainlayer-telegram.bats",
+    "test-stalker-durable-failures.bats",
+    "test-stream-helpers.bats",
+    "test-wired-hook-shared-parser.bats",
+    "test-worktree-bootstrap.bats",
+    "test-worktree-gc.bats"
+  ],
+  "skip": {}
+}
