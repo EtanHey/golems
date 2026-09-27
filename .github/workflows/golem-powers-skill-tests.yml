@@ -143,8 +143,9 @@ jobs:
       # build-twitch-chat-lurker.sh, which needs bun. Plus one `rg: command not
       # found`. jq, timeout, python3, npm and shellcheck are used by the suites
       # too, but the runner already has them, so they are not installed here.
-      - name: Install bats, zsh and ripgrep
-        run: sudo apt-get update && sudo apt-get install -y bats zsh ripgrep
+      # ffmpeg: the qa-video dense-windows suite renders synthetic video.
+      - name: Install bats, zsh, ripgrep and ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y bats zsh ripgrep ffmpeg
 
       # .bun-version is the repo's single bun pin; every workflow reads it
       # through bun-version-file rather than carrying a literal. The stalker
@@ -170,6 +171,9 @@ jobs:
       - name: qa-video package contract
         run: bats scripts/tests/test-qa-video-package.bats
 
+      - name: qa-video dense action windows
+        run: bats scripts/tests/test-qa-video-dense-windows.bats
+
       - name: hook installer guards (hooks-live gc exemption, wired-hook symlink refusal)
         run: bats scripts/tests/test-worktree-gc.bats scripts/tests/test-install-wired-hook.bats scripts/tests/test-wired-hook-shared-parser.bats
 
@@ -184,7 +188,7 @@ jobs:
       - name: Single bun pin, no workflow literals
         run: bats scripts/tests/test-bun-version-pin.bats
 
-      # The seven steps above explicitly cover eleven .bats files. Every remaining
+      # The eight steps above explicitly cover twelve .bats files. Every remaining
       # suite runs in the whole-directory step below, so new tests stay visible
       # without another hand-maintained workflow edit.
       #
