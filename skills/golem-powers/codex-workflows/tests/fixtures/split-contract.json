@@ -1,0 +1,196 @@
+{
+  "cli:": {
+    "code": 2,
+    "stderr": "usage: codex_workflows.py [-h]\n                          {agent,watch,status,harvest,cleanup,parallel,pipeline} ...\ncodex_workflows.py: error: the following arguments are required: command\n",
+    "stdout": ""
+  },
+  "cli:--help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py [-h]\n                          {agent,watch,status,harvest,cleanup,parallel,pipeline} ...\n\nHeadless Codex worktree orchestration primitives.\n\npositional arguments:\n  {agent,watch,status,harvest,cleanup,parallel,pipeline}\n    agent               launch one verified headless worker\n    watch               watch process exit, then parse logs\n    status              print a run manifest\n    harvest             copy durable logs and artifacts\n    cleanup             remove harvested worktrees\n    parallel            launch a validated worker fan-out\n    pipeline            run ordered parallel stages\n\noptions:\n  -h, --help            show this help message and exit\n"
+  },
+  "cli:agent --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py agent [-h] --repo REPO --name NAME --brief BRIEF\n                                --lead LEAD (--run-id RUN_ID |\n                                --manifest MANIFEST) [--run-dir RUN_DIR]\n                                [--model MODEL] [--effort {xhigh,max}]\n                                [--report-dir REPORT_DIR]\n                                [--artifact ARTIFACT]\n                                [--launch-timeout LAUNCH_TIMEOUT]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo REPO\n  --name NAME\n  --brief BRIEF\n  --lead LEAD\n  --run-id RUN_ID\n  --manifest MANIFEST\n  --run-dir RUN_DIR\n  --model MODEL\n  --effort {xhigh,max}\n  --report-dir REPORT_DIR\n  --artifact ARTIFACT\n  --launch-timeout LAUNCH_TIMEOUT\n"
+  },
+  "cli:cleanup --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py cleanup [-h] (--run-id RUN_ID | --manifest MANIFEST)\n                                  [--run-dir RUN_DIR] [--worker WORKER]\n                                  [--delete-branches] [--force-unmerged]\n\noptions:\n  -h, --help           show this help message and exit\n  --run-id RUN_ID\n  --manifest MANIFEST\n  --run-dir RUN_DIR\n  --worker WORKER\n  --delete-branches\n  --force-unmerged\n"
+  },
+  "cli:harvest --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py harvest [-h] (--run-id RUN_ID | --manifest MANIFEST)\n                                  [--run-dir RUN_DIR]\n                                  [--output-dir OUTPUT_DIR]\n\noptions:\n  -h, --help            show this help message and exit\n  --run-id RUN_ID\n  --manifest MANIFEST\n  --run-dir RUN_DIR\n  --output-dir OUTPUT_DIR\n"
+  },
+  "cli:parallel --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py parallel [-h] --spec SPEC --run-id RUN_ID\n                                   [--run-dir RUN_DIR] [--watch]\n                                   [--watch-timeout WATCH_TIMEOUT]\n\noptions:\n  -h, --help            show this help message and exit\n  --spec SPEC\n  --run-id RUN_ID\n  --run-dir RUN_DIR\n  --watch\n  --watch-timeout WATCH_TIMEOUT\n"
+  },
+  "cli:pipeline --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py pipeline [-h] --spec SPEC --run-id RUN_ID\n                                   [--run-dir RUN_DIR]\n                                   [--watch-timeout WATCH_TIMEOUT]\n\noptions:\n  -h, --help            show this help message and exit\n  --spec SPEC\n  --run-id RUN_ID\n  --run-dir RUN_DIR\n  --watch-timeout WATCH_TIMEOUT\n"
+  },
+  "cli:status --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py status [-h] (--run-id RUN_ID | --manifest MANIFEST)\n                                 [--run-dir RUN_DIR]\n\noptions:\n  -h, --help           show this help message and exit\n  --run-id RUN_ID\n  --manifest MANIFEST\n  --run-dir RUN_DIR\n"
+  },
+  "cli:unknown": {
+    "code": 2,
+    "stderr": "usage: codex_workflows.py [-h]\n                          {agent,watch,status,harvest,cleanup,parallel,pipeline} ...\ncodex_workflows.py: error: argument command: invalid choice: 'unknown' (choose from agent, watch, status, harvest, cleanup, parallel, pipeline)\n",
+    "stdout": ""
+  },
+  "cli:watch --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py watch [-h] (--run-id RUN_ID | --manifest MANIFEST)\n                                [--run-dir RUN_DIR] [--interval INTERVAL]\n                                [--timeout TIMEOUT]\n\noptions:\n  -h, --help            show this help message and exit\n  --run-id RUN_ID\n  --manifest MANIFEST\n  --run-dir RUN_DIR\n  --interval INTERVAL\n  --timeout, --watch-timeout TIMEOUT\n"
+  },
+  "guard_completed": 0,
+  "guard_running": 1,
+  "launch_only": {
+    "code": 75,
+    "stderr": "LAUNCH_ONLY: 1 workers running; completion unproven; run watch\n",
+    "stdout": "{\n  \"completion_proven\": true,\n  \"completion_state\": \"completed\",\n  \"degraded_mode\": [\n    \"lead-reachable-only\",\n    \"no-pane\",\n    \"no-listen-name\",\n    \"no-self-monitor\"\n  ],\n  \"lead\": \"fixture-lead\",\n  \"repo\": \"/fixture/repo\",\n  \"run_id\": \"fixture-run\",\n  \"version\": 1,\n  \"workers\": {\n    \"worker-a\": {\n      \"name\": \"worker-a\",\n      \"status\": \"completed\"\n    }\n  }\n}\n"
+  },
+  "log:empty": {
+    "parsed": {
+      "assistant_messages": [],
+      "assistant_result": "",
+      "codex_activity": false,
+      "failure_signatures": [],
+      "output_tokens": 0,
+      "parser_error": null,
+      "pr_urls": [],
+      "task_done": false
+    },
+    "status": "incomplete"
+  },
+  "log:failed": {
+    "parsed": {
+      "assistant_messages": [
+        "TASK_DONE"
+      ],
+      "assistant_result": "TASK_DONE",
+      "codex_activity": true,
+      "failure_signatures": [
+        "fixture failure"
+      ],
+      "output_tokens": 0,
+      "parser_error": null,
+      "pr_urls": [],
+      "task_done": true
+    },
+    "status": "failed"
+  },
+  "log:incomplete": {
+    "parsed": {
+      "assistant_messages": [
+        "TASK_DONE-ish"
+      ],
+      "assistant_result": "TASK_DONE-ish",
+      "codex_activity": true,
+      "failure_signatures": [],
+      "output_tokens": 0,
+      "parser_error": null,
+      "pr_urls": [],
+      "task_done": false
+    },
+    "status": "incomplete"
+  },
+  "log:malformed": {
+    "parsed": {
+      "assistant_messages": [],
+      "assistant_result": "",
+      "codex_activity": false,
+      "failure_signatures": [],
+      "output_tokens": 0,
+      "parser_error": "line 1: Expecting property name enclosed in double quotes",
+      "pr_urls": [],
+      "task_done": false
+    },
+    "status": "parser_failed"
+  },
+  "log:success": {
+    "parsed": {
+      "assistant_messages": [
+        "https://github.com/example/repo/pull/1\nTASK_DONE"
+      ],
+      "assistant_result": "https://github.com/example/repo/pull/1\nTASK_DONE",
+      "codex_activity": true,
+      "failure_signatures": [],
+      "output_tokens": 12,
+      "parser_error": null,
+      "pr_urls": [
+        "https://github.com/example/repo/pull/1"
+      ],
+      "task_done": true
+    },
+    "status": "completed"
+  },
+  "log:tool_prose": {
+    "parsed": {
+      "assistant_messages": [],
+      "assistant_result": "",
+      "codex_activity": true,
+      "failure_signatures": [],
+      "output_tokens": 0,
+      "parser_error": null,
+      "pr_urls": [],
+      "task_done": false
+    },
+    "status": "incomplete"
+  },
+  "log_header": "# codex-workflows\n# effort=xhigh model=fixture worker=a\n# degraded_mode=lead-reachable-only,no-pane,no-listen-name,no-self-monitor\n",
+  "manifest_completed": "{\n  \"completion_proven\": true,\n  \"completion_state\": \"completed\",\n  \"degraded_mode\": [\n    \"lead-reachable-only\",\n    \"no-pane\",\n    \"no-listen-name\",\n    \"no-self-monitor\"\n  ],\n  \"lead\": \"fixture-lead\",\n  \"repo\": \"/fixture/repo\",\n  \"run_id\": \"fixture-run\",\n  \"version\": 1,\n  \"workers\": {\n    \"worker-a\": {\n      \"name\": \"worker-a\",\n      \"status\": \"completed\"\n    }\n  }\n}\n",
+  "manifest_empty": "{\n  \"degraded_mode\": [\n    \"lead-reachable-only\",\n    \"no-pane\",\n    \"no-listen-name\",\n    \"no-self-monitor\"\n  ],\n  \"lead\": \"fixture-lead\",\n  \"repo\": \"/fixture/repo\",\n  \"run_id\": \"fixture-run\",\n  \"version\": 1,\n  \"workers\": {}\n}\n",
+  "manifest_running": "{\n  \"completion_proven\": false,\n  \"completion_state\": \"incomplete\",\n  \"degraded_mode\": [\n    \"lead-reachable-only\",\n    \"no-pane\",\n    \"no-listen-name\",\n    \"no-self-monitor\"\n  ],\n  \"lead\": \"fixture-lead\",\n  \"repo\": \"/fixture/repo\",\n  \"run_id\": \"fixture-run\",\n  \"version\": 1,\n  \"workers\": {\n    \"worker-a\": {\n      \"name\": \"worker-a\",\n      \"status\": \"running\"\n    }\n  }\n}\n",
+  "missing_artifact": "declared artifact missing for worker-a: missing.md",
+  "missing_manifest": {
+    "code": 1,
+    "stderr": "FAILED: manifest does not exist: <ROOT>/absent\n",
+    "stdout": ""
+  },
+  "signatures": {
+    "atomic_write_json": "(path: 'Path | str', value: 'dict[str, Any]') -> 'None'",
+    "build_launch_argv": "(*, repo: 'Path | str', worktree: 'Path | str', brief: 'Path | str', model: 'str', effort: 'str', report_dirs: 'list[Path | str]') -> 'tuple[list[str], str]'",
+    "build_parser": "() -> 'argparse.ArgumentParser'",
+    "capture_process_identity": "(pid: 'int') -> 'dict[str, Any]'",
+    "cleanup_worker": "(manifest_path: 'Path | str', worker_name: 'str', *, delete_branch: 'bool' = False, force_unmerged: 'bool' = False) -> 'None'",
+    "create_manifest": "(path: 'Path | str', run_id: 'str', repo: 'str', lead: 'str') -> 'dict[str, Any]'",
+    "create_worker_worktree": "(*, repo: 'Path | str', branch: 'str', worktree: 'Path | str') -> 'str'",
+    "discover_default_branch": "(repo: 'Path | str', timeout: 'float' = 10.0) -> 'str'",
+    "ensure_manifest": "(path: 'Path | str', *, run_id: 'str', repo: 'Path | str', lead: 'str') -> 'dict[str, Any]'",
+    "finalize_worker": "(manifest_path: 'Path | str', worker_name: 'str') -> 'dict[str, Any]'",
+    "git_common_dir": "(repo: 'Path | str') -> 'Path'",
+    "guarded_watch_code": "(manifest_path: 'Path | str', reported_code: 'int') -> 'int'",
+    "harvest_manifest": "(manifest_path: 'Path | str', output_dir: 'Path | str') -> 'dict[str, Any]'",
+    "launch_worker": "(*, manifest_path: 'Path | str', repo: 'Path | str', run_root: 'Path | str', worker_name: 'str', brief: 'Path | str', lead: 'str', model: 'str', effort: 'str', report_dirs: 'list[Path | str]', artifacts: 'list[str]', launch_timeout: 'float' = 3.0) -> 'dict[str, Any]'",
+    "load_manifest": "(path: 'Path | str') -> 'dict[str, Any]'",
+    "locked_manifest_update": "(path: 'Path | str', mutator: 'Callable[[dict[str, Any]], None]', *, initial: 'dict[str, Any] | None' = None) -> 'dict[str, Any]'",
+    "main": "(argv: 'list[str] | None' = None) -> 'int'",
+    "manifest_completion_code": "(manifest: 'dict[str, Any] | Path | str') -> 'int'",
+    "parse_finished_log": "(path: 'Path | str') -> 'dict[str, Any]'",
+    "preflight_launch_inputs": "(*, repo: 'Path | str', brief: 'Path | str') -> 'tuple[Path, Path]'",
+    "process_identity_alive": "(identity: 'dict[str, Any]') -> 'bool'",
+    "resolve_artifacts": "(worktree: 'Path | str', patterns: 'list[str]') -> 'list[Path]'",
+    "run_parallel_spec": "(spec: 'dict[str, Any]', *, run_root: 'Path | str', run_id: 'str', watch: 'bool', launch_fn: 'Callable[..., dict[str, Any]] | None' = None, watch_fn: 'Callable[..., int] | None' = None, watch_timeout: 'float' = 3600.0) -> 'tuple[int, Path]'",
+    "run_pipeline_spec": "(spec: 'dict[str, Any]', *, run_root: 'Path | str', run_id: 'str', launch_fn: 'Callable[..., dict[str, Any]] | None' = None, watch_fn: 'Callable[..., int] | None' = None, watch_timeout: 'float' = 3600.0) -> 'tuple[int, Path]'",
+    "update_manifest": "(path: 'Path | str', updates: 'dict[str, Any]') -> 'dict[str, Any]'",
+    "update_worker": "(path: 'Path | str', worker_name: 'str', updates: 'dict[str, Any]') -> 'dict[str, Any]'",
+    "validate_artifact_pattern": "(pattern: 'str') -> 'str'",
+    "validate_composition_spec": "(spec: 'Any', *, pipeline: 'bool') -> 'dict[str, Any]'",
+    "validate_worker_name": "(name: 'str') -> 'str'",
+    "verify_launch": "(*, pid: 'int', log_path: 'Path | str', initial_size: 'int', timeout: 'float', identity: 'dict[str, Any] | None' = None) -> 'dict[str, Any]'",
+    "watch_manifest": "(manifest_path: 'Path | str', *, interval: 'float' = 1.0, timeout: 'float' = 3600.0) -> 'int'",
+    "write_log_header": "(path: 'Path | str', metadata: 'dict[str, Any]') -> 'int'"
+  },
+  "status": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "{\n  \"completion_proven\": true,\n  \"completion_state\": \"completed\",\n  \"degraded_mode\": [\n    \"lead-reachable-only\",\n    \"no-pane\",\n    \"no-listen-name\",\n    \"no-self-monitor\"\n  ],\n  \"lead\": \"fixture-lead\",\n  \"repo\": \"/fixture/repo\",\n  \"run_id\": \"fixture-run\",\n  \"version\": 1,\n  \"workers\": {\n    \"worker-a\": {\n      \"name\": \"worker-a\",\n      \"status\": \"completed\"\n    }\n  }\n}\n"
+  }
+}
