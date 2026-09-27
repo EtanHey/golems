@@ -16,6 +16,7 @@
 
 import { promises as fs } from "fs";
 import { execSync } from "child_process";
+import type { AxiomCredentials } from "@golems/shared/lib/axiom-credentials";
 import type { PrunedSeat } from "@golems/shared/lib/config";
 
 // Color codes
@@ -373,34 +374,35 @@ function importSharedConfig() {
 }
 
 // Check 8: Axiom observability
+export function evaluateAxiom(creds: AxiomCredentials): CheckResult {
+  if (!creds.enabled) {
+    return {
+      name: "Axiom",
+      status: "warn",
+      message: "Disabled in config",
+      fix: "Set observability.enabled: true in ~/.golems/config.yaml",
+    };
+  }
+  if (!creds.token) {
+    return {
+      name: "Axiom",
+      status: "warn",
+      message: "Enabled but no token configured",
+      fix: `Put AXIOM_TOKEN (and optionally AXIOM_DATASET) in ${creds.envFilePath}, or set the AXIOM_TOKEN env var`,
+    };
+  }
+  return {
+    name: "Axiom",
+    status: "pass",
+    message: `Configured (dataset: ${creds.dataset}, token from ${creds.tokenSource})`,
+  };
+}
+
 async function checkAxiom() {
   try {
     const { loadConfig } = await importSharedConfig();
-    const config = loadConfig();
-    const token = process.env.AXIOM_TOKEN || config.observability.axiomToken;
-    const enabled = config.observability.enabled;
-
-    if (!enabled) {
-      results.push({
-        name: "Axiom",
-        status: "warn",
-        message: "Disabled in config",
-        fix: "Set observability.enabled: true in ~/.golems/config.yaml",
-      });
-    } else if (!token) {
-      results.push({
-        name: "Axiom",
-        status: "warn",
-        message: "Enabled but no token configured",
-        fix: "Set AXIOM_TOKEN env var or axiomToken in ~/.golems/config.yaml",
-      });
-    } else {
-      results.push({
-        name: "Axiom",
-        status: "pass",
-        message: `Configured (dataset: ${config.observability.axiomDataset || "golems"})`,
-      });
-    }
+    const { resolveAxiomCredentials } = await import("@golems/shared/lib/axiom-credentials");
+    results.push(evaluateAxiom(resolveAxiomCredentials(loadConfig().observability)));
   } catch (err) {
     const homeUnset = err instanceof Error && err.message === HOME_NOT_SET;
     results.push({
