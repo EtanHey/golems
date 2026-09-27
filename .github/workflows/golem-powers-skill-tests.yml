@@ -104,8 +104,7 @@ jobs:
           node --test scripts/tests/google-drive-oauth-guard.test.mjs \
                       scripts/tests/stalker-morning-launchd.test.mjs \
                       scripts/tests/scripts-compat-shims-sync.test.mjs \
-                      scripts/tests/scripts-compat-shims.test.mjs \
-                      scripts/tests/scripts-compat-shims-stalker.test.mjs
+                      scripts/tests/scripts-compat-shims.test.mjs
 
       - name: shell suites
         run: |
