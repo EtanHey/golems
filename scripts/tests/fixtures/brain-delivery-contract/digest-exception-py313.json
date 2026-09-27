@@ -1,0 +1,32 @@
+[
+  {
+    "stdout": "Stalker Morning Digest FAILED - 2026-06-18\n\n",
+    "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 294, in <module>\n  File \"<stdin>\", line 243, in parse_gems\n  File \"<PYTHON>/lib/python3.13/pathlib/_local.py\", line 546, in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON>/lib/python3.13/pathlib/_abc.py\", line 632, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON>/lib/python3.13/pathlib/_local.py\", line 537, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/gems.md'\n",
+    "exit": 1,
+    "files": {
+      "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n",
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  },
+  {
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 294, in <module>\n  File \"<stdin>\", line 243, in parse_gems\n  File \"<PYTHON>/lib/python3.13/pathlib/_local.py\", line 546, in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON>/lib/python3.13/pathlib/_abc.py\", line 632, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON>/lib/python3.13/pathlib/_local.py\", line 537, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/gems.md'\n",
+    "exit": 1,
+    "files": {
+      "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-c\", \"import json, sys; print(json.dumps({\\\"title\\\": sys.argv[1], \\\"body\\\": sys.argv[2], \\\"source\\\": sys.argv[4], \\\"priority\\\": sys.argv[3]}, indent=2))\", \"Stalker Morning Digest FAILED - 2026-06-18\", \"\", \"default\", \"stalker-golem\"]}\n{\"command\": \"telegram\", \"argv\": [], \"stdin\": \"{\\n  \\\"title\\\": \\\"Stalker Morning Digest FAILED - 2026-06-18\\\",\\n  \\\"body\\\": \\\"\\\",\\n  \\\"source\\\": \\\"stalker-golem\\\",\\n  \\\"priority\\\": \\\"default\\\"\\n}\\n\"}\n",
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  }
+]

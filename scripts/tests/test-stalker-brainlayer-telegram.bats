@@ -56,6 +56,11 @@ teardown() {
     rm -rf "$TMPDIR_"
 }
 
+@test "brain delivery: untouched-base artifact and command-boundary goldens" {
+    run python3 "$BATS_TEST_DIRNAME/brain-delivery-contract.py"
+    [ "$status" -eq 0 ]
+}
+
 make_processed_run() {
     local name="$1"
     local dir="$STALKER_ROOT/$name"
