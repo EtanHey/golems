@@ -1,7 +1,7 @@
 [
   {
     "stdout": "Stalker Morning Digest FAILED - 2026-06-18\n\n",
-    "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 294, in <module>\n  File \"<stdin>\", line 243, in parse_gems\n  File \"<PYTHON>/lib/python3.11/pathlib.py\", line 1058, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON>/lib/python3.11/pathlib.py\", line 1044, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/gems.md'\n",
+    "stderr": "Traceback (most recent call last):\n<TRACEBACK_FRAMES>\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/gems.md'\n",
     "exit": 1,
     "files": {
       "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n",
@@ -16,7 +16,7 @@
   },
   {
     "stdout": "",
-    "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 294, in <module>\n  File \"<stdin>\", line 243, in parse_gems\n  File \"<PYTHON>/lib/python3.11/pathlib.py\", line 1058, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<PYTHON>/lib/python3.11/pathlib.py\", line 1044, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/gems.md'\n",
+    "stderr": "Traceback (most recent call last):\n<TRACEBACK_FRAMES>\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/gems.md'\n",
     "exit": 1,
     "files": {
       "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-c\", \"import json, sys; print(json.dumps({\\\"title\\\": sys.argv[1], \\\"body\\\": sys.argv[2], \\\"source\\\": sys.argv[4], \\\"priority\\\": sys.argv[3]}, indent=2))\", \"Stalker Morning Digest FAILED - 2026-06-18\", \"\", \"default\", \"stalker-golem\"]}\n{\"command\": \"telegram\", \"argv\": [], \"stdin\": \"{\\n  \\\"title\\\": \\\"Stalker Morning Digest FAILED - 2026-06-18\\\",\\n  \\\"body\\\": \\\"\\\",\\n  \\\"source\\\": \\\"stalker-golem\\\",\\n  \\\"priority\\\": \\\"default\\\"\\n}\\n\"}\n",

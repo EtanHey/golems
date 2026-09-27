@@ -14,6 +14,7 @@ ENTRY = "scripts/stalker/stalker-brainlayer-telegram.sh"
 FIXTURES = Path(__file__).parent / "fixtures/brain-delivery-contract"
 DATE = "2026-06-18"
 RUN = f"example-{DATE}-120000"
+EXCEPTION_CASES = {"digest-exception"}
 
 STUB = '''import json, os, pathlib, subprocess, sys
 name = pathlib.Path(sys.argv[0]).name
@@ -154,6 +155,18 @@ CASES = ("usage", "dry-run", "store-success", "partial-retry", "queue-idempotent
          "empty-run", "digest-empty", "digest-mixed", "digest-no-scored-gems", "digest-refusal", "digest-exception")
 
 
+def exception_stderr(value):
+    """Only traceback frames/source/carets are volatile by lead ruling."""
+    lines = value.splitlines()
+    assert value.endswith("\n") and len(lines) >= 3
+    assert lines[0] == "Traceback (most recent call last):"
+    frames = lines[1:-1]
+    assert any(line.startswith('  File "') for line in frames)
+    assert all(line.startswith("  ") for line in frames), frames
+    assert re.match(r"^(?:IsADirectoryError|PermissionError): ", lines[-1]), lines[-1]
+    return "Traceback (most recent call last):\n<TRACEBACK_FRAMES>\n" + lines[-1] + "\n"
+
+
 def capture(root, case):
     with tempfile.TemporaryDirectory(prefix="brain-delivery-") as directory:
         sandbox = Path(directory).resolve()
@@ -192,7 +205,10 @@ def capture(root, case):
             paths = sorted(p for p in data.rglob("*") if p.is_file())
             files = {normalize(str(p.relative_to(data)).encode()): normalize(p.read_bytes()) for p in paths}
             assert len(files) == len(paths), "normalization must not collapse artifacts"
-            results.append({"stdout": normalize(proc.stdout), "stderr": normalize(proc.stderr),
+            stderr = normalize(proc.stderr)
+            if case in EXCEPTION_CASES:
+                stderr = exception_stderr(stderr)
+            results.append({"stdout": normalize(proc.stdout), "stderr": stderr,
                             "exit": proc.returncode, "files": files})
         return results
 
