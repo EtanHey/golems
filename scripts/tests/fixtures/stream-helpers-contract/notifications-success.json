@@ -1,0 +1,10 @@
+{
+  "stdout": "telegram:0\nwhatsapp:0\n",
+  "stderr": "Telegram sent via http://127.0.0.1:3847/notify\nWhatsApp sent via http://fixture.invalid/one\n",
+  "exit": 0,
+  "files": {
+    "commands.jsonl": "{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"5\", \"-X\", \"POST\", \"-H\", \"Content-Type: application/json\", \"-d\", \"{\\n  \\\"title\\\": \\\"Title \\\\\\\"quoted\\\\\\\"\\\",\\n  \\\"body\\\": \\\"Body\\\\nline\\\",\\n  \\\"source\\\": \\\"stalker-golem\\\",\\n  \\\"priority\\\": \\\"default\\\"\\n}\", \"http://127.0.0.1:3847/notify\"]}\n{\"command\": \"telegram-command\", \"argv\": [], \"stdin\": \"{\\n  \\\"title\\\": \\\"title\\\",\\n  \\\"body\\\": \\\"body\\\",\\n  \\\"source\\\": \\\"custom\\\",\\n  \\\"priority\\\": \\\"high\\\"\\n}\\n\"}\n{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"5\", \"-X\", \"POST\", \"-H\", \"Content-Type: application/json\", \"-d\", \"{\\\"recipient\\\": \\\"fixture\\\", \\\"message\\\": \\\"Message\\\\nline\\\"}\", \"http://fixture.invalid/one\"]}\n",
+    "curl.count": "2",
+    "telegram-command.count": "1"
+  }
+}

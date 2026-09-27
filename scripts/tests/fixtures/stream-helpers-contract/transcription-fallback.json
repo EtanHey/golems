@@ -1,0 +1,12 @@
+{
+  "stdout": "fixture transcript\nfallback:0\n",
+  "stderr": "whisper-server attempt 1/3 failed for segment.wav: curl fixture failure\nwhisper-server attempt 2/3 failed for segment.wav: curl fixture failure\nwhisper-server attempt 3/3 failed for segment.wav: curl fixture failure\n",
+  "exit": 0,
+  "files": {
+    "commands.jsonl": "{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"30\", \"-X\", \"POST\", \"-F\", \"file=@segment.wav\", \"http://127.0.0.1:8178/inference\"]}\n{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"30\", \"-X\", \"POST\", \"-F\", \"file=@segment.wav\", \"http://127.0.0.1:8178/inference\"]}\n{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"30\", \"-X\", \"POST\", \"-F\", \"file=@segment.wav\", \"http://127.0.0.1:8178/inference\"]}\n{\"command\": \"whisper-cli\", \"argv\": [\"-m\", \"model.bin\", \"-f\", \"segment.wav\", \"--no-timestamps\"]}\n",
+    "curl.count": "3",
+    "model.bin": "",
+    "segment.wav": "",
+    "whisper-cli.count": "1"
+  }
+}

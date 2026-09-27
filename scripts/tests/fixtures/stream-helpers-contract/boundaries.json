@@ -1,0 +1,9 @@
+{
+  "stdout": "silence:0\n0\n0\ncompress:2\nmissing:3\noverwrite:4\nduration:1\nepoch:1\nstream:1\norphan:1\nnonexistent\n0m00s\n1h02m03s\nargs:2\n--hls-use-mpegts\n--downloader\nnative\n--socket-timeout\n30\n--retries\ninfinite\n--fragment-retries\ninfinite\n--retry-sleep\nfragment:exp=1:20\n--abort-on-unavailable-fragment\n--no-part\n--concurrent-fragments\n1\n--no-continue\n-f\nbest\n-o\nfile name.ts\nhttps://fixture.invalid/live\nmatch:1\n0\nterminate:2\nwatch:2\nscorer:2\nidentity:2\n4\n1|3|1\n1|3|0\ncircuit:2\nlock:1\nmerge:1\ncomplete:1\nnone\nresolve:1\nTelegram notifications disabled by STALKER_TELEGRAM_NOTIFY=0\nWhatsApp notifications disabled by STREAM_WHATSAPP_NOTIFY=0\nWhatsApp notifications disabled: STREAM_WHATSAPP_RECIPIENT not set\n",
+  "stderr": "compress_video_h264: input + output required\ncompress_video_h264: input not found: missing\ncompress_video_h264: output exists: out\nstalker_ytdlp_record_args: quality + output + url required\n",
+  "exit": 0,
+  "files": {
+    "input": "",
+    "out": ""
+  }
+}

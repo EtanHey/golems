@@ -1,0 +1,15 @@
+{
+  "stdout": "absent:1\npipeline-failure-alerted=done,scoring=failed\nrefused:1\nquality:0\ndone:0\npipeline-failure-alerted=done,scoring=done,scoring=failed\n",
+  "stderr": "Telegram sent via http://127.0.0.1:3847/notify\n",
+  "exit": 0,
+  "files": {
+    "commands.jsonl": "{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"5\", \"-X\", \"POST\", \"-H\", \"Content-Type: application/json\", \"-d\", \"{\\n  \\\"title\\\": \\\"Stalker Pipeline Failure\\\",\\n  \\\"body\\\": \\\"Stage: scoring. Reason: scoring process invalid from 2026-01-02T03:04:05Z disappeared before completion (untrappable exit or SIGKILL); incomplete gems were removed and the run can be retried with STALKER_FORCE_RESCORE=1. Statuses: scoring=failed. gem_count=0; chat_count=2. Stream: ./run. Gems: ./run/gems.md. Chat: ./run/chat.log. retryable=true; success markers remain open.\\\",\\n  \\\"source\\\": \\\"stalker-golem\\\",\\n  \\\"priority\\\": \\\"high\\\"\\n}\", \"http://127.0.0.1:3847/notify\"]}\n",
+    "curl.count": "1",
+    "run/.stage-pipeline-failure-alerted.done": "2026-01-02T03:04:05Z\n",
+    "run/.stage-scoring.done": "2026-01-02T03:04:05Z\n",
+    "run/.stage-scoring.failed": "status=FAILED\nstage=scoring\nretryable=true\nreason=scoring process invalid from 2026-01-02T03:04:05Z disappeared before completion (untrappable exit or SIGKILL); incomplete gems were removed and the run can be retried with STALKER_FORCE_RESCORE=1\ngem_count=0\nchat_count=2\nstream_dir=./run\ngems_path=./run/gems.md\nchat_path=./run/chat.log\nfailed_at=2026-01-02T03:04:05Z\n",
+    "run/.stage-scoring.started": "status=STARTED\npid=invalid\nstarted_at=2026-01-02T03:04:05Z\nprocess_start=\n",
+    "run/chat.log": "line1\nline2\n",
+    "run/gems.md": "### [00:01] gem\nScored: fixture\n"
+  }
+}

@@ -14,6 +14,11 @@ teardown() {
     rm -rf "$TMPDIR_"
 }
 
+@test "stream helpers: base byte goldens, source API and emitted artifacts" {
+    run python3 "$BATS_TEST_DIRNAME/stream-helpers-contract.py"
+    [ "$status" -eq 0 ]
+}
+
 @test "parse_silence_timestamps: extracts numeric timestamps from clean input" {
     result=$(parse_silence_timestamps < "$FIXTURES/silencedetect-clean.txt")
     [ "$result" = "9.536938

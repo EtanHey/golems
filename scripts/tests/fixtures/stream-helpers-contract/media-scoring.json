@@ -1,0 +1,15 @@
+{
+  "stdout": "2\n12\nffmpeg fixture output\ncompress:0\n123\nlock:0\n2\npartial:1\ncomplete:0\n",
+  "stderr": "",
+  "exit": 0,
+  "files": {
+    "commands.jsonl": "{\"command\": \"ffmpeg\", \"argv\": [\"-nostdin\", \"-y\", \"-i\", \"input\", \"-c:v\", \"libx264\", \"-crf\", \"25\", \"-preset\", \"fast\", \"-c:a\", \"copy\", \"-movflags\", \"+faststart\", \"compressed\"]}\n{\"command\": \"ffprobe\", \"argv\": [\"-v\", \"error\", \"-show_entries\", \"format=duration\", \"-of\", \"csv=p=0\", \"input\"]}\n",
+    "compressed": "fixture compressed media\n",
+    "ffmpeg.count": "1",
+    "ffprobe.count": "1",
+    "gems.md": "### [00:01] first\n### [00:02] second\nScored: fixture\n",
+    "input": "line1\nline2\n",
+    "results/segment-001/gem.md": "### [00:01] first\n",
+    "results/segment-002/gem.md": "### [00:02] second\n"
+  }
+}
