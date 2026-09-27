@@ -57,7 +57,6 @@ export function installProcessGuards(serviceName: string): void {
       service: serviceName,
       error_message: message,
       error_type: "unhandled_rejection",
-      stack,
     });
   });
 
@@ -76,7 +75,6 @@ export function installProcessGuards(serviceName: string): void {
       service: serviceName,
       error_message: error.message,
       error_type: "uncaught_exception",
-      stack: error.stack,
     });
 
     // Flush Axiom before potentially crashing
