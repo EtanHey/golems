@@ -1,0 +1,107 @@
+[
+  {
+    "stdout": "",
+    "stderr": "Usage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "exit": 2,
+    "files": {
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  },
+  {
+    "stdout": "",
+    "stderr": "Unknown command: unknown\nUsage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "exit": 2,
+    "files": {
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  },
+  {
+    "stdout": "",
+    "stderr": "Usage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "exit": 2,
+    "files": {
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  },
+  {
+    "stdout": "",
+    "stderr": "Unknown ingest-run option: --unknown\nUsage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "exit": 2,
+    "files": {
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  },
+  {
+    "stdout": "",
+    "stderr": "Unknown digest option: --unknown\nUsage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "exit": 2,
+    "files": {
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  },
+  {
+    "stdout": "",
+    "stderr": "queue-run: stream directory not found: missing\n",
+    "exit": 2,
+    "files": {
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  },
+  {
+    "stdout": "",
+    "stderr": "digest: stalker root not found: missing\n",
+    "exit": 2,
+    "files": {
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  }
+]
