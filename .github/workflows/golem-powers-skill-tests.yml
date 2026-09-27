@@ -158,6 +158,8 @@ jobs:
         with:
           bun-version-file: .bun-version
 
+      - run: bun install --frozen-lockfile
+
       - name: Guard scripts/tests Bats coverage
         run: node scripts/ci/run-bats-suites.mjs --check
 
