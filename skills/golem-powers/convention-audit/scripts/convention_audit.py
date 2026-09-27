@@ -10,11 +10,9 @@ import importlib.util
 import concurrent.futures
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,6 +48,9 @@ aggregate_worker_payloads = _payloads.aggregate_worker_payloads
 _runner = importlib.import_module(".codex_runner", _PACKAGE_NAME)
 _reporting = importlib.import_module(".reporting", _PACKAGE_NAME)
 WorkerResult = _runner.WorkerResult
+_run_process = _runner._run_process
+_max_is_unavailable = _runner._max_is_unavailable
+_json_events = _runner._json_events
 _walk_dicts = _reporting._walk_dicts
 _number = _reporting._number
 usage_from_events = _reporting.usage_from_events
@@ -73,80 +74,34 @@ LENSES = {
 }
 
 
-def build_codex_command(
-    *,
-    codex_binary: str,
-    repo: Path,
-    output_schema: Path,
-    effort: str,
-    json_events: bool = True,
-    output_last_message: Path | None = None,
-) -> list[str]:
-    command = [
-        codex_binary,
-        "exec",
-        "--ignore-user-config",
-        "--strict-config",
-        "-m",
-        MODEL,
-        "-c",
-        f'model_reasoning_effort="{effort}"',
-        "-s",
-        "read-only",
-        "-C",
-        str(repo),
-        "--ephemeral",
-        "--output-schema",
-        str(output_schema),
-    ]
-    if json_events:
-        command.append("--json")
-    if output_last_message is not None:
-        command.extend(["-o", str(output_last_message)])
-    command.append("-")
-    return command
+def build_codex_command(*, codex_binary: str, repo: Path, output_schema: Path,
+                        effort: str, json_events: bool = True,
+                        output_last_message: Path | None = None) -> list[str]:
+    return _runner.build_codex_command(codex_binary=codex_binary, repo=repo,
+        output_schema=output_schema, effort=effort, json_events=json_events,
+        output_last_message=output_last_message, model=MODEL)
 
 
 def verify_effective_pin(banner: str, *, requested_effort: str) -> dict[str, str]:
-    model_match = re.search(r"(?im)^model:\s*([^\s]+)\s*$", banner)
-    effort_match = re.search(r"(?im)^reasoning effort:\s*([^\s]+)\s*$", banner)
-    if not model_match:
-        raise RuntimeError("could not verify effective model from Codex startup banner")
-    if not effort_match:
-        raise RuntimeError(
-            "could not verify effective reasoning effort from Codex startup banner"
-        )
-    effective_model = model_match.group(1).strip()
-    effective_effort = effort_match.group(1).strip().lower()
-    if effective_model != MODEL:
-        raise RuntimeError(f"effective model is {effective_model}, expected {MODEL}")
-    if effective_effort != requested_effort:
-        raise RuntimeError(
-            f"effective reasoning effort is {effective_effort}, expected {requested_effort}; refusing silent downgrade"
-        )
-    return {"model": effective_model, "effort": effective_effort}
+    return _runner.verify_effective_pin(banner, requested_effort=requested_effort, model=MODEL)
 
 
-def _max_is_unavailable(output: str) -> bool:
-    normalized = output.lower()
-    effort_error = "reasoning" in normalized or "model_reasoning_effort" in normalized
-    unsupported = any(
-        term in normalized
-        for term in ("unsupported", "not supported", "invalid value", "unknown variant")
-    )
-    return effort_error and unsupported and "max" in normalized
+def preflight_pin(codex_binary: str, repo: Path, schema: Path, *, timeout: int,
+                  evidence_path: Path | None = None,
+                  allow_fallback: bool = True) -> dict[str, Any]:
+    return _runner.preflight_pin(codex_binary, repo, schema, timeout=timeout,
+        evidence_path=evidence_path, allow_fallback=allow_fallback,
+        config=_runner.RunnerConfig(MODEL, DEFAULT_EFFORT, FALLBACK_EFFORT),
+        build_command=build_codex_command, verify_pin=verify_effective_pin, run_process=_run_process)
 
 
-def _json_events(raw: str) -> list[dict[str, Any]]:
-    events: list[dict[str, Any]] = []
-    for line in raw.splitlines():
-        try:
-            value = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(value, dict):
-            events.append(value)
-    return events
+def _run_worker(*, label: str, prompt: str, repo: Path, schema: Path, effort: str,
+                codex_binary: str, run_dir: Path, timeout: int,
+                require_divergent_subset: bool = True) -> WorkerResult:
+    return _runner._run_worker(label=label, prompt=prompt, repo=repo, schema=schema,
+        effort=effort, codex_binary=codex_binary, run_dir=run_dir, timeout=timeout,
+        require_divergent_subset=require_divergent_subset,
+        build_command=build_codex_command, run_process=_run_process)
 
 
 def _worker_prompt(
@@ -223,109 +178,6 @@ def _revision(repo: Path) -> str:
         ["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True
     )
     return probe.stdout.strip() if probe.returncode == 0 else "unknown"
-
-
-def _run_process(
-    command: list[str], prompt: str, *, timeout: int
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command, input=prompt, capture_output=True, text=True, timeout=timeout
-    )
-
-
-def preflight_pin(
-    codex_binary: str,
-    repo: Path,
-    schema: Path,
-    *,
-    timeout: int,
-    evidence_path: Path | None = None,
-    allow_fallback: bool = True,
-) -> dict[str, Any]:
-    prompt = 'Return exactly {"worker":"synthesis","findings":[]} and do not inspect or edit files.'
-    errors: list[str] = []
-    evidence: list[str] = []
-    efforts = (DEFAULT_EFFORT, FALLBACK_EFFORT) if allow_fallback else (DEFAULT_EFFORT,)
-    for effort in efforts:
-        with tempfile.TemporaryDirectory(prefix="convention-audit-pin-") as temp_dir:
-            output_path = Path(temp_dir) / "last.json"
-            command = build_codex_command(
-                codex_binary=codex_binary,
-                repo=repo,
-                output_schema=schema,
-                effort=effort,
-                json_events=False,
-                output_last_message=output_path,
-            )
-            completed = _run_process(command, prompt, timeout=timeout)
-        banner = completed.stdout + "\n" + completed.stderr
-        evidence.append(
-            f"requested_model={MODEL}\nrequested_effort={effort}\nreturncode={completed.returncode}\n{banner.rstrip()}"
-        )
-        if completed.returncode == 0:
-            pin = verify_effective_pin(banner, requested_effort=effort)
-            pin["requested_effort"] = DEFAULT_EFFORT
-            pin["fallback_used"] = effort != DEFAULT_EFFORT
-            if evidence_path is not None:
-                evidence_path.write_text(
-                    "\n\n---\n\n".join(evidence) + "\n", encoding="utf-8"
-                )
-            return pin
-        errors.append(banner.strip())
-        if allow_fallback and effort == DEFAULT_EFFORT and _max_is_unavailable(banner):
-            continue
-        break
-    if evidence_path is not None:
-        evidence_path.write_text("\n\n---\n\n".join(evidence) + "\n", encoding="utf-8")
-    raise RuntimeError("Codex Luna pin preflight failed:\n" + "\n---\n".join(errors))
-
-
-def _run_worker(
-    *,
-    label: str,
-    prompt: str,
-    repo: Path,
-    schema: Path,
-    effort: str,
-    codex_binary: str,
-    run_dir: Path,
-    timeout: int,
-    require_divergent_subset: bool = True,
-) -> WorkerResult:
-    output_path = run_dir / f"{label}.last.json"
-    command = build_codex_command(
-        codex_binary=codex_binary,
-        repo=repo,
-        output_schema=schema,
-        effort=effort,
-        json_events=True,
-        output_last_message=output_path,
-    )
-    started = time.monotonic()
-    completed = _run_process(command, prompt, timeout=timeout)
-    wall_seconds = time.monotonic() - started
-    stdout_path = run_dir / f"{label}.jsonl"
-    stderr_path = run_dir / f"{label}.stderr.log"
-    stdout_path.write_text(completed.stdout, encoding="utf-8")
-    stderr_path.write_text(completed.stderr, encoding="utf-8")
-    if completed.returncode != 0:
-        raise RuntimeError(
-            f"worker {label} failed (exit {completed.returncode}); see {stderr_path}"
-        )
-    if not output_path.exists():
-        raise RuntimeError(f"worker {label} produced no structured last message")
-    payload = validate_payload(
-        json.loads(output_path.read_text(encoding="utf-8")),
-        require_divergent_subset=require_divergent_subset,
-    )
-    return WorkerResult(
-        label=label,
-        payload=payload,
-        events=_json_events(completed.stdout),
-        wall_seconds=wall_seconds,
-        stdout_log=str(stdout_path),
-        stderr_log=str(stderr_path),
-    )
 
 
 def run_audit(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -558,3 +410,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
