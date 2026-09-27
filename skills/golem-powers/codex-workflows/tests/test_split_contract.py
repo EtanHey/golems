@@ -24,10 +24,13 @@ GOLDEN = Path(__file__).parent / "fixtures" / "split-contract.json"
 
 
 def expected_contract():
+    version = sys.version_info[:2]
+    # Only these exact minor versions were captured from untouched 51459cd3.
+    # Other versions can change argparse formatting without a product regression.
+    if version not in {(3, 11), (3, 13)}:
+        pytest.skip(f"No baseline CLI golden captured for Python {version[0]}.{version[1]}")
     data = json.loads(GOLDEN.read_text())
-    # argparse formatting changed in Python 3.13. Both variants
-    # were captured from untouched 51459cd3, not blessed from the candidate.
-    if sys.version_info < (3, 13):
+    if version == (3, 11):
         data.update(json.loads(GOLDEN.with_name("split-contract-python311.json").read_text()))
     return data
 
@@ -117,7 +120,8 @@ def snapshot(root):
 
 
 def test_baseline_golden_contract(tmp_path):
-    assert snapshot(tmp_path) == expected_contract()
+    expected = expected_contract()
+    assert snapshot(tmp_path) == expected
 
 
 def test_golden_comparison_rejects_a_changed_exit_code(tmp_path):
