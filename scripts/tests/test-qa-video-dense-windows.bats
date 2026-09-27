@@ -75,7 +75,7 @@ setup() {
 @test "dense-windows: fails cleanly on a missing video" {
   run "$DENSE" "$WORK/nope.mp4" "$CUES" "$WORK/out"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"video not found"* ]]
+  [[ "$output" == *"video not found"* ]] || false
   [ ! -e "$WORK/out/index.tsv" ]
 }
 
