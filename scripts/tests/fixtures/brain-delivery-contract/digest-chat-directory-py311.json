@@ -1,0 +1,32 @@
+[
+  {
+    "stdout": "Stalker Morning Digest FAILED - 2026-06-18\n\n",
+    "stderr": "Traceback (most recent call last):\n<TRACEBACK_FRAMES>\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/chat.log'\n",
+    "exit": 1,
+    "files": {
+      "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n",
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  },
+  {
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n<TRACEBACK_FRAMES>\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/chat.log'\n",
+    "exit": 1,
+    "files": {
+      "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-c\", \"import json, sys; print(json.dumps({\\\"title\\\": sys.argv[1], \\\"body\\\": sys.argv[2], \\\"source\\\": sys.argv[4], \\\"priority\\\": sys.argv[3]}, indent=2))\", \"Stalker Morning Digest FAILED - 2026-06-18\", \"\", \"default\", \"stalker-golem\"]}\n{\"command\": \"telegram\", \"argv\": [], \"stdin\": \"{\\n  \\\"title\\\": \\\"Stalker Morning Digest FAILED - 2026-06-18\\\",\\n  \\\"body\\\": \\\"\\\",\\n  \\\"source\\\": \\\"stalker-golem\\\",\\n  \\\"priority\\\": \\\"default\\\"\\n}\\n\"}\n",
+      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
+      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
+      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
+      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
+      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
+      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
+      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n"
+    }
+  }
+]

@@ -118,7 +118,7 @@ def collect_digest(root, digest_date):
                 missing = [marker for marker in COMPLETION_MARKERS if not (run_dir / marker).exists()]
                 reason = "missing completion markers: " + ", ".join(missing)
             block = [f"- {run_dir.name}: {reason}"]
-    
+
             gems_file = run_dir / "gems.md"
             if gems_file.exists():
                 heading_count = sum(
@@ -127,7 +127,7 @@ def collect_digest(root, digest_date):
                 )
                 heading_noun = "heading" if heading_count == 1 else "headings"
                 block.append(f"  gems.md exists on disk ({heading_count} curated {heading_noun})")
-    
+
             chat_file = run_dir / "chat.log"
             if chat_file.exists():
                 line_count = len(chat_file.read_text(errors="replace").splitlines())
@@ -154,14 +154,14 @@ def collect_digest(root, digest_date):
                 total_duration += max(durations)
         else:
             missing_ledgers.append(run_dir.name)
-    
+
         parsed_gems, saw_heading = parse_gems(run_dir)
         if (run_dir / "gems.md").exists():
             gems_files_seen += 1
         saw_any_gem_heading = saw_any_gem_heading or saw_heading
         all_gems.extend(parsed_gems)
         total_chat += chat_count(run_dir)
-    
+
         if (run_dir / ".archive-cleanup-skipped").exists():
             cleanup_skipped.append(run_dir.name)
     return DigestData(

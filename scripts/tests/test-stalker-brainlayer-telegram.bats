@@ -61,6 +61,11 @@ teardown() {
     [ "$status" -eq 0 ]
 }
 
+@test "brain delivery: two copies keep separate path-bound data modules" {
+    run python3 "$BATS_TEST_DIRNAME/test-brain-delivery-isolation.py"
+    [ "$status" -eq 0 ]
+}
+
 make_processed_run() {
     local name="$1"
     local dir="$STALKER_ROOT/$name"
