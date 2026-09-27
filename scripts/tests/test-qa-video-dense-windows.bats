@@ -102,3 +102,54 @@ setup() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"video not found"* ]]
 }
+
+@test "dense-windows: index uses real extracted-frame PTS on a 1fps source (#279)" {
+  # Seeking to 0.25 s in a 1 fps video drops source frame 0, so the first
+  # extracted frame is ~0.8 s after the window start, not at it.
+  slow="$WORK/slow.mp4"
+  ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc=size=640x360:rate=1 \
+    -t 6 -pix_fmt yuv420p "$slow"
+  printf '0.25\t3.25\tclick\n' > "$WORK/slow.tsv"
+
+  run "$DENSE" "$slow" "$WORK/slow.tsv" "$WORK/out" 10 0 0
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+
+  # Output -t 3 keeps relative PTS 0.8..2.9 -> 22 frames.
+  [ "$(wc -l < "$WORK/out/frames.tsv" | tr -d ' ')" -eq 22 ]
+
+  # Independent PTS of every frame the same extraction produces (showinfo
+  # also logs frames past the output limit, so keep the first 22).
+  want="$(ffmpeg -hide_banner -nostdin -ss 0.250 -i "$slow" -t 3.000 \
+      -vf 'fps=10,scale=480:-2,showinfo' -frames:v 30 -f null - 2>&1 \
+    | sed -n 's/.*Parsed_showinfo.* n: *[0-9]* .*pts_time:\([0-9.]*\).*/\1/p' \
+    | head -n 22 | awk '{ printf "%.3f\n", 0.25 + $1 }')"
+  [ "$(printf '%s\n' "$want" | head -1)" = "1.050" ]
+
+  got="$(cut -f3 "$WORK/out/frames.tsv")"
+  [ "$got" = "$want" ] || { printf 'got:\n%s\nwant:\n%s\n' "$got" "$want"; return 1; }
+
+  # Tile numbering restarts per sheet and totals match the index.
+  [ "$(awk -F'\t' '{ n += $4 } END { print n }' "$WORK/out/index.tsv")" -eq "$(wc -l < "$WORK/out/frames.tsv" | tr -d ' ')" ]
+  [ "$(awk -F'\t' '$1 == "sheet_002.jpg" && $2 == 0 { print $3 }' "$WORK/out/frames.tsv")" = "3.050" ]
+
+  # index.tsv starts every sheet at its first tile's real PTS.
+  expected="$(printf '%s\n' \
+    "sheet_001.jpg	1.050	10	20	click" \
+    "sheet_002.jpg	3.050	10	2	click")"
+  [ "$(cat "$WORK/out/index.tsv")" = "$expected" ] || {
+    printf 'got:\n%s\nwant:\n%s\n' "$(cat "$WORK/out/index.tsv")" "$expected"
+    return 1
+  }
+}
+
+@test "dense-windows: frames.tsv agrees with index.tsv on a 30fps source" {
+  run "$DENSE" "$VIDEO" "$CUES" "$WORK/out" 10 0.5 0.5
+  [ "$status" -eq 0 ]
+  # Each sheet's index start is its tile 0 time, and tile i sits at start + i/fps.
+  awk -F'\t' '
+    NR == FNR { start[$1] = $2; fps[$1] = $3; next }
+    { want = sprintf("%.3f", start[$1] + $2 / fps[$1]); if ($3 != want) { print "mismatch", $0, want; bad = 1 } }
+    END { exit bad }
+  ' "$WORK/out/index.tsv" "$WORK/out/frames.tsv"
+  [ "$(wc -l < "$WORK/out/frames.tsv" | tr -d ' ')" -eq 43 ]
+}

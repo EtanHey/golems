@@ -60,7 +60,11 @@ ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:no
 
 ## Phase 3: Frame Extraction
 
-Extract TWO types of frames:
+Frame types (3a–3d below):
+
+**QA mode** (the default route from SKILL.md) extracts: 3a interval frames as a
+coverage pass only, plus **3d dense action windows (mandatory)**. 3b hotspot
+frames are the sparse, non-QA route (e.g. gems) and never back a QA finding.
 
 ### 3a. Regular Interval Frames (every 30 seconds)
 ```bash
@@ -78,7 +82,7 @@ for t in $(seq 0 30 "$DURATION"); do
 done
 ```
 
-### 3b. Hotspot Frames (with context)
+### 3b. Hotspot Frames (with context) — non-QA only
 > **QA mode:** superseded by the mandatory dense action windows (`scripts/dense-windows.sh`, SKILL.md Key Design Decision #2). Single ±5s frames cannot show a click's target or the UI's reaction; use them only outside QA mode.
 
 For each identified hotspot timestamp:
@@ -96,7 +100,7 @@ ffmpeg -ss "$AFTER"  -i "$VIDEO" -vframes 1 -q:v 2 "$FRAMEDIR/hotspot-${HOTSPOT}
 
 **Why both:** Regular intervals catch visual bugs described after the fact. Hotspot frames catch the exact moment + context. Together they provide full coverage.
 
-**Two-pass frame extraction (learned from real usage):** In practice, the first pass extracts frames at ALL identified hotspot timestamps (may be 20-30). After reading a subset of frames, you'll identify which are redundant. The second pass refines — deduplicate similar timestamps and extract only the most informative set. Don't try to perfectly select timestamps upfront.
+**Two-pass frame extraction (non-QA only):** In practice, the first pass extracts frames at ALL identified hotspot timestamps (may be 20-30). After reading a subset of frames, you'll identify which are redundant. The second pass refines — deduplicate similar timestamps and extract only the most informative set. Don't try to perfectly select timestamps upfront.
 
 **If ffmpeg fails with exit code 234:** Retry with background execution:
 ```bash
@@ -123,13 +127,55 @@ clock timestamps into video-relative seconds, match each click to narration in
 the seven-second forward window, and extract a frame at the click timestamp.
 Treat the click log as sensitive: obtain explicit consent, use approved test
 data, redact captured text and URLs before sharing, and delete the raw log after
-the redacted findings and evidence frames are accepted.
+the redacted findings and evidence frames are accepted. In QA mode, add each
+click as a row in `cues.tsv` (3d) instead of relying on the single click frame.
+
+### 3d. Dense Action Windows (QA mode — mandatory)
+
+Build `cues.tsv` (`start_s<TAB>end_s<TAB>label`) from action-language transcript
+segments, `scripts/scene-cues.sh` output and click logs (SKILL.md Key Design
+Decision #2), then:
+
+```bash
+SCRIPTS="<qa-video skill dir>/scripts"
+"$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
+"$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense${SUFFIX}" 10
+```
+
+Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
+(`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) and `frames.tsv`
+(`sheet_file<TAB>tile<TAB>t_s`, the real PTS of every tile). Take citation
+timestamps from `frames.tsv`.
 
 ## Phase 4: Claude Vision Analysis
 
-**Read the extracted frames** (they're images — use the Read tool). You don't need to read ALL frames — read 8-12 strategically chosen ones. In real sessions, Claude read 10 frames for a 7-min video and only 4 for a 21-min video (more targeted second time).
+**QA mode: read EVERY contact sheet listed in `index.tsv`, in order** (they're
+images — use the Read tool). No sampling, no "8-12 strategic frames": skipping a
+sheet means its window was never reviewed, and a finding from an unread sheet is
+invalid. If there are too many sheets for one pass, split them across batches
+(or the Gemini gatherer, Key Design Decision #10) — but every sheet is read.
+Interval frames are a coverage pass only: if one shows something, add a cue and
+re-run `dense-windows.sh`; never cite an interval frame as a finding's evidence.
 
-For each frame:
+Before Phase 5, confirm coverage: the number of sheets you read equals the row
+count of `index.tsv`. If not, the QA pass is incomplete.
+
+For each window (sheet), state:
+
+1. What the cursor targets and which tile shows the action
+2. The before/after UI state across the tiles
+3. Any visual defect (error, wrong state, layout, alignment, contrast)
+4. Whether the screen matches what the user was describing at this timestamp
+
+**Cite or label.** Every visual finding cites `sheet + tile → timestamp` with the
+timestamp from `frames.tsv` (e.g. `sheet_004.jpg tile 7 → 12.700s`). A finding
+without a sheet citation is transcript-only and must be labelled
+**transcript-only**.
+
+*Non-QA sparse route (e.g. gems):* reading 8-12 strategically chosen hotspot
+frames is fine there; it is never acceptable for QA findings.
+
+For each non-QA frame:
 
 1. What page/component is showing?
 2. Is there a visible bug, error message, or unexpected state?
@@ -148,6 +194,7 @@ Write to `$WORKDIR/qa-findings${SUFFIX}.md`:
 ## Summary
 - **Duration:** M:SS
 - **Hotspots found:** N
+- **Sheets read:** N / N in index.tsv (must be all)
 - **Critical issues:** N
 - **Major issues:** N
 - **Minor/UX issues:** N
@@ -160,7 +207,7 @@ Write to `$WORKDIR/qa-findings${SUFFIX}.md`:
 - **Severity:** Critical / Major / Minor / UX / Enhancement
 - **What was said:** "[exact transcript quote]"
 - **What's on screen:** [describe the frame — page, state, visible elements]
-- **Frame:** frames/hotspot-154s-at.jpg
+- **Evidence:** dense/sheet_004.jpg tile 7 → 12.700s (sheet + tile + timestamp from `frames.tsv`; list every tile relied on), or **transcript-only** if no sheet shows it
 - **Action needed:** [specific fix or investigation]
 - **Recurring?:** Yes/No (if seen in previous rounds, note which)
 

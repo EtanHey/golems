@@ -10,9 +10,15 @@
 #   cues.tsv   rows of start_s<TAB>end_s<TAB>label (blank and # lines skipped)
 #   outdir     gets sheet_NNN.jpg plus index.tsv:
 #              sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label
-#              window_start_s is the time of the sheet's first tile, so tile i
-#              (row-major, 0-based) is at window_start_s + i/fps. A window with
-#              more than 20 frames spills onto further sheets.
+#              and frames.tsv, one row per tile:
+#              sheet_file<TAB>tile<TAB>t_s
+#              Times are the real presentation timestamps of the extracted
+#              frames (ffmpeg showinfo), not the requested window start: input
+#              seeking can leave the first output frame later than the window
+#              start (low or variable frame rate sources). window_start_s is
+#              the time of the sheet's first tile, and tile i (row-major,
+#              0-based) is at window_start_s + i/fps; frames.tsv is exact.
+#              A window with more than 20 frames spills onto further sheets.
 #
 # No drawtext: common ffmpeg builds lack freetype. Timestamps live in the index.
 # DENSE_TILE_WIDTH sets the tile width in px (default and minimum 480).
@@ -59,7 +65,7 @@ DURATION="$(ffmpeg -hide_banner -i "$VIDEO" 2>&1 \
 mkdir -p "$OUTDIR"
 WINDOWS="$OUTDIR/.windows.tsv"
 SCRATCH="$OUTDIR/.frames"
-trap 'rm -rf "$SCRATCH" "$WINDOWS" "$WINDOWS.raw" "$OUTDIR/index.tsv.tmp"' EXIT HUP INT TERM
+trap 'rm -rf "$SCRATCH" "$WINDOWS" "$WINDOWS.raw" "$OUTDIR/index.tsv.tmp" "$OUTDIR/frames.tsv.tmp"' EXIT HUP INT TERM
 
 # Pad each cue to [start-pre, end+post], clamp to the video, sort, and merge
 # overlapping windows. Output: start<TAB>end<TAB>label (labels joined " | ").
@@ -94,7 +100,9 @@ sort -t "$TAB" -k1,1n -k2,2n "$WINDOWS.raw" | awk -F'\t' '
 [ -s "$WINDOWS" ] || die "no usable cues in $CUES"
 
 INDEX="$OUTDIR/index.tsv"
+FRAMES="$OUTDIR/frames.tsv"
 : > "$INDEX.tmp"
+: > "$FRAMES.tmp"
 sheet_no=0
 
 while IFS="$TAB" read -r ws we label; do
@@ -102,12 +110,22 @@ while IFS="$TAB" read -r ws we label; do
   [ "$frames" -gt 0 ] || continue
 
   rm -rf "$SCRATCH"; mkdir -p "$SCRATCH"
-  ffmpeg -hide_banner -loglevel error -nostdin -ss "$ws" -i "$VIDEO" -t "$(awk -v s="$ws" -v e="$we" 'BEGIN { printf "%.3f", e - s }')" \
-    -vf "fps=$FPS,scale=$TILE_W:-2" -frames:v "$frames" "$SCRATCH/f_%05d.png" \
-    || die "frame extraction failed for window $ws-$we"
+  # showinfo logs each output frame's pts_time, relative to the seek point.
+  # AIDEV-NOTE: never index from $ws + i/fps alone; the first frame's PTS can
+  # be > 0 after input seeking (#279 review), shifting every tile's time.
+  ffmpeg -hide_banner -loglevel info -nostdin -ss "$ws" -i "$VIDEO" -t "$(awk -v s="$ws" -v e="$we" 'BEGIN { printf "%.3f", e - s }')" \
+    -vf "fps=$FPS,showinfo,scale=$TILE_W:-2" -frames:v "$frames" "$SCRATCH/f_%05d.png" \
+    2> "$SCRATCH/showinfo.log" \
+    || { tail -5 "$SCRATCH/showinfo.log" >&2; die "frame extraction failed for window $ws-$we"; }
 
   got="$(find "$SCRATCH" -name 'f_*.png' | wc -l | tr -d ' ')"
   [ "$got" -gt 0 ] || die "no frames extracted for window $ws-$we"
+
+  # Absolute time of each extracted frame, one per line, in output order.
+  sed -n 's/.*Parsed_showinfo.* n: *[0-9]* .*pts_time:\([-0-9.e+]*\).*/\1/p' "$SCRATCH/showinfo.log" \
+    | head -n "$got" | awk -v s="$ws" '{ printf "%.3f\n", s + $1 }' > "$SCRATCH/pts.txt"
+  [ "$(wc -l < "$SCRATCH/pts.txt" | tr -d ' ')" -eq "$got" ] \
+    || die "cannot read frame timestamps for window $ws-$we"
 
   chunk=0
   while [ $((chunk * PER_SHEET)) -lt "$got" ]; do
@@ -118,11 +136,14 @@ while IFS="$TAB" read -r ws we label; do
     ffmpeg -hide_banner -loglevel error -nostdin -y -start_number $((first + 1)) \
       -i "$SCRATCH/f_%05d.png" -frames:v 1 -vf "tile=${COLS}x${ROWS}" -q:v 3 "$OUTDIR/$sheet" \
       || die "tiling failed for $sheet"
-    start="$(awk -v s="$ws" -v i="$first" -v f="$FPS" 'BEGIN { printf "%.3f", s + i / f }')"
+    start="$(sed -n "$((first + 1))p" "$SCRATCH/pts.txt")"
     printf '%s\t%s\t%s\t%s\t%s\n' "$sheet" "$start" "$FPS" "$tiles" "$label" >> "$INDEX.tmp"
+    awk -v sh="$sheet" -v a="$((first + 1))" -v n="$tiles" \
+      'NR >= a && NR < a + n { printf "%s\t%d\t%s\n", sh, NR - a, $0 }' "$SCRATCH/pts.txt" >> "$FRAMES.tmp"
     chunk=$((chunk + 1))
   done
 done < "$WINDOWS"
 
+mv "$FRAMES.tmp" "$FRAMES"
 mv "$INDEX.tmp" "$INDEX"
 echo "dense-windows: $sheet_no sheet(s) -> $INDEX"
