@@ -55,13 +55,13 @@ const DOMAIN_RE = {
 };
 
 // A review reference is not a served dashboard URL. Keep bare delivery URLs
-// gated; strip only a URL explicitly introduced as a review reference.
-const REVIEW_REFERENCE_RE = /\breview\s*(?:(?:is\s+)?at\s+|:\s*)https?:\/\/\S+/gi;
+// gated; strip only GitHub PR URLs explicitly introduced as review references.
+const REVIEW_REFERENCE_RE = /\breview\s*(?:(?:is\s+)?at\s+|:\s*)https?:\/\/github\.com\/[^\s/]+\/[^\s/]+\/pull\/\d+[^\s/]*/gi;
 // Possessive worker summaries relay another worker's result, not this seat's
-// completion. Limit the span to its predicate so subsequent claims survive.
-const WORKER_RESULT_RE = /\b(?:w\d+|worker|agent|reviewer|codex|cursor|claude)(?:['’]s)\s+[^.!?\n]{0,100}?\b(?:is|are)\s+(?:fixed|done|complete[d]?|verified)\b/gi;
+// completion. Stop at clause boundaries and exclude seat names/self-attribution.
+const WORKER_RESULT_RE = /\b(?:w\d+|worker|reviewer)(?:['’]s)\s+(?:(?!\b(?:and|but|then|while|which|I|I've|I'm|we|my|our)\b)[^.!?\n,;]){0,100}?\b(?:is|are)\s+(?:fixed|done|complete[d]?|verified)\b/gi;
 // Mentioning a marker held for approval is not emitting that marker.
-const DEFERRED_DONE_MARKER_RE = /\b(?:task_done|done)\s+marker\s+(?:waits?\s+for|awaits?)\b/gi;
+const DEFERRED_DONE_MARKER_RE = /\b(?:task_done|done)[ \t]+marker[ \t]+(?:waits?[ \t]+for|awaits?)\b/gi;
 
 // ── Probe-evidence detectors ────────────────────────────────────────────────
 // All run over the `ev` evidence object (cmd = Bash commands + tool names,

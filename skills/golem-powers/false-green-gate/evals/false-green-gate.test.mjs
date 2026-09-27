@@ -78,3 +78,24 @@ test("attribution and a deferred marker cannot hide a separate dashboard claim",
 test("an emitted DONE marker is still a completion claim", () => {
   expect(detectFalseGreen("My DONE marker is ready.").verdict).toBe("FLAG");
 });
+
+for (const text of [
+  "Published for review at https://dashboard.example.net/fleet.html",
+  "Done. Review: https://dashboard.example.net/dashboards/fleet.html",
+  "w6's fixes landed and I deployed the fleet dashboard to the tailnet hub, which is verified.",
+  "Claude's dashboard on the tailnet is done.",
+  "The agent's patch merged, I published the panel and it is complete.",
+]) {
+  test(`review-summary exceptions preserve dashboard claims: ${text}`, () => {
+    const result = detectFalseGreen(text);
+    expect(result.verdict).toBe("FLAG");
+    expect(result.violations.map(v => v.code)).toContain("FALSE_GREEN_DASHBOARD_200");
+    expect(result.violations.map(v => v.code)).toContain("FALSE_GREEN_CLICK_THROUGH");
+  });
+}
+
+test("a newline separates a completion claim from a deferred marker", () => {
+  const result = detectFalseGreen("Everything is done\nmarker waits for the lead GO");
+  expect(result.verdict).toBe("FLAG");
+  expect(result.violations.map(v => v.code)).toContain("FALSE_GREEN_LIVE_PROBE");
+});
