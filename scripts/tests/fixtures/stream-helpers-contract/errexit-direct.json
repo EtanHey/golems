@@ -1,0 +1,11 @@
+{
+  "stdout": "",
+  "stderr": "",
+  "exit": 7,
+  "files": {
+    "commands.jsonl": "{\"command\": \"whisper-cli\", \"argv\": [\"-m\", \"model.bin\", \"-f\", \"segment.wav\", \"--no-timestamps\"]}\n",
+    "model.bin": "",
+    "segment.wav": "",
+    "whisper-cli.count": "1"
+  }
+}
