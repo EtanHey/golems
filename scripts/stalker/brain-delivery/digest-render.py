@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 import re
 import sys
-import traceback
 
 
 def _load_data_module():
@@ -23,11 +22,15 @@ def _load_data_module():
         spec = importlib.util.spec_from_file_location(name, module_path)
         module = importlib.util.module_from_spec(spec)
         sys.modules[name] = module
+        previous_bytecode_setting = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
         try:
             spec.loader.exec_module(module)
         except BaseException:
             del sys.modules[name]
             raise
+        finally:
+            sys.dont_write_bytecode = previous_bytecode_setting
     return module
 
 
@@ -275,26 +278,6 @@ def render_digest(data):
         )
     return message, 75 if failed_drops else 0
 
-def _legacy_gems_traceback(error):
-    """Keep the pre-split stdin traceback for a gems.md read failure."""
-    frames = traceback.extract_tb(error.__traceback__)
-    if not isinstance(error, IsADirectoryError) or not any(
-        frame.name == "parse_gems" for frame in frames
-    ):
-        return False
-    # Original digest read this file at heredoc lines 294 and 243. Keep the
-    # actual library frames (including Python-version-specific source carets).
-    library = [frame for frame in frames if frame.name in {"read_text", "open"}]
-    if not library:
-        return False
-    sys.stderr.write('Traceback (most recent call last):\n')
-    sys.stderr.write('  File "<stdin>", line 294, in <module>\n')
-    sys.stderr.write('  File "<stdin>", line 243, in parse_gems\n')
-    sys.stderr.write(''.join(traceback.StackSummary.from_list(library).format()))
-    sys.stderr.write(''.join(traceback.format_exception_only(type(error), error)))
-    return True
-
-
 def main(argv):
     data = _load_data_module().collect_digest(argv[1], argv[2])
     message, status = render_digest(data)
@@ -303,9 +286,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main(sys.argv))
-    except Exception as error:
-        if not _legacy_gems_traceback(error):
-            raise
-        raise SystemExit(1) from None
+    raise SystemExit(main(sys.argv))
