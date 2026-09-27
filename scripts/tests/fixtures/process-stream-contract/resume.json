@@ -1,0 +1,731 @@
+[
+  {
+    "exit": 0,
+    "stdout": "[01:02:03] Pass 1a: Extracting audio...\n[01:02:03]   Audio extracted: 4.0K\n[01:02:03] Pass 1b: Detecting silence boundaries...\n[01:02:03]   Found 1 silence boundaries\n[01:02:03] Pass 1c: Measuring volume per 10s window...\n[01:02:03]   Volume measured: 6 windows\n[01:02:03] Pass 1d: Finding volume spikes (>1.3x average)...\n  Found 2 spikes (top 20 saved)\n# Average RMS: 0.366667  Threshold: 0.476667\n10 0.900000 2.5x [00:10]\n30 0.900000 2.5x [00:30]\n[01:02:03] Pass 1e: Segmenting and transcribing...\n[01:02:03]   Segment 1 [00:00] (30s): A dramatic highlight in first segment....\n[01:02:03]   Segment 2 [00:30] (30s): A dramatic highlight in second segment....\n[01:02:03]   Transcription complete: 2 segments (0 failed)\n[01:02:03] Pass 2a: Extracting frames at spike timestamps...\n[01:02:03]   Extracted 2 new frames (2 total)\n[01:02:03] Pass 3: Building combined signal file...\n[01:02:03]   Measuring chat velocity...\n  2 messages, 2 windows, 0 velocity spikes\n[01:02:03]   Finding chat clip markers (!clip, editor marks)...\n[01:02:03]   Found 1 clip markers in chat\n[01:02:03]   Combined signals written to run/examplechannel-2026-06-25-040516/signals-combined.md\n[01:02:03] Pass 3b: Auto-scoring transcript candidate segments with local CLI model...\n[01:02:03]   Primary scorer: <SANDBOX>/bin/agy (Gemini 3.1 Pro (High))\n[01:02:03]   Codex fallback: <SANDBOX>/bin/codex (model=gpt-5.6-sol, effort=low, timeout=120s)\n[01:02:03]   Scoring concurrency: 1\n[01:02:03]   [9/10 hype VOL ] [00:00] Segment 1 (30s)\n[01:02:03]   ^ GEM!\n[01:02:03]   [9/10 hype VOL ] [00:30] Segment 2 (30s)\n[01:02:03]   ^ GEM!\n[01:02:03]   Auto-scoring complete: 2 gems found (2 candidates, 0 skipped, 0 failures)\n[01:02:03] Pass 4: Extracting clips for existing gems...\n[01:02:03]   Clip: clip-00m00s (4.0K)\n[01:02:03]   Clip: clip-00m30s (4.0K)\n[01:02:03]   Extracted 2 new clips\n[01:02:03] Pass 4b: Annotating clips...\n  Annotated: clip-00m00s-annotated.mp4\n  Annotated: clip-00m30s-annotated.mp4\n[01:02:03] Cleanup: Removing 2 segment WAVs (4.0K total)\n[01:02:03] \n[01:02:03] === MEDIA ANALYSIS FINISHED ===\n[01:02:03] Directory: run/examplechannel-2026-06-25-040516\n[01:02:03] Transcript: run/examplechannel-2026-06-25-040516/transcript.md (2 segments)\n[01:02:03] Volume spikes: run/examplechannel-2026-06-25-040516/volume-spikes.txt\n[01:02:03] Frames: run/examplechannel-2026-06-25-040516/frames/ (2 files)\n[01:02:03] Clips: run/examplechannel-2026-06-25-040516/clips/ (4 files)\n[01:02:03] Combined signals: run/examplechannel-2026-06-25-040516/signals-combined.md\n[01:02:03] Gems: run/examplechannel-2026-06-25-040516/gems.md\n[01:02:03] \n[01:02:03] Total disk: 108K\n[01:02:03] \n[01:02:03] Cleanup options:\n[01:02:03]   rm run/examplechannel-2026-06-25-040516/segment-*.wav     # Segment audio (~50MB)\n[01:02:03]   rm run/examplechannel-2026-06-25-040516/full-audio.wav    # Full audio (~50MB)\n[01:02:03]   rm run/examplechannel-2026-06-25-040516/video.mp4                      # Full video (biggest)\n",
+    "stderr": "",
+    "files": {
+      ".stage-1a-audio.done": "2026-06-25T01:02:03Z\n",
+      ".stage-1b-silences.done": "2026-06-25T01:02:03Z\n",
+      ".stage-1c-volume.done": "2026-06-25T01:02:03Z\n",
+      ".stage-1d-spikes.done": "2026-06-25T01:02:03Z\n",
+      ".stage-1e-transcript.done": "2026-06-25T01:02:03Z\n",
+      ".stage-2-frames.done": "2026-06-25T01:02:03Z\n",
+      ".stage-3-signals.done": "2026-06-25T01:02:03Z\n",
+      ".stage-4-clips.done": "2026-06-25T01:02:03Z\n",
+      ".stage-scoring.done": "2026-06-25T01:02:03Z\n",
+      ".stage-scoring.started": "status=STARTED\npid=<PID>\nstarted_at=2026-06-25T01:02:03Z\nprocess_start=Wed Jun 25 01:00:00 2026\n",
+      "chat-clip-markers.txt": "[00:00:10] a: wow !clip\n",
+      "chat-velocity.txt": "# Chat velocity (msgs per 10s) | avg: 1.0\n0 1 [00:00] stream=71690 [1194:50]\n20 1 [00:20] stream=71710 [1195:10]\n",
+      "chat.log": "[00:00:10] a: wow !clip\n[00:00:30] b: hype\n",
+      "clips/clip-00m00s-annotated.mp4": "synthetic annotated clip\n",
+      "clips/clip-00m00s.mp4": "synthetic .mp4\n",
+      "clips/clip-00m30s-annotated.mp4": "synthetic annotated clip\n",
+      "clips/clip-00m30s.mp4": "synthetic .mp4\n",
+      "frames/frame-0m10s.jpg": "synthetic .jpg\n",
+      "frames/frame-0m30s.jpg": "synthetic .jpg\n",
+      "full-audio.wav": "synthetic .wav\n",
+      "gems.md": "# Gems: examplechannel (2026-06-25)\n\n### [00:00] Segment 1 (30s) A clear synthetic highlight\n**Score:** 9/10 | **Type:** hype\n**Gist:** Synthetic scoring found a highlight.\n**Volume spike:** yes\n\n**Transcript:** A dramatic highlight in first segment.\n\n### [00:30] Segment 2 (30s) A clear synthetic highlight\n**Score:** 9/10 | **Type:** hype\n**Gist:** Synthetic scoring found a highlight.\n**Volume spike:** yes\n\n**Transcript:** A dramatic highlight in second segment.\n\n\n---\nSource: run/examplechannel-2026-06-25-040516/video.mp4\nGems found: 2\nCandidate segments scored: 2\nSkipped non-candidates: 0\nScoring failures: 0\nScored: Wed Jun 25 01:02:03 UTC 2026\n",
+      "quiet-frames.txt": "",
+      "signals-combined.md": "# Combined Signals: examplechannel (2026-06-25)\n\n## Volume Spikes\n# Average RMS: 0.366667  Threshold: 0.476667\n10 0.900000 2.5x [00:10]\n30 0.900000 2.5x [00:30]\n\n## Chat Analysis\nTotal messages: 2\n\n### Chat Velocity Spikes (>2x average):\n  None\n\n### Chat Clip Markers (1 found):\n[00:00:10] a: wow !clip\n\n### First 30 messages:\n[00:00:10] a: wow !clip\n[00:00:30] b: hype\n\n## Transcript\n# Stream Transcript: examplechannel (2026-06-25)\n\n## [00:00] Segment 1 (30s)\n\nA dramatic highlight in first segment.\n\n## [00:30] Segment 2 (30s)\n\nA dramatic highlight in second segment.\n\n\n## Frames Extracted\nframe-0m10s.jpg\nframe-0m30s.jpg\n",
+      "silences.txt": "30.0\n",
+      "transcript.md": "# Stream Transcript: examplechannel (2026-06-25)\n\n## [00:00] Segment 1 (30s)\n\nA dramatic highlight in first segment.\n\n## [00:30] Segment 2 (30s)\n\nA dramatic highlight in second segment.\n\n",
+      "video.mp4": "synthetic video\n",
+      "volume-per-10s.txt": "0 0.100000\n10 0.900000\n20 0.100000\n30 0.900000\n40 0.100000\n50 0.100000\n",
+      "volume-spikes.txt": "# Average RMS: 0.366667  Threshold: 0.476667\n10 0.900000 2.5x [00:10]\n30 0.900000 2.5x [00:30]\n"
+    },
+    "commands": [
+      {
+        "argv": [
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-vn",
+          "-acodec",
+          "pcm_s16le",
+          "-ar",
+          "16000",
+          "-ac",
+          "1",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-y"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-nostats",
+          "-hide_banner",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-af",
+          "silencedetect=noise=-30dB:d=2",
+          "-f",
+          "null",
+          "-"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-v",
+          "error",
+          "-show_entries",
+          "format=duration",
+          "-of",
+          "csv=p=0",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav"
+        ],
+        "command": "ffprobe"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "0",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "10",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "20",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "30",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "40",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "50",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "-v",
+          "error",
+          "-show_entries",
+          "format=duration",
+          "-of",
+          "csv=p=0",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav"
+        ],
+        "command": "ffprobe"
+      },
+      {
+        "argv": [],
+        "command": "mktemp"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-ss",
+          "0",
+          "-to",
+          "30",
+          "-y",
+          "run/examplechannel-2026-06-25-040516/segment-001.wav"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-fsS",
+          "-m",
+          "30",
+          "-X",
+          "POST",
+          "-F",
+          "file=@run/examplechannel-2026-06-25-040516/segment-001.wav",
+          "http://127.0.0.1:8178/inference"
+        ],
+        "command": "curl"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-ss",
+          "30",
+          "-to",
+          "60",
+          "-y",
+          "run/examplechannel-2026-06-25-040516/segment-002.wav"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-fsS",
+          "-m",
+          "30",
+          "-X",
+          "POST",
+          "-F",
+          "file=@run/examplechannel-2026-06-25-040516/segment-002.wav",
+          "http://127.0.0.1:8178/inference"
+        ],
+        "command": "curl"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-ss",
+          "10",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-vframes",
+          "1",
+          "-q:v",
+          "3",
+          "run/examplechannel-2026-06-25-040516/frames/frame-0m10s.jpg",
+          "-y"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-ss",
+          "30",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-vframes",
+          "1",
+          "-q:v",
+          "3",
+          "run/examplechannel-2026-06-25-040516/frames/frame-0m30s.jpg",
+          "-y"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-d",
+          "run/examplechannel-2026-06-25-040516/.stalker-score-results.XXXXXX"
+        ],
+        "command": "mktemp"
+      },
+      {
+        "argv": [
+          "-d"
+        ],
+        "command": "mktemp"
+      },
+      {
+        "argv": [
+          "--model",
+          "Gemini 3.1 Pro (High)",
+          "--print-timeout",
+          "45s",
+          "--print",
+          "You are scoring Twitch/YouTube stream moments for a highlight reel.\n\nScore for ENTERTAINMENT VALUE — moments viewers would want to see in a highlights compilation:\n- Funny reactions, rage moments, hype moments\n- Hot takes, controversial opinions, rants\n- Impressive gameplay, clutch plays, fails\n- Unexpected events, surprise reveals, pranks\n- Wholesome interactions, viewer call-outs\n- Tech drama, industry gossip, juicy takes\n- Memes born, catchphrases created, inside jokes\n\nSignals boosting the score:\n- VOLUME_SPIKE=true means the streamer got loud here (excitement/rage)\n- CHAT_SPIKE=true means chat went wild here (hype/reaction)\n- Both together = almost certainly a gem\n\nScore 1-10 for entertainment value. 7+ = gem worthy. Reply ONLY with JSON:\n{\"score\": N, \"type\": \"reaction/take/gameplay/fail/hype/wholesome/drama/meme/rant/other\", \"title\": \"short catchy title (5-8 words)\", \"summary\": \"one sentence explaining why this moment is worth saving\"}\n\nSignals: VOLUME_SPIKE=true, CHAT_SPIKE=false\n\nSegment:\nA dramatic highlight in first segment.\n\n<output_contract>\nReturn exactly one JSON object and nothing else. Do not summarize the whole stream. Do not use markdown.\nRequired keys: score, type, title, summary.\nUse score as an integer 1-10, type as a short category, title as a 5-8 word headline, and summary as one sentence explaining why this specific moment is worth saving.\n</output_contract>"
+        ],
+        "command": "agy",
+        "stdin": ""
+      },
+      {
+        "argv": [
+          "-d"
+        ],
+        "command": "mktemp"
+      },
+      {
+        "argv": [
+          "--model",
+          "Gemini 3.1 Pro (High)",
+          "--print-timeout",
+          "45s",
+          "--print",
+          "You are scoring Twitch/YouTube stream moments for a highlight reel.\n\nScore for ENTERTAINMENT VALUE — moments viewers would want to see in a highlights compilation:\n- Funny reactions, rage moments, hype moments\n- Hot takes, controversial opinions, rants\n- Impressive gameplay, clutch plays, fails\n- Unexpected events, surprise reveals, pranks\n- Wholesome interactions, viewer call-outs\n- Tech drama, industry gossip, juicy takes\n- Memes born, catchphrases created, inside jokes\n\nSignals boosting the score:\n- VOLUME_SPIKE=true means the streamer got loud here (excitement/rage)\n- CHAT_SPIKE=true means chat went wild here (hype/reaction)\n- Both together = almost certainly a gem\n\nScore 1-10 for entertainment value. 7+ = gem worthy. Reply ONLY with JSON:\n{\"score\": N, \"type\": \"reaction/take/gameplay/fail/hype/wholesome/drama/meme/rant/other\", \"title\": \"short catchy title (5-8 words)\", \"summary\": \"one sentence explaining why this moment is worth saving\"}\n\nSignals: VOLUME_SPIKE=true, CHAT_SPIKE=false\n\nSegment:\nA dramatic highlight in second segment.\n\n<output_contract>\nReturn exactly one JSON object and nothing else. Do not summarize the whole stream. Do not use markdown.\nRequired keys: score, type, title, summary.\nUse score as an integer 1-10, type as a short category, title as a 5-8 word headline, and summary as one sentence explaining why this specific moment is worth saving.\n</output_contract>"
+        ],
+        "command": "agy",
+        "stdin": ""
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-y",
+          "-ss",
+          "0",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-t",
+          "45",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "fast",
+          "-crf",
+          "28",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "64k",
+          "-movflags",
+          "+faststart",
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m00s.mp4"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-y",
+          "-ss",
+          "20",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-t",
+          "45",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "fast",
+          "-crf",
+          "28",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "64k",
+          "-movflags",
+          "+faststart",
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m30s.mp4"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m00s.mp4",
+          "Segment 1 (30s) A clear synthetic highlight  |  9/10  |  hype",
+          "Segment 1 (30s) A clear synthetic highlight",
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m00s-annotated.mp4"
+        ],
+        "command": "annotate-clip.sh"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m30s.mp4",
+          "Segment 2 (30s) A clear synthetic highlight  |  9/10  |  hype",
+          "Segment 2 (30s) A clear synthetic highlight",
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m30s-annotated.mp4"
+        ],
+        "command": "annotate-clip.sh"
+      }
+    ],
+    "completion_calls": 0
+  },
+  {
+    "exit": 0,
+    "stdout": "[01:02:03] Pass 1a: Stage complete, skipping audio extraction\n[01:02:03] Pass 1b: Stage complete, skipping silence detection\n[01:02:03] Pass 1c: Stage complete, skipping volume measurement\n[01:02:03] Pass 1d: Stage complete, skipping volume spike detection\n[01:02:03] Pass 1e: Stage complete, skipping transcription\n[01:02:03] Pass 2a: Stage complete, skipping frame extraction\n[01:02:03] Pass 3: Stage complete, skipping combined signal rebuild\n[01:02:03] Pass 3b: Gems file exists, skipping scoring\n[01:02:03] Pass 4: Extracting clips for existing gems...\n[01:02:03]   Extracted 0 new clips\n[01:02:03] Pass 4b: Annotating clips...\n[01:02:03] \n[01:02:03] === MEDIA ANALYSIS FINISHED ===\n[01:02:03] Directory: run/examplechannel-2026-06-25-040516\n[01:02:03] Transcript: run/examplechannel-2026-06-25-040516/transcript.md (2 segments)\n[01:02:03] Volume spikes: run/examplechannel-2026-06-25-040516/volume-spikes.txt\n[01:02:03] Frames: run/examplechannel-2026-06-25-040516/frames/ (2 files)\n[01:02:03] Clips: run/examplechannel-2026-06-25-040516/clips/ (4 files)\n[01:02:03] Combined signals: run/examplechannel-2026-06-25-040516/signals-combined.md\n[01:02:03] Gems: run/examplechannel-2026-06-25-040516/gems.md\n[01:02:03] \n[01:02:03] Total disk: 108K\n[01:02:03] \n[01:02:03] Cleanup options:\n[01:02:03]   rm run/examplechannel-2026-06-25-040516/segment-*.wav     # Segment audio (~50MB)\n[01:02:03]   rm run/examplechannel-2026-06-25-040516/full-audio.wav    # Full audio (~50MB)\n[01:02:03]   rm run/examplechannel-2026-06-25-040516/video.mp4                      # Full video (biggest)\n",
+    "stderr": "",
+    "files": {
+      ".stage-1a-audio.done": "2026-06-25T01:02:03Z\n",
+      ".stage-1b-silences.done": "2026-06-25T01:02:03Z\n",
+      ".stage-1c-volume.done": "2026-06-25T01:02:03Z\n",
+      ".stage-1d-spikes.done": "2026-06-25T01:02:03Z\n",
+      ".stage-1e-transcript.done": "2026-06-25T01:02:03Z\n",
+      ".stage-2-frames.done": "2026-06-25T01:02:03Z\n",
+      ".stage-3-signals.done": "2026-06-25T01:02:03Z\n",
+      ".stage-4-clips.done": "2026-06-25T01:02:03Z\n",
+      ".stage-scoring.done": "2026-06-25T01:02:03Z\n",
+      ".stage-scoring.started": "status=STARTED\npid=<PID>\nstarted_at=2026-06-25T01:02:03Z\nprocess_start=Wed Jun 25 01:00:00 2026\n",
+      "chat-clip-markers.txt": "[00:00:10] a: wow !clip\n",
+      "chat-velocity.txt": "# Chat velocity (msgs per 10s) | avg: 1.0\n0 1 [00:00] stream=71690 [1194:50]\n20 1 [00:20] stream=71710 [1195:10]\n",
+      "chat.log": "[00:00:10] a: wow !clip\n[00:00:30] b: hype\n",
+      "clips/clip-00m00s-annotated.mp4": "synthetic annotated clip\n",
+      "clips/clip-00m00s.mp4": "synthetic .mp4\n",
+      "clips/clip-00m30s-annotated.mp4": "synthetic annotated clip\n",
+      "clips/clip-00m30s.mp4": "synthetic .mp4\n",
+      "frames/frame-0m10s.jpg": "synthetic .jpg\n",
+      "frames/frame-0m30s.jpg": "synthetic .jpg\n",
+      "full-audio.wav": "synthetic .wav\n",
+      "gems.md": "# Gems: examplechannel (2026-06-25)\n\n### [00:00] Segment 1 (30s) A clear synthetic highlight\n**Score:** 9/10 | **Type:** hype\n**Gist:** Synthetic scoring found a highlight.\n**Volume spike:** yes\n\n**Transcript:** A dramatic highlight in first segment.\n\n### [00:30] Segment 2 (30s) A clear synthetic highlight\n**Score:** 9/10 | **Type:** hype\n**Gist:** Synthetic scoring found a highlight.\n**Volume spike:** yes\n\n**Transcript:** A dramatic highlight in second segment.\n\n\n---\nSource: run/examplechannel-2026-06-25-040516/video.mp4\nGems found: 2\nCandidate segments scored: 2\nSkipped non-candidates: 0\nScoring failures: 0\nScored: Wed Jun 25 01:02:03 UTC 2026\n",
+      "quiet-frames.txt": "",
+      "signals-combined.md": "# Combined Signals: examplechannel (2026-06-25)\n\n## Volume Spikes\n# Average RMS: 0.366667  Threshold: 0.476667\n10 0.900000 2.5x [00:10]\n30 0.900000 2.5x [00:30]\n\n## Chat Analysis\nTotal messages: 2\n\n### Chat Velocity Spikes (>2x average):\n  None\n\n### Chat Clip Markers (1 found):\n[00:00:10] a: wow !clip\n\n### First 30 messages:\n[00:00:10] a: wow !clip\n[00:00:30] b: hype\n\n## Transcript\n# Stream Transcript: examplechannel (2026-06-25)\n\n## [00:00] Segment 1 (30s)\n\nA dramatic highlight in first segment.\n\n## [00:30] Segment 2 (30s)\n\nA dramatic highlight in second segment.\n\n\n## Frames Extracted\nframe-0m10s.jpg\nframe-0m30s.jpg\n",
+      "silences.txt": "30.0\n",
+      "transcript.md": "# Stream Transcript: examplechannel (2026-06-25)\n\n## [00:00] Segment 1 (30s)\n\nA dramatic highlight in first segment.\n\n## [00:30] Segment 2 (30s)\n\nA dramatic highlight in second segment.\n\n",
+      "video.mp4": "synthetic video\n",
+      "volume-per-10s.txt": "0 0.100000\n10 0.900000\n20 0.100000\n30 0.900000\n40 0.100000\n50 0.100000\n",
+      "volume-spikes.txt": "# Average RMS: 0.366667  Threshold: 0.476667\n10 0.900000 2.5x [00:10]\n30 0.900000 2.5x [00:30]\n"
+    },
+    "commands": [
+      {
+        "argv": [
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-vn",
+          "-acodec",
+          "pcm_s16le",
+          "-ar",
+          "16000",
+          "-ac",
+          "1",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-y"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-nostats",
+          "-hide_banner",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-af",
+          "silencedetect=noise=-30dB:d=2",
+          "-f",
+          "null",
+          "-"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-v",
+          "error",
+          "-show_entries",
+          "format=duration",
+          "-of",
+          "csv=p=0",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav"
+        ],
+        "command": "ffprobe"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "0",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "10",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "20",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "30",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "40",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-n",
+          "trim",
+          "50",
+          "10",
+          "stat"
+        ],
+        "command": "sox"
+      },
+      {
+        "argv": [
+          "-v",
+          "error",
+          "-show_entries",
+          "format=duration",
+          "-of",
+          "csv=p=0",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav"
+        ],
+        "command": "ffprobe"
+      },
+      {
+        "argv": [],
+        "command": "mktemp"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-ss",
+          "0",
+          "-to",
+          "30",
+          "-y",
+          "run/examplechannel-2026-06-25-040516/segment-001.wav"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-fsS",
+          "-m",
+          "30",
+          "-X",
+          "POST",
+          "-F",
+          "file=@run/examplechannel-2026-06-25-040516/segment-001.wav",
+          "http://127.0.0.1:8178/inference"
+        ],
+        "command": "curl"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/full-audio.wav",
+          "-ss",
+          "30",
+          "-to",
+          "60",
+          "-y",
+          "run/examplechannel-2026-06-25-040516/segment-002.wav"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-fsS",
+          "-m",
+          "30",
+          "-X",
+          "POST",
+          "-F",
+          "file=@run/examplechannel-2026-06-25-040516/segment-002.wav",
+          "http://127.0.0.1:8178/inference"
+        ],
+        "command": "curl"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-ss",
+          "10",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-vframes",
+          "1",
+          "-q:v",
+          "3",
+          "run/examplechannel-2026-06-25-040516/frames/frame-0m10s.jpg",
+          "-y"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-ss",
+          "30",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-vframes",
+          "1",
+          "-q:v",
+          "3",
+          "run/examplechannel-2026-06-25-040516/frames/frame-0m30s.jpg",
+          "-y"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-d",
+          "run/examplechannel-2026-06-25-040516/.stalker-score-results.XXXXXX"
+        ],
+        "command": "mktemp"
+      },
+      {
+        "argv": [
+          "-d"
+        ],
+        "command": "mktemp"
+      },
+      {
+        "argv": [
+          "--model",
+          "Gemini 3.1 Pro (High)",
+          "--print-timeout",
+          "45s",
+          "--print",
+          "You are scoring Twitch/YouTube stream moments for a highlight reel.\n\nScore for ENTERTAINMENT VALUE — moments viewers would want to see in a highlights compilation:\n- Funny reactions, rage moments, hype moments\n- Hot takes, controversial opinions, rants\n- Impressive gameplay, clutch plays, fails\n- Unexpected events, surprise reveals, pranks\n- Wholesome interactions, viewer call-outs\n- Tech drama, industry gossip, juicy takes\n- Memes born, catchphrases created, inside jokes\n\nSignals boosting the score:\n- VOLUME_SPIKE=true means the streamer got loud here (excitement/rage)\n- CHAT_SPIKE=true means chat went wild here (hype/reaction)\n- Both together = almost certainly a gem\n\nScore 1-10 for entertainment value. 7+ = gem worthy. Reply ONLY with JSON:\n{\"score\": N, \"type\": \"reaction/take/gameplay/fail/hype/wholesome/drama/meme/rant/other\", \"title\": \"short catchy title (5-8 words)\", \"summary\": \"one sentence explaining why this moment is worth saving\"}\n\nSignals: VOLUME_SPIKE=true, CHAT_SPIKE=false\n\nSegment:\nA dramatic highlight in first segment.\n\n<output_contract>\nReturn exactly one JSON object and nothing else. Do not summarize the whole stream. Do not use markdown.\nRequired keys: score, type, title, summary.\nUse score as an integer 1-10, type as a short category, title as a 5-8 word headline, and summary as one sentence explaining why this specific moment is worth saving.\n</output_contract>"
+        ],
+        "command": "agy",
+        "stdin": ""
+      },
+      {
+        "argv": [
+          "-d"
+        ],
+        "command": "mktemp"
+      },
+      {
+        "argv": [
+          "--model",
+          "Gemini 3.1 Pro (High)",
+          "--print-timeout",
+          "45s",
+          "--print",
+          "You are scoring Twitch/YouTube stream moments for a highlight reel.\n\nScore for ENTERTAINMENT VALUE — moments viewers would want to see in a highlights compilation:\n- Funny reactions, rage moments, hype moments\n- Hot takes, controversial opinions, rants\n- Impressive gameplay, clutch plays, fails\n- Unexpected events, surprise reveals, pranks\n- Wholesome interactions, viewer call-outs\n- Tech drama, industry gossip, juicy takes\n- Memes born, catchphrases created, inside jokes\n\nSignals boosting the score:\n- VOLUME_SPIKE=true means the streamer got loud here (excitement/rage)\n- CHAT_SPIKE=true means chat went wild here (hype/reaction)\n- Both together = almost certainly a gem\n\nScore 1-10 for entertainment value. 7+ = gem worthy. Reply ONLY with JSON:\n{\"score\": N, \"type\": \"reaction/take/gameplay/fail/hype/wholesome/drama/meme/rant/other\", \"title\": \"short catchy title (5-8 words)\", \"summary\": \"one sentence explaining why this moment is worth saving\"}\n\nSignals: VOLUME_SPIKE=true, CHAT_SPIKE=false\n\nSegment:\nA dramatic highlight in second segment.\n\n<output_contract>\nReturn exactly one JSON object and nothing else. Do not summarize the whole stream. Do not use markdown.\nRequired keys: score, type, title, summary.\nUse score as an integer 1-10, type as a short category, title as a 5-8 word headline, and summary as one sentence explaining why this specific moment is worth saving.\n</output_contract>"
+        ],
+        "command": "agy",
+        "stdin": ""
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-y",
+          "-ss",
+          "0",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-t",
+          "45",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "fast",
+          "-crf",
+          "28",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "64k",
+          "-movflags",
+          "+faststart",
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m00s.mp4"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "-nostdin",
+          "-y",
+          "-ss",
+          "20",
+          "-i",
+          "run/examplechannel-2026-06-25-040516/video.mp4",
+          "-t",
+          "45",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "fast",
+          "-crf",
+          "28",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "64k",
+          "-movflags",
+          "+faststart",
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m30s.mp4"
+        ],
+        "command": "ffmpeg"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m00s.mp4",
+          "Segment 1 (30s) A clear synthetic highlight  |  9/10  |  hype",
+          "Segment 1 (30s) A clear synthetic highlight",
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m00s-annotated.mp4"
+        ],
+        "command": "annotate-clip.sh"
+      },
+      {
+        "argv": [
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m30s.mp4",
+          "Segment 2 (30s) A clear synthetic highlight  |  9/10  |  hype",
+          "Segment 2 (30s) A clear synthetic highlight",
+          "run/examplechannel-2026-06-25-040516/clips/clip-00m30s-annotated.mp4"
+        ],
+        "command": "annotate-clip.sh"
+      },
+      {
+        "argv": [
+          "<SANDBOX>/tree/scripts/stalker/stalker-complete-run.mjs",
+          "run/examplechannel-2026-06-25-040516"
+        ],
+        "command": "node"
+      }
+    ],
+    "completion_calls": 1
+  }
+]
