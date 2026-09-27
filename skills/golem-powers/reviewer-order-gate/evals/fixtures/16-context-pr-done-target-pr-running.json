@@ -1,0 +1,16 @@
+{
+  "specimen": "every-cited-pr-must-be-finished-context-first",
+  "expect": "DENY",
+  "reason_contains": "#2 head",
+  "gh": {
+    "prs": {
+      "1": { "state": "OPEN", "headRefName": "feat/a", "headRefOid": "1111111aaaa", "statusCheckRollup": [ { "__typename": "CheckRun", "name": "test", "status": "COMPLETED", "conclusion": "SUCCESS" } ], "head_age_minutes": 60 },
+      "2": { "state": "OPEN", "headRefName": "feat/b", "headRefOid": "2222222bbbb", "statusCheckRollup": [ { "__typename": "CheckRun", "name": "test", "status": "IN_PROGRESS", "conclusion": "" } ], "head_age_minutes": 1 }
+    }
+  },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "reviewer", "prompt": "Background: #1 is an example. Review #2 now." }
+  }
+}

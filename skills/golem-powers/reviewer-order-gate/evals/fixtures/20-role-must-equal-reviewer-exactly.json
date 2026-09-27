@@ -1,0 +1,9 @@
+{
+  "specimen": "role-matching-is-exact-reviewer-only",
+  "expect": "UNTOUCHED",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "Reviewer", "prompt": "no evidence here" }
+  }
+}

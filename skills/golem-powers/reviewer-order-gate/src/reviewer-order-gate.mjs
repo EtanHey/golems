@@ -6,6 +6,8 @@
 //   (a) an implementer report file whose last non-empty line is a DONE_<ID> marker;
 //   (b) an open GitHub PR whose head has every check completed. A cloud-session PR
 //       (branch claude/…) writes no DONE marker, so its head must also be ≥10 min old.
+// And EVERY PR the brief cites must be finished (golemsLead ruling on #296 R1):
+// one cited PR with running checks denies, whatever else the brief cites.
 //
 // evaluate() returns { verdict, reason }:
 //   SKIP     — not a reviewer spawn; the hook prints {}.
@@ -23,9 +25,11 @@ export const SPAWN_TOOL = /^mcp__cmux(layer)?__spawn_agent$/;
 export const DONE_MARKER = /^DONE_[A-Z0-9_]+$/;
 export const CLOUD_BRANCH_PREFIX = "claude/";
 export const CLOUD_STABLE_MS = 10 * 60_000;
-const MAX_FILE_BYTES = 256 * 1024;
+const MAX_REPORT_TAIL_BYTES = 256 * 1024;
+const MAX_BRIEF_BYTES = 1024 * 1024;
 const MAX_REPORT_CANDIDATES = 20;
-const MAX_PR_REFS = 3;
+const MAX_PR_REFS = 6;
+export const DEFAULT_GH_BUDGET_MS = 3500;
 const GH_FIELDS = "state,headRefName,headRefOid,statusCheckRollup,commits";
 const PENDING_CHECK_RUN = new Set(["QUEUED", "IN_PROGRESS", "PENDING", "WAITING", "REQUESTED"]);
 const PENDING_STATUS = new Set(["PENDING", "EXPECTED"]);
@@ -41,19 +45,35 @@ export function lastNonEmptyLine(text) {
   return "";
 }
 
-// Reads a whole small file, or only the tail of a large one (a report's marker is at the end).
-function readBounded(file) {
-  const st = statSync(file);
-  if (!st.isFile()) return null;
-  const n = Math.min(st.size, MAX_FILE_BYTES);
+function readRange(file, start, n) {
   const fd = openSync(file, "r");
   try {
     const buf = Buffer.allocUnsafe(n);
-    const got = readSync(fd, buf, 0, n, st.size - n);
+    const got = readSync(fd, buf, 0, n, start);
     return buf.subarray(0, got).toString("utf8");
   } finally {
     closeSync(fd);
   }
+}
+
+// A report's marker is at its end, so a large report is read from its tail. A
+// tail that starts mid-line drops that partial first line; a tail with no line
+// boundary at all has no provable last line and yields "".
+function readReportTail(file) {
+  const st = statSync(file);
+  if (!st.isFile()) return null;
+  if (st.size <= MAX_REPORT_TAIL_BYTES) return readRange(file, 0, st.size);
+  const tail = readRange(file, st.size - MAX_REPORT_TAIL_BYTES - 1, MAX_REPORT_TAIL_BYTES + 1);
+  const nl = tail.indexOf("\n");
+  return nl < 0 ? "" : tail.slice(nl + 1);
+}
+
+// A brief is read whole: its evidence can sit anywhere, usually at the start.
+function readBrief(file) {
+  const st = statSync(file);
+  if (!st.isFile()) return null;
+  if (st.size > MAX_BRIEF_BYTES) throw new GateError(`brief ${file} is over ${MAX_BRIEF_BYTES / 1024} KiB; evidence not checked`);
+  return readRange(file, 0, st.size);
 }
 
 function expandHome(p) {
@@ -108,7 +128,7 @@ function collectBrief(input) {
   let text = "";
   if (typeof input.boot_prompt_path === "string" && input.boot_prompt_path.trim()) {
     const p = expandHome(input.boot_prompt_path.trim());
-    const body = readOrGateError(p, "boot_prompt_path");
+    const body = readBriefOrGateError(p, "boot_prompt_path");
     briefFiles.push(p);
     text = body;
   } else if (typeof input.prompt === "string") {
@@ -118,17 +138,18 @@ function collectBrief(input) {
     const p = expandHome(m[1].replace(/[.,;:!?]+$/, ""));
     if (briefFiles.includes(p)) continue;
     briefFiles.push(p);
-    text += `\n${readOrGateError(p, "the brief's Read-and-follow file")}`;
+    text += `\n${readBriefOrGateError(p, "the brief's Read-and-follow file")}`;
   }
   return { text, briefFiles };
 }
 
-function readOrGateError(p, what) {
+function readBriefOrGateError(p, what) {
   try {
-    const body = readBounded(p);
+    const body = readBrief(p);
     if (body == null) throw new Error("not a file");
     return body;
   } catch (err) {
+    if (err instanceof GateError) throw err;
     throw new GateError(`could not read ${what} ${p} (${err.code ?? err.message})`);
   }
 }
@@ -138,7 +159,7 @@ function checkReports(paths) {
   for (const p of paths.slice(0, MAX_REPORT_CANDIDATES)) {
     let body;
     try {
-      body = readBounded(p);
+      body = readReportTail(p);
     } catch {
       continue; // prose paths that are not files are not evidence either way
     }
@@ -156,6 +177,8 @@ function runGh(args, { cwd, deadline, now }) {
     cwd,
     encoding: "utf8",
     timeout: remaining,
+    // SIGTERM can be ignored and leaves spawnSync waiting; SIGKILL bounds the call.
+    killSignal: "SIGKILL",
     maxBuffer: 4 * 1024 * 1024,
   });
   if (proc.error?.code === "ENOENT") throw new GateError("gh is not installed or not on PATH");
@@ -180,57 +203,78 @@ function headCommitDate(pr) {
   return Number.isFinite(t) ? t : null;
 }
 
-// Returns null when the PR is done-evidence, else why it is not.
-function prNotDoneReason(ref, pr, nowMs) {
-  if (pr == null) return `${ref.label} was not found`;
+// Classifies one cited PR:
+//   done     — open, checks all completed (and a cloud head ≥10 min old): evidence;
+//   blocking — checks running or not yet reported, or a fresh cloud head: denies;
+//   ignored  — merged, closed or not found: neither evidence nor a block.
+function assessPr(ref, pr, nowMs) {
+  if (pr == null) return { status: "ignored", why: `${ref.label} was not found` };
   if (typeof pr !== "object" || !("statusCheckRollup" in pr)) {
     throw new GateError(`gh pr view ${ref.label} returned an unexpected shape`);
   }
-  if (pr.state && pr.state !== "OPEN") return `${ref.label} is ${pr.state}, not an open PR under review`;
+  // A merged or closed PR cannot be the review target. Its checks can still show
+  // pending after merge (seen live on #290), so state is decided first.
+  if (pr.state && pr.state !== "OPEN") {
+    return { status: "ignored", why: `${ref.label} is ${pr.state}, not an open PR under review` };
+  }
   const { total, pending } = classifyChecks(pr.statusCheckRollup);
   const head = String(pr.headRefOid ?? "").slice(0, 8);
-  if (total === 0) return `${ref.label} has no checks reported on head ${head} yet`;
-  if (pending.length) return `${ref.label} head ${head} has checks still running (${pending.slice(0, 3).join(", ")})`;
+  if (pending.length) {
+    return { status: "blocking", why: `${ref.label} head ${head} has checks still running (${pending.slice(0, 3).join(", ")})` };
+  }
+  if (total === 0) return { status: "blocking", why: `${ref.label} has no checks reported on head ${head} yet` };
   if (String(pr.headRefName ?? "").startsWith(CLOUD_BRANCH_PREFIX)) {
     const at = headCommitDate(pr);
     if (at == null) throw new GateError(`could not read the head commit date of ${ref.label}`);
-    const ageMin = Math.floor((nowMs - at) / 60_000);
     if (nowMs - at < CLOUD_STABLE_MS) {
-      return `${ref.label} is a cloud branch ${pr.headRefName} whose head is ${ageMin} min old (needs ≥10 min stable)`;
+      const ageMin = Math.floor((nowMs - at) / 60_000);
+      return { status: "blocking", why: `${ref.label} is a cloud branch ${pr.headRefName} whose head is ${ageMin} min old (needs ≥10 min stable)` };
     }
   }
-  return null;
+  return { status: "done" };
+}
+
+export function clampBudget(ms) {
+  const n = Number(ms);
+  return Number.isFinite(n) && n > 0 ? Math.min(n, DEFAULT_GH_BUDGET_MS) : DEFAULT_GH_BUDGET_MS;
 }
 
 export function evaluate(payload, opts = {}) {
   const now = opts.now ?? Date.now;
-  const budgetMs = opts.ghBudgetMs ?? 3500;
+  const budgetMs = clampBudget(opts.ghBudgetMs);
   if (!payload || typeof payload !== "object") throw new GateError("payload is not an object");
   if (!SPAWN_TOOL.test(String(payload.tool_name ?? ""))) return { verdict: "SKIP" };
   const input = payload.tool_input ?? {};
-  if (String(input.role ?? "").trim().toLowerCase() !== "reviewer") return { verdict: "SKIP" };
+  if (input.role !== "reviewer") return { verdict: "SKIP" };
 
   try {
     const { text, briefFiles } = collectBrief(input);
     const reports = checkReports(extractPaths(text).filter((p) => !briefFiles.includes(p)));
-    if (reports.done) return { verdict: "ALLOW", reason: `implementer report ${reports.done} ends in DONE` };
+    const refs = extractPrRefs(text);
+    if (refs.length > MAX_PR_REFS) {
+      throw new GateError(`brief cites ${refs.length} PRs; over ${MAX_PR_REFS} cannot all be checked inside the hook timeout`);
+    }
 
-    const refs = extractPrRefs(text).slice(0, MAX_PR_REFS);
-    const missing = reports.notDone.map((p) => `report ${p} does not end in a DONE_ marker`);
+    const blocking = [];
+    const notEvidence = reports.done ? [] : reports.notDone.map((p) => `report ${p} does not end in a DONE_ marker`);
+    let donePr = null;
     if (refs.length) {
       const cwd = [input.cwd, payload.cwd].find((d) => typeof d === "string" && path.isAbsolute(d)) ?? process.cwd();
       const deadline = now() + budgetMs;
       for (const ref of refs) {
-        const pr = runGh(ref.args, { cwd: expandHome(cwd), deadline, now });
-        const why = prNotDoneReason(ref, pr, now());
-        if (why == null) return { verdict: "ALLOW", reason: `${ref.label} has finished checks` };
-        missing.push(why);
+        const verdict = assessPr(ref, runGh(ref.args, { cwd: expandHome(cwd), deadline, now }), now());
+        if (verdict.status === "done") donePr ??= ref.label;
+        else if (verdict.status === "blocking") blocking.push(verdict.why);
+        else notEvidence.push(verdict.why);
       }
     }
-    if (!missing.length) {
-      missing.push("the brief cites no implementer report ending in a DONE_ marker and no PR reference");
+    if (blocking.length) return { verdict: "DENY", reason: blocking.join("; ") };
+    if (reports.done) return { verdict: "ALLOW", reason: `implementer report ${reports.done} ends in DONE` };
+    if (donePr) return { verdict: "ALLOW", reason: `${donePr} has finished checks` };
+    if (!notEvidence.length) {
+      notEvidence.push("the brief cites no implementer report ending in a DONE_ marker and no PR reference");
     }
-    return { verdict: "DENY", reason: missing.join("; ") };
+    return { verdict: "DENY", reason: notEvidence.join("; ") };
   } catch (err) {
     if (err instanceof GateError) return { verdict: "ADVISORY", reason: err.message };
     throw err;

@@ -8,8 +8,8 @@
 //
 // Fail-open contract: any internal error, missing gh, or gh timeout allows the
 // spawn with an advisory. The gate never blocks on its own failure. gh calls
-// share one budget (REVIEWER_ORDER_GATE_GH_BUDGET_MS, default 3500) so the hook
-// finishes inside its 5 s manifest timeout.
+// share one budget (REVIEWER_ORDER_GATE_GH_BUDGET_MS, default and ceiling 3500)
+// and a timed-out gh is SIGKILLed, so the hook finishes inside its 5 s timeout.
 
 import { readSync } from "node:fs";
 import { evaluate } from "../src/reviewer-order-gate.mjs";
@@ -58,8 +58,8 @@ function main() {
     const raw = readBoundedStdin();
     if (raw === null) return advisory("hook input over 256 KiB");
     if (!raw.trim()) return emit({});
-    const budget = Number(process.env.REVIEWER_ORDER_GATE_GH_BUDGET_MS);
-    const result = evaluate(JSON.parse(raw), { ghBudgetMs: Number.isFinite(budget) && budget > 0 ? budget : undefined });
+    // evaluate() clamps the budget to 3.5 s, under the 5 s manifest timeout.
+    const result = evaluate(JSON.parse(raw), { ghBudgetMs: process.env.REVIEWER_ORDER_GATE_GH_BUDGET_MS });
     if (result.verdict === "DENY") return deny(result.reason);
     if (result.verdict === "ADVISORY") return advisory(result.reason);
     return emit({});
