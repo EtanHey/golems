@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 # Sourced only by process-stream.sh; definitions only, same scoring shell.
 # Globals (R): AGY_BIN, CODEX_BIN, CODEX_TIMEOUT_BIN, OUT_DIR, SCORING_PROMPT,
 # STALKER_AGY_MODEL, STALKER_AGY_TIMEOUT, STALKER_CODEX_MODEL,

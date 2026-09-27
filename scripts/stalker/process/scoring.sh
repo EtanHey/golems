@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 # Sourced only by process-stream.sh; definitions only. Entry owns config,
 # stage order and trap install/removal; all functions run in the entry shell.
 # prepare_scoring_stage globals (R): OUT_DIR, VIDEO, CHAT_LOG,
