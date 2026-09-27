@@ -132,5 +132,4 @@ def test_two_copies_and_symlink_resolve_their_own_code(tmp_path):
     empty.mkdir()
     assert first.detect_sqlite_recent_window_candidates(empty)["worker"] == "static-sqlite-recent-window-detector"
     assert second.detect_sqlite_recent_window_candidates(empty)["worker"] == "copy-b-detector"
-    if hasattr(second, "_detector"):
-        assert Path(second._detector.__file__).resolve() == source
+    assert Path(second.detect_sqlite_recent_window_candidates.__code__.co_filename).resolve() == source
