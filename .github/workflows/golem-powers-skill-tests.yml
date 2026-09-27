@@ -96,6 +96,7 @@ jobs:
                    ./scripts/tests/install-hooks.test.mjs \
                    ./scripts/cc/cc-usage/__tests__ \
                    ./scripts/cc/cc-statusline.test.ts \
+                   ./scripts/cc/cc-axiom-reporter.test.ts \
                    ./skills/golem-powers/never-fabricate/scripts/__tests__ \
                    ./skills/golem-powers/drive-filing/scripts
 
