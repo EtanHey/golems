@@ -8,7 +8,7 @@ RecruiterGolem — contact finding, style-adapted outreach, interview practice w
 - Drafts personalized outreach messages adapted to recipient style
 - Tracks conversations and follow-ups in dual storage (local SQLite + cloud Supabase)
 - Runs interview practice sessions with Elo ratings across 7 modes
-- Matches job listings against 823 LinkedIn connections for warm intros
+- Matches job listings against your LinkedIn connections for warm intros
 
 ## Quick Start
 
@@ -35,7 +35,7 @@ E1: Contact Finder → E2: Outreach DB → E3: Style Adapter
 
 7 modes with Elo-rated skill tracking:
 
-- Behavioral, Technical, System Design, Code Review, Optimization, Debugging, Mixed
+- LeetCode, System Design, Debugging, Code Review, Behavioral, Optimization, Complexity
 
 Practice sessions are stored in Supabase for cross-device continuity. Elo ratings persist per category.
 

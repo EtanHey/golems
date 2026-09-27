@@ -11,6 +11,6 @@ ContentGolem — LinkedIn posts, Soltome publishing, and ghostwriting.
 
 ## Current State
 
-Logic lives in skills (`golem-powers/content/`) and services (`soltome-client.ts`, `post-generator.ts`). Will migrate to `src/` in a future phase.
+Code lives in `src/` (content pipeline, brand schema, ComfyUI image generation, data-viz, quality scoring, Remotion rendering, HTTP service), with CLI entry points in `scripts/`, n8n workflows in `workflows/`, and the `draft` / `publish` skills in `skills/`.
 
 See [CLAUDE.md](./CLAUDE.md) for the content pipeline and Soltome API.

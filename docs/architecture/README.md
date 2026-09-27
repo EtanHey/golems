@@ -20,7 +20,7 @@ Files in this folder get indexed into BrainLayer for semantic search:
 brainlayer search "telegram routing" --project golems
 
 # Or via MCP
-mcp__brainlayer__brainlayer_search(query="telegram routing", project="<BRAINLAYER_PROJECT_SLUG>")
+mcp__brainlayer__brain_search(query="telegram routing", project="<BRAINLAYER_PROJECT_SLUG>")
 ```
 
 ## Current Documents
