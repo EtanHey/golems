@@ -58,8 +58,8 @@ class JevGateReplayTest(unittest.TestCase):
 
     def test_preflight_loads_exact_unique_set_without_label_leakage(self):
         preflight = replay.preflight_fixtures(REPO)
-        self.assertEqual(preflight["source_count"], 59)
-        self.assertEqual(len(preflight["decisions"]), 59)
+        self.assertEqual(preflight["source_count"], 60)
+        self.assertEqual(len(preflight["decisions"]), 60)
         self.assertEqual(preflight["exclusions"], [])
         self.assertEqual(
             sum(row["gate"] == "idle-dwell" for row in preflight["decisions"]),
@@ -67,7 +67,7 @@ class JevGateReplayTest(unittest.TestCase):
         )
         self.assertEqual(
             sum(row["gate"] == "false-green" for row in preflight["decisions"]),
-            36,
+            37,
         )
         self.assertLess(
             max(row["serialized_bytes"] for row in preflight["decisions"]),
