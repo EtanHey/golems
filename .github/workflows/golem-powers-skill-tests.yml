@@ -102,7 +102,8 @@ jobs:
 
       - name: node suites
         run: |
-          node --test scripts/tests/google-drive-oauth-guard.test.mjs \
+          node --test scripts/tests/bats-coverage.test.mjs \
+                      scripts/tests/google-drive-oauth-guard.test.mjs \
                       scripts/tests/stalker-morning-launchd.test.mjs \
                       scripts/tests/scripts-compat-shims-sync.test.mjs \
                       scripts/tests/scripts-compat-shims.test.mjs
@@ -131,6 +132,7 @@ jobs:
 
   shell-skill-tests:
     name: Shell skill test suites (bats)
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -156,103 +158,11 @@ jobs:
         with:
           bun-version-file: .bun-version
 
-      - name: golem-install symlink invariants
-        run: |
-          bats scripts/tests/test-cleanup-legacy-commands.bats \
-               scripts/tests/test-golem-install-validate.bats \
-               scripts/tests/test-skill-catalog-lint.bats
+      - name: Guard scripts/tests Bats coverage
+        run: node scripts/ci/run-bats-suites.mjs --check
 
-      - name: PR size-label script
-        run: bats scripts/tests/test-pr-size-labels.bats
-
-      - name: repoGolem worktree bootstrap
-        run: bats scripts/tests/test-worktree-bootstrap.bats
-
-      - name: qa-video package contract
-        run: bats scripts/tests/test-qa-video-package.bats
-
-      - name: qa-video dense action windows
-        run: bats scripts/tests/test-qa-video-dense-windows.bats
-
-      - name: hook installer guards (hooks-live gc exemption, wired-hook symlink refusal)
-        run: bats scripts/tests/test-worktree-gc.bats scripts/tests/test-install-wired-hook.bats scripts/tests/test-wired-hook-shared-parser.bats
-
-      # Blocking since GO-6: its launcher tests went red on master (the payload
-      # omitted worktree-bootstrap.sh) and only the warn-only glob below saw it.
-      - name: golems-sync installer contract
-        run: bats scripts/tests/test-golems-sync.bats
-
-      # Blocking, unlike the whole-directory glob below: this suite is the guard
-      # that keeps the bun pin single, and a guard that only warns does not stop
-      # the drift it exists to catch.
-      - name: Single bun pin, no workflow literals
-        run: bats scripts/tests/test-bun-version-pin.bats
-
-      # The eight steps above explicitly cover twelve .bats files. Every remaining
-      # suite runs in the whole-directory step below, so new tests stay visible
-      # without another hand-maintained workflow edit.
-      #
-      # Why warn and not fail (2026-09-06): two suites are red on master today.
-      # A blocking gate over a known-red directory is worse than the gap it
-      # closes — same shape and same reason as the warn job in pr-size-label.yml.
-      # Drop `continue-on-error` once scripts/tests/ is green.
-      # This step also runs every other .bats suite so each remains visible the
-      # day it lands.
-      #
-      # Why warn and not fail: the directory is not green yet. A blocking gate
-      # over a known-red directory is worse than the gap it closes -- same shape
-      # and reason as the warn job in pr-size-label.yml.
-      #
-      # Why one bats call PER FILE, each bounded: bats has no per-test timeout,
-      # and `tracked dispatcher source isolates concurrent Codex profiles for
-      # the same project` (test 208, test-repogolem-dispatch.bats:2523) hangs
-      # forever -- its stubbed `codex` busy-waits on a release sentinel that
-      # never appears on the runner. A single whole-directory call therefore ran
-      # 46 minutes and reported nothing. Per-file bounds cap the damage at one
-      # file and let every other suite still report, which is the only way to
-      # get a complete count while that test hangs. 180s is ~3x the ~60s the
-      # whole healthy directory took on the runner.
-      - name: Whole scripts/tests directory (non-blocking)
-        continue-on-error: true
-        run: |
-          set -uo pipefail
-          fails="$RUNNER_TEMP/fails.txt"; : > "$fails"
-          hung="$RUNNER_TEMP/hung.txt"; : > "$hung"
-          ok=0
-          not_ok=0
-          set +e
-          for f in scripts/tests/*.bats; do
-            name="$(basename "$f")"
-            out="$RUNNER_TEMP/$name.tap"
-            timeout --kill-after=10s 180s bats --tap "$f" > "$out" 2>&1
-            rc=$?
-            cat "$out"
-            ok=$(( ok + $(grep -c '^ok ' "$out") ))
-            not_ok=$(( not_ok + $(grep -c '^not ok ' "$out") ))
-            sed -n "s/^not ok [0-9]* /$name: /p" "$out" >> "$fails"
-            if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
-              printf '%s\n' "$name" >> "$hung"
-            fi
-          done
-          set -e
-          {
-            printf '## scripts/tests — %s ok, %s not ok\n\n' "$ok" "$not_ok"
-            if [ -s "$hung" ]; then
-              printf '**Timed out after 180s, so their remaining tests are in neither count:**\n\n'
-              sed 's/^/- `/; s/$/`/' "$hung"
-              printf '\n'
-            fi
-            if [ -s "$fails" ]; then
-              printf 'Failing tests:\n\n'
-              sed 's/^/- `/; s/$/`/' "$fails"
-            elif [ ! -s "$hung" ]; then
-              printf 'Every suite in `scripts/tests/` passed.\n'
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-          while IFS= read -r line; do
-            printf '::warning file=scripts/tests::%s\n' "$line"
-          done < "$fails"
-          while IFS= read -r line; do
-            printf '::warning file=scripts/tests::%s timed out after 180s\n' "$line"
-          done < "$hung"
-          if [ -s "$fails" ] || [ -s "$hung" ]; then exit 1; fi
+      # Every manifest entry runs once and blocks CI. Each file has a 180s
+      # timeout: test-repogolem-dispatch.bats has previously hung waiting for
+      # its concurrent Codex profiles' release sentinel (formerly line 2523).
+      - name: Run every registered Bats suite
+        run: node scripts/ci/run-bats-suites.mjs --run
