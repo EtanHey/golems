@@ -59,6 +59,12 @@ function runHook({ payload, files = {}, gh, env = {} }, stdinOverride) {
       // One canned response per PR number (gh.prs), with gh.pr as the default.
       const prs = { ...(gh.pr ? { default: { ...gh.pr, head_age_minutes: gh.head_age_minutes } } : {}), ...(gh.prs ?? {}) };
       for (const [n, { head_age_minutes, ...pr }] of Object.entries(prs)) {
+        // Per-PR failure modes: {"bad-json": true} serves garbage, {"hang": true} ignores SIGTERM and sleeps.
+        if (pr["bad-json"] || pr.hang) {
+          writeFileSync(path.join(dir, `resp-${n}.json`), pr.hang ? "" : "not json{");
+          if (pr.hang) writeFileSync(path.join(dir, `resp-${n}.hang`), "");
+          continue;
+        }
         const committedDate = new Date(Date.now() - head_age_minutes * 60_000).toISOString();
         writeFileSync(path.join(dir, `resp-${n}.json`), JSON.stringify({ ...pr, commits: [{ oid: "older", committedDate: "2020-01-01T00:00:00Z" }, { oid: pr.headRefOid, committedDate }] }));
       }
@@ -67,6 +73,7 @@ function runHook({ payload, files = {}, gh, env = {} }, stdinOverride) {
         `n=$(printf '%s' "$3" | sed 's#.*/##')`,
         `f='${dir}/resp-'"$n"'.json'`,
         `[ -f "$f" ] || f='${dir}/resp-default.json'`,
+        `if [ -f '${dir}/resp-'"$n"'.hang' ]; then trap '' TERM; exec sleep 10; fi`,
         `cat "$f"`,
       ].join("\n"));
     } else {
@@ -111,6 +118,11 @@ test("fixture coverage: every brief-required specimen is present", () => {
     "done-report-does-not-excuse-a-cited-pr-with-running-checks",
     "gh-that-ignores-sigterm-is-still-bounded-and-fails-open",
     "role-matching-is-exact-reviewer-only",
+    "merged-cited-pr-with-pending-checks-denies",
+    "closed-cited-pr-with-pending-checks-denies",
+    "observed-pending-denies-despite-later-bad-json-lookup",
+    "observed-pending-denies-despite-later-hang-lookup",
+    "observed-pending-denies-despite-earlier-bad-json-lookup",
   ]) expect(specimens).toContain(s);
 });
 
