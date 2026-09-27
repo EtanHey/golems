@@ -59,7 +59,12 @@ function runHook({ payload, files = {}, gh, env = {} }, stdinOverride) {
       // One canned response per PR number (gh.prs), with gh.pr as the default.
       const prs = { ...(gh.pr ? { default: { ...gh.pr, head_age_minutes: gh.head_age_minutes } } : {}), ...(gh.prs ?? {}) };
       for (const [n, { head_age_minutes, ...pr }] of Object.entries(prs)) {
-        // Per-PR failure modes: {"bad-json": true} serves garbage, {"hang": true} ignores SIGTERM and sleeps.
+        // Per-PR failure modes: {"bad-json": true} serves garbage, {"hang": true} ignores SIGTERM and
+        // sleeps, {"raw": <json>} serves that JSON verbatim (malformed shapes).
+        if ("raw" in pr) {
+          writeFileSync(path.join(dir, `resp-${n}.json`), JSON.stringify(pr.raw));
+          continue;
+        }
         if (pr["bad-json"] || pr.hang) {
           writeFileSync(path.join(dir, `resp-${n}.json`), pr.hang ? "" : "not json{");
           if (pr.hang) writeFileSync(path.join(dir, `resp-${n}.hang`), "");
@@ -123,6 +128,9 @@ test("fixture coverage: every brief-required specimen is present", () => {
     "observed-pending-denies-despite-later-bad-json-lookup",
     "observed-pending-denies-despite-later-hang-lookup",
     "observed-pending-denies-despite-earlier-bad-json-lookup",
+    "observed-pending-denies-despite-later-object-rollup",
+    "observed-pending-denies-despite-later-null-check-in-rollup",
+    "malformed-rollup-alone-fails-open",
   ]) expect(specimens).toContain(s);
 });
 

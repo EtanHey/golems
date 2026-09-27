@@ -210,7 +210,8 @@ function headCommitDate(pr) {
 //   ignored  — merged or closed with checks finished, or not found.
 function assessPr(ref, pr, nowMs) {
   if (pr == null) return { status: "ignored", why: `${ref.label} was not found` };
-  if (typeof pr !== "object" || !("statusCheckRollup" in pr)) {
+  const rollup = pr?.statusCheckRollup;
+  if (typeof pr !== "object" || !Array.isArray(rollup) || rollup.some((c) => c == null || typeof c !== "object")) {
     throw new GateError(`gh pr view ${ref.label} returned an unexpected shape`);
   }
   // Every cited PR must be finished (golemsLead ruling, #296 R2): pending checks
@@ -270,8 +271,8 @@ export function evaluate(payload, opts = {}) {
         try {
           verdict = assessPr(ref, runGh(ref.args, { cwd: expandHome(cwd), deadline, now }), now());
         } catch (err) {
-          if (!(err instanceof GateError)) throw err;
-          lookupErrors.push(err.message);
+          // Any per-PR failure, including an unexpected crash, is a lookup error.
+          lookupErrors.push(err instanceof GateError ? err.message : `checking ${ref.label} failed (${err?.message ?? err})`);
           continue;
         }
         if (verdict.status === "done") donePr ??= ref.label;
