@@ -31,7 +31,7 @@ Re-run the check after installing. Do NOT proceed until all 6 are green.
 
 If `~/.golems/config.yaml` exists:
 1. Read and display it
-2. Run `sync-config.sh --validate` if available
+2. Run `bash "$REPOS_PATH/golems/scripts/sync/sync-config.sh" --validate` if the golems checkout exists
 3. Require `machineRole` to be exactly `workspace` or `daemon-host`; if absent or invalid, ask and write it before any repo action
 4. Ask: use as-is or reconfigure?
 
@@ -56,9 +56,9 @@ If it doesn't exist:
 
 ## Phase 4: Wire MCP Servers (Step 4)
 
-1. Run `sync-config.sh --diff` — show what will change
+1. Run `bash "$REPOS_PATH/golems/scripts/sync/sync-config.sh" --diff` — show what will change
 2. Get user confirmation
-3. Run `sync-config.sh --enforce` to apply
+3. Run `bash "$REPOS_PATH/golems/scripts/sync/sync-config.sh" --enforce` to apply
 
 ## Phase 5: Machine-Specific Config (Step 5)
 

@@ -57,7 +57,7 @@ cat ~/.golems/config.yaml 2>/dev/null
 ### If config.yaml EXISTS:
 
 1. Display the current config to the user (machineRole, reposPath, tools, features, contextProfiles)
-2. Validate it: `bash <reposPath>/orchestrator/scripts/sync-config.sh --validate` (substituting the actual reposPath from config)
+2. Validate it: `bash "<reposPath>/golems/scripts/sync/sync-config.sh" --validate` (substituting the actual reposPath from config)
 3. If `machineRole` is missing or is not exactly `workspace` or `daemon-host`, refuse all cloning and ask the machine-role question below. Write the explicit answer before continuing.
 4. Ask: **"Config found. Use it as-is, or reconfigure?"**
 5. If use as-is -> jump to Step 3 (classify repos)
@@ -185,7 +185,7 @@ through the focused test, or run the installer only when an actual install is in
 Wire MCP servers across all repos using the config.yaml source of truth:
 
 ```bash
-bash "$REPOS_PATH/orchestrator/scripts/sync-config.sh" --diff
+bash "$REPOS_PATH/golems/scripts/sync/sync-config.sh" --diff
 ```
 
 Show the diff output to the user. Ask:
@@ -193,10 +193,10 @@ Show the diff output to the user. Ask:
 
 If yes:
 ```bash
-bash "$REPOS_PATH/orchestrator/scripts/sync-config.sh" --enforce
+bash "$REPOS_PATH/golems/scripts/sync/sync-config.sh" --enforce
 ```
 
-If sync-config.sh is not available (for example, orchestrator has no existing checkout), skip this step and note it in the final report. Never clone an unclassified repository to obtain it.
+If sync-config.sh is not available (for example, golems has no checkout at `reposPath`), skip this step and note it in the final report. Never clone an unclassified repository to obtain it.
 
 ---
 
@@ -323,7 +323,7 @@ Render one release-gate line for every helper result. Do not replace `REFUSE`, f
 - **NEVER** clone repos without confirming the workspace path exists
 - **NEVER** clone when `machineRole` is missing, unrecognised, or `daemon-host`
 - **NEVER** clone an installable or unclassified repository; obey the helper result from `release-gate.json`
-- **NEVER** run sync-config.sh --enforce without showing --diff first
+- **NEVER** run scripts/sync/sync-config.sh --enforce without showing --diff first
 - **NEVER** block setup on BrainLayer — it's optional
 - **NEVER** commit .claude.local.md — it's machine-specific
 
@@ -335,6 +335,6 @@ This skill is invoked by:
 - Fresh machine setup flow
 
 It uses:
-- `sync-config.sh` from orchestrator repo
+- `scripts/sync/sync-config.sh` from the golems checkout
 - `config.yaml` as single source of truth
 - BrainLayer MCP for connection verification

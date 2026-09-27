@@ -82,7 +82,7 @@
       "absorbed_from": "wizard",
       "absorbed_id": 1,
       "prompt": "Run /wizard on a fresh machine with role workspace. All 6 prerequisites are installed (brew, node, bun, claude, gh, git). No ~/.golems/config.yaml exists. The user explicitly chooses machineRole workspace and workspace root ~/Gits, then declines all opt-in features. No repos exist. BrainBar is running at /tmp/brainbar.sock.",
-      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with machineRole workspace, reposPath ~/Gits, and all features OFF. Reads release-gate.json through the decision helper. Clones only checkout-backed golems, installs or reports the VoiceBar, BrainBar, and cmuxlayer artifacts, and does not clone installable or unclassified repos. Merges the versioned config/codex [agents] defaults into ~/.codex/config.toml without replacing unrelated keys and copies recon.toml plus packet.toml into ~/.codex/agents. Skips sync-config because orchestrator is unavailable. Verifies BrainLayer via brain_search. Displays the full setup report.",
+      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with machineRole workspace, reposPath ~/Gits, and all features OFF. Reads release-gate.json through the decision helper. Clones only checkout-backed golems, installs or reports the VoiceBar, BrainBar, and cmuxlayer artifacts, and does not clone installable or unclassified repos. Merges the versioned config/codex [agents] defaults into ~/.codex/config.toml without replacing unrelated keys and copies recon.toml plus packet.toml into ~/.codex/agents. Runs golems/scripts/sync/sync-config.sh --diff from the golems checkout it just cloned, shows the output, and runs --enforce only after the user approves. Verifies BrainLayer via brain_search. Displays the full setup report.",
       "files": [],
       "assertions": [
         {
@@ -146,7 +146,7 @@
       "absorbed_from": "wizard",
       "absorbed_id": 3,
       "prompt": "Run /wizard on a machine where ~/.golems/config.yaml already exists with reposPath: ~/Gits but has no machineRole. Existing checkouts are present and sync-config.sh was previously run. BrainBar is NOT running (no /tmp/brainbar.sock).",
-      "expected_output": "Agent reads existing config.yaml and displays it. Refuses all repo cloning until the user explicitly chooses workspace or daemon-host and the value is written. It then evaluates release-gate.json, offers sync-config.sh --diff if the existing script is available, detects BrainBar is not running, and reports it as optional but recommended.",
+      "expected_output": "Agent reads existing config.yaml and displays it. Refuses all repo cloning until the user explicitly chooses workspace or daemon-host and the value is written. It then evaluates release-gate.json, offers golems/scripts/sync/sync-config.sh --diff if the golems checkout exists, detects BrainBar is not running, and reports it as optional but recommended.",
       "files": [],
       "assertions": [
         {
@@ -159,7 +159,7 @@
         },
         {
           "name": "offers-sync-config-diff",
-          "description": "Agent offers to run sync-config.sh --diff to check for configuration drift"
+          "description": "Agent offers to run golems/scripts/sync/sync-config.sh --diff to check for configuration drift"
         },
         {
           "name": "reports-brainlayer-unavailable",
