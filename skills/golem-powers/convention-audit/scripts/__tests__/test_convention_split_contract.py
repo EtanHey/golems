@@ -110,3 +110,27 @@ def test_real_cli_preserves_target_state_gate(tmp_path, mutate):
         assert completed.stderr == ""
         assert log["status"] == "complete"
         assert json.loads(completed.stdout)["findings"] == 0
+
+
+def test_two_copies_and_symlink_resolve_their_own_code(tmp_path):
+    import shutil
+
+    copies = [tmp_path / name for name in ("a", "b")]
+    for copy in copies:
+        shutil.copytree(SCRIPTS, copy, ignore=shutil.ignore_patterns("__pycache__"))
+    source = copies[1] / "convention_audit_impl" / "detector.py"
+    if not source.exists():  # The same contract also runs against the monolith.
+        source = copies[1] / "convention_audit.py"
+    source.write_text(source.read_text().replace("static-sqlite-recent-window-detector", "copy-b-detector"))
+    link = tmp_path / "symlink.py"
+    link.symlink_to(copies[1] / "convention_audit.py")
+    original_path = sys.path[:]
+    first = load_runner(copies[0] / "convention_audit.py")
+    second = load_runner(link)
+    assert sys.path == original_path
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert first.detect_sqlite_recent_window_candidates(empty)["worker"] == "static-sqlite-recent-window-detector"
+    assert second.detect_sqlite_recent_window_candidates(empty)["worker"] == "copy-b-detector"
+    if hasattr(second, "_detector"):
+        assert Path(second._detector.__file__).resolve() == source
