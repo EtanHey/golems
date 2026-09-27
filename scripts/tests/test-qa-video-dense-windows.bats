@@ -142,6 +142,45 @@ setup() {
   }
 }
 
+@test "dense-windows: PNGs and PTS rows stay one-to-one when ffmpeg output sync would duplicate (#279)" {
+  # Bursty variable-frame-rate video with an audio track, like a screen
+  # recording with mic: after seeking to 2.27 s the first frame lands 0.5 s in,
+  # and the image2 muxer's default cfr sync pads that gap with duplicate PNGs
+  # that showinfo never sees (30 PNGs, 29 PTS rows).
+  vfr="$WORK/vfr.mp4"
+  ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc=size=640x360:rate=60 \
+    -f lavfi -i sine=d=6 -t 6 \
+    -vf "select='lt(mod(t,3),0.4)+lt(mod(t,0.7),0.05)',settb=1/600" \
+    -fps_mode vfr -video_track_timescale 600 -pix_fmt yuv420p -c:a aac -shortest "$vfr"
+  printf '2.27\t5.27\tclick\n' > "$WORK/vfr.tsv"
+
+  # Precondition: this input really makes default output sync duplicate.
+  mkdir -p "$WORK/dup"
+  ffmpeg -hide_banner -nostdin -ss 2.270 -i "$vfr" -t 3.000 \
+    -vf 'fps=10,showinfo,scale=480:-2' -frames:v 30 "$WORK/dup/f_%05d.png" 2> "$WORK/dup.log"
+  grep -Eq 'dup=[1-9]' "$WORK/dup.log" || { cat "$WORK/dup.log"; return 1; }
+
+  run "$DENSE" "$vfr" "$WORK/vfr.tsv" "$WORK/out" 10 0 0
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+
+  # Frames actually decoded in the window (independent passthrough extraction,
+  # showinfo logs past the output limit, so keep those before t=3).
+  want="$(ffmpeg -hide_banner -nostdin -ss 2.270 -i "$vfr" -t 3.000 \
+      -vf 'fps=10,showinfo' -fps_mode passthrough -f null - 2>&1 \
+    | sed -n 's/.*Parsed_showinfo.* n: *[0-9]* .*pts_time:\([0-9.]*\).*/\1/p' \
+    | awk '$1 < 3 { printf "%.3f\n", 2.27 + $1 }')"
+  [ "$(printf '%s\n' "$want" | head -1)" = "2.770" ]
+  [ "$(printf '%s\n' "$want" | wc -l | tr -d ' ')" -eq 25 ]
+
+  got="$(cut -f3 "$WORK/out/frames.tsv")"
+  [ "$got" = "$want" ] || { printf 'got:\n%s\nwant:\n%s\n' "$got" "$want"; return 1; }
+
+  # One tile per real frame: no duplicate timestamps, totals match the index.
+  [ -z "$(printf '%s\n' "$got" | uniq -d)" ]
+  [ "$(awk -F'\t' '{ n += $4 } END { print n }' "$WORK/out/index.tsv")" -eq 25 ]
+  [ "$(cut -f1-4 "$WORK/out/index.tsv")" = "$(printf 'sheet_001.jpg\t2.770\t10\t20\nsheet_002.jpg\t4.770\t10\t5')" ]
+}
+
 @test "dense-windows: frames.tsv agrees with index.tsv on a 30fps source" {
   run "$DENSE" "$VIDEO" "$CUES" "$WORK/out" 10 0.5 0.5
   [ "$status" -eq 0 ]

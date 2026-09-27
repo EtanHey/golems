@@ -113,8 +113,13 @@ while IFS="$TAB" read -r ws we label; do
   # showinfo logs each output frame's pts_time, relative to the seek point.
   # AIDEV-NOTE: never index from $ws + i/fps alone; the first frame's PTS can
   # be > 0 after input seeking (#279 review), shifting every tile's time.
+  # AIDEV-NOTE: -fps_mode passthrough keeps PNGs and showinfo rows one-to-one.
+  # The image2 muxer's default cfr sync pads the gap before a late first frame
+  # with duplicates emitted after showinfo (VFR recordings with an audio track),
+  # so PNG n would no longer be showinfo row n. The fps filter already makes
+  # the stream constant-rate; the muxer must not add or drop frames.
   ffmpeg -hide_banner -loglevel info -nostdin -ss "$ws" -i "$VIDEO" -t "$(awk -v s="$ws" -v e="$we" 'BEGIN { printf "%.3f", e - s }')" \
-    -vf "fps=$FPS,showinfo,scale=$TILE_W:-2" -frames:v "$frames" "$SCRATCH/f_%05d.png" \
+    -vf "fps=$FPS,showinfo,scale=$TILE_W:-2" -fps_mode passthrough -frames:v "$frames" "$SCRATCH/f_%05d.png" \
     2> "$SCRATCH/showinfo.log" \
     || { tail -5 "$SCRATCH/showinfo.log" >&2; die "frame extraction failed for window $ws-$we"; }
 
