@@ -27,7 +27,8 @@ imports the facade or temporarily rewrites another module's globals.
 `tests/fixtures/split-contract.json` was captured from the unchanged entry at
 51459cd3 before extraction. The characterization suite compares output bytes,
 exit codes, signatures and serialized state; only its temporary fixture root is
-normalized. Existing tests were retained unchanged. `test_cli_lifecycle.py`
+normalized. The Python 3.11 override fixture preserves its older standard-library
+formatting; both versions were captured from the untouched baseline. Existing tests were retained unchanged. `test_cli_lifecycle.py`
 uses a local executable fixture for the model provider and real Git, nohup,
 process observation, worktrees, manifests and artifact files. This proves the
 local workflow plumbing, not paid-provider execution or an installed fleet run.

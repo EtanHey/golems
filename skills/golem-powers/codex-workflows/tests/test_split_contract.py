@@ -23,6 +23,15 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 GOLDEN = Path(__file__).parent / "fixtures" / "split-contract.json"
 
 
+def expected_contract():
+    data = json.loads(GOLDEN.read_text())
+    # argparse formatting changed in Python 3.13. Both variants
+    # were captured from untouched 51459cd3, not blessed from the candidate.
+    if sys.version_info < (3, 13):
+        data.update(json.loads(GOLDEN.with_name("split-contract-python311.json").read_text()))
+    return data
+
+
 def load_module(path=SCRIPTS / "codex_workflows.py"):
     # Existing callers do not insert the entry module in sys.modules.
     spec = importlib.util.spec_from_file_location("isolated_workflows", path)
@@ -33,7 +42,7 @@ def load_module(path=SCRIPTS / "codex_workflows.py"):
 
 def capture(module, args):
     stdout, stderr = io.StringIO(), io.StringIO()
-    with mock.patch.object(sys, "argv", ["codex_workflows.py"]), redirect_stdout(stdout), redirect_stderr(stderr):
+    with mock.patch.dict(os.environ, {"COLUMNS": "80"}), mock.patch.object(sys, "argv", ["codex_workflows.py"]), redirect_stdout(stdout), redirect_stderr(stderr):
         try:
             code = module.main(args)
         except SystemExit as exc:
@@ -108,13 +117,13 @@ def snapshot(root):
 
 
 def test_baseline_golden_contract(tmp_path):
-    assert snapshot(tmp_path) == json.loads(GOLDEN.read_text())
+    assert snapshot(tmp_path) == expected_contract()
 
 
 def test_golden_comparison_rejects_a_changed_exit_code(tmp_path):
     changed = snapshot(tmp_path)
     changed["launch_only"]["code"] = 0
-    assert changed != json.loads(GOLDEN.read_text())
+    assert changed != expected_contract()
 
 
 @pytest.mark.parametrize("via_shell", [False, True])
@@ -123,8 +132,8 @@ def test_copied_entry_runs_outside_checkout(tmp_path, via_shell):
     shutil.copytree(SCRIPTS, copied, ignore=shutil.ignore_patterns("__pycache__"))
     executable = copied / ("codex-workflows.sh" if via_shell else "codex_workflows.py")
     argv = [str(executable)] if via_shell else [sys.executable, str(executable)]
-    result = subprocess.run(argv + ["--help"], cwd=tmp_path, capture_output=True, text=True, timeout=10)
-    assert {"stdout": result.stdout, "stderr": result.stderr, "code": result.returncode} == json.loads(GOLDEN.read_text())["cli:--help"]
+    result = subprocess.run(argv + ["--help"], cwd=tmp_path, env={**os.environ, "COLUMNS": "80"}, capture_output=True, text=True, timeout=10)
+    assert {"stdout": result.stdout, "stderr": result.stderr, "code": result.returncode} == expected_contract()["cli:--help"]
 
 
 def test_facade_worktree_override_reaches_launch(tmp_path):
