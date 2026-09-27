@@ -10,9 +10,14 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
 
 1. **agent-routing** - Cursor or a Gemini gatherer gathers and verifies (Gemini for the shapes the
    skill-creator eval marked helper-eligible; Cursor Auto-only as before). A gatherer never implements or reviews.
-   Implementation follows the vendor split: behaviour, security and UI work - Opus implements, Codex
+   Implementation follows the vendor split: behaviour and UI work - Opus implements, Codex
    reviews; tightly specified or mechanical work - Codex implements, Opus reviews; small repo-only
    doc/deletion PRs - Claude cloud implements, Codex reviews. The reviewer is always the other vendor.
+   The inner loop is sequential: the implementer goes first, and the reviewer is spawned or briefed only after
+   the implementer reports done (its DONE marker or report line; for a cloud implementer, PR head stable >=10 min
+   with checks finished). A reviewer never reads a half-finished diff. Security work (pending owner ratification):
+   Opus implements; the reviewer is a security-specialised other-vendor model (Daybreak Blue), falling back to
+   Codex Sol at high effort plus a `codex-security` deep scan per security PR.
    Claude leads orchestrate and route work through visible panes. Each PR body records its implementer,
    review rounds, and bot/reviewer defects. Cursor, including `cursor-agent`, is Auto-only: never pass
    a model flag or model field because pinned Cursor drains its subscription pool fast.
