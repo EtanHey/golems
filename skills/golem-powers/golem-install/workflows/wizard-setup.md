@@ -58,7 +58,7 @@ If it doesn't exist:
 
 1. Run `bash "$REPOS_PATH/golems/scripts/sync/sync-config.sh" --diff` — show what will change
 2. Get user confirmation
-3. Run `sync-config.sh --enforce` to apply
+3. Run `bash "$REPOS_PATH/golems/scripts/sync/sync-config.sh" --enforce` to apply
 
 ## Phase 5: Machine-Specific Config (Step 5)
 

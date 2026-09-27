@@ -531,5 +531,33 @@ describe("wizard sync-config path", () => {
     expect(wizard).toContain("golems/scripts/sync/sync-config.sh\" --diff");
     expect(wizard).toContain("golems/scripts/sync/sync-config.sh\" --enforce");
     expect(wizard).toContain("golems/scripts/sync/sync-config.sh\" --validate");
+    const workflow = await readFile(join(installDir, "workflows", "wizard-setup.md"), "utf8");
+    expect(workflow).toContain("golems/scripts/sync/sync-config.sh\" --diff");
+    expect(workflow).toContain("golems/scripts/sync/sync-config.sh\" --enforce");
+  });
+
+  test("every sync-config.sh command in golem-install uses the canonical path", async () => {
+    // A bare `sync-config.sh --enforce` is not on PATH after the wizard, or runs another copy.
+    for (const path of installDocs(installDir)) {
+      const lines = (await readFile(path, "utf8")).split("\n");
+      for (const line of lines.filter((l) => /sync-config\.sh"? --(diff|enforce|validate)/.test(l))) {
+        expect(line, path).toContain("scripts/sync/sync-config.sh");
+      }
+    }
+  });
+
+  test("no golem-install doc ties sync-config to the orchestrator repo", async () => {
+    for (const path of installDocs(installDir)) {
+      const sentences = (await readFile(path, "utf8")).split(/[.\n]/);
+      for (const sentence of sentences.filter((s) => /sync-config/i.test(s))) {
+        expect(sentence, path).not.toMatch(/orchestrator/i);
+      }
+    }
+  });
+
+  test("the fresh-workspace eval runs sync-config from the golems checkout it cloned", async () => {
+    const data = await loadWizardEvals();
+    const fresh = data.evals.find((ev: { id: number }) => ev.id === 1);
+    expect(fresh.expected_output).toContain("golems/scripts/sync/sync-config.sh --diff");
   });
 });

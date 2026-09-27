@@ -323,7 +323,7 @@ Render one release-gate line for every helper result. Do not replace `REFUSE`, f
 - **NEVER** clone repos without confirming the workspace path exists
 - **NEVER** clone when `machineRole` is missing, unrecognised, or `daemon-host`
 - **NEVER** clone an installable or unclassified repository; obey the helper result from `release-gate.json`
-- **NEVER** run sync-config.sh --enforce without showing --diff first
+- **NEVER** run scripts/sync/sync-config.sh --enforce without showing --diff first
 - **NEVER** block setup on BrainLayer — it's optional
 - **NEVER** commit .claude.local.md — it's machine-specific
 
