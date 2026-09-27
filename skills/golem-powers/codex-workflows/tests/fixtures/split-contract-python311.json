@@ -1,0 +1,27 @@
+{
+  "cli:": {
+    "code": 2,
+    "stderr": "usage: codex_workflows.py [-h]\n                          {agent,watch,status,harvest,cleanup,parallel,pipeline}\n                          ...\ncodex_workflows.py: error: the following arguments are required: command\n",
+    "stdout": ""
+  },
+  "cli:--help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py [-h]\n                          {agent,watch,status,harvest,cleanup,parallel,pipeline}\n                          ...\n\nHeadless Codex worktree orchestration primitives.\n\npositional arguments:\n  {agent,watch,status,harvest,cleanup,parallel,pipeline}\n    agent               launch one verified headless worker\n    watch               watch process exit, then parse logs\n    status              print a run manifest\n    harvest             copy durable logs and artifacts\n    cleanup             remove harvested worktrees\n    parallel            launch a validated worker fan-out\n    pipeline            run ordered parallel stages\n\noptions:\n  -h, --help            show this help message and exit\n"
+  },
+  "cli:agent --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py agent [-h] --repo REPO --name NAME --brief BRIEF\n                                --lead LEAD\n                                (--run-id RUN_ID | --manifest MANIFEST)\n                                [--run-dir RUN_DIR] [--model MODEL]\n                                [--effort {xhigh,max}]\n                                [--report-dir REPORT_DIR]\n                                [--artifact ARTIFACT]\n                                [--launch-timeout LAUNCH_TIMEOUT]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo REPO\n  --name NAME\n  --brief BRIEF\n  --lead LEAD\n  --run-id RUN_ID\n  --manifest MANIFEST\n  --run-dir RUN_DIR\n  --model MODEL\n  --effort {xhigh,max}\n  --report-dir REPORT_DIR\n  --artifact ARTIFACT\n  --launch-timeout LAUNCH_TIMEOUT\n"
+  },
+  "cli:unknown": {
+    "code": 2,
+    "stderr": "usage: codex_workflows.py [-h]\n                          {agent,watch,status,harvest,cleanup,parallel,pipeline}\n                          ...\ncodex_workflows.py: error: argument command: invalid choice: 'unknown' (choose from 'agent', 'watch', 'status', 'harvest', 'cleanup', 'parallel', 'pipeline')\n",
+    "stdout": ""
+  },
+  "cli:watch --help": {
+    "code": 0,
+    "stderr": "",
+    "stdout": "usage: codex_workflows.py watch [-h] (--run-id RUN_ID | --manifest MANIFEST)\n                                [--run-dir RUN_DIR] [--interval INTERVAL]\n                                [--timeout TIMEOUT]\n\noptions:\n  -h, --help            show this help message and exit\n  --run-id RUN_ID\n  --manifest MANIFEST\n  --run-dir RUN_DIR\n  --interval INTERVAL\n  --timeout TIMEOUT, --watch-timeout TIMEOUT\n"
+  }
+}
