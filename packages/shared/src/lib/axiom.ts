@@ -8,10 +8,11 @@
  * break the main application flow.
  *
  * Config: ~/.golems/config.yaml → observability section
- * Token: AXIOM_TOKEN env var or config.yaml
+ * Token + dataset: resolveAxiomCredentials() — env → ~/.config/golems/axiom.env → config.yaml
  */
 
 import { Axiom } from "@axiomhq/js";
+import { resolveAxiomCredentials } from "./axiom-credentials";
 import { loadConfig } from "./config";
 
 // ─── Singleton ──────────────────────────────────────────────────
@@ -27,10 +28,9 @@ let axiomDataset = "golems";
 export function getAxiom(): Axiom | null {
   if (axiomClient) return axiomClient;
 
-  const config = loadConfig();
-  const token = process.env.AXIOM_TOKEN || config.observability.axiomToken;
-  axiomEnabled = config.observability.enabled && !!token;
-  axiomDataset = config.observability.axiomDataset || "golems";
+  const { token, dataset } = resolveAxiomCredentials(loadConfig().observability);
+  axiomEnabled = !!token;
+  axiomDataset = dataset;
 
   if (!axiomEnabled || !token) return null;
 
