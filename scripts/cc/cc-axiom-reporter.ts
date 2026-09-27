@@ -8,9 +8,8 @@
  * What it does:
  * 1. Reads SessionEnd payload from stdin (session_id, transcript_path, cwd)
  * 2. Parses .jsonl transcript for token usage
- * 3. Calculates cost using model pricing
- * 4. Enriches with Git metadata (project, branch)
- * 5. Sends to Axiom via @golems/shared
+ * 3. Enriches with Git metadata (project, branch)
+ * 4. Sends token counts (no cost estimate) to Axiom via @golems/shared
  *
  * Debug: CC_AXIOM_DEBUG=1 to dump stdin + log to ~/.golems/cc-axiom-debug.log
  */
@@ -19,25 +18,11 @@ import { readFileSync, appendFileSync, mkdirSync } from "fs";
 import { join, basename } from "path";
 import { execSync } from "child_process";
 import { hostname } from "os";
-import { logCCUsage, flushAxiom } from "../../packages/shared/src/lib/axiom";
+import { logCCUsage, flushAxiom, type CCUsageEvent } from "../../packages/shared/src/lib/axiom";
 
-// ─── Model Pricing (per MTok, synced from cc-usage.ts) ──────────
-
-const PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheCreate: number }> = {
-  "claude-opus-4-6":              { input: 15.0,  output: 75.0,  cacheRead: 1.5,   cacheCreate: 18.75  },
-  "claude-opus-4-5-20250620":     { input: 15.0,  output: 75.0,  cacheRead: 1.5,   cacheCreate: 18.75  },
-  "claude-sonnet-4-5-20250929":   { input: 3.0,   output: 15.0,  cacheRead: 0.30,  cacheCreate: 3.75   },
-  "claude-sonnet-4-5-20250514":   { input: 3.0,   output: 15.0,  cacheRead: 0.30,  cacheCreate: 3.75   },
-  "claude-haiku-4-5-20251001":    { input: 0.80,  output: 4.0,   cacheRead: 0.08,  cacheCreate: 1.0    },
-};
-
-function getModelPricing(model: string) {
-  if (PRICING[model]) return PRICING[model];
-  if (model.includes("opus"))   return PRICING["claude-opus-4-6"];
-  if (model.includes("sonnet")) return PRICING["claude-sonnet-4-5-20250929"];
-  if (model.includes("haiku"))  return PRICING["claude-haiku-4-5-20251001"];
-  return PRICING["claude-sonnet-4-5-20250929"];
-}
+// AIDEV-NOTE: no cost_usd on purpose. The old per-MTok table had no Opus 5.x /
+// Sonnet 5 / Fable rows (every "opus" priced as opus-4-6) and seats run on a
+// subscription, so any dollar figure here was invented. Report tokens only.
 
 // ─── Debug Logging ──────────────────────────────────────────────
 
@@ -57,27 +42,25 @@ function debugLog(msg: string): void {
 
 // ─── Transcript Parsing (matches cc-usage.ts format) ────────────
 
-interface SessionStats {
+export interface SessionStats {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreateTokens: number;
   messageCount: number;
-  costUsd: number;
   model: string;
   modelCounts: Record<string, number>;
   firstTimestamp: string;
   lastTimestamp: string;
 }
 
-function parseTranscript(transcriptPath: string): SessionStats {
+export function parseTranscript(transcriptPath: string): SessionStats {
   const stats: SessionStats = {
     inputTokens: 0,
     outputTokens: 0,
     cacheReadTokens: 0,
     cacheCreateTokens: 0,
     messageCount: 0,
-    costUsd: 0,
     model: "unknown",
     modelCounts: {},
     firstTimestamp: "",
@@ -109,14 +92,7 @@ function parseTranscript(transcriptPath: string): SessionStats {
       stats.cacheCreateTokens += cacheCreate;
       stats.messageCount++;
 
-      // Per-message cost using that message's model pricing
       const msgModel = msg.model || "unknown";
-      const mp = getModelPricing(msgModel);
-      stats.costUsd +=
-        (inTok / 1_000_000) * mp.input +
-        (outTok / 1_000_000) * mp.output +
-        (cacheRead / 1_000_000) * mp.cacheRead +
-        (cacheCreate / 1_000_000) * mp.cacheCreate;
 
       if (msgModel !== "unknown") {
         stats.modelCounts[msgModel] = (stats.modelCounts[msgModel] || 0) + 1;
@@ -150,6 +126,38 @@ function getGitBranch(cwd: string): string {
 
 function getProjectName(cwd: string): string {
   return basename(cwd);
+}
+
+// ─── Event ──────────────────────────────────────────────────────
+
+export interface SessionMeta {
+  sessionId: string;
+  project: string;
+  branch: string;
+  host: string;
+  durationSeconds?: number;
+}
+
+export function buildCCUsageEvent(
+  stats: SessionStats,
+  meta: SessionMeta,
+): Omit<CCUsageEvent, "_type"> {
+  return {
+    model: stats.model,
+    project: meta.project,
+    input_tokens: stats.inputTokens,
+    output_tokens: stats.outputTokens,
+    cache_read_tokens: stats.cacheReadTokens,
+    cache_write_tokens: stats.cacheCreateTokens,
+    session_id: meta.sessionId,
+    duration_seconds: meta.durationSeconds,
+    message_count: stats.messageCount,
+    started_at: stats.firstTimestamp,
+    ended_at: stats.lastTimestamp,
+    source: "session-end-hook",
+    hostname: meta.host,
+    branch: meta.branch,
+  };
 }
 
 // ─── Main ───────────────────────────────────────────────────────
@@ -192,9 +200,6 @@ async function main() {
     process.exit(0);
   }
 
-  // Cost is already calculated per-message in parseTranscript
-  const cost = stats.costUsd;
-
   // Calculate duration
   let durationSeconds: number | undefined;
   if (data.duration_seconds) {
@@ -209,26 +214,12 @@ async function main() {
   const project = getProjectName(cwd);
   const branch = getGitBranch(cwd);
 
-  debugLog(`model=${stats.model} cost=$${cost.toFixed(4)} msgs=${stats.messageCount} project=${project}`);
+  debugLog(`model=${stats.model} msgs=${stats.messageCount} project=${project}`);
 
   // Send to Axiom
-  logCCUsage({
-    model: stats.model,
-    project,
-    input_tokens: stats.inputTokens,
-    output_tokens: stats.outputTokens,
-    cache_read_tokens: stats.cacheReadTokens,
-    cache_write_tokens: stats.cacheCreateTokens,
-    cost_estimate_usd: Math.round(cost * 10000) / 10000,
-    session_id: sessionId,
-    duration_seconds: durationSeconds,
-    message_count: stats.messageCount,
-    started_at: stats.firstTimestamp,
-    ended_at: stats.lastTimestamp,
-    source: "session-end-hook",
-    hostname: hostname(),
-    branch,
-  });
+  logCCUsage(
+    buildCCUsageEvent(stats, { sessionId, project, branch, host: hostname(), durationSeconds }),
+  );
 
   await flushAxiom();
   debugLog("sent to axiom, done");
@@ -236,9 +227,11 @@ async function main() {
 
 // ─── Entry Point ────────────────────────────────────────────────
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    debugLog(`error: ${err.message}\n${err.stack}`);
-    process.exit(0); // Always exit clean — never block CC shutdown
-  });
+if (import.meta.main) {
+  main()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      debugLog(`error: ${err.message}\n${err.stack}`);
+      process.exit(0); // Always exit clean — never block CC shutdown
+    });
+}

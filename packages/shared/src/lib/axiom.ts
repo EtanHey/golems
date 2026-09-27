@@ -80,7 +80,6 @@ export interface CCUsageEvent {
   output_tokens: number;
   cache_read_tokens?: number;
   cache_write_tokens?: number;
-  cost_estimate_usd: number;
   session_id?: string;
   duration_seconds?: number;
   message_count?: number;
