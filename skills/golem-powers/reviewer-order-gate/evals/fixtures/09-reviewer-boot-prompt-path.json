@@ -1,0 +1,13 @@
+{
+  "specimen": "boot-prompt-path-brief-is-read-for-evidence",
+  "expect": "ALLOW",
+  "files": {
+    "impl/report.md": "PR READY\nDONE_GOLEMSCLAUDE_ABC123\n",
+    "brief.md": "# Reviewer brief\n\nThe implementer is done: {{DIR}}/impl/report.md\n\nReview it.\n"
+  },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "reviewer", "boot_prompt_path": "{{DIR}}/brief.md" }
+  }
+}

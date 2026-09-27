@@ -1,0 +1,11 @@
+{
+  "specimen": "gh-missing-fails-open-with-advisory",
+  "expect": "ADVISORY",
+  "reason_contains": "gh",
+  "gh": "missing",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "reviewer", "prompt": "Review golems #293." }
+  }
+}

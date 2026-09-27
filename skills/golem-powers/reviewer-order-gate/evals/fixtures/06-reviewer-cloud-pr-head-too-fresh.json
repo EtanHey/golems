@@ -1,0 +1,21 @@
+{
+  "specimen": "cloud-branch-pr-whose-head-is-under-ten-minutes-old-is-denied",
+  "expect": "DENY",
+  "reason_contains": "cloud branch claude/",
+  "gh": {
+    "pr": {
+      "state": "OPEN",
+      "headRefName": "claude/github-issue-285-q3nqtb",
+      "headRefOid": "fedcba9876543210",
+      "statusCheckRollup": [
+        { "__typename": "CheckRun", "name": "test", "status": "COMPLETED", "conclusion": "SUCCESS" }
+      ]
+    },
+    "head_age_minutes": 4
+  },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmux__spawn_agent",
+    "tool_input": { "role": "reviewer", "prompt": "Cloud session opened EtanHey/golems#289 - review it." }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "specimen": "report-whose-done-marker-is-not-the-last-line-is-denied",
+  "expect": "DENY",
+  "reason_contains": "does not end in a DONE_ marker",
+  "files": { "impl/report.md": "# report\n\nDONE_GOLEMSCLAUDE_6DA082AF\n\nactually one more fix still in progress\n" },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "reviewer", "prompt": "Review per {{DIR}}/impl/report.md" }
+  }
+}
