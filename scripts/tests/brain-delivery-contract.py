@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,10 @@ ENTRY = "scripts/stalker/stalker-brainlayer-telegram.sh"
 FIXTURES = Path(__file__).parent / "fixtures/brain-delivery-contract"
 DATE = "2026-06-18"
 RUN = f"example-{DATE}-120000"
+EXCEPTION_CASES = {
+    "digest-exception", "digest-unprocessed-exception",
+    "digest-chat-directory", "digest-ledger-directory", "digest-permission",
+}
 
 STUB = '''import json, os, pathlib, subprocess, sys
 name = pathlib.Path(sys.argv[0]).name
@@ -143,6 +148,20 @@ def scenario(name, data, env):
         elif name == "digest-exception":
             (run / "gems.md").unlink()
             (run / "gems.md").mkdir()
+        elif name == "digest-unprocessed-exception":
+            (run / ".stage-process.done").unlink()
+            (run / ".stage-archive.done").unlink()
+            (run / "_DRIVE-LEDGER.md").unlink()
+            (run / "gems.md").unlink()
+            (run / "gems.md").mkdir()
+        elif name == "digest-chat-directory":
+            (run / "chat.log").unlink()
+            (run / "chat.log").mkdir()
+        elif name == "digest-ledger-directory":
+            (run / "_DRIVE-LEDGER.md").unlink()
+            (run / "_DRIVE-LEDGER.md").mkdir()
+        elif name == "digest-permission":
+            (run / "gems.md").chmod(0)
         elif name == "digest-refusal":
             env["TELEGRAM_FAIL"] = "1"
         steps = [(digest + ["--dry-run"], {}), (digest, {})]
@@ -151,7 +170,32 @@ def scenario(name, data, env):
 
 CASES = ("usage", "dry-run", "store-success", "partial-retry", "queue-idempotent",
          "batch-success", "batch-partial", "batch-startup-failure", "payload-exception",
-         "empty-run", "digest-empty", "digest-mixed", "digest-no-scored-gems", "digest-refusal", "digest-exception")
+         "empty-run", "digest-empty", "digest-mixed", "digest-no-scored-gems", "digest-refusal", "digest-exception",
+         "digest-unprocessed-exception", "digest-chat-directory", "digest-ledger-directory", "digest-permission")
+
+
+def exception_stderr(value):
+    """Only traceback frames/source/carets are volatile by lead ruling."""
+    lines = value.splitlines()
+    assert value.endswith("\n") and len(lines) >= 3
+    assert lines[0] == "Traceback (most recent call last):"
+    frames = lines[1:-1]
+    assert any(line.startswith('  File "') for line in frames)
+    assert all(line.startswith("  ") for line in frames), frames
+    assert re.match(r"^(?:IsADirectoryError|PermissionError): ", lines[-1]), lines[-1]
+    return "Traceback (most recent call last):\n<TRACEBACK_FRAMES>\n" + lines[-1] + "\n"
+
+
+def snapshot_bytes(path):
+    try:
+        return path.read_bytes()
+    except PermissionError:
+        mode = stat.S_IMODE(path.stat().st_mode)
+        path.chmod(mode | stat.S_IRUSR)
+        try:
+            return path.read_bytes()
+        finally:
+            path.chmod(mode)
 
 
 def capture(root, case):
@@ -190,10 +234,16 @@ def capture(root, case):
             proc = subprocess.run(["/bin/bash", str(root / ENTRY), *args], input=b"caller stdin sentinel\n",
                                   cwd=data, env={**env, **overrides}, capture_output=True, timeout=30)
             paths = sorted(p for p in data.rglob("*") if p.is_file())
-            files = {normalize(str(p.relative_to(data)).encode()): normalize(p.read_bytes()) for p in paths}
+            files = {normalize(str(p.relative_to(data)).encode()): normalize(snapshot_bytes(p)) for p in paths}
             assert len(files) == len(paths), "normalization must not collapse artifacts"
-            results.append({"stdout": normalize(proc.stdout), "stderr": normalize(proc.stderr),
-                            "exit": proc.returncode, "files": files})
+            stderr = normalize(proc.stderr)
+            if case in EXCEPTION_CASES:
+                stderr = exception_stderr(stderr)
+            result = {"stdout": normalize(proc.stdout), "stderr": stderr,
+                      "exit": proc.returncode, "files": files}
+            if case == "digest-permission":
+                result["gems_mode"] = oct(stat.S_IMODE((data / "runs" / RUN / "gems.md").stat().st_mode))
+            results.append(result)
         return results
 
 
@@ -203,12 +253,13 @@ def main():
     if record:
         assert (root / ENTRY).read_bytes() == subprocess.check_output(["git", "show", f"{BASE}:{ENTRY}"], cwd=ROOT)
         FIXTURES.mkdir(parents=True, exist_ok=True)
-    for case in CASES:
+    for case in (os.environ.get("BRAIN_CONTRACT_CASE"),) if os.environ.get("BRAIN_CONTRACT_CASE") else CASES:
         version = f"py{sys.version_info.major}{sys.version_info.minor}"
-        suffix = f"-{version}" if case == "digest-exception" else ""
+        versioned = case in EXCEPTION_CASES
+        suffix = f"-{version}" if versioned else ""
         path = FIXTURES / f"{case}{suffix}.json"
-        if case == "digest-exception" and not record and not path.exists():
-            print(f"digest-exception: SKIP (no untouched-base traceback for {version})")
+        if versioned and not record and not path.exists():
+            print(f"{case}: SKIP (no untouched-base traceback for {version})")
             continue
         actual = capture(root, case)
         if record:
