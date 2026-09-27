@@ -9,11 +9,13 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
 > Scope: golems-ecosystem work. More-specific repo law may tighten, never loosen, these contracts.
 
 1. **agent-routing** - Cursor or a Gemini gatherer gathers and verifies (Gemini for the shapes the
-   skill-creator eval marked helper-eligible; Cursor Auto-only as before); Codex implements; Claude
-   orchestrates and reviews. A gatherer never implements or reviews.
-   Leads route work through visible panes and keep implementation authority in Codex lanes. Cursor,
-   including `cursor-agent`, is Auto-only: never pass a model flag or model field because pinned Cursor
-   drains its subscription pool fast.
+   skill-creator eval marked helper-eligible; Cursor Auto-only as before). A gatherer never implements or reviews.
+   Implementation follows the vendor split: behaviour, security and UI work - Opus implements, Codex
+   reviews; tightly specified or mechanical work - Codex implements, Opus reviews; small repo-only
+   doc/deletion PRs - Claude cloud implements, Codex reviews. The reviewer is always the other vendor.
+   Claude leads orchestrate and route work through visible panes. Each PR body records its implementer,
+   review rounds, and bot/reviewer defects. Cursor, including `cursor-agent`, is Auto-only: never pass
+   a model flag or model field because pinned Cursor drains its subscription pool fast.
 
 2. **PR-loop** - Assigned lanes run branch -> commit -> push -> PR -> review -> merge.
    A DONE report without its PR URL is invalid; merge authority follows the approved lane contract.
