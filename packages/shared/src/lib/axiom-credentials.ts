@@ -7,7 +7,8 @@
  * Env file: $GOLEMS_AXIOM_ENV, else ~/.config/golems/axiom.env
  *
  * observability.enabled false wins over every source: the file is not even read.
- * A missing or unreadable file resolves to no token — never a throw, never a log.
+ * A missing or unreadable file, or a malformed (unterminated / mismatched quote)
+ * value, resolves to no token from the file — never a throw, never a log.
  *
  * AIDEV-NOTE: never log the token or the env file's contents from here; the
  * doctor reports tokenSource, not the value.
@@ -38,11 +39,24 @@ export function defaultAxiomEnvPath(env: Env = process.env): string {
   return join(env.HOME || homedir(), ".config", "golems", "axiom.env");
 }
 
+/**
+ * A value is bare (no quote characters at all) or wrapped in one matching pair
+ * of quotes with none inside. Anything else — an unterminated or mismatched
+ * quote — is malformed and yields null, so the key counts as absent.
+ */
+function unquote(raw: string): string | null {
+  const wrapped = raw.match(/^(['"])(.*)\1$/);
+  if (wrapped) return /['"]/.test(wrapped[2]) ? null : wrapped[2];
+  return /['"]/.test(raw) ? null : raw;
+}
+
 function parseEnvFile(body: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of body.split("\n")) {
     const m = line.trim().match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (m) out[m[1]] = m[2].trim().replace(/^(['"])(.*)\1$/, "$2");
+    if (!m) continue;
+    const value = unquote(m[2].trim());
+    if (value) out[m[1]] = value;
   }
   return out;
 }

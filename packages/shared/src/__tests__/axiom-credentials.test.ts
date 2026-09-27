@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -134,5 +135,52 @@ describe("resolveAxiomCredentials", () => {
     } finally {
       for (const s of spies) s.mockRestore();
     }
+  });
+});
+
+describe("malformed quoted values in the env file", () => {
+  const MALFORMED = [
+    `AXIOM_TOKEN="${FILE_TOKEN}`,
+    `AXIOM_TOKEN='${FILE_TOKEN}`,
+    `AXIOM_TOKEN=${FILE_TOKEN}"`,
+    `AXIOM_TOKEN="${FILE_TOKEN}'`,
+    `AXIOM_TOKEN="${FILE_TOKEN}"trailing"`,
+  ];
+
+  for (const line of MALFORMED) {
+    it(`rejects ${JSON.stringify(line.replace(FILE_TOKEN, "<token>"))}: no token`, () => {
+      writeEnvFile(`${line}\n`);
+      const creds = resolveAxiomCredentials({ enabled: true }, { HOME: home });
+      expect(creds.token).toBeNull();
+    });
+  }
+
+  it("falls back to a valid config token when the file value is malformed", () => {
+    writeEnvFile(`AXIOM_TOKEN="${FILE_TOKEN}\n`);
+    const creds = resolveAxiomCredentials({ enabled: true, axiomToken: CONFIG_TOKEN }, { HOME: home });
+    expect(creds).toMatchObject({ token: CONFIG_TOKEN, tokenSource: "config" });
+  });
+
+  it("rejects a malformed dataset too, falling back to golems", () => {
+    writeEnvFile(`AXIOM_TOKEN=${FILE_TOKEN}\nAXIOM_DATASET="half-quoted\n`);
+    expect(resolveAxiomCredentials({ enabled: true }, { HOME: home }).dataset).toBe("golems");
+  });
+
+  it("getAxiom() builds no client from a malformed file (real config loader, subprocess)", () => {
+    mkdirSync(join(home, ".golems"), { recursive: true });
+    writeFileSync(join(home, ".golems", "config.yaml"), "observability:\n  enabled: true\n");
+    writeEnvFile(`AXIOM_TOKEN="${FILE_TOKEN}\n`);
+    const env: Record<string, string | undefined> = { ...process.env, HOME: home };
+    delete env.AXIOM_TOKEN;
+    delete env.AXIOM_DATASET;
+    delete env.GOLEMS_AXIOM_ENV;
+    const axiom = join(import.meta.dir, "../lib/axiom.ts");
+    const result = spawnSync(
+      process.execPath,
+      ["-e", `const { getAxiom } = await import(${JSON.stringify(axiom)}); console.log("client:" + (getAxiom() === null ? "null" : "built"));`],
+      { encoding: "utf8", env },
+    );
+    expect(result.stdout).toContain("client:null");
+    expect(result.stdout + result.stderr).not.toContain(FILE_TOKEN);
   });
 });
