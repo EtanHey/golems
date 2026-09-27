@@ -83,7 +83,7 @@ export interface GolemsConfig {
   observability: {
     /** Axiom dataset name (set after creating account at axiom.co) */
     axiomDataset?: string;
-    /** Axiom API token (prefer env var AXIOM_TOKEN) */
+    /** Axiom API token (prefer AXIOM_TOKEN in ~/.config/golems/axiom.env) */
     axiomToken?: string;
     /** Enable log drain to Axiom */
     enabled: boolean;
@@ -717,7 +717,7 @@ telegram:
 
 # Observability (Axiom log drain)
 # Sign up at axiom.co (free tier: 500MB/day)
-# Then set axiomDataset and AXIOM_TOKEN env var
+# Then put AXIOM_TOKEN (and AXIOM_DATASET) in ~/.config/golems/axiom.env (mode 600)
 observability:
   enabled: false
   # axiomDataset: "golems"
