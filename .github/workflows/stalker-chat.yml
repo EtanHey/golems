@@ -5,6 +5,7 @@ on:
     paths:
       - "scripts/stalker/build-twitch-chat-lurker.sh"
       - "scripts/lib/stream-helpers.sh"
+      - "scripts/lib/stream/**"
       - "scripts/stalker/post-stream.sh"
       - "scripts/stalker/process-stream.sh"
       - "scripts/tests/test-post-stream-tail-gate.bats"
@@ -20,6 +21,7 @@ on:
     paths:
       - "scripts/stalker/build-twitch-chat-lurker.sh"
       - "scripts/lib/stream-helpers.sh"
+      - "scripts/lib/stream/**"
       - "scripts/stalker/post-stream.sh"
       - "scripts/stalker/process-stream.sh"
       - "scripts/tests/test-post-stream-tail-gate.bats"
