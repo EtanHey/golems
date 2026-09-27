@@ -101,4 +101,4 @@ Sandbox: `https://sandbox.d.greeninvoice.co.il/api/v1`
 bun test packages/green-invoice-mcp/src/__tests__/
 ```
 
-46 tests covering auth flow, all 5 tools, Hebrew content, error handling, and retry logic.
+Tests cover the auth flow, all 5 tools, Hebrew content, error handling, and retry logic.

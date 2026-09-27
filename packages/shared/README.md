@@ -14,7 +14,7 @@ Shared infrastructure for the Golems ecosystem.
 ## Usage
 
 ```typescript
-import { createSupabaseClient } from "@golems/shared/lib/supabase-factory";
+import { getSupabase } from "@golems/shared/lib/supabase-factory";
 import { sendNotification } from "@golems/shared/lib/telegram-direct";
 import { logEvent } from "@golems/shared/lib/event-log";
 ```
