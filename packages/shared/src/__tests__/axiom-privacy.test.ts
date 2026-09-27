@@ -125,7 +125,6 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
       project: "golems",
       input_tokens: 1,
       output_tokens: 1,
-      cost_estimate_usd: 0,
       hostname: HOST,
       branch: `feat/${PERSON}-thing`,
     });
@@ -192,7 +191,6 @@ describe("send path — all five helpers, adversarial", () => {
       project: "golems",
       input_tokens: 1,
       output_tokens: 1,
-      cost_estimate_usd: 0,
       session_id: "fixture-session",
       hostname: HOST,
       branch: `feat/${PERSON}`,

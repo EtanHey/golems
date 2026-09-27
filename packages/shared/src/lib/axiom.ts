@@ -178,7 +178,6 @@ const ALLOWED_FIELDS: Record<AxiomEvent["_type"], Record<string, FieldKind>> = {
     output_tokens: "number",
     cache_read_tokens: "number",
     cache_write_tokens: "number",
-    cost_estimate_usd: "number",
     session_id: "id",
     duration_seconds: "number",
     message_count: "number",
