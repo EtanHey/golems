@@ -54,6 +54,15 @@ const DOMAIN_RE = {
   build: /(build (is )?green|compiles|cargo (build|test)|swift build|contract|builds clean|tests? (are )?green)/i,
 };
 
+// A review reference is not a served dashboard URL. Keep bare delivery URLs
+// gated; strip only a URL explicitly introduced as a review reference.
+const REVIEW_REFERENCE_RE = /\breview\s*(?:(?:is\s+)?at\s+|:\s*)https?:\/\/\S+/gi;
+// Possessive worker summaries relay another worker's result, not this seat's
+// completion. Limit the span to its predicate so subsequent claims survive.
+const WORKER_RESULT_RE = /\b(?:w\d+|worker|agent|reviewer|codex|cursor|claude)(?:['’]s)\s+[^.!?\n]{0,100}?\b(?:is|are)\s+(?:fixed|done|complete[d]?|verified)\b/gi;
+// Mentioning a marker held for approval is not emitting that marker.
+const DEFERRED_DONE_MARKER_RE = /\b(?:task_done|done)\s+marker\s+(?:waits?\s+for|awaits?)\b/gi;
+
 // ── Probe-evidence detectors ────────────────────────────────────────────────
 // All run over the `ev` evidence object (cmd = Bash commands + tool names,
 // out = tool_result outputs, all = both) — never assistant prose.
@@ -236,7 +245,9 @@ export function detectFalseGreen(transcript) {
   // ✅ does NOT override explicit in-progress language (cursor MEDIUM: "✅ not done
   // yet — still encoding" must not FLAG): if the only claim signal is the
   // checkmark and the turn says it's in progress, it is not a completion claim.
-  const searchableClaimText = claimSearchText(claimText);
+  const searchableClaimText = claimSearchText(claimText)
+    .replace(WORKER_RESULT_RE, " ")
+    .replace(DEFERRED_DONE_MARKER_RE, " ");
   const declaimed = searchableClaimText.replace(NEGATED_CLAIM_RE, " ");
   if (!CLAIM_RE.test(declaimed)) {
     return { verdict: "PASS", claim: false, domains: [], violations: [] };
@@ -253,7 +264,7 @@ export function detectFalseGreen(transcript) {
   // ffprobe/HTTP-200/click-through for a pure `git branch` turn. Claim detection
   // was already quote-aware; domain selection was not (2026-08-06 misfire).
   const domains = Object.entries(DOMAIN_RE)
-    .filter(([, re]) => re.test(searchableClaimText))
+    .filter(([, re]) => re.test(searchableClaimText.replace(REVIEW_REFERENCE_RE, " ")))
     .map(([d]) => d);
 
   const violations = [];

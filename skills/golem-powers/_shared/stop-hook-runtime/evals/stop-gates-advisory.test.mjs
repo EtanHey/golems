@@ -36,8 +36,9 @@ for (const [gate, fixtureName] of GATES) {
   });
 }
 
-test("r7's FP #7 (a review summary, no dashboard claim) does not block the turn end", () => {
+test("r7's FP #7 (a review summary, no dashboard claim) produces no advisory or decision", () => {
   const fixture = readFixture(path.join(here, "fixtures", "fp7-review-summary-no-dashboard-claim.json"));
   const output = runHook("false-green-gate", fixture);
   expect(output.decision).toBeUndefined();
+  expect(output.systemMessage).toBeUndefined();
 });
