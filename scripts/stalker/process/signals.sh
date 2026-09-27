@@ -1,9 +1,11 @@
 #!/bin/bash
 # Sourced only by process-stream.sh; no top-level side effects.
 # run_frame_stage globals (R): OUT_DIR, VIDEO, SPIKES_FILE, VOLUME_FILE;
-# (W): none cross-stage. Files: quiet-frames.txt, frames/*, .stage-2-frames.done.
+# (W): no cross-stage globals (SPIKE_TIMESTAMPS and FRAME_COUNT are scratch).
+# Files: quiet-frames.txt, frames/*, .stage-2-frames.done.
 # run_signal_stage globals (R): OUT_DIR, STREAMER, DATE, SPIKES_FILE, CHAT_LOG,
-# CHAT_TIMESTAMPS_ARE_RELATIVE, TRANSCRIPT; (W): SIGNALS_FILE. Files:
+# CHAT_TIMESTAMPS_ARE_RELATIVE, TRANSCRIPT; (W): SIGNALS_FILE. Scratch writes:
+# CHAT_TOTAL, VELOCITY_FILE, CLIP_MARKERS, MARKER_COUNT. Files:
 # signals-combined.md, chat-velocity.txt, chat-clip-markers.txt,
 # .stage-3-signals.done. Scratch counters remain in the function shell.
 

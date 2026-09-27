@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 # Sourced only by process-stream.sh; definitions only. Entry owns config,
 # stage order and trap install/removal; all functions run in the entry shell.
-# prepare_scoring_stage globals (R): OUT_DIR, VIDEO, CHAT_LOG,
+# prepare_scoring_stage globals (R): OUT_DIR, CHAT_LOG,
 # CHAT_TIMESTAMPS_ARE_RELATIVE, TRANSCRIPT, VOLUME_FILE, SPIKES_FILE,
 # GEMS_FILE, VOLUME_SPIKE_RATIO, STREAMER, DATE. (W): SPIKE_TIMES,
 # CHAT_SPIKE_TIMES, SCORING_PROMPT, CURRENT_HEADER, CURRENT_TEXT,
@@ -11,7 +11,7 @@
 # AGY_CIRCUIT_OPEN, TOTAL_SEGMENTS, LAST_HEARTBEAT_EPOCH, SEGMENT_INDEX,
 # SCORE_RUN_DIR, SCORE_RESULTS_DIR, SCORE_CIRCUIT_DIR, SCORE_PIDS,
 # SCORE_RESULT_DIRS, SCORING_COMPLETE, SCORING_SIGNAL.
-# run_scoring_stage reads these globals and writes gems.md, worker statuses,
+# run_scoring_stage also reads VIDEO and these globals; it writes gems.md, worker statuses,
 # counters and .stage-scoring.done; exits 75 on a failed score. Handlers read
 # scoring state and remove incomplete gems, preserving retryable failure.
 
