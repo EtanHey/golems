@@ -1,0 +1,315 @@
+{
+  "known": {
+    "worker": "time-and-query-semantics",
+    "findings": [
+      {
+        "concept": "recent timestamp-window comparison",
+        "implementation_sites": [
+          {
+            "path": "src/brainlayer/session_repo.py",
+            "line": 62,
+            "summary": "compares raw ISO created_at text to SQLite datetime text"
+          },
+          {
+            "path": "scripts/enrich_recent.py",
+            "line": 77,
+            "summary": "compares raw ISO created_at text to SQLite datetime text"
+          },
+          {
+            "path": "src/brainlayer/search_repo.py",
+            "line": 2264,
+            "summary": "normalizes created_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/mcp/enrich_handler.py",
+            "line": 107,
+            "summary": "normalizes enriched_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/eval/enrichment_quality_benchmark.py",
+            "line": 127,
+            "summary": "normalizes created_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/p0_longitudinal_count.py",
+            "line": 25,
+            "summary": "normalizes created_at through datetime()"
+          }
+        ],
+        "divergent_sites": [
+          {
+            "path": "src/brainlayer/session_repo.py",
+            "line": 62,
+            "reason": "raw text uses a different timestamp separator"
+          },
+          {
+            "path": "scripts/enrich_recent.py",
+            "line": 77,
+            "reason": "raw text uses a different timestamp separator"
+          }
+        ],
+        "shared_helper_shape": "A parameterized recent_timestamp_clause(column, amount, unit) that always applies SQLite datetime() normalization.",
+        "confidence": "high"
+      }
+    ]
+  },
+  "control": {
+    "worker": "time-and-query-semantics",
+    "findings": []
+  },
+  "aggregate": {
+    "repo": "fixture",
+    "revision": "fixed-revision",
+    "findings": [
+      {
+        "concept": "recent timestamp-window comparison",
+        "implementation_sites": [
+          {
+            "path": "src/brainlayer/session_repo.py",
+            "line": 62,
+            "summary": "compares raw ISO created_at text to SQLite datetime text"
+          },
+          {
+            "path": "scripts/enrich_recent.py",
+            "line": 77,
+            "summary": "compares raw ISO created_at text to SQLite datetime text"
+          },
+          {
+            "path": "src/brainlayer/search_repo.py",
+            "line": 2264,
+            "summary": "normalizes created_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/mcp/enrich_handler.py",
+            "line": 107,
+            "summary": "normalizes enriched_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/eval/enrichment_quality_benchmark.py",
+            "line": 127,
+            "summary": "normalizes created_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/p0_longitudinal_count.py",
+            "line": 25,
+            "summary": "normalizes created_at through datetime()"
+          }
+        ],
+        "divergent_sites": [
+          {
+            "path": "src/brainlayer/session_repo.py",
+            "line": 62,
+            "reason": "raw text uses a different timestamp separator"
+          },
+          {
+            "path": "scripts/enrich_recent.py",
+            "line": 77,
+            "reason": "raw text uses a different timestamp separator"
+          }
+        ],
+        "shared_helper_shape": "A parameterized recent_timestamp_clause(column, amount, unit) that always applies SQLite datetime() normalization.",
+        "confidence": "high",
+        "site_count": 6
+      }
+    ]
+  },
+  "invalid:0": {
+    "error": "RuntimeError",
+    "message": "structured worker output must be an object"
+  },
+  "invalid:1": {
+    "error": "RuntimeError",
+    "message": "structured worker output missing required field worker"
+  },
+  "invalid:2": {
+    "error": "RuntimeError",
+    "message": "structured worker output missing required field findings"
+  },
+  "invalid:3": {
+    "error": "RuntimeError",
+    "message": "finding 0 missing required field concept"
+  },
+  "orphan_strict": {
+    "error": "RuntimeError",
+    "message": "finding 0 divergent sites must also be implementation sites"
+  },
+  "orphan_raw": {
+    "worker": "time-and-query-semantics",
+    "findings": [
+      {
+        "concept": "recent timestamp-window comparison",
+        "implementation_sites": [
+          {
+            "path": "src/brainlayer/session_repo.py",
+            "line": 62,
+            "summary": "compares raw ISO created_at text to SQLite datetime text"
+          },
+          {
+            "path": "scripts/enrich_recent.py",
+            "line": 77,
+            "summary": "compares raw ISO created_at text to SQLite datetime text"
+          },
+          {
+            "path": "src/brainlayer/search_repo.py",
+            "line": 2264,
+            "summary": "normalizes created_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/mcp/enrich_handler.py",
+            "line": 107,
+            "summary": "normalizes enriched_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/eval/enrichment_quality_benchmark.py",
+            "line": 127,
+            "summary": "normalizes created_at through datetime()"
+          },
+          {
+            "path": "src/brainlayer/p0_longitudinal_count.py",
+            "line": 25,
+            "summary": "normalizes created_at through datetime()"
+          }
+        ],
+        "divergent_sites": [
+          {
+            "path": "src/brainlayer/session_repo.py",
+            "line": 99999,
+            "reason": "raw text uses a different timestamp separator"
+          },
+          {
+            "path": "scripts/enrich_recent.py",
+            "line": 77,
+            "reason": "raw text uses a different timestamp separator"
+          }
+        ],
+        "shared_helper_shape": "A parameterized recent_timestamp_clause(column, amount, unit) that always applies SQLite datetime() normalization.",
+        "confidence": "high"
+      }
+    ]
+  },
+  "detector": {
+    "worker": "static-sqlite-recent-window-detector",
+    "findings": [
+      {
+        "concept": "SQLite recent timestamp-window comparison",
+        "implementation_sites": [
+          {
+            "path": "a.py",
+            "line": 1,
+            "summary": "compares raw created_at text to a SQLite datetime() lower bound"
+          },
+          {
+            "path": "b.py",
+            "line": 1,
+            "summary": "normalizes created_at through SQLite datetime() before the lower-bound comparison"
+          }
+        ],
+        "divergent_sites": [
+          {
+            "path": "a.py",
+            "line": 1,
+            "reason": "raw created_at text can use an ISO separator that sorts differently from SQLite datetime() output"
+          }
+        ],
+        "shared_helper_shape": "One parameterized recent_timestamp_clause(column, amount, unit) that always applies SQLite datetime() normalization.",
+        "confidence": "high"
+      }
+    ]
+  },
+  "commands": [
+    [
+      "codex",
+      "exec",
+      "--ignore-user-config",
+      "--strict-config",
+      "-m",
+      "gpt-5.6-luna",
+      "-c",
+      "model_reasoning_effort=\"max\"",
+      "-s",
+      "read-only",
+      "-C",
+      "/repo",
+      "--ephemeral",
+      "--output-schema",
+      "/schema",
+      "--json",
+      "-"
+    ],
+    [
+      "codex",
+      "exec",
+      "--ignore-user-config",
+      "--strict-config",
+      "-m",
+      "gpt-5.6-luna",
+      "-c",
+      "model_reasoning_effort=\"xhigh\"",
+      "-s",
+      "read-only",
+      "-C",
+      "/repo",
+      "--ephemeral",
+      "--output-schema",
+      "/schema",
+      "--json",
+      "-"
+    ]
+  ],
+  "pin:": {
+    "error": "RuntimeError",
+    "message": "could not verify effective model from Codex startup banner"
+  },
+  "pin:model: other\nreasoning effort: max": {
+    "error": "RuntimeError",
+    "message": "effective model is other, expected gpt-5.6-luna"
+  },
+  "pin:model: gpt-5.6-luna\nreasoning effort: xhigh": {
+    "error": "RuntimeError",
+    "message": "effective reasoning effort is xhigh, expected max; refusing silent downgrade"
+  },
+  "pin:model: gpt-5.6-luna\nreasoning effort: max": {
+    "value": {
+      "model": "gpt-5.6-luna",
+      "effort": "max"
+    }
+  },
+  "fallback": {
+    "model": "gpt-5.6-luna",
+    "effort": "xhigh",
+    "requested_effort": "max",
+    "fallback_used": true
+  },
+  "fallback_efforts": [
+    "model_reasoning_effort=\"max\"",
+    "model_reasoning_effort=\"xhigh\""
+  ],
+  "fallback_evidence": "requested_model=gpt-5.6-luna\nrequested_effort=max\nreturncode=1\n\ninvalid value 'max' for model_reasoning_effort\n\n---\n\nrequested_model=gpt-5.6-luna\nrequested_effort=xhigh\nreturncode=0\nmodel: gpt-5.6-luna\nreasoning effort: xhigh\n",
+  "no_fallback": {
+    "error": "RuntimeError",
+    "message": "Codex Luna pin preflight failed:\ninvalid value 'max' for model_reasoning_effort"
+  },
+  "usage": {
+    "usage_observed": true,
+    "input_tokens": 7,
+    "cached_input_tokens": 0,
+    "output_tokens": 3,
+    "cost_usd": 0.02,
+    "cost_source": "codex-cli-telemetry"
+  },
+  "unobserved": {
+    "usage_observed": false,
+    "input_tokens": null,
+    "cached_input_tokens": null,
+    "output_tokens": null,
+    "cost_usd": null,
+    "cost_source": "unavailable"
+  },
+  "run_log_bytes": "{\n  \"detector_seed\": {\n    \"evidence_status\": \"seed-assisted\",\n    \"finding_count\": 1,\n    \"worker\": \"static-sqlite-recent-window-detector\"\n  },\n  \"pin\": {\n    \"effort\": \"xhigh\",\n    \"fallback_used\": true,\n    \"model\": \"gpt-5.6-luna\",\n    \"requested_effort\": \"max\"\n  },\n  \"repo\": \"fixture\",\n  \"revision\": \"fixed-revision\",\n  \"stage\": \"complete\",\n  \"status\": \"complete\",\n  \"target_git_state_scope\": \"tracked and nonignored untracked paths visible to git status\",\n  \"target_git_state_unchanged\": true,\n  \"telemetry\": {\n    \"cached_input_tokens\": 0,\n    \"cost_source\": \"codex-cli-telemetry\",\n    \"cost_usd\": 0.02,\n    \"input_tokens\": 7,\n    \"output_tokens\": 3,\n    \"wall_seconds\": 2.5,\n    \"workers\": [\n      {\n        \"cached_input_tokens\": 0,\n        \"cost_source\": \"codex-cli-telemetry\",\n        \"cost_usd\": 0.02,\n        \"input_tokens\": 7,\n        \"label\": \"worker\",\n        \"output_tokens\": 3,\n        \"stderr_log\": \"worker.stderr.log\",\n        \"stdout_log\": \"worker.jsonl\",\n        \"usage_observed\": true,\n        \"wall_seconds\": 1.25\n      }\n    ]\n  }\n}\n",
+  "report_bytes": "# Convention audit \u2014 fixture\n\n- Revision: `fixed-revision`\n- Accepted preflight model: `gpt-5.6-luna`\n- Accepted preflight reasoning effort: `xhigh`\n- Detection evidence: seed-assisted; the static detector emitted 1 candidate finding(s) for model verification\n- Output tokens: 3\n- Wall-clock: 2.50s\n- Cost: $0.020000 (codex-cli-telemetry)\n- Findings: 1\n\nFindings are reports only. Fixes require a separate PR loop in the owning repository.\n\n## 1. recent timestamp-window comparison\n\nConfidence: high\n\n| Site | Diverges? | Evidence |\n|---|---:|---|\n| `src/brainlayer/session_repo.py:62` | yes | raw text uses a different timestamp separator |\n| `scripts/enrich_recent.py:77` | yes | raw text uses a different timestamp separator |\n| `src/brainlayer/search_repo.py:2264` | no | normalizes created_at through datetime() |\n| `src/brainlayer/mcp/enrich_handler.py:107` | no | normalizes enriched_at through datetime() |\n| `src/brainlayer/eval/enrichment_quality_benchmark.py:127` | no | normalizes created_at through datetime() |\n| `src/brainlayer/p0_longitudinal_count.py:25` | no | normalizes created_at through datetime() |\n\nShared-helper shape: A parameterized recent_timestamp_clause(column, amount, unit) that always applies SQLite datetime() normalization.\n",
+  "control_report_bytes": "# Convention audit \u2014 fixture\n\n- Revision: `fixed-revision`\n- Accepted preflight model: `gpt-5.6-luna`\n- Accepted preflight reasoning effort: `xhigh`\n- Detection evidence: seed-assisted; the static detector emitted 1 candidate finding(s) for model verification\n- Output tokens: 3\n- Wall-clock: 2.50s\n- Cost: $0.020000 (codex-cli-telemetry)\n- Findings: 0\n\nFindings are reports only. Fixes require a separate PR loop in the owning repository.\n\n## Findings\n\nNo independently implemented concept survived synthesis verification.\n",
+  "timeout": {
+    "error": "TimeoutExpired",
+    "message": "Command 'fixture-command' timed out after 3 seconds"
+  }
+}

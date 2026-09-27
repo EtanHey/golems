@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import importlib
+import importlib.util
 import concurrent.futures
 import json
 import os
@@ -19,6 +22,32 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
+# Keep installed and worktree copies isolated without changing sys.path.
+_IMPL_DIR = (Path(__file__).resolve().parent / "convention_audit_impl").resolve()
+_PACKAGE_NAME = "_convention_audit_impl_" + hashlib.sha256(str(_IMPL_DIR).encode()).hexdigest()
+if _PACKAGE_NAME not in sys.modules:
+    _spec = importlib.util.spec_from_file_location(
+        _PACKAGE_NAME, _IMPL_DIR / "__init__.py",
+        submodule_search_locations=[str(_IMPL_DIR)],
+    )
+    if _spec is None or _spec.loader is None:
+        raise ImportError(f"Cannot load convention audit implementation: {_IMPL_DIR}")
+    _package = importlib.util.module_from_spec(_spec)
+    sys.modules[_PACKAGE_NAME] = _package
+    try:
+        _spec.loader.exec_module(_package)
+    except BaseException:
+        del sys.modules[_PACKAGE_NAME]
+        raise
+
+_detector = importlib.import_module(".detector", _PACKAGE_NAME)
+_payloads = importlib.import_module(".payloads", _PACKAGE_NAME)
+DETECTOR_IGNORED_DIRS = _detector.DETECTOR_IGNORED_DIRS
+SQLITE_RECENT_WINDOW_PATTERN = _detector.SQLITE_RECENT_WINDOW_PATTERN
+detect_sqlite_recent_window_candidates = _detector.detect_sqlite_recent_window_candidates
+validate_payload = _payloads.validate_payload
+aggregate_worker_payloads = _payloads.aggregate_worker_payloads
+
 MODEL = "gpt-5.6-luna"
 DEFAULT_EFFORT = "max"
 FALLBACK_EFFORT = "xhigh"
@@ -30,88 +59,6 @@ LENSES = {
     "live-copy-drift": "vendored copies, generated copies, installed copies, hooks, watchers, duplicated live code trees, and deployment propagation",
     "duplicated-domain-logic": "independent algorithms, thresholds, parsing, routing, policy, validation, and business rules that should share one owner",
 }
-DETECTOR_IGNORED_DIRS = {
-    "build",
-    "dist",
-    "node_modules",
-    "site-packages",
-    "vendor",
-    "venv",
-}
-
-SQLITE_RECENT_WINDOW_PATTERN = re.compile(
-    r"(?:"
-    r"datetime\s*\(\s*(?P<normalized_column>[A-Za-z_][A-Za-z0-9_.]*(?:_at|timestamp))\s*\)"
-    r"|(?P<raw_column>[A-Za-z_][A-Za-z0-9_.]*(?:_at|timestamp))"
-    r")\s*(?:>|>=)\s*datetime\s*\(",
-    re.IGNORECASE,
-)
-
-
-def detect_sqlite_recent_window_candidates(repo: Path) -> dict[str, Any]:
-    """Inventory lower-bound SQLite time windows and flag raw text comparisons."""
-
-    implementation_sites: list[dict[str, Any]] = []
-    divergent_sites: list[dict[str, Any]] = []
-    for path in sorted(repo.rglob("*.py")):
-        relative = path.relative_to(repo)
-        if any(
-            part.startswith(".")
-            or part in {"tests", "__tests__", "__pycache__"}
-            or part.lower() in DETECTOR_IGNORED_DIRS
-            for part in relative.parts
-        ):
-            continue
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except (OSError, UnicodeDecodeError):
-            continue
-        for line_number, line in enumerate(lines, start=1):
-            if line.lstrip().startswith("#"):
-                continue
-            for match in SQLITE_RECENT_WINDOW_PATTERN.finditer(line):
-                normalized_column = match.group("normalized_column")
-                column = normalized_column or match.group("raw_column")
-                normalized = normalized_column is not None
-                implementation_sites.append(
-                    {
-                        "path": relative.as_posix(),
-                        "line": line_number,
-                        "summary": (
-                            f"normalizes {column} through SQLite datetime() before the lower-bound comparison"
-                            if normalized
-                            else f"compares raw {column} text to a SQLite datetime() lower bound"
-                        ),
-                    }
-                )
-                if not normalized:
-                    divergent_sites.append(
-                        {
-                            "path": relative.as_posix(),
-                            "line": line_number,
-                            "reason": (
-                                f"raw {column} text can use an ISO separator that sorts differently from "
-                                "SQLite datetime() output"
-                            ),
-                        }
-                    )
-
-    findings: list[dict[str, Any]] = []
-    normalized_site_count = len(implementation_sites) - len(divergent_sites)
-    if len(implementation_sites) >= 2 and divergent_sites and normalized_site_count > 0:
-        findings.append(
-            {
-                "concept": "SQLite recent timestamp-window comparison",
-                "implementation_sites": implementation_sites,
-                "divergent_sites": divergent_sites,
-                "shared_helper_shape": (
-                    "One parameterized recent_timestamp_clause(column, amount, unit) that always applies "
-                    "SQLite datetime() normalization."
-                ),
-                "confidence": "high",
-            }
-        )
-    return {"worker": "static-sqlite-recent-window-detector", "findings": findings}
 
 
 @dataclass
@@ -264,94 +211,6 @@ def usage_from_events(events: list[dict[str, Any]]) -> dict[str, Any]:
         "cost_usd": round(sum(cost_values), 8) if cost_values else None,
         "cost_source": "codex-cli-telemetry" if cost_values else "unavailable",
     }
-
-
-def validate_payload(
-    payload: Any, *, require_divergent_subset: bool = True
-) -> dict[str, Any]:
-    if not isinstance(payload, dict):
-        raise RuntimeError("structured worker output must be an object")
-    if not isinstance(payload.get("worker"), str):
-        raise RuntimeError("structured worker output missing required field worker")
-    findings = payload.get("findings")
-    if not isinstance(findings, list):
-        raise RuntimeError("structured worker output missing required field findings")
-    required_finding = (
-        "concept",
-        "implementation_sites",
-        "divergent_sites",
-        "shared_helper_shape",
-        "confidence",
-    )
-    for index, finding in enumerate(findings):
-        if not isinstance(finding, dict):
-            raise RuntimeError(f"finding {index} must be an object")
-        for field in required_finding:
-            if field not in finding:
-                raise RuntimeError(f"finding {index} missing required field {field}")
-        if not isinstance(finding["implementation_sites"], list) or not isinstance(
-            finding["divergent_sites"], list
-        ):
-            raise RuntimeError(f"finding {index} sites must be arrays")
-        if not finding["implementation_sites"]:
-            raise RuntimeError(
-                f"finding {index} must include at least one implementation site"
-            )
-        if finding["confidence"] not in {"high", "medium", "low"}:
-            raise RuntimeError(f"finding {index} confidence is invalid")
-        for group, required_site in (
-            (finding["implementation_sites"], ("path", "line", "summary")),
-            (finding["divergent_sites"], ("path", "line", "reason")),
-        ):
-            for site_index, site in enumerate(group):
-                if not isinstance(site, dict) or any(
-                    field not in site for field in required_site
-                ):
-                    raise RuntimeError(
-                        f"finding {index} site {site_index} is malformed"
-                    )
-        implementation_identities = {
-            (str(site["path"]), int(site["line"]))
-            for site in finding["implementation_sites"]
-        }
-        divergent_identities = {
-            (str(site["path"]), int(site["line"]))
-            for site in finding["divergent_sites"]
-        }
-        if require_divergent_subset and not divergent_identities.issubset(
-            implementation_identities
-        ):
-            raise RuntimeError(
-                f"finding {index} divergent sites must also be implementation sites"
-            )
-    return payload
-
-
-def aggregate_worker_payloads(
-    payloads: list[dict[str, Any]], *, repo: str, revision: str
-) -> dict[str, Any]:
-    findings: list[dict[str, Any]] = []
-    seen: set[tuple[str, tuple[tuple[str, int], ...]]] = set()
-    for payload in payloads:
-        for raw in payload.get("findings", []):
-            sites = raw.get("implementation_sites", [])
-            identity = (
-                str(raw.get("concept", "")).strip().lower(),
-                tuple(sorted((str(site["path"]), int(site["line"])) for site in sites)),
-            )
-            if identity in seen:
-                continue
-            seen.add(identity)
-            finding = dict(raw)
-            finding["site_count"] = len(sites)
-            findings.append(finding)
-    findings.sort(
-        key=lambda item: (
-            -len(item.get("implementation_sites", [])),
-            item.get("concept", ""),
-        )
-    )
-    return {"repo": repo, "revision": revision, "findings": findings}
 
 
 def _worker_prompt(
