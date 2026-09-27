@@ -1,6 +1,6 @@
 ---
 name: reviewer-order-gate
-description: "PreToolUse guard: a cmux reviewer spawn is denied until the implementer is done. Triggers: reviewer order, implementer done, reviewer spawn denied."
+description: "PreToolUse guard: reviewer spawns denied until the implementer is done. Triggers: reviewer order, reviewer spawn."
 disable-model-invocation: true
 ---
 
