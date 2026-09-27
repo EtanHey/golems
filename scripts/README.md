@@ -36,7 +36,6 @@ callers outside this repo, and each header says when it can go:
 |---|---|---|
 | `check-skill-library.mjs`, `release-gate.mjs`, `pr-size-labels.sh` | `ci/` | agent briefs and installed skill copies use the new path |
 | `golems-sync.sh`, `sync-config.sh` | `sync/` | runbooks and other repos' docs use the new path |
-| `stream-watcher.sh`, `stalker-live-guard.sh`, `post-stream.sh` | `stalker/` | installed LaunchAgents run the new path and no old watcher is still running |
 
 New code should call the moved path.
 
