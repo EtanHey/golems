@@ -1,0 +1,9 @@
+{
+  "specimen": "non-spawn-tool-is-untouched",
+  "expect": "UNTOUCHED",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__send_to",
+    "tool_input": { "role": "reviewer", "message": "review #293 now" }
+  }
+}

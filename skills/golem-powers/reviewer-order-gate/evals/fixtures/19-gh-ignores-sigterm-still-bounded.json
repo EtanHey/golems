@@ -1,0 +1,13 @@
+{
+  "specimen": "gh-that-ignores-sigterm-is-still-bounded-and-fails-open",
+  "expect": "ADVISORY",
+  "reason_contains": "timed out",
+  "max_elapsed_ms": 2500,
+  "gh": "trap '' TERM; sleep 10",
+  "env": { "REVIEWER_ORDER_GATE_GH_BUDGET_MS": "400" },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "reviewer", "prompt": "Review #1" }
+  }
+}

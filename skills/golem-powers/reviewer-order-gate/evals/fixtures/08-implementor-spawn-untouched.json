@@ -1,0 +1,10 @@
+{
+  "specimen": "implementor-spawn-is-untouched",
+  "expect": "UNTOUCHED",
+  "gh": { "pr": { "state": "OPEN", "headRefName": "x", "headRefOid": "y", "statusCheckRollup": [] }, "head_age_minutes": 0 },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "implementor", "prompt": "Implement the fix for #293 with no report yet." }
+  }
+}

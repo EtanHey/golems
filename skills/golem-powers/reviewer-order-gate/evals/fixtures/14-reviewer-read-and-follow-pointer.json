@@ -1,0 +1,13 @@
+{
+  "specimen": "inline-read-and-follow-pointer-brief-is-read-for-evidence",
+  "expect": "ALLOW",
+  "files": {
+    "impl/report.md": "done\n\nDONE_CODEXIMPL_7\n",
+    "reviewer-brief.md": "Implementer report: {{DIR}}/impl/report.md\n"
+  },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "reviewer", "prompt": "Read and follow {{DIR}}/reviewer-brief.md" }
+  }
+}

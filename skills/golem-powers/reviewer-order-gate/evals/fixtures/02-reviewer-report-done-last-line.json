@@ -1,0 +1,10 @@
+{
+  "specimen": "reviewer-citing-report-whose-last-line-is-done-is-allowed",
+  "expect": "ALLOW",
+  "files": { "impl/report.md": "# report\n\nPR READY https://example.invalid\n\nDONE_GOLEMSCLAUDE_6DA082AF\n\n" },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "reviewer", "prompt": "Implementer finished. Review per {{DIR}}/impl/report.md, then write your verdict." }
+  }
+}

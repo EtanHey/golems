@@ -1,0 +1,11 @@
+{
+  "specimen": "pr-with-no-checks-reported-yet-is-denied",
+  "expect": "DENY",
+  "reason_contains": "no checks reported",
+  "gh": { "pr": { "state": "OPEN", "headRefName": "feat/x", "headRefOid": "abc1234", "statusCheckRollup": [] }, "head_age_minutes": 0 },
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__cmuxlayer__spawn_agent",
+    "tool_input": { "role": "reviewer", "prompt": "Review #294 right after the push." }
+  }
+}
