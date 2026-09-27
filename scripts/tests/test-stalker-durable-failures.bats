@@ -121,7 +121,7 @@ SH
 
 @test "stream watcher ensures the generated Twitch chat bundle before watching" {
     grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/dist/twitch-chat-lurker.js"' "$STALKER_DIR/stream-watcher.sh"
-    ! grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"' "$STALKER_DIR/stream-watcher.sh"
+    ! grep -F -q 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"' "$STALKER_DIR/stream-watcher.sh" || false
     grep -F -q 'stalker_ensure_lurker_bundle "$LURKER_SCRIPT"' "$STALKER_DIR/stream-watcher.sh"
     run git -C "$REPO_ROOT" ls-files --error-unmatch scripts/dist/twitch-chat-lurker.js
     [ "$status" -ne 0 ]

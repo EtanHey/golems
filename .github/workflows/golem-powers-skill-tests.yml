@@ -163,6 +163,9 @@ jobs:
       - name: Guard scripts/tests Bats coverage
         run: node scripts/ci/run-bats-suites.mjs --check
 
+      - name: Verify non-final Bats assertions fail
+        run: node --test scripts/tests/bats-assertions.test.mjs
+
       # Every manifest entry runs once and blocks CI. Each file has a 180s
       # timeout: test-repogolem-dispatch.bats has previously hung waiting for
       # its concurrent Codex profiles' release sentinel (formerly line 2523).
