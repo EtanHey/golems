@@ -205,22 +205,24 @@ function headCommitDate(pr) {
 
 // Classifies one cited PR:
 //   done     — open, checks all completed (and a cloud head ≥10 min old): evidence;
-//   blocking — checks running or not yet reported, or a fresh cloud head: denies;
-//   ignored  — merged, closed or not found: neither evidence nor a block.
+//   blocking — checks running (in ANY state, merged and closed included), or an
+//              open PR with no checks reported yet or a fresh cloud head: denies;
+//   ignored  — merged or closed with checks finished, or not found.
 function assessPr(ref, pr, nowMs) {
   if (pr == null) return { status: "ignored", why: `${ref.label} was not found` };
-  if (typeof pr !== "object" || !("statusCheckRollup" in pr)) {
+  const rollup = pr?.statusCheckRollup;
+  if (typeof pr !== "object" || !Array.isArray(rollup) || rollup.some((c) => c == null || typeof c !== "object")) {
     throw new GateError(`gh pr view ${ref.label} returned an unexpected shape`);
   }
-  // A merged or closed PR cannot be the review target. Its checks can still show
-  // pending after merge (seen live on #290), so state is decided first.
-  if (pr.state && pr.state !== "OPEN") {
-    return { status: "ignored", why: `${ref.label} is ${pr.state}, not an open PR under review` };
-  }
+  // Every cited PR must be finished (golemsLead ruling, #296 R2): pending checks
+  // deny before state is looked at, so a merged or closed PR gets no exemption.
   const { total, pending } = classifyChecks(pr.statusCheckRollup);
   const head = String(pr.headRefOid ?? "").slice(0, 8);
   if (pending.length) {
     return { status: "blocking", why: `${ref.label} head ${head} has checks still running (${pending.slice(0, 3).join(", ")})` };
+  }
+  if (pr.state && pr.state !== "OPEN") {
+    return { status: "ignored", why: `${ref.label} is ${pr.state}, not an open PR under review` };
   }
   if (total === 0) return { status: "blocking", why: `${ref.label} has no checks reported on head ${head} yet` };
   if (String(pr.headRefName ?? "").startsWith(CLOUD_BRANCH_PREFIX)) {
@@ -261,14 +263,25 @@ export function evaluate(payload, opts = {}) {
     if (refs.length) {
       const cwd = [input.cwd, payload.cwd].find((d) => typeof d === "string" && path.isAbsolute(d)) ?? process.cwd();
       const deadline = now() + budgetMs;
+      // A failed lookup must not erase an observed pending: collect failures, and
+      // fail open only when no cited PR was seen blocking.
+      const lookupErrors = [];
       for (const ref of refs) {
-        const verdict = assessPr(ref, runGh(ref.args, { cwd: expandHome(cwd), deadline, now }), now());
+        let verdict;
+        try {
+          verdict = assessPr(ref, runGh(ref.args, { cwd: expandHome(cwd), deadline, now }), now());
+        } catch (err) {
+          // Any per-PR failure, including an unexpected crash, is a lookup error.
+          lookupErrors.push(err instanceof GateError ? err.message : `checking ${ref.label} failed (${err?.message ?? err})`);
+          continue;
+        }
         if (verdict.status === "done") donePr ??= ref.label;
         else if (verdict.status === "blocking") blocking.push(verdict.why);
         else notEvidence.push(verdict.why);
       }
+      if (blocking.length) return { verdict: "DENY", reason: blocking.join("; ") };
+      if (lookupErrors.length) throw new GateError(lookupErrors.join("; "));
     }
-    if (blocking.length) return { verdict: "DENY", reason: blocking.join("; ") };
     if (reports.done) return { verdict: "ALLOW", reason: `implementer report ${reports.done} ends in DONE` };
     if (donePr) return { verdict: "ALLOW", reason: `${donePr} has finished checks` };
     if (!notEvidence.length) {

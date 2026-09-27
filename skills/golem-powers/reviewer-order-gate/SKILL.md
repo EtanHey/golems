@@ -28,8 +28,10 @@ The spawn is **allowed** when the brief cites either:
 **Every PR the brief cites must be finished** (golemsLead ruling, #296 R1). One
 cited PR with running or queued checks, no checks reported yet, or a fresh cloud
 head denies the spawn, even when another cited PR or a DONE report would allow it.
-Merged, closed, and not-found PRs neither allow nor block. A merged PR can still
-show a pending check after merge, so state is decided before checks.
+This includes merged and closed PRs: pending checks deny whatever the PR's state.
+A merged or closed PR with finished checks, or a PR not found, neither allows nor
+blocks. An observed pending PR still denies when another cited PR's `gh` lookup
+fails, times out, or returns a malformed check rollup; the gate fails open only when no cited PR was seen blocking.
 
 Completed means finished, not green: a failed check still counts as completed.
 A bare `#N` resolves against the spawn's `cwd` (then the hook's cwd).
