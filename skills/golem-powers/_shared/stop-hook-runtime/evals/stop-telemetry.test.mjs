@@ -158,6 +158,30 @@ test("decision telemetry records a real hook input failure as error rather than 
   expect(row.bytesRead).toBe(row.stdinBytes);
 });
 
+test("empty successful hook output allows while malformed output and failures remain errors", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "stop-telemetry-empty-output-"));
+  scratch.push(root);
+  const logPath = path.join(root, "decisions.jsonl");
+  const cases = [
+    { name: "empty", source: "void 0;", stdout: "", status: 0, decision: "allow" },
+    { name: "whitespace", source: 'process.stdout.write(" \\n\\t ");', stdout: " \n\t ", status: 0, decision: "allow" },
+    { name: "garbage", source: 'process.stdout.write("garbage");', stdout: "garbage", status: 0, decision: "error" },
+    { name: "array", source: 'process.stdout.write("[]");', stdout: "[]", status: 0, decision: "error" },
+    { name: "failed-empty", source: "process.exit(1);", stdout: "", status: 1, decision: "error" },
+  ];
+
+  for (const item of cases) {
+    const result = runSyntheticTelemetry(logPath, item.name, item.source);
+    expect(result.status, `${item.name}: ${result.stderr}`).toBe(item.status);
+    expect(result.stdout).toBe(item.stdout);
+  }
+
+  const rows = readFileSync(logPath, "utf8").trim().split(/\r?\n/).map((line) => JSON.parse(line));
+  expect(rows.map(({ hook, decision, exitCode }) => ({ hook, decision, exitCode }))).toEqual(
+    cases.map(({ name, decision, status }) => ({ hook: name, decision, exitCode: status })),
+  );
+});
+
 test("telemetry forwards a buffered hook decision completely before exiting", () => {
   const root = mkdtempSync(path.join(tmpdir(), "stop-telemetry-buffered-output-"));
   scratch.push(root);
