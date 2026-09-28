@@ -23,9 +23,6 @@ export const DocumentType = {
   WITHDRAWAL_OF_DEPOSIT: 610,
 } as const;
 
-export type DocumentTypeValue =
-  (typeof DocumentType)[keyof typeof DocumentType];
-
 export const DocumentTypeLabel: Record<number, string> = {
   10: "Price Quote",
   100: "Order",
@@ -54,56 +51,44 @@ export const PaymentType = {
   OTHER: 11,
 } as const;
 
-export const IncomeVatType = {
-  DEFAULT: 0,
-  INCLUDED: 1,
-  EXEMPT: 2,
-} as const;
-
 // --- Request/Response Interfaces ---
 
-export interface IncomeItem {
-  description: string;
-  quantity: number;
-  price: number;
-  currency?: string;
-  vatType?: number;
-  catalogNum?: string;
-}
-
-export interface PaymentItem {
-  type: number;
-  price: number;
-  currency?: string;
-  date?: string;
-  cardNum?: string;
-  cardType?: number;
-  dealType?: number;
-  bankName?: string;
-  bankBranch?: string;
-  bankAccount?: string;
-}
-
-export interface DocumentClient {
-  id?: string;
-  name?: string;
-  taxId?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  add?: boolean;
-}
-
 export interface CreateDocumentRequest {
-  type: DocumentTypeValue;
-  client: DocumentClient;
+  type: (typeof DocumentType)[keyof typeof DocumentType];
+  client: {
+    id?: string;
+    name?: string;
+    taxId?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    add?: boolean;
+  };
   currency?: string;
   lang?: string;
   description?: string;
   remarks?: string;
-  income: IncomeItem[];
-  payment?: PaymentItem[];
+  income: Array<{
+    description: string;
+    quantity: number;
+    price: number;
+    currency?: string;
+    vatType?: number;
+    catalogNum?: string;
+  }>;
+  payment?: Array<{
+    type: number;
+    price: number;
+    currency?: string;
+    date?: string;
+    cardNum?: string;
+    cardType?: number;
+    dealType?: number;
+    bankName?: string;
+    bankBranch?: string;
+    bankAccount?: string;
+  }>;
   signed?: boolean;
   rounding?: boolean;
 }

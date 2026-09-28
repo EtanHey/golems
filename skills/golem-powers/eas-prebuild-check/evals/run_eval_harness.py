@@ -190,7 +190,7 @@ def collect_metadata(fixture_name: str | None, cwd: Path) -> dict:
     return metadata
 
 
-def score_assertion(case_id: int, assertion_name: str, output: str, exit_code: int, metadata: dict) -> int:
+def score_assertion(assertion_name: str, output: str, exit_code: int, metadata: dict) -> int:
     text = output
     if assertion_name == "check-01-fail":
         return int("[1/9]" in text and "✗ FAIL" in text and ".easignore" in text)
@@ -270,7 +270,6 @@ def score_variant(case: dict, result: dict) -> dict:
     scored = []
     for assertion in case["assertions"]:
         passed = score_assertion(
-            case["id"],
             assertion["name"],
             result["output"],
             result["exit_code"],

@@ -32,7 +32,6 @@ try:
     from rich.panel import Panel
     from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
     from rich.table import Table
-    from rich.text import Text
 except ImportError:
     print("ERROR: rich required — pip install rich", file=sys.stderr)
     raise SystemExit(1)

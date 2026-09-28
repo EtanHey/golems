@@ -249,12 +249,6 @@ export async function getDocumentDownloadLink(
 
 // --- Client Operations ---
 
-export async function getClient(
-  clientId: string,
-): Promise<Record<string, unknown>> {
-  return apiRequest("GET", `/clients/${encodeURIComponent(clientId)}`);
-}
-
 export async function searchClients(
   params: ClientSearchRequest,
 ): Promise<Record<string, unknown>> {

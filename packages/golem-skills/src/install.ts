@@ -28,7 +28,7 @@ export interface InstallResult {
 // ~/.claude/skills/<name>/SKILL.md one level deep, but walks ~/.claude/commands/**/*.md
 // recursively — a symlink there exposes every workflows/, references/ and evals/ file
 // as a listed "skill", blowing the 40k-char skill-listing budget.
-export const DEFAULT_SKILLS_DIR = join(homedir(), ".claude", "skills");
+const DEFAULT_SKILLS_DIR = join(homedir(), ".claude", "skills");
 // Re-export for backward compatibility — existing code imports DEFAULT_COMMANDS_DIR
 export const DEFAULT_COMMANDS_DIR = DEFAULT_SKILLS_DIR;
 

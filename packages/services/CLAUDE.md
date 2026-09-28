@@ -61,7 +61,6 @@ packages/services/
 
 - `@golems/shared` — Supabase, event log, state store, LLM, telegram-direct
 - `@golems/teller` — (future) Financial reports in briefing
-- `googleapis` — Google APIs (briefing, calendar)
 
 ## Cloud Worker
 
