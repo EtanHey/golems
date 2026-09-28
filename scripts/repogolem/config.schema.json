@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/EtanHey/golems/blob/master/scripts/repogolem/config.schema.json",
+  "title": "repoGolem config",
+  "description": "One config for every machine: shared projects, mcpDefinitions and global settings, plus a machines section per LocalHostName. Secrets are op:// references only; `repogolem-config.ts generate` resolves them. Other top-level keys (e.g. seatRegistry) pass through untouched.",
+  "type": "object",
+  "required": ["projects"],
+  "properties": {
+    "registryVersion": { "type": "string" },
+    "coderabbit": {},
+    "global": {
+      "type": "object",
+      "properties": {
+        "mcps": { "type": "object" },
+        "env": { "$ref": "#/definitions/envMap" }
+      }
+    },
+    "mcpDefinitions": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/definitions/mcpName" },
+      "additionalProperties": { "$ref": "#/definitions/mcpDefinition" }
+    },
+    "projects": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/definitions/projectName" },
+      "additionalProperties": { "$ref": "#/definitions/project" }
+    },
+    "machines": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/definitions/hostName" },
+      "additionalProperties": { "$ref": "#/definitions/machine" }
+    }
+  },
+  "definitions": {
+    "word": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+    "projectName": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "not": { "pattern": "^(0|[1-9][0-9]*)$" }
+    },
+    "mcpName": { "type": "string", "pattern": "^[A-Za-z0-9._@/-]+$" },
+    "hostName": { "type": "string", "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$" },
+    "envName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+    "path": { "type": "string", "minLength": 1, "pattern": "^[^\"\\\\$`|\\n]+$" },
+    "opRef": {
+      "description": "1Password secret reference: op://<vault>/<item>/[<section>/]<field>",
+      "type": "string",
+      "pattern": "^op://[^/\\n{}]+/[^/\\n{}]+/[^/\\n{}]+(/[^/\\n{}]+)?$"
+    },
+    "secretMap": {
+      "description": "Secrets: op:// references only, never values.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/definitions/envName" },
+      "additionalProperties": { "$ref": "#/definitions/opRef" }
+    },
+    "envMap": {
+      "description": "Plain environment: an op:// ref (resolved by generate), a $VAR ref, or a non-secret literal.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/definitions/envName" },
+      "additionalProperties": { "type": "string" }
+    },
+    "stringList": { "type": "array", "items": { "type": "string" } },
+    "mcpList": { "type": "array", "items": { "$ref": "#/definitions/mcpName" } },
+    "cliList": { "type": "array", "items": { "$ref": "#/definitions/word" } },
+    "projectFields": {
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "#/definitions/path" },
+        "displayName": { "type": "string" },
+        "emoji": { "type": "string" },
+        "mcps": { "$ref": "#/definitions/mcpList" },
+        "mcpsLight": { "$ref": "#/definitions/mcpList" },
+        "contexts": { "$ref": "#/definitions/stringList" },
+        "clis": { "$ref": "#/definitions/cliList" },
+        "secrets": { "$ref": "#/definitions/secretMap" },
+        "env": { "$ref": "#/definitions/envMap" },
+        "agent": { "$ref": "#/definitions/word" },
+        "mcpInheritFrom": { "anyOf": [{ "type": "null" }, { "$ref": "#/definitions/projectName" }] },
+        "funcAlias": { "$ref": "#/definitions/word" },
+        "launcherAliasPrefix": { "$ref": "#/definitions/word" },
+        "disableChrome": { "type": "boolean" },
+        "ttydPort": { "description": "0 = no ttyd port", "type": "integer", "minimum": 0, "maximum": 65535 }
+      }
+    },
+    "project": {
+      "allOf": [{ "$ref": "#/definitions/projectFields" }, { "type": "object", "required": ["path"] }]
+    },
+    "mcpDefinition": {
+      "type": "object",
+      "properties": { "env": { "$ref": "#/definitions/envMap" } }
+    },
+    "machine": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reposPath": {
+          "description": "Where this machine's repos live. Relative project paths are joined to it.",
+          "allOf": [{ "$ref": "#/definitions/path" }, { "type": "string", "pattern": "^[/~]" }]
+        },
+        "clis": {
+          "description": "CLIs installed on this machine. Bounds every project's clis.",
+          "$ref": "#/definitions/cliList"
+        },
+        "overrides": {
+          "description": "Merged over the shared sections for this machine: objects merge, lists and scalars replace, null removes.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "global": { "type": "object" },
+            "mcpDefinitions": { "type": "object" },
+            "projects": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [{ "type": "null" }, { "$ref": "#/definitions/projectFields" }]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

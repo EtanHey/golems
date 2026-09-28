@@ -1,0 +1,67 @@
+# repoGolem config — starter/example. Schema: config.schema.json (same dir).
+#
+#   bun scripts/repogolem/repogolem-config.ts init       # copy this to $REPOGOLEM_CONFIG
+#   $EDITOR "$REPOGOLEM_CONFIG"
+#   bun scripts/repogolem/repogolem-config.ts generate   # resolve + write the launchers
+#
+# Secrets are 1Password secret references ONLY, e.g.
+#   op://example-vault/example-item/token
+# This file holds no secret values, so it can live in a private repo. `generate`
+# is the only step that resolves the refs, into
+# ~/.config/repogolem/generated/secrets.env (mode 0600, never committed).
+#
+# Everything below is a placeholder. Nothing here names a real path, host,
+# vault or item.
+
+registryVersion: "1.0.0"
+
+global:
+  mcps: {}
+  env:
+    EXAMPLE_LOG_LEVEL: "info"
+
+mcpDefinitions:
+  context7:
+    command: npx
+    args: ["-y", "@upstash/context7-mcp@1.0.0"]
+  example-api:
+    command: npx
+    args: ["-y", "example-api-mcp"]
+    env:
+      EXAMPLE_API_KEY: "op://example-vault/example-item/api-key"
+
+# Shared by every machine. A relative `path` is joined to the machine's
+# reposPath; an absolute or ~/ path is used as-is.
+projects:
+  example-app:
+    path: example-app
+    displayName: Example App
+    mcps: [context7]
+    clis: [claude, codex]
+    secrets:
+      EXAMPLE_TOKEN: "op://example-vault/example-item/token"
+  example-lib:
+    path: libs/example-lib
+    displayName: Example Lib
+    mcps: []
+    secrets:
+      EXAMPLE_TOKEN: "op://example-vault/example-item/token"
+      EXAMPLE_WEBHOOK_SECRET: "op://example-vault/example-item/webhook-secret"
+
+# One section per machine, keyed by `scutil --get LocalHostName`
+# (override with --host or REPOGOLEM_HOST). `generate` uses only this
+# machine's section; `init` renames example-host to yours.
+machines:
+  example-host:
+    reposPath: ~/src
+    clis: [claude, codex, gemini, cursor]
+    overrides:
+      projects:
+        example-app:
+          mcps: [context7, example-api]
+  example-laptop:
+    reposPath: ~/code
+    clis: [claude]
+    overrides:
+      projects:
+        example-lib: null # not checked out on this machine

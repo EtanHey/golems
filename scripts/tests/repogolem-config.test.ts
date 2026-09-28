@@ -188,6 +188,7 @@ describe("generate", () => {
       generator: "golems/scripts/repogolem/repogolem-config.ts",
       sourceSha: SOURCE_SHA,
       configSha256: configSha,
+      machine: null,
     });
   });
 
