@@ -1,0 +1,13 @@
+[
+  {
+    "exit": 1,
+    "stdout": "Usage: process-stream.sh <video-file> [chat-log] [--json-output] [--chat-json] [--rescore]\n",
+    "stderr": "",
+    "files": {
+      "chat.log": "[00:00:10] a: wow !clip\n[00:00:30] b: hype\n",
+      "video.mp4": "synthetic video\n"
+    },
+    "commands": [],
+    "completion_calls": 0
+  }
+]
