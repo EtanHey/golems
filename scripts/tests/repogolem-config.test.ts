@@ -15,6 +15,7 @@ const FIX = join(import.meta.dir, "fixtures", "repogolem-config");
 const REGISTRY = join(FIX, "registry.json");
 const SEATS = join(FIX, "seats.yaml");
 const GOLDEN = join(FIX, "launchers.golden.zsh");
+const FAKE_OP = join(FIX, "fake-op.sh");
 const SOURCE_SHA = "0123456789abcdef0123456789abcdef01234567";
 
 let dir: string;
@@ -27,7 +28,8 @@ afterEach(() => {
 });
 
 function run(args: string[]) {
-  const env = { ...process.env, REPOGOLEM_SOURCE_SHA: SOURCE_SHA };
+  // fake-op.sh stands in for 1Password: tests never run the real `op`.
+  const env = { ...process.env, REPOGOLEM_SOURCE_SHA: SOURCE_SHA, REPOGOLEM_OP_BIN: FAKE_OP };
   const proc = Bun.spawnSync(["bun", CLI, ...args], { env, stdout: "pipe", stderr: "pipe" });
   return { code: proc.exitCode, stdout: proc.stdout.toString(), stderr: proc.stderr.toString() };
 }
