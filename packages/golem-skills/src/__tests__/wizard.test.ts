@@ -114,7 +114,7 @@ describe("wizard module", () => {
     // Simulate: only claude found, others not
     const tools: Record<string, string> = {};
     tools.claude = "/usr/local/bin/claude";
-    // cursor, gemini, codex, kiro NOT added (not found)
+    // cursor, gemini, codex NOT added (not found)
 
     const config = {
       reposPath: "~/Projects",

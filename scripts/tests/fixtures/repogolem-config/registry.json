@@ -24,7 +24,7 @@
       "created": "2026-01-01T00:00:00Z",
       "disableChrome": true,
       "ttydPort": 7681,
-      "clis": ["claude", "codex", "gemini", "cursor", "kiro"],
+      "clis": ["claude", "codex", "gemini", "cursor"],
       "agent": "orc",
       "funcAlias": "alfClaude",
       "launcherAliasPrefix": "alphaCore"
@@ -41,7 +41,7 @@
       "created": "2026-02-02",
       "disableChrome": false,
       "ttydPort": 7682,
-      "clis": ["claude", "kiro"],
+      "clis": ["claude"],
       "mcpInheritFrom": "alpha",
       "funcAlias": "betaClaude"
     },
@@ -66,7 +66,7 @@
       "secrets": {},
       "created": "2026-04-04T04:04:04Z",
       "ttydPort": 7684,
-      "clis": ["claude", "codex", "opencode", "kiro"],
+      "clis": ["claude", "codex", "opencode"],
       "mcpInheritFrom": "beta",
       "launcherAliasPrefix": "sixPm"
     }

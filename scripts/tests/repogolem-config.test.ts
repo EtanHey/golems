@@ -131,16 +131,16 @@ describe("import", () => {
     expect(existsSync(join(dir, "c.yaml"))).toBe(false);
   });
 
-  test("(iii) --drop-cli kiro removes only kiro", () => {
+  test("(iii) --drop-cli cursor removes only cursor", () => {
     const plain = parseYaml(importTo(join(dir, "plain.yaml")));
-    const dropped = parseYaml(importTo(join(dir, "dropped.yaml"), ["--drop-cli", "kiro"]));
+    const dropped = parseYaml(importTo(join(dir, "dropped.yaml"), ["--drop-cli", "cursor"]));
     const input = registryInput();
     for (const [name, project] of Object.entries<any>(input.projects)) {
       const got = dropped.projects[name];
       if (project.clis === undefined) {
         expect(got.clis).toBeUndefined();
       } else {
-        expect(got.clis).toEqual(project.clis.filter((c: string) => c !== "kiro"));
+        expect(got.clis).toEqual(project.clis.filter((c: string) => c !== "cursor"));
       }
       const { clis: _a, ...restGot } = got;
       const { clis: _b, ...restPlain } = plain.projects[name];
@@ -148,8 +148,8 @@ describe("import", () => {
     }
     expect(dropped.mcpDefinitions).toEqual(plain.mcpDefinitions);
 
-    const r = runImport(join(dir, "x.yaml"), "--drop-cli", "kiro");
-    expect(r.stdout).toContain("dropped 3");
+    const r = runImport(join(dir, "x.yaml"), "--drop-cli", "cursor");
+    expect(r.stdout).toContain("dropped 1");
   });
 
   test("(vi) refuses to overwrite without --force; --force writes a .bak first", () => {

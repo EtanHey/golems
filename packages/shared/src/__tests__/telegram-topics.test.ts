@@ -47,7 +47,7 @@ describe("Telegram Topics - Source Routing", () => {
   it("should route unknown sources to alerts (default)", () => {
     expect(getTopicForSource("unknown-source")).toBe("alerts");
     expect(getTopicForSource("cursor-helper")).toBe("alerts");
-    expect(getTopicForSource("kiro-helper")).toBe("alerts");
+    expect(getTopicForSource("unknown-helper")).toBe("alerts");
     expect(getTopicForSource("moltbot")).toBe("alerts");
   });
 });

@@ -21,7 +21,7 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.yaml");
 
 // ─── Types ─────────────────────────────────────────────────────────
 
-export type SeatCli = "claude" | "codex" | "cursor" | "gemini" | "kiro";
+export type SeatCli = "claude" | "codex" | "cursor" | "gemini";
 export type SeatRole = "lead" | "worker" | "orc";
 
 export interface SeatLaunchers {
@@ -29,7 +29,6 @@ export interface SeatLaunchers {
   codex: string;
   cursor: string;
   gemini: string;
-  kiro: string;
 }
 
 export interface SeatOrgTree {
@@ -68,7 +67,6 @@ export interface GolemsConfig {
     gh: string;
     cursor: string;
     codex: string;
-    kiro: string;
   };
 
   /** Telegram settings */
@@ -117,7 +115,6 @@ const SEAT_CLI_SUFFIXES: Record<SeatCli, string> = {
   codex: "Codex",
   cursor: "Cursor",
   gemini: "Gemini",
-  kiro: "Kiro",
 };
 
 const REQUIRED_SEAT_LAUNCHERS: SeatCli[] = [
@@ -125,7 +122,6 @@ const REQUIRED_SEAT_LAUNCHERS: SeatCli[] = [
   "codex",
   "cursor",
   "gemini",
-  "kiro",
 ];
 
 function strippedLauncherPrefix(repo: string): string {
@@ -141,7 +137,6 @@ function buildLaunchers(
     codex: `${launcherPrefix}${SEAT_CLI_SUFFIXES.codex}`,
     cursor: `${launcherPrefix}${SEAT_CLI_SUFFIXES.cursor}`,
     gemini: `${launcherPrefix}${SEAT_CLI_SUFFIXES.gemini}`,
-    kiro: `${launcherPrefix}${SEAT_CLI_SUFFIXES.kiro}`,
   };
 }
 
@@ -286,7 +281,6 @@ const DEFAULTS: GolemsConfig = {
     gh: "/usr/local/bin/gh",
     cursor: `${HOME}/.local/bin/cursor`,
     codex: `${HOME}/.nvm/versions/node/v22.0.0/bin/npx`,
-    kiro: `${HOME}/.local/bin/kiro-cli`,
   },
   telegram: {
     notifyPort: 3847,
@@ -380,12 +374,12 @@ function validateSeatLaunchers(value: unknown, path: string): SeatLaunchers {
     launchers[cli] = requireString(value[cli], `${path}.${cli}`);
   }
 
-  const { claude, codex, cursor, gemini, kiro } = launchers;
-  if (!claude || !codex || !cursor || !gemini || !kiro) {
+  const { claude, codex, cursor, gemini } = launchers;
+  if (!claude || !codex || !cursor || !gemini) {
     throw new Error(`[Config] ${path} is missing required launchers`);
   }
 
-  return { claude, codex, cursor, gemini, kiro };
+  return { claude, codex, cursor, gemini };
 }
 
 function validateSeatOrgTree(value: unknown, path: string): SeatOrgTree {
@@ -709,7 +703,6 @@ tools:
   gh: "/usr/local/bin/gh"
   cursor: "${HOME}/.local/bin/cursor"
   codex: "${HOME}/.nvm/versions/node/v22.0.0/bin/npx"
-  kiro: "${HOME}/.local/bin/kiro-cli"
 
 # Telegram bot
 telegram:

@@ -147,7 +147,7 @@ brainlayer search "topic" --project "$BRAINLAYER_PROJECT"
 
 Or via MCP in Claude Code:
 ```
-mcp__brainlayer__brainlayer_search(query="topic", project="<BRAINLAYER_PROJECT_SLUG>")
+mcp__brainlayer__brain_search(query="topic", project="<BRAINLAYER_PROJECT_SLUG>")
 ```
 
 ### Phase Findings

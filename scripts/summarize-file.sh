@@ -11,7 +11,6 @@
 #   mlx     - Local MLX server (free, no network, Apple Silicon optimized)
 #   cursor  - GPT-5.2 Codex (paid $20/mo), deep analysis
 #   codex   - OpenAI Codex CLI (ChatGPT Plus), non-interactive agent
-#   kiro    - Free, AWS-backed, good for code analysis
 #
 # Examples:
 #   ./scripts/summarize-file.sh docs/plan.md "What parts are DONE vs NOT DONE?"
@@ -121,15 +120,6 @@ case "$MODEL" in
       exit 1
     fi
     ;;
-  kiro)
-    # Kiro CLI - Free tier, AWS-backed
-    if command -v kiro-cli &>/dev/null; then
-      kiro-cli chat --no-interactive -w never "$FULL_PROMPT" > "$OUTFILE" 2>/dev/null
-    else
-      echo "Error: kiro-cli not installed" >&2
-      exit 1
-    fi
-    ;;
   haiku)
     # Claude Haiku via Anthropic API - cheap, fast
     if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
@@ -154,7 +144,7 @@ case "$MODEL" in
     rm -f "$PROMPTFILE"
     ;;
   *)
-    echo "Error: Unknown model '$MODEL'. Use: glm, mlx, gemini, cursor, codex, kiro, haiku" >&2
+    echo "Error: Unknown model '$MODEL'. Use: glm, mlx, gemini, cursor, codex, haiku" >&2
     exit 1
     ;;
 esac

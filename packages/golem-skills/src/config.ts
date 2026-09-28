@@ -78,7 +78,6 @@ export async function autoDetectTools(): Promise<Record<string, string>> {
     gemini: ["gemini"],
     cursor: ["cursor"],
     codex: ["codex"],
-    "kiro-cli": ["kiro-cli"],
     windsurf: ["windsurf"],
     aider: ["aider"],
     copilot: ["github-copilot-cli"],

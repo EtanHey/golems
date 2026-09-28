@@ -363,7 +363,6 @@ export async function runWizard(): Promise<void> {
     "cursor",
     "gemini",
     "codex",
-    "kiro-cli",
     "windsurf",
     "aider",
     "copilot",
