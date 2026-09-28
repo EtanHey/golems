@@ -19,23 +19,19 @@ function row(rows: Awaited<ReturnType<typeof fetchGolemStatuses>>, name: string)
 }
 
 describe("golem status rows", () => {
-  // EmailGolem and JobGolem run inside the cloud worker
-  // (packages/services/src/cloud-worker.ts). No email-golem or job-golem
-  // LaunchAgent exists, so checking one always said "stopped".
-  it("reports EmailGolem and JobGolem from the cloud worker", async () => {
+  // EmailGolem runs inside the cloud worker, without its own LaunchAgent.
+  it("reports EmailGolem from the cloud worker", async () => {
     const up = await fetchGolemStatuses(probe(true));
     expect(row(up, "EmailGolem").status).toBe("running");
-    expect(row(up, "JobGolem").status).toBe("running");
 
     const down = await fetchGolemStatuses(probe(false));
     expect(row(down, "EmailGolem").status).toBe("stopped");
     expect(row(down, "EmailGolem").detail).toBe("cloud worker not running");
-    expect(row(down, "JobGolem").status).toBe("stopped");
+    expect(down.some((item) => item.name === "JobGolem")).toBe(false);
   });
 
   it("no longer looks for the nonexistent LaunchAgents", () => {
     const source = readFileSync(join(import.meta.dir, "data.ts"), "utf8");
     expect(source).not.toContain('"email-golem"');
-    expect(source).not.toContain('"job-golem"');
   });
 });

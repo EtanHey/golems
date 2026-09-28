@@ -119,12 +119,6 @@ function validateJSON<T>(
 /**
  * Quick helpers for common sources
  */
-export const forJobGolem = {
-  runLLM: (prompt: string) => runLLM(prompt, "job-golem"),
-  runLLMJSON: <T>(prompt: string, schema: ZodType<T>) =>
-    runLLMJSON(prompt, schema, "job-golem"),
-};
-
 export const forEmailGolem = {
   runLLM: (prompt: string) => runLLM(prompt, "email-golem"),
   runLLMJSON: <T>(prompt: string, schema: ZodType<T>) =>

@@ -1,7 +1,7 @@
 /**
  * Tests for auto-outreach integration (E6)
  *
- * When JobGolem finds a job scoring 8+, it should:
+ * Given a job scoring 8+, it should:
  * 1. Research the company
  * 2. Find contacts
  * 3. Generate outreach draft
@@ -255,7 +255,7 @@ describe("Auto-Outreach (E6)", () => {
   });
 });
 
-describe("Integration: JobGolem -> RecruiterGolem", () => {
+describe("Integration: job matches -> RecruiterGolem", () => {
   test("processHotMatches processes multiple jobs", async () => {
     const { processHotMatches } = await import("@golems/recruiter/auto-outreach");
 

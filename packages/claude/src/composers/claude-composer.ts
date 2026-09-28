@@ -6,7 +6,6 @@
  */
 
 import { Composer } from "grammy";
-import { runJobSearch } from "@golems/jobs/index";
 import {
   HOME,
   loadState,
@@ -29,7 +28,7 @@ claudeComposer.command("start", (ctx) => {
     `ClaudeGolem v7
 
 /status — Health + stats
-/trigger — Manual runs (email/jobs/briefing)
+/trigger — Manual runs (email/briefing)
 /morning — Morning briefing
 
 Or just type a message to spawn Claude.`,
@@ -39,26 +38,25 @@ Or just type a message to spawn Claude.`,
 // /status command
 claudeComposer.command("status", async (ctx) => {
   const queueLen = queue.length;
-  const { emailStats, jobStats } = await getDailyStats();
+  const { emailStats } = await getDailyStats();
 
   await ctx.reply(
     `Status
 
 Queue: ${queueLen} messages
 Processing: ${isProcessing ? "yes" : "idle"}
-Bot: ${Math.round(process.uptime() / 60)}min uptime${emailStats}${jobStats}`,
+Bot: ${Math.round(process.uptime() / 60)}min uptime${emailStats}`,
   );
 });
 
 // /trigger command - manual golem runs
 claudeComposer.command("trigger", async (ctx) => {
   const arg = ctx.match?.trim().toLowerCase();
-  if (!arg || !["email", "jobs", "briefing"].includes(arg)) {
+  if (!arg || !["email", "briefing"].includes(arg)) {
     await ctx.reply(
       `Usage: /trigger <service>
 
 /trigger email — Run email check
-/trigger jobs — Run job scrape
 /trigger briefing — Morning briefing`,
     );
     return;
@@ -66,16 +64,7 @@ claudeComposer.command("trigger", async (ctx) => {
 
   await ctx.reply(`Triggering ${arg}...`);
   try {
-    if (arg === "jobs") {
-      const result = await runJobSearch();
-      if (result) {
-        await ctx.reply(
-          `Done: ${result.scraped} scraped, ${result.filtered} filtered, ${result.matched} matched`,
-        );
-      } else {
-        await ctx.reply("Job scrape completed");
-      }
-    } else if (arg === "email") {
+    if (arg === "email") {
       const { processEmails } = await import("@golems/shared/email/index");
       await processEmails();
       await ctx.reply("Email check completed");

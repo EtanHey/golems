@@ -10,8 +10,7 @@ async function checkPort(port: number): Promise<boolean> {
   }
 }
 
-// EmailGolem and JobGolem have no LaunchAgent of their own: the cloud worker
-// (packages/services/src/cloud-worker.ts) schedules both.
+// EmailGolem has no LaunchAgent of its own: the cloud worker schedules it.
 async function checkCloudWorker(): Promise<boolean> {
   try {
     // Match the bun process only, not an editor or grep with the name open.
@@ -102,21 +101,6 @@ export async function fetchGolemStatuses(probe: StatusProbe = liveProbe): Promis
         "🏷️  Categories: SaaS $890 | Food $420 | Transport $310",
         "⚠️  Alert: AWS bill up 34% — check Lambda usage",
         "📋 Tax deductions found: $1,240 (Schedule C)",
-      ],
-    },
-    {
-      name: "JobGolem",
-      emoji: "🎯",
-      status: scheduled,
-      detail: cloudWorkerRunning ? "scraping" : "cloud worker not running",
-      description: "Job board scraper. Matches by skills + preferences. Scores fit.",
-      trailerLines: [
-        "$ golems jobs --matches",
-        "🎯 3 hot matches (>85% fit score)",
-        "  → Senior Frontend @ Vercel (92%)",
-        "  → Staff Eng @ Linear (88%)",
-        "  → Founding Eng @ stealth AI (86%)",
-        "📬 Applied: 12 this week, 3 interviews",
       ],
     },
   ];

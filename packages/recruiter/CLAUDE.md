@@ -131,7 +131,7 @@ WHERE first_name ILIKE '%name%' OR last_name ILIKE '%name%';
 
 ### Connection Matching
 
-`packages/jobs/src/connection-matcher.ts` can match jobs to connections by company name (exact, fuzzy, substring). The `job_connections` table stores matches. Run matching via:
+The historical `job_connections` table stores matches. Query existing matches via:
 
 ```sql
 -- Check existing matches

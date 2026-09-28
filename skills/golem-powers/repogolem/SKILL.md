@@ -125,7 +125,6 @@ If the launcher guess is wrong, use the verified repoGolem launcher manually unt
 | metacomlayer | $HOME/Gits/metacomlayer | metacomlayerClaude, metacomlayerCodex, metacomlayerCursor |
 | qwan | $HOME/Gits/qwan-drill | qwanClaude, qwanCodex, qwanCursor |
 | coach | $HOME/Gits/golems/packages/coach | coachClaude, coachCodex, coachCursor |
-| jobs | $HOME/Gits/golems/packages/jobs | jobsClaude, jobsCodex, jobsCursor |
 | content | $HOME/Gits/golems/packages/content | contentClaude, contentCodex, contentCursor |
 | services | $HOME/Gits/golems/packages/services | servicesClaude, servicesCodex, servicesCursor |
 | skills | $HOME/Gits/golems | skillsClaude, skillsCodex, skillsCursor |

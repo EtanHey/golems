@@ -17,8 +17,6 @@ describe("LLM facade (llm.ts)", () => {
 
   it("exports source helpers with runLLM/runLLMJSON", async () => {
     const mod = await import("@golems/shared/lib/llm");
-    expect(typeof mod.forJobGolem.runLLM).toBe("function");
-    expect(typeof mod.forJobGolem.runLLMJSON).toBe("function");
     expect(typeof mod.forEmailGolem.runLLM).toBe("function");
     expect("forNightShift" in mod).toBe(false); // retired (gL = A)
   });

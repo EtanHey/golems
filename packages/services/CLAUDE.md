@@ -48,7 +48,7 @@ When compacting this session, follow these rules strictly:
 ```text
 packages/services/
 ├── src/
-│   ├── cloud-worker.ts          # Runnable scheduler for email/jobs/briefing/soltome
+│   ├── cloud-worker.ts          # Runnable scheduler for email/briefing/soltome
 │   ├── briefing.ts              # 8am morning summary
 │   ├── healthcheck.ts           # 9am service health verification
 │   └── doctor.ts                # health checks (bun run src/doctor.ts)
@@ -60,20 +60,18 @@ packages/services/
 ## Dependencies
 
 - `@golems/shared` — Supabase, event log, state store, LLM, telegram-direct
-- `@golems/jobs` — Job scraping (used by cloud worker)
 - `@golems/teller` — (future) Financial reports in briefing
 - `googleapis` — Google APIs (briefing, calendar)
 
 ## Cloud Worker
 
 The previous Railway production service was deleted on 2026-07-05. `cloud-worker.ts`
-remains the scheduler implementation for email, jobs, briefing, and Soltome work,
+remains the scheduler implementation for email, briefing, and Soltome work,
 but do not assume there is an active Railway host.
 
 | Schedule | Service | Description |
 |----------|---------|-------------|
 | Hourly 6am-7pm (skip 12pm) + 10pm | Email poller | Fetch + score emails |
-| 6am, 9am, 1pm (Sun-Thu) | Job scraper | Scrape + match jobs |
 | 8am daily | Briefing | Morning summary to Telegram |
 | 2am daily | Soltome learner | Scrape posts + learn patterns |
 

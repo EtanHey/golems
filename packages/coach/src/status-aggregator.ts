@@ -35,7 +35,6 @@ export function resetRegistry(): void {
 
 export async function registerAllGolems(): Promise<void> {
   const packages = [
-    { name: "jobs", import: () => import("@golems/jobs/index") },
     { name: "recruiter", import: () => import("@golems/recruiter/index") },
     { name: "teller", import: () => import("@golems/teller/index") },
     { name: "email", import: () => import("@golems/shared/email/index") },

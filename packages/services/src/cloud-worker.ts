@@ -3,7 +3,7 @@
  * Cloud Worker - Scheduler Entry Point
  *
  * Runs all cloud golems on timezone-aware schedules in a single process.
- * Can replace separate schedulers for email-golem, job-golem, and briefing.
+ * Can replace separate schedulers for email-golem and briefing.
  *
  * ══════════════════════════════════════════════════════════════
  * SCHEDULE (All times Israel/Asia/Jerusalem)
@@ -12,9 +12,6 @@
  *   Email Golem:     Every 1h during 6am-7pm (skip 12pm lunch)
  *                    One final check at 10pm, OFF overnight (10pm-6am)
  *                    ~12 runs/day vs old 144 runs/day → 92% cost savings
- *
- *   Job Golem:       6am, 9am, 1pm Sun-Thu (Israeli work week)
- *                    ~15 runs/week vs old 336 runs/week → 95% cost savings
  *
  *   Briefing:        8am daily
  * ══════════════════════════════════════════════════════════════
@@ -28,7 +25,6 @@
  * Usage:
  *   bun run src/cloud-worker.ts                # Run everything
  *   bun run src/cloud-worker.ts --email-only   # Just email golem
- *   bun run src/cloud-worker.ts --jobs-only    # Just job golem
  */
 
 // Default cloud env vars (can be overridden)
@@ -74,11 +70,6 @@ async function getCostTracker() {
 async function getEmailGolem() {
   const mod = await import("@golems/shared/email/index");
   return mod.processEmails;
-}
-
-async function getJobGolem() {
-  const mod = await import("@golems/jobs/index");
-  return mod.runJobSearch;
 }
 
 async function getBriefing() {
@@ -196,7 +187,6 @@ async function safeRun(
       // Update golem_state timestamps + status for dashboard service status
       const stateKeyPrefixes: [string, string][] = [
         ["EmailGolem", "lastEmailCheck"],
-        ["JobGolem", "lastJobRun"],
         ["Briefing", "lastBriefing"],
         ["CalendarSync", "lastCalendarSync"],
       ];
@@ -369,38 +359,13 @@ function scheduleEmail(fn: () => Promise<unknown>): void {
   setInterval(check, 10 * 60_000);
 }
 
-/**
- * Job Golem scheduler: 6am, 9am, 1pm Israel time, Sun-Thu only.
- * 6am catches overnight postings, 9am + 1pm catch daytime.
- */
-function scheduleJobs(fn: () => Promise<unknown>): void {
-  let lastRunKey = "";
-
-  setInterval(() => {
-    const hour = getIsraelHour();
-    const today = new Date().toISOString().slice(0, 10);
-    const runKey = `${today}-${hour}`;
-
-    // Run at 6am, 9am, or 1pm on Israeli workdays
-    if (
-      (hour === 6 || hour === 9 || hour === 13) &&
-      isIsraeliWorkday() &&
-      lastRunKey !== runKey
-    ) {
-      lastRunKey = runKey;
-      safeRun("JobGolem", fn);
-    }
-  }, 60_000); // Check every minute
-}
-
 // ═══════════════════════════════════════════════════════
 // Main
 // ═══════════════════════════════════════════════════════
 
 const args = process.argv.slice(2);
 const emailOnly = args.includes("--email-only");
-const jobsOnly = args.includes("--jobs-only");
-const singleMode = emailOnly || jobsOnly;
+const singleMode = emailOnly;
 
 console.log("[CloudWorker] Starting...");
 console.log(`[CloudWorker] LLM_BACKEND=${process.env.LLM_BACKEND}`);
@@ -576,9 +541,6 @@ try {
     const processEmails = await getEmailGolem();
     scheduleEmail(processEmails);
 
-    const runJobSearch = await getJobGolem();
-    scheduleJobs(runJobSearch);
-
     const sendBriefing = await getBriefing();
     scheduleDaily("Briefing", 8, sendBriefing);
 
@@ -593,18 +555,12 @@ try {
     console.log(
       "  - EmailGolem: hourly 6am-7pm (skip lunch), 10pm final, OFF overnight",
     );
-    console.log("  - JobGolem: 6am + 9am + 1pm Sun-Thu (Israeli work week)");
     console.log("  - Briefing: 8am Israel");
     console.log("  - CalendarSync: 7am, 12pm, 6pm Israel");
   } else if (emailOnly) {
     const processEmails = await getEmailGolem();
     scheduleEmail(processEmails);
     console.log("[CloudWorker] Email-only mode");
-  } else if (jobsOnly) {
-    const runJobSearch = await getJobGolem();
-    safeRun("JobGolem (initial)", runJobSearch);
-    scheduleJobs(runJobSearch);
-    console.log("[CloudWorker] Jobs-only mode");
   }
 
   golemStatus = "running";

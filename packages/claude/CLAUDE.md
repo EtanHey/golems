@@ -62,7 +62,6 @@ packages/claude/
 ## Dependencies
 
 - `@golems/shared` — Supabase, event log, state store, Axiom, email infra
-- `@golems/jobs` — runJobSearch (used by /trigger jobs)
 - `@golems/services` — briefing (used by /trigger and /morning)
 - `grammy` — Telegram Bot Framework
 
@@ -89,7 +88,7 @@ packages/claude/
 |---------|-------------|
 | `/start` | Welcome + command list |
 | `/status` | Health, queue, daily stats |
-| `/trigger <svc>` | Manual runs (email/jobs/briefing) |
+| `/trigger <svc>` | Manual runs (email/briefing) |
 | `/morning` | Morning briefing |
 | Free text | Spawn Claude CLI |
 

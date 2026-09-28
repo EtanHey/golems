@@ -289,11 +289,6 @@ setup_client_archive_path() {
     > "$1/skills/golem-powers/_archive/client-management/workflows/daily-update.md"
 }
 
-setup_jobs_profile_server_path() {
-  mkdir -p "$1/packages/jobs/src"
-  printf 'export const profileFallback = true;\n' > "$1/packages/jobs/src/mcp-server.ts"
-}
-
 setup_gmail() {
   printf 'different.person+guard@gmail.com\n' > "$1/contact.txt"
 }
@@ -1078,7 +1073,6 @@ expect_workflow_history_fail_closed() {
 expect_reject "tracked retro" "retro-content" setup_retro
 expect_reject "June relocate path" "relocate-path" setup_relocate_path
 expect_reject "client archive path" "relocate-path" setup_client_archive_path
-expect_reject "jobs profile server path" "relocate-path" setup_jobs_profile_server_path
 expect_reject "Gmail PII" "identity-pii" setup_gmail
 expect_reject "custom-domain email PII" "identity-pii" setup_custom_domain_email
 expect_reject "Israeli phone PII" "identity-pii" setup_phone

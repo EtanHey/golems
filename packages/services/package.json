@@ -26,7 +26,6 @@
     "briefing": "bun run src/briefing.ts"
   },
   "dependencies": {
-    "@golems/jobs": "workspace:*",
     "@golems/shared": "workspace:*",
     "@golems/coach": "workspace:*",
     "@golems/teller": "workspace:*",

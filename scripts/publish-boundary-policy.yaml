@@ -14,7 +14,6 @@ relocate_path_patterns:
   - 'skills/golem-powers/cmux-agents/evals/fixtures/*-session-failure-*.txt'
   - 'skills/golem-powers/orc-workspace/iteration-2/historical-pain-points.md'
   - 'skills/golem-powers/_archive/client-management/*'
-  - 'packages/jobs/src/mcp-server.ts'
 
 symlink_rule: 'tracked-symlinks-must-resolve-inside-repository'
 
