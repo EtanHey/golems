@@ -88,6 +88,13 @@ notified. A participant without a watcher on that file will not see it, no matte
    duplicating a collab post is backwards, and long payloads break the receiving pane.
 7. **Leads own reviewer monitoring; workers push, notify, stop.** A worker that keeps watching
    its own reviewer has taken the lead's job and stayed alive to do it.
+8. **Batch waits are ONE completion wait.** When you wait on a batch (a mutant sweep, a test
+   matrix, N CI jobs), arm a single background wait that exits only when the whole batch is done:
+   an until-loop on the tally/DONE file or the final state (Claude seats: `Bash` with
+   `run_in_background`; Codex seats: the detached shell of rule 3). Never a per-line `Monitor`
+   that wakes you once per item. A per-line stream is only for events that each need action:
+   collab mail, PR state changes. Etan, 2026-09-28, after a reviewer woke about 30 times to post
+   "R-xx escaped. Waiting.": "could probably be more efficient".
 
 **Failure mode to recognize:** if a handoff "went unanswered", check whether the recipient had a
 watcher on that file before concluding anything about the recipient. Silence from an unwatched
