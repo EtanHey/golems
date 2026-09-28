@@ -114,13 +114,13 @@ function readSettings(settingsPath) {
   return { text, json, canonical: `${JSON.stringify(json, null, 2)}\n` === text, mode };
 }
 
-// Replace each golems hook's command in place (same event + matcher), drop
-// stale duplicates of it, append a new matcher group if none matched.
 function hookSpec(e) {
   return { type: "command", command: e.cmd, ...(e.timeout ? { timeout: e.timeout } : {}),
     ...(e.async === undefined ? {} : { async: e.async }) };
 }
 
+// Replace each managed hook's command in place (same event + matcher), drop
+// stale duplicates of it, append a new matcher group if none matched.
 function desiredHooks(current, managed) {
   const hooks = structuredClone(current ?? {});
   for (const e of managed) {

@@ -20,7 +20,7 @@
       { "id": "session-cleanup", "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "session-cleanup.py" },
       { "id": "brainlayer-session-start", "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "brainlayer-session-start.py" },
       { "id": "cmux-self-register", "kind": "external", "owner": "cmuxlayer", "event": "SessionStart", "match": "cmux-self-register.py" },
-      { "id": "brainbar-stop-index", "kind": "wrapped-external", "owner": "brainlayer", "event": "Stop", "match": "brainbar-stop-index.py", "timeout": 5000, "async": true, "command": "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python {home}/Gits/brainlayer/hooks/brainbar-stop-index.py" },
+      { "id": "brainbar-stop-index", "kind": "wrapped-external", "owner": "brainlayer", "event": "Stop", "match": "brainbar-stop-index.py", "timeout": 5, "async": true, "command": "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python {home}/Gits/brainlayer/hooks/brainbar-stop-index.py" },
       { "id": "brainlayer-prompt-search", "kind": "external", "owner": "brainlayer", "event": "UserPromptSubmit", "match": "brainlayer-prompt-search.py" }
     ],
     "m1": [

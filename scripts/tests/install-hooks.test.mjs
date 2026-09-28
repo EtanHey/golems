@@ -45,7 +45,7 @@ function manifestFor() {
 function addWrappedStopHook(fx) {
   const manifest = manifestFor();
   manifest.hosts.mbp.push({ id: "brainbar-stop-index", kind: "wrapped-external", owner: "brainlayer",
-    event: "Stop", match: "brainbar-stop-index.py", timeout: 5000, async: true,
+    event: "Stop", match: "brainbar-stop-index.py", timeout: 5, async: true,
     command: "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python {home}/Gits/brainlayer/hooks/brainbar-stop-index.py" });
   writeFileSync(fx.manifest, JSON.stringify(manifest));
 }
@@ -107,7 +107,7 @@ test("wrapped external Stop hook replaces the hand-placed command once and keeps
   expect(stopHooks).toHaveLength(2);
   expect(stopHooks[1]).toEqual(sibling);
   const node = spawnSync("sh", ["-c", "command -v node"], { encoding: "utf8" }).stdout.trim();
-  expect(stopHooks[0]).toEqual({ type: "command", command: `${node} ${live(fx)}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python ${fx.home}/Gits/brainlayer/hooks/brainbar-stop-index.py`, timeout: 5000, async: true });
+  expect(stopHooks[0]).toEqual({ type: "command", command: `${node} ${live(fx)}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python ${fx.home}/Gits/brainlayer/hooks/brainbar-stop-index.py`, timeout: 5, async: true });
   expect(existsSync(path.join(fx.home, ".claude/hooks/brainbar-stop-index.py"))).toBe(false);
   expect(bakFiles(fx)).toHaveLength(1);
   expect(run(fx, "--apply").status).toBe(0);
@@ -142,6 +142,7 @@ test("--status checks the wrapped external hook's exact command, timeout, async 
 test("shipped MBP wrapper uses host placeholders and M1 has no brainbar Stop hook", () => {
   const entry = realManifest.hosts.mbp.find((hook) => hook.id === "brainbar-stop-index");
   expect(entry.kind).toBe("wrapped-external");
+  expect(entry.timeout).toBe(5);
   expect(entry.command).toContain("{home}/Gits/brainlayer/hooks/brainbar-stop-index.py");
   expect(entry.command).not.toMatch(/\/Users\/[^/]+/);
   expect(realManifest.hosts.m1.some((hook) => hook.id === "brainbar-stop-index")).toBe(false);
