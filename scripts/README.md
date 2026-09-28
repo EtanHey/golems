@@ -8,7 +8,7 @@ pipeline. Nothing here is imported by the packages.
 | Dir | What's in it |
 |---|---|
 | `ci/` | CI checks: skill-library lint, PR size labels, release gate, the Python suite runner (`run-skill-tests.sh`) |
-| `cc/` | Claude Code helpers: statusline, usage sync, Axiom reporter |
+| `cc/` | Claude Code helpers: statusline and Axiom reporter |
 | `sync/` | Syncing config to other hosts (`golems-sync.sh`), generating per-repo `.mcp.json` from `~/.golems/config.yaml` (`sync-config.sh`), and checking installed copies for drift |
 | `stalker/` | Stream capture, clipping and digest pipeline, run by LaunchAgents |
 | `repogolem/` | The `repoGolem` launcher dispatcher and its installer |
@@ -34,17 +34,9 @@ Every commit since genesis has them at this path, so moving them passes a
 PR's own check but fails that full re-check on every older commit. So they
 stay here.
 
-## Compatibility shims
+## Tool paths
 
-These top-level files only forward to their new home. Each was left behind for
-callers outside this repo, and each header says when it can go:
-
-| Shim | Moved to | Remove when |
-|---|---|---|
-| `check-skill-library.mjs`, `release-gate.mjs`, `pr-size-labels.sh` | `ci/` | agent briefs and installed skill copies use the new path |
-| `golems-sync.sh`, `sync-config.sh` | `sync/` | runbooks and other repos' docs use the new path |
-
-New code should call the moved path.
+Call the CI tools from `scripts/ci/` and the sync tools from `scripts/sync/`.
 
 ## Other top-level files
 
