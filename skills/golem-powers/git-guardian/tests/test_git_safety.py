@@ -6,6 +6,7 @@ rule must NOT block (the false-positive gate). Pure functions → fully determin
 
 import importlib.util
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -14,6 +15,29 @@ spec = importlib.util.spec_from_file_location("git_safety", MODULE)
 git_safety = importlib.util.module_from_spec(spec)
 sys.modules["git_safety"] = git_safety
 spec.loader.exec_module(git_safety)
+
+
+def test_two_facades_load_their_own_git_implementation(tmp_path):
+    copied = tmp_path / "other" / "git-guardian"
+    shutil.copytree(MODULE.parent, copied, ignore=shutil.ignore_patterns("__pycache__"))
+    implementation = copied / "git_safety_impl" / "git.py"
+    source = implementation.read_text()
+    assert "return len(meaningful) == 0" in source
+    implementation.write_text(source.replace("return len(meaningful) == 0", "return 'other copy'"))
+    other_spec = importlib.util.spec_from_file_location("git_safety_other", copied / "git_safety.py")
+    other = importlib.util.module_from_spec(other_spec)
+    other_spec.loader.exec_module(other)
+    assert other.pr_body_is_empty("hello") == "other copy"
+    assert git_safety.pr_body_is_empty("hello") is False
+    assert other._git_impl.__file__ == str(implementation)
+    assert git_safety._git_impl.__file__ == str(MODULE.parent / "git_safety_impl" / "git.py")
+
+
+def test_git_facade_forwards_replaceable_helpers(monkeypatch):
+    monkeypatch.setattr(git_safety, "split_git", lambda _command: ("push", ["--no-verify"]))
+    assert git_safety.is_unauthorized_no_verify("anything") is True
+    monkeypatch.setattr(git_safety, "restore_targets", lambda _command: ["unowned"])
+    assert git_safety.is_destructive_restore("anything", owned_paths=[])["destructive"] is True
 
 
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────
