@@ -92,6 +92,11 @@ def test_rm_facade_forwards_replaceable_path_policy(monkeypatch):
     )
 
 
+def test_nested_sudo_rm_keeps_base_recursion_headroom():
+    blocked, reason = git_safety.is_dangerous_rm("sudo " * 900 + "rm -rf /", cwd="/", env={})
+    assert blocked and reason and "rm" in reason.lower()
+
+
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────
 
 def test_f8_all_three_repo_cleanup_specimens_are_allowed(tmp_path):

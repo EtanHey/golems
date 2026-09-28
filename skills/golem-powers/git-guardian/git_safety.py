@@ -22,6 +22,7 @@ imports the F8 scanner from this module; tests pin the behavior against rule dri
 from __future__ import annotations
 
 import os
+import functools
 import posixpath
 import re
 import shlex
@@ -579,22 +580,12 @@ def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str |
         is_harness_scratchpad_fn=is_harness_scratchpad,
     )
 
-_rm_impl = importlib.import_module(_IMPL_NAME + ".rm")
+_rm_impl = _import_impl("rm")
 
 
 def _skip_options(words: list[str], position: int, options_with_values: set[str]) -> int:
     return _rm_impl._skip_options(words, position, options_with_values)
 
 
-def _rm_reason_in_words(
-    words: list[str], position: int, cwd: str, variables: dict[str, str], *,
-    dynamic_input: bool = False, argument_variables: dict[str, str] | None = None,
-) -> str | None:
-    return _rm_impl._rm_reason_in_words(
-        words, position, cwd, variables, dynamic_input=dynamic_input,
-        argument_variables=argument_variables, api=globals(),
-    )
-
-
-def is_dangerous_rm(command: str, *, cwd: str | None = None, env=None):
-    return _rm_impl.is_dangerous_rm(command, cwd=cwd, env=env, api=globals())
+_rm_reason_in_words = functools.partial(_rm_impl._rm_reason_in_words, api=globals())
+is_dangerous_rm = functools.partial(_rm_impl.is_dangerous_rm, api=globals())
