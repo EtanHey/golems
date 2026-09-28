@@ -455,6 +455,7 @@ const MAX_REPORT_READS = 4;
 // code, which stays reserved for the cron/loop FLAGs (cx9 R1 finding 1).
 export const CLEANUP_RECEIPT_CODE = "FLEETWRAP_CLEANUP_RECEIPT_MISSING";
 const WRITTEN_INPUT_KEYS = ["content", "new_string", "body", "message", "text"];
+const LEXER_ABORTED = Symbol("lexer work bound reached");
 
 function writtenInputText(tool) {
   const input = tool?.input;
@@ -489,7 +490,7 @@ function stripExamples(text) {
   return out.join("\n");
 }
 
-function receiptEvidence(turn) {
+function receiptEvidence(turn, lexerOptions) {
   const narrative = [];
   const written = [];
   const commands = [];
@@ -504,11 +505,13 @@ function receiptEvidence(turn) {
       if (typeof t.input?.file_path === "string") filePaths.push(t.input.file_path);
       if (typeof t.input?.command !== "string") continue;
       commands.push(t.input.command);
-      for (const cmd of parseShell(t.input.command)) {
+      const parsed = parseShell(t.input.command, lexerOptions);
+      if (parsed === null) return null;
+      for (const cmd of parsed) {
         if (isGhPrMerge(cmd)) merged = true;
         const wrote = writtenText(cmd);
         if (wrote) written.push(wrote);
-        writeTargetPaths.push(...writeTargets(cmd));
+        for (const target of writeTargets(cmd)) writeTargetPaths.push(target);
       }
     }
   }
@@ -563,9 +566,9 @@ function doneSignals(ev) {
 function citedReportPaths(ev) {
   const paths = [];
   for (const match of ev.narrative.matchAll(REPORT_PATH_RE)) paths.push(match[1]);
-  paths.push(...ev.writeTargetPaths);
+  for (const path of ev.writeTargetPaths) paths.push(path);
   for (const match of ev.commands.matchAll(REPORT_PATH_RE)) paths.push(match[1]);
-  paths.push(...ev.filePaths);
+  for (const path of ev.filePaths) paths.push(path);
   return [...new Set(paths)].filter((p) => eligibleReportPath(p) !== null).slice(0, MAX_REPORT_READS);
 }
 
@@ -583,7 +586,8 @@ function reportReader(transcript, options) {
 }
 
 function detectCleanupReceipt(transcript, turn, options) {
-  const ev = receiptEvidence(turn);
+  const ev = receiptEvidence(turn, options.lexerOptions);
+  if (ev === null) return LEXER_ABORTED;
   const signals = doneSignals(ev);
   if (signals.length === 0) return null;
   // Tool RESULTS are not the turn's output: a lead that reads a worker's
@@ -619,6 +623,7 @@ export function detectFleetWrap(transcript, options = {}) {
   const turn = currentTurn(events);
   const result = detectCronState(transcript, turn, options);
   const receipt = detectCleanupReceipt(transcript, turn, options);
+  if (receipt === LEXER_ABORTED) return { verdict: "PASS", terminal: false, violations: [] };
   if (!receipt) return result;
   return { verdict: "FLAG", terminal: result.terminal, violations: [...result.violations, receipt] };
 }

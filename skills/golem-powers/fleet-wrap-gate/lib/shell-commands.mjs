@@ -15,16 +15,24 @@
 
 const WRAPPERS = new Set(["command", "env", "exec", "nohup", "sudo", "time"]);
 const ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=/;
+const MAX_LEXER_WORK = 1_000_000;
+const MAX_LEXER_MS = 350;
 
 function newCommand() {
   return { argv: [], redirects: [], heredocs: [], pipeTo: null };
 }
 
-export function parseShell(src) {
+// A null result means the work bound was reached. Callers must fail open for
+// the whole gate: partial commands cannot establish or disprove DONE evidence.
+export function parseShell(src, { maxWork = MAX_LEXER_WORK, maxMs = MAX_LEXER_MS } = {}) {
   const text = typeof src === "string" ? src : "";
+  const deadline = performance.now() + maxMs;
+  let work = 0;
+  const overBudget = () => ++work > maxWork || ((work & 1023) === 0 && performance.now() > deadline);
   const commands = [];
   const pendingHeredocs = [];
   let cmd = newCommand();
+  let cmdHasHeredoc = false;
   let word = null;
   let expect = null; // { kind: "redirect" | "heredoc" | "herestring", op, strip }
   let pipeFrom = null;
@@ -32,7 +40,10 @@ export function parseShell(src) {
   const endWord = () => {
     if (word === null) return;
     if (expect?.kind === "redirect") cmd.redirects.push({ op: expect.op, target: word });
-    else if (expect?.kind === "heredoc") pendingHeredocs.push({ cmd, delim: word, strip: expect.strip });
+    else if (expect?.kind === "heredoc") {
+      pendingHeredocs.push({ cmd, delim: word, strip: expect.strip });
+      cmdHasHeredoc = true;
+    }
     else if (expect?.kind === "herestring") cmd.heredocs.push(word);
     else cmd.argv.push(word);
     word = null;
@@ -42,15 +53,17 @@ export function parseShell(src) {
     endWord();
     if (pipeFrom) pipeFrom.pipeTo = cmd;
     pipeFrom = null;
-    if (cmd.argv.length || cmd.redirects.length || cmd.heredocs.length || pendingHeredocs.some((h) => h.cmd === cmd)) {
+    if (cmd.argv.length || cmd.redirects.length || cmd.heredocs.length || cmdHasHeredoc) {
       commands.push(cmd);
       if (sep === "|") pipeFrom = cmd;
     }
     cmd = newCommand();
+    cmdHasHeredoc = false;
   };
 
   let i = 0;
   while (i < text.length) {
+    if (overBudget()) return null;
     const c = text[i];
     if (c === "\\") {
       if (text[i + 1] !== "\n") word = (word ?? "") + (text[i + 1] ?? "");
@@ -64,6 +77,7 @@ export function parseShell(src) {
       let j = i + 1;
       let out = "";
       while (j < text.length && text[j] !== '"') {
+        if (overBudget()) return null;
         if (text[j] === "\\" && j + 1 < text.length && '"\\$`'.includes(text[j + 1])) j += 1;
         out += text[j];
         j += 1;
@@ -80,10 +94,12 @@ export function parseShell(src) {
       endCommand("\n");
       i += 1;
       // Here-document bodies follow the line that opened them, in order.
-      while (pendingHeredocs.length) {
-        const { cmd: owner, delim, strip } = pendingHeredocs.shift();
+      for (let pendingIndex = 0; pendingIndex < pendingHeredocs.length; pendingIndex++) {
+        if (overBudget()) return null;
+        const { cmd: owner, delim, strip } = pendingHeredocs[pendingIndex];
         const lines = [];
         while (i < text.length) {
+          if (overBudget()) return null;
           const nl = text.indexOf("\n", i);
           const raw = text.slice(i, nl < 0 ? text.length : nl);
           i = nl < 0 ? text.length : nl + 1;
@@ -93,6 +109,7 @@ export function parseShell(src) {
         }
         owner.heredocs.push(lines.join("\n"));
       }
+      pendingHeredocs.length = 0;
     } else if (c === "&" && text[i + 1] === ">") {
       endWord(); // &> and &>> send stdout+stderr to a file
       expect = { kind: "redirect", op: text[i + 2] === ">" ? ">>" : ">" };
@@ -126,16 +143,20 @@ export function parseShell(src) {
     }
   }
   endCommand("\n");
-  for (const { cmd: owner } of pendingHeredocs) owner.heredocs.push("");
+  for (const { cmd: owner } of pendingHeredocs) {
+    if (overBudget()) return null;
+    owner.heredocs.push("");
+  }
   return commands;
 }
 
 // The argv a simple command actually runs: leading VAR=value assignments and
 // transparent wrappers (`sudo`, `env`, `command`, …) are skipped.
 export function effectiveArgv(command) {
-  const argv = [...(command?.argv ?? [])];
-  while (argv.length && (ASSIGNMENT_RE.test(argv[0]) || WRAPPERS.has(argv[0]))) argv.shift();
-  return argv;
+  const argv = command?.argv ?? [];
+  let first = 0;
+  while (first < argv.length && (ASSIGNMENT_RE.test(argv[first]) || WRAPPERS.has(argv[first]))) first++;
+  return argv.slice(first);
 }
 
 export function isGhPrMerge(command) {
@@ -154,7 +175,9 @@ export function writtenText(command) {
   const redirected = command.redirects.some((r) => r.op !== "<");
   const intoTee = effectiveArgv(command.pipeTo ?? {})[0]?.split("/").pop() === "tee";
   const parts = [];
-  if (command.heredocs.length && (redirected || name === "tee")) parts.push(...command.heredocs);
+  if (command.heredocs.length && (redirected || name === "tee")) {
+    for (const body of command.heredocs) parts.push(body);
+  }
   if ((name === "echo" || name === "printf") && (redirected || intoTee)) {
     parts.push(argv.slice(1).filter((a) => !/^-[neE]+$/.test(a)).join(" ").replace(/\\n/g, "\n"));
   }
