@@ -113,6 +113,47 @@ bun packages/golem-skills/src/index.ts skills install <skill-name>   # copies in
 network. They do not read your working tree. The npm package `golems-cli` is
 behind this repo, so for now run the CLI from source.
 
+## repoGolem config
+
+`scripts/repogolem/repogolem-config.ts` builds the per-repo agent launchers
+(`<repo>Claude`, `<repo>Codex`, ...) from one YAML config. You keep that config
+yourself. Golems ships only the generator, the schema
+(`scripts/repogolem/config.schema.json`) and a placeholder example
+(`scripts/repogolem/config.example.yaml`).
+
+```bash
+export REPOGOLEM_CONFIG=~/somewhere-private/repogolem.yaml
+bun scripts/repogolem/repogolem-config.ts init       # starter config, with this Mac's machines: section
+$EDITOR "$REPOGOLEM_CONFIG"                          # your projects, MCPs, op:// refs
+bun scripts/repogolem/repogolem-config.ts generate   # resolve refs, write the launchers
+bun scripts/repogolem/repogolem-config.ts generate --check   # exit 1 + the stale file if the config changed
+```
+
+- **One file, many machines.** `projects`, `mcpDefinitions` and `global` are
+  shared. `machines.<LocalHostName>` sets `reposPath` (relative project paths
+  join it), `clis` (the CLIs that machine has) and `overrides` (objects merge,
+  lists replace, `null` drops a project). `generate` picks the section by
+  `scutil --get LocalHostName`, or by `--host` / `REPOGOLEM_HOST`.
+- **Secrets are op:// refs only.** The schema rejects a literal under
+  `secrets:`. The config holds no values, so you can keep it in a private
+  repo.
+- **`generate` is the only step that resolves them.** It resolves every ref
+  in one `op run` (one 1Password unlock) and writes
+  `~/.config/repogolem/generated/{registry.json,launchers.zsh,secrets.env}`.
+  Each file is stamped with the config's sha256. `--check` only reads these
+  files and never calls `op`. `golem-dispatch.zsh` still resolves refs through
+  Ralph's loader today. Moving it to read `secrets.env` is the next step, and
+  after that an unattended spawn never waits on a prompt.
+
+**The tradeoff: resolved values are on disk.** `secrets.env` holds them in
+plain text, so an agent can start without an unlock prompt. The rule is that
+secrets are never committed, not that they are never on disk. The guards:
+files are `0600` and the directory `0700`; `generate` refuses an output
+directory inside a git work tree, a symlink, or one owned by another user;
+`--check` reports a loosened mode as stale; and no command prints a resolved
+value, only counts and key paths. If you need values never to touch disk, do
+not use `secrets:`. Read them with `op read` at launch instead.
+
 ## Contributing
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): workflow, commit format, test layout
