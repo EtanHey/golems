@@ -81,7 +81,7 @@ When a round has parallel phases, the orchestrator:
 2. Starts the monitor **before dispatching any worker** (step 0 at boot and after every compaction — `/collab-monitor` § "Arming Is Step 0") and attaches its alert stream with `bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md && bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>` in a supervised long-running command session
 3. Arms a process-exit or scheduled process/registry liveness watcher for every worker. The addressed-message collab monitor **MUST NOT be the only worker-liveness guard**
 4. Spawns one agent per phase (Task tool or CLI agents) only after the message monitor reports `STARTED`, its consumer reports `FOLLOWING`, and the liveness watchers are armed
-5. Includes the collab.md path in every kickoff prompt, requires each agent to append either `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`, and advances rounds when all phases are done
+5. Includes the collab.md path in every kickoff prompt, requires each agent to append either `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`; when all phases are done, the lead first confirms every worker's CLEANUP RECEIPT and runs the prune step (`git worktree prune`, delete merged branches, `docs.local/<sprint>/` rollup; see **Phase exit**), and only then advances rounds
 
 ### Plan Lifecycle
 
@@ -94,7 +94,7 @@ Scaffold plan  →  Analyze dependencies  →  Group into rounds
               Round has 2+ phases? → Create collab.md, arm message + liveness guards, spawn agents in parallel
                     |
                     ▼
-              All round phases done  →  Advance to next round  →  Repeat
+              All round phases done  →  lead: every CLEANUP RECEIPT + prune  →  Advance to next round  →  Repeat
 ```
 
 ### Non-Code Deliverables Check (MANDATORY at scaffold time)
@@ -186,7 +186,7 @@ When a round has 2+ independent phases, use the **full collab protocol** defined
 2. Fill in all mandatory sections (Goal, Agents, Task Board, Constraints, Gates)
 3. Start the monitor and attach its alert stream with `bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md && bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>` in a supervised long-running command session
 4. Arm a process-exit or scheduled process/registry liveness watcher for every worker. The addressed-message collab monitor **MUST NOT be the only worker-liveness guard**
-5. Spawn agents with the collab path in their kickoff prompts only after the message monitor reports `STARTED`, its consumer reports `FOLLOWING`, and the liveness watchers are armed; require each agent to append either `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`, and advance rounds when all agents report `done`
+5. Spawn agents with the collab path in their kickoff prompts only after the message monitor reports `STARTED`, its consumer reports `FOLLOWING`, and the liveness watchers are armed; require each agent to append either `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`; when all agents report `done`, the lead must first confirm every worker's CLEANUP RECEIPT and run the prune step (`git worktree prune`, delete merged branches, `docs.local/<sprint>/` rollup; see **Phase exit**), and only then advance rounds
 
 Fleet law for claim/guard/DONE/harvest-close lives in canon #7; this workflow keeps the concrete template, status table, and update gates.
 
@@ -317,6 +317,13 @@ User correction (April 5): "No, I'm saying it will take probably hours, not week
 | DRY | No duplicated logic |
 | Tests pass | `bun test` / `npm test` green |
 | Build passes | No compile errors |
+| Cleanup receipts | One CLEANUP RECEIPT per worker PR, and the lead's prune step ran (below) |
+
+**Phase exit:** a phase is not closed until every worker's CLEANUP RECEIPT is present (format: `/pr-loop`
+`references/merge-and-verification.md` § Cleanup Receipt) and the lead has run the prune step:
+`git worktree prune`, delete merged branches, and roll `docs.local/<sprint>/` up into one README. A missing
+receipt is a question to that worker, not a closed phase: the phase stays open until that worker posts it, and the lead
+does not write a receipt on a worker's behalf.
 
 ---
 

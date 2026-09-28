@@ -40,7 +40,7 @@ Run the loop in this order:
 6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence.
 7. Classify every finding; fix real bugs, reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review.
 8. Confirm required checks and reviews are green on `headRefOid`, then either hand off unmerged or merge.
-9. After an authorized merge, verify the remote merge/content, release/install/live-probe as required, update tracking, and clean up.
+9. After an authorized merge, verify the remote merge/content, release/install/live-probe as required, update tracking, and clean up. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
 
 ## Hard Gates
 

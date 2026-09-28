@@ -28,7 +28,7 @@ Agent(
 
 ```bash
 # Preferred: /loop (foreground, stops when you stop it)
-/loop 5m Read <plan-dir>/collab.md. Check status changes, blockers, completed phases. Advance round if all phases done.
+/loop 5m Read <plan-dir>/collab.md. Check status changes, blockers, completed phases. If all phases are done, the lead checks every worker's CLEANUP RECEIPT and runs the prune step first, then advance round.
 
 # Alternative: CronCreate (background, survives session)
 CronCreate(schedule="*/5 * * * *", command="bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh run --once @<listen-name> <plan-dir>/collab.md")

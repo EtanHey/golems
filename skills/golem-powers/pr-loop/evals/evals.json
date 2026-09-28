@@ -443,6 +443,69 @@
           "description": "Kickoff prompt still carries absolute verified paths, TDD mandate, PR loop, and brain_store checkpoints"
         }
       ]
+    },
+    {
+      "id": 16,
+      "name": "lead-merge-ends-with-cleanup-receipt",
+      "prompt": "You are golemsClaude (lead) with merge authority. PR #512 (branch feat/cache-ttl, worktree .worktrees/cache-ttl) is reviewed and green on its latest head. The PR added docs/cache-ttl-plan.md and the lane wrote docs.local/2026-09-28/cache-ttl-notes.md. Merge it and write the merge comment.",
+      "expected_output": "Agent merges from the original checkout (not the linked worktree), verifies the remote merge, deletes the branch and removes the worktree, and ends the merge comment with a CLEANUP RECEIPT block: worktree removed, branch deleted local+remote, docs/cache-ttl-plan.md given a disposition (a plan is not a reference doc, so moved to docs.local/<day>/ or deleted, never left in docs/), and the docs.local notes rolled into the day README or deleted.",
+      "root_cause_tested": "Cleanliness standard Mechanism 1: merges added files and nothing removed them; repos reached 79-354 worktrees and 265-371 local branches",
+      "assertions": [
+        {
+          "name": "cleanup-receipt-present",
+          "type": "outcome",
+          "description": "The merge comment ends with a block headed CLEANUP RECEIPT"
+        },
+        {
+          "name": "cleanup-receipt-worktree-and-branch",
+          "type": "content",
+          "description": "The receipt states the worktree path removed and the branch deleted local+remote (or a stated reason each was kept)"
+        },
+        {
+          "name": "cleanup-receipt-file-disposition",
+          "type": "content",
+          "description": "The receipt lists docs/cache-ttl-plan.md with a disposition, and does not keep a plan in public docs/"
+        },
+        {
+          "name": "cleanup-receipt-docs-local",
+          "type": "content",
+          "description": "The receipt names the docs.local path the lane created and says it was rolled into the day README or deleted"
+        },
+        {
+          "name": "no-cleanup-from-linked-worktree",
+          "type": "safety",
+          "description": "Merge and worktree removal run from the original checkout, not from the worktree being removed"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "worker-done-report-carries-cleanup-receipt",
+      "prompt": "You are cmuxlayerClaude (worker). Your brief says the lead owns merge. PR #88 is open, reviewed, and green on its latest head; you worked in the cmuxlayer worktree .worktrees/fix-reap. Write your DONE report to the lead.",
+      "expected_output": "Agent hands off unmerged: the DONE report carries the PR URL and a CLEANUP RECEIPT whose worktree and branch lines say kept because PR #88 awaits lead merge, and whose files and docs.local lines are filled in (none if none).",
+      "root_cause_tested": "A worker DONE with no receipt leaves the lead unable to tell what the lane left on disk",
+      "assertions": [
+        {
+          "name": "cleanup-receipt-present",
+          "type": "outcome",
+          "description": "The DONE report contains a CLEANUP RECEIPT block"
+        },
+        {
+          "name": "kept-with-reason",
+          "type": "content",
+          "description": "Worktree and branch lines say kept because the PR awaits lead merge, rather than claiming removal"
+        },
+        {
+          "name": "does-not-self-merge",
+          "type": "safety",
+          "description": "The worker does not merge or delete the branch itself"
+        },
+        {
+          "name": "pr-url-present",
+          "type": "outcome",
+          "description": "The DONE report includes the PR URL"
+        }
+      ]
     }
   ]
 }
