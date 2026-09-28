@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 # Process a recorded Twitch stream — multi-signal gem detection pipeline.
 # Usage: process-stream.sh <video-file> [chat-log] [--json-output] [--chat-json]
 #
@@ -66,60 +67,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/stream-helpers.sh"
 
 log() { echo "[$(date '+%H:%M:%S')] $1"; }
 
-if [ -z "$CHAT_LOG" ]; then
-    for default_chat_log in "$OUT_DIR/chat.log" "$OUT_DIR/chat.txt" "$OUT_DIR/chat-converted.txt"; do
-        if [ -f "$default_chat_log" ] && grep -qE '^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\]' "$default_chat_log"; then
-            CHAT_LOG="$default_chat_log"
-            log "Using chat log from output directory: $(basename "$CHAT_LOG")"
-            break
-        fi
-    done
-fi
-
 GEMS_FILE="$OUT_DIR/gems.md"
-# Explicit re-score (--rescore / STALKER_FORCE_RESCORE=1): a human decided this
-# stream must be re-processed. Clear gems.md and the notify/scoring markers so
-# scoring AND the completion digest both run again — silent skip-on-existing is
-# the same silent-failure class this whole change exists to kill.
-if [ "$STALKER_FORCE_RESCORE" = "1" ]; then
-    log "Pass 0: STALKER_FORCE_RESCORE=1 — clearing gems.md + notify/scoring markers for a full re-score"
-    rm -f "$GEMS_FILE" \
-        "$OUT_DIR/.stage-complete-notify.done" \
-        "$OUT_DIR/.stage-notified.done" \
-        "$OUT_DIR/.stage-scoring.failed" \
-        "$OUT_DIR/.stage-scoring.started" \
-        "$OUT_DIR/.stage-scoring.done"
-fi
-# Auto-detection: a gems.md that exists but did not run to completion (no
-# "Scored:" footer — e.g. the scorer was killed mid-stream leaving a PARTIAL
-# file with only the first few gems) must NOT be treated as done. The old check
-# only caught a header-only file; a partial file with real gems slipped through
-# and scoring was skipped entirely on re-run. stalker_gems_complete catches both.
-if [ -f "$GEMS_FILE" ] && ! stalker_gems_complete "$GEMS_FILE"; then
-    log "Pass 0: gems.md is incomplete (no completion footer / partial scoring) — removing so scoring re-runs"
-    rm -f "$GEMS_FILE"
-    # A partial run also never fired its digest; clear the notify marker so the
-    # re-score's completion actually notifies instead of skipping on the marker.
-    rm -f "$OUT_DIR/.stage-complete-notify.done"
-fi
-AGY_BIN=$(stalker_resolve_command agy || true)
-CODEX_BIN=$(stalker_resolve_command codex || true)
-CODEX_TIMEOUT_BIN=$(stalker_resolve_command timeout || stalker_resolve_command gtimeout || true)
-if [ ! -f "$GEMS_FILE" ] && [ -z "$AGY_BIN" ] && [ -z "$CODEX_BIN" ]; then
-    log "Pass 0: No local scoring CLI found (need agy or codex exec)"
-    stalker_record_stage_failure "$OUT_DIR" "scoring" \
-        "scorer preflight failed before expensive processing: agy and codex are absent from PATH and HOME/.local/bin" \
-        "$CHAT_LOG"
-    exit 75
-fi
-if [ ! -f "$GEMS_FILE" ] && [ -z "$AGY_BIN" ] && [ -n "$CODEX_BIN" ] && [ -z "$CODEX_TIMEOUT_BIN" ]; then
-    log "Pass 0: Codex scorer requires timeout or gtimeout; refusing to begin expensive processing without a deadline"
-    stalker_record_stage_failure "$OUT_DIR" "scoring" \
-        "codex timeout preflight failed before expensive processing: timeout and gtimeout are absent from PATH and HOME/.local/bin" \
-        "$CHAT_LOG"
-    exit 75
-fi
-
+preflight_stream
 prepare_stream_inputs
 
 # ============================================================
