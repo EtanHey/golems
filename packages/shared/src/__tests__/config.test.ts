@@ -77,7 +77,7 @@ features:
     const yaml = `seatRegistry:
   orcClaude:
     repo: orc
-    launchers: { claude: orcClaude, codex: orcCodex, cursor: orcCursor, gemini: orcGemini, kiro: orcKiro }
+    launchers: { claude: orcClaude, codex: orcCodex, cursor: orcCursor, gemini: orcGemini }
     lane: orc
     aliases: [HappyCamper, Cantaloupe-AI, happyCampr]
     role: orc
@@ -109,7 +109,7 @@ features:
   const orcOverride = (directReports: string[]) => `seatRegistry:
   orcClaude:
     repo: orc
-    launchers: { claude: orcClaude, codex: orcCodex, cursor: orcCursor, gemini: orcGemini, kiro: orcKiro }
+    launchers: { claude: orcClaude, codex: orcCodex, cursor: orcCursor, gemini: orcGemini }
     lane: orc
     aliases: [HappyCamper, Cantaloupe-AI, happyCampr]
     role: orc
@@ -139,7 +139,7 @@ features:
       orcOverride(["golemsLead", "skillcreatorLead", "cmuxlayerLead", "dashboardLead", "brainClaude", "coachClaude", "voiceClaude", "aftercodeClaude"]) +
         `  newClaude:
     repo: new
-    launchers: { claude: newClaude, codex: newCodex, cursor: newCursor, gemini: newGemini, kiro: newKiro }
+    launchers: { claude: newClaude, codex: newCodex, cursor: newCursor, gemini: newGemini }
     lane: new
     aliases: []
     role: lead

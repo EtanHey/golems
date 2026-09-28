@@ -15,7 +15,6 @@ type TestSeatEntry = {
     codex: string;
     cursor: string;
     gemini: string;
-    kiro: string;
   };
   lane: string;
   aliases: string[];
@@ -49,7 +48,6 @@ const sampleSeat: TestSeatEntry = {
     codex: "golemsCodex",
     cursor: "golemsCursor",
     gemini: "golemsGemini",
-    kiro: "golemsKiro",
   },
   lane: "golems",
   aliases: [],

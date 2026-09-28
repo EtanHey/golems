@@ -7,7 +7,7 @@
  *
  * Tracks three tiers:
  * - "paid": Haiku API calls (cloud worker, telegram bot)
- * - "free": CLI helpers (gemini, cursor, codex, kiro)
+ * - "free": CLI helpers (gemini, cursor, codex)
  * - "subscription": Claude Code ($200/mo subscription, actual value tracked)
  *
  * JSONL format (one per line):

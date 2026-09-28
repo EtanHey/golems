@@ -20,9 +20,7 @@ function alphaCoreClaude() { alphaClaude "$@"; }
 function alphaCoreCodex() { alphaCodex "$@"; }
 function alphaCoreGemini() { alphaGemini "$@"; }
 function alphaCoreCursor() { alphaCursor "$@"; }
-function alphaCoreKiro() { alphaKiro "$@"; }
 alias betaClaude=betaClaude
 function sixPm() { 6pm-svcClaude "$@"; }
 function sixPmClaude() { 6pm-svcClaude "$@"; }
 function sixPmCodex() { 6pm-svcCodex "$@"; }
-function sixPmKiro() { 6pm-svcKiro "$@"; }

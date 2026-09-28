@@ -48,7 +48,6 @@ const CLI_SUFFIX: Record<string, string> = {
   codex: "Codex",
   gemini: "Gemini",
   cursor: "Cursor",
-  kiro: "Kiro",
 };
 const BAR = `# ${"═".repeat(67)}`;
 const BOOTSTRAP = [
