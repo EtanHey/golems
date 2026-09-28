@@ -112,6 +112,8 @@ def normalized(value, sandbox, root):
     value = re.sub(r"agy failed after [0-9]+s", "agy failed after <ELAPSED>s", value)
     # BSD wc pads redirected counts; GNU wc does not. Keep the count exact.
     value = re.sub(r"(Found|Volume measured:|Total messages:) {2,}(?=[0-9])", r"\1 ", value)
+    # du -sh reports allocated blocks, which differ between APFS and ext4.
+    value = re.sub(r"(Total disk: )\d+(?:\.\d+)?[KMGTP]?", r"\1<FS_ALLOC>", value)
     # The shell displays only the first 60 transcript characters. A path cut
     # mid-component cannot match the full sandbox prefix above.
     value = re.sub(r"(?<=see )/[^ \n]*?(?=\.\.\.)", "<TRUNCATED_RUN_PATH>", value)
