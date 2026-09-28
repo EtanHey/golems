@@ -134,6 +134,14 @@ def first_difference(actual, expected, path="result"):
         for index, (left, right) in enumerate(zip(actual, expected)):
             difference = first_difference(left, right, f"{path}[{index}]")
             if difference: return difference
+    elif isinstance(actual, str) and actual != expected:
+        offset = next((index for index, pair in enumerate(zip(actual, expected))
+                       if pair[0] != pair[1]), min(len(actual), len(expected)))
+        start = max(0, offset - 60)
+        return (f"{path}: first differing character {offset}; "
+                f"actual={actual[start:offset + 120]!r} "
+                f"expected={expected[start:offset + 120]!r}; "
+                f"lengths={len(actual)}/{len(expected)}")
     elif actual != expected:
         return f"{path}: actual={actual!r:.300} expected={expected!r:.300}"
     return None
