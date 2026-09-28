@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Source-only CLI options and validation helpers.
 
 usage() {

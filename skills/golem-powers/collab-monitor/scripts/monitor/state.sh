@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Source-only content hashes, canonical paths, and durable watermark state.
 
 hash_stream() {

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Source-only monitor ownership, PID identity, and lock helpers.
 
 valid_instance_token() {
