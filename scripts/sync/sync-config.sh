@@ -142,9 +142,10 @@ for repo_path, profile_names in resolved_repo_paths.items():
 # value (or a `--flag=value` arg) must never be echoed back.
 # One predicate judges every secret NAME: a flag, a header, a NAME=value
 # assignment, a URL query parameter. `key` counts only as the whole name or
-# after a separator (api_key, X-Api-Key, api.key), so MONKEY, turkey and
-# keychain stay harmless; token/secret/password/passwd/apikey count as suffixes.
-SECRET_NAME = re.compile(r"(token|secret|password|passwd|apikey|(^|[-_.])key)$", re.IGNORECASE)
+# after `_` or `-` (api_key, X-Api-Key), so MONKEY, turkey, keychain and
+# mon.key stay harmless; token/secret/password/passwd/apikey count as suffixes.
+# A dot is not a boundary, so `api.key` is accepted too: a documented limit.
+SECRET_NAME = re.compile(r"(token|secret|password|passwd|apikey|(^|[-_])key)$", re.IGNORECASE)
 SECRET_ENV_REF = re.compile(r"\$\{[^}]*(token|secret|key|password)[^}]*\}", re.IGNORECASE)
 SECRET_VALUE_PREFIXES = ("sbp_", "sk-", "ghp_", "github_pat_", "xox")
 # an HTTP auth header or bearer credential (`-H "Authorization: Bearer ..."`)
@@ -169,11 +170,17 @@ def is_secret_flag(arg):
     return is_secret_name(arg.lstrip("-").split("=", 1)[0])
 
 
+def without_fragment(value):
+    """value up to its first `#`: a URL fragment is never sent as a query."""
+    return value.split("#", 1)[0]
+
+
 def query_param_names(value):
     """Decoded names of the parameters in value's URL query, if it has one."""
+    value = without_fragment(value)
     if "?" not in value:
         return
-    query = value.split("?", 1)[1].split("#", 1)[0]
+    query = value.split("?", 1)[1]
     for part in re.split(r"[&;]", query):
         if "=" not in part:
             continue
@@ -224,8 +231,11 @@ def secret_arg_indexes(args, depth=0):
             skip_next = "=" not in arg
             continue
         candidates = [arg]
-        if "=" in arg:
-            candidates.append(arg.split("=", 1)[1])
+        # `--url=<url>`: judge the value after the first `=`, but only an `=`
+        # before any fragment, or `#x=1?api_key=` would pose as a query.
+        head = without_fragment(arg)
+        if "=" in head:
+            candidates.append(head.split("=", 1)[1])
         if any(is_secret_value(candidate) for candidate in candidates):
             flagged.append(index)
             continue
