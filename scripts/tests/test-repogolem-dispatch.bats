@@ -3662,8 +3662,8 @@ PRELAUNCH_LAUNCHERS=(testrepoClaude testrepoCodex testrepoCursor testrepoGemini)
                 testrepoCursor) stub=cursor ;; testrepoGemini) stub=agy ;;
             esac
             run zsh -f -c '
-              export RALPH_REGISTRY_FILE="$1" HOME="$3"
-              function jq() { [[ "$*" == *prelaunch* ]] && print -u2 -r -- "PRELAUNCH_JQ_RAN"; command jq "$@"; }
+              export RALPH_REGISTRY_FILE="$1" HOME="$3"; PRELAUNCH_JQ_LOG="$5"
+              function jq() { [[ "$*" == *.global.prelaunch* ]] && print -r -- ran >> "$PRELAUNCH_JQ_LOG"; command jq "$@"; }
               source "$2"
               function _ralph_setup_mcps() { return 0; }
               function _ralph_setup_secrets() { return 0; }
@@ -3677,15 +3677,100 @@ PRELAUNCH_LAUNCHERS=(testrepoClaude testrepoCodex testrepoCursor testrepoGemini)
               function cursor() { print -r -- "FRAMES=${(j:,:)funcstack}"; }
               function agy() { print -r -- "FRAMES=${(j:,:)funcstack}"; }
               "$4" -s
-            ' _ "$registry" "$SOURCE_DISPATCHER" "$TMPDIR_/home" "$launcher"
+              [[ -s "$PRELAUNCH_JQ_LOG" ]] && print -r -- "PRELAUNCH_JQ_RAN"
+              return 0
+            ' _ "$registry" "$SOURCE_DISPATCHER" "$TMPDIR_/home" "$launcher" "$TMPDIR_/jq-prelaunch-$launcher-${#prelaunch}.log"
             [ "$status" -eq 0 ] || { echo "$launcher [$prelaunch] status=$status: $output" >&2; return 1; }
             # Exactly the frames #364 produced: the stub, its launcher, dispatch, the wrapper.
             grep -E -x -q -- "FRAMES=${stub},_golem_launch_[a-z]+,_golem_dispatch,${launcher}" <<< "$output" \
               || { echo "$launcher [$prelaunch]: $output" >&2; return 1; }
             if [ "$prelaunch" = ABSENT ]; then
                 refute_contains "PRELAUNCH_JQ_RAN" "$output" "no prelaunch key must mean no prelaunch jq"
+            else
+                # Positive control: the key is present, so the jq read is seen.
+                grep -F -x -q -- "PRELAUNCH_JQ_RAN" <<< "$output"
             fi
         done
+    done
+}
+
+# The dispatcher skips jq when the registry text cannot hold a prelaunch key.
+# That shortcut must never miss a real key: JSON may spell it with \u escapes.
+# $1 is the registry text; the stub reports the probe variable and its frames,
+# and any jq call that reads prelaunch is logged to a file (the dispatcher
+# discards that jq's stderr) and reported as PRELAUNCH_JQ_RAN.
+run_prelaunch_registry_text() {
+    local registry="$TMPDIR_/registry-precheck.json" jq_log="$TMPDIR_/jq-precheck.log"
+    rm -f "$jq_log"
+    printf '%s\n' "$1" > "$registry"
+    jq -e . "$registry" > /dev/null
+    run zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1" HOME="$3"; PRELAUNCH_JQ_LOG="$4"
+      unset PRELAUNCH_PROBE
+      function jq() { [[ "$*" == *.global.prelaunch* ]] && print -r -- ran >> "$PRELAUNCH_JQ_LOG"; command jq "$@"; }
+      source "$2"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function claude() { print -r -- "PROBE=${PRELAUNCH_PROBE-unset} FRAMES=${(j:,:)funcstack}"; }
+      testrepoClaude -s
+      [[ -s "$PRELAUNCH_JQ_LOG" ]] && print -r -- "PRELAUNCH_JQ_RAN"
+      return 0
+    ' _ "$registry" "$SOURCE_DISPATCHER" "$TMPDIR_/home" "$jq_log"
+}
+
+prelaunch_registry_text() {
+    # $1: extra top-level JSON members, spliced in before "projects".
+    printf '{%s"projects":{"testrepo":{"path":"%s","mcps":[],"clis":["claude"],"disableChrome":true}}}' "$1" "$PROJECT_DIR"
+}
+
+PRELAUNCH_DIRECT_FRAMES="FRAMES=claude,_golem_launch_claude,_golem_dispatch,testrepoClaude"
+# One JSON unicode-escape introducer (a backslash, then u), built from octal so
+# no literal escape sequence lives in this file.
+JSON_U="$(printf '\134')u"
+
+@test "a prelaunch key spelled with a JSON unicode escape still runs its commands" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local members="\"global\":{\"${JSON_U}0070relaunch\":[\"export PRELAUNCH_PROBE=loaded\"]},"
+    [[ "$members" != *'"prelaunch"'* ]]
+    jq -e '.global.prelaunch == ["export PRELAUNCH_PROBE=loaded"]' <<< "{$members\"x\":1}"
+    run_prelaunch_registry_text "$(prelaunch_registry_text "$members")"
+    [ "$status" -eq 0 ]
+    grep -F -q -- "PROBE=loaded " <<< "$output" || { echo "$output" >&2; return 1; }
+}
+
+@test "a literal prelaunch key runs its commands" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    run_prelaunch_registry_text "$(prelaunch_registry_text '"global":{"prelaunch":["export PRELAUNCH_PROBE=loaded"]},')"
+    [ "$status" -eq 0 ]
+    grep -F -q -- "PROBE=loaded " <<< "$output" || { echo "$output" >&2; return 1; }
+}
+
+@test "no prelaunch key, or the word only inside unrelated values, takes the direct path without jq" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local members
+    for members in '' '"global":{"env":{"NOTE":"run prelaunch later"}},'; do
+        run_prelaunch_registry_text "$(prelaunch_registry_text "$members")"
+        [ "$status" -eq 0 ]
+        grep -F -x -q -- "PROBE=unset $PRELAUNCH_DIRECT_FRAMES" <<< "$output" \
+          || { echo "[$members]: $output" >&2; return 1; }
+        refute_contains "PRELAUNCH_JQ_RAN" "$output" "no possible prelaunch key must mean no jq"
+    done
+}
+
+@test "a precheck false positive still gives the direct call after the jq read" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local members
+    # A \u escape anywhere, or "prelaunch" as a whole string value: the text
+    # check cannot rule a key out, jq finds none, and the call stays direct.
+    for members in "\"global\":{\"env\":{\"NOTE\":\"caf${JSON_U}00e9\"}}," '"global":{"env":{"NOTE":"prelaunch"}},'; do
+        run_prelaunch_registry_text "$(prelaunch_registry_text "$members")"
+        [ "$status" -eq 0 ]
+        grep -F -q -- "PRELAUNCH_JQ_RAN" <<< "$output" || { echo "[$members]: $output" >&2; return 1; }
+        grep -F -x -q -- "PROBE=unset $PRELAUNCH_DIRECT_FRAMES" <<< "$output" \
+          || { echo "[$members]: $output" >&2; return 1; }
     done
 }
 
