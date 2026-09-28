@@ -73,7 +73,8 @@ def test_copied_hook_loads_its_own_split_implementation_from_another_cwd(tmp_pat
     hook.symlink_to(guardian / "hooks" / "pre_tool_use.py")
     other_cwd = tmp_path / "other-cwd"
     other_cwd.mkdir()
-    env = {k: v for k, v in os.environ.items() if k not in ("GIT_GUARDIAN_LIB", "CLAUDE_WORKER")}
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("GIT_GUARDIAN_LIB", "CLAUDE_WORKER", "PYTHONDONTWRITEBYTECODE", "PYTHONPYCACHEPREFIX")}
     env["HOME"] = str(home)
     result = subprocess.run(
         ["python3", str(hook)], cwd=other_cwd, env=env, text=True, capture_output=True,
@@ -82,6 +83,39 @@ def test_copied_hook_loads_its_own_split_implementation_from_another_cwd(tmp_pat
     )
     assert result.returncode == 2, result.stdout + result.stderr
     assert "Dangerous command: COPIED SPLIT IMPLEMENTATION" in json.loads(result.stdout)["reason"]
+    assert not (guardian / "git_safety_impl" / "__pycache__").exists()
+
+
+def test_deep_wrappers_block_through_copied_hook_and_fail_open_launcher(tmp_path):
+    installed = tmp_path / "installed" / "golem-powers"
+    installed.mkdir(parents=True)
+    guardian = installed / "git-guardian"
+    shutil.copytree(HOOK.parents[1], guardian, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(HOOK.parents[2] / "_shared", installed / "_shared")
+    home = tmp_path / "home"
+    hooks = home / ".claude" / "hooks"
+    hooks.mkdir(parents=True)
+    hook = hooks / "pre_tool_use.py"
+    hook.symlink_to(guardian / "hooks" / "pre_tool_use.py")
+    launcher = HOOK.parents[4] / "scripts" / "hooks" / "fail-open.py"
+    other_cwd = tmp_path / "other-cwd"
+    other_cwd.mkdir()
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("GIT_GUARDIAN_LIB", "CLAUDE_WORKER", "PYTHONDONTWRITEBYTECODE", "PYTHONPYCACHEPREFIX")}
+    env["HOME"] = str(home)
+    for command, expected in (
+        ("sudo " * 900 + "rm -rf /", "rm targeting root filesystem"),
+        ("nice " * 900 + "git push --force origin main", "git push --force"),
+    ):
+        result = subprocess.run(
+            ["python3", str(launcher), str(hook)], cwd=other_cwd, env=env,
+            input=json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "session_id": "t"}),
+            text=True, capture_output=True, check=False,
+        )
+        assert result.returncode == 2, result.stdout + result.stderr
+        assert expected in json.loads(result.stdout)["reason"]
+        assert "golems-fail-open" not in result.stderr
+    assert not (guardian / "git_safety_impl" / "__pycache__").exists()
 
 
 # ── GO-5 E2 cleanup ────────────────────────────────────────────────────────────
