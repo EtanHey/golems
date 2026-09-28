@@ -31,10 +31,20 @@ pass() { pass_count=$((pass_count + 1)); printf 'PASS %s\n' "$1"; }
 fail() { fail_count=$((fail_count + 1)); printf 'FAIL %s\n' "$1"; }
 
 # A fake scanner. Every call prints STUB_STDOUT to stdout and STUB_STDERR to
-# stderr, then exits STUB_RC, whatever its arguments.
+# stderr, then exits STUB_RC, whatever its arguments. With STUB_ARGS_LOG set,
+# it also records its arguments there, and the contents of each
+# --exclude-paths file in STUB_ARGS_LOG.excludes.
 stub="$suite_root/stub-trufflehog"
 cat > "$stub" <<'STUB'
 #!/usr/bin/env bash
+if [[ -n ${STUB_ARGS_LOG:-} ]]; then
+  printf '%s\n' "$*" >> "$STUB_ARGS_LOG"
+  prev=
+  for a in "$@"; do
+    [[ $prev == --exclude-paths ]] && cat "$a" >> "$STUB_ARGS_LOG.excludes"
+    prev=$a
+  done
+fi
 [[ -n ${STUB_STDOUT:-} ]] && printf '%s\n' "$STUB_STDOUT"
 [[ -n ${STUB_STDERR:-} ]] && printf '%s\n' "$STUB_STDERR" >&2
 exit "${STUB_RC:-0}"
@@ -58,6 +68,12 @@ finding=$(printf '{"DetectorName":"AWS","Verified":false,"VerificationError":"di
   "$fake_secret" "$fake_secret" "$fake_secret")
 info_log='{"level":"info-0","msg":"finished scanning"}'
 error_log='{"level":"error","msg":"encountered errors during scan","error":"unknown revision"}'
+# Scanner logs can quote scanned content, so on a tool error the wrapper must
+# print none of them: each of these carries the value in a different place.
+leaky_stderr="error: could not parse $fake_secret"
+leaky_error_msg=$(printf '{"level":"error","msg":"chunk %s","error":"x"}' "$fake_secret")
+leaky_error_field=$(printf '{"level":"error","msg":"error reading chunk","error":"near %s"}' "$fake_secret")
+leaky_info_msg=$(printf '{"level":"info-0","msg":"scanning %s"}' "$fake_secret")
 
 # expect_scan <label> <want-exit> <stdout> <stderr> <rc> [<must-print-regex>]
 expect_scan() {
@@ -82,10 +98,32 @@ expect_scan "a scanner usage error fails (the old pip v2 install)" 2 \
   "" "error: unrecognized arguments: filesystem" 2 'exited 2'
 expect_scan "an unexpected exit status fails" 2 "" "$info_log" 1 'exited 1'
 expect_scan "an error-level log line fails even when the scanner exits 0" 2 \
-  "" "$error_log" 0 'encountered errors during scan'
+  "" "$error_log" 0 'logged 1 error'
+expect_scan "a tool error does not print plain stderr" 2 "" "$leaky_stderr" 2 'exited 2'
+expect_scan "a tool error does not print a log line's msg" 2 "" "$leaky_info_msg" 1 'exited 1'
+expect_scan "an error-level line's msg is not printed" 2 "" "$leaky_error_msg" 0 'logged 1 error'
+expect_scan "an error-level line's error field is not printed" 2 "" "$leaky_error_field" 0 'logged 1 error'
 expect_scan "findings without the --fail exit status fail as a tool error" 2 "$finding" "$info_log" 0
 expect_scan "the --fail exit status without findings fails as a tool error" 2 "" "$info_log" 183
 expect_scan "output that is not JSON fails as a tool error" 2 "not json" "$info_log" 0
+
+# Tracked content is scanned wherever it lives: history gets no path excludes,
+# and the working-tree scan excludes only .git/, which git cannot track.
+args_log="$suite_root/args.log"
+(cd "$fixture" && STUB_ARGS_LOG=$args_log STUB_STDERR=$info_log TRUFFLEHOG=$stub \
+  bash "$wrapper" scan schedule "$genesis" >/dev/null 2>&1) || true
+history_args=$(grep '^git ' "$args_log" || true)
+tree_args=$(grep '^filesystem ' "$args_log" || true)
+excludes=$(cat "$args_log.excludes" 2>/dev/null || true)
+if [[ -z $history_args || -z $tree_args ]]; then
+  fail "exclude contract: the scan did not run both git and filesystem"$'\n'"$(cat "$args_log" 2>/dev/null)"
+elif [[ $history_args == *--exclude-paths* ]]; then
+  fail "the history scan excludes paths: $history_args"
+elif [[ $excludes != '(^|/)\.git/' ]]; then
+  fail "the working-tree scan excludes more than .git/:"$'\n'"$excludes"
+else
+  pass "history scans every path; the working tree skips only .git/"
+fi
 
 # A scan needs a base: a pull_request with no origin/master cannot pick one.
 got=0
@@ -134,6 +172,28 @@ else
   TRUFFLEHOG=$unflagged bash "$wrapper" canary >/dev/null 2>&1 || got=$?
   if [[ $got != 0 ]]; then pass "canary is red when the scanner runs without --fail"
   else fail "canary passed without --fail"; fi
+
+  # Re-adding a path exclude, in history or on disk, must turn the canary red:
+  # it plants a key under each of these segments.
+  for segment in dist build node_modules; do
+    excluding="$suite_root/excluding-$segment-trufflehog"
+    printf '(^|/)%s/\n' "$segment" > "$suite_root/exclude-$segment"
+    cat > "$excluding" <<WRAP
+#!/usr/bin/env bash
+args=() prev= added=
+for a in "\$@"; do
+  if [[ \$prev == --exclude-paths ]]; then cat $(printf %q "$suite_root/exclude-$segment") >> "\$a"; added=1; fi
+  args+=("\$a"); prev=\$a
+done
+[[ -n \$added ]] || args+=(--exclude-paths $(printf %q "$suite_root/exclude-$segment"))
+exec $(printf %q "$real") "\${args[@]}"
+WRAP
+    chmod +x "$excluding"
+    got=0
+    TRUFFLEHOG=$excluding bash "$wrapper" canary >/dev/null 2>&1 || got=$?
+    if [[ $got != 0 ]]; then pass "canary is red when scans exclude $segment/"
+    else fail "canary passed while scans excluded $segment/"; fi
+  done
 fi
 
 # Job shape: the pinned binary is checksum-verified, the canary runs before

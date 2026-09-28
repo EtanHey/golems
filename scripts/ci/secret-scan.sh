@@ -9,10 +9,11 @@
 #       else genesis; schedule and workflow_dispatch → genesis) to HEAD.
 #       push, schedule and workflow_dispatch also scan the working tree.
 #   secret-scan.sh canary
-#       Self-test. Plants a runtime-generated AWS-key-shaped canary in a
-#       throwaway repo and asserts the same scan functions, with the same
-#       flags, flag it in history and on disk, and that a clean tree passes.
-#       A missing, broken or mis-invoked scanner fails here.
+#       Self-test. Plants runtime-generated AWS-key-shaped canaries in a
+#       throwaway repo (at the root and under dist/, build/ and node_modules/)
+#       and asserts the same scan functions, with the same flags, flag every one
+#       in history and on disk, and that a clean tree passes. A missing, broken
+#       or mis-invoked scanner, or a path exclude, fails here.
 #
 # Exit status: 0 clean, 1 findings, 2 tool error. A tool error is an exit
 # status other than 0 or 183 (TruffleHog's --fail code), any error-level log
@@ -21,7 +22,9 @@
 #
 # Findings print as GitHub annotations naming detector, file, line and commit,
 # never the value: this is a public repo, and its Actions logs are public. The
-# scanner's raw JSON stays in a private temp dir removed on exit.
+# scanner's raw JSON and its logs stay in a private temp dir removed on exit; a
+# tool error prints only the exit status and error count, because scanner logs
+# can quote the content they failed on.
 set -uo pipefail
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
@@ -31,18 +34,19 @@ TRUFFLEHOG=${TRUFFLEHOG:-trufflehog}
 work=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/secret-scan.XXXXXX") || exit 2
 trap 'rm -rf -- "$work"' EXIT
 
-# Paths never scanned, one regex per line (TruffleHog treats a blank line as a
-# pattern that excludes everything, so this list is written here, not kept as a
-# committed file someone could add a blank line to).
-#   .git/          filesystem mode would walk git internals; history has its own scan
-#   node_modules/, dist/, build/
-#                  vendored or generated, carried over from the old job; none is tracked
-printf '%s\n' '(^|/)\.git/' '(^|/)node_modules/' '(^|/)dist/' '(^|/)build/' > "$work/exclude-paths"
+# History scans exclude no path: anything committed is public. The working-tree
+# scan excludes only .git/ (git internals, which history covers; git refuses to
+# track a .git path component, so no committed file can hide there). No
+# vendored/generated-dir excludes: a tracked file under dist/ is as public as
+# any other, and this job installs no dependencies, so its tree holds only the
+# checkout. Written here, not kept as a committed file, because TruffleHog
+# reads a blank line in it as a pattern that excludes everything.
+printf '%s\n' '(^|/)\.git/' > "$work/tree-exclude-paths"
 
 # --results=verified,unknown: fail on a credential the provider confirmed live,
 # and on one whose verification could not finish (fail closed). A match the
 # provider rejected (unverified) is not reported: test fixtures and dead keys.
-scan_flags=(--no-update --fail --json --results=verified,unknown --exclude-paths "$work/exclude-paths")
+scan_flags=(--no-update --fail --json --results=verified,unknown)
 scanner_env=()
 annotate=1
 worst=0
@@ -56,14 +60,12 @@ run_scanner() {
   env ${scanner_env[@]+"${scanner_env[@]}"} "$TRUFFLEHOG" "$@" "${scan_flags[@]}" >"$out" 2>"$log" || rc=$?
 
   if [[ $rc != 0 && $rc != 183 ]]; then
-    printf '::error::Secret Scanning (%s): TruffleHog exited %s\n' "$label" "$rc"
-    jq -R -r 'fromjson? // . | if type == "object" then "  \(.level // "?"): \(.msg // "")" else "  \(.)" end' "$log" | tail -n 20
+    printf '::error::Secret Scanning (%s): TruffleHog exited %s. Its log is not printed (it can quote scanned content); rerun the pinned version locally to see it.\n' "$label" "$rc"
     return 2
   fi
-  errors=$(jq -R -r 'fromjson? | select(type == "object" and .level == "error")
-    | "  \(.msg // "") \(.error // "" | tostring | .[0:300])"' "$log")
-  if [[ -n $errors ]]; then
-    printf '::error::Secret Scanning (%s): TruffleHog logged errors, so the scan is incomplete\n%s\n' "$label" "$errors"
+  errors=$(jq -R -c 'fromjson? | select(type == "object" and .level == "error")' "$log" | grep -c . || true)
+  if (( errors > 0 )); then
+    printf '::error::Secret Scanning (%s): TruffleHog logged %s error(s), so the scan is incomplete. The log is not printed (it can quote scanned content); rerun the pinned version locally to see it.\n' "$label" "$errors"
     return 2
   fi
   if ! count=$(jq -s -e 'if all(.[]; type == "object" and has("DetectorName")) then length else error("not a finding") end' "$out" 2>/dev/null); then
@@ -81,6 +83,7 @@ run_scanner() {
       else "  flagged: \(.DetectorName) (\($status)) in \($file)\($at)"
       end' "$out"
   jq -r '.DetectorName' "$out" > "$work/$label.detectors"
+  jq -r '(.SourceMetadata.Data.Git // .SourceMetadata.Data.Filesystem // {}).file // ""' "$out" > "$work/$label.files"
 
   if [[ $rc == 0 && $count == 0 ]]; then
     printf 'Secret Scanning (%s): clean\n' "$label"
@@ -106,9 +109,9 @@ scan_history() {
   run_scanner "$label" git "file://$repo" --since-commit "$base" --branch "$head"
 }
 
-# scan_tree <label> <dir>: every file on disk under dir.
+# scan_tree <label> <dir>: every file on disk under dir, except .git/.
 scan_tree() {
-  run_scanner "$1" filesystem "$2"
+  run_scanner "$1" filesystem "$2" --exclude-paths "$work/tree-exclude-paths"
 }
 
 cmd_scan() {
@@ -140,23 +143,42 @@ random_chars() {
   printf '%s' "${pool:0:$2}"
 }
 
-# expect_canary <want-status> <want-detector|-> <scan function and args...>
+canary_files=(credentials dist/credentials build/credentials node_modules/canary-pkg/credentials)
+
+# expect_canary <want-status> <scan function and args...>: status 1 must flag
+# an AWS finding in every canary file; status 0 must flag nothing.
 expect_canary() {
-  local want=$1 detector=$2 label=$4 status=0
-  shift 2
+  local want=$1 label=$3 status=0 file missing=0
+  shift
   "$@" || status=$?
   if [[ $status != "$want" ]]; then
     printf '::error::Secret Scanning canary (%s): want status %s, got %s\n' "$label" "$want" "$status"
     return 1
   fi
-  if [[ $detector != - ]] && ! grep -qx "$detector" "$work/$label.detectors"; then
-    printf '::error::Secret Scanning canary (%s): no %s finding\n' "$label" "$detector"
+  [[ $want == 1 ]] || return 0
+  if ! grep -qx AWS "$work/$label.detectors"; then
+    printf '::error::Secret Scanning canary (%s): no AWS finding\n' "$label"
     return 1
   fi
+  for file in "${canary_files[@]}"; do
+    if ! grep -qE "(^|/)${file//./\\.}\$" "$work/$label.files"; then
+      printf '::error::Secret Scanning canary (%s): %s was not flagged\n' "$label" "$file"
+      missing=1
+    fi
+  done
+  return "$missing"
+}
+
+# write_canary <path>: a fresh AWS-key-shaped credential. Generated here and
+# never printed; the literal never exists in git.
+write_canary() {
+  mkdir -p "$(dirname "$1")"
+  printf '[default]\naws_access_key_id = %s\naws_secret_access_key = %s\n' \
+    "AK""IA$(random_chars 'A-Z2-7' 16)" "$(random_chars 'A-Za-z0-9/+' 40)" > "$1"
 }
 
 cmd_canary() {
-  local repo="$work/canary-repo" clean="$work/canary-clean" base head failed=0
+  local repo="$work/canary-repo" clean="$work/canary-clean" base head file failed=0
   mkdir -p "$repo" "$clean"
   git -C "$repo" init -q
   git -C "$repo" config user.name "Secret Scanning canary"
@@ -164,10 +186,9 @@ cmd_canary() {
   printf 'secret scanning canary\n' | tee "$repo/README" > "$clean/README"
   git -C "$repo" add README && git -C "$repo" commit -q -m base || return 2
   base=$(git -C "$repo" rev-parse HEAD)
-  # Generated here and never printed; the literal never exists in git.
-  printf '[default]\naws_access_key_id = %s\naws_secret_access_key = %s\n' \
-    "AK""IA$(random_chars 'A-Z2-7' 16)" "$(random_chars 'A-Za-z0-9/+' 40)" > "$repo/credentials"
-  git -C "$repo" add credentials && git -C "$repo" commit -q -m canary || return 2
+  # One per file: a scanner may report a repeated value once.
+  for file in "${canary_files[@]}"; do write_canary "$repo/$file"; done
+  git -C "$repo" add -A && git -C "$repo" commit -q -m canary || return 2
   head=$(git -C "$repo" rev-parse HEAD)
 
   # Point every verification call at a closed local port, so the canary never
@@ -178,14 +199,14 @@ cmd_canary() {
     HTTP_PROXY=http://127.0.0.1:9 http_proxy=http://127.0.0.1:9 NO_PROXY= no_proxy=)
   annotate=0
 
-  expect_canary 1 AWS scan_history canary-history "$repo" "$base" "$head" || failed=1
-  expect_canary 1 AWS scan_tree canary-tree "$repo" || failed=1
-  expect_canary 0 - scan_tree canary-clean "$clean" || failed=1
+  expect_canary 1 scan_history canary-history "$repo" "$base" "$head" || failed=1
+  expect_canary 1 scan_tree canary-tree "$repo" || failed=1
+  expect_canary 0 scan_tree canary-clean "$clean" || failed=1
   if (( failed )); then
     printf 'canary: FAIL (the scanner cannot be trusted to catch a leak)\n'
     return 1
   fi
-  printf 'canary: PASS (flagged in history and on disk; clean tree passes)\n'
+  printf 'canary: PASS (all %s planted keys flagged in history and on disk; clean tree passes)\n' "${#canary_files[@]}"
 }
 
 case ${1:-} in
