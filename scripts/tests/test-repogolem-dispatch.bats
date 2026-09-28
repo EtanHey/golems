@@ -2837,6 +2837,100 @@ JSON
     grep -F -q -- "['--flag']" <<< "$output"
 }
 
+# Codex and Antigravity hand args to the MCP child as argv, which `ps` shows to
+# every local process. Supabase reads SUPABASE_ACCESS_TOKEN from its env, so
+# both renderers drop --access-token, in either spelling. Fixture token values
+# are obviously fake.
+@test "tracked dispatcher source strips supabase --access-token args from the Codex profile" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local codex_home="$TMPDIR_/codex-home-supabase"
+    mkdir -p "$codex_home/sessions"
+
+    cat > "$PROJECT_DIR/.mcp.json" <<'JSON'
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@0.10.0", "--access-token", "sbp_FAKE0000", "--read-only", "--access-token=sbp_FAKE1111"],
+      "env": { "SUPABASE_ACCESS_TOKEN": "sbp_FAKE2222" }
+    }
+  }
+}
+JSON
+
+    run zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1"
+      export CODEX_HOME="$3"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      '"$CODEX_STUB_SNAPSHOT"'
+      source "$2"
+      testrepoCodex -s
+    ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home"
+
+    [ "$status" -eq 0 ]
+    refute_contains "sbp_FAKE" "$output" "launcher output must not carry the supabase token"
+    grep -F -q -- "SUPABASE_ACCESS_TOKEN" <<< "$output"
+    run python3 - "$codex_home/captured.toml" <<'PYCHECK'
+import sys, tomllib
+with open(sys.argv[1], "rb") as fh:
+    srv = tomllib.load(fh)["mcp_servers"]["supabase"]
+assert srv["args"] == ["-y", "@supabase/mcp-server-supabase@0.10.0", "--read-only"], srv["args"]
+assert srv["env"] == {"SUPABASE_ACCESS_TOKEN": "sbp_FAKE2222"}, "env must keep the token"
+print("SUPABASE_ARGS_STRIPPED")
+PYCHECK
+    [ "$status" -eq 0 ]
+    grep -F -q -- "SUPABASE_ARGS_STRIPPED" <<< "$output"
+}
+
+@test "tracked dispatcher source strips supabase --access-token args from Antigravity MCP config" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home"
+    mkdir -p "$fake_home" "$TMPDIR_/bin"
+    cat > "$PROJECT_DIR/.mcp.json" <<'JSON'
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@0.10.0", "--access-token", "sbp_FAKE0000", "--read-only", "--access-token=sbp_FAKE1111"],
+      "env": { "SUPABASE_ACCESS_TOKEN": "sbp_FAKE2222" }
+    }
+  }
+}
+JSON
+    cat > "$TMPDIR_/bin/agy" <<'AGY'
+#!/usr/bin/env zsh
+print -r -- "AGY_ARGS=$*"
+AGY
+    chmod +x "$TMPDIR_/bin/agy"
+
+    run zsh -f -c '
+      export HOME="$1"
+      export RALPH_REGISTRY_FILE="$2"
+      export PATH="$3:$PATH"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      source "$4"
+      testrepoGemini "Prep supabase"
+      jq -c ".mcpServers.supabase" "$5/.agents/mcp_config.json"
+      jq -c ".mcpServers.supabase" "$1/.gemini/config/mcp_config.json"
+    ' _ "$fake_home" "$REGISTRY_FILE" "$TMPDIR_/bin" "$SOURCE_DISPATCHER" "$PROJECT_DIR"
+
+    [ "$status" -eq 0 ]
+    refute_contains "sbp_FAKE" "$output" "Antigravity MCP config must not carry the supabase token"
+    [ "$(grep -F -c -- '"args":["-y","@supabase/mcp-server-supabase@0.10.0","--read-only"]' <<< "$output")" = "2" ]
+}
+
 @test "tracked dispatcher source removes the Codex MCP profile once the session exits" {
     [ -f "$SOURCE_DISPATCHER" ]
 

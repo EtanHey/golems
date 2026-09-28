@@ -11,9 +11,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@supabase/mcp-server-supabase@0.10.0",
-        "--access-token",
-        "op://development/mcp-supabase/ACCESS_TOKEN"
+        "@supabase/mcp-server-supabase@0.10.0"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "op://development/mcp-supabase/ACCESS_TOKEN"

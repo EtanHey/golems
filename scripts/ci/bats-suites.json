@@ -23,6 +23,7 @@
     "test-stalker-brainlayer-telegram.bats",
     "test-stalker-durable-failures.bats",
     "test-stream-helpers.bats",
+    "test-sync-config.bats",
     "test-wired-hook-shared-parser.bats",
     "test-worktree-bootstrap.bats",
     "test-worktree-gc.bats"

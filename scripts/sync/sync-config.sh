@@ -40,6 +40,7 @@ done
 python3 - "$CONFIG_FILE" "$REPOS_BASE" "$MODE" "$TARGET_REPO" "$VERBOSE" <<'PY'
 import copy
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -130,6 +131,64 @@ for repo_path, profile_names in resolved_repo_paths.items():
     if len(profile_names) > 1:
         errors.append(
             f"contextProfiles resolve to the same repo path {repo_path}: {', '.join(profile_names)}"
+        )
+
+
+# AIDEV-NOTE: MCP secrets travel in env, never args. Claude Code expands ${VAR}
+# inside args, so a secret there lands in the MCP child's argv, readable by any
+# local process through `ps`. Errors name the server and arg index only: the
+# value (or a `--flag=value` arg) must never be echoed back.
+SECRET_FLAG_NAME = re.compile(r"(token|secret|password|passwd|apikey|(^|[-_])key)$", re.IGNORECASE)
+SECRET_ENV_REF = re.compile(r"\$\{[^}]*(token|secret|key|password)[^}]*\}", re.IGNORECASE)
+SECRET_VALUE_PREFIXES = ("sbp_", "sk-", "ghp_", "github_pat_", "xox")
+
+
+def is_secret_flag(arg):
+    if not arg.startswith("-"):
+        return False
+    name = arg.lstrip("-").split("=", 1)[0]
+    return bool(name) and bool(SECRET_FLAG_NAME.search(name))
+
+
+def is_secret_value(value):
+    if "op://" in value or SECRET_ENV_REF.search(value):
+        return True
+    return value.startswith(SECRET_VALUE_PREFIXES)
+
+
+def secret_arg_indexes(args):
+    flagged = []
+    skip_next = False
+    for index, arg in enumerate(args):
+        if skip_next:
+            skip_next = False
+            continue
+        if not isinstance(arg, str):
+            continue
+        if is_secret_flag(arg):
+            flagged.append(index)
+            # `--flag value`: the value is covered by flagging its flag.
+            skip_next = "=" not in arg
+            continue
+        candidates = [arg]
+        if "=" in arg:
+            candidates.append(arg.split("=", 1)[1])
+        if any(is_secret_value(candidate) for candidate in candidates):
+            flagged.append(index)
+    return flagged
+
+
+for server_name, server in mcp_servers.items():
+    if not isinstance(server, dict):
+        continue
+    args = server.get("args")
+    if not isinstance(args, list):
+        continue
+    for index in secret_arg_indexes(args):
+        errors.append(
+            f"mcpServers.{server_name}.args[{index}] is secret-bearing; argv is visible to every "
+            f"local process via `ps`. Move the secret into mcpServers.{server_name}.env "
+            f"(the server reads it from its environment)"
         )
 
 if mode == "validate":
