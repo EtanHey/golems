@@ -147,6 +147,35 @@ STRUCTURAL_CASES='0|["Authorization: Bearer FAKEVALUE0000"]
   [ "$n" -eq 18 ]
 }
 
+# Percent-encoded query parameter NAMES: a URL parser decodes `api%5Fkey` to
+# `api_key`, so the guard must decode before it judges the name.
+ENCODED_QUERY_CASES='0|["https://example.invalid/mcp?api%5Fkey=FAKEVALUE0000"]
+0|["https://example.invalid/mcp?%61pi_key=FAKEVALUE0000"]
+0|["https://example.invalid/mcp?ACCESS%5FTOKEN=FAKEVALUE0000"]
+0|["https://example.invalid/mcp?page=2&api%2Dkey=FAKEVALUE0000#frag"]
+0|["https://example.invalid/mcp?page=2;client%5Fsecret=FAKEVALUE0000"]
+0|["https://example.invalid/mcp?api%255Fkey=FAKEVALUE0000"]
+1|["--url", "https://example.invalid/mcp?api%5Fkey=FAKEVALUE0000"]
+0|["--url=https://example.invalid/mcp?api%5Fkey=FAKEVALUE0000"]
+1|["-c", "exec some-mcp https://example.invalid/mcp?api%5Fkey=FAKEVALUE0000"]'
+
+@test "rejects percent-encoded secret query parameter names" {
+  local index args n=0
+  while IFS='|' read -r index args; do
+    n=$((n + 1))
+    rm -f "$REPOS/demo/.mcp.json"
+    write_config "$args"
+    expect_rejected "$index" 'FAKEVALUE0000' '%5F' 'api_key' 'ACCESS' \
+      || { echo "case: $args"; return 1; }
+  done <<< "$ENCODED_QUERY_CASES"
+  [ "$n" -eq 9 ]
+}
+
+@test "accepts ordinary words that merely end in key, token or secret letters" {
+  write_config '["MONKEY=banana", "DONKEY=x", "--header", "X-Monkey: banana", "--header", "X-Turkey: 1", "https://example.invalid/mcp?monkey=banana", "https://example.invalid/mcp?turkey=1&keychain=2", "https://example.invalid/mcp?mon%6Bey=1", "-c", "exec some-mcp --stdio MONKEY=banana"]'
+  expect_accepted
+}
+
 @test "accepts tokens carried in env" {
   write_config '["-y", "@supabase/mcp-server-supabase@0.10.0"]' \
     '{"SUPABASE_ACCESS_TOKEN": "op://fake-vault/fake-item/credential"}'
