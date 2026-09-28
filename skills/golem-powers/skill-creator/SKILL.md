@@ -18,6 +18,9 @@ The installer is idempotent — safe to re-run. It:
 2. Ensures `$SKILL_CREATOR_REPO/.claude/agents/`, `$SKILL_CREATOR_REPO/.codex/agents/`, and `$SKILL_CREATOR_REPO/scripts/` exist as the project-scope home
 3. Symlinks the `session-miner` agent definition into the project-scope agents dir (gates the sub-agent so only skillCreator-family sessions can spawn it)
 4. Symlinks the parser into the project-scope scripts dir
+5. Symlinks the `skill-creator` agent (`agents/skill-creator.md`) into `~/.claude/agents/skill-creator.md` — global scope, so any repo's Claude can dispatch `Agent(subagent_type="skill-creator")`. A hand-placed regular file there is moved to `~/.claude/agents/.skill-creator.md.bak-<YYYYMMDD>` first; `skill-creator-backup.md` is reported and never touched
+
+Every target is under `$HOME`, so `HOME=<dir> bash scripts/install.sh` installs into a scratch home (the tests in `tests/` do this).
 
 Run `bash scripts/install.sh --dry-run` to preview without changes. `bash scripts/install.sh --help` for usage.
 
@@ -232,6 +235,8 @@ Canonical source-of-truth lives in this skill's `agents/` dir. `scripts/install.
 | Sub-agent | Claude format | Codex format | Workflow |
 |---|---|---|---|
 | `session-miner` | `agents/session-miner.md` (model: inherit) | `agents/session-miner.toml` (model: gpt-5.3-codex-spark) | [mine-session.md](workflows/mine-session.md) |
+
+The `skill-creator` agent itself (`agents/skill-creator.md`, Claude format only) is the exception to this scope: `scripts/install.sh` links it into the global `~/.claude/agents/`, because it is the agent dispatched from any repo.
 
 Both formats invoke the same deterministic parser at `scripts/session-miner.py`. The Claude format uses `subagent_type="session-miner"` via the `Agent` tool; the Codex format is referenced by name in natural-language prompts (`session_miner, mine X to Y`).
 

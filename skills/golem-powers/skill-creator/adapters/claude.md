@@ -70,6 +70,8 @@ orcClaude (cwd=$ORCHESTRATOR_REPO/)
           └─ each runs scripts/session-miner.py
 ```
 
+`subagent_type=skill-creator` resolves from any repo because `scripts/install.sh` links `agents/skill-creator.md` into the global `~/.claude/agents/`.
+
 orc cannot skip skillCreator because `session-miner` is repo-scoped to `$SKILL_CREATOR_REPO/.claude/agents/` and orc's cwd registry doesn't include it.
 
 ## Hard rules (Claude-specific)
