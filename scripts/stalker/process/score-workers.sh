@@ -5,8 +5,9 @@
 # STALKER_SCORE_PARALLEL, OUT_DIR, STREAMER, DATE, STALKER_HEARTBEAT_SECS,
 # STALKER_HEARTBEAT_NOTIFY, LAST_HEARTBEAT_EPOCH, TOTAL_SEGMENTS, CURRENT_TS_SECS,
 # GEM_COUNT, SCORED_SEGMENTS, SKIPPED_SEGMENTS, SCORING_FAILURES,
-# SCORE_PIDS, SCORE_RESULT_DIRS. (W): SEGMENT_INDEX, SCORE_PIDS,
-# SCORE_RESULT_DIRS, CURRENT_TS_SECS, SCORED_SEGMENTS, SKIPPED_SEGMENTS,
+# SCORE_PIDS, SCORE_RESULT_DIRS, SCORE_PENDING_SIGNAL, SCORE_PENDING_STATUS.
+# (W): SEGMENT_INDEX, SCORE_PIDS, SCORE_RESULT_DIRS, SCORE_LAUNCH_ACTIVE,
+# CURRENT_TS_SECS, SCORED_SEGMENTS, SKIPPED_SEGMENTS,
 # SCORING_FAILURES, GEM_COUNT, LAST_HEARTBEAT_EPOCH; per-worker result files.
 # Background PIDs, ordered results and cleanup stay in this one shell.
 
@@ -304,7 +305,10 @@
             # group; monitor mode is off again before anything else runs.
             # Monitor mode also drops the implicit </dev/null of a background
             # job, so keep it explicit: the worker must never share the
-            # transcript read loop's stdin.
+            # transcript read loop's stdin. A scoring signal from here until the
+            # PID is registered is deferred, so cleanup always sees the worker.
+            # shellcheck disable=SC2034  # read by scoring_signal_handler
+            SCORE_LAUNCH_ACTIVE=1
             set -m
             run_score_segment_worker \
                 "$header" "$text" "$ts_secs" "$duration_secs" "$result_dir" \
@@ -312,6 +316,11 @@
             set +m
             SCORE_PIDS+=("$!")
             SCORE_RESULT_DIRS+=("$result_dir")
+            # shellcheck disable=SC2034  # read by scoring_signal_handler
+            SCORE_LAUNCH_ACTIVE=0
+            if [ -n "$SCORE_PENDING_SIGNAL" ]; then
+                scoring_signal_handler "$SCORE_PENDING_SIGNAL" "$SCORE_PENDING_STATUS"
+            fi
             if [ "${#SCORE_PIDS[@]}" -ge "$STALKER_SCORE_PARALLEL" ]; then
                 reap_any_score_worker
             fi

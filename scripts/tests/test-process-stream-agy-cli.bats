@@ -897,6 +897,98 @@ assert_interrupted_scoring_outputs() {
     assert_interrupted_scoring_outputs INT "$stream_dir"
 }
 
+# R1 race (#323): a signal between the worker fork and its SCORE_PIDS
+# registration must still reap that worker. A DEBUG trap fires the signal right
+# before the command named by $2 inside dispatch_score_segment, deterministically.
+signal_in_dispatch_window() {
+    local signal="$1"
+    local window_command="$2"
+    local harness="$TMPDIR_/dispatch-window-harness.sh"
+    local worker_pid_file="$TMPDIR_/dispatch-window-worker-pid"
+
+    cat > "$harness" <<'SH'
+#!/bin/bash
+set -euo pipefail
+source "$REPO_ROOT/scripts/lib/stream-helpers.sh"
+source "$REPO_ROOT/scripts/stalker/process/score-workers.sh"
+source "$REPO_ROOT/scripts/stalker/process/scoring.sh"
+log() { :; }
+OUT_DIR="$WINDOW_OUT_DIR"
+SCORE_RUN_DIR="$OUT_DIR/.stalker-score-results.window"
+SCORE_RESULTS_DIR="$SCORE_RUN_DIR/results"
+mkdir -p "$SCORE_RESULTS_DIR"
+STALKER_SCORE_PARALLEL=2
+SEGMENT_INDEX=0
+SCORE_PIDS=()
+SCORE_RESULT_DIRS=()
+SCORE_LAUNCH_ACTIVE=0
+SCORE_PENDING_SIGNAL=""
+SCORING_SIGNAL=""
+run_score_segment_worker() { exec sleep 30; }
+window_exit() {
+    local status=$?
+    trap - EXIT INT TERM
+    cleanup_score_run
+    exit "$status"
+}
+trap window_exit EXIT
+trap 'scoring_signal_handler INT 130' INT
+trap 'scoring_signal_handler TERM 143' TERM
+fire_in_window() {
+    case "$BASH_COMMAND" in
+        "$WINDOW_COMMAND"*)
+            trap - DEBUG
+            printf '%s\n' "$!" > "$WINDOW_WORKER_PID_FILE"
+            kill "-$WINDOW_SIGNAL" "$$"
+            ;;
+    esac
+}
+set -T
+trap fire_in_window DEBUG
+dispatch_score_segment "## [00:10] Segment 1 (20s)" "text" 10 20
+trap - DEBUG
+printf 'dispatch returned without the signal\n' >&2
+exit 3
+SH
+    chmod +x "$harness"
+
+    signal_status=0
+    perl -e '$SIG{INT} = "DEFAULT"; exec @ARGV or die $!' \
+        env REPO_ROOT="$REPO_ROOT" WINDOW_OUT_DIR="$TMPDIR_" \
+        WINDOW_COMMAND="$window_command" WINDOW_SIGNAL="$signal" \
+        WINDOW_WORKER_PID_FILE="$worker_pid_file" \
+        /bin/bash "$harness" > "$TMPDIR_/dispatch-window.out" 2>&1 || signal_status=$?
+
+    [ -s "$worker_pid_file" ]
+    window_worker_pid="$(cat "$worker_pid_file")"
+    [[ "$window_worker_pid" =~ ^[0-9]+$ ]]
+    window_worker_survived=0
+    for _ in {1..50}; do
+        kill -0 "$window_worker_pid" 2>/dev/null || break
+        sleep 0.02
+    done
+    if kill -0 "$window_worker_pid" 2>/dev/null; then
+        window_worker_survived=1
+        kill -KILL "$window_worker_pid" 2>/dev/null || true
+    fi
+}
+
+@test "SIGTERM between worker fork and PID registration still reaps the worker" {
+    signal_in_dispatch_window TERM 'SCORE_PIDS+='
+
+    [ "$window_worker_survived" -eq 0 ]
+    [ "$signal_status" -eq 143 ]
+    [ ! -d "$TMPDIR_/.stalker-score-results.window" ]
+}
+
+@test "SIGINT right after the monitor-mode worker launch still reaps the worker" {
+    signal_in_dispatch_window INT 'set +m'
+
+    [ "$window_worker_survived" -eq 0 ]
+    [ "$signal_status" -eq 130 ]
+    [ ! -d "$TMPDIR_/.stalker-score-results.window" ]
+}
+
 @test "SIGKILLed scoring is reconciled from its durable start marker and alerts" {
     stream_dir="$(make_scoring_fixture)"
     scorer_pids_file="$TMPDIR_/sigkill-scorer-pids"
