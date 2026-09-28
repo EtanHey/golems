@@ -9,8 +9,9 @@
 // checkout can never swap a live hook. Every golems hook in the host's manifest
 // entry is SYMLINKED from hooks-live into ~/.claude/hooks (copies silently break
 // the gates' `../../_shared` imports) and registered in ~/.claude/settings.json.
-// `external` manifest entries are owned by another repo: never linked, their
-// registration left byte-identical, reported by --status.
+// `external` entries are owned by another repo and left byte-identical.
+// `wrapped-external` entries register a golems wrapper around another repo's
+// script, but never link that script into ~/.claude/hooks.
 //
 // Dry-run is the default; --apply writes: hooks-live, the fail-open wrapper
 // copy, the links (a real file/dir in the way is renamed to .bak-<stamp>), and
@@ -27,6 +28,7 @@ import {
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 // Hooks deleted by E1 (hooks-audit.md, 2026-09-24). Matched as substrings of the
 // whole manifest, so no id, link, source or command can smuggle one back.
@@ -86,12 +88,13 @@ function context(o) {
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");
   const node = entries.some((e) => e.command?.includes("{node}")) ? pathNode() : "";
-  const expand = (s) => s.replaceAll("{hooks}", hooksDir).replaceAll("{live}", live)
+  const expand = (s) => s.replaceAll("{home}", homedir()).replaceAll("{hooks}", hooksDir).replaceAll("{live}", live)
     .replaceAll("{node}", node).replaceAll("{python}", "python3");
   const golems = entries.filter((e) => e.kind === "golems").map((e) => ({
     ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: expand(e.command),
   }));
-  return { entries, golems, hooksDir, live, settingsPath: path.join(homedir(), ".claude", "settings.json") };
+  const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
+  return { entries, golems, wrapped, hooksDir, live, settingsPath: path.join(homedir(), ".claude", "settings.json") };
 }
 
 // The node on PATH (e.g. a version manager's stable shim), not process.execPath:
@@ -113,10 +116,15 @@ function readSettings(settingsPath) {
 
 // Replace each golems hook's command in place (same event + matcher), drop
 // stale duplicates of it, append a new matcher group if none matched.
-function desiredHooks(current, golems) {
+function hookSpec(e) {
+  return { type: "command", command: e.cmd, ...(e.timeout ? { timeout: e.timeout } : {}),
+    ...(e.async === undefined ? {} : { async: e.async }) };
+}
+
+function desiredHooks(current, managed) {
   const hooks = structuredClone(current ?? {});
-  for (const e of golems) {
-    const want = { type: "command", command: e.cmd, ...(e.timeout ? { timeout: e.timeout } : {}) };
+  for (const e of managed) {
+    const want = hookSpec(e);
     let placed = false;
     const groups = hooks[e.event] ?? [];
     for (const g of groups) {
@@ -186,10 +194,10 @@ function install(o) {
     const state = linkState(e.at, e.to);
     console.log(`link ${e.id}: ${state === "ok" ? "ok" : `${state} -> link ${e.at} -> ${e.to}`}`);
   }
-  const next = { ...settings.json, hooks: desiredHooks(settings.json.hooks, ctx.golems) };
+  const next = { ...settings.json, hooks: desiredHooks(settings.json.hooks, [...ctx.golems, ...ctx.wrapped]) };
   const nextText = `${JSON.stringify(next, null, 2)}\n`;
   const changed = nextText !== settings.text;
-  console.log(`settings.json: ${changed ? "would change" : "unchanged"} (${ctx.golems.length} golems hooks)`);
+  console.log(`settings.json: ${changed ? "would change" : "unchanged"} (${ctx.golems.length + ctx.wrapped.length} managed hooks)`);
   if (!o.apply) {
     console.log("dry-run: nothing written (pass --apply)");
     return 0;
@@ -238,6 +246,17 @@ function status(o) {
   const text = commands.join("\n");
   let bad = false;
   for (const e of ctx.entries) {
+    if (e.kind === "wrapped-external") {
+      const expected = ctx.wrapped.find((x) => x.id === e.id);
+      const matches = (hooks[e.event] ?? []).flatMap((group) => (group.hooks ?? [])
+        .filter((hook) => String(hook.command ?? "").includes(e.match))
+        .map((hook) => ({ matcher: group.matcher ?? null, hook })));
+      const ok = matches.length === 1 && matches[0].matcher === (e.matcher ?? null)
+        && isDeepStrictEqual(matches[0].hook, hookSpec(expected));
+      if (!ok) bad = true;
+      console.log(`${e.id} ${ok ? "ok" : "drifted"}`);
+      continue;
+    }
     if (e.kind !== "golems") {
       console.log(`${e.id} external(${text.includes(e.match) ? "registered" : "unregistered"})`);
       continue;
