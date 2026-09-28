@@ -278,6 +278,28 @@ function deepMerge(base: JsonObject, over: JsonObject, where: string): JsonObjec
   return merged;
 }
 
+// prelaunch is shell code the dispatcher runs at every launch, not a secrets
+// channel: an op:// ref there would skip secrets.env. Every machine's list is
+// checked, not only this one's, and only the key path is ever reported.
+function assertNoPrelaunchRefs(parsed: JsonObject) {
+  const lists: [string, Json | undefined][] = [];
+  if (isObject(parsed.global)) lists.push(["global.prelaunch", parsed.global.prelaunch]);
+  if (isObject(parsed.machines)) {
+    for (const [host, section] of Object.entries(parsed.machines)) {
+      if (!isObject(section) || !isObject(section.overrides) || !isObject(section.overrides.global)) continue;
+      lists.push([`machines.${host}.overrides.global.prelaunch`, section.overrides.global.prelaunch]);
+    }
+  }
+  for (const [where, list] of lists) {
+    if (!Array.isArray(list)) continue;
+    list.forEach((command, index) => {
+      if (typeof command === "string" && command.includes("op://")) {
+        fail(`${where}.${index}: op:// refs are not allowed in prelaunch; it is not a secrets channel (use secrets: or env:)`);
+      }
+    });
+  }
+}
+
 export interface Resolved {
   config: JsonObject;
   machine: string | null;
@@ -292,6 +314,7 @@ export function resolveConfig(configText: string, host: () => string): Resolved 
   }
   assertOrderSafeKeys("projects", parsed.projects);
   if (isObject(parsed.mcpDefinitions)) assertOrderSafeKeys("mcpDefinitions", parsed.mcpDefinitions);
+  assertNoPrelaunchRefs(parsed);
   if (!validateConfig(parsed)) schemaErrors("config", validateConfig.errors);
 
   const { machines, ...shared } = parsed;

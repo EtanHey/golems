@@ -19,6 +19,7 @@ global:
   mcps: {}
   env:
     EXAMPLE_LOG_LEVEL: "info"
+  # prelaunch: ["export EXAMPLE_LOG_LEVEL=debug"] # shell commands run before each agent CLI starts
 
 mcpDefinitions:
   context7:

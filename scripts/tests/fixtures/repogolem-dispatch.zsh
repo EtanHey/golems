@@ -123,6 +123,47 @@ _golem_reset_title() {
   echo -ne "\e]2;Terminal\a"
 }
 
+# ── Agent launch + prelaunch ──────────────────────────────────────
+# AIDEV-NOTE: every agent CLI invocation goes through _golem_run_agent.
+# registry.json's global.prelaunch (from the user's own 0600 repoGolem config,
+# the same trust as a shell rc file) lists shell commands, e.g. a ulimit or an
+# export, that must take effect in the agent process.
+#   - None configured (absent or []): the agent is called directly, exactly as
+#     before. No subshell, no output.
+#   - Configured: a subshell runs them in order, then execs the agent. Their
+#     effects reach the agent and die with the subshell, so nothing leaks into
+#     the user's interactive shell. exec keeps the agent a direct child of this
+#     shell, as a plain launch is, so its parent, exit status and signals match.
+#     A shell-function agent (tests, user wrappers) cannot be exec'd; it runs
+#     inside the subshell instead.
+#   - A failing command warns by index, never by text, and the launch goes on.
+#     A command that calls `exit` ends the launch, as it would in an rc file.
+_golem_run_agent() {
+  local prelaunch_raw=""
+  if [[ -f "${RALPH_REGISTRY_FILE:-}" ]]; then
+    prelaunch_raw=$(jq -j '(.global.prelaunch // [])
+      | if type == "array" then .[] | select(type == "string" and length > 0) | . + "\u0000" else empty end' \
+      "$RALPH_REGISTRY_FILE" 2>/dev/null)
+  fi
+  local -a prelaunch=("${(@0)prelaunch_raw}")
+  prelaunch=("${(@)prelaunch:#}")
+  if (( ${#prelaunch} == 0 )); then
+    "$@"
+    return
+  fi
+  (
+    local -i index=0
+    local prelaunch_command
+    for prelaunch_command in "${prelaunch[@]}"; do
+      index+=1
+      eval "$prelaunch_command" \
+        || print -u2 -r -- "repoGolem: prelaunch command ${index} failed (exit $?); launching anyway"
+    done
+    [[ "$(builtin whence -w -- "$1")" == *": command" ]] && exec "$@"
+    "$@"
+  )
+}
+
 _golem_copy_mcp_to_worktree() {
   local repo_root="$1" worktree_dir="$2"
   [[ -z "$repo_root" || -z "$worktree_dir" ]] && return 0
@@ -709,14 +750,14 @@ _golem_launch_claude() {
     local _ttyd_port
     _ttyd_port=$(jq -r --arg proj "$project_name" '.projects[$proj].ttydPort // 0' "$registry" 2>/dev/null)
     if [[ "$_ttyd_port" -gt 0 ]] && typeset -f _repoclaude_web_mode >/dev/null 2>&1; then
-      _repoclaude_web_mode "$project_name" "${project_name}Claude" "$_ttyd_port" "${claude_args[@]}"
+      _golem_run_agent _repoclaude_web_mode "$project_name" "${project_name}Claude" "$_ttyd_port" "${claude_args[@]}"
       claude_exit=$?
     else
       echo "Web mode not configured for $project_name"
       claude_exit=1
     fi
   else
-    claude "${claude_args[@]}"
+    _golem_run_agent claude "${claude_args[@]}"
     claude_exit=$?
   fi
 
@@ -1178,7 +1219,7 @@ _golem_launch_codex() {
     [[ -n "$resume_prefix_flag" ]] && explicit_resume_args+=("$resume_prefix_flag")
     explicit_resume_args+=("${codex_config_args[@]}")
     [[ -n "$model" ]] && explicit_resume_args+=("--model" "$model")
-    codex "${explicit_resume_args[@]}"
+    _golem_run_agent codex "${explicit_resume_args[@]}"
     codex_exit=$?
   elif $_flag_headless && [[ -n "$_flag_headless_prompt" ]]; then
     local exec_prompt="$_flag_headless_prompt"
@@ -1187,7 +1228,7 @@ _golem_launch_codex() {
     elif [[ -n "$agent_prompt" ]]; then
       exec_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$_flag_headless_prompt")
     fi
-    codex exec "${codex_config_args[@]}" "${codex_args[@]}" "$exec_prompt"
+    _golem_run_agent codex exec "${codex_config_args[@]}" "${codex_args[@]}" "$exec_prompt"
     codex_exit=$?
   elif $_flag_continue; then
     local continue_prompt="${_flag_headless_prompt:-$positional_prompt}"
@@ -1197,9 +1238,9 @@ _golem_launch_codex() {
       elif [[ -n "$agent_prompt" ]]; then
         continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$continue_prompt")
       fi
-      codex resume --last "${codex_config_args[@]}" "${codex_args[@]}" "$continue_prompt"
+      _golem_run_agent codex resume --last "${codex_config_args[@]}" "${codex_args[@]}" "$continue_prompt"
     else
-      codex resume --last "${codex_config_args[@]}" "${codex_args[@]}"
+      _golem_run_agent codex resume --last "${codex_config_args[@]}" "${codex_args[@]}"
     fi
     codex_exit=$?
   else
@@ -1212,9 +1253,9 @@ _golem_launch_codex() {
           launch_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
         fi
       fi
-      codex "${codex_config_args[@]}" "${codex_args[@]}" "$launch_prompt"
+      _golem_run_agent codex "${codex_config_args[@]}" "${codex_args[@]}" "$launch_prompt"
     else
-      codex "${codex_config_args[@]}" "${codex_args[@]}"
+      _golem_run_agent codex "${codex_config_args[@]}" "${codex_args[@]}"
     fi
     codex_exit=$?
   fi
@@ -1275,15 +1316,15 @@ _golem_launch_cursor() {
   if $_flag_headless && [[ -n "$_flag_headless_prompt" ]]; then
     local exec_prompt="$_flag_headless_prompt"
     [[ -n "$agent_prompt" ]] && exec_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$_flag_headless_prompt")
-    cursor agent "${cursor_args[@]}" --print --output-format text "$exec_prompt"
+    _golem_run_agent cursor agent "${cursor_args[@]}" --print --output-format text "$exec_prompt"
     cursor_exit=$?
   elif $_flag_continue; then
     local continue_prompt="${_flag_headless_prompt:-$positional_prompt}"
     if [[ -n "$continue_prompt" ]]; then
       [[ "$worker_mode" != true && -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$continue_prompt")
-      cursor agent --continue "${cursor_args[@]}" "$continue_prompt"
+      _golem_run_agent cursor agent --continue "${cursor_args[@]}" "$continue_prompt"
     else
-      cursor agent --continue "${cursor_args[@]}"
+      _golem_run_agent cursor agent --continue "${cursor_args[@]}"
     fi
     cursor_exit=$?
   else
@@ -1292,9 +1333,9 @@ _golem_launch_cursor() {
       if [[ "$worker_mode" != true && -n "$positional_prompt" ]]; then
         launch_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
       fi
-      cursor agent "${cursor_args[@]}" "$launch_prompt"
+      _golem_run_agent cursor agent "${cursor_args[@]}" "$launch_prompt"
     else
-      cursor agent "${cursor_args[@]}"
+      _golem_run_agent cursor agent "${cursor_args[@]}"
     fi
     cursor_exit=$?
   fi
@@ -1358,17 +1399,17 @@ _golem_launch_gemini() {
   if $_flag_headless && [[ -n "$_flag_headless_prompt" ]]; then
     local exec_prompt="$_flag_headless_prompt"
     [[ -n "$agent_prompt" ]] && exec_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$_flag_headless_prompt")
-    "$agy_bin" "${agy_args[@]}" --print "$exec_prompt"
+    _golem_run_agent "$agy_bin" "${agy_args[@]}" --print "$exec_prompt"
     agy_exit=$?
   elif $_flag_continue; then
     if [[ -n "$positional_prompt" ]]; then
       local continue_prompt="$positional_prompt"
       [[ "$worker_mode" != true && -n "$agent_prompt" ]] && continue_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
-      "$agy_bin" "${agy_args[@]}" --prompt-interactive "$continue_prompt"
+      _golem_run_agent "$agy_bin" "${agy_args[@]}" --prompt-interactive "$continue_prompt"
     elif [[ -n "$agent_prompt" ]]; then
-      "$agy_bin" "${agy_args[@]}" --prompt-interactive "$agent_prompt"
+      _golem_run_agent "$agy_bin" "${agy_args[@]}" --prompt-interactive "$agent_prompt"
     else
-      "$agy_bin" "${agy_args[@]}"
+      _golem_run_agent "$agy_bin" "${agy_args[@]}"
     fi
     agy_exit=$?
   else
@@ -1377,11 +1418,11 @@ _golem_launch_gemini() {
       if [[ "$worker_mode" != true && -n "$positional_prompt" ]]; then
         launch_prompt=$(_golem_build_agent_prompt "$agent_context_file" "$positional_prompt")
       fi
-      "$agy_bin" "${agy_args[@]}" --prompt-interactive "$launch_prompt"
+      _golem_run_agent "$agy_bin" "${agy_args[@]}" --prompt-interactive "$launch_prompt"
     elif [[ -n "$positional_prompt" ]]; then
-      "$agy_bin" "${agy_args[@]}" --prompt-interactive "$positional_prompt"
+      _golem_run_agent "$agy_bin" "${agy_args[@]}" --prompt-interactive "$positional_prompt"
     else
-      "$agy_bin" "${agy_args[@]}"
+      _golem_run_agent "$agy_bin" "${agy_args[@]}"
     fi
     agy_exit=$?
   fi

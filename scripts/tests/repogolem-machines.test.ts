@@ -261,3 +261,103 @@ describe("init", () => {
     expect(parseYaml(readFileSync(target, "utf8")).machines.h).toBeDefined();
   });
 });
+
+// global.prelaunch: user-owned shell commands golem-dispatch runs before an
+// agent CLI starts. Same trust as a shell rc file; never a secrets channel.
+describe("prelaunch", () => {
+  const PRELAUNCH = ["ulimit -Sn 4096", "export EXAMPLE_FLAG=1"];
+
+  test("the schema accepts a command list, an empty list, and a per-machine list or null", () => {
+    const check = validate();
+    expect(check(withConfig((c) => (c.global.prelaunch = PRELAUNCH)))).toBe(true);
+    expect(check(withConfig((c) => (c.global.prelaunch = [])))).toBe(true);
+    expect(check(withConfig((c) => (c.machines["example-host"].overrides.global = { prelaunch: ["true"] })))).toBe(true);
+    expect(check(withConfig((c) => (c.machines["example-host"].overrides.global = { prelaunch: null })))).toBe(true);
+  });
+
+  const rejects: [string, (c: any) => void][] = [
+    ["a bare string", (c) => (c.global.prelaunch = "ulimit -Sn 4096")],
+    ["a non-string command", (c) => (c.global.prelaunch = [42])],
+    ["an empty command", (c) => (c.global.prelaunch = [""])],
+    ["a non-list override", (c) => (c.machines["example-host"].overrides.global = { prelaunch: "true" })],
+  ];
+  for (const [what, mutate] of rejects) {
+    test(`the schema rejects ${what}`, () => {
+      expect(validate()(withConfig(mutate))).toBe(false);
+    });
+  }
+
+  test("generate carries the list into registry.json under global.prelaunch", () => {
+    const r = generate(
+      withConfig((c) => (c.global.prelaunch = PRELAUNCH)),
+      "example-host",
+    );
+    expect(r.stderr).not.toContain("repogolem-config:");
+    expect(r.code).toBe(0);
+    expect(r.registry.global.prelaunch).toEqual(PRELAUNCH);
+  });
+
+  test("a machine override replaces the list, and null removes it", () => {
+    const config = withConfig((c) => {
+      c.global.prelaunch = PRELAUNCH;
+      c.machines["example-host"].overrides.global = { prelaunch: ["true"] };
+      c.machines["example-laptop"].overrides.global = { prelaunch: null };
+    });
+    expect(generate(config, "example-host").registry.global.prelaunch).toEqual(["true"]);
+    const laptop = generate(config, "example-laptop").registry;
+    expect(laptop.global).toBeDefined();
+    expect(laptop.global.prelaunch).toBeUndefined();
+  });
+
+  test("no prelaunch in the config means no prelaunch key in registry.json", () => {
+    const r = generate(example(), "example-host");
+    expect(r.code).toBe(0);
+    expect("prelaunch" in r.registry.global).toBe(false);
+  });
+
+  test("--check reports a prelaunch-only config edit, and a hand-edited list, as stale", () => {
+    const path = join(dir, "config.yaml");
+    const config = withConfig((c) => (c.global.prelaunch = PRELAUNCH));
+    expect(generate(config, "example-host").code).toBe(0);
+    const check = () =>
+      run(["generate", "--config", path, "--out-dir", join(dir, "gen"), "--home", "/home/fixture", "--host", "example-host", "--check"]);
+    expect(check().code).toBe(0);
+
+    writeFileSync(path, JSON.stringify(withConfig((c) => (c.global.prelaunch = [...PRELAUNCH, "true"]))));
+    const stale = check();
+    expect(stale.code).toBe(1);
+    expect(stale.stderr).toContain("registry.json");
+
+    // Same config, registry.json list edited by hand: stamps match, content does not.
+    expect(generate(config, "example-host").code).toBe(0);
+    const registryPath = join(dir, "gen", "registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf8"));
+    registry.global.prelaunch = ["true"];
+    writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+    const edited = check();
+    expect(edited.code).toBe(1);
+    expect(edited.stderr).toContain("content differs");
+  });
+
+  test("an op:// ref in a prelaunch command is refused by key path, never echoed, nothing written", () => {
+    const ref = "op://example-vault/example-item/token";
+    const shared = generate(
+      withConfig((c) => (c.global.prelaunch = ["true", `export EXAMPLE_TOKEN="$(op read ${ref})"`])),
+      "example-host",
+    );
+    expect(shared.code).toBe(2);
+    expect(shared.stderr).toContain("global.prelaunch.1");
+    expect(shared.stderr).toContain("not a secrets channel");
+    expect(shared.stdout + shared.stderr).not.toContain(ref);
+    expect(existsSync(join(dir, "gen"))).toBe(false);
+
+    // In any machine's override, not only the machine being generated.
+    const override = generate(
+      withConfig((c) => (c.machines["example-laptop"].overrides.global = { prelaunch: [`echo ${ref}`] })),
+      "example-host",
+    );
+    expect(override.code).toBe(2);
+    expect(override.stderr).toContain("machines.example-laptop.overrides.global.prelaunch.0");
+    expect(override.stdout + override.stderr).not.toContain(ref);
+  });
+});
