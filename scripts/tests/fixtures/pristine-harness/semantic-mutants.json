@@ -1,0 +1,250 @@
+[
+  {
+    "id": "G1",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if subcommand == \"push\" and (\"--force\" in arguments or short_force):",
+    "new": "if subcommand == \"push\" and (\"--force\" in arguments):",
+    "description": "G1 push -f (short force) allowed"
+  },
+  {
+    "id": "G3",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if words[position + 1:position + 2] == [\"down\"]:",
+    "new": "if words[position + 1:position + 2] == [\"DOWN\"]:",
+    "description": "G3 railway down allowed"
+  },
+  {
+    "id": "G4",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if len(pattern) <= 3 or pattern.isdigit():",
+    "new": "if len(pattern) <= 2 or pattern.isdigit():",
+    "description": "G4 degenerate pkill len<=3 -> <=2"
+  },
+  {
+    "id": "G5",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "    if resolved == home:\n",
+    "new": "    if resolved == home + \"/\":\n",
+    "description": "G5 rm ~ home guard off"
+  },
+  {
+    "id": "G7",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
+    "old": "    (r\"\\bdrop\\s+database\\b\", \"DROP DATABASE\"),\n",
+    "new": "",
+    "description": "G7 DROP DATABASE regex dropped"
+  },
+  {
+    "id": "G8",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
+    "old": "    r'\\S+\\.pem(?:\\s|$|\")',                       # *.pem files\n",
+    "new": "",
+    "description": "G8 .pem secret regex dropped"
+  },
+  {
+    "id": "G9",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "                return _dangerous_git_reason(words[index + 1])\n",
+    "new": "                return None\n",
+    "description": "G9 bash -c inner git allowed"
+  },
+  {
+    "id": "G10",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "    if len(parts) < 3:\n        return f\"rm target too broad",
+    "new": "    if len(parts) < 2:\n        return f\"rm target too broad",
+    "description": "G10 rm depth <3 -> <2"
+  },
+  {
+    "id": "T1",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "if not (s.startswith(\"/\") or s.startswith(\"~\")):",
+    "new": "if not (s.startswith(\"/\")):",
+    "description": "T1 ~ paths not temp-class"
+  },
+  {
+    "id": "T2",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "if WORKTREE_DIR_NAME not in parts[:-1]:",
+    "new": "if WORKTREE_DIR_NAME not in parts:",
+    "description": "T2 on_convention ignores last-part rule"
+  },
+  {
+    "id": "T3",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "if os.path.exists(os.path.join(cur, \".git\")):",
+    "new": "if os.path.exists(os.path.join(cur, \".gitx\")):",
+    "description": "T3 nearest repo root .git probe broken"
+  },
+  {
+    "id": "T4",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "    sys.exit(2)\n",
+    "new": "    sys.exit(1)\n",
+    "description": "T4 deny exit 2 -> 1"
+  },
+  {
+    "id": "T5",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "_CWD_CHANGING_CMDS = {\"cd\", \"pushd\", \"popd\", \"chdir\"}",
+    "new": "_CWD_CHANGING_CMDS = {\"cd\", \"popd\", \"chdir\"}",
+    "description": "T5 pushd not cwd-changing"
+  },
+  {
+    "id": "T6",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "        if is_harness_scratchpad(cand, prefixes):\n            continue\n",
+    "new": "        if False:\n            continue\n",
+    "description": "T6 scratchpad allowance off"
+  },
+  {
+    "id": "T7",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "HATCH_WT = \"WEAVE_ALLOW_WT_MIGRATION\"",
+    "new": "HATCH_WT = \"WEAVE_ALLOW_WT_MIGRATIOn\"",
+    "description": "T7 WT hatch name typo"
+  },
+  {
+    "id": "T8",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "        if _has_temp_hint(raw_input):\n",
+    "new": "        if False:\n",
+    "description": "T8 exception path no fail-closed"
+  },
+  {
+    "id": "P1",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "    \"xargs\", \"stdbuf\", \"caffeinate\",\n}\n\n\n# These",
+    "new": "    \"xargs\", \"stdbuf\",\n}\n\n\n# These",
+    "description": "P1 caffeinate not wrapper"
+  },
+  {
+    "id": "P2",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "_DATA_COMMANDS = {\"echo\", \"printf\", \"gh\"}",
+    "new": "_DATA_COMMANDS = {\"echo\", \"printf\"}",
+    "description": "P2 gh not data command"
+  },
+  {
+    "id": "P3",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "_GIT_DATA_SUBCOMMANDS = {\"commit\", \"tag\", \"notes\"}",
+    "new": "_GIT_DATA_SUBCOMMANDS = {\"commit\", \"notes\"}",
+    "description": "P3 git tag not data"
+  },
+  {
+    "id": "P4",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "\"ruby\", \"perl\", \"tee\", \"gh\"}",
+    "new": "\"ruby\", \"tee\", \"gh\"}",
+    "description": "P4 perl not heredoc interpreter"
+  },
+  {
+    "id": "P5",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "(?:psql|sqlite3|mysql|sh|bash|zsh|eval|source)",
+    "new": "(?:psql|sqlite3|mysql|sh|bash|zsh|eval)",
+    "description": "P5 source not executor"
+  },
+  {
+    "id": "P6",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "\"-u\", \"--unset\", \"-C\", \"--chdir\",",
+    "new": "\"-u\", \"--unset\", \"--chdir\",",
+    "description": "P6 -C wrapper value opt dropped"
+  },
+  {
+    "id": "P7",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "_HEREDOC_START_RE = re.compile(r\"(?<!<)<<(?!<)(-?)\\s*\")",
+    "new": "_HEREDOC_START_RE = re.compile(r\"(?<!<)<<(?!<)()\\s*\")",
+    "description": "P7 heredoc <<- dash dropped"
+  },
+  {
+    "id": "L1",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "    _claude_effort=\"medium\"\n",
+    "new": "    _claude_effort=\"low\"\n",
+    "description": "L1 GOLEM_ROLE=worker effort medium->low"
+  },
+  {
+    "id": "L2",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "$_flag_skip && claude_args=(\"--dangerously-skip-permissions\"",
+    "new": "$_flag_skip && claude_args=(\"--dangerously-skip-permission\"",
+    "description": "L2 claude -s flag name"
+  },
+  {
+    "id": "L3",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "$_flag_skip && cursor_args=(\"--yolo\" \"--approve-mcps\"",
+    "new": "$_flag_skip && cursor_args=(\"--yolo\"",
+    "description": "L3 cursor -s drops --approve-mcps"
+  },
+  {
+    "id": "L4",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "fable|fable-5.1) print -r -- \"claude-fable-5-1[1m]\" ;;",
+    "new": "fable|fable-5.1) print -r -- \"claude-fable-5-1\" ;;",
+    "description": "L4 fable resolution"
+  },
+  {
+    "id": "L5",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "$_flag_skip && agy_args=(\"--dangerously-skip-permissions\" \"${agy_args[@]}\")",
+    "new": "true",
+    "description": "L5 agy -s dropped"
+  },
+  {
+    "id": "L6",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "$_flag_continue && claude_args=(\"--continue\" \"${claude_args[@]}\")",
+    "new": "$_flag_continue && claude_args=(\"${claude_args[@]}\" \"--continue\")",
+    "description": "L6 claude --continue order"
+  },
+  {
+    "id": "L7",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "    _claude_model=\"claude-opus-5-5[1m]\"\n",
+    "new": "    _claude_model=\"claude-opus-5-5\"\n",
+    "description": "L7 default opus pin"
+  },
+  {
+    "id": "L8",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "  else\n    _claude_effort=\"high\"\n",
+    "new": "  else\n    _claude_effort=\"xhigh\"\n",
+    "description": "L8 lead-seat claude effort high->xhigh"
+  }
+]

@@ -2843,5 +2843,3324 @@
       "--last"
     ],
     "sessions": true
+  },
+  {
+    "id": "mined-000",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-001",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "RM -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-002",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf /tmp"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-003",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf \"$UNSET\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-004",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "cd /outside && rm -rf child"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-005",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf ."
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-006",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf packages"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-007",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf .."
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-008",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf ../sibling"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-009",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf docs.local/../.."
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-010",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "sudo rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-011",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm / -rf"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-012",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "env rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-013",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "time rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-014",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "bash -c \"rm -rf /\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-015",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "bash -lc \"rm -rf /\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-016",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "sh -c \"rm -rf /\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-017",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "find . -exec rm -rf {} \\;"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-018",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs rm -rf"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-019",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs sudo rm -rf"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-020",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs env time rm -rf"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-021",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs -i rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-022",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs --replace rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-023",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs -e rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-024",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs --eof rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-025",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs -l rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-026",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "cat list | xargs rm -rf docs.local/a/b"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-027",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs rm -rf docs.local/safe/sub"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-028",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf '/\\n' | xargs -I{} rm -rf docs.local/a/b"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-029",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "env -S \"rm -rf /\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-030",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "env --split-string='rm -rf /'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-031",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_breadth_still_blocks_genuinely_broad_or_unresolved_targets",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf \"docs.local/safe/$UNSET/../../..\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-032",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_malformed_rm_with_long_recursive_force_flags_fails_closed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm --recursive --force \"/"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-033",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_malformed_rm_with_long_recursive_force_flags_fails_closed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm / --recursive --force \""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-034",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_prose_without_recursive_force_flags_is_not_a_command",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"rm breadth comparison\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-035",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_prose_without_recursive_force_flags_is_not_a_command",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "python3 docs.local/rm-breadth-compare.py; echo rm breadth"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-036",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_prose_without_recursive_force_flags_is_not_a_command",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"rm -r only, no -f broad\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-037",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_prose_without_recursive_force_flags_is_not_a_command",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"rm -f only, no -r broad\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-038",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_prose_without_recursive_force_flags_is_not_a_command",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"the rm -rf flag is dangerous\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-039",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_prose_without_recursive_force_flags_is_not_a_command",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo 'rm -rf / is quoted evidence'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-040",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_wrapper_arguments_that_only_quote_rm_prose_are_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "env echo \"rm -rf /\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-041",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_wrapper_arguments_that_only_quote_rm_prose_are_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "time echo \"rm -rf /\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-042",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_wrapper_arguments_that_only_quote_rm_prose_are_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "bash -c 'echo \"rm -rf /\"'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-043",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_wrapper_arguments_that_only_quote_rm_prose_are_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "find . -exec echo 'rm -rf /' \\;"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-044",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_wrapper_arguments_that_only_quote_rm_prose_are_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf 'rm -rf /\\n' | xargs echo"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-045",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_shell_executed_heredoc_body_is_never_masked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "bash <<'EOF'\nrm -rf /\nEOF"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-046",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_shell_executed_heredoc_body_is_never_masked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "bash <<'EOF' > report.log\nrm -rf /\nEOF"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-047",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_shell_executed_heredoc_body_is_never_masked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "cat input > report.log; bash <<'EOF'\nrm -rf /\nEOF"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-048",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_plain_force_push_is_not_exempted_by_a_different_lease_push",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git push --force origin main && git push --force-with-lease origin dev"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-049",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_plain_force_push_is_not_exempted_by_a_different_lease_push",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"--force-with-lease\"; git push --force origin main"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-050",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_plain_force_push_is_not_exempted_by_a_different_lease_push",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git push --force origin main # --force-with-lease is safer"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-051",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git   reset   --hard"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-052",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git -C /repo reset --hard"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-053",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git clean --force -d"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-054",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git clean -dfx"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-055",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git -C /repo clean -d -f"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-056",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "GIT push --force origin main"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-057",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "env -S \"git reset --hard\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-058",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "railway down"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-059",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "RAILWAY down"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-060",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git push --force && echo $'don\\'t'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-061",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"git reset --hard is quoted evidence\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-062",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"git clean -f is quoted evidence\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-063",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"before | git push --force is blocked\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-064",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"a; git clean -f was quoted\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-065",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git commit -m \"fix: never run\ngit reset --hard here\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-066",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"the guard blocks railway down\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-067",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"unterminated git reset --hard"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-068",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git reset --soft HEAD~1"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-069",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_destructive_git_flags_are_parsed_structurally",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "git clean -n"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-070",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_unknown_directory_transitions_cannot_reuse_stale_cwd",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "cd; rm -rf docs.local/scratch"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-071",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_unknown_directory_transitions_cannot_reuse_stale_cwd",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "cd -; rm -rf docs.local/scratch"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-072",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_unknown_directory_transitions_cannot_reuse_stale_cwd",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pushd; rm -rf docs.local/scratch"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-073",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_unknown_directory_transitions_cannot_reuse_stale_cwd",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "popd; rm -rf docs.local/scratch"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-074",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_after_shell_control_keyword_is_scanned",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "if true; then rm -rf /; fi"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-075",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_after_shell_control_keyword_is_scanned",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "while true; do rm -rf /; done"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-076",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_rm_after_shell_control_keyword_is_scanned",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "! rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-077",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_nice_wrapped_destructive_commands_are_scanned",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "nice rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-078",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_nice_wrapped_destructive_commands_are_scanned",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "nice -n 5 rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-079",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_nice_wrapped_destructive_commands_are_scanned",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "nice --adjustment=5 git push --force origin main"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-080",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_backtick_command_substitutions_are_scanned",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo `rm -rf /`"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-081",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_backtick_command_substitutions_are_scanned",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "cat <<EOF\n`rm -rf /`\nEOF"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-082",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_quoted_cat_heredoc_data_is_not_executed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "cat <<'EOF'\nrm -rf /\nEOF"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-083",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_pkill_options_after_the_pattern_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'inbox.jsonl' -P 1"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-084",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_pkill_options_after_the_pattern_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'inbox.jsonl' -P 1 2>/dev/null; kill 40955 2>/dev/null && echo done"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-085",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_pkill_options_after_the_pattern_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "sudo pkill -f 'foo' -u 501"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-086",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_pkill_options_after_the_pattern_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "killall -f 'bar' -m"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-087",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_pkill_options_after_the_pattern_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "PKILL -f 'foo' -P 1"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-088",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_pkill_options_after_the_pattern_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "/usr/bin/pkill -f 'foo' -P 1"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-089",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_pkill_options_after_the_pattern_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "bash -c \"pkill -f 'foo' -P 1\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-090",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_degenerate_kill_patterns_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f '1'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-091",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_degenerate_kill_patterns_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'abc'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-092",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_degenerate_kill_patterns_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'inbox.jsonl|-P|1'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-093",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_degenerate_kill_patterns_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'inbox.jsonl|1'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-094",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_degenerate_kill_patterns_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 501"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-095",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_degenerate_kill_patterns_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "killall -m -f '1'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-096",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_degenerate_kill_patterns_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "killall -f 'bar|-m'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-097",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_degenerate_kill_patterns_are_blocked",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f inbox.jsonl extra-operand"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-098",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f -P 1 'inbox.jsonl'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-099",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "killall Dock"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-100",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -HUP -f '/opt/svc/daemon.py'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-101",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -- -weird-pattern"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-102",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -u 501 -f 'inbox.jsonl'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-103",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'node --inspect'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-104",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'foo|bar'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-105",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'inbox.jsonl'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-106",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "pkill -f 'node'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-107",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "killall -f 'barproc'"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "mined-108",
+    "target": "git-api",
+    "source": "skills/golem-powers/git-guardian/tests/test_git_safety.py:test_w27_correct_kill_forms_stay_allowed",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo \"never run pkill -f 'x' -P 1\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-guardian-000",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -f origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-001",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push +main:main origin\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-002",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-003",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force-with-lease origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-004",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-005",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean -fdx\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-006",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"railway down\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-007",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"pkill -f 'abc'\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-008",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"pkill -f 'service.py' -P 1\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-009",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"killall -f x -m\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-010",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf ~\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-011",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf ..\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-012",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf \\\"$UNSET\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-013",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sudo rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-014",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"env -S \\\"git push --force origin main\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-015",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice -n 5 git reset --hard\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-016",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"time rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-017",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -exec rm -rf {} \\\\;\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-018",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf / | xargs rm -rf\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-019",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"bash -c \\\"git push --force origin main\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-020",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sh -c \\\"rm -rf /\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-021",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"psql -c \\\"DROP TABLE users\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-022",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"psql -c \\\"DROP DATABASE x\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-023",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sqlite3 db \\\"TRUNCATE TABLE users\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-024",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"the table was dropped\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-025",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > .env\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-026",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > .env.local\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-027",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > .env.example\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-028",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > credentials.json\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-029",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > secret.yaml\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-030",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > secrets.json\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-031",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > server.pem\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-032",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > server.key\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-033",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cp from .env\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-034",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"mv from credentials.json\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-035",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm secret.yaml\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-036",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat .env\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-037",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"node -e \\\"process.env.API_KEY\\\"\"},\"session_id\":\"pristine\"}",
+    "cwd": "root"
+  },
+  {
+    "id": "r2-guardian-write-_env",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/.env\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-write-_env_local",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/.env.local\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-write-_env_example",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/.env.example\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-write-credentials_json",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/credentials.json\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-write-secret_yaml",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/secret.yaml\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-write-secrets_json",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/secrets.json\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-write-server_pem",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/server.pem\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-write-server_key",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/server.key\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-write-ordinary_txt",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/ordinary.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-_env",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/.env\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-_env_local",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/.env.local\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-_env_example",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/.env.example\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-credentials_json",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/credentials.json\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-secret_yaml",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/secret.yaml\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-secrets_json",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/secrets.json\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-server_pem",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/server.pem\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-server_key",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/server.key\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-edit-ordinary_txt",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/ordinary.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-_env",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/.env\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-_env_local",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/.env.local\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-_env_example",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/.env.example\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-credentials_json",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/credentials.json\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-secret_yaml",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/secret.yaml\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-secrets_json",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/secrets.json\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-server_pem",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/server.pem\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-server_key",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/server.key\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-guardian-notebookedit-ordinary_txt",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"file_path\":\"/repo/ordinary.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "r2-api-is_unauthorized_no_verify-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit --no-verify -m x"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_unauthorized_no_verify-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git push --no-verify origin main"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_unauthorized_no_verify-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit --no-verify -m x"
+      ],
+      "kwargs": {
+        "authorized": true
+      }
+    }
+  },
+  {
+    "id": "r2-api-is_unauthorized_no_verify-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -m \"fix --no-verify\""
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_unauthorized_no_verify-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -n -m x"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_unauthorized_no_verify-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git push -n origin main"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-restore_targets-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore src/app.py"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-restore_targets-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout -- src/app.py src/util.py"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-restore_targets-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore --staged src/app.py"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-restore_targets-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout main"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-restore_targets-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore -s HEAD src/app.py"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-restore_targets-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout HEAD src/app.py"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_destructive_restore-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore src/app.py"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_destructive_restore-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "r2-api-is_destructive_restore-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout ."
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_destructive_restore-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout -- src/app.py src/util.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "r2-api-is_destructive_restore-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore --staged src/app.py"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_destructive_restore-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout main"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-pr_body_is_empty-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        null
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-pr_body_is_empty-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        ""
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-pr_body_is_empty-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        " \n\t "
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-pr_body_is_empty-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "<!-- template -->"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-pr_body_is_empty-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "#\n-\n*"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-pr_body_is_empty-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "Real description here."
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-split_git-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git -C /repo restore src/app.py"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-split_git-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git commit -m \"hello\""
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-split_git-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "/usr/bin/git push --force origin main"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-split_git-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "echo git push --force"
+      ],
+      "kwargs": {}
+    }
+  },
+  {
+    "id": "r2-api-is_dangerous_rm-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf /"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-is_dangerous_rm-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf ."
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-is_dangerous_rm-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf docs.local/safe/leaf"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-is_dangerous_rm-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf \"$UNSET\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf ."
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf ."
+      ],
+      "kwargs": {
+        "cwd": "{WORKTREE}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf ."
+      ],
+      "kwargs": {
+        "cwd": "{NESTED}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf docs.local/safe/leaf"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf \"$D/x\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {
+          "D": "/"
+        }
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf \"$D/x/y\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {
+          "D": "docs.local/safe"
+        }
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-06",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf \"$SP\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-07",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "rm -rf \"$SP/leaf\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-api-dangerous_shell_reason-08",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "bash -c \"git push --force origin main\""
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "r2-parser-wrapper-sudo",
+    "target": "parser",
+    "input": "sudo tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-command",
+    "target": "parser",
+    "input": "command tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-exec",
+    "target": "parser",
+    "input": "exec tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-nohup",
+    "target": "parser",
+    "input": "nohup tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-env",
+    "target": "parser",
+    "input": "env tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-nice",
+    "target": "parser",
+    "input": "nice tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-time",
+    "target": "parser",
+    "input": "time tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-xargs",
+    "target": "parser",
+    "input": "xargs tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-stdbuf",
+    "target": "parser",
+    "input": "stdbuf tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-wrapper-caffeinate",
+    "target": "parser",
+    "input": "caffeinate tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-u",
+    "target": "parser",
+    "input": "env -u FOO tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-unset",
+    "target": "parser",
+    "input": "env --unset FOO tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-C",
+    "target": "parser",
+    "input": "env -C /repo tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-chdir",
+    "target": "parser",
+    "input": "env --chdir /repo tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-g",
+    "target": "parser",
+    "input": "env -g staff tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-group",
+    "target": "parser",
+    "input": "env --group staff tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-S",
+    "target": "parser",
+    "input": "env -S tee /tmp/probe.txt tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-split-string",
+    "target": "parser",
+    "input": "env --split-string tee /tmp/probe.txt tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-n",
+    "target": "parser",
+    "input": "env -n 5 tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-adjustment",
+    "target": "parser",
+    "input": "env --adjustment 5 tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-o",
+    "target": "parser",
+    "input": "env -o out tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-e",
+    "target": "parser",
+    "input": "env -e err tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-option-output",
+    "target": "parser",
+    "input": "env --output out tee /tmp/probe.txt"
+  },
+  {
+    "id": "r2-parser-data-echo",
+    "target": "parser",
+    "input": "echo \"git push --force origin main\""
+  },
+  {
+    "id": "r2-parser-data-printf",
+    "target": "parser",
+    "input": "printf \"git push --force origin main\""
+  },
+  {
+    "id": "r2-parser-data-gh",
+    "target": "parser",
+    "input": "gh \"git push --force origin main\""
+  },
+  {
+    "id": "r2-parser-git-data-commit",
+    "target": "parser",
+    "input": "git commit -m \"git push --force origin main\""
+  },
+  {
+    "id": "r2-parser-git-data-tag",
+    "target": "parser",
+    "input": "git tag -m \"git push --force origin main\""
+  },
+  {
+    "id": "r2-parser-git-data-notes",
+    "target": "parser",
+    "input": "git notes -m \"git push --force origin main\""
+  },
+  {
+    "id": "r2-parser-heredoc-python",
+    "target": "parser",
+    "input": "python <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-heredoc-python3",
+    "target": "parser",
+    "input": "python3 <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-heredoc-node",
+    "target": "parser",
+    "input": "node <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-heredoc-bun",
+    "target": "parser",
+    "input": "bun <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-heredoc-deno",
+    "target": "parser",
+    "input": "deno <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-heredoc-ruby",
+    "target": "parser",
+    "input": "ruby <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-heredoc-perl",
+    "target": "parser",
+    "input": "perl <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-heredoc-tee",
+    "target": "parser",
+    "input": "tee <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-heredoc-gh",
+    "target": "parser",
+    "input": "gh <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-executor-psql",
+    "target": "parser",
+    "input": "psql \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-executor-sqlite3",
+    "target": "parser",
+    "input": "sqlite3 \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-executor-mysql",
+    "target": "parser",
+    "input": "mysql \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-executor-sh",
+    "target": "parser",
+    "input": "sh \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-executor-bash",
+    "target": "parser",
+    "input": "bash \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-executor-zsh",
+    "target": "parser",
+    "input": "zsh \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-executor-eval",
+    "target": "parser",
+    "input": "eval \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-executor-source",
+    "target": "parser",
+    "input": "source \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-executor-dot",
+    "target": "parser",
+    "input": ". \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-parser-heredoc-tab",
+    "target": "parser",
+    "input": "perl <<-'EOF'\n\trm -rf /\nEOF"
+  },
+  {
+    "id": "r2-parser-pipe-executor",
+    "target": "parser",
+    "input": "echo 'rm -rf /' | bash"
+  },
+  {
+    "id": "r2-tmp-temp-class-home-traverse",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > ~/../../tmp/x\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-wt-last-component",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add {REPO}/.worktrees\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-pushd-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"pushd /tmp && printf x > out.md\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-scratchpad-real",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > {SCRATCHPAD}/a.txt\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-scratchpad-wrong",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /tmp/claude-501/scratchpad/01234567-89ab-cdef-0123-456789abcdef/a.txt\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-wt-relative-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add .worktrees/lane-$WT HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-wt-relative-dynamic",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add $WT_DIR/lane\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-wt-off-convention",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add ../outside HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-wt-sibling-cwd",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add ../outside HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "subdir",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-wt-contained-absolute",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add {REPO}/.worktrees/lane-$WT HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-wt-gitfile-root",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add {REPO}/.worktrees/lane HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "worktree",
+    "env": {}
+  },
+  {
+    "id": "r2-tmp-nested-worktree",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add {NESTED}/.worktrees/lane-$WT HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested",
+    "env": {}
+  },
+  {
+    "id": "r2-launch-claude-lead",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-claude-lead-s",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "-s"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-claude-worker-s",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "--worker",
+      "-s"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-claude-model-fable",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "-m",
+      "fable"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-claude-model-opus",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "-m",
+      "opus"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-claude-worker-env",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude"
+    ],
+    "env": {
+      "GOLEM_ROLE": "worker"
+    }
+  },
+  {
+    "id": "r2-launch-claude-effort-env",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude"
+    ],
+    "env": {
+      "GOLEM_EFFORT": "high"
+    }
+  },
+  {
+    "id": "r2-launch-claude-worker-effort-env",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude"
+    ],
+    "env": {
+      "GOLEM_ROLE": "worker",
+      "GOLEM_EFFORT": "low"
+    }
+  },
+  {
+    "id": "r2-launch-claude-worker-c",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "--worker",
+      "-c"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-claude-persona",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "-S",
+      "reviewer"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-cursor-lead",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-cursor-lead-s",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "-s"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-cursor-worker-s",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "--worker",
+      "-s"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-cursor-persona",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "-S",
+      "reviewer"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-gemini-lead",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-gemini-lead-s",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "-s"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-gemini-worker-s",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-s"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-gemini-persona",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "-S",
+      "reviewer"
+    ],
+    "env": {}
+  },
+  {
+    "id": "r2-launch-gemini-worker-env",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini"
+    ],
+    "env": {
+      "GOLEM_ROLE": "worker"
+    }
+  },
+  {
+    "id": "r2-parser-source-executor-data",
+    "target": "parser",
+    "input": "source ./env.sh; echo \"DROP TABLE users\""
+  },
+  {
+    "id": "r2-launch-persona-claude-lead",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "-s",
+      "-p",
+      "Prep examplechannel voice pairs"
+    ],
+    "env": {},
+    "persona": true,
+    "mcp_merge": false
+  },
+  {
+    "id": "r2-launch-persona-claude-continue",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "-c"
+    ],
+    "env": {},
+    "persona": true,
+    "mcp_merge": false
+  },
+  {
+    "id": "r2-launch-persona-cursor-lead",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "-s",
+      "-p",
+      "Prep examplechannel voice pairs"
+    ],
+    "env": {},
+    "persona": true,
+    "mcp_merge": false
+  },
+  {
+    "id": "r2-launch-persona-cursor-continue",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "-c",
+      "-p",
+      "Continue voice work"
+    ],
+    "env": {},
+    "persona": true,
+    "mcp_merge": false
+  },
+  {
+    "id": "r2-launch-persona-gemini-lead",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "-s",
+      "-p",
+      "Prep examplechannel voice pairs"
+    ],
+    "env": {},
+    "persona": true,
+    "mcp_merge": true
+  },
+  {
+    "id": "r2-launch-persona-gemini-continue",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "-c",
+      "-p",
+      "Continue voice work"
+    ],
+    "env": {},
+    "persona": true,
+    "mcp_merge": true
+  },
+  {
+    "id": "r2-launch-persona-codex-lead",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "-s",
+      "-p",
+      "Prep examplechannel voice pairs"
+    ],
+    "env": {},
+    "persona": true,
+    "mcp_merge": false
+  },
+  {
+    "id": "r2-launch-persona-cursor-worker-env",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "-p",
+      "Worker brief"
+    ],
+    "env": {
+      "GOLEM_ROLE": "worker"
+    },
+    "persona": true,
+    "mcp_merge": false
+  },
+  {
+    "id": "r2-launch-persona-gemini-worker-env",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "-p",
+      "Worker brief"
+    ],
+    "env": {
+      "GOLEM_ROLE": "worker"
+    },
+    "persona": true,
+    "mcp_merge": true
+  },
+  {
+    "id": "r2-parser-heredoc-tab-after",
+    "target": "parser",
+    "input": "cat <<-EOF\n\tliteral text\n\tEOF\ngit push --force origin main"
   }
 ]

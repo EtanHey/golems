@@ -23,6 +23,10 @@ ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 CORPUS = ROOT / "scripts/tests/fixtures/pristine-harness/corpus.json"
 GOLDENS = ROOT / "scripts/tests/fixtures/pristine-harness/goldens.json"
+SEMANTIC_MUTANTS = ROOT / "scripts/tests/fixtures/pristine-harness/semantic-mutants.json"
+# The fixture is disposable, but its spelling must not depend on a checkout.
+# A shared lock serializes clones on one host; cleanup happens in main().
+FIXTURE = Path("/var/tmp/pristine-harness-fixture")
 FILES = (
     "skills/golem-powers/_shared/shell_parse.py",
     "skills/golem-powers/_shared/harness_paths.py",
@@ -32,15 +36,23 @@ FILES = (
     "scripts/repogolem/golem-dispatch.zsh",
     "scripts/repogolem/worktree-bootstrap.sh",
 )
-MUTATIONS = {
-    "parser": (FILES[0], 'return _mask_data_argument_quotes("".join(output))',
-               'return _mask_data_argument_quotes("x".join(output))'),
-    "tmp-block": (FILES[2], '    sys.exit(0)\n\n\ndef advise',
-                  '    sys.exit(1)\n\n\ndef advise'),
-    "git-guardian": (FILES[3], 'Dangerous command: git push --force',
-                     'Dangerous command: git push --forcE'),
-    "launcher": (FILES[5], 'Unknown CLI:', 'Unknown CLi:'),
-}
+GIT_API_PROBE = r'''
+import importlib.util, json, sys
+from pathlib import Path
+p = Path(sys.argv[1]) / 'skills/golem-powers/git-guardian/git_safety.py'
+s = importlib.util.spec_from_file_location('git_safety', p)
+m = importlib.util.module_from_spec(s)
+sys.modules[s.name] = m
+s.loader.exec_module(m)
+request = json.load(sys.stdin)
+try:
+    result = getattr(m, request['function'])(*request.get('args', []),
+                                               **request.get('kwargs', {}))
+    print(json.dumps({'result': result}, sort_keys=True, ensure_ascii=False))
+except Exception as exc:
+    print(json.dumps({'exception': type(exc).__name__, 'message': str(exc)},
+                     sort_keys=True, ensure_ascii=False))
+'''
 PARSER_PROBE = r'''
 import importlib.util, json, sys
 from pathlib import Path
@@ -75,6 +87,11 @@ function pristine_launch_env() {
   print -r -- "LAUNCH_CWD=$PWD"
   print -r -- "MCP_CONNECTION_NONBLOCKING=${MCP_CONNECTION_NONBLOCKING-}"
   print -r -- "CLAUDE_CODE_NO_FLICKER=${CLAUDE_CODE_NO_FLICKER-}"
+  local staged=("$XDG_RUNTIME_DIR"/repogolem/testrepo/repogolem-*-agent.*(N))
+  print -r -- "PERSONA_STAGED=${#staged}"
+  if (( ${#staged} )); then
+    print -r -- "PERSONA_MODE=$(stat -c %a "$staged[1]" 2>/dev/null || stat -f %Lp "$staged[1]")"
+  fi
 }
 function codex() {
   pristine_launch_env
@@ -84,7 +101,7 @@ function codex() {
   local profile
   for profile in "$CODEX_HOME"/repogolem-*.config.toml(N); do
     cp "$profile" "$CAPTURE_PROFILE"
-    print -r -- "PROFILE_MODE=$(stat -f %Lp "$profile" 2>/dev/null || stat -c %a "$profile")"
+    print -r -- "PROFILE_MODE=$(stat -c %a "$profile" 2>/dev/null || stat -f %Lp "$profile")"
   done
 }
 function claude() {
@@ -104,7 +121,7 @@ function agy() {
 }
 function bun() { print -r -- "BUN_ARGS=$*"; }
 function npm() { print -r -- "NPM_ARGS=$*"; }
-if [[ "$PRISTINE_PROFILE" == 1 ]]; then
+if [[ "$PRISTINE_PROFILE" == 1 || "$PRISTINE_MCP_MERGE" == 1 ]]; then
   function _ralph_build_mcp_config() {
     print -r -- '{"mcpServers":{"fixture":{"command":"echo","args":["ready"]}}}'
   }
@@ -142,6 +159,57 @@ def fingerprint(result):
                              for name, value in result["files"].items()}}
 
 
+def expected_on_host(goldens):
+    """Choose recorded raw bytes for this host, never normalize hook output."""
+    expected = goldens["results"].copy()
+    expected.update(goldens.get("platform_results", {}).get(sys.platform, {}))
+    return expected
+
+
+def fixture_cwd(scratch, name):
+    names = {
+        "root": scratch / "repo",
+        "subdir": scratch / "repo/docs.local/safe",
+        "worktree": scratch / "repo/.worktrees/lane",
+        "nested": scratch / "repo/docs.local/clone",
+        "nested-worktree": scratch / "repo/docs.local/clone/.worktrees/lane",
+    }
+    if name not in names:
+        raise ValueError(f"unsupported fixture cwd: {name}")
+    return names[name]
+
+
+def make_fixture(scratch):
+    repo = scratch / "repo"
+    (repo / ".git/worktrees/lane").mkdir(parents=True)
+    (repo / "docs.local/safe").mkdir(parents=True)
+    worktree = repo / ".worktrees/lane"
+    worktree.mkdir(parents=True)
+    (worktree / ".git").write_text(f"gitdir: {repo}/.git/worktrees/lane\n")
+    nested = repo / "docs.local/clone"
+    (nested / ".git/worktrees/lane").mkdir(parents=True)
+    nested_worktree = nested / ".worktrees/lane"
+    nested_worktree.mkdir(parents=True)
+    (nested_worktree / ".git").write_text(
+        f"gitdir: {nested}/.git/worktrees/lane\n")
+
+
+def materialize(value, scratch):
+    if isinstance(value, str):
+        for token, path in (("{REPO}", scratch / "repo"),
+                            ("{WORKTREE}", scratch / "repo/.worktrees/lane"),
+                            ("{NESTED}", scratch / "repo/docs.local/clone"),
+                            ("{SCRATCHPAD}", Path("/tmp/claude-501/pristine-harness/"
+                                "01234567-89ab-cdef-0123-456789abcdef/scratchpad"))):
+            value = value.replace(token, str(path))
+        return value
+    if isinstance(value, list):
+        return [materialize(item, scratch) for item in value]
+    if isinstance(value, dict):
+        return {key: materialize(item, scratch) for key, item in value.items()}
+    return value
+
+
 def capture(case, tree, scratch):
     target = case["target"]
     ledger = scratch / "ledger.jsonl"
@@ -153,7 +221,8 @@ def capture(case, tree, scratch):
                 "TZ": "UTC", "PYTHONHASHSEED": "0", "PYTHONDONTWRITEBYTECODE": "1",
                 "TMP_BLOCK_LEDGER": str(ledger),
                 "PYTHONPATH": str(HERE / "pristine-harness-clock")})
-    env.update(case.get("env", {}))
+    env.update(materialize(case.get("env", {}), scratch))
+    cwd = fixture_cwd(scratch, case["cwd"]) if case.get("cwd") else Path("/")
     if target == "launcher":
         fixture = scratch / "launcher-fixture"
         if fixture.exists():
@@ -163,9 +232,21 @@ def capture(case, tree, scratch):
         (fixture / "worktree").mkdir()
         (fixture / "runtime").mkdir()
         registry = fixture / "registry.json"
-        registry.write_text(json.dumps({"projects": {"testrepo": {
-            "path": str(fixture / "project"), "mcps": [], "clis": ["codex", "claude"]}}}))
+        project = {"path": str(fixture / "project"), "mcps": [],
+                   "clis": ["codex", "claude", "cursor", "gemini"]}
+        if case.get("persona"):
+            agent = fixture / "home/.claude/agents/test-agent.md"
+            agent.parent.mkdir(parents=True)
+            agent.write_text("---\nname: test-agent\ninitialPrompt: |\n"
+                             "  Search BrainLayer first.\n---\n"
+                             "# Full orchestrator protocol\nUse repository context.\n")
+            project["agent"] = "test-agent"
+            project["mcps"] = ["brainlayer"]
+        registry.write_text(json.dumps({"projects": {"testrepo": project}}))
         profile = fixture / "profile.toml"
+        if case.get("mcp_merge"):
+            (fixture / "project/.mcp.json").write_text(
+                '{"mcpServers":{"repo":{"command":"repo-mcp"}}}\n')
         if case.get("package"):
             (fixture / "project/package.json").write_text('{"scripts":{"dev":"echo ready"},"packageManager":"bun@1"}\n')
         if case.get("sessions"):
@@ -185,29 +266,35 @@ def capture(case, tree, scratch):
                     "RALPH_REGISTRY_FILE": str(registry),
                     "CAPTURE_PROFILE": str(profile),
                     "XDG_RUNTIME_DIR": str(fixture / "runtime"),
-                    "PRISTINE_PROFILE": "1" if case.get("profile") else "0"})
+                    "PRISTINE_PROFILE": "1" if case.get("profile") else "0",
+                    "PRISTINE_MCP_MERGE": "1" if case.get("mcp_merge") else "0"})
         argv = ["zsh", "-f", "-c", LAUNCHER_PROBE, "pristine-launcher",
                 str(tree / "scripts/repogolem/golem-dispatch.zsh"), *launch_args]
         data = b""
     elif target == "parser":
         argv = [sys.executable, "-c", PARSER_PROBE, str(tree)]
         data = case["input"].encode()
+    elif target == "git-api":
+        argv = [sys.executable, "-c", GIT_API_PROBE, str(tree)]
+        data = json.dumps(materialize(case["request"], scratch)).encode()
     else:
         path = {
             "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
             "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
         }[target]
         argv = [sys.executable, str(tree / path)]
-        data = case["input"].encode()
+        data = materialize(case["input"], scratch).encode()
         if target == "git-guardian":
             env["GIT_GUARDIAN_LIB"] = str(tree / "skills/golem-powers/git-guardian")
-    proc = subprocess.run(argv, input=data, capture_output=True, cwd="/",
+    proc = subprocess.run(argv, input=data, capture_output=True, cwd=cwd,
                           env=env, timeout=15, check=False)
     files = {"ledger.jsonl": b64(ledger.read_bytes())} if ledger.exists() else {}
     if target == "launcher":
         files = {str(path.relative_to(fixture)): b64(path.read_bytes())
                  for path in fixture.rglob("*") if path.is_file()
                  and path != registry and path != fixture / "project/package.json"
+                 and path != fixture / "project/.mcp.json"
+                 and "agents" not in path.relative_to(fixture).parts
                  and "sessions" not in path.relative_to(fixture).parts}
     return {"exit": proc.returncode, "stdout": b64(proc.stdout),
             "stderr": b64(proc.stderr), "files": files}
@@ -218,7 +305,7 @@ def execute(cases, tree, scratch):
 
 
 def validate_baseline(cases, results):
-    for kind in ("parser", "tmp-block", "git-guardian", "launcher"):
+    for kind in ("parser", "tmp-block", "git-guardian", "git-api", "launcher"):
         rows = [results[case["id"]] for case in cases if case["target"] == kind]
         if not rows or all(row["exit"] != 0 for row in rows):
             raise RuntimeError(f"baseline fixture for {kind} did not run successfully")
@@ -238,29 +325,47 @@ def validate_baseline(cases, results):
             row["exit"] != 0 or "project/.agents/mcp_config.json" not in row["files"]
         ):
             raise RuntimeError("Gemini fixture did not emit workspace config")
+        if case.get("persona"):
+            stdout = base64.b64decode(row["stdout"])
+            worker = case.get("env", {}).get("GOLEM_ROLE") == "worker"
+            if case["args"][1] == "claude":
+                if b"CLAUDE_ARG=--agent\nCLAUDE_ARG=test-agent" not in stdout:
+                    raise RuntimeError("Claude persona fixture did not pass the agent")
+            elif worker:
+                if b"PERSONA_STAGED=0" not in stdout or b"<agent_context>" in stdout:
+                    raise RuntimeError("worker fixture inherited lead persona")
+            elif (b"PERSONA_STAGED=1" not in stdout or
+                  b"PERSONA_MODE=600" not in stdout or
+                  b"BrainLayer-first ambiguity gate" not in stdout):
+                raise RuntimeError("lead persona or ambiguity gate fixture did not execute")
+        if case.get("mcp_merge"):
+            config = row["files"].get("project/.agents/mcp_config.json")
+            if not config or not {"fixture", "repo"}.issubset(
+                json.loads(base64.b64decode(config)).get("mcpServers", {})
+            ):
+                raise RuntimeError("agy fixture did not merge both MCP sources")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("record", "check", "verify-goldens", "mutation-proof"))
+    parser.add_argument("action", choices=("record", "check", "verify-goldens",
+                                          "verify-python-goldens", "mutation-proof"))
     parser.add_argument("--candidate-root", type=Path, default=ROOT)
     args = parser.parse_args()
     cases = json.loads(CORPUS.read_text())
     ids = [case["id"] for case in cases]
     if len(ids) != len(set(ids)) or any(case["target"] not in
-       ("parser", "tmp-block", "git-guardian", "launcher") for case in cases):
+       ("parser", "tmp-block", "git-guardian", "git-api", "launcher") for case in cases):
         parser.error("duplicate case ID or unsupported target")
-    # A stable fixture path keeps recorded launcher hashes reproducible here.
-    # Lock it so concurrent invocations cannot compare each other's outputs.
-    parent = ROOT / "docs.local/pristine-harness-runs"
-    parent.mkdir(parents=True, exist_ok=True)
-    with (parent / ".lock").open("w") as lock:
+    # Lock concurrent invocations before touching the checkout-independent fixture.
+    with Path("/var/tmp/pristine-harness-fixture.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        scratch = parent / "fixture"
+        scratch = FIXTURE
         if scratch.exists():
             shutil.rmtree(scratch)
         scratch.mkdir()
         try:
+            make_fixture(scratch)
             return run_locked(args, parser, cases, scratch)
         finally:
             shutil.rmtree(scratch)
@@ -282,34 +387,62 @@ def run_locked(args, parser, cases, scratch):
         print(f"recorded {len(cases)} baseline cases from {BASE}")
         return 0
     if args.action == "mutation-proof":
-        proof = {}
-        for kind, (path, old, new) in MUTATIONS.items():
-            mutated = scratch / kind
-            shutil.copytree(base, mutated)
-            source = mutated / path
-            original = source.read_text()
-            if original.count(old) != 1 or len(new) != len(old) + 1 and len(new) != len(old):
-                parser.error(f"mutation anchor not unique or not one character: {kind}")
+        mutants = json.loads(SEMANTIC_MUTANTS.read_text())
+        if len(mutants) != 31 or len({row["id"] for row in mutants}) != 31:
+            parser.error("the reviewer semantic set must contain 31 distinct mutants")
+        baseline = {}
+        caught = {}
+        for row in mutants:
+            kind = row["target"]
             subset = [case for case in cases if case["target"] == kind]
-            baseline = execute(subset, mutated, scratch)
-            source.write_text(original.replace(old, new))
-            candidate = execute(subset, mutated, scratch)
-            changed = [ident for ident in baseline if baseline[ident] != candidate[ident]]
+            if kind not in baseline:
+                baseline[kind] = execute(subset, base, scratch)
+            source = base / row["path"]
+            original = source.read_text()
+            if original.count(row["old"]) != 1 or row["new"] == row["old"]:
+                parser.error(f"mutation anchor is not unique or semantic: {row['id']}")
+            try:
+                source.write_text(original.replace(row["old"], row["new"]))
+                candidate = execute(subset, base, scratch)
+            finally:
+                source.write_text(original)
+            changed = [ident for ident in baseline[kind]
+                       if baseline[kind][ident] != candidate[ident]]
             if not changed:
-                parser.error(f"mutation escaped comparator: {kind}")
-            proof[kind] = len(changed)
-        print("MUTATION PROOF PASS " + json.dumps(proof, sort_keys=True))
+                parser.error(f"semantic mutant escaped: {row['id']} {row['description']}")
+            caught[row["id"]] = changed
+            print(f"CAUGHT {row['id']} {len(changed)} {changed[:3]}", flush=True)
+        print(f"SEMANTIC MUTATION PROOF PASS {len(caught)}/31")
         return 0
     expected = json.loads(GOLDENS.read_text())
     if expected["base"] != BASE or set(expected["results"]) != {case["id"] for case in cases}:
         parser.error("golden base SHA or case IDs do not match")
+    host_goldens = expected_on_host(expected)
+    if args.action == "verify-python-goldens":
+        python_cases = [case for case in cases if case["target"] != "launcher"]
+        measured_python = execute(python_cases, base, scratch)
+        stale = [case["id"] for case in python_cases
+                 if measured_python[case["id"]] != host_goldens[case["id"]]]
+        if stale:
+            parser.error(f"recorded Python goldens differ from immutable base: {stale[:8]}")
+        print(f"PYTHON GOLDENS PASS {len(python_cases)}")
+        return 0
     measured = execute(cases, base, scratch)
     validate_baseline(cases, measured)
     committed = {case["id"]: fingerprint(measured[case["id"]])
                  if case["target"] == "launcher" else measured[case["id"]]
                  for case in cases}
-    if args.action == "verify-goldens" and committed != expected["results"]:
-        parser.error("recorded goldens differ from the immutable base on this host")
+    python_ids = {case["id"] for case in cases if case["target"] != "launcher"}
+    stale_python = [ident for ident in python_ids
+                    if committed[ident] != host_goldens[ident]]
+    if stale_python:
+        parser.error(f"recorded Python goldens differ from immutable base: {stale_python[:8]}")
+    if args.action == "verify-goldens" and committed != host_goldens:
+        stale = [ident for ident in committed if committed[ident] != host_goldens[ident]]
+        parser.error(f"recorded launcher goldens differ from immutable base: {stale[:8]}")
+    if args.action == "verify-goldens":
+        print(f"GOLDENS PASS {len(cases)}")
+        return 0
     actual = execute(cases, args.candidate_root.resolve(), scratch)
     failures = []
     for case in cases:
@@ -323,7 +456,7 @@ def run_locked(args, parser, cases, scratch):
         print("PRISTINE HARNESS FAIL\n" + "\n".join(failures), file=sys.stderr)
         return 1
     counts = {kind: sum(case["target"] == kind for case in cases)
-              for kind in ("parser", "tmp-block", "git-guardian", "launcher")}
+              for kind in ("parser", "tmp-block", "git-guardian", "git-api", "launcher")}
     print("PRISTINE HARNESS PASS " + json.dumps(counts, sort_keys=True))
     return 0
 
