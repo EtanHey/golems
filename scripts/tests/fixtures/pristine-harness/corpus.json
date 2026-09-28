@@ -8366,5 +8366,1096 @@
         "env": {}
       }
     }
+  },
+  {
+    "id": "parser-topup-pass-order",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/alias'\nf() { echo /tmp/function; }\necho \"$(a)\"; f; eval \"a\"; a",
+    "expected_invoked": [
+      [
+        "echo /tmp/alias",
+        4,
+        0
+      ],
+      [
+        " echo /tmp/function; ",
+        5,
+        1
+      ],
+      [
+        "echo /tmp/alias ;",
+        6,
+        2
+      ],
+      [
+        "echo /tmp/alias",
+        7,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-strict-event",
+    "target": "parser",
+    "input": "f() { echo /tmp/old; }; f; f() { echo /tmp/new; }; f",
+    "expected_invoked": [
+      [
+        " echo /tmp/old; ",
+        2,
+        0
+      ],
+      [
+        " echo /tmp/new; ",
+        5,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-equal-event-removals",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; g() { echo /tmp/g; }; unset -f f g f; f; g",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-same-unit-alias",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'; a\na",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-next-unit-alias",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/a'\na",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-definition-frozen-alias",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nf() { a; }; alias a='echo /tmp/a'; f\nf() { a; }; f",
+    "expected_invoked": [
+      [
+        " a; ",
+        4,
+        0
+      ],
+      [
+        "echo /tmp/a ;",
+        7,
+        1
+      ],
+      [
+        "echo /tmp/a ;",
+        5,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-nocasematch-preview",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase X in x) a;; esac; shopt -s nocasematch",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-nocasematch-durable",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\nshopt -s nocasematch\ncase X in x) a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-nocasematch-off",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase X in x) a;; esac",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-eval-assign-live",
+    "target": "parser",
+    "input": "eval \"${x:=echo /tmp/set} $x\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/set echo /tmp/set",
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-eval-nine-depth",
+    "target": "parser",
+    "input": "eval \"${x0:-${x1:-${x2:-${x3:-${x4:-${x5:-${x6:-${x7:-${x8:-echo /tmp/end}}}}}}}}}\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/end",
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-eval-ten-depth-budget",
+    "target": "parser",
+    "input": "eval \"${x0:-${x1:-${x2:-${x3:-${x4:-${x5:-${x6:-${x7:-${x8:-${x9:-echo /tmp/end}}}}}}}}}}\"",
+    "expected_invoked": [
+      [
+        "__TMP_BLOCK_UNRESOLVED_DYNAMIC_EVAL__ :-echo /tmp/end",
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-function-direct-cycle",
+    "target": "parser",
+    "input": "f() { f; }; f",
+    "expected_invoked": [
+      [
+        " f; ",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-function-mutual-cycle",
+    "target": "parser",
+    "input": "f() { g; }; g() { f; }; f",
+    "expected_invoked": [
+      [
+        " g; ",
+        2,
+        0
+      ],
+      [
+        " g; ",
+        4,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-alias-mutual-cycle",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a=b\nalias b=a\na",
+    "expected_invoked": [
+      [
+        "a",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-unresolved-eval",
+    "target": "parser",
+    "input": "eval \"$MISSING_PARSER_TOPUP_7C7B\"",
+    "expected_invoked": [
+      [
+        "$MISSING_PARSER_TOPUP_7C7B",
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-literal-operator",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/a'\necho '&&' a",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-inert-function-body",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; printf '%s' 'f'",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-heredoc-quoted",
+    "target": "parser",
+    "input": "cat <<'EOF'\n$(echo /tmp/data)\nEOF\necho /tmp/after",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-heredoc-unquoted",
+    "target": "parser",
+    "input": "cat <<EOF\n$(echo /tmp/data)\nEOF\necho /tmp/after",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-heredoc-multiple",
+    "target": "parser",
+    "input": "cat <<ONE <<TWO\n$(echo /tmp/one)\nONE\n$(echo /tmp/two)\nTWO",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-heredoc-tab",
+    "target": "parser",
+    "input": "cat <<-EOF\n\t$(echo /tmp/tab)\n\tEOF",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-heredoc-incomplete",
+    "target": "parser",
+    "input": "cat <<EOF\n$(echo /tmp/data)",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-nested-arithmetic",
+    "target": "parser",
+    "input": "echo \"$(echo $((1 + $(echo 2))))\"",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-backtick-escaped",
+    "target": "parser",
+    "input": "echo \"`printf \\\\`echo /tmp/literal\\\\``\"",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-quoted-substitution",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/a'\necho \"$(a)\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-unexposed-substitution",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/a'\necho \"pre$(a)post\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-wrapper-position",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; command f; builtin eval 'echo /tmp/e'",
+    "expected_invoked": [
+      [
+        "echo /tmp/e",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-line-continuation",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }\nf \\\n",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-incomplete-function",
+    "target": "parser",
+    "input": "f() { echo /tmp/f;\nf",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-incomplete-compound",
+    "target": "parser",
+    "input": "if true; then\necho /tmp/body",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-nested-braces",
+    "target": "parser",
+    "input": "f() { { echo /tmp/f; }; }; f",
+    "expected_invoked": [
+      [
+        " { echo /tmp/f; }; ",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-eof-function",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-condition-and-or",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\nfalse && a; true || a; true && a",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        10,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-case-fallthrough",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase x in x) : ;& y) a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        4,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-case-unknown",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase $unknown in x) a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-for-zero",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\nfor x in; do a; done",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-for-dynamic",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\nfor x in $unknown; do a; done",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-read-replay",
+    "target": "parser",
+    "input": "read x; eval \"${x:-echo /tmp/read}\"",
+    "expected_invoked": [
+      [
+        "__TMP_BLOCK_UNRESOLVED_DYNAMIC_EVAL__",
+        1,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-mapfile-replay",
+    "target": "parser",
+    "input": "mapfile x; eval \"${x:-echo /tmp/mapfile}\"",
+    "expected_invoked": [
+      [
+        "__TMP_BLOCK_UNRESOLVED_DYNAMIC_EVAL__",
+        1,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-printf-v-replay",
+    "target": "parser",
+    "input": "printf -v x '%s' 'echo /tmp/printf'; eval \"$x\"",
+    "expected_invoked": [
+      [
+        "__TMP_BLOCK_UNRESOLVED_DYNAMIC_EVAL__",
+        1,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-nameref-replay",
+    "target": "parser",
+    "input": "declare -n ref=x; x='echo /tmp/ref'; eval \"$ref\"",
+    "expected_invoked": [
+      [
+        "__TMP_BLOCK_UNRESOLVED_DYNAMIC_EVAL__",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-declaration-siblings",
+    "target": "parser",
+    "input": "x='echo /tmp/old'; declare x='echo /tmp/new' y=$x; eval \"$y\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/old",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-eval-indirection",
+    "target": "parser",
+    "input": "name=payload; payload='echo /tmp/indirect'; eval \"${!name}\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/indirect",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-eval-substring",
+    "target": "parser",
+    "input": "payload='xxecho /tmp/sub'; eval \"${payload:2}\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/sub",
+        1,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-alias-disable-same-unit",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/a'\nshopt -u expand_aliases; a\na",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-data-piped-cat",
+    "target": "parser",
+    "input": "cat <<EOF | tee /tmp/sink\n$HOME\nEOF",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-data-interpreter",
+    "target": "parser",
+    "input": "python3 <<'PYDATA'\nprint('/tmp/data')\nPYDATA",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-data-process-sink",
+    "target": "parser",
+    "input": "cat <<EOF > >(tee /tmp/sink)\ndata\nEOF",
+    "expected_invoked": []
+  },
+  {
+    "id": "tmp-topup-pass-order",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/alias'\\nf() { echo /tmp/function; }\\necho \\\"$(a)\\\"; f; eval \\\"a\\\"; a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-strict-event",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/old; }; f; f() { echo /tmp/new; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-equal-event-removals",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; g() { echo /tmp/g; }; unset -f f g f; f; g\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-same-unit-alias",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'; a\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-next-unit-alias",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/a'\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-definition-frozen-alias",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nf() { a; }; alias a='echo /tmp/a'; f\\nf() { a; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-nocasematch-preview",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase X in x) a;; esac; shopt -s nocasematch\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-nocasematch-durable",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\nshopt -s nocasematch\\ncase X in x) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-nocasematch-off",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase X in x) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-eval-assign-live",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"${x:=echo /tmp/set} $x\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-eval-nine-depth",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"${x0:-${x1:-${x2:-${x3:-${x4:-${x5:-${x6:-${x7:-${x8:-echo /tmp/end}}}}}}}}}\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-eval-ten-depth-budget",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"${x0:-${x1:-${x2:-${x3:-${x4:-${x5:-${x6:-${x7:-${x8:-${x9:-echo /tmp/end}}}}}}}}}}\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-function-direct-cycle",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { f; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-function-mutual-cycle",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { g; }; g() { f; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-alias-mutual-cycle",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a=b\\nalias b=a\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-unresolved-eval",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"$MISSING_PARSER_TOPUP_7C7B\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-literal-operator",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/a'\\necho '&&' a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-inert-function-body",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; printf '%s' 'f'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-heredoc-quoted",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF'\\n$(echo /tmp/data)\\nEOF\\necho /tmp/after\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-heredoc-unquoted",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF\\n$(echo /tmp/data)\\nEOF\\necho /tmp/after\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-heredoc-multiple",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<ONE <<TWO\\n$(echo /tmp/one)\\nONE\\n$(echo /tmp/two)\\nTWO\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-heredoc-tab",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<-EOF\\n\\t$(echo /tmp/tab)\\n\\tEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-heredoc-incomplete",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF\\n$(echo /tmp/data)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-nested-arithmetic",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(echo $((1 + $(echo 2))))\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-backtick-escaped",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"`printf \\\\\\\\`echo /tmp/literal\\\\\\\\``\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-quoted-substitution",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/a'\\necho \\\"$(a)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-unexposed-substitution",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/a'\\necho \\\"pre$(a)post\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-wrapper-position",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; command f; builtin eval 'echo /tmp/e'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-line-continuation",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }\\nf \\\\\\n\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-incomplete-function",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f;\\nf\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-incomplete-compound",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if true; then\\necho /tmp/body\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-nested-braces",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { { echo /tmp/f; }; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-eof-function",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-condition-and-or",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\nfalse && a; true || a; true && a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-case-fallthrough",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase x in x) : ;& y) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-case-unknown",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase $unknown in x) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-for-zero",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\nfor x in; do a; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-for-dynamic",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\nfor x in $unknown; do a; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-read-replay",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"read x; eval \\\"${x:-echo /tmp/read}\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-mapfile-replay",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"mapfile x; eval \\\"${x:-echo /tmp/mapfile}\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-printf-v-replay",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf -v x '%s' 'echo /tmp/printf'; eval \\\"$x\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-nameref-replay",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"declare -n ref=x; x='echo /tmp/ref'; eval \\\"$ref\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-declaration-siblings",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"x='echo /tmp/old'; declare x='echo /tmp/new' y=$x; eval \\\"$y\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-eval-indirection",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"name=payload; payload='echo /tmp/indirect'; eval \\\"${!name}\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-eval-substring",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"payload='xxecho /tmp/sub'; eval \\\"${payload:2}\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-alias-disable-same-unit",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/a'\\nshopt -u expand_aliases; a\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-data-piped-cat",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF | tee /tmp/sink\\n$HOME\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-data-interpreter",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"python3 <<'PYDATA'\\nprint('/tmp/data')\\nPYDATA\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-data-process-sink",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF > >(tee /tmp/sink)\\ndata\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-topup-initial-four",
+    "target": "parser-state",
+    "request": {
+      "command": "a; f",
+      "state": [
+        true,
+        {
+          "a": "echo /tmp/a"
+        },
+        {
+          "f": "echo /tmp/f"
+        },
+        {}
+      ]
+    },
+    "expected_invoked": [
+      [
+        "echo /tmp/f",
+        1,
+        0
+      ],
+      [
+        "echo /tmp/a ;",
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-initial-five",
+    "target": "parser-state",
+    "request": {
+      "command": "case X in x) f;; esac",
+      "state": [
+        false,
+        {},
+        {
+          "f": "echo /tmp/f"
+        },
+        {},
+        true
+      ]
+    },
+    "expected_invoked": [
+      [
+        "echo /tmp/f",
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-identity",
+    "target": "parser-identity"
+  },
+  {
+    "id": "parser-topup-strict-equal-unset",
+    "target": "parser",
+    "input": "unset() { echo /tmp/unset; }; unset -f unset; unset",
+    "expected_invoked": [
+      [
+        " echo /tmp/unset; ",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-function-view-copy",
+    "target": "parser",
+    "input": "f; echo \"$(f)\"; f() { echo /tmp/f; }; echo \"$(f)\"",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        4,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-variable-view-copy",
+    "target": "parser",
+    "input": "eval \"${x:=echo /tmp/x}\"; eval \"$x\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/x ;",
+        0,
+        0
+      ],
+      [
+        "$x",
+        1,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "tmp-topup-strict-equal-unset",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"unset() { echo /tmp/unset; }; unset -f unset; unset\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-function-view-copy",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f; echo \\\"$(f)\\\"; f() { echo /tmp/f; }; echo \\\"$(f)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-variable-view-copy",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"${x:=echo /tmp/x}\\\"; eval \\\"$x\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-topup-initial-alias-copy",
+    "target": "parser-state",
+    "request": {
+      "command": "unalias a",
+      "state": [
+        true,
+        {
+          "a": "echo /tmp/a"
+        },
+        {},
+        {}
+      ]
+    },
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-heredoc-offset",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/a'\necho \"$(a)\"; cat <<EOF\n$(a)\nEOF\na",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        2,
+        0
+      ],
+      [
+        "echo /tmp/a )$",
+        4,
+        1
+      ],
+      [
+        "echo /tmp/a",
+        5,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-deep-substitution",
+    "target": "parser",
+    "input": "echo \"$(echo \"$(echo \"$(echo /tmp/deep)\")\")\"",
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-topup-function-arguments",
+    "target": "parser",
+    "input": "g() { echo /tmp/$1; }; f() { g \"$1\"; }; f VALUE",
+    "expected_invoked": [
+      [
+        " echo /tmp/$1; ",
+        2,
+        0
+      ],
+      [
+        " echo /tmp/$1; ",
+        4,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-quoted-case-pattern",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase x in 'x') a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-escaped-case-pattern",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase 'x*' in x\\*) a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-case-rescan",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase x in x) :;;& x) a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        5,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-condition-or",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\nfalse || a; false && a",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        4,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-condition-definite",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; false && g() { echo /tmp/g; }; true || h() { echo /tmp/h; }; g; h; f",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        12,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-topup-heredoc-offset",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/a'\\necho \\\"$(a)\\\"; cat <<EOF\\n$(a)\\nEOF\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-deep-substitution",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(echo \\\"$(echo \\\"$(echo /tmp/deep)\\\")\\\")\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-function-arguments",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"g() { echo /tmp/$1; }; f() { g \\\"$1\\\"; }; f VALUE\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-quoted-case-pattern",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase x in 'x') a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-escaped-case-pattern",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase 'x*' in x\\\\*) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-case-rescan",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase x in x) :;;& x) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-condition-or",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\nfalse || a; false && a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-topup-condition-definite",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; false && g() { echo /tmp/g; }; true || h() { echo /tmp/h; }; g; h; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-topup-initial-four-nested",
+    "target": "parser-state",
+    "request": {
+      "command": "echo \"$(a)\"; f",
+      "state": [
+        true,
+        {
+          "a": "echo /tmp/a"
+        },
+        {
+          "f": "echo /tmp/f"
+        },
+        {}
+      ]
+    },
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        0,
+        0
+      ],
+      [
+        "echo /tmp/f",
+        1,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "parser-topup-initial-five-nested",
+    "target": "parser-state",
+    "request": {
+      "command": "echo \"$(case X in x) a;; esac)\"",
+      "state": [
+        true,
+        {
+          "a": "echo /tmp/a"
+        },
+        {},
+        {},
+        true
+      ]
+    },
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        0,
+        0
+      ]
+    ]
   }
 ]

@@ -9,6 +9,12 @@ real four-component session scratchpad paths.
 `topup-*` cases cover the remaining public git API assertions and documented
 option tables, hook worker and worktree option variants, every function lookup
 suppressor and Gemini model alias, and all five fixture cwd shapes.
+`parser-topup-*` and matching `tmp-topup-*` cases characterize parser ordering
+and the hook's raw bytes and exit for those inputs. Each parser case pins the
+complete `_invoked_alias_bodies` tuple list. State cases cover four- and
+five-slot recursive inputs and verify that caller maps stay unchanged. The
+identity case checks 23 tmp-block imports, four git_safety imports, and two
+regex objects used by parser tests with `is`.
 
 The installed tmp-block ledger was inspected by command family only; no raw
 log command was copied into this repo.
@@ -26,6 +32,10 @@ witness-proven Round 2 escapes supplied by the Opus reviewer. Three other
 Round 1 edits had non-unique anchors and are excluded. `mutation-proof` requires
 every listed edit to change at least one corpus capture; CI runs it as a
 blocking step and derives the required count from the file.
+Eight parser top-up mutants cover pass order, function-event visibility and
+commit timing, option preview, three copy boundaries, and definition-time
+alias expansion. Pass swapping and early commit use unique source anchors to
+move complete blocks without embedding the parser in JSON.
 
 Run `python3 scripts/ci/pristine-harness.py check`, `verify-goldens`, and
 `mutation-proof` from a checkout with the base commit available. The fixture at
