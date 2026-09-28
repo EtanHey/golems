@@ -5,6 +5,7 @@ rule must NOT block (the false-positive gate). Pure functions → fully determin
 """
 
 import importlib.util
+import inspect
 import os
 import shutil
 import subprocess
@@ -95,6 +96,15 @@ def test_rm_facade_forwards_replaceable_path_policy(monkeypatch):
 def test_nested_sudo_rm_keeps_base_recursion_headroom():
     blocked, reason = git_safety.is_dangerous_rm("sudo " * 900 + "rm -rf /", cwd="/", env={})
     assert blocked and reason and "rm" in reason.lower()
+
+
+def test_recursive_rm_facade_signatures_hide_internal_api():
+    assert list(inspect.signature(git_safety._rm_reason_in_words).parameters) == [
+        "words", "position", "cwd", "variables", "dynamic_input", "argument_variables"
+    ]
+    assert list(inspect.signature(git_safety.is_dangerous_rm).parameters) == [
+        "command", "cwd", "env"
+    ]
 
 
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────

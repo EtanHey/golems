@@ -24,6 +24,7 @@ def _skip_options(
 
 
 def _rm_reason_in_words(
+    api: dict,
     words: list[str],
     position: int,
     cwd: str,
@@ -31,7 +32,6 @@ def _rm_reason_in_words(
     *,
     dynamic_input: bool = False,
     argument_variables: dict[str, str] | None = None,
-    api: dict,
 ) -> str | None:
     """Inspect command positions, including wrapper-owned nested commands."""
     if argument_variables is None:
@@ -199,7 +199,7 @@ def _rm_reason_in_words(
     return None
 
 
-def is_dangerous_rm(command: str, *, cwd: str | None = None, env=None, api: dict):
+def is_dangerous_rm(api: dict, command: str, *, cwd: str | None = None, env=None):
     """Return `(blocked, reason)` after resolving cwd and shell assignments."""
     active = api["shell_text_without_heredoc_bodies"](command)
     lexer = shlex.shlex(
@@ -333,5 +333,4 @@ def is_dangerous_rm(command: str, *, cwd: str | None = None, env=None, api: dict
         if reason:
             return True, reason
     return False, None
-
 

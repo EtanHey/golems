@@ -587,5 +587,5 @@ def _skip_options(words: list[str], position: int, options_with_values: set[str]
     return _rm_impl._skip_options(words, position, options_with_values)
 
 
-_rm_reason_in_words = functools.partial(_rm_impl._rm_reason_in_words, api=globals())
-is_dangerous_rm = functools.partial(_rm_impl.is_dangerous_rm, api=globals())
+_rm_reason_in_words = functools.partial(_rm_impl._rm_reason_in_words, globals())
+is_dangerous_rm = functools.partial(_rm_impl.is_dangerous_rm, globals())
