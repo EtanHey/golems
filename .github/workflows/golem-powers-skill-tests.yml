@@ -118,6 +118,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0 # pristine harness reads immutable base blobs
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
@@ -126,8 +128,20 @@ jobs:
       - name: Install pytest
         run: python -m pip install --upgrade pip pytest
 
+      - name: Install launcher harness tools
+        run: sudo apt-get update && sudo apt-get install -y zsh jq
+
       - name: Run golem-powers Python skill suites
         run: scripts/ci/run-skill-tests.sh
+
+      - name: Pristine split baseline gate
+        run: python scripts/ci/pristine-harness.py check
+
+      - name: Verify immutable Python and launcher goldens
+        run: python scripts/ci/pristine-harness.py verify-goldens
+
+      - name: Catch all 31 semantic policy mutants
+        run: python scripts/ci/pristine-harness.py mutation-proof
 
   shell-skill-tests:
     name: Shell skill test suites (bats)
