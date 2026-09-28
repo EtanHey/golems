@@ -246,5 +246,77 @@
     "old": "  else\n    _claude_effort=\"high\"\n",
     "new": "  else\n    _claude_effort=\"xhigh\"\n",
     "description": "L8 lead-seat claude effort high->xhigh"
+  },
+  {
+    "id": "N-G7",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
+    "old": "if os.environ.get(\"CLAUDE_WORKER\"):",
+    "new": "if os.environ.get(\"CLAUDE_WORKERS\"):",
+    "description": "N-G7 CLAUDE_WORKER bypass renamed"
+  },
+  {
+    "id": "N-A1",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if sub == \"commit\" and re.fullmatch(r\"-[A-Za-z]*n[A-Za-z]*\", token):",
+    "new": "if sub == \"commit\" and re.fullmatch(r\"-n\", token):",
+    "description": "N-A1 commit -n cluster not no-verify"
+  },
+  {
+    "id": "N-A2",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "_MESSAGE_FLAGS_WITH_VALUE = {\"-m\", \"--message\", \"-F\", \"--file\"}",
+    "new": "_MESSAGE_FLAGS_WITH_VALUE = {\"-m\", \"--message\", \"--file\"}",
+    "description": "N-A2 -F not message flag"
+  },
+  {
+    "id": "N-A3",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "has_worktree = \"--worktree\" in args or \"-W\" in args",
+    "new": "has_worktree = \"--worktree\" in args",
+    "description": "N-A3 restore -W not worktree"
+  },
+  {
+    "id": "N-A4",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "_SKELETON_LINES = {\"#\", \"##\", \"###\", \"-\", \"*\", \"—\", \"---\", \"<!-- -->\"}",
+    "new": "_SKELETON_LINES = {\"#\", \"##\", \"###\", \"-\", \"*\", \"—\", \"<!-- -->\"}",
+    "description": "N-A4 skeleton '---' not skeleton"
+  },
+  {
+    "id": "N-A6",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "{\"-C\", \"-c\", \"--git-dir\", \"--work-tree\",",
+    "new": "{\"-C\", \"-c\", \"--work-tree\",",
+    "description": "N-A6 --git-dir value not skipped"
+  },
+  {
+    "id": "N-T5",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "_WORKTREE_VALUE_FLAGS = {\"-b\", \"-B\", \"--reason\"}",
+    "new": "_WORKTREE_VALUE_FLAGS = {\"-b\", \"--reason\"}",
+    "description": "N-T5 worktree -B value flag dropped"
+  },
+  {
+    "id": "N-P1",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "_FUNCTION_LOOKUP_SUPPRESSORS = {\n    \"command\", \"exec\",",
+    "new": "_FUNCTION_LOOKUP_SUPPRESSORS = {\n    \"exec\",",
+    "description": "N-P1 command not function-lookup suppressor"
+  },
+  {
+    "id": "N-L4",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "flash|flash-high)            print -r -- \"Gemini 3.8 Flash (High)\" ;;",
+    "new": "flash|flash-high)            print -r -- \"Gemini 3.8 Flash (Medium)\" ;;",
+    "description": "N-L4 agy flash alias"
   }
 ]

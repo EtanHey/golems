@@ -6,6 +6,9 @@ literal command specimens from `test_git_safety.py`; their `source` names the
 original test. `r2-*` adds the Round 1 review classes, including per-case cwd,
 repo/worktree/nested-clone fixtures, parser table members, lead personas, and
 real four-component session scratchpad paths.
+`topup-*` cases cover the remaining public git API assertions and documented
+option tables, hook worker and worktree option variants, every function lookup
+suppressor and Gemini model alias, and all five fixture cwd shapes.
 
 The installed tmp-block ledger was inspected by command family only; no raw
 log command was copied into this repo.
@@ -18,10 +21,11 @@ immutable base and candidate in separate child processes for every case.
 The hook ledger clock, hash seed and timezone are fixed in both processes;
 external launcher CLIs and randomness are stubbed.
 
-`semantic-mutants.json` contains the 31 valid source edits supplied by the
-Round 1 Opus reviewer. Three additional reviewer edits had non-unique anchors
-and are excluded from this exact set. `mutation-proof` requires every one of
-the 31 to change at least one corpus capture; CI runs it as a blocking step.
+`semantic-mutants.json` contains the 31 valid Round 1 source edits and the nine
+witness-proven Round 2 escapes supplied by the Opus reviewer. Three other
+Round 1 edits had non-unique anchors and are excluded. `mutation-proof` requires
+every listed edit to change at least one corpus capture; CI runs it as a
+blocking step and derives the required count from the file.
 
 Run `python3 scripts/ci/pristine-harness.py check`, `verify-goldens`, and
 `mutation-proof` from a checkout with the base commit available. The fixture at
