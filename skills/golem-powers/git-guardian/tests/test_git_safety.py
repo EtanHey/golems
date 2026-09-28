@@ -80,6 +80,11 @@ def test_git_facade_forwards_replaceable_module_globals(monkeypatch):
         assert git_safety.is_destructive_restore("git restore a", owned_paths=["b"])["destructive"] is False
 
 
+def test_path_facade_forwards_replaceable_expansion(monkeypatch):
+    monkeypatch.setattr(git_safety, "_expand_known_vars", lambda _target, _vars: ("/", True))
+    assert git_safety._rm_target_reason("safe", "/", {}) == "rm targeting root filesystem"
+
+
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────
 
 def test_f8_all_three_repo_cleanup_specimens_are_allowed(tmp_path):
