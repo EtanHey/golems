@@ -403,7 +403,7 @@ run_candidate() {
   MONITOR_STATE_DIR="$case_dir/state" POLL_SECONDS='invalid' /bin/bash "$MONITOR" status '@not-running' > "$case_dir/recovery-status.out" 2>&1
   recovery_status_rc=$?
   set -e
-  if grep -Eq 'declare[[:space:]]+-A' "$MONITOR"; then
+  if grep -Eq 'declare[[:space:]]+-A' "$MONITOR" "$SKILL_DIR"/scripts/monitor/*; then
     fail "5 bash-3.2-safe" "implementation contains declare -A"
   elif [[ "$invalid_name_rc" -ne 0 ]] && [[ "$invalid_poll_rc" -ne 0 ]] && [[ "$zero_poll_rc" -ne 0 ]] &&
     [[ "$zero_timeout_rc" -eq 2 ]] && grep -Fq 'COLLAB-MONITOR-ERROR :: invalid START_TIMEOUT_SECONDS: 0' "$case_dir/zero-timeout.out" && [[ ! -e "$case_dir/timeout-state" ]] &&
@@ -422,7 +422,7 @@ run_candidate() {
   append_fixture "$FIXTURES/addressed-event.md" "$case_dir/a-file.md"
   run_once "$case_dir/state" "$case_dir/scan.out" '@skillcreator' "$case_dir/z-file.md" "$case_dir/a-file.md"
   count="$(alert_count "$case_dir/scan.out")"
-  if grep -Eq '(^|[[:space:]])comm([[:space:]]|$)' "$MONITOR"; then
+  if grep -Eq '(^|[[:space:]])comm([[:space:]]|$)' "$MONITOR" "$SKILL_DIR"/scripts/monitor/*; then
     fail "6 comm-unsorted" "implementation calls comm"
   elif [[ "$count" == "1" ]]; then
     pass "6 comm-unsorted GREEN"
