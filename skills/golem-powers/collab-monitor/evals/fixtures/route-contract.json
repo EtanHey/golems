@@ -1,0 +1,243 @@
+{
+  "routes": [
+    {
+      "fixture": "ten-posts-three-fires.md",
+      "listener": "@leadX",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@leadX files=1 state=<SANDBOX>/state/leadX\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@leadX files=1 state=<SANDBOX>/state/leadX\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=9077e5f2545184d784175426da0f74ed75b7b84a5da841be271832a13ca726fa :: Before I dispatch, @leadX can you confirm the lane-3 brief path?\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=cfa768c778a250e0913a492b06d809c13b8ca616394fbefaa3511085a96b45e7 :: ### orcClaude → leadX — routed ask (2026-09-25 09:20)\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=7a23afe2a4021ee39788d9619c6e86e6cde939084d0eacebf0c5c2831776531b :: > leadX-w1 PR #140 open, evals green. DONE\n",
+        "stderr": ""
+      },
+      "state": {
+        "leadX/seen.sha256": "9077e5f2545184d784175426da0f74ed75b7b84a5da841be271832a13ca726fa\ncfa768c778a250e0913a492b06d809c13b8ca616394fbefaa3511085a96b45e7\n1a92482bbcb03c1b3c3a61c3f2b8fa9e40b0f62de1555da044d83ead5c61d363\n3c7bf6892f5c5d32fcbec5362d884172cfff3ceea12a2619f2f24600d02fb254\n7a23afe2a4021ee39788d9619c6e86e6cde939084d0eacebf0c5c2831776531b\n",
+        "leadX/sizes/<BOARD_HASH>.size": "948\n"
+      }
+    },
+    {
+      "fixture": "orchestrator-fourteen-posts.md",
+      "listener": "@leadX",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@leadX files=1 state=<SANDBOX>/state/leadX\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@leadX files=1 state=<SANDBOX>/state/leadX\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=62db4a5fc4224965efb9f222ff8eacddd3f2755ba3bd06052fd0aa0a5babcedc :: F1 body mention: @leadX please review the parser diff.\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=13a70cd3eb0e6aafcb9a4b6ff8267e12c68289acb3387b4e6ef7fd80aee773ff :: ### orcClaude → leadX (2026-09-25 10:02)\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=25b7dee1089268c8634ecaec522a4457075e7b56caae67986ade9ae691016d33 :: F3 Report at docs.local/report.md DONE_LEADX_W1\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=e11affdd6ab65d59268ca019fca11a4dbf94ab56840a8f1bb5a9b4ddd9acc3aa :: F4 sign-off with trailing punctuation: thanks @leadX.\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=e449f61234d438e97d2d94b773702c7b01eb8eee232c7a52d9ef5d1daa61b953 :: ### orcClaude → orc, leadX (2026-09-25 10:12)\n",
+        "stderr": ""
+      },
+      "state": {
+        "leadX/seen.sha256": "62db4a5fc4224965efb9f222ff8eacddd3f2755ba3bd06052fd0aa0a5babcedc\n13a70cd3eb0e6aafcb9a4b6ff8267e12c68289acb3387b4e6ef7fd80aee773ff\n8150d40db586edd07fbb792e1e58c30fc3c10873bb695a8fbdfa38df035c3a51\ne069a6157a26c2e4d86326fb7cf3ccf7a86ba8fdfbe4e30e12227480f77144b8\n25b7dee1089268c8634ecaec522a4457075e7b56caae67986ade9ae691016d33\ne11affdd6ab65d59268ca019fca11a4dbf94ab56840a8f1bb5a9b4ddd9acc3aa\ne449f61234d438e97d2d94b773702c7b01eb8eee232c7a52d9ef5d1daa61b953\n",
+        "leadX/sizes/<BOARD_HASH>.size": "1271\n"
+      }
+    },
+    {
+      "fixture": "arrowed-authors.md",
+      "listener": "@leadX",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@leadX files=1 state=<SANDBOX>/state/leadX\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@leadX files=1 state=<SANDBOX>/state/leadX\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=ef6a8b85d61262fac729072b21070f182f085694b82263b47b02032060f32b58 :: DONE: shipped the parser.\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=96491376524481659f45aaf4ce4ba6d591dc84340ea84b3fb607abce85fa5013 :: Report at docs.local/report.md DONE_LEADX_W2\nNEW-FOR-@leadX file=<SANDBOX>/board.md hash=ef0ddc5b62a44b44886c7383b52007d6d7541e62e296e98bcfc2922ff53213dd :: Sign-off with trailing punctuation: thanks @leadX.\n",
+        "stderr": ""
+      },
+      "state": {
+        "leadX/seen.sha256": "9ccbd79f2c8cad6ffa6bca29c2dfee5f84a13a2005fa631db07fb1c09e4d34d9\n7fba2c6be1d6c5576cab0d20926f45bfbf49a9094eda03dc2ac9f6b3a692fdf8\n07df5351791a5dcba0cb6299d27958ce36371feb06bc51c8e3a6e716d04c61c0\n4790b8bdce3c7d3303c120d10fc8da2b72790a0e719449eac9cac5014e04da63\nef6a8b85d61262fac729072b21070f182f085694b82263b47b02032060f32b58\n96491376524481659f45aaf4ce4ba6d591dc84340ea84b3fb607abce85fa5013\nef0ddc5b62a44b44886c7383b52007d6d7541e62e296e98bcfc2922ff53213dd\n",
+        "leadX/sizes/<BOARD_HASH>.size": "490\n"
+      }
+    },
+    {
+      "fixture": "routing-code-examples.md",
+      "listener": "@skillcreator",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "state": {
+        "skillcreator/seen.sha256": "",
+        "skillcreator/sizes/<BOARD_HASH>.size": "120\n"
+      }
+    },
+    {
+      "fixture": "self-authored-post.md",
+      "listener": "@skillcreator",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "state": {
+        "skillcreator/seen.sha256": "1a6de89f679f382992477558ba5cfb2c31f6e51f78f56bb00f153483326c1763\n",
+        "skillcreator/sizes/<BOARD_HASH>.size": "413\n"
+      }
+    },
+    {
+      "fixture": "routing-unclosed-fence.md",
+      "listener": "@skillcreator",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 1,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": "WATCH-WARN file=<SANDBOX>/board.md reason=unclosed-fence action=retry\n"
+      },
+      "state": {
+        "skillcreator/seen.sha256": "",
+        "skillcreator/sizes/<BOARD_HASH>.size": "0\n"
+      }
+    },
+    {
+      "fixture": "routing-backtick-inline-span.md",
+      "listener": "@skillcreator",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@skillcreator file=<SANDBOX>/board.md hash=b7d0de2a075121bf1d7d88f27086732cf06eb804201aae9aac40abf0c4b99b90 :: ### @orc → @skillcreator — real event after inline spans\n",
+        "stderr": ""
+      },
+      "state": {
+        "skillcreator/seen.sha256": "b7d0de2a075121bf1d7d88f27086732cf06eb804201aae9aac40abf0c4b99b90\n",
+        "skillcreator/sizes/<BOARD_HASH>.size": "124\n"
+      }
+    },
+    {
+      "fixture": "routing-list-nested-fence.md",
+      "listener": "@skillcreator",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "state": {
+        "skillcreator/seen.sha256": "",
+        "skillcreator/sizes/<BOARD_HASH>.size": "97\n"
+      }
+    },
+    {
+      "fixture": "foreign-signature-with-cc.md",
+      "listener": "@review-638",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@review-638 files=1 state=<SANDBOX>/state/review-638\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@review-638 files=1 state=<SANDBOX>/state/review-638\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "state": {
+        "review-638/seen.sha256": "",
+        "review-638/sizes/<BOARD_HASH>.size": "78\n"
+      }
+    },
+    {
+      "fixture": "default-author-filter.md",
+      "listener": "@skillcreator",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@skillcreator file=<SANDBOX>/board.md hash=81c6c59556ed60bb54b0f4ebb41a89ecbfc259608591893d39eb25a89d2bee81 :: ### @orc → @skillcreator — inbound status update\n",
+        "stderr": ""
+      },
+      "state": {
+        "skillcreator/seen.sha256": "70b46445e475647797d6ad7c6039a7c47d7a4c917af43abd3f0252e3e1483582\n81c6c59556ed60bb54b0f4ebb41a89ecbfc259608591893d39eb25a89d2bee81\n",
+        "skillcreator/sizes/<BOARD_HASH>.size": "367\n"
+      }
+    },
+    {
+      "fixture": "routing-summary-mention.md",
+      "listener": "@skillcreator",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@skillcreator file=<SANDBOX>/board.md hash=42445f44665116388aed0efee49e1a484d33ad38c4f11c6dd0decbc21d09cb2a :: ### @orc → @other-listener — blocked on @skillcreator\n",
+        "stderr": ""
+      },
+      "state": {
+        "skillcreator/seen.sha256": "42445f44665116388aed0efee49e1a484d33ad38c4f11c6dd0decbc21d09cb2a\n",
+        "skillcreator/sizes/<BOARD_HASH>.size": "58\n"
+      }
+    },
+    {
+      "fixture": "routing-list-reply.md",
+      "listener": "@skillcreator",
+      "seed": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\n",
+        "stderr": ""
+      },
+      "scan": {
+        "exit": 0,
+        "stdout": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@skillcreator file=<SANDBOX>/board.md hash=ca49c6f2f09ba065df36741ebded59d2ec4da0ed920fd41a1e89b0b206dcdcab ::     @skillcreator: nested reply\n",
+        "stderr": ""
+      },
+      "state": {
+        "skillcreator/seen.sha256": "ca49c6f2f09ba065df36741ebded59d2ec4da0ed920fd41a1e89b0b206dcdcab\n",
+        "skillcreator/sizes/<BOARD_HASH>.size": "61\n"
+      }
+    }
+  ],
+  "copied_tree": {
+    "start": {
+      "exit": 0,
+      "stdout": "STARTED name=@skillcreator pid=<PID> log=<SANDBOX>/state/skillcreator/monitor.log\n",
+      "stderr": ""
+    },
+    "status": {
+      "exit": 0,
+      "stdout": "RUNNING name=@skillcreator pid=<PID>\n",
+      "stderr": ""
+    },
+    "stop": {
+      "exit": 0,
+      "stdout": "STOPPED name=@skillcreator pid=<PID>\n",
+      "stderr": ""
+    },
+    "log": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@skillcreator file=<SANDBOX>/board.md hash=fea87170b0644b4164d9a211dcce7983338e162738c67cfc71e1336ebe920e23 :: ### @golemsCodex → @skillcreator — agent-routing effort diff ready for routed Claude review (2026-08-02 17:15:50 IDT)\n",
+    "state": {
+      "skillcreator/monitor.log": "MONITOR-ARMED name=@skillcreator files=1 state=<SANDBOX>/state/skillcreator\nWILL-NOT-CATCH :: same-size rewrites; growth rewrites may look like appends; events outside anchored tag routing; an unclosed trailing direct message in a block without a recognizable header author is held until a signature or later heading; inbound direct mail nested in a self-authored block remains self-classified unless a recognized foreign signature closes it; a self signature under a foreign-authored header (that block was already emitted); a Codex seat on the Participation Law background tail, which drops only self blocks and is unbounded; process death without a supervisor; worker completion visible only in an agent registry\nNEW-FOR-@skillcreator file=<SANDBOX>/board.md hash=fea87170b0644b4164d9a211dcce7983338e162738c67cfc71e1336ebe920e23 :: ### @golemsCodex → @skillcreator — agent-routing effort diff ready for routed Claude review (2026-08-02 17:15:50 IDT)\n",
+      "skillcreator/seen.sha256": "fea87170b0644b4164d9a211dcce7983338e162738c67cfc71e1336ebe920e23\n",
+      "skillcreator/sizes/<BOARD_HASH>.size": "122\n"
+    }
+  }
+}
