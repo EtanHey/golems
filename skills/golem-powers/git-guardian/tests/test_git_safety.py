@@ -7,6 +7,7 @@ rule must NOT block (the false-positive gate). Pure functions → fully determin
 import importlib.util
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,11 +34,50 @@ def test_two_facades_load_their_own_git_implementation(tmp_path):
     assert git_safety._git_impl.__file__ == str(MODULE.parent / "git_safety_impl" / "git.py")
 
 
+def test_copied_git_loader_restores_bytecode_setting_without_impl_cache(tmp_path):
+    copied = tmp_path / "installed" / "git-guardian"
+    shutil.copytree(MODULE.parent, copied, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(MODULE.parent.parent / "_shared", copied.parent / "_shared")
+    env = os.environ.copy()
+    env.pop("PYTHONDONTWRITEBYTECODE", None)
+    env.pop("PYTHONPYCACHEPREFIX", None)
+    script = (
+        "import importlib.util, sys; "
+        "spec=importlib.util.spec_from_file_location('copied_guardian', sys.argv[1]); "
+        "module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); "
+        "assert sys.dont_write_bytecode is False"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(copied / "git_safety.py")],
+        cwd=tmp_path, env=env, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (copied / "git_safety_impl" / "__pycache__").exists()
+
+
 def test_git_facade_forwards_replaceable_helpers(monkeypatch):
     monkeypatch.setattr(git_safety, "split_git", lambda _command: ("push", ["--no-verify"]))
     assert git_safety.is_unauthorized_no_verify("anything") is True
     monkeypatch.setattr(git_safety, "restore_targets", lambda _command: ["unowned"])
     assert git_safety.is_destructive_restore("anything", owned_paths=[])["destructive"] is True
+
+
+def test_git_facade_forwards_replaceable_module_globals(monkeypatch):
+    with monkeypatch.context() as patch:
+        patch.setattr(git_safety, "_HTML_COMMENT", git_safety.re.compile("hello"))
+        assert git_safety.pr_body_is_empty("hello") is True
+    with monkeypatch.context() as patch:
+        patch.setattr(git_safety, "_SKELETON_LINES", {"hello"})
+        assert git_safety.pr_body_is_empty("hello") is True
+    with monkeypatch.context() as patch:
+        patch.setattr(git_safety, "_GLOBAL_OPTS_WITH_SEPARATE_VALUE", set())
+        assert git_safety.split_git("git -C /repo push") == ("/repo", ["push"])
+    with monkeypatch.context() as patch:
+        patch.setattr(git_safety, "_MESSAGE_FLAGS_WITH_VALUE", set())
+        assert git_safety.is_unauthorized_no_verify("git commit -m --no-verify") is True
+    with monkeypatch.context() as patch:
+        patch.setattr(git_safety, "_norm", lambda _path: "same")
+        assert git_safety.is_destructive_restore("git restore a", owned_paths=["b"])["destructive"] is False
 
 
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────

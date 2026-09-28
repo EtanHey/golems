@@ -1009,27 +1009,40 @@ from pathlib import Path
 
 _IMPL_ROOT = Path(__file__).resolve().parent / "git_safety_impl"
 _IMPL_NAME = "_git_safety_impl_" + hashlib.sha256(str(_IMPL_ROOT).encode()).hexdigest()[:20]
-if _IMPL_NAME not in sys.modules:
-    _spec = importlib.util.spec_from_file_location(
-        _IMPL_NAME, _IMPL_ROOT / "__init__.py",
-        submodule_search_locations=[str(_IMPL_ROOT)],
-    )
-    _package = importlib.util.module_from_spec(_spec)
-    sys.modules[_IMPL_NAME] = _package
-    _spec.loader.exec_module(_package)
-_git_impl = importlib.import_module(_IMPL_NAME + ".git")
+_write_bytecode = sys.dont_write_bytecode
+try:
+    sys.dont_write_bytecode = True
+    if _IMPL_NAME not in sys.modules:
+        _spec = importlib.util.spec_from_file_location(
+            _IMPL_NAME, _IMPL_ROOT / "__init__.py",
+            submodule_search_locations=[str(_IMPL_ROOT)],
+        )
+        _package = importlib.util.module_from_spec(_spec)
+        sys.modules[_IMPL_NAME] = _package
+        _spec.loader.exec_module(_package)
+    _git_impl = importlib.import_module(_IMPL_NAME + ".git")
+finally:
+    sys.dont_write_bytecode = _write_bytecode
+
+_norm = _git_impl._norm
+_HTML_COMMENT = _git_impl._HTML_COMMENT
+_SKELETON_LINES = _git_impl._SKELETON_LINES
+_GLOBAL_OPTS_WITH_SEPARATE_VALUE = _git_impl._GLOBAL_OPTS_WITH_SEPARATE_VALUE
+_MESSAGE_FLAGS_WITH_VALUE = _git_impl._MESSAGE_FLAGS_WITH_VALUE
 
 
 def pr_body_is_empty(body: str | None) -> bool:
-    return _git_impl.pr_body_is_empty(body)
+    return _git_impl.pr_body_is_empty(body, api=globals())
 
 
 def split_git(command: str):
-    return _git_impl.split_git(command)
+    return _git_impl.split_git(command, api=globals())
 
 
 def is_unauthorized_no_verify(command: str, authorized: bool = False) -> bool:
-    return _git_impl.is_unauthorized_no_verify(command, authorized, split_git_fn=split_git)
+    return _git_impl.is_unauthorized_no_verify(
+        command, authorized, split_git_fn=split_git, api=globals()
+    )
 
 
 def restore_targets(command: str) -> list[str] | None:
@@ -1038,7 +1051,5 @@ def restore_targets(command: str) -> list[str] | None:
 
 def is_destructive_restore(command: str, owned_paths=None) -> dict:
     return _git_impl.is_destructive_restore(
-        command, owned_paths, restore_targets_fn=restore_targets
+        command, owned_paths, restore_targets_fn=restore_targets, api=globals()
     )
-
-_norm = _git_impl._norm

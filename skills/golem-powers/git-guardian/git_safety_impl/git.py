@@ -18,16 +18,17 @@ _HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 _SKELETON_LINES = {"#", "##", "###", "-", "*", "—", "---", "<!-- -->"}
 
 
-def pr_body_is_empty(body: str | None) -> bool:
+def pr_body_is_empty(body: str | None, *, api: dict | None = None) -> bool:
     """True when a PR body is effectively empty: None, whitespace, or only template
     comments / bare markdown skeleton lines. Used to block `gh pr create` with no body."""
     if body is None:
         return True
-    stripped = _HTML_COMMENT.sub("", body)
+    api = api or globals()
+    stripped = api["_HTML_COMMENT"].sub("", body)
     meaningful = [
         line.strip()
         for line in stripped.splitlines()
-        if line.strip() and line.strip() not in _SKELETON_LINES
+        if line.strip() and line.strip() not in api["_SKELETON_LINES"]
     ]
     return len(meaningful) == 0
 
@@ -40,9 +41,10 @@ def pr_body_is_empty(body: str | None) -> bool:
 _GLOBAL_OPTS_WITH_SEPARATE_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
 
 
-def split_git(command: str):
+def split_git(command: str, *, api: dict | None = None):
     """Return (subcommand, args) for a git invocation, skipping global options, or None
     if `command` is not a git invocation."""
+    api = api or globals()
     try:
         tokens = shlex.split(command)
     except ValueError:
@@ -57,7 +59,7 @@ def split_git(command: str):
         token = tokens[i]
         if not token.startswith("-"):
             return token, tokens[i + 1:]
-        if token in _GLOBAL_OPTS_WITH_SEPARATE_VALUE:
+        if token in api["_GLOBAL_OPTS_WITH_SEPARATE_VALUE"]:
             i += 2  # option takes a separate value token
         else:
             i += 1  # flag or inline --opt=value
@@ -68,7 +70,8 @@ def split_git(command: str):
 _MESSAGE_FLAGS_WITH_VALUE = {"-m", "--message", "-F", "--file"}
 
 
-def is_unauthorized_no_verify(command: str, authorized: bool = False, *, split_git_fn=None) -> bool:
+def is_unauthorized_no_verify(command: str, authorized: bool = False, *, split_git_fn=None,
+                              api: dict | None = None) -> bool:
     """True when a git commit/push uses --no-verify without explicit authorization.
 
     Matches `--no-verify` as a standalone ARGUMENT token, skipping `-m`/`--message`/
@@ -76,6 +79,7 @@ def is_unauthorized_no_verify(command: str, authorized: bool = False, *, split_g
     For `commit` the short `-n` (and bundled short clusters like `-nm`) is ALSO the
     --no-verify bypass; for `push`, `-n` is --dry-run (safe) so the short form is matched
     for commit only. Global git options are handled via split_git."""
+    api = api or globals()
     if authorized:
         return False
     split = (split_git_fn or split_git)(command)
@@ -89,7 +93,7 @@ def is_unauthorized_no_verify(command: str, authorized: bool = False, *, split_g
         if skip_next:
             skip_next = False
             continue
-        if token in _MESSAGE_FLAGS_WITH_VALUE:
+        if token in api["_MESSAGE_FLAGS_WITH_VALUE"]:
             skip_next = True
             continue
         if token.startswith("--message=") or token.startswith("--file="):
@@ -168,23 +172,25 @@ def restore_targets(command: str, *, split_git_fn=None) -> list[str] | None:
     return None
 
 
-def is_destructive_restore(command: str, owned_paths=None, *, restore_targets_fn=None) -> dict:
+def is_destructive_restore(command: str, owned_paths=None, *, restore_targets_fn=None,
+                           api: dict | None = None) -> dict:
     """Classify a restore by whether it discards UNOWNED in-session changes.
 
     owned_paths = paths this session created/modified (safe to discard). A restore is
     destructive when it would overwrite any path NOT in that set — including `.` which
     discards everything. Returns a verdict dict with a `git stash` suggestion."""
+    api = api or globals()
     targets = (restore_targets_fn or restore_targets)(command)
     if targets is None:
         return {"destructive": False, "targets": None, "unowned": [], "suggestion": None}
 
     # Normalize both sides so `./src/app.py`, `src/./app.py` and `src/app.py` compare
     # equal — owned_paths is caller-provided and may use a different spelling.
-    owned = {_norm(p) for p in (owned_paths or [])}
+    owned = {api["_norm"](p) for p in (owned_paths or [])}
     if "." in targets:
         unowned = ["."]  # blanket discard always reaches unowned work
     else:
-        unowned = [t for t in targets if _norm(t) not in owned]
+        unowned = [t for t in targets if api["_norm"](t) not in owned]
 
     destructive = len(unowned) > 0
     suggestion = None
