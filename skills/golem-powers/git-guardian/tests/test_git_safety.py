@@ -85,6 +85,13 @@ def test_path_facade_forwards_replaceable_expansion(monkeypatch):
     assert git_safety._rm_target_reason("safe", "/", {}) == "rm targeting root filesystem"
 
 
+def test_rm_facade_forwards_replaceable_path_policy(monkeypatch):
+    monkeypatch.setattr(git_safety, "_rm_target_reason", lambda *_: "patched path policy")
+    assert git_safety.is_dangerous_rm("rm -rf /a/b/c", cwd="/", env={}) == (
+        True, "patched path policy"
+    )
+
+
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────
 
 def test_f8_all_three_repo_cleanup_specimens_are_allowed(tmp_path):
