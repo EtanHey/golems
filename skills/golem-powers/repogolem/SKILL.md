@@ -79,6 +79,9 @@ GOLEM_ROLE=worker orcCodex -s -w $HOME/Gits/orchestrator.wt/my-lane
 ```
 
 The generated `*CodexWorker` aliases remain compatible and select the same mode.
+`--worker` is the one worker signal: on Codex, Cursor and Gemini it also exports
+`GOLEM_ROLE=worker` to the launched agent, for that call only. Claude is the
+exception: `--worker` there keeps the lead effort and sets no `GOLEM_ROLE`.
 Worker mode adds only a one-line role banner before an optional caller prompt; it
 does not inject registry agent front-matter or boot-store instructions. Short
 `-w` remains the worktree-path flag and always requires an absolute path.
