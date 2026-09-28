@@ -1,0 +1,27 @@
+{
+  "specimen": "DONE_<ID> marker written; the cited report file has no CLEANUP RECEIPT either",
+  "label": "RED — the report file the turn cites carries the PR URL and the DONE marker but no receipt, so the lane DONE has none anywhere.",
+  "expect": "FLAG",
+  "violation": "FLEETWRAP_CLEANUP_RECEIPT_MISSING",
+  "reports": {
+    "/fleet/lanes/2026-09-28-w31-report.md": "# W31 report\n\nPR: https://github.com/EtanHey/golems/pull/360 (head 9a8b7c6d)\n\nDONE_W31\n"
+  },
+  "events": [
+    {
+      "role": "user",
+      "text": "finish the lane"
+    },
+    {
+      "role": "assistant",
+      "text": "PR open, checks finished. Report: /fleet/lanes/2026-09-28-w31-report.md",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "printf 'DONE_W31\\n' >> /fleet/lanes/2026-09-28-w31-report.md"
+          }
+        }
+      ]
+    }
+  ]
+}

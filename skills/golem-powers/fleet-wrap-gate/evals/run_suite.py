@@ -77,7 +77,10 @@ def run_hook(fixture: dict) -> tuple[bool, str]:
         violation = fixture.get("violation")
         if violation and violation not in reason:
             return False, f"reason missing {violation}: {reason!r}"
-        if "delete cron " not in reason and "TaskStop " not in reason:
+        if violation == "FLEETWRAP_CLEANUP_RECEIPT_MISSING":
+            if "append a CLEANUP RECEIPT" not in reason:
+                return False, f"reason missing exact receipt action: {reason!r}"
+        elif "delete cron " not in reason and "TaskStop " not in reason:
             return False, f"reason missing exact cleanup action: {reason!r}"
         return True, "advisory"
     return False, f"unknown expect={expect!r}"

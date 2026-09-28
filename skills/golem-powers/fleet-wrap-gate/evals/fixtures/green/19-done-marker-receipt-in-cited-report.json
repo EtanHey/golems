@@ -1,0 +1,26 @@
+{
+  "specimen": "DONE_<ID> marker written by the turn; the receipt lives in the report file the turn cites",
+  "label": "GREEN — the worker appends DONE_W30 to its report file and cites it; the CLEANUP RECEIPT is in that file, not in the turn's own text. The fixture's `reports` map stands in for the file on disk (the Stop hook reads the cited path, bounded).",
+  "expect": "PASS",
+  "reports": {
+    "/fleet/lanes/2026-09-28-w30-report.md": "# W30 report\n\nPR (a): https://github.com/EtanHey/golems/pull/351 (head 13293dc7)\n\nCLEANUP RECEIPT\n- worktree: .worktrees/cleanup-receipt-text removed\n- branch: feat/cleanup-receipt-text deleted local+remote\n- files this PR added outside src/tests: none\n- docs.local this lane created: docs.local/2026-09-28/cleanup-receipt-text-notes.md; rolled into 2026-09-28/README\n\nDONE_W30\n"
+  },
+  "events": [
+    {
+      "role": "user",
+      "text": "finish the lane"
+    },
+    {
+      "role": "assistant",
+      "text": "Both PRs are open with checks finished; handed to golemsLead unmerged. Report: /fleet/lanes/2026-09-28-w30-report.md",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "printf 'DONE_W30\\n' >> /fleet/lanes/2026-09-28-w30-report.md"
+          }
+        }
+      ]
+    }
+  ]
+}

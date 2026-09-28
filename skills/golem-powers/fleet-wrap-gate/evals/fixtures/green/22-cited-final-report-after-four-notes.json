@@ -1,0 +1,48 @@
+{
+  "specimen": "a multi-file lane: four notes written, then a cited final report that carries the receipt (cx9 R1 finding 2)",
+  "label": "GREEN \u2014 the turn writes four note files and cites its final report by absolute path. The explicitly cited report is read first, so the four notes cannot use up the 4-path cap and hide the receipt.",
+  "expect": "PASS",
+  "reports": {
+    "/safe/lanes/w7-final-report.md": "# W7 final report\n\nPR: https://github.com/EtanHey/golems/pull/88\n\nCLEANUP RECEIPT\n- worktree: .worktrees/w7 kept because PR #88 awaits lead merge\n- branch: feat/w7 kept because PR #88 awaits lead merge\n- files this PR added outside src/tests: none\n- docs.local this lane created: none\n\nDONE_W7\n"
+  },
+  "events": [
+    {
+      "role": "user",
+      "text": "finish the lane"
+    },
+    {
+      "role": "assistant",
+      "text": "DONE \u2014 https://github.com/EtanHey/golems/pull/88. Final report: /safe/lanes/w7-final-report.md",
+      "tools": [
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "/safe/lanes/w7-note1.md",
+            "content": "# W7 note 1\n\nscratch findings 1\n"
+          }
+        },
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "/safe/lanes/w7-note2.md",
+            "content": "# W7 note 2\n\nscratch findings 2\n"
+          }
+        },
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "/safe/lanes/w7-note3.md",
+            "content": "# W7 note 3\n\nscratch findings 3\n"
+          }
+        },
+        {
+          "name": "Write",
+          "input": {
+            "file_path": "/safe/lanes/w7-note4.md",
+            "content": "# W7 note 4\n\nscratch findings 4\n"
+          }
+        }
+      ]
+    }
+  ]
+}

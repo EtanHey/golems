@@ -1,0 +1,24 @@
+{
+  "specimen": "lane DONE after a merge with no CLEANUP RECEIPT (cleanliness standard Mechanism 1)",
+  "label": "RED — the lead merged PR #512 and reported DONE with the PR URL, but the report carries no CLEANUP RECEIPT, so nothing says what the lane left on disk. Advisory FLEETWRAP_CLEANUP_RECEIPT_MISSING.",
+  "expect": "FLAG",
+  "violation": "FLEETWRAP_CLEANUP_RECEIPT_MISSING",
+  "events": [
+    {
+      "role": "user",
+      "text": "merge #512 and report"
+    },
+    {
+      "role": "assistant",
+      "text": "DONE — https://github.com/EtanHey/golems/pull/512 merged (merge 4f1c2a9e), remote content verified.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "gh pr merge 512 --merge --delete-branch && git worktree remove .worktrees/cache-ttl"
+          }
+        }
+      ]
+    }
+  ]
+}

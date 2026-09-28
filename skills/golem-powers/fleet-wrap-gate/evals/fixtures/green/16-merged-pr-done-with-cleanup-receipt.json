@@ -1,0 +1,23 @@
+{
+  "specimen": "the same merged-PR DONE report, carrying its CLEANUP RECEIPT",
+  "label": "GREEN — merge + DONE line with the PR URL, and the report ends with the CLEANUP RECEIPT block (worktree / branch / files / docs.local).",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "merge #512 and report"
+    },
+    {
+      "role": "assistant",
+      "text": "DONE — https://github.com/EtanHey/golems/pull/512 merged (merge 4f1c2a9e), remote content verified.\n\nCLEANUP RECEIPT\n- worktree: .worktrees/cache-ttl removed\n- branch: feat/cache-ttl deleted local+remote\n- files this PR added outside src/tests: none\n- docs.local this lane created: docs.local/2026-09-28/cache-ttl-notes.md; rolled into 2026-09-28/README",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "gh pr merge 512 --merge --delete-branch && git worktree remove .worktrees/cache-ttl"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -38,7 +39,7 @@ const reds = loadFixtures(redDir);
 const greens = loadFixtures(greenDir);
 
 test("fixture coverage: specimens + state-file REDs + GREEN references present", () => {
-  expect(reds.length).toBe(21);
+  expect(reds.length).toBe(24);
   expect(greens.length).toBeGreaterThanOrEqual(14);
 });
 
@@ -424,6 +425,381 @@ test("Stop hook scopes the shared task registry to the current session", () => {
     });
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({});
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// ── FLEETWRAP_CLEANUP_RECEIPT_MISSING (cleanliness standard Mechanism 1) ─────
+// Advisory only: a lane DONE report (PR merged or handed off, a written
+// DONE_<ID> marker, or a DONE line with a PR URL) must carry a CLEANUP RECEIPT.
+
+const RECEIPT = [
+  "CLEANUP RECEIPT",
+  "- worktree: .worktrees/x kept because PR #88 awaits lead merge",
+  "- branch: feat/x kept because PR #88 awaits lead merge",
+  "- files this PR added outside src/tests: none",
+  "- docs.local this lane created: none",
+].join("\n");
+
+function receiptCodes(transcript, options) {
+  return detectFleetWrap(transcript, options).violations.map((v) => v.code);
+}
+
+test("a DONE_<ID> marker written with no receipt anywhere FLAGs the receipt advisory", () => {
+  const codes = receiptCodes({
+    events: [
+      { role: "user", text: "finish" },
+      {
+        role: "assistant",
+        text: "Lane finished.",
+        tools: [{ name: "Bash", input: { command: "echo DONE_W7 >> ~/lanes/w7-report.md" } }],
+      },
+    ],
+  });
+  expect(codes).toEqual(["FLEETWRAP_CLEANUP_RECEIPT_MISSING"]);
+});
+
+test("a DONE_<ID> report written via Write with the receipt inside PASSes", () => {
+  const result = detectFleetWrap({
+    events: [
+      { role: "user", text: "finish" },
+      {
+        role: "assistant",
+        text: "Report written.",
+        tools: [{
+          name: "Write",
+          input: {
+            file_path: "/lanes/w7-report.md",
+            content: `PR: https://github.com/EtanHey/golems/pull/88\n\n${RECEIPT}\n\nDONE_W7\n`,
+          },
+        }],
+      },
+    ],
+  });
+  expect(result.violations).toEqual([]);
+});
+
+test("a worker handing a PR to its lead with no receipt FLAGs", () => {
+  const codes = receiptCodes({
+    events: [
+      { role: "user", text: "report" },
+      { role: "assistant", text: "PR #88 is reviewed and green; handed it to the lead unmerged." },
+    ],
+  });
+  expect(codes).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+});
+
+test("a receipt heading without worktree/branch lines is not a receipt", () => {
+  const codes = receiptCodes({
+    events: [
+      { role: "user", text: "report" },
+      {
+        role: "assistant",
+        text: "DONE: https://github.com/EtanHey/golems/pull/88\nCLEANUP RECEIPT: n/a",
+      },
+    ],
+  });
+  expect(codes).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+});
+
+test("negated or conditional merge talk is not a DONE report", () => {
+  for (const text of [
+    "PR #88 is not merged yet; waiting on CodeRabbit.",
+    "Once PR #88 is merged I will clean up the worktree.",
+    "Worker W2 DONE for the assigned file audit (no PR).",
+  ]) {
+    const result = detectFleetWrap({ events: [{ role: "user", text: "status" }, { role: "assistant", text }] });
+    expect(result.violations.map((v) => v.code)).not.toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+  }
+});
+
+test("the receipt advisory carries an exact action and never pretends to be a cron", () => {
+  const result = detectFleetWrap({
+    events: [
+      { role: "user", text: "merge" },
+      { role: "assistant", text: "DONE — https://github.com/EtanHey/golems/pull/88 merged." },
+    ],
+  });
+  const [violation] = result.violations;
+  expect(violation.code).toBe("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+  expect(violation.action).toContain("CLEANUP RECEIPT");
+  expect(violation.action).not.toContain("delete cron");
+});
+
+test("an injected report reader supplies the cited report file", () => {
+  const transcript = {
+    events: [
+      { role: "user", text: "finish" },
+      {
+        role: "assistant",
+        text: "DONE — https://github.com/EtanHey/golems/pull/88. Report: /lanes/w7-report.md",
+      },
+    ],
+  };
+  const reads = [];
+  const readReport = (p) => {
+    reads.push(p);
+    return p === "/lanes/w7-report.md" ? `${RECEIPT}\nDONE_W7\n` : null;
+  };
+  expect(detectFleetWrap(transcript, { readReport }).violations).toEqual([]);
+  expect(reads).toEqual(["/lanes/w7-report.md"]);
+  expect(receiptCodes(transcript, { readReport: () => null })).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+});
+
+test("Stop hook reads a cited report file on disk (bounded) and emits a typed advisory without it", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "fleet-wrap-receipt-"));
+  const report = path.join(root, "w7-report.md");
+  const hook = path.join(here, "..", "scripts", "fleet-wrap-gate-hook.mjs");
+  const payloadFor = (file) => ({
+    hook_event_name: "Stop",
+    transcript: {
+      events: [
+        { role: "user", text: "finish" },
+        { role: "assistant", text: `DONE — https://github.com/EtanHey/golems/pull/88. Report: ${file}` },
+      ],
+    },
+  });
+  const run = (payload) => spawnSync(process.execPath, [hook], {
+    input: JSON.stringify(payload),
+    encoding: "utf8",
+    timeout: 5_000,
+  });
+  try {
+    writeFileSync(report, `${RECEIPT}\nDONE_W7\n`);
+    const withReceipt = run(payloadFor(report));
+    expect(withReceipt.status).toBe(0);
+    expect(JSON.parse(withReceipt.stdout)).toEqual({});
+
+    writeFileSync(report, "DONE_W7\n");
+    const without = run(payloadFor(report));
+    expect(without.status).toBe(0);
+    const parsed = JSON.parse(without.stdout);
+    expect(parsed.decision).toBeUndefined();
+    expect(parsed.systemMessage).toStartWith("FLEET-WRAP-GATE advisory");
+    expect(parsed.systemMessage).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+    expect(parsed.systemMessage).not.toContain("terminal silence with live periodic work");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a receipt seen only in a tool result (another lane's report) does not satisfy this DONE", () => {
+  const codes = receiptCodes({
+    events: [
+      { role: "user", text: "merge #88" },
+      { role: "tool", text: `worker report:\n${RECEIPT}` },
+      { role: "assistant", text: "DONE — https://github.com/EtanHey/golems/pull/88 merged." },
+    ],
+  });
+  expect(codes).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+});
+
+// ── Round 2 (cx9 REQUEST_CHANGES at 9240eda7) ────────────────────────────────
+
+const cli = path.join(here, "..", "scripts", "fleet-wrap-gate-cli.mjs");
+const runCli = (fixture) => spawnSync(process.execPath, [cli, fixture], { encoding: "utf8", timeout: 5_000 });
+
+test("R2-1: a receipt-only advisory keeps the CLI at exit 0 and still prints the reason", () => {
+  const receiptOnly = runCli(path.join(redDir, "22-merged-pr-done-no-cleanup-receipt.json"));
+  expect(receiptOnly.status).toBe(0);
+  expect(receiptOnly.stdout).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+});
+
+test("R2-1: the pre-existing cron/loop FLAGs still exit 3 from the CLI", () => {
+  const cron = runCli(path.join(redDir, "01-healthwatch-cron-left-armed.json"));
+  expect(cron.status).toBe(3);
+  expect(cron.stdout).toContain("FLEETWRAP_");
+});
+
+test("R2-2: an explicitly cited report is read before paths the turn merely wrote", () => {
+  const reads = [];
+  const readReport = (p) => {
+    reads.push(p);
+    return p === "/safe/final-report.md" ? `${RECEIPT}\nDONE_W7\n` : "# note\n";
+  };
+  const notes = [1, 2, 3, 4].map((i) => ({
+    name: "Write",
+    input: { file_path: `/safe/note${i}.md`, content: `note ${i}` },
+  }));
+  const transcript = {
+    events: [
+      { role: "user", text: "finish" },
+      {
+        role: "assistant",
+        text: "DONE — https://github.com/EtanHey/golems/pull/88. Final report: /safe/final-report.md",
+        tools: notes,
+      },
+    ],
+  };
+  expect(detectFleetWrap(transcript, { readReport }).violations).toEqual([]);
+  expect(reads[0]).toBe("/safe/final-report.md");
+});
+
+test("R2-2: ineligible paths are filtered out before the 4-path cap", () => {
+  const reads = [];
+  const readReport = (p) => {
+    reads.push(p);
+    return p === "/safe/final-report.md" ? `${RECEIPT}\nDONE_W7\n` : null;
+  };
+  const transcript = {
+    events: [
+      { role: "user", text: "finish" },
+      {
+        role: "assistant",
+        text: [
+          "DONE — https://github.com/EtanHey/golems/pull/88.",
+          "Notes: /safe/../etc/a.md /safe/x/../b.md ~/../c.md /safe/d/../../e.md",
+          "Final report: /safe/final-report.md",
+        ].join("\n"),
+        tools: [{ name: "Write", input: { file_path: "notes/relative.md", content: "n" } }],
+      },
+    ],
+  };
+  expect(detectFleetWrap(transcript, { readReport }).violations).toEqual([]);
+  expect(reads).toEqual(["/safe/final-report.md"]);
+});
+
+test("R2-3: a DONE_<ID> inside a fenced or quoted example is not a marker", () => {
+  for (const text of [
+    "Report shape:\n```\nDONE_W7\n```",
+    "Report shape:\n~~~md\nDONE_W7\n~~~",
+    "Quoted from the collab:\n> DONE_W7",
+    "Quoted from the collab:\n> DONE — https://github.com/EtanHey/golems/pull/88",
+    "Example:\n```\nPR #88 merged\n```",
+  ]) {
+    const codes = receiptCodes({ events: [{ role: "user", text: "shape?" }, { role: "assistant", text }] });
+    expect(codes).not.toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+  }
+});
+
+test("R2-3: a gh pr merge that is only printed, quoted or commented is not a merge", () => {
+  for (const command of [
+    "echo gh pr merge 88 --merge",
+    "printf '%s\\n' 'gh pr merge 88 --merge'",
+    "echo \"run: gh pr merge 88\" && git status",
+    "# gh pr merge 88 --merge\ngit status",
+    "gh pr merge --help",
+    "grep -n 'gh pr merge' skills/pr-loop/SKILL.md",
+  ]) {
+    const codes = receiptCodes({
+      events: [
+        { role: "user", text: "prep" },
+        { role: "assistant", text: "Prepared.", tools: [{ name: "Bash", input: { command } }] },
+      ],
+    });
+    expect(codes).not.toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+  }
+});
+
+test("R2-3: an executed gh pr merge still counts, behind env vars, wrappers and chains", () => {
+  for (const command of [
+    "gh pr merge 88 --merge",
+    "GH_TOKEN=x gh pr merge 88 --squash",
+    "cd repo && gh pr merge 88 --merge --delete-branch",
+    "git fetch; command gh pr merge 88",
+  ]) {
+    const codes = receiptCodes({
+      events: [
+        { role: "user", text: "merge" },
+        { role: "assistant", text: "Done with that.", tools: [{ name: "Bash", input: { command } }] },
+      ],
+    });
+    expect(codes).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+  }
+});
+
+test("R2-4: a here-document report write with DONE_<ID> and no receipt FLAGs; with a receipt it PASSes", () => {
+  const heredoc = (body, open = "<<'EOF'") => ({
+    events: [
+      { role: "user", text: "finish" },
+      {
+        role: "assistant",
+        text: "Report written.",
+        tools: [{ name: "Bash", input: { command: `cat > /safe/w7-report.md ${open}\n${body}\nEOF` } }],
+      },
+    ],
+  });
+  const body = "PR: https://github.com/EtanHey/golems/pull/88\n\nDONE_W7";
+  expect(receiptCodes(heredoc(body))).toEqual(["FLEETWRAP_CLEANUP_RECEIPT_MISSING"]);
+  expect(receiptCodes(heredoc(body, "<<EOF"))).toEqual(["FLEETWRAP_CLEANUP_RECEIPT_MISSING"]);
+  expect(receiptCodes({
+    events: [
+      { role: "user", text: "finish" },
+      {
+        role: "assistant",
+        text: "Report written.",
+        tools: [{ name: "Bash", input: { command: `tee -a /safe/w7-report.md <<-'EOF'\n\t${body}\n\tEOF` } }],
+      },
+    ],
+  })).toEqual(["FLEETWRAP_CLEANUP_RECEIPT_MISSING"]);
+  expect(receiptCodes(heredoc(`${body}\n\n${RECEIPT}`))).toEqual([]);
+});
+
+test("R2-4: a quoted here-document example is not a report write", () => {
+  for (const tool of [
+    { name: "Bash", input: { command: "echo \"cat > r.md <<EOF\nDONE_W7\nEOF\"" } },
+    { name: "Bash", input: { command: "cat <<'EOF'\nDONE_W7\nEOF" } },
+  ]) {
+    const codes = receiptCodes({
+      events: [
+        { role: "user", text: "show me" },
+        { role: "assistant", text: "Here is the shape.", tools: [tool] },
+      ],
+    });
+    expect(codes).not.toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+  }
+  const fencedNarrative = receiptCodes({
+    events: [
+      { role: "user", text: "show me" },
+      { role: "assistant", text: "Shape:\n```bash\ncat > r.md <<EOF\nDONE_W7\nEOF\n```" },
+    ],
+  });
+  expect(fencedNarrative).not.toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+});
+
+test("R2-5: the report reader rejects symlinks to non-report targets, `..` paths, FIFOs and oversize files", async () => {
+  const { readReport, REPORT_MAX_BYTES } = await import("../lib/report-reader.mjs");
+  const root = mkdtempSync(path.join(tmpdir(), "fleet-wrap-reader-"));
+  try {
+    const sentinel = "SENTINEL-DO-NOT-ECHO";
+    writeFileSync(path.join(root, "private.bin"), `${RECEIPT}\n${sentinel}\n`);
+    writeFileSync(path.join(root, "real.md"), `${RECEIPT}\n`);
+    symlinkSync(path.join(root, "private.bin"), path.join(root, "cited.md"));
+    symlinkSync(path.join(root, "real.md"), path.join(root, "alias.md"));
+    mkdirSync(path.join(root, "sub"));
+
+    expect(readReport(path.join(root, "cited.md"))).toBeNull();
+    expect(readReport(`${root}/sub/../real.md`)).toBeNull();
+    expect(readReport(path.join(root, "real.md"))).toContain("CLEANUP RECEIPT");
+    expect(readReport(path.join(root, "alias.md"))).toContain("CLEANUP RECEIPT");
+
+    const fifo = path.join(root, "pipe.md");
+    expect(spawnSync("mkfifo", [fifo]).status).toBe(0);
+    expect(readReport(fifo)).toBeNull();
+
+    writeFileSync(path.join(root, "big.md"), "x".repeat(REPORT_MAX_BYTES + 1));
+    expect(readReport(path.join(root, "big.md"))).toBeNull();
+    writeFileSync(path.join(root, "edge.md"), "x".repeat(REPORT_MAX_BYTES));
+    expect(readReport(path.join(root, "edge.md"))?.length).toBe(REPORT_MAX_BYTES);
+
+    const hook = path.join(here, "..", "scripts", "fleet-wrap-gate-hook.mjs");
+    const run = spawnSync(process.execPath, [hook], {
+      input: JSON.stringify({
+        hook_event_name: "Stop",
+        transcript: {
+          events: [
+            { role: "user", text: "finish" },
+            { role: "assistant", text: `DONE — https://github.com/EtanHey/golems/pull/88. Report: ${path.join(root, "cited.md")}` },
+          ],
+        },
+      }),
+      encoding: "utf8",
+      timeout: 5_000,
+    });
+    expect(run.status).toBe(0);
+    expect(JSON.parse(run.stdout).systemMessage).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");
+    expect(run.stdout).not.toContain(sentinel);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

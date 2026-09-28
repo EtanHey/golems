@@ -5,15 +5,17 @@
 //   allow: {}
 //   advisory: {"systemMessage":"..."}  (never a block: GO-5 E2)
 //
-// Hang-safety contract: no network, no BrainLayer, bounded tail/state reads,
-// no subprocesses, and fail-open on malformed input or internal errors.
+// Hang-safety contract: no network, no BrainLayer, bounded tail/state reads
+// (plus at most 4 cited report files, 256 KiB each), no subprocesses, and
+// fail-open on malformed input or internal errors.
 
 import {
   publishStopHookReceipt,
   readerFailurePayload,
   readStopHookContext,
 } from "../../_shared/stop-hook-runtime/stop-hook-reader.mjs";
-import { detectFleetWrap } from "../src/fleet-wrap-gate.mjs";
+import { readReport } from "../lib/report-reader.mjs";
+import { CLEANUP_RECEIPT_CODE as RECEIPT_CODE, detectFleetWrap } from "../src/fleet-wrap-gate.mjs";
 
 function allow() {
   process.stdout.write("{}");
@@ -22,12 +24,16 @@ function allow() {
 // GO-5 E2: a Stop block makes the model continue its turn, so a flag reaches
 // it as an advisory systemMessage instead.
 function advise(result) {
-  const codes = result.violations.map((violation) => violation.code).join(", ");
+  const codes = result.violations.map((violation) => violation.code);
+  const periodic = codes.filter((code) => code !== RECEIPT_CODE);
+  const leads = [];
+  if (periodic.length) leads.push(`flagged terminal silence with live periodic work (${periodic.join(", ")})`);
+  if (codes.includes(RECEIPT_CODE)) leads.push(`flagged a lane DONE report with no cleanup receipt (${RECEIPT_CODE})`);
   const details = result.violations
     .map((violation) => `${violation.code}: ${violation.evidence} Cleanup: ${violation.action}.`)
     .join(" ");
   process.stdout.write(JSON.stringify({
-    systemMessage: `FLEET-WRAP-GATE advisory: flagged terminal silence with live periodic work (${codes}). ${details}`,
+    systemMessage: `FLEET-WRAP-GATE advisory: ${leads.join("; ")}. ${details}`,
   }));
 }
 
@@ -44,6 +50,7 @@ function main() {
     const result = detectFleetWrap(context.transcript, {
       state: context.state,
       sessionId: context.sessionId,
+      readReport,
     });
     if (result.verdict === "FLAG") return advise(result);
     return allow();

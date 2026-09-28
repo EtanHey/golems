@@ -1,0 +1,15 @@
+{
+  "specimen": "a DONE_<ID> marker quoted inside a fenced example is not a written marker (cx9 R1 finding 3)",
+  "label": "GREEN \u2014 the turn shows workers the report shape in a fenced block (PR URL + DONE_W7 line) and a blockquote. Nothing was finished or written; an example is not a lane DONE.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "what should a worker report look like?"
+    },
+    {
+      "role": "assistant",
+      "text": "Workers end their report file like this:\n\n```\nPR: https://github.com/EtanHey/golems/pull/88\nDONE_W7\n```\n\nor, quoted in a collab post:\n\n> PR #88 merged\n> DONE_W7\n\nNo lane of mine closed this turn."
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "specimen": "a discussion about cleanup receipts, not a DONE report",
+  "label": "GREEN — describing the receipt rule (a DONE report with a PR URL should carry a cleanup receipt) is not itself a lane DONE; no PR was merged or handed off.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "how should the cleanup receipt work?"
+    },
+    {
+      "role": "assistant",
+      "text": "Proposal: when a worker reports DONE with a PR URL, or a lead merges a PR, the report should end with a cleanup receipt listing the worktree, the branch, files added outside src/tests, and the docs.local paths the lane created. The gate would flag a DONE report that has none."
+    }
+  ]
+}
