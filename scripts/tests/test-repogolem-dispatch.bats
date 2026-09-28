@@ -2931,6 +2931,85 @@ AGY
     [ "$(grep -F -c -- '"args":["-y","@supabase/mcp-server-supabase@0.10.0","--read-only"]' <<< "$output")" = "2" ]
 }
 
+# Each row: input args|expected args. The token flag only consumes a following
+# arg that is not itself an option, so no neighbouring flag is ever dropped.
+SUPABASE_STRIP_CASES='["--access-token","--read-only","--project-ref","demo"]|["--read-only","--project-ref","demo"]
+["--read-only","--access-token"]|["--read-only"]
+["--access-token","sbp_FAKE0000","--access-token","sbp_FAKE1111","--read-only"]|["--read-only"]
+["--access-token","--access-token","sbp_FAKE0000","--read-only"]|["--read-only"]
+["--access-token=sbp_FAKE0000","--read-only"]|["--read-only"]
+["--access-token","sbp_FAKE0000","--project-ref","demo"]|["--project-ref","demo"]'
+
+@test "tracked dispatcher source strips each supabase --access-token shape from the Codex profile" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local args expected codex_home n=0
+    while IFS='|' read -r args expected; do
+        n=$((n + 1))
+        codex_home="$TMPDIR_/codex-home-strip-$n"
+        mkdir -p "$codex_home/sessions"
+        printf '{"mcpServers":{"supabase":{"command":"npx","args":%s,"env":{"SUPABASE_ACCESS_TOKEN":"sbp_FAKE2222"}}}}\n' \
+            "$args" > "$PROJECT_DIR/.mcp.json"
+
+        run zsh -f -c '
+          export RALPH_REGISTRY_FILE="$1"
+          export CODEX_HOME="$3"
+          function _ralph_setup_mcps() { return 0; }
+          function _ralph_setup_secrets() { return 0; }
+          function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+          function _golem_setup_env() { return 0; }
+          function _golem_setup_title() { return 0; }
+          function _golem_reset_title() { return 0; }
+          '"$CODEX_STUB_SNAPSHOT"'
+          source "$2"
+          testrepoCodex -s
+        ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home"
+        [ "$status" -eq 0 ] || { echo "case $args: launch exited $status: $output"; return 1; }
+
+        run python3 -c 'import json,sys,tomllib;print(json.dumps(tomllib.load(open(sys.argv[1],"rb"))["mcp_servers"]["supabase"]["args"],separators=(",",":")))' \
+            "$codex_home/captured.toml"
+        [ "$status" -eq 0 ] || { echo "case $args: $output"; return 1; }
+        [ "$output" = "$expected" ] || { echo "case $args: got $output, want $expected"; return 1; }
+    done <<< "$SUPABASE_STRIP_CASES"
+    [ "$n" -eq 6 ]
+}
+
+@test "tracked dispatcher source strips each supabase --access-token shape from Antigravity MCP config" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    local fake_home="$TMPDIR_/home" args expected n=0
+    mkdir -p "$fake_home" "$TMPDIR_/bin"
+    cat > "$TMPDIR_/bin/agy" <<'AGY'
+#!/usr/bin/env zsh
+print -r -- "AGY_ARGS=$*"
+AGY
+    chmod +x "$TMPDIR_/bin/agy"
+
+    while IFS='|' read -r args expected; do
+        n=$((n + 1))
+        printf '{"mcpServers":{"supabase":{"command":"npx","args":%s}}}\n' "$args" > "$PROJECT_DIR/.mcp.json"
+
+        run zsh -f -c '
+          export HOME="$1"
+          export RALPH_REGISTRY_FILE="$2"
+          export PATH="$3:$PATH"
+          function _ralph_setup_mcps() { return 0; }
+          function _ralph_setup_secrets() { return 0; }
+          function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+          function _golem_setup_env() { return 0; }
+          function _golem_setup_title() { return 0; }
+          function _golem_reset_title() { return 0; }
+          source "$4"
+          testrepoGemini "Prep supabase" >/dev/null
+          jq -c ".mcpServers.supabase.args" "$5/.agents/mcp_config.json"
+          jq -c ".mcpServers.supabase.args" "$1/.gemini/config/mcp_config.json"
+        ' _ "$fake_home" "$REGISTRY_FILE" "$TMPDIR_/bin" "$SOURCE_DISPATCHER" "$PROJECT_DIR"
+        [ "$status" -eq 0 ] || { echo "case $args: exited $status: $output"; return 1; }
+        [ "$output" = "$expected"$'\n'"$expected" ] || { echo "case $args: got $output, want $expected (twice)"; return 1; }
+    done <<< "$SUPABASE_STRIP_CASES"
+    [ "$n" -eq 6 ]
+}
+
 @test "tracked dispatcher source removes the Codex MCP profile once the session exits" {
     [ -f "$SOURCE_DISPATCHER" ]
 

@@ -41,6 +41,7 @@ python3 - "$CONFIG_FILE" "$REPOS_BASE" "$MODE" "$TARGET_REPO" "$VERBOSE" <<'PY'
 import copy
 import json
 import re
+import shlex
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -141,6 +142,22 @@ for repo_path, profile_names in resolved_repo_paths.items():
 SECRET_FLAG_NAME = re.compile(r"(token|secret|password|passwd|apikey|(^|[-_])key)$", re.IGNORECASE)
 SECRET_ENV_REF = re.compile(r"\$\{[^}]*(token|secret|key|password)[^}]*\}", re.IGNORECASE)
 SECRET_VALUE_PREFIXES = ("sbp_", "sk-", "ghp_", "github_pat_", "xox")
+# Secret-bearing by structure rather than by a flag name or token prefix:
+SECRET_STRUCTURES = (
+    # an HTTP auth header or bearer credential (`-H "Authorization: Bearer ..."`)
+    re.compile(r"\bauthorization\s*:|\bbearer\s+\S", re.IGNORECASE),
+    # any other header whose name ends in a secret word (`X-Api-Key: ...`)
+    re.compile(r"^[A-Za-z0-9_-]*(token|secret|key|password|passwd)\s*:\s*\S", re.IGNORECASE),
+    # an env-style assignment (`SUPABASE_ACCESS_TOKEN=...`)
+    re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(token|secret|key|password|passwd)=", re.IGNORECASE),
+    # URL userinfo with a password (scheme, `://`, user, `:`, secret, at-sign, host)
+    re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^/\s@:]+:[^/\s@]+@"),
+    # a secret-named URL query parameter (`?api_key=...`)
+    re.compile(r"[?&][A-Za-z0-9_.-]*(token|secret|key|password|passwd)=", re.IGNORECASE),
+)
+# `sh -c "<script>"` and friends carry a whole command line in one arg; it is
+# tokenized and checked like an args list, this many levels deep.
+MAX_NESTING = 3
 
 
 def is_secret_flag(arg):
@@ -153,10 +170,19 @@ def is_secret_flag(arg):
 def is_secret_value(value):
     if "op://" in value or SECRET_ENV_REF.search(value):
         return True
+    if any(pattern.search(value) for pattern in SECRET_STRUCTURES):
+        return True
     return value.startswith(SECRET_VALUE_PREFIXES)
 
 
-def secret_arg_indexes(args):
+def split_command_line(value):
+    try:
+        return shlex.split(value)
+    except ValueError:
+        return value.split()
+
+
+def secret_arg_indexes(args, depth=0):
     flagged = []
     skip_next = False
     for index, arg in enumerate(args):
@@ -175,6 +201,10 @@ def secret_arg_indexes(args):
             candidates.append(arg.split("=", 1)[1])
         if any(is_secret_value(candidate) for candidate in candidates):
             flagged.append(index)
+            continue
+        if depth < MAX_NESTING and any(ch.isspace() for ch in arg):
+            if secret_arg_indexes(split_command_line(arg), depth + 1):
+                flagged.append(index)
     return flagged
 
 

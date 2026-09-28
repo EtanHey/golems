@@ -319,16 +319,19 @@ _golem_agy_resolve_model() {
 # MCP child as argv, which `ps` shows to every local process. Supabase reads
 # SUPABASE_ACCESS_TOKEN from its env, so both the Antigravity and the Codex
 # renderers drop `--access-token <v>` and `--access-token=<v>` from its args.
-# Prints a jq `def`; callers prefix their program with it.
+# The bare flag consumes the next arg only when that arg is not itself an option,
+# so `--access-token --read-only` keeps `--read-only`; a trailing or repeated
+# flag is dropped on its own. Prints a jq `def`; callers prefix their program with it.
 _golem_jq_strip_supabase_token_arg() {
   print -r -- 'def strip_supabase_token_arg:
+    def is_option: (type == "string") and startswith("-");
     if (.supabase? | type) == "object" and (.supabase.args? | type) == "array" then
       .supabase.args as $args
       | .supabase.args = [
           range(0; ($args | length)) as $i
           | select($args[$i] != "--access-token")
           | select((($args[$i] | type) != "string") or (($args[$i] | startswith("--access-token=")) | not))
-          | select(($i == 0) or ($args[$i - 1] != "--access-token"))
+          | select(($i == 0) or ($args[$i - 1] != "--access-token") or ($args[$i] | is_option))
           | $args[$i]
         ]
     else

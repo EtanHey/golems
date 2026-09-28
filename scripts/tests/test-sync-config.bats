@@ -110,6 +110,43 @@ expect_accepted() {
   done
 }
 
+# Each row: offending index|args. Secrets that are secret-bearing by structure
+# rather than by a known flag name or token prefix.
+# _AT_ becomes an at-sign at run time: literal URL userinfo in a tracked
+# file trips the history secret scanner and the publish boundary's email rule,
+# even with fake values.
+STRUCTURAL_CASES='0|["Authorization: Bearer FAKEVALUE0000"]
+0|["authorization:FAKEVALUE0000"]
+1|["-H", "Authorization: Bearer FAKEVALUE0000"]
+1|["--header", "Bearer FAKEVALUE0000"]
+1|["--header", "X-Api-Key: FAKEVALUE0000"]
+0|["--header=Authorization: Bearer FAKEVALUE0000"]
+0|["-H=Authorization:Bearer FAKEVALUE0000"]
+0|["SUPABASE_ACCESS_TOKEN=FAKEVALUE0000"]
+0|["openai_api_key=FAKEVALUE0000"]
+0|["Client_Secret=FAKEVALUE0000"]
+0|["DB_PASSWORD=FAKEVALUE0000"]
+0|["https://fakeuser:FAKEVALUE0000_AT_example.com/mcp"]
+1|["--url", "postgres://fakeuser:FAKEVALUE0000_AT_example.com:5432/app"]
+0|["https://example.invalid/mcp?api_key=FAKEVALUE0000"]
+1|["-c", "npx -y some-mcp@1.0.0 --access-token FAKEVALUE0000"]
+1|["-c", "exec some-mcp --api-key=FAKEVALUE0000"]
+1|["-lc", "SUPABASE_ACCESS_TOKEN=FAKEVALUE0000 exec some-mcp"]
+1|["-c", "curl -H \"Authorization: Bearer FAKEVALUE0000\" https://example.invalid"]'
+
+@test "rejects structurally secret-bearing args: headers, NAME=value, URL userinfo, sh -c strings" {
+  local index args n=0
+  while IFS='|' read -r index args; do
+    n=$((n + 1))
+    rm -f "$REPOS/demo/.mcp.json"
+    args="${args//_AT_/@}"
+    write_config "$args"
+    expect_rejected "$index" 'FAKEVALUE0000' 'fakeuser' 'Bearer' 'Authorization' 'SUPABASE_ACCESS_TOKEN' \
+      || { echo "case: $args"; return 1; }
+  done <<< "$STRUCTURAL_CASES"
+  [ "$n" -eq 18 ]
+}
+
 @test "accepts tokens carried in env" {
   write_config '["-y", "@supabase/mcp-server-supabase@0.10.0"]' \
     '{"SUPABASE_ACCESS_TOKEN": "op://fake-vault/fake-item/credential"}'
@@ -118,6 +155,13 @@ expect_accepted() {
 
 @test "accepts harmless flags such as --user-data-dir" {
   write_config '["--user-data-dir", "/x", "--monkey", "banana", "--keychain-path", "/k", "--port", "8080"]'
+  expect_accepted
+}
+
+@test "accepts harmless headers, URLs, NAME=value args and sh -c strings" {
+  # _AT_ becomes an at-sign at run time (see STRUCTURAL_CASES).
+  local args='["--header", "Accept: application/json", "https://example.invalid/mcp?page=2", "git+ssh://git_AT_example.com/repo", "STDIO", "UNIX-CONNECT:/x/brainbar.sock", "LOG_LEVEL=debug", "-c", "exec some-mcp --stdio --user-data-dir /x"]'
+  write_config "${args//_AT_/@}"
   expect_accepted
 }
 
