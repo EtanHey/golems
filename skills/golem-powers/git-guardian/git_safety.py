@@ -311,8 +311,9 @@ def _kill_matcher_reason(words: list[str], position: int, command_name: str) -> 
     return _commands_impl._kill_matcher_reason(words, position, command_name, api=globals())
 
 
-def _dangerous_non_rm_in_words(words: list[str], position: int = 0) -> str | None:
-    return _commands_impl._dangerous_non_rm_in_words(words, position, api=globals())
+_dangerous_non_rm_in_words = functools.partial(
+    _commands_impl._dangerous_non_rm_in_words, api=globals()
+)
 
 
 def _dangerous_git_reason(command: str) -> str | None:

@@ -112,6 +112,11 @@ def test_command_facade_forwards_replaceable_git_parser(monkeypatch):
     assert git_safety._dangerous_git_reason("git status") == "Dangerous command: git push --force"
 
 
+def test_nested_nice_force_push_keeps_base_recursion_headroom():
+    reason = git_safety._dangerous_git_reason("nice " * 900 + "git push --force origin main")
+    assert reason and "git push" in reason.lower()
+
+
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────
 
 def test_f8_all_three_repo_cleanup_specimens_are_allowed(tmp_path):
