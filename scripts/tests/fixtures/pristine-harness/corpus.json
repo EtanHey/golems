@@ -1,0 +1,2847 @@
+[
+  {
+    "id": "parser-000",
+    "target": "parser",
+    "input": "echo hello"
+  },
+  {
+    "id": "parser-001",
+    "target": "parser",
+    "input": "printf x > /tmp/harness.txt"
+  },
+  {
+    "id": "parser-002",
+    "target": "parser",
+    "input": "cat /tmp/harness.txt"
+  },
+  {
+    "id": "parser-003",
+    "target": "parser",
+    "input": "printf x | tee /private/tmp/harness.txt"
+  },
+  {
+    "id": "parser-004",
+    "target": "parser",
+    "input": "cat <<'EOF' > /tmp/harness.txt\nhello\nEOF"
+  },
+  {
+    "id": "parser-005",
+    "target": "parser",
+    "input": "git worktree add /repo/.worktrees/one HEAD"
+  },
+  {
+    "id": "parser-006",
+    "target": "parser",
+    "input": "git worktree add /repo.wt/one HEAD"
+  },
+  {
+    "id": "parser-007",
+    "target": "parser",
+    "input": "git -C /repo worktree add /repo/.worktrees/one HEAD"
+  },
+  {
+    "id": "parser-008",
+    "target": "parser",
+    "input": "WEAVE_ALLOW_TMP=1 printf x > /tmp/harness.txt"
+  },
+  {
+    "id": "parser-009",
+    "target": "parser",
+    "input": "WEAVE_ALLOW_WT_MIGRATION=1 git -C /repo worktree add /repo.wt/one HEAD"
+  },
+  {
+    "id": "parser-010",
+    "target": "parser",
+    "input": "rm -rf /"
+  },
+  {
+    "id": "parser-011",
+    "target": "parser",
+    "input": "rm -rf docs.local/probe"
+  },
+  {
+    "id": "parser-012",
+    "target": "parser",
+    "input": "git push --force origin master"
+  },
+  {
+    "id": "parser-013",
+    "target": "parser",
+    "input": "git reset --hard"
+  },
+  {
+    "id": "parser-014",
+    "target": "parser",
+    "input": "git clean -fd"
+  },
+  {
+    "id": "parser-015",
+    "target": "parser",
+    "input": "git commit --no-verify -m x"
+  },
+  {
+    "id": "parser-016",
+    "target": "parser",
+    "input": "pkill -f codex"
+  },
+  {
+    "id": "parser-017",
+    "target": "parser",
+    "input": "killall Finder"
+  },
+  {
+    "id": "parser-018",
+    "target": "parser",
+    "input": "echo \"$(git push --force origin master)\""
+  },
+  {
+    "id": "parser-019",
+    "target": "parser",
+    "input": "cat <<'EOF'\ngit push --force origin master\nEOF"
+  },
+  {
+    "id": "parser-020",
+    "target": "parser",
+    "input": "alias killit='rm -rf /'; killit"
+  },
+  {
+    "id": "parser-021",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias leak='tee /tmp/harness.txt'; leak"
+  },
+  {
+    "id": "parser-022",
+    "target": "parser",
+    "input": "for f in /tmp/a /repo/docs.local/b; do printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-023",
+    "target": "parser",
+    "input": "case \"$x\" in a) printf x > /tmp/a;; b) echo okay;; esac"
+  },
+  {
+    "id": "parser-024",
+    "target": "parser",
+    "input": "P=$(mktemp); printf x > \"$P\""
+  },
+  {
+    "id": "parser-025",
+    "target": "parser",
+    "input": "D=/repo/docs.local; printf x > \"$D/a\""
+  },
+  {
+    "id": "parser-026",
+    "target": "parser",
+    "input": "bash -c \"git worktree add /outside/one HEAD\""
+  },
+  {
+    "id": "parser-027",
+    "target": "parser",
+    "input": "echo \"unterminated"
+  },
+  {
+    "id": "parser-028",
+    "target": "parser",
+    "input": "case x in \"a\\\nb\") echo;; esac"
+  },
+  {
+    "id": "parser-029",
+    "target": "parser",
+    "input": "echo \"a\\\\\" b"
+  },
+  {
+    "id": "parser-030",
+    "target": "parser",
+    "input": "alias makewt='git worktree add /workspace/off HEAD'"
+  },
+  {
+    "id": "parser-031",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias leak='tee /tmp/leak </dev/null'\nf() {\n  echo \"foo\n}\nbar\"\n  leak\n}"
+  },
+  {
+    "id": "parser-032",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\n"
+  },
+  {
+    "id": "parser-033",
+    "target": "parser",
+    "input": "P=$(helper tempfile); printf x > \"$P\""
+  },
+  {
+    "id": "parser-034",
+    "target": "parser",
+    "input": "P=$(getconf DARWIN_USER_TEMP_DIR); printf x > \"$P/f\""
+  },
+  {
+    "id": "parser-035",
+    "target": "parser",
+    "input": "printf x > \"${TEMP}/f\""
+  },
+  {
+    "id": "parser-036",
+    "target": "parser",
+    "input": "git worktree list"
+  },
+  {
+    "id": "parser-037",
+    "target": "parser",
+    "input": "echo hi > /tmp/x.md && WEAVE_ALLOW_TMP=1 true"
+  },
+  {
+    "id": "parser-038",
+    "target": "parser",
+    "input": "echo hi > ./out.md # example: > /tmp/x.md"
+  },
+  {
+    "id": "parser-039",
+    "target": "parser",
+    "input": "git worktree add /workspace/off HEAD"
+  },
+  {
+    "id": "parser-040",
+    "target": "parser",
+    "input": "unalias leak"
+  },
+  {
+    "id": "parser-041",
+    "target": "parser",
+    "input": "if echo \\\nfi; then\n  unalias leak\n  leak\nfi"
+  },
+  {
+    "id": "parser-042",
+    "target": "parser",
+    "input": "echo \"$(( $(leak) + 0 ))\""
+  },
+  {
+    "id": "parser-043",
+    "target": "parser",
+    "input": "if ! false; then"
+  },
+  {
+    "id": "parser-044",
+    "target": "parser",
+    "input": "for f in /tmp/a /tmp/b; do echo hi; f=docs.local/x; printf y > \"$f/z.log\"; done"
+  },
+  {
+    "id": "parser-045",
+    "target": "parser",
+    "input": "for f in /tmp/a /tmp/b; do { echo hi; f=docs.local/x; }; printf y > \"$f/z.log\"; done"
+  },
+  {
+    "id": "parser-046",
+    "target": "parser",
+    "input": "for f in /tmp/a /tmp/b; do [ -n \"$X\" ] && f=safe.txt; printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-047",
+    "target": "parser",
+    "input": "for f in /tmp/a /tmp/b; do if [ -n \"$X\" ]; then echo hi; f=safe.txt; fi; printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-048",
+    "target": "parser",
+    "input": "for f in /tmp/a /tmp/b; do if [ -z \"$X\" ]; then echo hi; else echo ho; f=safe.txt; fi; printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-049",
+    "target": "parser",
+    "input": "for f in /tmp/a /tmp/b; do { echo hi >/dev/null; f=safe.txt; } & printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-050",
+    "target": "parser",
+    "input": "for f in /tmp/a /tmp/b; do if [ -n \"$X\" ]; then echo fi; f=safe.txt; fi; printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-051",
+    "target": "parser",
+    "input": "for f in /tmp/a; do f=safe.txt & printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-052",
+    "target": "parser",
+    "input": "for w in /tmp/wt; do false && w=.worktrees/ok; git worktree add \"$w\"; done"
+  },
+  {
+    "id": "parser-053",
+    "target": "parser",
+    "input": "for f in safe.txt; do f=/tmp/overridden; echo x | f=safe-again.txt; printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-054",
+    "target": "parser",
+    "input": "for f in safe.txt; do export f=/tmp/overridden; [ -n \"$X\" ] && f=safe-again.txt; printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-055",
+    "target": "parser",
+    "input": "eval \"cd /tmp\"; (printf x > out.txt)"
+  },
+  {
+    "id": "parser-056",
+    "target": "parser",
+    "input": "printf x > \"$UNSET\""
+  },
+  {
+    "id": "parser-057",
+    "target": "parser",
+    "input": "git worktree add /opt/private/coordination/.worktrees/lane-a -b lane/a"
+  },
+  {
+    "id": "parser-058",
+    "target": "parser",
+    "input": "git -C \"$TMPDIR/repo\" worktree add .worktrees/x"
+  },
+  {
+    "id": "parser-059",
+    "target": "parser",
+    "input": "printf x > \"$UNSET_TARGET\""
+  },
+  {
+    "id": "parser-060",
+    "target": "parser",
+    "input": "printf x | tee \"$(printf %s /tmp/t.txt)\""
+  },
+  {
+    "id": "parser-061",
+    "target": "parser",
+    "input": "printf x > ~/Documents/blprobe_$$.txt"
+  },
+  {
+    "id": "parser-062",
+    "target": "parser",
+    "input": "printf x | tee ~/Documents/t.txt"
+  },
+  {
+    "id": "parser-063",
+    "target": "parser",
+    "input": "git worktree add ../off-convention HEAD"
+  },
+  {
+    "id": "parser-064",
+    "target": "parser",
+    "input": "P=~/Documents/blprobe_$$.txt; printf x | tee \"$P\""
+  },
+  {
+    "id": "parser-065",
+    "target": "parser",
+    "input": "P=$HOME/../../private/tmp/x_$$.txt; printf x > \"$P\""
+  },
+  {
+    "id": "parser-066",
+    "target": "parser",
+    "input": "P=$(mktemp -d); printf x > \"$P/f.log\""
+  },
+  {
+    "id": "parser-067",
+    "target": "parser",
+    "input": "T=$(mktemp -d); printf x > \"$T/f.txt\""
+  },
+  {
+    "id": "parser-068",
+    "target": "parser",
+    "input": "P=$TEMPLATE_DIR/x; printf x > \"$P\""
+  },
+  {
+    "id": "parser-069",
+    "target": "parser",
+    "input": "printf x > \"/tmp$UNSET\""
+  },
+  {
+    "id": "parser-070",
+    "target": "parser",
+    "input": "echo findings | tee /tmp/findings.md"
+  },
+  {
+    "id": "parser-071",
+    "target": "parser",
+    "input": "echo hi > \"$TMPDIR/x.md\""
+  },
+  {
+    "id": "parser-072",
+    "target": "parser",
+    "input": "node extract.mjs > /tmp/learning_entry.txt"
+  },
+  {
+    "id": "parser-073",
+    "target": "parser",
+    "input": "echo hi >&/tmp/out.md"
+  },
+  {
+    "id": "parser-074",
+    "target": "parser",
+    "input": "FOO=bar WEAVE_ALLOW_TMP=1 echo hi > /tmp/x.md"
+  },
+  {
+    "id": "parser-075",
+    "target": "parser",
+    "input": "cat <<'EOF' > /tmp/real-write.md\nbody\nEOF"
+  },
+  {
+    "id": "parser-076",
+    "target": "parser",
+    "input": "X=\"$(case x in (x) tee /tmp/leak </dev/null;; esac)\""
+  },
+  {
+    "id": "parser-077",
+    "target": "parser",
+    "input": "cat <<EOF >/dev/null\n$(tee /tmp/leak </dev/null)"
+  },
+  {
+    "id": "parser-078",
+    "target": "parser",
+    "input": "X=\"$(cat <<EOF >/dev/null\n)\nEOF\ntee /tmp/leak </dev/null\n)\""
+  },
+  {
+    "id": "parser-079",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\nX=$(WEAVE_ALLOW_TMP=1 true) leak"
+  },
+  {
+    "id": "parser-080",
+    "target": "parser",
+    "input": "cat <<EOF\n EOF\ngit worktree add /workspace/off HEAD\nEOF"
+  },
+  {
+    "id": "parser-081",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\nf() { leak; }\nf"
+  },
+  {
+    "id": "parser-082",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'; alias outer='true; leak'\nouter"
+  },
+  {
+    "id": "parser-083",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias outer='f'\nf() { tee /tmp/leak </dev/null; }; outer"
+  },
+  {
+    "id": "parser-084",
+    "target": "parser",
+    "input": "alias wt='git worktree add'"
+  },
+  {
+    "id": "parser-085",
+    "target": "parser",
+    "input": "WEAVE_ALLOW_TMP=1 leak"
+  },
+  {
+    "id": "parser-086",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\necho {\nalias leak='tee /tmp/leak </dev/null'\nleak"
+  },
+  {
+    "id": "parser-087",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\n{\n  true\n}>>/dev/null\nalias leak='tee /tmp/leak </dev/null'\nleak"
+  },
+  {
+    "id": "parser-088",
+    "target": "parser",
+    "input": "if true; then :; else leakfn() { tee /tmp/leak </dev/null; }; fi; echo \"$(leakfn)\""
+  },
+  {
+    "id": "parser-089",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias leak='tee /tmp/leak </dev/null'\nif false; then unalias leak; fi\nleak"
+  },
+  {
+    "id": "parser-090",
+    "target": "parser",
+    "input": "for x in \"\"\ndo\nleakfn() { tee /tmp/leak </dev/null; }\ndone\necho \"$(leakfn)\""
+  },
+  {
+    "id": "parser-091",
+    "target": "parser",
+    "input": "case x in x) leakfn() { tee /tmp/leak </dev/null; };; esac; echo \"$(leakfn)\""
+  },
+  {
+    "id": "parser-092",
+    "target": "parser",
+    "input": "case x in x) :;; x) leakfn() { tee /tmp/leak </dev/null; };; esac; echo \"$(leakfn)\""
+  },
+  {
+    "id": "parser-093",
+    "target": "parser",
+    "input": "case x in \"*\") leakfn() { tee /tmp/leak </dev/null; };; esac; echo \"$(leakfn)\""
+  },
+  {
+    "id": "parser-094",
+    "target": "parser",
+    "input": "for x in one; do false && leakfn() { tee /tmp/leak </dev/null; }; done; echo \"$(leakfn)\""
+  },
+  {
+    "id": "parser-095",
+    "target": "parser",
+    "input": "if leakfn() { tee /tmp/leak </dev/null; }; then :; fi; echo \"$(leakfn)\""
+  },
+  {
+    "id": "parser-096",
+    "target": "parser",
+    "input": "shopt -s expand_aliases nocasematch; case X in x) f() { tee /tmp/leak </dev/null; };; esac; echo \"$(f)\""
+  },
+  {
+    "id": "parser-097",
+    "target": "parser",
+    "input": "eval 'echo hi > /tmp/leak'"
+  },
+  {
+    "id": "parser-098",
+    "target": "parser",
+    "input": "eval \"$PAYLOAD\""
+  },
+  {
+    "id": "parser-099",
+    "target": "parser",
+    "input": "X='echo hi > /tmp/leak'; export PAYLOAD=\"$X\"; eval \"$PAYLOAD\""
+  },
+  {
+    "id": "parser-100",
+    "target": "parser",
+    "input": "PAYLOAD='echo hi > /tmp/leak'; X=$PAYLOAD; eval \"$X\""
+  },
+  {
+    "id": "parser-101",
+    "target": "parser",
+    "input": "eval \"${PAYLOAD:=${X:-echo hi > /tmp/leak}}\""
+  },
+  {
+    "id": "parser-102",
+    "target": "parser",
+    "input": "PAYLOAD=$(printf 'echo hit \\x3e /tmp/leak'); eval \"$PAYLOAD\""
+  },
+  {
+    "id": "parser-103",
+    "target": "parser",
+    "input": "printf -v PAYLOAD '%b' 'echo hit \\x3e /tmp/leak'; eval \"$PAYLOAD\""
+  },
+  {
+    "id": "parser-104",
+    "target": "parser",
+    "input": "if false; then :; fi && leakfn() { tee /tmp/leak </dev/null; }; echo \"$(leakfn)\""
+  },
+  {
+    "id": "parser-105",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias leak='tee /tmp/leak </dev/null'\nbuiltin unalias leak\nleak"
+  },
+  {
+    "id": "parser-106",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias leak='tee /tmp/leak </dev/null'\nalias builtin=true\n{ \\builtin unalias leak; }\nleak"
+  },
+  {
+    "id": "parser-107",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias leak='tee /tmp/leak </dev/null'\nalias builtin=true\n$'builtin' true; builtin unalias leak; \\builtin true\nleak"
+  },
+  {
+    "id": "parser-108",
+    "target": "parser",
+    "input": "echo hi | /usr/bin/tee /tmp/findings.md"
+  },
+  {
+    "id": "parser-109",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nFOO=x if\nalias leak='tee /tmp/leak </dev/null'\nleak"
+  },
+  {
+    "id": "parser-110",
+    "target": "parser",
+    "input": "WEAVE_ALLOW_TMP=1 cat <<'EOF' > /tmp/ephemeral-probe.txt\nx\nEOF"
+  },
+  {
+    "id": "parser-111",
+    "target": "parser",
+    "input": "echo hi | sudo tee /tmp/findings.md"
+  },
+  {
+    "id": "parser-112",
+    "target": "parser",
+    "input": "echo hi > $'/tmp/out.md'"
+  },
+  {
+    "id": "parser-113",
+    "target": "parser",
+    "input": "echo hi > $TMPDIR_EXTRA/notes.md"
+  },
+  {
+    "id": "parser-114",
+    "target": "parser",
+    "input": "D=docs.local; for f in \"$D\"/a \"$D\"/b; do printf x > \"$f\"; done"
+  },
+  {
+    "id": "parser-115",
+    "target": "parser",
+    "input": "for f in a b; do printf x > \"$f\"; cd /tmp; done"
+  },
+  {
+    "id": "parser-116",
+    "target": "parser",
+    "input": "for wt in .worktrees/a .worktrees/b; do git worktree add \"$wt\"; done"
+  },
+  {
+    "id": "parser-117",
+    "target": "parser",
+    "input": "echo hi | sudo -u root tee /tmp/out.md"
+  },
+  {
+    "id": "parser-118",
+    "target": "parser",
+    "input": "git worktree add /opt/private/coordination-worktrees/lane-a"
+  },
+  {
+    "id": "parser-119",
+    "target": "parser",
+    "input": "git worktree add .worktrees/lane-b -b lane/b"
+  },
+  {
+    "id": "parser-120",
+    "target": "parser",
+    "input": "echo git worktree add "
+  },
+  {
+    "id": "parser-121",
+    "target": "parser",
+    "input": "git worktree add $(mktemp -d)/wt -b lane/a"
+  },
+  {
+    "id": "parser-122",
+    "target": "parser",
+    "input": "git worktree add '.worktrees/[ab]'"
+  },
+  {
+    "id": "parser-123",
+    "target": "parser",
+    "input": "git worktree add /tmp/wt -b x"
+  },
+  {
+    "id": "parser-124",
+    "target": "parser",
+    "input": "printf x | tee "
+  },
+  {
+    "id": "parser-125",
+    "target": "parser",
+    "input": "echo hi > /tmp/leak"
+  },
+  {
+    "id": "parser-126",
+    "target": "parser",
+    "input": "case \"$target\" in "
+  },
+  {
+    "id": "parser-127",
+    "target": "parser",
+    "input": "WEAVE_ALLOW_WT_MIGRATION=1 true && git worktree add "
+  },
+  {
+    "id": "parser-128",
+    "target": "parser",
+    "input": "printf x > /private/tmp/claude-501/x.txt"
+  },
+  {
+    "id": "parser-129",
+    "target": "parser",
+    "input": "printf x > \"docs.local/post-$UNSET.log\""
+  },
+  {
+    "id": "parser-130",
+    "target": "parser",
+    "input": "X=\"$(case x in x) true "
+  },
+  {
+    "id": "parser-131",
+    "target": "parser",
+    "input": " if true; then\n  unalias leak\n  leak\nfi"
+  },
+  {
+    "id": "parser-132",
+    "target": "parser",
+    "input": "cat > >(bash) <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "parser-133",
+    "target": "parser",
+    "input": "for d in keep sub; do cd ..; rm -rf $d; done"
+  },
+  {
+    "id": "parser-134",
+    "target": "parser",
+    "input": "eval 'rm -rf ~'"
+  },
+  {
+    "id": "parser-135",
+    "target": "parser",
+    "input": "printf 'rm -rf ~\\n' | bash"
+  },
+  {
+    "id": "parser-136",
+    "target": "parser",
+    "input": "git -c alias.x='!rm -rf ~' x"
+  },
+  {
+    "id": "parser-137",
+    "target": "parser",
+    "input": "echo \"today: $(date)\""
+  },
+  {
+    "id": "parser-138",
+    "target": "parser",
+    "input": "git -c alias.st=status st"
+  },
+  {
+    "id": "parser-139",
+    "target": "parser",
+    "input": "python3 - <<'PY'\nprint('rm -rf ~')\nPY"
+  },
+  {
+    "id": "parser-140",
+    "target": "parser",
+    "input": "git commit -m \"$(cat <<'EOF'\nfix: guard `rm -rf ~` spans\nEOF\n)\""
+  },
+  {
+    "id": "parser-141",
+    "target": "parser",
+    "input": "rm -rf \"$UNSET\""
+  },
+  {
+    "id": "parser-142",
+    "target": "parser",
+    "input": "rm -rf packages"
+  },
+  {
+    "id": "parser-143",
+    "target": "parser",
+    "input": "rm -rf docs.local/../.."
+  },
+  {
+    "id": "parser-144",
+    "target": "parser",
+    "input": "env rm -rf /"
+  },
+  {
+    "id": "parser-145",
+    "target": "parser",
+    "input": "bash -lc \"rm -rf /\""
+  },
+  {
+    "id": "parser-146",
+    "target": "parser",
+    "input": "printf '/\\n' | xargs rm -rf"
+  },
+  {
+    "id": "parser-147",
+    "target": "parser",
+    "input": "printf '/\\n' | xargs -i rm -rf /"
+  },
+  {
+    "id": "parser-148",
+    "target": "parser",
+    "input": "printf '/\\n' | xargs --eof rm -rf /"
+  },
+  {
+    "id": "parser-149",
+    "target": "parser",
+    "input": "printf '/\\n' | xargs rm -rf docs.local/safe/sub"
+  },
+  {
+    "id": "parser-150",
+    "target": "parser",
+    "input": "env --split-string='rm -rf /'"
+  },
+  {
+    "id": "parser-151",
+    "target": "parser",
+    "input": "rm --recursive --force \"/"
+  },
+  {
+    "id": "parser-152",
+    "target": "parser",
+    "input": "python3 docs.local/rm-breadth-compare.py; echo rm breadth"
+  },
+  {
+    "id": "parser-153",
+    "target": "parser",
+    "input": "echo \"the rm -rf flag is dangerous\""
+  },
+  {
+    "id": "parser-154",
+    "target": "parser",
+    "input": "time echo \"rm -rf /\""
+  },
+  {
+    "id": "parser-155",
+    "target": "parser",
+    "input": "printf 'rm -rf /\\n' | xargs echo"
+  },
+  {
+    "id": "parser-156",
+    "target": "parser",
+    "input": "cat input > report.log; bash <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "parser-157",
+    "target": "parser",
+    "input": "git push --force origin main # --force-with-lease is safer"
+  },
+  {
+    "id": "parser-158",
+    "target": "parser",
+    "input": "git clean --force -d"
+  },
+  {
+    "id": "parser-159",
+    "target": "parser",
+    "input": "env -S \"git reset --hard\""
+  },
+  {
+    "id": "parser-160",
+    "target": "parser",
+    "input": "echo \"git reset --hard is quoted evidence\""
+  },
+  {
+    "id": "parser-161",
+    "target": "parser",
+    "input": "echo \"a; git clean -f was quoted\""
+  },
+  {
+    "id": "parser-162",
+    "target": "parser",
+    "input": "echo \"unterminated git reset --hard"
+  },
+  {
+    "id": "parser-163",
+    "target": "parser",
+    "input": "cd; rm -rf docs.local/scratch"
+  },
+  {
+    "id": "parser-164",
+    "target": "parser",
+    "input": "if true; then rm -rf /; fi"
+  },
+  {
+    "id": "parser-165",
+    "target": "parser",
+    "input": "cat <<'EOF'\nrm -rf /\nEOF"
+  },
+  {
+    "id": "parser-166",
+    "target": "parser",
+    "input": "git stash"
+  },
+  {
+    "id": "parser-167",
+    "target": "parser",
+    "input": "git checkout -- ."
+  },
+  {
+    "id": "parser-168",
+    "target": "parser",
+    "input": "git restore --staged --worktree src/app.py"
+  },
+  {
+    "id": "parser-169",
+    "target": "parser",
+    "input": "git checkout -b feature/x"
+  },
+  {
+    "id": "parser-170",
+    "target": "parser",
+    "input": "git checkout -B feature main"
+  },
+  {
+    "id": "parser-171",
+    "target": "parser",
+    "input": "git restore --source HEAD~2 src/app.py"
+  },
+  {
+    "id": "parser-172",
+    "target": "parser",
+    "input": "git checkout main src/app.py"
+  },
+  {
+    "id": "parser-173",
+    "target": "parser",
+    "input": "git add ."
+  },
+  {
+    "id": "parser-174",
+    "target": "parser",
+    "input": "rm -rf $SP/mergetest"
+  },
+  {
+    "id": "parser-175",
+    "target": "parser",
+    "input": "rm -rf $SP/nested/deeper"
+  },
+  {
+    "id": "parser-176",
+    "target": "parser",
+    "input": "rm -rf $SP/"
+  },
+  {
+    "id": "parser-177",
+    "target": "parser",
+    "input": "rm -rf $(cat target)/mergetest"
+  },
+  {
+    "id": "parser-178",
+    "target": "parser",
+    "input": "rm -rf *"
+  },
+  {
+    "id": "parser-179",
+    "target": "parser",
+    "input": "gitdir: ../../.git/modules/somelib\n"
+  },
+  {
+    "id": "parser-180",
+    "target": "parser",
+    "input": "rm -rf $X/.//."
+  },
+  {
+    "id": "parser-181",
+    "target": "parser",
+    "input": "sudo pkill -f 'foo' -u 501"
+  },
+  {
+    "id": "parser-182",
+    "target": "parser",
+    "input": "pkill -f '1'"
+  },
+  {
+    "id": "parser-183",
+    "target": "parser",
+    "input": "pkill -f 'inbox.jsonl|1'"
+  },
+  {
+    "id": "parser-184",
+    "target": "parser",
+    "input": "killall -f 'bar|-m'"
+  },
+  {
+    "id": "parser-185",
+    "target": "parser",
+    "input": "killall Dock"
+  },
+  {
+    "id": "parser-186",
+    "target": "parser",
+    "input": "pkill -u 501 -f 'inbox.jsonl'"
+  },
+  {
+    "id": "parser-187",
+    "target": "parser",
+    "input": "pkill -f 'inbox.jsonl'"
+  },
+  {
+    "id": "parser-188",
+    "target": "parser",
+    "input": "echo \"never run pkill -f 'x' -P 1\""
+  },
+  {
+    "id": "parser-189",
+    "target": "parser",
+    "input": "echo 'DROP TABLE is prose' || true"
+  },
+  {
+    "id": "parser-190",
+    "target": "parser",
+    "input": "python3 - <<'PY'\nprint('DROP TABLE users; rm -rf /tmp/extract/')\nPY"
+  },
+  {
+    "id": "parser-191",
+    "target": "parser",
+    "input": "for d in $(ls); do rm -rf $d; done"
+  },
+  {
+    "id": "parser-192",
+    "target": "parser",
+    "input": "echo `rm -rf ~`"
+  },
+  {
+    "id": "parser-193",
+    "target": "parser",
+    "input": "rm -rf \"docs.local/safe/run-$(date +%s)\""
+  },
+  {
+    "id": "parser-194",
+    "target": "parser",
+    "input": "cat > >(tee '"
+  },
+  {
+    "id": "parser-195",
+    "target": "parser",
+    "input": "git commit -m 'normal commit'"
+  },
+  {
+    "id": "parser-196",
+    "target": "parser",
+    "input": "git commit --message=\"document --no-verify\""
+  },
+  {
+    "id": "parser-197",
+    "target": "parser",
+    "input": "git -c user.name=x push --no-verify origin main"
+  },
+  {
+    "id": "parser-198",
+    "target": "parser",
+    "input": "git commit -an -m x"
+  },
+  {
+    "id": "parser-199",
+    "target": "parser",
+    "input": "rm -rf $HOME"
+  },
+  {
+    "id": "parser-200",
+    "target": "parser",
+    "input": "xargs rm -rf /"
+  },
+  {
+    "id": "parser-201",
+    "target": "parser",
+    "input": "printf 'drop table x;' | sqlite3 db"
+  },
+  {
+    "id": "parser-202",
+    "target": "parser",
+    "input": "for x in 1; do echo 'DROP TABLE t;'; done | duckdb db"
+  },
+  {
+    "id": "parser-203",
+    "target": "parser",
+    "input": "echo 'DROP TABLE t;' > q.sh; bash q.sh"
+  },
+  {
+    "id": "parser-204",
+    "target": "parser",
+    "input": "bash <<'EOF'\npsql -c 'DROP TABLE users'\nEOF"
+  },
+  {
+    "id": "parser-205",
+    "target": "parser",
+    "input": "git -c alias.x='!psql -c \"DROP TABLE t\"' x"
+  },
+  {
+    "id": "parser-206",
+    "target": "parser",
+    "input": "git --config-env=core.editor=E commit -m 'DROP TABLE t'"
+  },
+  {
+    "id": "parser-207",
+    "target": "parser",
+    "input": "for d in a b; do rm -rf "
+  },
+  {
+    "id": "parser-208",
+    "target": "parser",
+    "input": "cat > r.md <<'EOF'\n"
+  },
+  {
+    "id": "parser-209",
+    "target": "parser",
+    "input": "git push"
+  },
+  {
+    "id": "tmp-block-000",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hello\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-001",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-002",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat /tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-003",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | tee /private/tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-004",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF' > /tmp/harness.txt\\nhello\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-005",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /repo/.worktrees/one HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-006",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /repo.wt/one HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-007",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C /repo worktree add /repo/.worktrees/one HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-008",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 printf x > /tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-009",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_WT_MIGRATION=1 git -C /repo worktree add /repo.wt/one HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-010",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf /\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-011",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf docs.local/probe\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-012",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force origin master\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-013",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-014",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean -fd\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-015",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit --no-verify -m x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-016",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"pkill -f codex\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-017",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"killall Finder\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-018",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(git push --force origin master)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-019",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF'\\ngit push --force origin master\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-020",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias killit='rm -rf /'; killit\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-021",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/harness.txt'; leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-022",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /repo/docs.local/b; do printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-023",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case \\\"$x\\\" in a) printf x > /tmp/a;; b) echo okay;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-024",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(mktemp); printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-025",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"D=/repo/docs.local; printf x > \\\"$D/a\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-026",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"bash -c \\\"git worktree add /outside/one HEAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-027",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"unterminated\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-028",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case x in \\\"a\\\\\\nb\\\") echo;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-029",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"a\\\\\\\\\\\" b\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-030",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias makewt='git worktree add /workspace/off HEAD'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-031",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nf() {\\n  echo \\\"foo\\n}\\nbar\\\"\\n  leak\\n}\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-032",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\\n\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-033",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(helper tempfile); printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-034",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(getconf DARWIN_USER_TEMP_DIR); printf x > \\\"$P/f\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-035",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"${TEMP}/f\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-036",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree list\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-037",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > /tmp/x.md && WEAVE_ALLOW_TMP=1 true\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-038",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > ./out.md # example: > /tmp/x.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-039",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /workspace/off HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-040",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"unalias leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-041",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if echo \\\\\\nfi; then\\n  unalias leak\\n  leak\\nfi\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-042",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(( $(leak) + 0 ))\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-043",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if ! false; then\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-044",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do echo hi; f=docs.local/x; printf y > \\\"$f/z.log\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-045",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do { echo hi; f=docs.local/x; }; printf y > \\\"$f/z.log\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-046",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do [ -n \\\"$X\\\" ] && f=safe.txt; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-047",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do if [ -n \\\"$X\\\" ]; then echo hi; f=safe.txt; fi; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-048",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do if [ -z \\\"$X\\\" ]; then echo hi; else echo ho; f=safe.txt; fi; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-049",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do { echo hi >/dev/null; f=safe.txt; } & printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-050",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do if [ -n \\\"$X\\\" ]; then echo fi; f=safe.txt; fi; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-051",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a; do f=safe.txt & printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-052",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for w in /tmp/wt; do false && w=.worktrees/ok; git worktree add \\\"$w\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-053",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in safe.txt; do f=/tmp/overridden; echo x | f=safe-again.txt; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-054",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in safe.txt; do export f=/tmp/overridden; [ -n \\\"$X\\\" ] && f=safe-again.txt; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-055",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"cd /tmp\\\"; (printf x > out.txt)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-056",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"$UNSET\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-057",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /opt/private/coordination/.worktrees/lane-a -b lane/a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-058",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C \\\"$TMPDIR/repo\\\" worktree add .worktrees/x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-059",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"$UNSET_TARGET\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-060",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | tee \\\"$(printf %s /tmp/t.txt)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-061",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > ~/Documents/blprobe_$$.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-062",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | tee ~/Documents/t.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-063",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add ../off-convention HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-064",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=~/Documents/blprobe_$$.txt; printf x | tee \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-065",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$HOME/../../private/tmp/x_$$.txt; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-066",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(mktemp -d); printf x > \\\"$P/f.log\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-067",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"T=$(mktemp -d); printf x > \\\"$T/f.txt\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-068",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$TEMPLATE_DIR/x; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-069",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"/tmp$UNSET\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-070",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo findings | tee /tmp/findings.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-071",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > \\\"$TMPDIR/x.md\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-072",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"node extract.mjs > /tmp/learning_entry.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-073",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi >&/tmp/out.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-074",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"FOO=bar WEAVE_ALLOW_TMP=1 echo hi > /tmp/x.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-075",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF' > /tmp/real-write.md\\nbody\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-076",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X=\\\"$(case x in (x) tee /tmp/leak </dev/null;; esac)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-077",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF >/dev/null\\n$(tee /tmp/leak </dev/null)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-078",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X=\\\"$(cat <<EOF >/dev/null\\n)\\nEOF\\ntee /tmp/leak </dev/null\\n)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-079",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\\nX=$(WEAVE_ALLOW_TMP=1 true) leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-080",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF\\n EOF\\ngit worktree add /workspace/off HEAD\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-081",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\\nf() { leak; }\\nf\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-082",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'; alias outer='true; leak'\\nouter\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-083",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias outer='f'\\nf() { tee /tmp/leak </dev/null; }; outer\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-084",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias wt='git worktree add'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-085",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-086",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\necho {\\nalias leak='tee /tmp/leak </dev/null'\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-087",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\n{\\n  true\\n}>>/dev/null\\nalias leak='tee /tmp/leak </dev/null'\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-088",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if true; then :; else leakfn() { tee /tmp/leak </dev/null; }; fi; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-089",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nif false; then unalias leak; fi\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-090",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for x in \\\"\\\"\\ndo\\nleakfn() { tee /tmp/leak </dev/null; }\\ndone\\necho \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-091",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case x in x) leakfn() { tee /tmp/leak </dev/null; };; esac; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-092",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case x in x) :;; x) leakfn() { tee /tmp/leak </dev/null; };; esac; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-093",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case x in \\\"*\\\") leakfn() { tee /tmp/leak </dev/null; };; esac; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-094",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for x in one; do false && leakfn() { tee /tmp/leak </dev/null; }; done; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-095",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if leakfn() { tee /tmp/leak </dev/null; }; then :; fi; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-096",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases nocasematch; case X in x) f() { tee /tmp/leak </dev/null; };; esac; echo \\\"$(f)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-097",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval 'echo hi > /tmp/leak'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-098",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"$PAYLOAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-099",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X='echo hi > /tmp/leak'; export PAYLOAD=\\\"$X\\\"; eval \\\"$PAYLOAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-100",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"PAYLOAD='echo hi > /tmp/leak'; X=$PAYLOAD; eval \\\"$X\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-101",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"${PAYLOAD:=${X:-echo hi > /tmp/leak}}\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-102",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"PAYLOAD=$(printf 'echo hit \\\\x3e /tmp/leak'); eval \\\"$PAYLOAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-103",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf -v PAYLOAD '%b' 'echo hit \\\\x3e /tmp/leak'; eval \\\"$PAYLOAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-104",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if false; then :; fi && leakfn() { tee /tmp/leak </dev/null; }; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-105",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nbuiltin unalias leak\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-106",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nalias builtin=true\\n{ \\\\builtin unalias leak; }\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-107",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nalias builtin=true\\n$'builtin' true; builtin unalias leak; \\\\builtin true\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-108",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi | /usr/bin/tee /tmp/findings.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-109",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nFOO=x if\\nalias leak='tee /tmp/leak </dev/null'\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-110",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 cat <<'EOF' > /tmp/ephemeral-probe.txt\\nx\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-111",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi | sudo tee /tmp/findings.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-112",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > $'/tmp/out.md'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-113",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > $TMPDIR_EXTRA/notes.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-114",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"D=docs.local; for f in \\\"$D\\\"/a \\\"$D\\\"/b; do printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-115",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in a b; do printf x > \\\"$f\\\"; cd /tmp; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-116",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for wt in .worktrees/a .worktrees/b; do git worktree add \\\"$wt\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-117",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi | sudo -u root tee /tmp/out.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-118",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /opt/private/coordination-worktrees/lane-a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-119",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add .worktrees/lane-b -b lane/b\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-120",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo git worktree add \"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-121",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add $(mktemp -d)/wt -b lane/a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-122",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add '.worktrees/[ab]'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-123",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /tmp/wt -b x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-124",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | tee \"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-125",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > /tmp/leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-126",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case \\\"$target\\\" in \"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-127",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_WT_MIGRATION=1 true && git worktree add \"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-128",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /private/tmp/claude-501/x.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-129",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"docs.local/post-$UNSET.log\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-130",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X=\\\"$(case x in x) true \"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-131",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\" if true; then\\n  unalias leak\\n  leak\\nfi\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-132",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat > >(bash) <<'EOF'\\nrm -rf /\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-133",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for d in keep sub; do cd ..; rm -rf $d; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-134",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval 'rm -rf ~'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-000",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hello\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-001",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-002",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat /tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-003",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | tee /private/tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-004",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF' > /tmp/harness.txt\\nhello\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-005",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /repo/.worktrees/one HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-006",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /repo.wt/one HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-007",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C /repo worktree add /repo/.worktrees/one HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-008",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 printf x > /tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-009",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_WT_MIGRATION=1 git -C /repo worktree add /repo.wt/one HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-010",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf /\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-011",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf docs.local/probe\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-012",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force origin master\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-013",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-014",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git clean -fd\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-015",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit --no-verify -m x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-016",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"pkill -f codex\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-017",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"killall Finder\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-018",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(git push --force origin master)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-019",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF'\\ngit push --force origin master\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-020",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias killit='rm -rf /'; killit\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-021",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/harness.txt'; leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-022",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /repo/docs.local/b; do printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-023",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case \\\"$x\\\" in a) printf x > /tmp/a;; b) echo okay;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-024",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(mktemp); printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-025",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"D=/repo/docs.local; printf x > \\\"$D/a\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-026",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"bash -c \\\"git worktree add /outside/one HEAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-027",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"unterminated\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-028",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case x in \\\"a\\\\\\nb\\\") echo;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-029",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"a\\\\\\\\\\\" b\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-030",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias makewt='git worktree add /workspace/off HEAD'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-031",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nf() {\\n  echo \\\"foo\\n}\\nbar\\\"\\n  leak\\n}\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-032",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\\n\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-033",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(helper tempfile); printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-034",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(getconf DARWIN_USER_TEMP_DIR); printf x > \\\"$P/f\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-035",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"${TEMP}/f\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-036",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree list\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-037",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > /tmp/x.md && WEAVE_ALLOW_TMP=1 true\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-038",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > ./out.md # example: > /tmp/x.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-039",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /workspace/off HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-040",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"unalias leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-041",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if echo \\\\\\nfi; then\\n  unalias leak\\n  leak\\nfi\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-042",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(( $(leak) + 0 ))\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-043",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if ! false; then\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-044",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do echo hi; f=docs.local/x; printf y > \\\"$f/z.log\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-045",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do { echo hi; f=docs.local/x; }; printf y > \\\"$f/z.log\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-046",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do [ -n \\\"$X\\\" ] && f=safe.txt; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-047",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do if [ -n \\\"$X\\\" ]; then echo hi; f=safe.txt; fi; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-048",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do if [ -z \\\"$X\\\" ]; then echo hi; else echo ho; f=safe.txt; fi; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-049",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do { echo hi >/dev/null; f=safe.txt; } & printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-050",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do if [ -n \\\"$X\\\" ]; then echo fi; f=safe.txt; fi; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-051",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a; do f=safe.txt & printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-052",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for w in /tmp/wt; do false && w=.worktrees/ok; git worktree add \\\"$w\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-053",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in safe.txt; do f=/tmp/overridden; echo x | f=safe-again.txt; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-054",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in safe.txt; do export f=/tmp/overridden; [ -n \\\"$X\\\" ] && f=safe-again.txt; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-055",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"cd /tmp\\\"; (printf x > out.txt)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-056",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"$UNSET\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-057",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /opt/private/coordination/.worktrees/lane-a -b lane/a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-058",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C \\\"$TMPDIR/repo\\\" worktree add .worktrees/x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-059",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"$UNSET_TARGET\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-060",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | tee \\\"$(printf %s /tmp/t.txt)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-061",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > ~/Documents/blprobe_$$.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-062",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | tee ~/Documents/t.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-063",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add ../off-convention HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-064",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=~/Documents/blprobe_$$.txt; printf x | tee \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-065",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$HOME/../../private/tmp/x_$$.txt; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-066",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(mktemp -d); printf x > \\\"$P/f.log\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-067",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"T=$(mktemp -d); printf x > \\\"$T/f.txt\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-068",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$TEMPLATE_DIR/x; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-069",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"/tmp$UNSET\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-070",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo findings | tee /tmp/findings.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-071",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > \\\"$TMPDIR/x.md\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-072",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"node extract.mjs > /tmp/learning_entry.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-073",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi >&/tmp/out.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-074",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"FOO=bar WEAVE_ALLOW_TMP=1 echo hi > /tmp/x.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-075",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF' > /tmp/real-write.md\\nbody\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-076",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X=\\\"$(case x in (x) tee /tmp/leak </dev/null;; esac)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-077",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF >/dev/null\\n$(tee /tmp/leak </dev/null)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-078",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X=\\\"$(cat <<EOF >/dev/null\\n)\\nEOF\\ntee /tmp/leak </dev/null\\n)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-079",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\\nX=$(WEAVE_ALLOW_TMP=1 true) leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-080",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF\\n EOF\\ngit worktree add /workspace/off HEAD\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-081",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'\\nf() { leak; }\\nf\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-082",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias leak='tee /tmp/leak </dev/null'; alias outer='true; leak'\\nouter\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-083",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias outer='f'\\nf() { tee /tmp/leak </dev/null; }; outer\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-084",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias wt='git worktree add'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-085",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 leak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-086",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\necho {\\nalias leak='tee /tmp/leak </dev/null'\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-087",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\n{\\n  true\\n}>>/dev/null\\nalias leak='tee /tmp/leak </dev/null'\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-088",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if true; then :; else leakfn() { tee /tmp/leak </dev/null; }; fi; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-089",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nif false; then unalias leak; fi\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-090",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for x in \\\"\\\"\\ndo\\nleakfn() { tee /tmp/leak </dev/null; }\\ndone\\necho \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-091",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case x in x) leakfn() { tee /tmp/leak </dev/null; };; esac; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-092",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case x in x) :;; x) leakfn() { tee /tmp/leak </dev/null; };; esac; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-093",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case x in \\\"*\\\") leakfn() { tee /tmp/leak </dev/null; };; esac; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-094",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for x in one; do false && leakfn() { tee /tmp/leak </dev/null; }; done; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-095",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if leakfn() { tee /tmp/leak </dev/null; }; then :; fi; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-096",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases nocasematch; case X in x) f() { tee /tmp/leak </dev/null; };; esac; echo \\\"$(f)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-097",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval 'echo hi > /tmp/leak'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-098",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"$PAYLOAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-099",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X='echo hi > /tmp/leak'; export PAYLOAD=\\\"$X\\\"; eval \\\"$PAYLOAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-100",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"PAYLOAD='echo hi > /tmp/leak'; X=$PAYLOAD; eval \\\"$X\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-101",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"${PAYLOAD:=${X:-echo hi > /tmp/leak}}\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-102",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"PAYLOAD=$(printf 'echo hit \\\\x3e /tmp/leak'); eval \\\"$PAYLOAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-103",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf -v PAYLOAD '%b' 'echo hit \\\\x3e /tmp/leak'; eval \\\"$PAYLOAD\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-104",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"if false; then :; fi && leakfn() { tee /tmp/leak </dev/null; }; echo \\\"$(leakfn)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-105",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nbuiltin unalias leak\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-106",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nalias builtin=true\\n{ \\\\builtin unalias leak; }\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-107",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias leak='tee /tmp/leak </dev/null'\\nalias builtin=true\\n$'builtin' true; builtin unalias leak; \\\\builtin true\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-108",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi | /usr/bin/tee /tmp/findings.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-109",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nFOO=x if\\nalias leak='tee /tmp/leak </dev/null'\\nleak\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-135",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/harness.txt\",\"content\":\"x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-136",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/repo/docs.local/harness.txt\",\"old_string\":\"a\",\"new_string\":\"b\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-137",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"notebook_path\":\"/var/folders/harness.ipynb\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-138",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Shell\",\"tool_input\":{\"command\":\"printf x > /tmp/harness.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-139",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"patch\":\"*** Begin Patch\\n*** Add File: /tmp/harness.txt\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-140",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"patch\":\"*** Begin Patch\\n*** Move to: /tmp/harness.txt\\n*** End Patch\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-141",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"patch\":\"*** Begin Patch\\n*** Delete File: /tmp/harness.txt\\n*** End Patch\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-142",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Unknown\",\"tool_input\":{},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-143",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /tmp/harness.txt\"},\"session_id\":\"pristine\"}",
+    "env": {
+      "WEAVE_ALLOW_TMP": "1"
+    }
+  },
+  {
+    "id": "tmp-block-144",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /outside/one HEAD\"},\"session_id\":\"pristine\"}",
+    "env": {
+      "WEAVE_ALLOW_WT_MIGRATION": "1"
+    }
+  },
+  {
+    "id": "tmp-block-145",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /tmp/harness.txt\"},\"session_id\":\"pristine\"}",
+    "env": {
+      "WEAVE_ALLOW_TMP": "1",
+      "TMP_BLOCK_LEDGER": "/dev/null/ledger"
+    }
+  },
+  {
+    "id": "tmp-block-146",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add \\\"$UNKNOWN\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-147",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/private/tmp/claude-501/scratchpad/123e4567-e89b-12d3-a456-426614174000/a.txt\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "tmp-block-148",
+    "target": "tmp-block",
+    "input": ""
+  },
+  {
+    "id": "tmp-block-149",
+    "target": "tmp-block",
+    "input": "{"
+  },
+  {
+    "id": "tmp-block-150",
+    "target": "tmp-block",
+    "input": "[]"
+  },
+  {
+    "id": "tmp-block-151",
+    "target": "tmp-block",
+    "input": "null"
+  },
+  {
+    "id": "tmp-block-152",
+    "target": "tmp-block",
+    "input": "42"
+  },
+  {
+    "id": "tmp-block-153",
+    "target": "tmp-block",
+    "input": "{\"tool_input\":{}}"
+  },
+  {
+    "id": "git-guardian-110",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/.env\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-111",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/repo/docs.local/report.md\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-112",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"/repo/.env\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-113",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo x > credentials.json\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-114",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat a > .env\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-115",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"psql -c \\\"DROP TABLE x\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-116",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git restore --worktree src/app.py\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-117",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Unknown\",\"tool_input\":{},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "git-guardian-118",
+    "target": "git-guardian",
+    "input": ""
+  },
+  {
+    "id": "git-guardian-119",
+    "target": "git-guardian",
+    "input": "{"
+  },
+  {
+    "id": "launcher-000",
+    "target": "launcher",
+    "args": [
+      "missing",
+      "codex"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-001",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "bogus"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-002",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--help"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-003",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--effort"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-004",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--effort",
+      "invalid"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-005",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--model"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-006",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--model",
+      "gpt-6-sol",
+      "--worker"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-007",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-008",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "-s",
+      "--worker"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-009",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-p",
+      "Say hello"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-010",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "resume",
+      "--last",
+      "-p",
+      "x"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-011",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "--",
+      "-E",
+      "low"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-012",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "--skip-permissions"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-013",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "--model",
+      "custom-model"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-014",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-E",
+      "high"
+    ],
+    "profile": true
+  },
+  {
+    "id": "launcher-015",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-E",
+      "ultra"
+    ],
+    "profile": true
+  },
+  {
+    "id": "launcher-016",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-E",
+      "low"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-017",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-E",
+      "medium"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-018",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-E",
+      "xhigh"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-019",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-E",
+      "max"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-020",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "hello"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-021",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "--continue",
+      "-p",
+      "x"
+    ],
+    "profile": false
+  },
+  {
+    "id": "launcher-022",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "--worker"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-023",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "--worker",
+      "-p",
+      "Say hello"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-024",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "claude",
+      "--worker",
+      "-m",
+      "opus"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-025",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "--worker"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-026",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "--worker",
+      "-p",
+      "Say hello"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-027",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "-m",
+      "cursor-model"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-028",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-029",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-p",
+      "Say hello"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-030",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-c"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-031",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "run"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-032",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "run"
+    ],
+    "package": true
+  },
+  {
+    "id": "launcher-033",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-w",
+      "{WORKTREE}"
+    ],
+    "package": false
+  },
+  {
+    "id": "launcher-034",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "-c"
+    ],
+    "sessions": true
+  },
+  {
+    "id": "launcher-035",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "resume",
+      "019fec96-588d-7000-8000-000000000000"
+    ],
+    "sessions": true
+  },
+  {
+    "id": "launcher-036",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "codex",
+      "--worker",
+      "resume",
+      "--last"
+    ],
+    "sessions": true
+  }
+]
