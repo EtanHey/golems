@@ -118,6 +118,27 @@ def normalized(value, sandbox, root):
     return value
 
 
+def first_difference(actual, expected, path="result"):
+    """Name the first mismatched field without dumping a full golden to CI logs."""
+    if type(actual) is not type(expected):
+        return f"{path}: type {type(actual).__name__} != {type(expected).__name__}"
+    if isinstance(actual, dict):
+        for key in sorted(actual.keys() | expected.keys()):
+            if key not in actual or key not in expected:
+                return f"{path}.{key}: missing from one side"
+            difference = first_difference(actual[key], expected[key], f"{path}.{key}")
+            if difference: return difference
+    elif isinstance(actual, list):
+        if len(actual) != len(expected):
+            return f"{path}: length {len(actual)} != {len(expected)}"
+        for index, (left, right) in enumerate(zip(actual, expected)):
+            difference = first_difference(left, right, f"{path}[{index}]")
+            if difference: return difference
+    elif actual != expected:
+        return f"{path}: actual={actual!r:.300} expected={expected!r:.300}"
+    return None
+
+
 def capture(root, case):
     with tempfile.TemporaryDirectory(prefix=".process-stream-contract-", dir=ROOT / "scripts/tests") as tmp:
         sandbox = Path(tmp).resolve()
@@ -204,7 +225,8 @@ def main():
             path.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
         else:
             expected = json.loads(path.read_text())
-            assert actual == expected, f"{case} differs from untouched-base golden {path}"
+            assert actual == expected, (f"{case} differs from untouched-base golden {path}: "
+                                        f"{first_difference(actual, expected)}")
         print(f"PASS {case}: {len(actual)} step(s)")
 
 
