@@ -40,7 +40,7 @@ function debugLog(msg: string): void {
   } catch { /* never fail on debug */ }
 }
 
-// ─── Transcript Parsing (matches cc-usage.ts format) ────────────
+// ─── Transcript Parsing ──────────────────────────────────────────
 
 export interface SessionStats {
   inputTokens: number;
