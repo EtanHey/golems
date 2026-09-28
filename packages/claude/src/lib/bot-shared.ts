@@ -82,13 +82,12 @@ export async function notify(title: string, message: string) {
 
 export async function getDailyStats(): Promise<{
   emailStats: string;
-  jobStats: string;
 }> {
   try {
     const supabase = getSupabase();
-    if (!supabase) return { emailStats: "", jobStats: "" };
+    if (!supabase) return { emailStats: "" };
     const today = new Date().toISOString().slice(0, 10);
-    const [emailsToday, urgentEmails, jobsToday] = await Promise.all([
+    const [emailsToday, urgentEmails] = await Promise.all([
       supabase
         .from("emails")
         .select("id", { count: "exact", head: true })
@@ -98,17 +97,12 @@ export async function getDailyStats(): Promise<{
         .select("id", { count: "exact", head: true })
         .gte("score", 8)
         .eq("notified", false),
-      supabase
-        .from("golem_jobs")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", today),
     ]);
     return {
       emailStats: `\nEmails today: ${emailsToday.count || 0}${(urgentEmails.count || 0) > 0 ? ` (${urgentEmails.count} urgent!)` : ""}`,
-      jobStats: `\nJobs today: ${jobsToday.count || 0}`,
     };
   } catch {
-    return { emailStats: "", jobStats: "" };
+    return { emailStats: "" };
   }
 }
 

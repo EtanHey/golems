@@ -26,7 +26,6 @@
   },
   "dependencies": {
     "@golems/coach": "workspace:*",
-    "@golems/jobs": "workspace:*",
     "@golems/recruiter": "workspace:*",
     "@golems/services": "workspace:*",
     "@golems/shared": "workspace:*",

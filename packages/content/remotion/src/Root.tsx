@@ -63,7 +63,6 @@ const archDiagramDefaults: ArchDiagramProps = {
   brand: defaultDark,
   nodes: [
     { id: "claude", label: "ClaudeGolem", icon: "🤖", x: 960, y: 200, variant: "primary", entranceDelay: 5 },
-    { id: "jobs", label: "JobGolem", icon: "💼", x: 500, y: 400, variant: "secondary", entranceDelay: 12 },
     { id: "recruiter", label: "RecruiterGolem", icon: "🎯", x: 960, y: 400, variant: "secondary", entranceDelay: 16 },
     { id: "content", label: "ContentGolem", icon: "✍️", x: 1420, y: 400, variant: "secondary", entranceDelay: 20 },
     { id: "shared", label: "@golems/shared", icon: "📦", x: 960, y: 600, variant: "accent", entranceDelay: 25 },
@@ -71,10 +70,8 @@ const archDiagramDefaults: ArchDiagramProps = {
     { id: "railway", label: "Railway", icon: "🚂", x: 1320, y: 700, variant: "muted", entranceDelay: 30 },
   ],
   edges: [
-    { from: "claude", to: "jobs", label: "commands", showDataFlow: true },
     { from: "claude", to: "recruiter", showDataFlow: true },
     { from: "claude", to: "content", label: "commands", showDataFlow: true },
-    { from: "jobs", to: "shared" },
     { from: "recruiter", to: "shared" },
     { from: "content", to: "shared" },
     { from: "shared", to: "supabase", label: "data" },

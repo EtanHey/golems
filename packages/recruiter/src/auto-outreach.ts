@@ -2,7 +2,7 @@
  * Auto-Outreach Integration (E6)
  *
  * Automatically triggers outreach pipeline for high-scoring jobs (8+).
- * Called by JobGolem after scoring.
+ * Accepts high-scoring job matches from callers.
  *
  * Flow:
  * 1. Research company (GitHub, job posting data)
@@ -23,7 +23,7 @@ import {
   type MessageType,
 } from "./outreach-db";
 
-/** A high-scoring job match from JobGolem */
+/** A high-scoring job match */
 export interface JobMatch {
   id: string;
   title: string;

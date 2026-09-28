@@ -16,7 +16,6 @@
 | ClaudeGolem | Orchestrator | `@golems/claude` |
 
 **Service layers** (not golems):
-- `@golems/jobs` — Background job scraping, feeds RecruiterGolem
 - `@golems/shared` — Supabase, LLM, email, state, notifications
 - `@golems/services` — Night Shift, Briefing, Cloud Worker, Wizard, Doctor
 - `@golems/content` — Content creation skills (LinkedIn, ghostwriting)
@@ -57,7 +56,7 @@ Setup: `/setup alerts` in the Alerts topic. General works automatically.
 | Environment | Components | Why |
 |-------------|-----------|-----|
 | Mac (launchd) | Telegram bot, Night Shift, Briefing, BrainLayer | Needs local Claude CLI, file access |
-| Local/successor scheduler | Email poller, Job scraper, Cloud LLM | Scheduled tasks; Railway service deleted 2026-07-05 |
+| Local/successor scheduler | Email poller, Cloud LLM | Scheduled tasks; Railway service deleted 2026-07-05 |
 | Supabase | Database, auth, storage | Shared state |
 
 ### Env Var Strategy
@@ -94,13 +93,12 @@ Setup: `/setup alerts` in the Alerts topic. General works automatically.
 ### ClaudeGolem registers Composers
 ```
 telegram-bot.ts → bot.use(claudeComposer)
-                → bot.use(jobComposer)      // from @golems/jobs
                 → bot.use(recruiterComposer) // from @golems/recruiter
 ```
 
 ### CoachGolem reads status
 ```
-coach/index.ts → getStatus() from jobs, recruiter, teller (read-only)
+coach/index.ts → getStatus() from recruiter, teller (read-only)
 ```
 
 ### Services briefing imports from Coach
@@ -108,10 +106,9 @@ coach/index.ts → getStatus() from jobs, recruiter, teller (read-only)
 services/briefing.ts → getDailyPlan() from @golems/coach
 ```
 
-### Cloud Worker runs Jobs + Email
+### Cloud Worker runs Email
 ```
-services/cloud-worker.ts → runJobSearch() from @golems/jobs
-                         → runEmailPoller() from @golems/shared
+services/cloud-worker.ts → processEmails() from @golems/shared
 ```
 
 ---

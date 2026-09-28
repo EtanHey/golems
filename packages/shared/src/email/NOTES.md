@@ -170,7 +170,7 @@ interface SubscriptionInfo {
    - Consider: make configurable via JSON file?
 
 2. **Hebrew Email Support**
-   - Not implemented (job-golem has bilingual support)
+   - Not implemented
    - Question: Does user receive Hebrew job emails?
    - If needed, add Hebrew keywords to prompt
 

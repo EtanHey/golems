@@ -41,7 +41,7 @@ untracked folders.
 
 ## Packages
 
-There are 12 workspace packages under `packages/`:
+There are 11 workspace packages under `packages/`:
 
 | Package | What it is |
 |---|---|
@@ -51,7 +51,6 @@ There are 12 workspace packages under `packages/`:
 | `golem-skills` | The CLI, published as `golems-cli`: installs and lists skills, checks setup |
 | `golems-tui` | Terminal dashboard built on React Ink |
 | `green-invoice-mcp` | MCP server for Green Invoice, an Israeli invoicing service |
-| `jobs` | Job-board scraping, matching, and application tracking |
 | `mock-mcp` | Mock MCP server for testing agent skills |
 | `recruiter` | Outreach drafting, interview practice, Elo-rated skill tracking |
 | `services` | Morning briefing, scheduler worker, `doctor` health checks |

@@ -1,7 +1,7 @@
 /**
  * PR-10b (lead ruling 2026-09-25): the dead Ollama paths go, the live one stays.
  * Direct Ollama is still the default backend, because it is what the email
- * scorer, job matcher, teller and content router run on today (Homebrew Ollama
+ * scorer, teller and content router run on today (Homebrew Ollama
  * on the Mac). Switching the default is Etan's question gL2, not this PR.
  */
 
@@ -62,7 +62,6 @@ describe("LLM default backend after the Ollama cleanup", () => {
     const root = join(import.meta.dir, "..", "..", "..");
     const callers = {
       "shared/src/email/scorer.ts": /from "\.\.\/lib\/llm"/,
-      "jobs/src/matcher.ts": /from "@golems\/shared\/lib\/llm"/,
       "teller/src/alerts.ts": /from "@golems\/shared\/lib\/llm"/,
       "teller/src/categorizer.ts": /from "@golems\/shared\/lib\/llm"/,
       "content/src/pipeline/router.ts": /from "@golems\/shared\/lib\/llm"/,

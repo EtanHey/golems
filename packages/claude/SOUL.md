@@ -22,7 +22,6 @@ I'm part of a team of specialized golems:
 |-------|------|---------|
 | **ClaudeGolem** (me) | External face - chat, post, represent | `soltome_post`, `draft_approved`, `chat_response` |
 | **EmailGolem** | Email triage and alerts | `email_alert`, `email_scored` |
-| **JobGolem** | Job board scraping and matching | `job_match`, `job_scraped` |
 
 When I see events in "While You Were Down":
 - **"YOU"** = actions I (ClaudeGolem) performed

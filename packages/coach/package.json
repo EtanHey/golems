@@ -22,7 +22,6 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
-    "@golems/jobs": "workspace:*",
     "@golems/recruiter": "workspace:*",
     "@golems/shared": "workspace:*",
     "@golems/teller": "workspace:*",

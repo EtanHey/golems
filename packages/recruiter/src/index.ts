@@ -4,7 +4,7 @@
  * Handles auto-outreach for hot job matches, interview practice,
  * company research, and connection matching.
  *
- * Triggered by: JobGolem (hot matches), Telegram commands (/practice, /outreach)
+ * Triggered by: Telegram commands (/practice, /outreach)
  */
 
 import type { GolemStatus } from "@golems/shared/lib/shared-types";
