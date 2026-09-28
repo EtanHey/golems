@@ -12,7 +12,8 @@
       "type": "object",
       "properties": {
         "mcps": { "type": "object" },
-        "env": { "$ref": "#/definitions/envMap" }
+        "env": { "$ref": "#/definitions/envMap" },
+        "prelaunch": { "$ref": "#/definitions/prelaunch" }
       }
     },
     "mcpDefinitions": {
@@ -61,6 +62,11 @@
       "additionalProperties": { "type": "string" }
     },
     "stringList": { "type": "array", "items": { "type": "string" } },
+    "prelaunch": {
+      "description": "Shell commands golem-dispatch runs, in order, in the shell that then starts the agent CLI (e.g. ulimit, export). User-owned like a shell rc file; op:// refs are refused.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
     "mcpList": { "type": "array", "items": { "$ref": "#/definitions/mcpName" } },
     "cliList": { "type": "array", "items": { "$ref": "#/definitions/word" } },
     "projectFields": {
@@ -107,7 +113,12 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "global": { "type": "object" },
+            "global": {
+              "type": "object",
+              "properties": {
+                "prelaunch": { "anyOf": [{ "type": "null" }, { "$ref": "#/definitions/prelaunch" }] }
+              }
+            },
             "mcpDefinitions": { "type": "object" },
             "projects": {
               "type": "object",

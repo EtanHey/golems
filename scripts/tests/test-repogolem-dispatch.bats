@@ -3,7 +3,9 @@
 # Run with: bats scripts/tests/test-repogolem-dispatch.bats
 
 setup() {
-    unset REPOGOLEM_ALLOW_MODEL
+    # The suite assumes a lead environment; a worker seat running it must not
+    # leak its own role or effort into the launches under test.
+    unset REPOGOLEM_ALLOW_MODEL GOLEM_ROLE GOLEM_EFFORT
     # Exported so CODEX_STUB_SNAPSHOT can source it: the stub runs inside
     # `zsh -f -c`, which inherits the environment but no rc files.
     export PORTABLE_STAT_LIB="$BATS_TEST_DIRNAME/../lib/portable-stat.sh"
@@ -3513,4 +3515,230 @@ run_worker_role_launch() {
     run_worker_role_launch "" testrepoClaude --worker -s -E medium
     [ "$status" -eq 0 ]
     grep -F -q -- "--effort medium" <<< "$output"
+}
+
+# ── prelaunch: user-owned commands from the repoGolem config ──────
+#
+# registry.json's global.prelaunch (generated from the user's own 0600 config)
+# runs in the shell that then starts the agent, so exports and ulimit changes
+# reach the agent process, and never the caller's interactive shell.
+#
+# The agent stubs here are real executables on PATH, not shell functions: the
+# point is what a separate agent process inherits, and who its parent is.
+# $1 is the prelaunch JSON list, or ABSENT for a registry with no such key.
+run_prelaunch_launch() {
+    local prelaunch="$1"; shift
+    local registry="$TMPDIR_/registry-prelaunch.json" bin="$TMPDIR_/prelaunch-bin" name
+    if [ "$prelaunch" = ABSENT ]; then
+        cp "$REGISTRY_FILE" "$registry"
+    else
+        jq --argjson prelaunch "$prelaunch" '.global.prelaunch = $prelaunch' "$REGISTRY_FILE" > "$registry"
+    fi
+    mkdir -p "$bin" "$TMPDIR_/home"
+    for name in claude codex cursor agy; do
+        cat > "$bin/$name" <<'STUB'
+#!/bin/sh
+echo "AGENT=${0##*/} PROBE=${PRELAUNCH_PROBE-unset} NOFILE=$(ulimit -n)"
+echo "AGENT_PPID=$PPID"
+[ -n "$STUB_SIGNAL" ] && kill -s "$STUB_SIGNAL" $$
+exit "${STUB_EXIT:-0}"
+STUB
+        chmod +x "$bin/$name"
+    done
+    run zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1" PATH="$3:$PATH" HOME="$4"
+      unset PRELAUNCH_PROBE
+      ulimit -Sn 256
+      source "$2"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _golem_setup_env() { return 0; }
+      function _golem_sync_agy_workspace() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      print -r -- "LAUNCHER_PID=$$"
+      shift 4
+      "$@"
+      print -r -- "RC=$?"
+      print -r -- "AFTER_PROBE=${PRELAUNCH_PROBE-unset} AFTER_NOFILE=$(ulimit -Sn)"
+    ' _ "$registry" "$SOURCE_DISPATCHER" "$bin" "$TMPDIR_/home" "$@"
+}
+
+PRELAUNCH_LAUNCHERS=(testrepoClaude testrepoCodex testrepoCursor testrepoGemini)
+
+@test "prelaunch commands run in order and their exports and ulimit reach the agent process" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    # shellcheck disable=SC2016 # expanded by the dispatcher, not here
+    local prelaunch='["export PRELAUNCH_PROBE=first", "export PRELAUNCH_PROBE=\"$PRELAUNCH_PROBE-second\"", "ulimit -Sn 512"]'
+    for launcher in "${PRELAUNCH_LAUNCHERS[@]}"; do
+        run_prelaunch_launch "$prelaunch" "$launcher" -s
+        [ "$status" -eq 0 ] || { echo "$launcher: $output" >&2; return 1; }
+        grep -E -q -- "^AGENT=[a-z]+ PROBE=first-second NOFILE=512$" <<< "$output" \
+          || { echo "$launcher: $output" >&2; return 1; }
+        grep -F -x -q -- "RC=0" <<< "$output"
+    done
+}
+
+@test "prelaunch effects never leak into the caller's shell" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    for launcher in "${PRELAUNCH_LAUNCHERS[@]}"; do
+        run_prelaunch_launch '["export PRELAUNCH_PROBE=leaked", "ulimit -Sn 512"]' "$launcher" -s
+        [ "$status" -eq 0 ]
+        grep -F -q -- "PROBE=leaked NOFILE=512" <<< "$output"
+        grep -F -x -q -- "AFTER_PROBE=unset AFTER_NOFILE=256" <<< "$output" \
+          || { echo "$launcher: $output" >&2; return 1; }
+    done
+}
+
+@test "a failing prelaunch command warns by index, never by text, and the launch continues" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    # A failed test, a command-not-found, a syntax error, and a command that
+    # names itself on stderr: none of their text may reach the output.
+    local prelaunch='["test PRELAUNCH_TEXT_MARKER = never", "PRELAUNCH_MISSING_MARKER", "if PRELAUNCH_SYNTAX_MARKER then", "echo PRELAUNCH_STDERR_MARKER >&2; false", "export PRELAUNCH_PROBE=after-failures"]'
+    local index
+    for launcher in "${PRELAUNCH_LAUNCHERS[@]}"; do
+        run_prelaunch_launch "$prelaunch" "$launcher" -s
+        [ "$status" -eq 0 ]
+        for index in 1 2 3 4; do
+            grep -F -q -- "repoGolem: prelaunch command $index failed" <<< "$output" \
+              || { echo "$launcher [$index]: $output" >&2; return 1; }
+        done
+        grep -F -q -- "repoGolem: prelaunch command 2 failed (exit 127)" <<< "$output"
+        refute_contains "prelaunch command 5" "$output" "command 5 succeeded"
+        refute_contains "_MARKER" "$output" "a failed prelaunch command must never print its text"
+        grep -F -q -- "PROBE=after-failures" <<< "$output" \
+          || { echo "$launcher: $output" >&2; return 1; }
+        grep -F -x -q -- "RC=0" <<< "$output"
+    done
+}
+
+@test "return in a prelaunch command is contained: it warns and the launch continues" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    for launcher in "${PRELAUNCH_LAUNCHERS[@]}"; do
+        run_prelaunch_launch '["return 7", "return 0", "export PRELAUNCH_PROBE=after-return"]' "$launcher" -s
+        [ "$status" -eq 0 ]
+        grep -F -q -- "repoGolem: prelaunch command 1 failed (exit 7)" <<< "$output" \
+          || { echo "$launcher: $output" >&2; return 1; }
+        refute_contains "prelaunch command 2" "$output" "return 0 is a success"
+        grep -F -q -- "PROBE=after-return" <<< "$output" \
+          || { echo "$launcher: $output" >&2; return 1; }
+        grep -F -x -q -- "RC=0" <<< "$output"
+    done
+}
+
+# exit cannot be contained without running the commands in a further subshell,
+# which would drop their effects before the agent starts. It is unsupported;
+# what it must do is say so, by index, and pass its status back.
+@test "exit in a prelaunch command is unsupported but says so by index" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    for launcher in "${PRELAUNCH_LAUNCHERS[@]}"; do
+        run_prelaunch_launch '["true", "exit 3 # PRELAUNCH_EXIT_MARKER"]' "$launcher" -s
+        [ "$status" -eq 0 ]
+        grep -F -q -- "repoGolem: prelaunch command 2 called exit; the agent was not launched" <<< "$output" \
+          || { echo "$launcher: $output" >&2; return 1; }
+        refute_contains "AGENT=" "$output" "the agent must not have started"
+        refute_contains "PRELAUNCH_EXIT_MARKER" "$output" "the warning must not echo the command"
+        grep -F -x -q -- "RC=3" <<< "$output"
+    done
+}
+
+@test "an absent or empty prelaunch calls the agent directly, with no extra frame and no prelaunch jq" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local registry="$TMPDIR_/registry-frames.json" prelaunch launcher stub
+    for prelaunch in ABSENT '[]'; do
+        if [ "$prelaunch" = ABSENT ]; then
+            cp "$REGISTRY_FILE" "$registry"
+        else
+            jq --argjson p "$prelaunch" '.global.prelaunch = $p' "$REGISTRY_FILE" > "$registry"
+        fi
+        for launcher in "${PRELAUNCH_LAUNCHERS[@]}"; do
+            case "$launcher" in
+                testrepoClaude) stub=claude ;; testrepoCodex) stub=codex ;;
+                testrepoCursor) stub=cursor ;; testrepoGemini) stub=agy ;;
+            esac
+            run zsh -f -c '
+              export RALPH_REGISTRY_FILE="$1" HOME="$3"
+              function jq() { [[ "$*" == *prelaunch* ]] && print -u2 -r -- "PRELAUNCH_JQ_RAN"; command jq "$@"; }
+              source "$2"
+              function _ralph_setup_mcps() { return 0; }
+              function _ralph_setup_secrets() { return 0; }
+              function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+              function _golem_setup_env() { return 0; }
+              function _golem_sync_agy_workspace() { return 0; }
+              function _golem_setup_title() { return 0; }
+              function _golem_reset_title() { return 0; }
+              function claude() { print -r -- "FRAMES=${(j:,:)funcstack}"; }
+              function codex() { print -r -- "FRAMES=${(j:,:)funcstack}"; }
+              function cursor() { print -r -- "FRAMES=${(j:,:)funcstack}"; }
+              function agy() { print -r -- "FRAMES=${(j:,:)funcstack}"; }
+              "$4" -s
+            ' _ "$registry" "$SOURCE_DISPATCHER" "$TMPDIR_/home" "$launcher"
+            [ "$status" -eq 0 ] || { echo "$launcher [$prelaunch] status=$status: $output" >&2; return 1; }
+            # Exactly the frames #364 produced: the stub, its launcher, dispatch, the wrapper.
+            grep -E -x -q -- "FRAMES=${stub},_golem_launch_[a-z]+,_golem_dispatch,${launcher}" <<< "$output" \
+              || { echo "$launcher [$prelaunch]: $output" >&2; return 1; }
+            if [ "$prelaunch" = ABSENT ]; then
+                refute_contains "PRELAUNCH_JQ_RAN" "$output" "no prelaunch key must mean no prelaunch jq"
+            fi
+        done
+    done
+}
+
+@test "an absent or empty prelaunch launches exactly as before: no subshell, no output" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local registry="$TMPDIR_/registry-prelaunch-shape.json" prelaunch
+    # A shell-function agent reports $ZSH_SUBSHELL: 0 means the launcher called
+    # it directly, exactly as before this change.
+    for prelaunch in ABSENT '[]' '["true"]'; do
+        if [ "$prelaunch" = ABSENT ]; then
+            cp "$REGISTRY_FILE" "$registry"
+        else
+            jq --argjson p "$prelaunch" '.global.prelaunch = $p' "$REGISTRY_FILE" > "$registry"
+        fi
+        run zsh -f -c '
+          export RALPH_REGISTRY_FILE="$1"
+          source "$2"
+          function _ralph_setup_mcps() { return 0; }
+          function _ralph_setup_secrets() { return 0; }
+          function _golem_setup_env() { return 0; }
+          function _golem_setup_title() { return 0; }
+          function _golem_reset_title() { return 0; }
+          function claude() { print -r -- "SUBSHELL=$ZSH_SUBSHELL ARGS=$*"; }
+          testrepoClaude -s
+        ' _ "$registry" "$SOURCE_DISPATCHER"
+        [ "$status" -eq 0 ]
+        case "$prelaunch" in
+            '["true"]') grep -F -q -- "SUBSHELL=1 ARGS=" <<< "$output" ;;
+            *) [ "$output" = "SUBSHELL=0 ARGS=--dangerously-skip-permissions --effort high --model claude-opus-5-5[1m] --no-chrome" ] \
+                 || { echo "[$prelaunch]: $output" >&2; return 1; } ;;
+        esac
+    done
+}
+
+@test "with prelaunch the agent keeps its parent, exit status and signal status" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher prelaunch launcher_pid
+    for launcher in "${PRELAUNCH_LAUNCHERS[@]}"; do
+        for prelaunch in ABSENT '["export PRELAUNCH_PROBE=set"]'; do
+            # The agent is exec'd, so its parent is the launching shell itself:
+            # no extra process sits between them to catch or reorder signals.
+            run_prelaunch_launch "$prelaunch" "$launcher" -s
+            launcher_pid="$(sed -n 's/^LAUNCHER_PID=//p' <<< "$output")"
+            grep -F -x -q -- "AGENT_PPID=$launcher_pid" <<< "$output" \
+              || { echo "$launcher [$prelaunch]: $output" >&2; return 1; }
+
+            STUB_EXIT=7 run_prelaunch_launch "$prelaunch" "$launcher" -s
+            grep -F -x -q -- "RC=7" <<< "$output" \
+              || { echo "$launcher [$prelaunch] exit: $output" >&2; return 1; }
+
+            STUB_SIGNAL=TERM run_prelaunch_launch "$prelaunch" "$launcher" -s
+            grep -F -x -q -- "RC=143" <<< "$output" \
+              || { echo "$launcher [$prelaunch] TERM: $output" >&2; return 1; }
+        done
+    done
 }

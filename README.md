@@ -154,6 +154,22 @@ directory inside a git work tree, a symlink, or one owned by another user;
 value, only counts and key paths. If you need values never to touch disk, do
 not use `secrets:`. Read them with `op read` at launch instead.
 
+**Prelaunch commands.** `global.prelaunch` is an optional list of shell
+commands, for example a `ulimit` or an `export`, that `golem-dispatch.zsh` runs
+in order right before it starts any agent CLI. A machine can replace the list
+under `machines.<LocalHostName>.overrides.global.prelaunch`, or drop it with
+`null`. The commands run in a subshell that then execs the agent, so their
+effects reach the agent process but never your interactive shell. A command
+that fails, or runs `return N`, prints a warning with its index (never its
+text, since its own stderr is discarded) and the launch goes ahead. Set
+variables with `export`: each command runs in its own function, so `typeset`
+and `local` stay inside it. `exit` is not supported: it ends the launch, with a
+warning naming the command's index. With no list, launches behave exactly as
+before. The config is yours and `0600`, so
+these commands carry the same trust as your shell rc file: anything you put
+there runs at every launch. Prelaunch is not a secrets channel, and `generate`
+refuses any command that contains an `op://` ref.
+
 ## Contributing
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): workflow, commit format, test layout
