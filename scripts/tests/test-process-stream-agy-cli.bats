@@ -758,6 +758,237 @@ SH
     grep -F -q "$(basename "$stream_dir")" "$telegram_capture"
 }
 
+# issue #323: a slow scorer that owns a grandchild, so a reap has to walk the
+# whole worker tree (worker shell -> agy -> sleep), not just the worker shell.
+install_slow_tree_agy() {
+    cat > "$FAKE_BIN/agy" <<'SH'
+#!/bin/bash
+sleep 30 &
+child=$!
+printf '%s %s %s\n' "$PPID" "$$" "$child" > "$SLOW_AGY_PID_DIR/agy-$$"
+wait "$child"
+SH
+
+    cat > "$FAKE_BIN/codex" <<'SH'
+#!/bin/bash
+exit 1
+SH
+    chmod +x "$FAKE_BIN/agy" "$FAKE_BIN/codex"
+}
+
+# The Codex seatbelt sandbox denies the process table: /bin/ps exits 126 with
+# "Operation not permitted". A reap that needs ps to find descendants finds none.
+install_denied_ps() {
+    cat > "$FAKE_BIN/ps" <<'SH'
+#!/bin/bash
+printf 'sh: /bin/ps: Operation not permitted\n' >&2
+exit 126
+SH
+    chmod +x "$FAKE_BIN/ps"
+}
+
+# Send $1 to process-stream while two parallel scorers are in flight; sets
+# signal_status and surviving_pids (worker/agy/grandchild PIDs still alive).
+# Pass "deny-ps" as $3 to run with the process table hidden.
+interrupt_parallel_scoring() {
+    local signal="$1"
+    local stream_dir="$2"
+    local ps_mode="${3:-real-ps}"
+    local pid_dir="$TMPDIR_/slow-agy-pids-$signal"
+    local pid_file pid process_pid
+
+    mkdir -p "$pid_dir"
+    install_slow_tree_agy
+    [ "$ps_mode" = "deny-ps" ] && install_denied_ps
+    # A background job in a non-interactive shell starts with SIGINT ignored,
+    # and bash cannot trap a signal ignored on entry; restore the default so
+    # INT reaches the entry trap the way a terminal Ctrl-C would.
+    perl -e '$SIG{INT} = "DEFAULT"; exec @ARGV or die $!' \
+        env -i \
+        PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        HOME="$TMPDIR_/home" \
+        SLOW_AGY_PID_DIR="$pid_dir" \
+        STALKER_SCORE_PARALLEL=2 \
+        STALKER_TELEGRAM_NOTIFY=0 \
+        STREAM_WHATSAPP_NOTIFY=0 \
+        "$PROCESS_STREAM" "$stream_dir/video.mp4" \
+        > "$TMPDIR_/interrupt-$signal.stdout" 2> "$TMPDIR_/interrupt-$signal.stderr" &
+    process_pid=$!
+
+    for _ in {1..250}; do
+        [ "$(find "$pid_dir" -name 'agy-*' | wc -l | tr -d ' ')" -ge 2 ] && break
+        sleep 0.02
+    done
+    [ "$(find "$pid_dir" -name 'agy-*' | wc -l | tr -d ' ')" -eq 2 ]
+
+    kill "-$signal" "$process_pid"
+    signal_status=0
+    wait "$process_pid" || signal_status=$?
+
+    surviving_pids=""
+    for pid_file in "$pid_dir"/agy-*; do
+        for pid in $(cat "$pid_file"); do
+            for _ in {1..50}; do
+                kill -0 "$pid" 2>/dev/null || break
+                sleep 0.02
+            done
+            if kill -0 "$pid" 2>/dev/null; then
+                surviving_pids="$surviving_pids $pid"
+            fi
+        done
+    done
+    # Never leak a stray sleeper into the rest of the suite.
+    for pid in $surviving_pids; do
+        kill -KILL "$pid" 2>/dev/null || true
+    done
+}
+
+assert_interrupted_scoring_outputs() {
+    local signal="$1"
+    local stream_dir="$2"
+
+    [ "$(find "$stream_dir" -maxdepth 1 -type d -name '.stalker-score-results.*' | wc -l | tr -d ' ')" = "0" ]
+    [ ! -f "$stream_dir/gems.md" ]
+    [ ! -f "$stream_dir/.stage-scoring.done" ]
+    grep -F -q "scoring interrupted before completion by $signal;" "$stream_dir/.stage-scoring.failed"
+    grep -F -q 'retryable=true' "$stream_dir/.stage-scoring.failed"
+    grep -F -q 'Scoring concurrency: 2' "$TMPDIR_/interrupt-$signal.stdout"
+    ! grep -F -q 'Auto-scoring complete' "$TMPDIR_/interrupt-$signal.stdout"
+    [ ! -s "$TMPDIR_/interrupt-$signal.stderr" ]
+}
+
+@test "SIGTERM during parallel scoring reaps every in-flight worker tree and exits 143" {
+    stream_dir="$(make_two_candidate_fixture)"
+
+    interrupt_parallel_scoring TERM "$stream_dir"
+
+    [ "$signal_status" -eq 143 ]
+    [ -z "$surviving_pids" ]
+    assert_interrupted_scoring_outputs TERM "$stream_dir"
+}
+
+@test "SIGINT during parallel scoring reaps every in-flight worker tree and exits 130" {
+    stream_dir="$(make_two_candidate_fixture)"
+
+    interrupt_parallel_scoring INT "$stream_dir"
+
+    [ "$signal_status" -eq 130 ]
+    [ -z "$surviving_pids" ]
+    assert_interrupted_scoring_outputs INT "$stream_dir"
+}
+
+@test "SIGTERM reaps every in-flight worker tree even when ps is denied" {
+    stream_dir="$(make_two_candidate_fixture)"
+
+    interrupt_parallel_scoring TERM "$stream_dir" deny-ps
+
+    [ "$signal_status" -eq 143 ]
+    [ -z "$surviving_pids" ]
+    assert_interrupted_scoring_outputs TERM "$stream_dir"
+}
+
+@test "SIGINT reaps every in-flight worker tree even when ps is denied" {
+    stream_dir="$(make_two_candidate_fixture)"
+
+    interrupt_parallel_scoring INT "$stream_dir" deny-ps
+
+    [ "$signal_status" -eq 130 ]
+    [ -z "$surviving_pids" ]
+    assert_interrupted_scoring_outputs INT "$stream_dir"
+}
+
+# R1 race (#323): a signal between the worker fork and its SCORE_PIDS
+# registration must still reap that worker. A DEBUG trap fires the signal right
+# before the command named by $2 inside dispatch_score_segment, deterministically.
+signal_in_dispatch_window() {
+    local signal="$1"
+    local window_command="$2"
+    local harness="$TMPDIR_/dispatch-window-harness.sh"
+    local worker_pid_file="$TMPDIR_/dispatch-window-worker-pid"
+
+    cat > "$harness" <<'SH'
+#!/bin/bash
+set -euo pipefail
+source "$REPO_ROOT/scripts/lib/stream-helpers.sh"
+source "$REPO_ROOT/scripts/stalker/process/score-workers.sh"
+source "$REPO_ROOT/scripts/stalker/process/scoring.sh"
+log() { :; }
+OUT_DIR="$WINDOW_OUT_DIR"
+SCORE_RUN_DIR="$OUT_DIR/.stalker-score-results.window"
+SCORE_RESULTS_DIR="$SCORE_RUN_DIR/results"
+mkdir -p "$SCORE_RESULTS_DIR"
+STALKER_SCORE_PARALLEL=2
+SEGMENT_INDEX=0
+SCORE_PIDS=()
+SCORE_RESULT_DIRS=()
+SCORE_LAUNCH_ACTIVE=0
+SCORE_PENDING_SIGNAL=""
+SCORING_SIGNAL=""
+run_score_segment_worker() { exec sleep 30; }
+window_exit() {
+    local status=$?
+    trap - EXIT INT TERM
+    cleanup_score_run
+    exit "$status"
+}
+trap window_exit EXIT
+trap 'scoring_signal_handler INT 130' INT
+trap 'scoring_signal_handler TERM 143' TERM
+fire_in_window() {
+    case "$BASH_COMMAND" in
+        "$WINDOW_COMMAND"*)
+            trap - DEBUG
+            printf '%s\n' "$!" > "$WINDOW_WORKER_PID_FILE"
+            kill "-$WINDOW_SIGNAL" "$$"
+            ;;
+    esac
+}
+set -T
+trap fire_in_window DEBUG
+dispatch_score_segment "## [00:10] Segment 1 (20s)" "text" 10 20
+trap - DEBUG
+printf 'dispatch returned without the signal\n' >&2
+exit 3
+SH
+    chmod +x "$harness"
+
+    signal_status=0
+    perl -e '$SIG{INT} = "DEFAULT"; exec @ARGV or die $!' \
+        env REPO_ROOT="$REPO_ROOT" WINDOW_OUT_DIR="$TMPDIR_" \
+        WINDOW_COMMAND="$window_command" WINDOW_SIGNAL="$signal" \
+        WINDOW_WORKER_PID_FILE="$worker_pid_file" \
+        /bin/bash "$harness" > "$TMPDIR_/dispatch-window.out" 2>&1 || signal_status=$?
+
+    [ -s "$worker_pid_file" ]
+    window_worker_pid="$(cat "$worker_pid_file")"
+    [[ "$window_worker_pid" =~ ^[0-9]+$ ]]
+    window_worker_survived=0
+    for _ in {1..50}; do
+        kill -0 "$window_worker_pid" 2>/dev/null || break
+        sleep 0.02
+    done
+    if kill -0 "$window_worker_pid" 2>/dev/null; then
+        window_worker_survived=1
+        kill -KILL "$window_worker_pid" 2>/dev/null || true
+    fi
+}
+
+@test "SIGTERM between worker fork and PID registration still reaps the worker" {
+    signal_in_dispatch_window TERM 'SCORE_PIDS+='
+
+    [ "$window_worker_survived" -eq 0 ]
+    [ "$signal_status" -eq 143 ]
+    [ ! -d "$TMPDIR_/.stalker-score-results.window" ]
+}
+
+@test "SIGINT right after the monitor-mode worker launch still reaps the worker" {
+    signal_in_dispatch_window INT 'set +m'
+
+    [ "$window_worker_survived" -eq 0 ]
+    [ "$signal_status" -eq 130 ]
+    [ ! -d "$TMPDIR_/.stalker-score-results.window" ]
+}
+
 @test "SIGKILLed scoring is reconciled from its durable start marker and alerts" {
     stream_dir="$(make_scoring_fixture)"
     scorer_pids_file="$TMPDIR_/sigkill-scorer-pids"

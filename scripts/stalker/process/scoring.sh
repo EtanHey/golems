@@ -10,7 +10,8 @@
 # SKIPPED_SEGMENTS, SCORING_FAILURES, SCORE_RESULT, AGY_CONSECUTIVE_FAILURES,
 # AGY_CIRCUIT_OPEN, TOTAL_SEGMENTS, LAST_HEARTBEAT_EPOCH, SEGMENT_INDEX,
 # SCORE_RUN_DIR, SCORE_RESULTS_DIR, SCORE_CIRCUIT_DIR, SCORE_PIDS,
-# SCORE_RESULT_DIRS, SCORING_COMPLETE, SCORING_SIGNAL.
+# SCORE_RESULT_DIRS, SCORING_COMPLETE, SCORING_SIGNAL, SCORE_LAUNCH_ACTIVE,
+# SCORE_PENDING_SIGNAL, SCORE_PENDING_STATUS.
 # run_scoring_stage also reads VIDEO and these globals; it writes gems.md, worker statuses,
 # counters and .stage-scoring.done; exits 75 on a failed score. Handlers read
 # scoring state and remove incomplete gems, preserving retryable failure.
@@ -127,6 +128,9 @@ Score 1-10 for entertainment value. 7+ = gem worthy. Reply ONLY with JSON:
 
         SCORING_COMPLETE=0
         SCORING_SIGNAL=""
+        SCORE_LAUNCH_ACTIVE=0
+        SCORE_PENDING_SIGNAL=""
+        SCORE_PENDING_STATUS=""
 }
 
         scoring_exit_handler() {
@@ -154,6 +158,16 @@ Score 1-10 for entertainment value. 7+ = gem worthy. Reply ONLY with JSON:
         }
 
         scoring_signal_handler() {
+            # A worker forked but not yet in SCORE_PIDS would escape cleanup
+            # (#323): hold the first signal until dispatch_score_segment has
+            # registered the worker, which then re-enters this handler.
+            if [ "$SCORE_LAUNCH_ACTIVE" = "1" ]; then
+                if [ -z "$SCORE_PENDING_SIGNAL" ]; then
+                    SCORE_PENDING_SIGNAL="$1"
+                    SCORE_PENDING_STATUS="$2"
+                fi
+                return 0
+            fi
             SCORING_SIGNAL="$1"
             exit "$2"
         }

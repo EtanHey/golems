@@ -5,8 +5,9 @@
 # STALKER_SCORE_PARALLEL, OUT_DIR, STREAMER, DATE, STALKER_HEARTBEAT_SECS,
 # STALKER_HEARTBEAT_NOTIFY, LAST_HEARTBEAT_EPOCH, TOTAL_SEGMENTS, CURRENT_TS_SECS,
 # GEM_COUNT, SCORED_SEGMENTS, SKIPPED_SEGMENTS, SCORING_FAILURES,
-# SCORE_PIDS, SCORE_RESULT_DIRS. (W): SEGMENT_INDEX, SCORE_PIDS,
-# SCORE_RESULT_DIRS, CURRENT_TS_SECS, SCORED_SEGMENTS, SKIPPED_SEGMENTS,
+# SCORE_PIDS, SCORE_RESULT_DIRS, SCORE_PENDING_SIGNAL, SCORE_PENDING_STATUS.
+# (W): SEGMENT_INDEX, SCORE_PIDS, SCORE_RESULT_DIRS, SCORE_LAUNCH_ACTIVE,
+# CURRENT_TS_SECS, SCORED_SEGMENTS, SKIPPED_SEGMENTS,
 # SCORING_FAILURES, GEM_COUNT, LAST_HEARTBEAT_EPOCH; per-worker result files.
 # Background PIDs, ordered results and cleanup stay in this one shell.
 
@@ -33,16 +34,60 @@
             fi
         }
 
+        # terminate_score_worker_groups — TERM every worker's process group,
+        # poll up to <grace-secs> for all members to exit, then KILL the rest.
+        # Needs no process-table access, unlike stalker_terminate_scorer_tree's
+        # ps walk, so it still reaps where ps is denied (the Codex seatbelt
+        # sandbox, #323). A group ID cannot be reused while any member lives,
+        # so a live group is still this run's worker tree.
+        terminate_score_worker_groups() {
+            local grace="$1"
+            local pgid alive polls
+            shift
+
+            for pgid in "$@"; do
+                kill -TERM -- "-$pgid" 2>/dev/null || true
+            done
+
+            polls=$((grace * 20))
+            while :; do
+                alive=0
+                for pgid in "$@"; do
+                    if kill -0 -- "-$pgid" 2>/dev/null; then
+                        alive=1
+                        break
+                    fi
+                done
+                [ "$alive" -eq 1 ] || return 0
+                [ "$polls" -gt 0 ] || break
+                polls=$((polls - 1))
+                sleep 0.05
+            done
+
+            for pgid in "$@"; do
+                kill -KILL -- "-$pgid" 2>/dev/null || true
+            done
+        }
+
         cleanup_score_run() {
             local pid
 
             if [ "${SCORE_PIDS+x}" = "x" ] && [ "${#SCORE_PIDS[@]}" -gt 0 ]; then
-                for pid in "${SCORE_PIDS[@]}"; do
-                    stalker_terminate_scorer_tree "$pid" || true
-                done
-                for pid in "${SCORE_PIDS[@]}"; do
-                    wait "$pid" 2>/dev/null || true
-                done
+                # stderr is silenced for the whole block: bash may report a
+                # killed monitor-mode worker ("Killed") at any command here,
+                # not only at its wait.
+                {
+                    for pid in "${SCORE_PIDS[@]}"; do
+                        stalker_terminate_scorer_tree "$pid" || true
+                    done
+                    # The tree walk needs ps; each worker leads its own process
+                    # group (see dispatch_score_segment), so this sweep also
+                    # reaps descendants the walk could not see (#323).
+                    terminate_score_worker_groups 2 "${SCORE_PIDS[@]}" || true
+                    for pid in "${SCORE_PIDS[@]}"; do
+                        wait "$pid" || true
+                    done
+                } 2>/dev/null
             fi
             SCORE_PIDS=()
             SCORE_RESULT_DIRS=()
@@ -254,11 +299,28 @@
                 return 0
             fi
 
+            # Monitor mode for this one launch makes the worker lead its own
+            # process group, so cleanup can signal the whole scorer tree
+            # without listing processes (#323). The entry shell stays in its
+            # group; monitor mode is off again before anything else runs.
+            # Monitor mode also drops the implicit </dev/null of a background
+            # job, so keep it explicit: the worker must never share the
+            # transcript read loop's stdin. A scoring signal from here until the
+            # PID is registered is deferred, so cleanup always sees the worker.
+            # shellcheck disable=SC2034  # read by scoring_signal_handler
+            SCORE_LAUNCH_ACTIVE=1
+            set -m
             run_score_segment_worker \
                 "$header" "$text" "$ts_secs" "$duration_secs" "$result_dir" \
-                > "$result_dir/worker.log" 2>&1 &
+                < /dev/null > "$result_dir/worker.log" 2>&1 &
+            set +m
             SCORE_PIDS+=("$!")
             SCORE_RESULT_DIRS+=("$result_dir")
+            # shellcheck disable=SC2034  # read by scoring_signal_handler
+            SCORE_LAUNCH_ACTIVE=0
+            if [ -n "$SCORE_PENDING_SIGNAL" ]; then
+                scoring_signal_handler "$SCORE_PENDING_SIGNAL" "$SCORE_PENDING_STATUS"
+            fi
             if [ "${#SCORE_PIDS[@]}" -ge "$STALKER_SCORE_PARALLEL" ]; then
                 reap_any_score_worker
             fi
