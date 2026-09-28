@@ -36,6 +36,15 @@ Eight parser top-up mutants cover pass order, function-event visibility and
 commit timing, option preview, three copy boundaries, and definition-time
 alias expansion. Pass swapping and early commit use unique source anchors to
 move complete blocks without embedding the parser in JSON.
+The 27 reviewer mutants from the parser top-up R1 review are also pinned by
+exact tuple witnesses, with `parser-state` witnesses for caller-map isolation.
+R-08 includes both same-unit and next-unit mixed define/remove ties; R-09
+pins the ordering of a remove before a define. The assignment replay cases
+pin the eight-pass boundary: nine nested values (eight operators) resolve,
+while ten nested values (nine operators) remain unresolved. R-15 is a spec
+law rather than a mutant: copying `declaration_snapshot` is equivalent at
+this source revision because no write to `variables` occurs before the
+pending declarations are committed.
 
 Run `python3 scripts/ci/pristine-harness.py check`, `verify-goldens`, and
 `mutation-proof` from a checkout with the base commit available. The fixture at

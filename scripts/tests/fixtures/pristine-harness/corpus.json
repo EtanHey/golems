@@ -9457,5 +9457,536 @@
         0
       ]
     ]
+  },
+  {
+    "id": "parser-r2-r05-1",
+    "target": "parser",
+    "input": "eval \"$x\"; x='echo /tmp/x'",
+    "expected_invoked": [
+      [
+        "$x ;",
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r05-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"$x\\\"; x='echo /tmp/x'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r05-2",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; $x; x=f",
+    "expected_invoked": []
+  },
+  {
+    "id": "tmp-r2-r05-2",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; $x; x=f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r06-1",
+    "target": "parser",
+    "input": "x='echo /tmp/x'\neval \"$x\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/x",
+        1,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r06-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"x='echo /tmp/x'\\neval \\\"$x\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r06-2",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }\nx=f\n$x",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r06-2",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }\\nx=f\\n$x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r08-1",
+    "target": "parser",
+    "input": "f() { echo /tmp/x; env -u } unset -f f; f",
+    "expected_invoked": []
+  },
+  {
+    "id": "tmp-r2-r08-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/x; env -u } unset -f f; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r08-2",
+    "target": "parser",
+    "input": "f() { echo /tmp/x; env -u } unset -f f\nf",
+    "expected_invoked": []
+  },
+  {
+    "id": "tmp-r2-r08-2",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/x; env -u } unset -f f\\nf\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r09-1",
+    "target": "parser",
+    "input": "unset -f f; f() { echo /tmp/f; }; f",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r09-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"unset -f f; f() { echo /tmp/f; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r11-1",
+    "target": "parser",
+    "input": "alias a='echo /tmp/a'\nf() { a; }\nf() { echo /tmp/b; }; f",
+    "expected_invoked": [
+      [
+        " echo /tmp/b; ",
+        5,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r11-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias a='echo /tmp/a'\\nf() { a; }\\nf() { echo /tmp/b; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r12-1",
+    "target": "parser-state",
+    "request": {
+      "command": "g() { echo /tmp/g; }",
+      "state": [
+        false,
+        {},
+        {
+          "f": "echo /tmp/f"
+        },
+        {}
+      ]
+    },
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-r2-r13-1",
+    "target": "parser-state",
+    "request": {
+      "command": "alias a='echo /tmp/a'\ng() { a; }",
+      "state": [
+        false,
+        {},
+        {},
+        {
+          "f": "echo /tmp/f"
+        }
+      ]
+    },
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-r2-r14-1",
+    "target": "parser",
+    "input": "alias a='echo /tmp/a'\nf() { echo /tmp/one; }\neval f; f() { a; }; true",
+    "expected_invoked": [
+      [
+        "f ;",
+        3,
+        0
+      ],
+      [
+        " echo /tmp/one; ",
+        3,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r14-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias a='echo /tmp/a'\\nf() { echo /tmp/one; }\\neval f; f() { a; }; true\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r16-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\necho \"$(case X in x) a;; esac)\"; shopt -s nocasematch",
+    "expected_invoked": []
+  },
+  {
+    "id": "tmp-r2-r16-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\necho \\\"$(case X in x) a;; esac)\\\"; shopt -s nocasematch\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r19-1",
+    "target": "parser-state",
+    "request": {
+      "command": "case X in x) f;; esac",
+      "state": [
+        false,
+        {},
+        {
+          "f": "echo /tmp/f"
+        },
+        {}
+      ]
+    },
+    "expected_invoked": []
+  },
+  {
+    "id": "parser-r2-r21-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase X in x) a;; esac; builtin shopt -s nocasematch",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r21-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase X in x) a;; esac; builtin shopt -s nocasematch\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r22-1",
+    "target": "parser",
+    "input": "case $u in x) shopt -s expand_aliases;; esac\nalias a='echo /tmp/a'\na",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        4,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r22-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case $u in x) shopt -s expand_aliases;; esac\\nalias a='echo /tmp/a'\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r23-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/a'\ncase $u in x) shopt -u expand_aliases;; esac\na",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        5,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r23-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/a'\\ncase $u in x) shopt -u expand_aliases;; esac\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r24-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase $u in x) shopt -s nocasematch;; esac\ncase X in x) a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        5,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r24-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase $u in x) shopt -s nocasematch;; esac\\ncase X in x) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r25-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\nshopt -s nocasematch\ncase $u in x) shopt -u nocasematch;; esac\ncase X in x) a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        6,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r25-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\nshopt -s nocasematch\\ncase $u in x) shopt -u nocasematch;; esac\\ncase X in x) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r26-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo /tmp/a'\ncase $u in x) unalias a;; esac\na",
+    "expected_invoked": [
+      [
+        "echo /tmp/a",
+        5,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r26-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo /tmp/a'\\ncase $u in x) unalias a;; esac\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r28-1",
+    "target": "parser",
+    "input": "alias a='echo /tmp/a'\nf() { a; }; f",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r28-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"alias a='echo /tmp/a'\\nf() { a; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r30-1",
+    "target": "parser",
+    "input": "y=${x:=/tmp/x}; eval \"echo $x\"",
+    "expected_invoked": [
+      [
+        "echo /tmp/x",
+        1,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r30-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"y=${x:=/tmp/x}; eval \\\"echo $x\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r33-1",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; x=${a:-${b:-f}}; $x",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r33-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; x=${a:-${b:-f}}; $x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r35-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias b='echo /tmp/b'\nalias a='b; b'\na",
+    "expected_invoked": [
+      [
+        "echo /tmp/b ; echo /tmp/b",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r35-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias b='echo /tmp/b'\\nalias a='b; b'\\na\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-r37-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases\nalias a='echo $(echo /tmp/x)'\neval a; a",
+    "expected_invoked": [
+      [
+        "echo $(echo /tmp/x) ;",
+        2,
+        0
+      ],
+      [
+        "echo  echo /tmp/x) ;",
+        2,
+        1
+      ],
+      [
+        "echo $(echo /tmp/x)",
+        3,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-r37-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases\\nalias a='echo $(echo /tmp/x)'\\neval a; a\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-w01-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase x in x) :;;& y) a;; esac",
+    "expected_invoked": []
+  },
+  {
+    "id": "tmp-r2-w01-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase x in x) :;;& y) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-w03-1",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; $u && unset -f f; f",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        5,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-w03-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; $u && unset -f f; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-w04-1",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; case $u in x) unset -f f;; esac; f",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        5,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-w04-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; case $u in x) unset -f f;; esac; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-w05-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\nif $u; then a; fi",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-w05-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\nif $u; then a; fi\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-w06-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\nif ! && a; then :; fi",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        4,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-w06-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\nif ! && a; then :; fi\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-w06-2",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; && unset -f f; f",
+    "expected_invoked": []
+  },
+  {
+    "id": "tmp-r2-w06-2",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; && unset -f f; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-w07-1",
+    "target": "parser",
+    "input": "shopt -s expand_aliases; alias a='echo /tmp/a'\ncase x in [^y]) a;; esac",
+    "expected_invoked": [
+      [
+        "echo /tmp/a ;",
+        2,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-w07-1",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"shopt -s expand_aliases; alias a='echo /tmp/a'\\ncase x in [^y]) a;; esac\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-replay-nine-deep",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; x=${v7:-${v6:-${v5:-${v4:-${v3:-${v2:-${v1:-${v0:-f}}}}}}}}; $x",
+    "expected_invoked": [
+      [
+        " echo /tmp/f; ",
+        3,
+        0
+      ]
+    ]
+  },
+  {
+    "id": "tmp-r2-replay-nine-deep",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; x=${v7:-${v6:-${v5:-${v4:-${v3:-${v2:-${v1:-${v0:-f}}}}}}}}; $x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-r2-replay-ten-deep",
+    "target": "parser",
+    "input": "f() { echo /tmp/f; }; x=${v8:-${v7:-${v6:-${v5:-${v4:-${v3:-${v2:-${v1:-${v0:-f}}}}}}}}}; $x",
+    "expected_invoked": []
+  },
+  {
+    "id": "tmp-r2-replay-ten-deep",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; x=${v8:-${v7:-${v6:-${v5:-${v4:-${v3:-${v2:-${v1:-${v0:-f}}}}}}}}}; $x\"},\"session_id\":\"pristine\"}"
   }
 ]

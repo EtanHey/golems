@@ -364,7 +364,8 @@ def execute(cases, tree, scratch):
 
 
 def validate_baseline(cases, results):
-    for kind in ("parser", "tmp-block", "git-guardian", "git-api", "launcher"):
+    for kind in ("parser", "parser-state", "parser-identity", "tmp-block",
+                 "git-guardian", "git-api", "launcher"):
         rows = [results[case["id"]] for case in cases if case["target"] == kind]
         if not rows or all(row["exit"] != 0 for row in rows):
             raise RuntimeError(f"baseline fixture for {kind} did not run successfully")
@@ -499,6 +500,15 @@ def run_locked(args, parser, cases, scratch):
                     parser.error(f"mutation move order is invalid: {row['id']}")
                 mutated = (original[:before] + original[start:end] +
                            original[before:start] + original[end:])
+            elif operation == "move-line-before":
+                line, marker = row["old"], row["before"]
+                if original.count(line) != 1 or original.count(marker) != 1:
+                    parser.error(f"mutation anchor is not unique: {row['id']}")
+                start, before = original.index(line), original.index(marker)
+                if not before < start:
+                    parser.error(f"mutation move order is invalid: {row['id']}")
+                mutated = (original[:before] + line + original[before:start] +
+                           original[start + len(line):])
             else:
                 parser.error(f"unknown mutation operation: {row['id']}")
             try:
