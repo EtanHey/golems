@@ -21,6 +21,7 @@ The installer is idempotent — safe to re-run. It:
 5. Symlinks the `skill-creator` agent (`agents/skill-creator.md`) into `~/.claude/agents/skill-creator.md` — global scope, so any repo's Claude can dispatch `Agent(subagent_type="skill-creator")`. A hand-placed regular file there is moved to `~/.claude/agents/.skill-creator.md.bak-<YYYYMMDD>` first; `skill-creator-backup.md` is reported and never touched
 
 Every target is under `$HOME`, so `HOME=<dir> bash scripts/install.sh` installs into a scratch home (the tests in `tests/` do this).
+Project-scope steps run only when `$HOME/Gits/skill-creator` is itself a Git checkout. If it is absent or a plain directory, the installer skips those steps and still installs the global skill and agent.
 
 Run `bash scripts/install.sh --dry-run` to preview without changes. `bash scripts/install.sh --help` for usage.
 

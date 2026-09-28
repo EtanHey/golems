@@ -45,6 +45,53 @@ def agent_link(home):
     return home / ".claude" / "agents" / "skill-creator.md"
 
 
+@pytest.mark.parametrize("project_present", [False, True])
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_project_steps_require_git_checkout(home, project_present, dry_run):
+    project = home / "Gits" / "skill-creator"
+    if project_present:
+        project.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+    before = snapshot(home)
+
+    result = run_install(home, *(["--dry-run"] if dry_run else []))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Step 1:" in result.stdout
+    assert "Step 6:" in result.stdout
+    assert (home / ".claude" / "skills" / "skill-creator").is_symlink() != dry_run
+    assert agent_link(home).is_symlink() != dry_run
+    if dry_run:
+        assert snapshot(home) == before
+    if project_present:
+        assert "[skip] project-scope steps 2-5:" not in result.stdout
+        for relative in (
+            ".claude/agents/session-miner.md",
+            ".codex/agents/session-miner.toml",
+            "scripts/session-miner.py",
+        ):
+            assert (project / relative).is_symlink() != dry_run
+        assert "Step 2:" in result.stdout
+        assert "Step 5:" in result.stdout
+    else:
+        assert f"[skip] project-scope steps 2-5: {project} is not a git checkout" in result.stdout
+        assert "Step 2:" not in result.stdout
+        assert "Step 5:" not in result.stdout
+        assert not project.exists()
+
+
+def test_existing_non_git_project_dir_is_left_untouched(home):
+    project = home / "Gits" / "skill-creator"
+    project.mkdir(parents=True)
+
+    result = run_install(home)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"[skip] project-scope steps 2-5: {project} is not a git checkout" in result.stdout
+    assert list(project.iterdir()) == []
+    assert agent_link(home).is_symlink()
+
+
 def snapshot(root):
     """Every path under root with its kind, link target or bytes, and mtime."""
     state = {}

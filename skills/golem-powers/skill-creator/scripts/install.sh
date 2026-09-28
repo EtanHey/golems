@@ -75,6 +75,8 @@ What this does:
      (global scope). A hand-placed regular file there is first moved to
      $GLOBAL_AGENTS_DIR/.skill-creator.md.bak-<YYYYMMDD>.
 
+Steps 2-5 are skipped unless $PROJECT_REPO is itself a Git checkout.
+
 Every target is under \$HOME; run with HOME=<dir> to install somewhere else.
 
 The project-scope symlinks gate session-miner so only skillCreatorClaude /
@@ -178,27 +180,39 @@ elif [ -d "$LEGACY_COMMANDS_LINK" ]; then
 fi
 echo ""
 
-# 2. Project repo dirs
-echo -e "${BLUE}Step 2: project-scope dirs ($PROJECT_REPO/{.claude,.codex}/agents, scripts)${NC}"
-ensure_dir "$PROJECT_REPO/.claude/agents"
-ensure_dir "$PROJECT_REPO/.codex/agents"
-ensure_dir "$PROJECT_REPO/scripts"
-echo ""
+PROJECT_CHECKOUT=false
+if [ -d "$PROJECT_REPO" ] &&
+    [ "$(git -C "$PROJECT_REPO" rev-parse --is-inside-work-tree 2>/dev/null)" = true ] &&
+    [ "$(git -C "$PROJECT_REPO" rev-parse --show-toplevel 2>/dev/null)" = "$(cd "$PROJECT_REPO" && pwd -P)" ]; then
+    PROJECT_CHECKOUT=true
+fi
 
-# 3. Claude agent file symlink
-echo -e "${BLUE}Step 3: Claude agent symlink (.claude/agents/session-miner.md)${NC}"
-ensure_symlink "$PROJECT_AGENT_LINK" "$SOURCE_AGENT"
-echo ""
+if [ "$PROJECT_CHECKOUT" = true ]; then
+    # 2. Project repo dirs
+    echo -e "${BLUE}Step 2: project-scope dirs ($PROJECT_REPO/{.claude,.codex}/agents, scripts)${NC}"
+    ensure_dir "$PROJECT_REPO/.claude/agents"
+    ensure_dir "$PROJECT_REPO/.codex/agents"
+    ensure_dir "$PROJECT_REPO/scripts"
+    echo ""
 
-# 4. Codex agent file symlink
-echo -e "${BLUE}Step 4: Codex agent symlink (.codex/agents/session-miner.toml)${NC}"
-ensure_symlink "$PROJECT_CODEX_LINK" "$SOURCE_TOML"
-echo ""
+    # 3. Claude agent file symlink
+    echo -e "${BLUE}Step 3: Claude agent symlink (.claude/agents/session-miner.md)${NC}"
+    ensure_symlink "$PROJECT_AGENT_LINK" "$SOURCE_AGENT"
+    echo ""
 
-# 5. Parser symlink
-echo -e "${BLUE}Step 5: parser symlink (convenience)${NC}"
-ensure_symlink "$PROJECT_PARSER_LINK" "$SOURCE_PARSER"
-echo ""
+    # 4. Codex agent file symlink
+    echo -e "${BLUE}Step 4: Codex agent symlink (.codex/agents/session-miner.toml)${NC}"
+    ensure_symlink "$PROJECT_CODEX_LINK" "$SOURCE_TOML"
+    echo ""
+
+    # 5. Parser symlink
+    echo -e "${BLUE}Step 5: parser symlink (convenience)${NC}"
+    ensure_symlink "$PROJECT_PARSER_LINK" "$SOURCE_PARSER"
+    echo ""
+else
+    echo "  [skip] project-scope steps 2-5: $PROJECT_REPO is not a git checkout"
+    echo ""
+fi
 
 # 6. Global skill-creator agent symlink
 echo -e "${BLUE}Step 6: global agent symlink (~/.claude/agents/skill-creator.md)${NC}"
@@ -232,12 +246,11 @@ echo ""
 if [ "$DRY_RUN" = false ]; then
     echo -e "${BLUE}Verifying install...${NC}"
     all_ok=true
-    for pair in \
-        "$SKILLS_LINK:$SKILL_DIR" \
-        "$PROJECT_AGENT_LINK:$SOURCE_AGENT" \
-        "$PROJECT_CODEX_LINK:$SOURCE_TOML" \
-        "$PROJECT_PARSER_LINK:$SOURCE_PARSER" \
-        "$GLOBAL_AGENT_LINK:$SOURCE_GLOBAL_AGENT"; do
+    verify_pairs=("$SKILLS_LINK:$SKILL_DIR" "$GLOBAL_AGENT_LINK:$SOURCE_GLOBAL_AGENT")
+    if [ "$PROJECT_CHECKOUT" = true ]; then
+        verify_pairs+=("$PROJECT_AGENT_LINK:$SOURCE_AGENT" "$PROJECT_CODEX_LINK:$SOURCE_TOML" "$PROJECT_PARSER_LINK:$SOURCE_PARSER")
+    fi
+    for pair in "${verify_pairs[@]}"; do
         link="${pair%%:*}"
         expected="${pair##*:}"
         if [ -L "$link" ] && [ "$(readlink "$link")" = "$expected" ]; then
@@ -249,17 +262,23 @@ if [ "$DRY_RUN" = false ]; then
     done
     echo ""
     if $all_ok; then
-        echo -e "${GREEN}SUCCESS: skill-creator skill + agent + session-miner installed${NC}"
+        if [ "$PROJECT_CHECKOUT" = true ]; then
+            echo -e "${GREEN}SUCCESS: skill-creator skill + agent + session-miner installed${NC}"
+        else
+            echo -e "${GREEN}SUCCESS: skill-creator skill + agent installed${NC}"
+        fi
         echo ""
         echo -e "${DIM}Next steps:${NC}"
         echo -e "${DIM}  - Use /skill-creator slash command from any Claude Code session${NC}"
         echo -e "${DIM}  - From any repo's Claude, invoke: Agent(subagent_type=\"skill-creator\", ...)${NC}"
-        echo -e "${DIM}  - From skillCreatorClaude (cwd=$PROJECT_REPO/), invoke:${NC}"
-        echo -e "${DIM}      Agent(subagent_type=\"session-miner\", ...)${NC}"
-        echo -e "${DIM}  - From skillCreatorCodex (cwd=$PROJECT_REPO/), invoke by name:${NC}"
-        echo -e "${DIM}      'session_miner, mine <jsonl> to <out> with label <name>.'${NC}"
-        echo -e "${DIM}  - Or run the parser standalone:${NC}"
-        echo -e "${DIM}      python3 $SOURCE_PARSER --src <jsonl> --out <md> --label <name>${NC}"
+        if [ "$PROJECT_CHECKOUT" = true ]; then
+            echo -e "${DIM}  - From skillCreatorClaude (cwd=$PROJECT_REPO/), invoke:${NC}"
+            echo -e "${DIM}      Agent(subagent_type=\"session-miner\", ...)${NC}"
+            echo -e "${DIM}  - From skillCreatorCodex (cwd=$PROJECT_REPO/), invoke by name:${NC}"
+            echo -e "${DIM}      'session_miner, mine <jsonl> to <out> with label <name>.'${NC}"
+            echo -e "${DIM}  - Or run the parser standalone:${NC}"
+            echo -e "${DIM}      python3 $SOURCE_PARSER --src <jsonl> --out <md> --label <name>${NC}"
+        fi
     else
         echo -e "${RED}FAILED: one or more symlinks did not verify${NC}"
         exit 1
