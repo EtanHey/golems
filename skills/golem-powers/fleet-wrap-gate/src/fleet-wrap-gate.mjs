@@ -412,6 +412,163 @@ function inboundMonitorExcused(ev, arming) {
   return true;
 }
 
+// ── Cleanup receipt (cleanliness standard Mechanism 1) ──────────────────────
+// Cleanup is part of done: a lane DONE report ends with a CLEANUP RECEIPT
+// (worktree / branch / files outside src+tests / docs.local; `/pr-loop`
+// references/merge-and-verification.md § Cleanup Receipt). A lane DONE is:
+//   - a real `gh pr merge` run this turn, or a narrated "PR #N merged" /
+//     "handed PR #N to the lead" claim (negated/conditional talk excluded),
+//   - a DONE_<ID> marker written this turn (Write/Edit content, a Bash
+//     redirect, or a line of its own in the narrative), or
+//   - a line carrying both a DONE status token and a PR URL.
+// The receipt may sit in the turn's narrative, a tool input it wrote (report
+// file, PR comment), or a report file the turn cites
+// (a fixture's `reports` map, else `options.readReport(path)`). Advisory only,
+// like every code here (GO-5 E2). A turn with no lane DONE is N/A, so
+// discussion about receipts and mid-sprint pushes never fire.
+const PR_REF = String.raw`(?:PR\s*#\d+|#\d+|github\.com/[^\s/]+/[^\s/]+/pull/\d+)`;
+const MERGED_CLAIM_RE = new RegExp(
+  String.raw`${PR_REF}[^\n.;]{0,40}?\bmerged\b|\bmerged\b[^\n.;]{0,20}?${PR_REF}`,
+  "i",
+);
+const PR_REF_RE = new RegExp(PR_REF, "i");
+const HANDOFF_PHRASE_RE =
+  /\bhand(?:ed|ing)?\b[^\n.;]{0,30}?\b(?:off|to (?:the |its |my |your )?lead)\b/i;
+// A claim span containing these is talk about a merge, not a report of one.
+const NOT_A_CLAIM_RE =
+  /\b(not|never|unless|until|once|if|when|before|awaits?|awaiting|should|would|will|can|could|pending)\b|n't/i;
+const PR_URL_RE = /github\.com\/[^\s/]+\/[^\s/]+\/pull\/\d+/i;
+const DONE_TOKEN_RE = /(^|[\s*#>|(-])(TASK_)?DONE\b/;
+const DONE_MARKER_LINE_RE = /^\s*DONE_[A-Z0-9][A-Z0-9_]*\s*$/m;
+const DONE_MARKER_WRITE_CMD_RE = /\b(echo|printf)\b[^\n|;&]*\bDONE_[A-Z0-9][A-Z0-9_]*\b[^\n|;&]*>>?/;
+const GH_PR_MERGE_CMD_RE = /\bgh\s+pr\s+merge\b(?![^\n]*--help)/;
+// The receipt block: its heading followed by at least the worktree and branch
+// lines. "CLEANUP RECEIPT: n/a" or a prose mention of a receipt is not one.
+const RECEIPT_RE = /CLEANUP RECEIPT[\s\S]{0,400}?\bworktree:[\s\S]{0,600}?\bbranch:/i;
+const REPORT_PATH_RE = /(?:^|[\s`'"(=])((?:~|\/)[^\s`'"()<>|;&]+\.(?:md|txt))\b/g;
+const MAX_REPORT_READS = 4;
+const WRITTEN_INPUT_KEYS = ["content", "new_string", "body", "message", "text"];
+
+function writtenInputText(tool) {
+  const input = tool?.input;
+  if (!input || typeof input !== "object") return "";
+  const parts = WRITTEN_INPUT_KEYS.map((k) => (typeof input[k] === "string" ? input[k] : ""));
+  if (Array.isArray(input.edits)) {
+    for (const edit of input.edits) {
+      if (typeof edit?.new_string === "string") parts.push(edit.new_string);
+    }
+  }
+  return parts.filter(Boolean).join("\n");
+}
+
+function receiptEvidence(turn) {
+  const narrative = [];
+  const written = [];
+  const commands = [];
+  const filePaths = [];
+  for (const ev of turn) {
+    if (ev.role === "assistant" && ev.text) narrative.push(ev.text);
+    for (const t of ev.tools ?? []) {
+      const text = writtenInputText(t);
+      if (text) written.push(text);
+      if (typeof t.input?.command === "string") commands.push(t.input.command);
+      if (typeof t.input?.file_path === "string") filePaths.push(t.input.file_path);
+    }
+  }
+  return {
+    narrative: narrative.join("\n"),
+    written: written.join("\n"),
+    commands: commands.join("\n"),
+    filePaths,
+  };
+}
+
+function hasClaim(text, re) {
+  const global = new RegExp(re.source, `${re.flags.replace("g", "")}g`);
+  for (const match of text.matchAll(global)) {
+    // Read the claim's own sentence up to the match: "Once PR #88 is merged"
+    // and "PR #88 is not merged" are talk about a merge, not a report of one.
+    const start = Math.max(
+      text.lastIndexOf("\n", match.index),
+      text.lastIndexOf(". ", match.index),
+      text.lastIndexOf("; ", match.index),
+    );
+    const span = text.slice(start + 1, match.index + match[0].length);
+    if (!NOT_A_CLAIM_RE.test(span)) return true;
+  }
+  return false;
+}
+
+function doneSignals(ev) {
+  const signals = [];
+  if (GH_PR_MERGE_CMD_RE.test(ev.commands)) signals.push("gh pr merge ran this turn");
+  if (hasClaim(ev.narrative, MERGED_CLAIM_RE)) signals.push("a PR reported merged");
+  if (ev.narrative.split("\n").some((line) => PR_REF_RE.test(line) && hasClaim(line, HANDOFF_PHRASE_RE))) {
+    signals.push("a PR handed off to the lead");
+  }
+  if (
+    DONE_MARKER_LINE_RE.test(ev.narrative) ||
+    DONE_MARKER_LINE_RE.test(ev.written) ||
+    DONE_MARKER_WRITE_CMD_RE.test(ev.commands)
+  ) {
+    signals.push("a DONE_<ID> marker written");
+  }
+  const reportText = [ev.narrative, ev.written, ev.commands].join("\n");
+  if (reportText.split("\n").some((line) => DONE_TOKEN_RE.test(line) && PR_URL_RE.test(line))) {
+    signals.push("a DONE line with a PR URL");
+  }
+  return signals;
+}
+
+function citedReportPaths(ev) {
+  const paths = [...ev.filePaths];
+  for (const text of [ev.narrative, ev.commands]) {
+    for (const match of text.matchAll(REPORT_PATH_RE)) paths.push(match[1]);
+  }
+  return [...new Set(paths)].filter((p) => /\.(md|txt)$/i.test(p)).slice(0, MAX_REPORT_READS);
+}
+
+// A fixture's `reports` map (path -> text) stands in for files on disk; the
+// Stop hook injects a bounded disk reader as `options.readReport`.
+function reportReader(transcript, options) {
+  const reports = transcript && typeof transcript === "object" && !Array.isArray(transcript)
+    ? transcript.reports
+    : null;
+  const injected = typeof options?.readReport === "function" ? options.readReport : null;
+  return (p) => {
+    if (reports && typeof reports === "object" && typeof reports[p] === "string") return reports[p];
+    return injected ? injected(p) : null;
+  };
+}
+
+function detectCleanupReceipt(transcript, turn, options) {
+  const ev = receiptEvidence(turn);
+  const signals = doneSignals(ev);
+  if (signals.length === 0) return null;
+  // Tool RESULTS are not the turn's output: a lead that reads a worker's
+  // receipt has not written its own.
+  if ([ev.narrative, ev.written, ev.commands].some((t) => RECEIPT_RE.test(t))) return null;
+  const read = reportReader(transcript, options);
+  const cited = citedReportPaths(ev);
+  for (const p of cited) {
+    let text = null;
+    try {
+      text = read(p);
+    } catch {
+      text = null;
+    }
+    if (typeof text === "string" && RECEIPT_RE.test(text)) return null;
+  }
+  const where = cited.length ? ` or in the cited report(s) [${cited.join(", ")}]` : "";
+  return {
+    code: "FLEETWRAP_CLEANUP_RECEIPT_MISSING",
+    ids: signals,
+    action:
+      "append a CLEANUP RECEIPT (worktree / branch / files outside src+tests / docs.local this lane created) to the DONE report or merge comment",
+    evidence: `lane DONE report (${signals.join("; ")}) with no CLEANUP RECEIPT in this turn's output${where}.`,
+  };
+}
+
 // ── The detector ────────────────────────────────────────────────────────────
 // detectFleetWrap(transcript) → {
 //   verdict: "PASS" | "FLAG", terminal: bool, violations: [{code, evidence}],
@@ -419,6 +576,13 @@ function inboundMonitorExcused(ev, arming) {
 export function detectFleetWrap(transcript, options = {}) {
   const events = normalizeTranscript(transcript);
   const turn = currentTurn(events);
+  const result = detectCronState(transcript, turn, options);
+  const receipt = detectCleanupReceipt(transcript, turn, options);
+  if (!receipt) return result;
+  return { verdict: "FLAG", terminal: result.terminal, violations: [...result.violations, receipt] };
+}
+
+function detectCronState(transcript, turn, options) {
   const ev = buildEvidence(turn);
   const durableState = durableStateFrom(transcript, options);
   const sessionId = options.sessionId ?? durableState?.session_id ?? durableState?.sessionId;

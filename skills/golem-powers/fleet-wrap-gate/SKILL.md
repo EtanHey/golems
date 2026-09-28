@@ -37,6 +37,8 @@ is excused only by the monitor-law:
 | **ONE inbound standby monitor** (even via a `CronCreate` framed as inbound), no health-watch/poll/loop | PASS |
 | not a terminal turn (mid-sprint, still driving, more work queued) | PASS (N/A) |
 | discussion about the fleet-wrap rule/gate, or a worker-seat scoped `DONE` that explicitly is not fleet wrap | PASS (N/A) |
+| **lane DONE report** (at any state, terminal or not): a `gh pr merge` this turn, a "PR #N merged" / "handed PR #N to the lead" claim, a written `DONE_<ID>` marker, or a `DONE` line with a PR URL, and **no `CLEANUP RECEIPT`** (heading + `worktree:` + `branch:` lines) in the turn's output, a report it wrote, or a report file it cites | `FLEETWRAP_CLEANUP_RECEIPT_MISSING` — advise appending the receipt (`/pr-loop` `references/merge-and-verification.md` § Cleanup Receipt) |
+| same DONE report carrying its receipt; a mid-sprint push with no DONE; discussion about receipts; negated/conditional merge talk ("not merged yet", "once #N is merged") | PASS (N/A) |
 
 Wrap-state doctrine line: **inbound collab monitor STAYS, everything periodic DIES, the
 decision is left in front of Etan, then silence.**
@@ -60,6 +62,14 @@ the turn's text; live cron/loop truth comes from durable state (`state`, `state_
 `cron_state_path`, `loop_state_path`, or bounded Claude task-state discovery in the Stop
 hook). A prose claim such as "all crons deleted" or "cron-count=0" is NEVER trusted over
 durable live state. DETERMINISTIC: same transcript/state in → same verdict out.
+
+**Cleanup receipt (cleanliness standard Mechanism 1, 2026-09-28).** Cleanup is part of done:
+every lane DONE ends with a `CLEANUP RECEIPT` (worktree / branch / files outside src+tests /
+docs.local this lane created). `FLEETWRAP_CLEANUP_RECEIPT_MISSING` is an advisory like the cron
+codes, never a Stop block (GO-5 E2), and it is independent of the terminal-state test: a worker's
+DONE is not a fleet wrap, but it still owes a receipt. The receipt may live in a report file the
+turn cites; the Stop hook and CLI read up to 4 cited local `.md`/`.txt` paths, 256 KiB each
+(`lib/report-reader.mjs`), and a fixture supplies them as a `reports` map.
 
 ## How /fleet-wrap Consumes It
 
@@ -109,6 +119,13 @@ Programmatic: `import { detectFleetWrap } from "./src/fleet-wrap-gate.mjs"` →
   cron/loop state is available.
 - The Stop hook scans task-state files with hard bounds and fail-open behavior; it does not
   run `CronList`, call BrainLayer, or spawn subprocesses.
+- Cleanup receipt: one receipt anywhere in the turn's own output (narrative or content it wrote)
+  satisfies the check, even when the turn merged several PRs or the receipt text was written for
+  another purpose. A receipt seen only in a tool result (another lane's report the turn read)
+  does not count. The check reads a receipt's shape (heading + `worktree:` + `branch:`), not
+  whether its claims are true. A report file cited only by a relative path, or written by a script the
+  transcript does not show and never named in the turn, is not read; the advisory then fires,
+  and the fix is to cite the report's absolute path or paste the receipt in the DONE message.
 
 ## Provenance
 

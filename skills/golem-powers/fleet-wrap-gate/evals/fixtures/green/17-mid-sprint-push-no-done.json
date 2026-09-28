@@ -1,0 +1,23 @@
+{
+  "specimen": "mid-sprint turn: a push to an open PR, no DONE, no merge",
+  "label": "GREEN — pushing a fix to an open PR and babysitting CI is not a lane DONE report; no receipt is due yet.",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "user",
+      "text": "fix the CodeRabbit finding"
+    },
+    {
+      "role": "assistant",
+      "text": "Pushed the fix to PR #512 (https://github.com/EtanHey/golems/pull/512); CI is running. Stopped after step 2, next turn is step 3 babysit.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "git push origin feat/cache-ttl"
+          }
+        }
+      ]
+    }
+  ]
+}

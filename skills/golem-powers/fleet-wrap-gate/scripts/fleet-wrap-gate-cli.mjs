@@ -5,12 +5,14 @@
 //   bun fleet-wrap-gate-cli.mjs <transcript.jsonl | fixture.json>
 //   cat transcript.jsonl | bun fleet-wrap-gate-cli.mjs -
 //
-// Exit 0 = PASS (not terminal, or terminal with cron-count=0), exit 3 = FLAG
-// (FLEET_WRAP_CRON_NONZERO), exit 2 = usage. The nonzero FLAG exit makes this
-// wireable as a Stop-hook / fleet-wrap completion check: no stand-down leaves a
-// health-watch / poll cron armed.
+// Exit 0 = PASS (not terminal, or terminal with cron-count=0, and no lane DONE
+// without a CLEANUP RECEIPT), exit 3 = FLAG (FLEETWRAP_CRON_ALIVE /
+// FLEETWRAP_LOOP_ALIVE / FLEETWRAP_CLEANUP_RECEIPT_MISSING), exit 2 = usage.
+// The nonzero FLAG exit makes this wireable as a Stop-hook / fleet-wrap
+// completion check: no stand-down leaves a health-watch / poll cron armed.
 
 import { readFileSync } from "node:fs";
+import { readReport } from "../lib/report-reader.mjs";
 import { detectFleetWrap, formatReport } from "../src/fleet-wrap-gate.mjs";
 
 function readInput(arg) {
@@ -36,6 +38,6 @@ if (!arg) {
   process.exit(2);
 }
 
-const result = detectFleetWrap(readInput(arg));
+const result = detectFleetWrap(readInput(arg), { readReport });
 console.log(formatReport(result));
 process.exit(result.verdict === "FLAG" ? 3 : 0);
