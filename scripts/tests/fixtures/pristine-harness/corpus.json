@@ -8200,5 +8200,171 @@
     "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -f origin main\"},\"session_id\":\"pristine\"}",
     "cwd": "nested-worktree",
     "env": {}
+  },
+  {
+    "id": "topup-r2-guardian-nice-root",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-guardian-nice-option-root",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice -n 5 rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-guardian-nice-home",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice rm -rf ~\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-launcher-cursor-worker-positional",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "hello"
+    ],
+    "env": {
+      "GOLEM_ROLE": "worker"
+    },
+    "persona": true
+  },
+  {
+    "id": "topup-r2-guardian-xargs-force-push",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo main | xargs git push --force origin\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-xargs-force-push",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo main | xargs git push --force origin"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-xargs-reset-hard",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | xargs -n1 git reset --hard\"},\"session_id\":\"pristine\"}",
+    "cwd": "subdir",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-xargs-reset-hard",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf x | xargs -n1 git reset --hard"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-find-clean",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -name x -exec git clean -fd \\\\;\"},\"session_id\":\"pristine\"}",
+    "cwd": "worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-find-clean",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "find . -name x -exec git clean -fd \\;"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-find-force-push",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -exec git push --force \\\\;\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-find-force-push",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "find . -exec git push --force \\;"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-sudo-force-push",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sudo -u deploy git push --force origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-sudo-force-push",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "sudo -u deploy git push --force origin main"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-nice-force-push",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice -n 5 git push --force origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-nice-force-push",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "nice -n 5 git push --force origin main"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
   }
 ]

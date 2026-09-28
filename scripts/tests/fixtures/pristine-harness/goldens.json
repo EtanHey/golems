@@ -6292,6 +6292,102 @@
       "stderr": "",
       "stdout": "eyJyZXN1bHQiOiBmYWxzZX0K"
     },
+    "topup-r2-api-find-clean": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiAiRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBjbGVhbiAtZiJ9Cg=="
+    },
+    "topup-r2-api-find-force-push": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiAiRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UifQo="
+    },
+    "topup-r2-api-nice-force-push": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiAiRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UifQo="
+    },
+    "topup-r2-api-sudo-force-push": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiAiRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UifQo="
+    },
+    "topup-r2-api-xargs-force-push": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiAiRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UifQo="
+    },
+    "topup-r2-api-xargs-reset-hard": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiAiRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCByZXNldCAtLWhhcmQifQo="
+    },
+    "topup-r2-guardian-find-clean": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBjbGVhbiAtZi4gRkxBRyBUSElTIFRPIFRIRSBVU0VSIGFzIGEgc3VycHJpc2UgXHUyMDE0IGRvIE5PVCByZXRyeSB0aGUgc2FtZSBjb21tYW5kLiBFeHBsYWluIHdoYXQgeW91IHdlcmUgdHJ5aW5nIHRvIGRvIGFuZCBhc2sgdGhlIHVzZXIgaG93IHRvIHByb2NlZWQuIn0="
+    },
+    "topup-r2-guardian-find-force-push": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "topup-r2-guardian-nice-force-push": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "topup-r2-guardian-nice-home": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IHJtIHRhcmdldGluZyBob21lIGRpcmVjdG9yeS4gRkxBRyBUSElTIFRPIFRIRSBVU0VSIGFzIGEgc3VycHJpc2UgXHUyMDE0IGRvIE5PVCByZXRyeSB0aGUgc2FtZSBjb21tYW5kLiBFeHBsYWluIHdoYXQgeW91IHdlcmUgdHJ5aW5nIHRvIGRvIGFuZCBhc2sgdGhlIHVzZXIgaG93IHRvIHByb2NlZWQuIn0="
+    },
+    "topup-r2-guardian-nice-option-root": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IHJtIHRhcmdldGluZyByb290IGZpbGVzeXN0ZW0uIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "topup-r2-guardian-nice-root": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IHJtIHRhcmdldGluZyByb290IGZpbGVzeXN0ZW0uIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "topup-r2-guardian-sudo-force-push": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "topup-r2-guardian-xargs-force-push": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "topup-r2-guardian-xargs-reset-hard": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCByZXNldCAtLWhhcmQuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "topup-r2-launcher-cursor-worker-positional": {
+      "exit": 0,
+      "files_sha256": {},
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "590ac560946740138e3d662c8413cc21a252d70b732e7a66348b5ca86a007bde"
+    },
     "topup-restore-targets-00": {
       "exit": 0,
       "files": {},
