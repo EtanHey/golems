@@ -575,6 +575,11 @@ _golem_launch_claude() {
   local ntfy_topic="etans-${project_name}Claude"
 
   _golem_parse_unified_flags "$@" || return $?
+  # AIDEV-NOTE: --worker deliberately does NOT set GOLEM_ROLE here, unlike the
+  # Codex/Cursor/Gemini launchers. cmuxlayer passes --worker to every worker,
+  # Claude included, and GOLEM_ROLE=worker drops Claude to medium effort below;
+  # Opus workers must keep their effort. A caller-set GOLEM_ROLE=worker still
+  # means medium.
   _golem_refuse_claude_sonnet_full_pane || return $?
   local claude_args=("${_extra_args[@]}")
 
@@ -896,6 +901,10 @@ _golem_launch_codex() {
   local worker_mode="${_golem_codex_worker_mode:-false}"
   $_flag_codex_worker && worker_mode=true
   [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
+  # --worker (and the CodexWorker alias) is the one worker signal: export it to
+  # this call and the agent it launches. `local -x` ends with the call, so the
+  # user's interactive shell keeps whatever GOLEM_ROLE it had.
+  [[ "$worker_mode" == true ]] && local -x GOLEM_ROLE=worker
   local agent_context_file=""
   local agent_prompt=""
   local has_raw_option=false
@@ -1233,6 +1242,8 @@ _golem_launch_cursor() {
   local worker_mode=false
   $_flag_worker && worker_mode=true
   [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
+  # --worker exports GOLEM_ROLE=worker for this call only (see _golem_launch_codex).
+  [[ "$worker_mode" == true ]] && local -x GOLEM_ROLE=worker
   local agent_context_file=""
   local agent_prompt=""
   local has_raw_option=false
@@ -1305,6 +1316,8 @@ _golem_launch_gemini() {
   local worker_mode=false
   $_flag_worker && worker_mode=true
   [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
+  # --worker exports GOLEM_ROLE=worker for this call only (see _golem_launch_codex).
+  [[ "$worker_mode" == true ]] && local -x GOLEM_ROLE=worker
   local agent_context_file=""
   local agent_prompt=""
   local has_raw_option=false

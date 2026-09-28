@@ -3374,3 +3374,143 @@ BSD_MKTEMP_SHIM='function mktemp() {
         return 1
     fi
 }
+
+# ── --worker is the one worker signal: it owns GOLEM_ROLE ──────────
+#
+# cmuxlayer's spawn_agent used to type GOLEM_ROLE=worker in front of non-Claude
+# worker launchers. The dispatcher owns it now: --worker sets it for the call.
+#
+# The launched stub reports GOLEM_ROLE twice: as the launcher's shell sees it,
+# and as a real child process inherits it (the agent CLI is a child process).
+# After the launcher returns, the caller's shell must hold what it held before.
+run_worker_role_launch() {
+    local preset="$1"; shift
+    run zsh -f -c '
+      unset GOLEM_ROLE
+      [ -n "$3" ] && export GOLEM_ROLE="$3"
+      export RALPH_REGISTRY_FILE="$1"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _role_probe() {
+        print -r -- "$1_ROLE_SHELL=${GOLEM_ROLE-unset}"
+        print -r -- "$1_ROLE_CHILD=$(command env | sed -n "s/^GOLEM_ROLE=//p")"
+        print -r -- "$1_ARGS=${*[2,-1]}"
+      }
+      function claude() { _role_probe CLAUDE "$@"; }
+      function codex() { _role_probe CODEX "$@"; }
+      function cursor() { _role_probe CURSOR "$@"; }
+      function agy() { _role_probe AGY "$@"; }
+      source "$2"
+      # After source: the dispatcher defines these, and its title escapes
+      # would otherwise run into the AFTER_ lines.
+      function _golem_setup_env() { return 0; }
+      function _golem_sync_agy_workspace() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      shift 3
+      "$@"
+      rc=$?
+      print -r -- "AFTER_ROLE_SHELL=${GOLEM_ROLE-unset}"
+      print -r -- "AFTER_ROLE_ENV=$(command env | sed -n "s/^GOLEM_ROLE=//p")"
+      exit $rc
+    ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$preset" "$@"
+}
+
+@test "--worker exports GOLEM_ROLE=worker to the launched Codex, Cursor and Gemini CLI" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher stub
+    for launcher in testrepoCodex testrepoCursor testrepoGemini; do
+      case "$launcher" in
+        testrepoCodex) stub=CODEX ;;
+        testrepoCursor) stub=CURSOR ;;
+        testrepoGemini) stub=AGY ;;
+      esac
+      run_worker_role_launch "" "$launcher" --worker -s
+      [ "$status" -eq 0 ]
+      grep -F -x -q -- "${stub}_ROLE_SHELL=worker" <<< "$output"
+      grep -F -x -q -- "${stub}_ROLE_CHILD=worker" <<< "$output"
+    done
+}
+
+@test "the CodexWorker launcher exports GOLEM_ROLE=worker like codex --worker" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    run_worker_role_launch "" testrepoCodexWorker -s
+    [ "$status" -eq 0 ]
+    grep -F -x -q -- "CODEX_ROLE_CHILD=worker" <<< "$output"
+}
+
+@test "--worker does not leak GOLEM_ROLE into the caller's shell after the launch returns" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    for launcher in testrepoCodex testrepoCursor testrepoGemini testrepoCodexWorker; do
+      run_worker_role_launch "" "$launcher" --worker -s
+      [ "$status" -eq 0 ]
+      grep -E -x -q -- "(CODEX|CURSOR|AGY)_ROLE_CHILD=worker" <<< "$output"
+      grep -F -x -q -- "AFTER_ROLE_SHELL=unset" <<< "$output"
+      grep -F -x -q -- "AFTER_ROLE_ENV=" <<< "$output"
+    done
+}
+
+@test "--worker restores the caller's own GOLEM_ROLE after the launch returns" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    for launcher in testrepoCodex testrepoCursor testrepoGemini; do
+      run_worker_role_launch lead "$launcher" --worker -s
+      [ "$status" -eq 0 ]
+      grep -E -x -q -- "(CODEX|CURSOR|AGY)_ROLE_CHILD=worker" <<< "$output"
+      grep -F -x -q -- "AFTER_ROLE_SHELL=lead" <<< "$output"
+      grep -F -x -q -- "AFTER_ROLE_ENV=lead" <<< "$output"
+    done
+}
+
+@test "an explicit GOLEM_ROLE=worker still reaches every launched CLI unchanged" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    for launcher in testrepoClaude testrepoCodex testrepoCursor testrepoGemini; do
+      run_worker_role_launch worker "$launcher" -s
+      [ "$status" -eq 0 ]
+      grep -E -x -q -- "(CLAUDE|CODEX|CURSOR|AGY)_ROLE_CHILD=worker" <<< "$output"
+      grep -F -x -q -- "AFTER_ROLE_ENV=worker" <<< "$output"
+    done
+}
+
+@test "a lead launch without --worker exports no GOLEM_ROLE" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local launcher
+    for launcher in testrepoClaude testrepoCodex testrepoCursor testrepoGemini; do
+      run_worker_role_launch "" "$launcher" -s
+      [ "$status" -eq 0 ]
+      grep -E -x -q -- "(CLAUDE|CODEX|CURSOR|AGY)_ROLE_CHILD=" <<< "$output"
+    done
+}
+
+@test "a --worker passed through after Codex -- is not the launcher flag" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    run_worker_role_launch "" testrepoCodex -s -- --worker
+    [ "$status" -eq 0 ]
+    grep -F -x -q -- "CODEX_ROLE_CHILD=" <<< "$output"
+    grep -F -q -- "--worker" <<< "$output"
+}
+
+# cmuxlayer passes --worker to EVERY worker, Claude included, and deliberately
+# keeps GOLEM_ROLE away from Claude: GOLEM_ROLE=worker drops Claude to medium
+# effort. So --worker must leave Claude's effort and environment alone, while a
+# caller who sets GOLEM_ROLE=worker explicitly keeps today's medium.
+@test "Claude --worker keeps the lead effort and exports no GOLEM_ROLE (cmuxlayer contract)" {
+    [ -f "$SOURCE_DISPATCHER" ]
+    run_worker_role_launch "" testrepoClaude --worker -s
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--effort high" <<< "$output"
+    refute_contains "--effort medium" "$output" "--worker alone must not lower Claude effort"
+    grep -F -x -q -- "CLAUDE_ROLE_CHILD=" <<< "$output"
+    grep -F -x -q -- "AFTER_ROLE_SHELL=unset" <<< "$output"
+
+    run_worker_role_launch worker testrepoClaude -s
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--effort medium" <<< "$output"
+
+    run_worker_role_launch "" testrepoClaude --worker -s -E medium
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--effort medium" <<< "$output"
+}
