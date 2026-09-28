@@ -3,22 +3,32 @@
 //
 //   import   --registry <registry.json> --seats <config.yaml> --out <path>
 //            [--drop-cli <cli>]... [--write [--force]]
-//   generate --config <config.yaml> --out-dir <dir> [--home <dir>] [--check]
+//   generate [--config <config.yaml>] --out-dir <dir> [--home <dir>]
+//            [--host <LocalHostName>] [--check]
+//   init     [--config <path>] [--host <LocalHostName>] [--force]
+//
+// --config defaults to $REPOGOLEM_CONFIG. --host defaults to
+// $REPOGOLEM_HOST, then `scutil --get LocalHostName`; it picks the config's
+// machines.<host> section (config.schema.json documents the shape).
 //
 // `import` writes ONE YAML: the seat-registry file copied verbatim, plus the
 // Ralph registry's sections appended as new top-level keys. `generate` turns
 // that file back into the registry.json golem-dispatch.zsh reads today and
 // the launchers.zsh Ralph's _ralph_generate_launchers_from_registry emits.
+// `init` writes config.example.yaml, with this machine's section, as a starter.
 //
-// AIDEV-NOTE: the config file is LOCAL (Etan, 2026-09-25: "config is local,
-// generation function can be committed"). Never commit one; tests use the
-// synthetic fixtures in scripts/tests/fixtures/repogolem-config/.
+// AIDEV-NOTE: a real config is never committed to golems (Etan, 2026-09-25:
+// "config is local, generation function can be committed"; 2026-09-27: one
+// private file with a machines: section). It holds op:// refs, never values.
+// Tests use the synthetic fixtures in scripts/tests/fixtures/repogolem-config/
+// and config.example.yaml, whose boundary tests forbid real paths/hosts/vaults.
 // AIDEV-NOTE: the seat file is copied as text, never re-serialized.
 // cmuxlayer reads `seatRegistry:` with a line parser (seat-identity.ts
 // parseSeatRegistryConfig) that stops at the next column-0 line, so the seat
 // block must stay byte-identical and the appended keys must start at column 0.
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   constants,
   copyFileSync,
   existsSync,
@@ -30,9 +40,13 @@ import {
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import Ajv, { type ErrorObject } from "ajv";
 import { parse as parseYaml, parseAllDocuments, stringify as stringifyYaml } from "yaml";
+import configSchema from "./config.schema.json";
 
 const GENERATOR_ID = "golems/scripts/repogolem/repogolem-config.ts";
+const EXAMPLE_PATH = join(import.meta.dir, "config.example.yaml");
+const EXAMPLE_HOST = "example-host";
 const REGISTRY_KEYS = ["version", "coderabbit", "global", "projects", "mcpDefinitions"] as const;
 // registry.json key -> config.yaml key. `version` is renamed so it cannot be
 // mistaken for the config file's own version.
@@ -193,11 +207,116 @@ function backupStamp() {
   return `${new Date().toISOString().slice(0, 19).replace(/:/g, "")}Z`;
 }
 
-function writeAtomic(path: string, text: string) {
+function writeAtomic(path: string, text: string, mode?: number) {
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.tmp-${process.pid}`;
-  writeFileSync(tmp, text);
+  if (mode === undefined) {
+    writeFileSync(tmp, text);
+  } else {
+    // wx: never follow a pre-placed file or symlink at the tmp path.
+    writeFileSync(tmp, text, { mode, flag: "wx" });
+    chmodSync(tmp, mode);
+  }
   renameSync(tmp, path);
+}
+
+// ── config: schema + machines ─────────────────────────────────────────────
+
+const ajv = new Ajv({ allErrors: true });
+const validateConfig = ajv.compile(configSchema);
+
+// Key paths and schema rules only: ajv messages never carry the value, and
+// the value may be a pasted secret.
+function schemaErrors(label: string, errors: ErrorObject[] | null | undefined): never {
+  const lines = (errors ?? []).slice(0, 8).map((e) => {
+    const name = e.params.additionalProperty ?? e.params.propertyName ?? e.params.missingProperty;
+    return `  ${e.instancePath || "/"}: ${e.message}${typeof name === "string" ? ` (${name})` : ""}`;
+  });
+  fail(`${label} does not match config.schema.json:\n${lines.join("\n")}`);
+}
+
+function detectHost(): string {
+  if (process.env.REPOGOLEM_HOST) return process.env.REPOGOLEM_HOST;
+  let proc: ReturnType<typeof Bun.spawnSync>;
+  try {
+    proc = Bun.spawnSync(["scutil", "--get", "LocalHostName"], { stderr: "ignore" });
+  } catch {
+    fail("cannot run `scutil --get LocalHostName`; pass --host or set REPOGOLEM_HOST");
+  }
+  const host = proc.stdout.toString().trim();
+  if (proc.exitCode !== 0 || host === "") fail("`scutil --get LocalHostName` failed; pass --host or set REPOGOLEM_HOST");
+  return host;
+}
+
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+// Objects merge, lists and scalars replace, null removes the key.
+function deepMerge(base: JsonObject, over: JsonObject, where: string): JsonObject {
+  const merged: JsonObject = structuredClone(base);
+  for (const [key, value] of Object.entries(over)) {
+    if (UNSAFE_KEYS.has(key)) fail(`${where}.${key}: reserved key`);
+    const current = merged[key];
+    if (value === null) delete merged[key];
+    else if (isObject(current) && isObject(value)) merged[key] = deepMerge(current, value, `${where}.${key}`);
+    else merged[key] = structuredClone(value);
+  }
+  return merged;
+}
+
+export interface Resolved {
+  config: JsonObject;
+  machine: string | null;
+}
+
+// The config as this machine sees it: machines.<host>.overrides merged in,
+// relative project paths joined to its reposPath, clis bounded by its clis.
+export function resolveConfig(configText: string, host: () => string): Resolved {
+  const parsed: unknown = parseYaml(configText);
+  if (!isObject(parsed) || !isObject(parsed.projects)) {
+    fail("config: no top-level projects mapping (run `import` or `init` first)");
+  }
+  assertOrderSafeKeys("projects", parsed.projects);
+  if (isObject(parsed.mcpDefinitions)) assertOrderSafeKeys("mcpDefinitions", parsed.mcpDefinitions);
+  if (!validateConfig(parsed)) schemaErrors("config", validateConfig.errors);
+
+  const { machines, ...shared } = parsed;
+  let config: JsonObject = shared;
+  let machine: string | null = null;
+  let reposPath: string | null = null;
+  let machineClis: string[] | null = null;
+  if (isObject(machines)) {
+    machine = host();
+    const section = machines[machine];
+    if (!isObject(section)) {
+      fail(`machine "${machine}" has no machines: section (known: ${Object.keys(machines).join(", ")})`);
+    }
+    if (isObject(section.overrides)) {
+      if (isObject(section.overrides.projects)) assertOrderSafeKeys("overrides.projects", section.overrides.projects);
+      config = deepMerge(config, section.overrides, `machines.${machine}.overrides`);
+    }
+    if (typeof section.reposPath === "string") reposPath = section.reposPath.replace(/\/+$/, "");
+    if (Array.isArray(section.clis)) machineClis = section.clis as string[];
+  }
+
+  for (const [name, project] of Object.entries(config.projects as JsonObject)) {
+    if (!isObject(project)) continue;
+    if (typeof project.path === "string" && !/^[/~]/.test(project.path)) {
+      if (reposPath === null) {
+        fail(`projects.${name}.path is relative but there is no machines.<host>.reposPath to join it to`);
+      }
+      project.path = `${reposPath}/${project.path}`;
+    }
+    const allowed = machineClis;
+    if (allowed !== null) {
+      const clis = Array.isArray(project.clis) ? project.clis : allowed;
+      project.clis = clis.filter((cli) => allowed.includes(cli as string));
+    }
+  }
+
+  if (!validateConfig(config)) {
+    schemaErrors(`effective config for machine ${machine ?? "(none)"}`, validateConfig.errors);
+  }
+  return { config, machine };
 }
 
 // ── generate ──────────────────────────────────────────────────────────────
@@ -280,17 +399,12 @@ export interface Generated {
   launchersZsh: string;
 }
 
-export function buildGenerated(configText: string, home: string, sourceSha: string): Generated {
-  const config: unknown = parseYaml(configText);
-  if (!isObject(config) || !isObject(config.projects)) {
-    fail("config: no top-level projects mapping (run `import` first)");
-  }
-  assertOrderSafeKeys("projects", config.projects);
-  if (isObject(config.mcpDefinitions)) assertOrderSafeKeys("mcpDefinitions", config.mcpDefinitions);
+export function buildGenerated(configText: string, home: string, sourceSha: string, host: () => string): Generated {
+  const { config, machine } = resolveConfig(configText, host);
   const configSha = sha256(configText);
 
   const registry: JsonObject = {
-    _generated: { generator: GENERATOR_ID, sourceSha, configSha256: configSha },
+    _generated: { generator: GENERATOR_ID, sourceSha, configSha256: configSha, machine },
   };
   for (const key of REGISTRY_KEYS) {
     const configKey = CONFIG_KEY[key];
@@ -303,6 +417,7 @@ export function buildGenerated(configText: string, home: string, sourceSha: stri
     "# Regenerate with: bun scripts/repogolem/repogolem-config.ts generate --config <config.yaml> --out-dir <dir>",
     `# generator-sha: ${sourceSha}`,
     `# config-sha256: ${configSha}`,
+    `# machine: ${machine ?? "(none)"}`,
     BAR,
     "",
     ...BOOTSTRAP,
@@ -310,7 +425,7 @@ export function buildGenerated(configText: string, home: string, sourceSha: stri
 
   return {
     registryJson: `${JSON.stringify(registry, null, 2)}\n`,
-    launchersZsh: `${header}\n${launchersBody(config.projects, home)}`,
+    launchersZsh: `${header}\n${launchersBody(config.projects as JsonObject, home)}`,
   };
 }
 
@@ -400,16 +515,28 @@ function runImport(argv: string[]) {
   return 0;
 }
 
+function configPath(args: Record<string, unknown>): string {
+  if (typeof args.config === "string") return args.config;
+  if (process.env.REPOGOLEM_CONFIG) return process.env.REPOGOLEM_CONFIG;
+  fail("no config: set REPOGOLEM_CONFIG or pass --config <path>");
+}
+
+function hostFrom(args: Record<string, unknown>): () => string {
+  return () => (typeof args.host === "string" ? args.host : detectHost());
+}
+
 function runGenerate(argv: string[]) {
-  const args = parseArgs(argv, ["check"], ["config", "out-dir", "home"]);
-  const configText = readFileSync(required(args, "config"), "utf8");
+  const args = parseArgs(argv, ["check"], ["config", "out-dir", "home", "host"]);
+  const config = configPath(args);
+  const configText = readFileSync(config, "utf8");
   const outDir = required(args, "out-dir");
   const home = typeof args.home === "string" ? args.home : homedir();
+  const host = hostFrom(args);
   const registryPath = join(outDir, "registry.json");
   const launchersPath = join(outDir, "launchers.zsh");
 
   if (!args.check) {
-    const generated = buildGenerated(configText, home, currentSourceSha());
+    const generated = buildGenerated(configText, home, currentSourceSha(), host);
     writeAtomic(registryPath, generated.registryJson);
     writeAtomic(launchersPath, generated.launchersZsh);
     console.log(`wrote ${registryPath}\nwrote ${launchersPath}`);
@@ -419,17 +546,45 @@ function runGenerate(argv: string[]) {
   const read = (path: string) => (existsSync(path) ? readFileSync(path, "utf8") : null);
   const registryText = read(registryPath);
   const launchersText = read(launchersPath);
-  const expected = buildGenerated(configText, home, recordedSourceSha(registryText, launchersText) ?? "unknown");
+  const expected = buildGenerated(configText, home, recordedSourceSha(registryText, launchersText) ?? "unknown", host);
   const stale: string[] = [];
   if (registryText !== expected.registryJson) stale.push(registryText === null ? `${registryPath} (missing)` : registryPath);
   if (launchersText !== expected.launchersZsh) {
     stale.push(launchersText === null ? `${launchersPath} (missing)` : launchersPath);
   }
   if (stale.length > 0) {
-    console.error(`stale vs ${required(args, "config")}:\n  ${stale.join("\n  ")}\nrerun generate`);
+    console.error(`stale vs ${config}:\n  ${stale.join("\n  ")}\nrerun generate`);
     return 1;
   }
   console.log(`fresh: ${registryPath}, ${launchersPath}`);
+  return 0;
+}
+
+// The example, with its example-host section renamed to this machine.
+export function starterConfig(host: string): string {
+  if (!/^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$/.test(host)) fail(`host "${host}" is not a LocalHostName`);
+  const example = readFileSync(EXAMPLE_PATH, "utf8");
+  const marker = new RegExp(`^  ${EXAMPLE_HOST}:$`, "m");
+  if (!marker.test(example)) fail(`internal: config.example.yaml has no ${EXAMPLE_HOST} section`);
+  const text = example.replace(marker, `  ${host}:`);
+  const parsed: unknown = parseYaml(text);
+  if (!validateConfig(parsed)) schemaErrors("starter config", validateConfig.errors);
+  return text;
+}
+
+function runInit(argv: string[]) {
+  const args = parseArgs(argv, ["force"], ["config", "host"]);
+  const target = configPath(args);
+  const host = hostFrom(args)();
+  const text = starterConfig(host);
+  if (existsSync(target)) {
+    if (!args.force) fail(`${target} exists; pass --force to overwrite (a dated .bak is written first)`);
+    const bak = `${target}.bak-${backupStamp()}`;
+    copyFileSync(target, bak, constants.COPYFILE_EXCL);
+    console.log(`backup: ${bak}`);
+  }
+  writeAtomic(target, text, 0o600);
+  console.log(`wrote ${target} (machine ${host}); edit it, then run generate`);
   return 0;
 }
 
@@ -437,7 +592,8 @@ function main(argv: string[]) {
   const [command, ...rest] = argv;
   if (command === "import") return runImport(rest);
   if (command === "generate") return runGenerate(rest);
-  fail("usage: repogolem-config.ts import|generate [options] (see the header comment)");
+  if (command === "init") return runInit(rest);
+  fail("usage: repogolem-config.ts import|generate|init [options] (see the header comment)");
 }
 
 // Exit codes: 0 ok · 1 stale (generate --check) · 2 any error. An unreadable
