@@ -42,6 +42,14 @@ function manifestFor() {
   };
 }
 
+function addWrappedStopHook(fx) {
+  const manifest = manifestFor();
+  manifest.hosts.mbp.push({ id: "brainbar-stop-index", kind: "wrapped-external", owner: "brainlayer",
+    event: "Stop", match: "brainbar-stop-index.py", timeout: 5, async: true,
+    command: "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python {home}/Gits/brainlayer/hooks/brainbar-stop-index.py" });
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+}
+
 function fixture({ settings } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "install-hooks-")));
   dirs.push(root);
@@ -85,6 +93,59 @@ test("dry-run is the default and writes nothing", () => {
   expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
   expect(existsSync(live(fx))).toBe(false);
   expect(existsSync(path.join(fx.home, ".claude/hooks/demo-gate"))).toBe(false);
+});
+
+test("wrapped external Stop hook replaces the hand-placed command once and keeps its owner script external", () => {
+  const old = { type: "command", command: "node /old/skill-creator/hooks-lab/stop-telemetry.mjs brainbar-stop-index -- python3 /old/brainbar-stop-index.py", async: true, timeout: 5000 };
+  const sibling = { type: "command", command: "node /other/stop-hook.mjs" };
+  const fx = fixture({ settings: `${JSON.stringify({ hooks: { Stop: [{ hooks: [old, sibling] }, { hooks: [old] }] } }, null, 2)}\n` });
+  addWrappedStopHook(fx);
+  const result = run(fx, "--apply");
+  expect(result.status).toBe(0);
+  const groups = JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.Stop;
+  const stopHooks = groups.flatMap((group) => group.hooks);
+  expect(stopHooks).toHaveLength(2);
+  expect(stopHooks[1]).toEqual(sibling);
+  const node = spawnSync("sh", ["-c", "command -v node"], { encoding: "utf8" }).stdout.trim();
+  expect(stopHooks[0]).toEqual({ type: "command", command: `${node} ${live(fx)}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python ${fx.home}/Gits/brainlayer/hooks/brainbar-stop-index.py`, timeout: 5, async: true });
+  expect(existsSync(path.join(fx.home, ".claude/hooks/brainbar-stop-index.py"))).toBe(false);
+  expect(bakFiles(fx)).toHaveLength(1);
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(bakFiles(fx)).toHaveLength(1);
+});
+
+test("--status checks the wrapped external hook's exact command, timeout, async flag, and duplicates", () => {
+  const fx = fixture();
+  addWrappedStopHook(fx);
+  expect(run(fx, "--status").out).toContain("brainbar-stop-index drifted");
+  expect(run(fx, "--apply").status).toBe(0);
+  let result = run(fx, "--status");
+  expect(result.status).toBe(0);
+  expect(result.out).toContain("brainbar-stop-index ok");
+  for (const change of [(hook) => { hook.command += " --drift"; }, (hook) => { hook.timeout = 1; }, (hook) => { hook.async = false; }]) {
+    const settings = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+    change(settings.hooks.Stop[0].hooks[0]);
+    writeFileSync(fx.settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+    result = run(fx, "--status");
+    expect(result.status).not.toBe(0);
+    expect(result.out).toContain("brainbar-stop-index drifted");
+    expect(run(fx, "--apply").status).toBe(0);
+  }
+  const settings = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  settings.hooks.Stop.push({ hooks: [{ ...settings.hooks.Stop[0].hooks[0] }] });
+  writeFileSync(fx.settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+  result = run(fx, "--status");
+  expect(result.status).not.toBe(0);
+  expect(result.out).toContain("brainbar-stop-index drifted");
+});
+
+test("shipped MBP wrapper uses host placeholders and M1 has no brainbar Stop hook", () => {
+  const entry = realManifest.hosts.mbp.find((hook) => hook.id === "brainbar-stop-index");
+  expect(entry.kind).toBe("wrapped-external");
+  expect(entry.timeout).toBe(5);
+  expect(entry.command).toContain("{home}/Gits/brainlayer/hooks/brainbar-stop-index.py");
+  expect(entry.command).not.toMatch(/\/Users\/[^/]+/);
+  expect(realManifest.hosts.m1.some((hook) => hook.id === "brainbar-stop-index")).toBe(false);
 });
 
 test("--apply pins a detached, locked hooks-live, links (not copies), registers, backs up, keeps unrelated bytes, idempotent", () => {
