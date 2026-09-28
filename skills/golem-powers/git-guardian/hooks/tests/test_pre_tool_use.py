@@ -8,6 +8,7 @@ real path and ignore whatever the main checkout holds.
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -53,6 +54,34 @@ def test_the_installed_hook_still_blocks_through_its_own_git_safety(tmp_path):
     assert result.returncode == 2
     assert "FAKE" not in result.stdout
     assert "git push --force" in json.loads(result.stdout)["reason"]
+
+
+def test_copied_hook_loads_its_own_split_implementation_from_another_cwd(tmp_path):
+    installed = tmp_path / "installed" / "golem-powers"
+    installed.mkdir(parents=True)
+    guardian = installed / "git-guardian"
+    shutil.copytree(HOOK.parents[1], guardian, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(HOOK.parents[2] / "_shared", installed / "_shared")
+    shell = guardian / "git_safety_impl" / "shell.py"
+    with shell.open("a") as handle:
+        handle.write("\ndef dangerous_shell_reason(command, *, cwd=None, env=None, _depth=0, api=None):\n"
+                     "    return 'COPIED SPLIT IMPLEMENTATION'\n")
+    home = tmp_path / "home"
+    hooks = home / ".claude" / "hooks"
+    hooks.mkdir(parents=True)
+    hook = hooks / "pre_tool_use.py"
+    hook.symlink_to(guardian / "hooks" / "pre_tool_use.py")
+    other_cwd = tmp_path / "other-cwd"
+    other_cwd.mkdir()
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_GUARDIAN_LIB", "CLAUDE_WORKER")}
+    env["HOME"] = str(home)
+    result = subprocess.run(
+        ["python3", str(hook)], cwd=other_cwd, env=env, text=True, capture_output=True,
+        input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "echo safe"}, "session_id": "t"}),
+        check=False,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "Dangerous command: COPIED SPLIT IMPLEMENTATION" in json.loads(result.stdout)["reason"]
 
 
 # ── GO-5 E2 cleanup ────────────────────────────────────────────────────────────

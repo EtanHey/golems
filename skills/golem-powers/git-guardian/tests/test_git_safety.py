@@ -22,17 +22,24 @@ spec.loader.exec_module(git_safety)
 def test_two_facades_load_their_own_git_implementation(tmp_path):
     copied = tmp_path / "other" / "git-guardian"
     shutil.copytree(MODULE.parent, copied, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(MODULE.parent.parent / "_shared", copied.parent / "_shared")
     implementation = copied / "git_safety_impl" / "git.py"
     source = implementation.read_text()
     assert "return len(meaningful) == 0" in source
     implementation.write_text(source.replace("return len(meaningful) == 0", "return 'other copy'"))
+    with (copied / "git_safety_impl" / "shell.py").open("a") as handle:
+        handle.write("\ndef dangerous_shell_reason(command, *, cwd=None, env=None, _depth=0, api=None):\n"
+                     "    return 'other shell'\n")
     other_spec = importlib.util.spec_from_file_location("git_safety_other", copied / "git_safety.py")
     other = importlib.util.module_from_spec(other_spec)
     other_spec.loader.exec_module(other)
     assert other.pr_body_is_empty("hello") == "other copy"
     assert git_safety.pr_body_is_empty("hello") is False
-    assert other._git_impl.__file__ == str(implementation)
-    assert git_safety._git_impl.__file__ == str(MODULE.parent / "git_safety_impl" / "git.py")
+    assert other.dangerous_shell_reason("echo hi") == "other shell"
+    assert git_safety.dangerous_shell_reason("echo hi") is None
+    assert other._git.__file__ == str(implementation)
+    assert git_safety._git.__file__ == str(MODULE.parent / "git_safety_impl" / "git.py")
+    assert other._pkg.shell_parse.__file__ == str(copied.parent / "_shared" / "shell_parse.py")
 
 
 def test_copied_git_loader_restores_bytecode_setting_without_impl_cache(tmp_path):
