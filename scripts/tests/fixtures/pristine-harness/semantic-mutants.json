@@ -246,5 +246,149 @@
     "old": "  else\n    _claude_effort=\"high\"\n",
     "new": "  else\n    _claude_effort=\"xhigh\"\n",
     "description": "L8 lead-seat claude effort high->xhigh"
+  },
+  {
+    "id": "N-G7",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
+    "old": "if os.environ.get(\"CLAUDE_WORKER\"):",
+    "new": "if os.environ.get(\"CLAUDE_WORKERS\"):",
+    "description": "N-G7 CLAUDE_WORKER bypass renamed"
+  },
+  {
+    "id": "N-A1",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if sub == \"commit\" and re.fullmatch(r\"-[A-Za-z]*n[A-Za-z]*\", token):",
+    "new": "if sub == \"commit\" and re.fullmatch(r\"-n\", token):",
+    "description": "N-A1 commit -n cluster not no-verify"
+  },
+  {
+    "id": "N-A2",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "_MESSAGE_FLAGS_WITH_VALUE = {\"-m\", \"--message\", \"-F\", \"--file\"}",
+    "new": "_MESSAGE_FLAGS_WITH_VALUE = {\"-m\", \"--message\", \"--file\"}",
+    "description": "N-A2 -F not message flag"
+  },
+  {
+    "id": "N-A3",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "has_worktree = \"--worktree\" in args or \"-W\" in args",
+    "new": "has_worktree = \"--worktree\" in args",
+    "description": "N-A3 restore -W not worktree"
+  },
+  {
+    "id": "N-A4",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "_SKELETON_LINES = {\"#\", \"##\", \"###\", \"-\", \"*\", \"—\", \"---\", \"<!-- -->\"}",
+    "new": "_SKELETON_LINES = {\"#\", \"##\", \"###\", \"-\", \"*\", \"—\", \"<!-- -->\"}",
+    "description": "N-A4 skeleton '---' not skeleton"
+  },
+  {
+    "id": "N-A6",
+    "target": "git-api",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "{\"-C\", \"-c\", \"--git-dir\", \"--work-tree\",",
+    "new": "{\"-C\", \"-c\", \"--work-tree\",",
+    "description": "N-A6 --git-dir value not skipped"
+  },
+  {
+    "id": "N-T5",
+    "target": "tmp-block",
+    "path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "old": "_WORKTREE_VALUE_FLAGS = {\"-b\", \"-B\", \"--reason\"}",
+    "new": "_WORKTREE_VALUE_FLAGS = {\"-b\", \"--reason\"}",
+    "description": "N-T5 worktree -B value flag dropped"
+  },
+  {
+    "id": "N-P1",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "_FUNCTION_LOOKUP_SUPPRESSORS = {\n    \"command\", \"exec\",",
+    "new": "_FUNCTION_LOOKUP_SUPPRESSORS = {\n    \"exec\",",
+    "description": "N-P1 command not function-lookup suppressor"
+  },
+  {
+    "id": "N-L4",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "flash|flash-high)            print -r -- \"Gemini 3.8 Flash (High)\" ;;",
+    "new": "flash|flash-high)            print -r -- \"Gemini 3.8 Flash (Medium)\" ;;",
+    "description": "N-L4 agy flash alias"
+  },
+  {
+    "id": "N-G2-rm",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "    if command_name == \"nice\":\n        nested = _skip_options(\n            words, position + 1, {\"-n\", \"--adjustment\"}\n        )\n        return _rm_reason_in_words(",
+    "new": "    if command_name == \"nicex\":\n        nested = _skip_options(\n            words, position + 1, {\"-n\", \"--adjustment\"}\n        )\n        return _rm_reason_in_words(",
+    "description": "N-G2 rm-path wrapper"
+  },
+  {
+    "id": "N-G1-rm",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "    if command_name == \"xargs\":\n        nested = _skip_options(\n            words,\n            position + 1,\n            {\n                \"-a\", \"--arg-file\", \"-d\", \"--delimiter\", \"-E\",\n                \"-I\", \"-L\", \"--max-lines\", \"-n\",\n                \"--max-args\", \"-P\", \"--max-procs\", \"-s\", \"--max-chars\",\n            },\n        )\n        return _rm_reason_in_words(",
+    "new": "    if command_name == \"xargsx\":\n        nested = _skip_options(\n            words,\n            position + 1,\n            {\n                \"-a\", \"--arg-file\", \"-d\", \"--delimiter\", \"-E\",\n                \"-I\", \"-L\", \"--max-lines\", \"-n\",\n                \"--max-args\", \"-P\", \"--max-procs\", \"-s\", \"--max-chars\",\n            },\n        )\n        return _rm_reason_in_words(",
+    "description": "N-G1 rm-path wrapper"
+  },
+  {
+    "id": "G2-rm",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "    if command_name in {\"sudo\", \"command\", \"builtin\", \"nohup\", \"exec\"}:\n        option_values = {\n            \"-u\", \"--user\", \"-g\", \"--group\", \"-h\", \"--host\",\n            \"-p\", \"--prompt\", \"-C\", \"--close-from\", \"-a\",\n        } if command_name == \"sudo\" else set()\n        nested = _skip_options(words, position + 1, option_values)\n        return _rm_reason_in_words(",
+    "new": "    if command_name in {\"command\", \"builtin\", \"nohup\", \"exec\"}:\n        option_values = {\n            \"-u\", \"--user\", \"-g\", \"--group\", \"-h\", \"--host\",\n            \"-p\", \"--prompt\", \"-C\", \"--close-from\", \"-a\",\n        } if command_name == \"sudo\" else set()\n        nested = _skip_options(words, position + 1, option_values)\n        return _rm_reason_in_words(",
+    "description": "G2 rm-path wrapper"
+  },
+  {
+    "id": "G6-rm",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "    if command_name == \"find\":\n        for index in range(position + 1, len(words)):\n            if words[index] in {\"-exec\", \"-execdir\"}:\n                reason = _rm_reason_in_words(",
+    "new": "    if command_name == \"find\":\n        for index in range(position + 1, len(words)):\n            if words[index] in {\"-execdir\"}:\n                reason = _rm_reason_in_words(",
+    "description": "G6 rm-path wrapper"
+  },
+  {
+    "id": "L9",
+    "target": "launcher",
+    "path": "scripts/repogolem/golem-dispatch.zsh",
+    "old": "  local cursor_args=(\"${_extra_args[@]}\")\n  local worker_mode=false\n  $_flag_worker && worker_mode=true\n  [[ \"${GOLEM_ROLE:-}\" == \"worker\" ]] && worker_mode=true\n  local agent_context_file=\"\"",
+    "new": "  local cursor_args=(\"${_extra_args[@]}\")\n  local worker_mode=false\n  $_flag_worker && worker_mode=true\n  local agent_context_file=\"\"",
+    "description": "L9 cursor worker positional prompt"
+  },
+  {
+    "id": "N-G1-non-rm",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if command_name == \"xargs\":\n        nested = _skip_options(\n            words,\n            position + 1,\n            {\n                \"-a\", \"--arg-file\", \"-d\", \"--delimiter\", \"-E\",\n                \"-I\", \"-L\", \"--max-lines\", \"-n\",\n                \"--max-args\", \"-P\", \"--max-procs\", \"-s\", \"--max-chars\",\n            },\n        )\n        return _dangerous_non_rm_in_words(words, nested)",
+    "new": "if command_name == \"xargsx\":\n        nested = _skip_options(\n            words,\n            position + 1,\n            {\n                \"-a\", \"--arg-file\", \"-d\", \"--delimiter\", \"-E\",\n                \"-I\", \"-L\", \"--max-lines\", \"-n\",\n                \"--max-args\", \"-P\", \"--max-procs\", \"-s\", \"--max-chars\",\n            },\n        )\n        return _dangerous_non_rm_in_words(words, nested)",
+    "description": "N-G1 non-rm wrapper"
+  },
+  {
+    "id": "N-G2-non-rm",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if command_name == \"nice\":\n        nested = _skip_options(\n            words, position + 1, {\"-n\", \"--adjustment\"}\n        )\n        return _dangerous_non_rm_in_words(words, nested)",
+    "new": "if command_name == \"nicex\":\n        nested = _skip_options(\n            words, position + 1, {\"-n\", \"--adjustment\"}\n        )\n        return _dangerous_non_rm_in_words(words, nested)",
+    "description": "N-G2 non-rm wrapper"
+  },
+  {
+    "id": "G2-non-rm",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if command_name in {\"sudo\", \"command\", \"builtin\", \"nohup\", \"exec\"}:\n        option_values = {\n            \"-u\", \"--user\", \"-g\", \"--group\", \"-h\", \"--host\",\n            \"-p\", \"--prompt\", \"-C\", \"--close-from\", \"-a\",\n        } if command_name == \"sudo\" else set()\n        nested = _skip_options(words, position + 1, option_values)\n        return _dangerous_non_rm_in_words(words, nested)",
+    "new": "if command_name in {\"command\", \"builtin\", \"nohup\", \"exec\"}:\n        option_values = {\n            \"-u\", \"--user\", \"-g\", \"--group\", \"-h\", \"--host\",\n            \"-p\", \"--prompt\", \"-C\", \"--close-from\", \"-a\",\n        } if command_name == \"sudo\" else set()\n        nested = _skip_options(words, position + 1, option_values)\n        return _dangerous_non_rm_in_words(words, nested)",
+    "description": "G2 non-rm wrapper"
+  },
+  {
+    "id": "G6-non-rm",
+    "target": "git-guardian",
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "if words[index] in {\"-exec\", \"-execdir\"}:\n                reason = _dangerous_non_rm_in_words(words, index + 1)",
+    "new": "if words[index] in {\"-execdir\"}:\n                reason = _dangerous_non_rm_in_words(words, index + 1)",
+    "description": "G6 non-rm wrapper"
   }
 ]

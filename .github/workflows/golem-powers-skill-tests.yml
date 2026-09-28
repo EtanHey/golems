@@ -140,7 +140,7 @@ jobs:
       - name: Verify immutable Python and launcher goldens
         run: python scripts/ci/pristine-harness.py verify-goldens
 
-      - name: Catch all 31 semantic policy mutants
+      - name: Catch all required semantic policy mutants
         run: python scripts/ci/pristine-harness.py mutation-proof
 
   shell-skill-tests:

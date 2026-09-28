@@ -6162,5 +6162,2209 @@
     "id": "r2-parser-heredoc-tab-after",
     "target": "parser",
     "input": "cat <<-EOF\n\tliteral text\n\tEOF\ngit push --force origin main"
+  },
+  {
+    "id": "topup-noverify-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit --no-verify -m x"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git push --no-verify origin main"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git push -n origin main"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -m normal"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "echo --no-verify"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -m \"fix --no-verify\""
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-06",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit --message=\"fix --no-verify\""
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-07",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit --file=\"--no-verify\""
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-08",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -m --no-verify"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-09",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit --message --no-verify"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-10",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -F --no-verify"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-11",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit --file --no-verify"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-12",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -m x --no-verify"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-13",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git -C /repo commit --no-verify -m x"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-14",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git -c user.name=x push --no-verify origin main"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-15",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -n -m x"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-16",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -nm x"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-17",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -an -m x"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-18",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit -am x"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-19",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "/opt/homebrew/bin/git commit --no-verify -m x"
+      ]
+    }
+  },
+  {
+    "id": "topup-noverify-authorized",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_unauthorized_no_verify",
+      "args": [
+        "git commit --no-verify -m x"
+      ],
+      "kwargs": {
+        "authorized": true
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-00",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-01",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout ."
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-01",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout ."
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-02",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore ."
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-02",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore ."
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-03",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout -- ."
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-03",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout -- ."
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-04",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout -- src/app.py src/util.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout -- src/app.py src/util.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore --staged src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-05",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore --staged src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-06",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore --staged --worktree src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-06",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore --staged --worktree src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-07",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore --staged -W a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-07",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore --staged -W a.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-08",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore -S a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-08",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore -S a.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-09",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore -S -W a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-09",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore -S -W a.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-10",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git -C /some/repo restore src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-10",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git -C /some/repo restore src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-11",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git --git-dir x restore a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-11",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git --git-dir x restore a.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-12",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout main"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-12",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout main"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-13",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout -b feature/x"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-13",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout -b feature/x"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-14",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout -B feature main"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-14",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout -B feature main"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-15",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout --orphan gh-pages main"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-15",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout --orphan gh-pages main"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-16",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore -s HEAD src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-16",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore -s HEAD src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-17",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore --source HEAD~2 src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-17",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore --source HEAD~2 src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-18",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore --source=origin/main src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-18",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore --source=origin/main src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-19",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout HEAD src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-19",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout HEAD src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-20",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout main src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-20",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout main src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-21",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "/usr/bin/git restore src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-21",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "/usr/bin/git restore src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-22",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git checkout -- ./src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-22",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout -- ./src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-23",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git status"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-23",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git status"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-24",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git add ."
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-24",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git add ."
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-25",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git commit -m x"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-25",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git commit -m x"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-26",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "ls -la"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-26",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "ls -la"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-27",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore --worktree src/app.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-27",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore --worktree src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-restore-targets-28",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "restore_targets",
+      "args": [
+        "git restore -W a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-destructive-restore-28",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore -W a.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py",
+          "src/util.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-destructive-unowned",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "test/app.test.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-destructive-owned-dot",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git restore src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "./src/app.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-destructive-owned-prefix",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_destructive_restore",
+      "args": [
+        "git checkout -- ./src/app.py"
+      ],
+      "kwargs": {
+        "owned_paths": [
+          "src/app.py"
+        ]
+      }
+    }
+  },
+  {
+    "id": "topup-pr-body-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        null
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        ""
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "   \n\t  "
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "<!-- template -->"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "#"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "##"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-06",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "###"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-07",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "-"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-08",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "*"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-09",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "—"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-10",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "---"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-11",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "<!-- -->"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-12",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "#\n-\n*"
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-13",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "<!-- a -->\n<!-- b -->\n   "
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-14",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "## What\nFixes the race."
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-15",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "Closes #123. Adds a regression test."
+      ]
+    }
+  },
+  {
+    "id": "topup-pr-body-16",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "pr_body_is_empty",
+      "args": [
+        "<!-- template -->\nReal description here."
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git status"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-01",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "/usr/bin/git restore a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-02",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "echo hello"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-03",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git --no-pager checkout main"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-04",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git -C /repo restore a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git -c user.name=x commit -m x"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-06",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git --git-dir x restore a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-07",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git --work-tree x restore a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-08",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git --namespace x restore a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-09",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git --exec-path x restore a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-10",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git --git-dir=x restore a.py"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-11",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-12",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git -C /repo"
+      ]
+    }
+  },
+  {
+    "id": "topup-split-git-13",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "split_git",
+      "args": [
+        "git --git-dir x"
+      ]
+    }
+  },
+  {
+    "id": "topup-is-rm-00",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf /"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-01",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf ~"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-02",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf .."
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-03",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf ../sibling"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-04",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf docs.local/safe/leaf"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-05",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf \"$UNSET\""
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-06",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf \"$D/x\""
+      ],
+      "kwargs": {
+        "env": {
+          "D": "/"
+        }
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-07",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -rf \"$D/x/y\""
+      ],
+      "kwargs": {
+        "env": {
+          "D": "docs.local/safe"
+        }
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-08",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "sudo rm -rf /"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-09",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "env rm -rf /"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-10",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "time rm -rf /"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-11",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "printf \"/\\n\" | xargs rm -rf"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-12",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -f /"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-is-rm-13",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "is_dangerous_rm",
+      "args": [
+        "rm -r /"
+      ],
+      "kwargs": {
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-guardian-worker-unset",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-guardian-worker-empty",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {
+      "CLAUDE_WORKER": ""
+    }
+  },
+  {
+    "id": "topup-guardian-worker-set",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {
+      "CLAUDE_WORKER": "1"
+    }
+  },
+  {
+    "id": "topup-tmp-wt-b-root",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -b lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-b-subdir",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -b lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "subdir",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-b-worktree",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -b lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-b-nested",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -b lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-b-nested-worktree",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -b lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-B-root",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -B lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-B-subdir",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -B lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "subdir",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-B-worktree",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -B lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-B-nested",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -B lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-B-nested-worktree",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add -B lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-reason-root",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add --reason lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-reason-subdir",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add --reason lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "subdir",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-reason-worktree",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add --reason lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-reason-nested",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add --reason lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested",
+    "env": {}
+  },
+  {
+    "id": "topup-tmp-wt-reason-nested-worktree",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add --reason lane /outside/wt HEAD\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-parser-suppressor-command",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; command leak"
+  },
+  {
+    "id": "topup-parser-suppressor-exec",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; exec leak"
+  },
+  {
+    "id": "topup-parser-suppressor-env",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; env leak"
+  },
+  {
+    "id": "topup-parser-suppressor-sudo",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; sudo leak"
+  },
+  {
+    "id": "topup-parser-suppressor-nohup",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; nohup leak"
+  },
+  {
+    "id": "topup-parser-suppressor-nice",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; nice leak"
+  },
+  {
+    "id": "topup-parser-suppressor-xargs",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; xargs leak"
+  },
+  {
+    "id": "topup-parser-suppressor-stdbuf",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; stdbuf leak"
+  },
+  {
+    "id": "topup-parser-suppressor-caffeinate",
+    "target": "parser",
+    "input": "leak() { tee /tmp/x </dev/null; }; caffeinate leak"
+  },
+  {
+    "id": "topup-agy-model-empty",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-pro",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "pro"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-pro-high",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "pro-high"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-pro-low",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "pro-low"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-flash",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "flash"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-flash-high",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "flash-high"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-flash-med",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "flash-med"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-flash-medium",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "flash-medium"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-flash-low",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "flash-low"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-opus",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "opus"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-sonnet",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "sonnet"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-oss",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "oss"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-gpt-oss",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "gpt-oss"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-gpt-oss-120b",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "gpt-oss-120b"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-agy-model-custom-model",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "custom-model"
+    ],
+    "env": {},
+    "mcp_merge": true
+  },
+  {
+    "id": "topup-guardian-cwd-root",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -f origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "topup-guardian-cwd-subdir",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -f origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "subdir",
+    "env": {}
+  },
+  {
+    "id": "topup-guardian-cwd-worktree",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -f origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-guardian-cwd-nested",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -f origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested",
+    "env": {}
+  },
+  {
+    "id": "topup-guardian-cwd-nested-worktree",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push -f origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-guardian-nice-root",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-guardian-nice-option-root",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice -n 5 rm -rf /\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-guardian-nice-home",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice rm -rf ~\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-launcher-cursor-worker-positional",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "cursor",
+      "hello"
+    ],
+    "env": {
+      "GOLEM_ROLE": "worker"
+    },
+    "persona": true
+  },
+  {
+    "id": "topup-r2-guardian-xargs-force-push",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo main | xargs git push --force origin\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-xargs-force-push",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "echo main | xargs git push --force origin"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-xargs-reset-hard",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x | xargs -n1 git reset --hard\"},\"session_id\":\"pristine\"}",
+    "cwd": "subdir",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-xargs-reset-hard",
+    "target": "git-api",
+    "cwd": "subdir",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "printf x | xargs -n1 git reset --hard"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-find-clean",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -name x -exec git clean -fd \\\\;\"},\"session_id\":\"pristine\"}",
+    "cwd": "worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-find-clean",
+    "target": "git-api",
+    "cwd": "worktree",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "find . -name x -exec git clean -fd \\;"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-find-force-push",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -exec git push --force \\\\;\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-find-force-push",
+    "target": "git-api",
+    "cwd": "nested",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "find . -exec git push --force \\;"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-sudo-force-push",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sudo -u deploy git push --force origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "nested-worktree",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-sudo-force-push",
+    "target": "git-api",
+    "cwd": "nested-worktree",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "sudo -u deploy git push --force origin main"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
+  },
+  {
+    "id": "topup-r2-guardian-nice-force-push",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"nice -n 5 git push --force origin main\"},\"session_id\":\"pristine\"}",
+    "cwd": "root",
+    "env": {}
+  },
+  {
+    "id": "topup-r2-api-nice-force-push",
+    "target": "git-api",
+    "cwd": "root",
+    "request": {
+      "function": "dangerous_shell_reason",
+      "args": [
+        "nice -n 5 git push --force origin main"
+      ],
+      "kwargs": {
+        "cwd": "{REPO}",
+        "env": {}
+      }
+    }
   }
 ]
