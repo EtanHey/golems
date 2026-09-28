@@ -147,6 +147,76 @@ STRUCTURAL_CASES='0|["Authorization: Bearer FAKEVALUE0000"]
   [ "$n" -eq 18 ]
 }
 
+# Percent-encoded query parameter NAMES: a URL parser decodes `api%5Fkey` to
+# `api_key`, so the guard must decode before it judges the name.
+ENCODED_QUERY_CASES='0|["https://example.invalid/mcp?api%5Fkey=FAKEVALUE0000"]
+0|["https://example.invalid/mcp?%61pi_key=FAKEVALUE0000"]
+0|["https://example.invalid/mcp?ACCESS%5FTOKEN=FAKEVALUE0000"]
+0|["https://example.invalid/mcp?page=2&api%2Dkey=FAKEVALUE0000#frag"]
+0|["https://example.invalid/mcp?page=2;client%5Fsecret=FAKEVALUE0000"]
+0|["https://example.invalid/mcp?api%255Fkey=FAKEVALUE0000"]
+1|["--url", "https://example.invalid/mcp?api%5Fkey=FAKEVALUE0000"]
+0|["--url=https://example.invalid/mcp?api%5Fkey=FAKEVALUE0000"]
+1|["-c", "exec some-mcp https://example.invalid/mcp?api%5Fkey=FAKEVALUE0000"]'
+
+@test "rejects percent-encoded secret query parameter names" {
+  local index args n=0
+  while IFS='|' read -r index args; do
+    n=$((n + 1))
+    rm -f "$REPOS/demo/.mcp.json"
+    write_config "$args"
+    expect_rejected "$index" 'FAKEVALUE0000' '%5F' 'api_key' 'ACCESS' \
+      || { echo "case: $args"; return 1; }
+  done <<< "$ENCODED_QUERY_CASES"
+  [ "$n" -eq 9 ]
+}
+
+# A `#` ends the URL: text after it is a fragment, never sent as a query, so
+# a `?api_key=` inside a fragment is harmless. A secret name in the real query
+# before the fragment is still rejected.
+FRAGMENT_REJECT_CASES='0|["https://example.invalid/mcp?api_key=FAKEVALUE0000#section?page=2"]
+0|["https://example.invalid/mcp?page=2&api_key=FAKEVALUE0000#frag"]
+0|["--url=https://example.invalid/mcp?api_key=FAKEVALUE0000#frag?page=2"]
+1|["--url", "https://example.invalid/mcp?page=2;api_key=FAKEVALUE0000#frag"]'
+
+@test "rejects a secret query name that precedes a URL fragment" {
+  local index args n=0
+  while IFS='|' read -r index args; do
+    n=$((n + 1))
+    rm -f "$REPOS/demo/.mcp.json"
+    write_config "$args"
+    expect_rejected "$index" 'FAKEVALUE0000' 'api_key' || { echo "case: $args"; return 1; }
+  done <<< "$FRAGMENT_REJECT_CASES"
+  [ "$n" -eq 4 ]
+}
+
+@test "accepts query-like text that sits only inside a URL fragment" {
+  local case
+  for case in \
+    '["https://example.invalid/mcp?page=2#section?api_key=FAKEVALUE0000"]' \
+    '["https://example.invalid/mcp#section?api_key=FAKEVALUE0000"]' \
+    '["https://example.invalid/mcp?page=2#a=1?client_secret=FAKEVALUE0000"]' \
+    '["--url=https://example.invalid/mcp?page=2#frag?api_key=FAKEVALUE0000"]' \
+    '["--url", "https://example.invalid/mcp#x=1?access_token=FAKEVALUE0000"]'; do
+    rm -f "$REPOS/demo/.mcp.json"
+    write_config "$case"
+    expect_accepted || { echo "case: $case"; return 1; }
+  done
+}
+
+# `key` counts only as the whole name or after `_` or `-`. A dot is not a
+# boundary, so `mon.key` is harmless, and so, by the same contract, is
+# `api.key`: a documented limitation, not an oversight.
+@test "accepts dotted key names in query, header, NAME=value and flag positions" {
+  write_config '["https://example.invalid/mcp?mon.key=1&api.key=FAKEVALUE0000", "--header", "mon.key: banana", "--header", "api.key: FAKEVALUE0000", "mon.key=banana", "api.key=FAKEVALUE0000", "--mon.key", "banana", "--api.key=FAKEVALUE0000"]'
+  expect_accepted
+}
+
+@test "accepts ordinary words that merely end in key, token or secret letters" {
+  write_config '["MONKEY=banana", "DONKEY=x", "--header", "X-Monkey: banana", "--header", "X-Turkey: 1", "https://example.invalid/mcp?monkey=banana", "https://example.invalid/mcp?turkey=1&keychain=2", "https://example.invalid/mcp?mon%6Bey=1", "-c", "exec some-mcp --stdio MONKEY=banana"]'
+  expect_accepted
+}
+
 @test "accepts tokens carried in env" {
   write_config '["-y", "@supabase/mcp-server-supabase@0.10.0"]' \
     '{"SUPABASE_ACCESS_TOKEN": "op://fake-vault/fake-item/credential"}'

@@ -45,6 +45,7 @@ import shlex
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import unquote_plus
 
 try:
     import yaml
@@ -139,38 +140,71 @@ for repo_path, profile_names in resolved_repo_paths.items():
 # inside args, so a secret there lands in the MCP child's argv, readable by any
 # local process through `ps`. Errors name the server and arg index only: the
 # value (or a `--flag=value` arg) must never be echoed back.
-SECRET_FLAG_NAME = re.compile(r"(token|secret|password|passwd|apikey|(^|[-_])key)$", re.IGNORECASE)
+# One predicate judges every secret NAME: a flag, a header, a NAME=value
+# assignment, a URL query parameter. `key` counts only as the whole name or
+# after `_` or `-` (api_key, X-Api-Key), so MONKEY, turkey, keychain and
+# mon.key stay harmless; token/secret/password/passwd/apikey count as suffixes.
+# A dot is not a boundary, so `api.key` is accepted too: a documented limit.
+SECRET_NAME = re.compile(r"(token|secret|password|passwd|apikey|(^|[-_])key)$", re.IGNORECASE)
 SECRET_ENV_REF = re.compile(r"\$\{[^}]*(token|secret|key|password)[^}]*\}", re.IGNORECASE)
 SECRET_VALUE_PREFIXES = ("sbp_", "sk-", "ghp_", "github_pat_", "xox")
-# Secret-bearing by structure rather than by a flag name or token prefix:
-SECRET_STRUCTURES = (
-    # an HTTP auth header or bearer credential (`-H "Authorization: Bearer ..."`)
-    re.compile(r"\bauthorization\s*:|\bbearer\s+\S", re.IGNORECASE),
-    # any other header whose name ends in a secret word (`X-Api-Key: ...`)
-    re.compile(r"^[A-Za-z0-9_-]*(token|secret|key|password|passwd)\s*:\s*\S", re.IGNORECASE),
-    # an env-style assignment (`SUPABASE_ACCESS_TOKEN=...`)
-    re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(token|secret|key|password|passwd)=", re.IGNORECASE),
-    # URL userinfo with a password (scheme, `://`, user, `:`, secret, at-sign, host)
-    re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^/\s@:]+:[^/\s@]+@"),
-    # a secret-named URL query parameter (`?api_key=...`)
-    re.compile(r"[?&][A-Za-z0-9_.-]*(token|secret|key|password|passwd)=", re.IGNORECASE),
-)
+# an HTTP auth header or bearer credential (`-H "Authorization: Bearer ..."`)
+AUTH_HEADER = re.compile(r"\bauthorization\s*:|\bbearer\s+\S", re.IGNORECASE)
+# URL userinfo with a password (scheme, `://`, user, `:`, secret, at-sign, host)
+URL_USERINFO = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^/\s@:]+:[^/\s@]+@")
+HEADER_NAME = re.compile(r"^([A-Za-z0-9_.-]+)\s*:\s*\S")
+ASSIGNMENT_NAME = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)=")
 # `sh -c "<script>"` and friends carry a whole command line in one arg; it is
-# tokenized and checked like an args list, this many levels deep.
+# tokenized and checked like an args list, this many levels deep. Percent-
+# decoding a query name also stops after this many rounds.
 MAX_NESTING = 3
+
+
+def is_secret_name(name):
+    return bool(name) and bool(SECRET_NAME.search(name))
 
 
 def is_secret_flag(arg):
     if not arg.startswith("-"):
         return False
-    name = arg.lstrip("-").split("=", 1)[0]
-    return bool(name) and bool(SECRET_FLAG_NAME.search(name))
+    return is_secret_name(arg.lstrip("-").split("=", 1)[0])
+
+
+def without_fragment(value):
+    """value up to its first `#`: a URL fragment is never sent as a query."""
+    return value.split("#", 1)[0]
+
+
+def query_param_names(value):
+    """Decoded names of the parameters in value's URL query, if it has one."""
+    value = without_fragment(value)
+    if "?" not in value:
+        return
+    query = value.split("?", 1)[1]
+    for part in re.split(r"[&;]", query):
+        if "=" not in part:
+            continue
+        name = part.split("=", 1)[0]
+        # A server's URL parser decodes `api%5Fkey` to `api_key`; decode until
+        # stable so a double-encoded name cannot slip through either.
+        for _ in range(MAX_NESTING):
+            decoded = unquote_plus(name)
+            if decoded == name:
+                break
+            name = decoded
+        yield name
 
 
 def is_secret_value(value):
     if "op://" in value or SECRET_ENV_REF.search(value):
         return True
-    if any(pattern.search(value) for pattern in SECRET_STRUCTURES):
+    if AUTH_HEADER.search(value) or URL_USERINFO.search(value):
+        return True
+    for pattern in (HEADER_NAME, ASSIGNMENT_NAME):
+        match = pattern.match(value)
+        if match and is_secret_name(match.group(1)):
+            return True
+    if any(is_secret_name(name) for name in query_param_names(value)):
         return True
     return value.startswith(SECRET_VALUE_PREFIXES)
 
@@ -197,8 +231,11 @@ def secret_arg_indexes(args, depth=0):
             skip_next = "=" not in arg
             continue
         candidates = [arg]
-        if "=" in arg:
-            candidates.append(arg.split("=", 1)[1])
+        # `--url=<url>`: judge the value after the first `=`, but only an `=`
+        # before any fragment, or `#x=1?api_key=` would pose as a query.
+        head = without_fragment(arg)
+        if "=" in head:
+            candidates.append(head.split("=", 1)[1])
         if any(is_secret_value(candidate) for candidate in candidates):
             flagged.append(index)
             continue
