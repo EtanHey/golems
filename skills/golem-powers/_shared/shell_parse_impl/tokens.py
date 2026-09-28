@@ -41,6 +41,7 @@ def _command_sub_word_continues(token):
     return token in (")$+", ")`+")
 
 
+# AIDEV-TODO: Decompose the lexer in a follow-up with its own goldens.
 def _shell_tokens(command):
     """Quote-aware tokenizer. Quoted content merges into the surrounding token
     (so `echo "x > /tmp/y"` carries no redirect), while >, >>, parens and
