@@ -262,7 +262,7 @@ Rules:
 4. Update Messages BEFORE every git commit.
 5. Before creating PR, read other agents' Messages for cross-references.
 6. Update Task Board with PR link when creating PRs.
-7. Full PR loop: push → create PR → poll reviews → fix issues → merge → clean branch.
+7. Full PR loop: push → create PR → poll reviews → fix issues → merge → clean branch → CLEANUP RECEIPT in your done message.
 8. If blocked, set status → `blocked:reason` with exactly what's needed and from whom.
 9. When done with all your phases, status → `done`, then `signed-off`.
 10. Read this collab file every [N] minutes for updates from other agents.

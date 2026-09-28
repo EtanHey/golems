@@ -131,7 +131,7 @@ Update findings.md with final notes.
 
 **If collab:**
 1. Update Task Board in collab.md — status → `done`, add PR link
-2. Append a timestamped, addressed Messages heading: `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: PR #XX merged. Next: <what is unblocked>`
+2. Append a timestamped, addressed Messages heading: `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: PR #XX merged. Next: <what is unblocked>`, with the CLEANUP RECEIPT (`/pr-loop` `references/merge-and-verification.md` § Cleanup Receipt) under it
 3. If ALL your assigned phases are done → status → `signed-off`
 4. If this completes a round → orchestrator advances to next round
 

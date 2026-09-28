@@ -102,4 +102,5 @@ worktree_fallback:
     - "cd ../<wt-dir> && bun install --frozen-lockfile  # or npm ci / pnpm install --frozen-lockfile / uv sync --frozen; never symlink node_modules (in a workspace monorepo, cross-package imports would run the main checkout's code)"
     - "cp .env ../<wt-dir>/.env"
   cleanup: "git worktree remove ../<wt-dir>"
+  cleanup_receipt: "end the DONE report with the CLEANUP RECEIPT (/pr-loop references/merge-and-verification.md § Cleanup Receipt)"
   applies_to: [codex, cursor]

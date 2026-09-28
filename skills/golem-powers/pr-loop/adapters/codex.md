@@ -33,7 +33,8 @@
 When Codex is operating inside a linked worktree, never merge from that active
 worktree. Move to the original checkout, run `gh pr merge`, verify the remote
 merge SHA, delete the remote branch, then remove the worktree so cleanup does
-not delete the session underneath you.
+not delete the session underneath you. End the merge comment or DONE report with
+the [CLEANUP RECEIPT](../references/merge-and-verification.md#cleanup-receipt).
 
 ## Shell Review Triggers (Codex fallback)
 

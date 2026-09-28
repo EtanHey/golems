@@ -317,6 +317,12 @@ User correction (April 5): "No, I'm saying it will take probably hours, not week
 | DRY | No duplicated logic |
 | Tests pass | `bun test` / `npm test` green |
 | Build passes | No compile errors |
+| Cleanup receipts | One CLEANUP RECEIPT per worker PR, and the lead's prune step ran (below) |
+
+**Phase exit:** a phase is not closed until every worker's CLEANUP RECEIPT is present (format: `/pr-loop`
+`references/merge-and-verification.md` § Cleanup Receipt) and the lead has run the prune step:
+`git worktree prune`, delete merged branches, and roll `docs.local/<sprint>/` up into one README. A missing
+receipt is a question to that worker, not a closed phase.
 
 ---
 

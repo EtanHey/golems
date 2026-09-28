@@ -214,6 +214,25 @@ deleting the session underneath you. If even the original checkout cannot hold
 the default branch (bare-mirror-style hubs like brainlayer), use the
 "Worktree-Locked Local Merge" remote fallback above.
 
+### Cleanup Receipt
+
+Cleanup is part of done. After the branch/worktree removal above, end the merge
+comment (lead) or the DONE report (worker) with this block. A merge or DONE
+without it is not done. A worker handing off unmerged still writes it:
+`worktree: <path> kept because PR #N awaits lead merge`.
+
+```
+CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):
+- worktree: <path> removed | kept because <reason>
+- branch: <name> deleted local+remote | kept because <reason>
+- files this PR added outside src/tests: <list or none>; each is: committed reference (docs/reference|docs/rationale|README) |
+  stored to BrainLayer <chunk-id> and deleted | moved to docs.local/<day>/ | deleted
+- docs.local this lane created: <paths>; rolled into <day>/README or deleted
+```
+
+The lead's phase close (`/large-plan` exit criteria) checks for one receipt per
+worker.
+
 ---
 
 ## After Merge: Store Component Reasoning

@@ -162,6 +162,30 @@
           "description": "Explains that a symlinked node_modules resolves workspace packages to the main checkout"
         }
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "Round 2 had three worker phases. Workers A and B posted 'Phase N done' messages with PR URLs and CLEANUP RECEIPTs; worker C posted 'Phase 5 done: PR #41 merged' with no receipt. All three PRs are merged. Close the round and advance to round 3.",
+      "expected_output": "Agent does not close the round yet: it asks worker C for its CLEANUP RECEIPT (or inspects and records C's worktree, branch and files itself), then runs the lead prune step — git worktree prune, delete merged branches, roll docs.local/<sprint>/ up into one README — and only then marks the phase closed and advances.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "checks-every-receipt",
+          "description": "Notices worker C's DONE has no CLEANUP RECEIPT and does not close the phase on it"
+        },
+        {
+          "name": "runs-prune-step",
+          "description": "Runs git worktree prune and deletes the merged branches before closing"
+        },
+        {
+          "name": "rolls-up-docs-local",
+          "description": "Rolls docs.local/<sprint>/ up into one README (or states it is empty)"
+        },
+        {
+          "name": "closes-only-after-receipts",
+          "description": "Advances to round 3 only after every receipt is present and the prune step ran"
+        }
+      ]
     }
   ]
 }

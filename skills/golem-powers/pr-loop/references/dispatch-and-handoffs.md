@@ -36,7 +36,8 @@ responses"):
 - Worker's endpoint = **PR opened + review responses addressed** — do NOT
   re-derive `MISSION = MERGED` or merge locally.
 - Worker stops at: branch → implement → verify → commit → push → PR → invoke
-  reviewers → fix review threads → post TASK_DONE with PR URL.
+  reviewers → fix review threads → post TASK_DONE with PR URL and the
+  [CLEANUP RECEIPT](merge-and-verification.md#cleanup-receipt).
 - LEAD merges after a clean loop on the worker PR.
 - A worker must hand the reviewed PR to its lead unmerged.
 

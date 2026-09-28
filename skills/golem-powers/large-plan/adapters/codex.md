@@ -40,7 +40,8 @@ cp .env ../wt-phase-<N>/.env
 cd ../wt-phase-<N>
 codex --full-auto "Execute phase N. Plan: $(cat ../plan/README.md)"
 
-# Cleanup after merge
+# Cleanup after merge, then end the DONE report with the CLEANUP RECEIPT
+# (/pr-loop references/merge-and-verification.md § Cleanup Receipt)
 git worktree remove ../wt-phase-<N>
 ```
 
