@@ -435,7 +435,7 @@ test("Stop hook scopes the shared task registry to the current session", () => {
 
 const RECEIPT = [
   "CLEANUP RECEIPT",
-  "- worktree: ~/Gits/golems/.worktrees/x kept because PR #88 awaits lead merge",
+  "- worktree: .worktrees/x kept because PR #88 awaits lead merge",
   "- branch: feat/x kept because PR #88 awaits lead merge",
   "- files this PR added outside src/tests: none",
   "- docs.local this lane created: none",

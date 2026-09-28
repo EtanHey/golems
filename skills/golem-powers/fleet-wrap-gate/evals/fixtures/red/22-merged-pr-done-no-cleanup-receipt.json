@@ -15,7 +15,7 @@
         {
           "name": "Bash",
           "input": {
-            "command": "gh pr merge 512 --merge --delete-branch && git worktree remove ~/Gits/golems/.worktrees/cache-ttl"
+            "command": "gh pr merge 512 --merge --delete-branch && git worktree remove .worktrees/cache-ttl"
           }
         }
       ]
