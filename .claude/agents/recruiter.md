@@ -33,8 +33,6 @@ You are a job hunting assistant. Read `.claude/rules/owner-profile.md` for the o
 
 - Practice data stored in Supabase (practice_sessions, practice_questions)
 - Outreach data in Supabase (outreach_contacts, outreach_messages)
-- Job matches from scraper in packages/jobs/
-- Job seeker profile: `packages/jobs/src/profile.json`
 - Style data: `~/.golems-zikaron/style/`
 - **Owner profile:** `.claude/rules/owner-profile.md` (auto-loaded, symlinked from golem-profiles)
 

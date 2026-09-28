@@ -71,7 +71,7 @@ export interface LLMCallEvent {
 
 export interface ServiceEvent {
   _type: "service";
-  service: string; // "email-golem" | "job-golem" | "briefing"
+  service: string; // "email-golem" | "briefing"
   event: string; // "poll" | "scrape" | "run" | "generate"
   status: "success" | "failure" | "partial";
   duration_ms: number;
