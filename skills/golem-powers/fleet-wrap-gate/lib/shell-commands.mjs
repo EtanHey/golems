@@ -22,8 +22,8 @@ function newCommand() {
   return { argv: [], redirects: [], heredocs: [], pipeTo: null };
 }
 
-// A null result means the work bound was reached. Callers must fail open for
-// the whole gate: partial commands cannot establish or disprove DONE evidence.
+// A null result means the work bound was reached. Callers must discard
+// partial receipt evidence; the independent cron/loop verdict still applies.
 export function parseShell(src, { maxWork = MAX_LEXER_WORK, maxMs = MAX_LEXER_MS } = {}) {
   const text = typeof src === "string" ? src : "";
   const deadline = performance.now() + maxMs;

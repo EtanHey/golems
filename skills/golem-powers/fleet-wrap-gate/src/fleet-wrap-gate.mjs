@@ -623,7 +623,7 @@ export function detectFleetWrap(transcript, options = {}) {
   const turn = currentTurn(events);
   const result = detectCronState(transcript, turn, options);
   const receipt = detectCleanupReceipt(transcript, turn, options);
-  if (receipt === LEXER_ABORTED) return { verdict: "PASS", terminal: false, violations: [] };
+  if (receipt === LEXER_ABORTED) return result;
   if (!receipt) return result;
   return { verdict: "FLAG", terminal: result.terminal, violations: [...result.violations, receipt] };
 }

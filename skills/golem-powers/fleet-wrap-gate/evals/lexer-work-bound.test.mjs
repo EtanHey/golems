@@ -1,5 +1,6 @@
 import { test, expect, setDefaultTimeout } from "bun:test";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -71,12 +72,31 @@ test("lexer work guard discards partial DONE evidence and fails open", () => {
       { role: "user", text: "finish" },
       {
         role: "assistant",
-        text: "DONE — https://github.com/EtanHey/golems/pull/88 merged. Health-watch still armed.",
+        text: "DONE — https://github.com/EtanHey/golems/pull/88 merged.",
         tools: [{ name: "Bash", input: { command: "gh pr merge 88; echo later" } }],
       },
     ],
   }, { lexerOptions: { maxWork: 1 } });
-  expect(result).toEqual({ verdict: "PASS", terminal: false, violations: [] });
+  expect(result).toEqual({ verdict: "PASS", terminal: true, violations: [] });
+});
+
+test("lexer abort preserves an independent cron-alive verdict and CLI exit 3", () => {
+  const red = JSON.parse(readFileSync(path.join(here, "fixtures", "red", "01-healthwatch-cron-left-armed.json"), "utf8"));
+  red.events[1].tools.push({ name: "Bash", input: { command: "gh pr merge 88; echo later" } });
+  const forced = detectFleetWrap(red, { lexerOptions: { maxWork: 1 } });
+  expect(forced.verdict).toBe("FLAG");
+  expect(forced.violations.map((v) => v.code)).toContain("FLEETWRAP_CRON_ALIVE");
+
+  red.events[1].tools.at(-1).input.command = " ".repeat(1_000_100);
+  const cli = path.join(here, "..", "scripts", "fleet-wrap-gate-cli.mjs");
+  const run = spawnSync(process.execPath, [cli, "-"], {
+    input: JSON.stringify(red),
+    encoding: "utf8",
+    timeout: 5_000,
+  });
+  expect(run.error).toBeUndefined();
+  expect(run.status).toBe(3);
+  expect(run.stdout).toContain("FLEETWRAP_CRON_ALIVE");
 });
 
 test("150k output redirects do not exceed argument spread limits", () => {
