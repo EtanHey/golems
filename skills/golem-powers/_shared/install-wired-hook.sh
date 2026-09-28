@@ -88,6 +88,8 @@ mkdir -p "$HOOKS_ROOT/_shared"
 for module in shell_parse.py harness_paths.py; do
   install -m 644 "$SHARED_DIR/$module" "$HOOKS_ROOT/_shared/$module"
 done
+rsync -rlti --delete "${EXCLUDES[@]}" \
+  "$SHARED_DIR/shell_parse_impl/" "$HOOKS_ROOT/_shared/shell_parse_impl/"
 chmod +x "$DEST/$hook_rel"
 
 if [[ -n "$legacy" ]]; then
