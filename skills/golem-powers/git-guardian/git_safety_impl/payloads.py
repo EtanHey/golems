@@ -82,5 +82,3 @@ def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
             if reads_stdin and printed:
                 payloads.append(printed)
     return [payload for payload in payloads if payload.strip()]
-
-

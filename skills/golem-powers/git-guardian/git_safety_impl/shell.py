@@ -55,5 +55,3 @@ def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _d
     if git_reason:
         return git_reason
     return None
-
-
