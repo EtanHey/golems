@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-# scripts/install.sh — install the skill-creator skill + session-miner sub-agent
+# scripts/install.sh — install the skill-creator skill, the skill-creator agent,
+# and the session-miner sub-agent
 # Usage: bash install.sh [--dry-run] [-h|--help]
 #
 # Idempotent. Safe to re-run. Detects existing symlinks and skips them.
+# Every target lives under $HOME, so HOME=<scratch dir> installs somewhere else (the tests do).
 #
 # What it does:
 #   1. Symlinks the skill into ~/.claude/skills/skill-creator (golem-powers convention)
 #   2. Ensures the project-scope repo $PROJECT_REPO/ has .claude/agents/ + scripts/ dirs
 #   3. Symlinks the session-miner agent definition into the project-scope agents dir
-#   4. Symlinks the session-miner parser into the project-scope scripts dir
+#   4. Symlinks the session-miner Codex definition into the project-scope .codex/agents dir
+#   5. Symlinks the session-miner parser into the project-scope scripts dir
+#   6. Symlinks the skill-creator agent into ~/.claude/agents/skill-creator.md (global scope)
 #
 # The project-scope symlinks gate the session-miner sub-agent so only skillCreatorClaude /
 # Codex / RepoGolem (which run with cwd inside $PROJECT_REPO/) can spawn it.
@@ -33,11 +37,19 @@ PROJECT_REPO="$HOME/Gits/skill-creator"
 PROJECT_AGENT_LINK="$PROJECT_REPO/.claude/agents/session-miner.md"
 PROJECT_CODEX_LINK="$PROJECT_REPO/.codex/agents/session-miner.toml"
 PROJECT_PARSER_LINK="$PROJECT_REPO/scripts/session-miner.py"
+# Global, unlike session-miner: this is the agent Etan invokes from any repo
+# (Agent(subagent_type="skill-creator") from orc, a lead, or any repo's Claude), so it must be
+# in every session's discovery path, not gated to $PROJECT_REPO.
+GLOBAL_AGENTS_DIR="$HOME/.claude/agents"
+GLOBAL_AGENT_LINK="$GLOBAL_AGENTS_DIR/skill-creator.md"
+# A hand-placed legacy prompt. Reported, never touched: the lead decides its fate.
+LEGACY_BACKUP_AGENT="$GLOBAL_AGENTS_DIR/skill-creator-backup.md"
 
 # Sources (canonical, inside skill)
 SOURCE_AGENT="$SKILL_DIR/agents/session-miner.md"
 SOURCE_TOML="$SKILL_DIR/agents/session-miner.toml"
 SOURCE_PARSER="$SKILL_DIR/scripts/session-miner.py"
+SOURCE_GLOBAL_AGENT="$SKILL_DIR/agents/skill-creator.md"
 
 DRY_RUN=false
 
@@ -45,7 +57,8 @@ show_help() {
     cat <<EOF
 Usage: install.sh [options]
 
-Install the skill-creator skill + session-miner sub-agent.
+Install the skill-creator skill, the skill-creator agent, and the
+session-miner sub-agent.
 
 Options:
   --dry-run   Print what would change; make no modifications
@@ -58,6 +71,11 @@ What this does:
   3. Symlinks the Claude agent definition (session-miner.md) into project-scope
   4. Symlinks the Codex agent definition (session-miner.toml) into project-scope
   5. Symlinks the parser into the project-scope scripts dir
+  6. Symlinks the skill-creator agent into $GLOBAL_AGENT_LINK
+     (global scope). A hand-placed regular file there is first moved to
+     $GLOBAL_AGENTS_DIR/.skill-creator.md.bak-<YYYYMMDD>.
+
+Every target is under \$HOME; run with HOME=<dir> to install somewhere else.
 
 The project-scope symlinks gate session-miner so only skillCreatorClaude /
 Codex / RepoGolem (which run with cwd inside $PROJECT_REPO/) can
@@ -79,7 +97,7 @@ done
 
 # Sanity: confirm sources exist
 echo -e "${BLUE}Verifying skill source files...${NC}"
-for f in "$SOURCE_AGENT" "$SOURCE_TOML" "$SOURCE_PARSER" "$SKILL_DIR/SKILL.md"; do
+for f in "$SOURCE_AGENT" "$SOURCE_TOML" "$SOURCE_PARSER" "$SOURCE_GLOBAL_AGENT" "$SKILL_DIR/SKILL.md"; do
     if [ ! -f "$f" ]; then
         echo -e "${RED}  [FAIL]${NC} missing: $f"
         echo -e "${RED}ERROR: skill source is incomplete. Aborting.${NC}"
@@ -182,7 +200,35 @@ echo -e "${BLUE}Step 5: parser symlink (convenience)${NC}"
 ensure_symlink "$PROJECT_PARSER_LINK" "$SOURCE_PARSER"
 echo ""
 
-# 5. Verification
+# 6. Global skill-creator agent symlink
+echo -e "${BLUE}Step 6: global agent symlink (~/.claude/agents/skill-creator.md)${NC}"
+ensure_dir "$GLOBAL_AGENTS_DIR"
+if [ -f "$GLOBAL_AGENT_LINK" ] && [ ! -L "$GLOBAL_AGENT_LINK" ]; then
+    # A hand-placed copy predates this installer. Keep it beside the link, dot-prefixed
+    # and without a .md suffix so Claude Code does not load it as a second agent.
+    AGENT_BACKUP="$GLOBAL_AGENTS_DIR/.skill-creator.md.bak-$(date +%Y%m%d)"
+    if [ -e "$AGENT_BACKUP" ] || [ -L "$AGENT_BACKUP" ]; then
+        echo -e "${RED}  [conflict]${NC} $GLOBAL_AGENT_LINK is a regular file and $AGENT_BACKUP already exists"
+        echo -e "${RED}  Refusing to overwrite a backup. Move one of them out of the way and re-run.${NC}"
+        exit 1
+    fi
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "${YELLOW}  [dry-run]${NC} would back up hand-placed $GLOBAL_AGENT_LINK → $AGENT_BACKUP"
+        echo -e "${YELLOW}  [dry-run]${NC} would link: $GLOBAL_AGENT_LINK → $SOURCE_GLOBAL_AGENT"
+    else
+        mv "$GLOBAL_AGENT_LINK" "$AGENT_BACKUP"
+        echo -e "${GREEN}  [backup]${NC} hand-placed $GLOBAL_AGENT_LINK → $AGENT_BACKUP"
+        ensure_symlink "$GLOBAL_AGENT_LINK" "$SOURCE_GLOBAL_AGENT"
+    fi
+else
+    ensure_symlink "$GLOBAL_AGENT_LINK" "$SOURCE_GLOBAL_AGENT"
+fi
+if [ -e "$LEGACY_BACKUP_AGENT" ] || [ -L "$LEGACY_BACKUP_AGENT" ]; then
+    echo -e "${YELLOW}  [notice]${NC} $LEGACY_BACKUP_AGENT exists — left untouched; delete or keep it by hand"
+fi
+echo ""
+
+# Verification
 if [ "$DRY_RUN" = false ]; then
     echo -e "${BLUE}Verifying install...${NC}"
     all_ok=true
@@ -190,7 +236,8 @@ if [ "$DRY_RUN" = false ]; then
         "$SKILLS_LINK:$SKILL_DIR" \
         "$PROJECT_AGENT_LINK:$SOURCE_AGENT" \
         "$PROJECT_CODEX_LINK:$SOURCE_TOML" \
-        "$PROJECT_PARSER_LINK:$SOURCE_PARSER"; do
+        "$PROJECT_PARSER_LINK:$SOURCE_PARSER" \
+        "$GLOBAL_AGENT_LINK:$SOURCE_GLOBAL_AGENT"; do
         link="${pair%%:*}"
         expected="${pair##*:}"
         if [ -L "$link" ] && [ "$(readlink "$link")" = "$expected" ]; then
@@ -202,10 +249,11 @@ if [ "$DRY_RUN" = false ]; then
     done
     echo ""
     if $all_ok; then
-        echo -e "${GREEN}SUCCESS: skill-creator + session-miner installed${NC}"
+        echo -e "${GREEN}SUCCESS: skill-creator skill + agent + session-miner installed${NC}"
         echo ""
         echo -e "${DIM}Next steps:${NC}"
         echo -e "${DIM}  - Use /skill-creator slash command from any Claude Code session${NC}"
+        echo -e "${DIM}  - From any repo's Claude, invoke: Agent(subagent_type=\"skill-creator\", ...)${NC}"
         echo -e "${DIM}  - From skillCreatorClaude (cwd=$PROJECT_REPO/), invoke:${NC}"
         echo -e "${DIM}      Agent(subagent_type=\"session-miner\", ...)${NC}"
         echo -e "${DIM}  - From skillCreatorCodex (cwd=$PROJECT_REPO/), invoke by name:${NC}"
