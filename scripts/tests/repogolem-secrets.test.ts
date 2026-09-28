@@ -11,9 +11,11 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -185,6 +187,72 @@ describe("outputs", () => {
     expect(r.stderr).toContain("inside a git work tree");
     expect(existsSync(join(repo, "gen"))).toBe(false);
     expect(opCalls()).toBe(0);
+  });
+
+  // Daybreak R1 P3: the out-dir is checked before `op` (which may wait on
+  // Touch ID), so it must be re-verified, and the writes bound to it, after.
+  describe("swapped while op resolves", () => {
+    const target = () => join(dir, "attacker");
+    const contents = (path: string) => (existsSync(path) ? readdirSync(path) : []);
+    const q = (path: string) => `'${path}'`;
+
+    test("out-dir renamed and replaced by a symlink: exit 2, zero files anywhere", () => {
+      expect(generate().code).toBe(0);
+      for (const f of ["registry.json", "launchers.zsh", "secrets.env"]) rmSync(join(out, f));
+      const moved = join(dir, "moved");
+      const r = generate([], {
+        FAKE_OP_BEFORE: `mv ${q(out)} ${q(moved)} && mkdir ${q(target())} && ln -s ${q(target())} ${q(out)}`,
+      });
+      expect(r.code).toBe(2);
+      expect(r.stderr).toContain("nothing written");
+      expect(contents(target())).toEqual([]);
+      expect(contents(moved)).toEqual([]);
+    });
+
+    test("missing out-dir created as a symlink: exit 2, zero files", () => {
+      const r = generate([], { FAKE_OP_BEFORE: `mkdir ${q(target())} && ln -s ${q(target())} ${q(out)}` });
+      expect(r.code).toBe(2);
+      expect(contents(target())).toEqual([]);
+    });
+
+    test("a parent swapped for a symlink into a git repo: exit 2, nothing in the repo", () => {
+      const parent = join(dir, "cfg");
+      const nested = join(parent, "generated");
+      const repo = join(dir, "repo");
+      const r = run(["generate", "--config", config, "--out-dir", nested, "--host", HOST], {
+        FAKE_OP_BEFORE: `mkdir -p ${q(join(repo, ".git"))} ${q(join(repo, "cfg"))} && ln -s ${q(join(repo, "cfg"))} ${q(parent)}`,
+      });
+      expect(r.code).toBe(2);
+      expect(contents(join(repo, "cfg"))).toEqual([]);
+    });
+  });
+
+  test("refuses a symlinked parent it does not trust, before op runs", () => {
+    const real = join(dir, "real");
+    mkdirSync(real);
+    symlinkSync(real, join(dir, "link"));
+    const r = run(["generate", "--config", config, "--out-dir", join(dir, "link", "gen"), "--host", HOST]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("symlink");
+    expect(opCalls()).toBe(0);
+    expect(existsSync(join(real, "gen"))).toBe(false);
+  });
+
+  test("refuses a group/other-writable parent unless it is sticky", () => {
+    const open = join(dir, "open");
+    mkdirSync(open);
+    chmodSync(open, 0o777);
+    const r = run(["generate", "--config", config, "--out-dir", join(open, "gen"), "--host", HOST]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("writable by others");
+    expect(opCalls()).toBe(0);
+
+    // Shell chmod: Bun's chmodSync drops the sticky bit (Node keeps it).
+    expect(Bun.spawnSync(["chmod", "1777", open]).exitCode).toBe(0);
+    expect(statSync(open).mode & 0o1000).toBe(0o1000);
+    const sticky = run(["generate", "--config", config, "--out-dir", join(open, "gen"), "--host", HOST]);
+    expect(sticky.stderr).not.toContain("repogolem-config:");
+    expect(sticky.code).toBe(0);
   });
 
   test("defaults: --config from $REPOGOLEM_CONFIG, --out-dir ~/.config/repogolem/generated", () => {

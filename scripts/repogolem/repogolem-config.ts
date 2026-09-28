@@ -32,16 +32,22 @@
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  closeSync,
   constants,
   copyFileSync,
   existsSync,
+  fchmodSync,
+  fstatSync,
+  fsyncSync,
   lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   realpathSync,
   renameSync,
   statSync,
   writeFileSync,
+  writeSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -565,20 +571,97 @@ const DIR_MODE = 0o700;
 const FILE_MODE = 0o600;
 const OUTPUTS = ["registry.json", "launchers.zsh", "secrets.env"] as const;
 
-// secrets.env must never land where git could pick it up, or where another
-// user owns (or a symlink redirects) the directory.
-function assertSafeOutDir(outDir: string) {
-  let existing = resolve(outDir);
+const myUid = () => (typeof process.getuid === "function" ? process.getuid() : -1);
+
+// secrets.env must never land where git could pick it up, or anywhere another
+// user (or a symlink) could redirect it. Checked once before `op` runs and
+// again after, because `op` may wait on Touch ID (Daybreak R1 P3).
+function assertTrustedPath(outDir: string) {
+  const abs = resolve(outDir);
+  // A symlink on the requested path is trusted only when root owns it
+  // (macOS /var, /tmp); any other one could be re-pointed.
+  let prefix = "/";
+  for (const part of abs.split("/").filter(Boolean)) {
+    prefix = join(prefix, part);
+    if (!existsSync(prefix) && !lstatOrNull(prefix)) break;
+    const link = lstatOrNull(prefix);
+    if (link?.isSymbolicLink() && link.uid !== 0) {
+      fail(`${outDir}: ${prefix} is a symlink; point --out-dir at the real directory; nothing written`);
+    }
+  }
+  let existing = abs;
   while (!existsSync(existing)) existing = dirname(existing);
   for (let dir = realpathSync(existing); ; dir = dirname(dir)) {
-    if (existsSync(join(dir, ".git"))) fail(`${outDir} is inside a git work tree (${dir}); secrets.env must live outside every repo`);
+    if (existsSync(join(dir, ".git"))) {
+      fail(`${outDir} is inside a git work tree (${dir}); secrets.env must live outside every repo; nothing written`);
+    }
+    const stat = statSync(dir);
+    if (stat.uid !== 0 && stat.uid !== myUid()) fail(`${dir} is owned by another user; nothing written`);
+    if ((stat.mode & 0o022) !== 0 && (stat.mode & 0o1000) === 0) {
+      fail(`${dir} is writable by others and not sticky; it could be swapped under --out-dir; nothing written`);
+    }
     if (dirname(dir) === dir) break;
   }
+}
+
+function lstatOrNull(path: string) {
+  try {
+    return lstatSync(path);
+  } catch {
+    return null;
+  }
+}
+
+function assertSafeOutDir(outDir: string) {
+  assertTrustedPath(outDir);
   if (!existsSync(outDir)) return;
   const stat = lstatSync(outDir);
-  if (stat.isSymbolicLink()) fail(`${outDir} is a symlink; point --out-dir at the real directory`);
   if (!stat.isDirectory()) fail(`${outDir} is not a directory`);
-  if (typeof process.getuid === "function" && stat.uid !== process.getuid()) fail(`${outDir} is owned by another user`);
+  if (stat.uid !== myUid()) fail(`${outDir} is owned by another user`);
+}
+
+// Writes bound to the directory itself, not its pathname: open it no-follow,
+// check the handle, chdir into it and prove cwd is that same inode, re-check
+// its real path, then create and rename the leaves relative to cwd. A swap of
+// the path (or any parent) after this point cannot redirect a write.
+function writeOutputsBound(outDir: string, texts: Record<(typeof OUTPUTS)[number], string>) {
+  assertSafeOutDir(outDir);
+  mkdirSync(outDir, { recursive: true, mode: DIR_MODE });
+  let dirFd: number;
+  try {
+    dirFd = openSync(outDir, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code ?? "error";
+    fail(`${outDir} is not a real directory (${code}; a symlink?); nothing written`);
+  }
+  const back = process.cwd();
+  try {
+    const held = fstatSync(dirFd);
+    if (!held.isDirectory() || held.uid !== myUid()) fail(`${outDir} is not a directory this user owns; nothing written`);
+    fchmodSync(dirFd, DIR_MODE);
+    process.chdir(outDir);
+    const here = statSync(".");
+    if (here.dev !== held.dev || here.ino !== held.ino) fail(`${outDir} changed while it was opened; nothing written`);
+    assertTrustedPath(process.cwd());
+    for (const name of OUTPUTS) writeLeaf(name, texts[name]);
+  } finally {
+    process.chdir(back);
+    closeSync(dirFd);
+  }
+}
+
+// O_EXCL | O_NOFOLLOW: never write through a pre-placed tmp file or symlink.
+function writeLeaf(name: string, text: string) {
+  const tmp = `${name}.tmp-${process.pid}`;
+  const fd = openSync(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, FILE_MODE);
+  try {
+    writeSync(fd, text);
+    fchmodSync(fd, FILE_MODE);
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+  renameSync(tmp, name);
 }
 
 const octal = (mode: number) => `0${(mode & 0o777).toString(8)}`;
@@ -714,10 +797,11 @@ function runGenerate(argv: string[]) {
     fail(error instanceof Error ? error.message : String(error));
   }
 
-  mkdirSync(outDir, { recursive: true, mode: DIR_MODE });
-  chmodSync(outDir, DIR_MODE);
-  const texts = { "registry.json": generated.registryJson, "launchers.zsh": generated.launchersZsh, "secrets.env": secretsEnv };
-  for (const name of OUTPUTS) writeAtomic(join(outDir, name), texts[name], FILE_MODE);
+  writeOutputsBound(outDir, {
+    "registry.json": generated.registryJson,
+    "launchers.zsh": generated.launchersZsh,
+    "secrets.env": secretsEnv,
+  });
   const refs = generated.refs.length;
   console.log(
     `machine ${generated.machine ?? "(none)"}: ${refs} op:// refs resolved (${refs > 0 ? "1 op session" : "op not run"})`,

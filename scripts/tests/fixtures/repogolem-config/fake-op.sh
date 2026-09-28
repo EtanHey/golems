@@ -6,6 +6,8 @@
 #   FAKE_OP_FAIL  exit 1 without running <cmd>, as op does on a bad ref
 #   FAKE_OP_MASK  resolve to op's masking placeholder instead
 #   FAKE_OP_SUFFIX appended to every resolved value (quoting tests)
+#   FAKE_OP_BEFORE bash run while "resolving", i.e. after generate's pre-op
+#                  checks and before its writes (race regressions)
 set -euo pipefail
 [[ -n "${FAKE_OP_LOG:-}" ]] && printf '%s\n' "$*" >>"$FAKE_OP_LOG"
 [[ "${1:-}" == run ]] || { echo "fake-op: only 'run' is supported" >&2; exit 3; }
@@ -13,6 +15,7 @@ shift
 while [[ $# -gt 0 && "$1" != -- ]]; do shift; done
 [[ "${1:-}" == -- ]] || { echo "fake-op: missing --" >&2; exit 3; }
 shift
+[[ -n "${FAKE_OP_BEFORE:-}" ]] && bash -c "$FAKE_OP_BEFORE"
 [[ -n "${FAKE_OP_FAIL:-}" ]] && { echo "[ERROR] fake-op: could not resolve a reference" >&2; exit 1; }
 while IFS= read -r name; do
   value=${!name}
