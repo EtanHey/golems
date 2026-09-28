@@ -119,11 +119,15 @@ Create it interactively:
        args: ["-y", "@upstash/context7-mcp@latest"]
      supabase:
        command: npx
-       args: ["-y", "@supabase/mcp-server-supabase@latest", "--access-token", "<token>"]
+       args: ["-y", "@supabase/mcp-server-supabase@latest"]
+       env:
+         SUPABASE_ACCESS_TOKEN: "<token-or-op-ref>"
 
    contextProfiles:
      # Start with one profile per cloned repo — user adds more later
    ```
+
+   Secrets go in a server's `env`, never its `args`: args (with `${VAR}` expanded) are visible to every local process through `ps`, and `sync-config.sh` rejects a secret-bearing arg.
 
    Show the written config to the user for confirmation.
 

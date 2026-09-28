@@ -40,9 +40,12 @@ done
 python3 - "$CONFIG_FILE" "$REPOS_BASE" "$MODE" "$TARGET_REPO" "$VERBOSE" <<'PY'
 import copy
 import json
+import re
+import shlex
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import unquote_plus
 
 try:
     import yaml
@@ -130,6 +133,129 @@ for repo_path, profile_names in resolved_repo_paths.items():
     if len(profile_names) > 1:
         errors.append(
             f"contextProfiles resolve to the same repo path {repo_path}: {', '.join(profile_names)}"
+        )
+
+
+# AIDEV-NOTE: MCP secrets travel in env, never args. Claude Code expands ${VAR}
+# inside args, so a secret there lands in the MCP child's argv, readable by any
+# local process through `ps`. Errors name the server and arg index only: the
+# value (or a `--flag=value` arg) must never be echoed back.
+# One predicate judges every secret NAME: a flag, a header, a NAME=value
+# assignment, a URL query parameter. `key` counts only as the whole name or
+# after `_` or `-` (api_key, X-Api-Key), so MONKEY, turkey, keychain and
+# mon.key stay harmless; token/secret/password/passwd/apikey count as suffixes.
+# A dot is not a boundary, so `api.key` is accepted too: a documented limit.
+SECRET_NAME = re.compile(r"(token|secret|password|passwd|apikey|(^|[-_])key)$", re.IGNORECASE)
+SECRET_ENV_REF = re.compile(r"\$\{[^}]*(token|secret|key|password)[^}]*\}", re.IGNORECASE)
+SECRET_VALUE_PREFIXES = ("sbp_", "sk-", "ghp_", "github_pat_", "xox")
+# an HTTP auth header or bearer credential (`-H "Authorization: Bearer ..."`)
+AUTH_HEADER = re.compile(r"\bauthorization\s*:|\bbearer\s+\S", re.IGNORECASE)
+# URL userinfo with a password (scheme, `://`, user, `:`, secret, at-sign, host)
+URL_USERINFO = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^/\s@:]+:[^/\s@]+@")
+HEADER_NAME = re.compile(r"^([A-Za-z0-9_.-]+)\s*:\s*\S")
+ASSIGNMENT_NAME = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*)=")
+# `sh -c "<script>"` and friends carry a whole command line in one arg; it is
+# tokenized and checked like an args list, this many levels deep. Percent-
+# decoding a query name also stops after this many rounds.
+MAX_NESTING = 3
+
+
+def is_secret_name(name):
+    return bool(name) and bool(SECRET_NAME.search(name))
+
+
+def is_secret_flag(arg):
+    if not arg.startswith("-"):
+        return False
+    return is_secret_name(arg.lstrip("-").split("=", 1)[0])
+
+
+def without_fragment(value):
+    """value up to its first `#`: a URL fragment is never sent as a query."""
+    return value.split("#", 1)[0]
+
+
+def query_param_names(value):
+    """Decoded names of the parameters in value's URL query, if it has one."""
+    value = without_fragment(value)
+    if "?" not in value:
+        return
+    query = value.split("?", 1)[1]
+    for part in re.split(r"[&;]", query):
+        if "=" not in part:
+            continue
+        name = part.split("=", 1)[0]
+        # A server's URL parser decodes `api%5Fkey` to `api_key`; decode until
+        # stable so a double-encoded name cannot slip through either.
+        for _ in range(MAX_NESTING):
+            decoded = unquote_plus(name)
+            if decoded == name:
+                break
+            name = decoded
+        yield name
+
+
+def is_secret_value(value):
+    if "op://" in value or SECRET_ENV_REF.search(value):
+        return True
+    if AUTH_HEADER.search(value) or URL_USERINFO.search(value):
+        return True
+    for pattern in (HEADER_NAME, ASSIGNMENT_NAME):
+        match = pattern.match(value)
+        if match and is_secret_name(match.group(1)):
+            return True
+    if any(is_secret_name(name) for name in query_param_names(value)):
+        return True
+    return value.startswith(SECRET_VALUE_PREFIXES)
+
+
+def split_command_line(value):
+    try:
+        return shlex.split(value)
+    except ValueError:
+        return value.split()
+
+
+def secret_arg_indexes(args, depth=0):
+    flagged = []
+    skip_next = False
+    for index, arg in enumerate(args):
+        if skip_next:
+            skip_next = False
+            continue
+        if not isinstance(arg, str):
+            continue
+        if is_secret_flag(arg):
+            flagged.append(index)
+            # `--flag value`: the value is covered by flagging its flag.
+            skip_next = "=" not in arg
+            continue
+        candidates = [arg]
+        # `--url=<url>`: judge the value after the first `=`, but only an `=`
+        # before any fragment, or `#x=1?api_key=` would pose as a query.
+        head = without_fragment(arg)
+        if "=" in head:
+            candidates.append(head.split("=", 1)[1])
+        if any(is_secret_value(candidate) for candidate in candidates):
+            flagged.append(index)
+            continue
+        if depth < MAX_NESTING and any(ch.isspace() for ch in arg):
+            if secret_arg_indexes(split_command_line(arg), depth + 1):
+                flagged.append(index)
+    return flagged
+
+
+for server_name, server in mcp_servers.items():
+    if not isinstance(server, dict):
+        continue
+    args = server.get("args")
+    if not isinstance(args, list):
+        continue
+    for index in secret_arg_indexes(args):
+        errors.append(
+            f"mcpServers.{server_name}.args[{index}] is secret-bearing; argv is visible to every "
+            f"local process via `ps`. Move the secret into mcpServers.{server_name}.env "
+            f"(the server reads it from its environment)"
         )
 
 if mode == "validate":
