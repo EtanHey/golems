@@ -33,6 +33,8 @@
 // tick is not misread as an Etan correction. That gate is about reading cron
 // prompts; THIS gate is about whether a cron is still ARMED at fleet-wrap.
 
+import { eligibleReportPath } from "../lib/report-reader.mjs";
+import { isGhPrMerge, parseShell, writeTargets, writtenText } from "../lib/shell-commands.mjs";
 import { normalizeTranscript, currentTurn } from "../lib/transcript.mjs";
 
 // ── Terminal / stand-down state ─────────────────────────────────────────────
@@ -416,11 +418,15 @@ function inboundMonitorExcused(ev, arming) {
 // Cleanup is part of done: a lane DONE report ends with a CLEANUP RECEIPT
 // (worktree / branch / files outside src+tests / docs.local; `/pr-loop`
 // references/merge-and-verification.md § Cleanup Receipt). A lane DONE is:
-//   - a real `gh pr merge` run this turn, or a narrated "PR #N merged" /
-//     "handed PR #N to the lead" claim (negated/conditional talk excluded),
-//   - a DONE_<ID> marker written this turn (Write/Edit content, a Bash
-//     redirect, or a line of its own in the narrative), or
+//   - a `gh pr merge` the turn EXECUTED (parsed shell, so `echo gh pr merge`
+//     is an echo), or a narrated "PR #N merged" / "handed PR #N to the lead"
+//     claim (negated/conditional talk excluded),
+//   - a DONE_<ID> marker written this turn (Write/Edit content, an echo/printf
+//     redirect, a here-document into a file, or a line of its own in the
+//     narrative), or
 //   - a line carrying both a DONE status token and a PR URL.
+// Fenced code blocks and `>` blockquotes are examples, not reports: they are
+// blanked before any DONE signal is read (a receipt inside one still counts).
 // The receipt may sit in the turn's narrative, a tool input it wrote (report
 // file, PR comment), or a report file the turn cites
 // (a fixture's `reports` map, else `options.readReport(path)`). Advisory only,
@@ -440,13 +446,14 @@ const NOT_A_CLAIM_RE =
 const PR_URL_RE = /github\.com\/[^\s/]+\/[^\s/]+\/pull\/\d+/i;
 const DONE_TOKEN_RE = /(^|[\s*#>|(-])(TASK_)?DONE\b/;
 const DONE_MARKER_LINE_RE = /^\s*DONE_[A-Z0-9][A-Z0-9_]*\s*$/m;
-const DONE_MARKER_WRITE_CMD_RE = /\b(echo|printf)\b[^\n|;&]*\bDONE_[A-Z0-9][A-Z0-9_]*\b[^\n|;&]*>>?/;
-const GH_PR_MERGE_CMD_RE = /\bgh\s+pr\s+merge\b(?![^\n]*--help)/;
 // The receipt block: its heading followed by at least the worktree and branch
 // lines. "CLEANUP RECEIPT: n/a" or a prose mention of a receipt is not one.
 const RECEIPT_RE = /CLEANUP RECEIPT[\s\S]{0,400}?\bworktree:[\s\S]{0,600}?\bbranch:/i;
 const REPORT_PATH_RE = /(?:^|[\s`'"(=])((?:~|\/)[^\s`'"()<>|;&]+\.(?:md|txt))\b/g;
 const MAX_REPORT_READS = 4;
+// Advisory-only in the Stop hook AND the CLI: it never changes the CLI's exit
+// code, which stays reserved for the cron/loop FLAGs (cx9 R1 finding 1).
+export const CLEANUP_RECEIPT_CODE = "FLEETWRAP_CLEANUP_RECEIPT_MISSING";
 const WRITTEN_INPUT_KEYS = ["content", "new_string", "body", "message", "text"];
 
 function writtenInputText(tool) {
@@ -461,18 +468,48 @@ function writtenInputText(tool) {
   return parts.filter(Boolean).join("\n");
 }
 
+// Fenced blocks (``` / ~~~, an unclosed fence runs to the end) and `>`
+// blockquote lines are examples or quotations, never this turn's report.
+function stripExamples(text) {
+  const out = [];
+  let fence = null;
+  for (const line of text.split("\n")) {
+    const open = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (fence) {
+      if (open && open[1][0] === fence[0] && open[1].length >= fence.length) fence = null;
+      continue;
+    }
+    if (open) {
+      fence = open[1];
+      continue;
+    }
+    if (/^\s*>/.test(line)) continue;
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 function receiptEvidence(turn) {
   const narrative = [];
   const written = [];
   const commands = [];
   const filePaths = [];
+  const writeTargetPaths = [];
+  let merged = false;
   for (const ev of turn) {
     if (ev.role === "assistant" && ev.text) narrative.push(ev.text);
     for (const t of ev.tools ?? []) {
       const text = writtenInputText(t);
       if (text) written.push(text);
-      if (typeof t.input?.command === "string") commands.push(t.input.command);
       if (typeof t.input?.file_path === "string") filePaths.push(t.input.file_path);
+      if (typeof t.input?.command !== "string") continue;
+      commands.push(t.input.command);
+      for (const cmd of parseShell(t.input.command)) {
+        if (isGhPrMerge(cmd)) merged = true;
+        const wrote = writtenText(cmd);
+        if (wrote) written.push(wrote);
+        writeTargetPaths.push(...writeTargets(cmd));
+      }
     }
   }
   return {
@@ -480,6 +517,8 @@ function receiptEvidence(turn) {
     written: written.join("\n"),
     commands: commands.join("\n"),
     filePaths,
+    writeTargetPaths,
+    merged,
   };
 }
 
@@ -501,31 +540,33 @@ function hasClaim(text, re) {
 
 function doneSignals(ev) {
   const signals = [];
-  if (GH_PR_MERGE_CMD_RE.test(ev.commands)) signals.push("gh pr merge ran this turn");
-  if (hasClaim(ev.narrative, MERGED_CLAIM_RE)) signals.push("a PR reported merged");
-  if (ev.narrative.split("\n").some((line) => PR_REF_RE.test(line) && hasClaim(line, HANDOFF_PHRASE_RE))) {
+  const narrative = stripExamples(ev.narrative);
+  const written = stripExamples(ev.written);
+  if (ev.merged) signals.push("gh pr merge ran this turn");
+  if (hasClaim(narrative, MERGED_CLAIM_RE)) signals.push("a PR reported merged");
+  if (narrative.split("\n").some((line) => PR_REF_RE.test(line) && hasClaim(line, HANDOFF_PHRASE_RE))) {
     signals.push("a PR handed off to the lead");
   }
-  if (
-    DONE_MARKER_LINE_RE.test(ev.narrative) ||
-    DONE_MARKER_LINE_RE.test(ev.written) ||
-    DONE_MARKER_WRITE_CMD_RE.test(ev.commands)
-  ) {
+  if (DONE_MARKER_LINE_RE.test(narrative) || DONE_MARKER_LINE_RE.test(written)) {
     signals.push("a DONE_<ID> marker written");
   }
-  const reportText = [ev.narrative, ev.written, ev.commands].join("\n");
-  if (reportText.split("\n").some((line) => DONE_TOKEN_RE.test(line) && PR_URL_RE.test(line))) {
+  if (`${narrative}\n${written}`.split("\n").some((line) => DONE_TOKEN_RE.test(line) && PR_URL_RE.test(line))) {
     signals.push("a DONE line with a PR URL");
   }
   return signals;
 }
 
+// Explicitly cited paths (the narrative) come first, then paths the turn's
+// shell wrote to or named, then files written by tool; ineligible paths
+// (relative, `..`, not .md/.txt) are dropped BEFORE the cap, so scratch notes
+// or junk cannot crowd out the cited report.
 function citedReportPaths(ev) {
-  const paths = [...ev.filePaths];
-  for (const text of [ev.narrative, ev.commands]) {
-    for (const match of text.matchAll(REPORT_PATH_RE)) paths.push(match[1]);
-  }
-  return [...new Set(paths)].filter((p) => /\.(md|txt)$/i.test(p)).slice(0, MAX_REPORT_READS);
+  const paths = [];
+  for (const match of ev.narrative.matchAll(REPORT_PATH_RE)) paths.push(match[1]);
+  paths.push(...ev.writeTargetPaths);
+  for (const match of ev.commands.matchAll(REPORT_PATH_RE)) paths.push(match[1]);
+  paths.push(...ev.filePaths);
+  return [...new Set(paths)].filter((p) => eligibleReportPath(p) !== null).slice(0, MAX_REPORT_READS);
 }
 
 // A fixture's `reports` map (path -> text) stands in for files on disk; the
@@ -561,7 +602,7 @@ function detectCleanupReceipt(transcript, turn, options) {
   }
   const where = cited.length ? ` or in the cited report(s) [${cited.join(", ")}]` : "";
   return {
-    code: "FLEETWRAP_CLEANUP_RECEIPT_MISSING",
+    code: CLEANUP_RECEIPT_CODE,
     ids: signals,
     action:
       "append a CLEANUP RECEIPT (worktree / branch / files outside src+tests / docs.local this lane created) to the DONE report or merge comment",

@@ -5,15 +5,16 @@
 //   bun fleet-wrap-gate-cli.mjs <transcript.jsonl | fixture.json>
 //   cat transcript.jsonl | bun fleet-wrap-gate-cli.mjs -
 //
-// Exit 0 = PASS (not terminal, or terminal with cron-count=0, and no lane DONE
-// without a CLEANUP RECEIPT), exit 3 = FLAG (FLEETWRAP_CRON_ALIVE /
-// FLEETWRAP_LOOP_ALIVE / FLEETWRAP_CLEANUP_RECEIPT_MISSING), exit 2 = usage.
-// The nonzero FLAG exit makes this wireable as a Stop-hook / fleet-wrap
-// completion check: no stand-down leaves a health-watch / poll cron armed.
+// Exit 0 = PASS (not terminal, or terminal with cron-count=0), exit 3 = FLAG
+// (FLEETWRAP_CRON_ALIVE / FLEETWRAP_LOOP_ALIVE), exit 2 = usage. The nonzero
+// FLAG exit makes this wireable as a Stop-hook / fleet-wrap completion check:
+// no stand-down leaves a health-watch / poll cron armed.
+// FLEETWRAP_CLEANUP_RECEIPT_MISSING is advisory: it is printed, but on its own
+// it exits 0, so a missing receipt never fails a caller that gates on exit 3.
 
 import { readFileSync } from "node:fs";
 import { readReport } from "../lib/report-reader.mjs";
-import { detectFleetWrap, formatReport } from "../src/fleet-wrap-gate.mjs";
+import { CLEANUP_RECEIPT_CODE, detectFleetWrap, formatReport } from "../src/fleet-wrap-gate.mjs";
 
 function readInput(arg) {
   const raw = arg === "-" ? readFileSync(0, "utf8") : readFileSync(arg, "utf8");
@@ -40,4 +41,4 @@ if (!arg) {
 
 const result = detectFleetWrap(readInput(arg), { readReport });
 console.log(formatReport(result));
-process.exit(result.verdict === "FLAG" ? 3 : 0);
+process.exit(result.violations.some((v) => v.code !== CLEANUP_RECEIPT_CODE) ? 3 : 0);

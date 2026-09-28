@@ -1,0 +1,24 @@
+{
+  "specimen": "a report written by a Bash here-document carries the PR URL and DONE_W7 but no CLEANUP RECEIPT (cx9 R1 finding 4)",
+  "label": "RED \u2014 `cat > report.md <<'EOF' \u2026 DONE_W7 \u2026 EOF` is a real report write. Its marker line is a lane DONE, and nothing in the turn carries a receipt. Advisory FLEETWRAP_CLEANUP_RECEIPT_MISSING.",
+  "expect": "FLAG",
+  "violation": "FLEETWRAP_CLEANUP_RECEIPT_MISSING",
+  "events": [
+    {
+      "role": "user",
+      "text": "finish the lane"
+    },
+    {
+      "role": "assistant",
+      "text": "Report written.",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "cat > /safe/lanes/w7-report.md <<'EOF'\n# W7 report\n\nPR: https://github.com/EtanHey/golems/pull/88\n\nDONE_W7\nEOF"
+          }
+        }
+      ]
+    }
+  ]
+}

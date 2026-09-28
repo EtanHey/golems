@@ -37,8 +37,8 @@ is excused only by the monitor-law:
 | **ONE inbound standby monitor** (even via a `CronCreate` framed as inbound), no health-watch/poll/loop | PASS |
 | not a terminal turn (mid-sprint, still driving, more work queued) | PASS (N/A) |
 | discussion about the fleet-wrap rule/gate, or a worker-seat scoped `DONE` that explicitly is not fleet wrap | PASS (N/A) |
-| **lane DONE report** (at any state, terminal or not): a `gh pr merge` this turn, a "PR #N merged" / "handed PR #N to the lead" claim, a written `DONE_<ID>` marker, or a `DONE` line with a PR URL, and **no `CLEANUP RECEIPT`** (heading + `worktree:` + `branch:` lines) in the turn's output, a report it wrote, or a report file it cites | `FLEETWRAP_CLEANUP_RECEIPT_MISSING` — advise appending the receipt (`/pr-loop` `references/merge-and-verification.md` § Cleanup Receipt) |
-| same DONE report carrying its receipt; a mid-sprint push with no DONE; discussion about receipts; negated/conditional merge talk ("not merged yet", "once #N is merged") | PASS (N/A) |
+| **lane DONE report** (at any state, terminal or not): a `gh pr merge` the turn executed (parsed shell), a "PR #N merged" / "handed PR #N to the lead" claim, a written `DONE_<ID>` marker (Write/Edit content, echo/printf redirect, or a here-document into a file), or a `DONE` line with a PR URL, and **no `CLEANUP RECEIPT`** (heading + `worktree:` + `branch:` lines) in the turn's output, a report it wrote, or a report file it cites | `FLEETWRAP_CLEANUP_RECEIPT_MISSING` — advise appending the receipt (`/pr-loop` `references/merge-and-verification.md` § Cleanup Receipt). Advisory in the Stop hook; the CLI prints it but keeps exit 0 unless a cron/loop code also fired |
+| same DONE report carrying its receipt; a mid-sprint push with no DONE; discussion about receipts; negated/conditional merge talk ("not merged yet", "once #N is merged"); a marker or merge claim inside a fenced block or `>` blockquote; a `gh pr merge` that is only printed (`echo gh pr merge …`), quoted, or commented | PASS (N/A) |
 
 Wrap-state doctrine line: **inbound collab monitor STAYS, everything periodic DIES, the
 decision is left in front of Etan, then silence.**
@@ -68,8 +68,10 @@ every lane DONE ends with a `CLEANUP RECEIPT` (worktree / branch / files outside
 docs.local this lane created). `FLEETWRAP_CLEANUP_RECEIPT_MISSING` is an advisory like the cron
 codes, never a Stop block (GO-5 E2), and it is independent of the terminal-state test: a worker's
 DONE is not a fleet wrap, but it still owes a receipt. The receipt may live in a report file the
-turn cites; the Stop hook and CLI read up to 4 cited local `.md`/`.txt` paths, 256 KiB each
-(`lib/report-reader.mjs`), and a fixture supplies them as a `reports` map.
+turn cites; the Stop hook and CLI read up to 4 eligible local `.md`/`.txt` paths, 256 KiB each
+(`lib/report-reader.mjs`), and a fixture supplies them as a `reports` map. Paths named in the
+narrative are read first, then shell write targets, then files written by tool; ineligible paths
+are dropped before the cap.
 
 ## How /fleet-wrap Consumes It
 
@@ -77,7 +79,7 @@ turn cites; the Stop hook and CLI read up to 4 cited local `.md`/`.txt` paths, 2
 monitor/heartbeat/status cron, zero exceptions."** This gate makes it mechanical: before
 the outgoing agent goes silent, run the gate on the wrap turn —
 `bun skills/golem-powers/fleet-wrap-gate/scripts/fleet-wrap-gate-cli.mjs <transcript|->`
-(exit 3 = FLAG). A FLAG means a cron or loop is still armed at stand-down: run the exact
+(exit 3 = a cron/loop FLAG; a receipt-only `FLEETWRAP_CLEANUP_RECEIPT_MISSING` is printed and exits 0). A FLAG means a cron or loop is still armed at stand-down: run the exact
 cleanup action in the reason (`delete cron <id>` / `TaskStop <id>`), then go silent.
 
 Hook wiring uses `scripts/fleet-wrap-gate-hook.mjs` as a Claude Code Stop hook. The hook
@@ -126,6 +128,19 @@ Programmatic: `import { detectFleetWrap } from "./src/fleet-wrap-gate.mjs"` →
   whether its claims are true. A report file cited only by a relative path, or written by a script the
   transcript does not show and never named in the turn, is not read; the advisory then fires,
   and the fix is to cite the report's absolute path or paste the receipt in the DONE message.
+- Report-file policy (`lib/report-reader.mjs`): a cited path must be absolute or `~/`, end in
+  `.md`/`.txt`, and contain no `..` segment (rejected, never normalized). A symlink is followed only
+  when its realpath target passes every check: a `.md`/`.txt` name, a regular file (not a FIFO or
+  device), at most 256 KiB. The target is opened once and type and size come from `fstat` on that
+  descriptor. There is no trusted directory: any readable local file that passes is read. Contents
+  are matched against the receipt shape only and never echoed into the advisory.
+- Shell parsing is a small lexer (`lib/shell-commands.mjs`): quotes, escapes, comments, `;`/`&&`/`||`/`|`,
+  redirects and here-documents. It does not look inside `$(…)`, backticks or `bash -c "…"`, and it
+  unwraps `VAR=x`, `sudo`, `env`, `command`, `exec`, `nohup` and `time` only when they have no
+  options (`sudo -u bob gh pr merge` is not seen as a merge). A missed merge still counts through a
+  narrated "PR #N merged" or a DONE line.
+- Fenced blocks and `>` blockquotes never produce a DONE signal, so a real marker placed inside a
+  fence is missed. Put the `DONE_<ID>` line outside any fence.
 
 ## Provenance
 

@@ -15,9 +15,7 @@ import {
   readStopHookContext,
 } from "../../_shared/stop-hook-runtime/stop-hook-reader.mjs";
 import { readReport } from "../lib/report-reader.mjs";
-import { detectFleetWrap } from "../src/fleet-wrap-gate.mjs";
-
-const RECEIPT_CODE = "FLEETWRAP_CLEANUP_RECEIPT_MISSING";
+import { CLEANUP_RECEIPT_CODE as RECEIPT_CODE, detectFleetWrap } from "../src/fleet-wrap-gate.mjs";
 
 function allow() {
   process.stdout.write("{}");
