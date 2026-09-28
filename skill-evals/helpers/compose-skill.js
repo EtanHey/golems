@@ -148,6 +148,5 @@ if (require.main === module) {
 
 module.exports = {
   composeSkill,
-  listSkillFiles,
   writeCompositionManifest,
 };

@@ -23,7 +23,7 @@ export const DocumentType = {
   WITHDRAWAL_OF_DEPOSIT: 610,
 } as const;
 
-export type DocumentTypeValue =
+type DocumentTypeValue =
   (typeof DocumentType)[keyof typeof DocumentType];
 
 export const DocumentTypeLabel: Record<number, string> = {
@@ -54,15 +54,9 @@ export const PaymentType = {
   OTHER: 11,
 } as const;
 
-export const IncomeVatType = {
-  DEFAULT: 0,
-  INCLUDED: 1,
-  EXEMPT: 2,
-} as const;
-
 // --- Request/Response Interfaces ---
 
-export interface IncomeItem {
+interface IncomeItem {
   description: string;
   quantity: number;
   price: number;
@@ -71,7 +65,7 @@ export interface IncomeItem {
   catalogNum?: string;
 }
 
-export interface PaymentItem {
+interface PaymentItem {
   type: number;
   price: number;
   currency?: string;
@@ -84,7 +78,7 @@ export interface PaymentItem {
   bankAccount?: string;
 }
 
-export interface DocumentClient {
+interface DocumentClient {
   id?: string;
   name?: string;
   taxId?: string;

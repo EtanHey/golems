@@ -50,4 +50,3 @@ packages/services/
 ## Dependencies
 
 - `@golems/shared` — Supabase, event log, state store, LLM, Telegram
-- `googleapis` — Google APIs (briefing, calendar)

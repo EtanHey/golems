@@ -28,7 +28,6 @@
   "dependencies": {
     "@golems/shared": "workspace:*",
     "@golems/coach": "workspace:*",
-    "@golems/teller": "workspace:*",
-    "googleapis": "^174.0.1"
+    "@golems/teller": "workspace:*"
   }
 }

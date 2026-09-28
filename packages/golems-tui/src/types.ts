@@ -6,9 +6,3 @@ export interface GolemInfo {
   description: string;
   trailerLines: string[];
 }
-
-export interface ServiceStatus {
-  name: string;
-  running: boolean;
-  exitCode?: number;
-}
