@@ -28,8 +28,10 @@ function parsedJson(chunks) {
   }
 }
 
-function classifyDecision(output, { exitCode, timedOut, spawnError }) {
-  if (spawnError || timedOut || exitCode !== 0 || !output || typeof output !== "object") return "error";
+function classifyDecision(output, { exitCode, timedOut, spawnError, emptyStdout }) {
+  if (spawnError || timedOut || exitCode !== 0) return "error";
+  if (emptyStdout) return "allow";
+  if (!output || typeof output !== "object" || Array.isArray(output)) return "error";
   if (output.decision === "block") return "block";
   if (typeof output.systemMessage === "string") {
     // A gate advisory (GO-5 E2) quotes transcript evidence; its words are not a status.
@@ -104,8 +106,9 @@ killTimer.unref();
 function writeTelemetry(exitCode, signal) {
   const endedAtMs = Date.now();
   const output = parsedJson(stdoutChunks);
+  const emptyStdout = Buffer.concat(stdoutChunks).toString("utf8").trim().length === 0;
   const receipt = parsedJson(receiptChunks);
-  const decision = classifyDecision(output, { exitCode, timedOut, spawnError });
+  const decision = classifyDecision(output, { exitCode, timedOut, spawnError, emptyStdout });
   const row = {
     schema: "golems.stop-decision.v1",
     hook: hookName,
