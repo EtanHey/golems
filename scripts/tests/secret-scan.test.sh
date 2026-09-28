@@ -149,6 +149,10 @@ if shape=$(ruby -ryaml -e '
   runs = steps.map { |s| s["run"].to_s }
   abort "a step still installs TruffleHog from pip" if runs.any? { |r| r.include?("pip install") }
   env = job["env"] || {}
+  # The runner context does not exist at job level: GitHub rejects the whole
+  # workflow file, so no job in it runs.
+  bad = env.select { |_, v| v.to_s.include?("runner.") }.keys
+  abort "job-level env uses the runner context: #{bad.join(", ")}" unless bad.empty?
   abort "TRUFFLEHOG_VERSION is not pinned to an exact release" unless env["TRUFFLEHOG_VERSION"].to_s =~ /\A\d+\.\d+\.\d+\z/
   abort "TRUFFLEHOG_SHA256 is not a sha256" unless env["TRUFFLEHOG_SHA256"].to_s =~ /\A\h{64}\z/
   install = runs.index { |r| r.include?("sha256sum --check") } or abort "no checksum-verified install step"

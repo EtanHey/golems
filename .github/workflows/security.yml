@@ -60,7 +60,6 @@ jobs:
       # Bump both together, from the release's trufflehog_<version>_checksums.txt.
       TRUFFLEHOG_VERSION: 3.97.9
       TRUFFLEHOG_SHA256: 40377e6572495412fb9ba0bc21c9401f73b72f1d2afd11b9931bc4a5ed622866
-      TRUFFLEHOG: ${{ runner.temp }}/trufflehog/trufflehog
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -76,7 +75,9 @@ jobs:
             "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/$tarball"
           echo "$TRUFFLEHOG_SHA256  $dir/$tarball" | sha256sum --check --strict
           tar -xzf "$dir/$tarball" -C "$dir" trufflehog
-          "$TRUFFLEHOG" --version
+          "$dir/trufflehog" --version
+          # Later steps and scripts/ci/secret-scan.sh run this binary.
+          echo "TRUFFLEHOG=$dir/trufflehog" >> "$GITHUB_ENV"
 
       - name: Test the secret-scan wrapper
         run: bash scripts/tests/secret-scan.test.sh
