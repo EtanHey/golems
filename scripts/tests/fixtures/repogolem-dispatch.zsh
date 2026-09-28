@@ -155,10 +155,16 @@ typeset -ga _golem_prelaunch=() _golem_agent_prefix=()
 
 _golem_load_prelaunch() {
   local registry="$1" registry_text prelaunch_raw
+  # A backslash then u: the only JSON escape that can spell a letter, so the
+  # only way a real prelaunch key can be missing its literal "prelaunch" text.
+  local json_unicode_escape=$'\x5cu'
   _golem_prelaunch=()
   _golem_agent_prefix=()
   registry_text=$(<"$registry") 2>/dev/null || return 0
-  [[ "$registry_text" == *'"prelaunch"'* ]] || return 0
+  # Skip jq only when the text rules a key out. A false positive just costs
+  # one jq read that finds no list; a false negative would silently drop the
+  # user's prelaunch, so any unicode escape falls back to jq.
+  [[ "$registry_text" == *'"prelaunch"'* || "$registry_text" == *"$json_unicode_escape"* ]] || return 0
   prelaunch_raw=$(jq -j '(.global.prelaunch // [])
     | if type == "array" then .[] | select(type == "string" and length > 0) | . + "\u0000" else empty end' \
     "$registry" 2>/dev/null) || return 0
