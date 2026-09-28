@@ -94,7 +94,7 @@ This is the SINGLE source of truth for progress. Messages are supplementary.
 | Round | Advance When |
 |-------|-------------|
 | 0 -> 1 | All agents report `learning` or `ready` |
-| 1 -> 2 | All Round 1 PRs merged |
+| 1 -> 2 | All Round 1 PRs merged, every worker's CLEANUP RECEIPT posted, and the lead's prune step run |
 
 Orchestrator announces: `**ADVANCING TO ROUND N.** [per-agent directives]`
 

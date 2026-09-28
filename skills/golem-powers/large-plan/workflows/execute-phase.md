@@ -122,7 +122,13 @@ git checkout master && git pull
 
 ### 10. Update Plan
 
-In `<plan-dir>/README.md`, mark the phase as done:
+**Phase-close gate — the lead owns it, and it runs BEFORE any `done` below.** The lead confirms that every
+worker's CLEANUP RECEIPT for this phase is present (`/pr-loop` `references/merge-and-verification.md` § Cleanup
+Receipt) and runs the prune step: `git worktree prune`, delete merged branches, roll `docs.local/<sprint>/` up into
+one README. A missing receipt keeps the phase open until that worker posts it; the lead does not write it for them.
+In a sequential plan the executing agent is the lead.
+
+Only after the gate passes, in `<plan-dir>/README.md`, mark the phase as done:
 ```
 | N | Phase Name | folder | done | PR #XX merged |
 ```
@@ -130,10 +136,10 @@ In `<plan-dir>/README.md`, mark the phase as done:
 Update findings.md with final notes.
 
 **If collab:**
-1. Update Task Board in collab.md — status → `done`, add PR link
-2. Append a timestamped, addressed Messages heading: `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: PR #XX merged. Next: <what is unblocked>`, with the CLEANUP RECEIPT (`/pr-loop` `references/merge-and-verification.md` § Cleanup Receipt) under it
+1. Append a timestamped, addressed Messages heading: `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: PR #XX merged. Next: <what is unblocked>`, with your CLEANUP RECEIPT under it. The receipt comes first; the lead's gate reads it
+2. Then update Task Board in collab.md — status → `done`, add PR link
 3. If ALL your assigned phases are done → status → `signed-off`
-4. If this completes a round → orchestrator advances to next round
+4. If this completes a round → the lead runs the phase-close gate above (every worker's CLEANUP RECEIPT present, prune step run) and only then advances to next round
 
 **If blocked at any step:** update your status, then append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`. Task Board changes and unaddressed prose do not wake the tag-scoped collab monitor.
 
