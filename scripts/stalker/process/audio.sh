@@ -1,7 +1,8 @@
 #!/bin/bash
 # Sourced only by process-stream.sh; no top-level side effects.
 # run_audio_stages globals (R): VIDEO, OUT_DIR, STREAMER, DATE, WHISPER_MODEL,
-# SEGMENT_MIN_DURATION, SILENCE_THRESHOLD, SILENCE_DURATION, VOLUME_SPIKE_RATIO.
+# SEGMENT_MIN_DURATION, SILENCE_THRESHOLD, SILENCE_DURATION, VOLUME_SPIKE_RATIO,
+# AUDIO, SILENCES, VOLUME_FILE, SPIKES_FILE, TRANSCRIPT, SEG_NUM, FAILED_SEGMENTS.
 # Globals (W): AUDIO, SILENCES, VOLUME_FILE, SPIKES_FILE, TRANSCRIPT, SEG_NUM,
 # FAILED_SEGMENTS. Files: full-audio.wav, silences.txt, volume-per-10s.txt,
 # volume-spikes.txt, transcript.md, segment WAVs and the 1a-1e stage markers.

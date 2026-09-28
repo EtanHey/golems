@@ -112,10 +112,41 @@ def normalized(value, sandbox, root):
     value = re.sub(r"agy failed after [0-9]+s", "agy failed after <ELAPSED>s", value)
     # BSD wc pads redirected counts; GNU wc does not. Keep the count exact.
     value = re.sub(r"(Found|Volume measured:|Total messages:) {2,}(?=[0-9])", r"\1 ", value)
+    # du -sh reports allocated blocks, which differ between APFS and ext4.
+    value = re.sub(r"(Total disk: )\d+(?:\.\d+)?[KMGTP]?", r"\1<FS_ALLOC>", value)
     # The shell displays only the first 60 transcript characters. A path cut
     # mid-component cannot match the full sandbox prefix above.
     value = re.sub(r"(?<=see )/[^ \n]*?(?=\.\.\.)", "<TRUNCATED_RUN_PATH>", value)
     return value
+
+
+def first_difference(actual, expected, path="result"):
+    """Name the first mismatched field without dumping a full golden to CI logs."""
+    if type(actual) is not type(expected):
+        return f"{path}: type {type(actual).__name__} != {type(expected).__name__}"
+    if isinstance(actual, dict):
+        for key in sorted(actual.keys() | expected.keys()):
+            if key not in actual or key not in expected:
+                return f"{path}.{key}: missing from one side"
+            difference = first_difference(actual[key], expected[key], f"{path}.{key}")
+            if difference: return difference
+    elif isinstance(actual, list):
+        if len(actual) != len(expected):
+            return f"{path}: length {len(actual)} != {len(expected)}"
+        for index, (left, right) in enumerate(zip(actual, expected)):
+            difference = first_difference(left, right, f"{path}[{index}]")
+            if difference: return difference
+    elif isinstance(actual, str) and actual != expected:
+        offset = next((index for index, pair in enumerate(zip(actual, expected))
+                       if pair[0] != pair[1]), min(len(actual), len(expected)))
+        start = max(0, offset - 60)
+        return (f"{path}: first differing character {offset}; "
+                f"actual={actual[start:offset + 120]!r} "
+                f"expected={expected[start:offset + 120]!r}; "
+                f"lengths={len(actual)}/{len(expected)}")
+    elif actual != expected:
+        return f"{path}: actual={actual!r:.300} expected={expected!r:.300}"
+    return None
 
 
 def capture(root, case):
@@ -204,7 +235,8 @@ def main():
             path.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
         else:
             expected = json.loads(path.read_text())
-            assert actual == expected, f"{case} differs from untouched-base golden {path}"
+            assert actual == expected, (f"{case} differs from untouched-base golden {path}: "
+                                        f"{first_difference(actual, expected)}")
         print(f"PASS {case}: {len(actual)} step(s)")
 
 

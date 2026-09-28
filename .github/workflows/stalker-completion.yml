@@ -4,6 +4,7 @@ on:
     paths:
       - 'scripts/stalker-*.mjs'
       - 'scripts/stalker/process-stream.sh'
+      - 'scripts/stalker/process/**'
       - 'scripts/stalker/post-stream.sh'
       - 'scripts/stalker/stream-overnight-monitor.sh'
       - 'scripts/tests/stalker-*.test.mjs'
@@ -16,6 +17,7 @@ on:
     branches: [master]
     paths:
       - 'scripts/stalker/process-stream.sh'
+      - 'scripts/stalker/process/**'
       - 'scripts/stalker/post-stream.sh'
       - 'scripts/stalker/stream-overnight-monitor.sh'
       - 'scripts/tests/fixtures/stalker-*'

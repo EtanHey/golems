@@ -1,13 +1,15 @@
 #!/bin/bash
 # Sourced only by process-stream.sh; no top-level side effects.
 # run_clip_stage globals (R): GEMS_FILE, OUT_DIR, VIDEO, original $0;
-# (W): none cross-stage. Files: clips/*, optional annotated clips, 4-clips marker.
+# (W): no cross-stage globals (CLIP_COUNT and ANNOTATE_SCRIPT are scratch).
+# Files: clips/*, optional annotated clips, 4-clips marker.
 # run_manifest_stage globals (R): JSON_OUTPUT, GEMS_FILE, OUT_DIR, VIDEO,
 # SPIKES_FILE, VOLUME_FILE, STREAMER, DATE; (W): MANIFEST_FILE. Files:
-# gems-manifest.json and 5-manifest marker.
+# gems-manifest.json and 5-manifest marker. DURATION is scratch.
 # complete_stream_run globals (R): OUT_DIR, CHAT_LOG, GEMS_FILE, VIDEO,
 # TRANSCRIPT, SEG_NUM, SPIKES_FILE, SIGNALS_FILE, SCRIPT_DIR, delivery env;
-# (W): none cross-stage. It removes regeneratable segment WAVs, gates quality,
+# (W): no cross-stage globals (SEGMENT_SIZE and SEGMENT_COUNT_FILES are scratch).
+# It removes regeneratable segment WAVs, gates quality,
 # invokes completion once unless deferred, and prints final paths/status.
 
 run_clip_stage() {

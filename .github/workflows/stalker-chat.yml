@@ -8,6 +8,10 @@ on:
       - "scripts/lib/stream/**"
       - "scripts/stalker/post-stream.sh"
       - "scripts/stalker/process-stream.sh"
+      - "scripts/stalker/process/**"
+      - "scripts/tests/process-stream-contract.py"
+      - "scripts/tests/fixtures/process-stream-contract/**"
+      - "scripts/tests/test-process-stream-agy-cli.bats"
       - "scripts/tests/test-post-stream-tail-gate.bats"
       - "scripts/stalker/preflight-twitch-chat-lurker.sh"
       - "scripts/stalker/stream-watcher.sh"
@@ -24,6 +28,10 @@ on:
       - "scripts/lib/stream/**"
       - "scripts/stalker/post-stream.sh"
       - "scripts/stalker/process-stream.sh"
+      - "scripts/stalker/process/**"
+      - "scripts/tests/process-stream-contract.py"
+      - "scripts/tests/fixtures/process-stream-contract/**"
+      - "scripts/tests/test-process-stream-agy-cli.bats"
       - "scripts/tests/test-post-stream-tail-gate.bats"
       - "scripts/stalker/preflight-twitch-chat-lurker.sh"
       - "scripts/stalker/stream-watcher.sh"
@@ -52,3 +60,5 @@ jobs:
         run: |
           bun run test:stalker-chat
           bats scripts/tests/test-post-stream-tail-gate.bats
+          bats scripts/tests/test-process-stream-agy-cli.bats
+          python3 scripts/tests/process-stream-contract.py
