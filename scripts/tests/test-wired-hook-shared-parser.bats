@@ -17,6 +17,7 @@ teardown() {
     [ -f "$TEST_ROOT/hooks/_shared/shell_parse.py" ] &&
     cmp -s "$TEST_ROOT/hooks/_shared/shell_parse.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py" &&
     cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/tokens.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/tokens.py" &&
+    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/masks.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/masks.py" &&
     cmp -s "$TEST_ROOT/hooks/_shared/harness_paths.py" "$REPO_ROOT/skills/golem-powers/_shared/harness_paths.py"
 }
 
@@ -45,8 +46,9 @@ for label, directory in (("copy", root / "a"),
                          ("directory_symlink", root / "dir-link"),
                          ("file_symlink", root / "b")):
     parser = load(label, directory / "shell_parse.py")
-    impl = pathlib.Path(sys.modules[parser._shell_tokens.__module__].__file__).absolute()
-    assert impl == (root / "a" / "shell_parse_impl" / "tokens.py").resolve(), (label, impl)
+    for name, leaf in (("_shell_tokens", "tokens"), ("_blank_quoted", "masks")):
+        impl = pathlib.Path(sys.modules[getattr(parser, name).__module__].__file__).absolute()
+        assert impl == (root / "a" / "shell_parse_impl" / (leaf + ".py")).resolve(), (label, name, impl)
     assert parser._shell_tokens("echo ok") == ["echo", "ok"]
 first = load("first_copy", root / "a" / "shell_parse.py")
 second = load("second_copy", root / "c" / "shell_parse.py")
