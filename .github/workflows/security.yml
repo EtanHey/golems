@@ -47,27 +47,50 @@ jobs:
       - name: Run bun audit
         run: bun audit --audit-level=high
 
+  # A required check. It used to `pip install trufflehog`, which is TruffleHog
+  # v2 (no `filesystem` command), under continue-on-error, so every run errored
+  # and passed. Now: the pinned v3 release binary, checksum-verified, a canary
+  # that proves the scanner catches a leak before it is trusted, and nothing
+  # that swallows a failure. Logic and exit codes: scripts/ci/secret-scan.sh.
   secret-scan:
     name: Secret Scanning
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Bump both together, from the release's trufflehog_<version>_checksums.txt.
+      TRUFFLEHOG_VERSION: 3.97.9
+      TRUFFLEHOG_SHA256: 40377e6572495412fb9ba0bc21c9401f73b72f1d2afd11b9931bc4a5ed622866
+      TRUFFLEHOG: ${{ runner.temp }}/trufflehog/trufflehog
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Install TruffleHog
-        run: pip install trufflehog
+      - name: Install TruffleHog (pinned release, checksum-verified)
+        run: |
+          dir="$RUNNER_TEMP/trufflehog"
+          tarball="trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz"
+          mkdir -p "$dir"
+          curl -fsSL --retry 3 -o "$dir/$tarball" \
+            "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/$tarball"
+          echo "$TRUFFLEHOG_SHA256  $dir/$tarball" | sha256sum --check --strict
+          tar -xzf "$dir/$tarball" -C "$dir" trufflehog
+          "$TRUFFLEHOG" --version
+
+      - name: Test the secret-scan wrapper
+        run: bash scripts/tests/secret-scan.test.sh
+
+      - name: Canary (the scanner must flag a planted key)
+        run: bash scripts/ci/secret-scan.sh canary
 
       - name: Scan for secrets
-        run: |
-          trufflehog filesystem . \
-            --json \
-            --fail \
-            --max-depth 3 \
-            --include-paths '.*\.(ts|tsx|js|jsx|json|py|yml|yaml)$' \
-            --exclude-paths '.*node_modules.*|.*\.git.*|.*dist.*|.*build.*'
-        continue-on-error: true
+        env:
+          # The Publish Boundary Guard's public baseline (genesis). Its tree is
+          # covered by the working-tree scan on push and nightly.
+          SECRET_SCAN_HISTORY_BASE: 5857c663fe37f3dd1fba1d573f813878f3e73875
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: bash scripts/ci/secret-scan.sh scan "$GITHUB_EVENT_NAME" "$SECRET_SCAN_HISTORY_BASE" "$PUSH_BEFORE"
 
   placeholder-guard:
     name: Broken Placeholder Check
@@ -157,6 +180,10 @@ jobs:
         run: |
           if [ "${{ needs.publish-boundary.result }}" != "success" ]; then
             echo "Publish boundary or history evidence failed."
+            exit 1
+          fi
+          if [ "${{ needs.secret-scan.result }}" != "success" ]; then
+            echo "Secret scanning found a credential, or the scanner failed its canary."
             exit 1
           fi
           if [ "${{ needs.bun-audit.result }}" != "success" ]; then

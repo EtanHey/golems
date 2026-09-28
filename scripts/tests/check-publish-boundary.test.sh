@@ -363,7 +363,9 @@ setup_real_identifier_host() {
 }
 
 setup_real_identifier_pooler() {
-  printf 'postgresql://postgres.abcde0ghijklmnopqrst:fixture@aws-0-eu.pooler.supabase.com:6543/postgres\n' > "$1/config.txt"
+  # The scheme is filled in at runtime so the committed line is not a connection
+  # string for Secret Scanning to flag; the file the check reads is unchanged.
+  printf '%s://postgres.abcde0ghijklmnopqrst:fixture@aws-0-eu.pooler.supabase.com:6543/postgres\n' postgresql > "$1/config.txt"
 }
 
 setup_real_drive_identifier() {
