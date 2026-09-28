@@ -29,6 +29,7 @@ SEMANTIC_MUTANTS = ROOT / "scripts/tests/fixtures/pristine-harness/semantic-muta
 FIXTURE = Path("/var/tmp/pristine-harness-fixture")
 FILES = (
     "skills/golem-powers/_shared/shell_parse.py",
+    "skills/golem-powers/_shared/tests/test_shell_parse.py",
     "skills/golem-powers/_shared/harness_paths.py",
     "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "skills/golem-powers/git-guardian/git_safety.py",
@@ -72,6 +73,61 @@ for name in names:
     except Exception as exc:
         out[name] = {'exception': type(exc).__name__, 'message': str(exc)}
 print(json.dumps(out, sort_keys=True, ensure_ascii=False, default=repr))
+'''
+PARSER_STATE_PROBE = r'''
+import importlib.util, json, sys
+from pathlib import Path
+p = Path(sys.argv[1]) / 'skills/golem-powers/_shared/shell_parse.py'
+s = importlib.util.spec_from_file_location('shell_parse', p)
+m = importlib.util.module_from_spec(s)
+sys.modules[s.name] = m
+s.loader.exec_module(m)
+request = json.load(sys.stdin)
+state = request['state']
+before = json.dumps(state, sort_keys=True)
+invoked = m._invoked_alias_bodies(request['command'], state)
+print(json.dumps({'invoked': invoked,
+                  'state_unchanged': json.dumps(state, sort_keys=True) == before},
+                 sort_keys=True, ensure_ascii=False))
+'''
+IDENTITY_PROBE = r'''
+import importlib.util, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+shared = root / 'skills/golem-powers/_shared'
+sys.path.insert(0, str(shared))
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+shell_parse = load('shell_parse', shared / 'shell_parse.py')
+hook = load('tmp_block_identity_probe', root / 'skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py')
+git_safety = load('git_safety', root / 'skills/golem-powers/git-guardian/git_safety.py')
+tests = load('test_shell_parse_identity_probe', shared / 'tests/test_shell_parse.py')
+hook_names = ''' + repr((
+    '_ASSIGNMENT_RE', '_QUOTED_LBRACE', '_QUOTED_RBRACE',
+    '_UNRESOLVED_EVAL_MARKER', '_WRAPPER_CMDS', '_WRAPPER_VALUE_OPTS',
+    '_command_sub_word_continues', '_executable_subcommands',
+    '_function_signature_parens', '_invoked_alias_bodies',
+    '_is_command_sub_close', '_is_command_sub_open', '_is_separator',
+    '_mask_function_definition_bodies', '_mask_quoted_operator_words',
+    '_nested_alias_segment', '_nested_segment', '_parse_bash',
+    '_segment_is_fully_exposed', '_segment_is_prefix',
+    '_shell_command_payloads', '_shell_tokens', '_strip_heredoc_bodies',
+)) + r'''
+git_names = ('_backtick_bodies', 'dollar_paren_bodies',
+             'shell_text_without_heredoc_bodies', 'without_dollar_paren_bodies')
+test_names = ('_RAW_SHELL_TOKEN_RE', '_RAW_FOR_WORD_RE')
+assert len(hook_names) == 23
+for owner, names in ((hook, hook_names), (git_safety, git_names)):
+    for name in names:
+        assert getattr(owner, name) is getattr(shell_parse, name), name
+assert tests.shell_parse is shell_parse
+for name in test_names:
+    assert getattr(tests.shell_parse, name) is getattr(shell_parse, name), name
+print('IDENTITY PASS hook=23 git=4 test=2')
 '''
 LAUNCHER_PROBE = r'''
 source "$1" || exit $?
@@ -271,9 +327,12 @@ def capture(case, tree, scratch):
         argv = ["zsh", "-f", "-c", LAUNCHER_PROBE, "pristine-launcher",
                 str(tree / "scripts/repogolem/golem-dispatch.zsh"), *launch_args]
         data = b""
-    elif target == "parser":
-        argv = [sys.executable, "-c", PARSER_PROBE, str(tree)]
-        data = case["input"].encode()
+    elif target in ("parser", "parser-state", "parser-identity"):
+        probe = {"parser": PARSER_PROBE, "parser-state": PARSER_STATE_PROBE,
+                 "parser-identity": IDENTITY_PROBE}[target]
+        argv = [sys.executable, "-c", probe, str(tree)]
+        data = (json.dumps(case["request"]).encode() if target == "parser-state"
+                else case.get("input", "").encode())
     elif target == "git-api":
         argv = [sys.executable, "-c", GIT_API_PROBE, str(tree)]
         data = json.dumps(materialize(case["request"], scratch)).encode()
@@ -305,10 +364,24 @@ def execute(cases, tree, scratch):
 
 
 def validate_baseline(cases, results):
-    for kind in ("parser", "tmp-block", "git-guardian", "git-api", "launcher"):
+    for kind in ("parser", "parser-state", "parser-identity", "tmp-block",
+                 "git-guardian", "git-api", "launcher"):
         rows = [results[case["id"]] for case in cases if case["target"] == kind]
         if not rows or all(row["exit"] != 0 for row in rows):
             raise RuntimeError(f"baseline fixture for {kind} did not run successfully")
+    for case in cases:
+        if "expected_invoked" not in case:
+            continue
+        row = results[case["id"]]
+        if row["exit"] != 0:
+            raise RuntimeError(f"explicit parser case failed: {case['id']}")
+        output = json.loads(base64.b64decode(row["stdout"]))
+        invoked = (output["_invoked_alias_bodies"] if case["target"] == "parser"
+                   else output["invoked"])
+        if invoked != case["expected_invoked"]:
+            raise RuntimeError(f"explicit parser tuples differ: {case['id']}")
+        if case["target"] == "parser-state" and not output["state_unchanged"]:
+            raise RuntimeError(f"initial state mutated: {case['id']}")
     for case in cases:
         if case["target"] != "launcher":
             continue
@@ -355,7 +428,8 @@ def main():
     cases = json.loads(CORPUS.read_text())
     ids = [case["id"] for case in cases]
     if len(ids) != len(set(ids)) or any(case["target"] not in
-       ("parser", "tmp-block", "git-guardian", "git-api", "launcher") for case in cases):
+       ("parser", "parser-state", "parser-identity", "tmp-block",
+        "git-guardian", "git-api", "launcher") for case in cases):
         parser.error("duplicate case ID or unsupported target")
     # Lock concurrent invocations before touching the checkout-independent fixture.
     with Path("/var/tmp/pristine-harness-fixture.lock").open("w") as lock:
@@ -399,10 +473,46 @@ def run_locked(args, parser, cases, scratch):
                 baseline[kind] = execute(subset, base, scratch)
             source = base / row["path"]
             original = source.read_text()
-            if original.count(row["old"]) != 1 or row["new"] == row["old"]:
-                parser.error(f"mutation anchor is not unique or semantic: {row['id']}")
+            operation = row.get("operation", "replace")
+            if operation == "replace":
+                if original.count(row["old"]) != 1 or row["new"] == row["old"]:
+                    parser.error(f"mutation anchor is not unique or semantic: {row['id']}")
+                mutated = original.replace(row["old"], row["new"])
+            elif operation == "swap-passes":
+                markers = (row["old"], row["middle"], row["end"])
+                if any(original.count(marker) != 1 for marker in markers):
+                    parser.error(f"mutation anchor is not unique: {row['id']}")
+                start = original.index(row["old"]) + row["old"].index("        for i, token")
+                middle = original.index(row["middle"])
+                end = original.index(row["end"])
+                if not start < middle < end:
+                    parser.error(f"mutation pass order is invalid: {row['id']}")
+                mutated = (original[:start] + original[middle:end] +
+                           original[start:middle] + original[end:])
+            elif operation == "move-before":
+                markers = (row["old"], row["end"], row["before"])
+                if any(original.count(marker) != 1 for marker in markers):
+                    parser.error(f"mutation anchor is not unique: {row['id']}")
+                start = original.index(row["old"])
+                end = original.index(row["end"])
+                before = original.index(row["before"])
+                if not before < start < end:
+                    parser.error(f"mutation move order is invalid: {row['id']}")
+                mutated = (original[:before] + original[start:end] +
+                           original[before:start] + original[end:])
+            elif operation == "move-line-before":
+                line, marker = row["old"], row["before"]
+                if original.count(line) != 1 or original.count(marker) != 1:
+                    parser.error(f"mutation anchor is not unique: {row['id']}")
+                start, before = original.index(line), original.index(marker)
+                if not before < start:
+                    parser.error(f"mutation move order is invalid: {row['id']}")
+                mutated = (original[:before] + line + original[before:start] +
+                           original[start + len(line):])
+            else:
+                parser.error(f"unknown mutation operation: {row['id']}")
             try:
-                source.write_text(original.replace(row["old"], row["new"]))
+                source.write_text(mutated)
                 candidate = execute(subset, base, scratch)
             finally:
                 source.write_text(original)
@@ -456,7 +566,8 @@ def run_locked(args, parser, cases, scratch):
         print("PRISTINE HARNESS FAIL\n" + "\n".join(failures), file=sys.stderr)
         return 1
     counts = {kind: sum(case["target"] == kind for case in cases)
-              for kind in ("parser", "tmp-block", "git-guardian", "git-api", "launcher")}
+              for kind in ("parser", "parser-state", "parser-identity",
+                           "tmp-block", "git-guardian", "git-api", "launcher")}
     print("PRISTINE HARNESS PASS " + json.dumps(counts, sort_keys=True))
     return 0
 

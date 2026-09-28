@@ -390,5 +390,290 @@
     "old": "if words[index] in {\"-exec\", \"-execdir\"}:\n                reason = _dangerous_non_rm_in_words(words, index + 1)",
     "new": "if words[index] in {\"-execdir\"}:\n                reason = _dangerous_non_rm_in_words(words, index + 1)",
     "description": "G6 non-rm wrapper"
+  },
+  {
+    "id": "P-T1",
+    "operation": "swap-passes",
+    "old": "                invocation_index += 1\n\n        for i, token in enumerate(tokens):\n            if not cmd_pos[i]:",
+    "middle": "        for i, token in enumerate(tokens):\n            eval_variables = variable_state_at(i)",
+    "end": "        if enabled:\n            for i, token in enumerate(tokens):\n                if (\n                    cmd_pos[i]",
+    "description": "swap direct-function and eval emission passes",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py"
+  },
+  {
+    "id": "P-T2",
+    "old": "if event[0] >= token_index:",
+    "new": "if event[0] > token_index:",
+    "description": "make equal-position function events visible",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py"
+  },
+  {
+    "id": "P-T3",
+    "operation": "move-before",
+    "old": "        for event in function_events:\n            apply_function_event(\n                function_bodies,",
+    "end": "        # Shell parses a complete line before executing it, so shopt/alias",
+    "before": "        for body, sub_outer_seg, _sub_index, exposed in _executable_subcommands(\n            line",
+    "description": "commit function events before emission",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py"
+  },
+  {
+    "id": "P-T4",
+    "old": "dynamic_case = unit_nocasematch or any(",
+    "new": "dynamic_case = nocasematch or any(",
+    "description": "drop same-unit nocasematch preview",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py"
+  },
+  {
+    "id": "P-T5",
+    "old": "aliases = dict(initial_aliases)",
+    "new": "aliases = initial_aliases",
+    "description": "share initial alias map with caller",
+    "target": "parser-state",
+    "path": "skills/golem-powers/_shared/shell_parse.py"
+  },
+  {
+    "id": "P-T6",
+    "old": "bodies = dict(function_bodies)",
+    "new": "bodies = function_bodies",
+    "description": "share durable function map with token view",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py"
+  },
+  {
+    "id": "P-T7",
+    "old": "variables = dict(command_vars)",
+    "new": "variables = command_vars",
+    "description": "share durable variables map with replay view",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py"
+  },
+  {
+    "id": "P-T8",
+    "old": "                expanded_body = expand_alias_commands(raw_body)",
+    "new": "                aliases_for_definition = aliases.copy()\n                aliases.update(raw_alias_bodies)\n                try:\n                    expanded_body = expand_alias_commands(raw_body)\n                finally:\n                    aliases.clear()\n                    aliases.update(aliases_for_definition)",
+    "description": "expand definitions against same-unit alias declarations",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py"
+  },
+  {
+    "id": "R-05",
+    "description": "command_vars commit before emission",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "operation": "move-line-before",
+    "old": "        command_vars = variable_state_at(len(tokens))\n",
+    "before": "        for body, sub_outer_seg, _sub_index, exposed in _executable_subcommands(\n            line\n        ):\n"
+  },
+  {
+    "id": "R-06",
+    "description": "command_vars not durable across units",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "        command_vars = variable_state_at(len(tokens))\n",
+    "new": "        command_vars = dict(command_vars)\n"
+  },
+  {
+    "id": "R-08",
+    "description": "equal-position ties: removals before defines",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "function_events.sort(key=lambda event: event[0])",
+    "new": "function_events.sort(key=lambda event: (event[0], event[1] == \"define\"))"
+  },
+  {
+    "id": "R-09",
+    "description": "events not sorted (removes stay after defines)",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "function_events.sort(key=lambda event: event[0])",
+    "new": "pass"
+  },
+  {
+    "id": "R-11",
+    "description": "redefinition keeps stale expanded body",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "            if expanded_body != raw_body:\n                expanded_bodies[name] = expanded_body\n            else:\n                expanded_bodies.pop(name, None)\n",
+    "new": "            if expanded_body != raw_body:\n                expanded_bodies[name] = expanded_body\n"
+  },
+  {
+    "id": "R-12",
+    "description": "initial raw function map shared with caller (L1275)",
+    "target": "parser-state",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "function_bodies = dict(initial_functions)",
+    "new": "function_bodies = initial_functions"
+  },
+  {
+    "id": "R-13",
+    "description": "initial expanded function map shared with caller (L1276)",
+    "target": "parser-state",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "expanded_function_bodies = dict(initial_expanded)",
+    "new": "expanded_function_bodies = initial_expanded"
+  },
+  {
+    "id": "R-14",
+    "description": "token view shares durable expanded map (L2843)",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "expanded_bodies = dict(expanded_function_bodies)",
+    "new": "expanded_bodies = expanded_function_bodies"
+  },
+  {
+    "id": "R-16",
+    "description": "nested state carries unit_nocasematch preview",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "state = (enabled, aliases, bodies, expanded_bodies, nocasematch)",
+    "new": "state = (enabled, aliases, bodies, expanded_bodies, unit_nocasematch)"
+  },
+  {
+    "id": "R-19",
+    "description": "four-slot initial state defaults nocasematch on",
+    "target": "parser-state",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "nocasematch = _initial_state[4] if len(_initial_state) > 4 else False",
+    "new": "nocasematch = _initial_state[4] if len(_initial_state) > 4 else True"
+  },
+  {
+    "id": "R-21",
+    "description": "preview misses `builtin shopt -s nocasematch`",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "r\"(?:^|[;|&])\\s*(?:builtin\\s+)?shopt\\s+-s\\b\"",
+    "new": "r\"(?:^|[;|&])\\s*shopt\\s+-s\\b\""
+  },
+  {
+    "id": "R-22",
+    "description": "expand_aliases -s requires definite",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "                if \"-s\" in same_segment:\n                    enabled = True",
+    "new": "                if \"-s\" in same_segment and definitely_executes:\n                    enabled = True"
+  },
+  {
+    "id": "R-23",
+    "description": "expand_aliases -u on a possible branch",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "elif \"-u\" in same_segment and definitely_executes:\n                    enabled = False",
+    "new": "elif \"-u\" in same_segment:\n                    enabled = False"
+  },
+  {
+    "id": "R-24",
+    "description": "nocasematch -s requires definite",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "                if \"-s\" in same_segment:\n                    nocasematch = True",
+    "new": "                if \"-s\" in same_segment and definitely_executes:\n                    nocasematch = True"
+  },
+  {
+    "id": "R-25",
+    "description": "nocasematch -u on a possible branch",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "elif \"-u\" in same_segment and definitely_executes:\n                    nocasematch = False",
+    "new": "elif \"-u\" in same_segment:\n                    nocasematch = False"
+  },
+  {
+    "id": "R-26",
+    "description": "unalias on a possible branch",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "if effective_token == \"unalias\" and definitely_executes:",
+    "new": "if effective_token == \"unalias\":"
+  },
+  {
+    "id": "R-28",
+    "description": "definition expansion gated on current enabled",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "                expanded_body = expand_alias_commands(raw_body)",
+    "new": "                expanded_body = expand_alias_commands(raw_body) if enabled else raw_body"
+  },
+  {
+    "id": "R-30",
+    "description": "assignment replay ${x:=} does not write",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "                        if operation == \"=\" and missing:\n                            variables[referenced] = word\n",
+    "new": ""
+  },
+  {
+    "id": "R-33",
+    "description": "assignment replay cap 8 -> 1",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "                for _ in range(8):\n                    previous = value",
+    "new": "                for _ in range(1):\n                    previous = value"
+  },
+  {
+    "id": "R-35",
+    "description": "expand_alias sibling recursion shares seen",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "expanded.append(expand_alias(token, seen.copy()))",
+    "new": "expanded.append(expand_alias(token, seen))"
+  },
+  {
+    "id": "R-37",
+    "description": "extra sanitized eval tuple shares index",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "                        .replace(\"`\", \" \"),\n                        _segment_for_offset(command, offset) + seg_of[i],\n                        invocation_index,\n                    )\n                )\n                invocation_index += 1\n",
+    "new": "                        .replace(\"`\", \" \"),\n                        _segment_for_offset(command, offset) + seg_of[i],\n                        invocation_index,\n                    )\n                )\n"
+  },
+  {
+    "id": "W-01",
+    "description": ";;& treated as fallthrough",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "fallthrough_next=(token == \";&\" and stack[-1][\"selected\"]),",
+    "new": "fallthrough_next=(token in {\";&\", \";;&\"} and stack[-1][\"selected\"]),"
+  },
+  {
+    "id": "W-03",
+    "description": "top-level require_definite ignored",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "        if require_definite and top_execute_next is not True:\n            return False\n",
+    "new": ""
+  },
+  {
+    "id": "W-04",
+    "description": "case require_definite ignored",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "            if compound[\"kind\"] == \"case\":\n                if compound[\"branch\"] != \"body\" or not compound[\"selected\"]:\n                    return False\n                if compound[\"body_execute_next\"] is False:\n                    return False\n                if require_definite and (\n",
+    "new": "            if compound[\"kind\"] == \"case\":\n                if compound[\"branch\"] != \"body\" or not compound[\"selected\"]:\n                    return False\n                if compound[\"body_execute_next\"] is False:\n                    return False\n                if False and (\n"
+  },
+  {
+    "id": "W-05",
+    "description": "unknown if-branch treated as unreachable",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "            if compound[\"selected\"] is False:\n                return False\n",
+    "new": "            if compound[\"selected\"] is not True:\n                return False\n"
+  },
+  {
+    "id": "W-06",
+    "description": "short-circuit: None status no longer unknown",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "            if status == \"unknown\" or status is None:\n                return \"unknown\"",
+    "new": "            if status == \"unknown\":\n                return \"unknown\""
+  },
+  {
+    "id": "W-07",
+    "description": "[^...] pattern no longer dynamic",
+    "target": "parser",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "\"[[:\" in pattern or \"[^\" in pattern",
+    "new": "\"[[:\" in pattern"
   }
 ]
