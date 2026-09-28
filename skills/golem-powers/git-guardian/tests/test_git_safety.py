@@ -117,6 +117,12 @@ def test_nested_nice_force_push_keeps_base_recursion_headroom():
     assert reason and "git push" in reason.lower()
 
 
+def test_recursive_command_facade_signature_hides_internal_api():
+    assert list(inspect.signature(git_safety._dangerous_non_rm_in_words).parameters) == [
+        "words", "position"
+    ]
+
+
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────
 
 def test_f8_all_three_repo_cleanup_specimens_are_allowed(tmp_path):

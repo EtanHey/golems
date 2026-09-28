@@ -146,7 +146,7 @@ def _kill_matcher_reason(words: list[str], position: int, command_name: str, *, 
     return None
 
 
-def _dangerous_non_rm_in_words(words: list[str], position: int = 0, *, api: dict) -> str | None:
+def _dangerous_non_rm_in_words(api: dict, words: list[str], position: int = 0) -> str | None:
     """Inspect git/railway only in executable command positions."""
     assignment_re = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", re.DOTALL)
     while (
@@ -302,5 +302,4 @@ def _dangerous_git_reason(command: str, *, api: dict) -> str | None:
         else:
             segment.append(token)
     return None
-
 
