@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Source-only event extraction and polling loop.
 
 extract_events() {

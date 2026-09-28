@@ -21,14 +21,19 @@ ACTIVE_TAIL_PID=''
 INCLUDE_SELF="${COLLAB_MONITOR_INCLUDE_SELF:-0}"
 ALIASES="${COLLAB_MONITOR_ALIASES:-}"
 
+# shellcheck source=monitor/options.sh
 source "$SCRIPT_DIR/monitor/options.sh"
 
+# shellcheck source=monitor/state.sh
 source "$SCRIPT_DIR/monitor/state.sh"
 
+# shellcheck source=monitor/locks.sh
 source "$SCRIPT_DIR/monitor/locks.sh"
 
+# shellcheck source=monitor/run.sh
 source "$SCRIPT_DIR/monitor/run.sh"
 
+# shellcheck source=monitor/lifecycle.sh
 source "$SCRIPT_DIR/monitor/lifecycle.sh"
 
 command="${1:-}"

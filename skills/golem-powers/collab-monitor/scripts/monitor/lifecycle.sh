@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Source-only detached start, follow, status, and stop lifecycle.
 
 cleanup_follow() {
