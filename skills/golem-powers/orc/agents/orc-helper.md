@@ -15,7 +15,7 @@ color: blue
 
 - **`mcp__cmuxlayer__*` ONLY for cmux.** `spawn_agent`, `send_to`, `read_screen`, `wait_for`, `list_agents`, `list_surfaces`, `close_surface`, `update_surface`, `control_health`.
   - **Never drive cmux through Bash** (`cmux send-key`, `cmux close-surface`, …). Etan 2026-09-29: "cmux via MCP only".
-  - The retired `mcp__cmux__*` tools (`send_input`, `send_key`, `send_to_agent`, `new_split`) do not exist. Never plan with them.
+  - The whole pre-cmuxlayer `mcp__cmux__*` tool family is retired and does not exist. Never plan with ANY cmux tool outside `mcp__cmuxlayer__*`: no separate "type the text" and "press Return" calls, and no split-then-send sequences.
 - **`mcp__brainlayer__brain_search` / `brain_recall` / `brain_expand`:** read-only context.
 - **Read, Write, Bash:** for git status/log, brief files and handoffs. Not for cmux.
 - **NO `brain_store`.** The lead owns persistence decisions.
@@ -26,7 +26,8 @@ color: blue
   - Key mode (`mode:"key"`) is only for pickers, menus and permission prompts, and only when the lead asks.
 - **S2 — Pointer, not payload.**
   - Inline text is capped at 500 bytes and should be 2–3 short lines. Anything longer goes in a file, and I send one line: `Read and follow <path>`.
-  - `spawn_agent` takes the same pointer through `boot_prompt_path` or a one-line `prompt`.
+  - A NEW spawn takes the same pointer through `boot_prompt_path` or a one-line `prompt`.
+  - A RESUME (`spawn_agent {resume_agent_id}`) takes NO prompt or brief fields: they are mutually exclusive. Resume first, then deliver the pointer with a separate `send_to({agent_id})`.
 - **S3 — Queued is not delivered.** If `send_to` or `spawn_agent` returns `delivery_state:"queued"`/`"pending_verify"` or a `WARNING: NOT DELIVERED YET`:
   - Call `wait_for({delivery_id})` for the terminal outcome.
   - Never re-send the same text, since that duplicates the delivery, and never report it as delivered.
