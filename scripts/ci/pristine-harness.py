@@ -74,6 +74,21 @@ for name in names:
         out[name] = {'exception': type(exc).__name__, 'message': str(exc)}
 print(json.dumps(out, sort_keys=True, ensure_ascii=False, default=repr))
 '''
+PARSER_HEREDOC_PROBE = r'''
+import importlib.util, json, sys
+from pathlib import Path
+p = Path(sys.argv[1]) / 'skills/golem-powers/_shared/shell_parse.py'
+s = importlib.util.spec_from_file_location('shell_parse', p)
+m = importlib.util.module_from_spec(s)
+sys.modules[s.name] = m
+s.loader.exec_module(m)
+source = sys.stdin.read()
+print(json.dumps({
+    'strip': m._strip_heredoc_bodies(source),
+    'offset_mask': m._mask_heredoc_body_lines(source),
+    'parse': m._parse_bash(source),
+}, sort_keys=True, ensure_ascii=False, default=repr))
+'''
 PARSER_STATE_PROBE = r'''
 import importlib.util, json, sys
 from pathlib import Path
@@ -340,7 +355,7 @@ def capture(case, tree, scratch):
                 str(tree / "scripts/repogolem/golem-dispatch.zsh"), *launch_args]
         data = b""
     elif target in ("parser", "parser-state", "parser-identity"):
-        probe = {"parser": PARSER_PROBE, "parser-state": PARSER_STATE_PROBE,
+        probe = {"parser": (PARSER_HEREDOC_PROBE if case.get("probe") == "heredoc-models" else PARSER_PROBE), "parser-state": PARSER_STATE_PROBE,
                  "parser-identity": IDENTITY_PROBE}[target]
         argv = [sys.executable, "-c", probe, str(tree)]
         data = (json.dumps(case["request"]).encode() if target == "parser-state"

@@ -9988,5 +9988,17 @@
     "id": "tmp-r2-replay-ten-deep",
     "target": "tmp-block",
     "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { echo /tmp/f; }; x=${v8:-${v7:-${v6:-${v5:-${v4:-${v3:-${v2:-${v1:-${v0:-f}}}}}}}}}; $x\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "parser-heredoc-backtick-strip",
+    "target": "parser",
+    "probe": "heredoc-models",
+    "input": "cat <<E\n`tee x`\nE"
+  },
+  {
+    "id": "parser-heredoc-backtick-offset-mask",
+    "target": "parser",
+    "probe": "heredoc-models",
+    "input": "echo before; cat <<-E\n\tprose `tee x` tail\n\tE\necho after"
   }
 ]

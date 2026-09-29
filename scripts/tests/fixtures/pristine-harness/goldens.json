@@ -7870,6 +7870,18 @@
       "stdout": "e30=",
       "stderr": "",
       "files": {}
+    },
+    "parser-heredoc-backtick-offset-mask": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJvZmZzZXRfbWFzayI6ICJlY2hvIGJlZm9yZTsgY2F0IDw8LUVcbiAgICAgICBgdGVlIHhgICAgICBcbiAgXG5lY2hvIGFmdGVyIiwgInBhcnNlIjogW1siZWNobyIsICJiZWZvcmUiLCAiOyIsICJjYXQiLCAiPDwtIiwgIkUiLCAiOyIsICJgKCIsICJ0ZWUiLCAieCIsICIpYCIsICI7IiwgImVjaG8iLCAiYWZ0ZXIiXSwgW3RydWUsIGZhbHNlLCBmYWxzZSwgdHJ1ZSwgZmFsc2UsIGZhbHNlLCBmYWxzZSwgZmFsc2UsIHRydWUsIGZhbHNlLCBmYWxzZSwgZmFsc2UsIHRydWUsIGZhbHNlXSwgWzAsIDAsIDAsIDEsIDEsIDEsIDEsIDIsIDIsIDIsIDIsIDIsIDMsIDNdLCBbW10sIFtdLCBbXSwgW10sIFtdLCBbXSwgW10sIFtdLCBbMV0sIFsxXSwgWzFdLCBbXSwgW10sIFtdXV0sICJzdHJpcCI6ICJlY2hvIGJlZm9yZTsgY2F0IDw8LUVcbmB0ZWUgeGBcbmVjaG8gYWZ0ZXIifQo="
+    },
+    "parser-heredoc-backtick-strip": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJvZmZzZXRfbWFzayI6ICJjYXQgPDxFXG5gdGVlIHhgXG4gIiwgInBhcnNlIjogW1siY2F0IiwgIjw8IiwgIkUiLCAiOyIsICJgKCIsICJ0ZWUiLCAieCIsICIpYCJdLCBbdHJ1ZSwgZmFsc2UsIGZhbHNlLCBmYWxzZSwgZmFsc2UsIHRydWUsIGZhbHNlLCBmYWxzZV0sIFswLCAwLCAwLCAwLCAxLCAxLCAxLCAxXSwgW1tdLCBbXSwgW10sIFtdLCBbXSwgWzFdLCBbMV0sIFsxXV1dLCAic3RyaXAiOiAiY2F0IDw8RVxuYHRlZSB4YCJ9Cg=="
     }
   }
 }

@@ -82,6 +82,7 @@ for _name in (
     "_after_heredoc_bodies", "_heredoc_executable_text",
 ):
     globals()[_name] = getattr(_heredocs, _name)
+del _name
 
 
 

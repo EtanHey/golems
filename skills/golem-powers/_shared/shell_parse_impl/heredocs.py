@@ -7,8 +7,8 @@ import re
 from .masks import _blank_quoted
 
 
-# The substitution scanners are bound by the facade after all modules load;
-# substitutions also need _after_heredoc_bodies from this module.
+# AIDEV-NOTE: heredocs and substitutions depend on each other. The facade
+# binds these scanners after both modules load; do not drop the binding.
 _dollar_substitution = None
 _backtick_substitution = None
 
@@ -16,6 +16,7 @@ _backtick_substitution = None
 # Heredoc start operator (not `<<<` herestring). The complete delimiter word
 # is parsed separately because Bash permits partially quoted forms (`<<E'OF'`).
 _HEREDOC_START_RE = re.compile(r"(?<!<)<<(?!<)(-?)\s*")
+
 
 def _blank_shell_comment(line):
     """Blank a shell comment from its unquoted token boundary onward."""
