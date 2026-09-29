@@ -37,14 +37,21 @@ fi
 
 
 # Load every definition from the real location of this sourced facade.
-# A missing module must stop sourcing before any wrappers are registered.
+# Check every module before sourcing any: a missing one must leave no partial
+# definitions behind, so a live shell keeps its last complete set.
+# (install-golem-dispatch.sh reads the module list from the `for ... in` line.)
+typeset -ga _golem_modules=()
 for _golem_module in core environment context agy flags claude codex-resume codex cursor gemini; do
   if [[ ! -f "${_GOLEM_DISPATCH_DIR}/dispatch/${_golem_module}.zsh" ]]; then
     print -u2 -- "Missing dispatcher module: ${_GOLEM_DISPATCH_DIR}/dispatch/${_golem_module}.zsh"
+    unset _golem_module _golem_modules
     return 1
   fi
-  source "${_GOLEM_DISPATCH_DIR}/dispatch/${_golem_module}.zsh" || return 1
+  _golem_modules+=("${_GOLEM_DISPATCH_DIR}/dispatch/${_golem_module}.zsh")
 done
-unset _golem_module
+for _golem_module ("${_golem_modules[@]}") {
+  source "$_golem_module" || { unset _golem_module _golem_modules; return 1; }
+}
+unset _golem_module _golem_modules
 # Register all wrappers on source
 _golem_register_wrappers
