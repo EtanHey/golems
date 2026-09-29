@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir="${0:A:h}"
 source_file="${script_dir}/golem-dispatch.zsh"
 bootstrap_file="${script_dir}/worktree-bootstrap.sh"
+modules_dir="${script_dir}/dispatch"
 force=false
 
 if [[ "${1:-}" == "--force" ]]; then
@@ -21,6 +22,10 @@ if [[ ! -f "$source_file" ]]; then
 fi
 if [[ ! -f "$bootstrap_file" ]]; then
   echo "Missing worktree bootstrap: $bootstrap_file" >&2
+  exit 1
+fi
+if [[ ! -d "$modules_dir" || -z "$(print -r -- "$modules_dir"/*.zsh(N))" ]]; then
+  echo "Missing dispatcher modules: $modules_dir" >&2
   exit 1
 fi
 
@@ -49,6 +54,11 @@ if [[ -e "$target_file" && "$force" != "true" ]]; then
 fi
 
 mkdir -p "${target_file:h}"
+mkdir -p "${target_file:h}/dispatch"
+for module in "$modules_dir"/*.zsh(N); do
+  cp "$module" "${target_file:h}/dispatch/${module:t}"
+done
+# Publish the facade only after every module exists at the installed path.
 cp "$source_file" "$target_file"
 chmod +x "$target_file"
 echo "Installed repoGolem dispatcher: $target_file"
