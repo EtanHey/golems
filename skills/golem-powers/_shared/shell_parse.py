@@ -102,13 +102,7 @@ for _name in (
     "_command_position_flags", "_parse_bash", "_function_signature_parens",
 ):
     globals()[_name] = getattr(_positions, _name)
-_substitutions._segment_for_offset = _positions._segment_for_offset
-
-
-
-
-
-
+del _name
 
 
 
