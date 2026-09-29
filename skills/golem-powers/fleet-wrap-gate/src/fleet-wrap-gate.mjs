@@ -51,7 +51,7 @@ const DISCUSSION_RE =
 const WORKER_SEAT_RE =
   /\b(worker|lane|seat|W\d+|assigned file|assigned task|reporting to the lead)\b/i;
 const NEGATED_TERMINAL_RE =
-  /\bnot (a )?(fleet[- ]?wrap|wrap|stand[- ]?down|terminal|sprint close)|not .*?(fleet[- ]?wrap|stand[- ]?down)/i;
+  /\bnot (a )?(fleet[- ]?wrap|wrap|stand[- ]?down|terminal|sprint close)|not .{0,200}?(fleet[- ]?wrap|stand[- ]?down)/i;
 
 // Explicitly NON-terminal: a mid-sprint turn is N/A even if it arms a cron.
 // "still working", "mid-sprint", "more work queued", "kicking off" etc.
@@ -449,13 +449,28 @@ const DONE_MARKER_LINE_RE = /^\s*DONE_[A-Z0-9][A-Z0-9_]*\s*$/m;
 // The receipt block: its heading followed by at least the worktree and branch
 // lines. "CLEANUP RECEIPT: n/a" or a prose mention of a receipt is not one.
 const RECEIPT_RE = /CLEANUP RECEIPT[\s\S]{0,400}?\bworktree:[\s\S]{0,600}?\bbranch:/i;
-const REPORT_PATH_RE = /(?:^|[\s`'"(=])((?:~|\/)[^\s`'"()<>|;&]+\.(?:md|txt))\b/g;
+// The path body is capped and '=' cannot extend a candidate: it begins a new
+// candidate, so allowing it in the greedy body makes repeated '=/' quadratic.
+const REPORT_PATH_RE = /(?:^|[\s`'"(=])((?:~|\/)[^\s`'"()<>|;&=]{1,1024}\.(?:md|txt))\b/g;
 const MAX_REPORT_READS = 4;
+const MAX_RECEIPT_SCAN_WORK = 4_000_000;
+const MAX_RECEIPT_SCAN_MS = 350;
 // Advisory-only in the Stop hook AND the CLI: it never changes the CLI's exit
 // code, which stays reserved for the cron/loop FLAGs (cx9 R1 finding 1).
 export const CLEANUP_RECEIPT_CODE = "FLEETWRAP_CLEANUP_RECEIPT_MISSING";
 const WRITTEN_INPUT_KEYS = ["content", "new_string", "body", "message", "text"];
 const LEXER_ABORTED = Symbol("lexer work bound reached");
+
+function receiptBudget(options) {
+  const maxWork = options.receiptOptions?.maxWork ?? MAX_RECEIPT_SCAN_WORK;
+  const maxMs = options.receiptOptions?.maxMs ?? MAX_RECEIPT_SCAN_MS;
+  const deadline = performance.now() + maxMs;
+  let work = 0;
+  return (amount = 1) => {
+    work += amount;
+    if (work > maxWork || performance.now() > deadline) throw LEXER_ABORTED;
+  };
+}
 
 function writtenInputText(tool) {
   const input = tool?.input;
@@ -471,7 +486,8 @@ function writtenInputText(tool) {
 
 // Fenced blocks (``` / ~~~, an unclosed fence runs to the end) and `>`
 // blockquote lines are examples or quotations, never this turn's report.
-function stripExamples(text) {
+function stripExamples(text, charge) {
+  charge(text.length);
   const out = [];
   let fence = null;
   for (const line of text.split("\n")) {
@@ -490,7 +506,7 @@ function stripExamples(text) {
   return out.join("\n");
 }
 
-function receiptEvidence(turn, lexerOptions) {
+function receiptEvidence(turn, lexerOptions, charge) {
   const narrative = [];
   const written = [];
   const commands = [];
@@ -498,16 +514,26 @@ function receiptEvidence(turn, lexerOptions) {
   const writeTargetPaths = [];
   let merged = false;
   for (const ev of turn) {
-    if (ev.role === "assistant" && ev.text) narrative.push(ev.text);
+    if (ev.role === "assistant" && ev.text) {
+      charge(ev.text.length);
+      narrative.push(ev.text);
+    }
     for (const t of ev.tools ?? []) {
       const text = writtenInputText(t);
+      charge(text.length);
       if (text) written.push(text);
       if (typeof t.input?.file_path === "string") filePaths.push(t.input.file_path);
       if (typeof t.input?.command !== "string") continue;
+      charge(t.input.command.length);
       commands.push(t.input.command);
-      const parsed = parseShell(t.input.command, lexerOptions);
+      const parsed = parseShell(t.input.command, {
+        ...lexerOptions,
+        maxWork: Math.min(lexerOptions?.maxWork ?? MAX_RECEIPT_SCAN_WORK, MAX_RECEIPT_SCAN_WORK),
+        maxMs: Math.min(lexerOptions?.maxMs ?? MAX_RECEIPT_SCAN_MS, MAX_RECEIPT_SCAN_MS),
+      });
       if (parsed === null) return null;
       for (const cmd of parsed) {
+        charge();
         if (isGhPrMerge(cmd)) merged = true;
         const wrote = writtenText(cmd);
         if (wrote) written.push(wrote);
@@ -525,34 +551,42 @@ function receiptEvidence(turn, lexerOptions) {
   };
 }
 
-function hasClaim(text, re) {
+function hasClaim(text, re, charge) {
+  charge(text.length);
   const global = new RegExp(re.source, `${re.flags.replace("g", "")}g`);
+  const separators = text.matchAll(/\n|\. |; /g);
+  const blockers = text.matchAll(new RegExp(NOT_A_CLAIM_RE.source, "gi"));
+  let separator = separators.next().value;
+  let blocker = blockers.next().value;
+  let start = -1;
   for (const match of text.matchAll(global)) {
+    charge();
     // Read the claim's own sentence up to the match: "Once PR #88 is merged"
     // and "PR #88 is not merged" are talk about a merge, not a report of one.
-    const start = Math.max(
-      text.lastIndexOf("\n", match.index),
-      text.lastIndexOf(". ", match.index),
-      text.lastIndexOf("; ", match.index),
-    );
-    const span = text.slice(start + 1, match.index + match[0].length);
-    if (!NOT_A_CLAIM_RE.test(span)) return true;
+    while (separator && separator.index <= match.index) {
+      start = separator.index;
+      separator = separators.next().value;
+    }
+    while (blocker && blocker.index <= start) blocker = blockers.next().value;
+    if (!blocker || blocker.index >= match.index + match[0].length) return true;
   }
   return false;
 }
 
-function doneSignals(ev) {
+function doneSignals(ev, charge) {
   const signals = [];
-  const narrative = stripExamples(ev.narrative);
-  const written = stripExamples(ev.written);
+  const narrative = stripExamples(ev.narrative, charge);
+  const written = stripExamples(ev.written, charge);
   if (ev.merged) signals.push("gh pr merge ran this turn");
-  if (hasClaim(narrative, MERGED_CLAIM_RE)) signals.push("a PR reported merged");
-  if (narrative.split("\n").some((line) => PR_REF_RE.test(line) && hasClaim(line, HANDOFF_PHRASE_RE))) {
+  if (hasClaim(narrative, MERGED_CLAIM_RE, charge)) signals.push("a PR reported merged");
+  charge(narrative.length);
+  if (narrative.split("\n").some((line) => PR_REF_RE.test(line) && hasClaim(line, HANDOFF_PHRASE_RE, charge))) {
     signals.push("a PR handed off to the lead");
   }
   if (DONE_MARKER_LINE_RE.test(narrative) || DONE_MARKER_LINE_RE.test(written)) {
     signals.push("a DONE_<ID> marker written");
   }
+  charge(narrative.length + written.length);
   if (`${narrative}\n${written}`.split("\n").some((line) => DONE_TOKEN_RE.test(line) && PR_URL_RE.test(line))) {
     signals.push("a DONE line with a PR URL");
   }
@@ -563,11 +597,13 @@ function doneSignals(ev) {
 // shell wrote to or named, then files written by tool; ineligible paths
 // (relative, `..`, not .md/.txt) are dropped BEFORE the cap, so scratch notes
 // or junk cannot crowd out the cited report.
-function citedReportPaths(ev) {
+function citedReportPaths(ev, charge) {
   const paths = [];
-  for (const match of ev.narrative.matchAll(REPORT_PATH_RE)) paths.push(match[1]);
+  charge(ev.narrative.length);
+  for (const match of ev.narrative.matchAll(REPORT_PATH_RE)) { charge(); paths.push(match[1]); }
   for (const path of ev.writeTargetPaths) paths.push(path);
-  for (const match of ev.commands.matchAll(REPORT_PATH_RE)) paths.push(match[1]);
+  charge(ev.commands.length);
+  for (const match of ev.commands.matchAll(REPORT_PATH_RE)) { charge(); paths.push(match[1]); }
   for (const path of ev.filePaths) paths.push(path);
   return [...new Set(paths)].filter((p) => eligibleReportPath(p) !== null).slice(0, MAX_REPORT_READS);
 }
@@ -586,15 +622,16 @@ function reportReader(transcript, options) {
 }
 
 function detectCleanupReceipt(transcript, turn, options) {
-  const ev = receiptEvidence(turn, options.lexerOptions);
+  const charge = receiptBudget(options);
+  const ev = receiptEvidence(turn, options.lexerOptions, charge);
   if (ev === null) return LEXER_ABORTED;
-  const signals = doneSignals(ev);
+  const signals = doneSignals(ev, charge);
   if (signals.length === 0) return null;
   // Tool RESULTS are not the turn's output: a lead that reads a worker's
   // receipt has not written its own.
-  if ([ev.narrative, ev.written, ev.commands].some((t) => RECEIPT_RE.test(t))) return null;
+  if ([ev.narrative, ev.written, ev.commands].some((t) => { charge(t.length); return RECEIPT_RE.test(t); })) return null;
   const read = reportReader(transcript, options);
-  const cited = citedReportPaths(ev);
+  const cited = citedReportPaths(ev, charge);
   for (const p of cited) {
     let text = null;
     try {
@@ -602,7 +639,10 @@ function detectCleanupReceipt(transcript, turn, options) {
     } catch {
       text = null;
     }
-    if (typeof text === "string" && RECEIPT_RE.test(text)) return null;
+    if (typeof text === "string") {
+      charge(text.length);
+      if (RECEIPT_RE.test(text)) return null;
+    }
   }
   const where = cited.length ? ` or in the cited report(s) [${cited.join(", ")}]` : "";
   return {
@@ -622,7 +662,13 @@ export function detectFleetWrap(transcript, options = {}) {
   const events = normalizeTranscript(transcript);
   const turn = currentTurn(events);
   const result = detectCronState(transcript, turn, options);
-  const receipt = detectCleanupReceipt(transcript, turn, options);
+  let receipt;
+  try {
+    receipt = detectCleanupReceipt(transcript, turn, options);
+  } catch (error) {
+    if (error !== LEXER_ABORTED) throw error;
+    receipt = LEXER_ABORTED;
+  }
   if (receipt === LEXER_ABORTED) return result;
   if (!receipt) return result;
   return { verdict: "FLAG", terminal: result.terminal, violations: [...result.violations, receipt] };
