@@ -108,6 +108,7 @@ del _name
 _structure = _impl_module("structure")
 _units = _impl_module("units")
 _function_expansion = _impl_module("function_expansion")
+_patterns = _impl_module("patterns")
 
 
 # AIDEV-NOTE: heredocs and substitutions import each other, so bind this
@@ -145,174 +146,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
 
 
 
-    def builtin_alias_eligibility(source):
-        """Return alias-eligibility flags for normalized `builtin` words."""
-        flags = []
-        word = []
-        alias_eligible = True
-        quote = None
-        comment = False
 
-        def flush():
-            nonlocal word, alias_eligible
-            if "".join(word) == "builtin":
-                flags.append(alias_eligible)
-            word = []
-            alias_eligible = True
-
-        i = 0
-        while i < len(source):
-            char = source[i]
-            if comment:
-                if char in "\r\n":
-                    comment = False
-                    flush()
-                i += 1
-                continue
-            if quote != "'" and source.startswith("$(", i):
-                found = _dollar_substitution(source, i)
-                if found is not None:
-                    body, i = found
-                    flags.extend(builtin_alias_eligibility(body))
-                    continue
-            if quote != "'" and char == "`":
-                found = _backtick_substitution(source, i)
-                if found is not None:
-                    body, i = found
-                    flags.extend(builtin_alias_eligibility(body))
-                    continue
-            if quote is not None:
-                if char == quote:
-                    quote = None
-                elif char == "\\" and quote == '"' and i + 1 < len(source):
-                    alias_eligible = False
-                    i += 1
-                    word.append(source[i])
-                else:
-                    word.append(char)
-                i += 1
-                continue
-            if char in "'\"":
-                quote = char
-                alias_eligible = False
-                i += 1
-                continue
-            if char == "$" and i + 1 < len(source) and source[i + 1] in "'\"":
-                quote = source[i + 1]
-                alias_eligible = False
-                i += 2
-                continue
-            if char == "\\" and i + 1 < len(source):
-                alias_eligible = False
-                i += 1
-                word.append(source[i])
-                i += 1
-                continue
-            if char == "#" and not word:
-                comment = True
-                i += 1
-                continue
-            if char.isspace() or char in ";|&(){}<>":
-                flush()
-            else:
-                word.append(char)
-            i += 1
-        flush()
-        return flags
-
-    def shell_case_pattern(raw_pattern):
-        """Normalize one raw case pattern while preserving quoted metacharacters."""
-        normalized = []
-        quote = None
-        escaped = False
-        for char in raw_pattern:
-            if escaped:
-                normalized.append({"*": "[*]", "?": "[?]", "[": "[[]"}.get(char, char))
-                escaped = False
-                continue
-            if char == "\\" and quote != "'":
-                escaped = True
-                continue
-            if quote is not None:
-                if char == quote:
-                    quote = None
-                else:
-                    normalized.append(
-                        {"*": "[*]", "?": "[?]", "[": "[[]"}.get(char, char)
-                    )
-                continue
-            if char in "'\"":
-                quote = char
-            else:
-                normalized.append(char)
-        if escaped:
-            normalized.append("\\")
-        return "".join(normalized)
-
-    def case_pattern_groups(source):
-        """Return raw-aware alternative patterns for each case arm in source."""
-        raw_tokens = _RAW_SHELL_TOKEN_RE.findall(source)
-        groups = []
-        stack = []
-        for token in raw_tokens:
-            if not stack:
-                if token == "case":
-                    stack.append({"state": "subject", "patterns": []})
-                continue
-            case_state = stack[-1]
-            if case_state["state"] == "subject":
-                case_state["state"] = "await-in"
-                continue
-            if case_state["state"] == "await-in":
-                if token == "in":
-                    case_state["state"] = "pattern"
-                continue
-            if case_state["state"] == "pattern":
-                if token == "|":
-                    continue
-                if token == ")":
-                    groups.append(case_state["patterns"])
-                    case_state["patterns"] = []
-                    case_state["state"] = "body"
-                    continue
-                case_state["patterns"].append(shell_case_pattern(token))
-                continue
-            if token == "case":
-                stack.append({"state": "subject", "patterns": []})
-            elif token in {";;", ";&", ";;&"}:
-                case_state["state"] = "pattern"
-            elif token == "esac":
-                stack.pop()
-        return groups
-
-    def literal_for_word_counts(source):
-        """Return definite literal word counts for raw `for ... in ...` lists."""
-        counts = []
-        for match in re.finditer(
-            r"(?:^|[;|&\n])\s*for\s+[A-Za-z_][A-Za-z0-9_]*\s+in\s+"
-            r"(?P<words>.*?)(?=(?:[ \t]*;[ \t]*|[ \t]*\r?\n[ \t]*)do\b)",
-            source,
-            re.DOTALL,
-        ):
-            words = _RAW_FOR_WORD_RE.findall(match.group("words"))
-            definite = 0
-            dynamic = False
-            for word in words:
-                if word.startswith("'") and word.endswith("'"):
-                    definite += 1
-                elif word.startswith('"') and word.endswith('"'):
-                    if "$@" not in word:
-                        definite += 1
-                    else:
-                        dynamic = True
-                elif not any(marker in word for marker in ("$", "`", "*", "?", "[")):
-                    definite += 1
-                elif word in {"$(false)", "$(true)", "`false`", "`true`"}:
-                    continue
-                else:
-                    dynamic = True
-            counts.append("unknown" if dynamic and definite == 0 else definite)
-        return counts
 
     def active_compounds_execute(
         prefix_tokens,
@@ -895,7 +729,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
         alias_ineligible_builtin_indices = {
             token_index
             for alias_eligible, token_index in zip(
-                builtin_alias_eligibility(line),
+                _patterns.builtin_alias_eligibility(line),
                 builtin_token_indices,
             )
             if not alias_eligible
@@ -973,8 +807,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                     and not pipeline_local
                     and active_compounds_execute(
                         prefix_tokens,
-                        case_pattern_groups(line),
-                        literal_for_word_counts(line),
+                        _patterns.case_pattern_groups(line),
+                        _patterns.literal_for_word_counts(line),
                     )
                 )
                 line_definitions.append(
@@ -1004,8 +838,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
             ]
             if "-f" not in same_segment or not active_compounds_execute(
                 tokens[:i],
-                case_pattern_groups(line),
-                literal_for_word_counts(line),
+                _patterns.case_pattern_groups(line),
+                _patterns.literal_for_word_counts(line),
                 require_definite=True,
             ):
                 continue
@@ -1069,8 +903,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                         command_is_parent_local(index)
                         and active_compounds_execute(
                             tokens[:index],
-                            case_pattern_groups(line),
-                            literal_for_word_counts(line),
+                            _patterns.case_pattern_groups(line),
+                            _patterns.literal_for_word_counts(line),
                             require_definite=True,
                         )
                     )
@@ -1275,8 +1109,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 assignment_name, assignment_value = candidate.split("=", 1)
                 if "$(" in assignment_value and active_compounds_execute(
                     tokens[:index],
-                    case_pattern_groups(line),
-                    literal_for_word_counts(line),
+                    _patterns.case_pattern_groups(line),
+                    _patterns.literal_for_word_counts(line),
                     require_definite=True,
                 ):
                     close_index = next(
@@ -1303,8 +1137,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 )
                 if not standalone or not active_compounds_execute(
                     tokens[:index],
-                    case_pattern_groups(line),
-                    literal_for_word_counts(line),
+                    _patterns.case_pattern_groups(line),
+                    _patterns.literal_for_word_counts(line),
                     require_definite=True,
                 ):
                     continue
@@ -1390,8 +1224,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 continue
             if not active_compounds_execute(
                 tokens[:i],
-                case_pattern_groups(line),
-                literal_for_word_counts(line),
+                _patterns.case_pattern_groups(line),
+                _patterns.literal_for_word_counts(line),
             ):
                 continue
             segment_commands = [
@@ -1512,8 +1346,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 or not eval_position
                 or not active_compounds_execute(
                     tokens[:i],
-                    case_pattern_groups(line),
-                    literal_for_word_counts(line),
+                    _patterns.case_pattern_groups(line),
+                    _patterns.literal_for_word_counts(line),
                 )
             ):
                 continue
@@ -1704,8 +1538,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                     continue
                 if not active_compounds_execute(
                     eval_tokens[:eval_index],
-                    case_pattern_groups(eval_source),
-                    literal_for_word_counts(eval_source),
+                    _patterns.case_pattern_groups(eval_source),
+                    _patterns.literal_for_word_counts(eval_source),
                 ):
                     continue
                 invoked_names = (
@@ -1739,8 +1573,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                     and token in aliases
                     and active_compounds_execute(
                         tokens[:i],
-                        case_pattern_groups(line),
-                        literal_for_word_counts(line),
+                        _patterns.case_pattern_groups(line),
+                        _patterns.literal_for_word_counts(line),
                     )
                 ):
                     bodies, expanded_bodies = function_state_at(i)
@@ -1785,14 +1619,14 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 continue
             if not active_compounds_execute(
                 tokens[:i],
-                case_pattern_groups(line),
-                literal_for_word_counts(line),
+                _patterns.case_pattern_groups(line),
+                _patterns.literal_for_word_counts(line),
             ):
                 continue
             definitely_executes = active_compounds_execute(
                 tokens[:i],
-                case_pattern_groups(line),
-                literal_for_word_counts(line),
+                _patterns.case_pattern_groups(line),
+                _patterns.literal_for_word_counts(line),
                 require_definite=True,
             )
             if not command_is_parent_local(i):
