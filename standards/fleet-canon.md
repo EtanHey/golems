@@ -12,10 +12,12 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    skill-creator eval marked helper-eligible; Cursor Auto-only as before). A gatherer never implements or reviews.
    UX/UI work only: Claude (Opus) implements, Codex reviews. Everything else (refactors, splits,
    deletions, tests, fixes, and mechanical work): Codex implements, Opus reviews.
+   The reviewer is always the other vendor.
    The inner loop is sequential: the implementer goes first, and the reviewer is spawned or briefed only after
    the implementer reports done (its DONE marker or report line; for a cloud implementer, PR head stable >=10 min
    with checks finished). A reviewer never reads a half-finished diff. Security work:
-   Daybreak Blue implements, Opus reviews, plus a `codex-security` scan.
+   Daybreak Blue implements, Opus reviews, plus a `codex-security` scan; flip back to
+   Opus implementing and Daybreak reviewing if the first security PRs show more review rounds or defects.
    Claude leads orchestrate and route work through visible panes. Each PR body records its implementer,
    review rounds, and bot/reviewer defects. Cursor, including `cursor-agent`, is Auto-only: never pass
    a model flag or model field because pinned Cursor drains its subscription pool fast.
@@ -50,8 +52,9 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    Leads and workers drive panes only through the cmuxlayer MCP (`spawn_agent`, `send_to`,
    `read_screen`, `list_surfaces`, `update_surface`, `close_surface`, `wait_for`), never the raw
    `cmux` CLI (`send-key`, `close-surface`, `new-surface`, `tree`, etc.). The raw CLI bypasses
-   stable-UUID guards, draft ownership, delivery receipts, tailer reaping, and placement; each raw
-   open/close costs cmux 0.64.22 four leaked file descriptors. After a cmux restart, run
+   stable-UUID guards, draft ownership, delivery receipts, tailer reaping, and placement.
+   In cmux 0.64.22, every pane open/close leaks four file descriptors, including MCP operations;
+   minimize pane churn until the cmux upgrade. After a cmux restart, run
    `/mcp reconnect cmuxlayer` before any pane operation. Exceptions are a documented emergency
    while the MCP is down (say so in the collab), or read-only diagnostics the MCP cannot do yet
    (file a cmuxlayer row).

@@ -60,8 +60,9 @@ Gatherer brief rules: prompts only (answer keys stay with the lead); READ-ONLY; 
   `read_screen`, `list_surfaces`, `update_surface`, `close_surface`, and `wait_for`.
   Never use raw `cmux` CLI pane operations such as `send-key`, `close-surface`,
   `new-surface`, or `tree`. Raw CLI bypasses stable-UUID guards, draft ownership,
-  delivery receipts, tailer reaping, and placement; each raw open/close leaks four
-  file descriptors in cmux 0.64.22. After a cmux restart, run
+  delivery receipts, tailer reaping, and placement. In cmux 0.64.22, every pane
+  open/close leaks four file descriptors, including MCP operations; minimize pane
+  churn until the cmux upgrade. After a cmux restart, run
   `/mcp reconnect cmuxlayer` before any pane operation. Exceptions: a documented
   emergency when the MCP is down (say so in the collab), or read-only diagnostics
   the MCP cannot do yet (file a cmuxlayer row). Legacy shell helpers under
