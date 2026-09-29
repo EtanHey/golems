@@ -5,6 +5,7 @@ rule must NOT block (the false-positive gate). Pure functions → fully determin
 """
 
 import importlib.util
+import inspect
 import os
 import shutil
 import subprocess
@@ -83,6 +84,27 @@ def test_git_facade_forwards_replaceable_module_globals(monkeypatch):
 def test_path_facade_forwards_replaceable_expansion(monkeypatch):
     monkeypatch.setattr(git_safety, "_expand_known_vars", lambda _target, _vars: ("/", True))
     assert git_safety._rm_target_reason("safe", "/", {}) == "rm targeting root filesystem"
+
+
+def test_rm_facade_forwards_replaceable_path_policy(monkeypatch):
+    monkeypatch.setattr(git_safety, "_rm_target_reason", lambda *_: "patched path policy")
+    assert git_safety.is_dangerous_rm("rm -rf /a/b/c", cwd="/", env={}) == (
+        True, "patched path policy"
+    )
+
+
+def test_nested_sudo_rm_keeps_base_recursion_headroom():
+    blocked, reason = git_safety.is_dangerous_rm("sudo " * 900 + "rm -rf /", cwd="/", env={})
+    assert blocked and reason and "rm" in reason.lower()
+
+
+def test_recursive_rm_facade_signatures_hide_internal_api():
+    assert list(inspect.signature(git_safety._rm_reason_in_words).parameters) == [
+        "words", "position", "cwd", "variables", "dynamic_input", "argument_variables"
+    ]
+    assert list(inspect.signature(git_safety.is_dangerous_rm).parameters) == [
+        "command", "cwd", "env"
+    ]
 
 
 # ── F8: resolved rm breadth + heredoc prose masking ─────────────────────────────
