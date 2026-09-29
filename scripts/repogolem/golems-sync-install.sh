@@ -23,13 +23,18 @@ launcher_set_hash() {
     done | shasum -a 256 | awk '{print $1}'
 }
 
-# The dispatcher and bootstrap copies the installer deploys from the launcher set.
+# The dispatcher, bootstrap, and modules the installer deploys from the launcher set.
 deployed_matches_staged() {
     local launcher_root="$1" dispatcher="$2" name
     for name in golem-dispatch.zsh worktree-bootstrap.sh; do
         [[ -f "${dispatcher%/*}/$name" ]] || return 1
         cmp -s "$launcher_root/$name" "${dispatcher%/*}/$name" || return 1
     done
+    [[ -d "$launcher_root/dispatch" ]] || return 1
+    while IFS= read -r name; do
+        [[ -f "${dispatcher%/*}/$name" ]] || return 1
+        cmp -s "$launcher_root/$name" "${dispatcher%/*}/$name" || return 1
+    done < <(cd "$launcher_root" && find dispatch -type f -name '*.zsh' | LC_ALL=C sort)
 }
 
 contains_skill() {
@@ -232,11 +237,12 @@ apply_target() {
         [[ -f "$launcher_root/golem-dispatch.zsh" ]] || die "shipped dispatcher missing"
         [[ -x "$launcher_root/install-golem-dispatch.sh" ]] || die "shipped launcher installer missing"
         [[ -x "$launcher_root/worktree-bootstrap.sh" ]] || die "shipped worktree bootstrap missing"
+        [[ -d "$launcher_root/dispatch" ]] || die "shipped dispatcher modules missing"
         if ! deployed_matches_staged "$launcher_root" "$dispatcher"; then
             HOME="$HOME" zsh "$launcher_root/install-golem-dispatch.sh" --force "$dispatcher"
         fi
         deployed_matches_staged "$launcher_root" "$dispatcher" || \
-            die "launcher mismatch: installed dispatcher or bootstrap differs from the shipped copy"
+            die "launcher mismatch: installed dispatcher, modules, or bootstrap differ from the shipped copy"
         printf 'launcher hash verified: %s\n' "$(sha256_file "$dispatcher")"
     fi
 

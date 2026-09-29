@@ -33,6 +33,7 @@ make_fixture_repo() {
         "$REPO_ROOT/scripts/repogolem/install-golem-dispatch.sh" \
         "$REPO_ROOT/scripts/repogolem/worktree-bootstrap.sh" \
         "$FIXTURE_REPO/scripts/repogolem/"
+    cp -R "$REPO_ROOT/scripts/repogolem/dispatch" "$FIXTURE_REPO/scripts/repogolem/dispatch"
     if [[ -f "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" ]]; then
         cp "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" "$FIXTURE_REPO/scripts/sync/"
     fi
@@ -270,6 +271,8 @@ make_tracked_worktree_skills() {
     cmp -s \
         "$REPO_ROOT/scripts/repogolem/golem-dispatch.zsh" \
         "$HOST_ROOT/.config/ralphtools/golem-dispatch.zsh"
+    diff -qr "$REPO_ROOT/scripts/repogolem/dispatch" \
+        "$HOST_ROOT/.config/ralphtools/dispatch"
     # -w launches need the bootstrap next to the dispatcher; the payload must ship it.
     [ -x "$HOST_ROOT/.config/ralphtools/worktree-bootstrap.sh" ]
     cmp -s \
