@@ -5,10 +5,7 @@ from __future__ import annotations
 import os
 
 from .heredocs import _after_heredoc_bodies
-
-
-# Bound after the facade defines the segment helper (moved in slice 5).
-_segment_for_offset = None
+from .positions import _segment_for_offset
 
 
 def _dollar_substitution(command, start):
