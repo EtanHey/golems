@@ -91,6 +91,7 @@ for _name in (
     "_executable_subcommands", "_shell_command_payloads",
 ):
     globals()[_name] = getattr(_substitutions, _name)
+del _name
 
 
 
@@ -100,7 +101,8 @@ for _name in (
 
 
 
-# Complete the one shared scanner seam after the facade defines both scanners.
+# AIDEV-NOTE: heredocs and substitutions import each other, so bind this
+# genuine scanner seam after both modules load. The backtick goldens pin it.
 _heredocs._dollar_substitution = _dollar_substitution
 _heredocs._backtick_substitution = _backtick_substitution
 
