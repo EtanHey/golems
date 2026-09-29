@@ -19,20 +19,72 @@ sys.modules["git_safety"] = git_safety
 spec.loader.exec_module(git_safety)
 
 
+def _copied_guardian(tmp_path, name):
+    copied = tmp_path / name / "git-guardian"
+    shutil.copytree(MODULE.parent, copied, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(MODULE.parent.parent / "_shared", copied.parent / "_shared")
+    return copied
+
+
+def _load_at(name, path):
+    loaded_spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(loaded_spec)
+    loaded_spec.loader.exec_module(module)
+    return module
+
+
+def test_shared_parser_identity_reuses_same_tree_bare_module(tmp_path, monkeypatch):
+    copied = _copied_guardian(tmp_path, "same-tree")
+    parser = _load_at("shell_parse", copied.parent / "_shared" / "shell_parse.py")
+    monkeypatch.setitem(sys.modules, "shell_parse", parser)
+    facade = _load_at("git_safety_same_tree", copied / "git_safety.py")
+    assert facade._pkg.shell_parse is parser
+    for name in (
+        "_backtick_bodies", "dollar_paren_bodies",
+        "shell_text_without_heredoc_bodies", "without_dollar_paren_bodies",
+    ):
+        assert getattr(facade, name) is getattr(parser, name)
+
+
+def test_shared_parser_rejects_foreign_copy_and_registers_when_absent(tmp_path, monkeypatch):
+    foreign = _copied_guardian(tmp_path, "foreign")
+    copied = _copied_guardian(tmp_path, "candidate")
+    parser = _load_at("shell_parse", foreign.parent / "_shared" / "shell_parse.py")
+    monkeypatch.setitem(sys.modules, "shell_parse", parser)
+    facade = _load_at("git_safety_foreign_copy", copied / "git_safety.py")
+    assert facade._pkg.shell_parse is not parser
+    assert Path(facade._pkg.shell_parse.__file__).resolve() == (
+        copied.parent / "_shared" / "shell_parse.py"
+    ).resolve()
+    assert sys.modules["shell_parse"] is parser
+
+    monkeypatch.delitem(sys.modules, "shell_parse")
+    another = _copied_guardian(tmp_path, "bare-absent")
+    absent = _load_at("git_safety_bare_absent", another / "git_safety.py")
+    assert sys.modules["shell_parse"] is absent._pkg.shell_parse
+
+
 def test_two_facades_load_their_own_git_implementation(tmp_path):
     copied = tmp_path / "other" / "git-guardian"
     shutil.copytree(MODULE.parent, copied, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(MODULE.parent.parent / "_shared", copied.parent / "_shared")
     implementation = copied / "git_safety_impl" / "git.py"
     source = implementation.read_text()
     assert "return len(meaningful) == 0" in source
     implementation.write_text(source.replace("return len(meaningful) == 0", "return 'other copy'"))
+    with (copied / "git_safety_impl" / "shell.py").open("a") as handle:
+        handle.write("\ndef dangerous_shell_reason(command, *, cwd=None, env=None, _depth=0, api=None):\n"
+                     "    return 'other shell'\n")
     other_spec = importlib.util.spec_from_file_location("git_safety_other", copied / "git_safety.py")
     other = importlib.util.module_from_spec(other_spec)
     other_spec.loader.exec_module(other)
     assert other.pr_body_is_empty("hello") == "other copy"
     assert git_safety.pr_body_is_empty("hello") is False
-    assert other._git_impl.__file__ == str(implementation)
-    assert git_safety._git_impl.__file__ == str(MODULE.parent / "git_safety_impl" / "git.py")
+    assert other.dangerous_shell_reason("echo hi") == "other shell"
+    assert git_safety.dangerous_shell_reason("echo hi") is None
+    assert other._git.__file__ == str(implementation)
+    assert git_safety._git.__file__ == str(MODULE.parent / "git_safety_impl" / "git.py")
+    assert other._pkg.shell_parse.__file__ == str(copied.parent / "_shared" / "shell_parse.py")
 
 
 def test_copied_git_loader_restores_bytecode_setting_without_impl_cache(tmp_path):

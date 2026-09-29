@@ -302,4 +302,3 @@ def _dangerous_git_reason(command: str, *, api: dict) -> str | None:
         else:
             segment.append(token)
     return None
-

@@ -200,4 +200,3 @@ def _rm_target_reason(
     if len(parts) < 3:
         return f"rm target too broad ({len(parts)} path components): {target}"
     return None
-

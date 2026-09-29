@@ -333,4 +333,3 @@ def is_dangerous_rm(api: dict, command: str, *, cwd: str | None = None, env=None
         if reason:
             return True, reason
     return False, None
-
