@@ -140,4 +140,3 @@ _golem_register_wrappers() {
     fi
   done
 }
-
