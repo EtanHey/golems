@@ -239,9 +239,19 @@ test("the shipped manifest names no E1 hook and carries the ruled M1 set exactly
   for (const name of E1_DELETED) expect(text).not.toContain(name);
   expect(realManifest.hosts.m1.map((h) => h.id).sort()).toEqual([
     "brainlayer-prompt-search", "brainlayer-session-start", "daemon-gate-precheck", "model-pin-gate",
-    "precompact-checkpoint", "reviewer-order-gate",
+    "pre_tool_use", "precompact-checkpoint", "reviewer-order-gate", "tmp-block",
   ]);
   expect(realManifest.hosts.m1.some((h) => h.event === "Stop")).toBe(false);
+});
+
+test("every shipped host set carries the same git-guardian and tmp-block guards", () => {
+  for (const id of ["pre_tool_use", "tmp-block"]) {
+    const mbp = realManifest.hosts.mbp.filter((hook) => hook.id === id);
+    expect(mbp).toHaveLength(1);
+    for (const [host, entries] of Object.entries(realManifest.hosts)) {
+      expect(entries.filter((hook) => hook.id === id), `${host} ${id}`).toEqual(mbp);
+    }
+  }
 });
 
 test("{node} is the PATH node (`command -v node`), so a node upgrade that removes the old realpath keeps hooks running", () => {
