@@ -18,31 +18,41 @@ import os
 import re
 import shlex
 from fnmatch import fnmatchcase
-import hashlib
-import importlib
-import importlib.util
-from pathlib import Path
-import sys
+import hashlib as _hashlib
+import importlib as _importlib
+import importlib.util as _importlib_util
+from pathlib import Path as _Path
+import sys as _sys
 
 
-# Load from the facade's own directory. A file symlink may sit beside a
-# different implementation package, so do not resolve the facade path.
-_IMPL_DIR = Path(__file__).absolute().parent / "shell_parse_impl"
-_IMPL_NAME = "_golems_shell_parse_impl_" + hashlib.sha256(
+# Load beside the facade's real file, so a file symlink cannot shadow its
+# implementation with a different package beside the link.
+_IMPL_DIR = _Path(os.path.realpath(__file__)).parent / "shell_parse_impl"
+_IMPL_NAME = "_golems_shell_parse_impl_" + _hashlib.sha256(
     str(_IMPL_DIR).encode()
 ).hexdigest()[:16]
-if _IMPL_NAME not in sys.modules:
-    _impl_spec = importlib.util.spec_from_file_location(
+if _IMPL_NAME not in _sys.modules:
+    _impl_spec = _importlib_util.spec_from_file_location(
         _IMPL_NAME, _IMPL_DIR / "__init__.py",
         submodule_search_locations=[str(_IMPL_DIR)],
     )
-    _impl_package = importlib.util.module_from_spec(_impl_spec)
-    sys.modules[_IMPL_NAME] = _impl_package
-    _impl_spec.loader.exec_module(_impl_package)
+    _impl_package = _importlib_util.module_from_spec(_impl_spec)
+    _sys.modules[_IMPL_NAME] = _impl_package
+    _previous_bytecode, _sys.dont_write_bytecode = _sys.dont_write_bytecode, True
+    try:
+        _impl_spec.loader.exec_module(_impl_package)
+    finally:
+        _sys.dont_write_bytecode = _previous_bytecode
+    del _impl_spec, _impl_package, _previous_bytecode
 
 
 def _impl_module(name):
-    return importlib.import_module(f"{_IMPL_NAME}.{name}")
+    # Preserve the caller's bytecode preference after loading our package.
+    previous, _sys.dont_write_bytecode = _sys.dont_write_bytecode, True
+    try:
+        return _importlib.import_module(f"{_IMPL_NAME}.{name}")
+    finally:
+        _sys.dont_write_bytecode = previous
 
 
 _tokens = _impl_module("tokens")
@@ -54,6 +64,7 @@ for _name in (
     "_FUNCTION_LOOKUP_SUPPRESSORS", "_UNRESOLVED_EVAL_MARKER",
 ):
     globals()[_name] = getattr(_tokens, _name)
+del _name
 
 
 

@@ -26,6 +26,8 @@ _QUOTED_LBRACE = "\ue000"
 
 
 _QUOTED_RBRACE = "\ue001"
+
+
 def _is_command_sub_open(token):
     """True for the synthetic opener of `$()` or legacy backticks."""
     return token.endswith("$(") or token.endswith("`(")
