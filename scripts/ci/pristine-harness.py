@@ -127,6 +127,18 @@ for owner, names in ((hook, hook_names), (git_safety, git_names)):
 assert tests.shell_parse is shell_parse
 for name in test_names:
     assert getattr(tests.shell_parse, name) is getattr(shell_parse, name), name
+# Each moved export must also be the very object held by its implementation
+# module. This catches facade-side copies that importer-only checks miss.
+impl_prefix = getattr(shell_parse, '_IMPL_NAME', '')
+if impl_prefix:
+    impl = {n: m for n, m in sys.modules.items()
+            if n.startswith(impl_prefix + '.')}
+    for name in set(hook_names) | set(test_names):
+        owners = [m for m in impl.values() if name in vars(m)]
+        defining = [m for m in owners
+                    if getattr(getattr(m, name), '__module__', m.__name__) == m.__name__]
+        for module in defining or owners:
+            assert getattr(shell_parse, name) is getattr(module, name), ('facade!=impl', name, module.__name__)
 print('IDENTITY PASS hook=23 git=4 test=2')
 '''
 LAUNCHER_PROBE = r'''
