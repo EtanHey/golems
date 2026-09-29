@@ -325,3 +325,23 @@ make_tracked_worktree_skills() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"added=0 updated=0 unchanged=1 backed-up=0"* ]] || false
 }
+
+@test "module-only change reinstalls the launcher" {
+    make_fixture_repo
+    run_fixture_sync --only launcher
+    [ "$status" -eq 0 ]
+
+    module="$FIXTURE_REPO/scripts/repogolem/dispatch/codex.zsh"
+    printf '# module-only change\n' >> "$module"
+    git -C "$FIXTURE_REPO" commit --quiet -am 'change module only'
+    git -C "$FIXTURE_REPO" update-ref refs/remotes/origin/master HEAD
+
+    run_fixture_sync --dry-run --only launcher
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"added=0 updated=1 unchanged=0 backed-up=0"* ]] || false
+
+    run_fixture_sync --only launcher
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"added=0 updated=1 unchanged=0 backed-up=0"* ]] || false
+    cmp -s "$module" "$HOST_ROOT/.config/ralphtools/dispatch/codex.zsh"
+}

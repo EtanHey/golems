@@ -235,6 +235,22 @@ assert_dispatch_fixture_mirror() {
     [[ "$output" == *"Missing dispatcher module:"* ]]
 }
 
+@test "symlinked facade resolves modules beside its real file" {
+    mkdir -p "$TMPDIR_/real" "$TMPDIR_/shadow"
+    cp "$SOURCE_DISPATCHER" "$TMPDIR_/real/golem-dispatch.zsh"
+    cp -R "$SOURCE_MODULES" "$TMPDIR_/real/dispatch"
+    cp -R "$SOURCE_MODULES" "$TMPDIR_/shadow/dispatch"
+    printf '\ntypeset -g _GOLEM_SOURCE_PROBE=REAL\n' >> "$TMPDIR_/real/dispatch/core.zsh"
+    printf '\ntypeset -g _GOLEM_SOURCE_PROBE=SHADOW\n' >> "$TMPDIR_/shadow/dispatch/core.zsh"
+    ln -s "$TMPDIR_/real/golem-dispatch.zsh" "$TMPDIR_/shadow/golem-dispatch.zsh"
+    run env RALPH_REGISTRY_FILE="$REGISTRY_FILE" zsh -f -c '
+        source "$1" || exit 1
+        print -r -- "$_GOLEM_SOURCE_PROBE"
+    ' _ "$TMPDIR_/shadow/golem-dispatch.zsh"
+    [ "$status" -eq 0 ]
+    [ "$output" = REAL ]
+}
+
 @test "fresh installed dispatcher runs from unrelated cwd after source tree removal" {
     local source_copy="$TMPDIR_/source-copy" fake_home="$TMPDIR_/isolated-home"
     mkdir -p "$source_copy" "$fake_home" "$TMPDIR_/unrelated"
@@ -252,6 +268,20 @@ assert_dispatch_fixture_mirror() {
     ' _ "$TMPDIR_/unrelated" "$fake_home/.config/ralphtools/golem-dispatch.zsh"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Codex launcher options:"* ]]
+}
+
+@test "installer refuses a missing required module before publishing facade" {
+    local source_copy="$TMPDIR_/incomplete-source" fake_home="$TMPDIR_/incomplete-home"
+    mkdir -p "$source_copy" "$fake_home"
+    cp "$SOURCE_DISPATCHER" "$INSTALL_DISPATCHER" \
+        "$BATS_TEST_DIRNAME/../repogolem/worktree-bootstrap.sh" "$source_copy/"
+    cp -R "$SOURCE_MODULES" "$source_copy/dispatch"
+    rm "$source_copy/dispatch/codex.zsh"
+    run env HOME="$fake_home" zsh "$source_copy/install-golem-dispatch.sh" --force \
+        "$fake_home/.config/ralphtools/golem-dispatch.zsh"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Missing dispatcher module:"* ]]
+    [ ! -e "$fake_home/.config/ralphtools/golem-dispatch.zsh" ]
 }
 
 @test "golem-install validation enforces Codex safety defaults" {

@@ -24,10 +24,17 @@ if [[ ! -f "$bootstrap_file" ]]; then
   echo "Missing worktree bootstrap: $bootstrap_file" >&2
   exit 1
 fi
-if [[ ! -d "$modules_dir" || -z "$(print -r -- "$modules_dir"/*.zsh(N))" ]]; then
+module_names="$(sed -n 's/^for _golem_module in \(.*\); do$/\1/p' "$source_file")"
+if [[ ! -d "$modules_dir" || -z "$module_names" ]]; then
   echo "Missing dispatcher modules: $modules_dir" >&2
   exit 1
 fi
+for module_name in ${(s: :)module_names}; do
+  if [[ ! -f "$modules_dir/$module_name.zsh" ]]; then
+    echo "Missing dispatcher module: $modules_dir/$module_name.zsh" >&2
+    exit 1
+  fi
+done
 
 if [[ "${EUID:-$(id -u)}" -eq 0 || -n "${SUDO_USER:-}" ]] && [[ "$force" != "true" ]]; then
   echo "Refusing privileged install without --force" >&2
