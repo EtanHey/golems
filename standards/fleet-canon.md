@@ -10,14 +10,12 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
 
 1. **agent-routing** - Cursor or a Gemini gatherer gathers and verifies (Gemini for the shapes the
    skill-creator eval marked helper-eligible; Cursor Auto-only as before). A gatherer never implements or reviews.
-   Implementation follows the vendor split: behaviour and UI work - Opus implements, Codex
-   reviews; tightly specified or mechanical work - Codex implements, Opus reviews; small repo-only
-   doc/deletion PRs - Claude cloud implements, Codex reviews. The reviewer is always the other vendor.
+   UX/UI work only: Claude (Opus) implements, Codex reviews. Everything else (refactors, splits,
+   deletions, tests, fixes, and mechanical work): Codex implements, Opus reviews.
    The inner loop is sequential: the implementer goes first, and the reviewer is spawned or briefed only after
    the implementer reports done (its DONE marker or report line; for a cloud implementer, PR head stable >=10 min
    with checks finished). A reviewer never reads a half-finished diff. Security work:
-   Opus implements; the reviewer is a security-specialised other-vendor model (Daybreak Blue), falling back to
-   Codex Sol at high effort plus a `codex-security` deep scan per security PR.
+   Daybreak Blue implements, Opus reviews, plus a `codex-security` scan.
    Claude leads orchestrate and route work through visible panes. Each PR body records its implementer,
    review rounds, and bot/reviewer defects. Cursor, including `cursor-agent`, is Auto-only: never pass
    a model flag or model field because pinned Cursor drains its subscription pool fast.
@@ -49,6 +47,14 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
 7. **monitors/collabs** - Claim on entry, arm a guard before delegating, checkpoint before commits,
    write DONE to wake the lead, then harvest artifacts and close worker panes.
    The cmux-agents operational law is folded here; Etan may split it back out after canon review.
+   Leads and workers drive panes only through the cmuxlayer MCP (`spawn_agent`, `send_to`,
+   `read_screen`, `list_surfaces`, `update_surface`, `close_surface`, `wait_for`), never the raw
+   `cmux` CLI (`send-key`, `close-surface`, `new-surface`, `tree`, etc.). The raw CLI bypasses
+   stable-UUID guards, draft ownership, delivery receipts, tailer reaping, and placement; each raw
+   open/close costs cmux 0.64.22 four leaked file descriptors. After a cmux restart, run
+   `/mcp reconnect cmuxlayer` before any pane operation. Exceptions are a documented emergency
+   while the MCP is down (say so in the collab), or read-only diagnostics the MCP cannot do yet
+   (file a cmuxlayer row).
 
 8. **orchestration** - Run one expanding workflow per cluster, route through leads, surface blockers with
    evidence, and execute approved queues instead of parking them behind permission questions.

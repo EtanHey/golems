@@ -56,6 +56,16 @@ Gatherer brief rules: prompts only (answer keys stay with the lead); READ-ONLY; 
 
 ## Hard laws
 
+- Leads and workers drive panes only through cmuxlayer MCP: `spawn_agent`, `send_to`,
+  `read_screen`, `list_surfaces`, `update_surface`, `close_surface`, and `wait_for`.
+  Never use raw `cmux` CLI pane operations such as `send-key`, `close-surface`,
+  `new-surface`, or `tree`. Raw CLI bypasses stable-UUID guards, draft ownership,
+  delivery receipts, tailer reaping, and placement; each raw open/close leaks four
+  file descriptors in cmux 0.64.22. After a cmux restart, run
+  `/mcp reconnect cmuxlayer` before any pane operation. Exceptions: a documented
+  emergency when the MCP is down (say so in the collab), or read-only diagnostics
+  the MCP cannot do yet (file a cmuxlayer row). Legacy shell helpers under
+  `scripts/` do not exempt ordinary pane work from this rule.
 - Never `read_screen` your own surface; recursive output results.
 - File artifact > `wait_for(done)` > `list_agents(detail:"full")` > `read_screen` > discovery-only `list_agents` for completion evidence. `closure` is already resolved; do not gate it on the displayed state.
 - DONE-versus-artifact law lives in fleet canon #9; a stopped worker's last report write says exactly where it stopped and the next step.
