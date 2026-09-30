@@ -12,15 +12,23 @@ export function validate(value, schema, path = '$', errors = []) {
   if (schema.type && !(schema.type === 'integer' ? Number.isInteger(value) : type === schema.type)) {
     errors.push(`${path}: expected ${schema.type}`); return errors;
   }
+  for (const rule of schema.allOf ?? []) validate(value, rule, path, errors);
+  if (schema.not && !validate(value, schema.not, path, []).length) errors.push(`${path}: forbidden by not schema`);
   if (schema.enum && !schema.enum.includes(value)) errors.push(`${path}: invalid enum value`);
   if (type === 'string' && value.length < (schema.minLength ?? 0)) errors.push(`${path}: empty string`);
   if (type === 'object') {
     for (const key of schema.required ?? []) if (!Object.hasOwn(value, key)) errors.push(`${path}.${key}: required`);
     if (Object.keys(value).length < (schema.minProperties ?? 0)) errors.push(`${path}: too few properties`);
     for (const [key, child] of Object.entries(value)) {
-      const rule = schema.properties?.[key] ?? schema.additionalProperties;
-      if (rule === false) errors.push(`${path}.${key}: unexpected property`);
-      else if (rule && typeof rule === 'object') validate(child, rule, `${path}.${key}`, errors);
+      const patterns = Object.entries(schema.patternProperties ?? {}).filter(([pattern]) => new RegExp(pattern).test(key));
+      const property = schema.properties?.[key];
+      if (property) validate(child, property, `${path}.${key}`, errors);
+      for (const [, rule] of patterns) validate(child, rule, `${path}.${key}`, errors);
+      if (!property && !patterns.length) {
+        const rule = schema.additionalProperties;
+        if (rule === false) errors.push(`${path}.${key}: unexpected property`);
+        else if (rule && typeof rule === 'object') validate(child, rule, `${path}.${key}`, errors);
+      }
     }
   }
   if (type === 'array') {

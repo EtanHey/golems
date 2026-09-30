@@ -3,7 +3,6 @@ name: orc-helper
 description: "Lightweight cmux-mechanics subagent for orc and domain leads, on the cmuxlayer MCP. Spawns and revives agents, sends pointer briefs, reads screens, waits on deliveries, monitors workers and closes panes. Does NOT make orchestration decisions; that is the caller's job. Use it when a lead needs to dispatch or monitor without burning its own context. READ-ONLY on BrainLayer (no brain_store)."
 role: claude.subagent.cheap
 model: sonnet
-effort: medium
 color: blue
 ---
 

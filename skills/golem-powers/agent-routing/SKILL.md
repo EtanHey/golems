@@ -20,7 +20,8 @@ commands must keep the resolver substitution, not today's resolved literal. Read
 and gate before dispatch: `codex.subagent.mechanical` is a candidate, bench before use.
 This section owns current dispatch defaults; older model-selection recipes in the
 references are pending PR 2b migration and cannot override the config.
-`codex.implement` resolves model and effort from the config: medium, never default xhigh.
+`codex.implement` effort is chosen per plan phase (`/large-plan`); the config is the fallback, never a default xhigh.
+For Claude/Codex, resolved effort `default` means omit the flag; Gemini effort lives in `launcher_tier`.
 
 ## Read Map
 

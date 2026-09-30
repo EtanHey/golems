@@ -35,6 +35,16 @@ test('large-plan generated phases and authored templates retain config-driven st
       assert.ok(text.includes('standards/model-roles.json'));
       assert.ok(text.includes('scripts/model-roles.mjs'));
     }
+    const generated = readFileSync(join(dir, 'phase-1/README.md'), 'utf8');
+    const staffing = generated.split('## Tools')[1].split('## Choosing effort per phase')[0];
+    const lines = staffing.split('\n').filter(line => /^- \*\*(Gatherer|Implementer|Reviewer|Lookup)/.test(line));
+    assert.equal(lines.length, 4);
+    for (const line of lines) {
+      assert.match(line, /model: <resolved model>/);
+      assert.match(line, /effort: <low\|medium\|high\|xhigh\|default>/);
+      assert.match(line, /why: <one line>/);
+    }
+    assert.doesNotMatch(staffing, /effort: medium\b/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -42,6 +52,8 @@ test('packaged helper role matches config and caller-selected brain-worker stays
   const helper = read('skills/golem-powers/orc/agents/orc-helper.md').split('---')[1];
   assert.match(helper, /role: claude.subagent.cheap/);
   assert.ok(helper.includes(`model: ${config.roles['claude.subagent.cheap'].alias}`));
+  assert.doesNotMatch(helper, /^effort:/m); // role default omits the flag
+
   const worker = read('skills/golem-powers/orc/agents/brain-worker.md');
   assert.doesNotMatch(worker.split('---')[1], /^role:|^model:/m);
   assert.match(worker, /caller-selected role per lookup \(cheap vs judgment\)/);

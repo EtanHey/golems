@@ -15,12 +15,14 @@
       "alias": "sonnet",
       "use_for": "single-fact brain-worker lookups, orc-helper pane mechanics, verifiers",
       "evidence": "2026-09-29 subagent-routing: brain-worker recall parity at 0.46x; orc-helper 4/4 parity at 0.47x; verifiers 0 wrong at 0.55x",
-      "never_for": "deletion decisions, PR-gating review, multi-source history"
+      "never_for": "deletion decisions, PR-gating review, multi-source history",
+      "effort": "default",
+      "effort_note": "2026-09-29 bench ran with no --effort flag (CLI default); not effort-benched"
     },
     "codex.implement": {
       "model": "gpt-6.1-sol",
       "effort": "medium",
-      "effort_note": "benched 2026-09-30 (skill-creator cleanup-routing R2, 48 verified runs): medium best-or-joint-best; never default xhigh",
+      "effort_note": "benched 2026-09-30 (skill-creator cleanup-routing R2, 48 verified runs): medium best-or-joint-best; never default xhigh; a fallback, not a ceiling: each plan phase picks its effort (large-plan)",
       "use_for": "all non-UX/UI implementation (Etan 2026-09-29 split)"
     },
     "codex.subagent.mechanical": {
@@ -28,7 +30,9 @@
       "status": "candidate",
       "gate": "bench after fleet convergence (skill-creator); not yet benched",
       "use_for": "rebases, CI polling, version bumps, file moves",
-      "never_for": "judgment of any kind"
+      "never_for": "judgment of any kind",
+      "effort": "low",
+      "effort_note": "candidate default for known-output mechanical work (Etan 2026-09-30); the Luna bench sets it"
     },
     "gemini.gather.text": {
       "model": "Gemini 3.8 Flash (High)",
