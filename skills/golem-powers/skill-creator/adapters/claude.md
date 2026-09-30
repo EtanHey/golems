@@ -5,13 +5,16 @@
 ## Launcher
 
 ```bash
-skillCreatorClaude        # opus inherit (1M context)
+skillCreatorClaude        # claude.judgment: verify bare role pin and 1M
 skillCreatorClaude -s     # skip permissions
 skillCreatorClaude -c     # continue last session
-skillCreatorClaude -m sonnet
+# Bounded Agent child: model = output of node scripts/model-roles.mjs claude.subagent.cheap --field alias
 ```
 
 cwd is set to `$SKILL_CREATOR_REPO/` automatically by the repoGolem launcher.
+Resolve `claude.judgment --field model` from the golems checkout to verify its bare pin.
+Choose effort per `/large-plan` phase and pass it explicitly with `-E` at dispatch;
+cheap children are bounded in-process/headless work, never visible full panes.
 
 ## What Claude can do that the other runtimes can't
 

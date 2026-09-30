@@ -21,10 +21,14 @@ Mining is a recurring, structured task with high fabrication risk if done by a g
 
 ```
 orcClaude (cwd=orchestrator)
-   └─→ spawns skillCreatorClaude (current top Opus at 1M, cwd=skill-creator)
+   └─→ spawns skillCreatorClaude (claude.judgment at 1M, cwd=skill-creator)
           └─→ spawns N session-miner sub-agents in parallel
                  └─ each mines one JSONL, returns MINE_DONE <label> <path> <line_count>
 ```
+
+Resolve `claude.judgment` with `node scripts/model-roles.mjs claude.judgment --field model`
+from the golems checkout; verify the bare parent pin and inherited child runtime.
+Choose effort per `/large-plan` phase with a why and pass explicitly at dispatch.
 
 orc cannot spawn `session-miner` directly — the agent is repo-scoped to skill-creator. Going through skillCreatorClaude is the intended pattern.
 

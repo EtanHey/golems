@@ -134,8 +134,17 @@ When extending the standing corpus with a new domain, the same defaults from v1 
 | `--schema` | `v1.1-3p` (3 primary, no shadow) | Matches the default 3-judge panel; cleaner than the 3-primary-+-1-shadow split. |
 | `--rubric-version` | `v1.1` | FM12 = 0/145 in production. |
 | `--liveness-check` | `strict` (≥95% rows, fail-loud, exit 2) | Closes W3.1's silent-gemini-absent hole from Run 4. |
-| `--pending-rt-cascade` | `opus-4-7` | W3.3: 12 of 13 v1.1 pending-RT cases are FM6-PreCompact single-judge outliers; cheap Opus resolves. |
+| `--pending-rt-cascade` | `opus-4-7` | Functional queue-routing token accepted by the parser; v1 queues rows without dispatching a model. |
 | Tiebreaker | `claudeJudge` | Cleanest calibration (mean 86.6); 0 hallucinations on Runs 2/3/4. |
+
+Resolve the actual cascade adjudicator through `claude.judgment` using
+`node scripts/model-roles.mjs claude.judgment --field model` from the golems checkout.
+Choose effort per `/large-plan` phase and pass it explicitly at dispatch.
+
+### Evidence: W3.3 cascade calibration
+
+W3.3 recorded 12 of 13 v1.1 pending-RT cases as FM6-PreCompact single-judge outliers.
+Its original recipe said "cheap Opus resolves"; current adjudication uses the role above.
 
 See `references/judge-panel.md` for the full κ rationale.
 

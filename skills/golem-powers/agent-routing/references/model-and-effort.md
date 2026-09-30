@@ -62,6 +62,8 @@ using those observations for planning; none selects a dispatch model.
 
 ## Phase Choices
 
+For the effort rungs, see `/large-plan` § "Choosing effort per phase".
+
 | Task shape | Role | Phase decision |
 |---|---|---|
 | Bounded or routine implementation | `codex.implement` | Record acceptance boundary and chosen phase effort. |

@@ -28,7 +28,9 @@ Choose effort per `/large-plan` phase with a why and pass it explicitly at dispa
 ```bash
 # Raw CLI only; visible peers use repoGolem launchers:
 : "${phase_effort:?Choose effort per /large-plan phase before dispatch}"
-claude --dangerously-skip-permissions --model "$(node scripts/model-roles.mjs claude.judgment --field alias)" --effort "$phase_effort" 'task prompt'
+phase_flags=()
+if [ "$phase_effort" != default ]; then phase_flags=(--effort "$phase_effort"); fi
+claude --dangerously-skip-permissions --model "$(node scripts/model-roles.mjs claude.judgment --field alias)" "${phase_flags[@]}" 'task prompt'
 ```
 
 For a cheap Agent child, resolve `claude.subagent.cheap --field alias` and pass that value

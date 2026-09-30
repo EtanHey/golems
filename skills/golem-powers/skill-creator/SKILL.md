@@ -88,7 +88,8 @@ See [references/scoring-rubric.md](references/scoring-rubric.md) for scoring met
 #### Tier B: Live Agent Smoke (flagship skills only)
 
 - Run `live-eval-runner.sh` for top 3 discriminator evals
-- Agent routing: Claude skills → Sonnet, code skills → Codex, audit skills → Cursor
+- Agent routing: bounded Claude in-process/headless tests → `claude.subagent.cheap`;
+  visible or decision-grade Claude tests → `claude.judgment`; code tests → `codex.implement`; audits → Cursor
 - Compare captured output against assertions
 - **Gate:** Live delta must be within 15% of static delta
 - Results stored in `evals/results/live-{date}.json` and `brain_store`'d
@@ -200,9 +201,14 @@ surface class as `delivered:true` or exit 0 without live verification.
 
 | Skill type | Test with | Why |
 |------------|-----------|-----|
-| Claude behavior skills | Sonnet (default) | Tests actual Claude compliance |
-| Code implementation skills | Codex (default, no model flag) | Tests code quality |
+| Bounded Claude behavior skills | `claude.subagent.cheap` | In-process or permitted headless tests only |
+| Visible or decision-grade Claude behavior | `claude.judgment` | Full panes retain the bare launcher pin |
+| Code implementation skills | `codex.implement` | Tests code quality |
 | Audit/review skills | Cursor (default) | Tests review thoroughness |
+
+Resolve model/alias with `node scripts/model-roles.mjs <role> --field model|alias` (one field)
+from the golems checkout. Keep substitutions in commands; choose effort per `/large-plan` phase
+with a why and pass explicitly at dispatch. Never use the mechanical candidate before its bench.
 
 ## Workflows
 
