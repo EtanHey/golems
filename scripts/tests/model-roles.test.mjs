@@ -3,7 +3,7 @@ import { test, afterEach } from 'node:test';
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { validate, lint } from '../ci/check-model-role-drift.mjs';
+import { validate, lint, loadConfig } from '../ci/check-model-role-drift.mjs';
 const root = new URL('../../', import.meta.url).pathname;
 const config = () => JSON.parse(readFileSync(join(root, 'standards/model-roles.json')));
 const schema = () => JSON.parse(readFileSync(join(root, 'standards/model-roles.schema.json')));
@@ -27,6 +27,24 @@ test('schema accepts canonical config and rejects invalid contracts', () => {
     const bad = config(); mutate(bad); assert.ok(validate(bad, schema()).length);
   }
 });
+test('schema requires effort for every Claude/Codex role and forbids Gemini effort', () => {
+  for (const name of Object.keys(config().roles).filter(n => /^(claude|codex)\./.test(n))) {
+    const bad = config(); delete bad.roles[name].effort;
+    assert.ok(validate(bad, schema()).length, name);
+    const dir = fixture('# Role effort validation');
+    writeFileSync(join(dir, 'standards/model-roles.json'), JSON.stringify(bad));
+    writeFileSync(join(dir, 'standards/model-roles.schema.json'), JSON.stringify(schema()));
+    assert.throws(() => loadConfig(dir), /effort/);
+  }
+  for (const name of ['gemini.gather.text', 'gemini.gather.visual']) {
+    const bad = config(); bad.roles[name].effort = 'high';
+    assert.ok(validate(bad, schema()).length, name);
+  }
+  const future = config(); future.roles['claude.future'] = { model: 'future', use_for: 'lookup' };
+  assert.ok(validate(future, schema()).length);
+  const changed = config(); changed.roles['claude.subagent.cheap'].effort = 'default';
+  assert.deepEqual(validate(changed, schema()), []);
+});
 test('resolver known, unknown, candidate and optional fields', () => {
   const run = (...args) => spawnSync(process.execPath, [join(root, 'scripts/model-roles.mjs'), ...args], { encoding: 'utf8' });
   const known = run('claude.judgment'); assert.equal(known.status, 0); assert.equal(known.stdout, 'claude-opus-5-5\n');
@@ -34,6 +52,8 @@ test('resolver known, unknown, candidate and optional fields', () => {
   const candidate = run('codex.subagent.mechanical'); assert.equal(candidate.status, 0); assert.match(candidate.stderr, /candidate: bench before use/);
   assert.equal(run('claude.subagent.cheap', '--field', 'alias').stdout, 'sonnet\n');
   assert.equal(run('codex.implement', '--field', 'effort').stdout, 'medium\n');
+  assert.equal(run('claude.subagent.cheap', '--field', 'effort').stdout, 'default\n');
+  assert.equal(run('codex.subagent.mechanical', '--field', 'effort').stdout, 'low\n');
   assert.equal(run('gemini.gather.visual', '--field', 'launcher_tier').stdout, 'flash-high\n');
   assert.equal(run('claude.judgment', '--field', 'missing').status, 2);
 });

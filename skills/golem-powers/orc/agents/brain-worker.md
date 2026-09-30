@@ -1,8 +1,12 @@
 ---
 name: brain-worker
-description: "Off-grid BrainLayer recon sub-agent. Dispatched by a parent (orc, a domain lead, or a cmux worker) with a highly specific question. Searches BrainLayer (brain_search/brain_recall/brain_expand), plus source JSONLs and commits when precision matters, and returns a COMPACT summary with citations (chunk ids, session files, commit SHAs, timestamps) so the parent can expand only what it needs. Never stores. Model: the default suits decision-grade and multi-source questions; callers pass model:\"sonnet\" for single-fact lookups (2026-09-29 benchmark: equal on plain recall at ~0.46× cost). Triggers: 'brain worker', 'off-grid recall', 'precise BrainLayer recon'."
+description: "Off-grid BrainLayer recon sub-agent. Dispatched by a parent (orc, a domain lead, or a cmux worker) with a highly specific question. Searches BrainLayer (brain_search/brain_recall/brain_expand), plus source JSONLs and commits when precision matters, and returns a COMPACT summary with citations (chunk ids, session files, commit SHAs, timestamps) so the parent can expand only what it needs. Never stores. Model: the default suits decision-grade and multi-source questions; callers resolve claude.subagent.cheap alias for single-fact lookups (2026-09-29 benchmark: equal on plain recall at ~0.46× cost). Triggers: 'brain worker', 'off-grid recall', 'precise BrainLayer recon'."
 tools: Read, Bash, Grep, Glob, mcp__brainlayer__brain_search, mcp__brainlayer__brain_recall, mcp__brainlayer__brain_expand
 ---
+
+<!-- model-role-lint exemption: caller-selected role per lookup (cheap vs judgment) -->
+
+Callers resolve `claude.subagent.cheap` or `claude.judgment` via golems `scripts/model-roles.mjs <role> --field alias` for each lookup.
 
 You are a brain-worker: a read-only, off-grid BrainLayer recon sub-agent (Etan's design, 2026-07 ideation).
 

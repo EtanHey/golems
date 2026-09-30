@@ -138,9 +138,24 @@ One sentence describing what this phase achieves.
 Round M (parallel with Phase X, Phase Y) OR Round M (sequential).
 
 ## Tools
-- **Research:** [gemini|cursor|codex] — what to research
-- **Code:** [cursor|haiku|sonnet] — what to implement
+- **Gatherer:** `gemini.gather.text` (or `gemini.gather.visual`) → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Implementer:** `codex.implement` → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line> (UX/UI phases: `claude.judgment` implements, Codex reviews; security phases: Daybreak Blue implements, `claude.judgment` reviews; see canon #1)
+- **Reviewer / decisions:** `claude.judgment` (lead-routed) → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Lookup / pane mechanics / verifier:** `claude.subagent.cheap` → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Config:** golems `standards/model-roles.json`; resolve each required field with `node scripts/model-roles.mjs <role> --field <field>`. Candidate roles require their bench gate before use.
 - **MCPs:** [list relevant MCP servers]
+
+## Choosing effort per phase
+
+Every role line requires a resolved model, chosen effort and one-line reason before dispatch.
+The config's effort is a fallback, not a ceiling; the phase overrides it. For Gemini,
+replace the effort placeholder with the resolved `launcher_tier` (no `effort` field/flag).
+For Claude/Codex, `default` means omit the effort flag; do not invent a level.
+Codex phases choose a concrete level for their explicit dispatch flag.
+Low is only for known-output mechanical work; medium suits mechanical splits/refactors.
+High/xhigh suit open-ended implementation, hard debugging or contradictory evidence;
+security uses high. Cite R2 in `codex.implement.effort_note` as evidence, not a ceiling.
+Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
 
 ## Steps
 1. Step one

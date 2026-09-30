@@ -40,10 +40,17 @@ Every collab file MUST have these sections in this order. Copy this template.
 
 ## Agents
 
-| Agent | Role | Repo/CWD | Status |
-|-------|------|----------|--------|
-| agentA | Phase 1, 3 | $HOME/Gits/repo-a | idle |
-| agentB | Phase 2, 4 | $HOME/Gits/repo-b | idle |
+Staff by role from golems `standards/model-roles.json`; resolve with
+`node scripts/model-roles.mjs <role> --field <field>` before dispatch.
+
+| Agent | Role | Phases | Repo/CWD | Status |
+|-------|------|--------|----------|--------|
+| agentA | `codex.implement` | 1, 3 | $HOME/Gits/repo-a | idle |
+| agentB | `gemini.gather.text` | 2, 4 | $HOME/Gits/repo-b | idle |
+| reviewer | `claude.judgment` (lead-routed) | PR gates | $HOME/Gits/repo-a | idle |
+
+Frame batches use `gemini.gather.visual`; single-fact recall, pane mechanics and
+verifiers use `claude.subagent.cheap`. Candidate roles require their bench gate.
 
 Status values: `idle` | `ready` | `learning` | `working` | `blocked:reason` | `done` | `signed-off`
 
@@ -93,7 +100,7 @@ This is the SINGLE source of truth for progress. Messages are supplementary.
 
 | Round | Advance When |
 |-------|-------------|
-| 0 -> 1 | All agents report `learning` or `ready` |
+| 0 -> 1 | Staff roles resolved from config; candidate gates satisfied; all agents report `learning` or `ready` |
 | 1 -> 2 | All Round 1 PRs merged, every worker's CLEANUP RECEIPT posted, and the lead's prune step run |
 
 Orchestrator announces: `**ADVANCING TO ROUND N.** [per-agent directives]`
