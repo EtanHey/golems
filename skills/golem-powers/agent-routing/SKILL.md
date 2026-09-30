@@ -11,9 +11,20 @@ description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine.
 > web research >=1, or any "in parallel" / "all of these" phrasing -> fan out sub-agents
 > in the SAME message before asking permission.
 
+## Model roles
+
+Roles live in `standards/model-roles.json`. From the golems checkout, resolve with
+`node scripts/model-roles.mjs <role> --field model|alias|effort|launcher_tier`
+(select one field). Never hardcode a role-owned model name. Generated launcher
+commands must keep the resolver substitution, not today's resolved literal. Read the role's status
+and gate before dispatch: `codex.subagent.mechanical` is a candidate, bench before use.
+This section owns current dispatch defaults; older model-selection recipes in the
+references are pending PR 2b migration and cannot override the config.
+`codex.implement` resolves model and effort from the config: medium, never default xhigh.
+
 ## Read Map
 
-- Choosing a Codex model or effort, comparing model cost/context, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md). That reference owns the GPT-6 default, per-job Luna choice, and 5.6 fallback policy; do not duplicate them here.
+- Choosing a Codex model or effort, comparing model cost/context, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md). Use the role config for current defaults and candidate gates; that reference supplies runtime verification and detailed procedures pending PR 2b.
 - Launching, reusing, monitoring, recovering, or closing a worker lane? Read [references/delegation-operations.md](references/delegation-operations.md).
 - Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
 - Fanning out independent units, or asked about Cursor `/multitask`? Read [references/fan-out-engines.md](references/fan-out-engines.md) (recipes, gotchas, GUI prompt contract, dispatch hygiene).
@@ -26,27 +37,49 @@ owns its detailed procedure.
 | Tool | Role | Does | Never does |
 |---|---|---|---|
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
-| **Codex** | Implement | Code/docs changes, fixes, refactors, tests, PRs | Research, data gathering, orchestration |
-| **Gemini Flash-High gatherer** (`{repo}Gemini -m flash-high`) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
-| **Gemini Flash-High gatherer** (`{repo}Gemini -m flash-high`) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Implementing, reviewing, deciding, UX/UI judgment |
-| **Claude** | Orchestrate | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer, and performs UX-taste review passes | Bulk reads/SQL or implementation |
+| **`codex.implement`** | Implement | Code/docs changes, fixes, refactors, tests, PRs | Research, data gathering, orchestration |
+| **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
+| **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Implementing, reviewing, deciding, UX/UI judgment |
+| **`claude.judgment`** | Orchestrate | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer, and performs UX-taste review passes | Bulk reads/SQL or implementation |
 
 Decision rules:
 
-1. Read-only query, scan, search, audit, or lookup -> Cursor; for docs/link/copy/inventory gathers only, a Gemini Flash-High gatherer; never a Low tier.
-2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> Opus. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
-3. Any code or file change -> Codex.
-4. Coordination, synthesis, monitoring, or decisions -> Claude.
-5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff. A deletion or test edit gets its Opus decision (rule 2) before Codex implements.
+1. Read-only query, scan, search, audit, or lookup -> Cursor; for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; single-fact sub-agent lookups follow the bounded exception below.
+2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
+3. Any code or file change -> `codex.implement`.
+4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
+5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before Codex implements.
 6. Independent parallel units -> § Fan-out engine chooses the engine; fleet canon #1 owns Cursor model selection.
-7. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a Gemini Flash-High gatherer through `/qa-video`.
-8. UX/UI and design judgment stays on Opus 5.5. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
+7. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a `gemini.gather.visual` gatherer through `/qa-video`.
+8. UX/UI and design judgment stays on `claude.judgment`. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
 
 **Evidence (skill-creator eval, 2026-09-25; visible cmux workers, mechanical answer keys, lead-scored):** 40 bounded text-gather tasks: Flash-Low 40/40 and Opus 5.5 40/40, 0 fabricated claims each; higher Gemini effort on text gave the same accuracy 2.8–4.7× slower. 20 mixed tasks (8 image reads, 4 video): Opus 20/20, Pro-High 20/20 (2:35), Flash-High 20/20 (6:17), Flash-Low 19/20 (missed counting distinct screens across a video). An open-ended Pro research draft had a dead citation, a stale "recent" item, and missed the key release. Limits: screening sample (n=60) on one Mac; not evidence for judgment, design, review, or code. 2026-09-25 ruling: Low tiers are not used for gathering. On a real narrated QA review Flash-Low found 15–16/22 vs Flash-High 21/22, with an invented quote.
 
 Visual re-bench 2026-09-30 (22 visual items incl. 10 harder: near-dup screens, one-frame flash, 10 px OCR, contact-sheet diffs; n=2, headers verified): Flash-High 44/44, 0 fabrications, ~11 min per batch; Pro-High 43/44, ~3 min, fabricated its self-reported timing in 2/2 runs → visual tier = Flash-High.
 
+### Evidence: deletion reachability
+
 **Evidence for rule 2 (cmuxlayer CX-3 real recon slices; one repo, 28 tools, scored against a truth table from fresh `rg`):** callers=0 for 28 tools about to be deleted: Opus surfaced 3/3 deletion hazards; Flash-High and Haiku 0/3 (Flash-Low, a lower tier, was not run on this slice), and Flash-High called all 28 safe, which would have broken a by-name engine accessor used by 23 test files; Pro made 59 false positives. Tool→test-file map errors: Opus 1, Flash-High 16, Pro 21, Haiku 23. Docs/link audit: Opus, Flash-High and Flash-Low 0 errors (82 s, 87 s, ≈270 s); Pro 47 false positives from a gitignored build directory; Haiku 20 errors (16 misses, 4 substring-match false positives). The eval above passed callers=0 because its tasks were literal greps against a known answer key; deciding a deletion needs reachability reasoning (by-name lookups, policy tables, agent-facing text).
+
+## Cheap sub-agents
+
+Every `claude.judgment` seat (leads and workers) delegates parity tasks to
+`claude.subagent.cheap`; pass its resolved alias as the Agent tool's `model`:
+`node scripts/model-roles.mjs claude.subagent.cheap --field alias`.
+
+- **brain-worker:** single-fact recall ("when did X merge", "what did Etan rule on Y"); use one cheap child instead of the judgment seat's own context.
+- **orc-helper:** spawn/resume/send/read/wait/close pane mechanics; the packaged agent's `role:` pins its alias through the drift lint.
+- **Verifiers:** rerun a claimed command, check an artifact exists, or read a report's DONE marker.
+
+Keep `claude.judgment` for multi-source or decision-grade history, deletion decisions,
+PR-gating reviews, and UX/UI judgment. Reserve judgment → 3× cheap fan-out for
+high-stakes history only: it costs 3.4× and runs 2.6× slower. Pass this rule into
+every judgment worker's brief. This is the bounded exception to general lookup routing.
+
+### Evidence: sub-agent and cleanup routing
+
+`skill-creator/docs.local/evals/2026-09-29-subagent-routing/RESULTS.md`: plain brain-worker recall parity at 0.46×; orc-helper 4/4 at 0.47×; verifiers 0 wrong at 0.55× (bounded cases; multi-source losses remain).
+`skill-creator/docs.local/evals/2026-09-29-cleanup-routing/ROUTING-R2.md`: deletion hazards Opus 6/6 vs every Sol arm 4/6; `codex.implement` effort medium, never default xhigh (n=2 per arm/case).
 
 ## Fan-out engine
 
@@ -88,11 +121,11 @@ Domain leads are orchestrators one tier below orc:
 
 ## Review routing
 
-**Temporary budget rule — sprint beginning 2026-09-22, usage-driven, expires at sprint end:**
-the LEAD opens both implementation panes: a Codex implementer and a Codex reviewer. They iterate
-until both are happy; then the implementer opens the ready-for-review PR and runs `/pr-loop`.
-Claude is reserved for UX-taste review passes during this sprint. When the sprint ends, reviewer
-routing reverts to a Claude pair-reviewer under fleet canon #1 (`standards/fleet-canon.md`).
+The role policy (Etan-ratified, 2026-09-30) supersedes the temporary sprint
+budget rule from 2026-09-22: PR-gating reviews and UX/UI judgment use
+`claude.judgment`. The LEAD routes the `codex.implement` implementer and the
+`claude.judgment` pair-reviewer; they iterate before the ready-for-review PR.
+Workers follow their lane's explicit review/handoff order and run `/pr-loop`.
 
 The durable core is unconditional: the LEAD routes the reviewer, and a WORKER never starts any
 reviewer for its own work. No reviewer pane means ask the lead.

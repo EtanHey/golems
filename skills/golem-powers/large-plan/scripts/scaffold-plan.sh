@@ -50,8 +50,11 @@ for i in $(seq 1 "$PHASE_COUNT"); do
 
 ## Tools
 
-- **Research:** [gemini|cursor|codex]
-- **Code:** [cursor|haiku|sonnet]
+- **Gatherer:** \`gemini.gather.text\` (or \`gemini.gather.visual\` for frames) — what to gather
+- **Implementer:** \`codex.implement\` — what to implement
+- **Reviewer / decisions:** \`claude.judgment\` — lead routes the reviewer
+- **Lookup / pane mechanics / verifier:** \`claude.subagent.cheap\` — bounded sub-agent work
+- **Config:** golems \`standards/model-roles.json\`; resolve each required field with \`node scripts/model-roles.mjs <role> --field <field>\`. Candidate roles require their bench gate before use.
 
 ## Steps
 

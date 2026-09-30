@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-30",
+  "kind": "routing-response-smoke",
+  "skill": "agent-routing",
+  "eval_ids": [
+    43,
+    44,
+    45
+  ],
+  "model_requested": "claude.subagent.cheap alias resolved through scripts/model-roles.mjs",
+  "model_effective": "claude-sonnet-5-5",
+  "model_observation_source": "CLI JSON modelUsage",
+  "effort_effective": "NOT DETERMINED",
+  "effort_observation_source": "NOT DETERMINED - CLI JSON does not expose effort",
+  "tools_enabled": false,
+  "scope": "One with-skill routing-response smoke. No baseline, uplift claim, or live delegation proof. Assertions scored on proposed routes only.",
+  "assertions_passed": 7,
+  "assertions_total": 7,
+  "scoring": [
+    "43: one cheap brain-worker with resolved alias; rejects lead-context lookup and fan-out (2/2)",
+    "44: judgment decides; literal callers insufficient; checks by-name/policy reachability (3/3)",
+    "45: visual role resolves launcher_tier; judgment stays with lead (2/2)"
+  ],
+  "response": "**Case 43: single-fact history lookup (\"when did golems#352 merge\")**\n- **Route:** the `brain-worker` cheap sub-agent, not the lead's own context. This is the bounded exception to general lookup routing under \"Cheap sub-agents\".\n- **Config resolution:** role `claude.subagent.cheap`. Resolve with `node scripts/model-roles.mjs claude.subagent.cheap --field alias`, which gives `sonnet` today. Pass that as the Agent tool's `model`, without hardcoding the name.\n- **Boundaries:**\n  - The lead keeps `claude.judgment` for multi-source or decision-grade history. Judgment → 3× cheap fan-out is reserved for high-stakes history only (3.4× cost, 2.6× slower).\n  - The lead verifies the child's answer against its evidence before relaying it (never-fabricate).\n  - Pass this rule into every judgment worker's brief.\n\n**Case 44: is it safe to delete a tool with zero literal callers?**\n- **Route:** `claude.judgment` makes the decision (rule 2). The brain-worker's grep result is only input, and a gatherer never concludes a deletion.\n- **Config resolution:** `claude.judgment` resolves to `claude-opus-5-5`, alias `opus`, effort `high`. Resolve via `node scripts/model-roles.mjs claude.judgment --field model|alias|effort`.\n- **Boundaries:**\n  - `claude.subagent.cheap` lists deletion decisions under `never_for`.\n  - Zero literal callers is not proof of safety. Judgment must reason about reachability: by-name lookups, policy tables, and agent-facing text. The evidence is Opus 6/6 deletion hazards vs 4/6 for every Sol arm, and callers=0 wrongly cleared 28 tools in the cmuxlayer slice.\n  - If judgment approves the deletion, `claude.judgment` records it under `docs.local/`. `codex.implement` (`gpt-6.1-sol`, effort `medium`, never default xhigh) then does the change, and the Opus pair-review follows.\n\n**Case 45: batch of video frames for OCR and state-change extraction**\n- **Route:** a `gemini.gather.visual` gatherer through `/qa-video` (rule 7). Claude does not read the frames itself.\n- **Config resolution:** launch as `{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`. That resolves to `flash-high` (Gemini 3.8 Flash High). Keep the substitution in the command rather than the resolved literal.\n- **Boundaries:**\n  - The gatherer only gathers. It never implements, reviews, decides, or makes UX/UI judgments.\n  - Do not use Low tiers, since Flash-Low missed distinct-screen counts and invented a quote.\n  - Do not use Pro-High for visual work, since it fabricated its self-reported timing in 2/2 runs.\n  - Expect about 11 minutes per batch.\n  - The lead verifies the findings before they reach Etan.",
+  "iterations": "R1 7/7; R2 6/7 (visual command flattened resolved tier); R3 7/7 after generated-command clarification."
+}

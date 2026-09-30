@@ -118,8 +118,11 @@ One sentence describing what this phase achieves.
 Round M (parallel with Phase X, Phase Y) OR Round M (sequential)
 
 ## Tools
-- **Research:** [gemini|cursor|codex] — what to research
-- **Code:** [cursor|haiku|sonnet] — what to implement
+- **Gatherer:** `gemini.gather.text` (or `gemini.gather.visual` for frames) — what to gather
+- **Implementer:** `codex.implement` — what to implement
+- **Reviewer / decisions:** `claude.judgment` — lead routes the reviewer
+- **Lookup / pane mechanics / verifier:** `claude.subagent.cheap` — bounded sub-agent work
+- **Config:** golems `standards/model-roles.json`; resolve each required field with `node scripts/model-roles.mjs <role> --field <field>`. Candidate roles require their bench gate before use.
 - **MCPs:** [list relevant MCP servers]
 
 ## Steps

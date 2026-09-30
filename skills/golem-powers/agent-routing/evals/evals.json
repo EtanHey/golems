@@ -1211,6 +1211,58 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 43,
+      "name": "single-fact-role-brain-worker",
+      "prompt": "You are a claude.judgment lead. When did golems#352 merge? Route this single-fact history lookup.",
+      "expected_output": "Delegate one brain-worker using the resolved claude.subagent.cheap alias; no lookup in the lead context and no fan-out.",
+      "assertions": [
+        {
+          "text": "Delegates one brain-worker with claude.subagent.cheap resolved from standards/model-roles.json",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT perform the lookup in the lead context or launch a three-agent fan-out",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "name": "deletion-role-judgment",
+      "prompt": "A cheap brain-worker found zero literal callers for a tool. Decide whether it is safe to delete the tool.",
+      "expected_output": "Keep the deletion decision on claude.judgment; check by-name lookups and dispatch or policy tables before codex.implement changes files.",
+      "assertions": [
+        {
+          "text": "Keeps the safe-to-delete verdict on claude.judgment",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT treat zero literal callers as sufficient proof or let the cheap child decide",
+          "type": "negative"
+        },
+        {
+          "text": "Names reachability beyond literal callers such as by-name lookups or dispatch tables",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "visual-frame-batch-role",
+      "prompt": "Route a batch of video frames for OCR and state-change extraction.",
+      "expected_output": "Use gemini.gather.visual, resolving launcher_tier from standards/model-roles.json; the gatherer returns evidence and does not make UX/UI judgments.",
+      "assertions": [
+        {
+          "text": "Uses gemini.gather.visual and resolves launcher_tier through scripts/model-roles.mjs",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT hardcode a model tier or assign UX/UI judgment to the gatherer",
+          "type": "negative"
+        }
+      ]
     }
   ]
 }

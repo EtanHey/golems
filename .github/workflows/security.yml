@@ -119,7 +119,7 @@ jobs:
         run: node scripts/ci/check-model-role-drift.mjs
 
       - name: Test model roles contract, resolver and drift lint
-        run: node --test scripts/tests/model-roles.test.mjs
+        run: node --test scripts/tests/model-roles.test.mjs scripts/tests/model-role-wiring.test.mjs
 
       - name: Check for unresolved placeholders in public-facing files
         run: |
