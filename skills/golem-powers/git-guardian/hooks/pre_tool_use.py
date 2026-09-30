@@ -23,7 +23,12 @@ def _deny_policy_import_failure():
     json.dump(
         {
             "decision": "block",
-            "reason": "BLOCKED: security policy unavailable; refusing tool call.",
+            "reason": (
+                "BLOCKED: security policy unavailable; refusing tool call. "
+                "FLAG THIS TO THE USER: reinstall hooks from the prompt: "
+                "`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh "
+                "--host <host> --update --apply`"
+            ),
         },
         sys.stdout,
     )

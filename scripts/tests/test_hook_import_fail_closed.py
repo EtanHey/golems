@@ -16,9 +16,19 @@ ROOT = Path(__file__).resolve().parents[2]
 POWERS = ROOT / "skills" / "golem-powers"
 FAIL_OPEN = ROOT / "scripts" / "hooks" / "fail-open.py"
 SENSITIVE_DETAIL = "SENSITIVE ISSUE411 IMPORT DETAIL"
+RECOVERY_HINT = (
+    "FLAG THIS TO THE USER: reinstall hooks from the prompt: "
+    "`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh "
+    "--host <host> --update --apply`"
+)
 
 
-def _copied_hooks(tmp_path: Path, parser_state: str) -> tuple[Path, Path, Path]:
+def _copied_hooks(
+    tmp_path: Path,
+    parser_state: str,
+    *,
+    file_symlink_facades: bool = False,
+) -> tuple[Path, Path, Path]:
     hooks = tmp_path / "installed" / "hooks"
     shared = hooks / "_shared"
     shared.mkdir(parents=True)
@@ -39,6 +49,11 @@ def _copied_hooks(tmp_path: Path, parser_state: str) -> tuple[Path, Path, Path]:
             )
         elif parser_state == "system-exit":
             tokens.write_text(f'raise SystemExit("{SENSITIVE_DETAIL}")\n')
+
+    if file_symlink_facades:
+        for name in ("shell_parse.py", "harness_paths.py"):
+            (shared / name).unlink()
+            (shared / name).symlink_to(POWERS / "_shared" / name)
 
     tmp_hook = hooks / "tmp-block" / "hooks" / "tmp-block-pretooluse.py"
     tmp_hook.parent.mkdir(parents=True)
@@ -107,11 +122,18 @@ def _run_hook(
     )
 
 
-def _assert_value_free_deny(result: subprocess.CompletedProcess[str], hook_name: str) -> None:
+def _assert_value_free_deny(
+    result: subprocess.CompletedProcess[str],
+    hook_name: str,
+    *,
+    expect_recovery_hint: bool = True,
+) -> None:
     assert result.returncode == 2, (result.stdout, result.stderr)
     response = json.loads(result.stdout)
     assert response["decision"] == "block"
     assert response["reason"]
+    if expect_recovery_hint:
+        assert RECOVERY_HINT in response["reason"]
     assert SENSITIVE_DETAIL not in result.stdout + result.stderr
     assert result.stderr == ""
     if hook_name == "tmp-block":
@@ -226,6 +248,7 @@ def test_complete_copied_hooks_keep_allow_and_deny_behavior(
             through_launcher=through_launcher,
         ),
         "tmp-block",
+        expect_recovery_hint=False,
     )
     _assert_value_free_deny(
         _run_hook(
@@ -235,4 +258,35 @@ def test_complete_copied_hooks_keep_allow_and_deny_behavior(
             through_launcher=through_launcher,
         ),
         "git-guardian",
+        expect_recovery_hint=False,
+    )
+
+
+@pytest.mark.parametrize("through_launcher", (False, True))
+def test_complete_file_symlinked_facades_keep_tmp_block_allow_and_deny_behavior(
+    tmp_path: Path,
+    through_launcher: bool,
+) -> None:
+    tmp_hook, _guardian_hook, other_cwd = _copied_hooks(
+        tmp_path,
+        "complete",
+        file_symlink_facades=True,
+    )
+    allowed = _run_hook(
+        tmp_hook,
+        other_cwd,
+        "ls",
+        through_launcher=through_launcher,
+    )
+    assert allowed.returncode == 0, (allowed.stdout, allowed.stderr)
+    assert json.loads(allowed.stdout) == {}
+    _assert_value_free_deny(
+        _run_hook(
+            tmp_hook,
+            other_cwd,
+            "echo hi > /tmp/issue411-deny",
+            through_launcher=through_launcher,
+        ),
+        "tmp-block",
+        expect_recovery_hint=False,
     )

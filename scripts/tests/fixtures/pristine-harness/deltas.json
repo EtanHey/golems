@@ -506,37 +506,37 @@
   {
     "authority": "golems#411",
     "candidate_sha256": {
-      "darwin": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a",
-      "linux": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a"
+      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
+      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
     },
     "case": "tmp-w7-seam-classifier-registered",
-    "reason": "Loading two copied tmp-block trees in one Python process now rejects cached shared policy modules from the first tree when the second tree verifies origins, deliberately failing closed."
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
   },
   {
     "authority": "golems#411",
     "candidate_sha256": {
-      "darwin": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a",
-      "linux": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a"
+      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
+      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
     },
     "case": "tmp-w7-seam-prefixes-registered",
-    "reason": "Loading two copied tmp-block trees in one Python process now rejects cached shared policy modules from the first tree when the second tree verifies origins, deliberately failing closed."
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
   },
   {
     "authority": "golems#411",
     "candidate_sha256": {
-      "darwin": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a",
-      "linux": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a"
+      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
+      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
     },
     "case": "tmp-w7-seam-classifier-unregistered",
-    "reason": "Loading two copied tmp-block trees in one Python process now rejects cached shared policy modules from the first tree when the second tree verifies origins, deliberately failing closed."
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
   },
   {
     "authority": "golems#411",
     "candidate_sha256": {
-      "darwin": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a",
-      "linux": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a"
+      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
+      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
     },
     "case": "tmp-w7-seam-prefixes-unregistered",
-    "reason": "Loading two copied tmp-block trees in one Python process now rejects cached shared policy modules from the first tree when the second tree verifies origins, deliberately failing closed."
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
   }
 ]

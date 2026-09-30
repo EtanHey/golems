@@ -104,7 +104,12 @@ from io import StringIO
 
 def _deny_policy_import_failure():
     """Fail closed before the normal policy helpers are available (#411)."""
-    reason = "⛔ TMP-BLOCK: security policy unavailable; refusing tool call."
+    reason = (
+        "⛔ TMP-BLOCK: security policy unavailable; refusing tool call. "
+        "FLAG THIS TO THE USER: reinstall hooks from the prompt: "
+        "`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh "
+        "--host <host> --update --apply`"
+    )
     json.dump(
         {
             "decision": "block",
@@ -136,8 +141,8 @@ try:
             (_harness_paths_module, "harness_paths.py"),
             (_shell_parse_module, "shell_parse.py"),
         ):
-            if os.path.realpath(getattr(_module, "__file__", "")) != os.path.join(
-                _SHARED_ROOT, _filename
+            if os.path.realpath(getattr(_module, "__file__", "")) != os.path.realpath(
+                os.path.join(_SHARED_ROOT, _filename)
             ):
                 raise ImportError(f"unexpected policy module origin: {_filename}")
 
