@@ -4139,3 +4139,64 @@ JSON_U="$(printf '\134')u"
     [ "$status" -eq 0 ]
     grep -F -q -- "--model Gemini 3.1 Pro (High)" <<< "$output"
 }
+
+run_gatherer_launch() {
+    run env HOME="$TMPDIR_/gatherer-home" zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function agy() { print -r -- "AGY_ARGS=$*"; }
+      source "$2"
+      function _golem_setup_env() { return 0; }
+      function _golem_sync_agy_workspace() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      shift 2
+      testrepoGemini "$@"
+    ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$@"
+}
+
+@test "Gemini gatherer agent is selected only for workers when globally installed" {
+    mkdir -p "$TMPDIR_/gatherer-home/.gemini/antigravity-cli/agents"
+    printf '%s\n' '---' 'name: gatherer' 'mainAgent: true' '---' > \
+      "$TMPDIR_/gatherer-home/.gemini/antigravity-cli/agents/gatherer.md"
+    run_gatherer_launch --worker -s
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--agent gatherer" <<< "$output"
+    run_gatherer_launch -s
+    [ "$status" -eq 0 ]
+    refute_contains "--agent gatherer" "$output"
+}
+
+@test "Gemini missing global gatherer keeps the worker launch with a warning" {
+    run_gatherer_launch --worker -s
+    [ "$status" -eq 0 ]
+    grep -F -q -- "gatherer agent is not installed" <<< "$output"
+    refute_contains "--agent gatherer" "$output"
+    grep -F -q -- "--model Gemini 3.8 Flash (High)" <<< "$output"
+}
+
+@test "registry CLI persona mapping selects Gemini lead without changing other leads or workers" {
+    local fake_home="$TMPDIR_/persona-home"
+    mkdir -p "$fake_home/.claude/agents"
+    printf '%s\n' 'DEFAULT_LEAD' > "$fake_home/.claude/agents/default-lead.md"
+    printf '%s\n' 'GEMINI_LEAD' > "$fake_home/.claude/agents/gemini-lead.md"
+    jq '.projects.testrepo.agent="default-lead" | .projects.testrepo.agentByCli.gemini="gemini-lead"' \
+      "$REGISTRY_FILE" > "$TMPDIR_/persona-registry.json"
+    run env HOME="$fake_home" zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1"
+      source "$2"
+      for cli in gemini cursor codex; do
+        file=$(_golem_inject_agent_context testrepo "$cli")
+        print -r -- "$cli:$(cat "$file")"
+        _golem_cleanup_agent_context "$file"
+      done
+      GOLEM_ROLE=worker
+      print -r -- "WORKER:$(_golem_inject_agent_context testrepo gemini)"
+    ' _ "$TMPDIR_/persona-registry.json" "$SOURCE_DISPATCHER"
+    [ "$status" -eq 0 ]
+    grep -F -x -q -- 'gemini:GEMINI_LEAD' <<< "$output"
+    grep -F -x -q -- 'cursor:DEFAULT_LEAD' <<< "$output"
+    grep -F -x -q -- 'codex:DEFAULT_LEAD' <<< "$output"
+    grep -F -x -q -- 'WORKER:' <<< "$output"
+}

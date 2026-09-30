@@ -42,6 +42,13 @@ _golem_launch_gemini() {
   local agy_model
   agy_model=$(_golem_agy_resolve_model "${_flag_model:-}")
   agy_args=("--model" "$agy_model" "${agy_args[@]}")
+  if [[ "$worker_mode" == true ]]; then
+    if [[ -f "$HOME/.gemini/antigravity-cli/agents/gatherer.md" ]]; then
+      agy_args=("--agent" "gatherer" "${agy_args[@]}")
+    else
+      print -r -- "repoGolem: gatherer agent is not installed; keeping the Gemini worker launch." >&2
+    fi
+  fi
 
   $_flag_skip && agy_args=("--dangerously-skip-permissions" "${agy_args[@]}")
   $_flag_continue && agy_args=("--continue" "${agy_args[@]}")

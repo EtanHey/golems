@@ -44,7 +44,8 @@ _golem_inject_agent_context() {
   [[ ! -f "$registry" ]] && return 0
 
   local agent_name
-  agent_name=$(jq -r --arg p "$project_name" '.projects[$p].agent // ""' "$registry" 2>/dev/null)
+  agent_name=$(jq -r --arg p "$project_name" --arg cli "$cli_name" \
+    '.projects[$p].agentByCli[$cli] // .projects[$p].agent // ""' "$registry" 2>/dev/null)
   [[ -z "$agent_name" || "$agent_name" == "null" ]] && return 0
 
   local agent_file="$HOME/.claude/agents/${agent_name}.md"
