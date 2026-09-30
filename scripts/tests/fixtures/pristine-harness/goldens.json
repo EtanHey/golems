@@ -8630,6 +8630,55 @@
       "files": {},
       "stderr": "",
       "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiXHUyNmQ0IFdPUktUUkVFLUNPTlZFTlRJT046IGBnaXQgd29ya3RyZWUgYWRkYCB0YXJnZXQgaXMgb3V0c2lkZSB0aGUgcmF0aWZpZWQgaW4tcmVwbyBsb2NhdGlvbiAoL291dHNpZGUvdzcpLiBGbGVldCBjb252ZW50aW9uLCByYXRpZmllZCBieSBFdGFuIGJ5IHZvaWNlIDIwMjYtMDgtMDk6IHdvcmt0cmVlcyBsaXZlIGF0IDxyZXBvPi8ud29ya3RyZWVzLzxuYW1lPiBcdTIwMTQgc2libGluZyBgPHJlcG8+Lnd0L2AgZGlyZWN0b3JpZXMgYXJlIGRyaWZ0ICgxOCBhY2N1bXVsYXRlZCB3aGlsZSB0aGlzIGd1YXJkIG9ubHkgQURWSVNFRCB0aGUgbG9jYXRpb24gaW5zdGVhZCBvZiBlbmZvcmNpbmcgaXQpLiBGaXhlZCBjb21tYW5kOiBnaXQgLUMgPHJlcG8+IHdvcmt0cmVlIGFkZCA8cmVwbz4vLndvcmt0cmVlcy93NyA8c2FtZSBmbGFncz4uIE1vdmluZyBhbiBleGlzdGluZyBvZmYtY29udmVudGlvbiB3b3JrdHJlZSBkdXJpbmcgdGhlIG1pZ3JhdGlvbiB3aW5kb3c/IFJlLXJ1biB3aXRoIFdFQVZFX0FMTE9XX1dUX01JR1JBVElPTj0xIFx1MjAxNCBhbGxvd2VkIEFORCBsb2dnZWQgdG8gdGhlIGR1cmFibGUgbGVkZ2VyICh0aGUgbG9nIGlzIHRoZSBieXBhc3MgZGV0ZWN0b3IpLiIsICJob29rU3BlY2lmaWNPdXRwdXQiOiB7Imhvb2tFdmVudE5hbWUiOiAiUHJlVG9vbFVzZSIsICJwZXJtaXNzaW9uRGVjaXNpb24iOiAiZGVueSIsICJwZXJtaXNzaW9uRGVjaXNpb25SZWFzb24iOiAiXHUyNmQ0IFdPUktUUkVFLUNPTlZFTlRJT046IGBnaXQgd29ya3RyZWUgYWRkYCB0YXJnZXQgaXMgb3V0c2lkZSB0aGUgcmF0aWZpZWQgaW4tcmVwbyBsb2NhdGlvbiAoL291dHNpZGUvdzcpLiBGbGVldCBjb252ZW50aW9uLCByYXRpZmllZCBieSBFdGFuIGJ5IHZvaWNlIDIwMjYtMDgtMDk6IHdvcmt0cmVlcyBsaXZlIGF0IDxyZXBvPi8ud29ya3RyZWVzLzxuYW1lPiBcdTIwMTQgc2libGluZyBgPHJlcG8+Lnd0L2AgZGlyZWN0b3JpZXMgYXJlIGRyaWZ0ICgxOCBhY2N1bXVsYXRlZCB3aGlsZSB0aGlzIGd1YXJkIG9ubHkgQURWSVNFRCB0aGUgbG9jYXRpb24gaW5zdGVhZCBvZiBlbmZvcmNpbmcgaXQpLiBGaXhlZCBjb21tYW5kOiBnaXQgLUMgPHJlcG8+IHdvcmt0cmVlIGFkZCA8cmVwbz4vLndvcmt0cmVlcy93NyA8c2FtZSBmbGFncz4uIE1vdmluZyBhbiBleGlzdGluZyBvZmYtY29udmVudGlvbiB3b3JrdHJlZSBkdXJpbmcgdGhlIG1pZ3JhdGlvbiB3aW5kb3c/IFJlLXJ1biB3aXRoIFdFQVZFX0FMTE9XX1dUX01JR1JBVElPTj0xIFx1MjAxNCBhbGxvd2VkIEFORCBsb2dnZWQgdG8gdGhlIGR1cmFibGUgbGVkZ2VyICh0aGUgbG9nIGlzIHRoZSBieXBhc3MgZGV0ZWN0b3IpLiJ9fQ=="
+    ,"issue412-backtick-single-quote-backslash": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiBbXX0K"
+    },
+    "issue412-dollar-backtick-mixed-quotes": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiBcIiVzXCIgXCIiXX0K"
+    },
+    "issue412-dollar-nested-mixed-quotes": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiBcIiVzXCIgXCIiLCAicHJpbnRmICclcycgJyJdfQo="
+    },
+    "issue412-dollar-single-quote-paren": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiAnJXMnICciXX0K"
+    }
+  },
+  "candidate_results": {
+    "issue412-backtick-single-quote-backslash": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiBzYWZlIl19Cg=="
+    },
+    "issue412-dollar-backtick-mixed-quotes": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiBcIiVzXCIgXCIpXCI7IGVjaG8gYGNhc2UgeCBpbiB4KSBwcmludGYgc2FmZTs7IGVzYWNgOyBlY2hvIHRhaWwiXX0K"
+    },
+    "issue412-dollar-nested-mixed-quotes": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiBcIiVzXCIgXCIpXCI7IGVjaG8gJChwcmludGYgJyVzJyAnKScpOyBlY2hvIHRhaWwiXX0K"
+    },
+    "issue412-dollar-single-quote-paren": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiAnJXMnICcpJzsgZWNobyB0YWlsIl19Cg=="
     }
   }
 }

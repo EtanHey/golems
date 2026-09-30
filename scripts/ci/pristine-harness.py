@@ -77,6 +77,22 @@ for name in names:
         out[name] = {'exception': type(exc).__name__, 'message': str(exc)}
 print(json.dumps(out, sort_keys=True, ensure_ascii=False, default=repr))
 '''
+PARSER_DATA_PROBE = r'''
+import importlib.util, json, sys
+from pathlib import Path
+p = Path(sys.argv[1]) / 'skills/golem-powers/_shared/shell_parse.py'
+s = importlib.util.spec_from_file_location('shell_parse', p)
+m = importlib.util.module_from_spec(s)
+sys.modules[s.name] = m
+s.loader.exec_module(m)
+request = json.load(sys.stdin)
+try:
+    result = getattr(m, request['function'])(*request.get('args', []))
+    print(json.dumps({'result': result}, sort_keys=True, ensure_ascii=False))
+except Exception as exc:
+    print(json.dumps({'exception': type(exc).__name__, 'message': str(exc)},
+                     sort_keys=True, ensure_ascii=False))
+'''
 PARSER_HEREDOC_PROBE = r'''
 import importlib.util, json, sys
 from pathlib import Path
@@ -584,10 +600,13 @@ def capture(case, tree, scratch):
                 str(tree / "scripts/repogolem/golem-dispatch.zsh"), *launch_args]
         data = b""
     elif target in ("parser", "parser-state", "parser-identity"):
-        probe = {"parser": (PARSER_HEREDOC_PROBE if case.get("probe") == "heredoc-models" else PARSER_PROBE), "parser-state": PARSER_STATE_PROBE,
+        probe = {"parser": (PARSER_HEREDOC_PROBE if case.get("probe") == "heredoc-models"
+                            else PARSER_DATA_PROBE if case.get("probe") == "data-substitution"
+                            else PARSER_PROBE), "parser-state": PARSER_STATE_PROBE,
                  "parser-identity": IDENTITY_PROBE}[target]
         argv = [sys.executable, "-c", probe, str(tree)]
-        data = (json.dumps(case["request"]).encode() if target == "parser-state"
+        data = (json.dumps(case["request"]).encode()
+                if target == "parser-state" or case.get("probe") == "data-substitution"
                 else case.get("input", "").encode())
     elif target == "tmp-block-api":
         argv = [sys.executable, "-c", TMP_BLOCK_API_PROBE, str(tree), str(scratch / "api-copies")]
@@ -746,9 +765,12 @@ def run_locked(args, parser, cases, scratch):
         for row in mutants:
             kind = row["target"]
             subset = [case for case in cases if case["target"] == kind]
-            if kind not in baseline:
-                baseline[kind] = execute(subset, base, scratch)
-            source = base / row["path"]
+            mutation_tree = (args.candidate_root.resolve()
+                             if row.get("baseline") == "candidate" else base)
+            baseline_key = (kind, str(mutation_tree))
+            if baseline_key not in baseline:
+                baseline[baseline_key] = execute(subset, mutation_tree, scratch)
+            source = mutation_tree / row["path"]
             original = source.read_text()
             operation = row.get("operation", "replace")
             if operation == "replace":
@@ -790,11 +812,11 @@ def run_locked(args, parser, cases, scratch):
                 parser.error(f"unknown mutation operation: {row['id']}")
             try:
                 source.write_text(mutated)
-                candidate = execute(subset, base, scratch)
+                candidate = execute(subset, mutation_tree, scratch)
             finally:
                 source.write_text(original)
-            changed = [ident for ident in baseline[kind]
-                       if baseline[kind][ident] != candidate[ident]]
+            changed = [ident for ident in baseline[baseline_key]
+                       if baseline[baseline_key][ident] != candidate[ident]]
             if not changed:
                 parser.error(f"semantic mutant escaped: {row['id']} {row['description']}")
             caught[row["id"]] = changed
