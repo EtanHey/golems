@@ -127,6 +127,11 @@ instead of re-deriving the rules as prose:
 | `shell_text_without_heredoc_bodies(command)` | Removes file-write heredoc prose from destructive scans while retaining executable substitutions in unquoted heredocs. |
 | `dangerous_shell_reason(command, cwd, env)` | Combined hook-facing F8 verdict for rm breadth and destructive command patterns. |
 
+Wrapper evaluation is capped at 64 nested commands. Deeper input and any
+`RecursionError` fail closed with a value-free reason. The hook also converts
+unexpected policy-evaluation exceptions to a value-free block; only launcher or
+hook-infrastructure failures retain the `golems-fail-open.py` allow behavior.
+
 The "discard only what THIS session owns" rule is the key nuance: discarding your own
 in-session edits is fine; discarding another agent's or the user's uncommitted work is the
 footgun — prefer `git stash` so it is recoverable.

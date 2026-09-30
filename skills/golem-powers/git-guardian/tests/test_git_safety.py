@@ -7,6 +7,7 @@ rule must NOT block (the false-positive gate). Pure functions → fully determin
 import importlib.util
 import inspect
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -145,9 +146,24 @@ def test_rm_facade_forwards_replaceable_path_policy(monkeypatch):
     )
 
 
-def test_nested_sudo_rm_keeps_base_recursion_headroom():
-    blocked, reason = git_safety.is_dangerous_rm("sudo " * 900 + "rm -rf /", cwd="/", env={})
-    assert blocked and reason and "rm" in reason.lower()
+def test_rm_wrapper_depth_cap_and_recursion_fallback(monkeypatch):
+    for depth in (63, 64):
+        blocked, reason = git_safety.is_dangerous_rm(
+            "sudo " * depth + "rm -rf /", cwd="/", env={}
+        )
+        assert blocked and reason == "rm targeting root filesystem"
+    for depth in (65, 500, 1000, 5000):
+        blocked, reason = git_safety.is_dangerous_rm(
+            "sudo " * depth + "echo safe", cwd="/", env={}
+        )
+        assert blocked and reason == "wrapper nesting exceeds 64; refusing to evaluate"
+
+    monkeypatch.setattr(
+        git_safety._rm, "is_dangerous_rm", lambda *_args, **_kwargs: (_ for _ in ()).throw(RecursionError())
+    )
+    assert git_safety.is_dangerous_rm("echo safe", cwd="/", env={}) == (
+        True, "wrapper nesting exceeds 64; refusing to evaluate"
+    )
 
 
 def test_recursive_rm_facade_signatures_hide_internal_api():
@@ -164,9 +180,23 @@ def test_command_facade_forwards_replaceable_git_parser(monkeypatch):
     assert git_safety._dangerous_git_reason("git status") == "Dangerous command: git push --force"
 
 
-def test_nested_nice_force_push_keeps_base_recursion_headroom():
-    reason = git_safety._dangerous_git_reason("nice " * 900 + "git push --force origin main")
-    assert reason and "git push" in reason.lower()
+def test_git_wrapper_depth_cap_and_recursion_fallback(monkeypatch):
+    for depth in (63, 64):
+        assert git_safety._dangerous_git_reason(
+            "nice " * depth + "git push --force origin main"
+        ) == "Dangerous command: git push --force"
+    for depth in (65, 500, 1000, 5000):
+        assert git_safety._dangerous_git_reason(
+            "nice " * depth + "echo safe"
+        ) == "wrapper nesting exceeds 64; refusing to evaluate"
+
+    monkeypatch.setattr(
+        git_safety._commands, "_dangerous_git_reason",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RecursionError()),
+    )
+    assert git_safety._dangerous_git_reason("echo safe") == (
+        "wrapper nesting exceeds 64; refusing to evaluate"
+    )
 
 
 def test_recursive_command_facade_signature_hides_internal_api():
@@ -1167,6 +1197,118 @@ def test_go5_gap_recursion_is_bounded_and_fails_closed(tmp_path):
     assert git_safety.dangerous_shell_reason(nest("ls", 3), cwd=str(tmp_path), env=_home_env()) is None
     reason = git_safety.dangerous_shell_reason(nest("ls", 30), cwd=str(tmp_path), env=_home_env())
     assert reason and "too deep" in reason
+
+
+def _nested_wrapper(kind, depth, tail):
+    if kind in {"sudo", "nice", "xargs"}:
+        return f"{kind} " * depth + tail
+    if kind == "env":
+        return "env A=1 " * depth + tail
+    if kind == "env-unset":
+        return "env -u X " * depth + tail
+    if kind == "time-posix":
+        return "time -p " * depth + tail
+    if kind in {"command", "exec", "nohup", "builtin"}:
+        return f"{kind} " * depth + tail
+    if kind == "env-split":
+        return "env -S " * depth + tail
+    if kind == "find-exec":
+        return "find . -exec " * depth + tail + " {} +" * depth
+    if kind == "mixed":
+        prefixes = ("sudo ", "nice ", "xargs ", "find . -exec ")
+        command = "".join(prefixes[index % len(prefixes)] for index in range(depth)) + tail
+        return command + " {} +" * sum(index % len(prefixes) == 3 for index in range(depth))
+    raise AssertionError(kind)
+
+
+def test_wrapper_depth_matrix_fails_closed_without_reaching_python_limit(tmp_path):
+    dangerous = ("rm -rf /", "git push --force origin main")
+    broad_kinds = ("sudo", "nice", "xargs", "find-exec", "mixed")
+    boundary_kinds = (
+        "env", "env-unset", "time-posix", "command", "exec", "nohup",
+        "builtin", "env-split",
+    )
+    for kind in (*broad_kinds, *boundary_kinds):
+        depths = (63, 64, 65, 500, 1000, 5000) if kind in broad_kinds else (64, 65)
+        for depth in depths:
+            for tail in (*dangerous, "echo safe"):
+                reason = git_safety.dangerous_shell_reason(
+                    _nested_wrapper(kind, depth, tail), cwd=str(tmp_path), env={}
+                )
+                if tail == "echo safe" and depth <= 64:
+                    assert reason is None, (kind, depth, tail, reason)
+                else:
+                    assert reason, (kind, depth, tail)
+                if depth > 64:
+                    assert reason == "wrapper nesting exceeds 64; refusing to evaluate", (
+                        kind, depth, tail, reason
+                    )
+
+
+def test_env_and_time_wrappers_increment_git_policy_depth():
+    cap_reason = "wrapper nesting exceeds 64; refusing to evaluate"
+    assert git_safety._dangerous_git_reason("env A=1 " * 65 + "echo safe") == cap_reason
+    assert git_safety._dangerous_git_reason("time " * 65 + "echo safe") == cap_reason
+
+
+def test_wrapper_depth_accumulates_across_shell_payload_scanners(tmp_path):
+    cap_reason = "wrapper nesting exceeds 64; refusing to evaluate"
+    command = "sudo " * 40 + "bash -c " + shlex.quote("sudo " * 30 + "echo safe")
+    assert git_safety.is_dangerous_rm(command, cwd=str(tmp_path), env={}) == (
+        True, cap_reason,
+    )
+    assert git_safety._dangerous_git_reason(command) == cap_reason
+
+
+def test_shell_forwards_accumulated_depth_to_rm_scanner(monkeypatch):
+    observed = []
+
+    def inspect_rm(_command, *, cwd=None, env=None, _depth):
+        observed.append(_depth)
+        return False, None
+
+    monkeypatch.setattr(git_safety, "_is_dangerous_rm_at_depth", inspect_rm)
+    monkeypatch.setattr(git_safety, "_dangerous_git_reason_at_depth", lambda *_args, **_kwargs: None)
+    assert git_safety.dangerous_shell_reason("echo safe", _depth=8) is None
+    assert observed == [8]
+
+
+def test_find_memo_keeps_depth_in_same_exec_index_key():
+    cap_reason = "wrapper nesting exceeds 64; refusing to evaluate"
+    words = ["find", ".", "-exec", "echo", "safe", "{}", "+"]
+    find_cache = {}
+    assert git_safety._commands._dangerous_non_rm_in_words(
+        git_safety.__dict__, words, _depth=63, _find_cache=find_cache,
+    ) is None
+    assert git_safety._commands._dangerous_non_rm_in_words(
+        git_safety.__dict__, words, _depth=64, _find_cache=find_cache,
+    ) == cap_reason
+
+
+def test_find_exec_boundaries_do_not_skip_later_sibling_commands(tmp_path):
+    for harmless_args in ("safe", "-exec"):
+        assert git_safety.dangerous_shell_reason(
+            f"find . -exec echo {harmless_args} {{}} + -exec rm -rf / {{}} +",
+            cwd=str(tmp_path), env={},
+        ) == "rm targeting root filesystem"
+        assert git_safety.dangerous_shell_reason(
+            f"find . -exec echo {harmless_args} {{}} + -exec git push --force origin main {{}} +",
+            cwd=str(tmp_path), env={},
+        ) == "Dangerous command: git push --force"
+    assert git_safety.dangerous_shell_reason(
+        "find . -exec echo one {} + -exec echo two {} +",
+        cwd=str(tmp_path), env={},
+    ) is None
+
+
+def test_shell_policy_recursion_error_fails_closed(monkeypatch):
+    monkeypatch.setattr(
+        git_safety._shell, "dangerous_shell_reason",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RecursionError()),
+    )
+    assert git_safety.dangerous_shell_reason("echo safe") == (
+        "wrapper nesting exceeds 64; refusing to evaluate"
+    )
 
 
 # GO-5 (r7 on #233): markdown code spans in a PR body / commit recipe written

@@ -26,6 +26,12 @@ def _literal_loop(command: str, *, api: dict):
 
 def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _depth: int = 0, api: dict):
     """Return the tracked git-guardian block reason, or None."""
+    # AIDEV-NOTE: the execution-depth limit below currently shadows this on
+    # recursive payload paths. Keep the wrapper cap as belt-and-braces so this
+    # entry point preserves the shared policy invariant if that stricter limit
+    # changes or a caller supplies an already-accumulated wrapper depth.
+    if _depth > api['_MAX_WRAPPER_DEPTH']:
+        return api['_wrapper_depth_reason']()
     if _depth > api['_MAX_EXECUTION_DEPTH']:
         return (
             f"Dangerous command: nested execution too deep to check "
@@ -48,10 +54,12 @@ def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _d
         nested_reason = api['dangerous_shell_reason'](body, cwd=cwd, env=env, _depth=_depth + 1)
         if nested_reason:
             return nested_reason
-    blocked, reason = api['is_dangerous_rm'](command, cwd=cwd, env=env)
+    blocked, reason = api['_is_dangerous_rm_at_depth'](
+        command, cwd=cwd, env=env, _depth=_depth
+    )
     if blocked:
         return reason
-    git_reason = api['_dangerous_git_reason'](active)
+    git_reason = api['_dangerous_git_reason_at_depth'](active, _depth=_depth)
     if git_reason:
         return git_reason
     return None

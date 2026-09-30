@@ -32,10 +32,16 @@ def _rm_reason_in_words(
     *,
     dynamic_input: bool = False,
     argument_variables: dict[str, str] | None = None,
+    _depth: int = 0,
+    _find_cache: dict[tuple, str | None] | None = None,
 ) -> str | None:
     """Inspect command positions, including wrapper-owned nested commands."""
+    if _depth > api["_MAX_WRAPPER_DEPTH"]:
+        return api["_wrapper_depth_reason"]()
     if argument_variables is None:
         argument_variables = variables
+    if _find_cache is None:
+        _find_cache = {}
     while (
         position < len(words)
         and words[position].lower() in api["_SHELL_CONTROL_PREFIXES"]
@@ -51,13 +57,16 @@ def _rm_reason_in_words(
             "-p", "--prompt", "-C", "--close-from", "-a",
         } if command_name == "sudo" else set()
         nested = api["_skip_options"](words, position + 1, option_values)
-        return api["_rm_reason_in_words"](
+        return _rm_reason_in_words(
+            api,
             words,
             nested,
             cwd,
             variables,
             dynamic_input=dynamic_input,
             argument_variables=argument_variables,
+            _depth=_depth + 1,
+            _find_cache=_find_cache,
         )
 
     if command_name == "env":
@@ -76,13 +85,16 @@ def _rm_reason_in_words(
                 split_words = shlex.split(split_value)
             except ValueError:
                 return "rm command carried by env split-string cannot be parsed safely"
-            return api["_rm_reason_in_words"](
+            return _rm_reason_in_words(
+                api,
                 split_words + words[remainder:],
                 0,
                 cwd,
                 variables,
                 dynamic_input=dynamic_input,
                 argument_variables=argument_variables,
+                _depth=_depth + 1,
+                _find_cache={},
             )
         nested = api["_skip_options"](
             words,
@@ -99,39 +111,48 @@ def _rm_reason_in_words(
             if complete:
                 local_variables[assignment.group(1)] = os.path.expanduser(expanded)
             nested += 1
-        return api["_rm_reason_in_words"](
+        return _rm_reason_in_words(
+            api,
             words,
             nested,
             cwd,
             local_variables,
             dynamic_input=dynamic_input,
             argument_variables=argument_variables,
+            _depth=_depth + 1,
+            _find_cache=_find_cache,
         )
 
     if command_name == "time":
         nested = api["_skip_options"](
             words, position + 1, {"-o", "--output", "-f", "--format"}
         )
-        return api["_rm_reason_in_words"](
+        return _rm_reason_in_words(
+            api,
             words,
             nested,
             cwd,
             variables,
             dynamic_input=dynamic_input,
             argument_variables=argument_variables,
+            _depth=_depth + 1,
+            _find_cache=_find_cache,
         )
 
     if command_name == "nice":
         nested = api["_skip_options"](
             words, position + 1, {"-n", "--adjustment"}
         )
-        return api["_rm_reason_in_words"](
+        return _rm_reason_in_words(
+            api,
             words,
             nested,
             cwd,
             variables,
             dynamic_input=dynamic_input,
             argument_variables=argument_variables,
+            _depth=_depth + 1,
+            _find_cache=_find_cache,
         )
 
     if command_name in {"bash", "sh", "zsh", "dash", "ksh"}:
@@ -140,8 +161,8 @@ def _rm_reason_in_words(
             if option == "--command" or (
                 option.startswith("-") and not option.startswith("--") and "c" in option[1:]
             ):
-                blocked, reason = api["is_dangerous_rm"](
-                    words[index + 1], cwd=cwd, env=variables
+                blocked, reason = is_dangerous_rm(
+                    api, words[index + 1], cwd=cwd, env=variables, _depth=_depth + 1
                 )
                 return reason if blocked else None
         return None
@@ -149,14 +170,27 @@ def _rm_reason_in_words(
     if command_name == "find":
         for index in range(position + 1, len(words)):
             if words[index] in {"-exec", "-execdir"}:
-                reason = api["_rm_reason_in_words"](
-                    words,
-                    index + 1,
-                    cwd,
-                    variables,
-                    dynamic_input=dynamic_input,
-                    argument_variables=argument_variables,
+                # Preserve the conservative sibling scan: token-only parsing cannot
+                # safely decide which `{}` terminator belongs to a nested find.
+                # Memoization bounds repeated safe nested chains without skipping
+                # a later destructive -exec clause.
+                cache_key = (
+                    id(words), index + 1, _depth + 1, dynamic_input,
+                    id(variables), id(argument_variables),
                 )
+                if cache_key not in _find_cache:
+                    _find_cache[cache_key] = _rm_reason_in_words(
+                        api,
+                        words,
+                        index + 1,
+                        cwd,
+                        variables,
+                        dynamic_input=dynamic_input,
+                        argument_variables=argument_variables,
+                        _depth=_depth + 1,
+                        _find_cache=_find_cache,
+                    )
+                reason = _find_cache[cache_key]
                 if reason:
                     return reason
         return None
@@ -171,13 +205,16 @@ def _rm_reason_in_words(
                 "--max-args", "-P", "--max-procs", "-s", "--max-chars",
             },
         )
-        return api["_rm_reason_in_words"](
+        return _rm_reason_in_words(
+            api,
             words,
             nested,
             cwd,
             variables,
             dynamic_input=True,
             argument_variables=argument_variables,
+            _depth=_depth + 1,
+            _find_cache=_find_cache,
         )
 
     if command_name != "rm":
@@ -199,8 +236,15 @@ def _rm_reason_in_words(
     return None
 
 
-def is_dangerous_rm(api: dict, command: str, *, cwd: str | None = None, env=None):
+def is_dangerous_rm(
+    api: dict, command: str, *, cwd: str | None = None, env=None, _depth: int = 0,
+    _find_cache: dict[tuple, str | None] | None = None,
+):
     """Return `(blocked, reason)` after resolving cwd and shell assignments."""
+    if _depth > api["_MAX_WRAPPER_DEPTH"]:
+        return True, api["_wrapper_depth_reason"]()
+    if _find_cache is None:
+        _find_cache = {}
     active = api["shell_text_without_heredoc_bodies"](command)
     lexer = shlex.shlex(
         active.replace("\n", " ; "),
@@ -323,12 +367,15 @@ def is_dangerous_rm(api: dict, command: str, *, cwd: str | None = None, env=None
                 current = ""
             continue
 
-        reason = api["_rm_reason_in_words"](
+        reason = _rm_reason_in_words(
+            api,
             words,
             position,
             current,
             local_variables,
             argument_variables=argument_variables,
+            _depth=_depth,
+            _find_cache=_find_cache,
         )
         if reason:
             return True, reason
