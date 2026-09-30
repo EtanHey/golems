@@ -15,14 +15,12 @@ const redDir = path.join(here, "fixtures", "red");
 const greenDir = path.join(here, "fixtures", "green");
 
 function loadFixtures(dir) {
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => ({ file: f, ...JSON.parse(readFileSync(path.join(dir, f), "utf8")) }));
+  return readdirSync(dir).filter(f => f.endsWith(".json")).sort()
+    .map(f => ({ file: f, ...JSON.parse(readFileSync(path.join(dir, f), "utf8")) }));
 }
 
-const reds = loadFixtures(redDir);
-const greens = loadFixtures(greenDir);
+const reds = [...loadFixtures(redDir), ...loadFixtures(path.join(here, "scope", "fixtures", "red"))];
+const greens = [...loadFixtures(greenDir), ...loadFixtures(path.join(here, "scope", "fixtures", "green"))];
 
 test("fixture coverage: original corpus plus goal-required RED/GREEN cases present", () => {
   expect(reds.length).toBeGreaterThanOrEqual(19);
@@ -53,7 +51,7 @@ test("replay is deterministic", () => {
 });
 
 test("a completion claim with NO probe of any kind is always a FLAG", () => {
-  const bare = { events: [{ role: "assistant", text: "All done ✅ everything works." }] };
+  const bare = "All done ✅ everything works.";
   expect(detectFalseGreen(bare).verdict).toBe("FLAG");
 });
 
@@ -99,3 +97,51 @@ test("a newline separates a completion claim from a deferred marker", () => {
   expect(result.verdict).toBe("FLAG");
   expect(result.violations.map(v => v.code)).toContain("FALSE_GREEN_LIVE_PROBE");
 });
+
+
+const claim = { role: "assistant", text: "✅ fixed." };
+const tools = (names, role = "assistant") => ({ role, tools: names.map(name => ({ name, input: {} })) });
+
+test("scope defaults to delivery claims regardless of seat or earlier activity", () => {
+  for (const events of [[claim], [tools(["Edit"]), { role: "user", text: "Next drill" }, claim]]) {
+    expect(detectFalseGreen({ seat: "coachClaude", events }).verdict).toBe("FLAG");
+  }
+});
+
+for (const name of ["voice_ask", "voice_speak", "brain_search", "brain_recall", "brain_expand", "AskUserQuestion",
+  "mcp__voicelayer__voice_ask", "mcp__voicelayer__voice_speak", "mcp__brainlayer__brain_search",
+  "mcp__brainlayer__brain_recall", "mcp__brainlayer__brain_expand"]) {
+  test(`closed conversational allowlist exempts ${name}`, () => {
+    expect(detectFalseGreen({ events: [tools([name]), claim] }).verdict).toBe("PASS");
+  });
+}
+
+for (const name of ["Bash", "Edit", "Write", "NotebookEdit", "MultiEdit", "apply_patch", "Agent", "Task", "shell", "exec_command",
+  "mcp__github__create_pull_request", "mcp__git__git_push", "mcp__brainlayer__brain_store", "mcp__cmuxlayer__read_screen",
+  "mcp__unknown__voice_ask", "mcp__unknown__brain_search", "voice_ask_extra"]) {
+  test(`unknown or operational tool ${name} prevents conversational exemption`, () => {
+    const result = detectFalseGreen({ seat: "coachClaude", events: [tools(["voice_ask", name]), { role: "assistant", text: "✅ deployed." }] });
+    expect(result.violations.map(v => v.code)).toContain("FALSE_GREEN_STAMP");
+  });
+}
+
+test("A03: oversized Bash cannot turn parser exhaustion into a conversational exemption", () => {
+  expect(detectFalseGreen({ events: [{ role: "assistant", tools: [{ name: "Bash", input: { command: "x".repeat(100_000) } }] }, claim] }).verdict).toBe("FLAG");
+});
+
+test("A13: user and tool events cannot establish a conversational exemption", () => {
+  for (const role of ["user", "tool"]) {
+    expect(detectFalseGreen({ events: [tools(["voice_ask"], role), claim] }).verdict).toBe("FLAG");
+    expect(detectFalseGreen({ events: [tools(["Bash"], role), tools(["voice_ask"]), claim] }).verdict).toBe("PASS");
+  }
+});
+
+test("only the current turn can establish a conversational exemption", () => {
+  expect(detectFalseGreen({ events: [tools(["voice_ask"]), { role: "user", text: "Ship it" }, claim] }).verdict).toBe("FLAG");
+});
+
+for (const command of ['git status', 'echo "git commit -m fix"', "gh api repos/example/repo/pulls/1/merge", "gh run list"]) {
+  test(`A14: every Bash call stays in scope: ${command}`, () => {
+    expect(detectFalseGreen({ events: [{ role: "assistant", tools: [{ name: "Bash", input: { command } }] }, { role: "assistant", text: "✅ deployed." }] }).verdict).toBe("FLAG");
+  });
+}

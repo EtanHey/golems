@@ -1,0 +1,24 @@
+{
+  "specimen": "fleet-wrap/fp-background-collab-watch-exits-on-event",
+  "label": "GREEN EXPECTED-FAIL-TODAY — a read-only background watch that exits on the first matching collab event is event-driven monitoring, not a forgotten poll (observed 2026-09-30 FLEETWRAP_LOOP_ALIVE)",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "run_in_background": true,
+            "command": "f=collab/topic.md; n=$(wc -l < \"$f\"); while true; do sleep 10; m=$(wc -l < \"$f\"); if [ \"$m\" -gt \"$n\" ]; then hit=$(sed -n \"$((n+1)),${m}p\" \"$f\" | awk '/^### / && /→ *orc/ {print}'); if [ -n \"$hit\" ]; then echo \"$hit\"; exit 0; fi; fi; n=$m; done",
+            "description": "Re-arm the collab watch for the next post to orc"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Visual re-bench result posted. The routing PR is in progress: Codex implements, skill-creator reviews, golems merges. Back to silent, standing by for Etan."
+    }
+  ]
+}

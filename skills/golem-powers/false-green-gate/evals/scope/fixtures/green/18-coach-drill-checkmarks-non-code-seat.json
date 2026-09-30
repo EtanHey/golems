@@ -1,0 +1,33 @@
+{
+  "specimen": "false-green/fp-coach-drill-checkmarks-non-code-seat",
+  "label": "GREEN EXPECTED-FAIL-TODAY \u2014 interview-drill scoring in a non-code seat, not a completion claim (observed 2026-09-30 FALSE_GREEN_LIVE_PROBE)",
+  "expect": "PASS",
+  "repo_diff_this_turn": false,
+  "events": [
+    {
+      "role": "user",
+      "text": "Here's my answer for the next drill question."
+    },
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "mcp__voicelayer__voice_ask",
+          "input": {
+            "message": "Here is the next coaching prompt."
+          }
+        },
+        {
+          "name": "mcp__voicelayer__voice_ask",
+          "input": {
+            "message": "Here is the next coaching prompt."
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Today's drill so far: \u2705 opener, \u2705 both bugs, \u2705 the fix. The next answer comes back in the 16:30 set."
+    }
+  ]
+}

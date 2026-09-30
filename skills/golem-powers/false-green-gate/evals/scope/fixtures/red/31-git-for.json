@@ -1,0 +1,22 @@
+{
+  "specimen": "false-green/scope-git-for",
+  "expect": "FLAG",
+  "violation": "FALSE_GREEN_LIVE_PROBE",
+  "events": [
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "for x in main; do git push origin \"$x\"; done"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "\u2705 fixed."
+    }
+  ]
+}

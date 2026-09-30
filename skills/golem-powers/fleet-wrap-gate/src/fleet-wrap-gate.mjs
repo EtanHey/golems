@@ -36,6 +36,7 @@
 import { eligibleReportPath } from "../lib/report-reader.mjs";
 import { isGhPrMerge, parseShell, writeTargets, writtenText } from "../lib/shell-commands.mjs";
 import { normalizeTranscript, currentTurn } from "../lib/transcript.mjs";
+import { isReadOnlyEventWatch } from "../lib/event-watch.mjs";
 
 // ── Terminal / stand-down state ─────────────────────────────────────────────
 // The markers that say "the fleet has wrapped / is standing down / the work is
@@ -61,7 +62,7 @@ const NON_TERMINAL_RE =
 // ── Cron / loop ARMING (a still-live poller) ────────────────────────────────
 // Tool NAMES that arm a recurring cron/schedule.
 const CRON_CREATE_TOOL_RE =
-  /(croncreate|cron_create|schedulecreate|schedule_create|createcron|tasksschedule|scheduletask|schedule_task|scheduled_task_create)/i;
+  /(croncreate|cron_create|schedulecreate|schedule_create|createcron|tasksschedule|scheduletask|schedule_task|scheduled_task_create|schedulewakeup|schedule_wakeup)/i;
 // Bash / command markers that arm a poll loop or a recurring timer.
 //   - `/loop` slash command (a recurring tick)
 //   - `sleep N` inside a `while`/`until`/`for ... seq` poll loop, or `sleep && <recheck>`
@@ -250,6 +251,9 @@ function liveStateEntries(state, sessionId) {
         text: recordText(record),
         record,
       };
+      // A task registry can retain the actual Bash input. Only that complete
+      // execution shape can establish the exemption, never a description.
+      if (source === "tasks" && !isCronRecord(record, source) && isReadOnlyEventWatch(record)) continue;
       if (isInboundRecord(record)) {
         inboundMonitors.push(entry);
         continue;
@@ -318,14 +322,14 @@ function buildEvidence(turn) {
     if (ev.role === "tool" && ev.text) narrative.push(ev.text);
     for (const t of ev.tools ?? []) {
       const name = baseName(t.name ?? "");
-      if (CRON_CREATE_TOOL_RE.test(name)) {
+      if (CRON_CREATE_TOOL_RE.test(name) && !(/^schedule_?wakeup$/i.test(name) && t.input?.stop === true)) {
         armedTools.push(name);
         armedCount += 1;
         const payload = cronPayloadText(t.input);
         if (payload) cronPayloads.push(payload);
       }
       if (CRON_DELETE_TOOL_RE.test(name)) clearTools.push(name);
-      if (name === "Bash" && typeof t.input?.command === "string") {
+      if (name === "Bash" && typeof t.input?.command === "string" && !isReadOnlyEventWatch(t.input)) {
         armedCmds.push(t.input.command);
       }
     }

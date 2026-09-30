@@ -26,9 +26,11 @@ TIMEOUT_SECONDS = float(os.environ.get("FALSE_GREEN_GATE_TIMEOUT_SECONDS", "0.5"
 
 def load_cases() -> list[tuple[str, Path, dict]]:
     cases: list[tuple[str, Path, dict]] = []
-    for group in ("green", "red"):
-        for path in sorted((FIXTURES / group).glob("*.json")):
-            cases.append((group, path, json.loads(path.read_text())))
+    for root in (FIXTURES, FIXTURES.parent / "scope" / "fixtures"):
+        for group in ("green", "red"):
+            for path in sorted((root / group).glob("*.json")):
+                fixture = json.loads(path.read_text())
+                cases.append((group, path, fixture))
     return cases
 
 
@@ -118,7 +120,7 @@ def verify_transcript_path_jsonl() -> tuple[bool, str]:
             "type": "assistant",
             "message": {
                 "role": "assistant",
-                "content": [{"type": "text", "text": "Fixed. Everything is working now."}],
+                "content": [{"type": "tool_use", "name": "Edit", "input": {"file_path": "src/example.ts"}}, {"type": "text", "text": "Fixed. Everything is working now."}],
             },
         },
     ]

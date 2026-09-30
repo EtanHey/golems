@@ -1,0 +1,24 @@
+{
+  "specimen": "fleet-wrap/forgotten-sleep-poll-after-done",
+  "label": "RED — a forgotten periodic poll at stand-down must keep firing.",
+  "expect": "FLAG",
+  "violation": "FLEETWRAP_LOOP_ALIVE",
+  "events": [
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "run_in_background": true,
+            "command": "while true; do sleep 300; gh pr list --repo o/r --state open; done"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "All lanes merged, standing down."
+    }
+  ]
+}

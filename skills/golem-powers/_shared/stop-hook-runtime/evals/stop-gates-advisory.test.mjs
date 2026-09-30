@@ -15,7 +15,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const powersRoot = path.resolve(here, "../../..");
 
 const GATES = [
-  ["false-green-gate", "01-stale-app-stamp.json"],
+  ["false-green-gate", "22-code-fix-checkmark-no-live-probe.json", "scope/fixtures"],
   ["fleet-wrap-gate", "01-healthwatch-cron-left-armed.json"],
   ["qa-verdict-gate", "01-fail-page-never-loaded.json"],
 ];
@@ -27,12 +27,13 @@ function runHook(gate, payload) {
   return JSON.parse(result.stdout);
 }
 
-for (const [gate, fixtureName] of GATES) {
+for (const [gate, fixtureName, fixtureDir = "fixtures"] of GATES) {
   test(`${gate} turns a flagged stop into an advisory, never a block`, () => {
-    const fixture = readFixture(path.join(powersRoot, gate, "evals", "fixtures", "red", fixtureName));
+    const fixture = readFixture(path.join(powersRoot, gate, "evals", fixtureDir, "red", fixtureName));
     const output = runHook(gate, fixture);
     expect(output.decision).toBeUndefined();
     expect(output.systemMessage).toStartWith(`${gate.toUpperCase()} advisory`);
+    expect(output.systemMessage).toContain(fixture.violation);
   });
 }
 

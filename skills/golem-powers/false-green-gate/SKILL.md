@@ -10,7 +10,14 @@ disable-model-invocation: true
 
 ## Scope
 
-The probe must be a same-turn live-outcome probe.
+The gate stays in scope by default, including no-tool completion claims. It
+exempts only a turn with at least one assistant tool call where every call is
+on the closed conversational allowlist: `voice_ask`, `voice_speak`, `brain_search`,
+`brain_recall`, `brain_expand`, or `AskUserQuestion`, including the exact
+VoiceLayer and BrainLayer MCP names for those tools. Bash, edits, delegation,
+Codex shell/exec, other MCP tools, and cmux tools keep the turn in scope. Seat
+names and claimed repo-diff metadata do not determine scope. A coach using
+Bash is gated; a voice-only coaching drill is exempt. Probes must be same-turn.
 
 ## What It Is
 
@@ -19,6 +26,10 @@ turn carries the live-outcome probe its claim domain requires. This is the MECHA
 `/deploy-verify` and `/never-fabricate` describe in prose — "manual gates drift, automated gates don't."
 The pinned RED/GREEN transcript fixtures ARE the replayable gate (R-003/R-014 pattern, consumed in the
 T6 deterministic-CU smoke-spec shape).
+
+The historical `evals/fixtures/` corpus is pinned for Jev replay. This gate's
+suites replay it unchanged, with no synthetic activity. New scope contracts
+live in `evals/scope/fixtures/`, outside the Jev preflight tree.
 
 ## The Rule — required same-turn probe by claim domain
 

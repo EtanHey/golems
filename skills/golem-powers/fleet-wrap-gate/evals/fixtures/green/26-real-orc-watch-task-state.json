@@ -1,0 +1,37 @@
+{
+  "specimen": "fleet-wrap/real-orc-jsonl-event-watch-shape",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "f=collab/topic.md; n=$(wc -l < \"$f\"); while true; do sleep 10; m=$(wc -l < \"$f\"); if [ \"$m\" -gt \"$n\" ]; then hit=$(sed -n \"$((n+1)),${m}p\" \"$f\" | awk '/^### / && !/^### exampleLead/ && !/ACK/ && !/Sol 6.1 poll/ && /(\u2192 *@?orc|@orc|CONVERGED|HALTED|DEPLOY-END)/ {print substr($0,1,220)}'); if [ -n \"$hit\" ]; then echo \"$hit\"; exit 0; fi; fi; n=$m; done",
+            "run_in_background": true
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "text": "Task is running in background with ID: watch-task"
+    },
+    {
+      "role": "assistant",
+      "text": "Back to silent, standing by for Etan."
+    }
+  ],
+  "state": {
+    "tasks": [
+      {
+        "id": "watch-task",
+        "status": "running",
+        "type": "bash",
+        "command": "f=collab/topic.md; n=$(wc -l < \"$f\"); while true; do sleep 10; m=$(wc -l < \"$f\"); if [ \"$m\" -gt \"$n\" ]; then hit=$(sed -n \"$((n+1)),${m}p\" \"$f\" | awk '/^### / && !/^### exampleLead/ && !/ACK/ && !/Sol 6.1 poll/ && /(\u2192 *@?orc|@orc|CONVERGED|HALTED|DEPLOY-END)/ {print substr($0,1,220)}'); if [ -n \"$hit\" ]; then echo \"$hit\"; exit 0; fi; fi; n=$m; done",
+        "run_in_background": true
+      }
+    ]
+  }
+}

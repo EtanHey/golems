@@ -25,6 +25,17 @@
 // replayable gate (R-003/R-014 pattern).
 
 import { normalizeTranscript, currentTurn, claimSearchText } from "../lib/transcript.mjs";
+// Scope defaults to delivery verification. Only positive evidence of a purely
+// conversational current turn exempts it; unknown tools always stay in scope.
+const CONVERSATIONAL_TOOLS = new Set([
+  "voice_ask", "voice_speak", "brain_search", "brain_recall", "brain_expand", "AskUserQuestion",
+  "mcp__voicelayer__voice_ask", "mcp__voicelayer__voice_speak",
+  "mcp__brainlayer__brain_search", "mcp__brainlayer__brain_recall", "mcp__brainlayer__brain_expand",
+]);
+function isPureConversation(turn) {
+  const tools = turn.filter(e => e.role === "assistant").flatMap(e => e.tools ?? []);
+  return tools.length > 0 && tools.every(t => CONVERSATIONAL_TOOLS.has(t.name));
+}
 
 // ── A completion claim ──────────────────────────────────────────────────────
 // Includes the bare `TASK_DONE` sentinel — `\bdone\b` does NOT match it (`_` is a
@@ -232,6 +243,9 @@ function voiceResolved(ev) {
 export function detectFalseGreen(transcript) {
   const events = normalizeTranscript(transcript);
   const turn = currentTurn(events);
+  if (isPureConversation(turn)) {
+    return { verdict: "PASS", claim: false, domains: [], violations: [] };
+  }
   const ev = buildEvidence(turn);
   // Claim AND evidence are both scoped to the CURRENT turn (cursor MEDIUM): if a
   // later human turn ("thanks") follows an already-probed "done", the current
