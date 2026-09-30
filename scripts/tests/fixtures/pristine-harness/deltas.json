@@ -556,5 +556,122 @@
     },
     "case": "tmp-w7-r1-hits-authoritative-primary-path",
     "reason": "An unresolved inner reassignment selects the temporary target hit in the API capture."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-state-sequential-composition",
+    "reason": "Carry each guaranteed assignment forward when composing later static path values."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-state-unset-removes-head",
+    "reason": "Treat unset as replacing the earlier literal head so stale temporary state is not retained."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-state-unknown-replaces-head",
+    "reason": "Replace an earlier literal head with unresolved state when a later guaranteed assignment is unknown."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-state-known-replaces-head",
+    "reason": "Replace an earlier temporary head with the later guaranteed durable assignment."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-state-conditional-replaces-head",
+    "reason": "Treat a conditionally executed reassignment as unresolved instead of trusting either stale branch."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-state-pipeline-does-not-replace",
+    "reason": "Keep the parent-shell value when a pipeline-local assignment cannot mutate the later parent command."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-array-256",
+    "reason": "Preserve the bounded 256-element literal-array limit while invalidating full-array assignment state."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-loop-256",
+    "reason": "Preserve the bounded 256-member loop value set with scope-aware assignment tracking."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-array-257",
+    "reason": "Keep 257-element literal arrays beyond the static-value limit unresolved."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-loop-257",
+    "reason": "Keep 257-member loop expansions beyond the static-value limit unresolved."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-case-normal",
+    "reason": "Preserve the selected literal case-arm value set under scope-aware assignment tracking."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-case-fallthrough",
+    "reason": "Keep case fallthrough values unresolved because multiple arms may mutate the subject."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e7206bdb9d9717851e9f2ab5cb9bd30879085071a5acd5389ef81608546f2553",
+      "linux": "f6e8036c4628c1444682d11edf8ea1c41409dc187848aae8b2205f3ef541e2bd"
+    },
+    "case": "tmp-w7-case-rescan",
+    "reason": "Keep case rescan values unresolved because subsequent pattern evaluation is not a single bounded assignment."
   }
 ]
