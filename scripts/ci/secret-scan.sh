@@ -46,6 +46,8 @@ printf '%s\n' '(^|/)\.git/' > "$work/tree-exclude-paths"
 # --results=verified,unknown: fail on a credential the provider confirmed live,
 # and on one whose verification could not finish (fail closed). A match the
 # provider rejected (unverified) is not reported: test fixtures and dead keys.
+# The comma is part of TruffleHog's single --results value.
+# shellcheck disable=SC2054
 scan_flags=(--no-update --fail --json --results=verified,unknown)
 scanner_env=()
 annotate=1
@@ -136,13 +138,6 @@ cmd_scan() {
   return "$worst"
 }
 
-# random_chars <tr-set> <n>
-random_chars() {
-  local pool
-  pool=$(head -c 4096 /dev/urandom | LC_ALL=C tr -dc "$1")
-  printf '%s' "${pool:0:$2}"
-}
-
 canary_files=(credentials dist/credentials build/credentials node_modules/canary-pkg/credentials)
 
 # expect_canary <want-status> <scan function and args...>: status 1 must flag
@@ -169,16 +164,30 @@ expect_canary() {
   return "$missing"
 }
 
-# write_canary <path>: a fresh AWS-key-shaped credential. Generated here and
-# never printed; the literal never exists in git.
+# rotate_canary_alphabet <alphabet> <offset>: preserves length and entropy.
+rotate_canary_alphabet() {
+  local alphabet=$1 offset=$2
+  printf '%s%s' "${alphabet:offset}" "${alphabet:0:offset}"
+}
+
+# write_canary <path> <ordinal>: a distinct AWS-key-shaped credential with
+# entropy guaranteed above TruffleHog 3.97.9's ID (3.0) and secret (4.25)
+# thresholds. The fixed unique-character alphabets make the values obviously
+# synthetic; rotating them per path keeps every planted pair distinct. The
+# complete credential literals never exist in git and are never printed.
 write_canary() {
-  mkdir -p "$(dirname "$1")"
+  local target=$1 ordinal=$2 id_alphabet secret_alphabet id_suffix secret
+  id_alphabet='BCDEFGHJ''LMNPQ234'
+  secret_alphabet='ABCDEFGHIJKLMNOPQRST''uvwxyz0123456789/+UV'
+  id_suffix=$(rotate_canary_alphabet "$id_alphabet" "$ordinal")
+  secret=$(rotate_canary_alphabet "$secret_alphabet" "$ordinal")
+  mkdir -p "$(dirname "$target")"
   printf '[default]\naws_access_key_id = %s\naws_secret_access_key = %s\n' \
-    "AK""IA$(random_chars 'A-Z2-7' 16)" "$(random_chars 'A-Za-z0-9/+' 40)" > "$1"
+    "AK""IA$id_suffix" "$secret" > "$target"
 }
 
 cmd_canary() {
-  local repo="$work/canary-repo" clean="$work/canary-clean" base head file failed=0
+  local repo="$work/canary-repo" clean="$work/canary-clean" base head file ordinal=0 failed=0
   mkdir -p "$repo" "$clean"
   git -C "$repo" init -q
   git -C "$repo" config user.name "Secret Scanning canary"
@@ -187,7 +196,10 @@ cmd_canary() {
   git -C "$repo" add README && git -C "$repo" commit -q -m base || return 2
   base=$(git -C "$repo" rev-parse HEAD)
   # One per file: a scanner may report a repeated value once.
-  for file in "${canary_files[@]}"; do write_canary "$repo/$file"; done
+  for file in "${canary_files[@]}"; do
+    write_canary "$repo/$file" "$ordinal"
+    ordinal=$((ordinal + 1))
+  done
   git -C "$repo" add -A && git -C "$repo" commit -q -m canary || return 2
   head=$(git -C "$repo" rev-parse HEAD)
 

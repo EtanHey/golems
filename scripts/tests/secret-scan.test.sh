@@ -142,6 +142,118 @@ expect_canary_red() {
 expect_canary_red "canary is red when the scanner finds nothing" "" 0
 expect_canary_red "canary is red when the scanner flags a clean tree" "$finding" 183
 
+# Audit the actual canary files through the wrapper's scanner boundary. This
+# independently computes the same Shannon entropy used by TruffleHog 3.97.9
+# and requires a 0.25-bit margin above its 3.0 ID and 4.25 secret thresholds.
+# It also rejects repeated IDs or secrets, since each planted path needs a
+# distinct pair for the four-path coverage assertion to be meaningful.
+entropy_log="$suite_root/canary-entropy.log"
+entropy_scanner="$suite_root/entropy-trufflehog"
+cat > "$entropy_scanner" <<'ENTROPY_STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+
+kind=${1:?missing scanner kind}
+source_path=${2:?missing scanner source}
+case $kind in
+  git) repo=${source_path#file://}; metadata=Git ;;
+  filesystem) repo=$source_path; metadata=Filesystem ;;
+  *) exit 2 ;;
+esac
+
+shannon_entropy() {
+  LC_ALL=C awk -v value="$1" 'BEGIN {
+    length_value = length(value)
+    for (i = 1; i <= length_value; i++) counts[substr(value, i, 1)]++
+    entropy = 0
+    for (character in counts) {
+      probability = counts[character] / length_value
+      entropy -= probability * log(probability) / log(2)
+    }
+    printf "%.12f", entropy
+  }'
+}
+
+entropy_at_least() {
+  awk -v actual="$1" -v minimum="$2" 'BEGIN { exit !(actual >= minimum) }'
+}
+
+already_seen() {
+  local needle=$1 value
+  shift
+  for value in "$@"; do
+    [[ $value == "$needle" ]] && return 0
+  done
+  return 1
+}
+
+# The empty sentinel keeps Bash 3.2's nounset mode from rejecting an expansion
+# of an empty array before the first credential is checked.
+seen_ids=('')
+seen_secrets=('')
+found=0
+for file in credentials dist/credentials build/credentials node_modules/canary-pkg/credentials; do
+  case $kind in
+    git) content=$(git -C "$repo" show "HEAD:$file" 2>/dev/null || true) ;;
+    filesystem)
+      [[ -f "$repo/$file" ]] || continue
+      content=$(<"$repo/$file")
+      ;;
+  esac
+  id=$(sed -n 's/^aws_access_key_id = //p' <<<"$content")
+  secret=$(sed -n 's/^aws_secret_access_key = //p' <<<"$content")
+  [[ -n $id && -n $secret ]] || continue
+
+  id_entropy=$(shannon_entropy "$id")
+  secret_entropy=$(shannon_entropy "$secret")
+  if ! entropy_at_least "$id_entropy" 3.25; then
+    printf 'ID entropy below 3.25 in %s: %s\n' "$file" "$id_entropy" >&2
+    exit 2
+  fi
+  if ! entropy_at_least "$secret_entropy" 4.50; then
+    printf 'secret entropy below 4.50 in %s: %s\n' "$file" "$secret_entropy" >&2
+    exit 2
+  fi
+  if already_seen "$id" "${seen_ids[@]}" || already_seen "$secret" "${seen_secrets[@]}"; then
+    printf 'duplicate canary material in %s\n' "$file" >&2
+    exit 2
+  fi
+  seen_ids+=("$id")
+  seen_secrets+=("$secret")
+  printf 'id\t%s\t%s\nsecret\t%s\t%s\n' \
+    "$file" "$id_entropy" "$file" "$secret_entropy" >> "$ENTROPY_LOG"
+
+  if [[ $metadata == Git ]]; then
+    jq -nc --arg file "$file" '{
+      DetectorName: "AWS", Verified: false, VerificationError: "offline canary test",
+      SourceMetadata: {Data: {Git: {file: $file, line: 2, commit: "canary"}}}
+    }'
+  else
+    jq -nc --arg file "$file" '{
+      DetectorName: "AWS", Verified: false, VerificationError: "offline canary test",
+      SourceMetadata: {Data: {Filesystem: {file: $file, line: 2}}}
+    }'
+  fi
+  found=$((found + 1))
+done
+
+(( found == 0 )) && exit 0
+exit 183
+ENTROPY_STUB
+chmod +x "$entropy_scanner"
+got=0
+entropy_run_log=$(ENTROPY_LOG=$entropy_log TRUFFLEHOG=$entropy_scanner \
+  bash "$wrapper" canary 2>&1) || got=$?
+id_audits=$(grep -c $'^id\t' "$entropy_log" 2>/dev/null || true)
+secret_audits=$(grep -c $'^secret\t' "$entropy_log" 2>/dev/null || true)
+if [[ $got != 0 ]]; then
+  fail "generated canaries satisfy entropy margins and are distinct: exit $got"$'\n'"$entropy_run_log"
+elif [[ $id_audits != 8 || $secret_audits != 8 ]]; then
+  fail "generated canary entropy audit covered every history/tree value: IDs=$id_audits secrets=$secret_audits"
+else
+  pass "generated canaries exceed entropy thresholds with margin and are distinct per path"
+fi
+
 # Live cases against the pinned scanner.
 real=${TRUFFLEHOG:-$(command -v trufflehog || true)}
 if [[ -z $real ]]; then
