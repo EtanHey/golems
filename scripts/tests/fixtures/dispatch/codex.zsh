@@ -217,6 +217,7 @@ _golem_launch_codex() {
   # (zsh typeset displays an already-set variable), corrupting the config file.
   local mcp_names="" mcp_command="" mcp_args_json="" mcp_url="" mcp_env_lines=""
   local mcp_timeout="" mcp_name_toml="" wrote_env_table=false env_json="" env_key="" env_value=""
+  local env_key_toml="" env_value_toml=""
   local -a codex_http_env=()
 
   if [[ -n "$codex_caller_profile" ]]; then
@@ -249,16 +250,16 @@ _golem_launch_codex() {
         print -r -- ""
         print -r -- "[mcp_servers.${mcp_name_toml}]"
         (( codex_profile_servers += 1 ))
-        [[ -n "$mcp_command" ]] && print -r -- "command = $(jq -Rn --arg s "$mcp_command" '$s')"
+        [[ -n "$mcp_command" ]] && print -r -- "command = $(print -rn -- "$mcp_command" | jq -Rs '.')"
         [[ -n "$mcp_args_json" && "$mcp_args_json" != "null" && "$mcp_args_json" != '""' ]] && print -r -- "args = ${mcp_args_json}"
-        [[ -n "$mcp_url" ]] && print -r -- "url = $(jq -Rn --arg s "$mcp_url" '$s')"
+        [[ -n "$mcp_url" ]] && print -r -- "url = $(print -rn -- "$mcp_url" | jq -Rs '.')"
         # A bare non-numeric timeout ("30s") renders `timeout = 30s`, which is
         # not valid TOML and aborts the launch — quote anything non-integer.
         if [[ -n "$mcp_timeout" && "$mcp_timeout" != "null" ]]; then
           if [[ "$mcp_timeout" == (-|)<-> ]]; then
             print -r -- "timeout = ${mcp_timeout}"
           else
-            print -r -- "timeout = $(jq -Rn --arg s "$mcp_timeout" '$s')"
+            print -r -- "timeout = $(print -rn -- "$mcp_timeout" | jq -Rs '.')"
           fi
         fi
 
@@ -283,7 +284,9 @@ _golem_launch_codex() {
               print -r -- "[mcp_servers.${mcp_name_toml}.env]"
               wrote_env_table=true
             fi
-            print -r -- "$(jq -Rn --arg s "$env_key" '$s') = $(jq -Rn --arg s "$env_value" '$s')"
+            env_key_toml=$(print -rn -- "$env_key" | jq -Rs '.')
+            env_value_toml=$(print -rn -- "$env_value" | jq -Rs '.')
+            print -r -- "${env_key_toml} = ${env_value_toml}"
           else
             # HTTP transport — Codex rejects `env` for HTTP servers and reads
             # bearer tokens from the process environment instead. Collect here,

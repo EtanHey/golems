@@ -101,17 +101,29 @@ _golem_sync_agy_workspace() {
   local agents_file="${agents_dir}/mcp_config.json"
   local existing='{"mcpServers":{}}'
   local tmp_file
+  local -i existing_docs=1
   mkdir -p "$agents_dir"
   [[ -s "$agents_file" ]] && existing=$(<"$agents_file")
   if ! print -r -- "$existing" | jq -e 'type == "object"' >/dev/null 2>&1; then
     existing='{"mcpServers":{}}'
   fi
+  existing_docs=$(print -r -- "$existing" | jq -s 'length' 2>/dev/null) || existing_docs=1
   tmp_file=$(umask 077; mktemp "${staging_dir}/repogolem-agy-${project_name}.agents.json.XXXXXX") || {
     rm -f "$merged_file"
     return 1
   }
-  if print -r -- "$existing" | jq --argjson servers "$servers" \
-    '.mcpServers = ((.mcpServers // {}) + $servers)' > "$tmp_file" 2>/dev/null; then
+  if { print -r -- "$existing"; print -r -- "$servers"; } | jq -s \
+    '.[0] as $base | .[1] as $servers | $base | .mcpServers = ((.mcpServers // {}) + $servers)' > "$tmp_file" 2>/dev/null; then
+    if (( existing_docs > 1 )); then
+      # Preserve the legacy multi-document behavior: merge the server map into
+      # every existing document. The final slurped document is our server map.
+      if ! { print -r -- "$existing"; print -r -- "$servers"; } | jq -s \
+        '.[-1] as $servers | .[:-1][] | .mcpServers = ((.mcpServers // {}) + $servers)' > "$tmp_file" 2>/dev/null; then
+        rm -f "$tmp_file"
+        rm -f "$merged_file"
+        return 1
+      fi
+    fi
     mv "$tmp_file" "$agents_file"
   else
     rm -f "$tmp_file"
@@ -121,17 +133,27 @@ _golem_sync_agy_workspace() {
   local user_file="${user_dir}/mcp_config.json"
   local user_existing='{"mcpServers":{}}'
   local user_tmp
+  local -i user_existing_docs=1
   mkdir -p "$user_dir"
   [[ -s "$user_file" ]] && user_existing=$(<"$user_file")
   if ! print -r -- "$user_existing" | jq -e 'type == "object"' >/dev/null 2>&1; then
     user_existing='{"mcpServers":{}}'
   fi
+  user_existing_docs=$(print -r -- "$user_existing" | jq -s 'length' 2>/dev/null) || user_existing_docs=1
   user_tmp=$(umask 077; mktemp "${staging_dir}/repogolem-agy-${project_name}.user.json.XXXXXX") || {
     rm -f "$merged_file"
     return 1
   }
-  if print -r -- "$user_existing" | jq --argjson servers "$servers" \
-    '.mcpServers = ((.mcpServers // {}) + $servers)' > "$user_tmp" 2>/dev/null; then
+  if { print -r -- "$user_existing"; print -r -- "$servers"; } | jq -s \
+    '.[0] as $base | .[1] as $servers | $base | .mcpServers = ((.mcpServers // {}) + $servers)' > "$user_tmp" 2>/dev/null; then
+    if (( user_existing_docs > 1 )); then
+      if ! { print -r -- "$user_existing"; print -r -- "$servers"; } | jq -s \
+        '.[-1] as $servers | .[:-1][] | .mcpServers = ((.mcpServers // {}) + $servers)' > "$user_tmp" 2>/dev/null; then
+        rm -f "$user_tmp"
+        rm -f "$merged_file"
+        return 1
+      fi
+    fi
     mv "$user_tmp" "$user_file"
   else
     rm -f "$user_tmp"
