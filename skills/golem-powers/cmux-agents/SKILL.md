@@ -43,7 +43,7 @@ cmuxlayer enforces two-column role geometry: orchestrators land LEFT, workers RI
 
 ## Spawn a Gemini gatherer
 
-Gatherers default to Gemini 3.8 Flash (High); Pro-High is used only when explicitly requested. Routing lives in `/agent-routing` § Role Matrix.
+Gatherers default to Gemini 3.8 Flash (High); Pro-High is used only when explicitly requested. Routing lives in `/agent-routing` § Role Matrix; CLI details are in the [agy adapter](adapters/gemini-agy.md).
 
 1. Write the brief to a file. Boot payloads are always one-line pointers to a brief file.
 2. Check the cmuxlayer version. `control_health` has no version field; read it from `cmuxlayer --version` or the Cellar path in `control_health({detail:"full"})` → `health.current_process.script_path`.
