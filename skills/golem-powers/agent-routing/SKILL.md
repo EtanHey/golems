@@ -122,11 +122,16 @@ Domain leads are orchestrators one tier below orc:
 
 ## Review routing
 
-The role policy (Etan-ratified, 2026-09-30) supersedes the temporary sprint
-budget rule from 2026-09-22: PR-gating reviews and UX/UI judgment use
-`claude.judgment`. The LEAD routes the `codex.implement` implementer and the
-`claude.judgment` pair-reviewer; they iterate before the ready-for-review PR.
-Workers follow their lane's explicit review/handoff order and run `/pr-loop`.
+Canon #1 owns the three-way implementation/review split. Resolve the named roles
+through `standards/model-roles.json`:
+
+- **UX/UI:** `claude.judgment` implements; Codex reviews using the `codex.implement` model.
+- **Security:** Daybreak Blue implements; `claude.judgment` reviews; add a `codex-security` scan.
+- **Everything else:** `codex.implement` implements; `claude.judgment` reviews.
+
+The LEAD starts the reviewer only after the implementer reports DONE, following
+canon #1's completion gate. Workers follow their lane's explicit review/handoff
+order and run `/pr-loop`.
 
 The durable core is unconditional: the LEAD routes the reviewer, and a WORKER never starts any
 reviewer for its own work. No reviewer pane means ask the lead.

@@ -24,6 +24,20 @@ test('agent-routing evals cover cheap recall, judgment deletion and visual gathe
   assert.match(text, /high-stakes history only/);
 });
 
+test('review routing follows canon exceptions and waits for implementer DONE', () => {
+  const text = read('skills/golem-powers/agent-routing/SKILL.md').split('## Review routing')[1];
+  assert.match(text, /canon #1/);
+  assert.match(text, /UX\/UI.*`claude.judgment` implements.*`codex.implement`/);
+  assert.match(text, /Security.*Daybreak Blue implements.*`claude.judgment`.*`codex-security`/);
+  assert.match(text, /Everything else.*`codex.implement` implements.*`claude.judgment`/);
+  assert.match(text, /only after.*implementer.*DONE/);
+  assert.match(text, /LEAD routes the reviewer/);
+  const e = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json')).evals.find(e => e.id === 46);
+  assert.ok(e?.expected_output.includes('claude.judgment'));
+  assert.ok(e?.expected_output.includes('codex.implement'));
+  assert.ok(e?.assertions.some(a => a.type === 'behavioral' && a.text.includes('DONE')));
+});
+
 test('large-plan generated phases and authored templates retain config-driven staffing', () => {
   const parent = join(root, 'docs.local/cx28'); mkdirSync(parent, { recursive: true });
   const dir = mkdtempSync(join(parent, 'scaffold-'));
@@ -45,6 +59,11 @@ test('large-plan generated phases and authored templates retain config-driven st
       assert.match(line, /why: <one line>/);
     }
     assert.doesNotMatch(staffing, /effort: medium\b/);
+    const implementer = generated.split('\n').find(line => line.startsWith('- **Implementer:**'));
+    assert.match(implementer, /UX\/UI phases: `claude.judgment` implements, Codex reviews; security phases: Daybreak Blue implements, `claude.judgment` reviews; see canon #1/);
+    for (const path of ['skills/golem-powers/large-plan/SKILL.md', 'skills/golem-powers/large-plan/workflows/scaffold.md', 'skills/golem-powers/large-plan/scripts/scaffold-plan.sh']) {
+      assert.equal(read(path).replaceAll('\\`', '`').split('\n').find(line => line.startsWith('- **Implementer:**')), implementer, path);
+    }
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

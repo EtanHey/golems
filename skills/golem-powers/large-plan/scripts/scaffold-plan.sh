@@ -51,7 +51,7 @@ for i in $(seq 1 "$PHASE_COUNT"); do
 ## Tools
 
 - **Gatherer:** \`gemini.gather.text\` (or \`gemini.gather.visual\`) → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Implementer:** \`codex.implement\` → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Implementer:** \`codex.implement\` → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line> (UX/UI phases: \`claude.judgment\` implements, Codex reviews; security phases: Daybreak Blue implements, \`claude.judgment\` reviews; see canon #1)
 - **Reviewer / decisions:** \`claude.judgment\` (lead-routed) → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
 - **Lookup / pane mechanics / verifier:** \`claude.subagent.cheap\` → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
 - **Config:** golems \`standards/model-roles.json\`; resolve each required field with \`node scripts/model-roles.mjs <role> --field <field>\`. Candidate roles require their bench gate before use.

@@ -1263,6 +1263,26 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 46,
+      "name": "ux-ui-implementation-review-split",
+      "prompt": "Route a UX/UI PR to implement a redesigned settings screen. Who implements, who reviews, and when may the reviewer start?",
+      "expected_output": "The LEAD routes claude.judgment to implement, then starts a Codex reviewer using the resolved codex.implement model only after the implementer reports DONE, per canon #1.",
+      "assertions": [
+        {
+          "text": "Routes claude.judgment to implement and Codex with the codex.implement model to review",
+          "type": "behavioral"
+        },
+        {
+          "text": "The LEAD starts the reviewer only after the implementer reports DONE",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT use the ordinary Codex-implements/Claude-reviews split for UX/UI or start review on an unfinished diff",
+          "type": "negative"
+        }
+      ]
     }
   ]
 }
