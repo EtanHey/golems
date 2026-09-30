@@ -114,3 +114,10 @@ skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases02.mjs
 # Relocated unchanged synthetic fixtures; retain old path history coverage.
 # Classes: publication-operational-data
 skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases04.mjs
+
+# Relocated unchanged synthetic fixtures; retain old path history coverage.
+# Classes: client-or-third-party, credential-adjacent, finance-rate, finding-content, health, identity-pii, mcp_executable_exact_version, operator-verbatim, private-structure, private_structure_slash_suffix, publication-operational-data, raw-session, real-identifiers, substance, telegram_chat_id
+scripts/tests/check-publish-boundary.test-parts/part-01.bash
+# Relocated unchanged synthetic fixtures; retain old path history coverage.
+# Classes: identity-pii, mcp_executable_exact_version, publication-operational-data
+scripts/tests/check-publish-boundary.test-parts/part-02.bash
