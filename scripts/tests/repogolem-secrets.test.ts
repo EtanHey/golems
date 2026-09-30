@@ -358,3 +358,60 @@ describe("generate from a transferred secret cache", () => {
     expect(text).not.toContain('ralphtools/ralph.zsh');
   });
 });
+
+// Metadata preflight is read-only and must never run the resolver.
+describe("generate --check-refs", () => {
+  const preflight = (env: Record<string, string> = {}, extra: string[] = []) => generate(["--check-refs", ...extra], env);
+  const canary = "SYNTHETIC_FIELD_VALUE_MUST_NOT_PRINT";
+  test("lists names grouped by vault, checks each item once and writes nothing", () => {
+    const r = preflight({ FAKE_OP_CANARY: canary });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("example-vault:");
+    for (const ref of REFS) expect(r.stdout).toContain(ref.slice("op://example-vault/".length));
+    expect(r.stdout + r.stderr).not.toContain(canary);
+    expect(existsSync(out)).toBe(false);
+    const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
+    expect(calls.filter(line => line.startsWith("item get "))).toHaveLength(1);
+    expect(calls.some(line => line.startsWith("run ") || line.startsWith("read "))).toBe(false);
+  });
+  test("a missing vault exits2 and lists every affected ref without values", () => {
+    const r = preflight({ FAKE_OP_MISSING_VAULT: "example-vault", FAKE_OP_CANARY: canary });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("missing vault: example-vault");
+    for (const ref of REFS) expect(r.stderr).toContain(ref.slice(5));
+    expect(r.stdout + r.stderr).not.toContain(canary);
+    expect(existsSync(out)).toBe(false);
+  });
+  test("a missing item exits2; sign-in failure exits3 without prompting or echoing errors", () => {
+    const missing = preflight({ FAKE_OP_MISSING_ITEM: "example-item", FAKE_OP_CANARY: canary });
+    expect(missing.code).toBe(2);
+    expect(missing.stderr).toContain("missing item: example-vault/example-item");
+    const unsigned = preflight({ FAKE_OP_UNSIGNED: "1", FAKE_OP_CANARY: canary });
+    expect(unsigned.code).toBe(3);
+    expect(unsigned.stderr).toContain("not signed in");
+    expect(missing.stdout + missing.stderr + unsigned.stdout + unsigned.stderr).not.toContain(canary);
+    expect(existsSync(out)).toBe(false);
+  });
+  test("metadata commands have biometric integration off and stdin at EOF", () => {
+    expect(preflight({ FAKE_OP_REQUIRE_NONINTERACTIVE: "1" }).code).toBe(0);
+  });
+  test("rejects conflicting check/cache flags and skips op when there are no refs", () => {
+    expect(preflight({}, ["--check"]).code).toBe(2);
+    expect(preflight({}, ["--secrets-from", "unused"]).code).toBe(2);
+    editConfig(c => { for (const p of Object.values<any>(c.projects)) delete p.secrets; for (const m of Object.values<any>(c.mcpDefinitions)) delete m.env; delete c.global.env; });
+    expect(preflight().code).toBe(0);
+    expect(opCalls()).toBe(0);
+    expect(existsSync(out)).toBe(false);
+  });
+});
+
+test("check-refs preserves existing cache bytes and modes", () => {
+  mkdirSync(out);
+  for (const name of ["registry.json", "launchers.zsh", "secrets.env"]) writeFileSync(join(out, name), "unchanged-sentinel", { mode: 0o644 });
+  const r = generate(["--check-refs"]);
+  expect(r.code).toBe(0);
+  for (const name of ["registry.json", "launchers.zsh", "secrets.env"]) {
+    expect(readFileSync(join(out, name), "utf8")).toBe("unchanged-sentinel");
+    expect(mode(join(out, name))).toBe(0o644);
+  }
+});

@@ -37,9 +37,19 @@ The installed runtime and CLI are retained.
 In a new shell, the operator performs the first real generation:
 
 ```sh
+repogolem generate --check-refs
 repogolem generate
 repogolem generate --check
 ```
+
+Run `--check-refs` before the Touch ID generation. It prints the selected
+machine's `vault/item/field` names grouped by vault and checks vault/item
+existence only; field values are discarded, never inspected or written.
+Exit 0 means vaults/items exist, exit 2 means missing/inaccessible refs or a check
+error, and exit 3 means no non-interactive sign-in. It writes no output/cache.
+It disables [desktop app integration](https://www.1password.dev/cli/app-integration)
+for metadata commands and closes stdin; sign in separately and retry if it
+returns 3. `--check` instead verifies existing generated files without running op.
 
 Unattended launcher calls read cached data without sourcing secret assignments
 as shell code or invoking `op`. A missing, stale, or non-private cache fails

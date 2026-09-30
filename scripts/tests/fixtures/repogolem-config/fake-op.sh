@@ -10,6 +10,24 @@
 #                  checks and before its writes (race regressions)
 set -euo pipefail
 [[ -n "${FAKE_OP_LOG:-}" ]] && printf '%s\n' "$*" >>"$FAKE_OP_LOG"
+if [[ "${1:-}" != run ]]; then
+  if [[ -n "${FAKE_OP_REQUIRE_NONINTERACTIVE:-}" ]]; then
+    [[ "${OP_BIOMETRIC_UNLOCK_ENABLED:-}" == false ]] || exit 8
+    if IFS= read -r ignored; then exit 9; fi
+  fi
+  [[ -n "${FAKE_OP_UNSIGNED:-}" ]] && { echo "not signed in ${FAKE_OP_CANARY:-}" >&2; exit 1; }
+  case "${1:-} ${2:-}" in
+    "whoami --format") printf '%s\n' '{"id":"synthetic-account"}' ;;
+    "vault list")
+      if [[ "${FAKE_OP_MISSING_VAULT:-}" == example-vault ]]; then printf '%s\n' '[]'
+      else printf '%s\n' '[{"id":"synthetic-vault","name":"example-vault"}]'; fi ;;
+    "item get")
+      [[ "${FAKE_OP_MISSING_ITEM:-}" == "${5:-}" ]] && { echo "missing ${FAKE_OP_CANARY:-}" >&2; exit 1; }
+      printf '{"fields":[{"value":"%s"}]}\n' "${FAKE_OP_CANARY:-synthetic-value}" ;;
+    *) exit 3 ;;
+  esac
+  exit 0
+fi
 [[ "${1:-}" == run ]] || { echo "fake-op: only 'run' is supported" >&2; exit 3; }
 shift
 while [[ $# -gt 0 && "$1" != -- ]]; do shift; done
