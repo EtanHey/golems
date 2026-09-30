@@ -17,25 +17,23 @@ For managed visible `spawn_agent` / repoGolem launches, use `claude.judgment` th
 bare launcher at 1M; verify its pin against the resolved role. Do not pass a managed model
 parameter that overrides the launcher pin. `claude.subagent.cheap` is for bounded in-process
 children or permitted headless one-shots, never full panes, synthesis, or PR-gating reviews.
-Resolve from the golems checkout with `node scripts/model-roles.mjs <role> --field alias|effort`
-(one field). For Claude/Codex, `default` effort means omit the flag.
+Resolve from the golems checkout with `node scripts/model-roles.mjs <role> --field alias`.
+Choose effort per `/large-plan` phase with a why and pass it explicitly at dispatch.
 
 | Role | Selection | Use When |
 |---|---|---|
-| `claude.judgment` | Bare managed launcher; raw CLI resolves alias and effort | Decisions, orchestration, synthesis, review |
+| `claude.judgment` | Bare managed launcher; raw CLI resolves alias and passes phase effort | Decisions, orchestration, synthesis, review |
 | `claude.subagent.cheap` | Agent tool's `model`: resolved alias | Single-fact recall, pane mechanics, verifiers |
 
 ```bash
 # Raw CLI only; visible peers use repoGolem launchers:
-judgment_effort="$(node scripts/model-roles.mjs claude.judgment --field effort)"
-judgment_flags=()
-if [ "$judgment_effort" != default ]; then judgment_flags=(--effort "$judgment_effort"); fi
-claude --dangerously-skip-permissions --model "$(node scripts/model-roles.mjs claude.judgment --field alias)" "${judgment_flags[@]}" 'task prompt'
+: "${phase_effort:?Choose effort per /large-plan phase before dispatch}"
+claude --dangerously-skip-permissions --model "$(node scripts/model-roles.mjs claude.judgment --field alias)" --effort "$phase_effort" 'task prompt'
 ```
 
 For a cheap Agent child, resolve `claude.subagent.cheap --field alias` and pass that value
-as `model`; resolve effort separately, omitting it when `default`. Keep resolver substitutions
-in generated commands, and retain any benched agent-level effort override.
+as `model`. Choose effort per `/large-plan` phase, record why, and pass it explicitly through
+the supported dispatch path. Keep model resolver substitutions in generated commands.
 
 ## Worktree Capabilities
 

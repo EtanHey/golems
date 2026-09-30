@@ -2,21 +2,20 @@
 
 Read this when choosing, dispatching, or verifying a Codex runtime. Current model policy
 lives in `standards/model-roles.json`; resolve from the golems checkout with
-`node scripts/model-roles.mjs <role> --field model|alias|effort|launcher_tier` (one field).
+`node scripts/model-roles.mjs <role> --field model|alias|launcher_tier` (one field).
 Keep resolver substitutions in generated commands. A swap requires a bench and one config edit.
 
 Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort-recommendations.md`, OpenAI primary model, subagent, pricing, and usage-limit docs.
 
-## Role Defaults
+## Model Roles
 
-Workers use `codex.implement`. Its resolved effort is a fallback; each plan phase records
-`role · effort · why` and chooses effort from the actual mission. Resume retains the selected
+Workers use `codex.implement`. Effort is chosen per `/large-plan` phase, recorded as
+`role · effort · why`, and passed explicitly at dispatch. Resume retains the selected
 session model and effort unless explicitly overridden. Verify launcher defaults against the role
 config rather than assuming a bare launch is current. Coordination belongs to `claude.judgment`.
 
-`codex.subagent.mechanical` is **CANDIDATE: bench before use**. Read its `status`, `gate`,
-and effort from the config; do not dispatch it, choose it per job, or copy its former effort
-rules before the bench. Until promotion, bounded mechanical work uses `codex.implement`.
+`codex.subagent.mechanical` is **CANDIDATE: bench before use**. Read its `status` and `gate`
+from the config; do not dispatch it or choose it per job before the bench. Until promotion, bounded mechanical work uses `codex.implement`.
 If the resolved model is absent from the refreshed runtime catalog, stop and report the mismatch;
 do not choose an older model automatically or infer runtime availability from API pages.
 
@@ -41,17 +40,16 @@ Read the seat's actual `info.model_context_window` from its session. Handoff tim
 ## Decide From the Mission
 
 1. **Worker model:** resolve `codex.implement` for implementation and Codex review lanes.
-2. **Bounded work:** `medium` fits a clear acceptance boundary or established implementation pattern.
-3. **Open-ended work:** `high` fits ambiguous implementation, review, security, or complex tracing.
-4. **Named hard blocker:** `xhigh` requires a specific blocker and why more reasoning helps;
-   `max` requires an evaluation, not just reachability or task importance.
-5. **Read-heavy Codex children:** use named `recon` with the `codex.implement` model and
-   mission-chosen effort. Verify its runtime; external agent configuration may carry a stale pin.
+2. **Phase effort:** choose effort per `/large-plan` phase and pass it explicitly at dispatch.
+   Record the acceptance boundary, ambiguity, or specific blocker that justifies the choice.
+3. **Evaluation:** task importance alone does not establish the value of more reasoning.
+4. **Read-heavy Codex children:** use named `recon` with the `codex.implement` model and
+   phase-selected effort passed explicitly at dispatch. Verify its runtime; external agent configuration may carry a stale pin.
    A standalone read-only lane still routes to Cursor. The mechanical candidate cannot bypass its gate.
-6. **Coordination:** use `claude.judgment` under `/agent-routing`, not a separate literal Codex lead tier.
+5. **Coordination:** use `claude.judgment` under `/agent-routing`, not a separate literal Codex lead tier.
 
-Every brief names the role, effort, and one-line mission reason. For Claude/Codex, resolved
-`default` effort means omit the effort flag. Quota changes concurrency, never acceptance;
+Every brief names the role, phase effort, and one-line reason, then passes that effort
+explicitly at dispatch. Quota changes concurrency, never acceptance;
 unmeasured allowance ratios and the incremental value of `max` remain **NOT KNOWN**.
 
 ### Evidence: historical quota observations
@@ -62,24 +60,23 @@ documented as a separate pool, but Codex bugs #23150 and #20122 reported it drai
 depending on main quota. Effort changes token count, not price per token. Recheck before
 using those observations for planning; none selects a dispatch model.
 
-## Override Table
+## Phase Choices
 
-| Task shape | Role × effort | Rule |
+| Task shape | Role | Phase decision |
 |---|---|---|
-| Bounded worker task | `codex.implement` × `medium` | Clear acceptance boundary. |
-| Open-ended implementation or review | `codex.implement` × `high` | The mission justifies high. |
-| One hard blocker | `codex.implement` × `xhigh` | Name the blocker; evaluate max first. |
-| Read-heavy Codex child | `codex.implement` × `high` | Named `recon`; verify effective runtime. |
-| Routine implementation | `codex.implement` × `medium` | Established pattern and acceptance boundary. |
+| Bounded or routine implementation | `codex.implement` | Record acceptance boundary and chosen phase effort. |
+| Open-ended implementation or review | `codex.implement` | Record ambiguity and chosen phase effort. |
+| One hard blocker | `codex.implement` | Name the blocker and why the chosen phase effort helps. |
+| Read-heavy Codex child | `codex.implement` | Named `recon`; choose phase effort and verify runtime. |
 | Mechanical candidate | `codex.subagent.mechanical` | **Do not dispatch before its bench.** |
 
 ## Dispatch and Verification
 
-Visible lanes retain dynamic model resolution and explicit mission effort:
+Visible lanes retain dynamic model resolution and explicit phase effort:
 
 ```bash
-brainlayerCodex -s -m "$(node scripts/model-roles.mjs codex.implement --field model)" -E medium "<bounded implementation outcome>"
-brainlayerCodex -s -m "$(node scripts/model-roles.mjs codex.implement --field model)" -E high "<open-ended implementation or review outcome>"
+: "${phase_effort:?Choose effort per /large-plan phase before dispatch}"
+brainlayerCodex -s -m "$(node scripts/model-roles.mjs codex.implement --field model)" -E "$phase_effort" "<phase outcome>"
 ```
 
 Codex custom agents live in `~/.codex/agents/*.toml`; defaults live in
@@ -97,7 +94,7 @@ Before dispatch, record:
 
 ```text
 Mission shape: bounded/mechanical | open-ended | contradictory/adversarial
-Choice: <role> · <mission effort, or resolved default> · <one-line why>
+Choice: <role> · <effort selected for this /large-plan phase> · <one-line why>
 Model target: <resolved model; verify against runtime catalog>
 Dispatch: <launcher/internal child path and explicit model/effort pin>
 Verification: <child session JSONL whose turn_context will be read>
