@@ -212,8 +212,7 @@
   {
     "id": "parser-042",
     "target": "parser",
-    "input": "echo \"$(( $(leak) + 0 ))\"",
-    "candidate_change": true
+    "input": "echo \"$(( $(leak) + 0 ))\""
   },
   {
     "id": "parser-043",
@@ -8629,15 +8628,13 @@
     "id": "parser-topup-nested-arithmetic",
     "target": "parser",
     "input": "echo \"$(echo $((1 + $(echo 2))))\"",
-    "expected_invoked": [],
-    "candidate_change": true
+    "expected_invoked": []
   },
   {
     "id": "parser-topup-backtick-escaped",
     "target": "parser",
     "input": "echo \"`printf \\\\`echo /tmp/literal\\\\``\"",
-    "expected_invoked": [],
-    "candidate_change": true
+    "expected_invoked": []
   },
   {
     "id": "parser-topup-quoted-substitution",
@@ -9290,8 +9287,7 @@
     "id": "parser-topup-deep-substitution",
     "target": "parser",
     "input": "echo \"$(echo \"$(echo \"$(echo /tmp/deep)\")\")\"",
-    "expected_invoked": [],
-    "candidate_change": true
+    "expected_invoked": []
   },
   {
     "id": "parser-topup-function-arguments",
@@ -11199,7 +11195,6 @@
     "id": "issue412-dollar-single-quote-paren",
     "target": "parser",
     "probe": "data-substitution",
-    "candidate_change": true,
     "request": {
       "function": "dollar_paren_bodies",
       "args": [
@@ -11211,7 +11206,6 @@
     "id": "issue412-backtick-single-quote-backslash",
     "target": "parser",
     "probe": "data-substitution",
-    "candidate_change": true,
     "request": {
       "function": "_backtick_bodies",
       "args": [
@@ -11223,7 +11217,6 @@
     "id": "issue412-dollar-nested-mixed-quotes",
     "target": "parser",
     "probe": "data-substitution",
-    "candidate_change": true,
     "request": {
       "function": "dollar_paren_bodies",
       "args": [
@@ -11235,7 +11228,6 @@
     "id": "issue412-dollar-backtick-mixed-quotes",
     "target": "parser",
     "probe": "data-substitution",
-    "candidate_change": true,
     "request": {
       "function": "dollar_paren_bodies",
       "args": [

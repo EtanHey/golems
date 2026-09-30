@@ -345,6 +345,18 @@ def make_base(directory):
             target.chmod(0o755)
 
 
+def copy_candidate_for_mutation(source, destination):
+    """Copy the candidate before semantic mutation so interrupts cannot dirty it."""
+    return shutil.copytree(
+        source.resolve(),
+        destination,
+        ignore=shutil.ignore_patterns(
+            ".git", ".worktrees", ".venv", "__pycache__", "node_modules",
+            "coverage", "docs.local",
+        ),
+    )
+
+
 def b64(data):
     return base64.b64encode(data).decode("ascii")
 
@@ -762,10 +774,15 @@ def run_locked(args, parser, cases, scratch):
             parser.error("the reviewer semantic set must contain distinct mutants")
         baseline = {}
         caught = {}
+        candidate_mutation_tree = None
+        if any(row.get("baseline") == "candidate" for row in mutants):
+            candidate_mutation_tree = copy_candidate_for_mutation(
+                args.candidate_root, scratch / "candidate"
+            )
         for row in mutants:
             kind = row["target"]
             subset = [case for case in cases if case["target"] == kind]
-            mutation_tree = (args.candidate_root.resolve()
+            mutation_tree = (candidate_mutation_tree
                              if row.get("baseline") == "candidate" else base)
             baseline_key = (kind, str(mutation_tree))
             if baseline_key not in baseline:
