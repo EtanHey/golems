@@ -434,7 +434,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45"
+      "darwin": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45",
+      "linux": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45"
     },
     "case": "parser-078",
     "reason": "Heredoc body parentheses are data and cannot close the surrounding command substitution"
@@ -442,7 +443,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05"
+      "darwin": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05",
+      "linux": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05"
     },
     "case": "parser-130",
     "reason": "Case pattern terminators cannot close the surrounding command substitution; incomplete case syntax fails closed"
