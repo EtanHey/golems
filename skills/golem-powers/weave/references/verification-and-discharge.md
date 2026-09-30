@@ -247,8 +247,11 @@ re-mine); **synthesis is pinned last**; the run **resumes the same run on crash*
 (never restarts). Every round is a **~3-agent collaborating panel** with diverse
 lenses + intra-round cross-check — majority decides, a single-lens dissent demands
 a follow-up round; **never 1/1 micro-rounds**. **Every spawn is model-pinned**
-(gather = cursor/codex off-Claude or sonnet/haiku; judgment/synthesis = opus) —
-the unpinned-inherits-Fable bug is what capped pass-1. The loop is **budget-aware
+(gather = Cursor or the appropriate Gemini gather role; bounded Claude recall/verifiers =
+`claude.subagent.cheap`; judgment/synthesis = `claude.judgment`) —
+resolve models/aliases/launcher tiers with `node scripts/model-roles.mjs <role> --field <field>`
+from the golems checkout; choose effort per `/large-plan` phase and pass explicitly at dispatch.
+The unpinned-inherits-Fable bug is what capped pass-1. The loop is **budget-aware
 loop-until-dry** — the mechanized answer to Etan's "1 haiku, no verifiers"
 critique. [g4:3-8 → weave-2026-07-02-report.md:57-58 §R2.8; report.md:11]
 

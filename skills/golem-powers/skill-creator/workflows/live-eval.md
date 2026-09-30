@@ -30,51 +30,33 @@ git worktree add -b "${SANDBOX}" "../${SANDBOX}" HEAD
 
 ### Step 3: Run WITHOUT Skill (Baseline)
 
-Spawn a Sonnet agent via cmux **without** the skill loaded:
+For visible Claude eval lanes, use `claude.judgment` through the managed bare launcher.
+Resolve its target from the golems checkout with
+`node scripts/model-roles.mjs claude.judgment --field model`; verify the actual pane model.
+Use `/cmux-agents` to launch a worker in the prepared sandbox with a file-backed brief:
 
-```bash
-# Create surface
-# Use cmux MCP: spawn_agent (placement=right)
-
-# Spawn agent WITHOUT skill
-spawn-agent "${SANDBOX}" <surface> "eval-baseline-${EVAL_ID}" \
-  "You are being evaluated. Answer this task naturally without any special skills loaded.
-
+```text
+You are being evaluated. Answer naturally without the target skill loaded.
 TASK: <paste eval prompt from evals.json>
-
-When done, output your response between RESPONSE_START and RESPONSE_END markers.
-End with DONE_EVAL on its own line." \
-  --model sonnet
+Effort: <chosen per /large-plan phase>. Why: <phase reason>.
+Return between RESPONSE_START and RESPONSE_END; final line DONE_EVAL.
 ```
 
-Wait for completion (timeout 5min). Capture output:
-```
-# Use cmux MCP: read_screen surface=<surface>
-```
-
-`--model sonnet` records `model_requested: sonnet`; it does not prove the
-effective runtime model.
+Pass the phase's effort explicitly at dispatch. Managed Claude panes omit model overrides;
+the bare launcher pin must match the resolved judgment target. Wait for DONE_EVAL (timeout
+5min) and capture the response via cmux `read_screen`.
 
 ### Step 4: Run WITH Skill
 
-Spawn another Sonnet agent **with** the skill loaded:
+Launch the paired visible judgment lane with the same model target, phase effort, sandbox
+boundary and output markers. Its brief adds the full target skill before the identical TASK.
+Record requested and effective values for both arms independently; a resolver target does
+not prove the effective runtime.
 
-```bash
-# Create new surface
-# Use cmux MCP: spawn_agent (placement=right)
-
-# Spawn agent WITH skill
-spawn-agent golems <surface> "eval-withskill-${EVAL_ID}" \
-  "You have the /${SKILL_NAME} skill loaded. Use it for this task.
-
-TASK: <paste eval prompt from evals.json>
-
-When done, output your response between RESPONSE_START and RESPONSE_END markers.
-End with DONE_EVAL on its own line." \
-  --model sonnet
-```
-
-Wait and capture output the same way.
+For bounded in-process or permitted headless Claude tests, use `claude.subagent.cheap`
+in both arms. Pass the alias from `node scripts/model-roles.mjs claude.subagent.cheap --field alias`;
+keep the resolver substitution in generated commands. Never put this cheap role in a visible
+full pane or use it for decision-grade evaluation. Choose phase effort and pass explicitly.
 
 ### Step 5: Capture Effective Runtime Provenance
 
@@ -83,9 +65,9 @@ Before scoring, record one provenance entry for every agent or eval arm:
 ```json
 {
   "agent_or_arm": "baseline",
-  "model_requested": "sonnet",
-  "model_effective": "claude-sonnet-5",
-  "effort_effective": "high",
+  "model_requested": "<resolved alias actually requested>",
+  "model_effective": "<runtime ID actually observed>",
+  "effort_effective": "<runtime effort actually observed>",
   "model_observation_source": "session JSONL model field: /absolute/session.jsonl",
   "effort_observation_source": "CLI status line"
 }
@@ -202,8 +184,10 @@ git branch -D "${SANDBOX}"
 
 | Skill type | Agent | Model |
 |------------|-------|-------|
-| Claude behavior | Claude Code | Sonnet (default) |
-| Code implementation | Codex | Default (no flag) |
+| Bounded in-process/headless Claude behavior | Claude Code | Resolved `claude.subagent.cheap` alias |
+| Visible or decision-grade Claude behavior | Claude Code | `claude.judgment`, verify bare launcher pin |
+| Code implementation | Codex | Resolved `codex.implement` model |
 | Audit/review | Cursor | Default |
 
-Use `--cli codex` or `--cli cursor-audit` with `spawn-agent` for non-Claude agents.
+For non-Claude agents follow `/cmux-agents`: pass the resolved Codex model and phase effort
+explicitly; Cursor retains its own launcher policy.

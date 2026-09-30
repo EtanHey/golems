@@ -10,7 +10,7 @@
 
 1. Write the three briefs from [../references/seat-briefs.md](../references/seat-briefs.md), replacing
    every bracketed placeholder. Do not supply a common rubric.
-2. Create 3 visible cmux panes. Use the repo launchers for Opus and Sol; use the raw Fable command.
+2. Create 3 visible cmux panes. Use repo launchers for the judgment and implement roles; use the separate raw Fable command.
 3. Verify each pane within 30 seconds with cmux `read_screen`. Confirm its effective model, brief,
    repo, and read-only constraint. A missing/mismatched seat is not a council; relaunch it.
 4. Start marker-count monitoring against the append-only collab. Use one supervised monitor per live
@@ -18,13 +18,26 @@
 
 ## Seat launch contract
 
+Choose the phase effort and why before dispatch. Prepare Claude flags once per seat:
+
+```bash
+: "${phase_effort:?Declare effort per /large-plan phase before dispatch}"
+claude_flags=()
+if [ "$phase_effort" != default ]; then claude_flags=(-E "$phase_effort"); fi
+```
+
+Codex uses a concrete phase effort with `-E`; Claude `default` omits its effort flag.
+
 | Seat | Required pin | Visible launch |
 |---|---|---|
-| R1 | Opus 5 | `<repo>Claude -s "Read and follow <R1-brief-path>"`; abort if the launcher does not report Opus 5. |
-| R2 | GPT-5.6-Sol, xhigh | `<repo>Codex -s -E xhigh "Read and follow <R2-brief-path>"`; abort if the launcher does not report GPT-5.6-Sol/xhigh. |
+| R1 | `claude.judgment` | `<repo>Claude -s "${claude_flags[@]}" "Read and follow <R1-brief-path>"`; verify bare model pin against the resolved judgment model. |
+| R2 | `codex.implement` | `<repo>Codex -s -m "$(node scripts/model-roles.mjs codex.implement --field model)" -E "$phase_effort" "Read and follow <R2-brief-path>"`; verify model and phase effort. |
 | R3 | Fable 5 | `claude --dangerously-skip-permissions --model claude-fable-5 "Read and follow <R3-brief-path>"`. |
 
-The launcher pin is authoritative for R1/R2; never pretend a rejected model override worked.
+Resolve R1 with `node scripts/model-roles.mjs claude.judgment --field model` from the golems
+checkout. Choose effort per `/large-plan` phase with a why and pass explicitly at dispatch.
+Verify effective values; never pretend a rejected model override worked. R3 remains the separately
+declared third-family contract, outside these role mappings.
 
 ## Harvest and gate
 

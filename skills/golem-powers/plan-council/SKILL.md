@@ -41,8 +41,8 @@ Load-bearing rules from those references, so a router that stops here still gets
 
 ### 1. Seats
 
-- Convene **3 voting seats from 3 model families** in visible cmux panes: R1 Opus 5, R2
-  GPT-5.6-Sol at xhigh, and R3 Fable 5. Never use background subagents.
+- Convene **3 voting seats from 3 model families** in visible cmux panes: R1 `claude.judgment`, R2
+  `codex.implement`, and the separately declared R3 Fable 5 seat. Never use background subagents.
 - Pin every seat explicitly and verify the effective model from the pane. The Fable seat uses raw
   `claude --dangerously-skip-permissions --model claude-fable-5` because the repoGolem launcher cannot express it.
 - Supply no shared rubric. Each judge invents named dimensions and weights totaling 100.

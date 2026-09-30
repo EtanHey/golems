@@ -223,7 +223,7 @@ The corpus freezes at `discover`; live sessions keep appending during mining. **
 **From the 07-28 shuttle (10 lessons, previously unfolded — `rescore.md §3` scored 0/10):**
 
 1. Session-atomic units + stride-with-guaranteed-tail contexts from R0 — removes the double-count class by construction (shuttle retro:20-21).
-2. An audit checkpoint after mining (CP1, opus, "re-derive claimed state") caught 5 real defects incl. an imp-10 cite pointing at an agent paraphrase of Etan (:22-23). Run it.
+2. Historical 2026-07-28 evidence: an audit checkpoint after mining (CP1, opus, "re-derive claimed state") caught 5 real defects incl. an imp-10 cite pointing at an agent paraphrase of Etan (:22-23). Run the current checkpoint with `claude.judgment`, resolved through `node scripts/model-roles.mjs claude.judgment --field model`; choose phase effort and pass it explicitly.
 3. Verify in importance-descending order — it saved the run twice when a limit cut landed at the imp-8 boundary (:24-25).
 4. Workflow `args` >4096 elements dies at the VM boundary — embed work lists in the script (:26).
 5. Recovery after a spend limit: 1-agent probe → fresh workflow over the disk-diff of missing outputs; never `resumeFromRunId` against a live limit (:27-28).

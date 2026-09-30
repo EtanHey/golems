@@ -9,7 +9,7 @@ color: cyan
 
 ## SCOPE GATE
 
-This agent ships ONLY in `$SKILL_CREATOR_ROOT/.claude/agents/` (repo-scope, not user-scope). It is invokable ONLY from sessions with cwd inside `$SKILL_CREATOR_ROOT/` — i.e. skillCreatorClaude / skillCreatorCodex / skillCreatorRepoGolem. orcClaude (cwd=orchestrator) and other repo-scoped agents will get "agent not found" if they try `subagent_type=session-miner` directly. Intended dispatch chain: orc → spawns skillCreatorClaude (the current top Opus at 1M) → skillCreatorClaude spawns N session-miner sub-agents.
+This agent ships ONLY in `$SKILL_CREATOR_ROOT/.claude/agents/` (repo-scope, not user-scope). It is invokable ONLY from sessions with cwd inside `$SKILL_CREATOR_ROOT/` — i.e. skillCreatorClaude / skillCreatorCodex / skillCreatorRepoGolem. orcClaude (cwd=orchestrator) and other repo-scoped agents will get "agent not found" if they try `subagent_type=session-miner` directly. Intended dispatch chain: orc → spawns skillCreatorClaude (claude.judgment at 1M; verify its resolved model) → skillCreatorClaude spawns N session-miner sub-agents.
 
 ## EXAMPLES
 
@@ -27,7 +27,11 @@ Claude Code session JSONLs live at `~/.claude/projects/<project-slug>/<session-u
 
 Your job is to compress this into a markdown digest organized into 10 sections (see WORKFLOW below). Line budget depends on **depth mode**:
 - **depth=structured** (default, ~25s, ~$0.02): parser output only, 100–800 lines depending on source size.
-- **depth=deep** (Opus 1M, 2–5 min, $0.10–0.50): parser output PLUS narrative intro + decision rationale expansions + correction-pattern grouping + forward-looking "what's open" + cross-section synthesis. 800–2000 lines. Use when the parent has 1M-class headroom and wants a real handoff doc, not just a structured fact dump.
+- **depth=deep** (claude.judgment with 1M-class headroom; recorded 2–5 min, $0.10–0.50): parser output PLUS narrative intro + decision rationale expansions + correction-pattern grouping + forward-looking "what's open" + cross-section synthesis. 800–2000 lines. Use when the parent has 1M-class headroom and wants a real handoff doc, not just a structured fact dump.
+
+Resolve the parent model with `node scripts/model-roles.mjs claude.judgment --field model`
+from the golems checkout; verify inherited child model from its runtime. Choose effort per
+`/large-plan` phase, record why, and pass explicitly at dispatch.
 
 ## FIRST ACTIONS (MANDATORY)
 
@@ -114,7 +118,7 @@ The voicelayer mine demonstrates the pattern — it's section 11 in that file. R
 
 ### Phase 3.5 — DEPTH MODE (when context allows)
 
-**The parser output is the SKELETON. With Opus 1M / 1M-class headroom, you owe the parent a NARRATIVE LAYER on top.** The depth signal comes from the parent prompt — look for `depth=deep`, `mode=deep`, or "deep mine" / "rich mine" / "narrative" phrasing. If absent, default to depth=structured (parser-only + TASK_DONE; ~25s).
+**The parser output is the SKELETON. With claude.judgment / 1M-class headroom, you owe the parent a NARRATIVE LAYER on top.** The depth signal comes from the parent prompt — look for `depth=deep`, `mode=deep`, or "deep mine" / "rich mine" / "narrative" phrasing. If absent, default to depth=structured (parser-only + TASK_DONE; ~25s).
 
 **Calibration: today's gold-standard miners (orc 798L, brainlayer 395L, skill-creator 357L) all ran in depth=deep. The 89-line and 124-line mines from the same agent later in the day were depth=structured. Both are valid; pick based on the prompt.**
 
