@@ -54,6 +54,7 @@ import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import Ajv, { type ErrorObject } from "ajv";
 import { parse as parseYaml, parseAllDocuments, stringify as stringifyYaml } from "yaml";
+import { readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
 import { collectRefs, opResolver, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
 
@@ -78,9 +79,9 @@ const CLI_SUFFIX: Record<string, string> = {
 };
 const BAR = `# ${"═".repeat(67)}`;
 const BOOTSTRAP = [
-  "# Bootstrap repoGolem when this file is sourced directly.",
-  'if ! typeset -f repoGolem >/dev/null 2>&1 && [[ -f "$HOME/.config/ralphtools/ralph.zsh" ]]; then',
-  '  source "$HOME/.config/ralphtools/ralph.zsh"',
+  "# Bootstrap the standalone cache-only runtime when sourced directly.",
+  'if ! typeset -f _golem_runtime_read >/dev/null 2>&1; then',
+  '  source "${REPOGOLEM_RUNTIME_FILE:-$HOME/.config/repogolem/runtime/runtime.zsh}" || return $?',
   "fi",
   "",
 ];
@@ -792,7 +793,7 @@ function checkOutputs(configText: string, outDir: string, home: string, host: ()
 }
 
 function runGenerate(argv: string[]) {
-  const args = parseArgs(argv, ["check"], ["config", "out-dir", "home", "host"]);
+  const args = parseArgs(argv, ["check"], ["config", "out-dir", "home", "host", "secrets-from"]);
   const config = configPath(args);
   const configText = readFileSync(config, "utf8");
   const home = typeof args.home === "string" ? args.home : homedir();
@@ -814,7 +815,9 @@ function runGenerate(argv: string[]) {
   assertSafeOutDir(outDir);
   let secretsEnv: string;
   try {
-    const resolved = resolveRefs(generated.refs, opResolver(process.env.REPOGOLEM_OP_BIN || "op"));
+    const resolved = typeof args["secrets-from"] === "string"
+      ? readTransferredSecrets(args["secrets-from"], generated.configSha, generated.machine, generated.refs)
+      : resolveRefs(generated.refs, opResolver(process.env.REPOGOLEM_OP_BIN || "op"));
     secretsEnv = secretsEnvText(generated.secretsHeader, resolved);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
@@ -827,7 +830,7 @@ function runGenerate(argv: string[]) {
   });
   const refs = generated.refs.length;
   console.log(
-    `machine ${generated.machine ?? "(none)"}: ${refs} op:// refs resolved (${refs > 0 ? "1 op session" : "op not run"})`,
+    `machine ${generated.machine ?? "(none)"}: ${refs} op:// refs resolved (${args["secrets-from"] ? "transferred cache; op not run" : refs > 0 ? "1 op session" : "op not run"})`,
   );
   for (const name of OUTPUTS) console.log(`wrote ${join(outDir, name)}`);
   return 0;

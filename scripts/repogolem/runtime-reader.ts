@@ -14,7 +14,7 @@ function privatePath(path: string, directory = false) {
 function stamp(text: string, name: string) {
   return text.match(new RegExp(`^# ${name}: (\\S+)$`, "m"))?.[1];
 }
-function parseCache(text: string) {
+export function parseCache(text: string) {
   const values: Record<string, string> = {};
   for (const line of text.split("\n")) {
     if (!line || line.startsWith("#")) continue;
@@ -25,6 +25,19 @@ function parseCache(text: string) {
     if (values[match[1]].includes("\0")) throw new Error("invalid cached assignment");
   }
   return values;
+}
+export function readTransferredSecrets(path: string, configSha: string, machine: string | null, refs: string[]): Map<string, string> {
+  privatePath(path);
+  const text = readFileSync(path, "utf8");
+  if (stamp(text, "config-sha256") !== configSha || stamp(text, "machine") !== (machine ?? "(none)")) {
+    throw new Error("runtime cache is stale; nothing written");
+  }
+  const values = parseCache(text);
+  const keys = refs.map(ref => `REPOGOLEM_SECRET_${createHash("sha256").update(ref).digest("hex").slice(0, 32)}`);
+  if (Object.keys(values).length !== keys.length || keys.some(key => !Object.hasOwn(values, key) || !values[key])) {
+    throw new Error("runtime cache references differ; nothing written");
+  }
+  return new Map(refs.map((ref, i) => [ref, values[keys[i]]]));
 }
 export function readRuntime(dir: string, environment: Record<string, string | undefined> = process.env): ObjectMap {
   privatePath(dir, true);

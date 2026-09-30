@@ -322,3 +322,39 @@ describe("--check", () => {
     expect(existsSync(join(out, "secrets.env"))).toBe(false);
   });
 });
+
+describe("generate from a transferred secret cache", () => {
+  test("uses cached bytes without op and preserves quoting and private modes", () => {
+    expect(generate([], { FAKE_OP_SUFFIX: "\n '$HOME `id` \\" }).code).toBe(0);
+    const cache = join(out, "secrets.env");
+    const target = join(dir, "remote");
+    const r = run(["generate", "--config", config, "--host", HOST, "--out-dir", target, "--secrets-from", cache]);
+    expect(r.code).toBe(0);
+    expect(opCalls()).toBe(1);
+    expect(readFileSync(join(target, "secrets.env"), "utf8")).toBe(readFileSync(cache, "utf8"));
+    expect(mode(target)).toBe(0o700);
+    expect(mode(join(target, "secrets.env"))).toBe(0o600);
+    expect(r.stdout + r.stderr).not.toContain("resolved:");
+  });
+  test("stale, permissive, missing and executable cache data fail before writes", () => {
+    expect(generate().code).toBe(0);
+    const cache = join(out, "secrets.env");
+    const original = readFileSync(cache, "utf8");
+    const attempt = () => run(["generate", "--config", config, "--host", HOST, "--out-dir", join(dir, "remote"), "--secrets-from", cache]);
+    for (const text of [original.replace(`# machine: ${HOST}`, "# machine: wrong-host"), original.replace(/^REPOGOLEM_SECRET_.*$/m, ""), original + "echo secret-value\n"]) {
+      writeFileSync(cache, text);
+      expect(attempt().code).toBe(2);
+      expect(existsSync(join(dir, "remote"))).toBe(false);
+    }
+    writeFileSync(cache, original);
+    chmodSync(cache, 0o644);
+    expect(attempt().code).toBe(2);
+    expect(opCalls()).toBe(1);
+  });
+  test("generated launchers bootstrap the shipped runtime, without Ralph", () => {
+    expect(generate().code).toBe(0);
+    const text = readFileSync(join(out, "launchers.zsh"), "utf8");
+    expect(text).toContain('repogolem/runtime/runtime.zsh');
+    expect(text).not.toContain('ralphtools/ralph.zsh');
+  });
+});
