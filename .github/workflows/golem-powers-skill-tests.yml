@@ -139,6 +139,9 @@ jobs:
       - name: Run golem-powers Python skill suites
         run: scripts/ci/run-skill-tests.sh
 
+      - name: Preserve split comments and their locations
+        run: python scripts/ci/check-split-comments.py
+
       - name: Pristine split baseline gate
         run: python scripts/ci/pristine-harness.py check
 
