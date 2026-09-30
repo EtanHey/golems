@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,7 @@ HERE = Path(__file__).resolve().parent
 CORPUS = ROOT / "scripts/tests/fixtures/pristine-harness/corpus.json"
 GOLDENS = ROOT / "scripts/tests/fixtures/pristine-harness/goldens.json"
 SEMANTIC_MUTANTS = ROOT / "scripts/tests/fixtures/pristine-harness/semantic-mutants.json"
+DELTA_PATH = Path("scripts/tests/fixtures/pristine-harness/deltas.json")
 # The fixture is disposable, but its spelling must not depend on a checkout.
 # A shared lock serializes clones on one host; cleanup happens in main().
 FIXTURE = Path("/var/tmp/pristine-harness-fixture")
@@ -249,6 +251,74 @@ def expected_on_host(goldens):
     return expected
 
 
+def capture_digest(result):
+    """Hash the complete capture, including exit, raw base64 bytes and files."""
+    data = json.dumps(result, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(data).hexdigest()
+
+
+def load_deltas(path, ids):
+    rows = json.loads(path.read_text()) if path.exists() else []
+    if not isinstance(rows, list):
+        raise ValueError("deltas must be a list")
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != {"case", "reason", "authority", "candidate_sha256"}:
+            raise ValueError("delta requires case, reason, authority and candidate_sha256")
+        if any(not isinstance(row[key], str) or not row[key].strip() for key in ("case", "reason", "authority")):
+            raise ValueError("delta case, reason and authority must be nonempty strings")
+        ident = row["case"]
+        if ident in seen:
+            raise ValueError(f"duplicate delta case: {ident}")
+        if ident not in ids:
+            raise ValueError(f"unknown delta case: {ident}")
+        seen.add(ident)
+        hashes = row["candidate_sha256"]
+        if not isinstance(hashes, dict) or any(
+            host not in ("darwin", "linux") or not isinstance(digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            for host, digest in hashes.items()
+        ):
+            raise ValueError(f"invalid platform hashes for delta: {ident}")
+    return rows
+
+
+def compare_captures(baseline, actual, declarations, platform):
+    declared = {row["case"]: row for row in declarations}
+    failures, used = [], 0
+    for ident, base in baseline.items():
+        candidate = actual[ident]
+        row = declared.get(ident)
+        if row is not None:
+            observed = capture_digest(candidate)
+            if candidate == base:
+                failures.append(f"{ident}: stale delta (candidate equals immutable base); observed sha256={observed}")
+            elif platform not in row["candidate_sha256"]:
+                failures.append(f"{ident}: missing {platform} delta hash; observed sha256={observed}")
+            elif observed != row["candidate_sha256"][platform]:
+                failures.append(f"{ident}: delta hash mismatch; observed sha256={observed}")
+            else:
+                used += 1
+        elif candidate != base:
+            differing = [key for key in ("exit", "stdout", "stderr", "files") if candidate[key] != base[key]]
+            failures.append(f"{ident}: undeclared difference ({', '.join(differing)})")
+    return failures, used
+
+
+def record_delta(path, ids, case, reason, authority, result, platform):
+    rows = load_deltas(path, ids)
+    if case not in ids or not reason.strip() or not authority.strip():
+        raise ValueError("record-delta requires a known case, reason and authority")
+    row = next((row for row in rows if row["case"] == case), None)
+    if row is None:
+        row = {"case": case, "reason": reason, "authority": authority, "candidate_sha256": {}}
+        rows.append(row)
+    row.update(reason=reason, authority=authority)
+    row["candidate_sha256"][platform] = capture_digest(result)
+    path.write_text(json.dumps(sorted(rows, key=lambda row: row["case"]), indent=2, sort_keys=True) + "\n")
+    print(f"recorded delta {case} {platform} sha256={row['candidate_sha256'][platform]}")
+
+
 def fixture_cwd(scratch, name):
     names = {
         "root": scratch / "repo",
@@ -448,10 +518,14 @@ def validate_baseline(cases, results):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("record", "check", "verify-goldens",
+    parser.add_argument("action", choices=("record", "record-delta", "check", "verify-goldens",
                                           "verify-python-goldens", "mutation-proof"))
     parser.add_argument("--candidate-root", type=Path, default=ROOT)
+    for option in ("case", "reason", "authority"):
+        parser.add_argument(f"--{option}")
     args = parser.parse_args()
+    if args.action == "record-delta" and any(not getattr(args, key) for key in ("case", "reason", "authority")):
+        parser.error("record-delta requires --case, --reason and --authority")
     cases = json.loads(CORPUS.read_text())
     ids = [case["id"] for case in cases]
     if len(ids) != len(set(ids)) or any(case["target"] not in
@@ -475,6 +549,20 @@ def main():
 def run_locked(args, parser, cases, scratch):
     base = scratch / "base"
     make_base(base)
+    if args.action == "record-delta":
+        selected = [case for case in cases if case["id"] == args.case]
+        if not selected:
+            parser.error(f"unknown delta case: {args.case}")
+        baseline = execute(selected, base, scratch)
+        actual = execute(selected, args.candidate_root.resolve(), scratch)
+        if actual[args.case] == baseline[args.case]:
+            parser.error(f"stale delta: {args.case} equals immutable base")
+        try:
+            record_delta(args.candidate_root / DELTA_PATH, [case["id"] for case in cases],
+                         args.case, args.reason, args.authority, actual[args.case], sys.platform)
+        except ValueError as error:
+            parser.error(str(error))
+        return 0
     if args.action == "record":
         if GOLDENS.exists():
             parser.error("goldens already exist; do not overwrite the untouched base")
@@ -581,14 +669,12 @@ def run_locked(args, parser, cases, scratch):
         print(f"GOLDENS PASS {len(cases)}")
         return 0
     actual = execute(cases, args.candidate_root.resolve(), scratch)
-    failures = []
-    for case in cases:
-        ident = case["id"]
-        baseline = measured[ident]
-        if actual[ident] != baseline:
-            differing = [key for key in ("exit", "stdout", "stderr", "files")
-                         if actual[ident][key] != baseline[key]]
-            failures.append(f"{ident}: {', '.join(differing)}")
+    try:
+        deltas = load_deltas(args.candidate_root / DELTA_PATH, [case["id"] for case in cases])
+    except ValueError as error:
+        parser.error(str(error))
+    failures, used = compare_captures(measured, actual, deltas, sys.platform)
+    print(f"PRISTINE DECLARED DELTAS USED {used}")
     if failures:
         print("PRISTINE HARNESS FAIL\n" + "\n".join(failures), file=sys.stderr)
         return 1
