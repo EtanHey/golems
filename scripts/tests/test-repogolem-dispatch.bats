@@ -397,7 +397,7 @@ AGY
 
     [ "$status" -eq 0 ]
     grep -F -q -- "AGY_ARGS=" <<< "$output"
-    grep -F -q -- "--model Gemini 3.1 Pro (High)" <<< "$output"
+    grep -F -q -- "--model Gemini 3.8 Flash (High)" <<< "$output"
     grep -F -q -- "--dangerously-skip-permissions" <<< "$output"
     grep -F -q -- "--prompt-interactive" <<< "$output"
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
@@ -1069,7 +1069,7 @@ JSON
         in_call { print }
       ' <<< "$output")
       [ "$(grep -Fxc -- "CODEX_ARG=--model" <<< "$call_output")" -eq 1 ]
-      [ "$(grep -Fxc -- "CODEX_ARG=gpt-6-sol" <<< "$call_output")" -eq 1 ]
+      [ "$(grep -Fxc -- "CODEX_ARG=gpt-6.1-sol" <<< "$call_output")" -eq 1 ]
     done
     local continue_output
     continue_output=$(awk '
@@ -2292,7 +2292,7 @@ CLAUDE
       | grep -Fv -- 'CODEX_ARG=-c' \
       | grep -Fv -- 'CODEX_ARG=model_reasoning_effort="high"' \
       | grep -Fv -- 'CODEX_ARG=--model' \
-      | grep -Fv -- 'CODEX_ARG=gpt-6-sol' \
+      | grep -Fv -- 'CODEX_ARG=gpt-6.1-sol' \
       | sed 's/^CODEX_ARG_COUNT=5$/CODEX_ARG_COUNT=1/')
     local actual_hash
     actual_hash=$(printf '%s' "$normalized_output" | shasum -a 256 | awk '{print $1}')
@@ -2325,7 +2325,7 @@ CLAUDE
     [ "$status" -eq 0 ]
     grep -F -q "PWD=$WORKTREE_DIR" <<< "$output"
     ! grep -F -q -- "--dangerously-bypass-approvals-and-sandbox" <<< "$output" || false
-    grep -F -q -- "--model gpt-6-sol" <<< "$output"
+    grep -F -q -- "--model gpt-6.1-sol" <<< "$output"
     ! grep -F -q -- "--worktree" <<< "$output" || false
     ! grep -F -q "unexpected argument" <<< "$output"
 }
@@ -2356,7 +2356,7 @@ CLAUDE
     [ "$status" -eq 0 ]
     grep -F -q "PWD=$PROJECT_DIR" <<< "$output"
     ! grep -F -q -- "--dangerously-bypass-approvals-and-sandbox" <<< "$output" || false
-    grep -F -q -- "--model gpt-6-sol" <<< "$output"
+    grep -F -q -- "--model gpt-6.1-sol" <<< "$output"
     ! grep -F -q -- "--worktree" <<< "$output"
 }
 
@@ -4132,4 +4132,10 @@ JSON_U="$(printf '\134')u"
               || { echo "$launcher [$prelaunch] TERM: $output" >&2; return 1; }
         done
     done
+}
+
+@test "Gemini explicit -m pro preserves Pro High while bare gathers default to Flash High" {
+    run_worker_role_launch "" testrepoGemini -s -m pro
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--model Gemini 3.1 Pro (High)" <<< "$output"
 }
