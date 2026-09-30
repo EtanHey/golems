@@ -52,9 +52,10 @@ Etan, verbatim; the ellipsis is his:
 A lead writing a dispatch brief therefore names the effort **on that brief**. It is a per-job call,
 not a lane-wide setting and not whatever the seat happened to boot with.
 
-**It is a ceiling, not a floor.** The launcher default stands — `repoGolem` sets `--effort` from the
-seat's role (lead `high`, worker `medium`) — and the lead lowers it per dispatch with an explicit
-`-E/--effort <value>`, which wins over the role default. Brief and launch command must agree.
+**The launcher default is only a fallback.** Choose effort per dispatch from the plan phase.
+`repoGolem` defaults Codex to `medium`; Claude follows `-E` > `GOLEM_EFFORT` > worker `medium` >
+`high`. The lead chooses effort with explicit `-E/--effort <value>`, which wins over the fallback.
+Brief and launch command must agree.
 
 Orc's operationalization of that sentence. The rungs below are orc's gloss, not Etan's words — he
 said "control the effort levels" and did not enumerate them:

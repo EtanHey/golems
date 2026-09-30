@@ -1768,7 +1768,7 @@ JSONL
     grep -F -q -- "-m, --model <name>" <<< "$output"
     grep -F -q -- "low, medium, high, xhigh, max, ultra" <<< "$output"
     grep -F -q -- "default: Codex medium; Claude -E > GOLEM_EFFORT > worker medium > high" <<< "$output"
-    grep -F -q -- "set it per dispatch" <<< "$output"
+    grep -F -q -- "the default is only a fallback — choose effort per dispatch from the plan phase" <<< "$output"
     ! grep -F -q -- "CODEX_LAUNCHED=" <<< "$output"
 }
 
