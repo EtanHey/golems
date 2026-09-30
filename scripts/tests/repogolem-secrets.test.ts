@@ -445,10 +445,14 @@ describe("generate --check-refs", () => {
     expect(r.code).toBe(0);
     expect(existsSync(out)).toBe(false);
   });
-  test("finds an archived item referenced by ID without fetching item details", () => {
+  test("an archived item referenced by ID is missing for generation", () => {
     editConfig(c => { c.global.env.ARCHIVED_TOKEN = "op://example-vault/archived-item-id/token"; });
-    expect(preflight({ FAKE_OP_ARCHIVED_ID: "1" }).code).toBe(0);
-    expect(readFileSync(log, "utf8")).toContain("--include-archive");
+    const r = preflight({ FAKE_OP_ARCHIVED_ID: "1", FAKE_OP_CANARY: canary });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("missing item: example-vault/archived-item-id");
+    expect(r.stderr).toContain("example-vault/archived-item-id/token");
+    expect(r.stdout + r.stderr).not.toContain(canary);
+    expect(readFileSync(log, "utf8")).not.toContain("--include-archive");
     expect(existsSync(out)).toBe(false);
   });
   test("a hanging op is bounded before the outer deadline", async () => {
