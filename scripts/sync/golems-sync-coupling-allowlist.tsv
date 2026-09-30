@@ -12,7 +12,7 @@ cmux-agents/evals/evals.json	~/Gits/...	Test or evaluation evidence intentionall
 cmux-agents/evals/evals.json	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
 codex-workflows/evals/evals.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 codex-workflows/evals/run-false-green.sh	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
-codex-workflows/tests/test_codex_workflows.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+codex-workflows/tests/_test_codex_workflows_parts/cases01.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 content-demo-creation/voicebar-visual-reference.md	~/Gits/voicelayer	Historical reference preserves observed source text and is not executed.
 ecosystem-health/evals/evals.json	~/Gits/TaskOwl-app	Test or evaluation evidence intentionally preserves this machine-path specimen.
 ecosystem-health/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
