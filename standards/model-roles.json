@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "updated": "2026-09-30",
+  "swap_rule": "A model change = bench it with the skill-creator harness, then edit ONE line here. No skill/agent file names a role-owned model directly (drift lint).",
+  "roles": {
+    "claude.judgment": {
+      "model": "claude-opus-5-5",
+      "alias": "opus",
+      "effort": "high",
+      "use_for": "decision-grade/multi-source work, deletion decisions, PR-gating reviews, UX/UI judgment",
+      "evidence": "skill-creator 2026-09-29 subagent-routing RESULTS.md; 2026-09-29/30 cleanup-routing"
+    },
+    "claude.subagent.cheap": {
+      "model": "claude-sonnet-5-5",
+      "alias": "sonnet",
+      "use_for": "single-fact brain-worker lookups, orc-helper pane mechanics, verifiers",
+      "evidence": "2026-09-29 subagent-routing: brain-worker recall parity at 0.46x; orc-helper 4/4 parity at 0.47x; verifiers 0 wrong at 0.55x",
+      "never_for": "deletion decisions, PR-gating review, multi-source history"
+    },
+    "codex.implement": {
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "effort_note": "benched 2026-09-30 (skill-creator cleanup-routing R2, 48 verified runs): medium best-or-joint-best; never default xhigh",
+      "use_for": "all non-UX/UI implementation (Etan 2026-09-29 split)"
+    },
+    "codex.subagent.mechanical": {
+      "model": "gpt-6-luna",
+      "status": "candidate",
+      "gate": "bench after fleet convergence (skill-creator); not yet benched",
+      "use_for": "rebases, CI polling, version bumps, file moves",
+      "never_for": "judgment of any kind"
+    },
+    "gemini.gather.text": {
+      "model": "Gemini 3.8 Flash (High)",
+      "launcher_tier": "flash-high",
+      "use_for": "doc/link/copy audits, inventories, doc fetch+quote, BrainLayer recall",
+      "never_for": "deletion decisions, implementing, reviewing"
+    },
+    "gemini.gather.visual": {
+      "model": "Gemini 3.8 Flash (High)",
+      "launcher_tier": "flash-high",
+      "use_for": "frames, screenshots, OCR, video state changes, /qa-video",
+      "evidence": "2026-09-30 visual re-bench: 44/44 vs Pro-High 43/44 + fabricated timing"
+    }
+  }
+}

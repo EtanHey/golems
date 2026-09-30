@@ -115,6 +115,12 @@ jobs:
       - name: Check skill prose does not teach cut cmuxlayer tools
         run: node scripts/ci/check-cut-tool-references.mjs
 
+      - name: Check role-owned model drift
+        run: node scripts/ci/check-model-role-drift.mjs
+
+      - name: Test model roles contract, resolver and drift lint
+        run: node --test scripts/tests/model-roles.test.mjs
+
       - name: Check for unresolved placeholders in public-facing files
         run: |
           echo "Checking for broken placeholders in INSTALL_PROMPT.md and SKILL.md files..."
