@@ -1,5 +1,21 @@
 [
   {
+    "authority": "golems#425",
+    "candidate_sha256": {
+      "darwin": "b1ce4a56fe6ec24954ded8c200960dbaf139bd6069f2b1a633fe7c360b37491b"
+    },
+    "case": "issue425-git-guardian-oversized-command",
+    "reason": "Commands beyond the bounded policy-parser input are denied before parsing so a hook timeout cannot fail open."
+  },
+  {
+    "authority": "golems#425",
+    "candidate_sha256": {
+      "darwin": "e8493da0c4ee1569c0a094015e10d1a0486c878983fa7e8a3bb9536173607198"
+    },
+    "case": "issue425-tmp-block-oversized-command",
+    "reason": "Commands beyond the bounded policy-parser input are denied before parsing so a hook timeout cannot fail open."
+  },
+  {
     "authority": "golems#466",
     "candidate_sha256": {
       "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",

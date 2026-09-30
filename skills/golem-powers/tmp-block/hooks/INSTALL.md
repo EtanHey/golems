@@ -78,7 +78,7 @@ cp ~/.claude/settings.json ~/.claude/settings.json.bak-$(date +%Y-%m-%d)
     {
       "type": "command",
       "command": "python3 ~/.claude/hooks/tmp-block/hooks/tmp-block-pretooluse.py",
-      "timeout": 5000
+      "timeout": 5
     }
   ]
 }
@@ -86,6 +86,8 @@ cp ~/.claude/settings.json ~/.claude/settings.json.bak-$(date +%Y-%m-%d)
 
 Notes:
 
+- Hook timeouts are seconds; five seconds leaves wide headroom above the
+  bounded parser's measured worst case.
 - Hook settings are snapshotted at session start — already-running sessions
   will not pick this up; new sessions (and their Task subagents) will.
 - An internal error on a payload that mentions a temp location **fails CLOSED**

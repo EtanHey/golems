@@ -25,6 +25,21 @@ from pathlib import Path as _Path
 import sys as _sys
 
 
+MAX_POLICY_COMMAND_BYTES = 32 * 1024
+
+
+def policy_command_size_reason(command: str) -> str | None:
+    """Return a value-free refusal reason when policy parsing is out of budget."""
+    if not isinstance(command, str):
+        raise TypeError("shell command is not a string")
+    if len(command.encode("utf-8")) > MAX_POLICY_COMMAND_BYTES:
+        return (
+            "command too large for the policy parser; split it "
+            f"(maximum {MAX_POLICY_COMMAND_BYTES} bytes)"
+        )
+    return None
+
+
 # Load beside the facade's real file, so a file symlink cannot shadow its
 # implementation with a different package beside the link.
 _IMPL_DIR = _Path(os.path.realpath(__file__)).parent / "shell_parse_impl"

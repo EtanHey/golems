@@ -248,6 +248,7 @@ test("every shipped host set carries the same git-guardian and tmp-block guards"
   for (const id of ["pre_tool_use", "tmp-block"]) {
     const mbp = realManifest.hosts.mbp.filter((hook) => hook.id === id);
     expect(mbp).toHaveLength(1);
+    expect(mbp[0].timeout).toBe(5);
     for (const [host, entries] of Object.entries(realManifest.hosts)) {
       expect(entries.filter((hook) => hook.id === id), `${host} ${id}`).toEqual(mbp);
     }

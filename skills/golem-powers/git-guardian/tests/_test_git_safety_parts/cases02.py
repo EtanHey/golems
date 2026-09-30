@@ -1,5 +1,7 @@
 from .common import *  # noqa: F403
 
+import time
+
 def test_w16_unexpanded_var_with_literal_tail_is_allowed(tmp_path):
     # RED #1 (backlog #17): `$SP` is unexpanded in the command text. An unknown variable
     # is UNKNOWN, never zero-component — and a literal tail component guarantees the
@@ -257,6 +259,24 @@ def test_pr4_data_command_prose_is_masked_for_the_sql_and_credential_scans():
     ):
         text = git_safety.shell_text_without_heredoc_bodies(command)
         assert "DROP TABLE" not in text and "credentials.json" not in text, (command, text)
+
+
+def test_issue425_many_quoted_data_arguments_are_linear():
+    command = "printf " + ("')' " * 8000)
+    started = time.perf_counter()
+    text = git_safety.shell_text_without_heredoc_bodies(command)
+    elapsed = time.perf_counter() - started
+    assert text == "printf " + ("'' " * 8000)
+    assert elapsed < 3, f"32 KB quoted-word parse took {elapsed:.2f}s"
+
+
+def test_issue425_command_bound_is_utf8_bytes_and_strictly_over():
+    at_limit = "é" * (32 * 1024 // 2)
+    assert len(at_limit.encode("utf-8")) == 32 * 1024
+    assert git_safety.policy_command_size_reason(at_limit) is None
+    assert "command too large for the policy parser; split it" in (
+        git_safety.policy_command_size_reason(at_limit + "x") or ""
+    )
 
 
 def test_pr4_executed_sql_and_substitutions_are_still_visible():

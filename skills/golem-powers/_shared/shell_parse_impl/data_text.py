@@ -164,17 +164,29 @@ def _interpreter_heredoc_header(header: str, *, piped: bool = False) -> bool:
 
 
 def _is_data_command(words: list[str]) -> bool:
-    words = [w for w in words if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w)]
-    if not words:
+    command_index = next(
+        (
+            index
+            for index, word in enumerate(words)
+            if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", word)
+        ),
+        None,
+    )
+    if command_index is None:
         return False
-    name = os.path.basename(words[0])
+    name = os.path.basename(words[command_index])
     if name in _DATA_COMMANDS:
         return True
-    rest = [w for w in words[1:] if not w.startswith("-")]
-    # A config override (`-c k=v`, `-ck=v`, `--config-env`) can name a program
-    # git then runs (core.editor, alias.x=!…); any override makes git non-data.
-    overrides = any(w.startswith(("-c", "--config-env")) for w in words[1:])
-    return name == "git" and not overrides and bool(rest) and rest[0] in _GIT_DATA_SUBCOMMANDS
+    if name != "git":
+        return False
+    for word in words[command_index + 1:]:
+        # A config override (`-c k=v`, `-ck=v`, `--config-env`) can name a
+        # program git then runs (core.editor, alias.x=!…); never mask it.
+        if word.startswith(("-c", "--config-env")):
+            return False
+        if not word.startswith("-"):
+            return word in _GIT_DATA_SUBCOMMANDS
+    return False
 
 
 # Executors named anywhere in a command (as a word, or a path ending in one),

@@ -42,6 +42,7 @@ executable_shell_structure_has_open_state = (
     _pkg.shell_parse.executable_shell_structure_has_open_state
 )
 process_substitution_at = _pkg.shell_parse.process_substitution_at
+policy_command_size_reason = _pkg.shell_parse.policy_command_size_reason
 
 # Names remain patchable on this facade; implementation calls look them up here.
 for _module, _names in (

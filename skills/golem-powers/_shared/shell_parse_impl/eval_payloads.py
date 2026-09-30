@@ -24,12 +24,17 @@ def detect_eval_payload(
     function_state_at,
     literal_tokens,
 ):
-    eval_variables = variable_state_at(i)
-    resolved_eval_token = token
     eval_variable = re.fullmatch(
         r"\$([A-Za-z_][A-Za-z0-9_]*)",
         token,
     )
+    # Literal non-eval arguments cannot become eval. Avoid rebuilding the
+    # complete prefix variable state for every argument; that was quadratic
+    # on commands with thousands of quoted data words.
+    if token != "eval" and eval_variable is None:
+        return None
+    eval_variables = variable_state_at(i)
+    resolved_eval_token = token
     if eval_variable:
         variable_name = eval_variable.group(1)
         if variable_name in eval_variables:

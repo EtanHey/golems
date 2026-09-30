@@ -55,6 +55,7 @@ try:
         if os.path.realpath(_git_safety.__file__) != git_safety_path:
             raise ImportError("configured git_safety module was not loaded")
         dangerous_shell_reason = _git_safety.dangerous_shell_reason
+        policy_command_size_reason = _git_safety.policy_command_size_reason
         shell_text_without_heredoc_bodies = (
             _git_safety.shell_text_without_heredoc_bodies
         )
@@ -113,6 +114,9 @@ def classify_tool(tool_name, tool_input):
     if tool_name == "Bash":
         raw_command = tool_input.get("command", "")
         try:
+            size_reason = policy_command_size_reason(raw_command)
+            if size_reason:
+                return "RED", size_reason
             guardian_reason = dangerous_shell_reason(raw_command)
             command = shell_text_without_heredoc_bodies(raw_command)
         except Exception:  # policy uncertainty must never become fail-open allow
@@ -163,11 +167,17 @@ def classify_tool(tool_name, tool_input):
     return "YELLOW", None
 
 
-def main():
-    if os.environ.get("CLAUDE_WORKER"):
-        json.dump({}, sys.stdout)
-        sys.exit(0)
+def block(reason):
+    result_reason = (
+        f"BLOCKED: {reason or 'Dangerous operation detected'}. FLAG THIS TO THE USER as a "
+        "surprise — do NOT retry the same command. Explain what you were trying to do "
+        "and ask the user how to proceed."
+    )
+    json.dump({"decision": "block", "reason": result_reason}, sys.stdout)
+    sys.exit(2)
 
+
+def main():
     try:
         hook_input = json.load(sys.stdin)
     except json.JSONDecodeError:
@@ -177,20 +187,26 @@ def main():
     tool_name = hook_input.get("tool_name", "")
     tool_input = hook_input.get("tool_input", {})
 
+    # Workers retain their historical policy exemption, but oversized input
+    # must never skip the parser budget boundary that prevents hook timeout.
+    if os.environ.get("CLAUDE_WORKER"):
+        if tool_name == "Bash" and isinstance(tool_input, dict):
+            try:
+                size_reason = policy_command_size_reason(tool_input.get("command", ""))
+            except (TypeError, UnicodeError):
+                size_reason = None
+            if size_reason:
+                block(size_reason)
+        json.dump({}, sys.stdout)
+        sys.exit(0)
+
     # Classify the tool call
     classification, reason = classify_tool(tool_name, tool_input)
 
     if classification != "RED":
         json.dump({}, sys.stdout)
         sys.exit(0)
-
-    result_reason = (
-        f"BLOCKED: {reason or 'Dangerous operation detected'}. FLAG THIS TO THE USER as a "
-        "surprise — do NOT retry the same command. Explain what you were trying to do "
-        "and ask the user how to proceed."
-    )
-    json.dump({"decision": "block", "reason": result_reason}, sys.stdout)
-    sys.exit(2)
+    block(reason)
 
 
 if __name__ == "__main__":

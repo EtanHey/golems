@@ -157,7 +157,11 @@ def test_wrapper_depth_matrix_blocks_through_copied_hook_and_fail_open_launcher(
                     kind, depth, tail, result.stdout, result.stderr
                 )
                 if depth > 64:
-                    assert "wrapper nesting exceeds 64" in json.loads(result.stdout)["reason"]
+                    reason = json.loads(result.stdout)["reason"]
+                    if len(command.encode("utf-8")) > 32 * 1024:
+                        assert "command too large for the policy parser; split it" in reason
+                    else:
+                        assert "wrapper nesting exceeds 64" in reason
                 assert "golems-fail-open" not in result.stderr
     assert not (guardian / "git_safety_impl" / "__pycache__").exists()
 
@@ -291,6 +295,40 @@ def test_issue491_data_false_positives_allow_and_real_controls_block_through_cop
         result = _run_copied_hook(hook, launcher, other_cwd, env, command)
         assert result.returncode == 2, (command, result.stdout, result.stderr)
         assert "golems-fail-open" not in result.stderr
+
+
+def test_issue425_oversized_command_denies_quickly_and_value_free(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = "echo '" + ("x" * (32 * 1024)) + "'"
+    started = __import__("time").perf_counter()
+    result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+    elapsed = __import__("time").perf_counter() - started
+    assert result.returncode == 2, result.stdout + result.stderr
+    reason = json.loads(result.stdout)["reason"]
+    assert "command too large for the policy parser; split it" in reason
+    assert "xxxxx" not in result.stdout + result.stderr
+    assert elapsed < 3, f"oversized-command deny took {elapsed:.2f}s"
+
+
+def test_issue425_worker_bypass_does_not_skip_the_size_bound(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = "echo '" + ("x" * (32 * 1024)) + "'"
+    result = _run_copied_hook(
+        hook,
+        launcher,
+        other_cwd,
+        {**env, "CLAUDE_WORKER": "1"},
+        command,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "command too large for the policy parser; split it" in json.loads(result.stdout)["reason"]
+
+
+def test_issue425_large_under_limit_quoted_heredoc_keeps_policy(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = "cat > docs.local/fixture.txt <<'EOF'\n" + ("x" * (24 * 1024)) + "\nEOF"
+    result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_second_policy_parse_error_is_value_free_red(monkeypatch):

@@ -167,6 +167,7 @@ try:
             _nested_alias_segment,
             _nested_segment,
             _parse_bash,
+            policy_command_size_reason,
             _segment_is_fully_exposed,
             _segment_is_prefix,
             _shell_command_payloads,
@@ -3280,6 +3281,11 @@ def main():
             and tool_name != APPLY_PATCH_TOOL
         ):
             allow()
+
+        if tool_name == "Bash":
+            size_reason = policy_command_size_reason(tool_input.get("command", ""))
+            if size_reason:
+                deny(f"⛔ TMP-BLOCK: {size_reason}.")
 
         # ── Rule 1: the temp path-CLASS (deny dominates) ─────────────────────
         dynamic_targets = []
