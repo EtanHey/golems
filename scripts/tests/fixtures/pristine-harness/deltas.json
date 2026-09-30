@@ -425,7 +425,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4"
+      "darwin": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4",
+      "linux": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4"
     },
     "case": "parser-042",
     "reason": "issue412substitutionquote-boundaryhardening"
@@ -433,7 +434,24 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616"
+      "darwin": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45"
+    },
+    "case": "parser-078",
+    "reason": "Heredoc body parentheses are data and cannot close the surrounding command substitution"
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05"
+    },
+    "case": "parser-130",
+    "reason": "Case pattern terminators cannot close the surrounding command substitution; incomplete case syntax fails closed"
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616",
+      "linux": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616"
     },
     "case": "parser-topup-backtick-escaped",
     "reason": "issue412substitutionquote-boundaryhardening"
@@ -441,7 +459,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae"
+      "darwin": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae",
+      "linux": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae"
     },
     "case": "parser-topup-nested-arithmetic",
     "reason": "issue412substitutionquote-boundaryhardening"
