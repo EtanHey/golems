@@ -1262,14 +1262,23 @@ def _executable_expansions(line: str) -> str:
     found = []
     i = 0
     while i < len(line):
-        if line.startswith("$(", i) and not line.startswith("$((", i):
+        if line[i] == "\\":
+            i += 2
+            continue
+        if line.startswith("$(", i):
             j = _data_dollar_paren_end(line, i)
-            found.append(line[i:j])
+            body = shell_text_without_heredoc_bodies(
+                line[i + 2:j - 1], _preserve_heredoc_delimiters=True
+            )
+            found.append("$(" + body + ")")
             i = j
             continue
         if line[i] == "`":
             j = _data_backtick_end(line, i)
-            found.append(line[i:j])
+            body = shell_text_without_heredoc_bodies(
+                line[i + 1:j - 1], _preserve_heredoc_delimiters=True
+            )
+            found.append("`" + body + "`")
             i = j
             continue
         i += 1
@@ -1367,9 +1376,7 @@ def _mask_data_argument_quotes(text: str) -> str:
             index += 2
             continue
         if char in "'\"":
-            end = index + 1
-            while end < len(text) and text[end] != char:
-                end += 2 if char == '"' and text[end] == "\\" else 1
+            end = _data_argument_quote_end(text, index)
             body = text[index + 1:end]
             if words and _is_data_command(words):
                 body = "" if char == "'" else _executable_expansions(body)
@@ -1390,7 +1397,36 @@ def _mask_data_argument_quotes(text: str) -> str:
     return "".join(out)
 
 
-def shell_text_without_heredoc_bodies(command: str) -> str:
+def _data_argument_quote_end(text: str, start: int) -> int:
+    """Find a data-command argument's real closing quote.
+
+    A double-quoted argument may contain complete `$()` or backtick regions
+    with their own quotes.  Those inner delimiters cannot close the argument.
+    The caller intentionally receives ``len(text)`` for an unclosed argument,
+    preserving the established fail-visible behavior.
+    """
+    quote = text[start]
+    index = start + 1
+    while index < len(text):
+        char = text[index]
+        if quote == '"' and char == "\\":
+            index += 2
+            continue
+        if quote == '"' and text.startswith("$(", index):
+            index = _data_dollar_paren_end(text, index)
+            continue
+        if quote == '"' and char == "`":
+            index = _data_backtick_end(text, index)
+            continue
+        if char == quote:
+            return index
+        index += 1
+    return len(text)
+
+
+def shell_text_without_heredoc_bodies(
+    command: str, *, _preserve_heredoc_delimiters: bool = False
+) -> str:
     """Remove heredoc prose while retaining executable substitutions.
 
     GO-5 PR-4: also drops heredoc bodies read by a non-shell interpreter and
@@ -1411,12 +1447,25 @@ def shell_text_without_heredoc_bodies(command: str) -> str:
             candidate = line.lstrip("\t") if strip_tabs else line
             if candidate == delimiter:
                 pending.pop(0)
-                output.append(ending if mask_body else source_line)
+                output.append(
+                    source_line
+                    if mask_body and _preserve_heredoc_delimiters
+                    else ending if mask_body else source_line
+                )
             else:
                 if mask_body:
                     kept = "" if quoted else _executable_expansions(line)
                     output.append(kept + ending)
                 else:
+                    # In an unquoted heredoc, quotes are literal to the parent
+                    # shell while `$()`/backticks still execute.  Preserve
+                    # those expansions before the raw body is later parsed as
+                    # child-shell text, so a literal apostrophe cannot hide
+                    # the parent-side command.
+                    if not quoted:
+                        kept = _executable_expansions(line)
+                        if kept:
+                            output.append(kept + ending)
                     output.append(source_line)
             continue
         for match in _HEREDOC_RE.finditer(line):
@@ -1466,44 +1515,11 @@ def _data_dollar_paren_end(text: str, start: int) -> int:
     its shell quote rules while skipping nested substitutions as complete
     regions so their delimiters cannot close the containing `$()`.
     """
-    depth = 1
-    quote = None
-    index = start + 2
-    while index < len(text):
-        char = text[index]
-        if quote == "'":
-            if char == "'":
-                quote = None
-            index += 1
-            continue
-        if char == "\\":
-            index += 2
-            continue
-        if char == "'" and quote is None:
-            quote = "'"
-            index += 1
-            continue
-        if char == '"':
-            quote = None if quote == '"' else '"'
-            index += 1
-            continue
-        if text.startswith("$(", index) and not text.startswith("$((", index):
-            index = _data_dollar_paren_end(text, index)
-            continue
-        if char == "`":
-            index = _data_backtick_end(text, index)
-            continue
-        if quote == '"':
-            index += 1
-            continue
-        if char == "(":
-            depth += 1
-        elif char == ")":
-            depth -= 1
-            if depth == 0:
-                return index + 1
-        index += 1
-    raise ValueError("unterminated command substitution")
+    found = _dollar_substitution(text, start)
+    if found is None:
+        raise ValueError("unterminated command substitution")
+    _body, end = found
+    return end
 
 
 def _backtick_bodies(command: str) -> list[str]:

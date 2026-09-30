@@ -80,6 +80,32 @@ def test_data_dollar_paren_scanner_handles_nested_and_mixed_quotes():
     assert shell_parse.without_dollar_paren_bodies(command) == "echo $()"
 
 
+@pytest.mark.parametrize(
+    "command",
+    (
+        "$(printf %s $'a\\')'; echo tail)",
+        '$(: "${x:-")"}"; echo tail)',
+        "$(case x in x) echo tail;; esac)",
+        "$(: ${x:-)}; echo tail)",
+        "$(true # )\necho tail)",
+    ),
+)
+def test_data_dollar_paren_scanner_keeps_shell_delimiters_inside_nested_syntax(command):
+    assert shell_parse.dollar_paren_bodies(command) == [command[2:-1]]
+
+
+def test_deep_nested_substitution_is_a_complete_valid_parse():
+    command = 'echo "$(echo "$(echo "$(echo /tmp/deep)")")"'
+    assert shell_parse.shell_text_without_heredoc_bodies(command) == command
+
+
+def test_data_argument_masking_keeps_only_executable_nested_content():
+    command = "git commit -m \"$(cat <<'EOF'\nfix: don't (break) `things`\nEOF\n)\""
+    reduced = shell_parse.shell_text_without_heredoc_bodies(command)
+    assert reduced.startswith('git commit -m "$(')
+    assert "don't" not in reduced and "`things`" not in reduced
+
+
 def test_data_backtick_scanner_does_not_treat_backslash_as_escape_in_single_quotes():
     assert shell_parse._backtick_bodies("echo 'a\\' `printf safe`") == ["printf safe"]
 

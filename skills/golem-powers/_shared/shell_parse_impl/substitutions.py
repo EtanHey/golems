@@ -8,10 +8,68 @@ from .heredocs import _after_heredoc_bodies
 from .positions import _segment_for_offset
 
 
+def _parameter_expansion_end(command, start):
+    """Return the index after a balanced `${...}`, or None.
+
+    Quotes inside a parameter expansion have their own state even when the
+    expansion appears inside an outer double-quoted `$()` body.  Skipping the
+    region as one unit prevents a literal `)` in a default value from closing
+    the containing command substitution.
+    """
+    depth = 1
+    quote = None
+    i = start + 2
+    while i < len(command):
+        char = command[i]
+        if char == "\\" and quote != "'":
+            i += 2
+            continue
+        if quote is not None:
+            if char == quote:
+                quote = None
+                i += 1
+                continue
+            if quote == '"' and command.startswith("$(", i):
+                nested = _dollar_substitution(command, i)
+                if nested is None:
+                    return None
+                _body, i = nested
+                continue
+            i += 1
+            continue
+        if char in "\"'":
+            quote = char
+            i += 1
+            continue
+        if command.startswith("${", i):
+            depth += 1
+            i += 2
+            continue
+        if command.startswith("$(", i):
+            nested = _dollar_substitution(command, i)
+            if nested is None:
+                return None
+            _body, i = nested
+            continue
+        if char == "`":
+            nested = _backtick_substitution(command, i)
+            if nested is None:
+                return None
+            _body, i = nested
+            continue
+        if char == "}":
+            depth -= 1
+            i += 1
+            if depth == 0:
+                return i
+            continue
+        i += 1
+    return None
+
+
 def _dollar_substitution(command, start):
     """Return (`body`, index_after_close) for `$(` at `start`, or None."""
     depth = 1
-    parameter_depth = 0
     case_states = []
     case_pattern_started = []
     case_pattern_depths = []
@@ -33,6 +91,12 @@ def _dollar_substitution(command, start):
                 quote = None
                 i += 1
                 continue
+            if command.startswith("${", i):
+                end = _parameter_expansion_end(command, i)
+                if end is None:
+                    return None
+                i = end
+                continue
             if command.startswith("$(", i) and not command.startswith("$((", i):
                 nested = _dollar_substitution(command, i)
                 if nested is None:
@@ -52,21 +116,16 @@ def _dollar_substitution(command, start):
             i += 1
             continue
         if command.startswith("${", i):
-            parameter_depth += 1
-            i += 2
-            continue
-        if parameter_depth and char == "}":
-            parameter_depth -= 1
-            i += 1
+            end = _parameter_expansion_end(command, i)
+            if end is None:
+                return None
+            i = end
             continue
         if command.startswith("$(", i):
             nested = _dollar_substitution(command, i)
             if nested is None:
                 return None
             _body, i = nested
-            continue
-        if parameter_depth:
-            i += 1
             continue
         if char == "#" and (
             i == 0
