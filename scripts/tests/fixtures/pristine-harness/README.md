@@ -22,7 +22,7 @@ log command was copied into this repo.
 `goldens.json` records untouched base `84b50967` raw hook/probe bytes and
 launcher fingerprints. `platform_results.linux` records path-sensitive Linux
 hook bytes and all Linux launcher fingerprints.
-The comparator does not normalize or special-case any output. It also runs the
+The comparator never normalizes output. It also runs the
 immutable base and candidate in separate child processes for every case.
 The hook ledger clock, hash seed and timezone are fixed in both processes;
 external launcher CLIs and randomness are stubbed.
@@ -52,3 +52,34 @@ Run `python3 scripts/ci/pristine-harness.py check`, `verify-goldens`, and
 and removed on exit. It is test data, not a durable artifact.
 This is source and fixture proof; installed hook and launcher verification
 belongs to the later split lanes.
+
+## Intended behaviour changes
+
+`deltas.json` declares reviewed changes to named cases. Each declaration records
+a reason, an authority (issue/PR plus ruling pointer), and platform-specific
+SHA-256 hashes of the complete candidate capture: exit, base64 stdout/stderr,
+and captured files serialized as sorted compact JSON. The immutable base still
+runs independently. An undeclared difference, wrong hash, missing platform hash,
+or stale declaration whose candidate equals the base fails `check`.
+
+Record a local receipt explicitly:
+
+```bash
+python3 scripts/ci/pristine-harness.py record-delta --case <case-id> \
+  --reason 'intended change' --authority 'PR/issue and lead ruling'
+```
+
+`check` never writes declarations. Missing platform hashes are reported in its
+output; obtain Linux hashes from CI and add them explicitly. Deltas are reviewed
+like code, and the PR body lists every case with its reason. A security DENY→ALLOW
+change on a `tmp-block` or `git-guardian` hook (exit 2 → any exit other than 2) fails
+unless the declaration includes `"allow_deny_to_allow": "<lead ruling ref>"`.
+Metadata is NFKC-normalized, with Unicode format characters and whitespace
+removed. Reasons must contain visible alphanumeric content; placeholders fail.
+Authority and exception references must be `golems#<number>`, a GitHub issue/PR
+URL (optionally with a fragment), or `collab:YYYY-MM-DD:<ruling pointer>` with
+at least eight pointer characters. Exit 1 is a non-blocking hook error. `check` flags each such transition,
+including its ruling, and prints every accepted case with its reason and authority.
+Duplicate JSON keys at any nesting depth are rejected. `verify-goldens` and `mutation-proof`
+continue to check the untouched base; a changed declared capture still fails
+its exact candidate hash.

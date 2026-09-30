@@ -13,9 +13,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 
 
 BASE = "84b50967d6f0cdf62b58b23b78cece5c0897c77e"
@@ -24,6 +26,7 @@ HERE = Path(__file__).resolve().parent
 CORPUS = ROOT / "scripts/tests/fixtures/pristine-harness/corpus.json"
 GOLDENS = ROOT / "scripts/tests/fixtures/pristine-harness/goldens.json"
 SEMANTIC_MUTANTS = ROOT / "scripts/tests/fixtures/pristine-harness/semantic-mutants.json"
+DELTA_PATH = Path("scripts/tests/fixtures/pristine-harness/deltas.json")
 # The fixture is disposable, but its spelling must not depend on a checkout.
 # A shared lock serializes clones on one host; cleanup happens in main().
 FIXTURE = Path("/var/tmp/pristine-harness-fixture")
@@ -249,6 +252,130 @@ def expected_on_host(goldens):
     return expected
 
 
+def capture_digest(result):
+    """Hash the complete capture, including exit, raw base64 bytes and files."""
+    data = json.dumps(result, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(data).hexdigest()
+
+
+def reject_duplicate_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def normalize_metadata(value):
+    if not isinstance(value, str):
+        return ""
+    return "".join(char for char in unicodedata.normalize("NFKC", value)
+                   if unicodedata.category(char) != "Cf" and not char.isspace())
+
+
+def visible_metadata(value):
+    return bool(value) and any(char.isalnum() for char in value) and value.casefold() not in {
+        "x", "tbd", "todo", "n/a", "none", "-",
+    }
+
+
+def ruling_reference(value):
+    normalized = normalize_metadata(value)
+    pattern = r"(golems#\d+|https://github\.com/[\w.-]+/[\w.-]+/(issues|pull)/\d+(#[\w-]+)?|collab:\d{4}-\d{2}-\d{2}:.{8,})"
+    return normalized if visible_metadata(normalized) and re.fullmatch(pattern, normalized) else None
+
+
+def delta_metadata(reason, authority):
+    reason, authority = normalize_metadata(reason), normalize_metadata(authority)
+    if not visible_metadata(reason) or not visible_metadata(authority):
+        raise ValueError("delta reason and authority must be nonempty strings with visible alphanumeric content, not placeholders")
+    if not ruling_reference(authority):
+        raise ValueError("delta authority requires a concrete lead ruling reference")
+    return reason, authority
+
+
+def load_deltas(path, ids):
+    rows = json.loads(path.read_text(), object_pairs_hook=reject_duplicate_keys) if path.exists() else []
+    if not isinstance(rows, list):
+        raise ValueError("deltas must be a list")
+    seen = set()
+    for row in rows:
+        required = {"case", "reason", "authority", "candidate_sha256"}
+        if not isinstance(row, dict) or not required <= set(row) or set(row) - required - {"allow_deny_to_allow"}:
+            raise ValueError("delta requires case, reason, authority and candidate_sha256")
+        if not isinstance(row["case"], str) or not row["case"].strip():
+            raise ValueError("delta case must be a nonempty string")
+        row["reason"], row["authority"] = delta_metadata(row["reason"], row["authority"])
+        if "allow_deny_to_allow" in row:
+            ruling = ruling_reference(row["allow_deny_to_allow"])
+            if not ruling:
+                raise ValueError("allow_deny_to_allow requires a concrete lead ruling reference")
+            row["allow_deny_to_allow"] = ruling
+        ident = row["case"]
+        if ident in seen:
+            raise ValueError(f"duplicate delta case: {ident}")
+        if ident not in ids:
+            raise ValueError(f"unknown delta case: {ident}")
+        seen.add(ident)
+        hashes = row["candidate_sha256"]
+        if not isinstance(hashes, dict) or any(
+            host not in ("darwin", "linux") or not isinstance(digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            for host, digest in hashes.items()
+        ):
+            raise ValueError(f"invalid platform hashes for delta: {ident}")
+    return rows
+
+
+def compare_captures(baseline, actual, declarations, platform, hook_cases=()):
+    declared = {row["case"]: row for row in declarations}
+    failures, used = [], 0
+    for ident, base in baseline.items():
+        candidate = actual[ident]
+        row = declared.get(ident)
+        if row is not None:
+            observed = capture_digest(candidate)
+            deny_to_allow = ident in hook_cases and base["exit"] == 2 and candidate["exit"] != 2
+            if deny_to_allow:
+                print("PRISTINE DELTA DENY→ALLOW " + json.dumps({
+                    "case": ident, "base_exit": base["exit"], "candidate_exit": candidate["exit"],
+                    "allow_deny_to_allow": row.get("allow_deny_to_allow"),
+                }, sort_keys=True))
+            if deny_to_allow and not ruling_reference(row.get("allow_deny_to_allow")):
+                failures.append(f"{ident}: hook deny→allow requires allow_deny_to_allow lead ruling reference")
+            elif candidate == base:
+                failures.append(f"{ident}: stale delta (candidate equals immutable base); observed sha256={observed}")
+            elif platform not in row["candidate_sha256"]:
+                failures.append(f"{ident}: missing {platform} delta hash; observed sha256={observed}")
+            elif observed != row["candidate_sha256"][platform]:
+                failures.append(f"{ident}: delta hash mismatch; observed sha256={observed}")
+            else:
+                used += 1
+                print("PRISTINE DELTA USED " + json.dumps({
+                    key: row[key] for key in ("case", "reason", "authority")
+                }, sort_keys=True))
+        elif candidate != base:
+            differing = [key for key in ("exit", "stdout", "stderr", "files") if candidate[key] != base[key]]
+            failures.append(f"{ident}: undeclared difference ({', '.join(differing)})")
+    return failures, used
+
+
+def record_delta(path, ids, case, reason, authority, result, platform):
+    rows = load_deltas(path, ids)
+    reason, authority = delta_metadata(reason, authority)
+    if case not in ids:
+        raise ValueError("record-delta requires a known case, reason and authority")
+    row = next((row for row in rows if row["case"] == case), None)
+    if row is None:
+        row = {"case": case, "reason": reason, "authority": authority, "candidate_sha256": {}}
+        rows.append(row)
+    row.update(reason=reason, authority=authority)
+    row["candidate_sha256"][platform] = capture_digest(result)
+    path.write_text(json.dumps(sorted(rows, key=lambda row: row["case"]), indent=2, sort_keys=True) + "\n")
+    print(f"recorded delta {case} {platform} sha256={row['candidate_sha256'][platform]}")
+
+
 def fixture_cwd(scratch, name):
     names = {
         "root": scratch / "repo",
@@ -448,10 +575,14 @@ def validate_baseline(cases, results):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("record", "check", "verify-goldens",
+    parser.add_argument("action", choices=("record", "record-delta", "check", "verify-goldens",
                                           "verify-python-goldens", "mutation-proof"))
     parser.add_argument("--candidate-root", type=Path, default=ROOT)
+    for option in ("case", "reason", "authority"):
+        parser.add_argument(f"--{option}")
     args = parser.parse_args()
+    if args.action == "record-delta" and any(not getattr(args, key) for key in ("case", "reason", "authority")):
+        parser.error("record-delta requires --case, --reason and --authority")
     cases = json.loads(CORPUS.read_text())
     ids = [case["id"] for case in cases]
     if len(ids) != len(set(ids)) or any(case["target"] not in
@@ -475,6 +606,20 @@ def main():
 def run_locked(args, parser, cases, scratch):
     base = scratch / "base"
     make_base(base)
+    if args.action == "record-delta":
+        selected = [case for case in cases if case["id"] == args.case]
+        if not selected:
+            parser.error(f"unknown delta case: {args.case}")
+        baseline = execute(selected, base, scratch)
+        actual = execute(selected, args.candidate_root.resolve(), scratch)
+        if actual[args.case] == baseline[args.case]:
+            parser.error(f"stale delta: {args.case} equals immutable base")
+        try:
+            record_delta(args.candidate_root / DELTA_PATH, [case["id"] for case in cases],
+                         args.case, args.reason, args.authority, actual[args.case], sys.platform)
+        except ValueError as error:
+            parser.error(str(error))
+        return 0
     if args.action == "record":
         if GOLDENS.exists():
             parser.error("goldens already exist; do not overwrite the untouched base")
@@ -581,14 +726,14 @@ def run_locked(args, parser, cases, scratch):
         print(f"GOLDENS PASS {len(cases)}")
         return 0
     actual = execute(cases, args.candidate_root.resolve(), scratch)
-    failures = []
-    for case in cases:
-        ident = case["id"]
-        baseline = measured[ident]
-        if actual[ident] != baseline:
-            differing = [key for key in ("exit", "stdout", "stderr", "files")
-                         if actual[ident][key] != baseline[key]]
-            failures.append(f"{ident}: {', '.join(differing)}")
+    try:
+        deltas = load_deltas(args.candidate_root / DELTA_PATH, [case["id"] for case in cases])
+    except ValueError as error:
+        parser.error(str(error))
+    failures, used = compare_captures(measured, actual, deltas, sys.platform,
+                                      hook_cases={case["id"] for case in cases
+                                                  if case["target"] in ("tmp-block", "git-guardian")})
+    print(f"PRISTINE DECLARED DELTAS USED {used}")
     if failures:
         print("PRISTINE HARNESS FAIL\n" + "\n".join(failures), file=sys.stderr)
         return 1
