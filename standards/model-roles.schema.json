@@ -13,18 +13,16 @@
       "type": "object",
       "minProperties": 1,
       "allOf": [{"patternProperties": {
-        "^(claude|codex)\\.": {"required": ["effort"]},
-        "^gemini\\.": {"required": ["launcher_tier"], "not": {"required": ["effort"]}}
+        "^gemini\\.": {"required": ["launcher_tier"]}
       }}],
       "additionalProperties": {
         "type": "object",
         "required": ["model", "use_for"],
         "additionalProperties": false,
+        "errorMessage": {"additionalProperties": "unexpected property; effort does not belong in model-roles: declare it per /large-plan phase"},
         "properties": {
           "model": {"type": "string", "minLength": 1},
           "alias": {"type": "string", "minLength": 1},
-          "effort": {"type": "string", "enum": ["low", "medium", "high", "xhigh", "default"]},
-          "effort_note": {"type": "string", "minLength": 1},
           "use_for": {"type": "string", "minLength": 1},
           "evidence": {"type": "string", "minLength": 1},
           "never_for": {"type": "string", "minLength": 1},

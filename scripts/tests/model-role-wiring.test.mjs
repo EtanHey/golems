@@ -50,6 +50,15 @@ test('large-plan generated phases and authored templates retain config-driven st
       assert.ok(text.includes('scripts/model-roles.mjs'));
     }
     const generated = readFileSync(join(dir, 'phase-1/README.md'), 'utf8');
+    const section = text => text.replaceAll('\\`', '`').split('## Choosing effort per phase')[1].split('## ')[0].trim();
+    const phaseEffort = section(generated);
+    assert.match(phaseEffort, /Effort is not in the model-roles config; the phase declares it\./);
+    assert.match(phaseEffort, /48 verified runs/);
+    assert.doesNotMatch(phaseEffort, /effort_note|config's effort/);
+    for (const path of ['skills/golem-powers/large-plan/SKILL.md', 'skills/golem-powers/large-plan/workflows/scaffold.md', 'skills/golem-powers/large-plan/scripts/scaffold-plan.sh']) {
+      assert.equal(section(read(path)), phaseEffort, path);
+    }
+
     const staffing = generated.split('## Tools')[1].split('## Choosing effort per phase')[0];
     const lines = staffing.split('\n').filter(line => /^- \*\*(Gatherer|Implementer|Reviewer|Lookup)/.test(line));
     assert.equal(lines.length, 4);
@@ -72,7 +81,10 @@ test('packaged helper role matches config and caller-selected brain-worker stays
   assert.match(helper, /role: claude.subagent.cheap/);
   assert.ok(helper.includes(`model: ${config.roles['claude.subagent.cheap'].alias}`));
   assert.match(helper, /^effort: medium$/m); // benched agent-level override
-  assert.equal(config.roles['claude.subagent.cheap'].effort, 'default');
+  for (const role of Object.values(config.roles)) {
+    assert.ok(!Object.hasOwn(role, 'effort'));
+    assert.ok(!Object.hasOwn(role, 'effort_note'));
+  }
 
   const worker = read('skills/golem-powers/orc/agents/brain-worker.md');
   assert.doesNotMatch(worker.split('---')[1], /^role:|^model:/m);
