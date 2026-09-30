@@ -14,14 +14,14 @@ description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine.
 ## Model roles
 
 Roles live in `standards/model-roles.json`. From the golems checkout, resolve with
-`node scripts/model-roles.mjs <role> --field model|alias|effort|launcher_tier`
+`node scripts/model-roles.mjs <role> --field model|alias|launcher_tier`
 (select one field). Never hardcode a role-owned model name. Generated launcher
 commands must keep the resolver substitution, not today's resolved literal. Read the role's status
 and gate before dispatch: `codex.subagent.mechanical` is a candidate, bench before use.
 This section owns current dispatch defaults; older model-selection recipes in the
 references are pending PR 2b migration and cannot override the config.
-`codex.implement` effort is chosen per plan phase (`/large-plan`); the config is the fallback, never a default xhigh.
-For Claude/Codex, resolved effort `default` means omit the flag; Gemini effort lives in `launcher_tier`.
+Effort is not in the model-roles config; each `/large-plan` phase declares effort + why, and every dispatch passes it explicitly (Codex `-E` / `effort:`).
+`default` means omit the flag: Codex falls back to the launcher default; Claude sub-agents inherit the session's effort unless their agent frontmatter sets `effort:` ([Claude Code sub-agents: Supported frontmatter fields](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields)). Gemini uses `launcher_tier`.
 
 ## Read Map
 
