@@ -108,7 +108,7 @@
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "8dde522181b03ccf2064fa0398b5906e50a0afbfed24c2dfc36390ebe281d043",
       "linux": "8dde522181b03ccf2064fa0398b5906e50a0afbfed24c2dfc36390ebe281d043"
@@ -117,7 +117,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "30a8cbb5c84a2f4dd4a2243ddc54cd1dd39d81d3da639f2ac57c95f9b136322d",
       "linux": "30a8cbb5c84a2f4dd4a2243ddc54cd1dd39d81d3da639f2ac57c95f9b136322d"
@@ -126,7 +126,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "ff2d1e4c7e2490a0f7482924b29280665459e1220ee012eaa63db6cb627086be",
       "linux": "ff2d1e4c7e2490a0f7482924b29280665459e1220ee012eaa63db6cb627086be"
@@ -171,7 +171,7 @@
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "8dde522181b03ccf2064fa0398b5906e50a0afbfed24c2dfc36390ebe281d043",
       "linux": "8dde522181b03ccf2064fa0398b5906e50a0afbfed24c2dfc36390ebe281d043"
@@ -180,7 +180,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "22b4d599552394f5aa761b09bc54427cdbd7a39812e81ff7ff7c58535d0987a5",
       "linux": "22b4d599552394f5aa761b09bc54427cdbd7a39812e81ff7ff7c58535d0987a5"
@@ -216,7 +216,7 @@
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "f877cd945648c43dcd2f555a73d008a51598c0f6b1833d90a3d20e7f1caf8305",
       "linux": "f877cd945648c43dcd2f555a73d008a51598c0f6b1833d90a3d20e7f1caf8305"
@@ -225,7 +225,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "843c2a2df8a2031f7d77b355539936739592517fafb1a6fdd07d64184a6cfd1d",
       "linux": "843c2a2df8a2031f7d77b355539936739592517fafb1a6fdd07d64184a6cfd1d"
@@ -234,7 +234,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3",
       "linux": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
@@ -243,7 +243,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3",
       "linux": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
@@ -252,7 +252,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3",
       "linux": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
@@ -261,7 +261,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "dbf4b27e604dcb8d5af90c76507235090628e6d7915a245f02cac894818f0342",
       "linux": "dbf4b27e604dcb8d5af90c76507235090628e6d7915a245f02cac894818f0342"
@@ -270,7 +270,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b",
       "linux": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b"
@@ -279,7 +279,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b",
       "linux": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b"
@@ -288,7 +288,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
       "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
@@ -297,7 +297,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
       "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
@@ -306,7 +306,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "a8141a24d22638659bdd712b6fddd7541b3cf9d9ffb264bfdb65e21f4a01481e",
       "linux": "a8141a24d22638659bdd712b6fddd7541b3cf9d9ffb264bfdb65e21f4a01481e"
@@ -315,7 +315,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
       "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
@@ -324,7 +324,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd",
       "linux": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd"
@@ -333,7 +333,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd",
       "linux": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd"
@@ -342,7 +342,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "2c9a5147ba17a070390bf617c3f3bc8a428cb47fa835cdfab15143f61eccbfa9",
       "linux": "2c9a5147ba17a070390bf617c3f3bc8a428cb47fa835cdfab15143f61eccbfa9"
@@ -351,7 +351,7 @@
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
   },
   {
-    "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
+    "authority": "golems#420",
     "candidate_sha256": {
       "darwin": "c7b2a07bdb4ff15a74c5eaea91ad539f5ac13f0b4f32fa8e892ebb25751c2d53",
       "linux": "c7b2a07bdb4ff15a74c5eaea91ad539f5ac13f0b4f32fa8e892ebb25751c2d53"
