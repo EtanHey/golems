@@ -907,9 +907,9 @@ def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
                 and _segment_is_fully_exposed(_child_seg)
             ):
                 # The primary parse inherited the real outer cwd and is
-                # authoritative for this exposed occurrence. Preserve its
-                # path classification while promoting it to the full nested
-                # identity discovered by recursion.
+                # authoritative only when it produced a classification for
+                # this exposed occurrence. Otherwise retain the child's temp
+                # hit so a later worktree hatch cannot unlock it.
                 candidates = [
                     i
                     for i, (existing_verb, _existing_path, existing_seg)
@@ -924,6 +924,8 @@ def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
                 if match is not None:
                     existing_verb, existing_path, _existing_seg = hits.pop(match)
                     hits.append((existing_verb, existing_path, full_child_seg))
+                else:
+                    hits.append((verb, path, full_child_seg))
                 authoritative_exposed_worktrees -= 1
                 continue
             if exposed:

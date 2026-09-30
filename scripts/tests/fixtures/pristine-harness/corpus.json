@@ -11190,5 +11190,20 @@
         "function": "_bash_temp_targets"
       },
       "source": "tmp-block-characterization-r1-M23"
+    },
+    {
+      "id": "issue466-wt-hatch-inner-temp",
+      "target": "tmp-block",
+      "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo $(X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \\\"$X\\\" HEAD)\"},\"session_id\":\"pristine\"}"
+    },
+    {
+      "id": "issue466-wt-hatch-outer-convention-inner-temp",
+      "target": "tmp-block",
+      "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; echo $(X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \\\"$X\\\" HEAD)\"},\"session_id\":\"pristine\"}"
+    },
+    {
+      "id": "issue466-wt-hatch-in-convention-control",
+      "target": "tmp-block",
+      "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_WT_MIGRATION=1 git worktree add {REPO}/.worktrees/w HEAD\"},\"session_id\":\"pristine\"}"
     }
 ]
