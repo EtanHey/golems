@@ -26,7 +26,7 @@ export function validate(value, schema, path = '$', errors = []) {
       for (const [, rule] of patterns) validate(child, rule, `${path}.${key}`, errors);
       if (!property && !patterns.length) {
         const rule = schema.additionalProperties;
-        if (rule === false) errors.push(`${path}.${key}: unexpected property`);
+        if (rule === false) errors.push(`${path}.${key}: ${schema.errorMessage?.additionalProperties ?? 'unexpected property'}`);
         else if (rule && typeof rule === 'object') validate(child, rule, `${path}.${key}`, errors);
       }
     }

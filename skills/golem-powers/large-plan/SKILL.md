@@ -148,13 +148,13 @@ Round M (parallel with Phase X, Phase Y) OR Round M (sequential).
 ## Choosing effort per phase
 
 Every role line requires a resolved model, chosen effort and one-line reason before dispatch.
-The config's effort is a fallback, not a ceiling; the phase overrides it. For Gemini,
+Effort is not in the model-roles config; the phase declares it. For Gemini,
 replace the effort placeholder with the resolved `launcher_tier` (no `effort` field/flag).
 For Claude/Codex, `default` means omit the effort flag; do not invent a level.
 Codex phases choose a concrete level for their explicit dispatch flag.
 Low is only for known-output mechanical work; medium suits mechanical splits/refactors.
 High/xhigh suit open-ended implementation, hard debugging or contradictory evidence;
-security uses high. Cite R2 in `codex.implement.effort_note` as evidence, not a ceiling.
+security uses high. Evidence: skill-creator cleanup-routing R2 (2026-09-30, 48 verified runs): medium best-or-joint-best on mechanical cleanup; never default xhigh; a data point, not a ceiling.
 Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
 
 ## Steps
