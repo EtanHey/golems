@@ -480,6 +480,56 @@ def test_worktree_hatch_keeps_in_convention_target_allowed(tmp_path):
 @pytest.mark.parametrize(
     "command",
     (
+        '( X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 '
+        + 'git worktree add "$X" HEAD )',
+        '{ X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 '
+        + 'git worktree add "$X" HEAD; }',
+        'f() { local X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 '
+        + 'git worktree add "$X" HEAD; }; f',
+        'read X <<< /tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 '
+        + 'git worktree add "$X" HEAD',
+        "eval 'X=/tmp/q'; WEAVE_ALLOW_WT_MIGRATION=1 "
+        + 'git worktree add "$X" HEAD',
+        'cat <( X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 '
+        + 'git worktree add "$X" HEAD )',
+        'WEAVE_ALLOW_WT_MIGRATION=1 git worktree add "$UNSET_VAR" HEAD',
+    ),
+)
+def test_worktree_hatch_never_unlocks_unresolved_target(tmp_path, command):
+    """golems#480: a migration hatch can cover a resolved location drift,
+    but cannot turn missing static target evidence into authorization."""
+    ledger = tmp_path / "ledger.jsonl"
+    proc = run_hook(
+        bash_payload(command),
+        env_extra={"TMP_BLOCK_LEDGER": str(ledger)},
+    )
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+    assert not ledger.exists(), "an unresolved target must not consume the hatch"
+
+
+@pytest.mark.parametrize(
+    "command",
+    (
+        f"WEAVE_ALLOW_WT_MIGRATION=1 git worktree add {GITS}/golems/.worktrees/w HEAD",
+        f"WT={GITS}/golems/.worktrees/w; WEAVE_ALLOW_WT_MIGRATION=1 "
+        + 'git worktree add "$WT" HEAD',
+    ),
+)
+def test_worktree_hatch_keeps_resolved_in_convention_targets_allowed(tmp_path, command):
+    ledger = tmp_path / "ledger.jsonl"
+    proc = run_hook(
+        bash_payload(command),
+        env_extra={"TMP_BLOCK_LEDGER": str(ledger)},
+    )
+
+    assert_allowed(proc)
+    assert not ledger.exists(), "an in-convention target does not consume the hatch"
+
+
+@pytest.mark.parametrize(
+    "command",
+    (
         f"X={GITS}/golems/.worktrees/w; "
         + '{ X=/tmp/q; git worktree add "$X" HEAD; }',
         f"X={GITS}/golems/.worktrees/w; "

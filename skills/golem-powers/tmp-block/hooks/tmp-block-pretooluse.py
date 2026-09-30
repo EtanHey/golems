@@ -57,7 +57,8 @@ Rule 2 — WORKTREE CONVENTION (2026-08-09, Etan ratified by voice):
     — the two-valued contract replaced the prompt it originally chose.
   - Migration window hatch: WEAVE_ALLOW_WT_MIGRATION=1 (session env or inline
     prefix), allowed AND logged to the same ledger. It is location-scoped only:
-    it never unlocks the temp path-class, which still needs WEAVE_ALLOW_TMP.
+    it never unlocks an unresolved target or the temp path-class, which still
+    needs WEAVE_ALLOW_TMP.
 
 Static-resolution governing rule (golems#676, #703, #711; 2026-08-13):
   - Ask whether every possible target value is statically determinable, not
@@ -3040,7 +3041,13 @@ def main():
         if deny_hits or unresolved_hits:
             segments = [seg for _v, _p, seg, _raw, _anchor in deny_hits]
             segments += [seg for _raw, seg, _why in unresolved_hits]
-            if escape_hatch_covers(tool_name, tool_input, segments, HATCH_WT):
+            # golems#480: a hatch may authorize a resolved migration, but it
+            # cannot manufacture evidence for any target the static resolver
+            # could not determine. Mixed resolved/unresolved calls therefore
+            # fail closed as well.
+            if not unresolved_hits and escape_hatch_covers(
+                tool_name, tool_input, segments, HATCH_WT
+            ):
                 log_bypass(
                     host_tool_name,
                     tool_input,
