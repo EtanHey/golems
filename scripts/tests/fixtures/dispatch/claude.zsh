@@ -63,7 +63,7 @@ _golem_launch_claude() {
     [[ -f "$HOME/.claude/plugins/hide-hooks/patch-claude.js" ]] && node "$HOME/.claude/plugins/hide-hooks/patch-claude.js" 2>/dev/null
   fi
 
-  _golem_setup_env "$project_name"
+  _golem_setup_env "$project_name" || return $?
 
   # Pin the CURRENT top Opus at 1M-context by default so {name}Claude launchers (orchestrator/
   # lead role) boot on the 1M model without a manual /model flip. Precedence:
