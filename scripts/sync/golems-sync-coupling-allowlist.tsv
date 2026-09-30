@@ -4,9 +4,9 @@ agada-bench/evals/fixtures/tiny-session.jsonl	/Users/example	Test or evaluation 
 agent-routing/evals/evals.json	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
 agent-routing/evals/results/live-2026-08-02-effort-routing-with-skill.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 architectural-conformance-audit/evals/smoke-real-env.log	~/Gits/brainlayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
-audio-dashboard/evals/audio-dashboard.test.mjs	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
-audio-dashboard/evals/audio-dashboard.test.mjs	/Users/operator	Test or evaluation evidence intentionally preserves this machine-path specimen.
-audio-dashboard/evals/audio-dashboard.test.mjs	/Users/tester	Test or evaluation evidence intentionally preserves this machine-path specimen.
+audio-dashboard/evals/audio-dashboard-test-parts/cases04.mjs	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+audio-dashboard/evals/audio-dashboard-test-parts/cases02.mjs	/Users/operator	Test or evaluation evidence intentionally preserves this machine-path specimen.
+audio-dashboard/evals/audio-dashboard-test-parts/cases04.mjs	/Users/tester	Test or evaluation evidence intentionally preserves this machine-path specimen.
 audio-dashboard/evals/fixtures/green/03-teleprompter-drift-insync.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 cmux-agents/evals/evals.json	~/Gits/...	Test or evaluation evidence intentionally preserves this machine-path specimen.
 cmux-agents/evals/evals.json	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
