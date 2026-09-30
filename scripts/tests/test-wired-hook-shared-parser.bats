@@ -15,7 +15,7 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"Install verified."* ]]
   cmp -s "$TEST_ROOT/hooks/_shared/shell_parse.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py"
-  for leaf in tokens masks heredocs substitutions positions structure units function_expansion patterns conditions condition_steps variables eval_payloads expansion_state expansion data_text; do
+  for leaf in tokens masks heredocs substitutions positions structure units function_expansion patterns conditions condition_steps variables eval_payloads expansion_state expansion data_text data_substitutions; do
     cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/$leaf.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/$leaf.py"
   done
   cmp -s "$TEST_ROOT/hooks/_shared/harness_paths.py" "$REPO_ROOT/skills/golem-powers/_shared/harness_paths.py"
@@ -48,7 +48,7 @@ for label, directory in (("copy", root / "a"),
     parser = load(label, directory / "shell_parse.py")
     for leaf in ("tokens", "masks", "heredocs", "substitutions", "positions",
                  "structure", "units", "function_expansion", "patterns",
-                 "conditions", "condition_steps", "variables", "eval_payloads", "expansion_state", "expansion", "data_text"):
+                 "conditions", "condition_steps", "variables", "eval_payloads", "expansion_state", "expansion", "data_text", "data_substitutions"):
         impl = pathlib.Path(sys.modules[f"{parser._IMPL_NAME}.{leaf}"].__file__).absolute()
         assert impl == (root / "a" / "shell_parse_impl" / (leaf + ".py")).resolve(), (label, leaf, impl)
     for name, leaf in (("_shell_tokens", "tokens"), ("_blank_quoted", "masks"),
