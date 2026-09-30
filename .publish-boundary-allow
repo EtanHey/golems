@@ -99,3 +99,7 @@ skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py
 # Relocated unchanged synthetic fixtures; retain old path history coverage.
 # Classes: publication-operational-data
 skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/common.py
+
+# Relocated unchanged synthetic fixtures; retain old path history coverage.
+# Classes: publication-operational-data
+skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/cases02.py

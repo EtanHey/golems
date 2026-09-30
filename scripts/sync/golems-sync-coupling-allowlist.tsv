@@ -49,6 +49,7 @@ tmp-block/hooks/tests/_test_tmp_block_parts/cases04.py	/Users/example	Test or ev
 tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 tmp-block/hooks/tests/_test_tmp_block_parts/common.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 tmp-block/hooks/tests/_test_tmp_block_parts/common.py	~/Gits/foo.wt	Test or evaluation evidence intentionally preserves this machine-path specimen.
-tmp-block/tests/test_worktree_anchor.py	/Users/x	Test or evaluation evidence intentionally preserves this machine-path specimen.
-tmp-block/tests/test_worktree_anchor.py	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+tmp-block/tests/_test_worktree_anchor_parts/cases02.py	/Users/x	Test or evaluation evidence intentionally preserves this machine-path specimen.
+tmp-block/tests/_test_worktree_anchor_parts/cases01.py	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
+tmp-block/tests/_test_worktree_anchor_parts/common.py	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
 whats-new/evals/evals.json	~/Gits/voicelayer	Test or evaluation evidence intentionally preserves this machine-path specimen.
