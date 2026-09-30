@@ -397,7 +397,7 @@ AGY
 
     [ "$status" -eq 0 ]
     grep -F -q -- "AGY_ARGS=" <<< "$output"
-    grep -F -q -- "--model Gemini 3.1 Pro (High)" <<< "$output"
+    grep -F -q -- "--model Gemini 3.8 Flash (High)" <<< "$output"
     grep -F -q -- "--dangerously-skip-permissions" <<< "$output"
     grep -F -q -- "--prompt-interactive" <<< "$output"
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
@@ -4132,4 +4132,10 @@ JSON_U="$(printf '\134')u"
               || { echo "$launcher [$prelaunch] TERM: $output" >&2; return 1; }
         done
     done
+}
+
+@test "Gemini explicit -m pro preserves Pro High while bare gathers default to Flash High" {
+    run_worker_role_launch "" testrepoGemini -s -m pro
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--model Gemini 3.1 Pro (High)" <<< "$output"
 }

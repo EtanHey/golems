@@ -1,7 +1,9 @@
 _golem_agy_resolve_model() {
-  # Map short aliases to exact agy model strings; empty means default.
+  # Gatherers default to Flash-High: qa-video scored 22/22; Pro-High skimmed (14 and 7).
+  # Pro is selected only explicitly; other aliases keep their exact agy strings.
   case "${1:-}" in
-    ""|pro|pro-high)             print -r -- "Gemini 3.1 Pro (High)" ;;
+    "")                         print -r -- "Gemini 3.8 Flash (High)" ;;
+    pro|pro-high)                print -r -- "Gemini 3.1 Pro (High)" ;;
     pro-low)                     print -r -- "Gemini 3.1 Pro (Low)" ;;
     flash|flash-high)            print -r -- "Gemini 3.8 Flash (High)" ;;
     flash-med|flash-medium)      print -r -- "Gemini 3.8 Flash (Medium)" ;;
