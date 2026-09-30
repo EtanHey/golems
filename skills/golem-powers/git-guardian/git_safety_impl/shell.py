@@ -26,6 +26,10 @@ def _literal_loop(command: str, *, api: dict):
 
 def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _depth: int = 0, api: dict):
     """Return the tracked git-guardian block reason, or None."""
+    # AIDEV-NOTE: the execution-depth limit below currently shadows this on
+    # recursive payload paths. Keep the wrapper cap as belt-and-braces so this
+    # entry point preserves the shared policy invariant if that stricter limit
+    # changes or a caller supplies an already-accumulated wrapper depth.
     if _depth > api['_MAX_WRAPPER_DEPTH']:
         return api['_wrapper_depth_reason']()
     if _depth > api['_MAX_EXECUTION_DEPTH']:

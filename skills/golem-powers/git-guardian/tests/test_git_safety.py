@@ -7,6 +7,7 @@ rule must NOT block (the false-positive gate). Pure functions → fully determin
 import importlib.util
 import inspect
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -1201,6 +1202,16 @@ def test_go5_gap_recursion_is_bounded_and_fails_closed(tmp_path):
 def _nested_wrapper(kind, depth, tail):
     if kind in {"sudo", "nice", "xargs"}:
         return f"{kind} " * depth + tail
+    if kind == "env":
+        return "env A=1 " * depth + tail
+    if kind == "env-unset":
+        return "env -u X " * depth + tail
+    if kind == "time-posix":
+        return "time -p " * depth + tail
+    if kind in {"command", "exec", "nohup", "builtin"}:
+        return f"{kind} " * depth + tail
+    if kind == "env-split":
+        return "env -S " * depth + tail
     if kind == "find-exec":
         return "find . -exec " * depth + tail + " {} +" * depth
     if kind == "mixed":
@@ -1212,8 +1223,14 @@ def _nested_wrapper(kind, depth, tail):
 
 def test_wrapper_depth_matrix_fails_closed_without_reaching_python_limit(tmp_path):
     dangerous = ("rm -rf /", "git push --force origin main")
-    for kind in ("sudo", "nice", "xargs", "find-exec", "mixed"):
-        for depth in (63, 64, 65, 500, 1000, 5000):
+    broad_kinds = ("sudo", "nice", "xargs", "find-exec", "mixed")
+    boundary_kinds = (
+        "env", "env-unset", "time-posix", "command", "exec", "nohup",
+        "builtin", "env-split",
+    )
+    for kind in (*broad_kinds, *boundary_kinds):
+        depths = (63, 64, 65, 500, 1000, 5000) if kind in broad_kinds else (64, 65)
+        for depth in depths:
             for tail in (*dangerous, "echo safe"):
                 reason = git_safety.dangerous_shell_reason(
                     _nested_wrapper(kind, depth, tail), cwd=str(tmp_path), env={}
@@ -1226,6 +1243,46 @@ def test_wrapper_depth_matrix_fails_closed_without_reaching_python_limit(tmp_pat
                     assert reason == "wrapper nesting exceeds 64; refusing to evaluate", (
                         kind, depth, tail, reason
                     )
+
+
+def test_env_and_time_wrappers_increment_git_policy_depth():
+    cap_reason = "wrapper nesting exceeds 64; refusing to evaluate"
+    assert git_safety._dangerous_git_reason("env A=1 " * 65 + "echo safe") == cap_reason
+    assert git_safety._dangerous_git_reason("time " * 65 + "echo safe") == cap_reason
+
+
+def test_wrapper_depth_accumulates_across_shell_payload_scanners(tmp_path):
+    cap_reason = "wrapper nesting exceeds 64; refusing to evaluate"
+    command = "sudo " * 40 + "bash -c " + shlex.quote("sudo " * 30 + "echo safe")
+    assert git_safety.is_dangerous_rm(command, cwd=str(tmp_path), env={}) == (
+        True, cap_reason,
+    )
+    assert git_safety._dangerous_git_reason(command) == cap_reason
+
+
+def test_shell_forwards_accumulated_depth_to_rm_scanner(monkeypatch):
+    observed = []
+
+    def inspect_rm(_command, *, cwd=None, env=None, _depth):
+        observed.append(_depth)
+        return False, None
+
+    monkeypatch.setattr(git_safety, "_is_dangerous_rm_at_depth", inspect_rm)
+    monkeypatch.setattr(git_safety, "_dangerous_git_reason_at_depth", lambda *_args, **_kwargs: None)
+    assert git_safety.dangerous_shell_reason("echo safe", _depth=8) is None
+    assert observed == [8]
+
+
+def test_find_memo_keeps_depth_in_same_exec_index_key():
+    cap_reason = "wrapper nesting exceeds 64; refusing to evaluate"
+    words = ["find", ".", "-exec", "echo", "safe", "{}", "+"]
+    find_cache = {}
+    assert git_safety._commands._dangerous_non_rm_in_words(
+        git_safety.__dict__, words, _depth=63, _find_cache=find_cache,
+    ) is None
+    assert git_safety._commands._dangerous_non_rm_in_words(
+        git_safety.__dict__, words, _depth=64, _find_cache=find_cache,
+    ) == cap_reason
 
 
 def test_find_exec_boundaries_do_not_skip_later_sibling_commands(tmp_path):

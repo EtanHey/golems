@@ -6,6 +6,7 @@ Installed as a symlink into hooks-live, it must resolve git_safety next to its
 real path and ignore whatever the main checkout holds.
 """
 
+import importlib.util
 import json
 import os
 import shutil
@@ -89,6 +90,16 @@ def test_copied_hook_loads_its_own_split_implementation_from_another_cwd(tmp_pat
 def _nested_wrapper(kind, depth, tail):
     if kind in {"sudo", "nice", "xargs"}:
         return f"{kind} " * depth + tail
+    if kind == "env":
+        return "env A=1 " * depth + tail
+    if kind == "env-unset":
+        return "env -u X " * depth + tail
+    if kind == "time-posix":
+        return "time -p " * depth + tail
+    if kind in {"command", "exec", "nohup", "builtin"}:
+        return f"{kind} " * depth + tail
+    if kind == "env-split":
+        return "env -S " * depth + tail
     if kind == "find-exec":
         return "find . -exec " * depth + tail + " {} +" * depth
     prefixes = ("sudo ", "nice ", "xargs ", "find . -exec ")
@@ -118,8 +129,14 @@ def _copied_hook(tmp_path):
 
 def test_wrapper_depth_matrix_blocks_through_copied_hook_and_fail_open_launcher(tmp_path):
     guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
-    for kind in ("sudo", "nice", "xargs", "find-exec", "mixed"):
-        for depth in (63, 64, 65, 500, 1000, 5000):
+    broad_kinds = ("sudo", "nice", "xargs", "find-exec", "mixed")
+    boundary_kinds = (
+        "env", "env-unset", "time-posix", "command", "exec", "nohup",
+        "builtin", "env-split",
+    )
+    for kind in (*broad_kinds, *boundary_kinds):
+        depths = (63, 64, 65, 500, 1000, 5000) if kind in broad_kinds else (64, 65)
+        for depth in depths:
             for tail in ("rm -rf /", "git push --force origin main", "echo safe"):
                 command = _nested_wrapper(kind, depth, tail)
                 result = subprocess.run(
@@ -155,6 +172,20 @@ def test_policy_error_blocks_value_free_through_fail_open_launcher(tmp_path):
     assert "security policy could not evaluate command safely" in reason
     assert "SENSITIVE POLICY DETAIL" not in result.stdout + result.stderr
     assert "golems-fail-open" not in result.stderr
+
+
+def test_second_policy_parse_error_is_value_free_red(monkeypatch):
+    spec = importlib.util.spec_from_file_location("pre_tool_use_second_parse", HOOK)
+    loaded = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loaded)
+    monkeypatch.setattr(loaded, "dangerous_shell_reason", lambda _command: None)
+    monkeypatch.setattr(
+        loaded, "shell_text_without_heredoc_bodies",
+        lambda _command: (_ for _ in ()).throw(RuntimeError("SENSITIVE SECOND PARSE DETAIL")),
+    )
+    assert loaded.classify_tool("Bash", {"command": "echo safe"}) == (
+        "RED", "security policy could not evaluate command safely",
+    )
 
 
 def test_literal_find_exec_argument_cannot_hide_destructive_sibling(tmp_path):
