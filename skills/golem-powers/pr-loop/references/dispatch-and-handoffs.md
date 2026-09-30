@@ -78,7 +78,10 @@ Etan, verbatim — relayed via orc, the ellipsis is his:
 
 Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold;
 every spawn pinned explicitly; Fable only where judgment is the bottleneck, never for mechanical
-steps; a Fable seat defaults its workers to opus/sonnet and says why when it does not. The gate
+steps; delegate decisions to `claude.judgment`, bounded parity work to `claude.subagent.cheap`,
+and implementation to `codex.implement`. Resolve the role via `node scripts/model-roles.mjs
+<role> --field model|alias|effort` (one field) and record `role · effort · why`. Resolved
+`default` effort means omit the flag. The gate
 (`model-pin-gate`) is the backstop, not the decision.
 
 ## Review-Without-Merge ≠ Draft

@@ -13,22 +13,29 @@
 
 ## Model Selection
 
-**For managed `spawn_agent` / repoGolem launchers: do NOT pass a model.** The launcher pins the current top Opus at 1M and `model-policy` coerces or rejects overrides — a raw `-m opus` errors with `unknown option '-m'`. Only set `model` when you have a specific reason to **downgrade** (e.g. a deliberately cheap Sonnet pass), and **never** pass `opus` — it is already the default.
+For managed visible `spawn_agent` / repoGolem launches, use `claude.judgment` through the
+bare launcher at 1M; verify its pin against the resolved role. Do not pass a managed model
+parameter that overrides the launcher pin. `claude.subagent.cheap` is for bounded in-process
+children or permitted headless one-shots, never full panes, synthesis, or PR-gating reviews.
+Resolve from the golems checkout with `node scripts/model-roles.mjs <role> --field alias|effort`
+(one field). For Claude/Codex, `default` effort means omit the flag.
 
-The `--model` flags below apply to **raw `claude` CLI** invocations (your own session) only, not to spawns:
-
-| Model + Effort | Flag (raw CLI only) | Use When |
-|----------------|------|----------|
-| **Opus full** | (default, no flag) | The pinned default — complex reasoning, orchestration |
-| **Sonnet 4.6** | `--model sonnet` | Deliberate downgrade: synthesis, research, collab writers, BrainLayer queries |
+| Role | Selection | Use When |
+|---|---|---|
+| `claude.judgment` | Bare managed launcher; raw CLI resolves alias and effort | Decisions, orchestration, synthesis, review |
+| `claude.subagent.cheap` | Agent tool's `model`: resolved alias | Single-fact recall, pane mechanics, verifiers |
 
 ```bash
-# Default = top-tier pinned model — pass NO model flag:
-claude --dangerously-skip-permissions 'task prompt'
-
-# Deliberate Sonnet downgrade for a cheap delegated task (raw CLI only):
-claude --dangerously-skip-permissions --model sonnet 'task prompt'
+# Raw CLI only; visible peers use repoGolem launchers:
+judgment_effort="$(node scripts/model-roles.mjs claude.judgment --field effort)"
+judgment_flags=()
+if [ "$judgment_effort" != default ]; then judgment_flags=(--effort "$judgment_effort"); fi
+claude --dangerously-skip-permissions --model "$(node scripts/model-roles.mjs claude.judgment --field alias)" "${judgment_flags[@]}" 'task prompt'
 ```
+
+For a cheap Agent child, resolve `claude.subagent.cheap --field alias` and pass that value
+as `model`; resolve effort separately, omitting it when `default`. Keep resolver substitutions
+in generated commands, and retain any benched agent-level effort override.
 
 ## Worktree Capabilities
 
@@ -48,7 +55,7 @@ Agent(isolation="worktree", prompt="task...")
 When Claude runs as a **visible cmux peer**, the parent orchestrator should use the agent-based tools:
 
 ```text
-spawn_agent({ repo: "orchestrator", cli: "claude", prompt: "Survey patterns" })  // no model — launcher pins the top-tier model; add model only to deliberately downgrade
+spawn_agent({ repo: "orchestrator", cli: "claude", prompt: "Survey patterns" })  // no model — launcher pins claude.judgment; cheap work stays in-process
 wait_for({ agent_id, target_state: "ready", timeout_ms: 120000 })
 send_to({ agent_id, text: "Narrow scope to failure modes only", press_enter: true })
 wait_for({ agent_id, target_state: "done", timeout_ms: 1800000 })
@@ -63,8 +70,8 @@ If `wait_for` times out but `read_screen` shows a usable prompt, that's FR-06 pa
 ## Custom Launchers
 
 If `~/.golems/config.yaml` defines launchers (shell functions wrapping `claude`):
-- `-s` on launchers = `--dangerously-skip-permissions` (NOT Sonnet!)
-- `-S` = Sonnet model selection (capital S, separate flag)
+- `-s` on launchers = `--dangerously-skip-permissions` (not model selection)
+- `-S` / `--sonnet` is a legacy model selector, refused for full panes; resolve roles for new commands
 - `--resume` = resume last session
 
 ## Prompting Style

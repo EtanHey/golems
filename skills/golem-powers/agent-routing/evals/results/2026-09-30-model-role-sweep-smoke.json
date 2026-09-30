@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-30",
+  "kind": "routing-response-smoke",
+  "skill": "agent-routing",
+  "eval_ids": [
+    43,
+    44,
+    45,
+    46
+  ],
+  "model_requested": "claude.subagent.cheap alias resolved through scripts/model-roles.mjs",
+  "model_effective": "claude-sonnet-5-5",
+  "model_observation_source": "CLI JSON modelUsage",
+  "effort_effective": "NOT DETERMINED",
+  "effort_observation_source": "NOT DETERMINED - CLI JSON does not expose effort",
+  "tools_enabled": false,
+  "scope": "One with-skill tools-disabled smoke; assertions manually scored on proposed routes only. No baseline, uplift, live delegation or installed-runtime claim.",
+  "assertions_passed": 10,
+  "assertions_total": 10,
+  "scoring": [
+    "43: one resolved cheap brain-worker; no lookup in lead context or fan-out (2/2)",
+    "44: judgment owns deletion; zero literals insufficient; by-name/policy reachability (3/3)",
+    "45: visual role retains launcher_tier substitution; gatherer makes no UX/UI judgments (2/2)",
+    "46: judgment implements UX/UI, resolved Codex reviews; lead starts reviewer after DONE (3/3)"
+  ],
+  "response": "## Routing proposals (no tasks performed)\n\n### Case 43: single-fact history lookup (\"when did golems#352 merge?\")\n- **Role:** `claude.subagent.cheap`, as a **brain-worker**. This is the bounded exception to general lookup routing. The lead does not spend its own context on it.\n- **Resolver command:** `node scripts/model-roles.mjs claude.subagent.cheap --field alias`. Pass the result as the Agent tool's `model`.\n- **Effort behavior:** The skill gives no effort for this role. If the resolved effort is `default`, omit the effort flag. Anything else is NOT KNOWN from the supplied text.\n- **Boundaries:** Single fact only. Multi-source or decision-grade history stays on `claude.judgment`. The 3× cheap fan-out is reserved for high-stakes history because it costs 3.4× and runs 2.6× slower. The brain-worker does not decide or implement.\n\n### Case 44: is it safe to delete a tool, given a cheap worker found zero literal callers?\n- **Role:** `claude.judgment` (Orchestrate). Rule 2 applies: anything that decides a code deletion or test edit goes to `claude.judgment`.\n- **Resolver command:** `node scripts/model-roles.mjs claude.judgment --field model` (or `--field alias`) to resolve the role. Do not hardcode the name.\n- **Effort behavior:** Not specified for `claude.judgment` in the supplied text. If it resolves to `default`, omit the flag.\n- **Boundaries:**\n  - The cheap worker's grep is input only. It never concludes the deletion.\n  - `claude.judgment` must do reachability reasoning: by-name lookups, policy tables, agent-facing text. Evidence: Opus caught 3/3 hazards where Flash-High and Haiku caught 0/3, and the literal-grep result callers=0 missed a by-name accessor used by 23 test files.\n  - If deletion is approved, `codex.implement` makes the change, with the `claude.judgment` decision recorded first (rule 5).\n  - The deletion does not go to Gemini, Cursor, or a cheap sub-agent.\n\n### Case 45: batch video frames for OCR and state-change extraction\n- **Role:** `gemini.gather.visual` gatherer via `/qa-video` (rule 7). Gather only.\n- **Resolver command (kept as a substitution in the launcher):**\n  `{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`\n- **Effort behavior:** Gemini effort lives in `launcher_tier`, so there is no separate effort flag. The skill's visual tier is Flash-High, per the 2026-09-30 re-bench. Pro-High only via `-m pro` when explicitly requested. Never a Low tier.\n- **Boundaries:** The gatherer only reads frames and reports. It does not implement, review, decide, or make UX/UI judgment. Claude does not read the many frames itself. Because the batch is independent, it may fan out per the auto-dispatch triggers. Read `references/fan-out-engines.md` first if fanning out.\n\n### Case 46: UX/UI PR for a redesigned settings screen\n- **Who implements:** `claude.judgment`. The UX/UI rule in Review routing makes it the implementer, which is the exception to the usual `codex.implement` rule.\n- **Who reviews:** Codex, using the `codex.implement` model.\n- **Resolver commands:**\n  - `node scripts/model-roles.mjs claude.judgment --field alias`\n  - `node scripts/model-roles.mjs codex.implement --field model`\n  - The Codex reviewer launcher keeps the substitution, e.g. `brainlayerCodex -s -m \"$(node scripts/model-roles.mjs codex.implement --field model)\" -E high \"<review outcome>\"`.\n- **Effort behavior:** The Codex reviewer's effort is chosen from the mission, not defaulted. Open-ended review fits `high`. `xhigh` needs a named blocker. The resolved config effort is only a fallback. For `claude.judgment`, resolved `default` means omit the flag.\n- **When the reviewer may start:** Only after the implementer reports DONE, following canon #1's completion gate. The LEAD starts the reviewer. The implementing worker never starts a reviewer for its own work. If there is no reviewer pane, it asks the lead.\n- **Boundaries:**\n  - This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewers are separate.\n  - A DONE marker is only a prompt to verify the contracted artifact.\n  - The brief records role, effort, and a one-line reason.\n  - Pane mechanics live in `/collab-monitor`."
+}

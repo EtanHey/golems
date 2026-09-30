@@ -68,9 +68,16 @@ brain_search(query="<plan-name> decisions")
 
 | Phase Type | Model | Why |
 |------------|-------|-----|
-| Orchestration, scaffolding | default (Opus) | Complex reasoning, MCP, subagents |
-| Delegated phase work | `--model sonnet` | Fast, cost-effective |
-| Code review, audit | `--model opus --effort medium` | Deep analysis |
+| Orchestration, scaffolding | `claude.judgment` | Decisions and coordination |
+| Implementation phase | `codex.implement` (UX/UI: `claude.judgment`) | Phase chooses effort and explains why; canon #1 exceptions apply |
+| Bounded lookup or verifier | `claude.subagent.cheap` | In-process parity work only; never judgment |
+| PR-gating review, audit judgment | `claude.judgment` | Decision-grade reasoning |
+
+Resolve role model/alias and effort with `node scripts/model-roles.mjs <role> --field <field>`
+from the golems checkout. Every phase records `role · effort · why`; resolved `default`
+effort means omit the flag. Managed Claude peers use the bare launcher pin, verified
+against the role; Agent children receive the resolved alias. `codex.subagent.mechanical`
+is a candidate: bench before use.
 
 ## Unique Capabilities (not available in other CLIs)
 
