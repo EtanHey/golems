@@ -17,7 +17,10 @@ bun scripts/repogolem/repogolem-config.ts install --config /path/to/private/repo
 The installer bundles the CLI into `~/.config/repogolem/runtime`, copies the
 modular dispatcher beside it, and installs `~/.local/bin/repogolem`. It replaces
 old launcher source lines with a managed block in `.zshrc`, exports the private
-config path, and links `~/.golems/config.yaml` to that config. It requires the
+config path, and links `~/.golems/config.yaml` to that config. If the private
+file supplies `machineSeatConfigs: {LocalHostName: <preserved YAML text>}`,
+it writes an owned 0600 machine-config.yaml view and links the old path to
+that view instead; `--host` can select a host explicitly. It requires the
 existing `seatRegistry` block to be byte-identical, including `launcherPrefix`.
 Shell and seat backups stay in `~/.config/repogolem`; installation runs no `op`
 and no generation. Repeating installation preserves the first backup.

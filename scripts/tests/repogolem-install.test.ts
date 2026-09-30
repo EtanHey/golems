@@ -53,3 +53,15 @@ test('installed bundled CLI runs from outside the checkout without node_modules'
   expect(r.exitCode).toBe(0);
   expect(readFileSync(join(home, 'starter.yaml'), 'utf8')).toContain('fixture-host');
 });
+test('selects the matching machine seat view and preserves that machine settings', () => {
+  const mbp = readFileSync(config, 'utf8');
+  const m1 = mbp.replace('launcherPrefix: custom', 'launcherPrefix: remote') + 'machineRole: worker\n';
+  writeFileSync(join(home, '.golems/config.yaml'), m1);
+  writeFileSync(config, mbp + 'machineSeatConfigs:\n  fixture-host: |\n' + m1.split('\n').filter(Boolean).map(line => '    '+line).join('\n') + '\n');
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  expect(readFileSync(join(home, '.golems/config.yaml'), 'utf8')).toBe(m1);
+  expect(readlinkSync(join(home, '.golems/config.yaml'))).toBe(join(home, '.config/repogolem/machine-config.yaml'));
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  expect(run(['--rollback']).code).toBe(0);
+  expect(readFileSync(join(home, '.golems/config.yaml'), 'utf8')).toBe(m1);
+});
