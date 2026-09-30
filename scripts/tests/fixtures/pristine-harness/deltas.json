@@ -452,7 +452,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05"
+      "darwin": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05",
+      "linux": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05"
     },
     "case": "parser-140",
     "reason": "Quoted heredoc prose inside a command substitution is non-executable and must be masked from policy text"
@@ -460,7 +461,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68"
+      "darwin": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68",
+      "linux": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68"
     },
     "case": "parser-r2-r16-1",
     "reason": "Case pattern terminators are syntax and cannot close the surrounding command substitution"
