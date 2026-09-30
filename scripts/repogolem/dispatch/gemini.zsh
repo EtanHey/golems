@@ -28,7 +28,10 @@ _golem_launch_gemini() {
   cd "$launch_dir" || return 1
   _golem_setup_title "$project_name" "${project_name}Gemini"
   _golem_setup_env "$project_name" || return $?
-  _golem_sync_agy_workspace "$project_name" "$launch_dir"
+  _golem_sync_agy_workspace "$project_name" "$launch_dir" || {
+    print -u2 -r -- "repoGolem: AGY MCP sync failed; check registry/config JSON and retry after other writers finish. Agent not launched."
+    return 1
+  }
   if [[ "$worker_mode" == true ]]; then
     agent_prompt=$(_golem_build_worker_prompt "$project_name" "$project_path" "$positional_prompt")
   else

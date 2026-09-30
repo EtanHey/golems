@@ -1,5 +1,6 @@
 {
   "run": [
+    "test-agy-mcp-sync.bats",
     "test-archive-stream.bats",
     "test-bun-version-pin.bats",
     "test-check-instruction-shape.bats",

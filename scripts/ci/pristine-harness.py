@@ -549,7 +549,12 @@ def capture(case, tree, scratch):
                              "# Full orchestrator protocol\nUse repository context.\n")
             project["agent"] = "test-agent"
             project["mcps"] = ["brainlayer"]
-        registry.write_text(json.dumps({"projects": {"testrepo": project}}))
+        registry_data = {"projects": {"testrepo": project}}
+        if case.get("mcp_merge"):
+            # AGY now reads static declarations, not the resolving builder stub.
+            # The immutable dispatcher still sees exactly the same stub map.
+            registry_data["global"] = {"mcps": {"fixture": {"command": "echo", "args": ["ready"]}}}
+        registry.write_text(json.dumps(registry_data))
         profile = fixture / "profile.toml"
         if case.get("mcp_merge"):
             (fixture / "project/.mcp.json").write_text(
