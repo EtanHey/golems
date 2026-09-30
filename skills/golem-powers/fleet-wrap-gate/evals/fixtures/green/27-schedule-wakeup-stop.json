@@ -1,0 +1,18 @@
+{
+  "specimen": "fleet-wrap/schedule-wakeup-stop",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "assistant",
+      "text": "Standing down.",
+      "tools": [
+        {
+          "name": "ScheduleWakeup",
+          "input": {
+            "stop": true
+          }
+        }
+      ]
+    }
+  ]
+}

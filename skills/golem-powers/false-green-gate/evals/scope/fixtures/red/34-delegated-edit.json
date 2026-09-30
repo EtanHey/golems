@@ -1,0 +1,22 @@
+{
+  "specimen": "false-green/scope-delegated-edit",
+  "expect": "FLAG",
+  "violation": "FALSE_GREEN_LIVE_PROBE",
+  "events": [
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "Agent",
+          "input": {
+            "prompt": "Edit src/example.ts and fix it"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "\u2705 fixed."
+    }
+  ]
+}

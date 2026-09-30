@@ -1,0 +1,22 @@
+{
+  "specimen": "false-green/scope-install-hooks",
+  "expect": "FLAG",
+  "violation": "FALSE_GREEN_LIVE_PROBE",
+  "events": [
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "install-hooks --apply"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "\u2705 installed. The service is now live."
+    }
+  ]
+}

@@ -322,7 +322,7 @@ function buildEvidence(turn) {
     if (ev.role === "tool" && ev.text) narrative.push(ev.text);
     for (const t of ev.tools ?? []) {
       const name = baseName(t.name ?? "");
-      if (CRON_CREATE_TOOL_RE.test(name)) {
+      if (CRON_CREATE_TOOL_RE.test(name) && !(/^schedule_?wakeup$/i.test(name) && t.input?.stop === true)) {
         armedTools.push(name);
         armedCount += 1;
         const payload = cronPayloadText(t.input);

@@ -25,31 +25,16 @@
 // replayable gate (R-003/R-014 pattern).
 
 import { normalizeTranscript, currentTurn, claimSearchText } from "../lib/transcript.mjs";
-import { parseShell, effectiveArgv } from "../lib/shell-commands.mjs";
-
-// Activity, not seat names or fixture metadata, scopes the gate. A coaching
-// turn in a code seat is still non-code; a coach editing code is still gated.
-function hasCodeActivity(turn) {
-  return turn.some(e => e.role === "assistant" && (e.tools ?? []).some(t => {
-    const name = baseName(t.name);
-    if (/^(Edit|Write|NotebookEdit|MultiEdit|apply_patch)$/.test(name)) return true;
-    if (/^(git_(commit|push)|create_pull_request|update_pull_request|merge_pull_request|push_files)$/.test(name)) return true;
-    if (name !== "Bash" || typeof t.input?.command !== "string") return false;
-    const commands = parseShell(t.input.command);
-    // A parser budget failure cannot establish absence of code activity.
-    if (!commands) return true;
-    return commands.some(c => {
-      const argv = effectiveArgv(c);
-      const bin = argv[0]?.split("/").pop();
-      if (bin === "gh") return argv[1] === "pr";
-      if (bin !== "git") return false;
-      let i = 1;
-      while (i < argv.length && argv[i].startsWith("-")) {
-        i += ["-C", "-c", "--git-dir", "--work-tree"].includes(argv[i]) ? 2 : 1;
-      }
-      return ["commit", "push"].includes(argv[i]);
-    });
-  }));
+// Scope defaults to delivery verification. Only positive evidence of a purely
+// conversational current turn exempts it; unknown tools always stay in scope.
+const CONVERSATIONAL_TOOLS = new Set([
+  "voice_ask", "voice_speak", "brain_search", "brain_recall", "brain_expand", "AskUserQuestion",
+  "mcp__voicelayer__voice_ask", "mcp__voicelayer__voice_speak",
+  "mcp__brainlayer__brain_search", "mcp__brainlayer__brain_recall", "mcp__brainlayer__brain_expand",
+]);
+function isPureConversation(turn) {
+  const tools = turn.filter(e => e.role === "assistant").flatMap(e => e.tools ?? []);
+  return tools.length > 0 && tools.every(t => CONVERSATIONAL_TOOLS.has(t.name));
 }
 
 // ── A completion claim ──────────────────────────────────────────────────────
@@ -258,7 +243,7 @@ function voiceResolved(ev) {
 export function detectFalseGreen(transcript) {
   const events = normalizeTranscript(transcript);
   const turn = currentTurn(events);
-  if (!hasCodeActivity(turn)) {
+  if (isPureConversation(turn)) {
     return { verdict: "PASS", claim: false, domains: [], violations: [] };
   }
   const ev = buildEvidence(turn);

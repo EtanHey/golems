@@ -32,13 +32,16 @@ is excused only by the monitor-law:
 | At a terminal state, this... | Verdict |
 |---|---|
 | **banned poller** armed: `/loop` timer, `while true`/`for…seq`/`nohup … sleep` poll loop, or a durable live loop state entry | `FLEETWRAP_LOOP_ALIVE` — advise `TaskStop <id>` |
-| **generic / periodic cron** live in durable state, or a same-turn `CronCreate` / `schedule_task` not cleared and not the inbound monitor | `FLEETWRAP_CRON_ALIVE` — advise `delete cron <id>` |
+| **generic / periodic cron** live in durable state, or a same-turn `CronCreate` / `schedule_task` / arming `ScheduleWakeup` not cleared and not the inbound monitor | `FLEETWRAP_CRON_ALIVE` — advise `delete cron <id>` |
 | **crons cleared** — durable cron/loop state has zero live periodic entries | PASS |
 | **ONE inbound standby monitor** (even via a `CronCreate` framed as inbound), no health-watch/poll/loop | PASS |
 | not a terminal turn (mid-sprint, still driving, more work queued) | PASS (N/A) |
 | discussion about the fleet-wrap rule/gate, or a worker-seat scoped `DONE` that explicitly is not fleet wrap | PASS (N/A) |
 | **lane DONE report** (at any state, terminal or not): a `gh pr merge` the turn executed (parsed shell), a "PR #N merged" / "handed PR #N to the lead" claim, a written `DONE_<ID>` marker (Write/Edit content, echo/printf redirect, or a here-document into a file), or a `DONE` line with a PR URL, and **no `CLEANUP RECEIPT`** (heading + `worktree:` + `branch:` lines) in the turn's output, a report it wrote, or a report file it cites | `FLEETWRAP_CLEANUP_RECEIPT_MISSING` — advise appending the receipt (`/pr-loop` `references/merge-and-verification.md` § Cleanup Receipt). Advisory in the Stop hook; the CLI prints it but keeps exit 0 unless a cron/loop code also fired |
 | same DONE report carrying its receipt; a mid-sprint push with no DONE; discussion about receipts; negated/conditional merge talk ("not merged yet", "once #N is merged"); a marker or merge claim inside a fenced block or `>` blockquote; a `gh pr merge` that is only printed (`echo gh pr merge …`), quoted, or commented | PASS (N/A) |
+
+`ScheduleWakeup {stop: true}` ends a wakeup and is not arming. An absent or
+false `stop` arms one; a stop cannot excuse a separate re-arm or durable loop.
 
 Wrap-state doctrine line: **inbound collab monitor STAYS, everything periodic DIES, the
 decision is left in front of Etan, then silence.**
