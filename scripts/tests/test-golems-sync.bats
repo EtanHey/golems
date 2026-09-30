@@ -33,6 +33,7 @@ make_fixture_repo() {
         "$REPO_ROOT/scripts/repogolem/install-golem-dispatch.sh" \
         "$REPO_ROOT/scripts/repogolem/worktree-bootstrap.sh" \
         "$FIXTURE_REPO/scripts/repogolem/"
+    cp -R "$REPO_ROOT/scripts/repogolem/dispatch" "$FIXTURE_REPO/scripts/repogolem/dispatch"
     if [[ -f "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" ]]; then
         cp "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" "$FIXTURE_REPO/scripts/sync/"
     fi
@@ -270,6 +271,8 @@ make_tracked_worktree_skills() {
     cmp -s \
         "$REPO_ROOT/scripts/repogolem/golem-dispatch.zsh" \
         "$HOST_ROOT/.config/ralphtools/golem-dispatch.zsh"
+    diff -qr "$REPO_ROOT/scripts/repogolem/dispatch" \
+        "$HOST_ROOT/.config/ralphtools/dispatch"
     # -w launches need the bootstrap next to the dispatcher; the payload must ship it.
     [ -x "$HOST_ROOT/.config/ralphtools/worktree-bootstrap.sh" ]
     cmp -s \
@@ -321,4 +324,24 @@ make_tracked_worktree_skills() {
     run_fixture_sync --dry-run --only launcher
     [ "$status" -eq 0 ]
     [[ "$output" == *"added=0 updated=0 unchanged=1 backed-up=0"* ]] || false
+}
+
+@test "module-only change reinstalls the launcher" {
+    make_fixture_repo
+    run_fixture_sync --only launcher
+    [ "$status" -eq 0 ]
+
+    module="$FIXTURE_REPO/scripts/repogolem/dispatch/codex.zsh"
+    printf '# module-only change\n' >> "$module"
+    git -C "$FIXTURE_REPO" commit --quiet -am 'change module only'
+    git -C "$FIXTURE_REPO" update-ref refs/remotes/origin/master HEAD
+
+    run_fixture_sync --dry-run --only launcher
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"added=0 updated=1 unchanged=0 backed-up=0"* ]] || false
+
+    run_fixture_sync --only launcher
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"added=0 updated=1 unchanged=0 backed-up=0"* ]] || false
+    cmp -s "$module" "$HOST_ROOT/.config/ralphtools/dispatch/codex.zsh"
 }

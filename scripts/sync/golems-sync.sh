@@ -76,6 +76,11 @@ mkdir -p "$payload_root"
 
 # install-golem-dispatch.sh installs worktree-bootstrap.sh next to the dispatcher and refuses without it.
 launcher_files=(golem-dispatch.zsh install-golem-dispatch.sh worktree-bootstrap.sh)
+if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
+    while IFS= read -r module; do
+        launcher_files+=("$module")
+    done < <(cd "$repo_root/scripts/repogolem" && find dispatch -type f -name '*.zsh' | LC_ALL=C sort)
+fi
 archive_paths=(scripts/repogolem/golems-sync-install.sh)
 if [[ "$scope" == "skills" || "$scope" == "all" ]]; then
     archive_paths+=(skills/golem-powers scripts/sync/golems-sync-coupling-allowlist.tsv)
@@ -313,10 +318,14 @@ fi
 if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
     if [[ "$host_shell" == "local" ]]; then
         mkdir -p "$host_root/.golems/launcher"
-        rsync -a "${launcher_files[@]/#/$launcher_dir/}" "$host_root/.golems/launcher/"
+        rsync -a "$launcher_dir/golem-dispatch.zsh" "$launcher_dir/install-golem-dispatch.sh" \
+            "$launcher_dir/worktree-bootstrap.sh" "$launcher_dir/dispatch" \
+            "$host_root/.golems/launcher/"
     else
         ssh "$host" mkdir -p .golems/launcher
-        rsync -a "${launcher_files[@]/#/$launcher_dir/}" "$host:.golems/launcher/"
+        rsync -a "$launcher_dir/golem-dispatch.zsh" "$launcher_dir/install-golem-dispatch.sh" \
+            "$launcher_dir/worktree-bootstrap.sh" "$launcher_dir/dispatch" \
+            "$host:.golems/launcher/"
     fi
 fi
 

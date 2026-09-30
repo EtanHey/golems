@@ -128,6 +128,10 @@ Programmatic: `import { detectFleetWrap } from "./src/fleet-wrap-gate.mjs"` →
   whether its claims are true. A report file cited only by a relative path, or written by a script the
   transcript does not show and never named in the turn, is not read; the advisory then fires,
   and the fix is to cite the report's absolute path or paste the receipt in the DONE message.
+- Receipt scanning has a shared 4 million work-unit / 350 ms per-turn budget. If it is
+  exhausted, only the receipt advisory fails open; an independent live cron/loop verdict
+  remains. Narrative report-path extraction caps a path body at 1,024 characters and treats
+  `=` as a new path delimiter; explicit tool paths and shell write targets remain eligible.
 - Report-file policy (`lib/report-reader.mjs`): a cited path must be absolute or `~/`, end in
   `.md`/`.txt`, and contain no `..` segment (rejected, never normalized). A symlink is followed only
   when its realpath target passes every check: a `.md`/`.txt` name, a regular file (not a FIFO or

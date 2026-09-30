@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir="${0:A:h}"
 source_file="${script_dir}/golem-dispatch.zsh"
 bootstrap_file="${script_dir}/worktree-bootstrap.sh"
+modules_dir="${script_dir}/dispatch"
 force=false
 
 if [[ "${1:-}" == "--force" ]]; then
@@ -23,6 +24,17 @@ if [[ ! -f "$bootstrap_file" ]]; then
   echo "Missing worktree bootstrap: $bootstrap_file" >&2
   exit 1
 fi
+module_names="$(sed -n 's/^for _golem_module in \(.*\); do$/\1/p' "$source_file")"
+if [[ ! -d "$modules_dir" || -z "$module_names" ]]; then
+  echo "Missing dispatcher modules: $modules_dir" >&2
+  exit 1
+fi
+for module_name in ${(s: :)module_names}; do
+  if [[ ! -f "$modules_dir/$module_name.zsh" ]]; then
+    echo "Missing dispatcher module: $modules_dir/$module_name.zsh" >&2
+    exit 1
+  fi
+done
 
 if [[ "${EUID:-$(id -u)}" -eq 0 || -n "${SUDO_USER:-}" ]] && [[ "$force" != "true" ]]; then
   echo "Refusing privileged install without --force" >&2
@@ -49,6 +61,11 @@ if [[ -e "$target_file" && "$force" != "true" ]]; then
 fi
 
 mkdir -p "${target_file:h}"
+mkdir -p "${target_file:h}/dispatch"
+for module in "$modules_dir"/*.zsh(N); do
+  cp "$module" "${target_file:h}/dispatch/${module:t}"
+done
+# Publish the facade only after every module exists at the installed path.
 cp "$source_file" "$target_file"
 chmod +x "$target_file"
 echo "Installed repoGolem dispatcher: $target_file"

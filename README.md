@@ -91,6 +91,7 @@ Some skills to start with:
 - `git-guardian`: a safety gate in front of force-push, reset, and branch deletes
 - `tmp-block`: a hook that blocks durable writes to `/tmp`
 - `skill-creator`: create, audit, and eval skills
+- `orc`: coordinate agents; `bash skills/golem-powers/orc/scripts/install.sh` links its global Claude agents
 - `unslop`: cut AI-sounding filler and keep the facts
 
 An eval checks only the behavior it asserts. It is regression evidence. It

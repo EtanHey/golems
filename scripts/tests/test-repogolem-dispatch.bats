@@ -12,6 +12,7 @@ setup() {
     FIXTURES="$BATS_TEST_DIRNAME/fixtures"
     CODEX_SESSION_FIXTURES="$FIXTURES/codex-sessions"
     SOURCE_DISPATCHER="$BATS_TEST_DIRNAME/../repogolem/golem-dispatch.zsh"
+    SOURCE_MODULES="$BATS_TEST_DIRNAME/../repogolem/dispatch"
     INSTALL_DISPATCHER="$BATS_TEST_DIRNAME/../repogolem/install-golem-dispatch.sh"
     GOLEM_VALIDATE="$BATS_TEST_DIRNAME/../../skills/golem-powers/golem-install/scripts/validate.sh"
     TMPDIR_="$(mktemp -d)"
@@ -175,7 +176,8 @@ TOML
     [ "$status" -eq 0 ]
     [ -x "$fake_home/.config/ralphtools/golem-dispatch.zsh" ]
     grep -F -q -- "Installed repoGolem dispatcher:" <<< "$output"
-    rg -q "BrainLayer-first ambiguity gate|BLOCKED_BRAINLAYER_UNAVAILABLE" "$fake_home/.config/ralphtools/golem-dispatch.zsh"
+    rg -q "BrainLayer-first ambiguity gate|BLOCKED_BRAINLAYER_UNAVAILABLE" \
+        "$fake_home/.config/ralphtools/golem-dispatch.zsh" "$fake_home/.config/ralphtools/dispatch"
 }
 
 @test "install helper refuses targets outside HOME" {
@@ -191,8 +193,139 @@ TOML
     [ ! -e "$TMPDIR_/outside/golem-dispatch.zsh" ]
 }
 
-@test "installed dispatcher fixture matches the tracked source" {
-    cmp -s "$SOURCE_DISPATCHER" "$FIXTURES/repogolem-dispatch.zsh"
+assert_dispatch_fixture_mirror() {
+    local fixture_facade="$1" fixture_modules="$2"
+    cmp -s "$SOURCE_DISPATCHER" "$fixture_facade" && \
+        diff -qr "$SOURCE_MODULES" "$fixture_modules" >/dev/null
+}
+
+@test "installed dispatcher fixture and modules match the tracked source" {
+    assert_dispatch_fixture_mirror "$FIXTURES/repogolem-dispatch.zsh" "$FIXTURES/dispatch"
+    cp -R "$FIXTURES/dispatch" "$TMPDIR_/drift"
+    printf '# planted drift\n' >> "$TMPDIR_/drift/core.zsh"
+    run assert_dispatch_fixture_mirror "$FIXTURES/repogolem-dispatch.zsh" "$TMPDIR_/drift"
+    [ "$status" -ne 0 ]
+}
+
+@test "two copied dispatchers load their own modules" {
+    local copy_a="$TMPDIR_/copy-a" copy_b="$TMPDIR_/copy-b"
+    mkdir -p "$copy_a" "$copy_b"
+    cp "$SOURCE_DISPATCHER" "$copy_a/golem-dispatch.zsh"
+    cp "$SOURCE_DISPATCHER" "$copy_b/golem-dispatch.zsh"
+    cp -R "$SOURCE_MODULES" "$copy_a/dispatch"
+    cp -R "$SOURCE_MODULES" "$copy_b/dispatch"
+    printf '\ntypeset -g _GOLEM_SOURCE_PROBE=A\n' >> "$copy_a/dispatch/core.zsh"
+    printf '\ntypeset -g _GOLEM_SOURCE_PROBE=B\n' >> "$copy_b/dispatch/core.zsh"
+    run env RALPH_REGISTRY_FILE="$REGISTRY_FILE" zsh -f -c '
+        source "$1" || exit 1
+        print -r -- "A=$_GOLEM_SOURCE_PROBE"
+        source "$2" || exit 1
+        print -r -- "B=$_GOLEM_SOURCE_PROBE"
+    ' _ "$copy_a/golem-dispatch.zsh" "$copy_b/golem-dispatch.zsh"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'A=A\nB=B'* ]] || false
+}
+
+@test "symlink to a facade without its module directory fails loudly" {
+    mkdir -p "$TMPDIR_/bare" "$TMPDIR_/link"
+    cp "$SOURCE_DISPATCHER" "$TMPDIR_/bare/golem-dispatch.zsh"
+    ln -s "$TMPDIR_/bare/golem-dispatch.zsh" "$TMPDIR_/link/golem-dispatch.zsh"
+    run env RALPH_REGISTRY_FILE="$REGISTRY_FILE" zsh -f -c 'source "$1"' _ "$TMPDIR_/link/golem-dispatch.zsh"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Missing dispatcher module:"* ]] || false
+}
+
+@test "symlinked facade resolves modules beside its real file" {
+    mkdir -p "$TMPDIR_/real" "$TMPDIR_/shadow"
+    cp "$SOURCE_DISPATCHER" "$TMPDIR_/real/golem-dispatch.zsh"
+    cp -R "$SOURCE_MODULES" "$TMPDIR_/real/dispatch"
+    cp -R "$SOURCE_MODULES" "$TMPDIR_/shadow/dispatch"
+    printf '\ntypeset -g _GOLEM_SOURCE_PROBE=REAL\n' >> "$TMPDIR_/real/dispatch/core.zsh"
+    printf '\ntypeset -g _GOLEM_SOURCE_PROBE=SHADOW\n' >> "$TMPDIR_/shadow/dispatch/core.zsh"
+    ln -s "$TMPDIR_/real/golem-dispatch.zsh" "$TMPDIR_/shadow/golem-dispatch.zsh"
+    run env RALPH_REGISTRY_FILE="$REGISTRY_FILE" zsh -f -c '
+        source "$1" || exit 1
+        print -r -- "$_GOLEM_SOURCE_PROBE"
+    ' _ "$TMPDIR_/shadow/golem-dispatch.zsh"
+    [ "$status" -eq 0 ]
+    [ "$output" = REAL ]
+}
+
+@test "fresh installed dispatcher runs from unrelated cwd after source tree removal" {
+    local source_copy="$TMPDIR_/source-copy" fake_home="$TMPDIR_/isolated-home"
+    mkdir -p "$source_copy" "$fake_home" "$TMPDIR_/unrelated"
+    cp "$SOURCE_DISPATCHER" "$INSTALL_DISPATCHER" \
+        "$BATS_TEST_DIRNAME/../repogolem/worktree-bootstrap.sh" "$source_copy/"
+    cp -R "$SOURCE_MODULES" "$source_copy/dispatch"
+    run env HOME="$fake_home" zsh "$source_copy/install-golem-dispatch.sh" --force \
+        "$fake_home/.config/ralphtools/golem-dispatch.zsh"
+    [ "$status" -eq 0 ]
+    rm -rf "$source_copy"
+    run env HOME="$fake_home" RALPH_REGISTRY_FILE="$REGISTRY_FILE" zsh -f -c '
+        cd "$1" || exit 1
+        source "$2" || exit 1
+        testrepoCodex --help
+    ' _ "$TMPDIR_/unrelated" "$fake_home/.config/ralphtools/golem-dispatch.zsh"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Codex launcher options:"* ]] || false
+}
+
+@test "installer refuses a missing required module before publishing facade" {
+    local source_copy="$TMPDIR_/incomplete-source" fake_home="$TMPDIR_/incomplete-home"
+    mkdir -p "$source_copy" "$fake_home"
+    cp "$SOURCE_DISPATCHER" "$INSTALL_DISPATCHER" \
+        "$BATS_TEST_DIRNAME/../repogolem/worktree-bootstrap.sh" "$source_copy/"
+    cp -R "$SOURCE_MODULES" "$source_copy/dispatch"
+    rm "$source_copy/dispatch/codex.zsh"
+    run env HOME="$fake_home" zsh "$source_copy/install-golem-dispatch.sh" --force \
+        "$fake_home/.config/ralphtools/golem-dispatch.zsh"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Missing dispatcher module:"* ]] || false
+    [ ! -e "$fake_home/.config/ralphtools/golem-dispatch.zsh" ]
+}
+
+@test "a missing late module leaves no wrappers and no partial definitions" {
+    mkdir -p "$TMPDIR_/partial"
+    cp "$SOURCE_DISPATCHER" "$TMPDIR_/partial/golem-dispatch.zsh"
+    cp -R "$SOURCE_MODULES" "$TMPDIR_/partial/dispatch"
+    rm "$TMPDIR_/partial/dispatch/gemini.zsh"
+    run env RALPH_REGISTRY_FILE="$REGISTRY_FILE" zsh -f -c '
+        source "$1"; print -r -- "rc=$?"
+        local -a defs=(${(M)${(k)functions}:#_golem_*})
+        print -r -- "defs=${#defs}"
+        whence -w testrepoClaude >/dev/null && print -r -- WRAPPERS
+        true
+    ' _ "$TMPDIR_/partial/golem-dispatch.zsh"
+    [[ "$output" == *"Missing dispatcher module:"*"/dispatch/gemini.zsh"* ]] || false
+    [[ "$output" == *"rc=1"* ]] || false
+    [[ "$output" == *"defs=0"* ]] || false
+    [[ "$output" != *WRAPPERS* ]] || false
+}
+
+@test "a module directory from the cwd is never loaded" {
+    mkdir -p "$TMPDIR_/real-cwd" "$TMPDIR_/decoy-cwd"
+    cp "$SOURCE_DISPATCHER" "$TMPDIR_/real-cwd/golem-dispatch.zsh"
+    cp -R "$SOURCE_MODULES" "$TMPDIR_/real-cwd/dispatch"
+    cp -R "$SOURCE_MODULES" "$TMPDIR_/decoy-cwd/dispatch"
+    printf '\ntypeset -g _GOLEM_SOURCE_PROBE=REAL\n' >> "$TMPDIR_/real-cwd/dispatch/core.zsh"
+    printf '\ntypeset -g _GOLEM_SOURCE_PROBE=DECOY\n' >> "$TMPDIR_/decoy-cwd/dispatch/core.zsh"
+    run env RALPH_REGISTRY_FILE="$REGISTRY_FILE" zsh -f -c '
+        cd "$1" && source "$2" || exit 1
+        print -r -- "$_GOLEM_SOURCE_PROBE"
+    ' _ "$TMPDIR_/decoy-cwd" "$TMPDIR_/real-cwd/golem-dispatch.zsh"
+    [ "$status" -eq 0 ]
+    [ "$output" = REAL ]
+}
+
+@test "installer keeps the old facade when installing modules fails" {
+    local fake_home="$TMPDIR_/failing-home"
+    local target="$fake_home/.config/ralphtools/golem-dispatch.zsh"
+    mkdir -p "$fake_home/.config/ralphtools"
+    printf '# previous facade\n' > "$target"
+    : > "$fake_home/.config/ralphtools/dispatch"
+    run env HOME="$fake_home" zsh "$INSTALL_DISPATCHER" --force "$target"
+    [ "$status" -ne 0 ]
+    [ "$(cat "$target")" = '# previous facade' ]
 }
 
 @test "golem-install validation enforces Codex safety defaults" {
