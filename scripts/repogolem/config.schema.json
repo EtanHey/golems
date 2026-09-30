@@ -82,6 +82,7 @@
         "secrets": { "$ref": "#/definitions/secretMap" },
         "env": { "$ref": "#/definitions/envMap" },
         "agent": { "$ref": "#/definitions/word" },
+        "agentByCli": { "type": "object", "propertyNames": { "$ref": "#/definitions/word" }, "additionalProperties": { "$ref": "#/definitions/word" } },
         "mcpInheritFrom": { "anyOf": [{ "type": "null" }, { "$ref": "#/definitions/projectName" }] },
         "funcAlias": { "$ref": "#/definitions/word" },
         "launcherAliasPrefix": { "$ref": "#/definitions/word" },
