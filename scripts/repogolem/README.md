@@ -7,11 +7,11 @@ in the file are `op://` references. Generation resolves them once and writes
 `~/.config/repogolem/generated`: 0600 files in a 0700 directory outside Git.
 Resolved values are on disk; never commit them or copy them into logs.
 
-Preview and install from the checkout (Bun must be installed):
+Installation defaults to dry-run. Apply from the checkout explicitly (Bun must be installed):
 
 ```sh
 bun scripts/repogolem/repogolem-config.ts install --config /path/to/private/repogolem/config.yaml --dry-run
-bun scripts/repogolem/repogolem-config.ts install --config /path/to/private/repogolem/config.yaml
+bun scripts/repogolem/repogolem-config.ts install --config /path/to/private/repogolem/config.yaml --apply
 ```
 
 The installer bundles the CLI into `~/.config/repogolem/runtime`, copies the
@@ -26,7 +26,7 @@ Shell and seat backups stay in `~/.config/repogolem`; installation runs no `op`
 and no generation. Repeating installation preserves the first backup.
 
 ```sh
-repogolem install --rollback
+repogolem install --rollback --apply
 ```
 
 Rollback restores the original shell and seats, and refuses if either was
