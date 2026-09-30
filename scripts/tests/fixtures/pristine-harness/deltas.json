@@ -2,7 +2,8 @@
   {
     "authority": "golems#457",
     "candidate_sha256": {
-      "darwin": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88"
+      "darwin": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88",
+      "linux": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88"
     },
     "case": "launcher-002",
     "reason": "Codex launcher help names the default as a fallback; effort is chosen per dispatch from the plan phase"
