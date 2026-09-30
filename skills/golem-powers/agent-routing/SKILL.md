@@ -21,7 +21,7 @@ and gate before dispatch: `codex.subagent.mechanical` is a candidate, bench befo
 This section owns current dispatch defaults; older model-selection recipes in the
 references are pending PR 2b migration and cannot override the config.
 Effort is not in the model-roles config; each `/large-plan` phase declares effort + why, and every dispatch passes it explicitly (Codex `-E` / `effort:`).
-`default` means omit the flag: Codex falls back to the launcher default; Claude sub-agents inherit the session's effort unless their agent frontmatter sets `effort:` ([Claude Code sub-agents: Supported frontmatter fields](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields)). Gemini uses `launcher_tier`.
+The launcher refuses a worker spawn without an explicit effort. Codex prompted/worker launches require `-E <level>` or `GOLEM_EFFORT`; bare interactive launches use Codex config. For Claude, `default` means omit the flag: Claude sub-agents inherit the session's effort unless their agent frontmatter sets `effort:` ([Claude Code sub-agents: Supported frontmatter fields](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields)). Gemini uses `launcher_tier`.
 
 ## Read Map
 
