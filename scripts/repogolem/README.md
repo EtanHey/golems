@@ -29,8 +29,10 @@ and no generation. Repeating installation preserves the first backup.
 repogolem install --rollback --apply
 ```
 
-Rollback restores the original shell and seats, and refuses if either was
-changed since installation. It retains the installed runtime and CLI.
+Rollback verifies the managed block and seat link, preserves unrelated shell
+edits, and restores legacy launcher sources and seats. A recovery journal is
+written before changes; retry install or rollback after an interrupted attempt.
+The installed runtime and CLI are retained.
 
 In a new shell, the operator performs the first real generation:
 

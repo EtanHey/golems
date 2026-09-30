@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { chmodSync, readFileSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { runtimeMcpConfig, runtimeEnvironment, readRuntime } from "../repogolem/runtime-reader";
+import { parseCache, readTransferredSecrets, runtimeMcpConfig, runtimeEnvironment, readRuntime } from "../repogolem/runtime-reader";
 
 const scratch = join(import.meta.dir, "../../docs.local/ghb2-runtime-tests");
 mkdirSync(scratch, { recursive: true });
@@ -118,4 +118,56 @@ test('cache reads reject writable parent directories and user-owned parent symli
   }
   chmodSync(parent, 0o777);
   expect(() => readRuntime(unsafe, { EXAMPLE_ENV: 'synthetic' })).toThrow('parent');
+});
+
+test('runtime rejects a changed machine stamp independently of the config hash', () => {
+  const {dir}=fixture();
+  const file=join(dir,'secrets.env');
+  writeFileSync(file,readFileSync(file,'utf8').replace('# machine: example-host','# machine: other-host'));
+  expect(()=>readRuntime(dir,{EXAMPLE_ENV:'synthetic'})).toThrow('stale');
+});
+test('cache parent symlinks are refused even when the leaf is a real private directory', () => {
+  const {dir}=fixture();
+  const parent=dir+'-alias';dirs.push(parent);symlinkSync(scratch,parent);
+  expect(()=>readRuntime(join(parent,dir.split('/').pop()!),{EXAMPLE_ENV:'synthetic'})).toThrow('parent');
+});
+test('cache ownership is enforced independently of mode and parent ownership', () => {
+  const {dir}=fixture();
+  const reader=join(import.meta.dir,'../repogolem/runtime-reader.ts');
+  const program=`
+    import {mock} from 'bun:test';
+    const fs=await import('node:fs');
+    const realLstat=fs.lstatSync;
+    const leaf=process.argv[1]+'/secrets.env';
+    mock.module('node:fs',()=>({...fs,lstatSync(path){
+      const stat=realLstat(path);
+      return path===leaf?new Proxy(stat,{get(target,key){
+        if(key==='uid')return process.getuid()+1;
+        const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;
+      }}):stat;
+    }}));
+    const {readRuntime}=await import(${JSON.stringify(reader)});
+    try{readRuntime(process.argv[1],{EXAMPLE_ENV:'synthetic'});process.exit(41);}
+    catch(error){if(!error.message.includes('owned'))throw error;}
+  `;
+  const result=Bun.spawnSync([process.execPath,'-e',program,dir],{stdout:'pipe',stderr:'pipe'});
+  expect(result.stderr.toString()).toBe('');expect(result.exitCode).toBe(0);
+});
+
+test('transferred caches reject each stale stamp and every key-set mismatch',()=>{
+  const {dir}=fixture();const path=join(dir,'secrets.env'),fresh=readFileSync(path,'utf8');
+  expect(readTransferredSecrets(path,'fixture','example-host',[ref]).get(ref)).toBe("synthetic\nvalue'quoted");
+  for(const [text,message] of [
+    [fresh.replace('config-sha256: fixture','config-sha256: stale'),'stale'],
+    [fresh.replace('machine: example-host','machine: other-host'),'stale'],
+    [fresh.split('\n').filter(line=>!line.startsWith(key)).join('\n'),'references differ'],
+    [fresh+`REPOGOLEM_SECRET_${'b'.repeat(32)}=$'extra'\n`,'references differ'],
+  ]){
+    writeFileSync(path,text);
+    expect(()=>readTransferredSecrets(path,'fixture','example-host',[ref])).toThrow(message);
+  }
+});
+test('duplicate cache assignments are rejected even when both values match',()=>{
+  const text=`${key}=$'synthetic'\n${key}=$'synthetic'\n`;
+  expect(()=>parseCache(text)).toThrow('invalid cached assignment');
 });
