@@ -1,1 +1,158 @@
-[]
+[
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-007",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-008",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-009",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-011",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-012",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-014",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-015",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-016",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-017",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-018",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-019",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-020",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-028",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-029",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-030",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "launcher-033",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-gemini-lead",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-gemini-lead-s",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-gemini-persona",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-gemini-worker-env",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-gemini-worker-s",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-persona-codex-lead",
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-persona-gemini-continue",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-persona-gemini-lead",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "r2-launch-persona-gemini-worker-env",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  },
+  {
+    "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
+    "candidate_sha256": {},
+    "case": "topup-agy-model-empty",
+    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+  }
+]
