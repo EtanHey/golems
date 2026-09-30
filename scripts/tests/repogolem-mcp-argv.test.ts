@@ -96,7 +96,7 @@ function expectCanariesOnlyInPrivateFiles() {
 
 function agyRegistry(project: string, names: string[]) {
   const registry = join(scratch, "registry.json");
-  const synthetic = { command: "synthetic-mcp", env: { API_KEY: CANARY } };
+  const synthetic = { command: `/synthetic/${COMMAND_CANARY}/mcp`, env: { API_KEY: CANARY } };
   writeFileSync(registry, JSON.stringify({
     mcpDefinitions: { synthetic },
     projects: { testrepo: { mcps: ["synthetic"] }, other: { mcps: names } },
@@ -139,10 +139,8 @@ _golem_sync_agy_workspace testrepo "$2"`,
   "label": "agents",
   "mcpServers": {
     "synthetic": {
-      "command": "synthetic-mcp",
-      "env": {
-        "API_KEY": "\${API_KEY}"
-      }
+      "command": "/synthetic/${COMMAND_CANARY}/mcp",
+      "env": {}
     }
   }
 }
@@ -154,10 +152,8 @@ _golem_sync_agy_workspace testrepo "$2"`,
       "command": "user-existing"
     },
     "synthetic": {
-      "command": "synthetic-mcp",
-      "env": {
-        "API_KEY": "\${API_KEY}"
-      }
+      "command": "/synthetic/${COMMAND_CANARY}/mcp",
+      "env": {}
     }
   }
 }
@@ -192,7 +188,7 @@ _golem_sync_agy_workspace testrepo "$2"`,
       users.map((document) => JSON.stringify(document)).join("\n"),
     );
 
-    const synthetic = { command: "synthetic-mcp", env: { API_KEY: "${API_KEY}" } };
+    const synthetic = { command: `/synthetic/${COMMAND_CANARY}/mcp`, env: {} };
     const registry = agyRegistry(project, ["one", "two"]);
     const result = runZsh(
       `function _ralph_build_mcp_config() { return 91; }

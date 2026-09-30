@@ -50,11 +50,10 @@ _golem_jq_agy_servers() {
     | with_entries(select(.key | test("israeli[-_ ]?bank|leumi"; "i") | not))
     | strip_supabase_token_arg
     | if (.supabase.env? | type) == "object" then .supabase.env |= del(.SUPABASE_ACCESS_TOKEN) else . end
-    | walk(if type == "object" then with_entries(
-        if (.value | type) == "string" and ((.key | secret_key) or (.value | startswith("op://"))) then
-          if (.value | test("^\\$\\{[A-Za-z_][A-Za-z0-9_]*\\}$")) then .
-          else .value = ("${" + (.key | ascii_upcase | gsub("[-.]"; "_")) + "}") end
-        else . end) else . end)
+    | walk(if type == "object" then with_entries(select(
+        ((.value | type) == "string" and ((.key | secret_key) or
+          (.value | startswith("op://") or contains("${") or test("^\\$[A-Za-z_]")))) | not))
+      else . end)
     | with_entries(.value |= (if type == "object" then
         if ((.serverUrl // "") == "") and ((.url // .httpUrl // "") != "") then .serverUrl = (.url // .httpUrl) else . end
         | del(.url, .httpUrl)
@@ -63,7 +62,7 @@ _golem_jq_agy_servers() {
 
 _golem_agy_write_config() {
   local target="$1" servers="$2" mode="$3" allowed="${4:-[]}"
-  local parent="${target:h}" existing='{}' tmp_file
+  local parent="${target:h}" existing='{}' tmp_file pruned
   mkdir -p "$parent" || return 1
   if [[ -s "$target" ]]; then
     # Slurp once: retain non-MCP fields and the legacy JSON document count.
@@ -73,7 +72,7 @@ _golem_agy_write_config() {
   fi
   tmp_file=$(umask 077; mktemp "${parent}/.repogolem-mcp.XXXXXX") || return 1
   # Config values travel only on stdin, including project inputs before the
-  # credential placeholder transform. jq argv must never carry raw MCP data.
+  # credential removal. jq argv must never carry raw MCP data.
   if print -r -- "$existing" "$servers" "$allowed" | jq -s --arg mode "$mode" \
     "$(_golem_jq_strip_supabase_token_arg)$(_golem_jq_agy_servers)"'
       .[1] as $servers | .[2] as $allowed | .[0][] | .mcpServers = (
@@ -82,7 +81,14 @@ _golem_agy_write_config() {
           | with_entries(select(.key as $name | $allowed | index($name)))
         end)
     ' > "$tmp_file" 2>/dev/null; then
+    if [[ "$mode" == global ]]; then
+      pruned=$(print -r -- "$existing" | jq -r --slurpfile written "$tmp_file" '
+        [.[].mcpServers // {} | keys[]] - [$written[].mcpServers | keys[]]
+        | unique | join(", ")
+      ' 2>/dev/null) || { rm -f "$tmp_file"; return 1; }
+    fi
     mv "$tmp_file" "$target" || { rm -f "$tmp_file"; return 1; }
+    [[ -z "$pruned" ]] || print -u2 -r -- "repoGolem: pruned shared AGY MCP servers: $pruned"
   else
     rm -f "$tmp_file"
     return 1
@@ -94,12 +100,12 @@ _golem_sync_agy_workspace() {
   local registry="${RALPH_REGISTRY_FILE:-$HOME/.config/ralphtools/registry.json}"
   local servers registry_servers project_servers='[]'
   # The generic builder resolves op:// into plaintext, so AGY deliberately uses
-  # raw registry definitions. Dynamic token-backed definitions use env refs.
+  # raw registry definitions. MCP children inherit exported credentials.
   registry_servers=$(jq -c --arg p "$project_name" '
     . as $registry
     | reduce (.projects[$p].mcps // [])[] as $name (.global.mcps // {};
         if $registry.mcpDefinitions[$name] != null then .[$name] = $registry.mcpDefinitions[$name]
-        elif $name == "linear" then .linear = {command:"npx",args:["-y","@tacticlaunch/mcp-linear"],env:{LINEAR_API_TOKEN:"${LINEAR_API_TOKEN}"}}
+        elif $name == "linear" then .linear = {command:"npx",args:["-y","@tacticlaunch/mcp-linear"]}
         elif $name == "supabase" then .supabase = {command:"npx",args:["-y","@supabase/mcp-server-supabase@latest"]}
         else . end)
   ' "$registry" 2>/dev/null) || return 1
