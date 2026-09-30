@@ -108,6 +108,103 @@ print(json.dumps({'invoked': invoked,
                   'state_unchanged': json.dumps(state, sort_keys=True) == before},
                  sort_keys=True, ensure_ascii=False))
 '''
+TMP_BLOCK_API_PROBE = r'''
+import importlib.util, io, json, shutil, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+request = json.load(sys.stdin)
+before = json.dumps(request, sort_keys=True)
+def load(label, path):
+    spec = importlib.util.spec_from_file_location(label, path)
+    module = importlib.util.module_from_spec(spec)
+    if request.get('registered', True):
+        sys.modules[label] = module
+    spec.loader.exec_module(module)
+    return module
+def main_capture(module, payload):
+    old_in, old_out = sys.stdin, sys.stdout
+    output = io.StringIO()
+    try:
+        sys.stdin, sys.stdout = io.StringIO(json.dumps(payload)), output
+        try:
+            module.main()
+        except SystemExit as exc:
+            code = exc.code
+        else:
+            raise RuntimeError('main returned without SystemExit')
+    finally:
+        sys.stdin, sys.stdout = old_in, old_out
+    return {'exit': code, 'stdout': output.getvalue()}
+if request.get('seam'):
+    copies = Path(sys.argv[2])
+    if copies.exists():
+        shutil.rmtree(copies)
+    modules = []
+    for label in ('a', 'b'):
+        powers = copies / label
+        for leaf in ('tmp-block', '_shared'):
+            shutil.copytree(root / 'skills/golem-powers' / leaf, powers / leaf,
+                            ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.pytest_cache'))
+        modules.append(load('tmp_api_' + label, powers / 'tmp-block/hooks/tmp-block-pretooluse.py'))
+    a, b = modules
+    if request['seam'] == 'classifier':
+        a.in_temp_class = lambda raw: True
+        b.in_temp_class = lambda raw: False
+        path = '/durable/w7-probe'
+    elif request['seam'] == 'prefixes':
+        a._temp_prefixes = lambda: {'/w7-temp'}
+        b._temp_prefixes = lambda: set()
+        path = '/w7-temp/probe'
+    else:
+        raise ValueError('unsupported seam')
+    payload = {'tool_name': 'Write', 'tool_input': {'file_path': path}, 'session_id': 'pristine'}
+    result = [{'main': main_capture(m, payload),
+               'prefix': m._literal_prefix_class(path + '$UNSET', None)} for m in (a, b)]
+    budget = None
+else:
+    module = load('tmp_block_api_probe', root / 'skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py')
+    name = request['function']
+    allowed = {'_bash_temp_targets', 'find_worktree_convention_issues', '_hatched_segments',
+               '_bounded_brace_values', '_bounded_word_values', '_literal_array_values_before',
+               '_bounded_compound_value_sets_before', '_static_shell_variable_state_before',
+               'resolve_target', 'resolve_targets', '_literal_prefix_class'}
+    if name not in allowed:
+        raise ValueError('unsupported tmp-block API')
+    args, kwargs = request.get('args', []), dict(request.get('kwargs', {}))
+    command = request.get('command', '')
+    budget = [request['budget']] if 'budget' in request else None
+    if name in {'_bash_temp_targets', 'find_worktree_convention_issues', '_hatched_segments'}:
+        args = ['Bash', {'command': command}] if name == 'find_worktree_convention_issues' else [command]
+        if budget is not None:
+            kwargs['_budget'] = budget
+    elif request.get('parsed'):
+        tokens, cmd, segs, scopes = module._parse_bash(command)
+        index = max(i for i, token in enumerate(tokens) if token == request['raw'])
+        variables = module._static_shell_variables_before(tokens, cmd, segs, segs[index])
+        if name == '_static_shell_variable_state_before':
+            args = [tokens, cmd, segs, segs[index]]
+        elif name == '_literal_array_values_before':
+            args = [tokens, cmd, index, variables, {}]
+        elif name == '_bounded_compound_value_sets_before':
+            args = [tokens, cmd, segs, scopes, index, variables]
+        elif name == 'resolve_targets':
+            args = [request['raw']]
+            kwargs.update(tokens=tokens, cmd_pos=cmd, seg_of=segs, scope_of=scopes,
+                          target_index=index, variables=variables)
+        else:
+            raise ValueError('unsupported parsed API')
+    try:
+        result = {'result': getattr(module, name)(*args, **kwargs)}
+    except Exception as exc:
+        result = {'exception': type(exc).__name__, 'message': str(exc)}
+def encode(value):
+    if isinstance(value, set):
+        return sorted(value, key=repr)
+    raise TypeError('unsupported API result type')
+print(json.dumps({'call': result, 'budget': budget,
+                  'request_unchanged': before == json.dumps(request, sort_keys=True)},
+                 sort_keys=True, ensure_ascii=False, default=encode))
+'''
 IDENTITY_PROBE = r'''
 import importlib.util, sys
 from pathlib import Path
@@ -487,6 +584,9 @@ def capture(case, tree, scratch):
         argv = [sys.executable, "-c", probe, str(tree)]
         data = (json.dumps(case["request"]).encode() if target == "parser-state"
                 else case.get("input", "").encode())
+    elif target == "tmp-block-api":
+        argv = [sys.executable, "-c", TMP_BLOCK_API_PROBE, str(tree), str(scratch / "api-copies")]
+        data = json.dumps(materialize(case["request"], scratch)).encode()
     elif target == "git-api":
         argv = [sys.executable, "-c", GIT_API_PROBE, str(tree)]
         data = json.dumps(materialize(case["request"], scratch)).encode()
@@ -518,7 +618,7 @@ def execute(cases, tree, scratch):
 
 
 def validate_baseline(cases, results):
-    for kind in ("parser", "parser-state", "parser-identity", "tmp-block",
+    for kind in ("parser", "parser-state", "parser-identity", "tmp-block", "tmp-block-api",
                  "git-guardian", "git-api", "launcher"):
         rows = [results[case["id"]] for case in cases if case["target"] == kind]
         if not rows or all(row["exit"] != 0 for row in rows):
@@ -586,7 +686,7 @@ def main():
     cases = json.loads(CORPUS.read_text())
     ids = [case["id"] for case in cases]
     if len(ids) != len(set(ids)) or any(case["target"] not in
-       ("parser", "parser-state", "parser-identity", "tmp-block",
+       ("parser", "parser-state", "parser-identity", "tmp-block", "tmp-block-api",
         "git-guardian", "git-api", "launcher") for case in cases):
         parser.error("duplicate case ID or unsupported target")
     # Lock concurrent invocations before touching the checkout-independent fixture.
@@ -739,7 +839,7 @@ def run_locked(args, parser, cases, scratch):
         return 1
     counts = {kind: sum(case["target"] == kind for case in cases)
               for kind in ("parser", "parser-state", "parser-identity",
-                           "tmp-block", "git-guardian", "git-api", "launcher")}
+                           "tmp-block", "tmp-block-api", "git-guardian", "git-api", "launcher")}
     print("PRISTINE HARNESS PASS " + json.dumps(counts, sort_keys=True))
     return 0
 
