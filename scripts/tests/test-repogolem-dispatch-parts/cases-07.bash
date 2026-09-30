@@ -118,3 +118,94 @@ function split_case_128() {
     grep -F -x -q -- 'codex:DEFAULT_LEAD' <<< "$output"
     grep -F -x -q -- 'WORKER:' <<< "$output"
 }
+
+function split_case_129() {
+    for launch in 'testrepoCodex "task"' 'testrepoCodex -p "task"' 'testrepoCodex --worker' 'testrepoCodexWorker' 'GOLEM_ROLE=worker testrepoCodex' 'testrepoCodex -- --raw-option task'; do
+        run zsh -f -c '
+          unset GOLEM_EFFORT
+          export RALPH_REGISTRY_FILE="$1"
+          source "$2"
+          function codex() { print -r -- "UNEXPECTED_CODEX"; }
+          eval "$3"
+        ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$launch"
+        [ "$status" -eq 2 ]
+        [[ "$output" == *"low, medium, high, xhigh, max, ultra"* ]]
+        [[ "$output" == *"choose per plan phase (see /agent-routing)"* ]]
+        refute_contains UNEXPECTED_CODEX "$output"
+    done
+}
+
+function split_case_130() {
+    for launch in 'testrepoCodex -E high "task"' 'GOLEM_EFFORT=high testrepoCodex -p "task"' 'GOLEM_EFFORT=high testrepoCodexWorker'; do
+        run zsh -f -c '
+          unset GOLEM_EFFORT
+          export RALPH_REGISTRY_FILE="$1"
+          source "$2"
+          function _golem_setup_env() { return 0; }
+          function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+          function codex() { print -r -- "CODEX_ARGS=$*"; }
+          eval "$3"
+        ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$launch"
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'model_reasoning_effort="high"'* ]]
+    done
+}
+
+function split_case_131() {
+    run env GOLEM_EFFORT=invalid zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1"
+      source "$2"
+      testrepoCodex --help || exit $?
+      _golem_parse_codex_flags -E high || exit $?
+      [[ "$_flag_codex_effort" == high ]]
+    ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Codex launcher options:"* ]]
+}
+
+run_codex_ambient_effort() {
+    local ambient="$1"; shift
+    run env GOLEM_EFFORT="$ambient" zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1"
+      source "$2"
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function codex() { print -r -- "CODEX_ARGS=$*"; }
+      shift 2
+      testrepoCodex "$@"
+    ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$@"
+}
+
+function split_case_132() {
+    for ambient in low bogus; do
+      run_codex_ambient_effort "$ambient" resume --last
+      [ "$status" -eq 0 ] || return 1
+      grep -F -q -- 'model_reasoning_effort="high"' <<< "$output" || return 1
+    done
+}
+
+function split_case_133() {
+    for ambient in low bogus; do
+      run_codex_ambient_effort "$ambient" -c
+      [ "$status" -eq 0 ] || return 1
+      grep -F -q -- 'model_reasoning_effort="high"' <<< "$output" || return 1
+    done
+}
+
+function split_case_134() {
+    for ambient in low bogus; do
+      run_codex_ambient_effort "$ambient"
+      [ "$status" -eq 0 ] || return 1
+      [[ "$output" == *CODEX_ARGS=* ]]
+      refute_contains 'model_reasoning_effort=' "$output" || return 1
+    done
+}
+
+function split_case_135() {
+    run_codex_ambient_effort bogus "task"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Invalid Codex effort: bogus"* ]]
+    refute_contains CODEX_ARGS= "$output"
+}

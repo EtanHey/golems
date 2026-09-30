@@ -33,8 +33,7 @@ _golem_launch_codex() {
     return 2
   fi
   local codex_config_args=()
-  if $_flag_codex_effort_explicit \
-     || [[ "$explicit_resume" == false && "$_flag_continue" == false ]]; then
+  if $_flag_codex_effort_explicit; then
     codex_config_args=("-c" "model_reasoning_effort=\"${_flag_codex_effort}\"")
   fi
   # Pin the CURRENT top Sol on fresh boots so a prior session's model cannot leak into
@@ -63,6 +62,16 @@ _golem_launch_codex() {
   if [[ "$explicit_resume" == false && "$has_raw_option" == false && ${#codex_args[@]} -gt 0 ]]; then
     positional_prompt="${(j: :)codex_args}"
     codex_args=()
+  fi
+
+  # Resume (including a continue prompt) restores the selected rollout effort.
+  # Raw passthrough arguments may contain a prompt, so require effort for them too.
+  if [[ "$explicit_resume" == false && "$_flag_continue" == false ]] \
+     && ! $_flag_codex_effort_explicit \
+     && [[ "$worker_mode" == true || "$_flag_headless" == true || -n "$positional_prompt" || ${#codex_args[@]} -gt 0 ]]; then
+    echo "Error: Codex prompted/worker launches require explicit effort: low, medium, high, xhigh, max, ultra." >&2
+    echo "Pass -E <level>, --effort <level>, or GOLEM_EFFORT; choose per plan phase (see /agent-routing)." >&2
+    return 2
   fi
 
   if [[ -n "$_flag_worktree" ]]; then

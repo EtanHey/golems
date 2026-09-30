@@ -121,11 +121,11 @@ load 'test-repogolem-dispatch-parts/cases-07.bash'
     split_case_028
 }
 
-@test "tracked dispatcher source uses medium for a bare fresh Codex boot and honors explicit high" {
+@test "tracked dispatcher source keeps config effort for a bare fresh Codex boot and honors explicit high" {
     split_case_029
 }
 
-@test "tracked dispatcher source defaults fresh Codex launch modes to medium effort and preserves continued effort" {
+@test "tracked dispatcher source requires headless effort, keeps bare config and preserves continued effort" {
     split_case_030
 }
 
@@ -520,3 +520,32 @@ load 'test-repogolem-dispatch-parts/cases-07.bash'
 @test "registry CLI persona mapping selects Gemini lead without changing other leads or workers" {
     split_case_128
 }
+
+@test "Codex refuses prompted and worker boots without explicit effort" {
+    split_case_129
+}
+
+@test "Codex accepts prompted boots with flag or environment effort" {
+    split_case_130
+}
+
+@test "Codex help ignores invalid environment effort and explicit flag wins" {
+    split_case_131
+}
+
+@test "Codex resume ignores ambient effort and keeps rollout high" {
+    split_case_132
+}
+
+@test "Codex continue ignores ambient effort and keeps rollout high" {
+    split_case_133
+}
+
+@test "bare Codex ignores valid and invalid ambient effort" {
+    split_case_134
+}
+
+@test "prompted Codex refuses invalid ambient effort before launch" {
+    split_case_135
+}
+

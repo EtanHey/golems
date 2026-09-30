@@ -53,8 +53,8 @@ _golem_parse_unified_flags() {
 _golem_print_codex_help() {
   print -r -- "Codex launcher options:"
   print -r -- "  -E, --effort <value>   low, medium, high, xhigh, max, ultra"
-  print -r -- "                         default: Codex medium; Claude -E > GOLEM_EFFORT > worker medium > high"
-  print -r -- "                         the default is only a fallback — choose effort per dispatch from the plan phase"
+  print -r -- "                         prompted/worker boots require -E or GOLEM_EFFORT"
+  print -r -- "                         choose per plan phase (see /agent-routing); bare interactive uses Codex config"
   print -r -- "  -m, --model <name>     explicit model override"
   print -r -- "  -s, --skip-permissions compatibility no-op (has no effect)"
   print -r -- "  -c, --continue         resume the last session"
@@ -66,8 +66,7 @@ _golem_print_codex_help() {
 
 _golem_parse_codex_flags() {
   local -a _parsed_args=()
-  # AIDEV-NOTE: model-roles config (skill-creator #422) is the future owner of this default.
-  _flag_codex_effort="medium"
+  _flag_codex_effort=""
   _flag_codex_effort_explicit=false
   _flag_codex_help=false
   _flag_codex_worker=false
@@ -96,6 +95,16 @@ _golem_parse_codex_flags() {
       *) _parsed_args+=("$1"); shift ;;
     esac
   done
+  if ! $_flag_codex_help && ! $_flag_codex_effort_explicit && [[ -n "${GOLEM_EFFORT:-}" ]]; then
+    case "$GOLEM_EFFORT" in
+      low|medium|high|xhigh|max|ultra)
+        _flag_codex_effort="$GOLEM_EFFORT"
+        _flag_codex_effort_explicit=true ;;
+      *)
+        echo "Error: Invalid Codex effort: $GOLEM_EFFORT (expected: low, medium, high, xhigh, max, ultra)" >&2
+        return 2 ;;
+    esac
+  fi
   _codex_extra_args=("${_parsed_args[@]}")
 }
 
