@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { runtimeMcpConfig, runtimeEnvironment, readRuntime } from "../repogolem/runtime-reader";
@@ -104,4 +104,18 @@ test("every CLI refuses to launch when its generated secret cache becomes stale"
   expect(proc.exitCode).toBe(0);
   expect(proc.stdout.toString().split("\n").filter(s => s.startsWith("BLOCKED_")).length).toBe(4);
   expect(proc.stdout.toString()).not.toContain("AGENT_MUST_NOT_RUN");
+});
+
+test('cache reads reject writable parent directories and user-owned parent symlinks', () => {
+  const { dir } = fixture();
+  const parent = `${dir}-parent`; dirs.push(parent); mkdirSync(parent, { mode: 0o700 });
+  const alias = join(parent, 'cache'); symlinkSync(dir, alias);
+  expect(() => readRuntime(alias, { EXAMPLE_ENV: 'synthetic' })).toThrow();
+  // Directly test the parent policy independently of leaf modes.
+  const unsafe = join(parent, 'private'); mkdirSync(unsafe, { mode: 0o700 });
+  for (const name of ['registry.json','secrets.env']) {
+    writeFileSync(join(unsafe, name), readFileSync(join(dir, name)), { mode: 0o600 });
+  }
+  chmodSync(parent, 0o777);
+  expect(() => readRuntime(unsafe, { EXAMPLE_ENV: 'synthetic' })).toThrow('parent');
 });

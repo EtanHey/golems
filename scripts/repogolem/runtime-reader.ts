@@ -1,15 +1,31 @@
 // Standalone launch-time reader. Cache bytes are data, never shell code; no op calls.
 import { createHash } from "node:crypto";
-import { lstatSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 type ObjectMap = Record<string, any>;
+function trustedParents(path: string) {
+  let prefix = "/";
+  for (const part of resolve(path).split("/").filter(Boolean)) {
+    prefix = join(prefix, part);
+    const stat = lstatSync(prefix);
+    if (stat.isSymbolicLink() && stat.uid !== 0) throw new Error("runtime cache parent is a user-owned symlink");
+  }
+  for (let dir = realpathSync(dirname(path)); ; dir = dirname(dir)) {
+    const stat = statSync(dir);
+    if ((stat.uid !== 0 && stat.uid !== process.getuid?.()) || ((stat.mode & 0o022) !== 0 && (stat.mode & 0o1000) === 0)) {
+      throw new Error("runtime cache parent is writable by others or owned by another user");
+    }
+    if (dir === dirname(dir)) break;
+  }
+}
 function privatePath(path: string, directory = false) {
   const stat = lstatSync(path);
   const mode = directory ? 0o700 : 0o600;
   if ((directory ? !stat.isDirectory() : !stat.isFile()) || stat.uid !== process.getuid?.() || (stat.mode & 0o777) !== mode) {
     throw new Error(`runtime cache must be an owned ${directory ? "0700 directory" : "0600 regular file"}`);
   }
+  trustedParents(path);
 }
 function stamp(text: string, name: string) {
   return text.match(new RegExp(`^# ${name}: (\\S+)$`, "m"))?.[1];
