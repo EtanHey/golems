@@ -502,5 +502,37 @@
     },
     "case": "parser-topup-nested-arithmetic",
     "reason": "Nested arithmetic and command-substitution closing parentheses are retained during masking, preventing the surrounding executable text from being truncated."
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a"
+    },
+    "case": "tmp-w7-seam-classifier-registered",
+    "reason": "Loading two copied tmp-block trees in one Python process now rejects cached shared policy modules from the first tree when the second tree verifies origins, deliberately failing closed."
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a"
+    },
+    "case": "tmp-w7-seam-prefixes-registered",
+    "reason": "Loading two copied tmp-block trees in one Python process now rejects cached shared policy modules from the first tree when the second tree verifies origins, deliberately failing closed."
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a"
+    },
+    "case": "tmp-w7-seam-classifier-unregistered",
+    "reason": "Loading two copied tmp-block trees in one Python process now rejects cached shared policy modules from the first tree when the second tree verifies origins, deliberately failing closed."
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "b408b3b605899ef7a716e40974bec963021c2252a0123577b8767a85d936f41a"
+    },
+    "case": "tmp-w7-seam-prefixes-unregistered",
+    "reason": "Loading two copied tmp-block trees in one Python process now rejects cached shared policy modules from the first tree when the second tree verifies origins, deliberately failing closed."
   }
 ]
