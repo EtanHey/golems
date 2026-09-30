@@ -174,6 +174,19 @@ def test_policy_error_blocks_value_free_through_fail_open_launcher(tmp_path):
     assert "golems-fail-open" not in result.stderr
 
 
+def test_quoted_paren_cannot_hide_force_push_through_copied_fail_open_hook(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = "cat <<EOF\n$(printf '%s' ')'; git push --force origin master)\nEOF"
+    result = subprocess.run(
+        ["python3", str(launcher), str(hook)], cwd=other_cwd, env=env,
+        input=json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "session_id": "t"}),
+        text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "git push --force" in json.loads(result.stdout)["reason"]
+    assert "golems-fail-open" not in result.stderr
+
+
 def test_second_policy_parse_error_is_value_free_red(monkeypatch):
     spec = importlib.util.spec_from_file_location("pre_tool_use_second_parse", HOOK)
     loaded = importlib.util.module_from_spec(spec)
