@@ -7491,7 +7491,8 @@
       "files": {},
       "stderr": "",
       "stdout": "e30="
-    },
+    }
+,
     "parser-r2-r05-1": {
       "exit": 0,
       "stdout": "eyJfZXhlY3V0YWJsZV9zdWJjb21tYW5kcyI6IFtdLCAiX2ludm9rZWRfYWxpYXNfYm9kaWVzIjogW1siJHggOyIsIDAsIDBdXSwgIl9wYXJzZV9iYXNoIjogW1siZXZhbCIsICIkeCIsICI7IiwgIng9ZWNobyAvdG1wL3giXSwgW3RydWUsIGZhbHNlLCBmYWxzZSwgdHJ1ZV0sIFswLCAwLCAwLCAxXSwgW1tdLCBbXSwgW10sIFtdXV0sICJfc2hlbGxfdG9rZW5zIjogWyJldmFsIiwgIiR4IiwgIjsiLCAieD1lY2hvIC90bXAveCJdLCAiZG9sbGFyX3BhcmVuX2JvZGllcyI6IFtdLCAic2hlbGxfdGV4dF93aXRob3V0X2hlcmVkb2NfYm9kaWVzIjogImV2YWwgXCIkeFwiOyB4PSdlY2hvIC90bXAveCciLCAid2l0aG91dF9kb2xsYXJfcGFyZW5fYm9kaWVzIjogImV2YWwgXCIkeFwiOyB4PSdlY2hvIC90bXAveCcifQo=",
@@ -8629,7 +8630,9 @@
       "files": {},
       "stderr": "",
       "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiXHUyNmQ0IFdPUktUUkVFLUNPTlZFTlRJT046IGBnaXQgd29ya3RyZWUgYWRkYCB0YXJnZXQgaXMgb3V0c2lkZSB0aGUgcmF0aWZpZWQgaW4tcmVwbyBsb2NhdGlvbiAoL291dHNpZGUvdzcpLiBGbGVldCBjb252ZW50aW9uLCByYXRpZmllZCBieSBFdGFuIGJ5IHZvaWNlIDIwMjYtMDgtMDk6IHdvcmt0cmVlcyBsaXZlIGF0IDxyZXBvPi8ud29ya3RyZWVzLzxuYW1lPiBcdTIwMTQgc2libGluZyBgPHJlcG8+Lnd0L2AgZGlyZWN0b3JpZXMgYXJlIGRyaWZ0ICgxOCBhY2N1bXVsYXRlZCB3aGlsZSB0aGlzIGd1YXJkIG9ubHkgQURWSVNFRCB0aGUgbG9jYXRpb24gaW5zdGVhZCBvZiBlbmZvcmNpbmcgaXQpLiBGaXhlZCBjb21tYW5kOiBnaXQgLUMgPHJlcG8+IHdvcmt0cmVlIGFkZCA8cmVwbz4vLndvcmt0cmVlcy93NyA8c2FtZSBmbGFncz4uIE1vdmluZyBhbiBleGlzdGluZyBvZmYtY29udmVudGlvbiB3b3JrdHJlZSBkdXJpbmcgdGhlIG1pZ3JhdGlvbiB3aW5kb3c/IFJlLXJ1biB3aXRoIFdFQVZFX0FMTE9XX1dUX01JR1JBVElPTj0xIFx1MjAxNCBhbGxvd2VkIEFORCBsb2dnZWQgdG8gdGhlIGR1cmFibGUgbGVkZ2VyICh0aGUgbG9nIGlzIHRoZSBieXBhc3MgZGV0ZWN0b3IpLiIsICJob29rU3BlY2lmaWNPdXRwdXQiOiB7Imhvb2tFdmVudE5hbWUiOiAiUHJlVG9vbFVzZSIsICJwZXJtaXNzaW9uRGVjaXNpb24iOiAiZGVueSIsICJwZXJtaXNzaW9uRGVjaXNpb25SZWFzb24iOiAiXHUyNmQ0IFdPUktUUkVFLUNPTlZFTlRJT046IGBnaXQgd29ya3RyZWUgYWRkYCB0YXJnZXQgaXMgb3V0c2lkZSB0aGUgcmF0aWZpZWQgaW4tcmVwbyBsb2NhdGlvbiAoL291dHNpZGUvdzcpLiBGbGVldCBjb252ZW50aW9uLCByYXRpZmllZCBieSBFdGFuIGJ5IHZvaWNlIDIwMjYtMDgtMDk6IHdvcmt0cmVlcyBsaXZlIGF0IDxyZXBvPi8ud29ya3RyZWVzLzxuYW1lPiBcdTIwMTQgc2libGluZyBgPHJlcG8+Lnd0L2AgZGlyZWN0b3JpZXMgYXJlIGRyaWZ0ICgxOCBhY2N1bXVsYXRlZCB3aGlsZSB0aGlzIGd1YXJkIG9ubHkgQURWSVNFRCB0aGUgbG9jYXRpb24gaW5zdGVhZCBvZiBlbmZvcmNpbmcgaXQpLiBGaXhlZCBjb21tYW5kOiBnaXQgLUMgPHJlcG8+IHdvcmt0cmVlIGFkZCA8cmVwbz4vLndvcmt0cmVlcy93NyA8c2FtZSBmbGFncz4uIE1vdmluZyBhbiBleGlzdGluZyBvZmYtY29udmVudGlvbiB3b3JrdHJlZSBkdXJpbmcgdGhlIG1pZ3JhdGlvbiB3aW5kb3c/IFJlLXJ1biB3aXRoIFdFQVZFX0FMTE9XX1dUX01JR1JBVElPTj0xIFx1MjAxNCBhbGxvd2VkIEFORCBsb2dnZWQgdG8gdGhlIGR1cmFibGUgbGVkZ2VyICh0aGUgbG9nIGlzIHRoZSBieXBhc3MgZGV0ZWN0b3IpLiJ9fQ=="
-    ,"issue412-backtick-single-quote-backslash": {
+    }
+  ,
+    "issue412-backtick-single-quote-backslash": {
       "exit": 0,
       "files": {},
       "stderr": "",
@@ -8654,5 +8657,4 @@
       "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiAnJXMnICciXX0K"
     }
   }
-}
 }

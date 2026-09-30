@@ -389,53 +389,47 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac",
-      "linux": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac"
+      "darwin": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac"
     },
     "case": "issue412-backtick-single-quote-backslash",
-    "reason": "issue412substitutionquote-boundaryhardening"
+    "reason": "Ordinary single-quoted backslashes are literal, so the later backtick substitution remains executable and is captured."
   },
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87",
-      "linux": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87"
+      "darwin": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87"
     },
     "case": "issue412-dollar-backtick-mixed-quotes",
-    "reason": "issue412substitutionquote-boundaryhardening"
+    "reason": "A malformed mixed backtick and dollar substitution is rejected as unterminated rather than returning a truncated executable body."
   },
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4",
-      "linux": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4"
+      "darwin": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4"
     },
     "case": "issue412-dollar-nested-mixed-quotes",
-    "reason": "issue412substitutionquote-boundaryhardening"
+    "reason": "Nested dollar substitutions and quoted parentheses are consumed in their own contexts, preserving the complete outer executable body."
   },
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318",
-      "linux": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318"
+      "darwin": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318"
     },
     "case": "issue412-dollar-single-quote-paren",
-    "reason": "issue412substitutionquote-boundaryhardening"
+    "reason": "A right parenthesis inside ordinary single quotes is literal data and cannot close the surrounding command substitution."
   },
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4",
-      "linux": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4"
+      "darwin": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4"
     },
     "case": "parser-042",
-    "reason": "issue412substitutionquote-boundaryhardening"
+    "reason": "Arithmetic-expansion closing parentheses are retained when heredoc bodies are masked, so surrounding executable text is not truncated."
   },
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45",
-      "linux": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45"
+      "darwin": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45"
     },
     "case": "parser-078",
     "reason": "Heredoc body parentheses are data and cannot close the surrounding command substitution"
@@ -443,8 +437,7 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05",
-      "linux": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05"
+      "darwin": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05"
     },
     "case": "parser-130",
     "reason": "Case pattern terminators cannot close the surrounding command substitution; incomplete case syntax fails closed"
@@ -452,8 +445,7 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05",
-      "linux": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05"
+      "darwin": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05"
     },
     "case": "parser-140",
     "reason": "Quoted heredoc prose inside a command substitution is non-executable and must be masked from policy text"
@@ -461,8 +453,7 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68",
-      "linux": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68"
+      "darwin": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68"
     },
     "case": "parser-r2-r16-1",
     "reason": "Case pattern terminators are syntax and cannot close the surrounding command substitution"
@@ -470,19 +461,17 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616",
-      "linux": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616"
+      "darwin": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616"
     },
     "case": "parser-topup-backtick-escaped",
-    "reason": "issue412substitutionquote-boundaryhardening"
+    "reason": "Quoted data masking retains the executable outer backtick substitution while removing its literal argument text from policy input."
   },
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae",
-      "linux": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae"
+      "darwin": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae"
     },
     "case": "parser-topup-nested-arithmetic",
-    "reason": "issue412substitutionquote-boundaryhardening"
+    "reason": "Nested arithmetic and command-substitution closing parentheses are retained during masking, preventing the surrounding executable text from being truncated."
   }
 ]
