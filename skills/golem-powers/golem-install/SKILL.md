@@ -24,6 +24,8 @@ Full procedure: [references/wizard.md](references/wizard.md); phase checklist:
 `bash <golem-install-dir>/scripts/wizard-preflight.sh`.
 
 1. **Prerequisites:** `brew node bun claude gh git`, all 6 required; then `gh auth status`.
+   Run `bash <golem-install-dir>/scripts/install-python.sh` to provision the golems-owned
+   `~/.golems/venv` with hash-pinned PyYAML before MCP config sync.
 2. **Config:** read or create `~/.golems/config.yaml`. `machineRole` is `workspace` or
    `daemon-host`, asked, never inferred; the workspace root must exist.
 3. **Artifacts and repos:** `bun <golem-install-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"`

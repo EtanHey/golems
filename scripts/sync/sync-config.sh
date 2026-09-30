@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sync repo MCP config from ~/.golems/config.yaml contextProfiles.
-# Requires PyYAML: install with `python3 -m pip install PyYAML`.
+# Requires the golems Python runtime; install via golem-install --all.
 set -euo pipefail
 
 CONFIG_FILE="${GOLEMS_CONFIG:-$HOME/.golems/config.yaml}"
@@ -37,7 +37,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-python3 - "$CONFIG_FILE" "$REPOS_BASE" "$MODE" "$TARGET_REPO" "$VERBOSE" <<'PY'
+YAML_PYTHON=python3
+if [[ -x "$HOME/.golems/venv/bin/python3" ]]; then
+  YAML_PYTHON="$HOME/.golems/venv/bin/python3"
+fi
+"$YAML_PYTHON" - "$CONFIG_FILE" "$REPOS_BASE" "$MODE" "$TARGET_REPO" "$VERBOSE" <<'PY'
 import copy
 import json
 import re
@@ -53,7 +57,7 @@ except ModuleNotFoundError as exc:
     if exc.name == "yaml":
         print(
             "[sync-config] ERROR: missing Python dependency PyYAML. "
-            "Install it with: python3 -m pip install PyYAML",
+            "Run: bash skills/golem-powers/golem-install/scripts/install-python.sh",
             file=sys.stderr,
         )
         sys.exit(1)
