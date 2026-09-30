@@ -227,7 +227,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "843c2a2df8a2031f7d77b355539936739592517fafb1a6fdd07d64184a6cfd1d"
+      "darwin": "843c2a2df8a2031f7d77b355539936739592517fafb1a6fdd07d64184a6cfd1d",
+      "linux": "843c2a2df8a2031f7d77b355539936739592517fafb1a6fdd07d64184a6cfd1d"
     },
     "case": "topup-agy-model-custom-model",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -244,7 +245,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
+      "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3",
+      "linux": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
     },
     "case": "topup-agy-model-flash",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -252,7 +254,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
+      "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3",
+      "linux": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
     },
     "case": "topup-agy-model-flash-high",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -260,7 +263,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "dbf4b27e604dcb8d5af90c76507235090628e6d7915a245f02cac894818f0342"
+      "darwin": "dbf4b27e604dcb8d5af90c76507235090628e6d7915a245f02cac894818f0342",
+      "linux": "dbf4b27e604dcb8d5af90c76507235090628e6d7915a245f02cac894818f0342"
     },
     "case": "topup-agy-model-flash-low",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -268,7 +272,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b"
+      "darwin": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b",
+      "linux": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b"
     },
     "case": "topup-agy-model-flash-med",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -276,7 +281,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b"
+      "darwin": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b",
+      "linux": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b"
     },
     "case": "topup-agy-model-flash-medium",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -284,7 +290,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
+      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
+      "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
     },
     "case": "topup-agy-model-gpt-oss",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -292,7 +299,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
+      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
+      "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
     },
     "case": "topup-agy-model-gpt-oss-120b",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -300,7 +308,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "a8141a24d22638659bdd712b6fddd7541b3cf9d9ffb264bfdb65e21f4a01481e"
+      "darwin": "a8141a24d22638659bdd712b6fddd7541b3cf9d9ffb264bfdb65e21f4a01481e",
+      "linux": "a8141a24d22638659bdd712b6fddd7541b3cf9d9ffb264bfdb65e21f4a01481e"
     },
     "case": "topup-agy-model-opus",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -308,7 +317,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
+      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
+      "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
     },
     "case": "topup-agy-model-oss",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -316,7 +326,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd"
+      "darwin": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd",
+      "linux": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd"
     },
     "case": "topup-agy-model-pro",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -324,7 +335,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd"
+      "darwin": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd",
+      "linux": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd"
     },
     "case": "topup-agy-model-pro-high",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -332,7 +344,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "2c9a5147ba17a070390bf617c3f3bc8a428cb47fa835cdfab15143f61eccbfa9"
+      "darwin": "2c9a5147ba17a070390bf617c3f3bc8a428cb47fa835cdfab15143f61eccbfa9",
+      "linux": "2c9a5147ba17a070390bf617c3f3bc8a428cb47fa835cdfab15143f61eccbfa9"
     },
     "case": "topup-agy-model-pro-low",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
@@ -340,7 +353,8 @@
   {
     "authority": "Etan GO 2026-09-30 Gemini context design; golems PR #420",
     "candidate_sha256": {
-      "darwin": "c7b2a07bdb4ff15a74c5eaea91ad539f5ac13f0b4f32fa8e892ebb25751c2d53"
+      "darwin": "c7b2a07bdb4ff15a74c5eaea91ad539f5ac13f0b4f32fa8e892ebb25751c2d53",
+      "linux": "c7b2a07bdb4ff15a74c5eaea91ad539f5ac13f0b4f32fa8e892ebb25751c2d53"
     },
     "case": "topup-agy-model-sonnet",
     "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
