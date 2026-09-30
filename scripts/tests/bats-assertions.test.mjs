@@ -31,13 +31,13 @@ test('the non-final missing-video assertion rejects an incorrect diagnostic', t 
 });
 
 const negations = [
-  ['test-repogolem-dispatch.bats', 'AFTER_HTTP_TOKEN=http-token', 'output'],
-  ['test-repogolem-dispatch.bats', 'AFTER_SERVER_TOKEN=server-token', 'output'],
-  ['test-repogolem-dispatch.bats', 'AFTER_REGISTRY_TOKEN=registry-token', 'output'],
-  ['test-repogolem-dispatch.bats', 'mcp_servers.httpRemote.env.HTTP_TOKEN', 'output'],
-  ['test-repogolem-dispatch.bats', 'mcp_servers.serverRemote.env.SERVER_TOKEN', 'output'],
-  ['test-repogolem-dispatch.bats', 'mkstemp failed', 'output'],
-  ['test-repogolem-dispatch.bats', 'XXXXXX', 'MKTEMP_CREATED'],
+  ['test-repogolem-dispatch.bats', 'AFTER_HTTP_TOKEN=http-token', 'output', 'test-repogolem-dispatch-parts/cases-02.bash'],
+  ['test-repogolem-dispatch.bats', 'AFTER_SERVER_TOKEN=server-token', 'output', 'test-repogolem-dispatch-parts/cases-02.bash'],
+  ['test-repogolem-dispatch.bats', 'AFTER_REGISTRY_TOKEN=registry-token', 'output', 'test-repogolem-dispatch-parts/cases-02.bash'],
+  ['test-repogolem-dispatch.bats', 'mcp_servers.httpRemote.env.HTTP_TOKEN', 'output', 'test-repogolem-dispatch-parts/cases-02.bash'],
+  ['test-repogolem-dispatch.bats', 'mcp_servers.serverRemote.env.SERVER_TOKEN', 'output', 'test-repogolem-dispatch-parts/cases-02.bash'],
+  ['test-repogolem-dispatch.bats', 'mkstemp failed', 'output', 'test-repogolem-dispatch-parts/cases-06.bash'],
+  ['test-repogolem-dispatch.bats', 'XXXXXX', 'MKTEMP_CREATED', 'test-repogolem-dispatch-parts/cases-06.bash'],
   ['test-stalker-durable-failures.bats', 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"', 'STALKER_DIR', 'test-stalker-durable-failures-parts/cases-01.bash'],
 ];
 
