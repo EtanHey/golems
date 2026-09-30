@@ -15,6 +15,11 @@ _PIPED_INTERPRETER_HEREDOC_RE = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 _STRING_LITERAL_RE = re.compile(r"'([^'\n]*)'|\"([^\"\n]*)\"")
+_FUNCTION_DEFINITION_RE = re.compile(
+    r"(?:^|[;|&\n])\s*(?:function\s+)?[A-Za-z_][A-Za-z0-9_]*"
+    r"(?:\s*\(\s*\))?\s*\{",
+    re.MULTILINE,
+)
 
 
 def _printed_text(words: list[str]) -> str | None:
@@ -36,6 +41,10 @@ def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
     as a <(…) script, git `!` aliases, and string literals of an interpreter
     heredoc piped into a shell."""
     payloads = list(api['dollar_paren_bodies'](active))
+    if api['_FUNCTION_DEFINITION_RE'].search(active):
+        payloads.extend(
+            body for body, _segment, _index in api['_invoked_alias_bodies'](command)
+        )
     for match in api['_PIPED_INTERPRETER_HEREDOC_RE'].finditer(command):
         payloads.extend(a or b for a, b in api['_STRING_LITERAL_RE'].findall(match.group(2)))
     for match in re.finditer(r"(?:\b(?:sh|bash|zsh|dash|ksh|source)|(?:^|[;&|]\s*)\.)\s+<\(", active):
@@ -68,6 +77,51 @@ def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
         name = os.path.basename(words[0])
         if name == "eval" and len(words) > 1:
             payloads.append(" ".join(words[1:]))
+            for argument in words[1:]:
+                for body in api['dollar_paren_bodies'](argument):
+                    try:
+                        output_lexer = shlex.shlex(
+                            body,
+                            posix=True,
+                            punctuation_chars=";&|()<>\n",
+                        )
+                        output_lexer.whitespace_split = True
+                        output_tokens = list(output_lexer)
+                    except ValueError:
+                        continue
+                    output_words: list[str] = []
+                    stdout_redirected = False
+                    pending_redirect_target = False
+                    for output_token in output_tokens + [";"]:
+                        if output_token and all(ch in ";&|()<>\n" for ch in output_token):
+                            if ">" in output_token:
+                                descriptor = (
+                                    output_words.pop()
+                                    if output_words and output_words[-1].isdigit()
+                                    else "1"
+                                )
+                                stdout_redirected = stdout_redirected or descriptor == "1"
+                                pending_redirect_target = True
+                            if any(ch in output_token for ch in ";&|()\n"):
+                                printed = (
+                                    api['_printed_text'](output_words)
+                                    if output_words and not stdout_redirected and "|" not in output_token
+                                    else None
+                                )
+                                if printed:
+                                    payloads.append(printed)
+                                output_words = []
+                                stdout_redirected = False
+                                pending_redirect_target = False
+                        else:
+                            if pending_redirect_target:
+                                pending_redirect_target = False
+                            else:
+                                output_words.append(output_token)
+        if operator == "<<<" and name in api['_SHELLS'] and index + 1 < len(segments):
+            here_words = segments[index + 1][0]
+            if here_words:
+                payloads.append(" ".join(here_words))
         if name == "git":
             for position, word in enumerate(words[1:], 1):
                 value = words[position + 1] if word == "-c" and position + 1 < len(words) else (

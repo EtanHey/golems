@@ -677,6 +677,69 @@
     "new": "\"[[:\" in pattern"
   },
   {
+    "id": "I460-L1",
+    "description": "git lexer consumes real-comment newline and parameter operator suffix",
+    "target": "git-guardian",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/git-guardian/git_safety_impl/commands.py",
+    "old": "        lexer.commenters = \"\"\n",
+    "new": "        lexer.commenters = \"#\"\n"
+  },
+  {
+    "id": "I460-L2",
+    "description": "arithmetic lookalike is skipped as ordinary arithmetic",
+    "target": "git-guardian",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "                if not fallback:\n                    index += 3\n                    continue\n",
+    "new": "                if True:\n                    index += 3\n                    continue\n"
+  },
+  {
+    "id": "I460-L3",
+    "description": "invoked function bodies are not added to recursive payloads",
+    "target": "git-guardian",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/git-guardian/git_safety_impl/payloads.py",
+    "old": "    if api['_FUNCTION_DEFINITION_RE'].search(active):\n        payloads.extend(\n",
+    "new": "    if False and api['_FUNCTION_DEFINITION_RE'].search(active):\n        payloads.extend(\n"
+  },
+  {
+    "id": "I460-L4",
+    "description": "static command-substitution output passed to eval is ignored",
+    "target": "git-guardian",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/git-guardian/git_safety_impl/payloads.py",
+    "old": "                for body in api['dollar_paren_bodies'](argument):\n",
+    "new": "                for body in ():\n"
+  },
+  {
+    "id": "I460-L5",
+    "description": "shell here-string payloads are not recursively checked",
+    "target": "git-guardian",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/git-guardian/git_safety_impl/payloads.py",
+    "old": "        if operator == \"<<<\" and name in api['_SHELLS'] and index + 1 < len(segments):\n",
+    "new": "        if False and operator == \"<<<\" and name in api['_SHELLS'] and index + 1 < len(segments):\n"
+  },
+  {
+    "id": "I460-L6",
+    "description": "stderr redirection is mistaken for command-substitution stdout redirection",
+    "target": "git-guardian",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/git-guardian/git_safety_impl/payloads.py",
+    "old": "                                descriptor = (\n                                    output_words.pop()\n                                    if output_words and output_words[-1].isdigit()\n                                    else \"1\"\n                                )\n",
+    "new": "                                descriptor = \"1\"\n"
+  },
+  {
+    "id": "I460-L7",
+    "description": "arithmetic lookalike newline separator is stripped before classification",
+    "target": "git-guardian",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "                            suffix = body[body_index + 1:].lstrip(\" \\t\")\n",
+    "new": "                            suffix = body[body_index + 1:].lstrip()\n"
+  },
+  {
     "id": "I412-Q1",
     "description": "DATA dollar scanner no longer treats single quotes as opaque",
     "target": "parser",
@@ -709,8 +772,8 @@
     "target": "parser",
     "baseline": "candidate",
     "path": "skills/golem-powers/_shared/shell_parse.py",
-    "old": "        elif char == \"`\":\n            index = _data_backtick_end(text, index)\n            continue\n        elif text.startswith(\"$(\", index) and not text.startswith(\"$((\", index):\n",
-    "new": "        elif False and char == \"`\":\n            index = _data_backtick_end(text, index)\n            continue\n        elif text.startswith(\"$(\", index) and not text.startswith(\"$((\", index):\n"
+    "old": "        elif char == \"`\":\n            index = _data_backtick_end(text, index)\n            continue\n        elif text.startswith(\"$(\", index):\n",
+    "new": "        elif False and char == \"`\":\n            index = _data_backtick_end(text, index)\n            continue\n        elif text.startswith(\"$(\", index):\n"
   },
   {
     "id": "I412-Q5",
