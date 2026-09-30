@@ -2,8 +2,8 @@
 
 Moved verbatim from tmp-block/hooks/tmp-block-pretooluse.py (the tokenizer,
 heredoc stripping, `$()`/backtick substitution, command-position flags and
-alias/function body expansion) and from git-guardian/git_safety.py (its
-file-write heredoc stripping and backtick bodies, in the last section).
+alias/function body expansion) and from git-guardian/git_safety.py (DATA text and substitution bodies, now
+kept in separate implementation modules).
 Hooks keep POLICY; this module only answers "what does Bash execute here".
 Importers: tmp-block, git-guardian (and, through git_safety, pre_tool_use.py).
 
