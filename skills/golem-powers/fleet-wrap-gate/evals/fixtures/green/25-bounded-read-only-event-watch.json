@@ -8,7 +8,7 @@
         {
           "name": "Bash",
           "input": {
-            "command": "f=~/Gits/example/collab/topic.md; end=$(( $(date +%s) + 60 )); while [ $(date +%s) -lt $end ]; do sleep 10; if grep -q \"^### .*\u2192 *orc\" \"$f\"; then exit 0; fi; done",
+            "command": "f=collab/topic.md; end=$(( $(date +%s) + 60 )); while [ $(date +%s) -lt $end ]; do sleep 10; if grep -q \"^### .*\u2192 *orc\" \"$f\"; then exit 0; fi; done",
             "run_in_background": true
           }
         }

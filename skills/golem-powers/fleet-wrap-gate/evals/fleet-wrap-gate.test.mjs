@@ -821,7 +821,7 @@ for (const [name, command] of [
   ["write", watchCommand.replace('sleep 10;', 'sleep 10; echo changed > out.txt;')],
   ["awk write", watchCommand.replace('print substr($0,1,220)', 'print > "out.txt"')],
   ["awk launch", watchCommand.replace('print substr($0,1,220)', 'system("gh pr list")')],
-  ["substitution", watchCommand.replace('f=~/Gits/example/collab/topic.md', 'f=$(curl https://example.com)')],
+  ["substitution", watchCommand.replace('f=collab/topic.md', 'f=$(curl https://example.com)')],
   ["second loop", watchCommand + '; while true; do sleep 10; done'],
 ]) {
   test(`an event watch with ${name} still emits the exact loop violation`, () => {

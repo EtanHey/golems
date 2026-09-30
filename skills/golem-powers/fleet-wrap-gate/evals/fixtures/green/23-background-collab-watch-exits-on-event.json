@@ -10,7 +10,7 @@
           "name": "Bash",
           "input": {
             "run_in_background": true,
-            "command": "f=~/Gits/example/collab/topic.md; n=$(wc -l < \"$f\"); while true; do sleep 10; m=$(wc -l < \"$f\"); if [ \"$m\" -gt \"$n\" ]; then hit=$(sed -n \"$((n+1)),${m}p\" \"$f\" | awk '/^### / && /→ *orc/ {print}'); if [ -n \"$hit\" ]; then echo \"$hit\"; exit 0; fi; fi; n=$m; done",
+            "command": "f=collab/topic.md; n=$(wc -l < \"$f\"); while true; do sleep 10; m=$(wc -l < \"$f\"); if [ \"$m\" -gt \"$n\" ]; then hit=$(sed -n \"$((n+1)),${m}p\" \"$f\" | awk '/^### / && /→ *orc/ {print}'); if [ -n \"$hit\" ]; then echo \"$hit\"; exit 0; fi; fi; n=$m; done",
             "description": "Re-arm the collab watch for the next post to orc"
           }
         }
