@@ -424,9 +424,14 @@ for i in range(40):
         module = load_module()
         manifest_path = self.temp_dir / "manifest.json"
         module.create_manifest(manifest_path, "run-3", "/repo", "lead-a")
-        process = subprocess.Popen(["/bin/sleep", "10"])
-        try:
-            identity = module.capture_process_identity(process.pid)
+        # Exercise cleanup policy with stable process observations. The separate
+        # process-identity tests exercise real ps, reused PIDs, and zombies.
+        observations = {"stat": "S", "lstart": "fixture-start", "command": "fixture-worker"}
+        with mock.patch.object(
+            module._process, "_ps_value",
+            side_effect=lambda pid, field: observations[field] if pid == 123 else "",
+        ):
+            identity = module.capture_process_identity(123)
             module.update_worker(
                 manifest_path,
                 "worker-a",
@@ -439,9 +444,6 @@ for i in range(40):
             )
             with self.assertRaisesRegex(module.CodexWorkflowError, "still running"):
                 module.cleanup_worker(manifest_path, "worker-a")
-        finally:
-            process.terminate()
-            process.wait(timeout=5)
 
         module.update_worker(
             manifest_path,
