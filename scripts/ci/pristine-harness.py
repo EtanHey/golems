@@ -257,16 +257,30 @@ def capture_digest(result):
     return hashlib.sha256(data).hexdigest()
 
 
+def reject_duplicate_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def load_deltas(path, ids):
-    rows = json.loads(path.read_text()) if path.exists() else []
+    rows = json.loads(path.read_text(), object_pairs_hook=reject_duplicate_keys) if path.exists() else []
     if not isinstance(rows, list):
         raise ValueError("deltas must be a list")
     seen = set()
     for row in rows:
-        if not isinstance(row, dict) or set(row) != {"case", "reason", "authority", "candidate_sha256"}:
+        required = {"case", "reason", "authority", "candidate_sha256"}
+        if not isinstance(row, dict) or not required <= set(row) or set(row) - required - {"allow_deny_to_allow"}:
             raise ValueError("delta requires case, reason, authority and candidate_sha256")
         if any(not isinstance(row[key], str) or not row[key].strip() for key in ("case", "reason", "authority")):
             raise ValueError("delta case, reason and authority must be nonempty strings")
+        if "allow_deny_to_allow" in row and (
+            not isinstance(row["allow_deny_to_allow"], str) or not row["allow_deny_to_allow"].strip()
+        ):
+            raise ValueError("allow_deny_to_allow requires a nonempty lead ruling reference")
         ident = row["case"]
         if ident in seen:
             raise ValueError(f"duplicate delta case: {ident}")
@@ -283,7 +297,7 @@ def load_deltas(path, ids):
     return rows
 
 
-def compare_captures(baseline, actual, declarations, platform):
+def compare_captures(baseline, actual, declarations, platform, hook_cases=()):
     declared = {row["case"]: row for row in declarations}
     failures, used = [], 0
     for ident, base in baseline.items():
@@ -291,7 +305,15 @@ def compare_captures(baseline, actual, declarations, platform):
         row = declared.get(ident)
         if row is not None:
             observed = capture_digest(candidate)
-            if candidate == base:
+            deny_to_allow = ident in hook_cases and base["exit"] != 0 and candidate["exit"] == 0
+            if deny_to_allow:
+                print("PRISTINE DELTA DENY→ALLOW " + json.dumps({
+                    "case": ident, "base_exit": base["exit"], "candidate_exit": candidate["exit"],
+                    "allow_deny_to_allow": row.get("allow_deny_to_allow"),
+                }, sort_keys=True))
+            if deny_to_allow and not row.get("allow_deny_to_allow"):
+                failures.append(f"{ident}: hook deny→allow requires allow_deny_to_allow lead ruling reference")
+            elif candidate == base:
                 failures.append(f"{ident}: stale delta (candidate equals immutable base); observed sha256={observed}")
             elif platform not in row["candidate_sha256"]:
                 failures.append(f"{ident}: missing {platform} delta hash; observed sha256={observed}")
@@ -299,6 +321,9 @@ def compare_captures(baseline, actual, declarations, platform):
                 failures.append(f"{ident}: delta hash mismatch; observed sha256={observed}")
             else:
                 used += 1
+                print("PRISTINE DELTA USED " + json.dumps({
+                    key: row[key] for key in ("case", "reason", "authority")
+                }, sort_keys=True))
         elif candidate != base:
             differing = [key for key in ("exit", "stdout", "stderr", "files") if candidate[key] != base[key]]
             failures.append(f"{ident}: undeclared difference ({', '.join(differing)})")
@@ -673,7 +698,9 @@ def run_locked(args, parser, cases, scratch):
         deltas = load_deltas(args.candidate_root / DELTA_PATH, [case["id"] for case in cases])
     except ValueError as error:
         parser.error(str(error))
-    failures, used = compare_captures(measured, actual, deltas, sys.platform)
+    failures, used = compare_captures(measured, actual, deltas, sys.platform,
+                                      hook_cases={case["id"] for case in cases
+                                                  if case["target"] in ("tmp-block", "git-guardian")})
     print(f"PRISTINE DECLARED DELTAS USED {used}")
     if failures:
         print("PRISTINE HARNESS FAIL\n" + "\n".join(failures), file=sys.stderr)
