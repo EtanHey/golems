@@ -22,16 +22,159 @@ _FUNCTION_DEFINITION_RE = re.compile(
 )
 
 
+def _command_after_wrappers(words: list[str]) -> list[str]:
+    """Return the command reached through simple, static launcher wrappers."""
+    current = list(words)
+    for _depth in range(_MAX_EXECUTION_DEPTH + 1):
+        while current and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", current[0]):
+            current = current[1:]
+        if not current:
+            return []
+        name = os.path.basename(current[0]).lower()
+        position = 1
+        if name in {"command", "builtin"}:
+            if position < len(current) and current[position] == "--":
+                position += 1
+            elif position < len(current) and current[position].startswith("-"):
+                return []
+        elif name in {"nohup", "exec"}:
+            while position < len(current) and current[position].startswith("-"):
+                if current[position] == "--":
+                    position += 1
+                    break
+                if name == "exec" and current[position] in {"-a", "--argv0"}:
+                    position += 2
+                else:
+                    position += 1
+        elif name == "env":
+            while position < len(current):
+                word = current[position]
+                option = word.split("=", 1)[0]
+                if word == "--":
+                    position += 1
+                    break
+                if option in {"-S", "--split-string"}:
+                    return []
+                if option in {"-u", "--unset", "-C", "--chdir", "--argv0"}:
+                    position += 1 if "=" in word else 2
+                    continue
+                if word.startswith("-"):
+                    position += 1
+                    continue
+                if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", word):
+                    position += 1
+                    continue
+                break
+        elif name == "nice":
+            while position < len(current):
+                word = current[position]
+                if word == "--":
+                    position += 1
+                    break
+                if word in {"-n", "--adjustment"}:
+                    position += 2
+                    continue
+                if word.startswith("--adjustment=") or re.fullmatch(r"-\d+", word):
+                    position += 1
+                    continue
+                break
+        elif name == "time":
+            while position < len(current):
+                word = current[position]
+                if word == "--":
+                    position += 1
+                    break
+                if word in {"-o", "--output", "-f", "--format"}:
+                    position += 2
+                    continue
+                if word.startswith("-"):
+                    position += 1
+                    continue
+                break
+        else:
+            return current
+        current = current[position:]
+    return []
+
+
+def _printf_escape(value: str) -> str:
+    """Decode the static escapes that can create shell token boundaries."""
+    escapes = {
+        "a": "\a", "b": "\b", "e": "\x1b", "f": "\f", "n": "\n",
+        "r": "\r", "t": "\t", "v": "\v", "\\": "\\",
+    }
+
+    def decode(match: re.Match[str]) -> str:
+        sequence = match.group(1)
+        if sequence.startswith("x"):
+            return chr(int(sequence[1:], 16))
+        if sequence.startswith("0") or sequence.isdigit():
+            return chr(int(sequence.lstrip("0") or "0", 8))
+        return escapes[sequence]
+
+    return re.sub(r"\\(x[0-9A-Fa-f]{1,2}|0[0-7]{1,3}|[0-7]{1,3}|[abefnrtv\\])", decode, value)
+
+
+def _render_printf(words: list[str]) -> str | None:
+    """Render static printf formats closely enough to rescan executable output."""
+    if len(words) < 2:
+        return None
+    format_string = _printf_escape(words[1])
+    arguments = words[2:]
+    output: list[str] = []
+    argument_index = 0
+    while True:
+        conversion_count = 0
+        index = 0
+        while index < len(format_string):
+            if format_string[index] != "%":
+                output.append(format_string[index])
+                index += 1
+                continue
+            if index + 1 < len(format_string) and format_string[index + 1] == "%":
+                output.append("%")
+                index += 2
+                continue
+            match = re.match(r"%[-+ #0']*(?:\d+|\*)?(?:\.(?:\d+|\*))?[hlLjzt]*([a-zA-Z])", format_string[index:])
+            if match is None:
+                return None
+            conversion = match.group(1)
+            if conversion not in "sbqdiouxXfFeEgGaAc":
+                return None
+            argument = arguments[argument_index] if argument_index < len(arguments) else ""
+            argument_index += 1
+            conversion_count += 1
+            if conversion == "b":
+                output.append(_printf_escape(argument))
+            elif conversion == "q":
+                output.append(shlex.quote(argument))
+            else:
+                output.append(argument)
+            index += match.end()
+        if not conversion_count or argument_index >= len(arguments):
+            break
+    return "".join(output)
+
+
 def _printed_text(words: list[str]) -> str | None:
     """What an `echo`/`printf` segment writes to stdout, as far as is static."""
+    words = _command_after_wrappers(words)
+    if not words:
+        return None
     name = os.path.basename(words[0])
     if name == "echo":
         rest = words[1:]
+        interprets_escapes = False
         while rest and rest[0] in {"-n", "-e", "-E", "-ne", "-en"}:
+            if "e" in rest[0]:
+                interprets_escapes = True
+            if "E" in rest[0]:
+                interprets_escapes = False
             rest = rest[1:]
-        return " ".join(rest)
-    if name == "printf" and len(words) > 1:
-        return words[1].replace("\\n", "\n")
+        printed = " ".join(rest)
+        return _printf_escape(printed) if interprets_escapes else printed
+    if name == "printf":
+        return _render_printf(words)
     return None
 
 
@@ -67,6 +210,7 @@ def _command_words_before_operator(
 
 def _shell_reads_commands_from_stdin(words: list[str], shells: set[str]) -> bool:
     """Whether a shell invocation treats a here-string as command input."""
+    words = _command_after_wrappers(words)
     if not words or os.path.basename(words[0]) not in shells:
         return False
     reads_stdin = False
@@ -78,7 +222,13 @@ def _shell_reads_commands_from_stdin(words: list[str], shells: set[str]) -> bool
             continue
         if argument == "--":
             index += 1
-            return reads_stdin or index == len(words)
+            if index == len(words):
+                return True
+            return reads_stdin or words[index] in {
+                "-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0",
+            }
+        if argument in {"-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"}:
+            return True
         if argument.startswith(("-", "+")) and argument not in {"-", "+"}:
             if argument.startswith("-") and "c" in argument[1:]:
                 return False
