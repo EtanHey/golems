@@ -841,3 +841,9 @@ test("an exempt same-turn watch cannot excuse an independently live loop", () =>
   const result = detectFleetWrap(realWatch, { state: { loops: [{ id: "forgotten", status: "active", command: "while true; do sleep 10; done" }] } });
   expect(result.violations.map(v => v.code)).toContain("FLEETWRAP_LOOP_ALIVE");
 });
+
+test("rg option-shaped patterns cannot launch a preprocessor under the watch exemption", () => {
+  const command = 'f=collab/topic.md; while true; do sleep 10; if rg -q "--pre=./agent" "$f"; then exit 0; fi; done';
+  const result = detectFleetWrap({ events: [{ role: "assistant", text: "Standing down.", tools: [{ name: "Bash", input: { command, run_in_background: true } }] }] });
+  expect(result.violations.map(v => v.code)).toContain("FLEETWRAP_LOOP_ALIVE");
+});

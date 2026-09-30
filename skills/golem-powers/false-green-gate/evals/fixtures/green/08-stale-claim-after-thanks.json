@@ -22,7 +22,6 @@
       "text": "Render complete ✅ — out/seg.mp3 is 18200 bytes, 120.40s."
     },
     { "role": "user", "text": "thanks!" },
-    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "You're welcome — let me know if you need anything else."

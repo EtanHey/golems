@@ -10,7 +10,7 @@ const start = `${file}${sep}(?:${deadline}${sep})?while\\s+${condition}${sep}do\
 const finish = `${sep}done${gap};?${gap}`;
 // Fixed-pattern grep/rg file tests; double-quoted patterns cannot contain shell
 // substitutions or expansions. File selection is the same literal $f binding.
-const pattern = String.raw`(?:'[^'\n]*'|"[^"\n\x24\x60\\]*")`;
+const pattern = String.raw`(?:'[^-'\n][^'\n]*'|"[^-"\n\x24\x60\\][^"\n\x24\x60\\]*")`;
 const eventTest = String.raw`(?:grep|rg)\s+-q\s+${pattern}\s+"\$f"(?:\s*>\s*/dev/null)?`;
 const simple = new RegExp(`^${gap}${start}if\\s+${eventTest}${sep}then\\s+(?:exit\\s+0|break)${sep}fi${finish}$`);
 const awkMatch = String.raw`!?/[^/'\n]+/`;

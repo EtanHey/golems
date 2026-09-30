@@ -20,7 +20,6 @@
     { "role": "tool", "text": "200" },
     { "role": "assistant", "text": "Probe returned 200." },
     { "role": "user", "text": "Thanks. Is the fix done?" },
-    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Done - using the earlier health probe as evidence."

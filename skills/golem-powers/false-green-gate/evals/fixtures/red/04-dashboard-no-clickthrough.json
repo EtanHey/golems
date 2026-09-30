@@ -8,7 +8,6 @@
       "role": "user",
       "text": "Publish the sprint dashboard to the tailnet hub."
     },
-    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Done ✅ — wrote the dashboard HTML and it looks great. It's live at https://dashboard-host.example.test/sprint.html.",

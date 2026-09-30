@@ -4,7 +4,6 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "What did the worker say?" },
-    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "The worker wrote: \"Done - CI is green.\" I have not verified that claim yet, so I am treating it as unproven."

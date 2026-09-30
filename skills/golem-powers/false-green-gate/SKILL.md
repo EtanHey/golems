@@ -23,6 +23,10 @@ turn carries the live-outcome probe its claim domain requires. This is the MECHA
 The pinned RED/GREEN transcript fixtures ARE the replayable gate (R-003/R-014 pattern, consumed in the
 T6 deterministic-CU smoke-spec shape).
 
+The historical `evals/fixtures/` corpus is pinned for Jev replay. This gate's
+domain/probe suites add code activity only in their replay adapters; new scope
+contracts live in `evals/scope-fixtures/` and are replayed unchanged by both suites.
+
 ## The Rule — required same-turn probe by claim domain
 
 | Claim domain | Required live probe (same turn) | Violation if missing |

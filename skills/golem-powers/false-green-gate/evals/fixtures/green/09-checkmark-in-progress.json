@@ -4,7 +4,6 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Status on the render?" },
-    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "✅ logged the job — but it's not done yet, still encoding the render (about 70%)."

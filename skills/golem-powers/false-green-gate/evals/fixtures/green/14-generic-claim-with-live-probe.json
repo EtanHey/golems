@@ -4,7 +4,6 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Fix the local service health check." },
-    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Running the live health probe before reporting status.",

@@ -26,9 +26,20 @@ TIMEOUT_SECONDS = float(os.environ.get("FALSE_GREEN_GATE_TIMEOUT_SECONDS", "0.5"
 
 def load_cases() -> list[tuple[str, Path, dict]]:
     cases: list[tuple[str, Path, dict]] = []
-    for group in ("green", "red"):
-        for path in sorted((FIXTURES / group).glob("*.json")):
-            cases.append((group, path, json.loads(path.read_text())))
+    for root in (FIXTURES, FIXTURES.parent / "scope-fixtures"):
+        for group in ("green", "red"):
+            for path in sorted((root / group).glob("*.json")):
+                fixture = json.loads(path.read_text())
+                if root == FIXTURES:
+                    # Keep the historical Jev corpus pinned; model code activity
+                    # only in this gate's probe/domain replay adapter.
+                    events = fixture["events"]
+                    last_user = max((i for i, e in enumerate(events) if e.get("role") == "user"), default=-1)
+                    events.insert(last_user + 1, {
+                        "role": "assistant",
+                        "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}],
+                    })
+                cases.append((group, path, fixture))
     return cases
 
 

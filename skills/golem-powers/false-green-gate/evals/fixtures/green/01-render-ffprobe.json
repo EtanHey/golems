@@ -4,7 +4,6 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Render the AfterCode segment." },
-    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Rendering, then probing the artifact.",

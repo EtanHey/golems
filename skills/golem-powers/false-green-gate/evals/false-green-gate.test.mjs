@@ -23,15 +23,26 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const redDir = path.join(here, "fixtures", "red");
 const greenDir = path.join(here, "fixtures", "green");
 
-function loadFixtures(dir) {
+function loadFixtures(dir, codeTurn = false) {
   return readdirSync(dir)
     .filter((f) => f.endsWith(".json"))
     .sort()
-    .map((f) => ({ file: f, ...JSON.parse(readFileSync(path.join(dir, f), "utf8")) }));
+    .map((f) => {
+      const fixture = { file: f, ...JSON.parse(readFileSync(path.join(dir, f), "utf8")) };
+      // The historical Jev corpus stays byte-pinned. Its probe/domain tests
+      // execute inside a code turn supplied by this gate's replay adapter.
+      if (codeTurn) {
+        const lastUser = fixture.events.findLastIndex(e => e.role === "user");
+        fixture.events.splice(lastUser + 1, 0, {
+          role: "assistant", tools: [{ name: "Edit", input: { file_path: "src/example.ts" } }],
+        });
+      }
+      return fixture;
+    });
 }
 
-const reds = loadFixtures(redDir);
-const greens = loadFixtures(greenDir);
+const reds = [...loadFixtures(redDir, true), ...loadFixtures(path.join(here, "scope-fixtures", "red"))];
+const greens = [...loadFixtures(greenDir, true), ...loadFixtures(path.join(here, "scope-fixtures", "green"))];
 
 test("fixture coverage: original corpus plus goal-required RED/GREEN cases present", () => {
   expect(reds.length).toBeGreaterThanOrEqual(19);

@@ -4,7 +4,6 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "How's the render going?" },
-    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Still mid-render — it's not done yet, the encode is about 60% through. I'll probe the artifact with ffprobe once it lands."
