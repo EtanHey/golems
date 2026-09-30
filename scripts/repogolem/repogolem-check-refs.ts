@@ -66,7 +66,7 @@ export function checkRefs(refs: string[], opBin: string, noPrompt = false): numb
       continue;
     }
     // List metadata once per vault; never fetch/decrypt whole items with get.
-    const listedItems = metadata(["item", "list", "--vault", vault, "--format", "json", "--include-archive"], true);
+    const listedItems = metadata(["item", "list", "--vault", vault, "--format", "json"], true);
     if (listedItems.exitCode !== 0) {
       if (metadata(["whoami", "--format", "json"]).exitCode !== 0) return unsigned();
       throw new Error(`cannot list 1Password item metadata for vault ${vault}; nothing written`);
