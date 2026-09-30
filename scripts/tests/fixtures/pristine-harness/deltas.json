@@ -18,76 +18,76 @@
     "reason": "Retain nested temp classification when an outer in-convention assignment is authoritative"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88",
-      "linux": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88"
+      "darwin": "5789e2356261075c08bb83011c8155963cf3497669d07030d5fa8245a16c3ef2",
+      "linux": "5789e2356261075c08bb83011c8155963cf3497669d07030d5fa8245a16c3ef2"
     },
     "case": "launcher-002",
-    "reason": "Codex launcher help names the default as a fallback; effort is chosen per dispatch from the plan phase"
+    "reason": "Codex help requires worker and raw-passthrough effort while bare interactive boots use Codex config"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "ee69e3c28f7e2194090725c2e53a53b666c1cf63fa6d7bd25719ccbc2eb7ad14",
-      "linux": "ee69e3c28f7e2194090725c2e53a53b666c1cf63fa6d7bd25719ccbc2eb7ad14"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-006",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-007",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-008",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "4c916c782ed6d768bc2924aed14255eb4beff8db48314f7c754d774fe3288fa6",
-      "linux": "4c916c782ed6d768bc2924aed14255eb4beff8db48314f7c754d774fe3288fa6"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-009",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "aa71546e1ed34fe0ea778c8c86846b29bdba3971c5a2aacaaf0bd8b6caf725b3",
-      "linux": "aa71546e1ed34fe0ea778c8c86846b29bdba3971c5a2aacaaf0bd8b6caf725b3"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-011",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-012",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "f7c37dc0aab9b2cb0e21c10e3fd214936fd1a0ffea8132ad83830afbb5c412ad",
-      "linux": "f7c37dc0aab9b2cb0e21c10e3fd214936fd1a0ffea8132ad83830afbb5c412ad"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-013",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
     "authority": "golems#413",
@@ -144,13 +144,13 @@
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "f0daaef067aff2d7cedd30011e3d61dd14e79b3091a43fdf3c9c73526a54e8c1",
-      "linux": "f0daaef067aff2d7cedd30011e3d61dd14e79b3091a43fdf3c9c73526a54e8c1"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-020",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
     "authority": "golems#471",
@@ -180,13 +180,13 @@
     "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "5e333550d1a203e1531acec94f4cee8c06abc20b814777cc8291c0e7c55f6ad9",
-      "linux": "5e333550d1a203e1531acec94f4cee8c06abc20b814777cc8291c0e7c55f6ad9"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "launcher-033",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
     "authority": "golems#471",
@@ -234,13 +234,13 @@
     "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#457",
+    "authority": "golems#475",
     "candidate_sha256": {
-      "darwin": "c967398a8dcbb92e55f2f18fb281ab8a16e6d9a709348ed9e06be9e0bffc44d4",
-      "linux": "c967398a8dcbb92e55f2f18fb281ab8a16e6d9a709348ed9e06be9e0bffc44d4"
+      "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
+      "linux": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c"
     },
     "case": "r2-launch-persona-codex-lead",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+    "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
     "authority": "golems#471",
