@@ -53,6 +53,29 @@ and removed on exit. It is test data, not a durable artifact.
 This is source and fixture proof; installed hook and launcher verification
 belongs to the later split lanes.
 
+## Tmp-block characterization before extraction
+
+`tmp-w7-*` appends 116 cases (52 hook envelopes and 64 direct API requests)
+without replacing existing IDs or captures. The seven source groups cover valid
+patch/file/shell envelopes; decision and ledger precedence; nested substitution
+authority and ordered hit tuples; assignment/prefix snapshots; finite value
+bounds; recursive budgets/cwd; and both facade monkeypatch seams.
+
+The scoped `tmp-block-api` target calls the immutable base's existing functions.
+It records complete results or exception type/message, the shared budget's
+remaining value, and whether supplied request maps changed. Set-valued results
+are serialized in deterministic order; hook output and captured files retain
+their original bytes. Budget cases include empty zero/negative inputs, exact
+depletion, one-short refusal, and sibling exhaustion. The facade seam cases load
+two physical hook copies, both registered and unregistered, patch each copy's
+`in_temp_class` or `_temp_prefixes`, and call main plus the direct prefix API.
+These characterize the monolithic facade; installed package layout proof belongs
+to the extraction slices.
+
+New captures come from `84b50967d6f0cdf62b58b23b78cece5c0897c77e`, with the
+same fixed clock/environment as existing cases. Existing malformed patch cases,
+platform captures, delta declarations, and base mutant anchors remain intact.
+
 ## Intended behaviour changes
 
 `deltas.json` declares reviewed changes to named cases. Each declaration records

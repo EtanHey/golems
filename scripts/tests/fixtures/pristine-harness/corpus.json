@@ -7363,7 +7363,7 @@
     "request": {
       "function": "pr_body_is_empty",
       "args": [
-        "—"
+        "\u2014"
       ]
     }
   },
@@ -10000,5 +10000,1139 @@
     "target": "parser",
     "probe": "heredoc-models",
     "input": "echo before; cat <<-E\n\tprose `tee x` tail\n\tE\necho after"
+  },
+  {
+    "id": "tmp-w7-patch-add-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Add File: /tmp/w7-patch\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-add-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Add File: /durable/w7-patch\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-update-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Update File: /tmp/w7-patch\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-update-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Update File: /durable/w7-patch\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-move-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Move to: /tmp/w7-patch\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-move-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Move to: /durable/w7-patch\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-delete-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Delete File: /tmp/w7-patch\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-delete-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Delete File: /durable/w7-patch\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-relative-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Update File: file.txt\\n+x\\n*** End Patch\",\"cwd\":\"/tmp/w7-cwd\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-relative-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Update File: file.txt\\n+x\\n*** End Patch\",\"cwd\":\"/durable\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-relative-relative",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Update File: file.txt\\n+x\\n*** End Patch\",\"cwd\":\"docs.local\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-relative-missing",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Update File: file.txt\\n+x\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-patch-header-order",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"apply_patch\",\"tool_input\":{\"command\":\"*** Begin Patch\\n*** Add File: /tmp/w7-first\\n+x\\n*** Update File: /tmp/w7-second\\n+x\\n*** Move to: /tmp/w7-third\\n*** Delete File: /tmp/w7-delete\\n*** End Patch\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-file-write-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/w7-file\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-file-write-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/durable/w7-file\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-file-edit-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/tmp/w7-file\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-file-edit-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"/durable/w7-file\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-file-notebookedit-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"notebook_path\":\"/tmp/w7-file\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-file-notebookedit-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"notebook_path\":\"/durable/w7-file\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-cursor-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Shell\",\"tool_input\":{\"command\":\"printf x > /tmp/w7-shell\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-cursor-safe",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Shell\",\"tool_input\":{\"command\":\"printf x > /durable/w7-shell\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-1"
+  },
+  {
+    "id": "tmp-w7-scan-order",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /tmp/w7-redirect; printf x | tee /tmp/w7-tee; git worktree add /tmp/w7-worktree HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-dynamic-before-resolved-wt",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"$UNSET\\\"; git worktree add /outside/w7 HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-temp-dynamic-before-unresolved-wt",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(mktemp); printf x > \\\"$P\\\"; git worktree add \\\"$WT\\\" HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-hatched-proven-early",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 printf x > /tmp/w7-temp; git worktree add /outside/w7 HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-hatched-dynamic-continues",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 printf x > \\\"$UNSET\\\"; git worktree add /outside/w7 HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-hatched-mixed-early",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 printf x > /tmp/w7-proven > \\\"$UNSET\\\"; git worktree add /outside/w7 HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-wt-hatch-not-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_WT_MIGRATION=1 printf x > /tmp/w7-temp\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-wt-hatch-dynamic-advisory",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > \\\"$UNSET\\\"; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add /outside/w7 HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-wt-hatch-dynamic-refusal",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=$(mktemp); printf x > \\\"$P\\\"; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add /outside/w7 HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-ledger-failure",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 printf x > /tmp/w7-temp\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-2",
+    "env": {
+      "TMP_BLOCK_LEDGER": "/dev/null/ledger"
+    }
+  },
+  {
+    "id": "tmp-w7-exposed-wt",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd /workspace/golems && echo $(git worktree add tmp/.worktrees/w7 HEAD)\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hits-exposed-wt",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "cd /workspace/golems && echo $(git worktree add tmp/.worktrees/w7 HEAD)",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-unexposed-wt",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd /tmp && echo \\\"$(git worktree add w7 HEAD)\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hits-unexposed-wt",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "cd /tmp && echo \"$(git worktree add w7 HEAD)\"",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-deeper-exposed-wt",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd /workspace/golems && echo $(echo $(git worktree add tmp/.worktrees/w7 HEAD))\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hits-deeper-exposed-wt",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "cd /workspace/golems && echo $(echo $(git worktree add tmp/.worktrees/w7 HEAD))",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-sibling-hatch",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(WEAVE_ALLOW_TMP=1 tee /tmp/w7-first) $(tee /tmp/w7-second)\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hits-sibling-hatch",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo \"$(WEAVE_ALLOW_TMP=1 tee /tmp/w7-first) $(tee /tmp/w7-second)\"",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-deeper-hatch",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo $(WEAVE_ALLOW_TMP=1 echo $(git worktree add /tmp/.worktrees/w7 HEAD))\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hits-deeper-hatch",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo $(WEAVE_ALLOW_TMP=1 echo $(git worktree add /tmp/.worktrees/w7 HEAD))",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-promote-primary-only",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd /tmp && echo $(WEAVE_ALLOW_TMP=1 echo $(git worktree add ../tmp/.worktrees/w7 HEAD))\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hits-promote-primary-only",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "cd /tmp && echo $(WEAVE_ALLOW_TMP=1 echo $(git worktree add ../tmp/.worktrees/w7 HEAD))",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-unquoted-hatch-dedup",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo $(WEAVE_ALLOW_TMP=1 tee /tmp/w7-once)\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hits-unquoted-hatch-dedup",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo $(WEAVE_ALLOW_TMP=1 tee /tmp/w7-once)",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hidden-cwd",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(cd /tmp && echo \\\"$(git worktree add ../tmp/.worktrees/w7 HEAD)\\\")\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-hits-hidden-cwd",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo \"$(cd /tmp && echo \"$(git worktree add ../tmp/.worktrees/w7 HEAD)\")\"",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-3"
+  },
+  {
+    "id": "tmp-w7-ordered-hits",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "printf x > /tmp/w7-redirect; tee /tmp/w7-tee; git worktree add /tmp/w7-wt HEAD",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/workspace"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-2"
+  },
+  {
+    "id": "tmp-w7-sequential-composition",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"D=/durable; P=$D/first; P=$P/second; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-state-sequential-composition",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "D=/durable; P=$D/first; P=$P/second; printf x > \"$P\"",
+      "raw": "$P",
+      "parsed": true,
+      "function": "_static_shell_variable_state_before"
+    },
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-unset-removes-head",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=/tmp/w7-$$; unset P; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-state-unset-removes-head",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "P=/tmp/w7-$$; unset P; printf x > \"$P\"",
+      "raw": "$P",
+      "parsed": true,
+      "function": "_static_shell_variable_state_before"
+    },
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-unknown-replaces-head",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=/tmp/w7-$$; P=$UNKNOWN; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-state-unknown-replaces-head",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "P=/tmp/w7-$$; P=$UNKNOWN; printf x > \"$P\"",
+      "raw": "$P",
+      "parsed": true,
+      "function": "_static_shell_variable_state_before"
+    },
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-known-replaces-head",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=/tmp/w7-$$; P=/durable/w7-$$; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-state-known-replaces-head",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "P=/tmp/w7-$$; P=/durable/w7-$$; printf x > \"$P\"",
+      "raw": "$P",
+      "parsed": true,
+      "function": "_static_shell_variable_state_before"
+    },
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-conditional-replaces-head",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=/tmp/w7-$$; maybe && P=/durable/w7; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-state-conditional-replaces-head",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "P=/tmp/w7-$$; maybe && P=/durable/w7; printf x > \"$P\"",
+      "raw": "$P",
+      "parsed": true,
+      "function": "_static_shell_variable_state_before"
+    },
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-pipeline-does-not-replace",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"P=/tmp/w7-$$; P=/durable/w7 | cat; printf x > \\\"$P\\\"\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-state-pipeline-does-not-replace",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "P=/tmp/w7-$$; P=/durable/w7 | cat; printf x > \"$P\"",
+      "raw": "$P",
+      "parsed": true,
+      "function": "_static_shell_variable_state_before"
+    },
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-loop-rhs-self",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do f=$f/suffix; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-case-rhs-self",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"case \\\"$p\\\" in /tmp/a|/tmp/b) p=$p/suffix; printf x > \\\"$p\\\";; esac\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-loop-conditional",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"for f in /tmp/a /tmp/b; do maybe && f=/durable/w7; printf x > \\\"$f\\\"; done\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-absolute-c-recovers",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"popd; git -C /durable worktree add .worktrees/w7 HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-relative-c-retains-error",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"popd; git -C relative worktree add .worktrees/w7 HEAD\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-literal-parent-substitution",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /durable/head$(printf /../../tmp/w7)\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-safe-dynamic-suffix",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"printf x > /durable/w7-$(date +%s)\"},\"session_id\":\"pristine\"}",
+    "source": "tmp-block-characterization-section-4"
+  },
+  {
+    "id": "tmp-w7-brace-sequence-256",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "{1..256}"
+      ],
+      "function": "_bounded_brace_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-brace-sequence-257",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "{1..257}"
+      ],
+      "function": "_bounded_brace_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-brace-product-256",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "{1..16}{1..16}"
+      ],
+      "function": "_bounded_brace_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-brace-product-272",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "{1..16}{1..17}"
+      ],
+      "function": "_bounded_brace_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-brace-zero-step",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "{1..3..0}"
+      ],
+      "function": "_bounded_brace_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-brace-descending",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "{3..1}"
+      ],
+      "function": "_bounded_brace_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-brace-unmatched",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "{1,2"
+      ],
+      "function": "_bounded_brace_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-word-product-256",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "$P$Q"
+      ],
+      "kwargs": {
+        "value_sets": {
+          "P": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15"
+          ],
+          "Q": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15"
+          ]
+        }
+      },
+      "function": "_bounded_word_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-word-product-272",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "$P$Q"
+      ],
+      "kwargs": {
+        "value_sets": {
+          "P": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15"
+          ],
+          "Q": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16"
+          ]
+        }
+      },
+      "function": "_bounded_word_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-word-glob",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "/durable/*"
+      ],
+      "kwargs": {
+        "value_sets": {
+          "P": null
+        }
+      },
+      "function": "_bounded_word_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-word-unbounded",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "$P"
+      ],
+      "kwargs": {
+        "value_sets": {
+          "P": null
+        }
+      },
+      "function": "_bounded_word_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-word-command-substitution",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "$(date)"
+      ],
+      "kwargs": {
+        "value_sets": {
+          "P": null
+        }
+      },
+      "function": "_bounded_word_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-array-256",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "A=(/durable/v0 /durable/v1 /durable/v2 /durable/v3 /durable/v4 /durable/v5 /durable/v6 /durable/v7 /durable/v8 /durable/v9 /durable/v10 /durable/v11 /durable/v12 /durable/v13 /durable/v14 /durable/v15 /durable/v16 /durable/v17 /durable/v18 /durable/v19 /durable/v20 /durable/v21 /durable/v22 /durable/v23 /durable/v24 /durable/v25 /durable/v26 /durable/v27 /durable/v28 /durable/v29 /durable/v30 /durable/v31 /durable/v32 /durable/v33 /durable/v34 /durable/v35 /durable/v36 /durable/v37 /durable/v38 /durable/v39 /durable/v40 /durable/v41 /durable/v42 /durable/v43 /durable/v44 /durable/v45 /durable/v46 /durable/v47 /durable/v48 /durable/v49 /durable/v50 /durable/v51 /durable/v52 /durable/v53 /durable/v54 /durable/v55 /durable/v56 /durable/v57 /durable/v58 /durable/v59 /durable/v60 /durable/v61 /durable/v62 /durable/v63 /durable/v64 /durable/v65 /durable/v66 /durable/v67 /durable/v68 /durable/v69 /durable/v70 /durable/v71 /durable/v72 /durable/v73 /durable/v74 /durable/v75 /durable/v76 /durable/v77 /durable/v78 /durable/v79 /durable/v80 /durable/v81 /durable/v82 /durable/v83 /durable/v84 /durable/v85 /durable/v86 /durable/v87 /durable/v88 /durable/v89 /durable/v90 /durable/v91 /durable/v92 /durable/v93 /durable/v94 /durable/v95 /durable/v96 /durable/v97 /durable/v98 /durable/v99 /durable/v100 /durable/v101 /durable/v102 /durable/v103 /durable/v104 /durable/v105 /durable/v106 /durable/v107 /durable/v108 /durable/v109 /durable/v110 /durable/v111 /durable/v112 /durable/v113 /durable/v114 /durable/v115 /durable/v116 /durable/v117 /durable/v118 /durable/v119 /durable/v120 /durable/v121 /durable/v122 /durable/v123 /durable/v124 /durable/v125 /durable/v126 /durable/v127 /durable/v128 /durable/v129 /durable/v130 /durable/v131 /durable/v132 /durable/v133 /durable/v134 /durable/v135 /durable/v136 /durable/v137 /durable/v138 /durable/v139 /durable/v140 /durable/v141 /durable/v142 /durable/v143 /durable/v144 /durable/v145 /durable/v146 /durable/v147 /durable/v148 /durable/v149 /durable/v150 /durable/v151 /durable/v152 /durable/v153 /durable/v154 /durable/v155 /durable/v156 /durable/v157 /durable/v158 /durable/v159 /durable/v160 /durable/v161 /durable/v162 /durable/v163 /durable/v164 /durable/v165 /durable/v166 /durable/v167 /durable/v168 /durable/v169 /durable/v170 /durable/v171 /durable/v172 /durable/v173 /durable/v174 /durable/v175 /durable/v176 /durable/v177 /durable/v178 /durable/v179 /durable/v180 /durable/v181 /durable/v182 /durable/v183 /durable/v184 /durable/v185 /durable/v186 /durable/v187 /durable/v188 /durable/v189 /durable/v190 /durable/v191 /durable/v192 /durable/v193 /durable/v194 /durable/v195 /durable/v196 /durable/v197 /durable/v198 /durable/v199 /durable/v200 /durable/v201 /durable/v202 /durable/v203 /durable/v204 /durable/v205 /durable/v206 /durable/v207 /durable/v208 /durable/v209 /durable/v210 /durable/v211 /durable/v212 /durable/v213 /durable/v214 /durable/v215 /durable/v216 /durable/v217 /durable/v218 /durable/v219 /durable/v220 /durable/v221 /durable/v222 /durable/v223 /durable/v224 /durable/v225 /durable/v226 /durable/v227 /durable/v228 /durable/v229 /durable/v230 /durable/v231 /durable/v232 /durable/v233 /durable/v234 /durable/v235 /durable/v236 /durable/v237 /durable/v238 /durable/v239 /durable/v240 /durable/v241 /durable/v242 /durable/v243 /durable/v244 /durable/v245 /durable/v246 /durable/v247 /durable/v248 /durable/v249 /durable/v250 /durable/v251 /durable/v252 /durable/v253 /durable/v254 /durable/v255); printf x > \"$A\"",
+      "raw": "$A",
+      "parsed": true,
+      "function": "_literal_array_values_before"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-loop-256",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "for f in /durable/v{1..256}; do printf x > \"$f\"; done",
+      "raw": "$f",
+      "parsed": true,
+      "kwargs": {
+        "anchor": "/workspace"
+      },
+      "function": "resolve_targets"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-array-257",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "A=(/durable/v0 /durable/v1 /durable/v2 /durable/v3 /durable/v4 /durable/v5 /durable/v6 /durable/v7 /durable/v8 /durable/v9 /durable/v10 /durable/v11 /durable/v12 /durable/v13 /durable/v14 /durable/v15 /durable/v16 /durable/v17 /durable/v18 /durable/v19 /durable/v20 /durable/v21 /durable/v22 /durable/v23 /durable/v24 /durable/v25 /durable/v26 /durable/v27 /durable/v28 /durable/v29 /durable/v30 /durable/v31 /durable/v32 /durable/v33 /durable/v34 /durable/v35 /durable/v36 /durable/v37 /durable/v38 /durable/v39 /durable/v40 /durable/v41 /durable/v42 /durable/v43 /durable/v44 /durable/v45 /durable/v46 /durable/v47 /durable/v48 /durable/v49 /durable/v50 /durable/v51 /durable/v52 /durable/v53 /durable/v54 /durable/v55 /durable/v56 /durable/v57 /durable/v58 /durable/v59 /durable/v60 /durable/v61 /durable/v62 /durable/v63 /durable/v64 /durable/v65 /durable/v66 /durable/v67 /durable/v68 /durable/v69 /durable/v70 /durable/v71 /durable/v72 /durable/v73 /durable/v74 /durable/v75 /durable/v76 /durable/v77 /durable/v78 /durable/v79 /durable/v80 /durable/v81 /durable/v82 /durable/v83 /durable/v84 /durable/v85 /durable/v86 /durable/v87 /durable/v88 /durable/v89 /durable/v90 /durable/v91 /durable/v92 /durable/v93 /durable/v94 /durable/v95 /durable/v96 /durable/v97 /durable/v98 /durable/v99 /durable/v100 /durable/v101 /durable/v102 /durable/v103 /durable/v104 /durable/v105 /durable/v106 /durable/v107 /durable/v108 /durable/v109 /durable/v110 /durable/v111 /durable/v112 /durable/v113 /durable/v114 /durable/v115 /durable/v116 /durable/v117 /durable/v118 /durable/v119 /durable/v120 /durable/v121 /durable/v122 /durable/v123 /durable/v124 /durable/v125 /durable/v126 /durable/v127 /durable/v128 /durable/v129 /durable/v130 /durable/v131 /durable/v132 /durable/v133 /durable/v134 /durable/v135 /durable/v136 /durable/v137 /durable/v138 /durable/v139 /durable/v140 /durable/v141 /durable/v142 /durable/v143 /durable/v144 /durable/v145 /durable/v146 /durable/v147 /durable/v148 /durable/v149 /durable/v150 /durable/v151 /durable/v152 /durable/v153 /durable/v154 /durable/v155 /durable/v156 /durable/v157 /durable/v158 /durable/v159 /durable/v160 /durable/v161 /durable/v162 /durable/v163 /durable/v164 /durable/v165 /durable/v166 /durable/v167 /durable/v168 /durable/v169 /durable/v170 /durable/v171 /durable/v172 /durable/v173 /durable/v174 /durable/v175 /durable/v176 /durable/v177 /durable/v178 /durable/v179 /durable/v180 /durable/v181 /durable/v182 /durable/v183 /durable/v184 /durable/v185 /durable/v186 /durable/v187 /durable/v188 /durable/v189 /durable/v190 /durable/v191 /durable/v192 /durable/v193 /durable/v194 /durable/v195 /durable/v196 /durable/v197 /durable/v198 /durable/v199 /durable/v200 /durable/v201 /durable/v202 /durable/v203 /durable/v204 /durable/v205 /durable/v206 /durable/v207 /durable/v208 /durable/v209 /durable/v210 /durable/v211 /durable/v212 /durable/v213 /durable/v214 /durable/v215 /durable/v216 /durable/v217 /durable/v218 /durable/v219 /durable/v220 /durable/v221 /durable/v222 /durable/v223 /durable/v224 /durable/v225 /durable/v226 /durable/v227 /durable/v228 /durable/v229 /durable/v230 /durable/v231 /durable/v232 /durable/v233 /durable/v234 /durable/v235 /durable/v236 /durable/v237 /durable/v238 /durable/v239 /durable/v240 /durable/v241 /durable/v242 /durable/v243 /durable/v244 /durable/v245 /durable/v246 /durable/v247 /durable/v248 /durable/v249 /durable/v250 /durable/v251 /durable/v252 /durable/v253 /durable/v254 /durable/v255 /durable/v256); printf x > \"$A\"",
+      "raw": "$A",
+      "parsed": true,
+      "function": "_literal_array_values_before"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-loop-257",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "for f in /durable/v{1..257}; do printf x > \"$f\"; done",
+      "raw": "$f",
+      "parsed": true,
+      "kwargs": {
+        "anchor": "/workspace"
+      },
+      "function": "resolve_targets"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-case-normal",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "case \"$p\" in /tmp/a|/tmp/b) : ;; /durable/c) printf x > \"$p\";; esac",
+      "raw": "$p",
+      "parsed": true,
+      "function": "_bounded_compound_value_sets_before"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-case-fallthrough",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "case \"$p\" in /tmp/a|/tmp/b) : ;& /durable/c) printf x > \"$p\";; esac",
+      "raw": "$p",
+      "parsed": true,
+      "function": "_bounded_compound_value_sets_before"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-case-rescan",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "case \"$p\" in /tmp/a|/tmp/b) : ;;& /durable/c) printf x > \"$p\";; esac",
+      "raw": "$p",
+      "parsed": true,
+      "function": "_bounded_compound_value_sets_before"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-quoted-braces",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "\ue000x\ue001"
+      ],
+      "function": "_bounded_word_values"
+    },
+    "source": "tmp-block-characterization-section-5"
+  },
+  {
+    "id": "tmp-w7-budget-bash-temp-targets-zero",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "",
+      "budget": 0,
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-bash-temp-targets-negative",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "",
+      "budget": -1,
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-bash-temp-targets-exact",
+    "target": "tmp-block-api",
+    "request": {
+      "command": ":",
+      "budget": 1,
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-bash-temp-targets-short",
+    "target": "tmp-block-api",
+    "request": {
+      "command": ":",
+      "budget": 0,
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-bash-temp-targets-siblings",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo \"$(echo first)\" \"$(echo second)\"",
+      "budget": 47,
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-bash-temp-targets-siblings-exact",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo \"$(echo first)\" \"$(echo second)\"",
+      "budget": 58,
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-find-worktree-convention-issues-zero",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "",
+      "budget": 0,
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-find-worktree-convention-issues-negative",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "",
+      "budget": -1,
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-find-worktree-convention-issues-exact",
+    "target": "tmp-block-api",
+    "request": {
+      "command": ":",
+      "budget": 1,
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-find-worktree-convention-issues-short",
+    "target": "tmp-block-api",
+    "request": {
+      "command": ":",
+      "budget": 0,
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-find-worktree-convention-issues-siblings",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo \"$(echo first)\" \"$(echo second)\"",
+      "budget": 47,
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-find-worktree-convention-issues-siblings-exact",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo \"$(echo first)\" \"$(echo second)\"",
+      "budget": 58,
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-hatched-segments-zero",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "",
+      "budget": 0,
+      "function": "_hatched_segments"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-hatched-segments-negative",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "",
+      "budget": -1,
+      "function": "_hatched_segments"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-hatched-segments-exact",
+    "target": "tmp-block-api",
+    "request": {
+      "command": ":",
+      "budget": 1,
+      "function": "_hatched_segments"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-hatched-segments-short",
+    "target": "tmp-block-api",
+    "request": {
+      "command": ":",
+      "budget": 0,
+      "function": "_hatched_segments"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-hatched-segments-siblings",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo \"$(echo first)\" \"$(echo second)\"",
+      "budget": 47,
+      "function": "_hatched_segments"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-budget-hatched-segments-siblings-exact",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "echo \"$(echo first)\" \"$(echo second)\"",
+      "budget": 58,
+      "function": "_hatched_segments"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-cwd-bash-temp-targets-root",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "printf x > child",
+      "kwargs": {
+        "_initial_cwd": "/tmp"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-cwd-bash-temp-targets-child",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "printf x > child",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/tmp"
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-cwd-bash-temp-targets-unknown",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "printf x > child",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": null
+      },
+      "function": "_bash_temp_targets"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-cwd-find-worktree-convention-issues-root",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "git worktree add .worktrees/w7 HEAD",
+      "kwargs": {
+        "_initial_cwd": "/tmp"
+      },
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-cwd-find-worktree-convention-issues-child",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "git worktree add .worktrees/w7 HEAD",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": "/tmp"
+      },
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-cwd-find-worktree-convention-issues-unknown",
+    "target": "tmp-block-api",
+    "request": {
+      "command": "git worktree add .worktrees/w7 HEAD",
+      "budget": 1000000,
+      "kwargs": {
+        "_initial_cwd": null
+      },
+      "function": "find_worktree_convention_issues"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-maps-unchanged",
+    "target": "tmp-block-api",
+    "request": {
+      "args": [
+        "$P"
+      ],
+      "kwargs": {
+        "variables": {
+          "P": "/durable/a"
+        },
+        "value_sets": {
+          "P": [
+            "/durable/a",
+            "/durable/b"
+          ]
+        }
+      },
+      "function": "_bounded_word_values"
+    },
+    "source": "tmp-block-characterization-section-6"
+  },
+  {
+    "id": "tmp-w7-seam-classifier-registered",
+    "target": "tmp-block-api",
+    "request": {
+      "seam": "classifier",
+      "registered": true
+    },
+    "source": "tmp-block-characterization-section-7"
+  },
+  {
+    "id": "tmp-w7-seam-prefixes-registered",
+    "target": "tmp-block-api",
+    "request": {
+      "seam": "prefixes",
+      "registered": true
+    },
+    "source": "tmp-block-characterization-section-7"
+  },
+  {
+    "id": "tmp-w7-seam-classifier-unregistered",
+    "target": "tmp-block-api",
+    "request": {
+      "seam": "classifier",
+      "registered": false
+    },
+    "source": "tmp-block-characterization-section-7"
+  },
+  {
+    "id": "tmp-w7-seam-prefixes-unregistered",
+    "target": "tmp-block-api",
+    "request": {
+      "seam": "prefixes",
+      "registered": false
+    },
+    "source": "tmp-block-characterization-section-7"
   }
 ]
