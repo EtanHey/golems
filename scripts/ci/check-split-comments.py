@@ -1,47 +1,79 @@
 #!/usr/bin/env python3
-"""Keep reviewed split comments in their file, code context, and relative order."""
+"""Prove immutable splits; retain whole-line comment multisets in the live tree.
+Inline trailing comments are out of scope. Review deliberate removals with:
+python scripts/ci/check-split-comments.py --refresh --allow-remove "<exact text>"
+"""
+import argparse
 import hashlib
 import json
 import re
-import sys
+import subprocess
 from collections import Counter
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 
+def digest(value):
+    return hashlib.sha256(value.encode()).hexdigest()
 
-def receipts(text):
-    result, following = [], []
-    lines = text.splitlines()
-    code_position = sum(bool(line.strip()) and not re.match(r'^\s*(?:#|//|/\*|\*(?:\s|/|$))', line)
-                        for line in lines)
-    for line in reversed(lines):
+def comments(text):
+    result, following, code = [], digest(''), 0
+    for line in reversed(text.splitlines()):
         if re.match(r'^\s*(?:#|//|/\*|\*(?:\s|/|$))', line):
-            payload = json.dumps([line.strip(), code_position, following], separators=(',', ':'))
-            result.append(hashlib.sha256(payload.encode()).hexdigest())
+            result.append((digest(line.strip()), code, following))
         elif line.strip():
-            code_position -= 1
-            following = [line.strip(), *following[:2]]
+            code += 1
+            following = digest(line.strip())
     return result[::-1]
 
+def blob(sha, path):
+    return subprocess.check_output(['git', 'show', f'{sha}:{path}'], cwd=REPO, text=True)
 
-def main(root):
-    ledger = json.loads((REPO / 'scripts/tests/fixtures/split-comments.json').read_text())
-    files = ledger['files']
-    if not files:
-        raise ValueError('split comment ledger must not be empty')
+def main(root, refresh=False, allow_remove=()):
+    path = REPO / 'scripts/tests/fixtures/split-comments.json'
+    ledger = json.loads(path.read_text())
     failed = False
-    for path, expected in files.items():
-        actual = receipts((root / path).read_text())
-        missing = sum((Counter(expected) - Counter(actual)).values())
-        remaining = iter(actual)
-        ordered = all(receipt in remaining for receipt in expected)
-        print(f'{path}: missing_or_misplaced={missing}; order_preserved={ordered}')
-        failed |= bool(missing) or not ordered
-    count = sum(map(len, files.values()))
-    print(f'split-comments: {"FAIL" if failed else "PASS"} ({len(files)} files; {count} comments)')
+    for split in ledger['transitions']:
+        original = comments(blob(split['pre_split_sha'], split['original_path']))
+        seen = []
+        for part in split['parts']:
+            actual = comments(blob(split['split_sha'], part))
+            assignments = split['assignments'][part]
+            if any(indices != sorted(set(indices)) for indices in
+                   ([row[column] for row in assignments] for column in (0, 1))):
+                print(f'transition FAIL {part}: assignments must be unique and ordered')
+                failed = True
+            for i, j, position in assignments:
+                seen.append(i)
+                node = split['node_aliases'].get(str(i), {}).get('following', original[i][2])
+                if j >= len(actual) or actual[j] != (original[i][0], position, node):
+                    print(f'transition FAIL {part}: comment_sha256={original[i][0]}')
+                    failed = True
+        if sorted(seen) != list(range(len(original))):
+            print(f'transition FAIL {split["original_path"]}: incomplete assignment')
+            failed = True
+    allowed = {digest(text.strip()) for text in allow_remove} if refresh else set()
+    updated = {}
+    if not ledger['files'] or not ledger['transitions']:
+        raise ValueError('split comment ledger must not be empty')
+    for file, expected in ledger['files'].items():
+        actual = Counter(record[0] for record in comments((root / file).read_text()))
+        for text, count in (Counter(expected) - actual).items():
+            if text not in allowed:
+                print(f'{file}: missing_sha256={text}; count={count}; review removal with '
+                      'python scripts/ci/check-split-comments.py --refresh --allow-remove "<exact text>"')
+                failed = True
+        updated[file] = dict(sorted(actual.items()))
+    if refresh and not failed:
+        ledger['files'] = updated
+        path.write_text(json.dumps(ledger, indent=2) + '\n')
+    print(f'split-comments: {"FAIL" if failed else "PASS"} ({len(updated)} files)')
     return int(failed)
 
-
 if __name__ == '__main__':
-    raise SystemExit(main(Path(sys.argv[1]) if len(sys.argv) > 1 else REPO))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('root', nargs='?', type=Path, default=REPO)
+    parser.add_argument('--refresh', action='store_true')
+    parser.add_argument('--allow-remove', action='append', default=[])
+    args = parser.parse_args()
+    raise SystemExit(main(args.root, args.refresh, args.allow_remove))
