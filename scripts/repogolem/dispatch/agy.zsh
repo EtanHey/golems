@@ -110,8 +110,8 @@ _golem_sync_agy_workspace() {
     rm -f "$merged_file"
     return 1
   }
-  if print -r -- "$existing" | jq --argjson servers "$servers" \
-    '.mcpServers = ((.mcpServers // {}) + $servers)' > "$tmp_file" 2>/dev/null; then
+  if { print -r -- "$existing"; print -r -- "$servers"; } | jq -s \
+    '.[0] as $base | .[1] as $servers | $base | .mcpServers = ((.mcpServers // {}) + $servers)' > "$tmp_file" 2>/dev/null; then
     mv "$tmp_file" "$agents_file"
   else
     rm -f "$tmp_file"
@@ -130,8 +130,8 @@ _golem_sync_agy_workspace() {
     rm -f "$merged_file"
     return 1
   }
-  if print -r -- "$user_existing" | jq --argjson servers "$servers" \
-    '.mcpServers = ((.mcpServers // {}) + $servers)' > "$user_tmp" 2>/dev/null; then
+  if { print -r -- "$user_existing"; print -r -- "$servers"; } | jq -s \
+    '.[0] as $base | .[1] as $servers | $base | .mcpServers = ((.mcpServers // {}) + $servers)' > "$user_tmp" 2>/dev/null; then
     mv "$user_tmp" "$user_file"
   else
     rm -f "$user_tmp"
