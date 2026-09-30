@@ -1211,6 +1211,46 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 43,
+      "name": "opus-single-fact-recall-uses-sonnet-brain-worker",
+      "prompt": "You are an Opus 5.5 lead. When did golems#352 merge? Route this single-fact history lookup.",
+      "expected_output": "Delegate to one brain-worker sub-agent with model:\"sonnet\". Do not search in the lead context or use Opus → 3× Sonnet fan-out for plain recall.",
+      "assertions": [
+        {
+          "text": "Delegates the lookup to a brain-worker sub-agent explicitly pinned with model:\"sonnet\"",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT perform the lookup in the Opus lead context",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT launch a three-agent fan-out for this single-fact lookup",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "name": "opus-deletion-decision-rejects-sonnet-parity-shortcut",
+      "prompt": "You are an Opus 5.5 worker. A Sonnet brain-worker found zero literal callers for a tool. Decide whether it is safe to delete the tool; can the Sonnet sub-agent make that decision under the 09-29 parity rule?",
+      "expected_output": "Keep the deletion decision on Opus. Sonnet may supply raw lookup evidence but plain-recall parity does not establish safe deletion. Opus checks reachability, including by-name lookups and dispatch or policy tables, before Codex implements any approved deletion.",
+      "assertions": [
+        {
+          "text": "Keeps the safe-to-delete decision on Opus",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT delegate the deletion verdict to Sonnet or treat zero literal callers as sufficient proof",
+          "type": "negative"
+        },
+        {
+          "text": "Names a reachability path beyond literal callers, such as by-name lookups, dispatch tables, policy tables, or agent-facing text",
+          "type": "content"
+        }
+      ]
     }
   ]
 }

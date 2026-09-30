@@ -46,6 +46,23 @@ Decision rules:
 
 **Evidence for rule 2 (cmuxlayer CX-3 real recon slices; one repo, 28 tools, scored against a truth table from fresh `rg`):** callers=0 for 28 tools about to be deleted: Opus surfaced 3/3 deletion hazards; Flash-High and Haiku 0/3 (Flash-Low, a lower tier, was not run on this slice), and Flash-High called all 28 safe, which would have broken a by-name engine accessor used by 23 test files; Pro made 59 false positives. Tool→test-file map errors: Opus 1, Flash-High 16, Pro 21, Haiku 23. Docs/link audit: Opus, Flash-High and Flash-Low 0 errors (82 s, 87 s, ≈270 s); Pro 47 false positives from a gitignored build directory; Haiku 20 errors (16 misses, 4 substring-match false positives). The eval above passed callers=0 because its tasks were literal greps against a known answer key; deciding a deletion needs reachability reasoning (by-name lookups, policy tables, agent-facing text).
 
+## Sonnet 5.5 sub-agents
+
+Etan-ratified, 2026-09-30: every Opus seat (leads and workers) delegates parity tasks to sub-agents pinned with `model:"sonnet"`:
+
+- **brain-worker:** single-fact recall ("when did X merge", "what did Etan rule on Y"); use one Sonnet child instead of the Opus seat's own context.
+- **orc-helper:** spawn/resume/send/read/wait/close pane mechanics; use the installed agent, already pinned to Sonnet.
+- **Verifiers:** rerun a claimed command, check an artifact exists, or read a report's DONE marker.
+
+Keep Opus for multi-source or decision-grade history, deletion decisions, PR-gating reviews, and UX/UI judgment. Reserve Opus → 3× Sonnet fan-out for high-stakes history only: it costs 3.4× and runs 2.6× slower. Pass this rule into every Opus worker's brief. This is the bounded exception to the general lookup routing above.
+
+Evidence: `skill-creator/docs.local/evals/2026-09-29-subagent-routing/RESULTS.md`, 108 blind-graded runs (cost ratios vs Opus; plain recall parity does not imply multi-source parity):
+
+- brain-worker: Opus 91.7% / Sonnet 83.3% at 0.46× / fan-out 100% at 3.43× (2.6× slower)
+- orc-helper: Sonnet = Opus on all 4 cases at 0.47×
+- verifiers: 0 wrong verdicts in any arm, Sonnet 0.55×
+- PR review: Sonnet 78% recall but ~1 FP per review vs Opus 65% / 0.25
+
 ## Fan-out engine
 
 Once the work is known to be N independent units, pick the parallelism engine. Full recipes and
