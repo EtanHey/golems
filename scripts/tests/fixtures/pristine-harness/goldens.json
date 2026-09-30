@@ -1260,6 +1260,28 @@
       "stderr": "",
       "stdout": "e30="
     },
+    "issue466-wt-hatch-in-convention-control": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue466-wt-hatch-inner-temp": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkIiwgInBhdGgiOiAiL3RtcC9xIn0sIHsidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRYIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogImVjaG8gJChYPS90bXAvcTsgV0VBVkVfQUxMT1dfV1RfTUlHUkFUSU9OPTEgZ2l0IHdvcmt0cmVlIGFkZCBcIiRYXCIgSEVBRCkifQo="
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue466-wt-hatch-outer-convention-inner-temp": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkIiwgInBhdGgiOiAiL3RtcC9xIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogIlg9L3Zhci90bXAvcHJpc3RpbmUtaGFybmVzcy1maXh0dXJlL3JlcG8vLndvcmt0cmVlcy93OyBlY2hvICQoWD0vdG1wL3E7IFdFQVZFX0FMTE9XX1dUX01JR1JBVElPTj0xIGdpdCB3b3JrdHJlZSBhZGQgXCIkWFwiIEhFQUQpIn0K"
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
     "launcher-000": {
       "exit": 1,
       "files_sha256": {},

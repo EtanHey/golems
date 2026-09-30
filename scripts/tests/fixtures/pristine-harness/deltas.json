@@ -1,5 +1,23 @@
 [
   {
+    "authority": "golems#466",
+    "candidate_sha256": {
+      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
+      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+    },
+    "case": "issue466-wt-hatch-inner-temp",
+    "reason": "Retain nested temp classification before applying the worktree migration hatch"
+  },
+  {
+    "authority": "golems#466",
+    "candidate_sha256": {
+      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
+      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+    },
+    "case": "issue466-wt-hatch-outer-convention-inner-temp",
+    "reason": "Retain nested temp classification when an outer in-convention assignment is authoritative"
+  },
+  {
     "authority": "golems#457",
     "candidate_sha256": {
       "darwin": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88",

@@ -440,6 +440,43 @@ def test_worktree_hatch_does_not_unlock_the_temp_class(tmp_path):
     assert_denied(proc, must_mention=("TMP-BLOCK",))
 
 
+@pytest.mark.parametrize(
+    "outer",
+    (
+        "",
+        f"X={GITS}/golems/.worktrees/w; ",
+    ),
+)
+def test_worktree_hatch_does_not_drop_inner_substitution_temp_hit(tmp_path, outer):
+    """golems#466: an exposed primary parse may resolve an outer value, but
+    it must not discard the child parse's temp-class target before the
+    worktree-migration hatch is considered."""
+    ledger = tmp_path / "ledger.jsonl"
+    proc = run_hook(
+        bash_payload(
+            outer
+            + 'echo $(X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 '
+            + 'git worktree add "$X" HEAD)'
+        ),
+        env_extra={"TMP_BLOCK_LEDGER": str(ledger)},
+    )
+    assert_denied(proc, must_mention=("TMP-BLOCK", "/tmp/q"))
+    assert not ledger.exists(), "a denied temp target must not log a WT bypass"
+
+
+def test_worktree_hatch_keeps_in_convention_target_allowed(tmp_path):
+    ledger = tmp_path / "ledger.jsonl"
+    proc = run_hook(
+        bash_payload(
+            "WEAVE_ALLOW_WT_MIGRATION=1 git worktree add "
+            f"{GITS}/golems/.worktrees/w HEAD"
+        ),
+        env_extra={"TMP_BLOCK_LEDGER": str(ledger)},
+    )
+    assert_allowed(proc)
+    assert not ledger.exists(), "an in-convention target does not consume the hatch"
+
+
 def test_worktree_migration_hatch_with_unwritable_ledger_denies():
     """An unlogged bypass must not proceed — fail closed, as with the tmp hatch."""
     proc = run_hook(
@@ -682,5 +719,4 @@ def test_observed_scratchpad_redirect_is_allowed(durable_path):
         cwd=str(durable_path),
     )
     assert_allowed(proc)
-
 
