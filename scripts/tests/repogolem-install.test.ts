@@ -165,3 +165,18 @@ test('different seatRegistry in a machine view is refused before writes', () => 
   expect(run(['--host','fixture-host']).code).toBe(2);
   expect(existsSync(join(home,'.config/repogolem'))).toBe(false);
 });
+for(const recovery of ['retry','rollback'])test(`journal recovers ${recovery} after interruption between seat unlink and symlink`, () => {
+  const before=readFileSync(join(home,'.zshrc'),'utf8'), original=readFileSync(join(home,'.golems/config.yaml'),'utf8');
+  const bin=join(home,'fault-bin');mkdirSync(bin);writeFileSync(join(bin,'bun'),'#!/bin/sh\nexit 77\n',{mode:0o700});
+  expect(run([],true,{PATH:bin+':'+process.env.PATH}).code).toBe(2);
+  // The journal is already durable when installation unlinks the old seat file.
+  rmSync(join(home,'.golems/config.yaml'));
+  expect(run(recovery==='rollback'?['--rollback']:[]).code).toBe(0);
+  if(recovery==='retry')expect(run(['--rollback']).code).toBe(0);
+  expect(readFileSync(join(home,'.zshrc'),'utf8')).toBe(before);
+  expect(readFileSync(join(home,'.golems/config.yaml'),'utf8')).toBe(original);
+});
+test('completed installation refuses a missing seat link', () => {
+  expect(run().code).toBe(0);rmSync(join(home,'.golems/config.yaml'));
+  expect(run().code).toBe(2);expect(run(['--rollback']).code).toBe(2);
+});

@@ -61,7 +61,8 @@ function verifySeats(state: any, seats: string) {
       const observed = present(target) && digest(readFileSync(target, 'utf8'));
       if (observed !== state.machineDigest && !(pending && observed === state.previousMachineDigest)) throw new Error('installed machine seat view changed; rollback refused');
     }
-  } else if (!pending || (state.hadSeats ? !stat?.isFile() || digest(readFileSync(seats, 'utf8')) !== state.originalSeatDigest : stat)) {
+  // A pending attempt may have unlinked the original file before linking its view.
+  } else if (!pending || (stat && (!state.hadSeats || !stat.isFile() || digest(readFileSync(seats, 'utf8')) !== state.originalSeatDigest))) {
     throw new Error('installed seat link changed; reconciliation required');
   }
 }
