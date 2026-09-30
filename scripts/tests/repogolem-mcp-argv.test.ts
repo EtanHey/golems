@@ -94,8 +94,19 @@ function expectCanariesOnlyInPrivateFiles() {
   }
 }
 
+function agyRegistry(project: string, names: string[]) {
+  const registry = join(scratch, "registry.json");
+  const synthetic = { command: "synthetic-mcp", env: { API_KEY: CANARY } };
+  writeFileSync(registry, JSON.stringify({
+    mcpDefinitions: { synthetic },
+    projects: { testrepo: { mcps: ["synthetic"] }, other: { mcps: names } },
+  }), { mode: 0o600 });
+  writeFileSync(join(project, ".mcp.json"), JSON.stringify({ mcpServers: { synthetic } }), { mode: 0o600 });
+  return registry;
+}
+
 describe("resolved MCP values stay off jq argv", () => {
-  test("Antigravity workspace and user config merges", () => {
+  test("Antigravity exact workspace and declared user config maps", () => {
     const home = join(scratch, "home");
     const project = join(scratch, "project");
     const runtime = join(scratch, "runtime");
@@ -113,17 +124,13 @@ describe("resolved MCP values stay off jq argv", () => {
       '{"label":"user","mcpServers":{"existing":{"command":"user-existing"}}}\n',
     );
 
-    const mcpConfig = JSON.stringify({
-      mcpServers: {
-        synthetic: { command: "synthetic-mcp", env: { API_KEY: CANARY } },
-      },
-    });
+    const registry = agyRegistry(project, ["existing"]);
     const result = runZsh(
-      `function _ralph_build_mcp_config() { print -r -- "$MCP_CONFIG"; }
+      `function _ralph_build_mcp_config() { return 91; }
 source "$1"
 _golem_sync_agy_workspace testrepo "$2"`,
       [DISPATCHER, project],
-      { HOME: home, XDG_RUNTIME_DIR: runtime, MCP_CONFIG: mcpConfig },
+      { HOME: home, XDG_RUNTIME_DIR: runtime, RALPH_REGISTRY_FILE: registry },
     );
 
     expect(result.exitCode, result.stderr.toString()).toBe(0);
@@ -131,13 +138,10 @@ _golem_sync_agy_workspace testrepo "$2"`,
     expect(readFileSync(join(project, ".agents", "mcp_config.json"), "utf8")).toBe(`{
   "label": "agents",
   "mcpServers": {
-    "existing": {
-      "command": "agents-existing"
-    },
     "synthetic": {
       "command": "synthetic-mcp",
       "env": {
-        "API_KEY": "${CANARY}"
+        "API_KEY": "\${API_KEY}"
       }
     }
   }
@@ -152,7 +156,7 @@ _golem_sync_agy_workspace testrepo "$2"`,
     "synthetic": {
       "command": "synthetic-mcp",
       "env": {
-        "API_KEY": "${CANARY}"
+        "API_KEY": "\${API_KEY}"
       }
     }
   }
@@ -188,26 +192,27 @@ _golem_sync_agy_workspace testrepo "$2"`,
       users.map((document) => JSON.stringify(document)).join("\n"),
     );
 
-    const synthetic = { command: "synthetic-mcp", env: { API_KEY: CANARY } };
+    const synthetic = { command: "synthetic-mcp", env: { API_KEY: "${API_KEY}" } };
+    const registry = agyRegistry(project, ["one", "two"]);
     const result = runZsh(
-      `function _ralph_build_mcp_config() { print -r -- "$MCP_CONFIG"; }
+      `function _ralph_build_mcp_config() { return 91; }
 source "$1"
 _golem_sync_agy_workspace testrepo "$2"`,
       [DISPATCHER, project],
       {
         HOME: home,
         XDG_RUNTIME_DIR: runtime,
-        MCP_CONFIG: JSON.stringify({ mcpServers: { synthetic } }),
+        RALPH_REGISTRY_FILE: registry,
       },
     );
 
     expect(result.exitCode, result.stderr.toString()).toBe(0);
     expectCanariesAbsentFromJqArgv();
-    const expectedDocuments = (documents: typeof agents) =>
+    const expectedDocuments = (documents: typeof agents, retain = false) =>
       `${documents
         .map((document) =>
           JSON.stringify(
-            { ...document, mcpServers: { ...document.mcpServers, synthetic } },
+            { ...document, mcpServers: { ...(retain ? document.mcpServers : {}), synthetic } },
             null,
             2,
           ),
@@ -217,7 +222,7 @@ _golem_sync_agy_workspace testrepo "$2"`,
       expectedDocuments(agents),
     );
     expect(readFileSync(join(home, ".gemini", "config", "mcp_config.json"), "utf8")).toBe(
-      expectedDocuments(users),
+      expectedDocuments(users, true),
     );
     expectCanariesOnlyInPrivateFiles();
   });

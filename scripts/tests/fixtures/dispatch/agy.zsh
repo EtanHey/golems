@@ -72,9 +72,11 @@ _golem_agy_write_config() {
     existing='[{}]'
   fi
   tmp_file=$(umask 077; mktemp "${parent}/.repogolem-mcp.XXXXXX") || return 1
-  if print -r -- "$existing" | jq --argjson servers "$servers" --arg mode "$mode" --argjson allowed "$allowed" \
+  # Config values travel only on stdin, including project inputs before the
+  # credential placeholder transform. jq argv must never carry raw MCP data.
+  if print -r -- "$existing" "$servers" "$allowed" | jq -s --arg mode "$mode" \
     "$(_golem_jq_strip_supabase_token_arg)$(_golem_jq_agy_servers)"'
-      .[] | .mcpServers = (
+      .[1] as $servers | .[2] as $allowed | .[0][] | .mcpServers = (
         if $mode == "project" then $servers else
           ((.mcpServers // {}) + $servers) | agy_servers
           | with_entries(select(.key as $name | $allowed | index($name)))
@@ -104,9 +106,9 @@ _golem_sync_agy_workspace() {
   if [[ -f "${project_path}/.mcp.json" ]]; then
     project_servers=$(jq -cs '[.[] | .mcpServers // {}]' "${project_path}/.mcp.json" 2>/dev/null) || return 1
   fi
-  servers=$(print -r -- "$registry_servers" | jq -c --argjson project "$project_servers" \
+  servers=$(print -r -- "$registry_servers" "$project_servers" | jq -cs \
     "$(_golem_jq_strip_supabase_token_arg)$(_golem_jq_agy_servers)"'
-      reduce $project[] as $map (.; . + $map) | agy_servers
+      .[0] as $registry | reduce .[1][] as $map ($registry; . + $map) | agy_servers
     ' 2>/dev/null) || return 1
   _golem_agy_write_config "${project_path}/.agents/mcp_config.json" "$servers" project || return 1
 
