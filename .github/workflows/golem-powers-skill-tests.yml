@@ -94,6 +94,7 @@ jobs:
                    ./scripts/tests/repogolem-machines.test.ts \
                    ./scripts/tests/repogolem-secrets.test.ts \
                    ./scripts/tests/repogolem-runtime.test.ts \
+                   ./scripts/tests/repogolem-install.test.ts \
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/tests/hooks-fail-open.test.mjs \
                    ./scripts/tests/install-hooks.test.mjs \

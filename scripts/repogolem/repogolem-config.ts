@@ -54,6 +54,7 @@ import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import Ajv, { type ErrorObject } from "ajv";
 import { parse as parseYaml, parseAllDocuments, stringify as stringifyYaml } from "yaml";
+import { runInstall } from "./repogolem-install";
 import { readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
 import { collectRefs, opResolver, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
@@ -866,6 +867,7 @@ function runInit(argv: string[]) {
 
 function main(argv: string[]) {
   const [command, ...rest] = argv;
+  if (command === "install") return runInstall(rest);
   if (command === "import") return runImport(rest);
   if (command === "generate") return runGenerate(rest);
   if (command === "init") return runInit(rest);
