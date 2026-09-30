@@ -146,8 +146,15 @@ def _kill_matcher_reason(words: list[str], position: int, command_name: str, *, 
     return None
 
 
-def _dangerous_non_rm_in_words(api: dict, words: list[str], position: int = 0) -> str | None:
+def _dangerous_non_rm_in_words(
+    api: dict, words: list[str], position: int = 0, *, _depth: int = 0,
+    _find_cache: dict[tuple[int, int, int], str | None] | None = None,
+) -> str | None:
     """Inspect git/railway only in executable command positions."""
+    if _depth > api['_MAX_WRAPPER_DEPTH']:
+        return api['_wrapper_depth_reason']()
+    if _find_cache is None:
+        _find_cache = {}
     assignment_re = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", re.DOTALL)
     while (
         position < len(words)
@@ -166,7 +173,9 @@ def _dangerous_non_rm_in_words(api: dict, words: list[str], position: int = 0) -
             "-p", "--prompt", "-C", "--close-from", "-a",
         } if command_name == "sudo" else set()
         nested = api['_skip_options'](words, position + 1, option_values)
-        return api['_dangerous_non_rm_in_words'](words, nested)
+        return _dangerous_non_rm_in_words(
+            api, words, nested, _depth=_depth + 1, _find_cache=_find_cache
+        )
 
     if command_name == "env":
         for index in range(position + 1, len(words)):
@@ -184,7 +193,9 @@ def _dangerous_non_rm_in_words(api: dict, words: list[str], position: int = 0) -
                 split_words = shlex.split(split_value)
             except ValueError:
                 return "Dangerous command: env split-string cannot be parsed safely"
-            return api['_dangerous_non_rm_in_words'](split_words + words[remainder:])
+            return _dangerous_non_rm_in_words(
+                api, split_words + words[remainder:], _depth=_depth + 1, _find_cache={}
+            )
         nested = api['_skip_options'](
             words,
             position + 1,
@@ -192,19 +203,25 @@ def _dangerous_non_rm_in_words(api: dict, words: list[str], position: int = 0) -
         )
         while nested < len(words) and assignment_re.match(words[nested]):
             nested += 1
-        return api['_dangerous_non_rm_in_words'](words, nested)
+        return _dangerous_non_rm_in_words(
+            api, words, nested, _depth=_depth + 1, _find_cache=_find_cache
+        )
 
     if command_name == "time":
         nested = api['_skip_options'](
             words, position + 1, {"-o", "--output", "-f", "--format"}
         )
-        return api['_dangerous_non_rm_in_words'](words, nested)
+        return _dangerous_non_rm_in_words(
+            api, words, nested, _depth=_depth + 1, _find_cache=_find_cache
+        )
 
     if command_name == "nice":
         nested = api['_skip_options'](
             words, position + 1, {"-n", "--adjustment"}
         )
-        return api['_dangerous_non_rm_in_words'](words, nested)
+        return _dangerous_non_rm_in_words(
+            api, words, nested, _depth=_depth + 1, _find_cache=_find_cache
+        )
 
     if command_name in {"bash", "sh", "zsh", "dash", "ksh"}:
         for index in range(position + 1, len(words) - 1):
@@ -212,13 +229,24 @@ def _dangerous_non_rm_in_words(api: dict, words: list[str], position: int = 0) -
             if option == "--command" or (
                 option.startswith("-") and not option.startswith("--") and "c" in option[1:]
             ):
-                return api['_dangerous_git_reason'](words[index + 1])
+                return _dangerous_git_reason(
+                    words[index + 1], api=api, _depth=_depth + 1
+                )
         return None
 
     if command_name == "find":
         for index in range(position + 1, len(words)):
             if words[index] in {"-exec", "-execdir"}:
-                reason = api['_dangerous_non_rm_in_words'](words, index + 1)
+                # Do not guess `{}` boundaries from tokens: a literal `-exec`
+                # argument must not hide a later destructive sibling. Cache the
+                # conservative recursive scan so safe nested chains stay bounded.
+                cache_key = (id(words), index + 1, _depth + 1)
+                if cache_key not in _find_cache:
+                    _find_cache[cache_key] = _dangerous_non_rm_in_words(
+                        api, words, index + 1, _depth=_depth + 1,
+                        _find_cache=_find_cache,
+                    )
+                reason = _find_cache[cache_key]
                 if reason:
                     return reason
         return None
@@ -233,7 +261,9 @@ def _dangerous_non_rm_in_words(api: dict, words: list[str], position: int = 0) -
                 "--max-args", "-P", "--max-procs", "-s", "--max-chars",
             },
         )
-        return api['_dangerous_non_rm_in_words'](words, nested)
+        return _dangerous_non_rm_in_words(
+            api, words, nested, _depth=_depth + 1, _find_cache=_find_cache
+        )
 
     if command_name in api['_KILL_MATCHER_COMMANDS']:
         return api['_kill_matcher_reason'](words, position, command_name)
@@ -264,8 +294,10 @@ def _dangerous_non_rm_in_words(api: dict, words: list[str], position: int = 0) -
     return None
 
 
-def _dangerous_git_reason(command: str, *, api: dict) -> str | None:
+def _dangerous_git_reason(command: str, *, api: dict, _depth: int = 0) -> str | None:
     """Find destructive git/railway commands with quote-aware shell segmentation."""
+    if _depth > api['_MAX_WRAPPER_DEPTH']:
+        return api['_wrapper_depth_reason']()
     def lex(shell_text: str) -> list[str]:
         lexer = shlex.shlex(shell_text, posix=True, punctuation_chars=";&|()\n")
         lexer.whitespace = " \t\r"
@@ -290,12 +322,14 @@ def _dangerous_git_reason(command: str, *, api: dict) -> str | None:
         except ValueError:
             # Keep malformed prose in a non-command position quiet, but fail
             # closed for a destructive command at the executable position.
-            return api['_dangerous_non_rm_in_words'](command.split())
+            return _dangerous_non_rm_in_words(api, command.split(), _depth=_depth)
 
     segment: list[str] = []
     for token in tokens + [";"]:
         if token and all(char in ";&|()\n" for char in token):
-            reason = api['_dangerous_non_rm_in_words'](segment)
+            reason = _dangerous_non_rm_in_words(
+                api, segment, _depth=_depth, _find_cache={}
+            )
             if reason:
                 return reason
             segment = []

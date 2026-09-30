@@ -86,7 +86,17 @@ def test_copied_hook_loads_its_own_split_implementation_from_another_cwd(tmp_pat
     assert not (guardian / "git_safety_impl" / "__pycache__").exists()
 
 
-def test_deep_wrappers_block_through_copied_hook_and_fail_open_launcher(tmp_path):
+def _nested_wrapper(kind, depth, tail):
+    if kind in {"sudo", "nice", "xargs"}:
+        return f"{kind} " * depth + tail
+    if kind == "find-exec":
+        return "find . -exec " * depth + tail + " {} +" * depth
+    prefixes = ("sudo ", "nice ", "xargs ", "find . -exec ")
+    command = "".join(prefixes[index % len(prefixes)] for index in range(depth)) + tail
+    return command + " {} +" * sum(index % len(prefixes) == 3 for index in range(depth))
+
+
+def _copied_hook(tmp_path):
     installed = tmp_path / "installed" / "golem-powers"
     installed.mkdir(parents=True)
     guardian = installed / "git-guardian"
@@ -103,19 +113,61 @@ def test_deep_wrappers_block_through_copied_hook_and_fail_open_launcher(tmp_path
     env = {k: v for k, v in os.environ.items()
            if k not in ("GIT_GUARDIAN_LIB", "CLAUDE_WORKER", "PYTHONDONTWRITEBYTECODE", "PYTHONPYCACHEPREFIX")}
     env["HOME"] = str(home)
-    for command, expected in (
-        ("sudo " * 900 + "rm -rf /", "rm targeting root filesystem"),
-        ("nice " * 900 + "git push --force origin main", "git push --force"),
-    ):
+    return guardian, hook, launcher, other_cwd, env
+
+
+def test_wrapper_depth_matrix_blocks_through_copied_hook_and_fail_open_launcher(tmp_path):
+    guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    for kind in ("sudo", "nice", "xargs", "find-exec", "mixed"):
+        for depth in (63, 64, 65, 500, 1000, 5000):
+            for tail in ("rm -rf /", "git push --force origin main", "echo safe"):
+                command = _nested_wrapper(kind, depth, tail)
+                result = subprocess.run(
+                    ["python3", str(launcher), str(hook)], cwd=other_cwd, env=env,
+                    input=json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "session_id": "t"}),
+                    text=True, capture_output=True, check=False,
+                )
+                should_block = tail != "echo safe" or depth > 64
+                assert result.returncode == (2 if should_block else 0), (
+                    kind, depth, tail, result.stdout, result.stderr
+                )
+                if depth > 64:
+                    assert "wrapper nesting exceeds 64" in json.loads(result.stdout)["reason"]
+                assert "golems-fail-open" not in result.stderr
+    assert not (guardian / "git_safety_impl" / "__pycache__").exists()
+
+
+def test_policy_error_blocks_value_free_through_fail_open_launcher(tmp_path):
+    guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    shell = guardian / "git_safety_impl" / "shell.py"
+    with shell.open("a") as handle:
+        handle.write(
+            "\ndef dangerous_shell_reason(command, *, cwd=None, env=None, _depth=0, api=None):\n"
+            "    raise RuntimeError('SENSITIVE POLICY DETAIL')\n"
+        )
+    result = subprocess.run(
+        ["python3", str(launcher), str(hook)], cwd=other_cwd, env=env,
+        input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "echo safe"}, "session_id": "t"}),
+        text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    reason = json.loads(result.stdout)["reason"]
+    assert "security policy could not evaluate command safely" in reason
+    assert "SENSITIVE POLICY DETAIL" not in result.stdout + result.stderr
+    assert "golems-fail-open" not in result.stderr
+
+
+def test_literal_find_exec_argument_cannot_hide_destructive_sibling(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    for tail in ("rm -rf /", "git push --force origin main"):
+        command = f"find . -exec echo -exec {{}} + -exec {tail} {{}} +"
         result = subprocess.run(
             ["python3", str(launcher), str(hook)], cwd=other_cwd, env=env,
             input=json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "session_id": "t"}),
             text=True, capture_output=True, check=False,
         )
-        assert result.returncode == 2, result.stdout + result.stderr
-        assert expected in json.loads(result.stdout)["reason"]
+        assert result.returncode == 2, (tail, result.stdout, result.stderr)
         assert "golems-fail-open" not in result.stderr
-    assert not (guardian / "git_safety_impl" / "__pycache__").exists()
 
 
 # ── GO-5 E2 cleanup ────────────────────────────────────────────────────────────

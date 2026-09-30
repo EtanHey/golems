@@ -6,12 +6,16 @@ Usage (as registered by scripts/hooks/install-hooks.mjs):
 
 Claude Code treats exit 2 as a block, and `python3 missing.py` exits 2, so a
 hook whose file vanished (hooks-live moved, a link dangles) would block every
-matching tool call. This launcher turns every failure that is not the hook's
-own decision into exit 0 plus ONE stderr line:
+matching tool call. This launcher turns every infrastructure or harness failure
+that is not the hook's own decision into exit 0 plus ONE stderr line:
   - target missing            -> exit 0
   - import / syntax / runtime -> exit 0
   - the hook's own sys.exit() -> passed through unchanged (a deliberate block
     stays a block)
+
+Security hooks must catch errors raised by their policy evaluator and convert
+them to a value-free deliberate block before they reach this launcher. The
+launcher cannot safely distinguish a policy error from an unrelated hook crash.
 
 AIDEV-NOTE: this file is installed as a COPY on purpose (every other hook is a
 symlink into hooks-live). It must still run when hooks-live is missing, and it

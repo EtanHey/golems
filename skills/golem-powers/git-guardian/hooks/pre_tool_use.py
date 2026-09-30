@@ -77,7 +77,10 @@ def classify_tool(tool_name, tool_input):
     # Bash commands need deeper inspection
     if tool_name == "Bash":
         raw_command = tool_input.get("command", "")
-        guardian_reason = dangerous_shell_reason(raw_command)
+        try:
+            guardian_reason = dangerous_shell_reason(raw_command)
+        except Exception:  # policy uncertainty must never become fail-open allow
+            return "RED", "security policy could not evaluate command safely"
         if guardian_reason:
             reason = (
                 guardian_reason

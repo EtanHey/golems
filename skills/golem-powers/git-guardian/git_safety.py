@@ -1,7 +1,6 @@
 """Import-stable git-guardian facade; policy lives in git_safety_impl."""
 from __future__ import annotations
 
-import functools
 import hashlib
 import importlib
 import importlib.util
@@ -52,6 +51,11 @@ for _module, _names in (
 _FILE_REDIRECT_RE = re.compile(r"(?<![<>])(?:>>|>)(?![>&])")
 _ASSIGNMENT_RE = re.compile(r"(?:^|[;&\n]\s*)([A-Za-z_][A-Za-z0-9_]*)=" r"(?:\"([^\"]*)\"|'([^']*)'|([^\s;&]+))")
 _SHELL_CONTROL_PREFIXES = {"!", "if", "then", "elif", "else", "while", "until", "do", "fi", "done"}
+_MAX_WRAPPER_DEPTH = 64
+
+
+def _wrapper_depth_reason() -> str:
+    return f"wrapper nesting exceeds {_MAX_WRAPPER_DEPTH}; refusing to evaluate"
 
 def pr_body_is_empty(body: str | None) -> bool:
     return _git.pr_body_is_empty(body, api=globals())
@@ -81,8 +85,27 @@ def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str |
         gitfile_owner_fn=_gitfile_owner, within_fn=_within, is_harness_scratchpad_fn=is_harness_scratchpad,
     )
 
-_rm_reason_in_words = functools.partial(_rm._rm_reason_in_words, globals())
-is_dangerous_rm = functools.partial(_rm.is_dangerous_rm, globals())
+def _rm_reason_in_words(
+    words: list[str], position: int, cwd: str, variables: dict[str, str],
+    *, dynamic_input: bool = False, argument_variables: dict[str, str] | None = None,
+) -> str | None:
+    return _rm._rm_reason_in_words(
+        globals(), words, position, cwd, variables, dynamic_input=dynamic_input,
+        argument_variables=argument_variables, _depth=0,
+    )
+
+
+def _is_dangerous_rm_at_depth(
+    command: str, *, cwd: str | None = None, env=None, _depth: int,
+):
+    return _rm.is_dangerous_rm(globals(), command, cwd=cwd, env=env, _depth=_depth)
+
+
+def is_dangerous_rm(command: str, *, cwd: str | None = None, env=None):
+    try:
+        return _is_dangerous_rm_at_depth(command, cwd=cwd, env=env, _depth=0)
+    except RecursionError:
+        return True, _wrapper_depth_reason()
 
 def _degenerate_kill_pattern(pattern: str) -> bool:
     return _commands._degenerate_kill_pattern(pattern, api=globals())
@@ -90,12 +113,18 @@ def _degenerate_kill_pattern(pattern: str) -> bool:
 def _kill_matcher_reason(words: list[str], position: int, command_name: str) -> str | None:
     return _commands._kill_matcher_reason(words, position, command_name, api=globals())
 
-_dangerous_non_rm_in_words = functools.partial(
-    _commands._dangerous_non_rm_in_words, globals()
-)
+def _dangerous_non_rm_in_words(words: list[str], position: int = 0) -> str | None:
+    return _commands._dangerous_non_rm_in_words(globals(), words, position, _depth=0)
+
+
+def _dangerous_git_reason_at_depth(command: str, *, _depth: int) -> str | None:
+    return _commands._dangerous_git_reason(command, api=globals(), _depth=_depth)
 
 def _dangerous_git_reason(command: str) -> str | None:
-    return _commands._dangerous_git_reason(command, api=globals())
+    try:
+        return _dangerous_git_reason_at_depth(command, _depth=0)
+    except RecursionError:
+        return _wrapper_depth_reason()
 
 def _literal_loop(command: str):
     return _shell._literal_loop(command, api=globals())
@@ -104,4 +133,7 @@ def _executed_payloads(command: str, active: str) -> list[str]:
     return _payloads._executed_payloads(command, active, api=globals())
 
 def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _depth: int = 0):
-    return _shell.dangerous_shell_reason(command, cwd=cwd, env=env, _depth=_depth, api=globals())
+    try:
+        return _shell.dangerous_shell_reason(command, cwd=cwd, env=env, _depth=_depth, api=globals())
+    except RecursionError:
+        return _wrapper_depth_reason()
