@@ -4,7 +4,8 @@
 //   import   --registry <registry.json> --seats <config.yaml> --out <path>
 //            [--drop-cli <cli>]... [--write [--force]]
 //   generate [--config <config.yaml>] [--out-dir <dir>] [--home <dir>]
-//            [--host <LocalHostName>] [--check]
+//            [--host <LocalHostName>] [--check | --check-refs [--no-prompt]]
+// --check-refs allows Touch ID; --no-prompt disables it for automation.
 //   init     [--config <path>] [--host <LocalHostName>] [--force]
 //
 // --config defaults to $REPOGOLEM_CONFIG, --out-dir to
@@ -59,6 +60,7 @@ import { runInstall } from "./repogolem-install";
 import { readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
 import { collectRefs, opResolver, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
+import { checkRefs } from "./repogolem-check-refs";
 
 const GENERATOR_ID = "golems/scripts/repogolem/repogolem-config.ts";
 const EXAMPLE_PATH = join(import.meta.dir, "config.example.yaml");
@@ -795,12 +797,24 @@ function checkOutputs(configText: string, outDir: string, home: string, host: ()
 }
 
 function runGenerate(argv: string[]) {
-  const args = parseArgs(argv, ["check"], ["config", "out-dir", "home", "host", "secrets-from"]);
+  const args = parseArgs(argv, ["check", "check-refs", "no-prompt", "help"], ["config", "out-dir", "home", "host", "secrets-from"]);
+  if (args.help) {
+    console.log("usage: repogolem generate [--config PATH] [--host HOST] [--check | --check-refs [--no-prompt]]");
+    console.log("--check-refs checks vault/item metadata, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Each call is bounded to 15 seconds.");
+    return 0;
+  }
+  if (args["no-prompt"] && !args["check-refs"]) fail("--no-prompt requires --check-refs");
   const config = configPath(args);
   const configText = readFileSync(config, "utf8");
   const home = typeof args.home === "string" ? args.home : homedir();
   const outDir = typeof args["out-dir"] === "string" ? args["out-dir"] : join(homedir(), ".config", "repogolem", "generated");
   const host = hostFrom(args);
+
+  if (args["check-refs"]) {
+    if (args.check || args["secrets-from"]) fail("--check-refs cannot be combined with --check or --secrets-from");
+    const { config: effective } = resolveConfig(configText, host);
+    return checkRefs(collectRefs(effective), process.env.REPOGOLEM_OP_BIN || "op", args["no-prompt"] === true);
+  }
 
   if (args.check) {
     const stale = checkOutputs(configText, outDir, home, host);
@@ -876,7 +890,7 @@ function main(argv: string[]) {
   fail("usage: repogolem-config.ts import|generate|init [options] (see the header comment)");
 }
 
-// Exit codes: 0 ok · 1 stale (generate --check) · 2 any error. An unreadable
+// Exit codes: 0 ok · 1 stale (--check) · 2 error/missing refs · 3 not signed in (--check-refs). An unreadable
 // or unparseable input must never exit 1, or a --check caller reads it as stale.
 if (import.meta.main) {
   try {

@@ -10,6 +10,34 @@
 #                  checks and before its writes (race regressions)
 set -euo pipefail
 [[ -n "${FAKE_OP_LOG:-}" ]] && printf '%s\n' "$*" >>"$FAKE_OP_LOG"
+if [[ "${1:-}" != run ]]; then
+  [[ -n "${FAKE_OP_HANG:-}" ]] && exec sleep 60
+  [[ -n "${FAKE_OP_REQUIRE_DESKTOP:-}" ]] && [[ "${OP_BIOMETRIC_UNLOCK_ENABLED:-}" != true ]] && exit 8
+  if [[ -n "${FAKE_OP_REQUIRE_NONINTERACTIVE:-}" ]]; then
+    [[ "${OP_BIOMETRIC_UNLOCK_ENABLED:-}" == false ]] || exit 8
+    if IFS= read -r ignored; then exit 9; fi
+  fi
+  [[ -n "${FAKE_OP_UNSIGNED:-}" ]] && { echo "not signed in ${FAKE_OP_CANARY:-}" >&2; exit 1; }
+  case "${1:-} ${2:-}" in
+    "whoami --format") printf '%s\n' '{"id":"synthetic-account"}' ;;
+    "vault list")
+      if [[ "${FAKE_OP_MISSING_VAULT:-}" == example-vault ]]; then printf '%s\n' '[]'
+      else
+        fake_vaults='[{"id":"synthetic-vault","name":"example-vault"}]'
+        printf '%s\n' "${FAKE_OP_VAULTS:-$fake_vaults}"; fi ;;
+    "item list")
+      if [[ -n "${FAKE_OP_MISSING_ITEM:-}" ]]; then printf '%s\n' '[]'
+      elif [[ -n "${FAKE_OP_ARCHIVED_ID:-}" && " $* " == *" --include-archive "* ]]; then
+        printf '%s\n' '[{"id":"synthetic-item","title":"example-item"},{"id":"archived-item-id","title":"archived-title"}]'
+      elif [[ -n "${FAKE_OP_ITEMS:-}" ]]; then printf '%s\n' "$FAKE_OP_ITEMS"
+      else printf '[{"id":"synthetic-item","title":"example-item","fields":[{"value":"%s"}]}]\n' "${FAKE_OP_CANARY:-synthetic-value}"; fi ;;
+    "item get")
+      [[ "${FAKE_OP_MISSING_ITEM:-}" == "${5:-}" ]] && { echo "missing ${FAKE_OP_CANARY:-}" >&2; exit 1; }
+      printf '{"fields":[{"value":"%s"}]}\n' "${FAKE_OP_CANARY:-synthetic-value}" ;;
+    *) exit 3 ;;
+  esac
+  exit 0
+fi
 [[ "${1:-}" == run ]] || { echo "fake-op: only 'run' is supported" >&2; exit 3; }
 shift
 while [[ $# -gt 0 && "$1" != -- ]]; do shift; done
