@@ -86,3 +86,16 @@ skills/golem-powers/google-drive-archive/SKILL.md
 # scripts/cc/ needs exact entries.
 scripts/cc/cc-usage/__tests__/claude-parser.test.ts
 scripts/cc/cc-usage/__tests__/codex-parser.test.ts
+
+# Relocated unchanged synthetic fixtures; retain old path history coverage.
+# Classes: publication-operational-data
+skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases01.py
+# Relocated unchanged synthetic fixtures; retain old path history coverage.
+# Classes: publication-operational-data
+skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases04.py
+# Relocated unchanged synthetic fixtures; retain old path history coverage.
+# Classes: publication-operational-data
+skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py
+# Relocated unchanged synthetic fixtures; retain old path history coverage.
+# Classes: publication-operational-data
+skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/common.py
