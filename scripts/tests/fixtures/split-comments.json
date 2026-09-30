@@ -1,0 +1,3466 @@
+{
+  "format": "Whole-line comments stripped of surrounding whitespace and sha256 hashed. Immutable assignments: [original comment index, split comment index, nonblank code lines after comment]. Live files: per-file text hash occurrence counts. Node aliases record mechanical wrapper changes only. Inline trailing comments are out of scope.",
+  "transitions": [
+    {
+      "original_path": "skills/golem-powers/tmp-block/hooks/tests/test_tmp_block.py",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/__init__.py",
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases01.py",
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases02.py",
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases03.py",
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases04.py",
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py",
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases06.py",
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/common.py",
+        "skills/golem-powers/tmp-block/hooks/tests/test_tmp_block.py"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/__init__.py": [],
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases01.py": [
+          [
+            2,
+            0,
+            564
+          ],
+          [
+            3,
+            1,
+            515
+          ],
+          [
+            4,
+            2,
+            448
+          ],
+          [
+            5,
+            3,
+            433
+          ],
+          [
+            6,
+            4,
+            407
+          ],
+          [
+            7,
+            5,
+            375
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases02.py": [],
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases03.py": [],
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases04.py": [
+          [
+            8,
+            0,
+            309
+          ],
+          [
+            9,
+            1,
+            284
+          ],
+          [
+            10,
+            2,
+            277
+          ],
+          [
+            11,
+            3,
+            269
+          ],
+          [
+            12,
+            4,
+            268
+          ],
+          [
+            13,
+            5,
+            263
+          ],
+          [
+            14,
+            6,
+            248
+          ],
+          [
+            15,
+            7,
+            235
+          ],
+          [
+            16,
+            8,
+            12
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py": [
+          [
+            28,
+            0,
+            177
+          ],
+          [
+            29,
+            1,
+            177
+          ],
+          [
+            30,
+            2,
+            177
+          ],
+          [
+            31,
+            3,
+            100
+          ],
+          [
+            32,
+            4,
+            100
+          ],
+          [
+            33,
+            5,
+            99
+          ],
+          [
+            34,
+            6,
+            99
+          ],
+          [
+            35,
+            7,
+            99
+          ],
+          [
+            36,
+            8,
+            99
+          ],
+          [
+            37,
+            9,
+            99
+          ],
+          [
+            38,
+            10,
+            96
+          ],
+          [
+            39,
+            11,
+            96
+          ],
+          [
+            40,
+            12,
+            16
+          ],
+          [
+            41,
+            13,
+            16
+          ],
+          [
+            42,
+            14,
+            16
+          ],
+          [
+            43,
+            15,
+            9
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases06.py": [
+          [
+            52,
+            0,
+            31
+          ],
+          [
+            53,
+            1,
+            31
+          ],
+          [
+            56,
+            2,
+            14
+          ],
+          [
+            57,
+            3,
+            14
+          ],
+          [
+            58,
+            4,
+            14
+          ],
+          [
+            59,
+            5,
+            3
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/common.py": [
+          [
+            0,
+            0,
+            132
+          ],
+          [
+            1,
+            1,
+            64
+          ],
+          [
+            17,
+            2,
+            16
+          ],
+          [
+            18,
+            3,
+            16
+          ],
+          [
+            19,
+            4,
+            16
+          ],
+          [
+            20,
+            5,
+            16
+          ],
+          [
+            21,
+            6,
+            16
+          ],
+          [
+            22,
+            7,
+            16
+          ],
+          [
+            23,
+            8,
+            16
+          ],
+          [
+            24,
+            9,
+            16
+          ],
+          [
+            25,
+            10,
+            16
+          ],
+          [
+            26,
+            11,
+            16
+          ],
+          [
+            27,
+            12,
+            16
+          ],
+          [
+            44,
+            13,
+            15
+          ],
+          [
+            45,
+            14,
+            15
+          ],
+          [
+            46,
+            15,
+            15
+          ],
+          [
+            47,
+            16,
+            15
+          ],
+          [
+            48,
+            17,
+            15
+          ],
+          [
+            49,
+            18,
+            15
+          ],
+          [
+            50,
+            19,
+            15
+          ],
+          [
+            51,
+            20,
+            15
+          ],
+          [
+            54,
+            21,
+            10
+          ],
+          [
+            55,
+            22,
+            10
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tests/test_tmp_block.py": []
+      }
+    },
+    {
+      "original_path": "skills/golem-powers/git-guardian/tests/test_git_safety.py",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/__init__.py",
+        "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/cases01.py",
+        "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/cases02.py",
+        "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/common.py",
+        "skills/golem-powers/git-guardian/tests/test_git_safety.py"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/__init__.py": [],
+        "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/cases01.py": [
+          [
+            0,
+            0,
+            363
+          ],
+          [
+            1,
+            1,
+            131
+          ],
+          [
+            2,
+            2,
+            130
+          ],
+          [
+            3,
+            3,
+            120
+          ],
+          [
+            4,
+            4,
+            114
+          ],
+          [
+            5,
+            5,
+            108
+          ],
+          [
+            6,
+            6,
+            107
+          ],
+          [
+            7,
+            7,
+            106
+          ],
+          [
+            8,
+            8,
+            104
+          ],
+          [
+            9,
+            9,
+            102
+          ],
+          [
+            10,
+            10,
+            100
+          ],
+          [
+            11,
+            11,
+            97
+          ],
+          [
+            12,
+            12,
+            94
+          ],
+          [
+            13,
+            13,
+            92
+          ],
+          [
+            14,
+            14,
+            91
+          ],
+          [
+            15,
+            15,
+            86
+          ],
+          [
+            16,
+            16,
+            81
+          ],
+          [
+            17,
+            17,
+            73
+          ],
+          [
+            18,
+            18,
+            70
+          ],
+          [
+            19,
+            19,
+            66
+          ],
+          [
+            20,
+            20,
+            62
+          ],
+          [
+            21,
+            21,
+            57
+          ],
+          [
+            22,
+            22,
+            57
+          ],
+          [
+            23,
+            23,
+            48
+          ],
+          [
+            24,
+            24,
+            39
+          ],
+          [
+            25,
+            25,
+            39
+          ],
+          [
+            26,
+            26,
+            35
+          ],
+          [
+            27,
+            27,
+            33
+          ],
+          [
+            28,
+            28,
+            28
+          ],
+          [
+            29,
+            29,
+            28
+          ],
+          [
+            34,
+            30,
+            20
+          ],
+          [
+            35,
+            31,
+            20
+          ],
+          [
+            36,
+            32,
+            20
+          ],
+          [
+            37,
+            33,
+            15
+          ],
+          [
+            38,
+            34,
+            10
+          ],
+          [
+            39,
+            35,
+            4
+          ],
+          [
+            40,
+            36,
+            4
+          ]
+        ],
+        "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/cases02.py": [
+          [
+            41,
+            0,
+            373
+          ],
+          [
+            42,
+            1,
+            373
+          ],
+          [
+            43,
+            2,
+            373
+          ],
+          [
+            44,
+            3,
+            373
+          ],
+          [
+            45,
+            4,
+            363
+          ],
+          [
+            46,
+            5,
+            358
+          ],
+          [
+            47,
+            6,
+            358
+          ],
+          [
+            48,
+            7,
+            348
+          ],
+          [
+            49,
+            8,
+            348
+          ],
+          [
+            50,
+            9,
+            334
+          ],
+          [
+            51,
+            10,
+            334
+          ],
+          [
+            52,
+            11,
+            320
+          ],
+          [
+            53,
+            12,
+            320
+          ],
+          [
+            54,
+            13,
+            310
+          ],
+          [
+            55,
+            14,
+            310
+          ],
+          [
+            56,
+            15,
+            310
+          ],
+          [
+            57,
+            16,
+            310
+          ],
+          [
+            58,
+            17,
+            304
+          ],
+          [
+            59,
+            18,
+            296
+          ],
+          [
+            60,
+            19,
+            296
+          ],
+          [
+            61,
+            20,
+            291
+          ],
+          [
+            62,
+            21,
+            291
+          ],
+          [
+            63,
+            22,
+            287
+          ],
+          [
+            64,
+            23,
+            283
+          ],
+          [
+            65,
+            24,
+            283
+          ],
+          [
+            66,
+            25,
+            283
+          ],
+          [
+            67,
+            26,
+            283
+          ],
+          [
+            68,
+            27,
+            273
+          ],
+          [
+            69,
+            28,
+            269
+          ],
+          [
+            70,
+            29,
+            268
+          ],
+          [
+            71,
+            30,
+            268
+          ],
+          [
+            72,
+            31,
+            268
+          ],
+          [
+            73,
+            32,
+            254
+          ],
+          [
+            74,
+            33,
+            254
+          ],
+          [
+            75,
+            34,
+            246
+          ],
+          [
+            76,
+            35,
+            240
+          ],
+          [
+            77,
+            36,
+            240
+          ],
+          [
+            83,
+            37,
+            197
+          ],
+          [
+            84,
+            38,
+            196
+          ],
+          [
+            85,
+            39,
+            185
+          ],
+          [
+            86,
+            40,
+            181
+          ],
+          [
+            87,
+            41,
+            181
+          ],
+          [
+            88,
+            42,
+            178
+          ],
+          [
+            89,
+            43,
+            166
+          ],
+          [
+            90,
+            44,
+            160
+          ],
+          [
+            91,
+            45,
+            160
+          ],
+          [
+            92,
+            46,
+            154
+          ],
+          [
+            93,
+            47,
+            154
+          ],
+          [
+            94,
+            48,
+            154
+          ],
+          [
+            95,
+            49,
+            154
+          ],
+          [
+            96,
+            50,
+            154
+          ],
+          [
+            97,
+            51,
+            151
+          ],
+          [
+            98,
+            52,
+            134
+          ],
+          [
+            99,
+            53,
+            134
+          ],
+          [
+            100,
+            54,
+            124
+          ],
+          [
+            101,
+            55,
+            107
+          ],
+          [
+            102,
+            56,
+            107
+          ],
+          [
+            103,
+            57,
+            107
+          ],
+          [
+            106,
+            58,
+            93
+          ]
+        ],
+        "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/common.py": [
+          [
+            30,
+            0,
+            71
+          ],
+          [
+            31,
+            1,
+            71
+          ],
+          [
+            32,
+            2,
+            71
+          ],
+          [
+            33,
+            3,
+            71
+          ],
+          [
+            78,
+            4,
+            57
+          ],
+          [
+            79,
+            5,
+            57
+          ],
+          [
+            80,
+            6,
+            57
+          ],
+          [
+            81,
+            7,
+            56
+          ],
+          [
+            82,
+            8,
+            56
+          ],
+          [
+            104,
+            9,
+            52
+          ],
+          [
+            105,
+            10,
+            52
+          ],
+          [
+            107,
+            11,
+            4
+          ],
+          [
+            108,
+            12,
+            4
+          ],
+          [
+            109,
+            13,
+            4
+          ]
+        ],
+        "skills/golem-powers/git-guardian/tests/test_git_safety.py": []
+      }
+    },
+    {
+      "original_path": "skills/golem-powers/tmp-block/tests/test_worktree_anchor.py",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/__init__.py",
+        "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/cases01.py",
+        "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/cases02.py",
+        "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/common.py",
+        "skills/golem-powers/tmp-block/tests/test_worktree_anchor.py"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/__init__.py": [],
+        "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/cases01.py": [
+          [
+            2,
+            0,
+            421
+          ],
+          [
+            3,
+            1,
+            249
+          ],
+          [
+            4,
+            2,
+            198
+          ],
+          [
+            5,
+            3,
+            143
+          ],
+          [
+            6,
+            4,
+            51
+          ],
+          [
+            7,
+            5,
+            51
+          ]
+        ],
+        "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/cases02.py": [],
+        "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/common.py": [
+          [
+            0,
+            0,
+            59
+          ],
+          [
+            1,
+            1,
+            59
+          ]
+        ],
+        "skills/golem-powers/tmp-block/tests/test_worktree_anchor.py": []
+      }
+    },
+    {
+      "original_path": "skills/golem-powers/codex-workflows/tests/test_codex_workflows.py",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/__init__.py",
+        "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/cases01.py",
+        "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/cases02.py",
+        "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/common.py",
+        "skills/golem-powers/codex-workflows/tests/test_codex_workflows.py"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {
+        "0": {
+          "following": "19ab22dcbde509b9cff9b939a51ea008e4b3ef758fd1fadb5e3f304368af540b",
+          "reason": "Python entry adds the mechanical-split docstring before imports"
+        }
+      },
+      "assignments": {
+        "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/__init__.py": [],
+        "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/cases01.py": [],
+        "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/cases02.py": [],
+        "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/common.py": [],
+        "skills/golem-powers/codex-workflows/tests/test_codex_workflows.py": [
+          [
+            0,
+            0,
+            8
+          ]
+        ]
+      }
+    },
+    {
+      "original_path": "skills/golem-powers/audio-dashboard/evals/audio-dashboard.test.mjs",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases01.mjs",
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases02.mjs",
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases03.mjs",
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases04.mjs",
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/common.mjs",
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard.test.mjs"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases01.mjs": [],
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases02.mjs": [],
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases03.mjs": [],
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases04.mjs": [
+          [
+            6,
+            0,
+            144
+          ],
+          [
+            7,
+            1,
+            139
+          ],
+          [
+            8,
+            2,
+            135
+          ],
+          [
+            9,
+            3,
+            134
+          ],
+          [
+            10,
+            4,
+            86
+          ],
+          [
+            11,
+            5,
+            78
+          ],
+          [
+            12,
+            6,
+            76
+          ]
+        ],
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/common.mjs": [
+          [
+            0,
+            0,
+            219
+          ],
+          [
+            1,
+            1,
+            219
+          ],
+          [
+            2,
+            2,
+            219
+          ],
+          [
+            3,
+            3,
+            219
+          ],
+          [
+            4,
+            4,
+            219
+          ],
+          [
+            5,
+            5,
+            219
+          ]
+        ],
+        "skills/golem-powers/audio-dashboard/evals/audio-dashboard.test.mjs": []
+      }
+    },
+    {
+      "original_path": "skills/golem-powers/drive-filing/scripts/rollup.test.mjs",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "skills/golem-powers/drive-filing/scripts/rollup-test-parts/cases01.mjs",
+        "skills/golem-powers/drive-filing/scripts/rollup-test-parts/cases02.mjs",
+        "skills/golem-powers/drive-filing/scripts/rollup-test-parts/common.mjs",
+        "skills/golem-powers/drive-filing/scripts/rollup.test.mjs"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/drive-filing/scripts/rollup-test-parts/cases01.mjs": [
+          [
+            2,
+            0,
+            500
+          ],
+          [
+            3,
+            1,
+            500
+          ],
+          [
+            4,
+            2,
+            442
+          ],
+          [
+            5,
+            3,
+            442
+          ],
+          [
+            6,
+            4,
+            442
+          ],
+          [
+            7,
+            5,
+            274
+          ],
+          [
+            8,
+            6,
+            178
+          ],
+          [
+            9,
+            7,
+            177
+          ],
+          [
+            10,
+            8,
+            104
+          ],
+          [
+            11,
+            9,
+            104
+          ],
+          [
+            12,
+            10,
+            89
+          ],
+          [
+            13,
+            11,
+            81
+          ],
+          [
+            14,
+            12,
+            81
+          ],
+          [
+            15,
+            13,
+            76
+          ],
+          [
+            16,
+            14,
+            76
+          ]
+        ],
+        "skills/golem-powers/drive-filing/scripts/rollup-test-parts/cases02.mjs": [
+          [
+            17,
+            0,
+            193
+          ],
+          [
+            18,
+            1,
+            193
+          ],
+          [
+            19,
+            2,
+            193
+          ],
+          [
+            20,
+            3,
+            193
+          ],
+          [
+            21,
+            4,
+            193
+          ],
+          [
+            22,
+            5,
+            147
+          ],
+          [
+            23,
+            6,
+            79
+          ],
+          [
+            24,
+            7,
+            79
+          ]
+        ],
+        "skills/golem-powers/drive-filing/scripts/rollup-test-parts/common.mjs": [
+          [
+            0,
+            0,
+            38
+          ],
+          [
+            1,
+            1,
+            31
+          ]
+        ],
+        "skills/golem-powers/drive-filing/scripts/rollup.test.mjs": []
+      }
+    },
+    {
+      "original_path": "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate.test.mjs",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/cases01.mjs",
+        "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/cases02.mjs",
+        "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/common.mjs",
+        "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate.test.mjs"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/cases01.mjs": [],
+        "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/cases02.mjs": [],
+        "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/common.mjs": [
+          [
+            0,
+            0,
+            43
+          ],
+          [
+            1,
+            1,
+            43
+          ],
+          [
+            2,
+            2,
+            43
+          ],
+          [
+            3,
+            3,
+            43
+          ],
+          [
+            4,
+            4,
+            43
+          ],
+          [
+            5,
+            5,
+            28
+          ],
+          [
+            6,
+            6,
+            16
+          ],
+          [
+            7,
+            7,
+            16
+          ],
+          [
+            8,
+            8,
+            16
+          ],
+          [
+            9,
+            9,
+            6
+          ]
+        ],
+        "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate.test.mjs": []
+      }
+    },
+    {
+      "original_path": "scripts/tests/check-publish-boundary.test.sh",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "scripts/tests/check-publish-boundary.test-parts/part-01.bash",
+        "scripts/tests/check-publish-boundary.test-parts/part-02.bash",
+        "scripts/tests/check-publish-boundary.test.sh"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "scripts/tests/check-publish-boundary.test-parts/part-01.bash": [
+          [
+            1,
+            0,
+            493
+          ],
+          [
+            2,
+            1,
+            493
+          ],
+          [
+            3,
+            2,
+            402
+          ],
+          [
+            4,
+            3,
+            288
+          ],
+          [
+            5,
+            4,
+            288
+          ],
+          [
+            6,
+            5,
+            262
+          ],
+          [
+            7,
+            6,
+            262
+          ],
+          [
+            8,
+            7,
+            235
+          ],
+          [
+            9,
+            8,
+            210
+          ],
+          [
+            10,
+            9,
+            148
+          ]
+        ],
+        "scripts/tests/check-publish-boundary.test-parts/part-02.bash": [
+          [
+            11,
+            0,
+            388
+          ],
+          [
+            12,
+            1,
+            181
+          ],
+          [
+            13,
+            2,
+            181
+          ],
+          [
+            14,
+            3,
+            181
+          ],
+          [
+            15,
+            4,
+            124
+          ]
+        ],
+        "scripts/tests/check-publish-boundary.test.sh": [
+          [
+            0,
+            0,
+            19
+          ]
+        ]
+      }
+    },
+    {
+      "original_path": "skills/golem-powers/collab-monitor/evals/run-evals.sh",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "skills/golem-powers/collab-monitor/evals/run-evals-parts/candidate-01.bash",
+        "skills/golem-powers/collab-monitor/evals/run-evals-parts/candidate-02.bash",
+        "skills/golem-powers/collab-monitor/evals/run-evals.sh"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/collab-monitor/evals/run-evals-parts/candidate-01.bash": [],
+        "skills/golem-powers/collab-monitor/evals/run-evals-parts/candidate-02.bash": [],
+        "skills/golem-powers/collab-monitor/evals/run-evals.sh": [
+          [
+            0,
+            0,
+            161
+          ]
+        ]
+      }
+    },
+    {
+      "original_path": "scripts/tests/test-process-stream-agy-cli.bats",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "scripts/tests/test-process-stream-agy-cli-parts/cases-01.bash",
+        "scripts/tests/test-process-stream-agy-cli-parts/cases-02.bash",
+        "scripts/tests/test-process-stream-agy-cli-parts/setup.bash",
+        "scripts/tests/test-process-stream-agy-cli.bats"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "scripts/tests/test-process-stream-agy-cli-parts/cases-01.bash": [
+          [
+            43,
+            0,
+            545
+          ],
+          [
+            44,
+            1,
+            545
+          ],
+          [
+            45,
+            2,
+            545
+          ],
+          [
+            46,
+            3,
+            545
+          ],
+          [
+            47,
+            4,
+            489
+          ],
+          [
+            48,
+            5,
+            440
+          ],
+          [
+            49,
+            6,
+            440
+          ],
+          [
+            50,
+            7,
+            438
+          ],
+          [
+            51,
+            8,
+            432
+          ],
+          [
+            52,
+            9,
+            428
+          ],
+          [
+            53,
+            10,
+            428
+          ],
+          [
+            54,
+            11,
+            426
+          ],
+          [
+            55,
+            12,
+            421
+          ],
+          [
+            56,
+            13,
+            421
+          ],
+          [
+            57,
+            14,
+            421
+          ],
+          [
+            58,
+            15,
+            412
+          ],
+          [
+            59,
+            16,
+            412
+          ],
+          [
+            60,
+            17,
+            412
+          ],
+          [
+            61,
+            18,
+            381
+          ],
+          [
+            62,
+            19,
+            337
+          ],
+          [
+            63,
+            20,
+            337
+          ],
+          [
+            64,
+            21,
+            337
+          ],
+          [
+            65,
+            22,
+            331
+          ],
+          [
+            66,
+            23,
+            251
+          ],
+          [
+            67,
+            24,
+            231
+          ]
+        ],
+        "scripts/tests/test-process-stream-agy-cli-parts/cases-02.bash": [
+          [
+            68,
+            0,
+            337
+          ],
+          [
+            69,
+            1,
+            317
+          ],
+          [
+            70,
+            2,
+            317
+          ],
+          [
+            71,
+            3,
+            314
+          ],
+          [
+            72,
+            4,
+            271
+          ],
+          [
+            73,
+            5,
+            271
+          ],
+          [
+            74,
+            6,
+            221
+          ],
+          [
+            75,
+            7,
+            204
+          ],
+          [
+            76,
+            8,
+            183
+          ],
+          [
+            77,
+            9,
+            175
+          ],
+          [
+            78,
+            10,
+            157
+          ],
+          [
+            79,
+            11,
+            124
+          ],
+          [
+            80,
+            12,
+            121
+          ],
+          [
+            81,
+            13,
+            107
+          ],
+          [
+            82,
+            14,
+            80
+          ],
+          [
+            83,
+            15,
+            77
+          ],
+          [
+            84,
+            16,
+            64
+          ],
+          [
+            85,
+            17,
+            21
+          ],
+          [
+            86,
+            18,
+            17
+          ]
+        ],
+        "scripts/tests/test-process-stream-agy-cli-parts/setup.bash": [
+          [
+            0,
+            0,
+            496
+          ],
+          [
+            1,
+            1,
+            496
+          ],
+          [
+            2,
+            2,
+            496
+          ],
+          [
+            3,
+            3,
+            483
+          ],
+          [
+            4,
+            4,
+            482
+          ],
+          [
+            5,
+            5,
+            478
+          ],
+          [
+            6,
+            6,
+            463
+          ],
+          [
+            7,
+            7,
+            455
+          ],
+          [
+            8,
+            8,
+            430
+          ],
+          [
+            9,
+            9,
+            430
+          ],
+          [
+            10,
+            10,
+            426
+          ],
+          [
+            11,
+            11,
+            395
+          ],
+          [
+            12,
+            12,
+            395
+          ],
+          [
+            13,
+            13,
+            372
+          ],
+          [
+            14,
+            14,
+            372
+          ],
+          [
+            15,
+            15,
+            336
+          ],
+          [
+            16,
+            16,
+            336
+          ],
+          [
+            17,
+            17,
+            313
+          ],
+          [
+            18,
+            18,
+            313
+          ],
+          [
+            19,
+            19,
+            282
+          ],
+          [
+            20,
+            20,
+            282
+          ],
+          [
+            21,
+            21,
+            252
+          ],
+          [
+            22,
+            22,
+            252
+          ],
+          [
+            23,
+            23,
+            221
+          ],
+          [
+            24,
+            24,
+            221
+          ],
+          [
+            25,
+            25,
+            191
+          ],
+          [
+            26,
+            26,
+            191
+          ],
+          [
+            27,
+            27,
+            161
+          ],
+          [
+            28,
+            28,
+            161
+          ],
+          [
+            29,
+            29,
+            129
+          ],
+          [
+            30,
+            30,
+            129
+          ],
+          [
+            31,
+            31,
+            108
+          ],
+          [
+            32,
+            32,
+            108
+          ],
+          [
+            33,
+            33,
+            107
+          ],
+          [
+            34,
+            34,
+            106
+          ],
+          [
+            35,
+            35,
+            105
+          ],
+          [
+            36,
+            36,
+            104
+          ],
+          [
+            37,
+            37,
+            98
+          ],
+          [
+            38,
+            38,
+            49
+          ],
+          [
+            39,
+            39,
+            37
+          ],
+          [
+            40,
+            40,
+            21
+          ],
+          [
+            41,
+            41,
+            15
+          ],
+          [
+            42,
+            42,
+            4
+          ]
+        ],
+        "scripts/tests/test-process-stream-agy-cli.bats": []
+      }
+    },
+    {
+      "original_path": "scripts/tests/test-stalker-durable-failures.bats",
+      "pre_split_sha": "8704f207dcdb2bd44af554ff91ca4b56c7c9a658",
+      "parts": [
+        "scripts/tests/test-stalker-durable-failures-parts/cases-01.bash",
+        "scripts/tests/test-stalker-durable-failures-parts/cases-02.bash",
+        "scripts/tests/test-stalker-durable-failures-parts/setup.bash",
+        "scripts/tests/test-stalker-durable-failures.bats"
+      ],
+      "split_sha": "baba09ececebf17e9864af85470a59a2a2e1b256",
+      "node_aliases": {},
+      "assignments": {
+        "scripts/tests/test-stalker-durable-failures-parts/cases-01.bash": [
+          [
+            11,
+            0,
+            430
+          ],
+          [
+            12,
+            1,
+            426
+          ],
+          [
+            13,
+            2,
+            395
+          ],
+          [
+            14,
+            3,
+            395
+          ],
+          [
+            15,
+            4,
+            395
+          ],
+          [
+            16,
+            5,
+            395
+          ],
+          [
+            17,
+            6,
+            395
+          ],
+          [
+            18,
+            7,
+            148
+          ],
+          [
+            19,
+            8,
+            111
+          ],
+          [
+            20,
+            9,
+            74
+          ]
+        ],
+        "scripts/tests/test-stalker-durable-failures-parts/cases-02.bash": [
+          [
+            21,
+            0,
+            16
+          ],
+          [
+            22,
+            1,
+            16
+          ]
+        ],
+        "scripts/tests/test-stalker-durable-failures-parts/setup.bash": [
+          [
+            0,
+            0,
+            99
+          ],
+          [
+            1,
+            1,
+            94
+          ],
+          [
+            2,
+            2,
+            93
+          ],
+          [
+            3,
+            3,
+            84
+          ],
+          [
+            4,
+            4,
+            77
+          ],
+          [
+            5,
+            5,
+            73
+          ],
+          [
+            6,
+            6,
+            70
+          ],
+          [
+            7,
+            7,
+            57
+          ],
+          [
+            8,
+            8,
+            20
+          ],
+          [
+            9,
+            9,
+            20
+          ],
+          [
+            10,
+            10,
+            11
+          ]
+        ],
+        "scripts/tests/test-stalker-durable-failures.bats": []
+      }
+    },
+    {
+      "original_path": "scripts/tests/test-repogolem-dispatch.bats",
+      "pre_split_sha": "63ab0e809d224740c4e14d859488c9207f8c8078",
+      "parts": [
+        "scripts/tests/test-repogolem-dispatch-parts/cases-01.bash",
+        "scripts/tests/test-repogolem-dispatch-parts/cases-02.bash",
+        "scripts/tests/test-repogolem-dispatch-parts/cases-03.bash",
+        "scripts/tests/test-repogolem-dispatch-parts/cases-04.bash",
+        "scripts/tests/test-repogolem-dispatch-parts/cases-05.bash",
+        "scripts/tests/test-repogolem-dispatch-parts/cases-06.bash",
+        "scripts/tests/test-repogolem-dispatch-parts/cases-07.bash",
+        "scripts/tests/test-repogolem-dispatch-parts/setup.bash",
+        "scripts/tests/test-repogolem-dispatch.bats"
+      ],
+      "split_sha": "fecd59edceb4f3e28323bb26f8bed13495e31a30",
+      "node_aliases": {
+        "63": {
+          "following": "bc8ab4480d231887addf7c10fa6eb0d65aea4cd5e3126ca48c0fba937405aa74",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "64": {
+          "following": "bc8ab4480d231887addf7c10fa6eb0d65aea4cd5e3126ca48c0fba937405aa74",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "65": {
+          "following": "bc8ab4480d231887addf7c10fa6eb0d65aea4cd5e3126ca48c0fba937405aa74",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "66": {
+          "following": "bc8ab4480d231887addf7c10fa6eb0d65aea4cd5e3126ca48c0fba937405aa74",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "126": {
+          "following": "ed1fb49d8204e8ef40ad457fa1956385a34237cbc8c59defb16ef9e876df2b1d",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "127": {
+          "following": "ed1fb49d8204e8ef40ad457fa1956385a34237cbc8c59defb16ef9e876df2b1d",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "128": {
+          "following": "ed1fb49d8204e8ef40ad457fa1956385a34237cbc8c59defb16ef9e876df2b1d",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "129": {
+          "following": "ed1fb49d8204e8ef40ad457fa1956385a34237cbc8c59defb16ef9e876df2b1d",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "143": {
+          "following": "bb698f972589c24e1b957f764d98d664db9aaebf6efed81bad39bc6d41149c9b",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "144": {
+          "following": "bb698f972589c24e1b957f764d98d664db9aaebf6efed81bad39bc6d41149c9b",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        },
+        "145": {
+          "following": "bb698f972589c24e1b957f764d98d664db9aaebf6efed81bad39bc6d41149c9b",
+          "reason": "Bats @test body becomes split_case function; entry retains the test name"
+        }
+      },
+      "assignments": {
+        "scripts/tests/test-repogolem-dispatch-parts/cases-01.bash": [
+          [
+            22,
+            0,
+            356
+          ],
+          [
+            23,
+            1,
+            351
+          ],
+          [
+            24,
+            2,
+            315
+          ],
+          [
+            25,
+            3,
+            310
+          ],
+          [
+            26,
+            4,
+            277
+          ],
+          [
+            27,
+            5,
+            272
+          ],
+          [
+            28,
+            6,
+            239
+          ],
+          [
+            29,
+            7,
+            234
+          ],
+          [
+            30,
+            8,
+            201
+          ],
+          [
+            31,
+            9,
+            146
+          ],
+          [
+            32,
+            10,
+            142
+          ]
+        ],
+        "scripts/tests/test-repogolem-dispatch-parts/cases-02.bash": [
+          [
+            33,
+            0,
+            550
+          ],
+          [
+            34,
+            1,
+            502
+          ],
+          [
+            35,
+            2,
+            435
+          ]
+        ],
+        "scripts/tests/test-repogolem-dispatch-parts/cases-03.bash": [
+          [
+            36,
+            0,
+            245
+          ],
+          [
+            37,
+            1,
+            223
+          ],
+          [
+            38,
+            2,
+            202
+          ]
+        ],
+        "scripts/tests/test-repogolem-dispatch-parts/cases-04.bash": [
+          [
+            39,
+            0,
+            316
+          ],
+          [
+            40,
+            1,
+            310
+          ],
+          [
+            41,
+            2,
+            306
+          ],
+          [
+            42,
+            3,
+            118
+          ],
+          [
+            43,
+            4,
+            118
+          ],
+          [
+            44,
+            5,
+            118
+          ],
+          [
+            45,
+            6,
+            116
+          ],
+          [
+            46,
+            7,
+            115
+          ],
+          [
+            47,
+            8,
+            114
+          ],
+          [
+            48,
+            9,
+            114
+          ],
+          [
+            49,
+            10,
+            114
+          ],
+          [
+            50,
+            11,
+            71
+          ],
+          [
+            51,
+            12,
+            71
+          ],
+          [
+            52,
+            13,
+            71
+          ],
+          [
+            53,
+            14,
+            66
+          ],
+          [
+            54,
+            15,
+            43
+          ],
+          [
+            55,
+            16,
+            43
+          ],
+          [
+            56,
+            17,
+            28
+          ],
+          [
+            57,
+            18,
+            28
+          ],
+          [
+            58,
+            19,
+            28
+          ],
+          [
+            59,
+            20,
+            12
+          ],
+          [
+            60,
+            21,
+            2
+          ]
+        ],
+        "scripts/tests/test-repogolem-dispatch-parts/cases-05.bash": [
+          [
+            61,
+            0,
+            393
+          ],
+          [
+            62,
+            1,
+            393
+          ],
+          [
+            63,
+            2,
+            364
+          ],
+          [
+            64,
+            3,
+            364
+          ],
+          [
+            65,
+            4,
+            364
+          ],
+          [
+            66,
+            5,
+            364
+          ],
+          [
+            67,
+            6,
+            305
+          ],
+          [
+            68,
+            7,
+            283
+          ],
+          [
+            69,
+            8,
+            283
+          ],
+          [
+            70,
+            9,
+            241
+          ],
+          [
+            71,
+            10,
+            190
+          ],
+          [
+            72,
+            11,
+            188
+          ],
+          [
+            73,
+            12,
+            187
+          ],
+          [
+            74,
+            13,
+            164
+          ],
+          [
+            75,
+            14,
+            164
+          ],
+          [
+            76,
+            15,
+            131
+          ],
+          [
+            77,
+            16,
+            131
+          ],
+          [
+            78,
+            17,
+            42
+          ],
+          [
+            79,
+            18,
+            39
+          ],
+          [
+            80,
+            19,
+            39
+          ],
+          [
+            81,
+            20,
+            39
+          ],
+          [
+            82,
+            21,
+            39
+          ],
+          [
+            83,
+            22,
+            39
+          ],
+          [
+            84,
+            23,
+            39
+          ],
+          [
+            85,
+            24,
+            39
+          ],
+          [
+            86,
+            25,
+            39
+          ],
+          [
+            87,
+            26,
+            39
+          ],
+          [
+            88,
+            27,
+            39
+          ],
+          [
+            89,
+            28,
+            20
+          ],
+          [
+            90,
+            29,
+            20
+          ],
+          [
+            91,
+            30,
+            20
+          ],
+          [
+            92,
+            31,
+            20
+          ],
+          [
+            93,
+            32,
+            20
+          ],
+          [
+            94,
+            33,
+            8
+          ],
+          [
+            95,
+            34,
+            8
+          ],
+          [
+            96,
+            35,
+            7
+          ],
+          [
+            97,
+            36,
+            6
+          ]
+        ],
+        "scripts/tests/test-repogolem-dispatch-parts/cases-06.bash": [
+          [
+            98,
+            0,
+            522
+          ],
+          [
+            99,
+            1,
+            517
+          ],
+          [
+            100,
+            2,
+            497
+          ],
+          [
+            101,
+            3,
+            453
+          ],
+          [
+            102,
+            4,
+            453
+          ],
+          [
+            103,
+            5,
+            453
+          ],
+          [
+            104,
+            6,
+            428
+          ],
+          [
+            105,
+            7,
+            428
+          ],
+          [
+            106,
+            8,
+            428
+          ],
+          [
+            107,
+            9,
+            418
+          ],
+          [
+            108,
+            10,
+            389
+          ],
+          [
+            109,
+            11,
+            389
+          ],
+          [
+            110,
+            12,
+            389
+          ],
+          [
+            111,
+            13,
+            389
+          ],
+          [
+            112,
+            14,
+            389
+          ],
+          [
+            113,
+            15,
+            389
+          ],
+          [
+            114,
+            16,
+            345
+          ],
+          [
+            115,
+            17,
+            336
+          ],
+          [
+            116,
+            18,
+            329
+          ],
+          [
+            117,
+            19,
+            329
+          ],
+          [
+            118,
+            20,
+            329
+          ],
+          [
+            119,
+            21,
+            329
+          ],
+          [
+            120,
+            22,
+            329
+          ],
+          [
+            121,
+            23,
+            329
+          ],
+          [
+            122,
+            24,
+            329
+          ],
+          [
+            123,
+            25,
+            329
+          ],
+          [
+            124,
+            26,
+            310
+          ],
+          [
+            125,
+            27,
+            310
+          ],
+          [
+            126,
+            28,
+            229
+          ],
+          [
+            127,
+            29,
+            229
+          ],
+          [
+            128,
+            30,
+            229
+          ],
+          [
+            129,
+            31,
+            229
+          ],
+          [
+            130,
+            32,
+            214
+          ],
+          [
+            131,
+            33,
+            214
+          ],
+          [
+            132,
+            34,
+            214
+          ],
+          [
+            133,
+            35,
+            214
+          ],
+          [
+            134,
+            36,
+            214
+          ],
+          [
+            135,
+            37,
+            214
+          ],
+          [
+            136,
+            38,
+            214
+          ],
+          [
+            137,
+            39,
+            214
+          ],
+          [
+            138,
+            40,
+            214
+          ],
+          [
+            139,
+            41,
+            203
+          ],
+          [
+            140,
+            42,
+            174
+          ],
+          [
+            141,
+            43,
+            151
+          ],
+          [
+            142,
+            44,
+            151
+          ],
+          [
+            143,
+            45,
+            120
+          ],
+          [
+            144,
+            46,
+            120
+          ],
+          [
+            145,
+            47,
+            120
+          ],
+          [
+            146,
+            48,
+            73
+          ],
+          [
+            147,
+            49,
+            68
+          ],
+          [
+            148,
+            50,
+            63
+          ],
+          [
+            149,
+            51,
+            63
+          ],
+          [
+            150,
+            52,
+            63
+          ],
+          [
+            151,
+            53,
+            63
+          ],
+          [
+            152,
+            54,
+            63
+          ],
+          [
+            153,
+            55,
+            41
+          ],
+          [
+            154,
+            56,
+            38
+          ],
+          [
+            155,
+            57,
+            38
+          ],
+          [
+            156,
+            58,
+            8
+          ],
+          [
+            157,
+            59,
+            8
+          ]
+        ],
+        "scripts/tests/test-repogolem-dispatch-parts/cases-07.bash": [
+          [
+            158,
+            0,
+            105
+          ],
+          [
+            159,
+            1,
+            105
+          ],
+          [
+            160,
+            2,
+            75
+          ],
+          [
+            161,
+            3,
+            75
+          ]
+        ],
+        "scripts/tests/test-repogolem-dispatch-parts/setup.bash": [
+          [
+            0,
+            0,
+            135
+          ],
+          [
+            1,
+            1,
+            135
+          ],
+          [
+            2,
+            2,
+            135
+          ],
+          [
+            3,
+            3,
+            134
+          ],
+          [
+            4,
+            4,
+            134
+          ],
+          [
+            5,
+            5,
+            133
+          ],
+          [
+            6,
+            6,
+            133
+          ],
+          [
+            7,
+            7,
+            99
+          ],
+          [
+            8,
+            8,
+            94
+          ],
+          [
+            9,
+            9,
+            94
+          ],
+          [
+            10,
+            10,
+            94
+          ],
+          [
+            11,
+            11,
+            94
+          ],
+          [
+            12,
+            12,
+            84
+          ],
+          [
+            13,
+            13,
+            84
+          ],
+          [
+            14,
+            14,
+            84
+          ],
+          [
+            15,
+            15,
+            84
+          ],
+          [
+            16,
+            16,
+            84
+          ],
+          [
+            17,
+            17,
+            84
+          ],
+          [
+            18,
+            18,
+            84
+          ],
+          [
+            19,
+            19,
+            84
+          ],
+          [
+            20,
+            20,
+            68
+          ],
+          [
+            21,
+            21,
+            68
+          ]
+        ],
+        "scripts/tests/test-repogolem-dispatch.bats": []
+      }
+    }
+  ],
+  "files": {
+    "scripts/tests/check-publish-boundary.test-parts/part-01.bash": {
+      "1f42c2724cf2430c90206f2fc439834fc83a3bb933037d31fb39ee32d43a0911": 1,
+      "516d6b5dacb8556093343c1310db9ec429f24f1d2543ba955f60294f06adc8ec": 1,
+      "68bd6c79a0b3504912c9a28c44360855ec84c1c7252725f1810de5b56a38124a": 1,
+      "6b8a434f4db1d6aa9a54a198408820ed44386d9bea2255f406bfa22e6613f45f": 1,
+      "8185ce4bc8bc4f00735b8464ed424a93c3517b28d7f4337e90447c402943134a": 1,
+      "972323c2c4d4ec763accd06363e0a919c9233230feab9cd49bbc8fadbc3b9b4d": 1,
+      "b70565bdf78ff53abc5b2c30026b688927e2a9b79f10ac2294a8b347186717cc": 1,
+      "b72f3e65a8ff27fd9659cf26828432232c9b3b611dc40510c78b56e47ec95f98": 1,
+      "c140639db99287086ca475c489f28c8aaf9b7db1d804701b6b1ff1da43b0c63c": 1,
+      "e2b37d0fbeebd5358ba88a5ef5469cfab940c91f397b72b95107b9b6515a9ece": 1
+    },
+    "scripts/tests/check-publish-boundary.test-parts/part-02.bash": {
+      "49fe1304b13df18027f6545006c35a0ec9552669189e15e48211c840c315f291": 1,
+      "ae55c51e1592c9dc5c9db47428b31f79d0e7d655cc464aa821c661fd990db1c7": 1,
+      "e460a9c562bc2bf393d616bcad06934717ac13b95ce51c892ee78a1821afcd99": 1,
+      "e7fd5f2bb0233cff308a1b29b3f24f710372dfcc68dc15f40c368a00313e2c3b": 1,
+      "eec9c264c0ed543abe77f0463600964b86b2f30884a4e3714e677682e18bc9e2": 1
+    },
+    "scripts/tests/check-publish-boundary.test.sh": {
+      "e2b37d0fbeebd5358ba88a5ef5469cfab940c91f397b72b95107b9b6515a9ece": 1
+    },
+    "scripts/tests/test-process-stream-agy-cli-parts/cases-01.bash": {
+      "04158b569937e66bb6bac722829f10d629f2de124db9260f73c8472614d28347": 1,
+      "06f1c521be8a2892cb8ee32f6dacad450b03fdfee785de314cba23e98ea0d9ea": 1,
+      "1cf7284318b876d0122847a8fa9ecc3b787b01f5851c342b00ec0b2065a61416": 1,
+      "255de50bced395e9b0c51af6b929cf410dc63d5b221b0c06c0899d39cd1077d6": 1,
+      "335e3ca6c256c1afe1a53bfd95daa67b6703329239c8d42cfe3d48b79826a336": 1,
+      "3667bb6922c0f881f5357826a9130fcce94a7144915ea65dfa472e65ae3b2049": 6,
+      "3e0f4a7bf7f55645c29dc8ce3376c73dbf200358f95636edad3e88e3d9906ea5": 1,
+      "55951b49449c9259f1309b89374a9f19a89951251574fbe32b7bd9d4d9a07d06": 1,
+      "57c16db13f1d92be1c1473a19288bd88851d9d6cc2229aaf69d93184a4ccae65": 1,
+      "82fe0e032ba658cf5aa8473fc1056be5589343aeff7856edff38989e0dbab208": 1,
+      "95454273ecde3ab17c15896ff4507466e8323d2438a9f8e7aab4942f57ae8402": 1,
+      "998fd3ffcf99ccf288ca9027057be4982336affaaccca3cc5d32e1e8a27cdb11": 1,
+      "9bb22a0e08db07eeb86a4e8647772ef45130e1e41156c92644b83f0a5675b667": 1,
+      "add67eee712320232e20f2e78e6edc9698c7db3913a3643ec56f2425df9f4637": 1,
+      "ade5a3e545fa0c34b1cac6ef90c94d94f946fbfd14e07f49ee6dde2956589fb9": 1,
+      "b75cea3af7ab7afb293c87efdb1b4150b9874f34a8832448179a0ca3d90b788a": 1,
+      "b9587654a26a5ee237fbb2d3ce6344987c5fb032bafcadf23cd523f33c74f0fd": 1,
+      "ce377a16f75b0d021430cd772a02f06c53233bfd55850410cf373ac3744678d7": 1,
+      "e1bd8a6981e2f126415eac450805dd5afdb5b6d62599647eb879408e79367fb7": 1,
+      "f93b502365d6f7fc42aedc13e8722ec1a1cf2e1931e9c554aa50d72f922f48f5": 1
+    },
+    "scripts/tests/test-process-stream-agy-cli-parts/cases-02.bash": {
+      "1fb0f4027f6359696e9a7b004944b6c7a30002bd03c605c5eb46a70cc8b43fb2": 2,
+      "3667bb6922c0f881f5357826a9130fcce94a7144915ea65dfa472e65ae3b2049": 15,
+      "efd2de074c1341e4f50734b1180cb23384c4373693524b0a97d738abb44ecbc1": 2
+    },
+    "scripts/tests/test-process-stream-agy-cli-parts/setup.bash": {
+      "07d4eb00aa91ef09a0b379cc6ee37be143784aed9ca237a0cc55a7995d3b7fdc": 5,
+      "1fb0f4027f6359696e9a7b004944b6c7a30002bd03c605c5eb46a70cc8b43fb2": 2,
+      "283d6bba3e72e9ab41ac62f1befe49bd4a29299e4776936441d50072060433a9": 1,
+      "3667bb6922c0f881f5357826a9130fcce94a7144915ea65dfa472e65ae3b2049": 10,
+      "4f42995fdc2e573bc8bc51d10cf40cd436bda8478b7138310cc9e2ac15a4f5e5": 1,
+      "6ff3a9de58f2fcfe3532c027ed2461a0d04f331815d50ebb9efe3fd604d926ed": 1,
+      "73627d424c50aeb9a8322219f21d639ae0092a6d3ee6089822ff70c88eae73ff": 1,
+      "7717596204c56fbfc6fcb8cc7c406f3de5e90f5466fe3bec3b48bd25cf55bd2f": 1,
+      "7b0282c0733d008ee37747e18476f8de69be5f9ec29e88ec38592eef9409be91": 1,
+      "89e409a65134a3fcd507e7531fa3815faa35883e8711a3e6fd601603fa0e8096": 1,
+      "948c5dec703cb87b0be0625b7e84fa3c3289f685423c24c65946a2bd9554c357": 1,
+      "990e147b797ff67ad7f6198863cd0cd5903ac80ed1110bb88aa579b30fd0de4a": 1,
+      "a9d1402061b7f592b6ff4d49c53a379cd10b16e9eff41d0d32494544294c9916": 1,
+      "b31cbd3916b84aac126b96ff5feea201e62c46e93ac8f0d9c988157f5e98009b": 1,
+      "cb663438b8f0bd1984e7c8ed7914ed7eba5e2a95be13aeb1753d8a6e368b6caf": 1,
+      "eb4155344c85b135cded87a32ce97e12743e687860d0bee4ceafe6650756000f": 1,
+      "efd2de074c1341e4f50734b1180cb23384c4373693524b0a97d738abb44ecbc1": 12,
+      "fd1bf8b4d03e0261690233afb1ff758081117b63e986b6e0d6492841888cdcf3": 1
+    },
+    "scripts/tests/test-process-stream-agy-cli.bats": {
+      "165d3560adc216546f291b0f4380e60e2f4c53025389b9a32536b1f0a4e7723d": 1,
+      "4f42995fdc2e573bc8bc51d10cf40cd436bda8478b7138310cc9e2ac15a4f5e5": 1
+    },
+    "scripts/tests/test-repogolem-dispatch-parts/cases-01.bash": {
+      "7b2a4433a5b124c71991d5264ae13baa5e58a62147aca2e785e30f641e1ca662": 5,
+      "9fd74cb661ec2dd6c9282cda6212b1661b92e7553a0c38e19cb426819636b0c8": 6
+    },
+    "scripts/tests/test-repogolem-dispatch-parts/cases-02.bash": {
+      "9fd74cb661ec2dd6c9282cda6212b1661b92e7553a0c38e19cb426819636b0c8": 2,
+      "afe649a68304aa716b98f1ff2ac3e9bd1b1cfce950d0053e1f360086532de077": 1
+    },
+    "scripts/tests/test-repogolem-dispatch-parts/cases-03.bash": {
+      "9fd74cb661ec2dd6c9282cda6212b1661b92e7553a0c38e19cb426819636b0c8": 3
+    },
+    "scripts/tests/test-repogolem-dispatch-parts/cases-04.bash": {
+      "086dd559f91ab07a7abe469781e0b583c686f597732e2d0808e04a7966331c13": 1,
+      "0c5dc6491d65d9f375eaed5054e63f831e7f84a7ec99e6b9fd3ab4126c705ad8": 1,
+      "29e0710ac7dde3da14287070905ca692c71b40d4161d88c1acb8c065128a4024": 1,
+      "416b3227d70904e054c6d3f72ae013b36e69b6d775a18229e7bc3efdbb731943": 1,
+      "5b27a5a76264343b99482b82e77e5a0ce9018b774739c01217201cc4e86cc734": 1,
+      "5c287359aa40e6d9595dbb06b88f5437b2fc8413a6ef31aa2a02c772146057ee": 1,
+      "5f956bdc2ca23206e5328d6149306df894c1c4fc44f29ecbb60e18252fcb740c": 1,
+      "62c8f2f9bd03aa6b4712df381f94429676ac27c17e8113f819b87b2f113354e9": 1,
+      "7b2a4433a5b124c71991d5264ae13baa5e58a62147aca2e785e30f641e1ca662": 1,
+      "8572a06a6a36301c45e502aaff67218669e5127f84da87f6c78f27a5ce1bc5c7": 1,
+      "87fc308bb9a64b2b3cfded5ce301cd1d25799f2ee57c15dde0e8338978c873d7": 1,
+      "9de165c5f93842ddc557bb38363bde39a10d355fe8ef7556391dc05ea40daca3": 1,
+      "9fd74cb661ec2dd6c9282cda6212b1661b92e7553a0c38e19cb426819636b0c8": 2,
+      "a8bb96e211239058d20b947625ae052883687757a6ad3f5a333ca85ac5df9baa": 1,
+      "bfa8554a5c6d9552201837b306ef01b690f41e770d3880dcd7678699c52faacc": 1,
+      "cc6db9dd8e519d90608359d53cb4b07d7052313d77b673feb32bc2931a1d1404": 1,
+      "d22c9dc9e61de66ea5ade645288f4832da720b716d219c599cb666ed21f255af": 1,
+      "e9bc49cdb78369b2c7601d91b9ff9ff762eb0caf87003eae75448248454f72b1": 1,
+      "ec9d1c16d8ed1b49d24dd794c3db2132a5c579007b45828dfb46640948c54363": 1,
+      "ecfea13fc8d6cb9562dadee851d10876953ae15e857ddef089e4330a1be2e659": 1,
+      "f5f1d96423f85fd822d7ee0f36a8bd2bc75dd73f3962d8d9e9a6146936b46e4d": 1
+    },
+    "scripts/tests/test-repogolem-dispatch-parts/cases-05.bash": {
+      "0246fd991e722beefd056f537773e6970b29898c32d92fc0b62e0ef3ee152ca2": 1,
+      "0e3161cff4f0d087bf11583324b90db8a751221d67615122fbb197fad67740a6": 1,
+      "175e9b1b46c538e3dc36f5fcf62609df019d5f7963b34ddac10e477161380b75": 1,
+      "25604d5339bb71be7878852f69f909e02a8c00b218dc6901065108ffb078a4c3": 1,
+      "2f6cf7fee0491babfb708b9f6f8adfb87cc5f60bdc33c36a1a785b47f1da7c17": 1,
+      "334359b90efed75da5f0ada1d5e6b256f4a6bd0aee7eb39c0f90182a021ffc8b": 2,
+      "3a067ddf8abd96b4e171e09a95c3222621bd9efe78a8f95ab63c2ced81b869f8": 1,
+      "3a7b597d946e5deebcb57f219dd74e49e23d75feb042e0bf6f2527f6d189d9c7": 1,
+      "3b5e093679f603341326e0bce44f5cdbee1e304a5a43735645a6452a36d01f1f": 1,
+      "42f4b55a623701fc79051eb7eb5336af164300ca2bdf7864ac551f340beda2d0": 1,
+      "442608eeda8cc1bed8e6eabac8e63b1e670292e32a646b52e8f888c22b710997": 1,
+      "47ec634eb52645e001a64ae386393fc8b813fe616e630bdf4175acc3f48f523a": 1,
+      "588c6cb345e2b82c090282b4228d962cfe5adaed83df9c38beca4317864b8e26": 1,
+      "5d8b35c7a080bf872a9b8d0ace5a5cc80c3df887bae0df0bed5ca73939d7b76a": 1,
+      "6c5db6f073bbc971affc3bf3c88ff94d6b6f9db5a9ddbcd87ec52d52dbed6919": 1,
+      "8c7ce81529df09e591666329322a7e6a835ee23f6f2aceb39125bf44a606e5da": 1,
+      "8d8946092f5a2cc09762a6704ea82ba0c9f75dbfffd817dcb540bb3a59a99686": 1,
+      "8ee51dfd9911592d3b6f9f9e3dfa65b5f537e83c0ea133d7bb82c2259b1c3015": 1,
+      "94ed8c3366de849d4c75e542832d29bf7eb6714d0014ebd69e2e7697d3e36b4c": 1,
+      "953f58dbd4eb11930ab7a0c92497dc5de917e9b924c9890ec057ecb462336caa": 1,
+      "95f2770ba75e224de28a3546ae425c5af6aa0abc492891386fcd859c5bf300b2": 1,
+      "9f1929b9d9b34fef045a2a83977c23ae2024f99e00d6007be443b372869cd76b": 1,
+      "9fd74cb661ec2dd6c9282cda6212b1661b92e7553a0c38e19cb426819636b0c8": 2,
+      "ae8ea2c520e64c441e4976b7dac613724aabca8e0792917dc9cd5523c42ca8fa": 1,
+      "b9ef4bc623e9d4d9f620a62829628a4c43a6905376756fb170802009f91d4433": 1,
+      "bd3a280d3e6ddaa313f7f674f295dff787280779c621b39711df42c86d91179e": 1,
+      "cac23422eb8f41744187e3ea84d3a1e4bf963740ee966f13647154668dcead50": 1,
+      "d02bf73002d09736e5d41045c25d5497ae82aafd98f00a4cec796d7ae9f2c335": 1,
+      "d1d6c2deb432387ba6b7c2f15cad98b47355ad752307d2f65a04a74ead9c8da4": 1,
+      "d6315fddf7ec54ccd95010b2a66164b5e11dffddc3885a81b2e951badc8984db": 1,
+      "df82d5f5a8fdd32667fc7ee402caf4e5395ee5953805308734bffa4feda3f61b": 1,
+      "dfc7e2acb19b221f96758e9615a66e7040f4cc8ce96d5dcf5a68b209bbcef95c": 1,
+      "e879fbaa3ab0270f735165433b75963dfd12adc1f1efff376ec5d401496685fb": 1,
+      "ea9c0c19b05a3c43790bfb1b0db634e158d0c6055294033b804150ad11ea9e65": 1,
+      "ff244ad25b866e4bba7a7d7a8ab5d409db534b056381cb2fd9998ace54adc293": 1
+    },
+    "scripts/tests/test-repogolem-dispatch-parts/cases-06.bash": {
+      "029f293e671b19d5d83fd1f8f61e3b518725487045e757597be76fb92fcb8142": 1,
+      "0a54851233a1d8379a3fabeb65b6a52fc05ddc9e7b0dee3c0fbc6fc06d8f5559": 1,
+      "0c3b758850236f5107b5443e428dd4aa69b2a67cb5e508883b678a6c6fe7f44a": 1,
+      "113ea76a1e11e02517e43a5214dc8f9c2fb4519c5251dcff68f5bd7ce005ef97": 1,
+      "1175432a17464ca619d48c8f820eb172ae2601dcb4245c8ca8abd6e9e855c29e": 1,
+      "12f0920f39041783057ed1cee65be3423afc171433f80f014e59cab9aa3e91da": 1,
+      "16cbad70ea58e8e020ca4cd95cab99a1dc62599ba6713693126443bb82c03b8f": 1,
+      "20fd790f4f4807c5c1371ccb32f8f67e3d4035981ea2883c5027465e9c441264": 1,
+      "264395021fe2442e964eacb3e41bfd62cf58c5221f8991bd2b40459e75cef0c7": 1,
+      "2a35028509fc8a21f7a707aab4b177d9ad14c0491e7ed971db2d8549a9b27e1e": 1,
+      "2bc9ea442e85a4f529719d0dda8670f2f7eee70b2b3506efb18d5edfc6968ee7": 1,
+      "3274f2728d768185dd5d283a71a56ff9ce5bd2adcd4dad7c38aafeb8c374b5ce": 1,
+      "334359b90efed75da5f0ada1d5e6b256f4a6bd0aee7eb39c0f90182a021ffc8b": 4,
+      "337720d2648ceb6ade6455b759c20b012e3a513940c5bd47ffa1469cde86429c": 1,
+      "38f3909453515b9d5dc85fa0dd9a5e2d12ba8d2e84958aeea1271354aab6ebf3": 1,
+      "3ae26e41fb86aaf5fb6afde5b8dc21813aaa777128b6849936a5a916948601c9": 1,
+      "3af71adb278ad4af33c144b78fa1ae708da03b773d98324ae991a7daedb53ca2": 1,
+      "3c4246eb85307d313e4e62cc186f049c6e1d524fc5fd31457e2417e11b67282a": 1,
+      "3f146226ade7e4ca606e58497e2b4408ed375e81e8c12e0850c4d41dfdd61986": 1,
+      "60edf29e0834713c3d4b0904d73958de1bc5467a4f3976409aee7715ef1f3a00": 1,
+      "62cc1b41a11c2fec9fadb6156d107588314bc0ebd84d43d8d07e6fb26bfdd6d2": 1,
+      "638ccb1d624eb90c75b665700c5bae85a10fdfa5eaeebdcb73241c38a91d4354": 1,
+      "6853305c6c0d8cfd059517dde33065b243a0b9bc5814482efdd62ba8bdfd7562": 1,
+      "752dd941c92ec9b9b329afee835895dbd87cda701d501677dea03d5bc8807fac": 1,
+      "753b20409a2361b23dcdf836e0b725828ac0e3da786e27981e1b24537eee7de0": 1,
+      "798a128278beee935cbed8374827e8807a5332f6ff3839f54e4d003eaa5c5fa6": 1,
+      "7b2a4433a5b124c71991d5264ae13baa5e58a62147aca2e785e30f641e1ca662": 1,
+      "7b91f867fad1f3c14630099b81e0e5611eb04cb10ea8cc9ba704c28a9e48107d": 1,
+      "7cca3f8d65a637d0315597861498892b8c3da396a35f2de5cf4d8d0fff1552d5": 1,
+      "8d9faee1bdcf210afb33a95728ffe182bf74acb772ec1da12f5beaf7c634038a": 1,
+      "922061478360f07b4bc55e83d168cf6cee5195662f1549f32a885a916d93622a": 1,
+      "9232b0162c0770774aed64c6b078c0c53b8d7ae1b31a63d45d9aa5573f87a405": 1,
+      "93bc4bbe5951a33451e890c6cbf9da8fad01ac0aa9e410e14f7937f0f7a6cf84": 1,
+      "98f194489021159702b67ef991e28bb404c0ae664300615e0318b42a63b858f2": 1,
+      "9f557e2fee4d6bbaafed921f8a4715c1c01b9a7db43b5d9c4b1e29176fc35bd0": 1,
+      "9fd74cb661ec2dd6c9282cda6212b1661b92e7553a0c38e19cb426819636b0c8": 1,
+      "a5baf1cb60e2724226d804b4f69d2cf89301926e8d12618746b1bfbda5db3d9e": 1,
+      "ac74b4a9ceafe33264877df6dd48b35917506fa31b2d109bf72f9ac341641433": 1,
+      "aeaeeb9bdbe479588cc4d32e88118aa3d4d7bd01669368aa38d270f9912c80a8": 1,
+      "b0acfcd74ddb40154cef7f575120d3d5385c50c621876beb006f1e0b9e9292a9": 1,
+      "b18637d6f3fcd9165ac7a33c0d5db96e7365f238593814f69f99aa321317c331": 1,
+      "b5a379a5f56e476c4d08cc4c3bce1c247c5d1c7e1149ffb0aad3c08522ef3e3b": 1,
+      "be35347b323c00b4279a452ee25fc9822bd9d4a0f5bc96b97e0943201cfbe0ff": 1,
+      "c151616c5834e69664f7cd6a526e632903400a486debcc25b9cfe2720bf13160": 1,
+      "c1da335cc3a5ac80c864cb513d054bc5e52f52caaf6899de54a05144929dda84": 1,
+      "c21025f20f7579bcd576398ea80216e628a293d81249070e4ed8cbd8d88b9511": 1,
+      "c2140d35501dbe39e4e8a67f1505c676bb67e9a301550b82888c62b0c67d0d2d": 1,
+      "cae5b36013b4a0f395db73d6f6843cd189563ed16324ff459db6598db6e758fd": 1,
+      "cc1ef42437f2aa6a478f253fba6b86689eb34b56c8307ae67c672ddadd760ebe": 1,
+      "d29cfaca4ab8fb2925b94d4fe74e013b83e80680a0cd655d12e25ca16cbcb02b": 1,
+      "d4aa3f792eeebaaeca8b47620c682e7a06c4f0cf4ba68fd3a0369651a55db093": 1,
+      "d4ad59de90f0786e5d751433dcbe30b571fa15fe4d476882817d9d34cdac64c2": 1,
+      "dfa822fc1fade7e5de54c415e85f66c1dbbfd046161cd3c52552ab3e6b394830": 1,
+      "f3b811f0ba588a6971fc6beb3455fe7db9f6846337b597b4249bb2aa698512e3": 1,
+      "f48170e243964c32d6090017229fa939f62762ec26c487a1e334afd255168021": 1,
+      "f8c2d87be63589c72b4ea1932de3366c1609ad1f756fd6941f3e50d612349a72": 1,
+      "ff45e91962e39ffde9c976d807b858081ad66ed6a1e2519438cd3f6bda0743a8": 1
+    },
+    "scripts/tests/test-repogolem-dispatch-parts/cases-07.bash": {
+      "0ccb61ee2577dfb2146fa11f638840d2cd6c6fde7fe79754afd09a2fc59b0d4d": 1,
+      "14429550a8225f72562984fe83beddc8b809e42c0514bc83bcefabc479f032ec": 1,
+      "246def8ba20be74c5430b45a526a090e2398433f67f72543e0a399a01cceb17a": 1,
+      "a9a7bfc131a2853e74e7e08006ab5ae0cbe7201cd41d7456c0a2469d98489f3d": 1
+    },
+    "scripts/tests/test-repogolem-dispatch-parts/setup.bash": {
+      "0cc6052cc884df85b43a143ef31fee7e9c21e410c49a666cb667f1495628f5f2": 1,
+      "0cfd2a234755814e7050062a146d08329e436fc126bb81e9eba27f281c496dca": 1,
+      "0dc3820c72212b7b1f5c822459c79d18a0ca9b3ecda4931d83351dd3b80cc822": 1,
+      "155f9978b2a6b87308b76d715982e8eba7b12f6f824dcf1b49a4628cff277992": 1,
+      "2a5c2cf629865a3bc5f73eeef1fb0c53df6b5ba9bb68972ceed195d358eb3d59": 1,
+      "388674523be19044a32c96a580f17171cff9e9014f9d1f62357a5e32740b4bbe": 1,
+      "4f42995fdc2e573bc8bc51d10cf40cd436bda8478b7138310cc9e2ac15a4f5e5": 1,
+      "5430a3bcab0483cad6bda3d47ce833a2a6b849defc43db1a8766ea469b606e9b": 1,
+      "5610e99f15c79eebbd79a11bbc6b5819fb876112297058d5db75f0fa7f100b86": 1,
+      "5b92d15029a73135d0c4a21f0299ee0fcb16222bdce3d50880a3efe2bab2bfb1": 1,
+      "6b6234785c34a349ad73bb79c9adfe361521c08b424f668ab21b7f00016f27cd": 1,
+      "756b88db518a491c9e96e5de34ded375bff83717a71240ca1972ff0fcac857ad": 1,
+      "7fb5477f391d20b25ecc9bfc59efd87e34f82157dde27949f57d7464f52722ca": 1,
+      "846bb581981bf7e0c067ab69db582722370db82286c3772636cb6f1b191aa0cb": 1,
+      "875c123f42066d5d42af95e5f494dd8c4881769d19a7c939b7669e3982867acf": 1,
+      "8b40a24ad2a6ef117148406ee1f1e04130e56890095124eb5c36558c271d2dc6": 1,
+      "8c59a4c98874ebcd88aee2f95434f4cd889090b559169d544647af62a19e87cc": 1,
+      "b608a62ed77f70efbb6594de6a99d98006a10fd72377692f4c63c706efd4c8aa": 1,
+      "bbac3d8051da38d78ef0381e5b93d79db4b76fb1c4634434fe3ea8069201e7c4": 1,
+      "bf1335b17a98e75d6f6031d7fbd5653d5473508e638227e451d980b533eb49df": 1,
+      "cddcc1eae9b4c96d2ba9c61d9ea16f4fea8f7425254d426901c554d67ff29d15": 1,
+      "cf71dec3b4f8ac64bf6979bb6561f37b8af9672aaf65c4904a7af0fba51aca0f": 1
+    },
+    "scripts/tests/test-repogolem-dispatch.bats": {
+      "165d3560adc216546f291b0f4380e60e2f4c53025389b9a32536b1f0a4e7723d": 1,
+      "4f42995fdc2e573bc8bc51d10cf40cd436bda8478b7138310cc9e2ac15a4f5e5": 1
+    },
+    "scripts/tests/test-stalker-durable-failures-parts/cases-01.bash": {
+      "22ff80694e356dc28e79186ab291a37cc3910c607e7e0384e7bbf91acb1d8ed3": 1,
+      "3667bb6922c0f881f5357826a9130fcce94a7144915ea65dfa472e65ae3b2049": 5,
+      "4fcc08f4586da4d4a9a02984cc0e1b92854c8ca3253d252c521435ce322ad129": 1,
+      "599cf5dd9f4cb03f1b4a6c556749de70ff80739e5722be7b9ee82d515cc24596": 1,
+      "62cc6ebbfe71889f3aca1e2aada5eb62500063ed4d72d2a3448656fe4adccc21": 1,
+      "6ecdccc289cc2b661ccc939d7e076d316ef026c47d2dc510a2b4702570435304": 1
+    },
+    "scripts/tests/test-stalker-durable-failures-parts/cases-02.bash": {
+      "120336a7f26be08b1880d0781ff65820cec2a3dc44067c496a067c0c871c15c5": 1,
+      "b4769e1d473ed93b1caac2d5b7b95bda4ab6b61a8ff4fc1068332e248cc6b934": 1
+    },
+    "scripts/tests/test-stalker-durable-failures-parts/setup.bash": {
+      "01c7d3abd3b2366a92a9fbc4133dcd45a721ab08c3dd1fc56ac28b4b97951ae6": 1,
+      "3667bb6922c0f881f5357826a9130fcce94a7144915ea65dfa472e65ae3b2049": 5,
+      "3d54ecd8102beae4ce86249eb5f8c77faef4eef063316d9c72ca90bdd9264c7f": 1,
+      "4949218de757741f2174599ad06408d4f369e2da90bbe7f4b32313bd792d7393": 1,
+      "4f42995fdc2e573bc8bc51d10cf40cd436bda8478b7138310cc9e2ac15a4f5e5": 1,
+      "a80cb97b9957203203f4d349ec86289e44ce4ea96ad4d8c1b8444620049aa609": 1,
+      "dbcee220ecda1bde4c3e1a543e808bd6a699241ac463f8d46f9d6a67c035aac7": 1
+    },
+    "scripts/tests/test-stalker-durable-failures.bats": {
+      "165d3560adc216546f291b0f4380e60e2f4c53025389b9a32536b1f0a4e7723d": 1,
+      "4f42995fdc2e573bc8bc51d10cf40cd436bda8478b7138310cc9e2ac15a4f5e5": 1
+    },
+    "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases01.mjs": {},
+    "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases02.mjs": {},
+    "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases03.mjs": {},
+    "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases04.mjs": {
+      "159d0b141856d2f056b658d254fb36805ce27fc3fd7d9e5ed5573e31645be767": 1,
+      "5461840b4a764347ab707e9a31e31b4be9635735387e913e716788bfb7f573c2": 1,
+      "8c38f3bd4c5596acc13843b443d6849b1ec31d230a0cf2a38f03c54343712d9e": 1,
+      "8e91954f5daeaafea30ee0bf81f20955e56453b6e3d96826dbb716199297c7af": 1,
+      "ac767db555b8c3a2115a485a778813ad1dc6912937454ade437c74e983c09547": 1,
+      "b6b4de3229acef808103427cac55b11e2e466b6b5231baeed57d4971f8dccb0d": 1,
+      "c05a0ee190544b62bf24311be82f52a7f2a9f8805e49ccfc0a41c1fe3e2044d5": 1
+    },
+    "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/common.mjs": {
+      "1118aaa659e066a4eabc65fde2006fc02a2c9696d4b9a0b379c08832c0f6fe6e": 1,
+      "4397de72baa194458cfdaa51d1bda002f6c648d6fd6ce9b78ef90cb9259ec9c1": 1,
+      "4713ccdd3b8ca3677054f14892cfe888239a4cf824fd7aaf2d5e1e81dd9b450b": 1,
+      "863294b014ee8e25f851da386638aadac69de9cb2fad7833b48e1eded59875cd": 1,
+      "a447aa83f892f251088668cb13a76c9483568dc04fca6b7ab109ae7ddf799947": 1,
+      "d1e57f07c05dcd3cc765e93a63ff14218a6e9e48b9d548f455a62b5b4dde0148": 1
+    },
+    "skills/golem-powers/audio-dashboard/evals/audio-dashboard.test.mjs": {
+      "70161f6ad696e5ad8422447bc9b3228d6d66bb4eb22a37c9aad70a6d3707c06e": 1
+    },
+    "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/__init__.py": {},
+    "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/cases01.py": {},
+    "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/cases02.py": {},
+    "skills/golem-powers/codex-workflows/tests/_test_codex_workflows_parts/common.py": {},
+    "skills/golem-powers/codex-workflows/tests/test_codex_workflows.py": {
+      "381f9bfc69d49d39040a7d5fc3197ce385019a2ba2de649622f841a8c658ed37": 1
+    },
+    "skills/golem-powers/collab-monitor/evals/run-evals-parts/candidate-01.bash": {},
+    "skills/golem-powers/collab-monitor/evals/run-evals-parts/candidate-02.bash": {},
+    "skills/golem-powers/collab-monitor/evals/run-evals.sh": {
+      "e2b37d0fbeebd5358ba88a5ef5469cfab940c91f397b72b95107b9b6515a9ece": 1
+    },
+    "skills/golem-powers/drive-filing/scripts/rollup-test-parts/cases01.mjs": {
+      "16b74a875e6186fc7b3a198b4544c874354fc2c4ea737ce0d3145fc7306246a7": 1,
+      "27b258ef14fc22c8669ce93123398a318c6d37754c356e9577c7ab1e52b72da1": 1,
+      "53f08d2868d66926ad45f5d2dabe700be06e76ff357e98bf6df9543f6021accc": 1,
+      "73a736d8d473d29a138a10d058c74a41b05b2f0c31fae62e8bf448bf3daf0a11": 1,
+      "7dd6ec80d2a8bb02de014731bf7bd32334699f5edbde694902d66e07d9d5a8d9": 1,
+      "7e19582cde9bc77d7096a8971740999724d77405692fe0268a1d4d1b7e228236": 1,
+      "ab8cfaf1344beb2bab22a4056b9b594de2424adb2cbf50614c86dbf24a793aa8": 1,
+      "b2e10633df20d48ca246f26ba5a269dd6dc56df92395ca1ef83f348b95ad8b84": 1,
+      "b312d1e72524eca92e7622dcd9c7dfac072c044ae7d54f633f7abe412745c18a": 1,
+      "bca81dbad44d6e3db3b9dad435e8d2160503c5716a59d16b03258c6860ce1edd": 1,
+      "d15d019a23920a3fc5bd95cfa078112070c88528b301abb8e87f9d2a3c242436": 1,
+      "d3f5357980d6baa50953fb72fa83aec9a73ee87bc30434a0fedb87df73f214e7": 1,
+      "ddb55387eae2ff9a01a4df11d7e54f14b640c60d3b1731eaa26f21e888a8f1b2": 1,
+      "ed4f47520dcefd4047b7765a2ab1a5cef89ef517fa248b0f35a4569f41591eb0": 1,
+      "edda2e11ea8f298629f9e184c2c51a879dfcedf892a822b4c9199829b81da412": 1
+    },
+    "skills/golem-powers/drive-filing/scripts/rollup-test-parts/cases02.mjs": {
+      "0c59cf0b95a08781cd20e3979810e445028d3b6ffe85f41903b049493b5fd91a": 1,
+      "425f14df1270a1d836b627548995848fb817d5367e402e823bc519585d4eaa68": 1,
+      "4349312c64c52a2e9fb958e75d888baefa5f30b4384188f9d1c51084dab59d1c": 1,
+      "5c18e8ffe662c7682e4c0b8e29e108b1b179adab89ce182f6c57f0878d52750a": 1,
+      "68771604efc73d5188326a7464a5ac2525c1d6a82e3f1e750a45351f6a41f659": 1,
+      "8a3f81178d5874b9059cf12366fc7e925e3fc9a819c1b2705f54197f0e5abb01": 1,
+      "a1f3d6575a31639c8c18cac09569a0878501de1e705b9770f4d4453d20b6acd3": 1,
+      "f8acb03a4a30aa75d7921a0ff8ca1026ef06198ec14c1883b21d3ef9f21325e2": 1
+    },
+    "skills/golem-powers/drive-filing/scripts/rollup-test-parts/common.mjs": {
+      "3fa36cec7df7bd890541ee4c971ac893d0850ea55bcd0db7b5e81e7f60d97e11": 1,
+      "e6baf1405baf5382c6dec6cebcf06797340dce06425a1e6d48166de3aab4f069": 1
+    },
+    "skills/golem-powers/drive-filing/scripts/rollup.test.mjs": {
+      "70161f6ad696e5ad8422447bc9b3228d6d66bb4eb22a37c9aad70a6d3707c06e": 1
+    },
+    "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/cases01.mjs": {},
+    "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/cases02.mjs": {},
+    "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate-test-parts/common.mjs": {
+      "08d852c92c77c59ce0330ea649e7b612873265a8851e46190037213084497d01": 1,
+      "0f9e1b32368f7ee4b708628f7f7034501656ffb9b2ae3e55be28bf632140836b": 1,
+      "10b0da853d52b7123f06a3330708c2f9a1625ec0bb55f0de5424e482a4a50cdc": 1,
+      "150787bab194944f916e395db77d419b41c70382ce13990de60d5ecd57680189": 1,
+      "251805f06d08d159bb799b98b63dc42b199d2d2615464aba856ef9e49902c3c8": 1,
+      "31bcdfc6d88235ff9349bb0607c2640b339ad3101cb96f451d6a3ffe04382053": 1,
+      "3fa36cec7df7bd890541ee4c971ac893d0850ea55bcd0db7b5e81e7f60d97e11": 1,
+      "8186a3bcd478436c05f1a37ab3e7ed1726fae8b6e251ace2b9f81932523f77d6": 1,
+      "b956c7522431bf5a0e9b9e43c0138b6f405cda5418f69c75ac946634d41fe475": 1,
+      "dc47f7914f9bb1a8f77d8bd745a0b3c01a05c2399930fb2f29281baf8e7c38b7": 1
+    },
+    "skills/golem-powers/fleet-wrap-gate/evals/fleet-wrap-gate.test.mjs": {
+      "70161f6ad696e5ad8422447bc9b3228d6d66bb4eb22a37c9aad70a6d3707c06e": 1
+    },
+    "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/__init__.py": {},
+    "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/cases01.py": {
+      "027c9cce535a78c02b24b4d8c8971f12b3d83aef73dbbd6750b1f878b41cc8e6": 1,
+      "0beb2968c65f7338720f09530961eb5877837408364a69a033cc1ed8d4460303": 1,
+      "116fc79a4ecc740c2b5e5386d9bda325a52bfa6013ac276b6f6a75cc0429d105": 1,
+      "172dfbf956ec9056c165689d868a8e9946b2298885a74d6ac8142ff73cfe8ac6": 1,
+      "18332bf49d37dad0263d2b37c278179829fd4934a79755e93c6a3eee1b1b9b25": 1,
+      "18b5f943fb44cbeebd590ddd0118dd392a40e6a35ca8ab870b9e740056b5652b": 1,
+      "19762fa3b3ea1b8c6f36bdef72097fb1713c8f11037f4171d49c302fc4b24f5b": 1,
+      "238642e034e467ace0c1566888974aca3a8eaeea28a6acdb7f16d9ca2b919404": 1,
+      "27d56f2205c5477e37e217e1e4dedf258c3418c55d6bc22afa55e92345a90ab8": 1,
+      "2c2fd177ef5ee27131c4a4a9f4914e4c7b83fc3bc26f2ded83c4e83279271676": 1,
+      "32201ca5f488886626e515adbb136961c7c6d3be4b0df01fac00723e3ae03d9a": 1,
+      "37b300ac48f4aa12a6c4b94dd2e26ec71ed0191226b5c849da26273b3b9fadee": 1,
+      "40d3e16a9f00cba586eba3b185130cd6fad1cb50ea606532b347fc0cdb554c77": 1,
+      "41c68bbdafb05e018eca17cde3646191933476f5759041bd339995e397473da4": 1,
+      "53336a602420cfe25100d06eb4007a2138c5160c5916f3b7d98be22ad194b17e": 1,
+      "56925ba228e81a9c9887dec23ed158e60a63ebd1029030ff2b4d66c8ea5f057a": 1,
+      "62bb4ec550f48e7f2fa867e0498d583827177fb9f320b064e5f625159a1f023f": 1,
+      "6436cd86c09043963525901ef4e8a360456569a75095dccfcc4f625d970aa1c9": 1,
+      "68d5dff309736bdd0028567b8e99826d01c8a01a65331ad672b7fc7ef68e3f42": 1,
+      "69dc78d311fb7390d6afd434c43abfb2a54594e96be3966d11ee09ec926e7bc4": 1,
+      "72969645fa5d3643f6a097eae6fc54d9dd20120d138c4f4eee287862db535f8d": 1,
+      "7e394c618dba4970e0091ef71c29edf8536f08d623bd555968f4ee9c230013de": 1,
+      "87a7f0af22a5e14df86b94e49ff9816d16837f4e505380dacdac4cbc86605412": 1,
+      "881315e7204cf4fad057977543cf08932bb7a8389e72b30184a20aa89e80b76e": 1,
+      "9547621043849809df88af95ddb4e058a85b82fd1730fa0948e259fb2a883415": 1,
+      "9e98166acd4db16bf3fedfabd35667a2c873ee9724b0848b32710609576e121a": 1,
+      "accd890b8b454c6b1051be15bfe8b01af511142c1703573d4387727e0c941afc": 1,
+      "b13cb0d6a778b4e0915baa80a2a5482b612ff85a4fd50e32ea8e9f86cae96be0": 1,
+      "b301736fac1bb4581feebe94685af5611b6ea78e311cc6e9ddf282d7979692ee": 1,
+      "c3ccc7695fc98f99b10d52d21507e8debd029c05856b1f9fb0145a304e7419cf": 1,
+      "c5e1e26b62961b88741f43b9f8018fe6377fba9db4e1b9fa58572d2d46b6f777": 1,
+      "cdf28b128767146e9e09ed91cce6df32a144fa88fd2d52ae8db1244aece7b25b": 1,
+      "cee733845b0bf8a8d3f3d234821e5b2eebac55eb7601d6d233eb6c172637cb5a": 1,
+      "db5c4aeb701f37a0db4242ead4390c788ec800bfc9c29d65c9060eee853a315a": 1,
+      "df2d458ec23ab63fb6dcd18919296992818e61c046f09081a7d0450f3413b759": 1,
+      "ec94154a2ddcd8a765abf273dbb77c9186169ca7c00ee04f85842e33fd03dc1c": 1,
+      "fdc3dec034e39e731679152f0eb2465dee00d6011df476bbbfcf1f15e68ae063": 1
+    },
+    "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/cases02.py": {
+      "0004379188b4e1f1fc25cc6125179473debb10b57d98feb230c4cb019b2898a0": 1,
+      "002521fb19c355d8e4f85193e6837942014ddedc298a3e935601b418459fab32": 1,
+      "0480c4ca8d7298aa89ac9e4ae06b3bf71f77179a7921b36ae5a1bdfe9edfa63b": 1,
+      "04a5c69a6410e2d6ba04278f28b4a285044df3dc56668e0a1afa9597179abb17": 1,
+      "110082e002600a924ceb4506a6ba9096259b85e7b7ce847c1aae912bb8dbf16c": 1,
+      "112fb1d9de9b5a44123e7a01d5b96e145c004cca43ef2afeac3c2b0628eba0d6": 1,
+      "12838752dd03cd5ee6f5b02aa04afa94b37801a05bf152610bba264778df24a7": 1,
+      "1382c83c7bfffdebad609416c98ca7a916e7d2dff2b1bd851ae35912873c6018": 1,
+      "153cf2229ac1d9504c996a74bb05b75132aae5d67b1c94d76b230fb4edb834da": 1,
+      "154b0a8c2a2d3a7dd03753e9ce80b487de785e7023f5817996baa48fb59c67b8": 1,
+      "158d93cfc626e98026fbdf28f65abe0256194fae522f4bfcc6ed080169ae043e": 1,
+      "2077564f95ef4144ac3a8e9d7d279944a7ded28c0b0f603377a146c40d602967": 1,
+      "20b2f2f8fa9d7f86f3480387ba9a3081de4e751d658d0104dce69a3c38b9083e": 1,
+      "236a7633d3f8cc0a2bf822d0a693b048adb193b97b851b57caa1c8c60f3c3ff3": 1,
+      "2bf895c7906fa102bb9009231abdb4a6fe6b3fbf78fc795e62059635a902f5c5": 1,
+      "2e033d21298e1a60b9d77745e6bc632ae0dfd7f083df9953f57362f31c08465b": 1,
+      "3382f5a2ca993ede90676ac5d911340a18988075b2b42ff6048a474e9635f38a": 1,
+      "3a826924995cca64130fa09a10844914029b1ad6f293e36bf69264d16e5cea58": 1,
+      "3ea042e0207a2dc29b53dd62d5b7a4729d1fa94694bac407384a2012cf5ff250": 1,
+      "42eb9c59259faa4affdea8dbb4513a33fdf45289d5dbc1ed30e31afa1bedb5e4": 1,
+      "44911150ba1e6d95684708f58fa849cdb1167477015d7daff991827748a93ec4": 1,
+      "581eaa1e6aca0fb9c1ece54705090fce0c5bce3f82e5285eb1e7f6186d3cab52": 1,
+      "5a6cba1e70ae4f90e25b5fc962ef70fe13c40a04a8456bbe6430d517298af751": 1,
+      "6137201cf90422f3dc265caa018bfb395b59d21a92a545507d83a2497bc38668": 1,
+      "682d44e60b74b0d47497f7f92a8172cab596d0be38737396820dff324e113cae": 1,
+      "6a46a49f5b6001752487782205c72c9afa89856b3c3b41dc116f3443b6e05b28": 1,
+      "6a80955b053893d3c3cbf8d511b4d02500f1c1f9d0ed89d53e46b72ba82621f2": 1,
+      "70f5aeec57c0eca8b7ec1a8c14c857f9218d078aa018a92ded2db9daf7118fd2": 1,
+      "723f4d33020077fd6f330435ebab3ea52bd573db798a13831a7d13bfd667237d": 1,
+      "72c3c6ec9c14eea5612751a5df12ee6cc718922044fe21c66158b53b238ac1e9": 1,
+      "75f318a909bd9eb0c333456dec3a7858e04d8970ff4b77dc312b676079c953a0": 1,
+      "790af4e47a26ca0cd12f6d63d7584d549f90b645c3f567572195f7fd9c53a842": 1,
+      "82a8b94f57a8b4eccad237a9123be6ed2136560a2e141ed9fc1fc0e328daf625": 1,
+      "864ee1a4c045275d4d1cb537327e2527202b5a74747f275d8eaf5b1947ff12a4": 1,
+      "889bdb3a1b2e8483c6aaf23a17c39e4dc876a215ea8e1a57ed0f7b8806450764": 1,
+      "8c29c5becf6748ebe08f9b0bcfc1be6f679126cb7d90d06a87ed799c41c0ff65": 1,
+      "8dd851b283bd29cb86a3273276a97823e5d12804e1ee4372a1775cb014034d55": 1,
+      "90e9cf3bb2e7b430c2c7174b25a1bae7a79ec409c6616ba135b254a0d8c456dc": 1,
+      "93f51bac938b9f6d4ff026e520567b5174ad26f3b8fec2de6d60da7c4ff4d85f": 1,
+      "986a8396977f7a5e850e55d1aee269bcc34475d8b287d217ef24c1a4a043f3b1": 1,
+      "9944a554f75e883e3d687df3b7b2960f5b6d4bbadd7aefae5d0c903aaf765c05": 1,
+      "a043574a8662c5c3665641e3148790b535555083a7dfa71bdcd6937d208ad641": 1,
+      "aa48bfb4266c74fe6e6a4e50ea56304adb75ff9059e07bf6da70bac5ec1f94e4": 1,
+      "ac7ed2e0e6e961531a904eec93281c8577db616cf1af233506fec8a78cff1649": 1,
+      "af33a98a78187593048548cce26c999e2d748c1f3a596dd4d99e700dc254967e": 1,
+      "c406cbdfd17ce3e580b4de2bc8d021dc14505991184cc0299c88a367668f914c": 1,
+      "c55f897ac6a4b209166a4160262644249a5a52263adb25cf1e1a2a2e7d600da3": 1,
+      "c60f5e184cdbfe6f749e1c682aa3e145964373d994fab7fce1a99005d190447c": 1,
+      "c84faacc1a8f6584aeadb54b967bb7c6e7d962de0c3a8a0a7fca19ebe803e39d": 1,
+      "cbcaf1e05b159d3928f66f935a61913a79479df7120c1e2c286ef050c8184002": 1,
+      "cd8c1e8b2dc95b490276b67a985f648ce0e1572caa1c8532ab421190681372e0": 1,
+      "d87a5d2d6f8d9ce1a8de4f654f06e5be7f11237da50f5433285288dd6e8f2716": 1,
+      "de600c956c2b4a8ddf68a84a8fcfc6adddae82ff43936a91dbc4a711ba31af62": 1,
+      "e4253f2cf04222ab39aa0ff64a709f2f1b6536990a1210ed1cdcff826af23aaf": 1,
+      "e765059ae40483ddfd49f7a41663fea984b60421c026c3c164ecb9effe6d3534": 1,
+      "ea7771e796bf3b6535daeb7496bbc932d643a85d0654fb745c826925df1a41b4": 1,
+      "f0d77aab8f4659353ad595bcc41d5b26835363896ab0c815aeffb7dd9565c64f": 1,
+      "f3220fd34ea53b26ddca7d377d3a746c8e9862a29a3e16653a91256540fb4366": 1,
+      "f95f6795a7cd2ecd3c0d4cc0364ebe1ff96f0c744a0fe1620cc95aef55fb8982": 1
+    },
+    "skills/golem-powers/git-guardian/tests/_test_git_safety_parts/common.py": {
+      "2b374f06181d32ece11a8d84ebc738904495e50e73271bf2c7c1bbfe161e0175": 1,
+      "37efe22cd0333bd83a7e75c6acd4b322a5a638f1ce7dacfbd06a66467601de37": 1,
+      "40d2e32a74e6cbf3ce630e668b65f7f06ce99248e8f49fc4a387acb63d890547": 1,
+      "56fc0b1135855566b5c45fd09286f3c7419411641064adc474f1f45ca65be279": 1,
+      "5b79307833d3d37bd563d6cb2e691d7fb7b654b5ad4c3d603aa488b4145e1090": 1,
+      "5efe4563d52a8cc0bde69d3b86c31f255ba5aa37b1100ffd29457abddb31ffb4": 1,
+      "747de1410dd0d8f46c6dc9e59de250d79a1439968e703f9e9b5759b3d30f7939": 1,
+      "7af7a640c957226af2578c3ea846b2f43e7f7b850086456732a554323978836b": 1,
+      "88304602e20865f03df28d50d60d47c3dcc818235ce40c7e8873677f2c64d100": 1,
+      "89badfdbbef31ae8762e54d41c3952dad0e5aeac5d1314dc47bf6f3dc901d82c": 1,
+      "972ae833b9c1ceadc3fe5b7d2e8f1806e9ae73d9e798933315275b781eff8b39": 1,
+      "a23944deaa22e528b54bc5fe94661a0dd0480447ab541b7be11b5b8b6a41d075": 1,
+      "b6c3277407366c64bea924359cb5a73c11c9fdc0debf56d37f877bfeec85099a": 1,
+      "db45c5a1a79365f7143a9f8faff53d7db88d294d2c0d284aeacdc3c5750e05c6": 1
+    },
+    "skills/golem-powers/git-guardian/tests/test_git_safety.py": {},
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/__init__.py": {},
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases01.py": {
+      "3231c7f6495fff24d6100f015ee097d7a784962875791d6d4fb45803e2fc90a7": 1,
+      "71dee1b8d4e497de4f2360e7d0a98be915ceaadf238762cb617b83b9634a740e": 1,
+      "a709e8092c891b33d13aba4f495b64073ed65e0e24c4c0e9caed54f52848d6fd": 1,
+      "b7d25ac91428dd0ffe912e6ed8737a7a54d23af246a82adabeed28bd0119f94b": 1,
+      "cfd79217a21f59f4d28a155f3446762fa2e890c047224d55e85bc723ad3b9fbe": 1,
+      "d4ca6d47fee67588533bcde5a9427934b1acbe18b51ab12d68093ce8c2d5a31c": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases02.py": {},
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases03.py": {},
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases04.py": {
+      "05c2a1bdb1d32cad2b9ea0e8702494526e06461bc27412c3644eb00e1017638a": 1,
+      "30e4b6bc98406e4a8fc458175391836ee80686a844d9a0e09d706116cf29d0fe": 1,
+      "3124ef39dbbe1feffde76fd32e8a78f060449c6a4db9f828995ed8d8ea703eb9": 1,
+      "413043f4a853238f80306d3ae5f9271cd086f28b2eca4fe6a23e5af3470d9681": 2,
+      "5a05dba8015d5c9ec22fe0bd281d99b9e82d341a1c031c72ce09704a9dc3e3bf": 1,
+      "bb8ccebd7bf29223fad8b0426de1c56c9b103dc7dc260448f3e049193e7462bb": 1,
+      "c4c688cafc7e922b64eda9e88ef6b9c853faded47043c6cf2fe815cfcd242357": 1,
+      "f645ba75d6d114bf0fd971a8b8194130d774e88ae02f76dd2237b61b1c6f13fa": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py": {
+      "1e9b2a72fc1e1557aa56e7276eeb1a3c48d99e2c12b2ea98a2c047a6335cb096": 1,
+      "2a56fa8232cdef6cfc48c5149a4ddc5a39d61054eaee70ae50e684efc9f6c1d6": 1,
+      "3643c5168efb51429d023f6d8cf4d30c756097883b4a06bced1a52e1beef318d": 1,
+      "4090ae684fe8f54f0da393cfaff8601a71bee25f1230a1f1bf752d9fe14c3746": 1,
+      "4cbaf20f6b3ddf3b8dc3e0139636982d76931606ba38c375b58703e0008a64d6": 1,
+      "55055c35f883107b94b5ee998b418226c6cf07f2adadd4ca87d75dcae52ab99a": 1,
+      "5a9194297e627016de5a98e8402ef334411547a5d73aa3e06088e24d7c575d38": 1,
+      "5fa4a50a46732730fd7b9474653769ab4c1bb4589193bf1429ad0f3afbc8f486": 1,
+      "629bd30a3384881ae8d0e32671c02e53ec9c13a7b1cdcf8b283df8ae6e951df2": 1,
+      "7d3feab94d430927cdce75547369ea6e6a2aa592e27d21010b69e07e68220702": 1,
+      "80b15fc7168e80e04f3e6c8e15500e4ceaaaca8ce0c0a71aa091c4a431308de4": 1,
+      "a9c7346362bd98ac64e571ccda292239a6924b502217dc552d2ff7bcc5f7013d": 1,
+      "ad7063121ac62ecb2e32fd8f8a728d72ac2571401374e3ad41120141b275d1e8": 1,
+      "e52b8a493693e302e29654be45ab16af58582092b2eefaba274b05d53c0f700e": 1,
+      "e86cb5dae9d33b9ca5fd02f3adcef0f1296a07db4e9570cf9302138d734c8da3": 1,
+      "fbafe90fd6d882bf1558118c6bec60c43a88136acc2530852c11879405551481": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases06.py": {
+      "2c344c1790f01a08c94cb13cab888d19f8e7116a3d2677283e1a96d5752212d1": 1,
+      "66c72e869622e5b61f8e215adce4908add503855f9c2177f18b3832755008687": 1,
+      "7193a1e4af9dedfc1e78408fb28a7a45b6da8ebce387fa517369a0fea3a069c4": 1,
+      "8513cbde376e6abdc58f4b3fd73d3f9e91080b8b2615223defe6e7dc1ec3aa60": 1,
+      "93b46cd8ac016c2cb864e816f2a271bca0a2acfcea1dc78f9bea304a9b6e49db": 1,
+      "d0a6a6c6ae10fda00a05b63aa318907b35df435b7beb77f556972f53d6e1b62f": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/common.py": {
+      "11188bbd789c9025c86ab58f99bc725de7a3019ff4cf1bfa495c3ce833c764cd": 1,
+      "1a32f896459a0d873d235a87bb738ac1cc9c8e3c326d1e10bdbbb3616eff4ebd": 1,
+      "27975c13cbbc1c4734cf099e874e440829c68c9c2daed1654771b8a16bc120f7": 1,
+      "2b2939c4f86b59736b8f0adcb13955093880eafbe071f5a2469b48c8cf269490": 1,
+      "2c64a41641ea9fcda7047e643dff8034f2ef7769d23e8b22112858eb2f2bd816": 1,
+      "334359b90efed75da5f0ada1d5e6b256f4a6bd0aee7eb39c0f90182a021ffc8b": 3,
+      "3664e7969a4f6a5ed97cdd00cee84cf7c43f62fd6138a3ba051881d6496e1bae": 1,
+      "4922b635e4f80e50f9abc0cc4c396e5089aa2fd7968de5d86507d7ae0fffa21a": 1,
+      "55e179146c3c9069ee2adb43b28924579e76aa14cc5f29768cfaf05bbaafeac3": 1,
+      "5a38d42e740620ee119318f812118ad50d435c5d1a0b748910b4c94f6bc9a638": 1,
+      "5d0386de7037ee9b4ae03c959dbf47b23ac68a3458c6cf30f12089ef697cbb4a": 1,
+      "64521afc2ecb60b3ed4e5c397d90152e4844552ad362937e902506452089c4e0": 1,
+      "708e7459ca7faaf606f2937c5157927ff645118040cd35fa3ff07237255a478d": 1,
+      "82db42f3a752db671bc112fc08644f6dbe021e5bb5e9e438e2742607ec716c16": 1,
+      "a668352a51466f6b3ee6853a83884f09954f4b337ddfb14042371a8235318ca0": 1,
+      "dc4d5005f167a7376a99aec946709ed74f958f22bf1b139189ac434e9f3b268e": 1,
+      "e590da9f2d62ccd15785a5aff64f5346884849ffddf57b3d98747d2b500f517a": 1,
+      "ea1ce155ba9ce5c87642a0fe176b6fa83a6afd739907bfc0efc835fa2f93e4ba": 1,
+      "ead9b9038f38025ba7d5c1290fa761c5b9bc3160d31f008414e3be9e02d564d2": 1,
+      "f1bb7b0413748d6e3ef3933871f45dd4018fd246f0ca38c491f95a0841eebb61": 1,
+      "f3498f186a2812e3eb2e0122e1854341d40ce5470408660e3ce4577aa9672428": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tests/test_tmp_block.py": {},
+    "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/__init__.py": {},
+    "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/cases01.py": {
+      "5cdf8f4d1a316e42dd6226a3aca65c6a6e3287fcd88bb39a7af99e1cd0d3b3cc": 1,
+      "61507a0ebaccd157af3046c2eade47c1f95ef0f12fe0a593ca604c50635818af": 1,
+      "668fed0d0bcd6685f365c065071dcfc795a5ef7642ac68921350a675e2b50d64": 1,
+      "6b404b5fe0272c7172b0e138596ec1a6dee7b169caf7f9b6fdb8fdaa14ccdff0": 1,
+      "8140621da740c785b42c0cec0ebc3a76d2a613c414e1518e643a829daab180c2": 1,
+      "e7d10451104deef45110ef8d66da71568a7fb3d4d77fb998ddffda78940dc286": 1
+    },
+    "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/cases02.py": {},
+    "skills/golem-powers/tmp-block/tests/_test_worktree_anchor_parts/common.py": {
+      "86f25129ae26cf086e454ef3b2be4492eb7aaab08b6209d4e028fd2c9962d5a7": 1,
+      "d160923ea1409daa7c1188cdb469ce6311a7f46e82ae8596a719b5ecaaf83883": 1
+    },
+    "skills/golem-powers/tmp-block/tests/test_worktree_anchor.py": {}
+  }
+}

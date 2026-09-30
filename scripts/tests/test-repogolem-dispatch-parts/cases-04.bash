@@ -28,7 +28,7 @@ function split_case_061() {
 
       source "$3"
       _golem_register_wrappers
-      testrepoCodex --worker -s "Implement brief"
+      testrepoCodex -E high --worker -s "Implement brief"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -138,7 +138,7 @@ function split_case_064() {
 
       source "$3"
       _golem_register_wrappers
-      testrepoCodex --worker -- --raw-option raw-value
+      testrepoCodex -E high --worker -- --raw-option raw-value
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -172,7 +172,7 @@ function split_case_065() {
 
       source "$3"
       _golem_register_wrappers
-      testrepoCodex -s "baseline prompt"
+      testrepoCodex -s -E medium "baseline prompt"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -580,7 +580,7 @@ JSON
       function codex() { print -r -- "CODEX_ARGS=$*"; }
 
       source "$2"
-      testrepoCodex -s -- --profile custom-profile
+      testrepoCodex -s -E high -- --profile custom-profile
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home"
 
     [ "$status" -eq 0 ]

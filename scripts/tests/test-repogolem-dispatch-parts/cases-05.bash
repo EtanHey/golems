@@ -416,7 +416,7 @@ JSON
       function _golem_reset_title() { return 0; }
       function codex() { print -r -- "CODEX_ARGS=$*"; }
       source "$2"
-      testrepoCodex -s -- -pmyprofile
+      testrepoCodex -s -E high -- -pmyprofile
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home"
 
     [ "$status" -eq 0 ]

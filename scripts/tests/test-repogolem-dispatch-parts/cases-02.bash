@@ -193,7 +193,7 @@ function split_case_029() {
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
-    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="medium"' <<< "$output")" -eq 1 ]
+    [ "$(grep -Fc -- 'CODEX_ARG=model_reasoning_effort=' <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$output")" -eq 1 ]
 }
 
@@ -219,12 +219,12 @@ function split_case_030() {
 
       source "$2"
       testrepoCodex -s
-      testrepoCodex -s -p "one shot"
+      testrepoCodex -s -E medium -p "one shot"
       testrepoCodex -s -c "continue"
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
-    for call in 1 2; do
+    for call in 2; do
       local call_output
       call_output=$(awk -v call="$call" '
         $0 == "CODEX_CALL=" call { in_call = 1; next }
@@ -268,9 +268,9 @@ function split_case_031() {
 
       source "$2"
       testrepoCodex -s
-      testrepoCodex -s -p "one shot"
+      testrepoCodex -s -E medium -p "one shot"
       testrepoCodex -s -c "continue"
-      testrepoCodex --worker -s "Implement brief"
+      testrepoCodex -E high --worker -s "Implement brief"
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]

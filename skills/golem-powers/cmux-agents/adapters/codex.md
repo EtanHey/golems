@@ -16,8 +16,11 @@
 
 Resolve `codex.implement` via `node scripts/model-roles.mjs codex.implement --field model`
 from the golems checkout. Choose effort per `/large-plan` phase, record why, and pass it
-explicitly at dispatch alongside the resolved model. Verify bare launcher model pins against
-the role config. Resume restores the selected session model and effort unless explicitly overridden.
+explicitly at dispatch alongside the resolved model. The launcher refuses a worker spawn
+without an explicit effort (`-E` or `GOLEM_EFFORT`); choose per plan phase (see `/agent-routing`).
+Bare interactive launches use Codex config effort. Verify bare launcher model pins against
+the role config. Ambient `GOLEM_EFFORT` is read only on fresh prompted/worker boots.
+Resume restores the selected session state; effort changes only with an explicit `-E` flag.
 
 For cmux **visible pane** agent sessions, fleet canon #6 and `/repogolem` own launcher defaults and resume law. `spawn_agent` may omit `model` or pass an explicit supported Codex model. Merged cmuxlayer PR #396 validates that model against `codex debug models --bundled` before pane creation and forwards accepted model/effort values to the launcher; an unsupported model rolls back any newly prepared worktree. At read time `spawn_agent.effort` accepts `medium|high|xhigh|ultra`, while direct repoGolem `-E` also accepts `low` and `max`. Effective-runtime proof lives in `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification.
 
@@ -59,13 +62,15 @@ cd ../wt-agent-1 && codex --full-auto "task"
 Codex peers should be launched and monitored by `agent_id`, not by remembered surface numbers:
 
 ```text
-spawn_agent({ repo: "golems", cli: "codex", prompt: "Fix search ranking" })
+spawn_agent({ repo: "golems", cli: "codex", effort: "high", prompt: "Fix search ranking" })
 wait_for({ agent_id, target_state: "ready", timeout_ms: 120000 })
 send_to({ agent_id, text: "Limit changes to search ranking only", press_enter: true })
 wait_for({ agent_id, target_state: "done", timeout_ms: 1800000 })
 ```
 
-Codex has **no `Agent()` tool**. For visible parallel work, `spawn_agent({cli:"codex"})` is the primary path. Reach for `list_agents({agent_ids:[agent_id], detail:"full"})` when you want a cheap state snapshot; fall back to `read_screen` only for parser disputes.
+Codex spawns without `effort` are refused by the launcher; choose it per plan phase.
+
+Codex has **no `Agent()` tool**. For visible parallel work, `spawn_agent({cli:"codex", effort:"high"})` is the primary path. Reach for `list_agents({agent_ids:[agent_id], detail:"full"})` when you want a cheap state snapshot; fall back to `read_screen` only for parser disputes.
 
 ## Prompting Style
 
