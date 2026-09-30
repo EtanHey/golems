@@ -20,7 +20,7 @@
     "codex.implement": {
       "model": "gpt-6.1-sol",
       "effort": "medium",
-      "effort_note": "provisional; set from the cleanup-effort benchmark R2 (skill-creator) when published",
+      "effort_note": "benched 2026-09-30 (skill-creator cleanup-routing R2, 48 verified runs): medium best-or-joint-best; never default xhigh",
       "use_for": "all non-UX/UI implementation (Etan 2026-09-29 split)"
     },
     "codex.subagent.mechanical": {
