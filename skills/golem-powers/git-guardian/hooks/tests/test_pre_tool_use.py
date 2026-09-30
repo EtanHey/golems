@@ -127,6 +127,14 @@ def _copied_hook(tmp_path):
     return guardian, hook, launcher, other_cwd, env
 
 
+def _run_copied_hook(hook, launcher, cwd, env, command):
+    return subprocess.run(
+        ["python3", str(launcher), str(hook)], cwd=cwd, env=env,
+        input=json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "session_id": "t"}),
+        text=True, capture_output=True, check=False,
+    )
+
+
 def test_wrapper_depth_matrix_blocks_through_copied_hook_and_fail_open_launcher(tmp_path):
     guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
     broad_kinds = ("sudo", "nice", "xargs", "find-exec", "mixed")
@@ -172,6 +180,87 @@ def test_policy_error_blocks_value_free_through_fail_open_launcher(tmp_path):
     assert "security policy could not evaluate command safely" in reason
     assert "SENSITIVE POLICY DETAIL" not in result.stdout + result.stderr
     assert "golems-fail-open" not in result.stderr
+
+
+def test_quoted_paren_cannot_hide_force_push_through_copied_fail_open_hook(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = "cat <<EOF\n$(printf '%s' ')'; git push --force origin master)\nEOF"
+    result = subprocess.run(
+        ["python3", str(launcher), str(hook)], cwd=other_cwd, env=env,
+        input=json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "session_id": "t"}),
+        text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "git push --force" in json.loads(result.stdout)["reason"]
+    assert "golems-fail-open" not in result.stderr
+
+
+def test_issue412_benign_data_commands_stay_allowed_through_copied_hook(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    benign = (
+        'echo "$(basename "$PWD")"',
+        'echo "$(echo "$(echo "$(echo deep)")")"',
+        'echo "$(echo "a")" "$(echo "b")"',
+        "printf '%s\\n' \"$(dirname \"$(pwd)\")\"",
+        'echo "$(git log -1 --format="%s")"',
+        "git commit -m \"$(cat <<'EOF'\nfix: don't (break) `things`\n\n1) one :)\nEOF\n)\"",
+        "git commit -m \"$(cat <<EOF\nfix: don't break (things)\nEOF\n)\"",
+        "gh pr create --title \"t\" --body \"$(cat <<'EOF'\n## Summary\n- it's a `fix` (really)\n1) one\nEOF\n)\"",
+        'gh pr comment 1 --body "$(printf \'%s\\n\' "line (1)" "it\'s")"',
+        'git commit -m "it\'s (done)"',
+        'git commit -m "fix \\`foo\\` handling"',
+        'echo "a \\` b"',
+        'echo "price is \\$(5)"',
+        'echo "total: $(( $(wc -l < f) + 1 ))"',
+        'psql -c "select count(*) from t where a = \'x)\'"',
+        "curl -d @- <<'EOF'\n{\"a\": \"b (c)\", \"d\": \"it's\"}\nEOF",
+        "cat > f.json <<EOF\n{\"v\": \"$(date +%s)\", \"note\": \"it's (ok)\"}\nEOF",
+        "cat <<EOF > notes.md\nIt's 1) first 2) second :) $(date)\nEOF",
+        "cat <<EOF > notes.md\nrun \\`make\\` and \\$(not run)\nEOF",
+        "cat <<EOF > notes.md\na literal \\` tick\nEOF",
+        "python3 - <<'PY'\nprint(\"$( and `\")\nPY",
+        "grep -n '$(' file.sh",
+        "grep -c '`' README.md",
+        'x="$(printf "%s" ")")"; echo "$x"',
+        'v=$(case "$1" in a) echo 1;; *) echo 2;; esac); echo "$v"',
+        "echo \"$(sed 's/a/b/' <<'EOF'\nit's here\nEOF\n)\"",
+    )
+    denied = []
+    for command in benign:
+        result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+        if result.returncode != 0:
+            denied.append((command, result.returncode, result.stdout, result.stderr))
+    assert denied == []
+
+
+def test_issue412_truncation_shapes_cannot_hide_force_push(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    bad = "git push --force origin master"
+    dangerous = (
+        f"cat <<EOF\n$(printf %s $'a\\')'; {bad})\nEOF",
+        f'cat <<EOF\n$(: "${{x:-")"}}"; {bad})\nEOF',
+        f"cat <<EOF\n$(case x in x) {bad};; esac)\nEOF",
+        f"cat <<EOF\n$(: ${{x:-)}}; {bad})\nEOF",
+        f"cat <<EOF\n$(true # )\n{bad})\nEOF",
+        f"cat <<EOF\n$((true); ({bad}))\nEOF",
+        f"bash <<EOF\necho it's $({bad}) it's\nEOF",
+        f"cat <<EOF | sh\necho it's $({bad}) it's\nEOF",
+        f'echo "$(case x in x) {bad};; esac)"',
+        f'git commit --dry-run -m "$(case x in x) {bad};; esac)"',
+    )
+    allowed = []
+    for command in dangerous:
+        result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+        if result.returncode != 2:
+            allowed.append((command, result.returncode, result.stdout, result.stderr))
+        else:
+            reason = json.loads(result.stdout)["reason"]
+            assert (
+                "git push --force" in reason
+                or "security policy could not evaluate command safely" in reason
+            )
+            assert "golems-fail-open" not in result.stderr
+    assert allowed == []
 
 
 def test_second_policy_parse_error_is_value_free_red(monkeypatch):

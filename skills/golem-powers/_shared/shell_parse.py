@@ -1262,28 +1262,23 @@ def _executable_expansions(line: str) -> str:
     found = []
     i = 0
     while i < len(line):
+        if line[i] == "\\":
+            i += 2
+            continue
         if line.startswith("$(", i):
-            depth = 1
-            j = i + 2
-            while j < len(line) and depth:
-                if line.startswith("$(", j):
-                    depth += 1
-                    j += 2
-                    continue
-                if line[j] == ")":
-                    depth -= 1
-                j += 1
-            found.append(line[i:j])
+            j = _data_dollar_paren_end(line, i)
+            body = shell_text_without_heredoc_bodies(
+                line[i + 2:j - 1], _preserve_heredoc_delimiters=True
+            )
+            found.append("$(" + body + ")")
             i = j
             continue
         if line[i] == "`":
-            j = i + 1
-            while j < len(line):
-                if line[j] == "`" and line[j - 1] != "\\":
-                    j += 1
-                    break
-                j += 1
-            found.append(line[i:j])
+            j = _data_backtick_end(line, i)
+            body = shell_text_without_heredoc_bodies(
+                line[i + 1:j - 1], _preserve_heredoc_delimiters=True
+            )
+            found.append("`" + body + "`")
             i = j
             continue
         i += 1
@@ -1381,9 +1376,7 @@ def _mask_data_argument_quotes(text: str) -> str:
             index += 2
             continue
         if char in "'\"":
-            end = index + 1
-            while end < len(text) and text[end] != char:
-                end += 2 if char == '"' and text[end] == "\\" else 1
+            end = _data_argument_quote_end(text, index)
             body = text[index + 1:end]
             if words and _is_data_command(words):
                 body = "" if char == "'" else _executable_expansions(body)
@@ -1404,7 +1397,36 @@ def _mask_data_argument_quotes(text: str) -> str:
     return "".join(out)
 
 
-def shell_text_without_heredoc_bodies(command: str) -> str:
+def _data_argument_quote_end(text: str, start: int) -> int:
+    """Find a data-command argument's real closing quote.
+
+    A double-quoted argument may contain complete `$()` or backtick regions
+    with their own quotes.  Those inner delimiters cannot close the argument.
+    The caller intentionally receives ``len(text)`` for an unclosed argument,
+    preserving the established fail-visible behavior.
+    """
+    quote = text[start]
+    index = start + 1
+    while index < len(text):
+        char = text[index]
+        if quote == '"' and char == "\\":
+            index += 2
+            continue
+        if quote == '"' and text.startswith("$(", index):
+            index = _data_dollar_paren_end(text, index)
+            continue
+        if quote == '"' and char == "`":
+            index = _data_backtick_end(text, index)
+            continue
+        if char == quote:
+            return index
+        index += 1
+    return len(text)
+
+
+def shell_text_without_heredoc_bodies(
+    command: str, *, _preserve_heredoc_delimiters: bool = False
+) -> str:
     """Remove heredoc prose while retaining executable substitutions.
 
     GO-5 PR-4: also drops heredoc bodies read by a non-shell interpreter and
@@ -1425,12 +1447,25 @@ def shell_text_without_heredoc_bodies(command: str) -> str:
             candidate = line.lstrip("\t") if strip_tabs else line
             if candidate == delimiter:
                 pending.pop(0)
-                output.append(ending if mask_body else source_line)
+                output.append(
+                    source_line
+                    if mask_body and _preserve_heredoc_delimiters
+                    else ending if mask_body else source_line
+                )
             else:
                 if mask_body:
                     kept = "" if quoted else _executable_expansions(line)
                     output.append(kept + ending)
                 else:
+                    # In an unquoted heredoc, quotes are literal to the parent
+                    # shell while `$()`/backticks still execute.  Preserve
+                    # those expansions before the raw body is later parsed as
+                    # child-shell text, so a literal apostrophe cannot hide
+                    # the parent-side command.
+                    if not quoted:
+                        kept = _executable_expansions(line)
+                        if kept:
+                            output.append(kept + ending)
                     output.append(source_line)
             continue
         for match in _HEREDOC_RE.finditer(line):
@@ -1455,6 +1490,38 @@ def shell_text_without_heredoc_bodies(command: str) -> str:
     return _mask_data_argument_quotes("".join(output))
 
 
+def _data_backtick_end(text: str, start: int) -> int:
+    """Index after a DATA-model legacy substitution, or fail closed.
+
+    Backtick bodies keep the GENERAL parser's legacy rule: an escaped backtick
+    is data for the recursive pass, while the first unescaped backtick closes
+    the body. Quote state belongs to that recursive body, not this delimiter.
+    """
+    index = start + 1
+    while index < len(text):
+        if text[index] == "\\":
+            index += 2
+            continue
+        if text[index] == "`":
+            return index + 1
+        index += 1
+    raise ValueError("unterminated command substitution")
+
+
+def _data_dollar_paren_end(text: str, start: int) -> int:
+    """Index after a quote-aware DATA-model `$()` substitution.
+
+    This deliberately stays separate from the GENERAL parser model. It mirrors
+    its shell quote rules while skipping nested substitutions as complete
+    regions so their delimiters cannot close the containing `$()`.
+    """
+    found = _dollar_substitution(text, start)
+    if found is None:
+        raise ValueError("unterminated command substitution")
+    _body, end = found
+    return end
+
+
 def _backtick_bodies(command: str) -> list[str]:
     """Extract executable legacy command substitutions, excluding single quotes."""
     bodies = []
@@ -1462,7 +1529,7 @@ def _backtick_bodies(command: str) -> list[str]:
     index = 0
     while index < len(command):
         char = command[index]
-        if char == "\\":
+        if char == "\\" and quote != "'":
             index += 2
             continue
         if char == "'" and quote != '"':
@@ -1476,24 +1543,14 @@ def _backtick_bodies(command: str) -> list[str]:
         if char != "`" or quote == "'":
             index += 1
             continue
-        end = index + 1
-        while end < len(command):
-            if command[end] == "\\":
-                end += 2
-                continue
-            if command[end] == "`":
-                bodies.append(command[index + 1:end].replace("\\`", "`"))
-                index = end + 1
-                break
-            end += 1
-        else:
-            break
+        end = _data_backtick_end(command, index)
+        bodies.append(command[index + 1:end - 1].replace("\\`", "`"))
+        index = end
     return bodies
 
 
 def _dollar_paren_spans(text: str) -> list[tuple[int, int]]:
-    """(start, end) of each outermost `$( … )` outside single quotes; the body is
-    text[start + 2:end - 1] (or text[start + 2:end] when unclosed)."""
+    """(start, end) of each complete outermost `$()` outside single quotes."""
     spans = []
     quote = None
     index = 0
@@ -1511,15 +1568,11 @@ def _dollar_paren_spans(text: str) -> list[tuple[int, int]]:
             quote = "'"
         elif char == '"':
             quote = None if quote == '"' else '"'
+        elif char == "`":
+            index = _data_backtick_end(text, index)
+            continue
         elif text.startswith("$(", index) and not text.startswith("$((", index):
-            depth = 1
-            end = index + 2
-            while end < len(text) and depth:
-                if text[end] == "(":
-                    depth += 1
-                elif text[end] == ")":
-                    depth -= 1
-                end += 1
+            end = _data_dollar_paren_end(text, index)
             spans.append((index, end))
             index = end
             continue
@@ -1536,8 +1589,7 @@ def dollar_paren_bodies(text: str) -> list[str]:
     """
     bodies = []
     for start, end in _dollar_paren_spans(text):
-        closed = end - 1 < len(text) and text[end - 1] == ")"
-        bodies.append(text[start + 2:end - 1] if closed else text[start + 2:end])
+        bodies.append(text[start + 2:end - 1])
     return bodies
 
 

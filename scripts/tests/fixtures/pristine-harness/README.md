@@ -38,6 +38,8 @@ alias expansion. Pass swapping and early commit use unique source anchors to
 move complete blocks without embedding the parser in JSON.
 The 27 reviewer mutants from the parser top-up R1 review are also pinned by
 exact tuple witnesses, with `parser-state` witnesses for caller-map isolation.
+Issue #412's quote-scanner mutants opt into the fixed candidate baseline; all
+older mutants continue to run against the immutable base.
 R-08 includes both same-unit and next-unit mixed define/remove ties; R-09
 pins the ordering of a remove before a define. The assignment replay cases
 pin the eight-pass boundary: nine nested values (eight operators) resolve,

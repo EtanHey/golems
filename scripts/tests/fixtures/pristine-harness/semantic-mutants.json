@@ -675,5 +675,50 @@
     "path": "skills/golem-powers/_shared/shell_parse.py",
     "old": "\"[[:\" in pattern or \"[^\" in pattern",
     "new": "\"[[:\" in pattern"
+  },
+  {
+    "id": "I412-Q1",
+    "description": "DATA dollar scanner no longer treats single quotes as opaque",
+    "target": "parser",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/_shared/shell_parse_impl/substitutions.py",
+    "old": "        if quote == \"'\":\n            if char == \"'\":\n                quote = None\n            i += 1\n            continue\n        if quote == '\"':\n",
+    "new": "        if False and quote == \"'\":\n            if char == \"'\":\n                quote = None\n            i += 1\n            continue\n        if quote == '\"':\n"
+  },
+  {
+    "id": "I412-Q2",
+    "description": "DATA dollar scanner no longer tracks double quotes",
+    "target": "parser",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/_shared/shell_parse_impl/substitutions.py",
+    "old": "        if quote == '\"':\n            if char == '\"':\n                quote = None\n                i += 1\n                continue\n            if command.startswith(\"${\", i):\n",
+    "new": "        if False and quote == '\"':\n            if char == '\"':\n                quote = None\n                i += 1\n                continue\n            if command.startswith(\"${\", i):\n"
+  },
+  {
+    "id": "I412-Q3",
+    "description": "DATA dollar scanner no longer skips nested substitutions",
+    "target": "parser",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "        if quote == '\"' and text.startswith(\"$(\", index):\n            index = _data_dollar_paren_end(text, index)\n            continue\n",
+    "new": "        if quote == '\"' and text.startswith(\"$(\", index):\n            index += 2\n            continue\n"
+  },
+  {
+    "id": "I412-Q4",
+    "description": "DATA dollar scanner no longer skips backtick substitutions",
+    "target": "parser",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "        elif char == \"`\":\n            index = _data_backtick_end(text, index)\n            continue\n        elif text.startswith(\"$(\", index) and not text.startswith(\"$((\", index):\n",
+    "new": "        elif False and char == \"`\":\n            index = _data_backtick_end(text, index)\n            continue\n        elif text.startswith(\"$(\", index) and not text.startswith(\"$((\", index):\n"
+  },
+  {
+    "id": "I412-Q5",
+    "description": "DATA backtick scanner treats backslash as escape inside single quotes",
+    "target": "parser",
+    "baseline": "candidate",
+    "path": "skills/golem-powers/_shared/shell_parse.py",
+    "old": "        if char == \"\\\\\" and quote != \"'\":\n            index += 2\n            continue\n        if char == \"'\" and quote != '\"':\n",
+    "new": "        if char == \"\\\\\":\n            index += 2\n            continue\n        if char == \"'\" and quote != '\"':\n"
   }
 ]

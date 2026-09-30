@@ -11191,4 +11191,48 @@
       },
       "source": "tmp-block-characterization-r1-M23"
     }
+  ,{
+    "id": "issue412-dollar-single-quote-paren",
+    "target": "parser",
+    "probe": "data-substitution",
+    "request": {
+      "function": "dollar_paren_bodies",
+      "args": [
+        "echo $(printf '%s' ')'; echo tail)"
+      ]
+    }
+  },
+  {
+    "id": "issue412-backtick-single-quote-backslash",
+    "target": "parser",
+    "probe": "data-substitution",
+    "request": {
+      "function": "_backtick_bodies",
+      "args": [
+        "echo 'a\\' `printf safe`"
+      ]
+    }
+  },
+  {
+    "id": "issue412-dollar-nested-mixed-quotes",
+    "target": "parser",
+    "probe": "data-substitution",
+    "request": {
+      "function": "dollar_paren_bodies",
+      "args": [
+        "echo $(printf \"%s\" \")\"; echo $(printf '%s' ')'); echo tail)"
+      ]
+    }
+  },
+  {
+    "id": "issue412-dollar-backtick-mixed-quotes",
+    "target": "parser",
+    "probe": "data-substitution",
+    "request": {
+      "function": "dollar_paren_bodies",
+      "args": [
+        "echo $(printf \"%s\" \")\"; echo `case x in x) printf safe;; esac`; echo tail)"
+      ]
+    }
+  }
 ]

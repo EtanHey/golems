@@ -106,6 +106,21 @@ def test_base_and_candidate_execute_in_distinct_real_children(tmp_path):
     assert baseline == actual and baseline["exit"] == 0
 
 
+def test_candidate_mutation_uses_disposable_copy(tmp_path):
+    candidate = tmp_path / "checkout"
+    source = candidate / "skills/golem-powers/_shared/shell_parse.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("original\n")
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+
+    mutation_tree = harness.copy_candidate_for_mutation(candidate, scratch / "candidate")
+    (mutation_tree / source.relative_to(candidate)).write_text("interrupted mutant\n")
+
+    assert source.read_text() == "original\n"
+    assert (mutation_tree / source.relative_to(candidate)).read_text() == "interrupted mutant\n"
+
+
 def test_record_cli_requires_case_reason_and_authority():
     proc = subprocess.run(["python3", str(ROOT / "scripts/ci/pristine-harness.py"), "record-delta"], capture_output=True)
     assert proc.returncode != 0
