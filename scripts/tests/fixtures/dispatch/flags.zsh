@@ -55,6 +55,7 @@ _golem_print_codex_help() {
   print -r -- "  -E, --effort <value>   low, medium, high, xhigh, max, ultra"
   print -r -- "                         prompted/worker boots require -E or GOLEM_EFFORT"
   print -r -- "                         choose per plan phase (see /agent-routing); bare interactive uses Codex config"
+  print -r -- "      -- <raw args>      requires effort too: raw Codex args may carry a prompt"
   print -r -- "  -m, --model <name>     explicit model override"
   print -r -- "  -s, --skip-permissions compatibility no-op (has no effect)"
   print -r -- "  -c, --continue         resume the last session"
@@ -95,16 +96,6 @@ _golem_parse_codex_flags() {
       *) _parsed_args+=("$1"); shift ;;
     esac
   done
-  if ! $_flag_codex_help && ! $_flag_codex_effort_explicit && [[ -n "${GOLEM_EFFORT:-}" ]]; then
-    case "$GOLEM_EFFORT" in
-      low|medium|high|xhigh|max|ultra)
-        _flag_codex_effort="$GOLEM_EFFORT"
-        _flag_codex_effort_explicit=true ;;
-      *)
-        echo "Error: Invalid Codex effort: $GOLEM_EFFORT (expected: low, medium, high, xhigh, max, ultra)" >&2
-        return 2 ;;
-    esac
-  fi
   _codex_extra_args=("${_parsed_args[@]}")
 }
 

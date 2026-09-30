@@ -32,10 +32,6 @@ _golem_launch_codex() {
     echo "Error: Cannot combine Codex resume with -p/--print; start an interactive resume instead." >&2
     return 2
   fi
-  local codex_config_args=()
-  if $_flag_codex_effort_explicit; then
-    codex_config_args=("-c" "model_reasoning_effort=\"${_flag_codex_effort}\"")
-  fi
   # Pin the CURRENT top Sol on fresh boots so a prior session's model cannot leak into
   # the next one. This is a moving fleet default, not a frozen version: bump it on each
   # Sol release, and do not drop the --model flag. Resume paths recover their session model
@@ -64,14 +60,30 @@ _golem_launch_codex() {
     codex_args=()
   fi
 
-  # Resume (including a continue prompt) restores the selected rollout effort.
+  # Ambient effort belongs only to a fresh prompted/worker boot. Bare boots use
+  # Codex config; resume (including a continue prompt) restores rollout effort.
   # Raw passthrough arguments may contain a prompt, so require effort for them too.
   if [[ "$explicit_resume" == false && "$_flag_continue" == false ]] \
-     && ! $_flag_codex_effort_explicit \
      && [[ "$worker_mode" == true || "$_flag_headless" == true || -n "$positional_prompt" || ${#codex_args[@]} -gt 0 ]]; then
-    echo "Error: Codex prompted/worker launches require explicit effort: low, medium, high, xhigh, max, ultra." >&2
-    echo "Pass -E <level>, --effort <level>, or GOLEM_EFFORT; choose per plan phase (see /agent-routing)." >&2
-    return 2
+    if ! $_flag_codex_effort_explicit && [[ -n "${GOLEM_EFFORT:-}" ]]; then
+      case "$GOLEM_EFFORT" in
+        low|medium|high|xhigh|max|ultra)
+          _flag_codex_effort="$GOLEM_EFFORT"
+          _flag_codex_effort_explicit=true ;;
+        *)
+          echo "Error: Invalid Codex effort: $GOLEM_EFFORT (expected: low, medium, high, xhigh, max, ultra)" >&2
+          return 2 ;;
+      esac
+    fi
+    if ! $_flag_codex_effort_explicit; then
+      echo "Error: Codex prompted/worker launches require explicit effort: low, medium, high, xhigh, max, ultra." >&2
+      echo "Pass -E <level>, --effort <level>, or GOLEM_EFFORT; choose per plan phase (see /agent-routing)." >&2
+      return 2
+    fi
+  fi
+  local codex_config_args=()
+  if $_flag_codex_effort_explicit; then
+    codex_config_args=("-c" "model_reasoning_effort=\"${_flag_codex_effort}\"")
   fi
 
   if [[ -n "$_flag_worktree" ]]; then
