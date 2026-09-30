@@ -105,6 +105,11 @@ for _name in (
 del _name
 
 
+_structure = _impl_module("structure")
+_units = _impl_module("units")
+_function_expansion = _impl_module("function_expansion")
+_patterns = _impl_module("patterns")
+
 
 # AIDEV-NOTE: heredocs and substitutions import each other, so bind this
 # genuine scanner seam after both modules load. The backtick goldens pin it.
@@ -133,848 +138,15 @@ def _invoked_alias_bodies(command, _initial_state=None):
     invocation_index = 0
     unit_nocasematch = nocasematch
     command_vars = {}
-
-    def expand_function(
-        body,
-        seen=None,
-        bodies=None,
-        expanded_bodies=None,
-    ):
-        seen = set() if seen is None else seen
-        bodies = function_bodies if bodies is None else bodies
-        expanded_bodies = (
-            expanded_function_bodies
-            if expanded_bodies is None
-            else expanded_bodies
-        )
-        body_tokens, body_flags, body_segs, _body_scopes = _parse_bash(body)
-        expanded = []
-        changed = False
-        consumed_arguments = set()
-        for i, token in enumerate(body_tokens):
-            if i in consumed_arguments:
-                continue
-            segment_commands = [
-                body_tokens[j]
-                for j in range(i)
-                if body_segs[j] == body_segs[i] and body_flags[j]
-            ]
-            lookup_suppressed = (
-                bool(segment_commands)
-                and os.path.basename(segment_commands[0])
-                in _FUNCTION_LOOKUP_SUPPRESSORS
-            )
-            if (
-                body_flags[i]
-                and token in bodies
-                and token not in seen
-                and not lookup_suppressed
-            ):
-                target_body = expanded_bodies.get(token, bodies[token])
-                invocation_arguments = [
-                    body_tokens[j]
-                    for j in range(i + 1, len(body_tokens))
-                    if body_segs[j] == body_segs[i]
-                ]
-                consumed_arguments.update(
-                    j
-                    for j in range(i + 1, len(body_tokens))
-                    if body_segs[j] == body_segs[i]
-                )
-                target_body = expand_function_arguments(
-                    target_body,
-                    invocation_arguments,
-                )
-                expanded.append(
-                    expand_function(
-                        target_body,
-                        seen | {token},
-                        bodies,
-                        expanded_bodies,
-                    )
-                )
-                changed = True
-            else:
-                expanded.append(token)
-        return " ".join(expanded) if changed else body
-
-    def expand_function_arguments(body, arguments):
-        """Substitute statically known invocation arguments in a body.
-
-        This preserves forwarded eval payloads such as `eval "$@"` for the
-        recursive scan. Ordinary positional write targets stay unresolved so
-        they retain the guard's existing REFUSE behavior.
-        """
-        joined = " ".join(arguments)
-        static_variables = {}
-
-        def positional(match):
-            index = int(match.group(1) or match.group(2))
-            return arguments[index - 1] if index <= len(arguments) else ""
-
-        def parameter_operator(value, is_set, operator, word):
-            colon = operator.startswith(":")
-            operation = operator[-1]
-            missing = not is_set or (colon and value == "")
-            if operation == "-":
-                return word if missing else value
-            if operation == "+":
-                return "" if missing else word
-            if operation == "?":
-                return "" if missing else value
-            return value
-
-        def positional_operator(match):
-            position = int(match.group(1))
-            is_set = position <= len(arguments)
-            value = arguments[position - 1] if is_set else ""
-            return parameter_operator(
-                value,
-                is_set,
-                match.group(2),
-                match.group(3),
-            )
-
-        def indirect_positional(match):
-            position = int(match.group(1))
-            if position > len(arguments):
-                return ""
-            return os.environ.get(arguments[position - 1], "")
-
-        def positional_slice(match):
-            offset = _shell_integer_arithmetic(match.group(2))
-            if offset is None:
-                return joined
-            start = offset - 1 if offset > 0 else len(arguments) + offset
-            selected = arguments[max(0, start):]
-            if match.group(3) is not None:
-                length = _shell_integer_arithmetic(match.group(3))
-                if length is None:
-                    return joined
-                if length < 0:
-                    return ""
-                selected = selected[:length]
-            return " ".join(selected)
-
-        parts = re.split(r"([;|&\n]+)", body)
-        for index in range(0, len(parts), 2):
-            segment_tokens, segment_cmd_pos, _segments, _scopes = _parse_bash(
-                parts[index]
-            )
-
-            def resolved_word(word):
-                variable = re.fullmatch(
-                    r"\$([A-Za-z_][A-Za-z0-9_]*)",
-                    word,
-                )
-                if variable:
-                    return static_variables.get(variable.group(1), word)
-                return word
-
-            resolved_commands = [
-                resolved_word(token)
-                for token_index, token in enumerate(segment_tokens)
-                if segment_cmd_pos[token_index]
-            ]
-            invokes_eval = "eval" in resolved_commands
-            if invokes_eval:
-                for variable_name, value in static_variables.items():
-                    if value == "eval":
-                        parts[index] = re.sub(
-                            rf"\${re.escape(variable_name)}\b",
-                            "eval",
-                            parts[index],
-                        )
-                parts[index] = re.sub(
-                    r"\$\{!([1-9][0-9]*)\}",
-                    indirect_positional,
-                    parts[index],
-                )
-                parts[index] = re.sub(
-                    r"\$\{([1-9][0-9]*)(:?[-+?])([^}]*)\}",
-                    positional_operator,
-                    parts[index],
-                )
-                parts[index] = re.sub(
-                    r"\$\{([@*]):([^}:]+)(?::([^}]+))?\}",
-                    positional_slice,
-                    parts[index],
-                )
-                parts[index] = re.sub(
-                    r"\$(?:@|\*)|\$\{(?:@|\*)\}",
-                    joined,
-                    parts[index],
-                )
-                parts[index] = re.sub(
-                    r"\$([1-9])|\$\{([1-9][0-9]*)\}",
-                    positional,
-                    parts[index],
-                )
-                parts[index] = re.sub(
-                    r"\$\{(?:!?[1-9][0-9]*|[@*])[^}]*\}",
-                    lambda match: f"{joined} {match.group(0)[2:-1]}",
-                    parts[index],
-                )
-            assignments = []
-            if segment_tokens and all(
-                _ASSIGNMENT_RE.match(token) for token in segment_tokens
-            ):
-                assignments = segment_tokens
-            elif (
-                segment_tokens
-                and os.path.basename(resolved_word(segment_tokens[0]))
-                in {"local", "declare", "typeset", "export", "readonly"}
-            ):
-                assignments = [
-                    token
-                    for token in segment_tokens[1:]
-                    if _ASSIGNMENT_RE.match(token)
-                ]
-            if assignments:
-                for assignment in assignments:
-                    name, value = assignment.split("=", 1)
-                    if any(marker in value for marker in ("$", "`", "~")):
-                        static_variables.pop(name, None)
-                    else:
-                        static_variables[name] = value
-        return "".join(parts)
-
-    def expand_alias(name, seen=None):
-        seen = set() if seen is None else seen
-        if name in seen:
-            return aliases[name]
-        seen.add(name)
-        body = aliases[name]
-        body_tokens, body_flags, _body_segs, _body_scopes = _parse_bash(body)
-        expanded = []
-        changed = False
-        for i, token in enumerate(body_tokens):
-            if body_flags[i] and token in aliases and token not in seen:
-                expanded.append(expand_alias(token, seen.copy()))
-                changed = True
-            else:
-                expanded.append(token)
-        if not changed:
-            return body
-        result = " ".join(expanded)
-        if body.endswith((" ", "\t")):
-            result += body[-1]
-        return result
-
-    def expand_alias_commands(body):
-        body_tokens, body_flags, _body_segs, _body_scopes = _parse_bash(body)
-        expanded = [
-            (
-                expand_alias(token)
-                if body_flags[i] and token in aliases
-                else token
-            )
-            for i, token in enumerate(body_tokens)
-        ]
-        changed = any(
-            body_flags[i] and token in aliases
-            for i, token in enumerate(body_tokens)
-        )
-        return " ".join(expanded) if changed else body
-
-    function_name_pattern = r"[A-Za-z_][A-Za-z0-9_]*"
-    function_signature = (
-        rf"(?:function\s+{function_name_pattern}(?:\s*\(\s*\))?"
-        rf"|{function_name_pattern}\s*\(\s*\))"
-    )
-    function_open_re = re.compile(
-        rf"(?:^|[;|&\n])\s*(?P<signature>{function_signature})"
-        rf"(?P<gap>\s*)(?P<brace>\{{)",
-        re.MULTILINE,
-    )
-    function_pending_re = re.compile(
-        rf"(?:^|[;|&\n])\s*{function_signature}\s*\Z",
-        re.MULTILINE,
+    expansion_state = _function_expansion.ExpansionState(
+        aliases, function_bodies, expanded_function_bodies
     )
 
-    def structural_source(source):
-        structural = list(source)
-        quote = None
-        comment = False
-        i = 0
-        while i < len(source):
-            char = source[i]
-            if char in "\r\n":
-                comment = False
-                i += 1
-                continue
-            if comment:
-                structural[i] = " "
-                i += 1
-                continue
-            if quote != "'" and source.startswith("$(", i):
-                found = _dollar_substitution(source, i)
-                end = found[1] if found is not None else len(source)
-                for nested_index in range(i, end):
-                    if source[nested_index] not in "\r\n":
-                        structural[nested_index] = " "
-                i = end
-                continue
-            if quote != "'" and char == "`":
-                found = _backtick_substitution(source, i)
-                end = found[1] if found is not None else len(source)
-                for nested_index in range(i, end):
-                    if source[nested_index] not in "\r\n":
-                        structural[nested_index] = " "
-                i = end
-                continue
-            if quote is not None:
-                if char == quote:
-                    quote = None
-                else:
-                    structural[i] = " "
-                    if char == "\\" and quote == '"' and i + 1 < len(source):
-                        i += 1
-                        if source[i] not in "\r\n":
-                            structural[i] = " "
-                i += 1
-                continue
-            if char in "'\"":
-                quote = char
-            elif char == "#" and (
-                i == 0 or source[i - 1].isspace() or source[i - 1] in ";|&()"
-            ):
-                comment = True
-                structural[i] = " "
-            elif char == "\\" and i + 1 < len(source):
-                structural[i] = " "
-                i += 1
-                if source[i] in "\r\n":
-                    structural[i] = " "
-                else:
-                    structural[i] = "_"
-            i += 1
-        return "".join(structural)
 
-    def has_unclosed_function_definition(source):
-        structural = structural_source(source)
-        for match in function_open_re.finditer(structural):
-            depth = 1
-            for char in structural[match.end("brace"):]:
-                if char == "{":
-                    depth += 1
-                elif char == "}":
-                    depth -= 1
-                    if depth == 0:
-                        break
-            if depth:
-                return True
-        return function_pending_re.search(structural) is not None
 
-    def raw_function_definitions(source):
-        """Return function names and body slices without discarding shell quoting."""
-        structural = structural_source(source)
-        definitions = []
-        for match in function_open_re.finditer(structural):
-            signature = source[match.start("signature"):match.end("signature")]
-            names = re.findall(function_name_pattern, signature)
-            if not names:
-                continue
-            name = names[-1]
-            body_start = match.end("brace")
-            depth = 1
-            body_end = body_start
-            while body_end < len(structural) and depth:
-                if structural[body_end] == "{":
-                    depth += 1
-                elif structural[body_end] == "}":
-                    depth -= 1
-                body_end += 1
-            if depth == 0:
-                definitions.append((name, source[body_start:body_end - 1]))
-        return definitions
 
-    def has_unclosed_compound_command(source):
-        """Track multiline reserved-word compounds at command boundaries."""
-        structural = structural_source(source)
-        compacted = []
-        i = 0
-        while i < len(source):
-            if source[i] == "\\" and i + 1 < len(source):
-                if source[i + 1] == "\n":
-                    i += 2
-                    continue
-                if (
-                    source[i + 1] == "\r"
-                    and i + 2 < len(source)
-                    and source[i + 2] == "\n"
-                ):
-                    i += 3
-                    continue
-            compacted.append(structural[i])
-            i += 1
-        tokens = re.findall(
-            r"\n|&&|\|\||;;&|;&|;;|[<>]\(|&>>|<<<|<<-|>>|<>|>\||>&|<&|&>|"
-            r"[;|&()<>]|"
-            r"(?:^|(?<=[\s;|&()<>]))\{(?=$|[\s;|&()<>])|"
-            r"(?:^|(?<=[\s;|&()<>]))\}(?=$|[\s;|&()<>])|"
-            r"'[^']*'|\"[^\"]*\"|[^\s;|&()<>]+",
-            "".join(compacted),
-        )
-        expected_closers = []
-        group_closers = []
-        case_states = []
-        at_command_start = True
-        pending_redirect = False
-        time_prefix_state = None
-        coproc_pending = False
-        for index, token in enumerate(tokens):
-            if token in {"<(", ">("}:
-                group_closers.append((")", False))
-                at_command_start = True
-                continue
-            if token in {
-                "<",
-                ">",
-                "<<",
-                ">>",
-                "<<<",
-                "<<-",
-                "<>",
-                ">|",
-                ">&",
-                "<&",
-                "&>",
-                "&>>",
-            }:
-                pending_redirect = True
-                continue
-            if pending_redirect:
-                pending_redirect = False
-                if token not in {"\n", ";", "&&", "||", "|", "&"}:
-                    at_command_start = False
-                    continue
-            if case_states and case_states[-1]["state"] == "await-in":
-                if token == "in":
-                    case_states[-1]["state"] = "pattern"
-                at_command_start = False
-                continue
-            if case_states and case_states[-1]["state"] == "pattern":
-                case_state = case_states[-1]
-                if token == "esac" and not case_state["started"]:
-                    case_states.pop()
-                    if expected_closers and expected_closers[-1] == "esac":
-                        expected_closers.pop()
-                    at_command_start = False
-                elif token == "(":
-                    if case_state["started"]:
-                        case_state["depth"] += 1
-                    else:
-                        case_state["started"] = True
-                elif token == ")":
-                    if case_state["depth"]:
-                        case_state["depth"] -= 1
-                    else:
-                        case_state["state"] = "body"
-                        at_command_start = True
-                elif token not in {"\n", "|"}:
-                    case_state["started"] = True
-                continue
-            if (
-                case_states
-                and case_states[-1]["state"] == "body"
-                and token in {";;", ";&", ";;&"}
-            ):
-                case_states[-1].update(
-                    state="pattern",
-                    started=False,
-                    depth=0,
-                )
-                at_command_start = False
-                continue
-            if token == "{":
-                if at_command_start:
-                    group_closers.append(("}", None))
-                    at_command_start = True
-                continue
-            if token == "}":
-                if group_closers and group_closers[-1][0] == "}":
-                    group_closers.pop()
-                at_command_start = False
-                continue
-            if token == "(":
-                function_signature_paren = (
-                    index > 0
-                    and index + 1 < len(tokens)
-                    and re.match(r"^[A-Za-z_]", tokens[index - 1])
-                    and tokens[index + 1] == ")"
-                )
-                if not function_signature_paren:
-                    group_closers.append((")", None))
-                at_command_start = True
-                continue
-            if token == ")":
-                function_signature_paren = (
-                    index > 1
-                    and tokens[index - 1] == "("
-                    and re.match(r"^[A-Za-z_]", tokens[index - 2])
-                )
-                if (
-                    not function_signature_paren
-                    and group_closers
-                    and group_closers[-1][0] == ")"
-                ):
-                    _closer, restore_command_start = group_closers.pop()
-                    at_command_start = (
-                        False
-                        if restore_command_start is None
-                        else restore_command_start
-                    )
-                else:
-                    at_command_start = False
-                continue
-            if token in {"\n", ";", "&&", "||", "|", "&"}:
-                at_command_start = True
-                time_prefix_state = None
-                coproc_pending = False
-                continue
-            if coproc_pending:
-                coproc_pending = False
-                if (
-                    re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token)
-                    and index + 1 < len(tokens)
-                    and tokens[index + 1]
-                    in {
-                        "{",
-                        "(",
-                        "if",
-                        "case",
-                        "while",
-                        "until",
-                        "for",
-                        "select",
-                    }
-                ):
-                    continue
-            if at_command_start and token == "coproc":
-                coproc_pending = True
-                continue
-            if at_command_start and token == "time":
-                time_prefix_state = "options"
-                continue
-            if (
-                at_command_start
-                and time_prefix_state == "options"
-                and token == "-p"
-            ):
-                time_prefix_state = "post-p"
-                continue
-            if (
-                at_command_start
-                and time_prefix_state in {"options", "post-p"}
-                and token == "--"
-            ):
-                time_prefix_state = "command"
-                continue
-            if at_command_start and token == "!":
-                time_prefix_state = None
-                continue
-            time_prefix_state = None
-            if not re.match(r"^[A-Za-z_]", token):
-                if at_command_start:
-                    at_command_start = False
-                continue
-            if not at_command_start:
-                continue
-            if token == "if":
-                expected_closers.append("fi")
-                at_command_start = True
-            elif token == "case":
-                expected_closers.append("esac")
-                case_states.append(
-                    {"state": "await-in", "started": False, "depth": 0}
-                )
-                at_command_start = False
-            elif token in {"while", "until", "for", "select"}:
-                expected_closers.append("done")
-                at_command_start = token in {"while", "until"}
-            elif token in {"then", "elif", "else", "do"}:
-                at_command_start = True
-            elif expected_closers and token == expected_closers[-1]:
-                expected_closers.pop()
-                if token == "esac" and case_states:
-                    case_states.pop()
-                at_command_start = False
-            else:
-                at_command_start = False
-        return bool(expected_closers or group_closers)
 
-    def normalize_function_signature_braces(source):
-        """Turn signature/newline/brace into whitespace without moving offsets."""
-        structural = structural_source(source)
-        normalized = list(source)
-        for match in function_open_re.finditer(structural):
-            gap_start, gap_end = match.span("gap")
-            for i in range(gap_start, gap_end):
-                if normalized[i] in "\\\r\n":
-                    normalized[i] = " "
-        return "".join(normalized)
 
-    def mask_quoted_braces(source):
-        masked = list(source)
-        quote = None
-        i = 0
-        while i < len(source):
-            char = source[i]
-            if quote != "'" and source.startswith("$(", i):
-                found = _dollar_substitution(source, i)
-                if found is not None:
-                    _body, end = found
-                    for nested_index in range(i, end):
-                        if masked[nested_index] in "{}":
-                            masked[nested_index] = "_"
-                    i = end
-                    continue
-            if quote != "'" and char == "`":
-                found = _backtick_substitution(source, i)
-                if found is not None:
-                    _body, end = found
-                    for nested_index in range(i, end):
-                        if masked[nested_index] in "{}":
-                            masked[nested_index] = "_"
-                    i = end
-                    continue
-            if quote is not None:
-                if char == quote:
-                    quote = None
-                elif char in "{}":
-                    masked[i] = "_"
-                elif char == "\\" and quote == '"' and i + 1 < len(source):
-                    i += 1
-                i += 1
-                continue
-            if char in "'\"":
-                quote = char
-            elif char == "\\" and i + 1 < len(source):
-                i += 1
-            i += 1
-        return "".join(masked)
-
-    def parse_units(source):
-        def shell_line_continues(source_line):
-            line = source_line.rstrip("\r\n")
-            trailing = len(line) - len(line.rstrip("\\"))
-            if trailing % 2 == 0:
-                return False
-            quote = None
-            comment = False
-            i = 0
-            target = len(line) - 1
-            while i < target:
-                char = line[i]
-                if comment:
-                    return False
-                if quote == "'":
-                    if char == "'":
-                        quote = None
-                    i += 1
-                    continue
-                if quote == '"':
-                    if char == '"':
-                        quote = None
-                    elif char == "\\" and i + 1 < target:
-                        i += 1
-                    i += 1
-                    continue
-                if char in "'\"":
-                    quote = char
-                elif char == "#" and (
-                    i == 0 or line[i - 1].isspace() or line[i - 1] in ";|&()"
-                ):
-                    comment = True
-                elif char == "\\" and i + 1 < target:
-                    i += 1
-                i += 1
-            return not comment and quote != "'"
-
-        buffered = ""
-        for source_line in source.splitlines(keepends=True):
-            buffered += source_line
-            if shell_line_continues(source_line):
-                continue
-            if (
-                has_unclosed_function_definition(buffered)
-                or has_unclosed_compound_command(buffered)
-            ):
-                continue
-            yield buffered
-            buffered = ""
-        if buffered:
-            yield buffered
-
-    def builtin_alias_eligibility(source):
-        """Return alias-eligibility flags for normalized `builtin` words."""
-        flags = []
-        word = []
-        alias_eligible = True
-        quote = None
-        comment = False
-
-        def flush():
-            nonlocal word, alias_eligible
-            if "".join(word) == "builtin":
-                flags.append(alias_eligible)
-            word = []
-            alias_eligible = True
-
-        i = 0
-        while i < len(source):
-            char = source[i]
-            if comment:
-                if char in "\r\n":
-                    comment = False
-                    flush()
-                i += 1
-                continue
-            if quote != "'" and source.startswith("$(", i):
-                found = _dollar_substitution(source, i)
-                if found is not None:
-                    body, i = found
-                    flags.extend(builtin_alias_eligibility(body))
-                    continue
-            if quote != "'" and char == "`":
-                found = _backtick_substitution(source, i)
-                if found is not None:
-                    body, i = found
-                    flags.extend(builtin_alias_eligibility(body))
-                    continue
-            if quote is not None:
-                if char == quote:
-                    quote = None
-                elif char == "\\" and quote == '"' and i + 1 < len(source):
-                    alias_eligible = False
-                    i += 1
-                    word.append(source[i])
-                else:
-                    word.append(char)
-                i += 1
-                continue
-            if char in "'\"":
-                quote = char
-                alias_eligible = False
-                i += 1
-                continue
-            if char == "$" and i + 1 < len(source) and source[i + 1] in "'\"":
-                quote = source[i + 1]
-                alias_eligible = False
-                i += 2
-                continue
-            if char == "\\" and i + 1 < len(source):
-                alias_eligible = False
-                i += 1
-                word.append(source[i])
-                i += 1
-                continue
-            if char == "#" and not word:
-                comment = True
-                i += 1
-                continue
-            if char.isspace() or char in ";|&(){}<>":
-                flush()
-            else:
-                word.append(char)
-            i += 1
-        flush()
-        return flags
-
-    def shell_case_pattern(raw_pattern):
-        """Normalize one raw case pattern while preserving quoted metacharacters."""
-        normalized = []
-        quote = None
-        escaped = False
-        for char in raw_pattern:
-            if escaped:
-                normalized.append({"*": "[*]", "?": "[?]", "[": "[[]"}.get(char, char))
-                escaped = False
-                continue
-            if char == "\\" and quote != "'":
-                escaped = True
-                continue
-            if quote is not None:
-                if char == quote:
-                    quote = None
-                else:
-                    normalized.append(
-                        {"*": "[*]", "?": "[?]", "[": "[[]"}.get(char, char)
-                    )
-                continue
-            if char in "'\"":
-                quote = char
-            else:
-                normalized.append(char)
-        if escaped:
-            normalized.append("\\")
-        return "".join(normalized)
-
-    def case_pattern_groups(source):
-        """Return raw-aware alternative patterns for each case arm in source."""
-        raw_tokens = _RAW_SHELL_TOKEN_RE.findall(source)
-        groups = []
-        stack = []
-        for token in raw_tokens:
-            if not stack:
-                if token == "case":
-                    stack.append({"state": "subject", "patterns": []})
-                continue
-            case_state = stack[-1]
-            if case_state["state"] == "subject":
-                case_state["state"] = "await-in"
-                continue
-            if case_state["state"] == "await-in":
-                if token == "in":
-                    case_state["state"] = "pattern"
-                continue
-            if case_state["state"] == "pattern":
-                if token == "|":
-                    continue
-                if token == ")":
-                    groups.append(case_state["patterns"])
-                    case_state["patterns"] = []
-                    case_state["state"] = "body"
-                    continue
-                case_state["patterns"].append(shell_case_pattern(token))
-                continue
-            if token == "case":
-                stack.append({"state": "subject", "patterns": []})
-            elif token in {";;", ";&", ";;&"}:
-                case_state["state"] = "pattern"
-            elif token == "esac":
-                stack.pop()
-        return groups
-
-    def literal_for_word_counts(source):
-        """Return definite literal word counts for raw `for ... in ...` lists."""
-        counts = []
-        for match in re.finditer(
-            r"(?:^|[;|&\n])\s*for\s+[A-Za-z_][A-Za-z0-9_]*\s+in\s+"
-            r"(?P<words>.*?)(?=(?:[ \t]*;[ \t]*|[ \t]*\r?\n[ \t]*)do\b)",
-            source,
-            re.DOTALL,
-        ):
-            words = _RAW_FOR_WORD_RE.findall(match.group("words"))
-            definite = 0
-            dynamic = False
-            for word in words:
-                if word.startswith("'") and word.endswith("'"):
-                    definite += 1
-                elif word.startswith('"') and word.endswith('"'):
-                    if "$@" not in word:
-                        definite += 1
-                    else:
-                        dynamic = True
-                elif not any(marker in word for marker in ("$", "`", "*", "?", "[")):
-                    definite += 1
-                elif word in {"$(false)", "$(true)", "`false`", "`true`"}:
-                    continue
-                else:
-                    dynamic = True
-            counts.append("unknown" if dynamic and definite == 0 else definite)
-        return counts
 
     def active_compounds_execute(
         prefix_tokens,
@@ -1509,8 +681,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
         return True
 
     executable_source = _mask_heredoc_body_lines(command)
-    for source_unit in parse_units(executable_source):
-        line = normalize_function_signature_braces(
+    for source_unit in _units.parse_units(executable_source):
+        line = _structure.normalize_function_signature_braces(
             source_unit.rstrip("\r\n")
         )
         unit_nocasematch = nocasematch or bool(
@@ -1520,7 +692,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 line,
             )
         )
-        parse_line = mask_quoted_braces(line)
+        parse_line = _structure.mask_quoted_braces(line)
         tokens, cmd_pos, seg_of, _scope_of = _parse_bash(parse_line)
         literal_tokens = _shell_tokens(line)
 
@@ -1557,7 +729,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
         alias_ineligible_builtin_indices = {
             token_index
             for alias_eligible, token_index in zip(
-                builtin_alias_eligibility(line),
+                _patterns.builtin_alias_eligibility(line),
                 builtin_token_indices,
             )
             if not alias_eligible
@@ -1575,7 +747,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
         # function definition. Record definitions as ordered events: each one
         # becomes callable only after its closing brace executes.
         line_definitions = []
-        source_definitions = raw_function_definitions(line)
+        source_definitions = _units.raw_function_definitions(line)
         source_definition_index = 0
         line_pos = 0
         while line_pos + 3 < len(tokens):
@@ -1613,7 +785,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
                     source_definition_index += 1
                     if source_name == function_name:
                         raw_body = source_body
-                expanded_body = expand_alias_commands(raw_body)
+                expanded_body = _function_expansion.expand_alias_commands(expansion_state, raw_body)
                 prefix_tokens = tokens[:line_pos]
                 prefix = " ".join(tokens[:line_pos])
                 signature_parens = _function_signature_parens(prefix_tokens)
@@ -1630,13 +802,13 @@ def _invoked_alias_bodies(command, _initial_state=None):
                     line_pos - 1, {"|"}
                 ) or standalone_separator_at(close, {"|", "&"})
                 inheritable = (
-                    not has_unclosed_function_definition(prefix)
+                    not _structure.has_unclosed_function_definition(prefix)
                     and subshell_depth <= 0
                     and not pipeline_local
                     and active_compounds_execute(
                         prefix_tokens,
-                        case_pattern_groups(line),
-                        literal_for_word_counts(line),
+                        _patterns.case_pattern_groups(line),
+                        _patterns.literal_for_word_counts(line),
                     )
                 )
                 line_definitions.append(
@@ -1666,8 +838,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
             ]
             if "-f" not in same_segment or not active_compounds_execute(
                 tokens[:i],
-                case_pattern_groups(line),
-                literal_for_word_counts(line),
+                _patterns.case_pattern_groups(line),
+                _patterns.literal_for_word_counts(line),
                 require_definite=True,
             ):
                 continue
@@ -1731,8 +903,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                         command_is_parent_local(index)
                         and active_compounds_execute(
                             tokens[:index],
-                            case_pattern_groups(line),
-                            literal_for_word_counts(line),
+                            _patterns.case_pattern_groups(line),
+                            _patterns.literal_for_word_counts(line),
                             require_definite=True,
                         )
                     )
@@ -1937,8 +1109,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 assignment_name, assignment_value = candidate.split("=", 1)
                 if "$(" in assignment_value and active_compounds_execute(
                     tokens[:index],
-                    case_pattern_groups(line),
-                    literal_for_word_counts(line),
+                    _patterns.case_pattern_groups(line),
+                    _patterns.literal_for_word_counts(line),
                     require_definite=True,
                 ):
                     close_index = next(
@@ -1965,8 +1137,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 )
                 if not standalone or not active_compounds_execute(
                     tokens[:index],
-                    case_pattern_groups(line),
-                    literal_for_word_counts(line),
+                    _patterns.case_pattern_groups(line),
+                    _patterns.literal_for_word_counts(line),
                     require_definite=True,
                 ):
                     continue
@@ -2052,8 +1224,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 continue
             if not active_compounds_execute(
                 tokens[:i],
-                case_pattern_groups(line),
-                literal_for_word_counts(line),
+                _patterns.case_pattern_groups(line),
+                _patterns.literal_for_word_counts(line),
             ):
                 continue
             segment_commands = [
@@ -2082,8 +1254,9 @@ def _invoked_alias_bodies(command, _initial_state=None):
             ]
             invoked.append(
                 (
-                    expand_function_arguments(
-                        expand_function(
+                    _function_expansion.expand_function_arguments(
+                        _function_expansion.expand_function(
+                            expansion_state,
                             expanded_bodies.get(
                                 resolved_token,
                                 bodies[resolved_token],
@@ -2173,8 +1346,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 or not eval_position
                 or not active_compounds_execute(
                     tokens[:i],
-                    case_pattern_groups(line),
-                    literal_for_word_counts(line),
+                    _patterns.case_pattern_groups(line),
+                    _patterns.literal_for_word_counts(line),
                 )
             ):
                 continue
@@ -2327,7 +1500,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
             if "$(" in eval_source or "`" in eval_source:
                 eval_source = _UNRESOLVED_EVAL_MARKER
             if enabled:
-                eval_source = expand_alias_commands(eval_source)
+                eval_source = _function_expansion.expand_alias_commands(expansion_state, eval_source)
             invoked.append(
                 (
                     eval_source,
@@ -2365,8 +1538,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                     continue
                 if not active_compounds_execute(
                     eval_tokens[:eval_index],
-                    case_pattern_groups(eval_source),
-                    literal_for_word_counts(eval_source),
+                    _patterns.case_pattern_groups(eval_source),
+                    _patterns.literal_for_word_counts(eval_source),
                 ):
                     continue
                 invoked_names = (
@@ -2379,7 +1552,8 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 for invoked_name in invoked_names:
                     invoked.append(
                         (
-                            expand_function(
+                            _function_expansion.expand_function(
+                                expansion_state,
                                 expanded_bodies.get(
                                     invoked_name,
                                     bodies[invoked_name],
@@ -2399,13 +1573,13 @@ def _invoked_alias_bodies(command, _initial_state=None):
                     and token in aliases
                     and active_compounds_execute(
                         tokens[:i],
-                        case_pattern_groups(line),
-                        literal_for_word_counts(line),
+                        _patterns.case_pattern_groups(line),
+                        _patterns.literal_for_word_counts(line),
                     )
                 ):
                     bodies, expanded_bodies = function_state_at(i)
                     outer_seg = _segment_for_offset(command, offset) + seg_of[i]
-                    expanded = expand_alias(token)
+                    expanded = _function_expansion.expand_alias(expansion_state, token)
                     tail = [
                         tokens[j]
                         for j in range(i + 1, len(tokens))
@@ -2416,12 +1590,13 @@ def _invoked_alias_bodies(command, _initial_state=None):
                         and tail
                         and tail[0] in aliases
                     ):
-                        expanded = f"{expanded}{expand_alias(tail.pop(0))}"
+                        expanded = f"{expanded}{_function_expansion.expand_alias(expansion_state, tail.pop(0))}"
                     if tail:
                         expanded = f"{expanded} {' '.join(tail)}"
                     invoked.append(
                         (
-                            expand_function(
+                            _function_expansion.expand_function(
+                                expansion_state,
                                 expanded,
                                 bodies=bodies,
                                 expanded_bodies=expanded_bodies,
@@ -2444,14 +1619,14 @@ def _invoked_alias_bodies(command, _initial_state=None):
                 continue
             if not active_compounds_execute(
                 tokens[:i],
-                case_pattern_groups(line),
-                literal_for_word_counts(line),
+                _patterns.case_pattern_groups(line),
+                _patterns.literal_for_word_counts(line),
             ):
                 continue
             definitely_executes = active_compounds_execute(
                 tokens[:i],
-                case_pattern_groups(line),
-                literal_for_word_counts(line),
+                _patterns.case_pattern_groups(line),
+                _patterns.literal_for_word_counts(line),
                 require_definite=True,
             )
             if not command_is_parent_local(i):
