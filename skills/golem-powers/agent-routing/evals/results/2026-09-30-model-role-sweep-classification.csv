@@ -1,0 +1,97 @@
+row,file,baseline_line,literal,class,action,slice
+1,skills/golem-powers/agada-bench/SKILL.md,137,opus-4-7; Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+2,skills/golem-powers/agada-bench/references/judge-panel.md,11,Opus,PERMANENT,measured judge-panel calibration evidence,2b-ii
+3,skills/golem-powers/agada-bench/references/roadmap-v2.md,70,Opus,PERMANENT,historical roadmap snapshot,2b-ii
+4,skills/golem-powers/agada-bench/references/roadmap-v2.md,80,Opus,PERMANENT,historical roadmap snapshot,2b-ii
+5,skills/golem-powers/agent-routing/references/fan-out-head-to-head.md,18,opus,PERMANENT,product controls and reported API values,2b-i
+6,skills/golem-powers/agent-routing/references/model-and-effort.md,15,gpt-6-luna,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+7,skills/golem-powers/agent-routing/references/model-and-effort.md,24,gpt-6-luna,PERMANENT,model pricing and context data,2b-i
+8,skills/golem-powers/agent-routing/references/model-and-effort.md,38,gpt-6.1-sol; gpt-6-luna; gpt-5.6-terra,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+9,skills/golem-powers/agent-routing/references/model-and-effort.md,39,gpt-6-luna,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+10,skills/golem-powers/agent-routing/references/model-and-effort.md,56,gpt-6-luna,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+11,skills/golem-powers/agent-routing/references/model-and-effort.md,68,gpt-6-luna,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+12,skills/golem-powers/claude-desktop-research/workflows/harvest-results.md,222,Opus 4.6,PERMANENT,source attribution template,2b-ii
+13,skills/golem-powers/cmux-agents/SKILL.md,46,Gemini 3.8 Flash (High),MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+14,skills/golem-powers/cmux-agents/SKILL.md,50,flash-high,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+15,skills/golem-powers/cmux-agents/adapters/claude.md,16,Opus; opus; Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+16,skills/golem-powers/cmux-agents/adapters/claude.md,22,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+17,skills/golem-powers/cmux-agents/adapters/claude.md,23,Sonnet 4.6; sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+18,skills/golem-powers/cmux-agents/adapters/claude.md,29,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+19,skills/golem-powers/cmux-agents/adapters/claude.md,30,sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+20,skills/golem-powers/cmux-agents/references/delivery-and-recovery.md,140,opus; sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+21,skills/golem-powers/convention-audit/evals/review-disposition-log.md,3,Sonnet 5,PERMANENT,historical review disposition,2b-ii
+22,skills/golem-powers/large-plan/adapters/claude.md,71,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+23,skills/golem-powers/large-plan/adapters/claude.md,72,sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+24,skills/golem-powers/large-plan/adapters/claude.md,73,opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+25,skills/golem-powers/model-pin-gate/SKILL.md,29,opus; sonnet,PERMANENT,functional gate pattern list,2b-ii
+26,skills/golem-powers/model-pin-gate/SKILL.md,53,opus,PERMANENT,functional gate input example,2b-ii
+27,skills/golem-powers/never-fabricate/references/rules.md,112,Sonnet,PERMANENT,recorded false-green incident,2b-ii
+28,skills/golem-powers/plan-council/fixtures/real-ballots/r1-opus.md,73,Opus 5,PERMANENT,historical ballot fixture,2b-ii
+29,skills/golem-powers/plan-council/fixtures/real-collab.md,"126,289",Opus 5,PERMANENT,historical collab fixture,2b-ii
+30,skills/golem-powers/plan-council/fixtures/real-collab.md,"126,289",Opus 5,PERMANENT,historical collab fixture,2b-ii
+31,skills/golem-powers/plan-council/references/seat-briefs.md,8,Opus 5,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+32,skills/golem-powers/plan-council/references/seat-briefs.md,9,Opus 5,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+33,skills/golem-powers/plan-council/references/seat-briefs.md,10,Opus 5,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+34,skills/golem-powers/plan-council/references/seat-briefs.md,25,opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+35,skills/golem-powers/plan-council/references/seat-briefs.md,29,Opus 5.,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+36,skills/golem-powers/plan-council/references/worked-example.md,9,Opus,PERMANENT,worked council evidence,2b-ii
+37,skills/golem-powers/plan-council/references/worked-example.md,20,Opus,PERMANENT,worked council evidence,2b-ii
+38,skills/golem-powers/plan-council/workflows/run-council.md,13,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+39,skills/golem-powers/plan-council/workflows/run-council.md,23,Opus 5; Opus 5.,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+40,skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md,81,opus; sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+41,skills/golem-powers/pr-loop/references/github-identity.md,164,Opus,PERMANENT,historical signature failure example,2b-i
+42,skills/golem-powers/repogolem/SKILL.md,22,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+43,skills/golem-powers/repogolem/SKILL.md,29,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+44,skills/golem-powers/repogolem/SKILL.md,241,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+45,skills/golem-powers/repogolem/SKILL.md,243,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+46,skills/golem-powers/repogolem/SKILL.md,244,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+47,skills/golem-powers/repogolem/SKILL.md,246,gpt-6-luna,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+48,skills/golem-powers/session-handoff/SKILL.md,187,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+49,skills/golem-powers/session-handoff/SKILL.md,188,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+50,skills/golem-powers/session-handoff/SKILL.md,189,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+51,skills/golem-powers/session-handoff/SKILL.md,216,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+52,skills/golem-powers/skill-creator/SKILL.md,91,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+53,skills/golem-powers/skill-creator/SKILL.md,203,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+54,skills/golem-powers/skill-creator/adapters/claude.md,8,opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+55,skills/golem-powers/skill-creator/adapters/claude.md,11,sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+56,skills/golem-powers/skill-creator/adapters/claude.md,86,Opus 4.7,PERMANENT,cost data for measured model,2b-ii
+57,skills/golem-powers/skill-creator/agents/session-miner.md,12,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+58,skills/golem-powers/skill-creator/agents/session-miner.md,30,Opus 1M,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+59,skills/golem-powers/skill-creator/agents/session-miner.md,117,Opus 1M,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+60,skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/alias-mention-with-provenance-2026-08-04.md,10,sonnet; sonnet-5,PERMANENT,provenance test fixture,2b-ii
+61,skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/compliant.md,7,sonnet; sonnet-5,PERMANENT,provenance test fixture,2b-ii
+62,skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/compliant.md,8,sonnet; sonnet-5,PERMANENT,provenance test fixture,2b-ii
+63,skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/markdown-extra-column.md,7,sonnet; sonnet-5,PERMANENT,provenance test fixture,2b-ii
+64,skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/missing-provenance.md,3,Sonnet,PERMANENT,provenance test fixture,2b-ii
+65,skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/not-determined-score-not-calculated.md,11,sonnet,PERMANENT,provenance test fixture,2b-ii
+66,skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/not-determined-with-delta.md,9,sonnet,PERMANENT,provenance test fixture,2b-ii
+67,skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/provenance-only-in-code-fence.md,10,sonnet; sonnet-5,PERMANENT,provenance test fixture,2b-ii
+68,skills/golem-powers/skill-creator/workflows/live-eval.md,33,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+69,skills/golem-powers/skill-creator/workflows/live-eval.md,"47,55,74",sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+70,skills/golem-powers/skill-creator/workflows/live-eval.md,55,sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+71,skills/golem-powers/skill-creator/workflows/live-eval.md,60,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+72,skills/golem-powers/skill-creator/workflows/live-eval.md,"47,55,74",sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+73,skills/golem-powers/skill-creator/workflows/live-eval.md,86,sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+74,skills/golem-powers/skill-creator/workflows/live-eval.md,205,Sonnet,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+75,skills/golem-powers/skill-creator/workflows/mine-session.md,24,Opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+76,skills/golem-powers/weave/references/run-lifecycle.md,226,opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+77,skills/golem-powers/weave/references/run-lifecycle.md,243,Opus,PERMANENT,measured verifier appeal evidence,2b-ii
+78,skills/golem-powers/weave/references/run-lifecycle.md,247,Opus,PERMANENT,historical workflow shape evidence,2b-ii
+79,skills/golem-powers/weave/references/verification-and-discharge.md,250,sonnet; opus,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+80,standards/fleet-canon.md,13,Opus,CANON,canon text changes only via canon amendment (Etan),2b-ii
+81,standards/fleet-canon.md,14,Opus,CANON,canon text changes only via canon amendment (Etan),2b-ii
+82,standards/fleet-canon.md,19,Opus,CANON,canon text changes only via canon amendment (Etan),2b-ii
+83,standards/fleet-canon.md,20,Opus,CANON,canon text changes only via canon amendment (Etan),2b-ii
+84,standards/fleet-canon.md,37,Opus; Opus 5.5,CANON,canon text changes only via canon amendment (Etan),2b-ii
+85,standards/fleet-canon.md,38,Opus,CANON,canon text changes only via canon amendment (Etan),2b-ii
+86,skills/golem-powers/qa-video/SKILL.md,93,flash-high,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-ii
+87,skills/golem-powers/agent-routing/references/model-and-effort.md,9,gpt-6.1-sol,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+88,skills/golem-powers/agent-routing/references/model-and-effort.md,14,gpt-6.1-sol; gpt-6-astra,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+89,skills/golem-powers/agent-routing/references/model-and-effort.md,35,gpt-6.1-sol,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+90,skills/golem-powers/agent-routing/references/model-and-effort.md,51,gpt-6.1-sol,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+91,skills/golem-powers/agent-routing/references/model-and-effort.md,52,gpt-6.1-sol,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+92,skills/golem-powers/agent-routing/references/model-and-effort.md,53,gpt-6.1-sol,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+93,skills/golem-powers/agent-routing/references/model-and-effort.md,54,gpt-6.1-sol,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+94,skills/golem-powers/agent-routing/references/model-and-effort.md,55,gpt-6.1-sol,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+95,skills/golem-powers/cmux-agents/adapters/codex.md,17,gpt-6.1-sol,MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i
+96,skills/golem-powers/cmux-agents/adapters/gemini-agy.md,3,Gemini 3.8 Flash (High),MIGRATE,replace current prescription with role lookup; retain evidence and functional flags,2b-i

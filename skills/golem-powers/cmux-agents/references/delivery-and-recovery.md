@@ -137,7 +137,10 @@ Etan, verbatim — relayed via orc, the ellipsis is his:
 
 Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold;
 every spawn pinned explicitly; Fable only where judgment is the bottleneck, never for mechanical
-steps; a Fable seat defaults its workers to opus/sonnet and says why when it does not. The gate
+steps; delegate decisions to `claude.judgment`, bounded parity work to `claude.subagent.cheap`,
+and implementation to `codex.implement`. Resolve the role via `node scripts/model-roles.mjs
+<role> --field model|alias` (one field). Choose effort per `/large-plan` phase, record
+`role · effort · why`, and pass it explicitly at dispatch. The gate
 (`model-pin-gate`) is the backstop, not the decision.
 
 ### Effort Is Set Per Dispatch (Etan, 2026-09-05)
@@ -148,14 +151,11 @@ Etan, verbatim — relayed via orc, the ellipsis is his:
 > also control the effort levels for more/less complex/more already scoped and focused jobs… not
 > always needed high."
 
-**Codex and Claude workers alike.** The brief names the effort for that job and the spawn's
-`-E/--effort` matches it: `medium` or `low` for scoped, focused, or mechanical work, `high` only
-when the job is genuinely complex, `xhigh` only by explicit choice named with its reason. The
-launcher's default is a starting point — `repoGolem` sets Codex to `medium`
-(Claude `-E` > `GOLEM_EFFORT` > `GOLEM_ROLE=worker` → `medium` > `high`) and the lead
-chooses effort per dispatch. If a brief names no effort, the lead has not finished writing it. Rungs are
-orc's operationalization, not Etan's words; full table in `/pr-loop` → SKILL.md "Effort Is Set Per
-Dispatch".
+**Codex and Claude workers alike.** Choose effort per `/large-plan` phase, record why on
+that phase's brief, and pass it explicitly at dispatch. The spawn's `-E/--effort` must
+match the brief. The phase's acceptance boundary, ambiguity, and blockers inform the choice;
+a job category does not prescribe a fixed effort. If the brief names no effort or reason,
+the lead has not finished writing it.
 
 ## Prompt Size Ceiling — oversized sends freeze surfaces above ~2000 chars
 

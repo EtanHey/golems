@@ -49,24 +49,11 @@ Etan, verbatim; the ellipsis is his:
 > also control the effort levels for more/less complex/more already scoped and focused jobs… not
 > always needed high."
 
-A lead writing a dispatch brief therefore names the effort **on that brief**. It is a per-job call,
-not a lane-wide setting and not whatever the seat happened to boot with.
-
-**The launcher default is only a fallback.** Choose effort per dispatch from the plan phase.
-`repoGolem` defaults Codex to `medium`; Claude follows `-E` > `GOLEM_EFFORT` > worker `medium` >
-`high`. The lead chooses effort with explicit `-E/--effort <value>`, which wins over the fallback.
-Brief and launch command must agree.
-
-Orc's operationalization of that sentence. The rungs below are orc's gloss, not Etan's words — he
-said "control the effort levels" and did not enumerate them:
-
-| Job shape | Effort |
-|---|---|
-| Scoped, focused, or mechanical — a doc edit, a rename, a one-file fix, a re-cut | `medium`, or `low` when purely mechanical |
-| Genuinely complex — novel design, cross-package refactor, an unknown root cause | `high` |
-| Beyond that | `xhigh` **only by explicit choice**, named in the brief with its reason |
-
-If a brief names no effort, the lead has not finished writing it.
+A lead writing a dispatch brief chooses effort per `/large-plan` phase and records
+`role · effort · why`. Pass that effort explicitly at dispatch with `-E/--effort <value>`;
+the brief and launch command must agree. The phase's acceptance boundary, ambiguity, and
+blockers inform the choice; a job category does not prescribe a fixed effort.
+If a brief names no effort or reason, the lead has not finished writing it.
 
 ### Spawn Only What the Job Needs (Etan, 2026-09-05)
 
@@ -78,7 +65,10 @@ Etan, verbatim — relayed via orc, the ellipsis is his:
 
 Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold;
 every spawn pinned explicitly; Fable only where judgment is the bottleneck, never for mechanical
-steps; a Fable seat defaults its workers to opus/sonnet and says why when it does not. The gate
+steps; delegate decisions to `claude.judgment`, bounded parity work to `claude.subagent.cheap`,
+and implementation to `codex.implement`. Resolve the role via `node scripts/model-roles.mjs
+<role> --field model|alias` (one field). Choose effort per `/large-plan` phase, record
+`role · effort · why`, and pass it explicitly at dispatch. The gate
 (`model-pin-gate`) is the backstop, not the decision.
 
 ## Review-Without-Merge ≠ Draft

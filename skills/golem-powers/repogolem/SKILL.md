@@ -19,14 +19,14 @@ description: "Launch repoGolem agents in any repo. Triggers: spawn agent, launch
 |------|-------|-------------|--------|-------|--------|
 | Skip permissions | `-s` | Auto-approve tool calls | `--dangerously-skip-permissions` | Compatibility no-op; host config supplies the policy | `--yolo --approve-mcps` |
 | Continue/resume | `-c` | Resume last session | `--continue` | Resume the newest usable rollout for the launch cwd | (no-op, not supported) |
-| Model override | `-m <model>` | Explicit model selection | Non-Sonnet full panes allowed; Sonnet headless only | Any model string passes through | Refused for interactive agent sessions |
+| Model override | `-m <model>` | Explicit model selection | Judgment role for full panes; cheap role headless/subagent only | Any model string passes through | Refused for interactive agent sessions |
 | Reasoning effort | `-E <effort>` | Explicit Codex effort | — | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` | — |
 | Headless/print | `-p "prompt"` | Scripted one-shot only; NOT agent sessions or verification gates | `--print -p "prompt"` | Headless prompt | `--print --output-format text` |
 | Worktree | `-w <abs-path>` | Launch from pre-created git worktree cwd | `cd <path>` | `cd <path>` | `cd <path>` |
 
 **CRITICAL:**
 - `-s` = skip permissions. For Codex it is a compatibility no-op; `golem-install` validates `approval_policy = "never"` and `sandbox_mode = "danger-full-access"` in host config. Capital `-S`/`--sonnet` is a separate Claude-only model request and is refused for full panes.
-- Model/session policy lives in canon #5. A bare Claude launch pins the current top Opus at 1M; a bare Codex launch pins the current top Sol. Explicit Codex `-m` and `-E` values pass through, including when supplied through cmux `spawn_agent`.
+- Model/session policy lives in canon #5. Resolve `claude.judgment` and `codex.implement` through `standards/model-roles.json` with `node scripts/model-roles.mjs <role> --field model|alias` (one field). Verify bare launcher pins against those roles; Claude full panes retain 1M. Choose effort per `/large-plan` phase with a why and pass it explicitly at dispatch. Explicit Codex `-m` and `-E` values pass through, including when supplied through cmux `spawn_agent`.
 - `-p` is NOT for agent sessions or verification gates. Open scope: it may survive for non-agent scripted one-shots; confirm with Etan before using it in automation.
 - Codex resume is fail-closed. `-c` requires at least one usable rollout for the launch cwd and skips malformed newer candidates; a fresh cwd with no usable rollout exits loudly. Bare `resume` picker mode is refused because the launcher cannot recover model/effort before the picker selects a session.
 - Codex `-p/--print` cannot be combined with `-c` or explicit `resume`; that combination exits loudly instead of silently starting a fresh headless session. A resumed session restores its recorded model and effort; explicit `-m` and/or `-E` override the recovered field, and when both are explicit the launcher skips rollout-state recovery and lets Codex validate the requested session.
@@ -238,19 +238,18 @@ Do not use this form for workers, leads, or verification gates. Those are intera
 
 ### Model policy
 ```bash
-orcClaude -s                              # Default: current top Opus at 1M
-brainlayerClaude -s -m claude-opus-4-8   # Explicit non-Sonnet full pane
-brainlayerClaude -s -S                    # Refused: Sonnet is headless/subagent-only
-brainlayerClaude -s -p "one shot" -S     # Allowed headless Sonnet run
-brainlayerCodex -s                        # Default: current top Sol
-brainlayerCodex -s -m gpt-6-luna -E medium # Explicit per-job Luna choice
+: "${phase_effort:?Choose effort per /large-plan phase before dispatch}"
+orcClaude -s -E "$phase_effort"           # claude.judgment: verify role pin and 1M
+brainlayerCodex -s -m "$(node scripts/model-roles.mjs codex.implement --field model)" -E "$phase_effort" "<phase implementation>"
+# claude.subagent.cheap: resolve alias for an Agent child; not a visible full pane
+# codex.subagent.mechanical: CANDIDATE, bench before use; do not dispatch
 ```
 
-Launcher enforcement is defined by canon #5. Claude refuses Sonnet-tier models for full panes but accepts explicit non-Sonnet models. Codex passes explicit model and effort values through; its own runtime validates the requested model. `-p` remains scripted one-shot mode, not a worker/lead session or verification gate.
+Launcher enforcement is defined by canon #5. Claude reserves full panes for the judgment role; legacy cheap-tier selectors are headless/subagent-only. Codex passes explicit model and effort values through; its own runtime validates the requested model. `-p` remains scripted one-shot mode, not a worker/lead session or verification gate.
 
 ### Via cmux (spawning from orchestrator)
 ```text
-spawn_agent({ repo: "brainlayer", cli: "codex", model: "gpt-6-sol", effort: "high", prompt: "Fix the FTS5 sync issue in search.py" })
+spawn_agent({ repo: "brainlayer", cli: "codex", model: <output of node scripts/model-roles.mjs codex.implement --field model>, effort: <effort selected for this /large-plan phase>, prompt: "Fix the FTS5 sync issue in search.py" })
 → returns agent_id
 
 wait_for({ agent_id, target_state: "ready", timeout_ms: 120000 })
@@ -259,8 +258,8 @@ send_to({ agent_id, text: "Keep the fix narrow and cite the changed file", press
 
 cmuxlayer PR #396 is merged: an explicit Codex `model` is checked against the refreshed runtime
 catalog from `codex debug models` before a pane is created, then `model` and `effort` are passed to the repoGolem launcher
-as `-m` and `-E`. Omit `model` to use the launcher's bare top-Sol pin; include it when the mission
-requires a specific supported model. Unsupported models fail before surface creation; if cmuxlayer
+as `-m` and `-E`. Pass the resolved `codex.implement` model; omit it only after verifying the launcher's
+bare pin matches the role config. Unsupported models fail before surface creation; if cmuxlayer
 prepared a new worktree first, it rolls that worktree back. At read time `spawn_agent.effort` accepts
 `medium`, `high`, `xhigh`, and `ultra`; use the launcher directly for supported `low` or `max`.
 
@@ -323,9 +322,9 @@ Example: adding `cursor` to all 27 projects (done April 4, 2026):
 ### `-s` is a LAUNCHER flag, not a Claude CLI flag
 `-s` only works with repoGolem launchers (`brainlayerClaude -s`). When using raw `claude --agent`, you MUST spell out `--dangerously-skip-permissions`. Evidence: `claude --agent skill-creator -s` failed; had to use `claude --agent skill-creator --dangerously-skip-permissions`.
 
-### Codex: bare pins Sol; explicit selections are first-class
-Canon #5 owns the choice. Use the bare launcher when the current top Sol is intended; use `-m`/`-E`
-when the mission names a supported model or effort. cmux `spawn_agent.model` is equivalent for model
+### Codex: resolve the worker role; explicit selections are first-class
+Canon #5 owns launcher policy. Resolve `codex.implement` for `-m` and choose effort per `/large-plan` phase
+for `-E`; verify a bare launcher against the config before relying on its pin. cmux `spawn_agent.model` is equivalent for model
 selection, while its current effort enum is the four-value subset documented above. Verify effective
 values from Codex session metadata rather than the agent's self-description.
 

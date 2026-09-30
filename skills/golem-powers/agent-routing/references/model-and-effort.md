@@ -1,21 +1,28 @@
 # Codex Model and Effort
 
-This is the detailed Codex model/effort law; read it whenever choosing, dispatching, or verifying a Codex runtime.
+Read this when choosing, dispatching, or verifying a Codex runtime. Current model policy
+lives in `standards/model-roles.json`; resolve from the golems checkout with
+`node scripts/model-roles.mjs <role> --field model|alias|launcher_tier` (one field).
+Keep resolver substitutions in generated commands. A swap requires a bench and one config edit.
 
-Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort-recommendations.md`, OpenAI's primary model guide, subagent configuration, API model/pricing docs, and Codex usage limits.
+Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort-recommendations.md`, OpenAI primary model, subagent, pricing, and usage-limit docs.
 
-## GPT-6 Defaults
+## Model Roles
 
-Fresh repoGolem boots pin `gpt-6.1-sol` with `medium` effort (Codex CLI >=0.159.2).
-Resume keeps the selected session model unless the caller overrides it.
-The default effort is `medium` per the skill-creator R2 effort benchmark.
-The model-roles config (skill-creator #422) is its future owner.
+Workers use `codex.implement`. Effort is chosen per `/large-plan` phase, recorded as
+`role · effort · why`, and passed explicitly at dispatch. Resume retains the selected
+session model and effort unless explicitly overridden. Verify launcher defaults against the role
+config rather than assuming a bare launch is current. Coordination belongs to `claude.judgment`.
 
-Workers default to `gpt-6.1-sol`; leads stay on `gpt-6-astra`. A lead may choose
-`gpt-6-luna` for a job that genuinely fits its bounded, mechanical strengths. No task category,
-including review, automatically routes to Luna. When in doubt, choose Sol. If GPT-6 is unavailable
-in the refreshed Codex runtime catalog, use the matching `gpt-5.6-sol` or `gpt-5.6-luna` fallback;
-the 5.6 IDs are not operational defaults. Do not infer runtime availability from API pages.
+`codex.subagent.mechanical` is **CANDIDATE: bench before use**. Read its `status` and `gate`
+from the config; do not dispatch it or choose it per job before the bench. Until promotion, bounded mechanical work uses `codex.implement`.
+If the resolved model is absent from the refreshed runtime catalog, stop and report the mismatch;
+do not choose an older model automatically or infer runtime availability from API pages.
+
+## Model Data (historical reference)
+
+These pricing/context figures describe particular model IDs; they are data, not dispatch choices.
+Recheck the linked primary source before using them for budgeting.
 
 | Model | Standard input / output per 1M tokens | API context / max output | Source |
 |---|---:|---:|---|
@@ -23,76 +30,73 @@ the 5.6 IDs are not operational defaults. Do not infer runtime availability from
 | `gpt-5.6-sol` fallback | $4 / $20 | 1,050,000 / 128,000 | [OpenAI model page](https://developers.openai.com/api/docs/models/gpt-5.6-sol) |
 | `gpt-6-luna` | $0.10 / $0.50 | 1,050,000 / 128,000 | [OpenAI model page](https://developers.openai.com/api/docs/models/gpt-6-luna) |
 
-Those context figures are API maxima, not Codex-seat windows. Codex CLI seats run with a 400K
-window unless `model_context_window` is raised in `~/.codex/config.toml`; do not change that key
-without Etan. On `gpt-6-sol`, a prompt above 272K input tokens bills the full request at 2x input
-and cache rates and 1.5x output, so raising the seat window can cross the price step. Handoff at
-about 75% of the seat's actual window, read from that session's own `info.model_context_window`;
-never calculate the handoff threshold from an API spec sheet.
+Those context figures are API maxima, not Codex-seat windows. The recorded CLI default was
+400K unless `model_context_window` was raised in `~/.codex/config.toml`; do not change that key
+without Etan. Recorded `gpt-6-sol` pricing above 272K input billed the full request at 2x input
+and cache rates and 1.5x output. These are historical data, not a claim about today's runtime.
+Read the seat's actual `info.model_context_window` from its session. Handoff timing follows
+`/session-handoff`; an API spec sheet does not trigger a handoff.
 
 ## Decide From the Mission
 
-1. **Sol is the worker default.** Use `gpt-6.1-sol` for normal product implementation, ambiguous multi-file work, architecture, decomposition, review, and final acceptance. Choose `medium` for bounded work, `high` for open-ended work, and `xhigh` for a named hard problem.
-2. **Sol high fits open-ended work.** Use it for implementation, review, security, or tracing complex logic and assumptions when the mission is open-ended.
-3. **Sol xhigh is for a named hard blocker.** Name the blocker and why more reasoning can help. `max` requires an evaluation; reachability alone is not evidence that it pays.
-4. **Read-heavy Codex children follow the same model rule.** Use `gpt-6.1-sol` at `high` for open-ended recon, large-file review, or parallel Codex children returning distilled evidence. Choose `gpt-6-luna` only when the actual read is bounded and mechanical, with a deterministic check. Spawn read-heavy children as the named `recon` agent and verify their effective model: its external configuration may still pin Terra. A standalone read-only lane still routes to Cursor. `gpt-5.6-terra` is documented as a fallback tier only, never a prescribed choice.
-5. **Luna is a deliberate per-job choice.** A lead can choose `gpt-6-luna` when the actual task is truly bounded and mechanical, with an outcome and deterministic check. A category label alone never selects Luna. Use `medium` for bounded work; escalate effort only for a named difficulty. `max` requires an evaluation. **Luna low is banned.**
-6. **Leads stay on Astra.** Use `gpt-6-astra` for Codex lead lanes; the Sol/Luna rollout does not move lead routing.
+1. **Worker model:** resolve `codex.implement` for implementation and Codex review lanes.
+2. **Phase effort:** choose effort per `/large-plan` phase and pass it explicitly at dispatch.
+   Record the acceptance boundary, ambiguity, or specific blocker that justifies the choice.
+3. **Evaluation:** task importance alone does not establish the value of more reasoning.
+4. **Read-heavy Codex children:** use named `recon` with the `codex.implement` model and
+   phase-selected effort passed explicitly at dispatch. Verify its runtime; external agent configuration may carry a stale pin.
+   A standalone read-only lane still routes to Cursor. The mechanical candidate cannot bypass its gate.
+5. **Coordination:** use `claude.judgment` under `/agent-routing`, not a separate literal Codex lead tier.
 
-Effort is chosen per dispatch, not inherited as silent fleet policy. Every brief names the effort
-and gives a one-line mission-shaped reason. The model-fit line stays in every review.
+Every brief names the role, phase effort, and one-line reason, then passes that effort
+explicitly at dispatch. Quota changes concurrency, never acceptance;
+unmeasured allowance ratios and the incremental value of `max` remain **NOT KNOWN**.
 
-Quota affects concurrency, not acceptance: the measured 5.6 fallback tiers give Luna roughly 25x and Terra roughly 2.5x Sol's local-message allowance per window; GPT-6 allowance ratios are **NOT KNOWN**. Spark is documented as a separate pool, but open Codex bugs #23150 and #20122 report it draining or depending on main quota. Effort changes token count, not price per token. Treat all of these as planning inputs, never permission for weaker output.
+### Evidence: historical quota observations
 
-## Override Table
+The measured 5.6 fallback tiers gave Luna roughly 25x and Terra roughly 2.5x Sol's
+local-message allowance per window; GPT-6 allowance ratios were **NOT KNOWN**. Spark was
+documented as a separate pool, but Codex bugs #23150 and #20122 reported it draining or
+depending on main quota. Effort changes token count, not price per token. Recheck before
+using those observations for planning; none selects a dispatch model.
 
-| Task shape | Model x effort | Rule |
+## Phase Choices
+
+| Task shape | Role | Phase decision |
 |---|---|---|
-| Default worker; bounded task | `gpt-6.1-sol` x `medium` | Use Sol when in doubt. |
-| Open-ended implementation or review | `gpt-6.1-sol` x `high` | The task, not its category, justifies high. |
-| One genuinely hard blocker | `gpt-6.1-sol` x `xhigh` | Name the blocker; `max` requires an evaluation. |
-| Open-ended read-heavy review or distilled Codex-child fan-out | `gpt-6.1-sol` x `high` | Use named `recon` and verify its effective model; standalone read-only remains Cursor. |
-| Routine implementation in an established pattern | `gpt-6.1-sol` x `medium` | Pattern and acceptance boundary must already be clear. |
-| Job specifically judged to fit Luna | `gpt-6-luna` x `medium` | Lead chooses it per job; bounded outcome and deterministic check required. Never Luna low. |
-
-Spark is a separate-pool interactive option, not the default child or a substitute for this table.
-Max's incremental value and a stable general max policy remain **NOT KNOWN**.
+| Bounded or routine implementation | `codex.implement` | Record acceptance boundary and chosen phase effort. |
+| Open-ended implementation or review | `codex.implement` | Record ambiguity and chosen phase effort. |
+| One hard blocker | `codex.implement` | Name the blocker and why the chosen phase effort helps. |
+| Read-heavy Codex child | `codex.implement` | Named `recon`; choose phase effort and verify runtime. |
+| Mechanical candidate | `codex.subagent.mechanical` | **Do not dispatch before its bench.** |
 
 ## Dispatch and Verification
 
-Visible lanes pass effort explicitly:
+Visible lanes retain dynamic model resolution and explicit phase effort:
 
 ```bash
-brainlayerCodex -s -E medium "<implementation outcome>"
-brainlayerCodex -s -E high "<review/security/complex-tracing outcome>"
-brainlayerCodex -s -m gpt-6-luna -E medium "<bounded mechanical outcome plus deterministic check>"
+: "${phase_effort:?Choose effort per /large-plan phase before dispatch}"
+brainlayerCodex -s -m "$(node scripts/model-roles.mjs codex.implement --field model)" -E "$phase_effort" "<phase outcome>"
 ```
 
 Codex custom agents live in `~/.codex/agents/*.toml`; defaults live in
-`~/.codex/config.toml`. Policy selects Sol for an unnamed child unless a lead judges another model a better fit.
-The current global `default_subagent_model` and named `packet` settings outside this repo still
-pin Luna 5.6; they need a separate config update. Named `recon` pins Terra high. Choose
-`packet` only when its specific job fits Luna. The cap is
-`max_concurrent_threads_per_session = 4`; never retain legacy `max_threads` beside it because
-Codex rejects the duplicate.
+`~/.codex/config.toml`. Do not edit host settings in a routing-doc lane. Resolve the worker
+role when dispatching children and check any named or default subagent pin against it.
+Do not use named `packet` while it selects the mechanical candidate before promotion.
+The concurrency key is `max_concurrent_threads_per_session`; never retain legacy `max_threads`
+beside it because Codex rejects the duplicate.
 
-Recon/read-heavy fan-out children MUST use named `recon`. Its external `~/.codex/agents/recon.toml`
-still pins Terra; do not treat that pin as a prescription. Select Sol by default, use Luna only for
-a genuinely bounded/mechanical read, and verify the child's effective model and effort from its
-own turn context. Verify an unnamed child's effective model and effort rather than assuming a
-default from its agent name.
-
-Verify every child's effective model and effort from the child's own `turn_context` after its own
+Verify every child's effective model and effort from its own `turn_context` after its own
 `task_started` in `~/.codex/sessions/**/rollout-*.jsonl`. Never use prompt text, registry data,
-parent metadata, or model self-identification as proof.
+parent metadata, agent names, or model self-identification as runtime proof.
 
-Before dispatch, write one sentence for each field:
+Before dispatch, record:
 
 ```text
 Mission shape: bounded/mechanical | open-ended | contradictory/adversarial
-Choice: <effective-model target> at <medium|high|xhigh|max>
-Why: <signals from the mission, not task importance alone>
-Dispatch: <launcher/raw internal path and explicit effort pin>
+Choice: <role> · <effort selected for this /large-plan phase> · <one-line why>
+Model target: <resolved model; verify against runtime catalog>
+Dispatch: <launcher/internal child path and explicit model/effort pin>
 Verification: <child session JSONL whose turn_context will be read>
-Unknowns: <anything not measured; write NOT KNOWN rather than extrapolating>
+Unknowns: <NOT KNOWN for anything unmeasured>
 ```

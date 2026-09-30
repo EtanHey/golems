@@ -14,8 +14,10 @@
 
 ## Model Source
 
-Fresh repoGolem launches pin `gpt-6.1-sol` with `medium` effort. Resume restores the selected
-session model and effort unless the caller explicitly overrides them.
+Resolve `codex.implement` via `node scripts/model-roles.mjs codex.implement --field model`
+from the golems checkout. Choose effort per `/large-plan` phase, record why, and pass it
+explicitly at dispatch alongside the resolved model. Verify bare launcher model pins against
+the role config. Resume restores the selected session model and effort unless explicitly overridden.
 
 For cmux **visible pane** agent sessions, fleet canon #6 and `/repogolem` own launcher defaults and resume law. `spawn_agent` may omit `model` or pass an explicit supported Codex model. Merged cmuxlayer PR #396 validates that model against `codex debug models --bundled` before pane creation and forwards accepted model/effort values to the launcher; an unsupported model rolls back any newly prepared worktree. At read time `spawn_agent.effort` accepts `medium|high|xhigh|ultra`, while direct repoGolem `-E` also accepts `low` and `max`. Effective-runtime proof lives in `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification.
 
@@ -69,7 +71,7 @@ Codex has **no `Agent()` tool**. For visible parallel work, `spawn_agent({cli:"c
 
 - Use `<output_contract>` tags for structured output — GPT follows format contracts reliably
 - Explicit section headers, numbered lists
-- Supports system prompt, reasoning effort config
+- Supports system prompts and explicit reasoning effort at dispatch
 - Max skill tokens: ~4000
 
 ## Collab Name-Claims in the Dispatch BRIEF (standing rule; canonical text: weave SKILL.md §5b)
