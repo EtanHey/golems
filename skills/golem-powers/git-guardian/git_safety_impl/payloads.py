@@ -47,6 +47,7 @@ def _command_after_wrappers(words: list[str]) -> list[str]:
                 else:
                     position += 1
         elif name == "env":
+            split_words: list[str] | None = None
             while position < len(current):
                 word = current[position]
                 option = word.split("=", 1)[0]
@@ -54,7 +55,19 @@ def _command_after_wrappers(words: list[str]) -> list[str]:
                     position += 1
                     break
                 if option in {"-S", "--split-string"}:
-                    return []
+                    if "=" in word:
+                        split_value = word.split("=", 1)[1]
+                        remainder = position + 1
+                    elif position + 1 < len(current):
+                        split_value = current[position + 1]
+                        remainder = position + 2
+                    else:
+                        return []
+                    try:
+                        split_words = shlex.split(split_value) + current[remainder:]
+                    except ValueError:
+                        return []
+                    break
                 if option in {"-u", "--unset", "-C", "--chdir", "--argv0"}:
                     position += 1 if "=" in word else 2
                     continue
@@ -65,6 +78,27 @@ def _command_after_wrappers(words: list[str]) -> list[str]:
                     position += 1
                     continue
                 break
+            if split_words is not None:
+                current = split_words
+                continue
+        elif name == "sudo":
+            options_with_values = {
+                "-a", "--auth-type", "-C", "--close-from", "-D", "--chdir",
+                "-g", "--group", "-h", "--host", "-p", "--prompt",
+                "-R", "--chroot", "-r", "--role", "-T", "--command-timeout",
+                "-t", "--type", "-u", "--user",
+            }
+            while position < len(current):
+                word = current[position]
+                option = word.split("=", 1)[0]
+                if word == "--":
+                    position += 1
+                    break
+                if not word.startswith("-") or word == "-":
+                    break
+                position += 1
+                if option in options_with_values and "=" not in word:
+                    position += 1
         elif name == "nice":
             while position < len(current):
                 word = current[position]
@@ -112,15 +146,26 @@ def _printf_escape(value: str) -> str:
             return chr(int(sequence.lstrip("0") or "0", 8))
         return escapes[sequence]
 
-    return re.sub(r"\\(x[0-9A-Fa-f]{1,2}|0[0-7]{1,3}|[0-7]{1,3}|[abefnrtv\\])", decode, value)
+    return re.sub(
+        r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|0[0-7]{1,3}|[0-7]{1,3}|[abefnrtv\\])",
+        lambda match: (
+            chr(int(match.group(1)[1:], 16))
+            if match.group(1).startswith(("u", "U"))
+            else decode(match)
+        ),
+        value,
+    )
 
 
 def _render_printf(words: list[str]) -> str | None:
     """Render static printf formats closely enough to rescan executable output."""
     if len(words) < 2:
         return None
-    format_string = _printf_escape(words[1])
-    arguments = words[2:]
+    position = 2 if len(words) > 1 and words[1] == "--" else 1
+    if position >= len(words):
+        return None
+    format_string = _printf_escape(words[position])
+    arguments = words[position + 1:]
     output: list[str] = []
     argument_index = 0
     while True:
@@ -141,6 +186,7 @@ def _render_printf(words: list[str]) -> str | None:
             conversion = match.group(1)
             if conversion not in "sbqdiouxXfFeEgGaAc":
                 return None
+            argument_index += match.group(0).count("*")
             argument = arguments[argument_index] if argument_index < len(arguments) else ""
             argument_index += 1
             conversion_count += 1
