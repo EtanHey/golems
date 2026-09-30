@@ -42,7 +42,9 @@ export function runSync(argv: string[], build: (text: string, home: string, sour
   const stream = Buffer.from(secretsEnvText(generated.secretsHeader, values));
   // No symlink ancestor or pre-placed incoming leaf may redirect the stream.
   // Noclobber reserves a new 0600 file. The generator does its own bound writes.
-  const command = `set -eu; umask 077; for d in "$HOME" "$HOME/.config" "$HOME/.config/repogolem" "$HOME/.config/repogolem/generated"; do test ! -L "$d"; if test -e "$d"; then test "$(stat -f %u "$d")" = "$(id -u)"; mode=$(stat -f %Lp "$d"); test "$((0$mode & 022))" -eq 0; fi; done; mkdir -p "$HOME/.config/repogolem/generated"; chmod 700 "$HOME/.config/repogolem/generated"; cache="$HOME/.config/repogolem/generated/.incoming-$$"; set -C; cat > "$cache"; set +C; trap 'rm -f "$cache"' EXIT; repogolem generate --config ${remoteRepo}/repogolem/config.yaml --host ${quote(identity[0])} --secrets-from "$cache"`;
+  const script = `set -eu; umask 077; for d in "$HOME" "$HOME/.config" "$HOME/.config/repogolem" "$HOME/.config/repogolem/generated"; do test ! -L "$d"; if test -e "$d"; then test "$(stat -c %u "$d" 2>/dev/null || stat -f %u "$d")" = "$(id -u)"; mode=$(stat -c %a "$d" 2>/dev/null || stat -f %Lp "$d"); test "$((0$mode & 022))" -eq 0; fi; done; mkdir -p "$HOME/.config/repogolem/generated"; chmod 700 "$HOME/.config/repogolem/generated"; cache="$HOME/.config/repogolem/generated/.incoming-$$"; set -C; : > "$cache"; set +C; trap 'rm -f "$cache"' EXIT; trap 'exit 1' HUP INT TERM; cat > "$cache"; repogolem generate --config ${remoteRepo}/repogolem/config.yaml --host ${quote(identity[0])} --secrets-from "$cache"`;
+  // sshd may use zsh; POSIX sh owns the octal arithmetic and traps.
+  const command = `sh -c ${quote(script)}`;
   try { remote(command, stream); } finally { stream.fill(0); }
   console.log(`synced ${target}: ${generated.refs.length} references, one local resolution; remote op not run`);
   return 0;
