@@ -16,6 +16,26 @@ Every mutation reloads and atomically rewrites the manifest under its advisory
 lock. PID liveness is accepted only when PID, process start time, and command
 identity still match.
 
+New process records include `start_kind`: `linux-start-ticks-v1` stores kernel
+`/proc/<pid>/stat` field 22 ticks, while `ps-lstart-utc-v1` stores `ps lstart`
+sampled with `LC_ALL=C TZ=UTC` on macOS. Both retain command equality and reject
+zombies. Linux parses after the final `)` of the comm field.
+
+Legacy records without `start_kind` are re-sampled using fixed-environment
+`lstart`. A matching start and command remain live; absent/zombie PIDs or a
+different command are dead. A same-command start mismatch is ambiguous (clock
+or locale drift versus PID reuse): sweep, launch verification, harvest, and
+cleanup raise an actionable error without finalizing or removing evidence.
+Verify worker exit before reconciling that manifest; never relabel a legacy
+record as a new identity for an unverified PID. Unreadable kernel identity or
+an unsupported identity kind also stops the operation.
+If launch identity sampling fails while the child may still be alive, its PID
+is retained with `start_kind: unobserved`, a nonterminal `running` status, and
+the error reason. The launch result is unsuccessful. The shared predicate
+blocks further operations while that PID remains live; confirmed exit/zombie
+permits normal finalization. Do not replace the marker with a fresh live PID
+sample without independently establishing that it is the original worker.
+
 ## Worker States
 
 | State | Terminal | Meaning |

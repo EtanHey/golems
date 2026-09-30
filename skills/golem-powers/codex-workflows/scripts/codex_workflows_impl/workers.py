@@ -25,7 +25,7 @@ from .worktrees import (
     resolve_artifacts,
 )
 from .manifest import load_manifest, update_worker
-from .process import capture_process_identity, process_identity_alive, verify_launch
+from .process import _ProcessNotObservable, capture_process_identity, process_identity_alive, verify_launch
 from .logs import _terminal_status, parse_finished_log, write_log_header
 
 
@@ -166,6 +166,7 @@ def launch_worker(
     }
     update_worker(manifest_path, name, initial_record)
 
+    process = None
     try:
         dependencies.preflight(repo=repo, brief=brief)
         default_branch = dependencies.create_worktree(
@@ -208,6 +209,12 @@ def launch_worker(
             timeout=launch_timeout,
         )
     except Exception as exc:
+        if process is not None and isinstance(exc, CodexWorkflowError):
+            update_worker(manifest_path, name, {
+                "status": "running", "pid": process.pid, "launched_at": utc_now(),
+                "process": {"pid": process.pid, "start_kind": "unobserved"}, "reason": str(exc),
+            })
+            return {"ok": False, "state": "running", "reason": str(exc), "worker": name}
         update_worker(
             manifest_path,
             name,
@@ -232,11 +239,15 @@ def launch_worker(
 
     try:
         identity = capture_process_identity(process.pid)
-    except CodexWorkflowError:
+    except _ProcessNotObservable:
         common_updates.update({"status": "completed_fast", "process": None})
         update_worker(manifest_path, name, common_updates)
         finalized = finalize_worker(manifest_path, name)
         return {"ok": finalized["status"] == "completed", "worker": name, **finalized}
+    except CodexWorkflowError as exc:
+        common_updates.update({"status": "running", "process": {"pid": process.pid, "start_kind": "unobserved"}, "reason": str(exc)})
+        update_worker(manifest_path, name, common_updates)
+        return {"ok": False, "state": "running", "reason": str(exc), "worker": name}
 
     common_updates.update({"status": "running", "process": identity})
     update_worker(manifest_path, name, common_updates)
