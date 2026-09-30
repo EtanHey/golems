@@ -12,16 +12,13 @@ teardown() {
 @test "a copy-installed tmp-block still imports the shared shell parser and passes its live probes" {
   WIRED_HOOKS_ROOT="$TEST_ROOT/hooks" run "$REPO_ROOT/skills/golem-powers/tmp-block/scripts/install.sh"
 
-  [ "$status" -eq 0 ] &&
-    [[ "$output" == *"Install verified."* ]] &&
-    [ -f "$TEST_ROOT/hooks/_shared/shell_parse.py" ] &&
-    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py" &&
-    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/tokens.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/tokens.py" &&
-    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/masks.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/masks.py" &&
-    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/heredocs.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/heredocs.py" &&
-    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/substitutions.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/substitutions.py" &&
-    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/positions.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/positions.py" &&
-    cmp -s "$TEST_ROOT/hooks/_shared/harness_paths.py" "$REPO_ROOT/skills/golem-powers/_shared/harness_paths.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Install verified."* ]]
+  cmp -s "$TEST_ROOT/hooks/_shared/shell_parse.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py"
+  for leaf in tokens masks heredocs substitutions positions structure units function_expansion patterns conditions condition_steps; do
+    cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/$leaf.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/$leaf.py"
+  done
+  cmp -s "$TEST_ROOT/hooks/_shared/harness_paths.py" "$REPO_ROOT/skills/golem-powers/_shared/harness_paths.py"
 }
 
 @test "copied and symlinked parser facades load the real facade's implementation copy" {
@@ -49,6 +46,11 @@ for label, directory in (("copy", root / "a"),
                          ("directory_symlink", root / "dir-link"),
                          ("file_symlink", root / "b")):
     parser = load(label, directory / "shell_parse.py")
+    for leaf in ("tokens", "masks", "heredocs", "substitutions", "positions",
+                 "structure", "units", "function_expansion", "patterns",
+                 "conditions", "condition_steps"):
+        impl = pathlib.Path(sys.modules[f"{parser._IMPL_NAME}.{leaf}"].__file__).absolute()
+        assert impl == (root / "a" / "shell_parse_impl" / (leaf + ".py")).resolve(), (label, leaf, impl)
     for name, leaf in (("_shell_tokens", "tokens"), ("_blank_quoted", "masks"),
                        ("_strip_heredoc_bodies", "heredocs"),
                        ("_executable_subcommands", "substitutions"),
