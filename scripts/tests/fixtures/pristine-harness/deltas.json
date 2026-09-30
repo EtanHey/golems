@@ -1,157 +1,235 @@
 [
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f",
+      "linux": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f"
+    },
     "case": "launcher-007",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f",
+      "linux": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f"
+    },
     "case": "launcher-008",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "e534df72ba33b8e141fac5b086278ab4f1a1dfcb484e7637d2a7f939dad5c151",
+      "linux": "e534df72ba33b8e141fac5b086278ab4f1a1dfcb484e7637d2a7f939dad5c151"
+    },
     "case": "launcher-009",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "06dcdcb98ffebcea3e9e615e8e9a3d653f631667a723787b7962d3e06a2c7d29",
+      "linux": "06dcdcb98ffebcea3e9e615e8e9a3d653f631667a723787b7962d3e06a2c7d29"
+    },
     "case": "launcher-011",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f",
+      "linux": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f"
+    },
     "case": "launcher-012",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e",
+      "linux": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e"
+    },
     "case": "launcher-014",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345",
+      "linux": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345"
+    },
     "case": "launcher-015",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c",
+      "linux": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c"
+    },
     "case": "launcher-016",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
+      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+    },
     "case": "launcher-017",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d",
+      "linux": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d"
+    },
     "case": "launcher-018",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563",
+      "linux": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563"
+    },
     "case": "launcher-019",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "0decf87e21cf47795341669e5450b77779305972a20dd23cfc535d05a9c4a193",
+      "linux": "0decf87e21cf47795341669e5450b77779305972a20dd23cfc535d05a9c4a193"
+    },
     "case": "launcher-020",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "7c2746d093ea455168ba9e8097855472a53a5aa1b4466ea6ea730050cb1a5c3d",
+      "linux": "7c2746d093ea455168ba9e8097855472a53a5aa1b4466ea6ea730050cb1a5c3d"
+    },
     "case": "launcher-028",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "da9e14fce635a6f23fdc4839ea843e07efb4ed7d7ccbe55761a8b8934beb80d3",
+      "linux": "da9e14fce635a6f23fdc4839ea843e07efb4ed7d7ccbe55761a8b8934beb80d3"
+    },
     "case": "launcher-029",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "1376fdf37fc5259aef95bafb970e410c6c48e6a36c7275384a3eb2cfd771bf46",
+      "linux": "1376fdf37fc5259aef95bafb970e410c6c48e6a36c7275384a3eb2cfd771bf46"
+    },
     "case": "launcher-030",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "95e18ec8566df491f6af6d45241cf35ee095a2c4439676134f20b57e62aaced2",
+      "linux": "95e18ec8566df491f6af6d45241cf35ee095a2c4439676134f20b57e62aaced2"
+    },
     "case": "launcher-033",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "7c2746d093ea455168ba9e8097855472a53a5aa1b4466ea6ea730050cb1a5c3d",
+      "linux": "7c2746d093ea455168ba9e8097855472a53a5aa1b4466ea6ea730050cb1a5c3d"
+    },
     "case": "r2-launch-gemini-lead",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "e5fb1b4dbc9e86f68d611cf139694bcd471e6cfae6eec412af001ca9f4e95109",
+      "linux": "e5fb1b4dbc9e86f68d611cf139694bcd471e6cfae6eec412af001ca9f4e95109"
+    },
     "case": "r2-launch-gemini-lead-s",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "018e5934e67c97eb6b38948f5462987d3479eb4bed7e45b84e662bf78d8b3cd7",
+      "linux": "018e5934e67c97eb6b38948f5462987d3479eb4bed7e45b84e662bf78d8b3cd7"
+    },
     "case": "r2-launch-gemini-persona",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "7c2746d093ea455168ba9e8097855472a53a5aa1b4466ea6ea730050cb1a5c3d",
+      "linux": "7c2746d093ea455168ba9e8097855472a53a5aa1b4466ea6ea730050cb1a5c3d"
+    },
     "case": "r2-launch-gemini-worker-env",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "e5fb1b4dbc9e86f68d611cf139694bcd471e6cfae6eec412af001ca9f4e95109",
+      "linux": "e5fb1b4dbc9e86f68d611cf139694bcd471e6cfae6eec412af001ca9f4e95109"
+    },
     "case": "r2-launch-gemini-worker-s",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "0e89716c3ec30f73c09dab1cef8842ae5e772a1c86bb2edcffd9f888b85ffce9",
+      "linux": "0e89716c3ec30f73c09dab1cef8842ae5e772a1c86bb2edcffd9f888b85ffce9"
+    },
     "case": "r2-launch-persona-codex-lead",
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "2e7b6477c820e9fc72adac54868ff19deed7449bd1393c964d0417f472730cd4",
+      "linux": "2e7b6477c820e9fc72adac54868ff19deed7449bd1393c964d0417f472730cd4"
+    },
     "case": "r2-launch-persona-gemini-continue",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "e663b2644ce5e12a453e5112a04aeed943d6a63a3a53966df465e14f331be99c",
+      "linux": "e663b2644ce5e12a453e5112a04aeed943d6a63a3a53966df465e14f331be99c"
+    },
     "case": "r2-launch-persona-gemini-lead",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "c74ec12bb6aad9af7d192042997ca03c65e10c50fdaba1b1e517dfbb543f9809",
+      "linux": "c74ec12bb6aad9af7d192042997ca03c65e10c50fdaba1b1e517dfbb543f9809"
+    },
     "case": "r2-launch-persona-gemini-worker-env",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   },
   {
     "authority": "Etan ruling 2026-09-30 12:35 (gpt-6.1-sol) + orc Gemini Flash-High ruling; PR #413",
-    "candidate_sha256": {},
+    "candidate_sha256": {
+      "darwin": "b838e8232e7d808d4c69bdd3b4b358d9e8add0ecfb82aa01d1565bcfe5460b45",
+      "linux": "b838e8232e7d808d4c69bdd3b4b358d9e8add0ecfb82aa01d1565bcfe5460b45"
+    },
     "case": "topup-agy-model-empty",
     "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
   }
