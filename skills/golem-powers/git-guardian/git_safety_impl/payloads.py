@@ -35,6 +35,60 @@ def _printed_text(words: list[str]) -> str | None:
     return None
 
 
+def _command_words_before_operator(
+    segments: list[tuple[list[str], str]], index: int
+) -> list[str]:
+    """Recover command words across redirections that precede an operator."""
+    start = index
+    while start > 0:
+        previous_operator = segments[start - 1][1]
+        is_redirection = "<" in previous_operator or ">" in previous_operator
+        if not is_redirection and any(ch in previous_operator for ch in ";&|()"):
+            break
+        start -= 1
+
+    command_words: list[str] = []
+    pending_redirect_target = False
+    for words, operator in segments[start:index + 1]:
+        current = list(words)
+        if pending_redirect_target and current:
+            current = current[1:]
+            pending_redirect_target = False
+        if "<" in operator or ">" in operator:
+            if current and current[-1].isdigit():
+                current.pop()
+            pending_redirect_target = True
+        command_words.extend(current)
+    return [
+        word for word in command_words
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", word)
+    ]
+
+
+def _shell_reads_commands_from_stdin(words: list[str], shells: set[str]) -> bool:
+    """Whether a shell invocation treats a here-string as command input."""
+    if not words or os.path.basename(words[0]) not in shells:
+        return False
+    reads_stdin = False
+    index = 1
+    while index < len(words):
+        argument = words[index]
+        if argument in {"-O", "+O", "--init-file", "--rcfile"}:
+            index += 2
+            continue
+        if argument == "--":
+            index += 1
+            return reads_stdin or index == len(words)
+        if argument.startswith(("-", "+")) and argument not in {"-", "+"}:
+            if argument.startswith("-") and "c" in argument[1:]:
+                return False
+            reads_stdin = reads_stdin or (argument.startswith("-") and "s" in argument[1:])
+            index += 1
+            continue
+        return reads_stdin
+    return True
+
+
 def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
     """Strings the shell will run as commands: $() bodies (also inside "…"),
     eval arguments, echo/printf output piped into a stdin shell or given to one
@@ -91,18 +145,18 @@ def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
                         continue
                     output_words: list[str] = []
                     stdout_redirected = False
-                    pending_redirect_target = False
+                    pending_redirect: tuple[str, bool] | None = None
                     for output_token in output_tokens + [";"]:
                         if output_token and all(ch in ";&|()<>\n" for ch in output_token):
+                            is_redirection = "<" in output_token or ">" in output_token
                             if ">" in output_token:
                                 descriptor = (
                                     output_words.pop()
                                     if output_words and output_words[-1].isdigit()
                                     else "1"
                                 )
-                                stdout_redirected = stdout_redirected or descriptor == "1"
-                                pending_redirect_target = True
-                            if any(ch in output_token for ch in ";&|()\n"):
+                                pending_redirect = (descriptor, output_token.endswith("&"))
+                            if not is_redirection and any(ch in output_token for ch in ";&|()\n"):
                                 printed = (
                                     api['_printed_text'](output_words)
                                     if output_words and not stdout_redirected and "|" not in output_token
@@ -112,15 +166,24 @@ def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
                                     payloads.append(printed)
                                 output_words = []
                                 stdout_redirected = False
-                                pending_redirect_target = False
+                                pending_redirect = None
                         else:
-                            if pending_redirect_target:
-                                pending_redirect_target = False
+                            if pending_redirect is not None:
+                                descriptor, duplicates_descriptor = pending_redirect
+                                if descriptor == "1":
+                                    known_other_destination = (
+                                        not duplicates_descriptor
+                                        or output_token == "-"
+                                        or (output_token.isdigit() and output_token != "1")
+                                    )
+                                    stdout_redirected = stdout_redirected or known_other_destination
+                                pending_redirect = None
                             else:
                                 output_words.append(output_token)
-        if operator == "<<<" and name in api['_SHELLS'] and index + 1 < len(segments):
+        if operator == "<<<" and index + 1 < len(segments):
+            shell_words = _command_words_before_operator(segments, index)
             here_words = segments[index + 1][0]
-            if here_words:
+            if here_words and _shell_reads_commands_from_stdin(shell_words, api['_SHELLS']):
                 payloads.append(" ".join(here_words))
         if name == "git":
             for position, word in enumerate(words[1:], 1):

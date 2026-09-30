@@ -406,8 +406,11 @@ def test_issue460_remaining_executable_payload_shapes_are_blocked(tmp_path):
             f"f() {{ {destructive}; }}; f",
             f'eval "$(echo \'{destructive}\')"',
             f'eval "$(echo \'{destructive}\' 2>/dev/null)"',
+            f'eval "$(echo \'{destructive}\' 1>&1)"',
             f'eval "$(printf %s \')\' >/dev/null; echo \'{destructive}\')"',
             f"sh <<< '{destructive}'",
+            f"bash 2>/dev/null <<< '{destructive}'",
+            f"bash -s 2>/dev/null <<< '{destructive}'",
         )
         for command in commands:
             assert git_safety.dangerous_shell_reason(
@@ -425,7 +428,10 @@ def test_issue460_payload_tightening_keeps_nonexecuted_and_safe_forms_allowed(tm
         "eval \"$(echo 'git status')\"",
         "eval \"$(echo 'git push --force origin main' > review.txt)\"",
         "eval \"$(echo 'git push --force origin main' 1>/dev/null)\"",
+        "eval \"$(echo 'git push --force origin main' 1>&2)\"",
         "sh <<< 'git status'",
+        "bash -c 'cat' <<< 'git push --force origin main'",
+        "bash script.sh <<< 'git push --force origin main'",
         "cat <<< 'git push --force origin main'",
     )
     for command in commands:
@@ -551,4 +557,3 @@ def test_backticks_that_really_run_still_block(tmp_path):
         'echo "$(rm -rf ~)"',
     ):
         assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()), command
-
