@@ -20,7 +20,7 @@ ecosystem-health/evals/evals.json	~/Gits/some-new-app	Test or evaluation evidenc
 deploy-verify/evals/evals.json	/Users/me	Test or evaluation evidence intentionally preserves this machine-path specimen.
 false-green-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 fleet-wrap-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
-git-guardian/tests/test_git_safety.py	/opt/homebrew/bin/git	Test or evaluation evidence intentionally preserves this machine-path specimen.
+git-guardian/tests/_test_git_safety_parts/cases01.py	/opt/homebrew/bin/git	Test or evaluation evidence intentionally preserves this machine-path specimen.
 golem-install/evals/evals.json	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
 html-dashboard/templates/template.html	~/Gits/brainlayer	Display template contains a non-executed sample path.
 install-runbook-linter/fixtures/green-runbook.md	/opt/homebrew/bin/brew	Test or evaluation evidence intentionally preserves this machine-path specimen.
