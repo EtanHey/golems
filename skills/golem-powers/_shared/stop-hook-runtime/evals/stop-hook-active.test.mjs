@@ -17,7 +17,7 @@ const powersRoot = path.resolve(here, "../../..");
 // GO-5 E2: false-green, fleet-wrap and qa-verdict flag as advisories, never blocks.
 const ADVISORY = new Set(["false-green-gate", "fleet-wrap-gate", "qa-verdict-gate"]);
 const GATES = [
-  ["false-green-gate", "01-stale-app-stamp.json"],
+  ["false-green-gate", "22-code-fix-checkmark-no-live-probe.json", "scope-fixtures"],
   ["fleet-wrap-gate", "01-healthwatch-cron-left-armed.json"],
   ["qa-verdict-gate", "01-fail-page-never-loaded.json"],
 ];
@@ -31,9 +31,9 @@ function runHook(gate, payload) {
   });
 }
 
-for (const [gate, fixtureName] of GATES) {
+for (const [gate, fixtureName, fixtureDir = "fixtures"] of GATES) {
   const fixture = JSON.parse(
-    readFileSync(path.join(powersRoot, gate, "evals", "fixtures", "red", fixtureName), "utf8"),
+    readFileSync(path.join(powersRoot, gate, "evals", fixtureDir, "red", fixtureName), "utf8"),
   );
 
   test(`${gate} flags ${fixtureName} on a first stop`, () => {
