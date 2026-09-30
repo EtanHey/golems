@@ -6,9 +6,10 @@ Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort
 
 ## GPT-6 Defaults
 
-Fresh repoGolem boots pin `gpt-6.1-sol` with `high` effort (Codex CLI >=0.159.2).
+Fresh repoGolem boots pin `gpt-6.1-sol` with `medium` effort (Codex CLI >=0.159.2).
 Resume keeps the selected session model unless the caller overrides it.
-The default effort stays `high` pending the skill-creator benchmark.
+The default effort is `medium` per the skill-creator R2 effort benchmark.
+The model-roles config (skill-creator #422) is its future owner.
 
 Workers default to `gpt-6.1-sol`; leads stay on `gpt-6-astra`. A lead may choose
 `gpt-6-luna` for a job that genuinely fits its bounded, mechanical strengths. No task category,

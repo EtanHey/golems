@@ -151,9 +151,9 @@ Etan, verbatim — relayed via orc, the ellipsis is his:
 **Codex and Claude workers alike.** The brief names the effort for that job and the spawn's
 `-E/--effort` matches it: `medium` or `low` for scoped, focused, or mechanical work, `high` only
 when the job is genuinely complex, `xhigh` only by explicit choice named with its reason. The
-launcher's role default is a **ceiling, not a floor** — `repoGolem` sets it from the seat
-(Codex `high`; Claude `-E` > `GOLEM_EFFORT` > `GOLEM_ROLE=worker` → `medium` > `high`) and the lead
-lowers it per dispatch. If a brief names no effort, the lead has not finished writing it. Rungs are
+launcher's default is a starting point — `repoGolem` sets Codex to `medium`
+(Claude `-E` > `GOLEM_EFFORT` > `GOLEM_ROLE=worker` → `medium` > `high`) and the lead
+chooses effort per dispatch. If a brief names no effort, the lead has not finished writing it. Rungs are
 orc's operationalization, not Etan's words; full table in `/pr-loop` → SKILL.md "Effort Is Set Per
 Dispatch".
 
