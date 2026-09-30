@@ -1117,8 +1117,26 @@ def _static_shell_variables_before(tokens, cmd_pos, seg_of, target_segment):
     )[0]
 
 
+def _paren_contexts(tokens):
+    """Opening-parenthesis stack enclosing each token.
+
+    This is deliberately narrower than full shell scope modelling. It gives
+    the stale-value guard enough structure to distinguish a mutation inside a
+    subshell/process substitution from a later command back in the parent.
+    """
+    contexts = []
+    stack = []
+    for token in tokens:
+        contexts.append(tuple(stack))
+        if token == "(":
+            stack.append(len(contexts) - 1)
+        elif token == ")" and stack:
+            stack.pop()
+    return contexts
+
+
 def _static_shell_variable_state_before(
-    tokens, cmd_pos, seg_of, target_segment
+    tokens, cmd_pos, seg_of, target_segment, target_index=None
 ):
     """Return (values, literal_prefixes) visible to `target_segment`.
 
@@ -1133,6 +1151,30 @@ def _static_shell_variable_state_before(
     # before applying its command-local assignments.
     variables = {}
     prefixes = {}
+    paren_contexts = _paren_contexts(tokens)
+    if target_index is None:
+        target_index = next(
+            (
+                index
+                for index, segment in enumerate(seg_of)
+                if segment == target_segment and not _is_separator(tokens, index)
+            ),
+            len(tokens),
+        )
+    target_context = (
+        paren_contexts[target_index]
+        if target_index < len(paren_contexts)
+        else ()
+    )
+
+    def mutation_reaches_target(index):
+        """A child-shell mutation cannot change a later parent-shell value."""
+        context = paren_contexts[index]
+        return target_context[: len(context)] == context
+
+    def invalidate(name):
+        variables[name] = None
+        prefixes.pop(name, None)
 
     def track(name, value, resolved):
         """Record a value and, when it is unknown, its provable literal head."""
@@ -1253,6 +1295,36 @@ def _static_shell_variable_state_before(
                         expand_assignment_reference, value
                     )
                     track(name, value, None if unresolved else expanded)
+
+        # golems#481: an assignment-shaped token that is executable but falls
+        # outside the resolver's model must invalidate any earlier value. A
+        # stale in-convention value is not evidence that the later worktree
+        # target is safe. Command-local prefixes remain excluded because Bash
+        # applies them only to that command's environment, and child-shell
+        # mutations do not leak back to a later parent command.
+        modelled_assignments = assignment_only or exported
+        for index in assignments:
+            command_local_prefix = bool(command_words) and index < command_words[0]
+            if (
+                not modelled_assignments
+                and not command_local_prefix
+                and (cmd_pos[index] or command_name == "eval")
+                and mutation_reaches_target(index)
+            ):
+                invalidate(tokens[index].split("=", 1)[0])
+
+        # `read NAME` assigns without an `NAME=value` token. Its runtime value
+        # is intentionally not interpreted; seeing the mutation is sufficient
+        # to make the prior static value unusable.
+        if command_name == "read" and command_words:
+            for index in indices:
+                if index <= command_words[0] or not mutation_reaches_target(index):
+                    continue
+                token = tokens[index]
+                if token in {"<", "<<", "<<<"}:
+                    break
+                if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token):
+                    invalidate(token)
 
         chain_status = _chain_status_after(
             operator, chain_status, command_status
@@ -2556,9 +2628,9 @@ def find_worktree_convention_issues(
     deny_hits = []
     unresolved_hits = []
     for raw, seg, scope, target_index in adds:
-        variables = _static_shell_variables_before(
-            tokens, cmd_pos, seg_of, seg
-        )
+        variables = _static_shell_variable_state_before(
+            tokens, cmd_pos, seg_of, seg, target_index
+        )[0]
         hit_seg = seg
         if len(scope) == 1 and scope[0] in exposed_scope_keys:
             outer_seg, sub_index = exposed_scope_keys[scope[0]]

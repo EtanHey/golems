@@ -477,6 +477,65 @@ def test_worktree_hatch_keeps_in_convention_target_allowed(tmp_path):
     assert not ledger.exists(), "an in-convention target does not consume the hatch"
 
 
+@pytest.mark.parametrize(
+    "command",
+    (
+        f"X={GITS}/golems/.worktrees/w; "
+        + '{ X=/tmp/q; git worktree add "$X" HEAD; }',
+        f"X={GITS}/golems/.worktrees/w; "
+        + 'read X <<< /tmp/q; git worktree add "$X" HEAD',
+        f"X={GITS}/golems/.worktrees/w; "
+        + "eval 'X=/tmp/q'; git worktree add \"$X\" HEAD",
+        f"X={GITS}/golems/.worktrees/w; "
+        + 'cat <( X=/tmp/q; git worktree add "$X" HEAD )',
+    ),
+)
+def test_unmodelled_assignment_invalidates_stale_outer_worktree_value(command):
+    """golems#481: a later assignment form the resolver cannot model must
+    invalidate an earlier in-convention value instead of authorizing it."""
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "command, expected",
+    (
+        (
+            f'X={GITS}/golems/.worktrees/w; git worktree add "$X" HEAD',
+            "allow",
+        ),
+        (
+            f"X={GITS}/golems/.worktrees/w; "
+            + '( X=/tmp/q; git worktree add "$X" HEAD )',
+            "deny",
+        ),
+        (
+            f"X={GITS}/golems/.worktrees/w; "
+            + 'f() { local X=/tmp/q; git worktree add "$X" HEAD; }; f',
+            "deny",
+        ),
+        (
+            f"X={GITS}/golems/.worktrees/w; "
+            + 'X=/tmp/q true; git worktree add "$X" HEAD',
+            "allow",
+        ),
+        (
+            f"X={GITS}/golems/.worktrees/w; "
+            + 'cat <( X=/tmp/q; true ); git worktree add "$X" HEAD',
+            "allow",
+        ),
+    ),
+)
+def test_stale_outer_assignment_controls(command, expected):
+    proc = run_hook(bash_payload(command))
+
+    if expected == "allow":
+        assert_allowed(proc)
+    else:
+        assert_denied(proc)
+
+
 def test_worktree_migration_hatch_with_unwritable_ledger_denies():
     """An unlogged bypass must not proceed — fail closed, as with the tmp hatch."""
     proc = run_hook(
@@ -719,4 +778,3 @@ def test_observed_scratchpad_redirect_is_allowed(durable_path):
         cwd=str(durable_path),
     )
     assert_allowed(proc)
-

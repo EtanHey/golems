@@ -1,417 +1,12 @@
 [
   {
-    "authority": "golems#466",
-    "candidate_sha256": {
-      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
-      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
-    },
-    "case": "issue466-wt-hatch-inner-temp",
-    "reason": "Retain nested temp classification before applying the worktree migration hatch"
-  },
-  {
-    "authority": "golems#466",
-    "candidate_sha256": {
-      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
-      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
-    },
-    "case": "issue466-wt-hatch-outer-convention-inner-temp",
-    "reason": "Retain nested temp classification when an outer in-convention assignment is authoritative"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88",
-      "linux": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88"
-    },
-    "case": "launcher-002",
-    "reason": "Codex launcher help names the default as a fallback; effort is chosen per dispatch from the plan phase"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "ee69e3c28f7e2194090725c2e53a53b666c1cf63fa6d7bd25719ccbc2eb7ad14",
-      "linux": "ee69e3c28f7e2194090725c2e53a53b666c1cf63fa6d7bd25719ccbc2eb7ad14"
-    },
-    "case": "launcher-006",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
-    },
-    "case": "launcher-007",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
-    },
-    "case": "launcher-008",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "4c916c782ed6d768bc2924aed14255eb4beff8db48314f7c754d774fe3288fa6",
-      "linux": "4c916c782ed6d768bc2924aed14255eb4beff8db48314f7c754d774fe3288fa6"
-    },
-    "case": "launcher-009",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "aa71546e1ed34fe0ea778c8c86846b29bdba3971c5a2aacaaf0bd8b6caf725b3",
-      "linux": "aa71546e1ed34fe0ea778c8c86846b29bdba3971c5a2aacaaf0bd8b6caf725b3"
-    },
-    "case": "launcher-011",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
-    },
-    "case": "launcher-012",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "f7c37dc0aab9b2cb0e21c10e3fd214936fd1a0ffea8132ad83830afbb5c412ad",
-      "linux": "f7c37dc0aab9b2cb0e21c10e3fd214936fd1a0ffea8132ad83830afbb5c412ad"
-    },
-    "case": "launcher-013",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#413",
-    "candidate_sha256": {
-      "darwin": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e",
-      "linux": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e"
-    },
-    "case": "launcher-014",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
-  },
-  {
-    "authority": "golems#413",
-    "candidate_sha256": {
-      "darwin": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345",
-      "linux": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345"
-    },
-    "case": "launcher-015",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
-  },
-  {
-    "authority": "golems#413",
-    "candidate_sha256": {
-      "darwin": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c",
-      "linux": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c"
-    },
-    "case": "launcher-016",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
-  },
-  {
-    "authority": "golems#413",
-    "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
-    },
-    "case": "launcher-017",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
-  },
-  {
-    "authority": "golems#413",
-    "candidate_sha256": {
-      "darwin": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d",
-      "linux": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d"
-    },
-    "case": "launcher-018",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
-  },
-  {
-    "authority": "golems#413",
-    "candidate_sha256": {
-      "darwin": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563",
-      "linux": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563"
-    },
-    "case": "launcher-019",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "f0daaef067aff2d7cedd30011e3d61dd14e79b3091a43fdf3c9c73526a54e8c1",
-      "linux": "f0daaef067aff2d7cedd30011e3d61dd14e79b3091a43fdf3c9c73526a54e8c1"
-    },
-    "case": "launcher-020",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c",
-      "linux": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c"
-    },
-    "case": "launcher-028",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "d9c6694ee6d26a43f5d52eb47576fa57e065e752dca91565b30b56372bc9d2ce",
-      "linux": "d9c6694ee6d26a43f5d52eb47576fa57e065e752dca91565b30b56372bc9d2ce"
-    },
-    "case": "launcher-029",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "f8021bbbb5864e051f433a1ef9eebf7041c097d87c934aa94a90f9264a40a7b5",
-      "linux": "f8021bbbb5864e051f433a1ef9eebf7041c097d87c934aa94a90f9264a40a7b5"
-    },
-    "case": "launcher-030",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "5e333550d1a203e1531acec94f4cee8c06abc20b814777cc8291c0e7c55f6ad9",
-      "linux": "5e333550d1a203e1531acec94f4cee8c06abc20b814777cc8291c0e7c55f6ad9"
-    },
-    "case": "launcher-033",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "4b9f75c6077a2555fb62c87f426443e3be551116c6f5eb564c9e718eb7a74ad3",
-      "linux": "4b9f75c6077a2555fb62c87f426443e3be551116c6f5eb564c9e718eb7a74ad3"
-    },
-    "case": "r2-launch-gemini-lead",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "812c9230c76bca386709a859e74666773334703a3d2e73afeebd8d9c874cfd50",
-      "linux": "812c9230c76bca386709a859e74666773334703a3d2e73afeebd8d9c874cfd50"
-    },
-    "case": "r2-launch-gemini-lead-s",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "9fdda9ef45d435856d7fa85f7871da8fcace723f6f3dbf2e0b8f0c147f2aad99",
-      "linux": "9fdda9ef45d435856d7fa85f7871da8fcace723f6f3dbf2e0b8f0c147f2aad99"
-    },
-    "case": "r2-launch-gemini-persona",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c",
-      "linux": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c"
-    },
-    "case": "r2-launch-gemini-worker-env",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "52e3ad15070a8942cb0a4efcd1464c4f17ec69d80000c9f57e70a4ecac9f727f",
-      "linux": "52e3ad15070a8942cb0a4efcd1464c4f17ec69d80000c9f57e70a4ecac9f727f"
-    },
-    "case": "r2-launch-gemini-worker-s",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#457",
-    "candidate_sha256": {
-      "darwin": "c967398a8dcbb92e55f2f18fb281ab8a16e6d9a709348ed9e06be9e0bffc44d4",
-      "linux": "c967398a8dcbb92e55f2f18fb281ab8a16e6d9a709348ed9e06be9e0bffc44d4"
-    },
-    "case": "r2-launch-persona-codex-lead",
-    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "f7a47bcce50f20820baba6beb7fd36b3737eb4a133f0895dce550b0da2aeed84",
-      "linux": "f7a47bcce50f20820baba6beb7fd36b3737eb4a133f0895dce550b0da2aeed84"
-    },
-    "case": "r2-launch-persona-gemini-continue",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "cf7f7fd9f682751c5cdc7f926ad494620eec00706cb72c1012ae3a65c1679bf0",
-      "linux": "cf7f7fd9f682751c5cdc7f926ad494620eec00706cb72c1012ae3a65c1679bf0"
-    },
-    "case": "r2-launch-persona-gemini-lead",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "a94a748172f5a869119f2f8de85b288497b06a729011b062d2d2bb797bf1df78",
-      "linux": "a94a748172f5a869119f2f8de85b288497b06a729011b062d2d2bb797bf1df78"
-    },
-    "case": "r2-launch-persona-gemini-worker-env",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "dfbf8db534bcb78f6d3741fb6d79fd4b2e22a03ad7e1209f8f0877c6fe3984d1",
-      "linux": "dfbf8db534bcb78f6d3741fb6d79fd4b2e22a03ad7e1209f8f0877c6fe3984d1"
-    },
-    "case": "topup-agy-model-custom-model",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
-      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
-    },
-    "case": "topup-agy-model-empty",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
-      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
-    },
-    "case": "topup-agy-model-flash",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
-      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
-    },
-    "case": "topup-agy-model-flash-high",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "063d01b5c0f0dabfa19c77152115ac549c1f1de59a8a7683d0a84ee9b2d68b61",
-      "linux": "063d01b5c0f0dabfa19c77152115ac549c1f1de59a8a7683d0a84ee9b2d68b61"
-    },
-    "case": "topup-agy-model-flash-low",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a",
-      "linux": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a"
-    },
-    "case": "topup-agy-model-flash-med",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a",
-      "linux": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a"
-    },
-    "case": "topup-agy-model-flash-medium",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
-      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
-    },
-    "case": "topup-agy-model-gpt-oss",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
-      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
-    },
-    "case": "topup-agy-model-gpt-oss-120b",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "f1731f220fff7c9b514a3d634fa0d5c4e528712cbc72d3552fbdc91a231ada7e",
-      "linux": "f1731f220fff7c9b514a3d634fa0d5c4e528712cbc72d3552fbdc91a231ada7e"
-    },
-    "case": "topup-agy-model-opus",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
-      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
-    },
-    "case": "topup-agy-model-oss",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e",
-      "linux": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e"
-    },
-    "case": "topup-agy-model-pro",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e",
-      "linux": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e"
-    },
-    "case": "topup-agy-model-pro-high",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "45d15850f55a11d83682a6beb350f4a2cc2fd00f29eeccfadab7c95b5741f50e",
-      "linux": "45d15850f55a11d83682a6beb350f4a2cc2fd00f29eeccfadab7c95b5741f50e"
-    },
-    "case": "topup-agy-model-pro-low",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
-    "authority": "golems#471",
-    "candidate_sha256": {
-      "darwin": "e29a7fab1393d3b525f1c8a13615e4183a20f331a4800c3ea2ebb1ad390d8e86",
-      "linux": "e29a7fab1393d3b525f1c8a13615e4183a20f331a4800c3ea2ebb1ad390d8e86"
-    },
-    "case": "topup-agy-model-sonnet",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
-  },
-  {
     "authority": "golems#412",
     "candidate_sha256": {
       "darwin": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac",
       "linux": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac"
     },
     "case": "issue412-backtick-single-quote-backslash",
-    "reason": "Ordinary single-quoted backslashes are literal, so the later backtick substitution remains executable and is captured."
+    "reason": "Ordinarysingle-quotedbackslashesareliteral,sothelaterbackticksubstitutionremainsexecutableandiscaptured."
   },
   {
     "authority": "golems#412",
@@ -420,7 +15,7 @@
       "linux": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87"
     },
     "case": "issue412-dollar-backtick-mixed-quotes",
-    "reason": "A malformed mixed backtick and dollar substitution is rejected as unterminated rather than returning a truncated executable body."
+    "reason": "Amalformedmixedbacktickanddollarsubstitutionisrejectedasunterminatedratherthanreturningatruncatedexecutablebody."
   },
   {
     "authority": "golems#412",
@@ -429,7 +24,7 @@
       "linux": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4"
     },
     "case": "issue412-dollar-nested-mixed-quotes",
-    "reason": "Nested dollar substitutions and quoted parentheses are consumed in their own contexts, preserving the complete outer executable body."
+    "reason": "Nesteddollarsubstitutionsandquotedparenthesesareconsumedintheirowncontexts,preservingthecompleteouterexecutablebody."
   },
   {
     "authority": "golems#412",
@@ -438,7 +33,228 @@
       "linux": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318"
     },
     "case": "issue412-dollar-single-quote-paren",
-    "reason": "A right parenthesis inside ordinary single quotes is literal data and cannot close the surrounding command substitution."
+    "reason": "Arightparenthesisinsideordinarysinglequotesisliteraldataandcannotclosethesurroundingcommandsubstitution."
+  },
+  {
+    "authority": "golems#466",
+    "candidate_sha256": {
+      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
+      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+    },
+    "case": "issue466-wt-hatch-inner-temp",
+    "reason": "Retainnestedtempclassificationbeforeapplyingtheworktreemigrationhatch"
+  },
+  {
+    "authority": "golems#466",
+    "candidate_sha256": {
+      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
+      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+    },
+    "case": "issue466-wt-hatch-outer-convention-inner-temp",
+    "reason": "Retainnestedtempclassificationwhenanouterin-conventionassignmentisauthoritative"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-stale-outer-brace-assignment",
+    "reason": "invalidate-stale-outer-value-after-unmodelled-brace-group-assignment"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-stale-outer-eval-assignment",
+    "reason": "invalidate-stale-outer-value-after-eval-assigns-the-worktree-variable"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-stale-outer-process-substitution-assignment",
+    "reason": "invalidate-stale-outer-value-inside-process-substitution"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-stale-outer-read-assignment",
+    "reason": "invalidate-stale-outer-value-after-read-assigns-the-worktree-variable"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88",
+      "linux": "3cdbdeac7e7ada7d714333b13ca0b8e915bec57c89416528daf9426f4fd9cb88"
+    },
+    "case": "launcher-002",
+    "reason": "Codexlauncherhelpnamesthedefaultasafallback;effortischosenperdispatchfromtheplanphase"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "ee69e3c28f7e2194090725c2e53a53b666c1cf63fa6d7bd25719ccbc2eb7ad14",
+      "linux": "ee69e3c28f7e2194090725c2e53a53b666c1cf63fa6d7bd25719ccbc2eb7ad14"
+    },
+    "case": "launcher-006",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
+      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+    },
+    "case": "launcher-007",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
+      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+    },
+    "case": "launcher-008",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "4c916c782ed6d768bc2924aed14255eb4beff8db48314f7c754d774fe3288fa6",
+      "linux": "4c916c782ed6d768bc2924aed14255eb4beff8db48314f7c754d774fe3288fa6"
+    },
+    "case": "launcher-009",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "aa71546e1ed34fe0ea778c8c86846b29bdba3971c5a2aacaaf0bd8b6caf725b3",
+      "linux": "aa71546e1ed34fe0ea778c8c86846b29bdba3971c5a2aacaaf0bd8b6caf725b3"
+    },
+    "case": "launcher-011",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
+      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+    },
+    "case": "launcher-012",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "f7c37dc0aab9b2cb0e21c10e3fd214936fd1a0ffea8132ad83830afbb5c412ad",
+      "linux": "f7c37dc0aab9b2cb0e21c10e3fd214936fd1a0ffea8132ad83830afbb5c412ad"
+    },
+    "case": "launcher-013",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e",
+      "linux": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e"
+    },
+    "case": "launcher-014",
+    "reason": "FreshCodexbootspingpt-6.1-sol;resumeandoverrideskeeptheirsemantics"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345",
+      "linux": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345"
+    },
+    "case": "launcher-015",
+    "reason": "FreshCodexbootspingpt-6.1-sol;resumeandoverrideskeeptheirsemantics"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c",
+      "linux": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c"
+    },
+    "case": "launcher-016",
+    "reason": "FreshCodexbootspingpt-6.1-sol;resumeandoverrideskeeptheirsemantics"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
+      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+    },
+    "case": "launcher-017",
+    "reason": "FreshCodexbootspingpt-6.1-sol;resumeandoverrideskeeptheirsemantics"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d",
+      "linux": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d"
+    },
+    "case": "launcher-018",
+    "reason": "FreshCodexbootspingpt-6.1-sol;resumeandoverrideskeeptheirsemantics"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563",
+      "linux": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563"
+    },
+    "case": "launcher-019",
+    "reason": "FreshCodexbootspingpt-6.1-sol;resumeandoverrideskeeptheirsemantics"
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "f0daaef067aff2d7cedd30011e3d61dd14e79b3091a43fdf3c9c73526a54e8c1",
+      "linux": "f0daaef067aff2d7cedd30011e3d61dd14e79b3091a43fdf3c9c73526a54e8c1"
+    },
+    "case": "launcher-020",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c",
+      "linux": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c"
+    },
+    "case": "launcher-028",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "d9c6694ee6d26a43f5d52eb47576fa57e065e752dca91565b30b56372bc9d2ce",
+      "linux": "d9c6694ee6d26a43f5d52eb47576fa57e065e752dca91565b30b56372bc9d2ce"
+    },
+    "case": "launcher-029",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "f8021bbbb5864e051f433a1ef9eebf7041c097d87c934aa94a90f9264a40a7b5",
+      "linux": "f8021bbbb5864e051f433a1ef9eebf7041c097d87c934aa94a90f9264a40a7b5"
+    },
+    "case": "launcher-030",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "5e333550d1a203e1531acec94f4cee8c06abc20b814777cc8291c0e7c55f6ad9",
+      "linux": "5e333550d1a203e1531acec94f4cee8c06abc20b814777cc8291c0e7c55f6ad9"
+    },
+    "case": "launcher-033",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
   },
   {
     "authority": "golems#412",
@@ -447,7 +263,7 @@
       "linux": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4"
     },
     "case": "parser-042",
-    "reason": "Arithmetic-expansion closing parentheses are retained when heredoc bodies are masked, so surrounding executable text is not truncated."
+    "reason": "Arithmetic-expansionclosingparenthesesareretainedwhenheredocbodiesaremasked,sosurroundingexecutabletextisnottruncated."
   },
   {
     "authority": "golems#412",
@@ -456,7 +272,7 @@
       "linux": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45"
     },
     "case": "parser-078",
-    "reason": "Heredoc body parentheses are data and cannot close the surrounding command substitution"
+    "reason": "Heredocbodyparenthesesaredataandcannotclosethesurroundingcommandsubstitution"
   },
   {
     "authority": "golems#412",
@@ -465,7 +281,7 @@
       "linux": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05"
     },
     "case": "parser-130",
-    "reason": "Case pattern terminators cannot close the surrounding command substitution; incomplete case syntax fails closed"
+    "reason": "Casepatternterminatorscannotclosethesurroundingcommandsubstitution;incompletecasesyntaxfailsclosed"
   },
   {
     "authority": "golems#412",
@@ -474,7 +290,7 @@
       "linux": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05"
     },
     "case": "parser-140",
-    "reason": "Quoted heredoc prose inside a command substitution is non-executable and must be masked from policy text"
+    "reason": "Quotedheredocproseinsideacommandsubstitutionisnon-executableandmustbemaskedfrompolicytext"
   },
   {
     "authority": "golems#412",
@@ -483,7 +299,7 @@
       "linux": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68"
     },
     "case": "parser-r2-r16-1",
-    "reason": "Case pattern terminators are syntax and cannot close the surrounding command substitution"
+    "reason": "Casepatternterminatorsaresyntaxandcannotclosethesurroundingcommandsubstitution"
   },
   {
     "authority": "golems#412",
@@ -492,7 +308,7 @@
       "linux": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616"
     },
     "case": "parser-topup-backtick-escaped",
-    "reason": "Quoted data masking retains the executable outer backtick substitution while removing its literal argument text from policy input."
+    "reason": "Quoteddatamaskingretainstheexecutableouterbackticksubstitutionwhileremovingitsliteralargumenttextfrompolicyinput."
   },
   {
     "authority": "golems#412",
@@ -501,6 +317,238 @@
       "linux": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae"
     },
     "case": "parser-topup-nested-arithmetic",
-    "reason": "Nested arithmetic and command-substitution closing parentheses are retained during masking, preventing the surrounding executable text from being truncated."
+    "reason": "Nestedarithmeticandcommand-substitutionclosingparenthesesareretainedduringmasking,preventingthesurroundingexecutabletextfrombeingtruncated."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "4b9f75c6077a2555fb62c87f426443e3be551116c6f5eb564c9e718eb7a74ad3",
+      "linux": "4b9f75c6077a2555fb62c87f426443e3be551116c6f5eb564c9e718eb7a74ad3"
+    },
+    "case": "r2-launch-gemini-lead",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "812c9230c76bca386709a859e74666773334703a3d2e73afeebd8d9c874cfd50",
+      "linux": "812c9230c76bca386709a859e74666773334703a3d2e73afeebd8d9c874cfd50"
+    },
+    "case": "r2-launch-gemini-lead-s",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "9fdda9ef45d435856d7fa85f7871da8fcace723f6f3dbf2e0b8f0c147f2aad99",
+      "linux": "9fdda9ef45d435856d7fa85f7871da8fcace723f6f3dbf2e0b8f0c147f2aad99"
+    },
+    "case": "r2-launch-gemini-persona",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c",
+      "linux": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c"
+    },
+    "case": "r2-launch-gemini-worker-env",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "52e3ad15070a8942cb0a4efcd1464c4f17ec69d80000c9f57e70a4ecac9f727f",
+      "linux": "52e3ad15070a8942cb0a4efcd1464c4f17ec69d80000c9f57e70a4ecac9f727f"
+    },
+    "case": "r2-launch-gemini-worker-s",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#457",
+    "candidate_sha256": {
+      "darwin": "c967398a8dcbb92e55f2f18fb281ab8a16e6d9a709348ed9e06be9e0bffc44d4",
+      "linux": "c967398a8dcbb92e55f2f18fb281ab8a16e6d9a709348ed9e06be9e0bffc44d4"
+    },
+    "case": "r2-launch-persona-codex-lead",
+    "reason": "FreshCodexdefaultandlauncherhelpusemedium;expliciteffortandrolloutrecoveryremainauthoritative"
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "f7a47bcce50f20820baba6beb7fd36b3737eb4a133f0895dce550b0da2aeed84",
+      "linux": "f7a47bcce50f20820baba6beb7fd36b3737eb4a133f0895dce550b0da2aeed84"
+    },
+    "case": "r2-launch-persona-gemini-continue",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "cf7f7fd9f682751c5cdc7f926ad494620eec00706cb72c1012ae3a65c1679bf0",
+      "linux": "cf7f7fd9f682751c5cdc7f926ad494620eec00706cb72c1012ae3a65c1679bf0"
+    },
+    "case": "r2-launch-persona-gemini-lead",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "a94a748172f5a869119f2f8de85b288497b06a729011b062d2d2bb797bf1df78",
+      "linux": "a94a748172f5a869119f2f8de85b288497b06a729011b062d2d2bb797bf1df78"
+    },
+    "case": "r2-launch-persona-gemini-worker-env",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+    },
+    "case": "tmp-w7-r1-authoritative-primary-path",
+    "reason": "issue481-unresolved-state-selects-inner-temp-path-and-preserves-exit-2"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23"
+    },
+    "case": "tmp-w7-r1-hits-authoritative-primary-path",
+    "reason": "issue481-unresolved-state-selects-inner-temp-hit-in-api-capture"
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "dfbf8db534bcb78f6d3741fb6d79fd4b2e22a03ad7e1209f8f0877c6fe3984d1",
+      "linux": "dfbf8db534bcb78f6d3741fb6d79fd4b2e22a03ad7e1209f8f0877c6fe3984d1"
+    },
+    "case": "topup-agy-model-custom-model",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
+      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
+    },
+    "case": "topup-agy-model-empty",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
+      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
+    },
+    "case": "topup-agy-model-flash",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
+      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
+    },
+    "case": "topup-agy-model-flash-high",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "063d01b5c0f0dabfa19c77152115ac549c1f1de59a8a7683d0a84ee9b2d68b61",
+      "linux": "063d01b5c0f0dabfa19c77152115ac549c1f1de59a8a7683d0a84ee9b2d68b61"
+    },
+    "case": "topup-agy-model-flash-low",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a",
+      "linux": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a"
+    },
+    "case": "topup-agy-model-flash-med",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a",
+      "linux": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a"
+    },
+    "case": "topup-agy-model-flash-medium",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
+      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
+    },
+    "case": "topup-agy-model-gpt-oss",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
+      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
+    },
+    "case": "topup-agy-model-gpt-oss-120b",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "f1731f220fff7c9b514a3d634fa0d5c4e528712cbc72d3552fbdc91a231ada7e",
+      "linux": "f1731f220fff7c9b514a3d634fa0d5c4e528712cbc72d3552fbdc91a231ada7e"
+    },
+    "case": "topup-agy-model-opus",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
+      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
+    },
+    "case": "topup-agy-model-oss",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e",
+      "linux": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e"
+    },
+    "case": "topup-agy-model-pro",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e",
+      "linux": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e"
+    },
+    "case": "topup-agy-model-pro-high",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "45d15850f55a11d83682a6beb350f4a2cc2fd00f29eeccfadab7c95b5741f50e",
+      "linux": "45d15850f55a11d83682a6beb350f4a2cc2fd00f29eeccfadab7c95b5741f50e"
+    },
+    "case": "topup-agy-model-pro-low",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
+  },
+  {
+    "authority": "golems#471",
+    "candidate_sha256": {
+      "darwin": "e29a7fab1393d3b525f1c8a13615e4183a20f331a4800c3ea2ebb1ad390d8e86",
+      "linux": "e29a7fab1393d3b525f1c8a13615e4183a20f331a4800c3ea2ebb1ad390d8e86"
+    },
+    "case": "topup-agy-model-sonnet",
+    "reason": "Geminilaunchcapturesincludetheselectedmodelandworkercontext,exactprojectMCPmaps,andalockedregistry-declaredsharedmapwithoutstoredcredentials."
   }
 ]
