@@ -56,7 +56,8 @@
   {
     "authority": "golems#481",
     "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
     },
     "case": "issue481-stale-outer-brace-assignment",
     "reason": "invalidate-stale-outer-value-after-unmodelled-brace-group-assignment"
@@ -64,7 +65,8 @@
   {
     "authority": "golems#481",
     "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
     },
     "case": "issue481-stale-outer-eval-assignment",
     "reason": "invalidate-stale-outer-value-after-eval-assigns-the-worktree-variable"
@@ -72,7 +74,8 @@
   {
     "authority": "golems#481",
     "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
     },
     "case": "issue481-stale-outer-process-substitution-assignment",
     "reason": "invalidate-stale-outer-value-inside-process-substitution"
@@ -80,7 +83,8 @@
   {
     "authority": "golems#481",
     "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
     },
     "case": "issue481-stale-outer-read-assignment",
     "reason": "invalidate-stale-outer-value-after-read-assigns-the-worktree-variable"
@@ -403,7 +407,8 @@
   {
     "authority": "golems#481",
     "candidate_sha256": {
-      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
+      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
     },
     "case": "tmp-w7-r1-authoritative-primary-path",
     "reason": "issue481-unresolved-state-selects-inner-temp-path-and-preserves-exit-2"
@@ -411,7 +416,8 @@
   {
     "authority": "golems#481",
     "candidate_sha256": {
-      "darwin": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23"
+      "darwin": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23",
+      "linux": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23"
     },
     "case": "tmp-w7-r1-hits-authoritative-primary-path",
     "reason": "issue481-unresolved-state-selects-inner-temp-hit-in-api-capture"
