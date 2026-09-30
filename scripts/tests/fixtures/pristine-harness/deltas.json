@@ -135,31 +135,31 @@
     "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "8dde522181b03ccf2064fa0398b5906e50a0afbfed24c2dfc36390ebe281d043",
-      "linux": "8dde522181b03ccf2064fa0398b5906e50a0afbfed24c2dfc36390ebe281d043"
+      "darwin": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c",
+      "linux": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c"
     },
     "case": "launcher-028",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "30a8cbb5c84a2f4dd4a2243ddc54cd1dd39d81d3da639f2ac57c95f9b136322d",
-      "linux": "30a8cbb5c84a2f4dd4a2243ddc54cd1dd39d81d3da639f2ac57c95f9b136322d"
+      "darwin": "d9c6694ee6d26a43f5d52eb47576fa57e065e752dca91565b30b56372bc9d2ce",
+      "linux": "d9c6694ee6d26a43f5d52eb47576fa57e065e752dca91565b30b56372bc9d2ce"
     },
     "case": "launcher-029",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "ff2d1e4c7e2490a0f7482924b29280665459e1220ee012eaa63db6cb627086be",
-      "linux": "ff2d1e4c7e2490a0f7482924b29280665459e1220ee012eaa63db6cb627086be"
+      "darwin": "f8021bbbb5864e051f433a1ef9eebf7041c097d87c934aa94a90f9264a40a7b5",
+      "linux": "f8021bbbb5864e051f433a1ef9eebf7041c097d87c934aa94a90f9264a40a7b5"
     },
     "case": "launcher-030",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
     "authority": "golems#457",
@@ -171,49 +171,49 @@
     "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "7c2746d093ea455168ba9e8097855472a53a5aa1b4466ea6ea730050cb1a5c3d",
-      "linux": "7c2746d093ea455168ba9e8097855472a53a5aa1b4466ea6ea730050cb1a5c3d"
+      "darwin": "4b9f75c6077a2555fb62c87f426443e3be551116c6f5eb564c9e718eb7a74ad3",
+      "linux": "4b9f75c6077a2555fb62c87f426443e3be551116c6f5eb564c9e718eb7a74ad3"
     },
     "case": "r2-launch-gemini-lead",
-    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "e5fb1b4dbc9e86f68d611cf139694bcd471e6cfae6eec412af001ca9f4e95109",
-      "linux": "e5fb1b4dbc9e86f68d611cf139694bcd471e6cfae6eec412af001ca9f4e95109"
+      "darwin": "812c9230c76bca386709a859e74666773334703a3d2e73afeebd8d9c874cfd50",
+      "linux": "812c9230c76bca386709a859e74666773334703a3d2e73afeebd8d9c874cfd50"
     },
     "case": "r2-launch-gemini-lead-s",
-    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "018e5934e67c97eb6b38948f5462987d3479eb4bed7e45b84e662bf78d8b3cd7",
-      "linux": "018e5934e67c97eb6b38948f5462987d3479eb4bed7e45b84e662bf78d8b3cd7"
+      "darwin": "9fdda9ef45d435856d7fa85f7871da8fcace723f6f3dbf2e0b8f0c147f2aad99",
+      "linux": "9fdda9ef45d435856d7fa85f7871da8fcace723f6f3dbf2e0b8f0c147f2aad99"
     },
     "case": "r2-launch-gemini-persona",
-    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "8dde522181b03ccf2064fa0398b5906e50a0afbfed24c2dfc36390ebe281d043",
-      "linux": "8dde522181b03ccf2064fa0398b5906e50a0afbfed24c2dfc36390ebe281d043"
+      "darwin": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c",
+      "linux": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c"
     },
     "case": "r2-launch-gemini-worker-env",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "22b4d599552394f5aa761b09bc54427cdbd7a39812e81ff7ff7c58535d0987a5",
-      "linux": "22b4d599552394f5aa761b09bc54427cdbd7a39812e81ff7ff7c58535d0987a5"
+      "darwin": "52e3ad15070a8942cb0a4efcd1464c4f17ec69d80000c9f57e70a4ecac9f727f",
+      "linux": "52e3ad15070a8942cb0a4efcd1464c4f17ec69d80000c9f57e70a4ecac9f727f"
     },
     "case": "r2-launch-gemini-worker-s",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
     "authority": "golems#457",
@@ -225,165 +225,165 @@
     "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "2e7b6477c820e9fc72adac54868ff19deed7449bd1393c964d0417f472730cd4",
-      "linux": "2e7b6477c820e9fc72adac54868ff19deed7449bd1393c964d0417f472730cd4"
+      "darwin": "f7a47bcce50f20820baba6beb7fd36b3737eb4a133f0895dce550b0da2aeed84",
+      "linux": "f7a47bcce50f20820baba6beb7fd36b3737eb4a133f0895dce550b0da2aeed84"
     },
     "case": "r2-launch-persona-gemini-continue",
-    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "e663b2644ce5e12a453e5112a04aeed943d6a63a3a53966df465e14f331be99c",
-      "linux": "e663b2644ce5e12a453e5112a04aeed943d6a63a3a53966df465e14f331be99c"
+      "darwin": "cf7f7fd9f682751c5cdc7f926ad494620eec00706cb72c1012ae3a65c1679bf0",
+      "linux": "cf7f7fd9f682751c5cdc7f926ad494620eec00706cb72c1012ae3a65c1679bf0"
     },
     "case": "r2-launch-persona-gemini-lead",
-    "reason": "Bare Gemini gathers default to Gemini 3.8 Flash High; explicit Pro remains Pro"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "f877cd945648c43dcd2f555a73d008a51598c0f6b1833d90a3d20e7f1caf8305",
-      "linux": "f877cd945648c43dcd2f555a73d008a51598c0f6b1833d90a3d20e7f1caf8305"
+      "darwin": "a94a748172f5a869119f2f8de85b288497b06a729011b062d2d2bb797bf1df78",
+      "linux": "a94a748172f5a869119f2f8de85b288497b06a729011b062d2d2bb797bf1df78"
     },
     "case": "r2-launch-persona-gemini-worker-env",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "843c2a2df8a2031f7d77b355539936739592517fafb1a6fdd07d64184a6cfd1d",
-      "linux": "843c2a2df8a2031f7d77b355539936739592517fafb1a6fdd07d64184a6cfd1d"
+      "darwin": "dfbf8db534bcb78f6d3741fb6d79fd4b2e22a03ad7e1209f8f0877c6fe3984d1",
+      "linux": "dfbf8db534bcb78f6d3741fb6d79fd4b2e22a03ad7e1209f8f0877c6fe3984d1"
     },
     "case": "topup-agy-model-custom-model",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3",
-      "linux": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
+      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
+      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
     },
     "case": "topup-agy-model-empty",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3",
-      "linux": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
+      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
+      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
     },
     "case": "topup-agy-model-flash",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3",
-      "linux": "5c58aebc04fd5fea910a38f81fd24669e469242be186195636b856ba5d2d06c3"
+      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
+      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
     },
     "case": "topup-agy-model-flash-high",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "dbf4b27e604dcb8d5af90c76507235090628e6d7915a245f02cac894818f0342",
-      "linux": "dbf4b27e604dcb8d5af90c76507235090628e6d7915a245f02cac894818f0342"
+      "darwin": "063d01b5c0f0dabfa19c77152115ac549c1f1de59a8a7683d0a84ee9b2d68b61",
+      "linux": "063d01b5c0f0dabfa19c77152115ac549c1f1de59a8a7683d0a84ee9b2d68b61"
     },
     "case": "topup-agy-model-flash-low",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b",
-      "linux": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b"
+      "darwin": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a",
+      "linux": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a"
     },
     "case": "topup-agy-model-flash-med",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b",
-      "linux": "1e598fc6b1911dc508044890159318eb866bd8db70e7de9be1e672f26e7c2f8b"
+      "darwin": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a",
+      "linux": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a"
     },
     "case": "topup-agy-model-flash-medium",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
-      "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
+      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
+      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
     },
     "case": "topup-agy-model-gpt-oss",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
-      "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
+      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
+      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
     },
     "case": "topup-agy-model-gpt-oss-120b",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "a8141a24d22638659bdd712b6fddd7541b3cf9d9ffb264bfdb65e21f4a01481e",
-      "linux": "a8141a24d22638659bdd712b6fddd7541b3cf9d9ffb264bfdb65e21f4a01481e"
+      "darwin": "f1731f220fff7c9b514a3d634fa0d5c4e528712cbc72d3552fbdc91a231ada7e",
+      "linux": "f1731f220fff7c9b514a3d634fa0d5c4e528712cbc72d3552fbdc91a231ada7e"
     },
     "case": "topup-agy-model-opus",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945",
-      "linux": "f7037755844f54901348e9ed31355a4cf556f7d909f6ac739203ad00f2736945"
+      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
+      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
     },
     "case": "topup-agy-model-oss",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd",
-      "linux": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd"
+      "darwin": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e",
+      "linux": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e"
     },
     "case": "topup-agy-model-pro",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd",
-      "linux": "ce14cbc3eb9e70630bb01f335409d8d1ef50499bbdd9b3bffead695aa06952bd"
+      "darwin": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e",
+      "linux": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e"
     },
     "case": "topup-agy-model-pro-high",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "2c9a5147ba17a070390bf617c3f3bc8a428cb47fa835cdfab15143f61eccbfa9",
-      "linux": "2c9a5147ba17a070390bf617c3f3bc8a428cb47fa835cdfab15143f61eccbfa9"
+      "darwin": "45d15850f55a11d83682a6beb350f4a2cc2fd00f29eeccfadab7c95b5741f50e",
+      "linux": "45d15850f55a11d83682a6beb350f4a2cc2fd00f29eeccfadab7c95b5741f50e"
     },
     "case": "topup-agy-model-pro-low",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#420",
+    "authority": "golems#471",
     "candidate_sha256": {
-      "darwin": "c7b2a07bdb4ff15a74c5eaea91ad539f5ac13f0b4f32fa8e892ebb25751c2d53",
-      "linux": "c7b2a07bdb4ff15a74c5eaea91ad539f5ac13f0b4f32fa8e892ebb25751c2d53"
+      "darwin": "e29a7fab1393d3b525f1c8a13615e4183a20f331a4800c3ea2ebb1ad390d8e86",
+      "linux": "e29a7fab1393d3b525f1c8a13615e4183a20f331a4800c3ea2ebb1ad390d8e86"
     },
     "case": "topup-agy-model-sonnet",
-    "reason": "Gemini workers warn when the global gatherer is absent; installed-agent selection is covered by behavioral Bats"
+    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   }
 ]

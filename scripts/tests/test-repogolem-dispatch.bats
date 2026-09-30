@@ -45,6 +45,12 @@ teardown() {
     rm -rf "$TMPDIR_"
 }
 
+# AGY persistence consumes raw declarations rather than the secret-resolving stub.
+set_agy_registry_servers() {
+    jq --argjson servers "$1" '.global.mcps = $servers' "$REGISTRY_FILE" > "$REGISTRY_FILE.next"
+    mv "$REGISTRY_FILE.next" "$REGISTRY_FILE"
+}
+
 WORKER_PERSONA_MARKERS='Adopt the following launcher agent context|<agent_context>|Initial prompt from agent frontmatter|Full orchestrator protocol|Never fabricate:|Search BrainLayer before starting|BrainLayer-first boot|brain_store|Store decisions, learnings, and milestones|Orchestration routing protocol|Monitor law|Skill index dumps'
 
 # The launcher deletes the profile once codex exits — it holds live MCP
@@ -818,6 +824,7 @@ NPM
 }
 
 @test "tracked dispatcher source normalizes remote MCP URL keys for Antigravity" {
+    set_agy_registry_servers '{"registryRemote":{"url":"https://example.com/registry-mcp"},"urlRemote":{"url":"https://example.com/url-mcp"},"httpRemote":{"httpUrl":"https://example.com/http-mcp"}}'
     [ -f "$SOURCE_DISPATCHER" ]
 
     local fake_home="$TMPDIR_/home"
@@ -866,6 +873,7 @@ AGY
 }
 
 @test "tracked dispatcher source syncs Antigravity MCP config from selected worktree" {
+    set_agy_registry_servers '{"registryRemote":{"url":"https://example.com/registry-mcp"}}'
     [ -f "$SOURCE_DISPATCHER" ]
 
     local fake_home="$TMPDIR_/home"
@@ -3054,6 +3062,7 @@ PYCHECK
 }
 
 @test "tracked dispatcher source strips supabase --access-token args from Antigravity MCP config" {
+    set_agy_registry_servers '{"supabase":{"command":"npx"}}'
     [ -f "$SOURCE_DISPATCHER" ]
 
     local fake_home="$TMPDIR_/home"
@@ -3140,6 +3149,7 @@ SUPABASE_STRIP_CASES='["--access-token","--read-only","--project-ref","demo"]|["
 }
 
 @test "tracked dispatcher source strips each supabase --access-token shape from Antigravity MCP config" {
+    set_agy_registry_servers '{"supabase":{"command":"npx"}}'
     [ -f "$SOURCE_DISPATCHER" ]
 
     local fake_home="$TMPDIR_/home" args expected n=0
@@ -3666,6 +3676,7 @@ BSD_MKTEMP_SHIM='function mktemp() {
       }'
 
 @test "tracked dispatcher source: concurrent agy workspace syncs for one project do not collide on BSD mktemp" {
+    set_agy_registry_servers '{"local":{"command":"true"}}'
     [ -f "$SOURCE_DISPATCHER" ]
 
     local fake_home="$TMPDIR_/home" xdg="$TMPDIR_/xdg-runtime"
@@ -3675,7 +3686,7 @@ BSD_MKTEMP_SHIM='function mktemp() {
     : > "$MKTEMP_CREATED"
     printf '%s\n' '{"mcpServers":{"local":{"command":"true"}}}' > "$PROJECT_DIR/.mcp.json"
 
-    run zsh -f -c '
+    run env RALPH_REGISTRY_FILE="$REGISTRY_FILE" zsh -f -c '
       export HOME="$1" XDG_RUNTIME_DIR="$2"
       function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
       '"$BSD_MKTEMP_SHIM"'
@@ -3691,8 +3702,8 @@ BSD_MKTEMP_SHIM='function mktemp() {
     grep -F -x -q -- "RUN_B=0" <<< "$output"
     ! grep -F -q -- "mkstemp failed" <<< "$output" || false
 
-    # Four temp files per launch, eight in all, and no two launches shared one.
-    [ "$(wc -l < "$MKTEMP_CREATED")" -eq 8 ]
+    # One same-directory atomic temp per target, four in all; none shared.
+    [ "$(wc -l < "$MKTEMP_CREATED")" -eq 4 ]
     [ -z "$(sort "$MKTEMP_CREATED" | uniq -d)" ]
     ! grep -F -q -- "XXXXXX" "$MKTEMP_CREATED" || false
     [ -z "$(find "$xdg" "$fake_home" "$PROJECT_DIR" -name '*XXXXXX*' -print)" ]
