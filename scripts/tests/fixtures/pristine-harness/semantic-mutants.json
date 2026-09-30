@@ -718,8 +718,8 @@
     "target": "git-guardian",
     "baseline": "candidate",
     "path": "skills/golem-powers/git-guardian/git_safety_impl/payloads.py",
-    "old": "        if operator == \"<<<\" and name in api['_SHELLS'] and index + 1 < len(segments):\n",
-    "new": "        if False and operator == \"<<<\" and name in api['_SHELLS'] and index + 1 < len(segments):\n"
+    "old": "            if here_words and _shell_reads_commands_from_stdin(shell_words, api['_SHELLS']):\n",
+    "new": "            if False and here_words and _shell_reads_commands_from_stdin(shell_words, api['_SHELLS']):\n"
   },
   {
     "id": "I460-L6",
