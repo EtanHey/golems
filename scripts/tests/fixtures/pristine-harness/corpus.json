@@ -11134,5 +11134,61 @@
       "registered": false
     },
     "source": "tmp-block-characterization-section-7"
-  }
+  },
+    {
+      "id": "tmp-w7-r1-tmp-hatch-not-wt-resolved",
+      "target": "tmp-block",
+      "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 git worktree add /outside/w7 HEAD\"},\"session_id\":\"pristine\"}",
+      "source": "tmp-block-characterization-r1-M16"
+    },
+    {
+      "id": "tmp-w7-r1-tmp-hatch-not-wt-unresolved",
+      "target": "tmp-block",
+      "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_TMP=1 git worktree add \\\"$WT\\\" HEAD\"},\"session_id\":\"pristine\"}",
+      "source": "tmp-block-characterization-r1-M16"
+    },
+    {
+      "id": "tmp-w7-r1-wt-resolved-before-unresolved",
+      "target": "tmp-block",
+      "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add /outside/w7 HEAD; git worktree add \\\"$WT\\\" HEAD\"},\"session_id\":\"pristine\"}",
+      "source": "tmp-block-characterization-r1-M28"
+    },
+    {
+      "id": "tmp-w7-r1-wt-unresolved-before-resolved",
+      "target": "tmp-block",
+      "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git worktree add \\\"$WT\\\" HEAD; git worktree add /outside/w7 HEAD\"},\"session_id\":\"pristine\"}",
+      "source": "tmp-block-characterization-r1-M28"
+    },
+    {
+      "id": "tmp-w7-r1-hits-primary-promotion",
+      "target": "tmp-block-api",
+      "request": {
+        "command": "X=/tmp/w; echo $(echo $(git worktree add \"$X\" HEAD))",
+        "budget": 1000000,
+        "kwargs": {
+          "_initial_cwd": "/workspace"
+        },
+        "function": "_bash_temp_targets"
+      },
+      "source": "tmp-block-characterization-r1-M22"
+    },
+    {
+      "id": "tmp-w7-r1-authoritative-primary-path",
+      "target": "tmp-block",
+      "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X=/tmp/w; echo $(X=/tmp/q; git worktree add \\\"$X\\\" HEAD)\"},\"session_id\":\"pristine\"}",
+      "source": "tmp-block-characterization-r1-M23"
+    },
+    {
+      "id": "tmp-w7-r1-hits-authoritative-primary-path",
+      "target": "tmp-block-api",
+      "request": {
+        "command": "X=/tmp/w; echo $(X=/tmp/q; git worktree add \"$X\" HEAD)",
+        "budget": 1000000,
+        "kwargs": {
+          "_initial_cwd": "/workspace"
+        },
+        "function": "_bash_temp_targets"
+      },
+      "source": "tmp-block-characterization-r1-M23"
+    }
 ]
