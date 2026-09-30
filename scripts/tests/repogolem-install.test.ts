@@ -150,3 +150,18 @@ test('repeated interrupted upgrades keep the previous machine digest recoverable
   expect(run(['--rollback']).code).toBe(0);
   expect(readFileSync(join(home,'.golems/config.yaml'),'utf8')).toBe(seat);
 });
+
+test('changed config path is refused even when its machine seat target stays the same', () => {
+  const seat=readFileSync(config,'utf8');
+  writeFileSync(config,seat+'machineSeatConfigs:\n  fixture-host: |\n'+seat.split('\n').filter(Boolean).map(line=>'    '+line).join('\n')+'\n');
+  expect(run(['--host','fixture-host']).code).toBe(0);
+  const changed=join(home,'other-view-config.yaml');writeFileSync(changed,readFileSync(config));
+  expect(run(['--config',changed,'--host','fixture-host']).code).toBe(2);
+});
+test('different seatRegistry in a machine view is refused before writes', () => {
+  const seat=readFileSync(config,'utf8');
+  const changed=seat.replace('launcherPrefix: custom','launcherPrefix: changed');
+  writeFileSync(config,seat+'machineSeatConfigs:\n  fixture-host: |\n'+changed.split('\n').filter(Boolean).map(line=>'    '+line).join('\n')+'\n');
+  expect(run(['--host','fixture-host']).code).toBe(2);
+  expect(existsSync(join(home,'.config/repogolem'))).toBe(false);
+});
