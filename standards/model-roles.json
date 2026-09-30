@@ -17,7 +17,7 @@
       "evidence": "2026-09-29 subagent-routing: brain-worker recall parity at 0.46x; orc-helper 4/4 parity at 0.47x; verifiers 0 wrong at 0.55x",
       "never_for": "deletion decisions, PR-gating review, multi-source history",
       "effort": "default",
-      "effort_note": "2026-09-29 bench ran with no --effort flag (CLI default); not effort-benched"
+      "effort_note": "brain-worker lookups benched with no effort flag (CLI default); orc-helper benched with its frontmatter effort: medium, kept as an agent-level override; not effort-benched"
     },
     "codex.implement": {
       "model": "gpt-6.1-sol",
