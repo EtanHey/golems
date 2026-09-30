@@ -389,7 +389,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac"
+      "darwin": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac",
+      "linux": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac"
     },
     "case": "issue412-backtick-single-quote-backslash",
     "reason": "issue412substitutionquote-boundaryhardening"
@@ -397,7 +398,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87"
+      "darwin": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87",
+      "linux": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87"
     },
     "case": "issue412-dollar-backtick-mixed-quotes",
     "reason": "issue412substitutionquote-boundaryhardening"
@@ -405,7 +407,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4"
+      "darwin": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4",
+      "linux": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4"
     },
     "case": "issue412-dollar-nested-mixed-quotes",
     "reason": "issue412substitutionquote-boundaryhardening"
@@ -413,7 +416,8 @@
   {
     "authority": "golems#412",
     "candidate_sha256": {
-      "darwin": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318"
+      "darwin": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318",
+      "linux": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318"
     },
     "case": "issue412-dollar-single-quote-paren",
     "reason": "issue412substitutionquote-boundaryhardening"
