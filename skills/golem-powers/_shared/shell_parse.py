@@ -112,6 +112,7 @@ _patterns = _impl_module("patterns")
 _conditions = _impl_module("conditions")
 _variables = _impl_module("variables")
 _eval_payloads = _impl_module("eval_payloads")
+_expansion_state = _impl_module("expansion_state")
 
 
 # AIDEV-NOTE: heredocs and substitutions import each other, so bind this
@@ -157,29 +158,17 @@ def process_substitution_at(command: str, start: int) -> tuple[str, int]:
 
 def _invoked_alias_bodies(command, _initial_state=None):
     """Return alias bodies expanded on later lines when Bash enables them."""
-    if _initial_state is None:
-        enabled = False
-        nocasematch = False
-        aliases = {}
-        function_bodies = {}
-        expanded_function_bodies = {}
-    else:
-        enabled, initial_aliases, initial_functions, initial_expanded = (
-            _initial_state[:4]
-        )
-        nocasematch = _initial_state[4] if len(_initial_state) > 4 else False
-        aliases = dict(initial_aliases)
-        function_bodies = dict(initial_functions)
-        expanded_function_bodies = dict(initial_expanded)
-    invoked = []
-    offset = 0
-    invocation_index = 0
+    expansion_state = _expansion_state.initial_state(_initial_state)
+    enabled = expansion_state.enabled
+    nocasematch = expansion_state.nocasematch
+    aliases = expansion_state.aliases
+    function_bodies = expansion_state.function_bodies
+    expanded_function_bodies = expansion_state.expanded_function_bodies
+    invoked = expansion_state.invoked
+    offset = expansion_state.offset
+    invocation_index = expansion_state.invocation_index
     unit_nocasematch = nocasematch
-    command_vars = {}
-    expansion_state = _function_expansion.ExpansionState(
-        aliases, function_bodies, expanded_function_bodies
-    )
-
+    command_vars = expansion_state.command_vars
 
 
 
@@ -199,207 +188,44 @@ def _invoked_alias_bodies(command, _initial_state=None):
 
     executable_source = _mask_heredoc_body_lines(command)
     for source_unit in _units.parse_units(executable_source):
-        line = _structure.normalize_function_signature_braces(
-            source_unit.rstrip("\r\n")
+        unit = _expansion_state.make_source_unit(source_unit, nocasematch)
+        line = unit.line
+        unit_nocasematch = unit.unit_nocasematch
+        parse_line = unit.parse_line
+        tokens, cmd_pos, seg_of, _scope_of = (
+            unit.tokens, unit.cmd_pos, unit.seg_of, unit.scope_of
         )
-        unit_nocasematch = nocasematch or bool(
-            re.search(
-                r"(?:^|[;|&])\s*(?:builtin\s+)?shopt\s+-s\b"
-                r"[^\n;|&]*\bnocasematch\b",
-                line,
-            )
-        )
-        parse_line = _structure.mask_quoted_braces(line)
-        tokens, cmd_pos, seg_of, _scope_of = _parse_bash(parse_line)
-        literal_tokens = _shell_tokens(line)
+        literal_tokens = unit.literal_tokens
 
         def standalone_separator_at(index, separators):
-            if index < 0 or index >= len(tokens) or tokens[index] not in separators:
-                return False
-            token = tokens[index]
-            return not (
-                (index > 0 and tokens[index - 1] == token)
-                or (index + 1 < len(tokens) and tokens[index + 1] == token)
-            )
+            return _expansion_state.standalone_separator_at(unit, index, separators)
 
         def command_is_parent_local(command_index):
-            prefix_tokens = tokens[:command_index]
-            signature_parens = _function_signature_parens(prefix_tokens)
-            subshell_depth = sum(
-                1 if token == "(" else -1 if token == ")" else 0
-                for index, token in enumerate(prefix_tokens)
-                if index not in signature_parens
-            )
-            if subshell_depth > 0:
-                return False
-            if standalone_separator_at(command_index - 1, {"|"}):
-                return False
-            for index in range(command_index + 1, len(tokens)):
-                if tokens[index] not in {";", "|", "&"}:
-                    continue
-                return not standalone_separator_at(index, {"|", "&"})
-            return True
+            return _expansion_state.command_is_parent_local(unit, command_index)
 
-        builtin_token_indices = [
-            i for i, token in enumerate(tokens) if token == "builtin"
-        ]
-        alias_ineligible_builtin_indices = {
-            token_index
-            for alias_eligible, token_index in zip(
-                _patterns.builtin_alias_eligibility(line),
-                builtin_token_indices,
-            )
-            if not alias_eligible
-        }
-        raw_alias_bodies = {
-            match.group(1): match.group(3)
-            for match in re.finditer(
-                r"(?:^|[;|&]\s*)(?:builtin\s+)?alias\s+"
-                r"([A-Za-z_][A-Za-z0-9_]*)=(['\"])(.*?)\2"
-                r"(?=\s*(?:[;|&]|$))",
-                line,
-            )
-        }
-        # Aliases enabled before this line are expanded while Bash parses a
-        # function definition. Record definitions as ordered events: each one
-        # becomes callable only after its closing brace executes.
-        line_definitions = []
-        source_definitions = _units.raw_function_definitions(line)
-        source_definition_index = 0
-        line_pos = 0
-        while line_pos + 3 < len(tokens):
-            function_name = None
-            body_open = None
-            if (
-                re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", tokens[line_pos])
-                and tokens[line_pos + 1:line_pos + 4] == ["(", ")", "{"]
-            ):
-                function_name = tokens[line_pos]
-                body_open = line_pos + 3
-            elif tokens[line_pos] == "function" and line_pos + 2 < len(tokens):
-                function_name = tokens[line_pos + 1]
-                if tokens[line_pos + 2] == "{":
-                    body_open = line_pos + 2
-                elif tokens[line_pos + 2:line_pos + 5] == ["(", ")", "{"]:
-                    body_open = line_pos + 4
-            if body_open is None:
-                line_pos += 1
-                continue
-            depth = 1
-            close = body_open + 1
-            while close < len(tokens) and depth:
-                if tokens[close] == "{":
-                    depth += 1
-                elif tokens[close] == "}":
-                    depth -= 1
-                close += 1
-            if not depth:
-                raw_body = " ".join(tokens[body_open + 1:close - 1])
-                if source_definition_index < len(source_definitions):
-                    source_name, source_body = source_definitions[
-                        source_definition_index
-                    ]
-                    source_definition_index += 1
-                    if source_name == function_name:
-                        raw_body = source_body
-                expanded_body = _function_expansion.expand_alias_commands(expansion_state, raw_body)
-                prefix_tokens = tokens[:line_pos]
-                prefix = " ".join(tokens[:line_pos])
-                signature_parens = _function_signature_parens(prefix_tokens)
-                subshell_depth = sum(
-                    1
-                    if token == "("
-                    else -1
-                    if token == ")"
-                    else 0
-                    for index, token in enumerate(prefix_tokens)
-                    if index not in signature_parens
-                )
-                pipeline_local = standalone_separator_at(
-                    line_pos - 1, {"|"}
-                ) or standalone_separator_at(close, {"|", "&"})
-                inheritable = (
-                    not _structure.has_unclosed_function_definition(prefix)
-                    and subshell_depth <= 0
-                    and not pipeline_local
-                    and active_compounds_execute(
-                        prefix_tokens,
-                        _patterns.case_pattern_groups(line),
-                        _patterns.literal_for_word_counts(line),
-                    )
-                )
-                line_definitions.append(
-                    (
-                        close,
-                        function_name,
-                        raw_body,
-                        expanded_body,
-                        inheritable,
-                    )
-                )
-                line_pos = close
-                continue
-            line_pos += 1
-
-        function_events = [
-            (close, "define", name, raw_body, expanded_body, inheritable)
-            for close, name, raw_body, expanded_body, inheritable in line_definitions
-        ]
-        for i, token in enumerate(tokens):
-            if token != "unset" or not cmd_pos[i]:
-                continue
-            same_segment = [
-                tokens[j]
-                for j in range(i + 1, len(tokens))
-                if seg_of[j] == seg_of[i]
-            ]
-            if "-f" not in same_segment or not active_compounds_execute(
-                tokens[:i],
-                _patterns.case_pattern_groups(line),
-                _patterns.literal_for_word_counts(line),
-                require_definite=True,
-            ):
-                continue
-            if not command_is_parent_local(i):
-                continue
-            for name in same_segment:
-                if not name.startswith("-"):
-                    function_events.append((i, "remove", name, None, None, True))
-        function_events.sort(key=lambda event: event[0])
-
-        def apply_function_event(bodies, expanded_bodies, event):
-            _position, action, name, raw_body, expanded_body, inheritable = event
-            if not inheritable:
-                return
-            if action == "remove":
-                bodies.pop(name, None)
-                expanded_bodies.pop(name, None)
-                return
-            bodies[name] = raw_body
-            if expanded_body != raw_body:
-                expanded_bodies[name] = expanded_body
-            else:
-                expanded_bodies.pop(name, None)
+        _expansion_state.prepare_alias_metadata(unit)
+        builtin_token_indices = unit.builtin_token_indices
+        alias_ineligible_builtin_indices = unit.alias_ineligible_builtin_indices
+        raw_alias_bodies = unit.raw_alias_bodies
+        line_definitions = _expansion_state.collect_line_definitions(
+            unit, expansion_state, active_compounds_execute
+        )
+        function_events = _expansion_state.build_function_events(
+            unit, line_definitions, active_compounds_execute,
+            command_is_parent_local,
+        )
+        unit.function_events = function_events
+        apply_function_event = _expansion_state.apply_function_event
 
         def function_state_at(token_index):
-            bodies = dict(function_bodies)
-            expanded_bodies = dict(expanded_function_bodies)
-            for event in function_events:
-                if event[0] >= token_index:
-                    break
-                apply_function_event(bodies, expanded_bodies, event)
-            return bodies, expanded_bodies
+            return _expansion_state.function_state_at(
+                unit, expansion_state, token_index
+            )
 
         def variable_state_at(token_index):
-            return _variables.variable_state_at(
-                token_index,
-                command_vars=command_vars,
-                tokens=tokens,
-                cmd_pos=cmd_pos,
-                seg_of=seg_of,
-                command_is_parent_local=command_is_parent_local,
-                active_compounds_execute=active_compounds_execute,
-                line=line,
+            return _expansion_state.variable_state_at(
+                unit, expansion_state, token_index,
+                command_is_parent_local, active_compounds_execute,
             )
 
         for body, sub_outer_seg, _sub_index, exposed in _executable_subcommands(
@@ -676,6 +502,11 @@ def _invoked_alias_bodies(command, _initial_state=None):
                             aliases.pop(name, None)
         command_vars = variable_state_at(len(tokens))
         offset += len(source_unit)
+        expansion_state.enabled = enabled
+        expansion_state.nocasematch = nocasematch
+        expansion_state.command_vars = command_vars
+        expansion_state.offset = offset
+        expansion_state.invocation_index = invocation_index
     return invoked
 
 
