@@ -24,29 +24,21 @@ If not installed:
 Run this script to install everything:
 
 ```bash
-#!/bin/bash
-echo "Installing golems dependencies..."
-
-# Update Homebrew
-brew update
-
-# Install CLIs
-brew install gh          # GitHub CLI
-brew install --cask 1password-cli  # 1Password CLI
-brew install gum         # Interactive prompts
-brew install fswatch     # File watching
-brew install jq          # JSON processing
-brew install oven-sh/bun/bun  # Bun runtime for TypeScript skills
-
-# Install CodeRabbit CLI (optional, for code review skill)
-if ! command -v cr &>/dev/null; then
-  echo "Installing CodeRabbit CLI..."
-  curl -fsSL https://coderabbit.ai/install.sh | bash
-fi
-
-echo ""
-echo "Installation complete! Run check-deps workflow to verify."
+bash skills/golem-powers/golem-install/scripts/install-deps.sh --all
 ```
+
+This also creates `~/.golems/venv` and installs hash-pinned PyYAML 6.0.3 for
+sync-config and the context audit. Existing matching installs are kept. To
+install only this runtime, run:
+
+```bash
+bash skills/golem-powers/golem-install/scripts/install-python.sh
+```
+
+The installer requires Python 3.8+ with venv/pip support and a published wheel
+for your interpreter/platform. It fails if a downloaded wheel does not match
+the pinned hashes; it never installs into a system or Homebrew interpreter.
+
 
 ---
 

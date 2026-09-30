@@ -25,9 +25,9 @@ CWD="$(pwd)"
 # Helpers
 # ─────────────────────────────────────────────────────────────
 
-# Parse YAML context profiles with Python (no external deps)
+# Parse YAML context profiles with the golems-owned PyYAML runtime.
 get_profile() {
-  python3 -c "
+  "$YAML_PYTHON" -c "
 import yaml, sys, json
 
 with open('$CONFIG') as f:
@@ -81,6 +81,14 @@ if [ ! -f "$CONFIG" ]; then
 fi
 
 # Get profile
+YAML_PYTHON=python3
+if [[ -x "$HOME/.golems/venv/bin/python3" ]]; then
+  YAML_PYTHON="$HOME/.golems/venv/bin/python3"
+fi
+if ! "$YAML_PYTHON" -c 'import yaml' 2>/dev/null; then
+  echo "context audit: PyYAML unavailable in $YAML_PYTHON. Run: bash skills/golem-powers/golem-install/scripts/install-python.sh" >&2
+  exit 1
+fi
 PROFILE_JSON=$(get_profile)
 PROJECT_NAME=$(echo "$PROFILE_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['name'] or '')")
 

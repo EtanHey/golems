@@ -81,6 +81,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# --all also provisions the YAML runtime used by sync-config and context audit.
+if [ "$ALL" = true ]; then
+    python_installer="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/install-python.sh"
+    if [ "$DRY_RUN" = true ]; then
+        echo "[DRY RUN] Would run: bash $python_installer"
+    else
+        bash "$python_installer"
+    fi
+fi
+
 # Check for Homebrew
 if ! command -v brew &>/dev/null; then
     echo -e "${RED}ERROR: Homebrew is not installed${NC}"
