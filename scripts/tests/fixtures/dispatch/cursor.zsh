@@ -27,7 +27,7 @@ _golem_launch_cursor() {
   [[ -n "$_flag_worktree" ]] && _golem_bootstrap_worktree "$_flag_worktree"
   cd "${_flag_worktree:-$project_path}" || return 1
   _golem_setup_title "$project_name" "${project_name}Cursor"
-  _golem_setup_env "$project_name"
+  _golem_setup_env "$project_name" || return $?
   if [[ "$worker_mode" == true ]]; then
     agent_prompt=$(_golem_build_worker_prompt "$project_name" "$project_path" "$positional_prompt")
   else

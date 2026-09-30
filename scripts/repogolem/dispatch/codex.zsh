@@ -75,7 +75,7 @@ _golem_launch_codex() {
   else
     _golem_setup_title "$project_name" "${project_name}Codex"
   fi
-  _golem_setup_env "$project_name"
+  _golem_setup_env "$project_name" || return $?
 
   if [[ "$explicit_resume" == true || "$_flag_continue" == true ]]; then
     [[ "$explicit_resume" == false ]] && resume_selector="--last"
