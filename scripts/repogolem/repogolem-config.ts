@@ -4,7 +4,8 @@
 //   import   --registry <registry.json> --seats <config.yaml> --out <path>
 //            [--drop-cli <cli>]... [--write [--force]]
 //   generate [--config <config.yaml>] [--out-dir <dir>] [--home <dir>]
-//            [--host <LocalHostName>] [--check | --check-refs]
+//            [--host <LocalHostName>] [--check | --check-refs [--no-prompt]]
+// --check-refs allows Touch ID; --no-prompt disables it for automation.
 //   init     [--config <path>] [--host <LocalHostName>] [--force]
 //
 // --config defaults to $REPOGOLEM_CONFIG, --out-dir to
@@ -796,7 +797,13 @@ function checkOutputs(configText: string, outDir: string, home: string, host: ()
 }
 
 function runGenerate(argv: string[]) {
-  const args = parseArgs(argv, ["check", "check-refs"], ["config", "out-dir", "home", "host", "secrets-from"]);
+  const args = parseArgs(argv, ["check", "check-refs", "no-prompt", "help"], ["config", "out-dir", "home", "host", "secrets-from"]);
+  if (args.help) {
+    console.log("usage: repogolem generate [--config PATH] [--host HOST] [--check | --check-refs [--no-prompt]]");
+    console.log("--check-refs checks vault/item metadata, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Each call is bounded to 15 seconds.");
+    return 0;
+  }
+  if (args["no-prompt"] && !args["check-refs"]) fail("--no-prompt requires --check-refs");
   const config = configPath(args);
   const configText = readFileSync(config, "utf8");
   const home = typeof args.home === "string" ? args.home : homedir();
@@ -806,7 +813,7 @@ function runGenerate(argv: string[]) {
   if (args["check-refs"]) {
     if (args.check || args["secrets-from"]) fail("--check-refs cannot be combined with --check or --secrets-from");
     const { config: effective } = resolveConfig(configText, host);
-    return checkRefs(collectRefs(effective), process.env.REPOGOLEM_OP_BIN || "op");
+    return checkRefs(collectRefs(effective), process.env.REPOGOLEM_OP_BIN || "op", args["no-prompt"] === true);
   }
 
   if (args.check) {

@@ -6,6 +6,7 @@
 // FAKE_OP_LOG line per invocation is the resolver spy.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -70,6 +71,24 @@ function editConfig(mutate: (c: any) => void) {
   const parsed = parseYaml(readFileSync(config, "utf8"));
   mutate(parsed);
   writeFileSync(config, stringifyYaml(parsed));
+}
+
+// Keep the CLI's stdin pipe open. A process group lets the outer deadline
+// clean up the CLI and its hanging fake op if the per-command bound regresses.
+function openStdinPreflight(env: Record<string, string>, deadlineMs: number) {
+  return new Promise<{ code: number | null; timedOut: boolean; stdout: string; stderr: string }>((resolve, reject) => {
+    const child = spawn("bun", [CLI, "generate", "--config", config, "--host", HOST, "--out-dir", out, "--check-refs", "--no-prompt"], {
+      detached: true, stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, REPOGOLEM_OP_BIN: FAKE_OP, FAKE_OP_LOG: log, ...env },
+    });
+    let stdout = "", stderr = "", timedOut = false;
+    const killGroup = () => { try { process.kill(-child.pid!, "SIGKILL"); } catch (e: any) { if (e.code !== "ESRCH") throw e; } };
+    const timer = setTimeout(() => { timedOut = true; killGroup(); }, deadlineMs);
+    child.stdout.on("data", d => { stdout += d; });
+    child.stderr.on("data", d => { stderr += d; });
+    child.on("error", e => { clearTimeout(timer); reject(e); });
+    child.on("close", code => { clearTimeout(timer); killGroup(); resolve({ code, timedOut, stdout, stderr }); });
+  });
 }
 
 // What a dispatch-side reader does: source the file in a shell, read a var.
@@ -363,7 +382,7 @@ describe("generate from a transferred secret cache", () => {
 describe("generate --check-refs", () => {
   const preflight = (env: Record<string, string> = {}, extra: string[] = []) => generate(["--check-refs", ...extra], env);
   const canary = "SYNTHETIC_FIELD_VALUE_MUST_NOT_PRINT";
-  test("lists names grouped by vault, checks each item once and writes nothing", () => {
+  test("lists names grouped by vault, lists items once per vault and writes nothing", () => {
     const r = preflight({ FAKE_OP_CANARY: canary });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("example-vault:");
@@ -371,8 +390,8 @@ describe("generate --check-refs", () => {
     expect(r.stdout + r.stderr).not.toContain(canary);
     expect(existsSync(out)).toBe(false);
     const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
-    expect(calls.filter(line => line.startsWith("item get "))).toHaveLength(1);
-    expect(calls.some(line => line.startsWith("run ") || line.startsWith("read "))).toBe(false);
+    expect(calls.filter(line => line.startsWith("item list "))).toHaveLength(1);
+    expect(calls.some(line => /^(run|read|item get) /.test(line))).toBe(false);
   });
   test("a missing vault exits2 and lists every affected ref without values", () => {
     const r = preflight({ FAKE_OP_MISSING_VAULT: "example-vault", FAKE_OP_CANARY: canary });
@@ -386,18 +405,74 @@ describe("generate --check-refs", () => {
     const missing = preflight({ FAKE_OP_MISSING_ITEM: "example-item", FAKE_OP_CANARY: canary });
     expect(missing.code).toBe(2);
     expect(missing.stderr).toContain("missing item: example-vault/example-item");
-    const unsigned = preflight({ FAKE_OP_UNSIGNED: "1", FAKE_OP_CANARY: canary });
+    const unsigned = preflight({ FAKE_OP_UNSIGNED: "1", FAKE_OP_CANARY: canary }, ["--no-prompt"]);
     expect(unsigned.code).toBe(3);
     expect(unsigned.stderr).toContain("not signed in");
     expect(missing.stdout + missing.stderr + unsigned.stdout + unsigned.stderr).not.toContain(canary);
     expect(existsSync(out)).toBe(false);
   });
   test("metadata commands have biometric integration off and stdin at EOF", () => {
-    expect(preflight({ FAKE_OP_REQUIRE_NONINTERACTIVE: "1" }).code).toBe(0);
+    expect(preflight({ FAKE_OP_REQUIRE_NONINTERACTIVE: "1" }, ["--no-prompt"]).code).toBe(0);
+    expect(preflight({ FAKE_OP_REQUIRE_DESKTOP: "1", OP_BIOMETRIC_UNLOCK_ENABLED: "false" }).code).toBe(0);
+  });
+  test("collects and checks global plus selected-machine override refs by title/id", () => {
+    editConfig(c => {
+      c.global.env.GLOBAL_TOKEN = "op://example-vault/global-item/token";
+      c.machines[HOST].overrides.global = { env: { MACHINE_TOKEN: "op://machine-vault/machine-id/token" } };
+      c.machines['example-laptop'].overrides.global = { env: { OTHER_TOKEN: "op://other-vault/other-item/token" } };
+    });
+    const env = {
+      FAKE_OP_VAULTS: JSON.stringify([{ id: "synthetic-vault", name: "example-vault" }, { id: "machine-vault", name: "machine-name" }]),
+      FAKE_OP_ITEMS: JSON.stringify([{ id: "synthetic-item", title: "example-item" }, { id: "global-id", title: "global-item" }, { id: "machine-id", title: "machine-title" }]),
+    };
+    const r = preflight(env);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("global-item/token");
+    expect(r.stdout).toContain("machine-id/token");
+    expect(r.stdout).not.toContain("other-item");
+    const calls = readFileSync(log, "utf8");
+    expect(calls).toContain("item list --vault example-vault --format json");
+    expect(calls).toContain("item list --vault machine-vault --format json");
+    for (const missing of ["global-item", "machine-id"]) {
+      const failed = preflight({ ...env, FAKE_OP_ITEMS: JSON.stringify(JSON.parse(env.FAKE_OP_ITEMS).filter((v: any) => v.title !== missing && v.id !== missing)) });
+      expect(failed.code).toBe(2);
+      expect(failed.stderr).toContain(`/${missing}`);
+    }
+  });
+  test("no-prompt completes with a pipe held open, without inheriting stdin", async () => {
+    const r = await openStdinPreflight({ FAKE_OP_REQUIRE_NONINTERACTIVE: "1" }, 2500);
+    expect(r.timedOut).toBe(false);
+    expect(r.code).toBe(0);
+    expect(existsSync(out)).toBe(false);
+  });
+  test("finds an archived item referenced by ID without fetching item details", () => {
+    editConfig(c => { c.global.env.ARCHIVED_TOKEN = "op://example-vault/archived-item-id/token"; });
+    expect(preflight({ FAKE_OP_ARCHIVED_ID: "1" }).code).toBe(0);
+    expect(readFileSync(log, "utf8")).toContain("--include-archive");
+    expect(existsSync(out)).toBe(false);
+  });
+  test("a hanging op is bounded before the outer deadline", async () => {
+    const r = await openStdinPreflight({ FAKE_OP_HANG: "1" }, 19_000);
+    expect(r.timedOut).toBe(false);
+    expect(r.code).not.toBe(0);
+    expect(opCalls()).toBe(1);
+    expect(existsSync(out)).toBe(false);
+  }, 22_000);
+  test("item metadata projection accesses only title/id, never fields or other properties", async () => {
+    const { itemNames } = await import("../repogolem/repogolem-check-refs");
+    const metadata = new Proxy({ id: "item-id", title: "item-title" }, {
+      get(target, key) { if (key !== "id" && key !== "title") throw new Error("field access forbidden"); return Reflect.get(target, key); },
+    });
+    expect([...itemNames([metadata])]).toEqual(["item-id", "item-title"]);
   });
   test("rejects conflicting check/cache flags and skips op when there are no refs", () => {
+    const help = generate(["--help"]);
+    expect(help.code).toBe(0);
+    expect(help.stdout).toContain("--no-prompt");
+    expect(help.stdout).toContain("allows Touch ID");
     expect(preflight({}, ["--check"]).code).toBe(2);
     expect(preflight({}, ["--secrets-from", "unused"]).code).toBe(2);
+    expect(generate(["--no-prompt"]).code).toBe(2);
     editConfig(c => { for (const p of Object.values<any>(c.projects)) delete p.secrets; for (const m of Object.values<any>(c.mcpDefinitions)) delete m.env; delete c.global.env; });
     expect(preflight().code).toBe(0);
     expect(opCalls()).toBe(0);

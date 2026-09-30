@@ -42,14 +42,18 @@ repogolem generate
 repogolem generate --check
 ```
 
-Run `--check-refs` before the Touch ID generation. It prints the selected
-machine's `vault/item/field` names grouped by vault and checks vault/item
-existence only; field values are discarded, never inspected or written.
+Run `repogolem generate --check-refs` (one Touch ID), expect exit 0, then
+`generate`. It prints the selected machine's `vault/item/field` names grouped
+by vault and checks vault/item existence only. It uses one metadata item-list
+call per vault, matching item titles or IDs; it never fetches item details,
+reads field values, logs metadata JSON, or writes generated files.
 Exit 0 means vaults/items exist, exit 2 means missing/inaccessible refs or a check
-error, and exit 3 means no non-interactive sign-in. It writes no output/cache.
-It disables [desktop app integration](https://www.1password.dev/cli/app-integration)
-for metadata commands and closes stdin; sign in separately and retry if it
-returns 3. `--check` instead verifies existing generated files without running op.
+error, and exit 3 means sign-in/authorization is unavailable. It writes no output/cache.
+The default allows [desktop app integration](https://www.1password.dev/cli/app-integration)
+and Touch ID. For automation, use `repogolem generate --check-refs --no-prompt`:
+it disables biometric integration and returns 3 without prompting when there
+is no CLI session. Both modes close stdin and bound each CLI call to 15 seconds.
+`--check` instead verifies existing generated files without running op.
 
 Unattended launcher calls read cached data without sourcing secret assignments
 as shell code or invoking `op`. A missing, stale, or non-private cache fails
