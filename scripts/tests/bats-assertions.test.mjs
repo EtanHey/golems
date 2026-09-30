@@ -38,12 +38,12 @@ const negations = [
   ['test-repogolem-dispatch.bats', 'mcp_servers.serverRemote.env.SERVER_TOKEN', 'output'],
   ['test-repogolem-dispatch.bats', 'mkstemp failed', 'output'],
   ['test-repogolem-dispatch.bats', 'XXXXXX', 'MKTEMP_CREATED'],
-  ['test-stalker-durable-failures.bats', 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"', 'STALKER_DIR'],
+  ['test-stalker-durable-failures.bats', 'LURKER_SCRIPT="$SCRIPT_DIR/twitch-chat-lurker.ts"', 'STALKER_DIR', 'test-stalker-durable-failures-parts/cases-01.bash'],
 ];
 
-for (const [file, needle, input] of negations) {
+for (const [file, needle, input, sourceFile = file] of negations) {
   test(`non-final negation rejects a present string: ${file}: ${needle}`, t => {
-    const source = readFileSync(new URL(file, import.meta.url), 'utf8');
+    const source = readFileSync(new URL(sourceFile, import.meta.url), 'utf8');
     const assertions = source.split('\n').filter(line => /^\s*! grep /.test(line) && line.includes(needle));
     assert.equal(assertions.length, 1, 'probe must identify exactly one source assertion');
     const scratch = mkdtempSync(join(tmpdir(), 'bats-negation-'));
