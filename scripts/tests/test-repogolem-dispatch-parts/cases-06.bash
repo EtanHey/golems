@@ -295,7 +295,11 @@ run_worker_role_launch() {
       function _golem_setup_title() { return 0; }
       function _golem_reset_title() { return 0; }
       shift 3
-      "$@"
+      if [[ "$1" == *Codex* && ( "${GOLEM_ROLE:-}" == worker || "$*" == *--worker* || "$1" == *CodexWorker ) ]]; then
+        "$@" -E high
+      else
+        "$@"
+      fi
       rc=$?
       print -r -- "AFTER_ROLE_SHELL=${GOLEM_ROLE-unset}"
       print -r -- "AFTER_ROLE_ENV=$(command env | sed -n "s/^GOLEM_ROLE=//p")"
@@ -321,7 +325,7 @@ function split_case_105() {
 
 function split_case_106() {
     [ -f "$SOURCE_DISPATCHER" ]
-    run_worker_role_launch "" testrepoCodexWorker -s
+    run_worker_role_launch "" testrepoCodexWorker -E high -s
     [ "$status" -eq 0 ]
     grep -F -x -q -- "CODEX_ROLE_CHILD=worker" <<< "$output"
 }
@@ -373,7 +377,7 @@ function split_case_110() {
 
 function split_case_111() {
     [ -f "$SOURCE_DISPATCHER" ]
-    run_worker_role_launch "" testrepoCodex -s -- --worker
+    run_worker_role_launch "" testrepoCodex -s -E high -- --worker
     [ "$status" -eq 0 ]
     grep -F -x -q -- "CODEX_ROLE_CHILD=" <<< "$output"
     grep -F -q -- "--worker" <<< "$output"

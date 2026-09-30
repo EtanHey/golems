@@ -296,8 +296,8 @@ function split_case_049() {
     grep -F -q -- "-E, --effort <value>" <<< "$output"
     grep -F -q -- "-m, --model <name>" <<< "$output"
     grep -F -q -- "low, medium, high, xhigh, max, ultra" <<< "$output"
-    grep -F -q -- "default: Codex medium; Claude -E > GOLEM_EFFORT > worker medium > high" <<< "$output"
-    grep -F -q -- "the default is only a fallback — choose effort per dispatch from the plan phase" <<< "$output"
+    grep -F -q -- "prompted/worker boots require -E or GOLEM_EFFORT" <<< "$output"
+    grep -F -q -- "choose per plan phase (see /agent-routing)" <<< "$output"
     ! grep -F -q -- "CODEX_LAUNCHED=" <<< "$output"
 }
 
@@ -319,11 +319,11 @@ function split_case_050() {
       }
 
       source "$2"
-      testrepoCodex -- --help -E ultra
+      testrepoCodex -E high -- --help -E ultra
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
-    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="medium"' <<< "$output")" -eq 1 ]
+    grep -F -q -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$output"
     [ "$(grep -Fxc -- 'CODEX_ARG=--' <<< "$output")" -eq 0 ]
     grep -F -q -- "CODEX_ARG=--help" <<< "$output"
     grep -F -q -- "CODEX_ARG=-E" <<< "$output"
@@ -349,11 +349,11 @@ function split_case_051() {
       }
 
       source "$2"
-      testrepoCodex -- -c raw-config -p -m raw-model -s -w "$3"
+      testrepoCodex -E high -- -c raw-config -p -m raw-model -s -w "$3"
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$WORKTREE_DIR"
 
     [ "$status" -eq 0 ]
-    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="medium"' <<< "$output")" -eq 1 ]
+    grep -F -q -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$output"
     [ "$(grep -Fxc -- 'CODEX_ARG=-c' <<< "$output")" -eq 2 ]
     for arg in raw-config -p -m raw-model -s -w "$WORKTREE_DIR"; do
       grep -F -q -- "CODEX_ARG=$arg" <<< "$output"
@@ -477,7 +477,7 @@ function split_case_055() {
 
       source "$3"
       _golem_register_wrappers
-      testrepoCodexWorker -s "Implement brief"
+      testrepoCodexWorker -E high -s "Implement brief"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -512,7 +512,7 @@ function split_case_056() {
       }
 
       source "$2"
-      cmuxlayerCodex --worker -s
+      cmuxlayerCodex -E high --worker -s
     ' _ "$TMPDIR_/worker-registry.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -550,7 +550,7 @@ function split_case_057() {
       }
 
       source "$3"
-      orcCodex --worker -s
+      orcCodex -E high --worker -s
     ' _ "$fake_home" "$TMPDIR_/worker-registry.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -585,7 +585,7 @@ function split_case_058() {
       }
 
       source "$2"
-      mimirCodex --worker -s "do X"
+      mimirCodex -E high --worker -s "do X"
     ' _ "$TMPDIR_/worker-registry.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
@@ -659,7 +659,7 @@ function split_case_060() {
 
       source "$3"
       _golem_register_wrappers
-      GOLEM_ROLE=worker testrepoCodex -s "Implement brief"
+      GOLEM_ROLE=worker testrepoCodex -E high -s "Implement brief"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]

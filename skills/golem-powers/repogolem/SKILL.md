@@ -74,8 +74,8 @@ Agent-style `*Codex` launchers keep registry persona injection by default. Opt i
 a plain worker with the long-only `--worker` flag or `GOLEM_ROLE=worker`:
 
 ```bash
-orcCodex --worker -s -w $HOME/Gits/orchestrator.wt/my-lane
-GOLEM_ROLE=worker orcCodex -s -w $HOME/Gits/orchestrator.wt/my-lane
+orcCodex --worker -s -E high -w $HOME/Gits/orchestrator.wt/my-lane # reasoning
+GOLEM_ROLE=worker orcCodex -s -E high -w $HOME/Gits/orchestrator.wt/my-lane # reasoning
 ```
 
 The generated `*CodexWorker` aliases remain compatible and select the same mode.
