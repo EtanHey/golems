@@ -6,7 +6,11 @@ Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort
 
 ## GPT-6 Defaults
 
-Workers default to `gpt-6-sol`; leads stay on `gpt-6-astra`. A lead may choose
+Fresh repoGolem boots pin `gpt-6.1-sol` with `high` effort (Codex CLI >=0.159.2).
+Resume keeps the selected session model unless the caller overrides it.
+The default effort stays `high` pending the skill-creator benchmark.
+
+Workers default to `gpt-6.1-sol`; leads stay on `gpt-6-astra`. A lead may choose
 `gpt-6-luna` for a job that genuinely fits its bounded, mechanical strengths. No task category,
 including review, automatically routes to Luna. When in doubt, choose Sol. If GPT-6 is unavailable
 in the refreshed Codex runtime catalog, use the matching `gpt-5.6-sol` or `gpt-5.6-luna` fallback;
@@ -27,10 +31,10 @@ never calculate the handoff threshold from an API spec sheet.
 
 ## Decide From the Mission
 
-1. **Sol is the worker default.** Use `gpt-6-sol` for normal product implementation, ambiguous multi-file work, architecture, decomposition, review, and final acceptance. Choose `medium` for bounded work, `high` for open-ended work, and `xhigh` for a named hard problem.
+1. **Sol is the worker default.** Use `gpt-6.1-sol` for normal product implementation, ambiguous multi-file work, architecture, decomposition, review, and final acceptance. Choose `medium` for bounded work, `high` for open-ended work, and `xhigh` for a named hard problem.
 2. **Sol high fits open-ended work.** Use it for implementation, review, security, or tracing complex logic and assumptions when the mission is open-ended.
 3. **Sol xhigh is for a named hard blocker.** Name the blocker and why more reasoning can help. `max` requires an evaluation; reachability alone is not evidence that it pays.
-4. **Read-heavy Codex children follow the same model rule.** Use `gpt-6-sol` at `high` for open-ended recon, large-file review, or parallel Codex children returning distilled evidence. Choose `gpt-6-luna` only when the actual read is bounded and mechanical, with a deterministic check. Spawn read-heavy children as the named `recon` agent and verify their effective model: its external configuration may still pin Terra. A standalone read-only lane still routes to Cursor. `gpt-5.6-terra` is documented as a fallback tier only, never a prescribed choice.
+4. **Read-heavy Codex children follow the same model rule.** Use `gpt-6.1-sol` at `high` for open-ended recon, large-file review, or parallel Codex children returning distilled evidence. Choose `gpt-6-luna` only when the actual read is bounded and mechanical, with a deterministic check. Spawn read-heavy children as the named `recon` agent and verify their effective model: its external configuration may still pin Terra. A standalone read-only lane still routes to Cursor. `gpt-5.6-terra` is documented as a fallback tier only, never a prescribed choice.
 5. **Luna is a deliberate per-job choice.** A lead can choose `gpt-6-luna` when the actual task is truly bounded and mechanical, with an outcome and deterministic check. A category label alone never selects Luna. Use `medium` for bounded work; escalate effort only for a named difficulty. `max` requires an evaluation. **Luna low is banned.**
 6. **Leads stay on Astra.** Use `gpt-6-astra` for Codex lead lanes; the Sol/Luna rollout does not move lead routing.
 
@@ -43,11 +47,11 @@ Quota affects concurrency, not acceptance: the measured 5.6 fallback tiers give 
 
 | Task shape | Model x effort | Rule |
 |---|---|---|
-| Default worker; bounded task | `gpt-6-sol` x `medium` | Use Sol when in doubt. |
-| Open-ended implementation or review | `gpt-6-sol` x `high` | The task, not its category, justifies high. |
-| One genuinely hard blocker | `gpt-6-sol` x `xhigh` | Name the blocker; `max` requires an evaluation. |
-| Open-ended read-heavy review or distilled Codex-child fan-out | `gpt-6-sol` x `high` | Use named `recon` and verify its effective model; standalone read-only remains Cursor. |
-| Routine implementation in an established pattern | `gpt-6-sol` x `medium` | Pattern and acceptance boundary must already be clear. |
+| Default worker; bounded task | `gpt-6.1-sol` x `medium` | Use Sol when in doubt. |
+| Open-ended implementation or review | `gpt-6.1-sol` x `high` | The task, not its category, justifies high. |
+| One genuinely hard blocker | `gpt-6.1-sol` x `xhigh` | Name the blocker; `max` requires an evaluation. |
+| Open-ended read-heavy review or distilled Codex-child fan-out | `gpt-6.1-sol` x `high` | Use named `recon` and verify its effective model; standalone read-only remains Cursor. |
+| Routine implementation in an established pattern | `gpt-6.1-sol` x `medium` | Pattern and acceptance boundary must already be clear. |
 | Job specifically judged to fit Luna | `gpt-6-luna` x `medium` | Lead chooses it per job; bounded outcome and deterministic check required. Never Luna low. |
 
 Spark is a separate-pool interactive option, not the default child or a substitute for this table.

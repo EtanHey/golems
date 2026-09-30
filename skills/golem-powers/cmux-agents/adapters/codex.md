@@ -1,7 +1,7 @@
 # Codex CLI — cmux-agents Adapter
 
 > CLI-specific syntax and capabilities for Codex (OpenAI) agents in cmux panes.
-> Codex v0.111.0+. Binary at `~/.bun/bin/codex`.
+> Codex v0.159.2+. Binary at `~/.bun/bin/codex`.
 
 ## CLI Syntax
 
@@ -13,6 +13,9 @@
 | **Long prompt** | `codex --dangerously-bypass-approvals-and-sandbox "$(cat prompt.txt)"` | Shell substitution for long prompts |
 
 ## Model Source
+
+Fresh repoGolem launches pin `gpt-6.1-sol` with `high` effort. Resume restores the selected
+session model and effort unless the caller explicitly overrides them.
 
 For cmux **visible pane** agent sessions, fleet canon #6 and `/repogolem` own launcher defaults and resume law. `spawn_agent` may omit `model` or pass an explicit supported Codex model. Merged cmuxlayer PR #396 validates that model against `codex debug models --bundled` before pane creation and forwards accepted model/effort values to the launcher; an unsupported model rolls back any newly prepared worktree. At read time `spawn_agent.effort` accepts `medium|high|xhigh|ultra`, while direct repoGolem `-E` also accepts `low` and `max`. Effective-runtime proof lives in `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification.
 
