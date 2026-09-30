@@ -18,7 +18,7 @@ def capture(text):
 
 
 def delta(result, **hashes):
-    return {"case": "example", "reason": "intentional default change", "authority": "PR #1; lead ruling",
+    return {"case": "example", "reason": "intentionaldefaultchange", "authority": "golems#1",
             "candidate_sha256": hashes or {"darwin": harness.capture_digest(result)}}
 
 
@@ -86,10 +86,10 @@ def test_record_updates_only_current_platform_and_keeps_other_hash(tmp_path):
     path = tmp_path / "deltas.json"
     actual = capture("candidate")
     path.write_text(json.dumps([delta(actual, linux="a" * 64)]))
-    harness.record_delta(path, ["example"], "example", "reason", "authority", actual, "darwin")
+    harness.record_delta(path, ["example"], "example", "reason", "golems#1", actual, "darwin")
     row = json.loads(path.read_text())[0]
     assert row["candidate_sha256"] == {"linux": "a" * 64, "darwin": harness.capture_digest(actual)}
-    assert row["reason"] == "reason" and row["authority"] == "authority"
+    assert row["reason"] == "reason" and row["authority"] == "golems#1"
 
 
 def test_base_and_candidate_execute_in_distinct_real_children(tmp_path):
@@ -168,11 +168,17 @@ def test_schema_rejects_non_list_top_level(tmp_path, rows):
 
 
 @pytest.mark.parametrize("options", [[], ["--reason", "r"], ["--authority", "a"]])
-def test_record_cli_rejects_case_without_both_metadata_options(options):
-    proc = subprocess.run(["python3", str(ROOT / "scripts/ci/pristine-harness.py"),
-                           "record-delta", "--case", "unknown", *options], capture_output=True)
-    assert proc.returncode == 2
-    assert b"record-delta requires --case, --reason and --authority" in proc.stderr
+def test_record_cli_rejects_case_without_both_metadata_options(options, tmp_path, capsys):
+    # Missing options must fail before corpus validation or fixture creation.
+    corpus = tmp_path / "invalid-corpus.json"
+    corpus.write_text('[{"id":"example","target":"invalid"}]')
+    with patch.object(harness, "CORPUS", corpus), patch.object(harness.sys, "argv", [
+        "pristine-harness.py", "record-delta", "--case", "unknown", *options,
+    ]):
+        with pytest.raises(SystemExit) as error:
+            harness.main()
+    assert error.value.code == 2
+    assert "record-delta requires --case, --reason and --authority" in capsys.readouterr().err
 
 
 def test_record_cli_stale_case_refuses_to_write(tmp_path):
@@ -180,7 +186,7 @@ def test_record_cli_stale_case_refuses_to_write(tmp_path):
     path = tmp_path / harness.DELTA_PATH
     path.parent.mkdir(parents=True)
     path.write_text("[]\n")
-    args = Namespace(action="record-delta", case="example", reason="r", authority="a", candidate_root=tmp_path)
+    args = Namespace(action="record-delta", case="example", reason="r", authority="golems#1", candidate_root=tmp_path)
     with patch.object(harness, "make_base"), patch.object(harness, "execute", return_value={"example": capture("base")}):
         with pytest.raises(SystemExit) as error:
             harness.run_locked(args, ArgumentParser(), [{"id": "example", "target": "parser"}], tmp_path)
@@ -197,20 +203,20 @@ def test_used_delta_prints_case_reason_and_authority(capsys):
     assert all(json.dumps(row[key]) in output for key in ("case", "reason", "authority"))
 
 
-@pytest.mark.parametrize("base_exit", [1, 2, 127])
-def test_hook_deny_to_allow_requires_and_prints_lead_ruling(base_exit, capsys):
+@pytest.mark.parametrize("candidate_exit", [0, 1, 127])
+def test_hook_deny_to_allow_requires_and_prints_lead_ruling(candidate_exit, capsys):
     base, actual = capture("base"), capture("candidate")
-    base["exit"] = base_exit
+    base["exit"], actual["exit"] = 2, candidate_exit
     row = delta(actual)
     failures, used = harness.compare_captures({"example": base}, {"example": actual}, [row], "darwin", hook_cases={"example"})
     assert used == 0 and "deny→allow" in failures[0]
     assert "PRISTINE DELTA DENY→ALLOW" in capsys.readouterr().out
-    row["allow_deny_to_allow"] = "lead ruling PR #1"
+    row["allow_deny_to_allow"] = "golems#1"
     assert harness.compare_captures({"example": base}, {"example": actual}, [row], "darwin", hook_cases={"example"}) == ([], 1)
     assert row["allow_deny_to_allow"] in capsys.readouterr().out
     # Non-hook exits and hook deny→deny changes do not need this exception.
     assert check(base, actual, [delta(actual)]) == ([], 1)
-    actual["exit"] = 1
+    actual["exit"] = 2
     assert harness.compare_captures({"example": base}, {"example": actual}, [delta(actual)], "darwin", hook_cases={"example"}) == ([], 1)
 
 
@@ -226,7 +232,7 @@ def test_schema_rejects_empty_or_non_string_deny_to_allow_ruling(tmp_path, rulin
 
 def test_schema_accepts_explicit_deny_to_allow_ruling(tmp_path):
     row = delta(capture("candidate"))
-    row["allow_deny_to_allow"] = "lead ruling PR #1"
+    row["allow_deny_to_allow"] = "golems#1"
     path = tmp_path / "deltas.json"
     path.write_text(json.dumps([row]))
     assert harness.load_deltas(path, ["example"]) == [row]
@@ -256,6 +262,64 @@ def test_deny_to_allow_ruling_does_not_bypass_exact_hash():
     base, actual = capture("base"), capture("candidate")
     base["exit"] = 2
     row = delta(actual, darwin="0" * 64)
-    row["allow_deny_to_allow"] = "lead ruling PR #1"
+    row["allow_deny_to_allow"] = "golems#1"
     failures, used = harness.compare_captures({"example": base}, {"example": actual}, [row], "darwin", hook_cases={"example"})
     assert used == 0 and "hash mismatch" in failures[0]
+
+
+@pytest.mark.parametrize("key", ["reason", "authority", "allow_deny_to_allow"])
+@pytest.mark.parametrize("value", ["\u200b", "\u2060\ufeff", "x", "TBD", "ToDo", "n/a", "none", "-", " \t "])
+def test_metadata_rejects_invisible_and_placeholder_values(tmp_path, key, value):
+    row = delta(capture("candidate"))
+    row[key] = value
+    path = tmp_path / "deltas.json"
+    path.write_text(json.dumps([row]))
+    with pytest.raises(ValueError):
+        harness.load_deltas(path, ["example"])
+
+
+@pytest.mark.parametrize("reference", [
+    "golems#412", "https://github.com/EtanHey/golems/issues/412",
+    "https://github.com/EtanHey/golems/pull/415#issuecomment-123",
+    "collab:2026-09-30:lead-ruling-412",
+])
+def test_concrete_ruling_and_authority_references_are_accepted(tmp_path, reference):
+    row = delta(capture("candidate"))
+    row.update(authority=reference, allow_deny_to_allow=reference)
+    path = tmp_path / "deltas.json"
+    path.write_text(json.dumps([row]))
+    assert harness.load_deltas(path, ["example"]) == [row]
+
+
+@pytest.mark.parametrize("key", ["authority", "allow_deny_to_allow"])
+@pytest.mark.parametrize("value", ["lead ruling", "golems#", "https://example.com/issues/412", "collab:2026-09-30:short"])
+def test_reference_shape_is_required(tmp_path, key, value):
+    row = delta(capture("candidate")); row[key] = value
+    path = tmp_path / "deltas.json"; path.write_text(json.dumps([row]))
+    with pytest.raises(ValueError): harness.load_deltas(path, ["example"])
+
+
+def test_nfkc_format_and_whitespace_normalization(tmp_path):
+    row = delta(capture("candidate"))
+    row.update(reason="  Ｒｅｖｉｅｗｅｄ\u200b change ", authority=" ｇｏｌｅｍｓ＃４１２\u2060 ", allow_deny_to_allow=" golems #412\ufeff ")
+    path = tmp_path / "deltas.json"; path.write_text(json.dumps([row]))
+    loaded = harness.load_deltas(path, ["example"])[0]
+    assert loaded["reason"] == "Reviewedchange"
+    assert loaded["authority"] == loaded["allow_deny_to_allow"] == "golems#412"
+
+
+def test_hook_deny_remains_deny_and_nonblocking_error_to_zero_is_not_a_deny_change():
+    base = capture("same"); base["exit"] = 2
+    actual = copy.deepcopy(base); actual["stderr"] = "AA=="
+    assert harness.compare_captures({"example":base},{"example":actual},[delta(actual)],"darwin",hook_cases={"example"}) == ([],1)
+    base["exit"],actual["exit"] = 1,0
+    assert harness.compare_captures({"example":base},{"example":actual},[delta(actual)],"darwin",hook_cases={"example"}) == ([],1)
+
+
+@pytest.mark.parametrize("key", ["reason", "authority"])
+def test_record_delta_rejects_invalid_metadata_without_writing(tmp_path, key):
+    path = tmp_path / "deltas.json"; path.write_text("[]\n")
+    metadata={"reason":"reviewedchange","authority":"golems#412"}; metadata[key]="\u200b"
+    with pytest.raises(ValueError):
+        harness.record_delta(path,["example"],"example",metadata["reason"],metadata["authority"],capture("candidate"),"darwin")
+    assert path.read_text() == "[]\n"

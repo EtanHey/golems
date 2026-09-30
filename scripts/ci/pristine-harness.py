@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 
 
 BASE = "84b50967d6f0cdf62b58b23b78cece5c0897c77e"
@@ -266,6 +267,34 @@ def reject_duplicate_keys(pairs):
     return result
 
 
+def normalize_metadata(value):
+    if not isinstance(value, str):
+        return ""
+    return "".join(char for char in unicodedata.normalize("NFKC", value)
+                   if unicodedata.category(char) != "Cf" and not char.isspace())
+
+
+def visible_metadata(value):
+    return bool(value) and any(char.isalnum() for char in value) and value.casefold() not in {
+        "x", "tbd", "todo", "n/a", "none", "-",
+    }
+
+
+def ruling_reference(value):
+    normalized = normalize_metadata(value)
+    pattern = r"(golems#\d+|https://github\.com/[\w.-]+/[\w.-]+/(issues|pull)/\d+(#[\w-]+)?|collab:\d{4}-\d{2}-\d{2}:.{8,})"
+    return normalized if visible_metadata(normalized) and re.fullmatch(pattern, normalized) else None
+
+
+def delta_metadata(reason, authority):
+    reason, authority = normalize_metadata(reason), normalize_metadata(authority)
+    if not visible_metadata(reason) or not visible_metadata(authority):
+        raise ValueError("delta reason and authority must be nonempty strings with visible alphanumeric content, not placeholders")
+    if not ruling_reference(authority):
+        raise ValueError("delta authority requires a concrete lead ruling reference")
+    return reason, authority
+
+
 def load_deltas(path, ids):
     rows = json.loads(path.read_text(), object_pairs_hook=reject_duplicate_keys) if path.exists() else []
     if not isinstance(rows, list):
@@ -275,12 +304,14 @@ def load_deltas(path, ids):
         required = {"case", "reason", "authority", "candidate_sha256"}
         if not isinstance(row, dict) or not required <= set(row) or set(row) - required - {"allow_deny_to_allow"}:
             raise ValueError("delta requires case, reason, authority and candidate_sha256")
-        if any(not isinstance(row[key], str) or not row[key].strip() for key in ("case", "reason", "authority")):
-            raise ValueError("delta case, reason and authority must be nonempty strings")
-        if "allow_deny_to_allow" in row and (
-            not isinstance(row["allow_deny_to_allow"], str) or not row["allow_deny_to_allow"].strip()
-        ):
-            raise ValueError("allow_deny_to_allow requires a nonempty lead ruling reference")
+        if not isinstance(row["case"], str) or not row["case"].strip():
+            raise ValueError("delta case must be a nonempty string")
+        row["reason"], row["authority"] = delta_metadata(row["reason"], row["authority"])
+        if "allow_deny_to_allow" in row:
+            ruling = ruling_reference(row["allow_deny_to_allow"])
+            if not ruling:
+                raise ValueError("allow_deny_to_allow requires a concrete lead ruling reference")
+            row["allow_deny_to_allow"] = ruling
         ident = row["case"]
         if ident in seen:
             raise ValueError(f"duplicate delta case: {ident}")
@@ -305,13 +336,13 @@ def compare_captures(baseline, actual, declarations, platform, hook_cases=()):
         row = declared.get(ident)
         if row is not None:
             observed = capture_digest(candidate)
-            deny_to_allow = ident in hook_cases and base["exit"] != 0 and candidate["exit"] == 0
+            deny_to_allow = ident in hook_cases and base["exit"] == 2 and candidate["exit"] != 2
             if deny_to_allow:
                 print("PRISTINE DELTA DENY→ALLOW " + json.dumps({
                     "case": ident, "base_exit": base["exit"], "candidate_exit": candidate["exit"],
                     "allow_deny_to_allow": row.get("allow_deny_to_allow"),
                 }, sort_keys=True))
-            if deny_to_allow and not row.get("allow_deny_to_allow"):
+            if deny_to_allow and not ruling_reference(row.get("allow_deny_to_allow")):
                 failures.append(f"{ident}: hook deny→allow requires allow_deny_to_allow lead ruling reference")
             elif candidate == base:
                 failures.append(f"{ident}: stale delta (candidate equals immutable base); observed sha256={observed}")
@@ -332,7 +363,8 @@ def compare_captures(baseline, actual, declarations, platform, hook_cases=()):
 
 def record_delta(path, ids, case, reason, authority, result, platform):
     rows = load_deltas(path, ids)
-    if case not in ids or not reason.strip() or not authority.strip():
+    reason, authority = delta_metadata(reason, authority)
+    if case not in ids:
         raise ValueError("record-delta requires a known case, reason and authority")
     row = next((row for row in rows if row["case"] == case), None)
     if row is None:

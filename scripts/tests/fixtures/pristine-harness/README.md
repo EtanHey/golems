@@ -72,9 +72,13 @@ python3 scripts/ci/pristine-harness.py record-delta --case <case-id> \
 `check` never writes declarations. Missing platform hashes are reported in its
 output; obtain Linux hashes from CI and add them explicitly. Deltas are reviewed
 like code, and the PR body lists every case with its reason. A security DENY→ALLOW
-change on a `tmp-block` or `git-guardian` hook (nonzero exit → zero) fails
+change on a `tmp-block` or `git-guardian` hook (exit 2 → any exit other than 2) fails
 unless the declaration includes `"allow_deny_to_allow": "<lead ruling ref>"`.
-The reference must be a nonempty string. `check` flags each such transition,
+Metadata is NFKC-normalized, with Unicode format characters and whitespace
+removed. Reasons must contain visible alphanumeric content; placeholders fail.
+Authority and exception references must be `golems#<number>`, a GitHub issue/PR
+URL (optionally with a fragment), or `collab:YYYY-MM-DD:<ruling pointer>` with
+at least eight pointer characters. Exit 1 is a non-blocking hook error. `check` flags each such transition,
 including its ruling, and prints every accepted case with its reason and authority.
 Duplicate JSON keys at any nesting depth are rejected. `verify-goldens` and `mutation-proof`
 continue to check the untouched base; a changed declared capture still fails
