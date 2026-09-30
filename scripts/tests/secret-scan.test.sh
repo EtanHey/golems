@@ -13,6 +13,8 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd "$script_dir/../.." && pwd -P)
 wrapper=${SECRET_SCAN_WRAPPER:-"$repo_root/scripts/ci/secret-scan.sh"}
 workflow=${SECRET_SCAN_WORKFLOW:-"$repo_root/.github/workflows/security.yml"}
+fp_tool="$repo_root/scripts/ci/trufflehog-fp-terms.py"
+fp_terms="$repo_root/scripts/tests/fixtures/trufflehog-v3.97.9/fp_terms_alnum.txt"
 tmp_parent=${TMPDIR:-/tmp}
 tmp_parent=${tmp_parent%/}
 suite_root=$(mktemp -d "$tmp_parent/secret-scan-test.XXXXXX")
@@ -142,6 +144,99 @@ expect_canary_red() {
 expect_canary_red "canary is red when the scanner finds nothing" "" 0
 expect_canary_red "canary is red when the scanner flags a clean tree" "$finding" 183
 
+# A nested-only scanner must not satisfy the root-file assertion. This is the
+# regression for a suffix regex that let dist/credentials masquerade as the
+# distinct root path credentials.
+nested_scanner="$suite_root/nested-only-trufflehog"
+cat > "$nested_scanner" <<'NESTED_STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+kind=${1:?missing scanner kind}
+source_path=${2:?missing scanner source}
+case $kind in
+  git) repo=${source_path#file://}; metadata=Git ;;
+  filesystem) repo=$source_path; metadata=Filesystem ;;
+  *) exit 2 ;;
+esac
+if [[ $kind == git ]]; then
+  git -C "$repo" cat-file -e HEAD:dist/credentials 2>/dev/null || exit 0
+else
+  [[ -f "$repo/dist/credentials" ]] || exit 0
+fi
+for file in dist/credentials build/credentials node_modules/canary-pkg/credentials; do
+  if [[ $metadata == Git ]]; then
+    jq -nc --arg file "$file" '{
+      DetectorName: "AWS", Verified: false, VerificationError: "offline canary test",
+      SourceMetadata: {Data: {Git: {file: $file, line: 2, commit: "canary"}}}
+    }'
+  else
+    jq -nc --arg file "$repo/$file" '{
+      DetectorName: "AWS", Verified: false, VerificationError: "offline canary test",
+      SourceMetadata: {Data: {Filesystem: {file: $file, line: 2}}}
+    }'
+  fi
+done
+exit 183
+NESTED_STUB
+chmod +x "$nested_scanner"
+got=0
+nested_log=$(TRUFFLEHOG=$nested_scanner bash "$wrapper" canary 2>&1) || got=$?
+if [[ $got == 0 ]]; then
+  fail "nested-only scanner passed without the root credentials file"
+elif [[ $nested_log != *"canary-history): credentials was not flagged"* || \
+        $nested_log != *"canary-tree): credentials was not flagged"* ]]; then
+  fail "nested-only scanner failure did not name the missed root credentials path"$'\n'"$nested_log"
+else
+  pass "nested paths cannot satisfy the distinct root credentials assertion"
+fi
+
+# Exercise the derivation and the same audit command used by the canary stub.
+# The synthetic UUID-source term covers future alphanumeric entries even though
+# every term in v3.97.9's UUID list contains a hyphen and is exactly irrelevant
+# to an AWS ID after projection.
+fp_sources="$suite_root/fp-sources"
+fp_derived="$suite_root/fp-derived.txt"
+mkdir -p "$fp_sources"
+printf 'FROM\ndotted.term\n' > "$fp_sources/fp_words.txt"
+printf '  DES3  \ndash-term\n' > "$fp_sources/fp_badlist.txt"
+printf 'ACCESS\ntwo words\n' > "$fp_sources/fp_programmingbooks.txt"
+printf 'UUIDTERM\n00000000-0000-0000-0000-000000000000\n' > "$fp_sources/fp_uuids.txt"
+got=0
+python3 "$fp_tool" derive "$fp_sources" > "$fp_derived" || got=$?
+derived_count=$(wc -l < "$fp_derived" | tr -d ' ')
+if [[ $got != 0 || $derived_count != 10 ]] || \
+    ! grep -Fxq from "$fp_derived" || ! grep -Fxq des3 "$fp_derived" || \
+    ! grep -Fxq access "$fp_derived" || ! grep -Fxq uuidterm "$fp_derived" || \
+    grep -Eq '[^a-z0-9]' "$fp_derived"; then
+  fail "false-positive derivation normalizes and projects all four source lists: exit=$got terms=$derived_count"
+else
+  pass "false-positive derivation normalizes and projects all four source lists"
+fi
+
+expect_fp_rejected() {
+  local label=$1 terms=$2 id=$3 got=0 audit_log
+  audit_log=$(python3 "$fp_tool" audit "$terms" "$id" 2>&1) || got=$?
+  if [[ $got == 1 && $audit_log == *"matches false-positive term"* ]]; then
+    pass "$label"
+  else
+    fail "$label: audit exit=$got output=$audit_log"
+  fi
+}
+
+expect_fp_rejected "audit rejects a default term across the AKIA prefix boundary" \
+  "$fp_derived" AKIABCDEFGHIJKLMNPQ234
+expect_fp_rejected "audit rejects a term derived from fp_words" \
+  "$fp_derived" AKIAFROMB2C3D4E5F6G7
+expect_fp_rejected "audit rejects uppercase-listed DES3 from fp_badlist" \
+  "$fp_derived" AKIADES3B2C4F5G6H7JL
+expect_fp_rejected "audit rejects a term derived from fp_programmingbooks" \
+  "$fp_derived" AKIAACCESSB2C3D4E5F6
+expect_fp_rejected "audit rejects a future alphanumeric term from fp_uuids" \
+  "$fp_derived" AKIAUUIDTERMB2C3D4E5
+printf ' \tDeS3\r\n' > "$suite_root/raw-audit-terms.txt"
+expect_fp_rejected "audit defensively lowercases and trims terms at read time" \
+  "$suite_root/raw-audit-terms.txt" AKIADES3B2C4F5G6H7JL
+
 # Audit the actual canary files through the wrapper's scanner boundary. This
 # independently computes the same Shannon entropy used by TruffleHog 3.97.9
 # and requires a 0.25-bit margin above its 3.0 ID and 4.25 secret thresholds.
@@ -204,6 +299,11 @@ for file in credentials dist/credentials build/credentials node_modules/canary-p
   secret=$(sed -n 's/^aws_secret_access_key = //p' <<<"$content")
   [[ -n $id && -n $secret ]] || continue
 
+  if ! python3 "$FP_AUDIT" audit "$FP_TERMS_FILE" "$id" >/dev/null; then
+    printf 'ID matches a TruffleHog 3.97.9 false-positive term in %s\n' "$file" >&2
+    exit 2
+  fi
+
   id_entropy=$(shannon_entropy "$id")
   secret_entropy=$(shannon_entropy "$secret")
   if ! entropy_at_least "$id_entropy" 3.25; then
@@ -229,7 +329,7 @@ for file in credentials dist/credentials build/credentials node_modules/canary-p
       SourceMetadata: {Data: {Git: {file: $file, line: 2, commit: "canary"}}}
     }'
   else
-    jq -nc --arg file "$file" '{
+    jq -nc --arg file "$repo/$file" '{
       DetectorName: "AWS", Verified: false, VerificationError: "offline canary test",
       SourceMetadata: {Data: {Filesystem: {file: $file, line: 2}}}
     }'
@@ -242,16 +342,17 @@ exit 183
 ENTROPY_STUB
 chmod +x "$entropy_scanner"
 got=0
-entropy_run_log=$(ENTROPY_LOG=$entropy_log TRUFFLEHOG=$entropy_scanner \
+entropy_run_log=$(FP_AUDIT="$fp_tool" FP_TERMS_FILE="$fp_terms" \
+  ENTROPY_LOG=$entropy_log TRUFFLEHOG=$entropy_scanner \
   bash "$wrapper" canary 2>&1) || got=$?
 id_audits=$(grep -c $'^id\t' "$entropy_log" 2>/dev/null || true)
 secret_audits=$(grep -c $'^secret\t' "$entropy_log" 2>/dev/null || true)
 if [[ $got != 0 ]]; then
-  fail "generated canaries satisfy entropy margins and are distinct: exit $got"$'\n'"$entropy_run_log"
+  fail "generated canaries satisfy false-positive, entropy, and distinctness guards: exit $got"$'\n'"$entropy_run_log"
 elif [[ $id_audits != 8 || $secret_audits != 8 ]]; then
   fail "generated canary entropy audit covered every history/tree value: IDs=$id_audits secrets=$secret_audits"
 else
-  pass "generated canaries exceed entropy thresholds with margin and are distinct per path"
+  pass "generated canaries avoid false-positive terms, exceed entropy margins, and are distinct"
 fi
 
 # Live cases against the pinned scanner.

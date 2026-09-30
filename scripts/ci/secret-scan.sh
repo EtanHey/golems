@@ -85,7 +85,9 @@ run_scanner() {
       else "  flagged: \(.DetectorName) (\($status)) in \($file)\($at)"
       end' "$out"
   jq -r '.DetectorName' "$out" > "$work/$label.detectors"
-  jq -r '(.SourceMetadata.Data.Git // .SourceMetadata.Data.Filesystem // {}).file // ""' "$out" > "$work/$label.files"
+  jq -r 'select(.DetectorName == "AWS")
+    | (.SourceMetadata.Data.Git // .SourceMetadata.Data.Filesystem // {}).file // ""' \
+    "$out" > "$work/$label.aws-files"
 
   if [[ $rc == 0 && $count == 0 ]]; then
     printf 'Secret Scanning (%s): clean\n' "$label"
@@ -140,28 +142,46 @@ cmd_scan() {
 
 canary_files=(credentials dist/credentials build/credentials node_modules/canary-pkg/credentials)
 
-# expect_canary <want-status> <scan function and args...>: status 1 must flag
-# an AWS finding in every canary file; status 0 must flag nothing.
+# expect_canary <want-status> <tree-root-or-empty> <scan function and args...>:
+# status 1 must flag exactly the four canary paths as distinct AWS findings;
+# status 0 must flag nothing. Git reports repo-relative paths. Filesystem scans
+# report absolute paths, so strip only the exact scanned-root prefix first.
 expect_canary() {
-  local want=$1 label=$3 status=0 file missing=0
-  shift
+  local want=$1 tree_root=$2 label=$4 status=0 file failed=0 count path
+  shift 2
   "$@" || status=$?
   if [[ $status != "$want" ]]; then
     printf '::error::Secret Scanning canary (%s): want status %s, got %s\n' "$label" "$want" "$status"
     return 1
   fi
   [[ $want == 1 ]] || return 0
-  if ! grep -qx AWS "$work/$label.detectors"; then
-    printf '::error::Secret Scanning canary (%s): no AWS finding\n' "$label"
-    return 1
+  : > "$work/$label.relative-aws-files"
+  while IFS= read -r path; do
+    if [[ -z $tree_root ]]; then
+      printf '%s\n' "$path"
+    elif [[ $path == "$tree_root/"* ]]; then
+      printf '%s\n' "${path#"$tree_root/"}"
+    fi
+  done < "$work/$label.aws-files" | LC_ALL=C sort -u > "$work/$label.relative-aws-files"
+  count=$(wc -l < "$work/$label.relative-aws-files" | tr -d ' ')
+  if [[ $count != "${#canary_files[@]}" ]]; then
+    printf '::error::Secret Scanning canary (%s): want %s distinct AWS-flagged files, got %s\n' \
+      "$label" "${#canary_files[@]}" "$count"
+    failed=1
   fi
   for file in "${canary_files[@]}"; do
-    if ! grep -qE "(^|/)${file//./\\.}\$" "$work/$label.files"; then
+    if ! grep -Fxq -- "$file" "$work/$label.relative-aws-files"; then
       printf '::error::Secret Scanning canary (%s): %s was not flagged\n' "$label" "$file"
-      missing=1
+      failed=1
     fi
   done
-  return "$missing"
+  while IFS= read -r path; do
+    if [[ ! " ${canary_files[*]} " == *" $path "* ]]; then
+      printf '::error::Secret Scanning canary (%s): unexpected AWS-flagged path %s\n' "$label" "$path"
+      failed=1
+    fi
+  done < "$work/$label.relative-aws-files"
+  return "$failed"
 }
 
 # rotate_canary_alphabet <alphabet> <offset>: preserves length and entropy.
@@ -172,12 +192,14 @@ rotate_canary_alphabet() {
 
 # write_canary <path> <ordinal>: a distinct AWS-key-shaped credential with
 # entropy guaranteed above TruffleHog 3.97.9's ID (3.0) and secret (4.25)
-# thresholds. The fixed unique-character alphabets make the values obviously
-# synthetic; rotating them per path keeps every planted pair distinct. The
-# complete credential literals never exist in git and are never printed.
+# thresholds and IDs checked against its complete false-positive wordlists.
+# The old random generator hit a wordlist term in about 0.097% of IDs and fell
+# below entropy in about 0.019% of IDs and 0.004% of secrets. Fixed unique
+# alphabets remove those probabilities; rotation keeps every pair distinct.
+# Complete credential literals never exist in git and are never printed.
 write_canary() {
   local target=$1 ordinal=$2 id_alphabet secret_alphabet id_suffix secret
-  id_alphabet='BCDEFGHJ''LMNPQ234'
+  id_alphabet='B2C3D4E5''F6G7HJLM'
   secret_alphabet='ABCDEFGHIJKLMNOPQRST''uvwxyz0123456789/+UV'
   id_suffix=$(rotate_canary_alphabet "$id_alphabet" "$ordinal")
   secret=$(rotate_canary_alphabet "$secret_alphabet" "$ordinal")
@@ -211,9 +233,11 @@ cmd_canary() {
     HTTP_PROXY=http://127.0.0.1:9 http_proxy=http://127.0.0.1:9 NO_PROXY= no_proxy=)
   annotate=0
 
-  expect_canary 1 scan_history canary-history "$repo" "$base" "$head" || failed=1
-  expect_canary 1 scan_tree canary-tree "$repo" || failed=1
-  expect_canary 0 scan_tree canary-clean "$clean" || failed=1
+  repo=$(cd "$repo" && pwd -P)
+  clean=$(cd "$clean" && pwd -P)
+  expect_canary 1 "" scan_history canary-history "$repo" "$base" "$head" || failed=1
+  expect_canary 1 "$repo" scan_tree canary-tree "$repo" || failed=1
+  expect_canary 0 "$clean" scan_tree canary-clean "$clean" || failed=1
   if (( failed )); then
     printf 'canary: FAIL (the scanner cannot be trusted to catch a leak)\n'
     return 1
