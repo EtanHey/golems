@@ -10,7 +10,10 @@ disable-model-invocation: true
 
 ## Scope
 
-The probe must be a same-turn live-outcome probe.
+The gate applies when this turn contains `Edit`, `Write`, `NotebookEdit`,
+`MultiEdit`, `apply_patch`, git commit/push, or a PR tool call. Seat names and
+claimed repo-diff metadata do not determine scope. Coaching and other non-code
+turns return N/A, even in a code seat. The probe must be a same-turn live-outcome probe.
 
 ## What It Is
 
@@ -57,6 +60,10 @@ bun skills/golem-powers/false-green-gate/scripts/false-green-gate-cli.mjs <trans
 Programmatic: `import { detectFalseGreen } from "./src/false-green-gate.mjs"` → `{ verdict, claim, domains, violations }`.
 
 ## Stated Limits (honesty rule)
+
+- Shell activity uses a bounded lexer for direct git/gh commands; commands hidden
+  inside substitutions or shell scripts are not expanded. A lexer budget failure
+  keeps the turn gated. Read-only commands and quoted examples do not establish activity.
 
 - Evidence is marker-anchored over the same-turn blob; a probe described but not actually run can read as
   present. The fixtures pin the known specimens; new evasion shapes are added as RED fixtures (R-003 model).

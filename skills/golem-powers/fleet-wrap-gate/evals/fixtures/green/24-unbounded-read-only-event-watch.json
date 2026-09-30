@@ -1,0 +1,22 @@
+{
+  "specimen": "fleet-wrap/24-unbounded-read-only-event-watch",
+  "expect": "PASS",
+  "events": [
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "f=~/Gits/example/collab/topic.md; while true; do sleep 10; if grep -q \"^### .*\u2192 *orc\" \"$f\"; then exit 0; fi; done",
+            "run_in_background": true
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Standing down."
+    }
+  ]
+}

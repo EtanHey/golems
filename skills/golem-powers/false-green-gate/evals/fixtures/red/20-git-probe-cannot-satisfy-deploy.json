@@ -5,6 +5,7 @@
   "violation": "FALSE_GREEN_STAMP",
   "events": [
     { "role": "user", "text": "Is the daemon running the new code?" },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Confirming the merge landed.",

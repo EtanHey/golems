@@ -4,6 +4,7 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Render the 2-voice AfterCode intro." },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Rendering with the registered clones, then probing.",

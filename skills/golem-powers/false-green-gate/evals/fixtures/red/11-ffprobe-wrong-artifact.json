@@ -5,6 +5,7 @@
   "violation": "FALSE_GREEN_FFPROBE",
   "events": [
     { "role": "user", "text": "Render the new intro to out/new.mp3." },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Probing.",

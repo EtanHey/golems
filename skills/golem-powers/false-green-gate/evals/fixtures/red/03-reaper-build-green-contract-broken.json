@@ -5,6 +5,7 @@
   "violation": "FALSE_GREEN_LIVE_PROBE",
   "events": [
     { "role": "user", "text": "Fix the REAPER export wrapper." },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Done — the build is green.",

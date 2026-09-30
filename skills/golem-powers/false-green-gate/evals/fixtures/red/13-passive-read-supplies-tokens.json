@@ -5,6 +5,7 @@
   "violation": "FALSE_GREEN_DASHBOARD_200",
   "events": [
     { "role": "user", "text": "Is the dashboard live on the hub?" },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Checking yesterday's deploy log.",

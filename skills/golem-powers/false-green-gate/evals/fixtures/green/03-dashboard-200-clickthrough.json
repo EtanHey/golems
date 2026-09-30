@@ -7,6 +7,7 @@
       "role": "user",
       "text": "Publish the sprint dashboard to the tailnet hub."
     },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Mirroring to the hub, then probing the served URL.",

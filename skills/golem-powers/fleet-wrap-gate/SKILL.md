@@ -115,6 +115,13 @@ Programmatic: `import { detectFleetWrap } from "./src/fleet-wrap-gate.mjs"` →
 
 ## Stated Limits (honesty rule)
 
+- Background file-event waits are exempt only for two whole-command read-only
+  shapes: a literal file binding with `grep -q`/`rg -q` guarding `exit 0`/`break`,
+  or Orc's line-count/`sed -n`/header-only `awk` watch with a nonempty-hit exit.
+  A date deadline is optional. Foreground tasks, arbitrary awk/sed programs,
+  extra commands, writes, network calls, and markers alone receive no exemption.
+  Durable live-loop state and independently armed crons remain gated.
+
 - Durable state is only as complete as the hook payload/default task-state source. If no
   state is available, the detector still catches same-turn tool/command evidence, but a
   hidden external cron cannot be proven from prose alone. Wire the Stop hook where durable

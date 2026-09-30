@@ -1,0 +1,23 @@
+{
+  "specimen": "fleet-wrap/28-foreground-event-watch",
+  "expect": "FLAG",
+  "events": [
+    {
+      "role": "assistant",
+      "tools": [
+        {
+          "name": "Bash",
+          "input": {
+            "command": "f=~/Gits/example/collab/topic.md; while true; do sleep 10; if grep -q \"^### .*\u2192 *orc\" \"$f\"; then exit 0; fi; done",
+            "run_in_background": false
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Standing down."
+    }
+  ],
+  "violation": "FLEETWRAP_LOOP_ALIVE"
+}

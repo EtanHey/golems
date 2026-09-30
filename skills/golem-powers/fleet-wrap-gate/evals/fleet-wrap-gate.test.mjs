@@ -39,7 +39,7 @@ const reds = loadFixtures(redDir);
 const greens = loadFixtures(greenDir);
 
 test("fixture coverage: specimens + state-file REDs + GREEN references present", () => {
-  expect(reds.length).toBe(24);
+  expect(reds.length).toBe(28);
   expect(greens.length).toBeGreaterThanOrEqual(14);
 });
 
@@ -803,4 +803,41 @@ test("R2-5: the report reader rejects symlinks to non-report targets, `..` paths
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+const realWatch = greens.find(fx => fx.file === "26-real-orc-watch-task-state.json");
+test("real Orc watch shape passes as Claude JSONL and a running Bash task", () => {
+  const raw = realWatch.events.map(e => ({
+    type: e.role === "tool" ? "user" : e.role,
+    message: { role: e.role === "tool" ? "user" : e.role, content: e.role === "tool"
+      ? [{ type: "tool_result", tool_use_id: "watch", content: e.text }]
+      : [...(e.tools ?? []).map(t => ({ type: "tool_use", id: "watch", ...t })), ...(e.text ? [{ type: "text", text: e.text }] : [])] },
+  }));
+  expect(detectFleetWrap(raw, { state: realWatch.state }).verdict).toBe("PASS");
+});
+
+const watchCommand = realWatch.events[0].tools[0].input.command;
+for (const [name, command] of [
+  ["write", watchCommand.replace('sleep 10;', 'sleep 10; echo changed > out.txt;')],
+  ["awk write", watchCommand.replace('print substr($0,1,220)', 'print > "out.txt"')],
+  ["awk launch", watchCommand.replace('print substr($0,1,220)', 'system("gh pr list")')],
+  ["substitution", watchCommand.replace('f=~/Gits/example/collab/topic.md', 'f=$(curl https://example.com)')],
+  ["second loop", watchCommand + '; while true; do sleep 10; done'],
+]) {
+  test(`an event watch with ${name} still emits the exact loop violation`, () => {
+    const result = detectFleetWrap({ events: [{ role: "assistant", text: "Standing down.", tools: [{ name: "Bash", input: { command, run_in_background: true } }] }] });
+    expect(result.violations.map(v => v.code)).toContain("FLEETWRAP_LOOP_ALIVE");
+  });
+}
+
+for (const name of ["CronCreate", "ScheduleWakeup"]) {
+  test(`an exempt watch cannot excuse a separate ${name}`, () => {
+    const result = detectFleetWrap({ events: [{ role: "assistant", text: "Standing down.", tools: [realWatch.events[0].tools[0], { name, input: { prompt: "health-watch" } }] }] });
+    expect(result.violations.map(v => v.code)).toContain("FLEETWRAP_CRON_ALIVE");
+  });
+}
+
+test("an exempt same-turn watch cannot excuse an independently live loop", () => {
+  const result = detectFleetWrap(realWatch, { state: { loops: [{ id: "forgotten", status: "active", command: "while true; do sleep 10; done" }] } });
+  expect(result.violations.map(v => v.code)).toContain("FLEETWRAP_LOOP_ALIVE");
 });

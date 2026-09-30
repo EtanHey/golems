@@ -4,6 +4,7 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Check in with the worker." },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Is it done? I need the live probe output before I can mark it complete."

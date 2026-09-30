@@ -4,6 +4,7 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Is the page published?" },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "It is not published yet. I still need to run the URL probe before reporting it live."

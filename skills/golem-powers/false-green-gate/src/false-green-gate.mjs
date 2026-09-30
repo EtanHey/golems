@@ -25,6 +25,32 @@
 // replayable gate (R-003/R-014 pattern).
 
 import { normalizeTranscript, currentTurn, claimSearchText } from "../lib/transcript.mjs";
+import { parseShell, effectiveArgv } from "../lib/shell-commands.mjs";
+
+// Activity, not seat names or fixture metadata, scopes the gate. A coaching
+// turn in a code seat is still non-code; a coach editing code is still gated.
+function hasCodeActivity(turn) {
+  return turn.some(e => e.role === "assistant" && (e.tools ?? []).some(t => {
+    const name = baseName(t.name);
+    if (/^(Edit|Write|NotebookEdit|MultiEdit|apply_patch)$/.test(name)) return true;
+    if (/^(git_(commit|push)|create_pull_request|update_pull_request|merge_pull_request|push_files)$/.test(name)) return true;
+    if (name !== "Bash" || typeof t.input?.command !== "string") return false;
+    const commands = parseShell(t.input.command);
+    // A parser budget failure cannot establish absence of code activity.
+    if (!commands) return true;
+    return commands.some(c => {
+      const argv = effectiveArgv(c);
+      const bin = argv[0]?.split("/").pop();
+      if (bin === "gh") return argv[1] === "pr";
+      if (bin !== "git") return false;
+      let i = 1;
+      while (i < argv.length && argv[i].startsWith("-")) {
+        i += ["-C", "-c", "--git-dir", "--work-tree"].includes(argv[i]) ? 2 : 1;
+      }
+      return ["commit", "push"].includes(argv[i]);
+    });
+  }));
+}
 
 // ── A completion claim ──────────────────────────────────────────────────────
 // Includes the bare `TASK_DONE` sentinel — `\bdone\b` does NOT match it (`_` is a
@@ -232,6 +258,9 @@ function voiceResolved(ev) {
 export function detectFalseGreen(transcript) {
   const events = normalizeTranscript(transcript);
   const turn = currentTurn(events);
+  if (!hasCodeActivity(turn)) {
+    return { verdict: "PASS", claim: false, domains: [], violations: [] };
+  }
   const ev = buildEvidence(turn);
   // Claim AND evidence are both scoped to the CURRENT turn (cursor MEDIUM): if a
   // later human turn ("thanks") follows an already-probed "done", the current

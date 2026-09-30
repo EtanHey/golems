@@ -2,6 +2,7 @@
   "paddingBytes": 614400,
   "tailEvents": [
     { "role": "user", "text": "Did you fix the bug?" },
+    { "role": "assistant", "tools": [{ "name": "Edit", "input": { "file_path": "src/example.ts" } }] },
     { "role": "assistant", "text": "Fixed. Everything is working now." }
   ],
   "expectedDecision": "block",

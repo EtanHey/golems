@@ -4,6 +4,7 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Can this be ready today?" },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Once tests pass this will be done. I am not calling it complete yet."

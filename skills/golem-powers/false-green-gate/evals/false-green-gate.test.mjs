@@ -8,7 +8,16 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-import { detectFalseGreen } from "../src/false-green-gate.mjs";
+import { detectFalseGreen as detectCodeTurn } from "../src/false-green-gate.mjs";
+
+// Preserve the original domain/probe assertions inside an explicit code turn.
+function detectFalseGreen(transcript) {
+  if (typeof transcript !== "string") return detectCodeTurn(transcript);
+  return detectCodeTurn({ events: [
+    { role: "assistant", tools: [{ name: "Edit", input: { file_path: "src/example.ts" } }] },
+    { role: "assistant", text: transcript },
+  ] });
+}
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const redDir = path.join(here, "fixtures", "red");
@@ -53,7 +62,7 @@ test("replay is deterministic", () => {
 });
 
 test("a completion claim with NO probe of any kind is always a FLAG", () => {
-  const bare = { events: [{ role: "assistant", text: "All done ✅ everything works." }] };
+  const bare = "All done ✅ everything works.";
   expect(detectFalseGreen(bare).verdict).toBe("FLAG");
 });
 
@@ -99,3 +108,32 @@ test("a newline separates a completion claim from a deferred marker", () => {
   expect(result.verdict).toBe("FLAG");
   expect(result.violations.map(v => v.code)).toContain("FALSE_GREEN_LIVE_PROBE");
 });
+
+
+test("scope follows this turn's activity, independent of seat", () => {
+  const claim = { role: "assistant", text: "✅ fixed." };
+  const edit = { role: "assistant", tools: [{ name: "Edit", input: {} }] };
+  expect(detectCodeTurn({ seat: "coachClaude", events: [edit, claim] }).verdict).toBe("FLAG");
+  expect(detectCodeTurn({ seat: "exampleCodex", events: [claim] }).verdict).toBe("PASS");
+  expect(detectCodeTurn({ events: [edit, { role: "user", text: "Next drill" }, claim] }).verdict).toBe("PASS");
+});
+
+for (const name of ["Write", "NotebookEdit", "MultiEdit", "mcp__github__create_pull_request", "mcp__git__git_push"]) {
+  test(`code activity ${name} still requires a probe`, () => {
+    const result = detectCodeTurn({ events: [{ role: "assistant", text: "✅ fixed.", tools: [{ name, input: {} }] }] });
+    expect(result.violations.map(v => v.code)).toContain("FALSE_GREEN_LIVE_PROBE");
+  });
+}
+
+for (const command of ['git -C repo commit -m fix', 'git -c user.name=example push', 'gh pr create --title fix']) {
+  test(`code command ${command} still requires a probe`, () => {
+    const result = detectCodeTurn({ events: [{ role: "assistant", text: "✅ fixed.", tools: [{ name: "Bash", input: { command } }] }] });
+    expect(result.violations.map(v => v.code)).toContain("FALSE_GREEN_LIVE_PROBE");
+  });
+}
+
+for (const command of ['git status', 'echo "git commit -m fix"', "cat <<'EOF'\ngit push\nEOF"]) {
+  test(`read-only or quoted command ${command} is not code activity`, () => {
+    expect(detectCodeTurn({ events: [{ role: "assistant", text: "✅ drill.", tools: [{ name: "Bash", input: { command } }] }] }).verdict).toBe("PASS");
+  });
+}

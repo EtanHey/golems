@@ -4,6 +4,7 @@
   "expect": "PASS",
   "events": [
     { "role": "user", "text": "Where is the contract file?" },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "The marker is DONE_WEAVE and the fixture path is docs.local/done/archive.md.\n\n```sh\nprintf 'done' > /tmp/example.txt\n```\n\nNo completion claim here."

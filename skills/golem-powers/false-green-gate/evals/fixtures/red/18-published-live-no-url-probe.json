@@ -5,6 +5,7 @@
   "violation": "FALSE_GREEN_DASHBOARD_200",
   "events": [
     { "role": "user", "text": "Publish the page tonight." },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Published and live at https://example.tailnet.local/nightly.html."

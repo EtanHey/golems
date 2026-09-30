@@ -5,6 +5,7 @@
   "violation": "MANUAL_SUBSTITUTE",
   "events": [
     { "role": "user", "text": "Confirm the daemon fix works end to end." },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "I rigorously verified everything manually and carefully checked each path — it all works. Marking this done."

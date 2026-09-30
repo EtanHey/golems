@@ -7,6 +7,7 @@
       "role": "user",
       "text": "why are you not on main? this branch not merged?"
     },
+    {"role": "assistant", "tools": [{"name": "Edit", "input": {"file_path": "src/example.ts"}}]},
     {
       "role": "assistant",
       "text": "Checking the branch state.",
