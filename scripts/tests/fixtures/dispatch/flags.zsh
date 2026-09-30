@@ -53,7 +53,7 @@ _golem_parse_unified_flags() {
 _golem_print_codex_help() {
   print -r -- "Codex launcher options:"
   print -r -- "  -E, --effort <value>   low, medium, high, xhigh, max, ultra"
-  print -r -- "                         default: Codex high; Claude -E > GOLEM_EFFORT > worker medium > high"
+  print -r -- "                         default: Codex medium; Claude -E > GOLEM_EFFORT > worker medium > high"
   print -r -- "                         set it per dispatch — lower for scoped jobs; the default is a ceiling"
   print -r -- "  -m, --model <name>     explicit model override"
   print -r -- "  -s, --skip-permissions compatibility no-op (has no effect)"
@@ -66,7 +66,8 @@ _golem_print_codex_help() {
 
 _golem_parse_codex_flags() {
   local -a _parsed_args=()
-  _flag_codex_effort="high"
+  # AIDEV-NOTE: model-roles config (skill-creator #422) is the future owner of this default.
+  _flag_codex_effort="medium"
   _flag_codex_effort_explicit=false
   _flag_codex_help=false
   _flag_codex_worker=false

@@ -2,47 +2,74 @@
   {
     "authority": "golems#413",
     "candidate_sha256": {
-      "darwin": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f",
-      "linux": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f"
+      "darwin": "4c3b5502d0a44d991329d133d408105aa2f6e4d7588cd69f93ff11d6e2ff2481",
+      "linux": "4c3b5502d0a44d991329d133d408105aa2f6e4d7588cd69f93ff11d6e2ff2481"
+    },
+    "case": "launcher-002",
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "ee69e3c28f7e2194090725c2e53a53b666c1cf63fa6d7bd25719ccbc2eb7ad14",
+      "linux": "ee69e3c28f7e2194090725c2e53a53b666c1cf63fa6d7bd25719ccbc2eb7ad14"
+    },
+    "case": "launcher-006",
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
+      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
     },
     "case": "launcher-007",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
     "authority": "golems#413",
     "candidate_sha256": {
-      "darwin": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f",
-      "linux": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f"
+      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
+      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
     },
     "case": "launcher-008",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
     "authority": "golems#413",
     "candidate_sha256": {
-      "darwin": "e534df72ba33b8e141fac5b086278ab4f1a1dfcb484e7637d2a7f939dad5c151",
-      "linux": "e534df72ba33b8e141fac5b086278ab4f1a1dfcb484e7637d2a7f939dad5c151"
+      "darwin": "4c916c782ed6d768bc2924aed14255eb4beff8db48314f7c754d774fe3288fa6",
+      "linux": "4c916c782ed6d768bc2924aed14255eb4beff8db48314f7c754d774fe3288fa6"
     },
     "case": "launcher-009",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
     "authority": "golems#413",
     "candidate_sha256": {
-      "darwin": "06dcdcb98ffebcea3e9e615e8e9a3d653f631667a723787b7962d3e06a2c7d29",
-      "linux": "06dcdcb98ffebcea3e9e615e8e9a3d653f631667a723787b7962d3e06a2c7d29"
+      "darwin": "aa71546e1ed34fe0ea778c8c86846b29bdba3971c5a2aacaaf0bd8b6caf725b3",
+      "linux": "aa71546e1ed34fe0ea778c8c86846b29bdba3971c5a2aacaaf0bd8b6caf725b3"
     },
     "case": "launcher-011",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
     "authority": "golems#413",
     "candidate_sha256": {
-      "darwin": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f",
-      "linux": "72c4f4c4a4b628af171798b348689fc51b21b26370468f5143189e990871091f"
+      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
+      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
     },
     "case": "launcher-012",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
+  },
+  {
+    "authority": "golems#413",
+    "candidate_sha256": {
+      "darwin": "f7c37dc0aab9b2cb0e21c10e3fd214936fd1a0ffea8132ad83830afbb5c412ad",
+      "linux": "f7c37dc0aab9b2cb0e21c10e3fd214936fd1a0ffea8132ad83830afbb5c412ad"
+    },
+    "case": "launcher-013",
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
     "authority": "golems#413",
@@ -101,11 +128,11 @@
   {
     "authority": "golems#413",
     "candidate_sha256": {
-      "darwin": "0decf87e21cf47795341669e5450b77779305972a20dd23cfc535d05a9c4a193",
-      "linux": "0decf87e21cf47795341669e5450b77779305972a20dd23cfc535d05a9c4a193"
+      "darwin": "f0daaef067aff2d7cedd30011e3d61dd14e79b3091a43fdf3c9c73526a54e8c1",
+      "linux": "f0daaef067aff2d7cedd30011e3d61dd14e79b3091a43fdf3c9c73526a54e8c1"
     },
     "case": "launcher-020",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
     "authority": "golems#413",
@@ -137,11 +164,11 @@
   {
     "authority": "golems#413",
     "candidate_sha256": {
-      "darwin": "95e18ec8566df491f6af6d45241cf35ee095a2c4439676134f20b57e62aaced2",
-      "linux": "95e18ec8566df491f6af6d45241cf35ee095a2c4439676134f20b57e62aaced2"
+      "darwin": "5e333550d1a203e1531acec94f4cee8c06abc20b814777cc8291c0e7c55f6ad9",
+      "linux": "5e333550d1a203e1531acec94f4cee8c06abc20b814777cc8291c0e7c55f6ad9"
     },
     "case": "launcher-033",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
     "authority": "golems#413",
@@ -191,11 +218,11 @@
   {
     "authority": "golems#413",
     "candidate_sha256": {
-      "darwin": "0e89716c3ec30f73c09dab1cef8842ae5e772a1c86bb2edcffd9f888b85ffce9",
-      "linux": "0e89716c3ec30f73c09dab1cef8842ae5e772a1c86bb2edcffd9f888b85ffce9"
+      "darwin": "c967398a8dcbb92e55f2f18fb281ab8a16e6d9a709348ed9e06be9e0bffc44d4",
+      "linux": "c967398a8dcbb92e55f2f18fb281ab8a16e6d9a709348ed9e06be9e0bffc44d4"
     },
     "case": "r2-launch-persona-codex-lead",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex default and launcher help use medium; explicit effort and rollout recovery remain authoritative"
   },
   {
     "authority": "golems#413",

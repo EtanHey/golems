@@ -984,7 +984,37 @@ JSON
     ! grep -F -q -- "mcp_servers.registryRemote.env.REGISTRY_TOKEN" <<< "$output"
 }
 
-@test "tracked dispatcher source defaults fresh Codex launch modes to high effort and preserves continued effort" {
+@test "tracked dispatcher source uses medium for a bare fresh Codex boot and honors explicit high" {
+    [ -f "$SOURCE_DISPATCHER" ]
+
+    run zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1"
+
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      typeset -gi codex_call=0
+      function codex() {
+        (( codex_call += 1 ))
+        print -r -- "CODEX_CALL=$codex_call"
+        local arg
+        for arg in "$@"; do print -r -- "CODEX_ARG=$arg"; done
+      }
+
+      source "$2"
+      testrepoCodex
+      testrepoCodex --effort high
+    ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
+
+    [ "$status" -eq 0 ]
+    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="medium"' <<< "$output")" -eq 1 ]
+    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$output")" -eq 1 ]
+}
+
+@test "tracked dispatcher source defaults fresh Codex launch modes to medium effort and preserves continued effort" {
     [ -f "$SOURCE_DISPATCHER" ]
 
     run zsh -f -c '
@@ -1018,7 +1048,7 @@ JSON
         /^CODEX_CALL=/ { in_call = 0 }
         in_call { print }
       ' <<< "$output")
-      [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$call_output")" -eq 1 ]
+      [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="medium"' <<< "$call_output")" -eq 1 ]
       [ "$(grep -Fxc -- 'CODEX_ARG=-c' <<< "$call_output")" -eq 1 ]
     done
     local continue_output
@@ -1737,7 +1767,7 @@ JSONL
     grep -F -q -- "-E, --effort <value>" <<< "$output"
     grep -F -q -- "-m, --model <name>" <<< "$output"
     grep -F -q -- "low, medium, high, xhigh, max, ultra" <<< "$output"
-    grep -F -q -- "default: Codex high; Claude -E > GOLEM_EFFORT > worker medium > high" <<< "$output"
+    grep -F -q -- "default: Codex medium; Claude -E > GOLEM_EFFORT > worker medium > high" <<< "$output"
     grep -F -q -- "set it per dispatch" <<< "$output"
     ! grep -F -q -- "CODEX_LAUNCHED=" <<< "$output"
 }
@@ -1764,7 +1794,7 @@ JSONL
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
-    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$output")" -eq 1 ]
+    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="medium"' <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=--' <<< "$output")" -eq 0 ]
     grep -F -q -- "CODEX_ARG=--help" <<< "$output"
     grep -F -q -- "CODEX_ARG=-E" <<< "$output"
@@ -1794,7 +1824,7 @@ JSONL
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$WORKTREE_DIR"
 
     [ "$status" -eq 0 ]
-    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$output")" -eq 1 ]
+    [ "$(grep -Fxc -- 'CODEX_ARG=model_reasoning_effort="medium"' <<< "$output")" -eq 1 ]
     [ "$(grep -Fxc -- 'CODEX_ARG=-c' <<< "$output")" -eq 2 ]
     for arg in raw-config -p -m raw-model -s -w "$WORKTREE_DIR"; do
       grep -F -q -- "CODEX_ARG=$arg" <<< "$output"
@@ -2290,7 +2320,7 @@ CLAUDE
     local normalized_output
     normalized_output=$(printf '%s' "$output" \
       | grep -Fv -- 'CODEX_ARG=-c' \
-      | grep -Fv -- 'CODEX_ARG=model_reasoning_effort="high"' \
+      | grep -Fv -- 'CODEX_ARG=model_reasoning_effort="medium"' \
       | grep -Fv -- 'CODEX_ARG=--model' \
       | grep -Fv -- 'CODEX_ARG=gpt-6.1-sol' \
       | sed 's/^CODEX_ARG_COUNT=5$/CODEX_ARG_COUNT=1/')
