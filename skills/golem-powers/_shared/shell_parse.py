@@ -106,6 +106,7 @@ del _name
 
 
 _structure = _impl_module("structure")
+_units = _impl_module("units")
 
 
 # AIDEV-NOTE: heredocs and substitutions import each other, so bind this
@@ -379,83 +380,6 @@ def _invoked_alias_bodies(command, _initial_state=None):
         )
         return " ".join(expanded) if changed else body
 
-
-
-    def raw_function_definitions(source):
-        """Return function names and body slices without discarding shell quoting."""
-        structural = _structure.structural_source(source)
-        definitions = []
-        for match in _structure.function_open_re.finditer(structural):
-            signature = source[match.start("signature"):match.end("signature")]
-            names = re.findall(_structure.function_name_pattern, signature)
-            if not names:
-                continue
-            name = names[-1]
-            body_start = match.end("brace")
-            depth = 1
-            body_end = body_start
-            while body_end < len(structural) and depth:
-                if structural[body_end] == "{":
-                    depth += 1
-                elif structural[body_end] == "}":
-                    depth -= 1
-                body_end += 1
-            if depth == 0:
-                definitions.append((name, source[body_start:body_end - 1]))
-        return definitions
-
-
-    def parse_units(source):
-        def shell_line_continues(source_line):
-            line = source_line.rstrip("\r\n")
-            trailing = len(line) - len(line.rstrip("\\"))
-            if trailing % 2 == 0:
-                return False
-            quote = None
-            comment = False
-            i = 0
-            target = len(line) - 1
-            while i < target:
-                char = line[i]
-                if comment:
-                    return False
-                if quote == "'":
-                    if char == "'":
-                        quote = None
-                    i += 1
-                    continue
-                if quote == '"':
-                    if char == '"':
-                        quote = None
-                    elif char == "\\" and i + 1 < target:
-                        i += 1
-                    i += 1
-                    continue
-                if char in "'\"":
-                    quote = char
-                elif char == "#" and (
-                    i == 0 or line[i - 1].isspace() or line[i - 1] in ";|&()"
-                ):
-                    comment = True
-                elif char == "\\" and i + 1 < target:
-                    i += 1
-                i += 1
-            return not comment and quote != "'"
-
-        buffered = ""
-        for source_line in source.splitlines(keepends=True):
-            buffered += source_line
-            if shell_line_continues(source_line):
-                continue
-            if (
-                _structure.has_unclosed_function_definition(buffered)
-                or _structure.has_unclosed_compound_command(buffered)
-            ):
-                continue
-            yield buffered
-            buffered = ""
-        if buffered:
-            yield buffered
 
 
     def builtin_alias_eligibility(source):
@@ -1160,7 +1084,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
         return True
 
     executable_source = _mask_heredoc_body_lines(command)
-    for source_unit in parse_units(executable_source):
+    for source_unit in _units.parse_units(executable_source):
         line = _structure.normalize_function_signature_braces(
             source_unit.rstrip("\r\n")
         )
@@ -1226,7 +1150,7 @@ def _invoked_alias_bodies(command, _initial_state=None):
         # function definition. Record definitions as ordered events: each one
         # becomes callable only after its closing brace executes.
         line_definitions = []
-        source_definitions = raw_function_definitions(line)
+        source_definitions = _units.raw_function_definitions(line)
         source_definition_index = 0
         line_pos = 0
         while line_pos + 3 < len(tokens):
