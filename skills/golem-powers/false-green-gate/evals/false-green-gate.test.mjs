@@ -41,8 +41,8 @@ function loadFixtures(dir, codeTurn = false) {
     });
 }
 
-const reds = [...loadFixtures(redDir, true), ...loadFixtures(path.join(here, "scope-fixtures", "red"))];
-const greens = [...loadFixtures(greenDir, true), ...loadFixtures(path.join(here, "scope-fixtures", "green"))];
+const reds = [...loadFixtures(redDir, true), ...loadFixtures(path.join(here, "scope", "fixtures", "red"))];
+const greens = [...loadFixtures(greenDir, true), ...loadFixtures(path.join(here, "scope", "fixtures", "green"))];
 
 test("fixture coverage: original corpus plus goal-required RED/GREEN cases present", () => {
   expect(reds.length).toBeGreaterThanOrEqual(19);

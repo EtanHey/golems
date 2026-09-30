@@ -25,7 +25,7 @@ T6 deterministic-CU smoke-spec shape).
 
 The historical `evals/fixtures/` corpus is pinned for Jev replay. This gate's
 domain/probe suites add code activity only in their replay adapters; new scope
-contracts live in `evals/scope-fixtures/` and are replayed unchanged by both suites.
+contracts live in `evals/scope/fixtures/` and are replayed unchanged by both suites.
 
 ## The Rule — required same-turn probe by claim domain
 

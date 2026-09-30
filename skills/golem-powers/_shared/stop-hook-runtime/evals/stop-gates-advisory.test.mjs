@@ -15,7 +15,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const powersRoot = path.resolve(here, "../../..");
 
 const GATES = [
-  ["false-green-gate", "22-code-fix-checkmark-no-live-probe.json", "scope-fixtures"],
+  ["false-green-gate", "22-code-fix-checkmark-no-live-probe.json", "scope/fixtures"],
   ["fleet-wrap-gate", "01-healthwatch-cron-left-armed.json"],
   ["qa-verdict-gate", "01-fail-page-never-loaded.json"],
 ];

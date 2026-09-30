@@ -26,7 +26,7 @@ TIMEOUT_SECONDS = float(os.environ.get("FALSE_GREEN_GATE_TIMEOUT_SECONDS", "0.5"
 
 def load_cases() -> list[tuple[str, Path, dict]]:
     cases: list[tuple[str, Path, dict]] = []
-    for root in (FIXTURES, FIXTURES.parent / "scope-fixtures"):
+    for root in (FIXTURES, FIXTURES.parent / "scope" / "fixtures"):
         for group in ("green", "red"):
             for path in sorted((root / group).glob("*.json")):
                 fixture = json.loads(path.read_text())
