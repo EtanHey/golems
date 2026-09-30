@@ -14,6 +14,20 @@ import json
 import sys
 import os
 import re
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
+
+
+def _deny_policy_import_failure():
+    """Fail closed before git_safety's normal policy boundary exists (#411)."""
+    json.dump(
+        {
+            "decision": "block",
+            "reason": "BLOCKED: security policy unavailable; refusing tool call.",
+        },
+        sys.stdout,
+    )
+    sys.exit(2)
 
 # GO-5 PR-2b: git_safety comes from THIS hook's tree (hooks-live when installed
 # by scripts/hooks/install-hooks.sh), never the main checkout, so a pull or a
@@ -24,7 +38,23 @@ GIT_GUARDIAN_LIB = os.environ.get("GIT_GUARDIAN_LIB") or os.path.dirname(
 )
 if GIT_GUARDIAN_LIB not in sys.path:
     sys.path.insert(0, GIT_GUARDIAN_LIB)
-from git_safety import dangerous_shell_reason, shell_text_without_heredoc_bodies
+try:
+    # A corrupt module must not contaminate the one-JSON denial before raising.
+    with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+        git_safety_path = os.path.realpath(
+            os.path.join(GIT_GUARDIAN_LIB, "git_safety.py")
+        )
+        if not os.path.isfile(git_safety_path):
+            raise ImportError("configured git_safety module is unavailable")
+        import git_safety as _git_safety
+        if os.path.realpath(_git_safety.__file__) != git_safety_path:
+            raise ImportError("configured git_safety module was not loaded")
+        dangerous_shell_reason = _git_safety.dangerous_shell_reason
+        shell_text_without_heredoc_bodies = (
+            _git_safety.shell_text_without_heredoc_bodies
+        )
+except BaseException:  # policy dependency uncertainty must never become allow
+    _deny_policy_import_failure()
 
 
 # --- Permission Classification ---

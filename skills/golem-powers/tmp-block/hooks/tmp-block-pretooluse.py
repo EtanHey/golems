@@ -97,38 +97,78 @@ import json
 import os
 import re
 import sys
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
+from io import StringIO
+
+
+def _deny_policy_import_failure():
+    """Fail closed before the normal policy helpers are available (#411)."""
+    reason = "⛔ TMP-BLOCK: security policy unavailable; refusing tool call."
+    json.dump(
+        {
+            "decision": "block",
+            "reason": reason,
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": reason,
+            },
+        },
+        sys.stdout,
+    )
+    sys.exit(2)
 
 # S13 (GO-5): the shell parser lives in _shared/shell_parse.py; this hook keeps policy.
 # realpath: a copy at ~/.claude/hooks/tmp-block/hooks/ finds ~/.claude/hooks/_shared,
 # a symlink into hooks-live finds skills/golem-powers/_shared.
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "_shared"))
-from harness_paths import _temp_prefixes, is_harness_scratchpad  # noqa: E402
-from shell_parse import (  # noqa: E402
-    _ASSIGNMENT_RE,
-    _QUOTED_LBRACE,
-    _QUOTED_RBRACE,
-    _UNRESOLVED_EVAL_MARKER,
-    _WRAPPER_CMDS,
-    _WRAPPER_VALUE_OPTS,
-    _command_sub_word_continues,
-    _executable_subcommands,
-    _function_signature_parens,
-    _invoked_alias_bodies,
-    _is_command_sub_close,
-    _is_command_sub_open,
-    _is_separator,
-    _mask_function_definition_bodies,
-    _mask_quoted_operator_words,
-    _nested_alias_segment,
-    _nested_segment,
-    _parse_bash,
-    _segment_is_fully_exposed,
-    _segment_is_prefix,
-    _shell_command_payloads,
-    _shell_tokens,
-    _strip_heredoc_bodies,
+_SHARED_ROOT = os.path.realpath(
+    os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "_shared")
 )
+sys.path.insert(0, _SHARED_ROOT)
+try:
+    # A corrupt module must not contaminate the one-JSON denial before raising.
+    with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+        import harness_paths as _harness_paths_module  # noqa: E402
+        import shell_parse as _shell_parse_module  # noqa: E402
+
+        for _module, _filename in (
+            (_harness_paths_module, "harness_paths.py"),
+            (_shell_parse_module, "shell_parse.py"),
+        ):
+            if os.path.realpath(getattr(_module, "__file__", "")) != os.path.join(
+                _SHARED_ROOT, _filename
+            ):
+                raise ImportError(f"unexpected policy module origin: {_filename}")
+
+        from harness_paths import _temp_prefixes, is_harness_scratchpad  # noqa: E402
+        from shell_parse import (  # noqa: E402
+            _ASSIGNMENT_RE,
+            _QUOTED_LBRACE,
+            _QUOTED_RBRACE,
+            _UNRESOLVED_EVAL_MARKER,
+            _WRAPPER_CMDS,
+            _WRAPPER_VALUE_OPTS,
+            _command_sub_word_continues,
+            _executable_subcommands,
+            _function_signature_parens,
+            _invoked_alias_bodies,
+            _is_command_sub_close,
+            _is_command_sub_open,
+            _is_separator,
+            _mask_function_definition_bodies,
+            _mask_quoted_operator_words,
+            _nested_alias_segment,
+            _nested_segment,
+            _parse_bash,
+            _segment_is_fully_exposed,
+            _segment_is_prefix,
+            _shell_command_payloads,
+            _shell_tokens,
+            _strip_heredoc_bodies,
+        )
+except BaseException:  # policy dependency uncertainty must never become allow
+    _deny_policy_import_failure()
 
 DEFAULT_LEDGER = os.path.expanduser("~/.claude/logs/tmp-block-ledger.jsonl")
 
