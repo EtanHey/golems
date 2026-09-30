@@ -282,7 +282,7 @@ impl_prefix = getattr(shell_parse, '_IMPL_NAME', '')
 if impl_prefix:
     impl = {n: m for n, m in sys.modules.items()
             if n.startswith(impl_prefix + '.')}
-    for name in set(hook_names) | set(test_names):
+    for name in set(hook_names) | set(test_names) | set(git_names):
         owners = [m for m in impl.values() if name in vars(m)]
         defining = [m for m in owners
                     if getattr(getattr(m, name), '__module__', m.__name__) == m.__name__]
