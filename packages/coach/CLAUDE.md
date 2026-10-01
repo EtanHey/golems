@@ -140,5 +140,5 @@ packages/coach/
 ## Post-MVP Ideas
 
 - Weather API integration (outdoor workout decisions)
-- Midday nudge + evening wrap-up with health context
+- Explicit voice nudges with health context
 - `/coach why` command (explain today's recommendations)

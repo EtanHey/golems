@@ -1,5 +1,5 @@
 /**
- * CoachGolem — life planner, status aggregator, gentle nudger.
+ * CoachGolem — life planner and status aggregator.
  *
  * Reads state from other golems, integrates with Google Calendar,
  * and helps plan the day/week. Does NOT invoke other golems.

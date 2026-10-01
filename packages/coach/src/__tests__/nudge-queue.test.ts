@@ -106,6 +106,13 @@ describe("NudgeSchema", () => {
     }
   });
 
+  test("rejects the retired legacy channel", () => {
+    expect(NudgeSchema.safeParse({
+      id: "legacy-nudge", type: "reminder", priority: "medium", message: "Test",
+      scheduledAt: "now", createdAt: "now", status: "pending", channel: "telegram",
+    }).success).toBe(false);
+  });
+
   test("validates the supported channel", () => {
     for (const channel of ["voice"] as const) {
       const nudge = {
@@ -184,14 +191,14 @@ describe("createNudge", () => {
   test("requires a channel rather than choosing a delivery route", () => {
     expect(() => createNudge({ type: "reminder", message: "Test", scheduledAt: "now" } as any))
       .toThrow();
-    expect(() => createNudge({ type: "reminder", message: "Test", scheduledAt: "now", channel: "obsolete" } as any))
+    expect(() => createNudge({ type: "reminder", message: "Test", scheduledAt: "now", channel: "telegram" } as any))
       .toThrow();
   });
 
   test("does not reroute obsolete queue records", () => {
     const { appendFileSync } = require("fs");
     const nudge = createNudge({ type: "reminder", message: "Test", scheduledAt: "now", channel: "voice" });
-    appendFileSync(TEST_QUEUE, JSON.stringify({ ...nudge, channel: "obsolete" }) + "\n");
+    appendFileSync(TEST_QUEUE, JSON.stringify({ ...nudge, channel: "telegram" }) + "\n");
     expect(readQueue(TEST_QUEUE)).toEqual([]);
   });
 
