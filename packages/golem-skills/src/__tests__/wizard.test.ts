@@ -51,7 +51,7 @@ describe("wizard module", () => {
     const existingConfig = {
       reposPath: "~/Gits",
       tools: { claude: "/usr/local/bin/claude" },
-      features: { proactiveNudges: true, nightShift: false, telegram: false },
+      features: { proactiveNudges: true, nightShift: false },
     };
     await writeFile(configPath, JSON.stringify(existingConfig, null, 2));
 
@@ -71,7 +71,6 @@ describe("wizard module", () => {
       features: {
         proactiveNudges: false,
         nightShift: false,
-        telegram: false,
       },
     };
 
@@ -82,7 +81,7 @@ describe("wizard module", () => {
     expect(parsed.reposPath).toBe("~/Projects");
     expect(parsed.features.proactiveNudges).toBe(false);
     expect(parsed.features.nightShift).toBe(false);
-    expect(parsed.features.telegram).toBe(false);
+    expect(parsed.features).not.toHaveProperty("telegram");
   });
 
   test("config with multiple tools is valid", async () => {
@@ -96,7 +95,6 @@ describe("wizard module", () => {
       features: {
         proactiveNudges: true,
         nightShift: false,
-        telegram: false,
       },
     };
 
@@ -122,7 +120,6 @@ describe("wizard module", () => {
       features: {
         proactiveNudges: false,
         nightShift: false,
-        telegram: false,
       },
     };
 
@@ -158,7 +155,6 @@ describe("wizard module", () => {
       features: {
         proactiveNudges: false,
         nightShift: false,
-        telegram: false,
       },
     };
 
@@ -167,7 +163,7 @@ describe("wizard module", () => {
     const parsed = JSON.parse(raw);
 
     // All features should be explicitly false
-    for (const feature of ["proactiveNudges", "nightShift", "telegram"]) {
+    for (const feature of ["proactiveNudges", "nightShift"]) {
       expect(parsed.features[feature]).toBe(false);
     }
   });
@@ -176,13 +172,13 @@ describe("wizard module", () => {
     // User enables only proactiveNudges
     const enabledFeatures = new Set(["proactiveNudges"]);
     const features: Record<string, boolean> = {};
-    for (const f of ["proactiveNudges", "nightShift", "telegram"]) {
+    for (const f of ["proactiveNudges", "nightShift"]) {
       features[f] = enabledFeatures.has(f);
     }
 
     expect(features.proactiveNudges).toBe(true);
     expect(features.nightShift).toBe(false);
-    expect(features.telegram).toBe(false);
+    expect(features).not.toHaveProperty("telegram");
   });
 });
 
