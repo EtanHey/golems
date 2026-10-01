@@ -73,7 +73,7 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
   requireRetention = true } = {}) {
   const hashes = await artifactHashes(runDir);
   receipt ??= await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
-  if (receipt?.version !== 3 || receipt.runName !== basename(resolve(runDir))) {
+  if (![3, 4].includes(receipt?.version) || receipt.runName !== basename(resolve(runDir))) {
     throw stageFailure(7, 'missing or wrong-run completion receipt');
   }
   if (Object.keys(hashes).some(key => hashes[key] !== receipt.artifacts?.[key])) {
@@ -106,8 +106,11 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
     failure.liveVerificationFailure = true;
     throw failure;
   }
+  if (receipt.version === 4 && !['published', 'complete'].includes(receipt.status)) {
+    throw stageFailure(7, 'invalid local completion status');
+  }
   const notificationStatus = ['notified', 'complete'].includes(receipt.status);
-  if (requireNotification && (!notificationStatus || receipt.notification?.accepted !== true
+  if (receipt.version === 3 && requireNotification && (!notificationStatus || receipt.notification?.accepted !== true
     || !Number.isSafeInteger(receipt.notification.messageId) || receipt.notification.messageId <= 0
     || receipt.notification.url !== url.href || !receipt.notification.body?.includes(url.href))) {
     throw stageFailure(8, 'successful completion notification must carry dashboard URL');
@@ -118,8 +121,19 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
     try { retention = await verifyLocalMediaRetention({ runDir }); }
     catch (error) { throw stageFailure(9, error.message); }
   }
-  return { status: requireRetention ? 'complete' : requireNotification ? 'notified' : 'published',
+  return { status: requireRetention ? 'complete' : receipt.version === 3 && requireNotification ? 'notified' : 'published',
     runName: receipt.runName, dashboardUrl: url.href, ...(retention && { retentionVerification: retention.verification }) };
+}
+
+/** Explicit legacy migration; write only after all live and custody checks succeed. */
+export async function migrateCompletionReceipt(runDir, {receipt, fetchImpl} = {}) {
+  if (receipt?.version !== 3 || receipt.status !== 'complete') {
+    throw stageFailure(7, 'not an eligible legacy completion receipt');
+  }
+  const {notification, ...evidence} = receipt;
+  const migrated = {...evidence, version: 4, status: 'complete'};
+  await verifyRunDelivery(runDir, {receipt: migrated, fetchImpl});
+  return migrated;
 }
 
 if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {

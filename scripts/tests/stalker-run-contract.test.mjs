@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { artifactHashes, verifyRunDelivery, sha256 } from '../stalker/stalker-run-contract.mjs';
+import { artifactHashes, verifyRunDelivery, migrateCompletionReceipt, sha256 } from '../stalker/stalker-run-contract.mjs';
 import { MEDIA_RETENTION_RECEIPT } from '../stalker/stalker-media-retention.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/stalker-2026-09-08.json', import.meta.url)));
@@ -31,10 +31,9 @@ async function setup(t, delivered = true) {
   const origin = `http://127.0.0.1:${server.address().port}`;
   const url = `${origin}/${manifest.included[0].linkPath}`;
   const receipt = {
-    version: 3, runName: fixture.runName, status: 'complete',
+    version: 4, runName: fixture.runName, status: 'complete',
     artifacts: await artifactHashes(runDir),
     publication: { url, manifestUrl: `${origin}/manifest.json`, ...manifest.included[0], media:['clip.mp4','frame.jpg'].map(name=>({path:`evidence/${name}`,size:mediaBytes.length,sha256:sha256(mediaBytes)})) },
-    notification: { accepted: true, messageId: 123, url, body: `Stalker complete. Dashboard: ${url}` },
   };
   const save = () => writeFile(join(runDir, '.stalker-completion.json'), JSON.stringify(receipt));
   await save();
@@ -54,7 +53,7 @@ test('September 8 ratchet: processing markers and gems cannot make a run COMPLET
   await assert.rejects(verifyRunDelivery(runDir), /FAILED at stage 6.*digest\.md/);
 });
 
-test('COMPLETE requires matching live HTML, hub manifest, artifacts and notified URL', async t => {
+test('COMPLETE requires matching live HTML, hub manifest, artifacts and retention', async t => {
   const { runDir } = await setup(t);
   const result = await verifyRunDelivery(runDir);
   assert.equal(result.status, 'complete');
@@ -104,18 +103,12 @@ test('missing manifest row, wrong source, and HTTP failure each fail closed', as
   await assert.rejects(verifyRunDelivery(runDir), /manifest/);
 });
 
-test('failed notification, missing URL, preview status and wrong run cannot be complete', async t => {
+test('preview status and wrong run cannot be complete', async t => {
   const { runDir, receipt, save } = await setup(t);
-  for (const change of [
-    () => { receipt.notification.messageId = null; },
-    () => { receipt.notification.messageId = 123; receipt.notification.accepted = false; },
-    () => { receipt.notification.accepted = true; receipt.notification.body = 'Local MD only'; },
-    () => { receipt.notification.body = receipt.publication.url; receipt.status = 'preview'; },
-    () => { receipt.status = 'complete'; receipt.runName = 'another-run'; },
-  ]) {
-    change(); await save();
-    await assert.rejects(verifyRunDelivery(runDir), /FAILED at stage/);
-  }
+  receipt.status = 'preview'; await save();
+  await assert.rejects(verifyRunDelivery(runDir), /FAILED at stage/);
+  receipt.status = 'complete'; receipt.runName = 'another-run'; await save();
+  await assert.rejects(verifyRunDelivery(runDir), /FAILED at stage/);
 });
 
 test('CRLF human digest validates without changing its byte-bound hash', async t => {
@@ -149,18 +142,18 @@ test('every dashboard card must carry a video and a published poster', async t =
   await assert.rejects(verifyRunDelivery(runDir),/stage 7.*card/);
 });
 
-test('version 3 COMPLETE requires local retention while interim publication can explicitly opt out', async t => {
+test('version 4 COMPLETE requires local retention while interim publication can explicitly opt out', async t => {
   const {runDir,receipt,save}=await setup(t);
   await rm(join(runDir,MEDIA_RETENTION_RECEIPT));
   await assert.rejects(verifyRunDelivery(runDir),/stage 9/);
-  assert.equal((await verifyRunDelivery(runDir,{receipt,requireNotification:false,requireRetention:false})).status,'published');
+  assert.equal((await verifyRunDelivery(runDir,{receipt,requireRetention:false})).status,'published');
   await saveRetention(runDir);
   assert.equal((await verifyRunDelivery(runDir)).status,'complete');
 });
 
-test('a valid notified receipt fails default verification at retention stage 9', async t => {
+test('a valid published receipt fails default verification at retention stage 9', async t => {
   const {runDir,receipt,save}=await setup(t);
-  receipt.status='notified';await save();
+  receipt.status='published';await save();
   await assert.rejects(verifyRunDelivery(runDir),/FAILED at stage 9.*retention/);
 });
 
@@ -168,4 +161,32 @@ test('legacy version 2 completion receipts cannot satisfy retention-aware COMPLE
   const {runDir,receipt,save}=await setup(t);
   receipt.version=2;await save();
   await assert.rejects(verifyRunDelivery(runDir),/missing or wrong-run completion receipt/);
+});
+
+test('explicit v3 migration retains evidence and strips the retired field', async t => {
+  for (const status of ['complete']) await t.test(status, async t => {
+    const {runDir, receipt} = await setup(t);
+    const original = {...receipt, version: 3, status, notification: {messageId: 1}};
+    const migrated = await migrateCompletionReceipt(runDir, {receipt: original});
+    assert.equal(migrated.version, 4);
+    assert.equal(migrated.status, 'complete');
+    assert.equal('notification' in migrated, false);
+    for (const key of ['runName', 'artifacts', 'publication', 'retention']) assert.deepEqual(migrated[key], original[key]);
+    assert.equal(original.version, 3);
+  });
+});
+
+test('migration cannot certify missing custody or unreachable publication', async t => {
+  const {runDir, receipt, responses} = await setup(t);
+  const original = {...receipt, version: 3, status: 'complete'};
+  await rm(join(runDir, MEDIA_RETENTION_RECEIPT));
+  await assert.rejects(migrateCompletionReceipt(runDir, {receipt: original}), /stage 9/);
+  await saveRetention(runDir); responses.dashboardStatus = 404;
+  await assert.rejects(migrateCompletionReceipt(runDir, {receipt: original}), /stage 7/);
+});
+
+
+test('direct migration rejects legacy notified before retention recheck', async t => {
+  const {runDir, receipt} = await setup(t);
+  await assert.rejects(migrateCompletionReceipt(runDir, {receipt: {...receipt, version: 3, status: 'notified'}}), /eligible legacy/);
 });
