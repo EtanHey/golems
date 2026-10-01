@@ -26,10 +26,10 @@ JS
     chmod +x "$STALKER_COMPLETION_SCRIPT"
     export STALKER_COMPLETION_SCRIPT STALKER_COMPLETION_CALLS
 
-    cat > "$FAKE_BIN/telegram-capture" <<'SH'
+    cat > "$FAKE_BIN/curl" <<'SH'
 #!/bin/bash
-cat >> "$ALERTS_FILE"
-printf '\n' >> "$ALERTS_FILE"
+printf '%s\n' "$*" >> "$ALERTS_FILE"
+exit 9
 SH
     cat > "$FAKE_BIN/ffprobe" <<'SH'
 #!/bin/bash
@@ -40,9 +40,9 @@ SH
 for arg in "$@"; do output="$arg"; done
 printf 'clip\n' > "$output"
 SH
-    chmod +x "$FAKE_BIN/telegram-capture" "$FAKE_BIN/ffprobe" "$FAKE_BIN/ffmpeg"
+    chmod +x "$FAKE_BIN/curl" "$FAKE_BIN/ffprobe" "$FAKE_BIN/ffmpeg"
     ln -s "$(command -v node)" "$FAKE_BIN/node"
-    export ALERTS_FILE
+    export ALERTS_FILE PATH="$FAKE_BIN:$PATH"
 }
 
 teardown() {

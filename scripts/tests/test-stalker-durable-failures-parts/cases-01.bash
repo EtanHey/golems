@@ -88,7 +88,6 @@ function split_case_009() {
     lurker_pid=$!
 
     STALKER_LURKER_START_TIMEOUT=1 \
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run stalker_require_lurker_ready "$stream_dir" "$lurker_pid" "$stream_dir/chat-lurker.log" "$stream_dir/chat.log"
 
     [ "$status" -ne 0 ]
@@ -115,7 +114,6 @@ function split_case_011() {
     lurker_pid=$!
 
     STALKER_LURKER_START_TIMEOUT=1 \
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run stalker_require_lurker_ready "$stream_dir" "$lurker_pid" "$stream_dir/chat-lurker.log" "$stream_dir/chat.log"
 
     [ "$status" -ne 0 ]
@@ -145,7 +143,6 @@ function split_case_013() {
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/empty-home" \
         ALERTS_FILE="$ALERTS_FILE" \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         "$STALKER_DIR/process-stream.sh" "$stream_dir/video.mp4"
 
     [ "$status" -eq 75 ]
@@ -180,7 +177,6 @@ SH
         PATH="$FAKE_BIN" \
         HOME="$TMPDIR_/empty-home" \
         CODEX_CALLS="$codex_calls" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         "$STALKER_DIR/process-stream.sh" "$stream_dir/video.mp4"
 
     [ "$status" -eq 75 ]
@@ -219,7 +215,6 @@ function split_case_015() {
         ALERTS_FILE="$ALERTS_FILE" \
         STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         "$STALKER_DIR/process-stream.sh" "$stream_dir/video.mp4" "$stream_dir/chat.log"
 
     [ "$status" -eq 0 ]
@@ -234,7 +229,6 @@ function split_case_016() {
     write_scoring_marker "$empty_dir" "$live_pid" ""
     printf '# partial empty-identity gems\n' > "$empty_dir/gems.md"
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run bash -c 'source "$1"; stalker_reconcile_interrupted_scoring_run "$2"' \
         _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$empty_dir"
     empty_status=$status
@@ -270,12 +264,10 @@ function split_case_017() {
     printf '# partial matching gems\n' > "$matching_dir/gems.md"
     printf '# partial mismatched gems\n' > "$mismatch_dir/gems.md"
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run bash -c 'source "$1"; stalker_reconcile_interrupted_scoring_run "$2"' \
         _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$matching_dir"
     matching_status=$status
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run bash -c 'source "$1"; stalker_reconcile_interrupted_scoring_run "$2"' \
         _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$mismatch_dir"
     mismatch_status=$status
@@ -307,7 +299,6 @@ function split_case_018() {
     printf '# Gems\n\n### [00:10] Complete gem\n**Score:** 8/10\n\n---\nGems found: 1\nScored: Thu Aug 20 01:10:00 IDT 2026\n' > "$stream_dir/gems.md"
     cp "$stream_dir/gems.md" "$stream_dir/gems.before"
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run bash -c 'source "$1"; stalker_reconcile_interrupted_scoring_run "$2"' \
         _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$stream_dir"
     reconcile_status=$status
@@ -381,7 +372,6 @@ function split_case_021() {
         STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_CONTRACT_SCRIPT="$contract" \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
@@ -399,7 +389,6 @@ function split_case_022() {
     printf '# partial gems\n' > "$stale_dir/gems.md"
     printf '[00:00:01] viewer: old run\n' > "$stale_dir/chat.log"
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [ -f "$stale_dir/.stage-scoring.failed" ]
@@ -413,7 +402,6 @@ function split_case_023() {
     mkdir -p "$stream_dir"
     : > "$stream_dir/chat.log"
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run stalker_require_run_quality "$stream_dir" "$stream_dir/chat.log" "digest"
 
     [ "$status" -ne 0 ]
@@ -432,7 +420,6 @@ function split_case_024() {
     printf 'chatline\nchatline\n' > "$run_dir/chat.log"
     printf '### [00:10:00] A real moment\n**Score:** 9/10 | **Type:** insight\n**Gist:** something good\n' > "$run_dir/gems.md"
 
-    STALKER_TELEGRAM_DRY_RUN=1 \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
@@ -449,7 +436,6 @@ function split_case_025() {
     root="$TMPDIR_/stalker-empty"
     mkdir -p "$root"
 
-    STALKER_TELEGRAM_DRY_RUN=1 \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
@@ -468,7 +454,6 @@ function split_case_026() {
     printf 'done\n' > "$run_dir/.stage-process.done"
     printf '### [00:03:00] Tail gem\n**Score:** 8/10 | **Type:** insight\n' > "$run_dir/gems.md"
 
-    STALKER_TELEGRAM_DRY_RUN=1 \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
@@ -482,7 +467,6 @@ function split_case_027() {
     mkdir -p "$run_dir"
     printf '### [00:10:00] A real moment\n**Score:** 9/10 | **Type:** insight\n' > "$run_dir/gems.md"
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19
 
     [[ "$output" == *'Stalker Morning Digest FAILED - 2026-08-19'* \
@@ -586,7 +570,6 @@ function split_case_031() {
         mkdir -p "$root/examplechannel-2026-08-20-$suffix"
     done
 
-    STALKER_TELEGRAM_DRY_RUN=1 \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-20 --dry-run
 
     [[ "$status" -eq 75 \
@@ -617,7 +600,6 @@ Warnings: Missing Drive ledger: etan-2026-08-19-2100
 EOF
 )"
 
-    STALKER_TELEGRAM_DRY_RUN=1 \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 0 && "$output" = "$expected" ]]
