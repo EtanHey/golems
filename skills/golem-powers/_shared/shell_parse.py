@@ -1571,8 +1571,41 @@ def _dollar_paren_spans(text: str) -> list[tuple[int, int]]:
         elif char == "`":
             index = _data_backtick_end(text, index)
             continue
-        elif text.startswith("$(", index) and not text.startswith("$((", index):
+        elif text.startswith("$(", index):
             end = _data_dollar_paren_end(text, index)
+            if text.startswith("$((", index):
+                body = text[index + 2:end - 1]
+                depth = 0
+                quote_in_body = None
+                escaped = False
+                fallback = False
+                for body_index, body_char in enumerate(body):
+                    if escaped:
+                        escaped = False
+                        continue
+                    if body_char == "\\" and quote_in_body != "'":
+                        escaped = True
+                        continue
+                    if quote_in_body is not None:
+                        if body_char == quote_in_body:
+                            quote_in_body = None
+                        continue
+                    if body_char in "'\"":
+                        quote_in_body = body_char
+                    elif body_char == "(":
+                        depth += 1
+                    elif body_char == ")" and depth:
+                        depth -= 1
+                        if depth == 0:
+                            # A newline is itself a shell command separator. Strip
+                            # only horizontal whitespace so `$((group)\n cmd)` is
+                            # recognized as command substitution, not arithmetic.
+                            suffix = body[body_index + 1:].lstrip(" \t")
+                            fallback = suffix.startswith((";", "&&", "||", "&", "|", "\n"))
+                            break
+                if not fallback:
+                    index += 3
+                    continue
             spans.append((index, end))
             index = end
             continue

@@ -247,12 +247,12 @@ def is_dangerous_rm(
         _find_cache = {}
     active = api["shell_text_without_heredoc_bodies"](command)
     lexer = shlex.shlex(
-        active.replace("\n", " ; "),
+        api["_shell_text_with_comments_blanked"](active).replace("\n", " ; "),
         posix=True,
         punctuation_chars=";&|()",
     )
     lexer.whitespace_split = True
-    lexer.commenters = "#"
+    lexer.commenters = ""
     try:
         tokens = list(lexer)
     except ValueError:
