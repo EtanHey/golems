@@ -40,8 +40,5 @@
     "path-to-regexp": "8.4.2",
     "qs": "6.15.2",
     "ws": "8.21.3"
-  },
-  "optionalDependencies": {
-    "@varlock/1password-plugin": "2.0.4"
   }
 }

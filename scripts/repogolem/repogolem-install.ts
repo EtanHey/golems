@@ -4,6 +4,7 @@ import { chmodSync, cpSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdt
 import { parse as parseYaml } from 'yaml';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 const start = '# >>> repogolem generated launchers >>>';
 const end = '# <<< repogolem generated launchers <<<';
@@ -167,7 +168,8 @@ export function runInstall(argv: string[]): number {
   const dependency = join(modules, 'varlock'); safePath(home, dependency);
   const stage = mkdtempSync(join(runtime, '.varlock-'));
   try {
-    const source = dirname(dirname(import.meta.resolve('varlock').replace(/^file:\/\//, '')));
+    const source = dirname(dirname(fileURLToPath(import.meta.resolve('varlock'))));
+    if (JSON.parse(readFileSync(join(source, 'package.json'), 'utf8')).version !== '1.21.1') throw new Error('varlock version must be 1.21.1');
     cpSync(source, stage, { recursive: true });
     function privateTree(path: string) {
       const stat = lstatSync(path);
