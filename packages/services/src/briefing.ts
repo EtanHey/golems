@@ -11,7 +11,6 @@
 
 import "@golems/shared/lib/load-env"; // MUST be first — loads .env for credentials
 
-import { sendNotification } from "@golems/shared/lib/telegram-direct";
 import {
   createDbClient,
   getRecentEmails,
@@ -61,7 +60,7 @@ async function getEmailDigest(): Promise<{
 }
 
 /**
- * Format email digest section for Telegram
+ * Format email digest section as text
  */
 function formatEmailDigest(digest: {
   urgent: Email[];
@@ -72,7 +71,7 @@ function formatEmailDigest(digest: {
   let msg = "📧 *Emails (24h)*\n\n";
 
   if (digest.urgent.length > 0) {
-    msg += "🔴 *Urgent* (already notified):\n";
+    msg += "🔴 *Urgent*:\n";
     for (const e of digest.urgent.slice(0, 3)) {
       msg += `   → ${e.subject?.slice(0, 40) || "No subject"}...\n`;
     }
@@ -111,7 +110,7 @@ function formatEmailDigest(digest: {
 }
 
 /**
- * Format subscription summary for Telegram (monthly)
+ * Format subscription summary as text (monthly)
  */
 function formatSubscriptionSummary(summary: SubscriptionSummary): string {
   const now = new Date();
@@ -147,7 +146,7 @@ function formatSubscriptionSummary(summary: SubscriptionSummary): string {
 }
 
 /**
- * Format TellerGolem spending section for Telegram (current month)
+ * Format TellerGolem spending section as text (current month)
  */
 async function formatTellerSummary(): Promise<string | null> {
   try {
@@ -239,14 +238,7 @@ async function sendBriefing() {
     console.log("[Briefing] Could not generate daily plan:", err);
   }
 
-  // Send via telegram-direct (works in hosted and local runtimes)
-  const sent = await sendNotification({
-    title: "Morning Briefing",
-    body: msg,
-    source: "briefing",
-  });
-  const endTime = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  console.log(`[${endTime}] ${sent ? "✅" : "❌"} Briefing ${sent ? "sent" : "FAILED to send"}!\n`);
+  console.log("[Briefing] Summary generated\n");
   console.log(msg);
 
   // Report run to dashboard
