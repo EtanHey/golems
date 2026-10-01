@@ -167,10 +167,10 @@ describe("generate resolves op:// refs", () => {
   });
 
   test("an op:// ref outside env/secrets is refused by key path", () => {
-    editConfig((c) => c.mcpDefinitions.context7.args.push("op://example-vault/example-item/stray"));
+    editConfig((c) => c.mcpDefinitions["example-docs"].args.push("op://example-vault/example-item/stray"));
     const r = generate();
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain("mcpDefinitions.context7.args.2");
+    expect(r.stderr).toContain("mcpDefinitions.example-docs.args.2");
     expect(opCalls()).toBe(0);
   });
 });

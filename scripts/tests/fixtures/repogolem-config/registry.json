@@ -3,9 +3,9 @@
   "coderabbit": null,
   "global": {
     "mcps": {
-      "context7": {
+      "example-docs": {
         "command": "npx",
-        "args": ["-y", "@upstash/context7-mcp@1.0.0"]
+        "args": ["-y", "example-docs-mcp@1.0.0"]
       }
     },
     "env": {
@@ -17,7 +17,7 @@
       "path": "/fixture/gits/alpha",
       "displayName": "Alpha",
       "emoji": "🅰️",
-      "mcps": ["context7"],
+      "mcps": ["example-docs"],
       "mcpsLight": [],
       "contexts": ["base", "tech/bun"],
       "secrets": {},
@@ -33,7 +33,7 @@
       "path": "~/Gits/beta",
       "displayName": "Beta",
       "mcps": [],
-      "mcpsLight": ["context7"],
+      "mcpsLight": ["example-docs"],
       "contexts": [],
       "secrets": {
         "FIXTURE_TOKEN": "op://Fixture/Beta/token"
@@ -48,7 +48,7 @@
     "gamma": {
       "path": "/fixture/gits/gamma",
       "description": "no clis, no secrets key, yes-like and number-like strings",
-      "mcps": ["context7", "browser-tools"],
+      "mcps": ["example-docs", "browser-tools"],
       "contexts": ["yes", "0123", "on"],
       "created": "2026-03-03T03:03:03Z",
       "launcher": "custom",
@@ -72,9 +72,9 @@
     }
   },
   "mcpDefinitions": {
-    "context7": {
+    "example-docs": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@1.0.0"]
+      "args": ["-y", "example-docs-mcp@1.0.0"]
     },
     "browser-tools": {
       "command": "npx",
