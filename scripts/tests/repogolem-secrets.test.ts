@@ -1,3 +1,4 @@
+import { isOpCredential } from '../repogolem/repogolem-check-refs';
 // repogolem-config.ts b1: `generate` is the ONLY place op:// refs resolve
 // (one `op run` per run), into secrets.env beside registry.json and
 // launchers.zsh: 0600 files in a 0700 dir outside every repo, each stamped
@@ -53,7 +54,7 @@ afterEach(() => {
 
 function run(args: string[], env: Record<string, string> = {}) {
   const base = { ...process.env, REPOGOLEM_SOURCE_SHA: "0".repeat(40), REPOGOLEM_OP_BIN: FAKE_OP, FAKE_OP_LOG: log };
-  for (const key of Object.keys(base)) if (key === 'OP_SESSION' || key === 'OP_SERVICE_ACCOUNT_TOKEN' || (key.startsWith('OP_SESSION_') && key !== 'OP_SESSION_TIMEOUT')) delete base[key];
+  for (const key of Object.keys(base)) if (isOpCredential(key)) delete base[key];
   delete base.REPOGOLEM_CONFIG;
   delete base.REPOGOLEM_HOST;
   const proc = Bun.spawnSync(["bun", CLI, ...args], { env: { ...base, ...env }, stdout: "pipe", stderr: "pipe" });
@@ -428,7 +429,7 @@ describe("generate --check-refs", () => {
   }
   test("metadata commands have biometric integration off and stdin at EOF", () => {
     expect(preflight({ FAKE_OP_REQUIRE_NONINTERACTIVE: "1" }, ["--no-prompt"]).code).toBe(0);
-    expect(preflight({ FAKE_OP_REQUIRE_DESKTOP: "1", OP_BIOMETRIC_UNLOCK_ENABLED: "false" }).code).toBe(0);
+    expect(preflight({ FAKE_OP_REQUIRE_NONINTERACTIVE: "1", OP_BIOMETRIC_UNLOCK_ENABLED: "true" }).code).toBe(0);
   });
   test("collects and checks global plus selected-machine override refs by title/id", () => {
     editConfig(c => {
@@ -508,4 +509,16 @@ test("check-refs preserves existing cache bytes and modes", () => {
     expect(readFileSync(join(out, name), "utf8")).toBe("unchanged-sentinel");
     expect(mode(join(out, name))).toBe(0o644);
   }
+});
+
+test('Bun emitter startup receives resolved refs but no op credentials', () => {
+  const preload = join(dir, 'preload.ts'), proof = join(dir, 'emitter.json');
+  writeFileSync(join(dir, 'bunfig.toml'), 'preload = ["./preload.ts"]\n');
+  writeFileSync(preload, `if (process.env.REPOGOLEM_REF_COUNT) require('node:fs').writeFileSync(process.env.PROOF_PATH, JSON.stringify({credential: Object.keys(process.env).some(k => k === 'OP_SERVICE_ACCOUNT_TOKEN' || k === 'OP_SESSION' || (k.startsWith('OP_SESSION_') && !['OP_SESSION_TIMEOUT', 'OP_SESSION_DELEGATION_ENABLED'].includes(k))), resolved: process.env.REPOGOLEM_REF_0?.startsWith('resolved:')}));`);
+  const base = { ...process.env }; for (const key of Object.keys(base)) if (isOpCredential(key)) delete base[key];
+  const resolver = join(REPO, 'scripts/repogolem/repogolem-secrets.ts');
+  const proc = Bun.spawnSync([process.execPath, '-e', `import {opResolver} from ${JSON.stringify(resolver)}; opResolver(${JSON.stringify(FAKE_OP)})(['op://example-vault/example-item/token']);`], {
+    cwd: dir, env: { ...base, OP_SESSION_fixture: 'SYNTHETIC', OP_SERVICE_ACCOUNT_TOKEN: 'SYNTHETIC_SERVICE', PROOF_PATH: proof }, stdout: 'pipe', stderr: 'pipe',
+  });
+  expect(proc.exitCode).toBe(0); expect(JSON.parse(readFileSync(proof, 'utf8'))).toEqual({ credential: false, resolved: true });
 });

@@ -40,7 +40,7 @@ In a new shell, the operator performs the first real generation:
 repogolem generate
 ```
 
-`generate` checks authorized 1Password vault/item/field names, then
+`generate` signs in to 1Password if needed, checks vault/item/field names, then
 resolves all references with a single `op run` before writing the cache.
 Set top-level `secrets: { backend: 1password }`; unknown backends fail closed.
 Existing configs with op refs and no backend default to 1password with one notice.
@@ -54,9 +54,13 @@ case-insensitive and section-aware. Exit 2 names missing/inaccessible references
 exit 3 means sign-in failed, was cancelled, or authorization remains unavailable.
 Both failures leave generated files untouched.
 
-Unsigned access exits 3 before resolution or output writes. This parent slice
-adds field verification; automatic sign-in arrives in the paired child change.
-Metadata calls close stdin and have 15-second bounds.
+When unsigned, generation requires an interactive terminal. Sign-in enables
+biometric integration, inherits terminal stdin/stderr for prompts, and always
+captures stdout. An empty response uses desktop authentication; exactly one
+`export OP_SESSION_<account>="<token>"` line supplies an account-specific session
+only to op children. Other output fails closed. The session is removed from the
+Bun emitter environment and cleared from the generator's child env afterwards.
+Sign-in has a 120-second bound; metadata closes stdin and has 15-second bounds.
 For automation, `repogolem generate --check-refs --no-prompt` disables biometric
 integration and never signs in: export a CLI session (`eval $(op signin)` on a
 manually added account) or `OP_SERVICE_ACCOUNT_TOKEN` beforehand.

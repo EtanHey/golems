@@ -27,7 +27,16 @@ export function fieldNames(data: unknown): Set<string> {
   return names;
 }
 
-export function checkRefs(refs: string[], opBin: string, noPrompt = false): number {
+export const OP_SESSION_CONFIG = new Set(['OP_SESSION_TIMEOUT', 'OP_SESSION_DELEGATION_ENABLED']);
+export const isOpCredential = (key: string) => key === 'OP_SERVICE_ACCOUNT_TOKEN' || key === 'OP_SESSION' || (key.startsWith('OP_SESSION_') && !OP_SESSION_CONFIG.has(key));
+
+// Shared child-only env: captured sessions never enter process.env or files.
+export function opEnvironment(noPrompt = false): Record<string, string | undefined> {
+  const session = Object.entries(process.env).some(([key, value]) => value && isOpCredential(key));
+  return { ...process.env, OP_BIOMETRIC_UNLOCK_ENABLED: noPrompt || !process.stdin.isTTY || session ? 'false' : 'true', OP_CACHE: 'false', OP_DEBUG: 'false' };
+}
+
+export function checkRefs(refs: string[], opBin: string, noPrompt = false, env = opEnvironment(noPrompt)): number {
   const groups = new Map<string, Map<string, string[]>>();
   for (const ref of refs) {
     const match = /^op:\/\/([^/]+)\/([^/]+)\/([^/]+(?:\/[^/]+)?)$/.exec(ref.split('?')[0]);
@@ -44,7 +53,6 @@ export function checkRefs(refs: string[], opBin: string, noPrompt = false): numb
     for (const [item, fields] of items) for (const field of fields) console.log(`    ${item}/${field}`);
   }
   if (refs.length === 0) { console.log('No op refs; nothing written.'); return 0; }
-  const env = { ...process.env, OP_BIOMETRIC_UNLOCK_ENABLED: noPrompt ? 'false' : 'true', OP_CACHE: 'false', OP_DEBUG: 'false' };
   const metadata = (args: string[], capture = false) => {
     try { return Bun.spawnSync([opBin, ...args], { env, stdin: 'ignore', stdout: capture ? 'pipe' : 'ignore', stderr: 'ignore', timeout: 15_000 }); }
     catch { throw new Error('cannot run 1Password CLI for preflight; nothing written'); }
@@ -52,10 +60,35 @@ export function checkRefs(refs: string[], opBin: string, noPrompt = false): numb
   const unsigned = () => {
     console.error(noPrompt
       ? '1Password is not signed in for non-interactive access (desktop integration is disabled); export a CLI session (eval $(op signin) on a manually added account) or OP_SERVICE_ACCOUNT_TOKEN, then retry --check-refs --no-prompt. Nothing written.'
-      : '1Password is not signed in or desktop authorization is unavailable; run op signin first, then retry --check-refs. Nothing written.');
+      : '1Password sign-in failed, was cancelled, or authorization is unavailable. Nothing written.');
     return 3;
   };
-  if (metadata(['whoami', '--format', 'json']).exitCode !== 0) return unsigned();
+  if (metadata(['whoami', '--format', 'json']).exitCode !== 0) {
+    if (noPrompt) return unsigned();
+    if (!process.stdin.isTTY) { console.error('1Password needs an interactive terminal; use --no-prompt with a CLI session or OP_SERVICE_ACCOUNT_TOKEN. Nothing written.'); return 3; }
+    // Capture both desktop (empty output) and account export protocols.
+    env.OP_BIOMETRIC_UNLOCK_ENABLED = 'true';
+    const accounts = metadata(['account', 'list', '--format', 'json'], true);
+    accounts.stdout?.fill(0);
+    const testTimeout = process.env.REPOGOLEM_OP_BIN && Number(process.env.REPOGOLEM_TEST_SIGNIN_TIMEOUT_MS);
+    const timeout = testTimeout && testTimeout > 0 && testTimeout < 120_000 ? testTimeout : 120_000;
+    try {
+      const signed = Bun.spawnSync([opBin, 'signin'], {
+        env, stdin: 'inherit', stdout: 'pipe', stderr: 'inherit', timeout,
+      });
+      try {
+        if (signed.exitCode !== 0 || signed.signal) return unsigned();
+        const output = signed.stdout.toString().replace(/\r?\n$/, '');
+        if (output) {
+          const match = /^export (OP_SESSION_[A-Za-z0-9_]+)="([^"\s]+)"$/.exec(output);
+          if (!match || OP_SESSION_CONFIG.has(match[1])) return unsigned();
+          env[match[1]] = match[2];
+          env.OP_BIOMETRIC_UNLOCK_ENABLED = 'false';
+        }
+      } finally { signed.stdout.fill(0); }
+    } catch { return unsigned(); }
+    if (metadata(['whoami', '--format', 'json']).exitCode !== 0) return unsigned();
+  }
   const listed = metadata(['vault', 'list', '--format', 'json'], true);
   if (listed.exitCode !== 0) {
     if (metadata(['whoami', '--format', 'json']).exitCode !== 0) return unsigned();

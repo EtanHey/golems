@@ -10,6 +10,15 @@
 #                  checks and before its writes (race regressions)
 set -euo pipefail
 [[ -n "${FAKE_OP_LOG:-}" ]] && printf '%s\n' "$*" >>"$FAKE_OP_LOG"
+if [[ "${1:-}" == signin ]]; then
+  [[ "${FAKE_OP_SIGNIN_FAILURE:-}" == fail || "${FAKE_OP_SIGNIN_FAILURE:-}" == cancel ]] && exit 1
+  [[ -n "${FAKE_OP_SIGNIN_OUTPUT:-}" ]] && { printf '%s\n' "$FAKE_OP_SIGNIN_OUTPUT"; exit 0; }
+  [[ -n "${FAKE_OP_STATE:-}" ]] && : >"$FAKE_OP_STATE"
+  [[ -n "${FAKE_OP_SIGNIN_HANG:-}" ]] && exec sleep 60
+  if [[ -n "${FAKE_OP_MANUAL:-}${FAKE_OP_EXPORT:-}${FAKE_OP_REQUIRE_SESSION:-}" ]]; then printf 'export OP_SESSION_fixture="%s"\n' "${FAKE_OP_TOKEN:-synthetic-token}"; fi
+  exit 0
+fi
+if [[ -n "${FAKE_OP_REQUIRE_SESSION:-}" && -f "${FAKE_OP_STATE:-}" && "${OP_SESSION_fixture:-}" != "${FAKE_OP_TOKEN:-synthetic-token}" ]]; then exit 7; fi
 if [[ "${1:-}" != run ]]; then
   [[ -n "${FAKE_OP_HANG:-}" ]] && exec sleep 60
   [[ -n "${FAKE_OP_REQUIRE_DESKTOP:-}" ]] && [[ "${OP_BIOMETRIC_UNLOCK_ENABLED:-}" != true ]] && exit 8

@@ -60,7 +60,7 @@ import { runInstall } from "./repogolem-install";
 import { readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
 import { collectRefs, opResolver, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
-import { checkRefs } from "./repogolem-check-refs";
+import { isOpCredential, checkRefs, opEnvironment } from "./repogolem-check-refs";
 
 const GENERATOR_ID = "golems/scripts/repogolem/repogolem-config.ts";
 const EXAMPLE_PATH = join(import.meta.dir, "config.example.yaml");
@@ -800,7 +800,7 @@ function runGenerate(argv: string[]) {
   const args = parseArgs(argv, ["check", "check-refs", "no-prompt", "help"], ["config", "out-dir", "home", "host", "secrets-from"]);
   if (args.help) {
     console.log("usage: repogolem generate [--config PATH] [--host HOST] [--check | --check-refs [--no-prompt]]");
-    console.log("--check-refs checks vault/item/field names, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Metadata calls are bounded to 15 seconds; unsigned access exits 3.");
+    console.log("--check-refs checks vault/item/field names, signs in if needed, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Metadata calls are bounded to 15 seconds; sign-in requires a terminal and is bounded to 120 seconds.");
     return 0;
   }
   if (args["no-prompt"] && !args["check-refs"]) fail("--no-prompt requires --check-refs");
@@ -832,20 +832,23 @@ function runGenerate(argv: string[]) {
   const generated = buildGenerated(configText, home, currentSourceSha(), host);
   assertSafeOutDir(outDir);
   const opBin = process.env.REPOGOLEM_OP_BIN || 'op';
+  const opEnv = opEnvironment();
   let secretsEnv: string;
   try {
     if (!args['secrets-from'] && generated.refs.length) {
       const { config: effective } = resolveConfig(configText, host);
       if (!effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');
-      const status = checkRefs(generated.refs, opBin);
+      const status = checkRefs(generated.refs, opBin, false, opEnv);
       if (status !== 0) return status;
     }
     const resolved = typeof args["secrets-from"] === "string"
       ? readTransferredSecrets(args["secrets-from"], generated.configSha, generated.machine, generated.refs)
-      : resolveRefs(generated.refs, opResolver(opBin));
+      : resolveRefs(generated.refs, opResolver(opBin, opEnv));
     secretsEnv = secretsEnvText(generated.secretsHeader, resolved);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
+  } finally {
+    for (const key of Object.keys(opEnv)) if (isOpCredential(key)) delete opEnv[key];
   }
 
   writeOutputsBound(outDir, {
