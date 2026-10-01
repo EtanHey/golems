@@ -1282,6 +1282,82 @@
       "stderr": "",
       "stdout": "e30="
     },
+    "issue480-hatch-literal-control": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-resolved-function-global-temp": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkIiwgInBhdGgiOiAiL3RtcC9xIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogIlg9L3Zhci90bXAvcHJpc3RpbmUtaGFybmVzcy1maXh0dXJlL3JlcG8vLndvcmt0cmVlcy93OyBmKCkgeyBkZWNsYXJlIC1nIFg9L3RtcC9xOyB9OyBmOyBXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSBnaXQgd29ya3RyZWUgYWRkIFwiJFhcIiBIRUFEIn0K"
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-seen-variable-control": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-unresolved-brace": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRYIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogInsgWD0vdG1wL3E7IFdFQVZFX0FMTE9XX1dUX01JR1JBVElPTj0xIGdpdCB3b3JrdHJlZSBhZGQgXCIkWFwiIEhFQUQ7IH0ifQo="
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-unresolved-eval": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRYIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogImV2YWwgJ1g9L3RtcC9xJzsgV0VBVkVfQUxMT1dfV1RfTUlHUkFUSU9OPTEgZ2l0IHdvcmt0cmVlIGFkZCBcIiRYXCIgSEVBRCJ9Cg=="
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-unresolved-local": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRYIn0sIHsidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRYIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogImYoKSB7IGxvY2FsIFg9L3RtcC9xOyBXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSBnaXQgd29ya3RyZWUgYWRkIFwiJFhcIiBIRUFEOyB9OyBmIn0K"
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-unresolved-process-substitution": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRYIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogImNhdCA8KCBYPS90bXAvcTsgV0VBVkVfQUxMT1dfV1RfTUlHUkFUSU9OPTEgZ2l0IHdvcmt0cmVlIGFkZCBcIiRYXCIgSEVBRCApIn0K"
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-unresolved-read": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRYIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogInJlYWQgWCA8PDwgL3RtcC9xOyBXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSBnaXQgd29ya3RyZWUgYWRkIFwiJFhcIiBIRUFEIn0K"
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-unresolved-subshell": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRYIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogIiggWD0vdG1wL3E7IFdFQVZFX0FMTE9XX1dUX01JR1JBVElPTj0xIGdpdCB3b3JrdHJlZSBhZGQgXCIkWFwiIEhFQUQgKSJ9Cg=="
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue480-hatch-unresolved-unset": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkICh1bnJlc29sdmVkKSIsICJwYXRoIjogIiRVTlNFVF9WQVIifV0sICJzZXNzaW9uX2lkIjogInByaXN0aW5lIiwgImN3ZCI6ICIvIiwgImhhdGNoIjogIldFQVZFX0FMTE9XX1dUX01JR1JBVElPTj0xIiwgImNvbW1hbmQiOiAiV0VBVkVfQUxMT1dfV1RfTUlHUkFUSU9OPTEgZ2l0IHdvcmt0cmVlIGFkZCBcIiRVTlNFVF9WQVJcIiBIRUFEIn0K"
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
     "issue481-stale-outer-brace-assignment": {
       "exit": 0,
       "files": {},

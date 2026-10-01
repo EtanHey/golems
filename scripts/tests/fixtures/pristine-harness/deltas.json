@@ -639,6 +639,78 @@
     "reason": "An unresolved inner reassignment selects the temporary target hit in the API capture."
   },
   {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue480-hatch-unresolved-brace",
+    "reason": "The migration hatch does not unlock a target left unresolved by brace-group assignment."
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue480-hatch-unresolved-eval",
+    "reason": "The migration hatch does not unlock a target left unresolved by eval assignment."
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "ec383513f8b6170fb13627e18c58efea193277c3072364675237246a42a53dd1",
+      "linux": "ec383513f8b6170fb13627e18c58efea193277c3072364675237246a42a53dd1"
+    },
+    "case": "issue480-hatch-unresolved-local",
+    "reason": "The migration hatch does not unlock a target left unresolved by function-local assignment."
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue480-hatch-unresolved-process-substitution",
+    "reason": "The migration hatch does not unlock a target left unresolved by process-substitution assignment."
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue480-hatch-unresolved-read",
+    "reason": "The migration hatch does not unlock a target left unresolved by read assignment."
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "3e003581960ec8e9f0359c107ae4cf3085cc7f2549dcd46f315fe1fa37b34fc4",
+      "linux": "3e003581960ec8e9f0359c107ae4cf3085cc7f2549dcd46f315fe1fa37b34fc4"
+    },
+    "case": "issue480-hatch-unresolved-subshell",
+    "reason": "The migration hatch does not unlock a target left unresolved by subshell assignment."
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "031457e852e8edef9f2f160fa4ebd7ede4449703b9f83e5cd6177622e31e45a2",
+      "linux": "031457e852e8edef9f2f160fa4ebd7ede4449703b9f83e5cd6177622e31e45a2"
+    },
+    "case": "issue480-hatch-unresolved-unset",
+    "reason": "The migration hatch does not unlock a target left unresolved by unset variable."
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "596b527ba2820b332be99fa6fc4b69bd5fef11912ff8e5b462f2221a213bc67b",
+      "linux": "596b527ba2820b332be99fa6fc4b69bd5fef11912ff8e5b462f2221a213bc67b"
+    },
+    "case": "issue480-hatch-resolved-function-global-temp",
+    "reason": "The migration hatch does not unlock a target that resolves to the temp path-class."
+  },
+  {
     "authority": "golems#460",
     "candidate_sha256": {
       "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
