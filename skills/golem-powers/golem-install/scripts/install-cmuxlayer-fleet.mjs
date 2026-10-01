@@ -3,7 +3,7 @@
 //
 // cmuxlayer (CX-2 G1) reads $CMUXLAYER_FLEET_CONFIG, else ~/.config/cmuxlayer/fleet.json;
 // absent means a generic install. A golems machine needs these values or its live
-// monitors in ~/.golems-zikaron are orphaned and the outbox drainer stops. An
+// monitors in ~/.golems-zikaron are orphaned. An
 // existing file is never touched, since it may carry a machine's own edits.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -13,12 +13,11 @@ import { fileURLToPath } from "node:url";
 export function golemsFleetConfig(home, { withWorktreeBootstrap = false } = {}) {
   const config = {
     coordinationDir: path.join(home, ".golems-zikaron"),
-    outbox: true,
+    outbox: false,
     outboxTitle: "golems outbox",
     seatRegistryPath: path.join(home, ".golems", "config.yaml"),
     mcpLauncher: path.join(home, ".golems", "bin", "cmuxlayer-mcp"),
     sleepGuardLabel: "com.golems.cmux-caffeinate",
-    notifyUrl: "http://127.0.0.1:3847/notify",
   };
   // cmuxlayer W3 (#807): golems supplies its worktree bootstrap. Opt-in only: a
   // cmuxlayer loader older than #857 rejects unknown keys and drops the WHOLE
