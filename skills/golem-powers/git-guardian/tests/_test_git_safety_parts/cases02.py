@@ -394,6 +394,74 @@ def test_go5_gap_false_positive_guards_stay_allowed(tmp_path):
         assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()) is None, command
 
 
+def test_issue460_remaining_executable_payload_shapes_are_blocked(tmp_path):
+    for destructive in ("git push --force origin main", "rm -rf ~"):
+        commands = (
+            f"cat <<EOF\n$(: ${{x#*)}}; {destructive})\nEOF",
+            f"cat <<EOF\n$(: ${{x##*)}}; {destructive})\nEOF",
+            f'echo "$(true # )\n{destructive})"',
+            f': $(true # )\n{destructive})',
+            f'git commit --dry-run -m "$((true); ({destructive}))"',
+            f'git commit --dry-run -m "$((true)\n({destructive}))"',
+            f"f() {{ {destructive}; }}; f",
+            f'eval "$(echo \'{destructive}\')"',
+            f'eval "$(echo \'{destructive}\' 2>/dev/null)"',
+            f'eval "$(echo \'{destructive}\' 1>&1)"',
+            f'eval "$(command echo \'{destructive}\')"',
+            f'eval "$(builtin echo \'{destructive}\')"',
+            f'eval "$(env echo \'{destructive}\')"',
+            f'eval "$(PAYLOAD=1 echo \'{destructive}\')"',
+            f'eval "$(printf %s \'{destructive}\')"',
+            f'eval "$(printf -- %s \'{destructive}\')"',
+            f'eval "$(echo -e \'\\x67it push --force origin main\')"',
+            f'eval "$(printf \'\\x67it push --force origin main\')"',
+            f'eval "$(printf \'\\u0067it push --force origin main\')"',
+            f'eval "$(printf %s \')\' >/dev/null; echo \'{destructive}\')"',
+            f"sh <<< '{destructive}'",
+            f"bash 2>/dev/null <<< '{destructive}'",
+            f"bash -s 2>/dev/null <<< '{destructive}'",
+            f"env bash <<< '{destructive}'",
+            f"command bash <<< '{destructive}'",
+            f"nice bash <<< '{destructive}'",
+            f"sudo bash <<< '{destructive}'",
+            f"env -S 'bash' <<< '{destructive}'",
+            f"exec bash <<< '{destructive}'",
+            f"time bash <<< '{destructive}'",
+            f"nohup bash <<< '{destructive}'",
+            f"bash - <<< '{destructive}'",
+            f"bash /dev/stdin <<< '{destructive}'",
+            f"bash /dev/fd/0 <<< '{destructive}'",
+            f"bash /proc/self/fd/0 <<< '{destructive}'",
+        )
+        for command in commands:
+            assert git_safety.dangerous_shell_reason(
+                command, cwd=str(tmp_path), env=_home_env()
+            ), command
+
+
+def test_issue460_payload_tightening_keeps_nonexecuted_and_safe_forms_allowed(tmp_path):
+    commands = (
+        "cat <<EOF\n$(: ${x:-)}; git status)\nEOF",
+        'echo "$(true\ngit status)"',
+        'echo "$((1 + 2))"',
+        "f() { git push --force origin main; }",  # definition is not invoked
+        'eval "$(ssh-agent -s)"',
+        "eval \"$(echo 'git status')\"",
+        "eval \"$(echo 'git push --force origin main' > review.txt)\"",
+        "eval \"$(echo 'git push --force origin main' 1>/dev/null)\"",
+        "eval \"$(echo 'git push --force origin main' 1>&2)\"",
+        "eval \"$(printf 'echo %s' 'git push --force origin main')\"",
+        "sh <<< 'git status'",
+        "bash -c 'cat' <<< 'git push --force origin main'",
+        "bash script.sh <<< 'git push --force origin main'",
+        "cat <<< 'git push --force origin main'",
+    )
+    for command in commands:
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env=_home_env()
+        ) is None, command
+
+
 def test_go5_gap_recursion_is_bounded_and_fails_closed(tmp_path):
     def nest(inner, depth):
         # Unquoted `eval eval … cmd`: each level peels one eval, no quoting growth.
@@ -511,5 +579,3 @@ def test_backticks_that_really_run_still_block(tmp_path):
         'echo "$(rm -rf ~)"',
     ):
         assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()), command
-
-

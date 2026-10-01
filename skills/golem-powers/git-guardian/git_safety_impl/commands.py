@@ -299,10 +299,14 @@ def _dangerous_git_reason(command: str, *, api: dict, _depth: int = 0) -> str | 
     if _depth > api['_MAX_WRAPPER_DEPTH']:
         return api['_wrapper_depth_reason']()
     def lex(shell_text: str) -> list[str]:
-        lexer = shlex.shlex(shell_text, posix=True, punctuation_chars=";&|()\n")
+        lexer = shlex.shlex(
+            api['_shell_text_with_comments_blanked'](shell_text),
+            posix=True,
+            punctuation_chars=";&|()\n",
+        )
         lexer.whitespace = " \t\r"
         lexer.whitespace_split = True
-        lexer.commenters = "#"
+        lexer.commenters = ""
         return list(lexer)
 
     try:

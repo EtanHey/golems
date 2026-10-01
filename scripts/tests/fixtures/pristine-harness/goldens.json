@@ -8837,6 +8837,60 @@
       "files": {},
       "stderr": "",
       "stdout": "eyJyZXN1bHQiOiBbInByaW50ZiAnJXMnICciXX0K"
+    },
+    "issue460-arithmetic-lookalike": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue460-arithmetic-newline-lookalike": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue460-comment-bare-substitution": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue460-comment-data-substitution": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue460-eval-substitution-output": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue460-invoked-function-body": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue460-param-pattern-longest": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue460-param-pattern-shortest": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue460-shell-here-string": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
     }
   }
 }
