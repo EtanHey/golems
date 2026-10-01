@@ -8,9 +8,9 @@ if ! typeset -f repoGolem >/dev/null 2>&1 && [[ -f "$HOME/.config/ralphtools/ral
   source "$HOME/.config/ralphtools/ralph.zsh"
 fi
 
-repoGolem alpha "/fixture/gits/alpha" context7
+repoGolem alpha "/fixture/gits/alpha" example-docs
 repoGolem beta "/home/fixture/Gits/beta" 
-repoGolem gamma "/fixture/gits/gamma" context7 browser-tools
+repoGolem gamma "/fixture/gits/gamma" example-docs browser-tools
 repoGolem 6pm-svc "/fixture/gits/6pm svc" figma-remote
 
 # Aliases (from funcAlias / launcherAliasPrefix in registry)
