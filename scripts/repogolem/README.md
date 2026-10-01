@@ -46,9 +46,6 @@ The repo-local 1Password varlock plugin uses one `op run --no-masking` batch;
 it preserves captured manual-account sessions, forces `OP_CACHE`/`OP_DEBUG` off,
 and never retries individual refs or loads the WASM SDK. Raw varlock output is
 captured privately and remapped into the existing `REPOGOLEM_SECRET_<sha>` cache.
-The upstream 1Password plugin is not used: its desktop auth drops manual
-sessions and may retry remaining refs after a batch error. BYO plugins use
-the repoGolem bulk adapter contract below.
 Telemetry disabled: `VARLOCK_TELEMETRY_DISABLED=1` and `DO_NOT_TRACK=1`; no varlock
 telemetry config or network request is created. Inherited varlock overrides are
 removed; `OP_SESSION_*` and the original `TMPDIR` reach the provider unchanged.

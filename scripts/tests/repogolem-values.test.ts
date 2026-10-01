@@ -124,10 +124,16 @@ test('copied CJS template runs outside node_modules with a hostile plugin pathna
 });
 test('npm export cannot escape its installed package directory',()=>{
   const root=join(dir,'node_modules/fixture-escape');require('node:fs').mkdirSync(root,{recursive:true});
-  writeFileSync(join(dir,'escape.cjs'),"throw Error('must never execute')");
+  writeFileSync(join(dir,'escape.cjs'),`const {plugin}=require('varlock/plugin-lib');plugin.name='escape-fixture';plugin.registerResolverFunction({name:'repoGolemBatch',argsSchema:{type:'array',arrayMinLength:1,arrayMaxLength:1},process(){return null;},resolve(){return JSON.stringify({TOKEN:'VALUES_CANARY',GRILL_SEED_DIR:'/home/fixture'});}});`);
   for(const entry of ['../../../escape.cjs','./link.cjs']){
     writeFileSync(join(root,'package.json'),JSON.stringify({name:'fixture-escape',exports:{'./plugin':entry}}));
     if(entry==='./link.cjs')require('node:fs').symlinkSync(join(dir,'escape.cjs'),join(root,'link.cjs'));
     expect(run('plugin:fixture-escape').code).toBe(2);expect(existsSync(out)).toBe(false);
   }
+});
+for(const extension of ['mjs','ts'])test(`BYO rejects ${extension} before executing adapter code`,()=>{
+  const plugin=join(dir,'rejected.'+extension),marker=join(dir,'adapter-loaded');
+  writeFileSync(plugin,"import {writeFileSync} from 'node:fs';writeFileSync(process.env.HOME+'/adapter-loaded','executed');throw Error('adapter executed');");
+  const result=run('plugin:'+plugin,undefined,{}, {env:{HOME:dir}});
+  expect(result.code).toBe(2);expect(existsSync(marker)).toBe(false);expect(result.text).toContain('not installed; nothing written');expect(existsSync(out)).toBe(false);
 });
