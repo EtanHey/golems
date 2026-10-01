@@ -142,6 +142,7 @@ record_current_stream() {
     WATCHDOG_LOG="$STREAM_DIR/watchdog.log"
     mkdir -p "$STREAM_DIR"
 
+    RECORDING_STARTED_EPOCH=$(date +%s)
     if ! start_chat_lurker; then
         log "ERROR: Chat lurker failed readiness; recording continues with retryable chat failure evidence"
     fi
@@ -186,6 +187,7 @@ record_current_stream() {
 
 LIVE_URL=""
 LIVE_PLATFORM=""
+RECORDING_STARTED_EPOCH=0
 
 log "=== Stream Watcher: ${CHANNEL} ==="
 log "Recording extension: .ts (native HLS mpegts)"
