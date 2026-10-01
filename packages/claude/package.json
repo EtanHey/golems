@@ -1,7 +1,7 @@
 {
   "name": "@golems/claude",
   "version": "1.0.0",
-  "description": "ClaudeGolem \u2014 persona and Claude CLI status plugin for the Golems ecosystem.",
+  "description": "ClaudeGolem — persona and Claude CLI status plugin for the Golems ecosystem.",
   "author": "EtanHey",
   "license": "Apache-2.0",
   "private": true,
@@ -17,9 +17,5 @@
   ],
   "exports": {
     "./*": "./src/*.ts"
-  },
-  "dependencies": {
-    "@golems/services": "workspace:*",
-    "@golems/shared": "workspace:*"
   }
 }

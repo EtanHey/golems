@@ -10,7 +10,7 @@ Before changing a package, read its `CLAUDE.md` if it has one.
 
 ## Key Relationships
 
-- **ClaudeGolem** registers one Telegram Composer, `claudeComposer` (`packages/claude/src/telegram-bot.ts`)
+- **ClaudeGolem** preserves persona guidance and Claude CLI status workflows
 - **CoachGolem** reads getStatus() from Recruiter and Teller (read-only)
 - **Services** (briefing) imports from Coach for daily plan generation
 - **Cloud Worker** remains a local/successor-host runnable scheduler; Railway service was deleted on 2026-07-05

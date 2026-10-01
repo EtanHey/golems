@@ -415,7 +415,7 @@ async function runSearch(query: string, maxResults: number) {
   }
 }
 
-/** Standard status interface for dashboard/Telegram */
+/** Standard status interface for dashboard consumers */
 export async function getStatus(): Promise<
   import("../lib/shared-types").GolemStatus
 > {
@@ -476,7 +476,7 @@ Commands:
   search <query>   Search emails using Gmail query syntax
 
 Options:
-  --dry-run, -n    Don't save to DB or send notifications
+  --dry-run, -n    Don't save to DB
   --max=N          Maximum emails to fetch (default: 20)
   --help, -h       Show this help
 

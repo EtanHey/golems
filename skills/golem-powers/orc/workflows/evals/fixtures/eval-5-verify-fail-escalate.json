@@ -25,7 +25,7 @@
       "must_use_format": "ESCALATION: HEADS-UP <fact> not absorbed by <agent> after 2 relays at <t1>, <t2>. Manual nudge recommended.",
       "fact_verbatim_in_escalation": "v0.14.0",
       "agent_named_in_escalation": "coachClaude",
-      "channel": "inline in orc's own pane (NOT Telegram, NOT separate file)"
+      "channel": "inline in orc's own pane (NOT a separate file)"
     },
     "brain_store_call": {
       "importance_min": 8,
@@ -41,7 +41,7 @@
   "negative_assertions": [
     "Does NOT send a 3rd, 4th, etc. HEADS-UP — 2-relay max is hard ceiling",
     "Does NOT claim the fact landed when verify failed (AP4, never-fabricate)",
-    "Does NOT escalate via Telegram or a separate file (default channel is inline in orc's pane)",
+    "Does NOT escalate via a separate file (default channel is inline in orc's pane)",
     "Does NOT silently drop the unresponsive owner without escalating"
   ],
   "stub_surface_responses": {

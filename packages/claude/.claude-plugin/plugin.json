@@ -1,7 +1,7 @@
 {
   "name": "claude-golem",
   "version": "1.0.0",
-  "description": "ClaudeGolem \u2014 persona and Claude CLI status plugin",
+  "description": "ClaudeGolem — persona and Claude CLI status plugin",
   "author": {
     "name": "Etan Heyman",
     "url": "https://github.com/EtanHey"
