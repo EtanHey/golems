@@ -31,7 +31,7 @@ function cleanupTestDirs() {
   }
 }
 
-// Mock content task (mirrors telegram-bot.ts types)
+// Synthetic content task
 interface ContentTask {
   id: string;
   topic: string;
@@ -49,7 +49,7 @@ interface ContentTask {
   error?: string;
 }
 
-// Local implementations for testing (same logic as telegram-bot.ts)
+// Local content task helpers for testing
 function createContentTask(topic: string, repo: string = "test-repo"): ContentTask {
   const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const task: ContentTask = {

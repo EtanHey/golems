@@ -29,24 +29,12 @@
       "retryOnFail": true,
       "maxTries": 2,
       "waitBetweenTries": 10000
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Trigger').item.json.chatId }}",
-        "additionalFields": {
-          "caption": "Rendered: {{ $json.compositionId }}\nDuration: {{ $json.durationMs }}ms"
-        }
-      },
-      "id": "send-video",
-      "name": "Send Video to Telegram",
-      "type": "n8n-nodes-base.telegram",
-      "position": [660, 300]
     }
   ],
   "connections": {
     "Render via Remotion": {
       "main": [
-        [{ "node": "Send Video to Telegram", "type": "main", "index": 0 }]
+        []
       ]
     }
   },

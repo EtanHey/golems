@@ -14,7 +14,7 @@ export interface PipelineRunLog {
   success: boolean;
   durationMs: number;
   qualityScore?: number;
-  userFeedback?: number; // 1-5 from Telegram reactions
+  userFeedback?: number; // 1-5 manually supplied feedback
   outputFormat?: string;
   error?: string;
 }
