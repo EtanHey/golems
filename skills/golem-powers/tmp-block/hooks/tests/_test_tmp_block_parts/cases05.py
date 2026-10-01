@@ -560,6 +560,56 @@ def test_unreadable_eval_or_source_invalidates_all_tracked_values(mutation):
 @pytest.mark.parametrize(
     "mutation",
     (
+        "eval 'true; X=/tmp/q'",
+        "eval 'Y=1; X=/tmp/q'",
+        'eval "true;X=/tmp/q"',
+        "eval 'read X' <<< /tmp/q",
+    ),
+)
+def test_static_compound_eval_invalidates_all_tracked_values(mutation):
+    """golems#481: eval bodies beyond literal assignments are opaque code."""
+    command = (
+        f"X={GITS}/golems/.worktrees/w; {mutation}; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+def test_literal_assignment_only_eval_keeps_unrelated_tracked_value():
+    command = (
+        f"X={GITS}/golems/.worktrees/w; eval Y=literal Z=other; "
+        + 'git worktree add "$X" HEAD'
+    )
+
+    assert_allowed(run_hook(bash_payload(command)))
+
+
+def test_select_assignment_invalidates_stale_outer_value():
+    command = (
+        f"X={GITS}/golems/.worktrees/w; "
+        + "select X in /tmp/q; do break; done <<< 1; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+def test_select_of_unrelated_name_keeps_tracked_value():
+    command = (
+        f"X={GITS}/golems/.worktrees/w; "
+        + "select Y in /tmp/q; do break; done <<< 1; "
+        + 'git worktree add "$X" HEAD'
+    )
+
+    assert_allowed(run_hook(bash_payload(command)))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
         "printf -v X %s /tmp/q",
         "printf -vX %s /tmp/q",
         'N=X; printf -v "$N" %s /tmp/q',

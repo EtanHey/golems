@@ -196,9 +196,27 @@ else:
     elif request.get('parsed'):
         tokens, cmd, segs, scopes = module._parse_bash(command)
         index = max(i for i, token in enumerate(tokens) if token == request['raw'])
-        variables = module._static_shell_variables_before(tokens, cmd, segs, segs[index])
+        variables = module._static_shell_variables_before(
+            *(
+                [tokens, cmd, segs]
+                + (
+                    [scopes]
+                    if 'scope_of' in __import__('inspect').signature(
+                        module._static_shell_variables_before
+                    ).parameters
+                    else []
+                )
+                + [segs[index]]
+            )
+        )
         if name == '_static_shell_variable_state_before':
-            args = [tokens, cmd, segs, segs[index]]
+            args = [tokens, cmd, segs] + (
+                [scopes]
+                if 'scope_of' in __import__('inspect').signature(
+                    module._static_shell_variable_state_before
+                ).parameters
+                else []
+            ) + [segs[index]]
         elif name == '_literal_array_values_before':
             args = [tokens, cmd, index, variables, {}]
         elif name == '_bounded_compound_value_sets_before':
