@@ -8,19 +8,13 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
 > Source: `golems/standards/fleet-canon.md`. Installed copy; edits here are drift.
 > Scope: golems-ecosystem work. More-specific repo law may tighten, never loosen, these contracts.
 
-1. **agent-routing** - Cursor or a Gemini gatherer gathers and verifies (Gemini for the shapes the
-   skill-creator eval marked helper-eligible; Cursor Auto-only as before). A gatherer never implements or reviews.
-   UX/UI work only: Claude (Opus) implements, Codex reviews. Everything else (refactors, splits,
-   deletions, tests, fixes, and mechanical work): Codex implements, Opus reviews.
-   The reviewer is always the other vendor.
-   The inner loop is sequential: the implementer goes first, and the reviewer is spawned or briefed only after
-   the implementer reports done (its DONE marker or report line; for a cloud implementer, PR head stable >=10 min
-   with checks finished). A reviewer never reads a half-finished diff. Security work:
-   Daybreak Blue implements, Opus reviews, plus a `codex-security` scan; flip back to
-   Opus implementing and Daybreak reviewing if the first security PRs show more review rounds or defects.
-   Claude leads orchestrate and route work through visible panes. Each PR body records its implementer,
-   review rounds, and bot/reviewer defects. Cursor, including `cursor-agent`, is Auto-only: never pass
-   a model flag or model field because pinned Cursor drains its subscription pool fast.
+1. **agent-routing** - Routing (who gathers / implements / reviews per work type, the inner-loop order,
+   the security route): see `/agent-routing` (SSOT). Role→model: `standards/model-roles.json`.
+   A gatherer never implements, reviews or decides. The reviewer is always the other vendor.
+   The inner loop is sequential: the reviewer starts only after the implementer reports done;
+   a reviewer never reads a half-finished diff. Leads route work through visible panes.
+   Each PR body records its implementer, review rounds and defects.
+   Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or field.
 
 2. **PR-loop** - Assigned lanes run branch -> commit -> push -> PR -> review -> merge.
    A DONE report without its PR URL is invalid; merge authority follows the approved lane contract.
@@ -34,13 +28,13 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    App-touching PRs merge only with an installed-proof release step in the same mission:
    done = the INSTALLED artifact carries the merge SHA, verified on the machine, not inferred.
 
-5. **models** - Default is the CURRENT top Opus at 1M for every fresh boot (today: Opus 5.5); bare
-   launchers carry the default pin. The pin tracks the newest Opus - it is not frozen to a
-   version, and it is never removed, because its job is to stop a prior session's model persisting.
-   Fable is used only via explicit per-invocation selection - a prior session's model never persists into the next.
-   Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly; Cursor is the Auto-only exception in rule 1.
+5. **models** - Role→model: `standards/model-roles.json`; routing: `/agent-routing` (SSOT).
+   Every fresh boot carries the default pin (the current top role from model-roles.json);
+   the pin is never removed. A prior session's model never persists into the next.
+   A non-default model is used only by explicit per-invocation selection.
+   Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly.
    Keep to <=2-3 concurrent Claude dispatches, staggered.
-   Usage is managed by default-pinning and dispatch-counting, not by usage-blocking buckets.
+   Usage is managed by pinning and dispatch-counting.
 
 6. **launchers** - repoGolem launchers default to `{repo}{Cli}` with hyphens stripped
    (`skill-creator` -> `skillcreatorClaude`); seat-registry `launcherPrefix` overrides are authoritative.
@@ -78,15 +72,16 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
 ## Overlap Reconciliation
 
 Canon becomes the one home for contract-shaped law. Skills, repo files, and installed prompts keep only pointers
-or operational detail after the trim wave.
+or operational detail after the trim wave. Routing is the exception: `/agent-routing` is the home for
+routing rules, and the canon points to it.
 
 | Contract | Current homes | Canon action | Later trim |
 |---|---|---|---|
-| agent-routing | `skills/golem-powers/agent-routing/SKILL.md`; global AGENTS/CLAUDE routing notes; fleet sprint briefs | Canon owns Cursor=gather, Codex=implement, Claude=orchestrate | Keep skill mechanics and adapters; trim repeated routing prose |
+| agent-routing | `/agent-routing`; `standards/model-roles.json`; global AGENTS/CLAUDE routing notes | `/agent-routing` owns routing rules; `model-roles.json` owns role→model; canon keeps pointers and non-routing fleet law | Trim repeated routing prose; keep mechanics and adapters in the skill |
 | PR-loop | `skills/golem-powers/pr-loop/SKILL.md`; collab templates; goal files | Canon owns branch-to-merge and PR URL validity | Keep procedural checklist in skill; goal files point to canon |
 | never-fabricate | `skills/golem-powers/never-fabricate/SKILL.md`; global verification rules; false-green/QA gates | Canon owns fleet evidence law | Keep detailed verification protocol in skill; installed prompts keep pointer |
 | done = user-visible | PR-loop deploy truth gate; `false-green-gate`; `qa-verdict-gate`; collab DONE markers | Canon owns the completion definition | Gates keep FP/FN mechanics; trim repeated "merged is not shipped" prose |
-| models | `model-pin-gate`; repoGolem launcher docs; launcher setup notes | Canon owns fleet model policy and no ad hoc model flags | Remove stale spawn-pin wording; gates enforce policy from one source |
+| models | `standards/model-roles.json`; `/agent-routing`; launcher setup notes | `model-roles.json` owns role→model; `/agent-routing` owns routing rules; canon keeps pointers and generic pin/dispatch policy | Remove repeated model names and assignments; gates enforce the generic policy |
 | launchers | `repogolem` skill; launcher scripts; W0.2 seat registry | Canon owns default launcher naming, registry override precedence, and skip-perms law | Registry validates names; skill keeps invocation examples |
 | monitors/collabs | `cmux-agents`; `collab-monitor`; `fleet-wrap`; collab workflow docs | Canon owns claim/guard/DONE/harvest-close, with cmux-agents folded | cmux-agents keeps pane mechanics only unless Etan splits the contract back out |
 | orchestration | `orc`; `large-plan`; fleet-wrap guidance; hub collabs | Canon owns cluster workflow and lead-routing law | Skills keep workflows; trim generic "ask before acting" loops |
