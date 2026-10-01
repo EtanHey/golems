@@ -186,24 +186,23 @@ try:
         from hashlib import sha256 as _impl_digest
         from importlib import import_module as _impl_import
         from importlib import util as _impl_util
+        from uuid import uuid4 as _impl_nonce
 
         _IMPL_ROOT = os.path.realpath(os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "tmp_block_impl"
         ))
         _IMPL_NAME = "_golems_tmp_block_impl_" + _impl_digest(
             _IMPL_ROOT.encode()
-        ).hexdigest()[:16]
+        ).hexdigest()[:16] + "_" + _impl_nonce().hex
         _previous_bytecode, sys.dont_write_bytecode = sys.dont_write_bytecode, True
         try:
-            if _IMPL_NAME not in sys.modules:
-                _spec = _impl_util.spec_from_file_location(
-                    _IMPL_NAME, os.path.join(_IMPL_ROOT, "__init__.py"),
-                    submodule_search_locations=[_IMPL_ROOT],
-                )
-                _package = _impl_util.module_from_spec(_spec)
-                sys.modules[_IMPL_NAME] = _package
-                _spec.loader.exec_module(_package)
-            _package = sys.modules[_IMPL_NAME]
+            _spec = _impl_util.spec_from_file_location(
+                _IMPL_NAME, os.path.join(_IMPL_ROOT, "__init__.py"),
+                submodule_search_locations=[_IMPL_ROOT],
+            )
+            _package = _impl_util.module_from_spec(_spec)
+            sys.modules[_IMPL_NAME] = _package
+            _spec.loader.exec_module(_package)
             _policy = _impl_import(_IMPL_NAME + ".policy")
             _runtime = _impl_import(_IMPL_NAME + ".runtime")
             for _module, _leaf in (

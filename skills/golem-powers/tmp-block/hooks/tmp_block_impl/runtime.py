@@ -1,4 +1,4 @@
-"""One live callback record in each canonical-path implementation package."""
+"""One live callback record in each facade load's implementation package."""
 
 
 class Runtime:
