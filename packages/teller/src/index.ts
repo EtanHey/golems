@@ -14,7 +14,7 @@ import "@golems/shared/lib/load-env";
 import { logEvent } from "@golems/shared/lib/event-log";
 import { recordPayment, trackSubscription } from "./db";
 import { categorizeExpense } from "./categorizer";
-import { detectPaymentFailure, sendPaymentAlert } from "./alerts";
+import { detectPaymentFailure, recordPaymentFailure } from "./alerts";
 import {
   generateMonthlyReport as generateMonthlyReportImpl,
   generateTaxReport as generateTaxReportImpl,
@@ -74,7 +74,7 @@ export async function processSubscriptionEmail(
   // 1. Check for payment failures first (high priority)
   const failure = await detectPaymentFailure(email);
   if (failure) {
-    await sendPaymentAlert(failure);
+    await recordPaymentFailure(failure);
     return; // Don't categorize payment failures as expenses
   }
 
@@ -136,7 +136,7 @@ export async function processSubscriptionEmail(
   );
 }
 
-/** Standard status interface for dashboard/Telegram */
+/** Standard status interface for dashboard */
 export async function getStatus(): Promise<import("@golems/shared/lib/shared-types").GolemStatus> {
   let summary = "Financial domain expert";
   try {
