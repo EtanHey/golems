@@ -42,8 +42,8 @@ export function checkRefs(refs: string[], opBin: string, noPrompt = false): numb
   };
   const unsigned = () => {
     console.error(noPrompt
-      ? "1Password is not signed in for non-interactive access; sign in separately, then retry --check-refs --no-prompt. Nothing written."
-      : "1Password is not signed in or desktop authorization is unavailable; unlock 1Password and retry --check-refs. Nothing written.");
+      ? "1Password is not signed in for non-interactive access (desktop integration is disabled); export a CLI session (eval $(op signin) on a manually added account) or OP_SERVICE_ACCOUNT_TOKEN, then retry --check-refs --no-prompt. Nothing written."
+      : "1Password is not signed in or desktop authorization is unavailable; run op signin first, then retry --check-refs. Nothing written.");
     return 3;
   };
   if (metadata(["whoami", "--format", "json"]).exitCode !== 0) return unsigned();

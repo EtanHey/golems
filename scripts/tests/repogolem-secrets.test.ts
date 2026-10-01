@@ -411,6 +411,19 @@ describe("generate --check-refs", () => {
     expect(missing.stdout + missing.stderr + unsigned.stdout + unsigned.stderr).not.toContain(canary);
     expect(existsSync(out)).toBe(false);
   });
+  for (const noPrompt of [false, true]) {
+    test(`unsigned ${noPrompt ? "automation" : "interactive"} preflight names terminal sign-in before retry`, () => {
+      const r = preflight({ FAKE_OP_UNSIGNED: "1", FAKE_OP_CANARY: canary }, noPrompt ? ["--no-prompt"] : []);
+      expect(r.code).toBe(3);
+      expect(r.stderr).toContain(noPrompt
+        ? "non-interactive access (desktop integration is disabled); export a CLI session (eval $(op signin) on a manually added account) or OP_SERVICE_ACCOUNT_TOKEN, then retry --check-refs --no-prompt"
+        : "run op signin first, then retry --check-refs");
+      expect(r.stderr).toContain("Nothing written.");
+      expect(r.stdout + r.stderr).not.toContain(canary);
+      expect(existsSync(out)).toBe(false);
+      expect(readFileSync(log, "utf8").trim()).toBe("whoami --format json");
+    });
+  }
   test("metadata commands have biometric integration off and stdin at EOF", () => {
     expect(preflight({ FAKE_OP_REQUIRE_NONINTERACTIVE: "1" }, ["--no-prompt"]).code).toBe(0);
     expect(preflight({ FAKE_OP_REQUIRE_DESKTOP: "1", OP_BIOMETRIC_UNLOCK_ENABLED: "false" }).code).toBe(0);
