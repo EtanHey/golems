@@ -234,3 +234,17 @@ test('isolated source resolution cannot auto-install a missing varlock core',asy
     expect(await r.exited).toBe(2);expect(requests).toBe(0);expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);
   }finally{registry.stop(true);}
 });
+test('isolated installer source refuses missing varlock without registry requests or cache',async()=>{
+  const source=join(home,'isolated-installer');cpSync(join(import.meta.dir,'../repogolem'),source,{recursive:true});
+  // Supply only YAML by absolute fixture import; no node_modules may hide Bun's missing-package fallback.
+  const installer=join(source,'repogolem-install.ts');writeFileSync(installer,readFileSync(installer,'utf8').replace("from 'yaml'",'from '+JSON.stringify(join(import.meta.dir,'../../node_modules/yaml/dist/index.js'))));
+  const probe=join(source,'install-probe.ts');
+  writeFileSync(probe,"import {runInstall} from './repogolem-install';try{process.exit(runInstall(['--config',process.env.FIXTURE_CONFIG,'--apply']));}catch(e){console.error(e.message);process.exit(2);}");
+  let requests=0;const registry=Bun.serve({hostname:'127.0.0.1',port:0,fetch(){requests++;return new Response('{}',{status:404});}});
+  try{
+    const r=Bun.spawn([process.execPath,probe],{env:{PATH:process.env.PATH,HOME:home,FIXTURE_CONFIG:config,BUN_CONFIG_REGISTRY:registry.url.toString(),BUN_INSTALL_CACHE_DIR:join(home,'.bun/install/cache')},stdout:'pipe',stderr:'pipe'});
+    const [code,stdout,stderr]=await Promise.all([r.exited,new Response(r.stdout).text(),new Response(r.stderr).text()]);
+    expect(code).toBe(2);expect(requests).toBe(0);expect(stdout+stderr).toContain('not installed');
+    expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);expect(existsSync(join(home,'.local/bin/repogolem'))).toBe(false);
+  }finally{registry.stop(true);}
+});
