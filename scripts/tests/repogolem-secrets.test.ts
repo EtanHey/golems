@@ -416,7 +416,7 @@ describe("generate --check-refs", () => {
       const r = preflight({ FAKE_OP_UNSIGNED: "1", FAKE_OP_CANARY: canary }, noPrompt ? ["--no-prompt"] : []);
       expect(r.code).toBe(3);
       expect(r.stderr).toContain(noPrompt
-        ? "non-interactive access; run op signin separately, then retry --check-refs --no-prompt"
+        ? "non-interactive access (desktop integration is disabled); export a CLI session (eval $(op signin) on a manually added account) or OP_SERVICE_ACCOUNT_TOKEN, then retry --check-refs --no-prompt"
         : "run op signin first, then retry --check-refs");
       expect(r.stderr).toContain("Nothing written.");
       expect(r.stdout + r.stderr).not.toContain(canary);

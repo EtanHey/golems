@@ -41,6 +41,7 @@ op signin && repogolem generate --check-refs && repogolem generate && repogolem 
 ```
 
 1Password desktop Touch ID only prompts after a terminal `op signin`.
+(With app integration off, use `eval $(op signin)` instead.)
 
 Run `repogolem generate --check-refs`, expect exit 0, then
 `generate`. It prints the selected machine's `vault/item/field` names grouped
