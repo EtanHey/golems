@@ -205,6 +205,7 @@ try:
             _spec.loader.exec_module(_package)
             _policy = _impl_import(_IMPL_NAME + ".policy")
             _runtime = _impl_import(_IMPL_NAME + ".runtime")
+            _variable_builtins = _impl_import(_IMPL_NAME + ".variable_builtins")
             _prefixes = _impl_import(_IMPL_NAME + ".prefixes")
             _words = _impl_import(_IMPL_NAME + ".words")
             _scope = _impl_import(_IMPL_NAME + ".scope")
@@ -213,6 +214,7 @@ try:
             for _module, _leaf in (
                 (_package, "__init__.py"), (_policy, "policy.py"),
                 (_runtime, "runtime.py"),
+                (_variable_builtins, "variable_builtins.py"),
                 (_prefixes, "prefixes.py"),
                 (_words, "words.py"),
                 (_scope, "scope.py"),
@@ -235,6 +237,8 @@ try:
             )
             _policy._temp_prefixes = _runtime.callbacks.temp_prefixes
             _policy.is_harness_scratchpad = is_harness_scratchpad
+            BuiltinScan = _variable_builtins.BuiltinScan
+            invalidate_builtin_targets = _variable_builtins.invalidate_builtin_targets
             for _name in ('_nearest_repo_root', '_literal_prefix_scan', '_has_literal_parent_component', '_literal_prefix_class', 'suggest_fixed_target', '_POSITIONAL_PARAM_RE'):
                 globals()[_name] = getattr(_prefixes, _name)
             for _name in ('_bounded_brace_values', '_bounded_word_values', 'resolve_target', '_SIMPLE_VAR_RE', '_MAX_STATIC_VALUES'):
@@ -1379,97 +1383,11 @@ def _static_shell_variable_state_before(
         ):
             invalidate_all()
 
-        # `read NAME` assigns without an `NAME=value` token. Its runtime value
-        # is intentionally not interpreted; seeing the mutation is sufficient
-        # to make the prior static value unusable.
-        if command_name == "read" and command_mutation_reaches:
-            pending_value = False
-            pending_assignment_target = False
-            parsing_options = True
-            saw_assignment_target = False
-            for index in command_args:
-                if not mutation_reaches_target(index):
-                    continue
-                token = tokens[index]
-                if token in {"<", "<<", "<<<"}:
-                    break
-                if pending_value:
-                    pending_value = False
-                    continue
-                if pending_assignment_target:
-                    invalidate_assignment_word(token)
-                    saw_assignment_target = True
-                    pending_assignment_target = False
-                    continue
-                if parsing_options:
-                    if token == "--":
-                        parsing_options = False
-                        continue
-                    if token.startswith("-"):
-                        for offset, option in enumerate(token[1:]):
-                            if option not in {"a", "d", "i", "n", "N", "p", "t", "u"}:
-                                continue
-                            attached = token[offset + 2 :]
-                            if option == "a":
-                                if attached:
-                                    invalidate_assignment_word(attached)
-                                    saw_assignment_target = True
-                                else:
-                                    pending_assignment_target = True
-                            elif not attached:
-                                pending_value = True
-                            break
-                        continue
-                    parsing_options = False
-                invalidate_assignment_word(token)
-                saw_assignment_target = True
-            if (
-                not saw_assignment_target
-                and not pending_assignment_target
-                and not pending_value
-            ):
-                invalidate_assignment_target("REPLY")
-
-        if command_name == "printf" and command_mutation_reaches:
-            for offset, index in enumerate(command_args):
-                token = tokens[index]
-                name = None
-                if token == "-v" and offset + 1 < len(command_args):
-                    name = tokens[command_args[offset + 1]]
-                elif token.startswith("-v") and len(token) > 2:
-                    name = token[2:]
-                if name:
-                    invalidate_assignment_word(name)
-                    break
-
-        if command_name in {"mapfile", "readarray"} and command_mutation_reaches:
-            pending_value = False
-            saw_assignment_target = False
-            for index in command_args:
-                token = tokens[index]
-                if token in {"<", "<<", "<<<", ">", ">>"}:
-                    break
-                if pending_value:
-                    pending_value = False
-                    continue
-                if token.startswith("-"):
-                    for offset, option in enumerate(token[1:]):
-                        if option not in {"d", "n", "O", "s", "u", "C", "c"}:
-                            continue
-                        if not token[offset + 2 :]:
-                            pending_value = True
-                        break
-                    continue
-                invalidate_assignment_word(token)
-                saw_assignment_target = True
-                break
-            if not saw_assignment_target and not pending_value:
-                invalidate_assignment_target("MAPFILE")
-
-        if command_name in {"for", "select"} and command_mutation_reaches and command_args:
-            name = tokens[command_args[0]]
-            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
-                invalidate_assignment_target(name)
+        invalidate_builtin_targets(BuiltinScan(
+            command_name, command_args, command_mutation_reaches, tokens,
+            mutation_reaches_target, invalidate_assignment_word,
+            invalidate_assignment_target,
+        ))
 
         chain_status = _chain_status_after(
             operator, chain_status, command_status
