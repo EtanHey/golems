@@ -37,12 +37,12 @@ The installed runtime and CLI are retained.
 In a new shell, the operator performs the first real generation:
 
 ```sh
-repogolem generate --check-refs
-repogolem generate
-repogolem generate --check
+op signin && repogolem generate --check-refs && repogolem generate && repogolem generate --check
 ```
 
-Run `repogolem generate --check-refs` (one Touch ID), expect exit 0, then
+1Password desktop Touch ID only prompts after a terminal `op signin`.
+
+Run `repogolem generate --check-refs`, expect exit 0, then
 `generate`. It prints the selected machine's `vault/item/field` names grouped
 by vault and checks vault/item existence only. It uses one metadata item-list
 call per vault, matching item titles or IDs; it never fetches item details,
