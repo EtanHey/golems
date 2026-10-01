@@ -55,6 +55,23 @@ def test_callbacks_remain_live_in_two_copies(tmp_path, registered, seam):
             a._temp_prefixes, b._temp_prefixes = lambda: set(), lambda: {"/w7-temp"}
         assert a.find_temp_targets("Write", {"file_path": path}) == []
         assert b.find_temp_targets("Write", {"file_path": path}) == [("Write", path, 0)]
+        for name in ("harness_paths", "shell_parse"):
+            sys.modules.pop(name, None)
+        spec = importlib.util.spec_from_file_location("callback_reentrant", a.__file__)
+        again = importlib.util.module_from_spec(spec)
+        if registered:
+            sys.modules[spec.name] = again
+        spec.loader.exec_module(again)
+        assert again._policy is a._policy
+        assert again._runtime is a._runtime
+        if seam == "classifier":
+            again.in_temp_class = lambda _: False
+        else:
+            again._temp_prefixes = lambda: set()
+        assert again.find_temp_targets("Write", {"file_path": path}) == []
+        assert b.find_temp_targets("Write", {"file_path": path}) == [("Write", path, 0)]
+        assert again._literal_prefix_class(path + "$UNSET", None) == "outside"
+        assert b._literal_prefix_class(path + "$UNSET", None) == "temp"
     finally:
         for name in set(sys.modules) - saved_modules.keys():
             if name.startswith(("_golems_", "callback_")) or name in ("harness_paths", "shell_parse"):
