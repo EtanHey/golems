@@ -24,18 +24,36 @@ test('agent-routing evals cover cheap recall, judgment deletion and visual gathe
   assert.match(text, /high-stakes history only/);
 });
 
-test('review routing follows canon exceptions and waits for implementer DONE', () => {
-  const text = read('skills/golem-powers/agent-routing/SKILL.md').split('## Review routing')[1];
-  assert.match(text, /canon #1/);
-  assert.match(text, /UX\/UI.*`claude.judgment` implements.*`codex.implement`/);
-  assert.match(text, /Security.*Daybreak Blue implements.*`claude.judgment`.*`codex-security`/);
-  assert.match(text, /Everything else.*`codex.implement` implements.*`claude.judgment`/);
-  assert.match(text, /only after.*implementer.*DONE/);
+test('routing SSOT owns the work table, sequential review and dispatch policy', () => {
+  const skill = read('skills/golem-powers/agent-routing/SKILL.md');
+  assert.ok(skill.indexOf('## Routing rules (SSOT)') < skill.indexOf('## Model roles'));
+  assert.doesNotMatch(skill, /^## Review routing$/m);
+  const text = skill.split('## Routing rules (SSOT)')[1]?.split('## Model roles')[0];
+  assert.ok(text, 'routing SSOT section is required');
+  assert.match(text, /single source of truth for fleet routing/);
+  assert.match(text, /\| UX\/UI \| `claude.judgment` \| Codex \(`codex.implement`\)/);
+  assert.match(text, /\| Security \| `codex.security` \| `claude.judgment` \|.*`codex-security` deep scan per security PR/);
+  assert.match(text, /\| Everything else.*\| `codex.implement` \| `claude.judgment` \|/);
+  assert.match(text, /only after.*implementer reports done/);
+  assert.match(text, /DONE marker or report line/);
+  assert.match(text, /PR head stable.*10 min.*checks finished/);
   assert.match(text, /LEAD routes the reviewer/);
-  const e = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json')).evals.find(e => e.id === 46);
-  assert.ok(e?.expected_output.includes('claude.judgment'));
-  assert.ok(e?.expected_output.includes('codex.implement'));
-  assert.ok(e?.assertions.some(a => a.type === 'behavioral' && a.text.includes('DONE')));
+  assert.match(text, /worker never starts its own/i);
+  assert.match(text, /escalation path, not a gate/);
+  assert.match(text, /`\/pr-loop` bot and PR reviewers are separate/);
+  assert.match(text, /`\/collab-monitor`/);
+  assert.match(text, /Auto-only.*never pass a model flag or model field/);
+  assert.match(text, /Every non-Cursor Agent\/Workflow\/Task spawn pins its model explicitly/);
+  assert.match(text, /claude.judgment.*1M/);
+  assert.match(text, /pin is never removed/);
+  assert.match(text, /≤2–3 concurrent Claude dispatches, staggered/);
+  assert.doesNotMatch(text, /flip back to/);
+  const evals = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json')).evals;
+  for (const [id, role] of [[46, 'claude.judgment'], [47, 'codex.security'], [48, 'lead'], [49, 'codex.implement']]) {
+    const e = evals.find(e => e.id === id);
+    assert.ok(e?.expected_output.includes(role), `eval ${id} covers ${role}`);
+    assert.ok(e?.assertions.some(a => a.type === 'negative'), `eval ${id} has a negative assertion`);
+  }
 });
 
 test('large-plan generated phases and authored templates retain config-driven staffing', () => {
