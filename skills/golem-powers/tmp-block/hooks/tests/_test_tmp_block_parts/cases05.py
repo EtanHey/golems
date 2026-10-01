@@ -565,5 +565,3 @@ def test_worktree_hatch_keeps_resolved_in_convention_targets_allowed(tmp_path, c
 
     assert_allowed(proc)
     assert not ledger.exists(), "an in-convention target does not consume the hatch"
-
-
