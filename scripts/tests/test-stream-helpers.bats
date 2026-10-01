@@ -408,7 +408,7 @@ SH
     [ "$output" = "server transcript" ]
 }
 
-@test "transcribe_segment_with_fallback: queues Telegram and fails when cli and server both fail" {
+@test "transcribe_segment_with_fallback: records failure when cli and server both fail" {
     mkdir -p "$TMPDIR_/bin"
     cat > "$TMPDIR_/bin/whisper-cli" <<'SH'
 #!/bin/bash
@@ -423,16 +423,13 @@ SH
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_RETRY_SLEEP_BASE=0 \
-    STALKER_TELEGRAM_QUEUE_DIR="$TMPDIR_/telegram-queue" \
     STALKER_WHATSAPP_QUEUE_DIR="$TMPDIR_/whatsapp-queue" \
     run transcribe_segment_with_fallback "$TMPDIR_/segment.wav" "$TMPDIR_/model.bin" 9 "$TMPDIR_"
 
     [ "$status" -ne 0 ]
     [ -f "$TMPDIR_/transcription-failures.log" ]
     grep -q "segment 9 transcription failed permanently" "$TMPDIR_/transcription-failures.log"
-    [ "$(find "$TMPDIR_/telegram-queue" -type f | wc -l | tr -d ' ')" = "1" ]
     [ ! -d "$TMPDIR_/whatsapp-queue" ]
-    grep -q '"title": "Stalker Transcription Failure"' "$(find "$TMPDIR_/telegram-queue" -type f | head -1)"
 }
 
 @test "notify_stalker_whatsapp: tries canonical 8741 and fallback bridge endpoints before queueing" {
