@@ -323,7 +323,7 @@ test("routing check accepts the pointer canon and rejects historical master's as
 
 test("routing check covers model names, assignments, clause boundaries and generic laws", () => {
   const { canonPath, installedPath } = makeFixture();
-  for (const text of ["Opus 5.5", "Sonnet", "Haiku", "Fable", "Sol", "Luna", "Terra", "Daybreak", "Blue model", "model: Blue", "gpt-6.1", "claude-opus-5", "claude-sonnet-5", "claude-haiku-5", "claude-fable-5", "Codex implements", "Claude reviews", "Cursor implementer", "Gemini reviewer", "Reviewer: Codex", "Blue reviews", "Codex\n  implements"]) {
+  for (const text of ["Opus 5.5", "Sonnet", "Haiku", "Fable", "Sol", "Luna", "Terra", "Daybreak", "Blue model", "model: Blue", "gpt-6.1", "claude-opus-5", "claude-sonnet-5", "claude-haiku-5", "claude-fable-5", "Codex implements", "Claude reviews", "Cursor implementer", "Gemini reviewer", "Reviewer: Codex", "Blue reviews", "Codex\n  implements", "implementation: Claude", "Codex implement UX", "Claude implementing", "review by Codex", "Implementation goes to Codex", "Codex does the implementation", "Codex reviewers …"]) {
     writeFileSync(canonPath, `${CANON_START}\n${text}\n${CANON_END}`);
     expect(lintCanonDrift({ canonPath, installedPath, check: true }).exitCode, text).toBe(1);
   }

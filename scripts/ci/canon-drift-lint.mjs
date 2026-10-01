@@ -159,7 +159,7 @@ export function scanRouting(text, filePath, offset = 0) {
   // Semicolons, sentence ends and blank lines bound a clause; line wrapping does not.
   for (const clause of text.matchAll(/[^;.!?\n]+(?:\n(?![ \t]*\n)[^;.!?\n]+)*/g)) {
     const actor = /\b(?:Claude|Codex|Cursor|Gemini|Opus|Daybreak|Blue)\b/i.exec(clause[0]);
-    if (actor && /\b(?:implements|reviews|implementer|reviewer)\b/i.test(clause[0])) {
+    if (actor && /\b(?:implement\w*|review\w*)\b/i.test(clause[0])) {
       add(clause.index + actor.index);
     }
   }
