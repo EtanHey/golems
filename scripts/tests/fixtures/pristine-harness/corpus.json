@@ -11474,5 +11474,15 @@
     "id": "issue491-control-launcher-after-ansi-c-quote",
     "target": "git-guardian",
     "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo $'a\\\\'b'; bash <(echo git push --force origin master)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue425-git-guardian-oversized-command",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"{ISSUE425_LONG_WORD}\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue425-tmp-block-oversized-command",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"{ISSUE425_LONG_WORD}\"},\"session_id\":\"pristine\"}"
   }
 ]

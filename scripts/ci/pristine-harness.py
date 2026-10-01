@@ -549,6 +549,9 @@ def make_fixture(scratch):
 
 def materialize(value, scratch):
     if isinstance(value, str):
+        value = value.replace(
+            "{ISSUE425_LONG_WORD}", "printf %s " + "a" * 32768
+        )
         for token, path in (("{REPO}", scratch / "repo"),
                             ("{WORKTREE}", scratch / "repo/.worktrees/lane"),
                             ("{NESTED}", scratch / "repo/docs.local/clone"),

@@ -9,8 +9,10 @@ real path and ignore whatever the main checkout holds.
 import importlib.util
 import json
 import os
+import signal
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 HOOK = Path(__file__).resolve().parent.parent / "pre_tool_use.py"
@@ -157,7 +159,11 @@ def test_wrapper_depth_matrix_blocks_through_copied_hook_and_fail_open_launcher(
                     kind, depth, tail, result.stdout, result.stderr
                 )
                 if depth > 64:
-                    assert "wrapper nesting exceeds 64" in json.loads(result.stdout)["reason"]
+                    reason = json.loads(result.stdout)["reason"]
+                    if len(command.encode("utf-8")) > 32 * 1024:
+                        assert "command too large for the policy parser; split it" in reason
+                    else:
+                        assert "wrapper nesting exceeds 64" in reason
                 assert "golems-fail-open" not in result.stderr
     assert not (guardian / "git_safety_impl" / "__pycache__").exists()
 
@@ -291,6 +297,148 @@ def test_issue491_data_false_positives_allow_and_real_controls_block_through_cop
         result = _run_copied_hook(hook, launcher, other_cwd, env, command)
         assert result.returncode == 2, (command, result.stdout, result.stderr)
         assert "golems-fail-open" not in result.stderr
+
+
+def test_issue425_oversized_command_denies_quickly_and_value_free(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = "echo '" + ("x" * (32 * 1024)) + "'"
+    started = __import__("time").perf_counter()
+    result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+    elapsed = __import__("time").perf_counter() - started
+    assert result.returncode == 2, result.stdout + result.stderr
+    reason = json.loads(result.stdout)["reason"]
+    assert "command too large for the policy parser; split it" in reason
+    assert "write the content to a file and pass it by path" in reason
+    assert "xxxxx" not in result.stdout + result.stderr
+    assert elapsed < 3, f"oversized-command deny took {elapsed:.2f}s"
+
+
+def test_issue425_worker_bypass_does_not_skip_the_size_bound(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = "echo '" + ("x" * (32 * 1024)) + "'"
+    result = _run_copied_hook(
+        hook,
+        launcher,
+        other_cwd,
+        {**env, "CLAUDE_WORKER": "1"},
+        command,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "command too large for the policy parser; split it" in json.loads(result.stdout)["reason"]
+
+
+def test_issue425_large_under_limit_quoted_heredoc_keeps_policy(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = "cat > docs.local/fixture.txt <<'EOF'\n" + ("x" * (24 * 1024)) + "\nEOF"
+    result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_issue425_lone_surrogate_denies_in_normal_and_worker_paths(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    surrogate = "\ud800"
+    commands = (
+        f"echo x > /t''mp/r489q # {surrogate}",
+        f"git worktree add /t''mp/r489wt HEAD # {surrogate}",
+    )
+    for command in commands:
+        for worker in (False, True):
+            result = _run_copied_hook(
+                hook,
+                launcher,
+                other_cwd,
+                {**env, **({"CLAUDE_WORKER": "1"} if worker else {})},
+                command,
+            )
+            assert result.returncode == 2, (
+                command,
+                worker,
+                result.stdout,
+                result.stderr,
+            )
+            assert "policy parser" in json.loads(result.stdout)["reason"]
+            assert "golems-fail-open" not in result.stderr
+
+
+def test_issue425_adversarial_under_bound_answers_before_host_timeout(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    command = ""
+    unit = "bash <(echo a); "
+    while len((command + unit).encode("utf-8")) <= 32 * 1024 - 64:
+        command += unit
+    started = __import__("time").perf_counter()
+    result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+    elapsed = __import__("time").perf_counter() - started
+    assert result.returncode in (0, 2), result.stdout + result.stderr
+    if result.returncode == 2:
+        assert "policy evaluation exceeded its time budget" in json.loads(result.stdout)["reason"]
+    assert elapsed < 3.5, f"under-bound adversarial command took {elapsed:.2f}s"
+
+
+def test_issue425_deadline_alarm_is_disarmed_and_handler_restored():
+    spec = importlib.util.spec_from_file_location("pre_tool_use_deadline", HOOK)
+    loaded = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loaded)
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    try:
+        with loaded.policy_evaluation_deadline(0.01):
+            time.sleep(0.05)
+        raise AssertionError("policy deadline did not fire")
+    except loaded.PolicyEvaluationDeadlineExceeded:
+        pass
+    assert signal.getsignal(signal.SIGALRM) == previous_handler
+    remaining, interval = signal.getitimer(signal.ITIMER_REAL)
+    assert remaining == 0
+    assert interval == 0
+    time.sleep(0.02)
+
+
+def test_issue425_deadline_cannot_be_swallowed_by_policy_exception_handlers():
+    spec = importlib.util.spec_from_file_location("pre_tool_use_deadline_base", HOOK)
+    loaded = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loaded)
+    try:
+        with loaded.policy_evaluation_deadline(0.01):
+            try:
+                time.sleep(0.05)
+            except Exception:
+                pass
+        raise AssertionError("broad policy exception handler swallowed the deadline")
+    except loaded.PolicyEvaluationDeadlineExceeded:
+        pass
+
+
+def test_issue425_missing_policy_dependency_keeps_import_failure_deny(tmp_path):
+    guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    (guardian.parent / "_shared" / "shell_parse.py").unlink()
+    started = time.perf_counter()
+    result = _run_copied_hook(hook, launcher, other_cwd, env, "echo safe")
+    elapsed = time.perf_counter() - started
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "security policy unavailable" in json.loads(result.stdout)["reason"]
+    assert "golems-fail-open" not in result.stderr
+    assert elapsed < 3.5
+
+
+def test_issue425_deadline_uses_specific_value_free_reason(tmp_path):
+    guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    shell = guardian / "git_safety_impl" / "shell.py"
+    with shell.open("a") as handle:
+        handle.write(
+            "\nimport time as _deadline_test_time\n"
+            "def dangerous_shell_reason(command, *, cwd=None, env=None, _depth=0, api=None):\n"
+            "    _deadline_test_time.sleep(4)\n"
+            "    return None\n"
+        )
+    started = time.perf_counter()
+    result = _run_copied_hook(hook, launcher, other_cwd, env, "echo safe")
+    elapsed = time.perf_counter() - started
+    assert result.returncode == 2, result.stdout + result.stderr
+    reason = json.loads(result.stdout)["reason"]
+    assert "policy evaluation exceeded its time budget" in reason
+    assert "deadline_test" not in result.stdout + result.stderr
+    assert "golems-fail-open" not in result.stderr
+    assert elapsed < 3.5
 
 
 def test_second_policy_parse_error_is_value_free_red(monkeypatch):

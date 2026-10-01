@@ -8963,6 +8963,18 @@
       "files": {},
       "stderr": "",
       "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "issue425-git-guardian-oversized-command": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
+    },
+    "issue425-tmp-block-oversized-command": {
+      "exit": 0,
+      "files": {},
+      "stderr": "",
+      "stdout": "e30="
     }
   }
 }
