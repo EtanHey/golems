@@ -184,6 +184,7 @@ test('installed Bun CLI resolves through packaged varlock from an unrelated cwd'
   writeFileSync(config, readFileSync(config, 'utf8') + 'projects:\n  fixture:\n    path: /home/fixture\n    clis: [codex]\n    secrets:\n      TOKEN: op://example-vault/example-item/token\n');
   expect(run().code).toBe(0);
   const runtime = join(home, '.config/repogolem/runtime');
+  expect(readFileSync(join(home,'.local/bin/repogolem'),'utf8')).toContain('exec bun --no-install');
   expect(JSON.parse(readFileSync(join(runtime,'node_modules/varlock/package.json'),'utf8')).version).toBe('1.21.1');
   expect(existsSync(join(runtime,'repogolem-1password-plugin.ts'))).toBe(true);
   const env = { ...process.env, HOME: home, REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'), REPOGOLEM_SOURCE_SHA: '0'.repeat(40) };
