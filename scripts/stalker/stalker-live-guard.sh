@@ -53,15 +53,6 @@ log() {
   printf '[live-guard %s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "$LOG_FILE"
 }
 
-notify() {
-  local title="$1"
-  local body="$2"
-  curl -fsS -X POST http://localhost:3847/notify \
-    -H "Content-Type: application/json" \
-    -d "$(jq -n --arg title "$title" --arg body "$body" '{title:$title, body:$body, priority:"default"}')" \
-    >/dev/null 2>&1 || true
-}
-
 watcher_pids() {
   pgrep -f "stream-watcher.sh ${CHANNEL} ${QUALITY}" || true
 }
@@ -159,7 +150,6 @@ restart_watcher() {
 
   log "RESTART: $reason"
   write_diagnostics "$reason"
-  notify "Stalker watcher restart" "$reason"
 
   ensure_launchd_loaded
   launchctl kickstart -k "$SERVICE" 2>>"$LOG_FILE" || launchctl start "$LABEL" 2>>"$LOG_FILE" || true
@@ -181,7 +171,6 @@ restart_watcher() {
   fi
 
   log "ERROR: watcher still absent after launchd and direct fallback"
-  notify "Stalker watcher failed" "Watcher absent after restart attempts; see $LOG_FILE"
 }
 
 LAST_RESTART_EPOCH=0
