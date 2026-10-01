@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 AGENTS = Path(__file__).resolve().parents[1] / "agents"
+SKILLS = Path(__file__).resolve().parents[3]
 VALID_MODES = {"context", "stats", "injections"}
 CALL = re.compile(r"\b(?:mcp__brainlayer__)?brain_recall\s*\(([^)]*)\)", re.S)
 MODE = re.compile(r"\bmode\s*[:=]\s*([\"'])((?:(?!\1).)*)\1", re.S)
@@ -24,7 +25,9 @@ def test_mode_scanner_recognizes_qualified_and_multiline_calls(mode):
 
 
 def test_all_managed_agent_recall_modes_are_valid():
-    for path in AGENTS.rglob("*.md"):
+    for path in SKILLS.rglob("*.md"):
+        if "agents" not in path.relative_to(SKILLS).parts:
+            continue
         text = path.read_text()
         invalid = set(recall_modes(text)) - VALID_MODES
         assert not invalid, f"{path.name}: unsupported recall modes {sorted(invalid)}"
