@@ -5,6 +5,7 @@ import { parse as parseYaml } from 'yaml';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installedVarlock } from './repogolem-varlock-package';
 import { isDeepStrictEqual } from 'node:util';
 const start = '# >>> repogolem generated launchers >>>';
 const end = '# <<< repogolem generated launchers <<<';
@@ -168,7 +169,7 @@ export function runInstall(argv: string[]): number {
   const dependency = join(modules, 'varlock'); safePath(home, dependency);
   const stage = mkdtempSync(join(runtime, '.varlock-'));
   try {
-    const source = dirname(dirname(fileURLToPath(import.meta.resolve('varlock'))));
+    const source = installedVarlock(dirname(fileURLToPath(import.meta.url)));
     if (JSON.parse(readFileSync(join(source, 'package.json'), 'utf8')).version !== '1.21.1') throw new Error('varlock version must be 1.21.1');
     cpSync(source, stage, { recursive: true });
     function privateTree(path: string) {
@@ -181,11 +182,11 @@ export function runInstall(argv: string[]): number {
     rmSync(dependency, { recursive: true, force: true }); renameSync(stage, dependency);
   } finally { rmSync(stage, { recursive: true, force: true }); }
   const bundle = join(runtime, 'repogolem-cli.js'); safePath(home, bundle);
-  const build = Bun.spawnSync(['bun', 'build', join(import.meta.dir, 'repogolem-config.ts'), '--target=bun', '--outfile', bundle], { stdout: 'pipe', stderr: 'pipe' });
+  const build = Bun.spawnSync(['bun', '--no-install', 'build', join(import.meta.dir, 'repogolem-config.ts'), '--target=bun', '--outfile', bundle], { stdout: 'pipe', stderr: 'pipe' });
   if (build.exitCode !== 0) throw new Error('CLI bundle failed; retry install or rollback; shell and seats unchanged');
   chmodSync(bundle, 0o600);
   const bin = join(home, '.local/bin/repogolem'); safePath(home, bin);
-  atomic(bin, `#!/bin/sh\nexec bun ${quote(bundle)} "$@"\n`); chmodSync(bin, 0o700);
+  atomic(bin, `#!/bin/sh\nexec bun --no-install ${quote(bundle)} "$@"\n`); chmodSync(bin, 0o700);
   if (seatTarget !== config) atomic(seatTarget, seatText);
   atomic(shell, after, state.shellMode);
   mkdirSync(dirname(seats), { recursive: true, mode: 0o700 });
