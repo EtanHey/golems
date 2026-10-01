@@ -549,6 +549,130 @@ def test_unmodelled_assignment_invalidates_stale_outer_worktree_value(command):
 
 
 @pytest.mark.parametrize(
+    "command",
+    (
+        f"X={GITS}/golems/.worktrees/w; X=$(mktemp -d); "
+        + 'git worktree add "$X" HEAD',
+        f"X={GITS}/golems/.worktrees/w; X=`mktemp -d`; "
+        + 'git worktree add "$X" HEAD',
+        f"X={GITS}/golems/.worktrees/w\nX=$(mktemp -d)\n"
+        + 'git worktree add "$X" HEAD',
+        f"X={GITS}/golems/.worktrees/w; X=$(mktemp -d) && "
+        + 'git worktree add "$X" HEAD',
+    ),
+)
+def test_command_substitution_assignment_invalidates_stale_outer_value(command):
+    """The command inside ``$()``/backticks is not the assignment's command."""
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "command read X <<< /tmp/q",
+        "builtin read X <<< /tmp/q",
+        "command eval X=/tmp/q",
+        "builtin eval X=/tmp/q",
+    ),
+)
+def test_wrapped_builtin_assignment_invalidates_stale_outer_value(mutation):
+    command = (
+        f"X={GITS}/golems/.worktrees/w; {mutation}; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "C=X=/tmp/q; eval $C",
+        'C=X=/tmp/q; eval "$C"',
+        "source <(echo X=/tmp/q)",
+        ". <(echo X=/tmp/q)",
+        "source ./env.sh",
+    ),
+)
+def test_unreadable_eval_or_source_invalidates_all_tracked_values(mutation):
+    command = (
+        f"X={GITS}/golems/.worktrees/w; {mutation}; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "printf -v X %s /tmp/q",
+        "printf -vX %s /tmp/q",
+        'N=X; printf -v "$N" %s /tmp/q',
+        'printf -v "X[0]" %s /tmp/q',
+        'N=X; read "$N" <<< /tmp/q',
+        'N=X; read -a "$N" <<< /tmp/q',
+        "read -aX <<< /tmp/q",
+        "mapfile -t X <<< /tmp/q",
+        "mapfile -d x X <<< /tmp/qx",
+        "mapfile -td x X <<< /tmp/qx",
+        'N=X; mapfile "$N" <<< /tmp/q',
+        "readarray -t X <<< /tmp/q",
+        "readarray -d x X <<< /tmp/qx",
+        "readarray -td x X <<< /tmp/qx",
+        "for X in /tmp/q; do :; done",
+        "declare -n R=X; R=/tmp/q",
+        "N=X; declare -n R=$N; R=/tmp/q",
+        "N=$(printf X); declare -n R=$N; R=/tmp/q",
+        "X[0]=/tmp/q",
+        "X=(/tmp/q)",
+        "{ X[0]=/tmp/q; }",
+        "X+=/../../../../tmp/q",
+    ),
+)
+def test_assignment_by_name_invalidates_stale_outer_value(mutation):
+    command = (
+        f"X={GITS}/golems/.worktrees/w; {mutation}; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+def test_dynamic_builtin_target_does_not_fall_back_to_stale_environment():
+    command = (
+        f"X={GITS}/golems/.worktrees/w; N=$(printf X); "
+        + 'printf -v "$N" %s /tmp/q; git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command), env_extra={"N": "Y"})
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "name, mutation",
+    (
+        ("REPLY", "read <<< /tmp/q"),
+        ("MAPFILE", "mapfile -t <<< /tmp/q"),
+        ("MAPFILE", "readarray -t <<< /tmp/q"),
+    ),
+)
+def test_default_builtin_assignment_target_invalidates_stale_value(name, mutation):
+    command = (
+        f"{name}={GITS}/golems/.worktrees/w; {mutation}; "
+        + f'git worktree add "${name}" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
     "command, expected",
     (
         (

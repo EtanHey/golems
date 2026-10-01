@@ -591,7 +591,7 @@ def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
                 else:
                     variables, variable_prefixes = (
                         _static_shell_variable_state_before(
-                            tokens, cmd_pos, seg_of, seg_of[idx]
+                            tokens, cmd_pos, seg_of, scope_of, seg_of[idx]
                         )
                     )
                     anchor = None
@@ -682,7 +682,7 @@ def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
                 if _is_command_sub_open(arg):
                     variables, variable_prefixes = (
                         _static_shell_variable_state_before(
-                            tokens, cmd_pos, seg_of, seg_of[idx]
+                            tokens, cmd_pos, seg_of, scope_of, seg_of[idx]
                         )
                     )
                     anchor = None
@@ -721,7 +721,7 @@ def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
                 else:
                     variables, variable_prefixes = (
                         _static_shell_variable_state_before(
-                            tokens, cmd_pos, seg_of, seg_of[idx]
+                            tokens, cmd_pos, seg_of, scope_of, seg_of[idx]
                         )
                     )
                     anchor = None
@@ -792,7 +792,7 @@ def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
         tokens, cmd_pos, seg_of, scope_of
     ):
         variables = _static_shell_variables_before(
-            tokens, cmd_pos, seg_of, seg
+            tokens, cmd_pos, seg_of, scope_of, seg
         )
         hit_seg = seg
         if len(scope) == 1 and scope[0] in exposed_scope_keys:
@@ -1111,10 +1111,12 @@ def _chain_status_after(operator, prior_status, command_status):
     return command_status
 
 
-def _static_shell_variables_before(tokens, cmd_pos, seg_of, target_segment):
+def _static_shell_variables_before(
+    tokens, cmd_pos, seg_of, scope_of, target_segment
+):
     """Known assignment-only/export state visible to `target_segment`."""
     return _static_shell_variable_state_before(
-        tokens, cmd_pos, seg_of, target_segment
+        tokens, cmd_pos, seg_of, scope_of, target_segment
     )[0]
 
 
@@ -1137,7 +1139,7 @@ def _paren_contexts(tokens):
 
 
 def _static_shell_variable_state_before(
-    tokens, cmd_pos, seg_of, target_segment, target_index=None
+    tokens, cmd_pos, seg_of, scope_of, target_segment, target_index=None
 ):
     """Return (values, literal_prefixes) visible to `target_segment`.
 
@@ -1152,6 +1154,7 @@ def _static_shell_variable_state_before(
     # before applying its command-local assignments.
     variables = {}
     prefixes = {}
+    namerefs = {}
     paren_contexts = _paren_contexts(tokens)
     if target_index is None:
         target_index = next(
@@ -1177,6 +1180,49 @@ def _static_shell_variable_state_before(
         variables[name] = None
         prefixes.pop(name, None)
 
+    def invalidate_assignment_target(name):
+        invalidate(name)
+        seen = {name}
+        while name in namerefs:
+            referenced = namerefs[name]
+            if referenced is None:
+                invalidate_all()
+                return
+            if referenced in seen:
+                return
+            invalidate(referenced)
+            seen.add(referenced)
+            name = referenced
+
+    def invalidate_all():
+        for name in tuple(variables):
+            invalidate(name)
+
+    def assignment_target_base(raw):
+        """Resolve a builtin's variable-name operand to its base name."""
+        indirect = _SIMPLE_VAR_RE.fullmatch(raw)
+        if indirect:
+            reference = indirect.group(1) or indirect.group(2)
+            raw = (
+                variables[reference]
+                if reference in variables
+                else os.environ.get(reference)
+            )
+        if not isinstance(raw, str):
+            return None
+        target = re.fullmatch(
+            r"([A-Za-z_][A-Za-z0-9_]*)(?:\[[^]]+\])?", raw
+        )
+        return target.group(1) if target else None
+
+    def invalidate_assignment_word(raw):
+        """Invalidate a literal/indirect builtin target, or all on ambiguity."""
+        name = assignment_target_base(raw)
+        if name is None:
+            invalidate_all()
+        else:
+            invalidate_assignment_target(name)
+
     def track(name, value, resolved):
         """Record a value and, when it is unknown, its provable literal head."""
         if resolved is None:
@@ -1201,10 +1247,15 @@ def _static_shell_variable_state_before(
         if not indices:
             continue
         assignments = [i for i in indices if _ASSIGNMENT_RE.match(tokens[i])]
+        segment_scope = scope_of[indices[0]]
         command_words = [
             i
             for i in indices
-            if cmd_pos[i] and not _ASSIGNMENT_RE.match(tokens[i])
+            if (
+                scope_of[i] == segment_scope
+                and cmd_pos[i]
+                and not _ASSIGNMENT_RE.match(tokens[i])
+            )
         ]
         assignment_only = bool(assignments) and all(
             _ASSIGNMENT_RE.match(tokens[i]) for i in indices
@@ -1220,13 +1271,40 @@ def _static_shell_variable_state_before(
         else:
             executes = True
 
+        command_index = command_words[0] if command_words else None
         command_name = (
-            os.path.basename(tokens[command_words[0]]).lower()
-            if command_words
+            os.path.basename(tokens[command_index]).lower()
+            if command_index is not None
             else ""
         )
+        if command_name in {"command", "builtin"}:
+            for index in indices:
+                if index <= command_index or scope_of[index] != segment_scope:
+                    continue
+                if tokens[index].startswith("-"):
+                    continue
+                command_index = index
+                command_name = os.path.basename(tokens[index]).lower()
+                break
         exported = command_name in {"export", "readonly", "declare", "typeset"}
         unset = command_name == "unset"
+
+        def assignment_is_modelled(index):
+            assignment = _ASSIGNMENT_RE.match(tokens[index])
+            next_is_array = (
+                index + 1 < len(tokens)
+                and seg_of[index + 1] == segment
+                and tokens[index + 1] == "("
+            )
+            return not (
+                assignment.group("subscript")
+                or assignment.group("append")
+                or next_is_array
+            )
+
+        modelled_assignments = (assignment_only or exported) and all(
+            assignment_is_modelled(index) for index in assignments
+        )
         if assignment_only or exported or unset:
             command_status = True
         elif command_name in {"true", ":"}:
@@ -1249,17 +1327,18 @@ def _static_shell_variable_state_before(
             names = [
                 tokens[i]
                 for i in indices
-                if i > command_words[0]
+                if command_index is not None
+                and i > command_index
                 and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", tokens[i])
             ]
             if state_is_parent_local and state_execution is not False:
                 for name in names:
                     variables[name] = ""
                     prefixes.pop(name, None)
-        elif (assignment_only or exported) and state_is_parent_local:
+        elif modelled_assignments and state_is_parent_local:
             if state_execution is None:
                 for index in assignments:
-                    name, _value = tokens[index].split("=", 1)
+                    name = _ASSIGNMENT_RE.match(tokens[index]).group("name")
                     # The assignment may not have run at all, so the variable
                     # may still hold whatever it held before — no head to
                     # claim, not even a partial one.
@@ -1267,7 +1346,8 @@ def _static_shell_variable_state_before(
                     prefixes.pop(name, None)
             elif state_execution is True:
                 for index in assignments:
-                    name, value = tokens[index].split("=", 1)
+                    name = _ASSIGNMENT_RE.match(tokens[index]).group("name")
+                    value = tokens[index].split("=", 1)[1]
                     static_shape = _SIMPLE_VAR_RE.sub("", value)
                     if any(
                         marker in static_shape
@@ -1297,35 +1377,180 @@ def _static_shell_variable_state_before(
                     )
                     track(name, value, None if unresolved else expanded)
 
+        declared_namerefs = {}
+        if (
+            exported
+            and command_name in {"declare", "typeset"}
+            and "-n" in (tokens[index] for index in indices)
+            and state_is_parent_local
+            and state_execution is not False
+        ):
+            for index in assignments:
+                assignment = _ASSIGNMENT_RE.match(tokens[index])
+                name = assignment.group("name")
+                if (
+                    not assignment.group("subscript")
+                    and not assignment.group("append")
+                ):
+                    value = variables.get(name)
+                    declared_namerefs[name] = (
+                        value
+                        if isinstance(value, str)
+                        and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value)
+                        else None
+                    )
+
         # golems#481: an assignment-shaped token that is executable but falls
         # outside the resolver's model must invalidate any earlier value. A
         # stale in-convention value is not evidence that the later worktree
         # target is safe. Command-local prefixes remain excluded because Bash
         # applies them only to that command's environment, and child-shell
         # mutations do not leak back to a later parent command.
-        modelled_assignments = assignment_only or exported
         for index in assignments:
-            command_local_prefix = bool(command_words) and index < command_words[0]
+            assignment = _ASSIGNMENT_RE.match(tokens[index])
+            name = assignment.group("name")
+            array_assignment = not assignment_is_modelled(index)
+            command_local_prefix = (
+                command_index is not None
+                and index < command_index
+                and not array_assignment
+            )
             if (
                 not modelled_assignments
                 and not command_local_prefix
                 and (cmd_pos[index] or command_name == "eval")
                 and mutation_reaches_target(index)
             ):
-                invalidate(tokens[index].split("=", 1)[0])
+                invalidate_assignment_target(name)
+            elif (
+                name in namerefs
+                and name not in declared_namerefs
+                and state_is_parent_local
+                and state_execution is not False
+                and mutation_reaches_target(index)
+            ):
+                invalidate_assignment_target(name)
+        namerefs.update(declared_namerefs)
+
+        command_args = [
+            index
+            for index in indices
+            if (
+                command_index is not None
+                and index > command_index
+                and scope_of[index] == segment_scope
+            )
+        ]
+        command_mutation_reaches = (
+            command_index is not None
+            and mutation_reaches_target(command_index)
+            and state_is_parent_local
+            and state_execution is not False
+        )
+
+        # Dynamic eval and sourced code can assign arbitrary variable names.
+        dynamic_eval = command_name == "eval" and any(
+            "$" in tokens[index]
+            or "`" in tokens[index]
+            or _is_command_sub_open(tokens[index])
+            for index in command_args
+        )
+        if command_mutation_reaches and (
+            dynamic_eval or command_name in {"source", "."}
+        ):
+            invalidate_all()
 
         # `read NAME` assigns without an `NAME=value` token. Its runtime value
         # is intentionally not interpreted; seeing the mutation is sufficient
         # to make the prior static value unusable.
-        if command_name == "read" and command_words:
-            for index in indices:
-                if index <= command_words[0] or not mutation_reaches_target(index):
+        if command_name == "read" and command_mutation_reaches:
+            pending_value = False
+            pending_assignment_target = False
+            parsing_options = True
+            saw_assignment_target = False
+            for index in command_args:
+                if not mutation_reaches_target(index):
                     continue
                 token = tokens[index]
                 if token in {"<", "<<", "<<<"}:
                     break
-                if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token):
-                    invalidate(token)
+                if pending_value:
+                    pending_value = False
+                    continue
+                if pending_assignment_target:
+                    invalidate_assignment_word(token)
+                    saw_assignment_target = True
+                    pending_assignment_target = False
+                    continue
+                if parsing_options:
+                    if token == "--":
+                        parsing_options = False
+                        continue
+                    if token.startswith("-"):
+                        for offset, option in enumerate(token[1:]):
+                            if option not in {"a", "d", "i", "n", "N", "p", "t", "u"}:
+                                continue
+                            attached = token[offset + 2 :]
+                            if option == "a":
+                                if attached:
+                                    invalidate_assignment_word(attached)
+                                    saw_assignment_target = True
+                                else:
+                                    pending_assignment_target = True
+                            elif not attached:
+                                pending_value = True
+                            break
+                        continue
+                    parsing_options = False
+                invalidate_assignment_word(token)
+                saw_assignment_target = True
+            if (
+                not saw_assignment_target
+                and not pending_assignment_target
+                and not pending_value
+            ):
+                invalidate_assignment_target("REPLY")
+
+        if command_name == "printf" and command_mutation_reaches:
+            for offset, index in enumerate(command_args):
+                token = tokens[index]
+                name = None
+                if token == "-v" and offset + 1 < len(command_args):
+                    name = tokens[command_args[offset + 1]]
+                elif token.startswith("-v") and len(token) > 2:
+                    name = token[2:]
+                if name:
+                    invalidate_assignment_word(name)
+                    break
+
+        if command_name in {"mapfile", "readarray"} and command_mutation_reaches:
+            pending_value = False
+            saw_assignment_target = False
+            for index in command_args:
+                token = tokens[index]
+                if token in {"<", "<<", "<<<", ">", ">>"}:
+                    break
+                if pending_value:
+                    pending_value = False
+                    continue
+                if token.startswith("-"):
+                    for offset, option in enumerate(token[1:]):
+                        if option not in {"d", "n", "O", "s", "u", "C", "c"}:
+                            continue
+                        if not token[offset + 2 :]:
+                            pending_value = True
+                        break
+                    continue
+                invalidate_assignment_word(token)
+                saw_assignment_target = True
+                break
+            if not saw_assignment_target and not pending_value:
+                invalidate_assignment_target("MAPFILE")
+
+        if command_name == "for" and command_mutation_reaches and command_args:
+            name = tokens[command_args[0]]
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+                invalidate_assignment_target(name)
 
         chain_status = _chain_status_after(
             operator, chain_status, command_status
@@ -1568,7 +1793,7 @@ def _assignment_effects_between(
             index
             for index in indices
             if _ASSIGNMENT_RE.match(tokens[index])
-            and tokens[index].split("=", 1)[0] == name
+            and _ASSIGNMENT_RE.match(tokens[index]).group("name") == name
         ]
         if not assignments:
             continue
@@ -1612,7 +1837,14 @@ def _assignment_effects_between(
         effects.append(
             (
                 not conditional,
-                tokens[assignments[-1]].split("=", 1)[1],
+                (
+                    "$UNRESOLVED_ASSIGNMENT"
+                    if (
+                        _ASSIGNMENT_RE.match(tokens[assignments[-1]]).group("subscript")
+                        or _ASSIGNMENT_RE.match(tokens[assignments[-1]]).group("append")
+                    )
+                    else tokens[assignments[-1]].split("=", 1)[1]
+                ),
             )
         )
     return effects
@@ -1723,7 +1955,7 @@ def _bounded_compound_value_sets_before(
                 value_sets[name] = None
                 continue
             header_variables = _static_shell_variables_before(
-                tokens, cmd_pos, seg_of, seg_of[loop["start"]]
+                tokens, cmd_pos, seg_of, scope_of, seg_of[loop["start"]]
             )
             literal_arrays = _literal_array_values_before(
                 tokens,
@@ -2630,7 +2862,7 @@ def find_worktree_convention_issues(
     unresolved_hits = []
     for raw, seg, scope, target_index in adds:
         variables = _static_shell_variable_state_before(
-            tokens, cmd_pos, seg_of, seg, target_index
+            tokens, cmd_pos, seg_of, scope_of, seg, target_index
         )[0]
         hit_seg = seg
         if len(scope) == 1 and scope[0] in exposed_scope_keys:

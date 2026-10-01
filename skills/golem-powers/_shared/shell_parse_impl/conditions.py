@@ -213,7 +213,9 @@ def _step_status(walk, token):
         return True
     if walk.at_command_start and not walk.stack:
         if _ASSIGNMENT_RE.match(token):
-            name, value = token.split("=", 1)
+            assignment = _ASSIGNMENT_RE.match(token)
+            name = assignment.group("name")
+            value = token.split("=", 1)[1]
             lookahead = walk.normalized_index + 1
             while (
                 lookahead < len(walk.normalized_tokens)
@@ -229,7 +231,11 @@ def _step_status(walk, token):
                 walk.top_execute_next is True
                 and standalone
             ):
-                if any(marker in value for marker in ("$", "`", "~")):
+                if (
+                    assignment.group("subscript")
+                    or assignment.group("append")
+                    or any(marker in value for marker in ("$", "`", "~"))
+                ):
                     walk.static_vars.pop(name, None)
                 else:
                     walk.static_vars[name] = value
