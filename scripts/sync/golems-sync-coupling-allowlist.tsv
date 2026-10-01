@@ -20,6 +20,7 @@ ecosystem-health/evals/evals.json	~/Gits/some-new-app	Test or evaluation evidenc
 deploy-verify/evals/evals.json	/Users/me	Test or evaluation evidence intentionally preserves this machine-path specimen.
 false-green-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 fleet-wrap-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
+git-guardian/hooks/pre_tool_use.py	~/Gits/golems	Runtime recovery guidance intentionally names the canonical hook installer checkout.
 git-guardian/tests/_test_git_safety_parts/cases01.py	/opt/homebrew/bin/git	Test or evaluation evidence intentionally preserves this machine-path specimen.
 golem-install/evals/evals.json	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
 html-dashboard/templates/template.html	~/Gits/brainlayer	Display template contains a non-executed sample path.
@@ -49,6 +50,7 @@ tmp-block/hooks/tests/_test_tmp_block_parts/cases04.py	/Users/example	Test or ev
 tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 tmp-block/hooks/tests/_test_tmp_block_parts/common.py	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 tmp-block/hooks/tests/_test_tmp_block_parts/common.py	~/Gits/foo.wt	Test or evaluation evidence intentionally preserves this machine-path specimen.
+tmp-block/hooks/tmp-block-pretooluse.py	~/Gits/golems	Runtime recovery guidance intentionally names the canonical hook installer checkout.
 tmp-block/tests/_test_worktree_anchor_parts/cases02.py	/Users/x	Test or evaluation evidence intentionally preserves this machine-path specimen.
 tmp-block/tests/_test_worktree_anchor_parts/cases01.py	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
 tmp-block/tests/_test_worktree_anchor_parts/common.py	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
