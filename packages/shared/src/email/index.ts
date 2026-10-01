@@ -9,8 +9,7 @@
  * 2. Fetch new emails from Gmail
  * 3. Score each email with Ollama
  * 4. Save to Supabase
- * 5. Notify immediately if score >= 10
- * 6. Track subscriptions for monthly digest
+ * 5. Track subscriptions for monthly digest
  */
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -25,7 +24,6 @@ import {
 } from "./gmail-client";
 import {
   scoreEmail,
-  shouldNotifyImmediately,
   shouldTrackSubscription,
   type ScoredEmail,
   type EmailInput,
@@ -35,7 +33,6 @@ import {
   saveEmail,
   trackSubscription,
   recordPayment,
-  markNotified,
   syncOfflineQueue,
   type Email,
   type Subscription,
@@ -43,7 +40,6 @@ import {
 import { determineTargetGolem } from "./router";
 import { trackSender, parseListUnsubscribe } from "./sender-tracker";
 import { logEvent } from "../lib/event-log";
-import { sendNotification as sendTelegramNotification } from "../lib/telegram-direct";
 import { getState, setState, reportServiceRun } from "../lib/state-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -51,20 +47,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const HOME = process.env.HOME || homedir();
 const STATE_FILE = join(HOME, ".golems-zikaron/state.json");
 
-// Category emojis for notifications
-const CATEGORY_EMOJIS: Record<string, string> = {
-  interview: "📅",
-  urgent: "🚨",
-  job: "💼",
-  subscription: "💳",
-  newsletter: "📰",
-  promo: "🏷️",
-  other: "📧",
-};
-
 // State interface
 interface State {
-  telegramChatId?: number | null;
   lastEmailCheck?: string;
   processedEmailIds?: string[];
 }
@@ -141,24 +125,6 @@ function saveState(state: State) {
 }
 
 /**
- * Send notification to Telegram via telegram-direct (supports both local and cloud modes)
- */
-async function sendNotification(title: string, body: string) {
-  console.log(`[EmailGolem] Sending notification: "${title}"`);
-  const success = await sendTelegramNotification({
-    title,
-    body,
-    source: "email",
-    priority: "high",
-  });
-  if (success) {
-    console.log(`[EmailGolem] Notification sent: "${title}"`);
-  } else {
-    console.error("[EmailGolem] Failed to send notification");
-  }
-}
-
-/**
  * Convert GmailEmail to EmailInput for scorer
  */
 function toEmailInput(gmail: GmailEmail, body?: string): EmailInput {
@@ -190,7 +156,7 @@ function toDbEmail(scored: ScoredEmail): Email {
 }
 
 /**
- * Process a single email: score, save, notify if urgent
+ * Process a single email: score, save, route and track subscriptions
  */
 async function processEmail(
   gmail: GmailEmail,
@@ -219,9 +185,6 @@ async function processEmail(
 
   if (dryRun) {
     console.log(`     [DRY-RUN] Would save to DB`);
-    if (shouldNotifyImmediately(scored)) {
-      console.log(`     [DRY-RUN] Would notify: ${scored.subject}`);
-    }
     if (shouldTrackSubscription(scored)) {
       console.log(
         `     [DRY-RUN] Would track subscription: ${scored.subscription?.serviceName}`,
@@ -271,30 +234,6 @@ async function processEmail(
         );
       } catch (err) {
         console.error("[EventLog] Failed to log email routing:", err);
-      }
-    }
-
-    // Notify if urgent - with context!
-    if (shouldNotifyImmediately(scored)) {
-      const emoji = CATEGORY_EMOJIS[scored.category] || "📧";
-      const title = `${emoji} ${scored.category.charAt(0).toUpperCase() + scored.category.slice(1)}`;
-
-      // Build descriptive body with WHY this matters
-      const fromName = scored.from.split("<")[0].trim() || scored.from;
-      const lines = [
-        `*From:* ${fromName}`,
-        `*Subject:* ${scored.subject.slice(0, 80)}`,
-        ``,
-        `*Why:* ${scored.reason}`,
-      ];
-      const body = lines.join("\n");
-
-      await sendNotification(title, body);
-      console.log(`     🔔 Notification sent!`);
-
-      // Mark as notified
-      if (saveResult.data?.id) {
-        await markNotified(db, saveResult.data.id);
       }
     }
 
@@ -564,5 +503,5 @@ if (import.meta.main) {
 }
 
 // Exports for testing and briefing integration
-export { processEmails, loadState, saveState, CATEGORY_EMOJIS, runSearch };
+export { processEmails, loadState, saveState, runSearch };
 export { searchEmails } from "./gmail-client";
