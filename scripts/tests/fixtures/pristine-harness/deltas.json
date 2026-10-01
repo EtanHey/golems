@@ -718,5 +718,14 @@
     },
     "case": "issue460-shell-here-string",
     "reason": "A shell here-string can supply destructive text for execution, so the hook must deny it."
+  },
+  {
+    "authority": "golems#491",
+    "candidate_sha256": {
+      "darwin": "9beb60a602ca8c9a058c486c3d6cfe5cc6931055f345034c4c8a8e27bee6ee29",
+      "linux": "9beb60a602ca8c9a058c486c3d6cfe5cc6931055f345034c4c8a8e27bee6ee29"
+    },
+    "case": "issue491-control-malformed-process-substitution",
+    "reason": "Retain the issue458 fail-closed block for a real malformed executed process substitution while removing issue491 data false positives"
   }
 ]

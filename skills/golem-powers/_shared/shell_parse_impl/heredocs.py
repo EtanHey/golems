@@ -70,7 +70,7 @@ def _strip_heredoc_bodies(command):
     return "\n".join(out)
 
 
-def _mask_heredoc_body_lines(command):
+def _mask_heredoc_body_lines_with_status(command):
     """Blank heredoc prose while preserving offsets and executable expansions."""
     out = []
     pending = []  # [delimiter, expansions_enabled, strip_tabs]
@@ -108,7 +108,11 @@ def _mask_heredoc_body_lines(command):
                 delimiter, quoted = parsed
                 pending.append((delimiter, not quoted, bool(match.group(1))))
         out.append(source_line)
-    return "".join(out)
+    return "".join(out), not pending
+
+
+def _mask_heredoc_body_lines(command):
+    return _mask_heredoc_body_lines_with_status(command)[0]
 
 
 def _heredoc_delimiter_word(line, start):

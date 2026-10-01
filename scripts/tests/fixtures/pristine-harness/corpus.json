@@ -11364,5 +11364,65 @@
     "id": "issue460-shell-here-string",
     "target": "git-guardian",
     "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sh <<< 'git push --force origin master'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-data-heredoc-source",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"gh issue create --body \\\"$(cat <<'EOF'\\nsource <(x) `\\nEOF\\n)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-data-heredoc-bash",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"gh issue create --body \\\"$(cat <<'EOF'\\nbash <(x) `\\nEOF\\n)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-data-heredoc-dot",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"gh issue create --body \\\"$(cat <<'EOF'\\n; . <(x) `\\nEOF\\n)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-data-single-quoted",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo 'source <(x) `'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-data-later-command-backtick",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo 'source <(x)'; echo 'a ` b'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-real-span-later-data-backtick",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"bash <(echo git status); echo 'later ` data'\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-data-lead-command",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd ~/Gits/golems; gh issue create --title \\\"tmp-block: residual stale-assignment shapes\\\" --label bug --body \\\"$(cat <<'EOF'\\nFrom the Opus R2 of #484. Pre-existing on master; same class as #481.\\n\\n**Residual stale-value shapes** (ALLOW on head; temp in zsh, the Bash tool's shell):\\n- `… | read X`, `… | IFS= read -r X`, `… | X=<tmp>`, `… | for X in …`, `… | printf -v X`, `… | source <(…)`\\n- `print -v X …`, `: ${X::=…}`, `command command read X`\\n- `export X+=…`, `declare X+=…`, `export X[0]=…`\\n\\n**Direction:** fail closed → any unmodelled mutation invalidates the variable.\\nEOF\\n)\\\" | tail -1\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-control-real-process-substitution",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"bash <(echo git push --force origin master)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-control-malformed-process-substitution",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"source <(echo `git push --force)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-control-launcher-after-single-quoted-heredoc",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF'\\ndata\\nEOF\\nbash <(echo git push --force origin master)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-control-launcher-after-double-quoted-heredoc",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<\\\"EOF\\\"\\ndata\\nEOF\\nbash <(echo git push --force origin master)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-control-launcher-after-ansi-c-quote",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo $'a\\\\'b'; bash <(echo git push --force origin master)\"},\"session_id\":\"pristine\"}"
   }
 ]

@@ -13,6 +13,53 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import shell_parse  # noqa: E402
 
 
+def test_executable_shell_structure_masks_data_but_keeps_process_substitutions():
+    command = (
+        "bash <(echo safe); echo 'source <(quoted)' ; "
+        "x=$(bash <(echo nested)); cat <<'EOF'\nsource <(heredoc)\nEOF\n"
+    )
+
+    structural = shell_parse.executable_shell_structure(command)
+
+    assert "bash <(echo safe)" in structural
+    assert "source <(quoted)" not in structural
+    assert "bash <(echo nested)" not in structural
+    assert "source <(heredoc)" not in structural
+    assert len(structural) == len(command)
+
+
+def test_executable_shell_structure_models_ansi_c_quotes_and_reports_open_state():
+    commands = (
+        "echo $'a\\'b'; bash <(echo dangerous)",
+        "echo $'literal ` and $(data)'; bash <(echo dangerous)",
+    )
+    for command in commands:
+        structural = shell_parse.executable_shell_structure(command)
+        assert "bash <(echo dangerous)" in structural
+        assert len(structural) == len(command)
+
+    unclosed_quote = "echo 'source <(x"
+    assert "source <(x" not in shell_parse.executable_shell_structure(unclosed_quote)
+    assert shell_parse.executable_shell_structure_has_open_state(unclosed_quote)
+    assert shell_parse.executable_shell_structure_has_open_state(
+        "cat <<'EOF'\ndata\n"
+    )
+    assert all(
+        not shell_parse.executable_shell_structure_has_open_state(command)
+        for command in commands
+    )
+
+
+def test_process_substitution_parser_stops_at_the_matched_span():
+    command = "bash <(printf '%s' ')') ; echo 'later odd ` data'"
+    start = command.index("<(")
+
+    body, end = shell_parse.process_substitution_at(command, start)
+
+    assert body == "printf '%s' ')'"
+    assert command[start:end] == "<(printf '%s' ')')"
+
+
 # Golden token streams: what master's tokenizers produced for each input before
 # the py/redos fix, pasted as data (the vulnerable patterns stay out of the tree).
 # Each row is (source, _RAW_SHELL_TOKEN_RE tokens, _RAW_FOR_WORD_RE tokens).

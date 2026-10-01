@@ -297,8 +297,16 @@ def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
         )
     for match in api['_PIPED_INTERPRETER_HEREDOC_RE'].finditer(command):
         payloads.extend(a or b for a, b in api['_STRING_LITERAL_RE'].findall(match.group(2)))
-    for match in re.finditer(r"(?:\b(?:sh|bash|zsh|dash|ksh|source)|(?:^|[;&|]\s*)\.)\s+<\(", active):
-        inner = next(iter(api['dollar_paren_bodies']("$(" + active[match.end():])), "")
+    executable = api['executable_shell_structure'](command)
+    span_source = command
+    if api['executable_shell_structure_has_open_state'](command):
+        executable = active
+        span_source = active
+    for match in re.finditer(
+        r"(?:\b(?:sh|bash|zsh|dash|ksh|source)|(?:^|[;&|]\s*)\.)\s+<\(",
+        executable,
+    ):
+        inner, _end = api['process_substitution_at'](span_source, match.end() - 2)
         try:
             printed = api['_printed_text'](shlex.split(inner)) if inner.strip() else None
         except ValueError:

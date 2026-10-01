@@ -394,6 +394,42 @@ def test_go5_gap_false_positive_guards_stay_allowed(tmp_path):
         assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()) is None, command
 
 
+def _issue491_heredoc_body(line):
+    return f'gh issue create --body "$(cat <<\'EOF\'\n{line}\nEOF\n)"'
+
+
+def test_issue491_process_substitution_launcher_text_in_data_is_allowed(tmp_path):
+    backtick = "`"
+    lead_body = "\n".join((
+        "From the Opus R2 of #484. Pre-existing on master; same class as #481.",
+        "",
+        "**Residual stale-value shapes** (ALLOW on head; temp in zsh, the Bash tool's shell):",
+        f"- {backtick}… | read X{backtick}, {backtick}… | IFS= read -r X{backtick}, "
+        f"{backtick}… | X=<tmp>{backtick}, {backtick}… | for X in …{backtick}, "
+        f"{backtick}… | printf -v X{backtick}, {backtick}… | source <(…){backtick}",
+        f"- {backtick}print -v X …{backtick}, {backtick}: ${{X::=…}}{backtick}, "
+        f"{backtick}command command read X{backtick}",
+        f"- {backtick}export X+=…{backtick}, {backtick}declare X+=…{backtick}, "
+        f"{backtick}export X[0]=…{backtick}",
+        "",
+        "**Direction:** fail closed → any unmodelled mutation invalidates the variable.",
+    ))
+    commands = (
+        _issue491_heredoc_body(f"source <(x) {backtick}"),
+        _issue491_heredoc_body(f"bash <(x) {backtick}"),
+        _issue491_heredoc_body(f"; . <(x) {backtick}"),
+        f"echo 'source <(x) {backtick}'",
+        f"echo 'source <(x)'; echo 'a {backtick} b'",
+        f"bash <(echo git status); echo 'later {backtick} data'",
+        _issue491_heredoc_body(lead_body),
+    )
+
+    for command in commands:
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env=_home_env()
+        ) is None, command
+
+
 def test_issue460_remaining_executable_payload_shapes_are_blocked(tmp_path):
     for destructive in ("git push --force origin main", "rm -rf ~"):
         commands = (
@@ -460,6 +496,75 @@ def test_issue460_payload_tightening_keeps_nonexecuted_and_safe_forms_allowed(tm
         assert git_safety.dangerous_shell_reason(
             command, cwd=str(tmp_path), env=_home_env()
         ) is None, command
+
+
+def test_issue491_real_process_substitution_launcher_stays_blocked(tmp_path):
+    reason = git_safety.dangerous_shell_reason(
+        "bash <(echo git push --force origin master)",
+        cwd=str(tmp_path), env=_home_env(),
+    )
+
+    assert reason and "git push --force" in reason
+
+
+def test_issue491_launchers_after_quoted_data_stay_blocked(tmp_path):
+    commands = (
+        "cat <<'EOF'\ndata\nEOF\nbash <(echo git push --force origin master)",
+        'cat <<"EOF"\ndata\nEOF\nbash <(echo git push --force origin master)',
+        "echo $'a\\'b'; bash <(echo git push --force origin master)",
+        "echo $'literal ` and $(data)'; bash <(echo git push --force origin master)",
+    )
+
+    for command in commands:
+        reason = git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env=_home_env()
+        )
+        assert reason and "git push --force" in reason, command
+
+
+def test_issue491_unclosed_launcher_text_in_literal_data_is_allowed(tmp_path):
+    assert git_safety.dangerous_shell_reason(
+        "echo 'source <(x'", cwd=str(tmp_path), env=_home_env()
+    ) is None
+
+
+def test_issue491_open_quote_stays_fail_closed(tmp_path):
+    command = "echo 'unterminated; bash <(echo git push --force origin master)"
+    assert git_safety.dangerous_shell_reason(
+        command, cwd=str(tmp_path), env=_home_env()
+    )
+
+
+def test_issue491_open_structural_state_falls_back_to_active(monkeypatch, tmp_path):
+    command = "bash <(echo git push --force origin master)"
+    monkeypatch.setattr(
+        git_safety, "executable_shell_structure", lambda _command: " " * len(_command)
+    )
+    monkeypatch.setattr(
+        git_safety, "executable_shell_structure_has_open_state", lambda _command: True
+    )
+
+    reason = git_safety.dangerous_shell_reason(
+        command, cwd=str(tmp_path), env=_home_env()
+    )
+
+    assert reason and "git push --force" in reason
+
+
+def test_issue491_process_substitution_uses_raw_exact_span(monkeypatch, tmp_path):
+    command = "cat <<'EOF'\ndata\nEOF\nbash <(echo safe)"
+
+    def exact_span(source, start):
+        assert source == command
+        assert source[start:start + 2] == "<("
+        return "echo git push --force origin master", len(source)
+
+    monkeypatch.setattr(git_safety, "process_substitution_at", exact_span)
+    reason = git_safety.dangerous_shell_reason(
+        command, cwd=str(tmp_path), env=_home_env()
+    )
+
+    assert reason and "git push --force" in reason
 
 
 def test_go5_gap_recursion_is_bounded_and_fails_closed(tmp_path):
