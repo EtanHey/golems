@@ -9,7 +9,7 @@ import { prepareCardMedia } from './stalker-card-media.mjs';
 import { buildRunDashboard } from './stalker-dashboard.mjs';
 import { parseGems } from './stalker-morning-digest.mjs';
 import { atomicWrite, configuredHubOrigin, publishRunDashboard } from './stalker-publish.mjs';
-import { artifactHashes, COMPLETION_RECEIPT, sha256, stageFailure, verifyRunDelivery } from './stalker-run-contract.mjs';
+import { artifactHashes, COMPLETION_RECEIPT, migrateCompletionReceipt, sha256, stageFailure, verifyRunDelivery } from './stalker-run-contract.mjs';
 import { createDriveArchive } from './stalker-drive-archive.mjs';
 import { retainRunMedia, verifyLocalMediaRetention } from './stalker-media-retention.mjs';
 
@@ -57,18 +57,31 @@ export async function completeRun(runDir, options = {}) {
     if (!match) throw stageFailure(6, 'run directory must be channel-YYYY-MM-DD[-HHMMSS]');
     const [, channel, date] = match;
     receipt = await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
+    if (receipt?.version === 3 && ['notified', 'complete'].includes(receipt.status)) {
+      try {
+        const migrated = await migrateCompletionReceipt(runDir, {receipt, fetchImpl: options.fetchImpl});
+        const result = await verifyRunDelivery(runDir, {receipt: migrated, fetchImpl: options.fetchImpl});
+        await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(migrated, null, 2));
+        return {...result, skipped: true};
+      } catch (error) {
+        if (error.liveVerificationFailure || (receipt.status === 'complete' && error.stage === 9)) {
+          preserveDeliveryReceipt = true;
+          throw error;
+        }
+      }
+    }
     let initialError;
     if (receipt?.status !== 'notified') {
       try { return { ...(await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl })), skipped: true }; }
       catch (error) { initialError = error; }
     }
-    if (receipt?.version === 3 && receipt.status === 'complete' && initialError?.stage === 9) {
+    if ([3, 4].includes(receipt?.version) && receipt.status === 'complete' && initialError?.stage === 9) {
       // Survivors cannot reconstruct the custody evidence for deleted originals.
       preserveDeliveryReceipt = true;
       throw initialError;
     }
     let resumeRetention = false;
-    if (receipt?.version === 3 && ['notified', 'complete'].includes(receipt.status)) {
+    if ([3, 4].includes(receipt?.version) && ['published', 'notified', 'complete'].includes(receipt.status)) {
       if (initialError?.liveVerificationFailure) {
         preserveDeliveryReceipt = true;
         throw initialError;
