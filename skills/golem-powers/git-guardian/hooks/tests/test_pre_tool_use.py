@@ -277,7 +277,12 @@ def test_issue491_data_false_positives_allow_and_real_controls_block_through_cop
     controls = (
         "bash <(echo git push --force origin master)",
         f"source <(echo {backtick}git push --force)",
+        "cat <<'EOF'\ndata\nEOF\nbash <(echo git push --force origin master)",
+        'cat <<"EOF"\ndata\nEOF\nbash <(echo git push --force origin master)',
+        "echo $'a\\'b'; bash <(echo git push --force origin master)",
+        "echo $'literal ` and $(data)'; bash <(echo git push --force origin master)",
     )
+    data_commands += ("echo 'source <(x'",)
 
     for command in data_commands:
         result = _run_copied_hook(hook, launcher, other_cwd, env, command)

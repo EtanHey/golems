@@ -8815,6 +8815,24 @@
       "files": {},
       "stderr": "",
       "stdout": "e30="
+    },
+    "issue491-control-launcher-after-single-quoted-heredoc": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "issue491-control-launcher-after-double-quoted-heredoc": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
+    },
+    "issue491-control-launcher-after-ansi-c-quote": {
+      "exit": 2,
+      "files": {},
+      "stderr": "",
+      "stdout": "eyJkZWNpc2lvbiI6ICJibG9jayIsICJyZWFzb24iOiAiQkxPQ0tFRDogRGFuZ2Vyb3VzIGNvbW1hbmQ6IGdpdCBwdXNoIC0tZm9yY2UuIEZMQUcgVEhJUyBUTyBUSEUgVVNFUiBhcyBhIHN1cnByaXNlIFx1MjAxNCBkbyBOT1QgcmV0cnkgdGhlIHNhbWUgY29tbWFuZC4gRXhwbGFpbiB3aGF0IHlvdSB3ZXJlIHRyeWluZyB0byBkbyBhbmQgYXNrIHRoZSB1c2VyIGhvdyB0byBwcm9jZWVkLiJ9"
     }
   }
 }

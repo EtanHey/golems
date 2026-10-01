@@ -22,7 +22,7 @@ function_pending_re = re.compile(
     re.MULTILINE,
 )
 
-def structural_source(source):
+def structural_source_with_status(source):
     structural = list(source)
     quote = None
     comment = False
@@ -37,7 +37,7 @@ def structural_source(source):
             structural[i] = " "
             i += 1
             continue
-        if quote != "'" and source.startswith("$(", i):
+        if quote not in {"'", "ansi-c"} and source.startswith("$(", i):
             found = _dollar_substitution(source, i)
             end = found[1] if found is not None else len(source)
             for nested_index in range(i, end):
@@ -45,13 +45,24 @@ def structural_source(source):
                     structural[nested_index] = " "
             i = end
             continue
-        if quote != "'" and char == "`":
+        if quote not in {"'", "ansi-c"} and char == "`":
             found = _backtick_substitution(source, i)
             end = found[1] if found is not None else len(source)
             for nested_index in range(i, end):
                 if source[nested_index] not in "\r\n":
                     structural[nested_index] = " "
             i = end
+            continue
+        if quote == "ansi-c":
+            if char == "'":
+                quote = None
+            else:
+                structural[i] = " "
+                if char == "\\" and i + 1 < len(source):
+                    i += 1
+                    if source[i] not in "\r\n":
+                        structural[i] = " "
+            i += 1
             continue
         if quote is not None:
             if char == quote:
@@ -63,6 +74,10 @@ def structural_source(source):
                     if source[i] not in "\r\n":
                         structural[i] = " "
             i += 1
+            continue
+        if source.startswith("$'", i):
+            quote = "ansi-c"
+            i += 2
             continue
         if char in "'\"":
             quote = char
@@ -79,7 +94,11 @@ def structural_source(source):
             else:
                 structural[i] = "_"
         i += 1
-    return "".join(structural)
+    return "".join(structural), quote is None
+
+
+def structural_source(source):
+    return structural_source_with_status(source)[0]
 
 def has_unclosed_function_definition(source):
     structural = structural_source(source)

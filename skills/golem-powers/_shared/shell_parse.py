@@ -128,6 +128,15 @@ def executable_shell_structure(command: str) -> str:
     return _structure.structural_source(_mask_heredoc_body_lines(command))
 
 
+def executable_shell_structure_has_open_state(command: str) -> bool:
+    """Whether the structural mask ended in an open quote or heredoc."""
+    masked, heredoc_closed = _heredocs._mask_heredoc_body_lines_with_status(
+        command
+    )
+    _structural, quotes_closed = _structure.structural_source_with_status(masked)
+    return not (heredoc_closed and quotes_closed)
+
+
 def process_substitution_at(command: str, start: int) -> tuple[str, int]:
     """Return the body and end offset of the process substitution at `start`.
 

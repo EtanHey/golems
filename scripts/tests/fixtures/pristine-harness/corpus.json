@@ -11364,5 +11364,20 @@
     "id": "issue491-control-malformed-process-substitution",
     "target": "git-guardian",
     "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"source <(echo `git push --force)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-control-launcher-after-single-quoted-heredoc",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<'EOF'\\ndata\\nEOF\\nbash <(echo git push --force origin master)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-control-launcher-after-double-quoted-heredoc",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<\\\"EOF\\\"\\ndata\\nEOF\\nbash <(echo git push --force origin master)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue491-control-launcher-after-ansi-c-quote",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo $'a\\\\'b'; bash <(echo git push --force origin master)\"},\"session_id\":\"pristine\"}"
   }
 ]

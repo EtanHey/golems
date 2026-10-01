@@ -439,6 +439,66 @@ def test_issue491_real_process_substitution_launcher_stays_blocked(tmp_path):
     assert reason and "git push --force" in reason
 
 
+def test_issue491_launchers_after_quoted_data_stay_blocked(tmp_path):
+    commands = (
+        "cat <<'EOF'\ndata\nEOF\nbash <(echo git push --force origin master)",
+        'cat <<"EOF"\ndata\nEOF\nbash <(echo git push --force origin master)',
+        "echo $'a\\'b'; bash <(echo git push --force origin master)",
+        "echo $'literal ` and $(data)'; bash <(echo git push --force origin master)",
+    )
+
+    for command in commands:
+        reason = git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env=_home_env()
+        )
+        assert reason and "git push --force" in reason, command
+
+
+def test_issue491_unclosed_launcher_text_in_literal_data_is_allowed(tmp_path):
+    assert git_safety.dangerous_shell_reason(
+        "echo 'source <(x'", cwd=str(tmp_path), env=_home_env()
+    ) is None
+
+
+def test_issue491_open_quote_stays_fail_closed(tmp_path):
+    command = "echo 'unterminated; bash <(echo git push --force origin master)"
+    assert git_safety.dangerous_shell_reason(
+        command, cwd=str(tmp_path), env=_home_env()
+    )
+
+
+def test_issue491_open_structural_state_falls_back_to_active(monkeypatch, tmp_path):
+    command = "bash <(echo git push --force origin master)"
+    monkeypatch.setattr(
+        git_safety, "executable_shell_structure", lambda _command: " " * len(_command)
+    )
+    monkeypatch.setattr(
+        git_safety, "executable_shell_structure_has_open_state", lambda _command: True
+    )
+
+    reason = git_safety.dangerous_shell_reason(
+        command, cwd=str(tmp_path), env=_home_env()
+    )
+
+    assert reason and "git push --force" in reason
+
+
+def test_issue491_process_substitution_uses_raw_exact_span(monkeypatch, tmp_path):
+    command = "cat <<'EOF'\ndata\nEOF\nbash <(echo safe)"
+
+    def exact_span(source, start):
+        assert source == command
+        assert source[start:start + 2] == "<("
+        return "echo git push --force origin master", len(source)
+
+    monkeypatch.setattr(git_safety, "process_substitution_at", exact_span)
+    reason = git_safety.dangerous_shell_reason(
+        command, cwd=str(tmp_path), env=_home_env()
+    )
+
+    assert reason and "git push --force" in reason
+
+
 def test_go5_gap_recursion_is_bounded_and_fails_closed(tmp_path):
     def nest(inner, depth):
         # Unquoted `eval eval … cmd`: each level peels one eval, no quoting growth.
