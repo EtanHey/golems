@@ -9,6 +9,8 @@ const TERMS = "telegram|grammy|telegraf|t\\.me/|bot_token";
 const matcher = new RegExp(TERMS, "i");
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
+export const isProtectedPath = file => file.split("/").some(part => /jev/i.test(part));
+
 export function checkRetirement(root) {
   const policy = JSON.parse(readFileSync(join(root, POLICY_FILE), "utf8"));
   if (policy.version !== 1 || !policy.policyReason?.trim() || !policy.files || Array.isArray(policy.files)) {
@@ -22,7 +24,7 @@ export function checkRetirement(root) {
     return [file, entry.patterns.map(pattern => new RegExp(pattern, "i"))];
   }));
   const files = execFileSync("git", ["-C", root, "ls-files", "-z"], { encoding: "utf8" }).split("\0").filter(Boolean);
-  const offLimits = files.filter(file => file.split("/").some(part => /^jev/i.test(part)));
+  const offLimits = files.filter(isProtectedPath);
   const privatePaths = new Set(offLimits);
   const violations = [];
   // Names only: never read or print protected corpus/source content.

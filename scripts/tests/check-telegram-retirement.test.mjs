@@ -11,6 +11,14 @@ const policy = "scripts/ci/telegram-retirement-allowlist.json";
 const historical = "Retired Telegram delivery (2026-10-01).";
 const neutral = "const FIXTURE_BOT_TOKEN = 'synthetic';";
 
+test("protects every restricted filename before content reads", async () => {
+  const { isProtectedPath } = await import(guard);
+  for (const path of ["packages/shared/src/lib/jev.ts", "packages/shared/src/__tests__/test_jev.py", "scripts/tests/test_jev_choice_replay.py", "scripts/tests/test_jev_gate_replay.py"]) {
+    assert.equal(isProtectedPath(path), true, path);
+  }
+  assert.equal(isProtectedPath("scripts/tests/fixture.mjs"), false);
+});
+
 function fixture(run) {
   const root = mkdtempSync(join(tmpdir(), "retirement-guard-"));
   const put = (file, text) => {
