@@ -60,7 +60,7 @@ import { runInstall } from "./repogolem-install";
 import { readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
 import { collectRefs, opResolver, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
-import { checkRefs } from "./repogolem-check-refs";
+import { isOpCredential, checkRefs, opEnvironment } from "./repogolem-check-refs";
 
 const GENERATOR_ID = "golems/scripts/repogolem/repogolem-config.ts";
 const EXAMPLE_PATH = join(import.meta.dir, "config.example.yaml");
@@ -800,7 +800,7 @@ function runGenerate(argv: string[]) {
   const args = parseArgs(argv, ["check", "check-refs", "no-prompt", "help"], ["config", "out-dir", "home", "host", "secrets-from"]);
   if (args.help) {
     console.log("usage: repogolem generate [--config PATH] [--host HOST] [--check | --check-refs [--no-prompt]]");
-    console.log("--check-refs checks vault/item metadata, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Each call is bounded to 15 seconds.");
+    console.log("--check-refs checks vault/item/field names, signs in if needed, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Metadata calls are bounded to 15 seconds; sign-in requires a terminal and is bounded to 120 seconds.");
     return 0;
   }
   if (args["no-prompt"] && !args["check-refs"]) fail("--no-prompt requires --check-refs");
@@ -813,7 +813,9 @@ function runGenerate(argv: string[]) {
   if (args["check-refs"]) {
     if (args.check || args["secrets-from"]) fail("--check-refs cannot be combined with --check or --secrets-from");
     const { config: effective } = resolveConfig(configText, host);
-    return checkRefs(collectRefs(effective), process.env.REPOGOLEM_OP_BIN || "op", args["no-prompt"] === true);
+    const refs = collectRefs(effective);
+    if (refs.length && !effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');
+    return checkRefs(refs, process.env.REPOGOLEM_OP_BIN || "op", args["no-prompt"] === true);
   }
 
   if (args.check) {
@@ -829,14 +831,24 @@ function runGenerate(argv: string[]) {
   // Everything that can fail runs before the first write.
   const generated = buildGenerated(configText, home, currentSourceSha(), host);
   assertSafeOutDir(outDir);
+  const opBin = process.env.REPOGOLEM_OP_BIN || 'op';
+  const opEnv = opEnvironment();
   let secretsEnv: string;
   try {
+    if (!args['secrets-from'] && generated.refs.length) {
+      const { config: effective } = resolveConfig(configText, host);
+      if (!effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');
+      const status = checkRefs(generated.refs, opBin, false, opEnv);
+      if (status !== 0) return status;
+    }
     const resolved = typeof args["secrets-from"] === "string"
       ? readTransferredSecrets(args["secrets-from"], generated.configSha, generated.machine, generated.refs)
-      : resolveRefs(generated.refs, opResolver(process.env.REPOGOLEM_OP_BIN || "op"));
+      : resolveRefs(generated.refs, opResolver(opBin, opEnv));
     secretsEnv = secretsEnvText(generated.secretsHeader, resolved);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
+  } finally {
+    for (const key of Object.keys(opEnv)) if (isOpCredential(key)) delete opEnv[key];
   }
 
   writeOutputsBound(outDir, {
@@ -890,7 +902,7 @@ function main(argv: string[]) {
   fail("usage: repogolem-config.ts import|generate|init [options] (see the header comment)");
 }
 
-// Exit codes: 0 ok · 1 stale (--check) · 2 error/missing refs · 3 not signed in (--check-refs). An unreadable
+// Exit codes: 0 ok · 1 stale (--check) · 2 error/missing refs · 3 sign-in/authorization unavailable. An unreadable
 // or unparseable input must never exit 1, or a --check caller reads it as stale.
 if (import.meta.main) {
   try {

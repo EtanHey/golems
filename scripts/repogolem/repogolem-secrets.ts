@@ -10,6 +10,7 @@
 // and refs (refs are in the config already); values stay in memory until
 // written to secrets.env.
 import { createHash } from "node:crypto";
+import { isOpCredential } from "./repogolem-check-refs";
 
 export type Resolver = (refs: string[]) => string[];
 
@@ -61,10 +62,11 @@ export function collectRefs(config: unknown): string[] {
 
 // One `op run` for every ref: each ref rides in as an env var, op swaps in
 // the value, and a child bun prints them back as JSON on the piped stdout.
-// stdin/stderr stay attached so op's sign-in / Touch ID prompt works.
-export function opResolver(opBin: string): Resolver {
+// Authentication/preflight happens first; resolver diagnostics are suppressed
+// because CLI errors can contain values. Only parsed values reach the writer.
+export function opResolver(opBin: string, childEnv: Record<string, string | undefined> = process.env): Resolver {
   return (refs) => {
-    const env: Record<string, string | undefined> = { ...process.env };
+    const env: Record<string, string | undefined> = { ...childEnv };
     for (const key of Object.keys(env)) if (key.startsWith(REF_ENV)) delete env[key];
     refs.forEach((ref, index) => {
       env[`${REF_ENV}${index}`] = ref;
@@ -78,11 +80,11 @@ export function opResolver(opBin: string): Resolver {
     ].join(" ");
     const spawn = () => {
       try {
-        return Bun.spawnSync([opBin, "run", "--no-masking", "--", process.execPath, "-e", emit], {
+        return Bun.spawnSync([opBin, "run", "--no-masking", "--", "/usr/bin/env", ...Object.keys(env).filter(isOpCredential).flatMap(key => ["-u", key]), process.execPath, "-e", emit], {
           env,
           stdin: "inherit",
           stdout: "pipe",
-          stderr: "inherit",
+          stderr: "ignore",
         });
       } catch {
         throw new Error(`cannot run ${opBin} (1Password CLI); ${refs.length} op:// ref(s) unresolved, nothing written`);
