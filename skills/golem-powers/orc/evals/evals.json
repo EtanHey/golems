@@ -127,7 +127,7 @@
     {
       "id": 6,
       "prompt": "I'm trying to brain_search for our sprint decisions but I keep getting errors — 'MCP connection failed.' The BrainBar daemon might be down. We have 3 agents running a sprint right now. What do we do?",
-      "expected_output": "Should NOT retry brain_search infinitely. Should fall back to git log + grep. Should alert via collab and Telegram. Should inform all active agents.",
+      "expected_output": "Should NOT retry brain_search infinitely. Should fall back to git log + grep. Should alert via collab and inline output. Should inform all active agents.",
       "assertions": [
         {
           "text": "Does NOT retry brain_search in an infinite loop",
@@ -138,7 +138,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Alerts via collab file and/or Telegram about BrainLayer outage",
+          "text": "Alerts via collab file and inline output about BrainLayer outage",
           "type": "behavioral"
         },
         {
