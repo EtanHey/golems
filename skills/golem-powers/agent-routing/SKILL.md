@@ -5,11 +5,52 @@ description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine.
 
 # Agent Routing
 
-> Fleet law: canon #1 owns Cursor/Gemini-gatherer=gather, Codex=implement, Claude=orchestrate. This skill owns role selection, delegation checks, review ownership, and the Codex model x effort choice. `/repogolem` owns launcher mechanics; canon #5/#6 own non-Codex model and launcher law.
+> This skill owns fleet routing rules, role selection, delegation checks, review ownership, and model/effort dispatch policy. `standards/model-roles.json` owns role → model; `/repogolem` owns launcher mechanics and canon #6 owns launcher law.
 
 > **Auto-dispatch triggers** (canonical in `/orc` C4): batch reads >=3, transcription >=2,
 > web research >=1, or any "in parallel" / "all of these" phrasing -> fan out sub-agents
 > in the SAME message before asking permission.
+
+## Routing rules (SSOT)
+
+This section is the single source of truth for fleet routing. Fleet canon, global instructions, collab templates and other skills point here; models resolve through `standards/model-roles.json`.
+
+### Gathering
+
+Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
+
+### Implementation and review
+
+| Work | Implements | Reviews | Plus |
+|---|---|---|---|
+| UX/UI | `claude.judgment` | Codex (`codex.implement`) | — |
+| Security | `codex.security` | `claude.judgment` | a `codex-security` deep scan per security PR |
+| Everything else (refactors, splits, deletions, tests, fixes, mechanical, docs) | `codex.implement` | `claude.judgment` | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
+
+The reviewer is always the other vendor.
+
+Interim route (Etan 2026-09-30/10-01): Daybreak Blue requires a hardware security key from 2026-10-01. `codex.security` resolves to the interim model until Etan has keys; then one config line switches it back.
+
+### Inner loop (sequential)
+
+- The implementer goes first. The reviewer is spawned or briefed only after the implementer reports done: its DONE marker or report line, or for a cloud implementer, PR head stable ≥10 min with checks finished.
+- A reviewer never reads a half-finished diff. They iterate until both are happy; then the implementer opens the remote PR and runs `/pr-loop`. Merge follows the lane's merge authority after the PR loop is happy.
+- The LEAD routes the reviewer; a worker never starts its own. No reviewer pane means ask the lead. The lead is the escalation path, not a gate; its call is final when invoked, and it delegates the review decision to a reviewer worker.
+
+This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewers are separate. Pane mechanics live in `/collab-monitor` section "Completion -> Reviewer Handoff".
+
+### Records
+
+Each PR body records its implementer, review rounds, and bot/reviewer defects. Claude leads orchestrate and route work through visible panes.
+
+### Model pins and dispatch
+
+- Fresh boots run `claude.judgment` at 1M via the bare launcher pin. The pin follows the role's current model and the pin is never removed; it prevents a prior session's model persisting.
+- Fable only via explicit per-invocation selection; a prior session's model never persists into the next.
+- Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly, resolved from roles. Cursor is the Auto-only exception.
+- Effort is per `/large-plan` phase; declare effort + why and pass it explicitly at dispatch.
+- Keep to ≤2–3 concurrent Claude dispatches, staggered.
+- Usage is managed by default-pinning and dispatch-counting, not by usage-blocking buckets.
 
 ## Model roles
 
@@ -18,7 +59,7 @@ Roles live in `standards/model-roles.json`. From the golems checkout, resolve wi
 (select one field). Never hardcode a role-owned model name. Generated launcher
 commands must keep the resolver substitution, not today's resolved literal. Read the role's status
 and gate before dispatch: `codex.subagent.mechanical` is a candidate, bench before use.
-This section owns current dispatch defaults; older model-selection recipes in the
+The Routing rules (SSOT) section owns dispatch policy and the role config owns current model defaults; older model-selection recipes in the
 references are pending PR 2b migration and cannot override the config.
 Effort is not in the model-roles config; each `/large-plan` phase declares effort + why, and every dispatch passes it explicitly (Codex `-E` / `effort:`).
 The launcher refuses a worker spawn without an explicit effort. Codex prompted/worker launches require `-E <level>` or `GOLEM_EFFORT`; bare interactive launches use Codex config. For Claude, `default` means omit the flag: Claude sub-agents inherit the session's effort unless their agent frontmatter sets `effort:` ([Claude Code sub-agents: Supported frontmatter fields](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields)). Gemini uses `launcher_tier`.
@@ -30,27 +71,27 @@ The launcher refuses a worker spawn without an explicit effort. Codex prompted/w
 - Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
 - Fanning out independent units, or asked about Cursor `/multitask`? Read [references/fan-out-engines.md](references/fan-out-engines.md) (recipes, gotchas, GUI prompt contract, dispatch hygiene).
 
-Read every reference triggered by the mission before dispatch. The live reference, not this summary,
-owns its detailed procedure.
+Read every reference triggered by the mission before dispatch. The live reference owns its detailed procedure; Routing rules (SSOT) and the role config take precedence over conflicting routing or model-selection recipes.
 
 ## Role Matrix
 
 | Tool | Role | Does | Never does |
 |---|---|---|---|
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
-| **`codex.implement`** | Implement | Code/docs changes, fixes, refactors, tests, PRs | Research, data gathering, orchestration |
+| **`codex.implement`** | Implement / review | Non-UX/UI, non-security code/docs changes, fixes, refactors, tests, PRs; UX/UI pair review per SSOT | Research, data gathering, orchestration |
+| **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
 | **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
 | **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Implementing, reviewing, deciding, UX/UI judgment |
-| **`claude.judgment`** | Orchestrate | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer, and performs UX-taste review passes | Bulk reads/SQL or implementation |
+| **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; non-UX/UI implementation |
 
 Decision rules:
 
 1. Read-only query, scan, search, audit, or lookup -> Cursor; for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
 2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
-3. Any code or file change -> `codex.implement`.
+3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; everything else -> `codex.implement`.
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
-5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; Codex implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before Codex implements.
-6. Independent parallel units -> § Fan-out engine chooses the engine; fleet canon #1 owns Cursor model selection.
+5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
+6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
 7. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a `gemini.gather.visual` gatherer through `/qa-video`; use Pro-High only when explicitly requested.
 8. UX/UI and design judgment stays on `claude.judgment`. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
 
@@ -104,7 +145,7 @@ Fan out the read-heavy discovery; make the changes in one agent that holds the w
 ## Dispatch Boundaries
 
 - Visible-worker launch law lives in fleet canon #6; `/repogolem` owns invocation mechanics and [delegation operations](references/delegation-operations.md#launcher-boundary) owns the `--fast` prohibition.
-- Cursor model selection lives in fleet canon #1.
+- Cursor model selection lives in Routing rules (SSOT).
 - Claude Workflow/Agent-tool fan-out is read-only recon, verification, or synthesis except audio-dashboard builds.
 - Codex children may edit only inside their visible Codex parent's worktree; that parent owns acceptance.
 - A standalone read-only lane remains Cursor even though a named Codex `recon` child exists for bounded fan-out inside a Codex lane.
@@ -114,30 +155,11 @@ Fan out the read-heavy discovery; make the changes in one agent that holds the w
 
 Domain leads are orchestrators one tier below orc:
 
-1. Leads delegate implementation to Codex; fleet canon #7 owns their worker-monitor guard.
+1. Leads delegate implementation according to Routing rules (SSOT); fleet canon #7 owns their worker-monitor guard.
 2. Lead goals preserve orchestration duties: delegate, maintain health gates, synthesize, and verify.
 3. A lead is a managed `agent_id` with `role:"orchestrator"` and left-column placement.
-4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Review routing.
+4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Routing rules (SSOT).
 5. Reuse an existing healthy worker for the same repo/workspace/role lane; supersede its goal instead of spawning a duplicate.
-
-## Review routing
-
-Canon #1 owns the three-way implementation/review split. Resolve the named roles
-through `standards/model-roles.json`:
-
-- **UX/UI:** `claude.judgment` implements; Codex reviews using the `codex.implement` model.
-- **Security:** Daybreak Blue implements; `claude.judgment` reviews; add a `codex-security` scan.
-- **Everything else:** `codex.implement` implements; `claude.judgment` reviews.
-
-The LEAD starts the reviewer only after the implementer reports DONE, following
-canon #1's completion gate. Workers follow their lane's explicit review/handoff
-order and run `/pr-loop`.
-
-The durable core is unconditional: the LEAD routes the reviewer, and a WORKER never starts any
-reviewer for its own work. No reviewer pane means ask the lead.
-
-This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewers are separate.
-Pane mechanics live in `/collab-monitor` section "Completion -> Reviewer Handoff".
 
 ## Goal Contract
 
@@ -153,7 +175,7 @@ explain the evidence-backed state, and store the correction separately.
 ## Cross-Skill Ownership
 
 - `/repogolem`: launcher flags, defaults, resume behavior, and raw escape hatches.
-- `/pr-loop`: branch through ready-for-review PR; Review routing above owns the pre-PR pair.
+- `/pr-loop`: branch through ready-for-review PR; Routing rules (SSOT) above owns the pre-PR pair.
 - `/collab-monitor`: worker monitoring and reviewer handoff mechanics.
 - `/qa-video`: Gemini visual workflow.
-- `/whats-new`: tool-surface changes; they do not revise canon #1 by implication.
+- `/whats-new`: tool-surface changes; they do not revise Routing rules (SSOT) by implication.
