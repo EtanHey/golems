@@ -1,0 +1,56 @@
+{
+  "items": {
+    "synthetic-21": {
+      "bucket": "Action needed",
+      "category": "job",
+      "sender": "Synthetic Org 21",
+      "deadline": "2030-01-02T17:00:00Z",
+      "gist_keyword": "interview",
+      "action_keyword": "select"
+    },
+    "synthetic-22": {
+      "bucket": "Action needed",
+      "category": "job",
+      "sender": "Synthetic Org 22",
+      "deadline": "2030-01-03T12:00:00Z",
+      "gist_keyword": "role",
+      "action_keyword": "confirm"
+    },
+    "synthetic-23": {
+      "bucket": "Urgent",
+      "category": "client",
+      "sender": "Synthetic Org 23",
+      "deadline": "2030-01-01T16:00:00Z",
+      "gist_keyword": "project",
+      "action_keyword": "deliver"
+    },
+    "synthetic-24": {
+      "bucket": "Urgent",
+      "category": "admin",
+      "sender": "Synthetic Org 24",
+      "deadline": "2030-01-01T18:00:00Z",
+      "gist_keyword": "bill",
+      "action_keyword": "pay"
+    },
+    "synthetic-25": {
+      "bucket": "Action needed",
+      "category": "freelance",
+      "sender": "Synthetic Org 25",
+      "deadline": "2030-01-04T12:00:00Z",
+      "gist_keyword": "proposal",
+      "action_keyword": "submit"
+    }
+  },
+  "footer": {
+    "pulled": 25,
+    "filtered_by_reason": {
+      "promotions": 8,
+      "newsletter_bulk": 8,
+      "social": 2,
+      "forums": 2
+    },
+    "surfaced": 5,
+    "deferred": 0,
+    "coverage": "newer_than:1d; complete fixture; query-excluded counts unknown"
+  }
+}

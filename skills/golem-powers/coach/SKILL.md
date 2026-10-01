@@ -73,6 +73,10 @@ Before drafting a schedule, recommendation, external message, or document:
 
 Do not ask the user for information that an authorized current source already provides. Do not invent missing facts.
 
+## Email sweeps
+
+Email sweeps go to the `coach-mail` sub-agent, never `general-purpose` and never inline; reply/send requests must not dispatch `coach-mail`, including preparatory lookups; see `/agent-routing` for general dispatch rules.
+
 ## External documents
 
 Before a document leaves the workspace, verify:

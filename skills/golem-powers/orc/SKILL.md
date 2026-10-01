@@ -7,7 +7,7 @@ description: "Orchestrate multi-agent sprints/cmux/ecosystem work. Triggers: spr
 
 ## Global agent install
 
-Run `bash skills/golem-powers/orc/scripts/install.sh` from the golems checkout to link `orc-helper` and `brain-worker` into `~/.claude/agents/`. Use `--dry-run` to preview; the script backs up hand-placed files before linking. `brain-worker` is interim until the BrainLayer plugin ships it.
+Run `bash skills/golem-powers/orc/scripts/install.sh` from the golems checkout to link `orc/agents/*` (`orc-helper`, `brain-worker`) and `coach/agents/*` (`coach-mail`) into `~/.claude/agents/`. Use `--dry-run` to preview; the script backs up hand-placed files before linking. `brain-worker` is interim until the BrainLayer plugin ships it.
 
 > Fleet law: canon #1 owns lead routing, #7 owns monitors/collabs, and #8 owns cluster workflow. This skill keeps orc-specific state machine, recovery decisions, composition map, and operational mechanics.
 
