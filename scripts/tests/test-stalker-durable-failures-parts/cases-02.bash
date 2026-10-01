@@ -131,7 +131,6 @@ function split_case_038() {
     [ ! -f "$stream_dir/.stage-run-quality.failed" ]
     grep -F -q 'chat_count=0' "$stream_dir/.stage-chat.failed"
     [ ! -s "$ALERTS_FILE" ]
-    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_039() {
