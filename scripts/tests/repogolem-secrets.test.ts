@@ -53,6 +53,7 @@ afterEach(() => {
 
 function run(args: string[], env: Record<string, string> = {}) {
   const base = { ...process.env, REPOGOLEM_SOURCE_SHA: "0".repeat(40), REPOGOLEM_OP_BIN: FAKE_OP, FAKE_OP_LOG: log };
+  for (const key of Object.keys(base)) if (key === 'OP_SESSION' || key === 'OP_SERVICE_ACCOUNT_TOKEN' || (key.startsWith('OP_SESSION_') && key !== 'OP_SESSION_TIMEOUT')) delete base[key];
   delete base.REPOGOLEM_CONFIG;
   delete base.REPOGOLEM_HOST;
   const proc = Bun.spawnSync(["bun", CLI, ...args], { env: { ...base, ...env }, stdout: "pipe", stderr: "pipe" });
@@ -108,8 +109,8 @@ describe("generate resolves op:// refs", () => {
     const r = generate();
     expect(r.stderr).not.toContain("repogolem-config:");
     expect(r.code).toBe(0);
-    expect(opCalls()).toBe(1);
-    expect(readFileSync(log, "utf8")).toMatch(/^run --no-masking -- /);
+    expect(opCalls()).toBe(5);
+    expect(readFileSync(log, "utf8").split("\n").filter(line => line.startsWith("run "))).toHaveLength(1);
 
     for (const ref of REFS) expect(sourceSecrets(secretKey(ref))).toBe(`resolved:${ref}`);
     const keys = readFileSync(join(out, "secrets.env"), "utf8").match(/^REPOGOLEM_SECRET_\w+=/gm) ?? [];
@@ -287,11 +288,11 @@ describe("outputs", () => {
 describe("--check", () => {
   test("fresh passes; --check and a dispatch-side read never run op", () => {
     expect(generate().code).toBe(0);
-    expect(opCalls()).toBe(1);
+    expect(opCalls()).toBe(5);
     const r = check();
     expect(r.code).toBe(0);
     expect(sourceSecrets(secretKey(REFS[1]))).toBe(`resolved:${REFS[1]}`);
-    expect(opCalls()).toBe(1);
+    expect(opCalls()).toBe(5);
   });
 
   test("a config edit exits 1 and names every stale output with the hash mismatch", () => {
@@ -303,7 +304,7 @@ describe("--check", () => {
     for (const f of ["registry.json", "launchers.zsh", "secrets.env"]) expect(r.stderr).toContain(join(out, f));
     expect(r.stderr).toContain(`config-sha256 ${stamped.slice(0, 12)}`);
     expect(r.stderr).toContain(configSha().slice(0, 12));
-    expect(opCalls()).toBe(1);
+    expect(opCalls()).toBe(5);
   });
 
   test("a new ref makes secrets.env stale even when its stamp is rewritten", () => {
@@ -349,7 +350,7 @@ describe("generate from a transferred secret cache", () => {
     const target = join(dir, "remote");
     const r = run(["generate", "--config", config, "--host", HOST, "--out-dir", target, "--secrets-from", cache]);
     expect(r.code).toBe(0);
-    expect(opCalls()).toBe(1);
+    expect(opCalls()).toBe(5);
     expect(readFileSync(join(target, "secrets.env"), "utf8")).toBe(readFileSync(cache, "utf8"));
     expect(mode(target)).toBe(0o700);
     expect(mode(join(target, "secrets.env"))).toBe(0o600);
@@ -368,7 +369,7 @@ describe("generate from a transferred secret cache", () => {
     writeFileSync(cache, original);
     chmodSync(cache, 0o644);
     expect(attempt().code).toBe(2);
-    expect(opCalls()).toBe(1);
+    expect(opCalls()).toBe(5);
   });
   test("generated launchers bootstrap the shipped runtime, without Ralph", () => {
     expect(generate().code).toBe(0);
@@ -391,7 +392,8 @@ describe("generate --check-refs", () => {
     expect(existsSync(out)).toBe(false);
     const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
     expect(calls.filter(line => line.startsWith("item list "))).toHaveLength(1);
-    expect(calls.some(line => /^(run|read|item get) /.test(line))).toBe(false);
+    expect(calls.filter(line => line.startsWith("item get "))).toHaveLength(1);
+    expect(calls.some(line => /^(run|read) /.test(line))).toBe(false);
   });
   test("a missing vault exits2 and lists every affected ref without values", () => {
     const r = preflight({ FAKE_OP_MISSING_VAULT: "example-vault", FAKE_OP_CANARY: canary });
@@ -411,7 +413,7 @@ describe("generate --check-refs", () => {
     expect(missing.stdout + missing.stderr + unsigned.stdout + unsigned.stderr).not.toContain(canary);
     expect(existsSync(out)).toBe(false);
   });
-  for (const noPrompt of [false, true]) {
+  for (const noPrompt of [true]) {
     test(`unsigned ${noPrompt ? "automation" : "interactive"} preflight names terminal sign-in before retry`, () => {
       const r = preflight({ FAKE_OP_UNSIGNED: "1", FAKE_OP_CANARY: canary }, noPrompt ? ["--no-prompt"] : []);
       expect(r.code).toBe(3);

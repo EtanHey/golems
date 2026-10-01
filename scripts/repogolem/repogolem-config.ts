@@ -800,7 +800,7 @@ function runGenerate(argv: string[]) {
   const args = parseArgs(argv, ["check", "check-refs", "no-prompt", "help"], ["config", "out-dir", "home", "host", "secrets-from"]);
   if (args.help) {
     console.log("usage: repogolem generate [--config PATH] [--host HOST] [--check | --check-refs [--no-prompt]]");
-    console.log("--check-refs checks vault/item metadata, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Each call is bounded to 15 seconds.");
+    console.log("--check-refs checks vault/item/field names, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Metadata calls are bounded to 15 seconds; unsigned access exits 3.");
     return 0;
   }
   if (args["no-prompt"] && !args["check-refs"]) fail("--no-prompt requires --check-refs");
@@ -813,7 +813,9 @@ function runGenerate(argv: string[]) {
   if (args["check-refs"]) {
     if (args.check || args["secrets-from"]) fail("--check-refs cannot be combined with --check or --secrets-from");
     const { config: effective } = resolveConfig(configText, host);
-    return checkRefs(collectRefs(effective), process.env.REPOGOLEM_OP_BIN || "op", args["no-prompt"] === true);
+    const refs = collectRefs(effective);
+    if (refs.length && !effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');
+    return checkRefs(refs, process.env.REPOGOLEM_OP_BIN || "op", args["no-prompt"] === true);
   }
 
   if (args.check) {
@@ -829,11 +831,18 @@ function runGenerate(argv: string[]) {
   // Everything that can fail runs before the first write.
   const generated = buildGenerated(configText, home, currentSourceSha(), host);
   assertSafeOutDir(outDir);
+  const opBin = process.env.REPOGOLEM_OP_BIN || 'op';
   let secretsEnv: string;
   try {
+    if (!args['secrets-from'] && generated.refs.length) {
+      const { config: effective } = resolveConfig(configText, host);
+      if (!effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');
+      const status = checkRefs(generated.refs, opBin);
+      if (status !== 0) return status;
+    }
     const resolved = typeof args["secrets-from"] === "string"
       ? readTransferredSecrets(args["secrets-from"], generated.configSha, generated.machine, generated.refs)
-      : resolveRefs(generated.refs, opResolver(process.env.REPOGOLEM_OP_BIN || "op"));
+      : resolveRefs(generated.refs, opResolver(opBin));
     secretsEnv = secretsEnvText(generated.secretsHeader, resolved);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
@@ -890,7 +899,7 @@ function main(argv: string[]) {
   fail("usage: repogolem-config.ts import|generate|init [options] (see the header comment)");
 }
 
-// Exit codes: 0 ok · 1 stale (--check) · 2 error/missing refs · 3 not signed in (--check-refs). An unreadable
+// Exit codes: 0 ok · 1 stale (--check) · 2 error/missing refs · 3 sign-in/authorization unavailable. An unreadable
 // or unparseable input must never exit 1, or a --check caller reads it as stale.
 if (import.meta.main) {
   try {

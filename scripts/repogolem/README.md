@@ -37,23 +37,29 @@ The installed runtime and CLI are retained.
 In a new shell, the operator performs the first real generation:
 
 ```sh
-op signin && repogolem generate --check-refs && repogolem generate && repogolem generate --check
+repogolem generate
 ```
 
-1Password desktop Touch ID only prompts after a terminal `op signin`.
-(With app integration off, use `eval $(op signin)` instead.)
+`generate` checks authorized 1Password vault/item/field names, then
+resolves all references with a single `op run` before writing the cache.
+Set top-level `secrets: { backend: 1password }`; unknown backends fail closed.
+Existing configs with op refs and no backend default to 1password with one notice.
 
-Run `repogolem generate --check-refs`, expect exit 0, then
-`generate`. It prints the selected machine's `vault/item/field` names grouped
-by vault and checks vault/item existence only. It uses one metadata item-list
-call per vault, matching item titles or IDs; it never fetches item details,
-reads field values, logs metadata JSON, or writes generated files.
-Exit 0 means vaults/items exist, exit 2 means missing/inaccessible refs or a check
-error, and exit 3 means sign-in/authorization is unavailable. It writes no output/cache.
-The default allows [desktop app integration](https://www.1password.dev/cli/app-integration)
-and Touch ID. For automation, use `repogolem generate --check-refs --no-prompt`:
-it disables biometric integration and returns 3 without prompting when there
-is no CLI session. Both modes close stdin and bound each CLI call to 15 seconds.
+`repogolem generate --check-refs` runs the same preflight without generation.
+It prints reference names grouped by vault, lists items once per vault and
+fetches each distinct item once with `op item get --format json`. This decrypts
+items in memory to project only field labels, IDs and sections; values are never
+printed, logged or cached by the preflight (`OP_CACHE=false`). Matching is
+case-insensitive and section-aware. Exit 2 names missing/inaccessible references;
+exit 3 means sign-in failed, was cancelled, or authorization remains unavailable.
+Both failures leave generated files untouched.
+
+Unsigned access exits 3 before resolution or output writes. This parent slice
+adds field verification; automatic sign-in arrives in the paired child change.
+Metadata calls close stdin and have 15-second bounds.
+For automation, `repogolem generate --check-refs --no-prompt` disables biometric
+integration and never signs in: export a CLI session (`eval $(op signin)` on a
+manually added account) or `OP_SERVICE_ACCOUNT_TOKEN` beforehand.
 `--check` instead verifies existing generated files without running op.
 
 Unattended launcher calls read cached data without sourcing secret assignments
@@ -67,6 +73,10 @@ references on the sending Mac once, and streams the cache over SSH under
 `--secrets-from` and never invokes `op`. An owner/mode check, symlink refusal,
 and a new noclobber incoming file protect the transfer. Remote generation
 refuses changed config/host stamps or incomplete cached references.
+
+Sync still calls the resolver directly, without generation preflight or self-sign-in.
+Resolver failures report exit status/counts to stderr while suppressing potentially
+sensitive raw op diagnostics.
 
 Sync selects the remote private repo from `--remote-repo`,
 `REPOGOLEM_REMOTE_REPO`, or `syncTargets.m1.repo` in the private YAML.

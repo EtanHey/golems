@@ -17,8 +17,12 @@ if [[ "${1:-}" != run ]]; then
     [[ "${OP_BIOMETRIC_UNLOCK_ENABLED:-}" == false ]] || exit 8
     if IFS= read -r ignored; then exit 9; fi
   fi
-  [[ -n "${FAKE_OP_UNSIGNED:-}" ]] && { echo "not signed in ${FAKE_OP_CANARY:-}" >&2; exit 1; }
+  [[ -n "${FAKE_OP_UNSIGNED:-}" && "${1:-}" != account && ( ! -f "${FAKE_OP_STATE:-}" || "${FAKE_OP_SIGNIN_FAILURE:-}" == still-unsigned ) ]] && { echo "not signed in ${FAKE_OP_CANARY:-}" >&2; exit 1; }
   case "${1:-} ${2:-}" in
+    "account list")
+      [[ -n "${FAKE_OP_ACCOUNTS:-}" ]] && { printf '%s\n' "$FAKE_OP_ACCOUNTS"; exit 0; }
+      if [[ -n "${FAKE_OP_MANUAL:-}" ]]; then printf '%s\n' '[{"shorthand":"fixture"}]'
+      else printf '%s\n' '[{"user_uuid":"fixture"}]'; fi ;;
     "whoami --format") printf '%s\n' '{"id":"synthetic-account"}' ;;
     "vault list")
       if [[ "${FAKE_OP_MISSING_VAULT:-}" == example-vault ]]; then printf '%s\n' '[]'
@@ -32,8 +36,11 @@ if [[ "${1:-}" != run ]]; then
       elif [[ -n "${FAKE_OP_ITEMS:-}" ]]; then printf '%s\n' "$FAKE_OP_ITEMS"
       else printf '[{"id":"synthetic-item","title":"example-item","fields":[{"value":"%s"}]}]\n' "${FAKE_OP_CANARY:-synthetic-value}"; fi ;;
     "item get")
-      [[ "${FAKE_OP_MISSING_ITEM:-}" == "${5:-}" ]] && { echo "missing ${FAKE_OP_CANARY:-}" >&2; exit 1; }
-      printf '{"fields":[{"value":"%s"}]}\n' "${FAKE_OP_CANARY:-synthetic-value}" ;;
+      [[ -n "${FAKE_OP_FIELDS:-}" ]] && { printf '%s\n' "$FAKE_OP_FIELDS"; exit 0; }
+      [[ -n "${FAKE_OP_GET_FAIL:-}" ]] && { echo "${FAKE_OP_CANARY:-}" >&2; exit 1; }
+      [[ -n "${FAKE_OP_BAD_ITEM_JSON:-}" ]] && { printf '%s' "${FAKE_OP_CANARY:-}"; exit 0; }
+      if [[ -n "${FAKE_OP_MISSING_FIELD:-}" ]]; then printf '{"fields":[],"value":"%s"}\n' "${FAKE_OP_CANARY:-}"
+      else printf '{"fields":[{"id":"token","label":"token","value":"%s"},{"id":"api-key","label":"api-key"},{"id":"webhook-secret","label":"webhook-secret"},{"id":"field-id","label":"token","section":{"id":"section-id","label":"credentials"},"value":"%s"}]}\n' "${FAKE_OP_CANARY:-}" "${FAKE_OP_CANARY:-}"; fi ;;
     *) exit 3 ;;
   esac
   exit 0
@@ -44,7 +51,7 @@ while [[ $# -gt 0 && "$1" != -- ]]; do shift; done
 [[ "${1:-}" == -- ]] || { echo "fake-op: missing --" >&2; exit 3; }
 shift
 [[ -n "${FAKE_OP_BEFORE:-}" ]] && bash -c "$FAKE_OP_BEFORE"
-[[ -n "${FAKE_OP_FAIL:-}" ]] && { echo "[ERROR] fake-op: could not resolve a reference" >&2; exit 1; }
+[[ -n "${FAKE_OP_FAIL:-}" ]] && { echo "[ERROR] fake-op: could not resolve a reference ${FAKE_OP_CANARY:-}" >&2; exit 1; }
 while IFS= read -r name; do
   value=${!name}
   [[ "$value" == op://* ]] || continue

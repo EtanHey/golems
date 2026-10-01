@@ -61,7 +61,8 @@ export function collectRefs(config: unknown): string[] {
 
 // One `op run` for every ref: each ref rides in as an env var, op swaps in
 // the value, and a child bun prints them back as JSON on the piped stdout.
-// stdin/stderr stay attached so op's sign-in / Touch ID prompt works.
+// Authentication/preflight happens first; resolver diagnostics are suppressed
+// because CLI errors can contain values. Only parsed values reach the writer.
 export function opResolver(opBin: string): Resolver {
   return (refs) => {
     const env: Record<string, string | undefined> = { ...process.env };
@@ -82,7 +83,7 @@ export function opResolver(opBin: string): Resolver {
           env,
           stdin: "inherit",
           stdout: "pipe",
-          stderr: "inherit",
+          stderr: "ignore",
         });
       } catch {
         throw new Error(`cannot run ${opBin} (1Password CLI); ${refs.length} op:// ref(s) unresolved, nothing written`);
