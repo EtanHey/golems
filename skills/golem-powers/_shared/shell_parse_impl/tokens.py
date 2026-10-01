@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import re
 
-# Shell env-assignment token (`FOO=bar`) — used to find the assignment prefix
-# of each simple command for the per-segment inline escape hatch.
-_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+# Shell assignment token (`FOO=bar`, `FOO+=bar`, `FOO[0]=bar`) — used to
+# identify assignment words while preserving the base variable name. Array
+# and append assignments are recognized even when callers cannot evaluate
+# their result, so stale state can be invalidated instead of reused.
+_ASSIGNMENT_RE = re.compile(
+    r"^(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
+    r"(?P<subscript>\[[^\]]+\])?(?P<append>\+)?="
+)
 
 
 # Raw-line tokenizers for case arms and `for ... in` word lists. A double-quoted
