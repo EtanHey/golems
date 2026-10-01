@@ -84,7 +84,6 @@ assert second._parse_bash("caffeinate tee /tmp/out")[1][1] is False
 }
 
 
-# KNOWN RED until golems#411 merges: missing-package hook imports currently exit 1.
 @test "a copied tmp-block facade without its implementation denies" {
   mkdir -p "$TEST_ROOT/hooks/_shared" "$TEST_ROOT/hooks/tmp-block/hooks"
   cp "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py" "$TEST_ROOT/hooks/_shared/shell_parse.py"
