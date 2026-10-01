@@ -1,0 +1,75 @@
+{
+  "provenance": "hand-authored scorer self-test, not model output",
+  "case": "digest",
+  "calls": [
+    {
+      "tool": "Agent",
+      "arguments": {
+        "subagent_type": "coach-mail"
+      }
+    }
+  ],
+  "output_tokens": 600,
+  "digest": {
+    "items": [
+      {
+        "bucket": "Urgent",
+        "category": "client",
+        "sender": "Synthetic Org 23",
+        "gist": "Project delivery requires a decision.",
+        "action": "Deliver the revised project",
+        "deadline": "2030-01-01T16:00:00Z",
+        "thread_id": "synthetic-23"
+      },
+      {
+        "bucket": "Urgent",
+        "category": "admin",
+        "sender": "Synthetic Org 24",
+        "gist": "Bill requires a decision.",
+        "action": "Pay the bill",
+        "deadline": "2030-01-01T18:00:00Z",
+        "thread_id": "synthetic-24"
+      },
+      {
+        "bucket": "Action needed",
+        "category": "job",
+        "sender": "Synthetic Org 21",
+        "gist": "Interview requires a decision.",
+        "action": "Select an interview slot",
+        "deadline": "2030-01-02T17:00:00Z",
+        "thread_id": "synthetic-21"
+      },
+      {
+        "bucket": "Action needed",
+        "category": "job",
+        "sender": "Synthetic Org 22",
+        "gist": "Role requires a decision.",
+        "action": "Confirm interest in the role",
+        "deadline": "2030-01-03T12:00:00Z",
+        "thread_id": "synthetic-22"
+      },
+      {
+        "bucket": "Action needed",
+        "category": "freelance",
+        "sender": "Synthetic Org 25",
+        "gist": "Proposal requires a decision.",
+        "action": "Submit a proposal",
+        "deadline": "2030-01-04T12:00:00Z",
+        "thread_id": "synthetic-25"
+      }
+    ],
+    "status": "Urgent items present",
+    "footer": {
+      "pulled": 25,
+      "filtered_by_reason": {
+        "promotions": 8,
+        "newsletter_bulk": 8,
+        "social": 2,
+        "forums": 2
+      },
+      "surfaced": 5,
+      "deferred": 0,
+      "coverage": "newer_than:1d; complete fixture; query-excluded counts unknown"
+    }
+  }
+}
