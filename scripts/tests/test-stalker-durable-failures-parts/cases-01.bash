@@ -400,7 +400,7 @@ function split_case_022() {
     printf '[00:00:01] viewer: old run\n' > "$stale_dir/chat.log"
 
     STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [ -f "$stale_dir/.stage-scoring.failed" ]
     [ ! -f "$stale_dir/gems.md" ]
@@ -433,7 +433,7 @@ function split_case_024() {
     printf '### [00:10:00] A real moment\n**Score:** 9/10 | **Type:** insight\n**Gist:** something good\n' > "$run_dir/gems.md"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"Stalker Morning Digest FAILED - 2026-08-19"* \
@@ -450,7 +450,7 @@ function split_case_025() {
     mkdir -p "$root"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"Stalker Morning Digest - 2026-08-19"* \
@@ -469,7 +469,7 @@ function split_case_026() {
     printf '### [00:03:00] Tail gem\n**Score:** 8/10 | **Type:** insight\n' > "$run_dir/gems.md"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"examplechannel-2026-08-19-0300: .orphan-tail present"* \
@@ -483,26 +483,16 @@ function split_case_027() {
     printf '### [00:10:00] A real moment\n**Score:** 9/10 | **Type:** insight\n' > "$run_dir/gems.md"
 
     STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19
 
-    grep -F -q 'Stalker Morning Digest FAILED - 2026-08-19' "$ALERTS_FILE" \
-        && grep -F -q 'etan-2026-08-19-2100' "$ALERTS_FILE" \
-        && [ "$status" -eq 75 ]
+    [[ "$output" == *'Stalker Morning Digest FAILED - 2026-08-19'* \
+        && "$output" == *'etan-2026-08-19-2100'* \
+        && "$status" -eq 75 ]]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_028() {
     root="$TMPDIR_/stalker-many-drops"
-    captured_payload="$TMPDIR_/captured-payload.json"
-    queue_dir="$TMPDIR_/telegram-queue"
-    rejecting_sender="$FAKE_BIN/telegram-reject-oversized"
-
-    cat > "$rejecting_sender" <<'SH'
-#!/bin/bash
-cat > "$CAPTURED_PAYLOAD"
-[ "$(LC_ALL=C wc -c < "$CAPTURED_PAYLOAD" | tr -d ' ')" -le 4096 ]
-SH
-    chmod +x "$rejecting_sender"
-
     for index in $(seq -w 1 20); do
         run_dir="$root/etan-2026-08-19-$index"
         mkdir -p "$run_dir"
@@ -510,41 +500,24 @@ SH
         printf '### [00:10:00] Dropped moment %s\n**Score:** 9/10 | **Type:** insight\n' "$index" > "$run_dir/gems.md"
     done
 
-    CAPTURED_PAYLOAD="$captured_payload" \
-    STALKER_TELEGRAM_CMD="$rejecting_sender" \
-    STALKER_TELEGRAM_QUEUE_DIR="$queue_dir" \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19
 
-    payload_bytes="$(LC_ALL=C wc -c < "$captured_payload" | tr -d ' ')"
-    body="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["body"])' "$captured_payload")"
+    body="${output#*$'\n'}"
     body_bytes="$(LC_ALL=C printf '%s' "$body" | wc -c | tr -d ' ')"
-    printf '# notify_status=%s payload_bytes=%s body_bytes=%s queued_files=%s\n' \
-        "$status" "$payload_bytes" "$body_bytes" "$(find "$queue_dir" -type f 2>/dev/null | wc -l | tr -d ' ')" >&3
     [[ "$status" -eq 75 \
-        && -f "$captured_payload" \
-        && "$payload_bytes" -le 4096 \
         && "$body_bytes" -le 1200 \
-        && "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["title"])' "$captured_payload")" = "Stalker Morning Digest FAILED - 2026-08-19" \
+        && "$output" == *"Stalker Morning Digest FAILED - 2026-08-19"* \
         && "$body" == *"Found 20 matching run directories, but none were eligible for processing"* \
         && "$body" == *"details truncated:"* \
         && "$body" == *"20 total"* \
-        && ! -d "$queue_dir" ]]
+        ]]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_029() {
     root="$TMPDIR_/stalker-many-partial-drops"
-    captured_payload="$TMPDIR_/captured-partial-payload.json"
-    queue_dir="$TMPDIR_/partial-telegram-queue"
-    rejecting_sender="$FAKE_BIN/telegram-reject-partial-oversized"
     processed_dir="$root/examplechannel-2026-08-19-0000"
     long_suffix="$(printf '%0180d' 0 | tr '0' 'x')"
-
-    cat > "$rejecting_sender" <<'SH'
-#!/bin/bash
-cat > "$CAPTURED_PAYLOAD"
-[ "$(LC_ALL=C wc -c < "$CAPTURED_PAYLOAD" | tr -d ' ')" -le 4096 ]
-SH
-    chmod +x "$rejecting_sender"
 
     mkdir -p "$processed_dir"
     printf 'done\n' > "$processed_dir/.stage-process.done"
@@ -554,39 +527,24 @@ SH
         mkdir -p "$root/examplechannel-$long_suffix-$index-2026-08-19"
     done
 
-    CAPTURED_PAYLOAD="$captured_payload" \
-    STALKER_TELEGRAM_CMD="$rejecting_sender" \
-    STALKER_TELEGRAM_QUEUE_DIR="$queue_dir" \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19
 
-    body="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["body"])' "$captured_payload")"
-    payload_bytes="$(LC_ALL=C wc -c < "$captured_payload" | tr -d ' ')"
+    body="${output#*$'\n'}"
     body_bytes="$(LC_ALL=C printf '%s' "$body" | wc -c | tr -d ' ')"
-    printf '# notify_status=%s payload_bytes=%s body_bytes=%s queued_files=%s\n' \
-        "$status" "$payload_bytes" "$body_bytes" "$(find "$queue_dir" -type f 2>/dev/null | wc -l | tr -d ' ')" >&3
     [[ "$status" -eq 75 \
-        && -f "$captured_payload" \
-        && "$payload_bytes" -le 4096 \
         && "$body_bytes" -le 1200 \
-        && "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["title"])' "$captured_payload")" = "Stalker Morning Digest FAILED - 2026-08-19" \
+        && "$output" == *"Stalker Morning Digest FAILED - 2026-08-19"* \
         && "$body" == *"💎 1 gems · 1 chat"* \
         && "$body" == *"DROPPED (not counted above):"* \
         && "$body" == *"details truncated:"* \
         && "$body" == *"20 total"* \
-        && ! -d "$queue_dir" ]]
+        ]]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_030() {
     root="$TMPDIR_/stalker-real-shape"
-    captured_payload="$TMPDIR_/captured-real-shape.json"
-    capturing_sender="$FAKE_BIN/telegram-capture-real-shape"
     processed_dir="$root/examplechannel-2026-08-20-010000"
-
-    cat > "$capturing_sender" <<'SH'
-#!/bin/bash
-cat > "$CAPTURED_PAYLOAD"
-SH
-    chmod +x "$capturing_sender"
 
     mkdir -p "$processed_dir"
     printf 'done\n' > "$processed_dir/.stage-process.done"
@@ -602,25 +560,16 @@ SH
         printf 'orphaned\n' > "$run_dir/.orphan-tail"
     done
 
-    CAPTURED_PAYLOAD="$captured_payload" \
-    STALKER_TELEGRAM_CMD="$capturing_sender" \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-20
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-20
 
-    body_metrics="$(python3 - "$captured_payload" <<'PY'
-import json
-import sys
-
-body = json.load(open(sys.argv[1]))["body"]
-utf16_units = len(body.encode("utf-16-le")) // 2
-server_kept = body.encode("utf-16-le")[:4000].decode("utf-16-le", errors="ignore")
-print(f"{utf16_units}|{'examplechannel-2026-08-20-032309' in server_kept}|{'digest truncated' in server_kept}")
-PY
-)"
-    printf '# notify_status=%s body_metrics=%s\n' "$status" "$body_metrics" >&3
+    body="${output#*$'\n'}"
+    utf16_units="$(printf '%s' "$body" | python3 -c 'import sys; print(len(sys.stdin.read().encode("utf-16-le")) // 2)')"
     [[ "$status" -eq 0 \
-        && "$body_metrics" == *"|True|True" \
-        && "${body_metrics%%|*}" -le 2000 \
-        && "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["title"])' "$captured_payload")" = "Stalker Morning Digest - 2026-08-20" ]]
+        && "$body" == *"examplechannel-2026-08-20-032309"* \
+        && "$body" == *"digest truncated"* \
+        && "$utf16_units" -le 2000 \
+        && "$output" == *"Stalker Morning Digest - 2026-08-20"* ]]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_031() {
@@ -638,7 +587,7 @@ function split_case_031() {
     done
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-20 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-20 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"examplechannel-2026-08-20-052009"* \
@@ -669,7 +618,7 @@ EOF
 )"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 0 && "$output" = "$expected" ]]
 }

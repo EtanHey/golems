@@ -1,10 +1,10 @@
 #!/usr/bin/env bats
 # Smoke tests for the Stalker Golem BrainLayer + Telegram contract.
-# Run with: bats scripts/tests/test-stalker-brainlayer-telegram.bats
+# Run with: bats scripts/tests/test-stalker-brainlayer.bats
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-    CONTRACT="$REPO_ROOT/scripts/stalker/stalker-brainlayer-telegram.sh"
+    CONTRACT="$REPO_ROOT/scripts/stalker/stalker-brainlayer.sh"
     TMPDIR_="$(mktemp -d)"
     STALKER_ROOT="$TMPDIR_/stalker-golem"
     FAKE_BIN="$TMPDIR_/bin"
@@ -294,7 +294,7 @@ PY
     [ "$(jq -s 'length' "$run_dir/orphaned_stores.jsonl")" = "3" ]
 }
 
-@test "stalker digest sends readable Telegram highlight reel with short backup path and warnings only when needed" {
+@test "stalker digest prints readable highlight reel with short backup path and warnings only when needed" {
     run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
     printf 'done\n' > "$run_dir/.stage-brainlayer.done"
     printf 'status=stored\nstored_count=4\nqueued_count=0\n' > "$run_dir/.brainlayer-status"
@@ -320,12 +320,11 @@ PY
     TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
-    title="$(jq -r '.title' "$TMPDIR_/telegram.json")"
-    source="$(jq -r '.source' "$TMPDIR_/telegram.json")"
-    body="$(jq -r '.body' "$TMPDIR_/telegram.json")"
+    [ ! -f "$TMPDIR_/telegram.json" ]
+    title="${output%%$'\n'*}"
+    body="${output#*$'\n'}"
     [[ "$status" -eq 75 \
         && "$title" = "Stalker Morning Digest FAILED - 2026-06-18" \
-        && "$source" = "stalker-golem" \
         && "$body" == *'🎬 Examplechannel — Jun 18 · duration unknown'* \
         && "$body" == *'💎 2 gems · 2 chat · ⚠️ not backed up'* \
         && "$body" == *'Top moments:'* \
@@ -357,7 +356,8 @@ EOF
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
-    grep -F -q 'WARNING: cleanup skipped - originals retained; Drive re-verify failed: examplechannel-2026-06-18-005309' "$TMPDIR_/telegram.json"
+    [[ "$output" == *'WARNING: cleanup skipped - originals retained; Drive re-verify failed: examplechannel-2026-06-18-005309'* ]]
+    [ ! -f "$TMPDIR_/telegram.json" ]
 }
 
 @test "stalker digest is not coupled to BrainLayer ingest status" {
@@ -368,12 +368,11 @@ EOF
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
-    if grep -F -q 'BrainLayer' "$TMPDIR_/telegram.json"; then
-        false
-    fi
+    [[ "$output" != *BrainLayer* ]]
+    [ ! -f "$TMPDIR_/telegram.json" ]
 }
 
-@test "stalker digest states an explicit no-gems reason and dry-run does not send Telegram" {
+@test "stalker digest states an explicit no-gems reason with BrainLayer dry-run" {
     run_dir="$STALKER_ROOT/examplechannel-2026-06-18-005309"
     mkdir -p "$run_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$run_dir/_DRIVE-LEDGER.md"

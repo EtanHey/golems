@@ -108,11 +108,11 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     split_case_026
 }
 
-@test "vacuous morning digest still delivers its failure alert" {
+@test "vacuous morning digest prints its failure without sending" {
     split_case_027
 }
 
-@test "vacuous morning digest bounds twenty dropped-run evidence blocks before notify" {
+@test "vacuous morning digest bounds twenty dropped-run evidence blocks in its text" {
     split_case_028
 }
 
@@ -120,7 +120,7 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     split_case_029
 }
 
-@test "orphan-tail digest reserves dropped runs before the notify-server slice" {
+@test "orphan-tail digest reserves dropped runs in bounded text" {
     split_case_030
 }
 
