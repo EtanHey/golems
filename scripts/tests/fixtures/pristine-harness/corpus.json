@@ -11207,6 +11207,76 @@
       "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WEAVE_ALLOW_WT_MIGRATION=1 git worktree add {REPO}/.worktrees/w HEAD\"},\"session_id\":\"pristine\"}"
     }
   ,{
+    "id": "issue481-stale-outer-brace-assignment",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; { X=/tmp/q; git worktree add \\\"$X\\\" HEAD; }\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-stale-outer-read-assignment",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; read X <<< /tmp/q; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-stale-outer-eval-assignment",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; eval 'X=/tmp/q'; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-stale-outer-process-substitution-assignment",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; cat <( X=/tmp/q; git worktree add \\\"$X\\\" HEAD )\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-stale-outer-plain-control",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-stale-outer-subshell-control",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; ( X=/tmp/q; git worktree add \\\"$X\\\" HEAD )\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-stale-outer-local-control",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; f() { local X=/tmp/q; git worktree add \\\"$X\\\" HEAD; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-static-eval-semicolon",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; eval 'true; X=/tmp/q'; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-static-eval-multiple-assignments",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; eval 'Y=1; X=/tmp/q'; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-static-eval-concatenated",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; eval \\\"true;X=/tmp/q\\\"; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-static-eval-read",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; eval 'read X' <<< /tmp/q; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-select-assignment",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; select X in /tmp/q; do break; done <<< 1; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-static-eval-assignment-only-control",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; eval Y=literal Z=other; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue481-select-unrelated-control",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; select Y in /tmp/q; do break; done <<< 1; git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  }
+  ,{
     "id": "issue412-dollar-single-quote-paren",
     "target": "parser",
     "probe": "data-substitution",

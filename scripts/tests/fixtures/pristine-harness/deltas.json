@@ -538,5 +538,104 @@
     },
     "case": "tmp-w7-seam-prefixes-unregistered",
     "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-stale-outer-brace-assignment",
+    "reason": "Invalidate a stale outer value after an unmodelled brace-group assignment."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-stale-outer-eval-assignment",
+    "reason": "Invalidate a stale outer value after eval assigns the worktree variable."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-stale-outer-process-substitution-assignment",
+    "reason": "Invalidate a stale outer value after assignment inside process substitution."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-stale-outer-read-assignment",
+    "reason": "Invalidate a stale outer value after read assigns the worktree variable."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-static-eval-semicolon",
+    "reason": "Invalidate tracked values when eval reparses a static compound command body."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-static-eval-multiple-assignments",
+    "reason": "Invalidate tracked values when one eval word contains multiple shell assignments."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-static-eval-concatenated",
+    "reason": "Invalidate tracked values when eval receives concatenated command and assignment text."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-static-eval-read",
+    "reason": "Invalidate tracked values when eval runs a builtin that assigns from input."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
+      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
+    },
+    "case": "issue481-select-assignment",
+    "reason": "Invalidate the select loop variable before a later worktree target uses it."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
+      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+    },
+    "case": "tmp-w7-r1-authoritative-primary-path",
+    "reason": "An unresolved inner reassignment selects the temporary target path and preserves exit 2."
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23",
+      "linux": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23"
+    },
+    "case": "tmp-w7-r1-hits-authoritative-primary-path",
+    "reason": "An unresolved inner reassignment selects the temporary target hit in the API capture."
   }
 ]

@@ -138,9 +138,9 @@ def decision_for(command, monkeypatch):
 
 def state_for(command):
     """(values, literal_prefixes) visible to the command's last segment."""
-    tokens, cmd_pos, seg_of, _scopes = HOOK._parse_bash(command)
+    tokens, cmd_pos, seg_of, scopes = HOOK._parse_bash(command)
     return HOOK._static_shell_variable_state_before(
-        tokens, cmd_pos, seg_of, max(seg_of) if seg_of else 0
+        tokens, cmd_pos, seg_of, scopes, max(seg_of) if seg_of else 0
     )
 
 

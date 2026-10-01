@@ -477,6 +477,239 @@ def test_worktree_hatch_keeps_in_convention_target_allowed(tmp_path):
     assert not ledger.exists(), "an in-convention target does not consume the hatch"
 
 
+@pytest.mark.parametrize(
+    "command",
+    (
+        f"X={GITS}/golems/.worktrees/w; "
+        + '{ X=/tmp/q; git worktree add "$X" HEAD; }',
+        f"X={GITS}/golems/.worktrees/w; "
+        + 'read X <<< /tmp/q; git worktree add "$X" HEAD',
+        f"X={GITS}/golems/.worktrees/w; "
+        + "eval 'X=/tmp/q'; git worktree add \"$X\" HEAD",
+        f"X={GITS}/golems/.worktrees/w; "
+        + 'cat <( X=/tmp/q; git worktree add "$X" HEAD )',
+    ),
+)
+def test_unmodelled_assignment_invalidates_stale_outer_worktree_value(command):
+    """golems#481: a later assignment form the resolver cannot model must
+    invalidate an earlier in-convention value instead of authorizing it."""
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "command",
+    (
+        f"X={GITS}/golems/.worktrees/w; X=$(mktemp -d); "
+        + 'git worktree add "$X" HEAD',
+        f"X={GITS}/golems/.worktrees/w; X=`mktemp -d`; "
+        + 'git worktree add "$X" HEAD',
+        f"X={GITS}/golems/.worktrees/w\nX=$(mktemp -d)\n"
+        + 'git worktree add "$X" HEAD',
+        f"X={GITS}/golems/.worktrees/w; X=$(mktemp -d) && "
+        + 'git worktree add "$X" HEAD',
+    ),
+)
+def test_command_substitution_assignment_invalidates_stale_outer_value(command):
+    """The command inside ``$()``/backticks is not the assignment's command."""
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "command read X <<< /tmp/q",
+        "builtin read X <<< /tmp/q",
+        "command eval X=/tmp/q",
+        "builtin eval X=/tmp/q",
+    ),
+)
+def test_wrapped_builtin_assignment_invalidates_stale_outer_value(mutation):
+    command = (
+        f"X={GITS}/golems/.worktrees/w; {mutation}; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "C=X=/tmp/q; eval $C",
+        'C=X=/tmp/q; eval "$C"',
+        "source <(echo X=/tmp/q)",
+        ". <(echo X=/tmp/q)",
+        "source ./env.sh",
+    ),
+)
+def test_unreadable_eval_or_source_invalidates_all_tracked_values(mutation):
+    command = (
+        f"X={GITS}/golems/.worktrees/w; {mutation}; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "eval 'true; X=/tmp/q'",
+        "eval 'Y=1; X=/tmp/q'",
+        'eval "true;X=/tmp/q"',
+        "eval 'read X' <<< /tmp/q",
+    ),
+)
+def test_static_compound_eval_invalidates_all_tracked_values(mutation):
+    """golems#481: eval bodies beyond literal assignments are opaque code."""
+    command = (
+        f"X={GITS}/golems/.worktrees/w; {mutation}; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+def test_literal_assignment_only_eval_keeps_unrelated_tracked_value():
+    command = (
+        f"X={GITS}/golems/.worktrees/w; eval Y=literal Z=other; "
+        + 'git worktree add "$X" HEAD'
+    )
+
+    assert_allowed(run_hook(bash_payload(command)))
+
+
+def test_select_assignment_invalidates_stale_outer_value():
+    command = (
+        f"X={GITS}/golems/.worktrees/w; "
+        + "select X in /tmp/q; do break; done <<< 1; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+def test_select_of_unrelated_name_keeps_tracked_value():
+    command = (
+        f"X={GITS}/golems/.worktrees/w; "
+        + "select Y in /tmp/q; do break; done <<< 1; "
+        + 'git worktree add "$X" HEAD'
+    )
+
+    assert_allowed(run_hook(bash_payload(command)))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "printf -v X %s /tmp/q",
+        "printf -vX %s /tmp/q",
+        'N=X; printf -v "$N" %s /tmp/q',
+        'printf -v "X[0]" %s /tmp/q',
+        'N=X; read "$N" <<< /tmp/q',
+        'N=X; read -a "$N" <<< /tmp/q',
+        "read -aX <<< /tmp/q",
+        "mapfile -t X <<< /tmp/q",
+        "mapfile -d x X <<< /tmp/qx",
+        "mapfile -td x X <<< /tmp/qx",
+        'N=X; mapfile "$N" <<< /tmp/q',
+        "readarray -t X <<< /tmp/q",
+        "readarray -d x X <<< /tmp/qx",
+        "readarray -td x X <<< /tmp/qx",
+        "for X in /tmp/q; do :; done",
+        "declare -n R=X; R=/tmp/q",
+        "N=X; declare -n R=$N; R=/tmp/q",
+        "N=$(printf X); declare -n R=$N; R=/tmp/q",
+        "X[0]=/tmp/q",
+        "X=(/tmp/q)",
+        "{ X[0]=/tmp/q; }",
+        "X+=/../../../../tmp/q",
+    ),
+)
+def test_assignment_by_name_invalidates_stale_outer_value(mutation):
+    command = (
+        f"X={GITS}/golems/.worktrees/w; {mutation}; "
+        + 'git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+def test_dynamic_builtin_target_does_not_fall_back_to_stale_environment():
+    command = (
+        f"X={GITS}/golems/.worktrees/w; N=$(printf X); "
+        + 'printf -v "$N" %s /tmp/q; git worktree add "$X" HEAD'
+    )
+    proc = run_hook(bash_payload(command), env_extra={"N": "Y"})
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "name, mutation",
+    (
+        ("REPLY", "read <<< /tmp/q"),
+        ("MAPFILE", "mapfile -t <<< /tmp/q"),
+        ("MAPFILE", "readarray -t <<< /tmp/q"),
+    ),
+)
+def test_default_builtin_assignment_target_invalidates_stale_value(name, mutation):
+    command = (
+        f"{name}={GITS}/golems/.worktrees/w; {mutation}; "
+        + f'git worktree add "${name}" HEAD'
+    )
+    proc = run_hook(bash_payload(command))
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "cannot resolve"))
+
+
+@pytest.mark.parametrize(
+    "command, expected",
+    (
+        (
+            f'X={GITS}/golems/.worktrees/w; git worktree add "$X" HEAD',
+            "allow",
+        ),
+        (
+            f"X={GITS}/golems/.worktrees/w; "
+            + '( X=/tmp/q; git worktree add "$X" HEAD )',
+            "deny",
+        ),
+        (
+            f"X={GITS}/golems/.worktrees/w; "
+            + 'f() { local X=/tmp/q; git worktree add "$X" HEAD; }; f',
+            "deny",
+        ),
+        (
+            f"X={GITS}/golems/.worktrees/w; "
+            + 'X=/tmp/q true; git worktree add "$X" HEAD',
+            "allow",
+        ),
+        (
+            f"X={GITS}/golems/.worktrees/w; "
+            + 'cat <( X=/tmp/q; true ); git worktree add "$X" HEAD',
+            "allow",
+        ),
+    ),
+)
+def test_stale_outer_assignment_controls(command, expected):
+    proc = run_hook(bash_payload(command))
+
+    if expected == "allow":
+        assert_allowed(proc)
+    else:
+        assert_denied(proc)
+
+
 def test_worktree_migration_hatch_with_unwritable_ledger_denies():
     """An unlogged bypass must not proceed — fail closed, as with the tmp hatch."""
     proc = run_hook(
@@ -719,4 +952,3 @@ def test_observed_scratchpad_redirect_is_allowed(durable_path):
         cwd=str(durable_path),
     )
     assert_allowed(proc)
-

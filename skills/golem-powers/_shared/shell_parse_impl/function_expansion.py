@@ -218,8 +218,14 @@ def expand_function_arguments(body, arguments):
             ]
         if assignments:
             for assignment in assignments:
-                name, value = assignment.split("=", 1)
-                if any(marker in value for marker in ("$", "`", "~")):
+                match = _ASSIGNMENT_RE.match(assignment)
+                name = match.group("name")
+                value = assignment.split("=", 1)[1]
+                if (
+                    match.group("subscript")
+                    or match.group("append")
+                    or any(marker in value for marker in ("$", "`", "~"))
+                ):
                     static_variables.pop(name, None)
                 else:
                     static_variables[name] = value
