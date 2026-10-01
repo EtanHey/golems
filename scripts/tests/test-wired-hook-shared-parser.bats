@@ -15,7 +15,7 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"Install verified."* ]]
   cmp -s "$TEST_ROOT/hooks/_shared/shell_parse.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py"
-  for leaf in tokens masks heredocs substitutions positions structure units function_expansion patterns conditions condition_steps; do
+  for leaf in tokens masks heredocs substitutions positions structure units function_expansion patterns conditions condition_steps variables eval_payloads expansion_state expansion data_text data_substitutions; do
     cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/$leaf.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/$leaf.py"
   done
   cmp -s "$TEST_ROOT/hooks/_shared/harness_paths.py" "$REPO_ROOT/skills/golem-powers/_shared/harness_paths.py"
@@ -48,13 +48,17 @@ for label, directory in (("copy", root / "a"),
     parser = load(label, directory / "shell_parse.py")
     for leaf in ("tokens", "masks", "heredocs", "substitutions", "positions",
                  "structure", "units", "function_expansion", "patterns",
-                 "conditions", "condition_steps"):
+                 "conditions", "condition_steps", "variables", "eval_payloads", "expansion_state", "expansion", "data_text", "data_substitutions"):
         impl = pathlib.Path(sys.modules[f"{parser._IMPL_NAME}.{leaf}"].__file__).absolute()
         assert impl == (root / "a" / "shell_parse_impl" / (leaf + ".py")).resolve(), (label, leaf, impl)
     for name, leaf in (("_shell_tokens", "tokens"), ("_blank_quoted", "masks"),
                        ("_strip_heredoc_bodies", "heredocs"),
                        ("_executable_subcommands", "substitutions"),
-                       ("_parse_bash", "positions")):
+                       ("_parse_bash", "positions"),
+                       ("_backtick_bodies", "data_substitutions"),
+                       ("dollar_paren_bodies", "data_substitutions"),
+                       ("shell_text_without_heredoc_bodies", "data_text"),
+                       ("without_dollar_paren_bodies", "data_substitutions")):
         impl = pathlib.Path(sys.modules[getattr(parser, name).__module__].__file__).absolute()
         assert impl == (root / "a" / "shell_parse_impl" / (leaf + ".py")).resolve(), (label, name, impl)
     assert parser._shell_tokens("echo ok") == ["echo", "ok"]
@@ -77,6 +81,34 @@ assert second._parse_bash("caffeinate tee /tmp/out")[1][1] is False
   run bash -c "printf '%s' '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > /tmp/parser-split-deny\"},\"cwd\":\"$TEST_ROOT\"}' | python3 '$TEST_ROOT/hooks/tmp-block/hooks/tmp-block-pretooluse.py'"
 
   [ "$status" -eq 2 ]
+}
+
+
+@test "a copied tmp-block facade without its implementation denies" {
+  mkdir -p "$TEST_ROOT/hooks/_shared" "$TEST_ROOT/hooks/tmp-block/hooks"
+  cp "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py" "$TEST_ROOT/hooks/_shared/shell_parse.py"
+  cp "$REPO_ROOT/skills/golem-powers/_shared/harness_paths.py" "$TEST_ROOT/hooks/_shared/harness_paths.py"
+  cp "$REPO_ROOT/skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py" "$TEST_ROOT/hooks/tmp-block/hooks/tmp-block-pretooluse.py"
+
+  run bash -c "printf '%s' '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > /tmp/parser-split-deny\"},\"cwd\":\"$TEST_ROOT\"}' | env -u GIT_GUARDIAN_LIB -u CLAUDE_WORKER python3 '$TEST_ROOT/hooks/tmp-block/hooks/tmp-block-pretooluse.py'"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'"decision": "block"'* ]]
+  [[ "$output" == *'"permissionDecision": "deny"'* ]]
+}
+
+@test "a copied git-guardian facade without its implementation denies" {
+  mkdir -p "$TEST_ROOT/hooks/_shared" "$TEST_ROOT/hooks/git-guardian/hooks"
+  cp "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py" "$TEST_ROOT/hooks/_shared/shell_parse.py"
+  cp "$REPO_ROOT/skills/golem-powers/_shared/harness_paths.py" "$TEST_ROOT/hooks/_shared/harness_paths.py"
+  cp "$REPO_ROOT/skills/golem-powers/git-guardian/git_safety.py" "$TEST_ROOT/hooks/git-guardian/git_safety.py"
+  cp -R "$REPO_ROOT/skills/golem-powers/git-guardian/git_safety_impl" "$TEST_ROOT/hooks/git-guardian/git_safety_impl"
+  cp "$REPO_ROOT/skills/golem-powers/git-guardian/hooks/pre_tool_use.py" "$TEST_ROOT/hooks/git-guardian/hooks/pre_tool_use.py"
+
+  run bash -c "printf '%s' '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push --force origin master\"}}' | env -u GIT_GUARDIAN_LIB -u CLAUDE_WORKER python3 '$TEST_ROOT/hooks/git-guardian/hooks/pre_tool_use.py'"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'"decision": "block"'* ]]
 }
 
 @test "parser package imports do not write bytecode in source or installed hook trees" {

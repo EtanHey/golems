@@ -282,7 +282,7 @@ impl_prefix = getattr(shell_parse, '_IMPL_NAME', '')
 if impl_prefix:
     impl = {n: m for n, m in sys.modules.items()
             if n.startswith(impl_prefix + '.')}
-    for name in set(hook_names) | set(test_names):
+    for name in set(hook_names) | set(test_names) | set(git_names):
         owners = [m for m in impl.values() if name in vars(m)]
         defining = [m for m in owners
                     if getattr(getattr(m, name), '__module__', m.__name__) == m.__name__]
@@ -806,6 +806,13 @@ def run_locked(args, parser, cases, scratch):
             if baseline_key not in baseline:
                 baseline[baseline_key] = execute(subset, mutation_tree, scratch)
             source = mutation_tree / row["path"]
+            if row.get("baseline") == "candidate" and source.name == "shell_parse.py":
+                candidates = [source, *sorted((source.parent / "shell_parse_impl").glob("*.py"))]
+                hits = [(path, path.read_text().count(row["old"])) for path in candidates]
+                hits = [(path, count) for path, count in hits if count]
+                if len(hits) != 1 or hits[0][1] != 1:
+                    parser.error(f"mutation anchor is not unique or semantic: {row['id']}")
+                source = hits[0][0]
             original = source.read_text()
             operation = row.get("operation", "replace")
             if operation == "replace":
