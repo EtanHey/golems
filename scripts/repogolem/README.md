@@ -135,4 +135,16 @@ For BYO, set `backend: plugin:<npm-package-or-path>` and follow the
 [adapter contract](adapters/TEMPLATE/README.md). Plugins must be installed,
 trusted and compatible with its bulk resolver; raw password-manager plugins
 may require a wrapper. Generate captures all provider diagnostics and does not
-download plugins or persist varlock caches.
+download plugins or persist varlock caches. Bun automatic installation is disabled.
+Adapters must be CommonJS `.cjs`; a plugin runs as your OS user with full
+privileges. The private `secrets.backend` config is the trust boundary. Pin npm
+adapters with an exact version and lockfile; `secrets.pluginVersion` optionally
+checks the installed version. File/BYO children receive only HOME, PATH, LANG,
+USER, scratch TMPDIR and forced telemetry/debug controls; no host tokens.
+A `source` declaration with the file backend is an error. Runtime control names
+(PATH, HOME, TMPDIR, NODE_*, BUN_*, DYLD_*) are reserved values names.
+Bare dotfiles repositories using `--work-tree=$HOME` are not detected by the
+ancestor `.git` check; keep values outside those worktrees too.
+Single-quote literal dotenv values containing `$`; interpolation and function
+calls are refused. An `env:` string beginning `varlock://` is now a named ref,
+not a literal; undeclared names report their config key path.

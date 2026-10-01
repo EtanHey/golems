@@ -34,9 +34,11 @@ export function secretKey(ref: string): string {
 export function collectRefs(config: unknown): string[] {
   const refs = new Set<string>();
   const stray: string[] = [];
+  const definitions = isObject(config) && isObject(config.values) ? config.values : {};
   const walk = (value: unknown, where: string, inRefMap: boolean) => {
     if (typeof value === "string") {
       if (!value.startsWith("op://") && !value.startsWith("varlock://")) return;
+      if (value.startsWith('varlock://') && !Object.hasOwn(definitions, value.slice(10))) throw new Error(`${where}: undeclared varlock value; nothing written`);
       if (inRefMap) refs.add(value);
       else stray.push(where);
     } else if (Array.isArray(value)) {
@@ -58,9 +60,7 @@ export function collectRefs(config: unknown): string[] {
   if (stray.length > 0) {
     throw new Error(`op:// refs resolve only inside env/secrets mappings; found elsewhere at:\n  ${stray.join("\n  ")}`);
   }
-  const definitions = isObject(config) && isObject(config.values) ? config.values : {};
   for (const name of Object.keys(definitions)) refs.add(`varlock://${name}`);
-  for (const ref of refs) if (ref.startsWith('varlock://') && !Object.hasOwn(definitions, ref.slice(10))) throw new Error('undeclared varlock value; nothing written');
   return [...refs].sort();
 }
 
