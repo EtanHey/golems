@@ -11364,5 +11364,10 @@
     "id": "issue480-hatch-seen-variable-control",
     "target": "tmp-block",
     "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"WT={REPO}/.worktrees/w; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \\\"$WT\\\" HEAD\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue480-hatch-resolved-function-global-temp",
+    "target": "tmp-block",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"X={REPO}/.worktrees/w; f() { declare -g X=/tmp/q; }; f; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \\\"$X\\\" HEAD\"},\"session_id\":\"pristine\"}"
   }
 ]

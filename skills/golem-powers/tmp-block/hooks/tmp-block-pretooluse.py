@@ -3330,8 +3330,15 @@ def main():
             # cannot manufacture evidence for any target the static resolver
             # could not determine. Mixed resolved/unresolved calls therefore
             # fail closed as well.
-            if not unresolved_hits and escape_hatch_covers(
-                tool_name, tool_input, segments, HATCH_WT
+            if (
+                not unresolved_hits
+                and not any(
+                    in_temp_class(path)
+                    for _verb, path, _seg, _raw, _anchor in deny_hits
+                )
+                and escape_hatch_covers(
+                    tool_name, tool_input, segments, HATCH_WT
+                )
             ):
                 log_bypass(
                     host_tool_name,

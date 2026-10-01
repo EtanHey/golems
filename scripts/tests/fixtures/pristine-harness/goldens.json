@@ -1288,6 +1288,14 @@
       "stderr": "",
       "stdout": "e30="
     },
+    "issue480-hatch-resolved-function-global-temp": {
+      "exit": 0,
+      "files": {
+        "ledger.jsonl": "eyJ0cyI6ICIyMDI2LTAxLTAxVDAwOjAwOjAwKzAwOjAwIiwgInRvb2wiOiAiQmFzaCIsICJ0YXJnZXRzIjogW3sidmVyYiI6ICJnaXQgd29ya3RyZWUgYWRkIiwgInBhdGgiOiAiL3RtcC9xIn1dLCAic2Vzc2lvbl9pZCI6ICJwcmlzdGluZSIsICJjd2QiOiAiLyIsICJoYXRjaCI6ICJXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSIsICJjb21tYW5kIjogIlg9L3Zhci90bXAvcHJpc3RpbmUtaGFybmVzcy1maXh0dXJlL3JlcG8vLndvcmt0cmVlcy93OyBmKCkgeyBkZWNsYXJlIC1nIFg9L3RtcC9xOyB9OyBmOyBXRUFWRV9BTExPV19XVF9NSUdSQVRJT049MSBnaXQgd29ya3RyZWUgYWRkIFwiJFhcIiBIRUFEIn0K"
+      },
+      "stderr": "",
+      "stdout": "e30="
+    },
     "issue480-hatch-seen-variable-control": {
       "exit": 0,
       "files": {},

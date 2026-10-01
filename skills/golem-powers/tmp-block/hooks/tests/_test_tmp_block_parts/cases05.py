@@ -508,6 +508,46 @@ def test_worktree_hatch_never_unlocks_unresolved_target(tmp_path, command):
     assert not ledger.exists(), "an unresolved target must not consume the hatch"
 
 
+def test_worktree_hatch_never_unlocks_resolved_temp_target_from_function_global(
+    durable_path,
+):
+    """golems#480 R1: a target resolved by Rule 2 into the temp class stays
+    denied even when Rule 1 misses the function-body global assignment."""
+    marker = durable_path / "zsh-target.txt"
+    script = durable_path / "ground-truth.zsh"
+    script.write_text(
+        """#!/bin/zsh -f
+MARKER=$1
+git() { printf '%s\\n' "$3" > "$MARKER"; }
+X=/Users/example/Gits/golems/.worktrees/w
+f() { declare -g X=/tmp/q; }
+f
+WEAVE_ALLOW_WT_MIGRATION=1 git worktree add "$X" HEAD
+"""
+    )
+    subprocess.run(
+        ["zsh", "-f", str(script), str(marker)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert marker.read_text() == "/tmp/q\n"
+
+    ledger = durable_path / "ledger.jsonl"
+    command = (
+        f"X={GITS}/golems/.worktrees/w; "
+        "f() { declare -g X=/tmp/q; }; f; "
+        'WEAVE_ALLOW_WT_MIGRATION=1 git worktree add "$X" HEAD'
+    )
+    proc = run_hook(
+        bash_payload(command),
+        env_extra={"TMP_BLOCK_LEDGER": str(ledger)},
+    )
+
+    assert_denied(proc, must_mention=("WORKTREE-CONVENTION", "/tmp/q"))
+    assert not ledger.exists(), "a denied temp target must not log a WT bypass"
+
+
 @pytest.mark.parametrize(
     "command",
     (

@@ -700,5 +700,13 @@
     },
     "case": "issue480-hatch-unresolved-unset",
     "reason": "The migration hatch does not unlock a target left unresolved by unset variable."
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "596b527ba2820b332be99fa6fc4b69bd5fef11912ff8e5b462f2221a213bc67b"
+    },
+    "case": "issue480-hatch-resolved-function-global-temp",
+    "reason": "The migration hatch does not unlock a target that resolves to the temp path-class."
   }
 ]
