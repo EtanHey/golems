@@ -2907,6 +2907,101 @@
         ],
         "scripts/tests/test-repogolem-dispatch.bats": []
       }
+    },
+    {
+      "original_path": "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py",
+      "pre_split_sha": "715db889872b1c7434b899b10154713c7f272a22",
+      "parts": [
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py",
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases07.py"
+      ],
+      "split_sha": "c9e3b61e1475b6ae9a737fd315a7aefcca64176a",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py": [],
+        "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases07.py": [
+          [
+            0,
+            0,
+            177
+          ],
+          [
+            1,
+            1,
+            177
+          ],
+          [
+            2,
+            2,
+            177
+          ],
+          [
+            3,
+            3,
+            100
+          ],
+          [
+            4,
+            4,
+            100
+          ],
+          [
+            5,
+            5,
+            99
+          ],
+          [
+            6,
+            6,
+            99
+          ],
+          [
+            7,
+            7,
+            99
+          ],
+          [
+            8,
+            8,
+            99
+          ],
+          [
+            9,
+            9,
+            99
+          ],
+          [
+            10,
+            10,
+            96
+          ],
+          [
+            11,
+            11,
+            96
+          ],
+          [
+            12,
+            12,
+            16
+          ],
+          [
+            13,
+            13,
+            16
+          ],
+          [
+            14,
+            14,
+            16
+          ],
+          [
+            15,
+            15,
+            9
+          ]
+        ]
+      }
     }
   ],
   "files": {
@@ -3397,24 +3492,7 @@
       "c4c688cafc7e922b64eda9e88ef6b9c853faded47043c6cf2fe815cfcd242357": 1,
       "f645ba75d6d114bf0fd971a8b8194130d774e88ae02f76dd2237b61b1c6f13fa": 1
     },
-    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py": {
-      "1e9b2a72fc1e1557aa56e7276eeb1a3c48d99e2c12b2ea98a2c047a6335cb096": 1,
-      "2a56fa8232cdef6cfc48c5149a4ddc5a39d61054eaee70ae50e684efc9f6c1d6": 1,
-      "3643c5168efb51429d023f6d8cf4d30c756097883b4a06bced1a52e1beef318d": 1,
-      "4090ae684fe8f54f0da393cfaff8601a71bee25f1230a1f1bf752d9fe14c3746": 1,
-      "4cbaf20f6b3ddf3b8dc3e0139636982d76931606ba38c375b58703e0008a64d6": 1,
-      "55055c35f883107b94b5ee998b418226c6cf07f2adadd4ca87d75dcae52ab99a": 1,
-      "5a9194297e627016de5a98e8402ef334411547a5d73aa3e06088e24d7c575d38": 1,
-      "5fa4a50a46732730fd7b9474653769ab4c1bb4589193bf1429ad0f3afbc8f486": 1,
-      "629bd30a3384881ae8d0e32671c02e53ec9c13a7b1cdcf8b283df8ae6e951df2": 1,
-      "7d3feab94d430927cdce75547369ea6e6a2aa592e27d21010b69e07e68220702": 1,
-      "80b15fc7168e80e04f3e6c8e15500e4ceaaaca8ce0c0a71aa091c4a431308de4": 1,
-      "a9c7346362bd98ac64e571ccda292239a6924b502217dc552d2ff7bcc5f7013d": 1,
-      "ad7063121ac62ecb2e32fd8f8a728d72ac2571401374e3ad41120141b275d1e8": 1,
-      "e52b8a493693e302e29654be45ab16af58582092b2eefaba274b05d53c0f700e": 1,
-      "e86cb5dae9d33b9ca5fd02f3adcef0f1296a07db4e9570cf9302138d734c8da3": 1,
-      "fbafe90fd6d882bf1558118c6bec60c43a88136acc2530852c11879405551481": 1
-    },
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases05.py": {},
     "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases06.py": {
       "2c344c1790f01a08c94cb13cab888d19f8e7116a3d2677283e1a96d5752212d1": 1,
       "66c72e869622e5b61f8e215adce4908add503855f9c2177f18b3832755008687": 1,
@@ -3461,6 +3539,24 @@
       "86f25129ae26cf086e454ef3b2be4492eb7aaab08b6209d4e028fd2c9962d5a7": 1,
       "d160923ea1409daa7c1188cdb469ce6311a7f46e82ae8596a719b5ecaaf83883": 1
     },
-    "skills/golem-powers/tmp-block/tests/test_worktree_anchor.py": {}
+    "skills/golem-powers/tmp-block/tests/test_worktree_anchor.py": {},
+    "skills/golem-powers/tmp-block/hooks/tests/_test_tmp_block_parts/cases07.py": {
+      "1e9b2a72fc1e1557aa56e7276eeb1a3c48d99e2c12b2ea98a2c047a6335cb096": 1,
+      "2a56fa8232cdef6cfc48c5149a4ddc5a39d61054eaee70ae50e684efc9f6c1d6": 1,
+      "3643c5168efb51429d023f6d8cf4d30c756097883b4a06bced1a52e1beef318d": 1,
+      "4090ae684fe8f54f0da393cfaff8601a71bee25f1230a1f1bf752d9fe14c3746": 1,
+      "4cbaf20f6b3ddf3b8dc3e0139636982d76931606ba38c375b58703e0008a64d6": 1,
+      "55055c35f883107b94b5ee998b418226c6cf07f2adadd4ca87d75dcae52ab99a": 1,
+      "5a9194297e627016de5a98e8402ef334411547a5d73aa3e06088e24d7c575d38": 1,
+      "5fa4a50a46732730fd7b9474653769ab4c1bb4589193bf1429ad0f3afbc8f486": 1,
+      "629bd30a3384881ae8d0e32671c02e53ec9c13a7b1cdcf8b283df8ae6e951df2": 1,
+      "7d3feab94d430927cdce75547369ea6e6a2aa592e27d21010b69e07e68220702": 1,
+      "80b15fc7168e80e04f3e6c8e15500e4ceaaaca8ce0c0a71aa091c4a431308de4": 1,
+      "a9c7346362bd98ac64e571ccda292239a6924b502217dc552d2ff7bcc5f7013d": 1,
+      "ad7063121ac62ecb2e32fd8f8a728d72ac2571401374e3ad41120141b275d1e8": 1,
+      "e52b8a493693e302e29654be45ab16af58582092b2eefaba274b05d53c0f700e": 1,
+      "e86cb5dae9d33b9ca5fd02f3adcef0f1296a07db4e9570cf9302138d734c8da3": 1,
+      "fbafe90fd6d882bf1558118c6bec60c43a88136acc2530852c11879405551481": 1
+    }
   }
 }
