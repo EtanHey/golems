@@ -42,10 +42,12 @@ import {
   fsyncSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readFileSync,
   realpathSync,
   renameSync,
+  rmSync,
   statSync,
   writeFileSync,
   writeSync,
@@ -62,6 +64,7 @@ import configSchema from "./config.schema.json";
 import { collectRefs, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
 import { opRefsFor, varlockResolver } from "./repogolem-varlock";
 import { isOpCredential, checkRefs, opEnvironment } from "./repogolem-check-refs";
+import { prepareAgents, renderAgents, cachedAgents } from './repogolem-agents';
 
 const GENERATOR_ID = "golems/scripts/repogolem/repogolem-config.ts";
 const EXAMPLE_PATH = join(import.meta.dir, "config.example.yaml");
@@ -653,8 +656,9 @@ function assertSafeOutDir(outDir: string) {
 // check the handle, chdir into it and prove cwd is that same inode, re-check
 // its real path, then create and rename the leaves relative to cwd. A swap of
 // the path (or any parent) after this point cannot redirect a write.
-function writeOutputsBound(outDir: string, texts: Record<(typeof OUTPUTS)[number], string>) {
+function writeOutputsBound(outDir: string, texts: Record<(typeof OUTPUTS)[number], string>, agents?: ReturnType<typeof renderAgents>) {
   assertSafeOutDir(outDir);
+  if (agents) assertSafeOutDir(join(outDir, 'agents'));
   mkdirSync(outDir, { recursive: true, mode: DIR_MODE });
   let dirFd: number;
   try {
@@ -672,6 +676,19 @@ function writeOutputsBound(outDir: string, texts: Record<(typeof OUTPUTS)[number
     const here = statSync(".");
     if (here.dev !== held.dev || here.ino !== held.ino) fail(`${outDir} changed while it was opened; nothing written`);
     assertTrustedPath(process.cwd());
+    if (agents) {
+      const stage = mkdtempSync('.agents-');
+      const old = `${stage}-old`;
+      try {
+        chmodSync(stage, DIR_MODE);
+        for (const [name,text] of Object.entries(agents.files)) {
+          const path = join(stage,name); writeFileSync(path,text,{mode:FILE_MODE,flag:'wx'}); chmodSync(path,FILE_MODE);
+        }
+        if (existsSync('agents')) renameSync('agents',old);
+        try { renameSync(stage,'agents'); } catch (error) { if (existsSync(old)) renameSync(old,'agents'); throw error; }
+        writeLeaf('agents.json',agents.receipt);
+      } finally { rmSync(stage,{recursive:true,force:true}); rmSync(old,{recursive:true,force:true}); }
+    }
     for (const name of OUTPUTS) writeLeaf(name, texts[name]);
   } finally {
     process.chdir(back);
@@ -794,6 +811,8 @@ function checkOutputs(configText: string, outDir: string, home: string, host: ()
       },
     ),
   );
+  const { config } = resolveConfig(configText, host);
+  try { cachedAgents(config, configText, outDir); } catch { stale.push(`${outDir}/agents (missing, unsafe or stale template render)`); }
   return stale;
 }
 
@@ -835,8 +854,12 @@ function runGenerate(argv: string[]) {
   const opBin = process.env.REPOGOLEM_OP_BIN || 'op';
   const opEnv = opEnvironment();
   const { config: effective } = resolveConfig(configText, host);
+  const agentInputs = prepareAgents(effective);
+  const hasAgents = agentInputs.length > 0 || existsSync(join(outDir,'agents.json'));
+  if (hasAgents) assertSafeOutDir(join(outDir,'agents'));
   const providerRefs = opRefsFor(generated.refs, effective);
   let secretsEnv: string;
+  let agents: ReturnType<typeof renderAgents> | undefined;
   try {
     if (!args['secrets-from'] && providerRefs.length) {
       if (!effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');
@@ -847,6 +870,7 @@ function runGenerate(argv: string[]) {
       ? readTransferredSecrets(args["secrets-from"], generated.configSha, generated.machine, generated.refs)
       : resolveRefs(generated.refs, varlockResolver(opBin, opEnv, { ...effective, pluginBase: dirname(resolve(config)) }));
     secretsEnv = secretsEnvText(generated.secretsHeader, resolved);
+    if (hasAgents) agents = renderAgents(agentInputs, resolved, generated.configSha, generated.machine);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   } finally {
@@ -857,7 +881,7 @@ function runGenerate(argv: string[]) {
     "registry.json": generated.registryJson,
     "launchers.zsh": generated.launchersZsh,
     "secrets.env": secretsEnv,
-  });
+  }, agents);
   const refs = generated.refs.length;
   console.log(
     `machine ${generated.machine ?? "(none)"}: ${refs} values resolved; ${providerRefs.length} op:// refs (${args["secrets-from"] ? "transferred cache; op not run" : providerRefs.length > 0 ? "1 op batch" : effective.secrets?.backend?.startsWith("plugin:") ? "BYO plugin" : "op not run"})`,

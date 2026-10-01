@@ -145,3 +145,22 @@ ancestor `.git` check; keep values outside those worktrees too.
 Single-quote literal dotenv values containing `$`; interpolation and function
 calls are refused. An `env:` string beginning `varlock://` is now a named ref,
 not a literal; undeclared names report their config key path.
+
+### Managed agent templates
+
+Set `agentTemplates: {fixture: /absolute/path/fixture.md}`. Its sibling
+`fixture.values.json` declares `{template: "fixture.md", values:
+[{name: "SEED_DIR", sensitive: false, purpose: "seed directory"}]}`;
+declare the same name under config `values` and use `{{SEED_DIR}}` in the prompt.
+Both declarations must explicitly be non-sensitive. Unknown, malformed or
+sensitive placeholders refuse generation before any output changes.
+Keep public templates and manifests free of personal data; only names belong
+there. Private values are resolved by the existing backend.
+
+Generate writes `generated/agents/<name>.md` as 0600 under a 0700 directory.
+`agents.json` holds config/template/manifest/content hashes, never values.
+`generate --check` verifies the render using only the private cache, without
+provider calls. `install --apply` requires a fresh private render, links it into
+`~/.claude/agents/`, and refuses existing unmanaged prompts. Rollback removes
+only unchanged installer-owned links. Removing a configured template and
+regenerating removes its old rendered file; reinstall reconciles managed links.
