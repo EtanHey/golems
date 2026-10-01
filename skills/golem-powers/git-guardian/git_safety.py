@@ -34,6 +34,7 @@ finally:
 is_harness_scratchpad = _pkg.harness_paths.is_harness_scratchpad
 _backtick_bodies = _pkg.shell_parse._backtick_bodies
 dollar_paren_bodies = _pkg.shell_parse.dollar_paren_bodies
+_invoked_alias_bodies = _pkg.shell_parse._invoked_alias_bodies
 shell_text_without_heredoc_bodies = _pkg.shell_parse.shell_text_without_heredoc_bodies
 without_dollar_paren_bodies = _pkg.shell_parse.without_dollar_paren_bodies
 executable_shell_structure = _pkg.shell_parse.executable_shell_structure
@@ -48,7 +49,7 @@ for _module, _names in (
     (_paths, "_SHELL_VAR_RE _outermost_repo_root _within _gitfile_owner"),
     (_rm, "_skip_options"),
     (_commands, "_KILL_MATCHER_COMMANDS _KILL_OPTIONS_WITH_VALUE _KILL_FULL_MATCH_OPTIONS _KILL_GUIDANCE _top_level_alternation"),
-    (_payloads, "_SHELLS _MAX_EXECUTION_DEPTH _PIPED_INTERPRETER_HEREDOC_RE _STRING_LITERAL_RE _printed_text"),
+    (_payloads, "_SHELLS _MAX_EXECUTION_DEPTH _PIPED_INTERPRETER_HEREDOC_RE _STRING_LITERAL_RE _FUNCTION_DEFINITION_RE _printed_text"),
     (_shell, "_LITERAL_FOR_LOOP_RE _LITERAL_LOOP_VALUE_RE"),
 ):
     for _name in _names.split():
@@ -57,6 +58,53 @@ _FILE_REDIRECT_RE = re.compile(r"(?<![<>])(?:>>|>)(?![>&])")
 _ASSIGNMENT_RE = re.compile(r"(?:^|[;&\n]\s*)([A-Za-z_][A-Za-z0-9_]*)=" r"(?:\"([^\"]*)\"|'([^']*)'|([^\s;&]+))")
 _SHELL_CONTROL_PREFIXES = {"!", "if", "then", "elif", "else", "while", "until", "do", "fi", "done"}
 _MAX_WRAPPER_DEPTH = 64
+
+
+def _shell_text_with_comments_blanked(command: str) -> str:
+    """Blank real shell comments without swallowing their trailing newline.
+
+    ``shlex`` treats every ``#`` as a comment opener and consumes the newline.
+    Shell comments instead require an unquoted token boundary, and ``#`` is an
+    operator inside ``${...}``.  Keeping newlines preserves command boundaries
+    for a destructive sibling on the next line.
+    """
+    output = list(command)
+    quote = None
+    parameter_depth = 0
+    index = 0
+    while index < len(command):
+        char = command[index]
+        if char == "\\" and quote != "'":
+            index += 2
+            continue
+        if quote is not None:
+            if char == quote:
+                quote = None
+            index += 1
+            continue
+        if char in "'\"":
+            quote = char
+            index += 1
+            continue
+        if command.startswith("${", index):
+            parameter_depth += 1
+            index += 2
+            continue
+        if char == "}" and parameter_depth:
+            parameter_depth -= 1
+            index += 1
+            continue
+        if (
+            char == "#"
+            and not parameter_depth
+            and (index == 0 or command[index - 1].isspace() or command[index - 1] in ";|&()")
+        ):
+            while index < len(command) and command[index] not in "\r\n":
+                output[index] = " "
+                index += 1
+            continue
+        index += 1
+    return "".join(output)
 
 
 def _wrapper_depth_reason() -> str:

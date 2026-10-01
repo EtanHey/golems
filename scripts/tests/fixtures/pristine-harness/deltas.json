@@ -639,6 +639,87 @@
     "reason": "An unresolved inner reassignment selects the temporary target hit in the API capture."
   },
   {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-arithmetic-lookalike",
+    "reason": "Arithmetic-like syntax can hide an executed destructive payload, so the hook must deny it."
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-arithmetic-newline-lookalike",
+    "reason": "A newline inside arithmetic-like syntax can hide an executed destructive payload, so the hook must deny it."
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-comment-bare-substitution",
+    "reason": "A comment inside a bare substitution can hide an executed destructive payload, so the hook must deny it."
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-comment-data-substitution",
+    "reason": "A comment inside a data-command substitution can hide an executed destructive payload, so the hook must deny it."
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-eval-substitution-output",
+    "reason": "Eval can execute destructive text emitted by a substitution even when its stderr is redirected, so the hook must deny it."
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-invoked-function-body",
+    "reason": "Invoking a shell function executes its destructive body, so the hook must inspect and deny that body."
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-param-pattern-longest",
+    "reason": "A longest-match parameter pattern can hide an executed destructive payload, so the hook must deny it."
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-param-pattern-shortest",
+    "reason": "A shortest-match parameter pattern can hide an executed destructive payload, so the hook must deny it."
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
+      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
+    },
+    "case": "issue460-shell-here-string",
+    "reason": "A shell here-string can supply destructive text for execution, so the hook must deny it."
+  },
+  {
     "authority": "golems#491",
     "candidate_sha256": {
       "darwin": "9beb60a602ca8c9a058c486c3d6cfe5cc6931055f345034c4c8a8e27bee6ee29",

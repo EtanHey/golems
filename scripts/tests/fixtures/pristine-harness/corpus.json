@@ -11321,6 +11321,51 @@
     }
   },
   {
+    "id": "issue460-param-pattern-shortest",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF\\n$(: ${x#*)}; git push --force origin master)\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue460-param-pattern-longest",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat <<EOF\\n$(: ${x##*)}; git push --force origin master)\\nEOF\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue460-comment-bare-substitution",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\": $(true # )\\ngit push --force origin master)\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue460-comment-data-substitution",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo \\\"$(true # )\\ngit push --force origin master)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue460-arithmetic-lookalike",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit --dry-run -m \\\"$((true); (git push --force origin master))\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue460-arithmetic-newline-lookalike",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit --dry-run -m \\\"$((true)\\n(git push --force origin master))\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue460-invoked-function-body",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"f() { git push --force origin master; }; f\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue460-eval-substitution-output",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"eval \\\"$(echo 'git push --force origin master' 2>/dev/null)\\\"\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "issue460-shell-here-string",
+    "target": "git-guardian",
+    "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"sh <<< 'git push --force origin master'\"},\"session_id\":\"pristine\"}"
+  },
+  {
     "id": "issue491-data-heredoc-source",
     "target": "git-guardian",
     "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"gh issue create --body \\\"$(cat <<'EOF'\\nsource <(x) `\\nEOF\\n)\\\"\"},\"session_id\":\"pristine\"}"
