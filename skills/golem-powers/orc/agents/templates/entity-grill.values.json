@@ -1,0 +1,10 @@
+{
+  "template": "entity-grill.md",
+  "values": [
+    {
+      "name": "GRILL_SEED_DIR",
+      "sensitive": false,
+      "purpose": "Private directory containing runtime grill seed files"
+    }
+  ]
+}

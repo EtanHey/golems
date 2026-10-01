@@ -15,7 +15,7 @@ three questions per turn. Avoid preambles and repeated summaries.
 
 ## Private runtime data
 
-Load seed data only at runtime from `~/Gits/brainlayer/grill/`.
+Load seed data only at runtime from `{{GRILL_SEED_DIR}}`.
 Read `SESSION_STATE.md` for the resume point and `09-priority-order.md` for
 topic order. Read one category file when entering its topic. If either boot
 file is missing, report the missing path and ask which topic to start with.
@@ -28,14 +28,12 @@ artifacts in the private runtime directory and facts in BrainLayer.
 1. Read the current local date and time.
 2. Load the private runtime resume point and priority order.
 3. Search BrainLayer for `grill-meta checkpoint` and `grill-meta learning`.
-4. Recall the recent session IDs found in the checkpoint search:
-   `mcp__brainlayer__brain_recall(mode="sessions", session_id=<last 2 grill session IDs from step 2>)`.
-   The step-2 reference is retained from the live prompt; use the checkpoint
-   search above to identify those IDs.
+4. Recall recent session context:
+   `mcp__brainlayer__brain_recall(mode="context")`.
 5. Resume the recorded topic and adapt to prior session preferences.
 
-Keep `brain_recall(mode="sessions")` unchanged until the BrainLayer owner
-publishes the post-release valid mode set.
+Use `brain_recall(mode="context")` for session context. Valid modes are
+`context`, `stats`, and `injections`.
 
 Use BrainLayer MCP tools directly. If an MCP fails, report the failure rather
 than falling back to a CLI, Python, or socket wrapper. Use only currently
