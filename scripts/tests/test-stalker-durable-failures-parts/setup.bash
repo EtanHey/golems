@@ -42,7 +42,7 @@ printf 'clip\n' > "$output"
 SH
     chmod +x "$FAKE_BIN/curl" "$FAKE_BIN/ffprobe" "$FAKE_BIN/ffmpeg"
     ln -s "$(command -v node)" "$FAKE_BIN/node"
-    export ALERTS_FILE PATH="$FAKE_BIN:$PATH"
+    export ALERTS_FILE
 }
 
 teardown() {

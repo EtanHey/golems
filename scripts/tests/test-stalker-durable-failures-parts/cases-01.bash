@@ -389,6 +389,7 @@ function split_case_022() {
     printf '# partial gems\n' > "$stale_dir/gems.md"
     printf '[00:00:01] viewer: old run\n' > "$stale_dir/chat.log"
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [ -f "$stale_dir/.stage-scoring.failed" ]
@@ -420,6 +421,7 @@ function split_case_024() {
     printf 'chatline\nchatline\n' > "$run_dir/chat.log"
     printf '### [00:10:00] A real moment\n**Score:** 9/10 | **Type:** insight\n**Gist:** something good\n' > "$run_dir/gems.md"
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
@@ -436,6 +438,7 @@ function split_case_025() {
     root="$TMPDIR_/stalker-empty"
     mkdir -p "$root"
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
@@ -454,6 +457,7 @@ function split_case_026() {
     printf 'done\n' > "$run_dir/.stage-process.done"
     printf '### [00:03:00] Tail gem\n**Score:** 8/10 | **Type:** insight\n' > "$run_dir/gems.md"
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
@@ -467,6 +471,7 @@ function split_case_027() {
     mkdir -p "$run_dir"
     printf '### [00:10:00] A real moment\n**Score:** 9/10 | **Type:** insight\n' > "$run_dir/gems.md"
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19
 
     [[ "$output" == *'Stalker Morning Digest FAILED - 2026-08-19'* \
@@ -484,6 +489,7 @@ function split_case_028() {
         printf '### [00:10:00] Dropped moment %s\n**Score:** 9/10 | **Type:** insight\n' "$index" > "$run_dir/gems.md"
     done
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19
 
     body="${output#*$'\n'}"
@@ -511,6 +517,7 @@ function split_case_029() {
         mkdir -p "$root/examplechannel-$long_suffix-$index-2026-08-19"
     done
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19
 
     body="${output#*$'\n'}"
@@ -544,6 +551,7 @@ function split_case_030() {
         printf 'orphaned\n' > "$run_dir/.orphan-tail"
     done
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-20
 
     body="${output#*$'\n'}"
@@ -570,6 +578,7 @@ function split_case_031() {
         mkdir -p "$root/examplechannel-2026-08-20-$suffix"
     done
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-20 --dry-run
 
     [[ "$status" -eq 75 \
@@ -600,6 +609,7 @@ Warnings: Missing Drive ledger: etan-2026-08-19-2100
 EOF
 )"
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 0 && "$output" = "$expected" ]]

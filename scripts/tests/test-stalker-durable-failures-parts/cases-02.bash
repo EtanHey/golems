@@ -9,6 +9,7 @@ function split_case_033() {
     printf 'one\ntwo\nthree\nfour\nfive\nsix\nseven\n' > "$dropped_dir/chat.log"
     printf '### [00:10:00] Dropped moment\n**Score:** 10/10 | **Type:** insight\n**Gist:** must not be counted\n' > "$dropped_dir/gems.md"
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
@@ -29,6 +30,7 @@ function split_case_034() {
     printf '### [00:05:00] Counted moment\n**Score:** 8/10 | **Type:** insight\n**Gist:** counted\n' > "$processed_dir/gems.md"
     printf 'status=ORPHAN_TAIL\n' > "$orphan_dir/.orphan-tail"
 
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 0 \
