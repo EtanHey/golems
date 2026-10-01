@@ -1,5 +1,5 @@
 import { afterEach, expect, test, setDefaultTimeout } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -28,7 +28,7 @@ const contractIds = [
 const canonBlock = `${CANON_START}
 # FLEET CANON
 
-1. **agent-routing** - Cursor gathers, Codex implements, Claude orchestrates.
+1. **agent-routing** - Routing: /agent-routing; the reviewer is always the other vendor.
 2. **PR-loop** - branch to merge; reports carry PR URLs.
 3. **never-fabricate** - read files, run commands, verify outputs before claims.
 4. **done = user-visible** - done means the user can see or use the result.
@@ -307,4 +307,55 @@ test("--install fails for installed file with START marker but no END marker and
   expect(installRun.stderr).toContain("missing");
   const afterText = readFileSync(installedPath, "utf8");
   expect(afterText).toBe(beforeText);
+});
+
+test("routing check accepts the pointer canon and rejects historical master's assignments/models", () => {
+  const { canonPath, installedPath } = makeFixture();
+  const pointerCanon = readFileSync(path.join(here, "../../standards/fleet-canon.md"), "utf8");
+  writeFileSync(canonPath, pointerCanon);
+  expect(lintCanonDrift({ canonPath, installedPath, check: true }).exitCode).toBe(0);
+  writeFileSync(canonPath, `${CANON_START}\nCodex implements, Opus reviews.\nDefault: Opus 5.5.\n${CANON_END}`);
+  const result = lintCanonDrift({ canonPath, installedPath, check: true });
+  expect(result.exitCode).toBe(1);
+  expect(result.routing.hits.map(hit => hit.line)).toEqual([2, 3]);
+  expect(result.routing.hits[0].message).toContain("routing lives in /agent-routing; models in standards/model-roles.json");
+});
+
+test("routing check covers model names, assignments, clause boundaries and generic laws", () => {
+  const { canonPath, installedPath } = makeFixture();
+  for (const text of ["Opus 5.5", "Sonnet", "Haiku", "Fable", "Sol", "Luna", "Terra", "Daybreak", "Blue model", "model: Blue", "gpt-6.1", "claude-opus-5", "claude-sonnet-5", "claude-haiku-5", "claude-fable-5", "Codex implements", "Claude reviews", "Cursor implementer", "Gemini reviewer", "Reviewer: Codex", "Blue reviews", "Codex\n  implements"]) {
+    writeFileSync(canonPath, `${CANON_START}\n${text}\n${CANON_END}`);
+    expect(lintCanonDrift({ canonPath, installedPath, check: true }).exitCode, text).toBe(1);
+  }
+  for (const text of ["A gatherer never implements, reviews or decides.", "The reviewer is always the other vendor.", "The reviewer starts only after the implementer reports done.", "Cursor, including cursor-agent, is Auto-only: never pass a model flag or field.", "Keep <=2-3 concurrent Claude dispatches, staggered.", "Blue sky; reviewers record defects.", "Codex gathers; the reviewer is the other vendor.", "Claude orchestrates. The implementer reports done.", "Codex gathers\n\nThe reviewer reports done.", "Solution, lunar, terrestrial, blueprints."]) {
+    writeFileSync(canonPath, `${CANON_START}\n${text}\n${CANON_END}`);
+    expect(lintCanonDrift({ canonPath, installedPath, check: true }).exitCode, text).toBe(0);
+  }
+});
+
+test("routing check scans installed blocks, not source preambles or installed surroundings", () => {
+  const { canonPath, installedPath } = makeFixture();
+  const safe = `${CANON_START}\nRouting: /agent-routing.\n${CANON_END}`;
+  writeFileSync(canonPath, `Opus reviews\n${safe}`);
+  writeFileSync(installedPath, `Codex implements\n${safe}`);
+  expect(lintCanonDrift({ canonPath, installedPath, check: true }).exitCode).toBe(0);
+  writeFileSync(installedPath, `${CANON_START}\nCodex implements.\n${CANON_END}`);
+  expect(lintCanonDrift({ canonPath, installedPath, check: true }).routing.hits).toContainEqual(expect.objectContaining({ path: installedPath, line: 2 }));
+});
+
+test("repeatable --routing-scan enforces whole files and exempts the two SSOT paths", () => {
+  const { canonPath, installedPath } = makeFixture();
+  writeFileSync(canonPath, `${CANON_START}\nRouting: /agent-routing.\n${CANON_END}`);
+  const dir = path.dirname(canonPath);
+  const first = path.join(dir, "AGENTS.md"), second = path.join(dir, "other.md");
+  writeFileSync(first, "# Rules\nCodex implements.\n"); writeFileSync(second, "Opus 5.5\n");
+  const run = (...files) => spawnSync("node", [scriptPath, "--canon", canonPath, "--installed", installedPath, ...files.flatMap(file => ["--routing-scan", file])], { encoding: "utf8" });
+  const failed = run(first, second);
+  expect(failed.status).toBe(1);
+  expect(JSON.parse(failed.stdout).routing.hits).toHaveLength(2);
+  for (const relative of ["skills/golem-powers/agent-routing/SKILL.md", "skills/golem-powers/agent-routing/references/models.md", "standards/model-roles.json", "standards/model-roles.schema.json"]) {
+    const file = path.join(dir, relative); mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, "Opus reviews");
+    expect(run(file).status, relative).toBe(0);
+  }
+  expect(run(path.join(dir, "missing.md")).status).toBe(1);
 });

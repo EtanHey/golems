@@ -86,7 +86,7 @@ function sectionDiff(sourceSections, installedSections) {
   };
 }
 
-export function lintCanonDrift(options = {}) {
+function compareCanonDrift(options = {}) {
   const canonPath = path.resolve(expandHome(options.canonPath ?? defaultCanonPath));
   const installedPath = path.resolve(expandHome(options.installedPath ?? defaultInstalledPath));
 
@@ -141,6 +141,49 @@ export function lintCanonDrift(options = {}) {
       ...sectionChanges,
     },
   };
+}
+
+const routingHome = "routing lives in /agent-routing; models in standards/model-roles.json";
+
+export function scanRouting(text, filePath, offset = 0) {
+  const normalized = canonicalPath(filePath).replaceAll("\\", "/");
+  if (/\/skills\/golem-powers\/agent-routing\//.test(normalized) ||
+      /\/standards\/model-roles[^/]*\.json$/.test(normalized)) return [];
+  const hits = new Map();
+  const add = (index) => {
+    const line = text.slice(0, index).split("\n").length + offset;
+    hits.set(line, { path: filePath, line, message: `${filePath}:${line}: ${routingHome}` });
+  };
+  const models = /\b(?:Opus|Sonnet|Haiku|Fable|Sol|Luna|Terra|Daybreak)\b|\bgpt-\d|\bclaude-(?:opus|sonnet|haiku|fable)\b|\bBlue\b(?=[^\n.;]*\bmodel\b)|\bmodel\b[^\n.;]*\bBlue\b/gi;
+  for (const match of text.matchAll(models)) add(match.index);
+  // Semicolons, sentence ends and blank lines bound a clause; line wrapping does not.
+  for (const clause of text.matchAll(/[^;.!?\n]+(?:\n(?![ \t]*\n)[^;.!?\n]+)*/g)) {
+    const actor = /\b(?:Claude|Codex|Cursor|Gemini|Opus|Daybreak|Blue)\b/i.exec(clause[0]);
+    if (actor && /\b(?:implements|reviews|implementer|reviewer)\b/i.test(clause[0])) {
+      add(clause.index + actor.index);
+    }
+  }
+  return [...hits.values()].sort((a, b) => a.line - b.line);
+}
+
+export function lintCanonDrift(options = {}) {
+  const result = compareCanonDrift(options);
+  const hits = [];
+  if (options.check) {
+    for (const filePath of [result.source.path, result.installed.path]) {
+      const text = readTextIfExists(filePath);
+      if (text == null) continue;
+      const range = extractCanonBlockRange(text);
+      if (range) hits.push(...scanRouting(range.block, filePath, text.slice(0, range.start).split("\n").length - 1));
+    }
+  }
+  for (const input of options.routingScan ?? []) {
+    const filePath = path.resolve(expandHome(input));
+    hits.push(...scanRouting(readFileSync(filePath, "utf8"), filePath));
+  }
+  result.routing = { hits, count: hits.length };
+  if (hits.length) Object.assign(result, { status: "routing-drift", ok: false, exitCode: 1 });
+  return result;
 }
 
 function installCanonDrift(options = {}) {
@@ -211,6 +254,12 @@ function parseArgs(args) {
     if (arg === "--installed" || arg.startsWith("--installed=")) {
       const parsed = readOption(args, i);
       options.installedPath = parsed.value;
+      i += parsed.consumed;
+      continue;
+    }
+    if (arg === "--routing-scan" || arg.startsWith("--routing-scan=")) {
+      const parsed = readOption(args, i);
+      (options.routingScan ??= []).push(parsed.value);
       i += parsed.consumed;
       continue;
     }
