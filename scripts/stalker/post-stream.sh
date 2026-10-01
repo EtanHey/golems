@@ -140,7 +140,9 @@ const { readFileSync } = require("node:fs");
 try {
   const streamDir = process.argv[1];
   const receipt = JSON.parse(readFileSync(join(streamDir, ".stalker-completion.json"), "utf8"));
-  if (receipt.version !== 3 || receipt.runName !== basename(streamDir) || !["notified", "complete"].includes(receipt.status)) process.exit(1);
+  const eligible = receipt.version === 4 && ["published", "complete"].includes(receipt.status)
+    || receipt.version === 3 && ["notified", "complete"].includes(receipt.status);
+  if (!eligible || receipt.runName !== basename(streamDir)) process.exit(1);
 } catch { process.exit(1); }
 ' "$stream_dir"
 }
@@ -291,7 +293,7 @@ elif ! stalker_require_run_quality "$STREAM_DIR" "$TARGET_CHAT" "digest"; then
     DIGEST_QUALITY_STATUS=75
     rm -f "$STREAM_DIR/.stage-brainlayer.done"
 else
-    log "Starting verified human digest, dashboard publication and notification..."
+    log "Starting verified human digest, dashboard publication and retention..."
     if ! node "${STALKER_COMPLETION_SCRIPT:-$SCRIPT_DIR/stalker-complete-run.mjs}" "$STREAM_DIR"; then
         DIGEST_QUALITY_STATUS=75
     fi

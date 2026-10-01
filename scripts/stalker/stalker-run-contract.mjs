@@ -69,11 +69,10 @@ async function verifyCardMedia(html, publication, fetchImpl) {
   }
 }
 
-export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireNotification = true,
-  requireRetention = true } = {}) {
+export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireRetention = true } = {}) {
   const hashes = await artifactHashes(runDir);
   receipt ??= await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
-  if (![3, 4].includes(receipt?.version) || receipt.runName !== basename(resolve(runDir))) {
+  if (receipt?.version !== 4 || receipt.runName !== basename(resolve(runDir))) {
     throw stageFailure(7, 'missing or wrong-run completion receipt');
   }
   if (Object.keys(hashes).some(key => hashes[key] !== receipt.artifacts?.[key])) {
@@ -109,19 +108,13 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
   if (receipt.version === 4 && !['published', 'complete'].includes(receipt.status)) {
     throw stageFailure(7, 'invalid local completion status');
   }
-  const notificationStatus = ['notified', 'complete'].includes(receipt.status);
-  if (receipt.version === 3 && requireNotification && (!notificationStatus || receipt.notification?.accepted !== true
-    || !Number.isSafeInteger(receipt.notification.messageId) || receipt.notification.messageId <= 0
-    || receipt.notification.url !== url.href || !receipt.notification.body?.includes(url.href))) {
-    throw stageFailure(8, 'successful completion notification must carry dashboard URL');
-  }
   let retention;
   if (requireRetention) {
     if (receipt.status !== 'complete') throw stageFailure(9, 'media retention is not complete');
     try { retention = await verifyLocalMediaRetention({ runDir }); }
     catch (error) { throw stageFailure(9, error.message); }
   }
-  return { status: requireRetention ? 'complete' : receipt.version === 3 && requireNotification ? 'notified' : 'published',
+  return { status: requireRetention ? 'complete' : 'published',
     runName: receipt.runName, dashboardUrl: url.href, ...(retention && { retentionVerification: retention.verification }) };
 }
 

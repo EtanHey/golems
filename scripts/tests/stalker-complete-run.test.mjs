@@ -3,7 +3,7 @@ import { createServer, get } from 'node:http';
 import { chmod, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { test } from 'node:test';
-import { completeRun, notifyDelivery } from '../stalker/stalker-complete-run.mjs';
+import { completeRun } from '../stalker/stalker-complete-run.mjs';
 import { validSummary } from './fixtures/stalker-digest-summary.mjs';
 
 async function setup(t, runName = 'examplechannel-2026-09-08-030512') {
@@ -49,7 +49,7 @@ async function setup(t, runName = 'examplechannel-2026-09-08-030512') {
       return {items};
     },
     syncImpl: async () => { calls.push('sync'); manifest.included = [{ linkPath: `dashboards/golems/stalker/${runName}.html`, sourceRelative: `golems/docs.local/dashboards/stalker/${runName}.html` }]; },
-    notifyImpl: async (title, body) => { calls.push(title); return { accepted: true, messageId: 123, body }; },
+    notifyImpl: async (title, body) => { calls.push(title); return {accepted: true, messageId: 123, body}; },
     archiveImpl: matchingArchive(),
   };
   return { runDir, repoRoot, calls, options, manifest };
@@ -68,50 +68,54 @@ function matchingArchive(calls, failOnceAt) {
   };
 }
 
-test('completion publishes before notifying, preserves media and validates every retry', async t => {
+test('completion publishes, preserves media and validates every retry', async t => {
   const { runDir, repoRoot, calls, options } = await setup(t);
   assert.equal((await completeRun(runDir, options)).status, 'complete');
-  assert.deepEqual(calls, ['generate', 'sync', 'Stalker dashboard ready — examplechannel 2026-09-08']);
+  assert.deepEqual(calls, ['generate', 'sync']);
   const evidenceRoot = join(repoRoot, 'docs.local/dashboards/stalker/evidence/examplechannel-2026-09-08-030512');
   assert.equal(await readFile(join(evidenceRoot, (await readdir(evidenceRoot))[0], 'card-media/clips/clip-0m1s.mp4'), 'utf8'), 'selected clip');
   assert.equal((await completeRun(runDir, options)).skipped, true);
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 2);
   await writeFile(join(runDir, 'transcript.md'), 'corrected transcript');
   assert.equal((await completeRun(runDir, options)).skipped, undefined);
   assert.equal(calls.filter(value => value === 'generate').length, 2);
 });
 
-test('missing manifest fails stage 7, sends FAILED and leaves completion open', async t => {
+test('missing manifest fails stage 7, records failure and leaves completion open', async t => {
   const { runDir, calls, options } = await setup(t);
   options.syncImpl = async () => {};
   await assert.rejects(completeRun(runDir, options), /FAILED at stage 7/);
-  assert.ok(calls.includes('Stalker FAILED at stage 7'));
-  assert.ok(!calls.some(value => value.startsWith('Stalker dashboard ready')));
+  assert.deepEqual(calls, ['generate']);
   await assert.rejects(readFile(join(runDir, '.stalker-completion.json')));
   await assert.rejects(readFile(join(runDir, '.stage-complete-notify.done')));
   assert.equal(JSON.parse(await readFile(join(runDir, '.stalker-failure.json'))).stage, 7);
 });
 
-test('notification failure is retryable without rerunning human generation', async t => {
-  const { runDir, calls, options } = await setup(t);
-  const notify = options.notifyImpl;
-  options.notifyImpl = async title => { if (title.includes('dashboard ready')) throw new Error('offline'); return {}; };
-  await assert.rejects(completeRun(runDir, options), /FAILED at stage 8/);
-  options.notifyImpl = notify;
+test('publication failure is retryable without rerunning matching human generation', async t => {
+  const {runDir, calls, options} = await setup(t);
+  const sync = options.syncImpl;
+  options.syncImpl = async () => {};
+  await assert.rejects(completeRun(runDir, options), /FAILED at stage 7/);
+  options.syncImpl = sync;
   assert.equal((await completeRun(runDir, options)).status, 'complete');
   assert.equal(calls.filter(value => value === 'generate').length, 1);
 });
 
-test('HTTP 200 without a Telegram message receipt is rejected by the actual client', async t => {
-  const server = createServer((req, res) => res.end('ok'));
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const previous = process.env.STALKER_TELEGRAM_NOTIFY_URL;
-  process.env.STALKER_TELEGRAM_NOTIFY_URL = `http://127.0.0.1:${server.address().port}/notify`;
-  t.after(async () => { if (previous === undefined) delete process.env.STALKER_TELEGRAM_NOTIFY_URL; else process.env.STALKER_TELEGRAM_NOTIFY_URL = previous; await new Promise(resolve => server.close(resolve)); });
-  await assert.rejects(notifyDelivery('Stalker', 'Dashboard URL'), /no Telegram delivery receipt/);
+test('completion and failures never invoke a retired transport option', async t => {
+  const {runDir, options} = await setup(t);
+  let sends = 0;
+  options.notifyImpl = async () => { sends++; throw new Error('transport retired'); };
+  await completeRun(runDir, options);
+  const receipt = JSON.parse(await readFile(join(runDir, '.stalker-completion.json')));
+  assert.equal(receipt.version, 4); assert.equal('notification' in receipt, false);
+  await writeFile(join(runDir, 'transcript.md'), 'changed transcript');
+  options.syncImpl = async () => {};
+  options.fetchImpl = async () => { throw new Error('synthetic outage'); };
+  await assert.rejects(completeRun(runDir, options), /stage 7/);
+  assert.equal(sends, 0);
 });
 
-test('concurrent completion cannot double-send and a released lock remains reusable', async t => {
+test('concurrent completion cannot double-publish and a released lock remains reusable', async t => {
   const { runDir, options, calls } = await setup(t);
   let entered, release;
   const ready = new Promise(resolve => { entered = resolve; });
@@ -124,26 +128,26 @@ test('concurrent completion cannot double-send and a released lock remains reusa
   release();
   await first;
   assert.equal((await completeRun(runDir, options)).skipped, true);
-  assert.equal(calls.filter(value => value.includes('dashboard ready')).length, 1);
+  assert.equal(calls.filter(value => value === 'sync').length, 1);
 });
 
 
-test('a manifest lost after notification preserves the real receipt and retries without another send', async t => {
-  const { runDir, options, manifest, calls } = await setup(t);
-  const notify = options.notifyImpl;
-  let included;
-  options.notifyImpl = async (...args) => { const receipt = await notify(...args); included ??= manifest.included; manifest.included = []; return receipt; };
+test('a manifest lost after the published checkpoint preserves it for retry', async t => {
+  const {runDir, options, manifest, calls} = await setup(t);
+  let savedRows, reads = 0;
+  options.fetchImpl = async (...args) => {
+    const response = await fetch(...args);
+    if (String(args[0]).endsWith('/manifest.json') && ++reads === 1) {
+      savedRows = [...manifest.included]; manifest.included = [];
+    }
+    return response;
+  };
   await assert.rejects(completeRun(runDir, options), /FAILED at stage 7/);
   const receipt = JSON.parse(await readFile(join(runDir, '.stalker-completion.json')));
-  assert.equal(receipt.status, 'notified');
-  assert.equal(receipt.notification.messageId, 123);
-  for (const file of ['.stage-complete-notify.done', '.stage-notified.done']) {
-    await assert.rejects(readFile(join(runDir, file)));
-  }
-  manifest.included = included;
-  options.notifyImpl = notify;
+  assert.equal(receipt.version, 4); assert.equal(receipt.status, 'published');
+  assert.equal('notification' in receipt, false);
+  manifest.included = savedRows; delete options.fetchImpl;
   assert.equal((await completeRun(runDir, options)).status, 'complete');
-  assert.equal(calls.filter(call => call.startsWith('Stalker dashboard ready')).length, 1);
   assert.equal(calls.filter(call => call === 'generate' || call === 'sync').length, 2);
 });
 
@@ -171,14 +175,14 @@ test('a completed run fails closed when its custody ledger is missing or invalid
 
 test('an obsolete digest cache is regenerated on a delivery retry', async t => {
   const { runDir, options, calls } = await setup(t);
-  const notify = options.notifyImpl;
-  options.notifyImpl = async () => { throw new Error('offline'); };
+  const media = options.mediaImpl;
+  options.mediaImpl = async () => { throw new Error('synthetic media failure'); };
   await assert.rejects(completeRun(runDir, options));
   const path = join(runDir, '.stalker-digest.json');
   const cache = JSON.parse(await readFile(path, 'utf8'));
   cache.contractVersion = 2;
   await writeFile(path, JSON.stringify(cache));
-  options.notifyImpl = notify;
+  options.mediaImpl = media;
   await completeRun(runDir, options);
   assert.equal(calls.filter(value => value === 'generate').length, 2);
 });
@@ -239,26 +243,10 @@ test('legacy date-only recordings retain their channel, date and dashboard URL',
   };
   const result = await completeRun(runDir, options);
   assert.equal(result.status, 'complete');
-  assert.ok(calls.includes('Stalker dashboard ready — examplechannel 2026-09-08'));
+  assert.ok(calls.includes('sync'));
   const receipt = JSON.parse(await readFile(join(runDir, '.stalker-completion.json')));
   assert.equal(receipt.runName, 'examplechannel-2026-09-08');
   assert.match(receipt.publication.url, /\/examplechannel-2026-09-08\.html$/);
-});
-
-test('completion text leads with selected highlights instead of opening chatter', async t => {
-  const { runDir, options } = await setup(t);
-  const generate = options.generateImpl, send = options.notifyImpl;
-  let message;
-  options.generateImpl = async args => {
-    const digest = await generate(args);
-    digest.summary.topics = [{ ...digest.summary.topics[0], title: 'Opening chatter' }];
-    digest.summary.highlights = digest.summary.highlights.map(item => ({ ...item, title: 'Key coding discussion' }));
-    return digest;
-  };
-  options.notifyImpl = async (...args) => { message = args[1]; return send(...args); };
-  await completeRun(runDir, options);
-  assert.match(message, /Key coding discussion/);
-  assert.doesNotMatch(message, /Opening chatter/);
 });
 
 test('legacy delivery receipts cannot skip the every-card clip rebuild', async t => {
@@ -267,33 +255,38 @@ test('legacy delivery receipts cannot skip the every-card clip rebuild', async t
   const path=join(runDir,'.stalker-completion.json');
   const receipt=JSON.parse(await readFile(path));receipt.version=1;await writeFile(path,JSON.stringify(receipt));
   assert.equal((await completeRun(runDir,options)).skipped,undefined);
-  assert.equal(calls.filter(call=>call.startsWith('Stalker dashboard ready')).length,2);
+  assert.equal(calls.filter(call=>call==='sync').length,2);
 });
 
-test('a missing card clip fails publication before a completion notification', async t => {
+test('a missing card clip fails publication before publication', async t => {
   const {runDir,options,calls}=await setup(t);
   options.mediaImpl=async()=>{throw new Error('missing card clip');};
   await assert.rejects(completeRun(runDir,options),/FAILED at stage 7.*missing card clip/);
-  assert.ok(!calls.some(call=>call.startsWith('Stalker dashboard ready')));
+  assert.ok(!calls.includes('sync'));
 });
 
-test('COMPLETE waits for stage 9 retention after a truthful dashboard-ready notification', async t => {
+test('COMPLETE waits for stage 9 retention after the published checkpoint', async t => {
   const {runDir,options,calls}=await setup(t);
   await writeFile(join(runDir,'video.mp4'),'raw video');
-  options.archiveImpl=matchingArchive(calls);
+  const archiveImpl=matchingArchive(calls);
+  options.archiveImpl=async expected=>{
+    const checkpoint=JSON.parse(await readFile(join(runDir,'.stalker-completion.json')));
+    assert.equal(checkpoint.version,4);assert.equal(checkpoint.status,'published');
+    return archiveImpl(expected);
+  };
   assert.equal((await completeRun(runDir,options)).status,'complete');
-  const ready=calls.findIndex(call=>call.startsWith('Stalker dashboard ready'));
+  const ready=calls.findIndex(call=>call==='sync');
   const archive=calls.findIndex(call=>call.startsWith('archive:'));
   assert.ok(ready>=0&&archive>ready);assert.ok(!calls.some(call=>call.startsWith('Stalker COMPLETE')));
   const completion=JSON.parse(await readFile(join(runDir,'.stalker-completion.json')));
   const retention=JSON.parse(await readFile(join(runDir,'.stalker-media-retention.json')));
-  assert.equal(completion.version,3);assert.equal(retention.status,'complete');
+  assert.equal(completion.version,4);assert.equal(retention.status,'complete');
   await assert.rejects(readFile(join(runDir,'video.mp4')),{code:'ENOENT'});
   await assert.rejects(readFile(join(runDir,'clips/clip-00m01s.mp4')),{code:'ENOENT'});
   assert.equal(await readFile(join(runDir,'card-media/clips/clip-0m1s.mp4'),'utf8'),'selected clip');
 });
 
-test('a stage 9 failure keeps COMPLETE open and retry reuses digest, publication and notification after video offload', async t => {
+test('a stage 9 failure keeps COMPLETE open and retry reuses digest, publication after video offload', async t => {
   const {runDir,options,calls}=await setup(t);
   await writeFile(join(runDir,'video.mp4'),'raw video');
   await writeFile(join(runDir,'zzz.wav'),'late failure');
@@ -305,10 +298,9 @@ test('a stage 9 failure keeps COMPLETE open and retry reuses digest, publication
   assert.equal((await completeRun(runDir,options)).status,'complete');
   assert.equal(calls.filter(call=>call==='generate').length,1);
   assert.equal(calls.filter(call=>call==='sync').length,1);
-  assert.equal(calls.filter(call=>call.startsWith('Stalker dashboard ready')).length,1);
 });
 
-test('a temporary live verification failure preserves notified delivery without repeating it', async t => {
+test('a temporary live verification failure preserves published evidence without repeating it', async t => {
   const {runDir,options,calls}=await setup(t);
   await writeFile(join(runDir,'video.mp4'),'raw video');
   await writeFile(join(runDir,'zzz.wav'),'late failure');
@@ -317,18 +309,17 @@ test('a temporary live verification failure preserves notified delivery without 
   const path=join(runDir,'.stalker-completion.json');
   const notified=await readFile(path,'utf8');
   const before={generate:calls.filter(call=>call==='generate').length,sync:calls.filter(call=>call==='sync').length,
-    ready:calls.filter(call=>call.startsWith('Stalker dashboard ready')).length,archive:calls.filter(call=>call.startsWith('archive:')).length};
+    archive:calls.filter(call=>call.startsWith('archive:')).length};
   options.fetchImpl=async()=>{throw new Error('temporary hub outage');};
   await assert.rejects(completeRun(runDir,options),/FAILED at stage 7.*temporary hub outage/);
   assert.equal(await readFile(path,'utf8'),notified);
   assert.deepEqual({generate:calls.filter(call=>call==='generate').length,sync:calls.filter(call=>call==='sync').length,
-    ready:calls.filter(call=>call.startsWith('Stalker dashboard ready')).length,archive:calls.filter(call=>call.startsWith('archive:')).length},before);
+    archive:calls.filter(call=>call.startsWith('archive:')).length},before);
   delete options.fetchImpl;
   assert.equal((await completeRun(runDir,options)).status,'complete');
-  assert.equal(calls.filter(call=>call.startsWith('Stalker dashboard ready')).length,1);
 });
 
-test('a final live failure after resumed retention preserves the durable notified receipt', async t => {
+test('a final live failure after resumed retention preserves the durable published receipt', async t => {
   const {runDir,options,calls}=await setup(t);
   await writeFile(join(runDir,'video.mp4'),'raw video');
   await writeFile(join(runDir,'zzz.wav'),'late failure');
@@ -350,17 +341,15 @@ test('a final live failure after resumed retention preserves the durable notifie
   assert.equal(await readFile(path,'utf8'),notified);
   assert.equal(calls.filter(call=>call==='generate').length,1);
   assert.equal(calls.filter(call=>call==='sync').length,1);
-  assert.equal(calls.filter(call=>call.startsWith('Stalker dashboard ready')).length,1);
   delete options.fetchImpl;
   assert.equal((await completeRun(runDir,options)).status,'complete');
-  assert.equal(calls.filter(call=>call.startsWith('Stalker dashboard ready')).length,1);
 });
 
 test('retention fails closed at stage 9 without an injected adapter or configured parent ID', async t => {
   const {runDir,options}=await setup(t);
   delete options.archiveImpl;
   await assert.rejects(completeRun(runDir,options),/FAILED at stage 9/);
-  assert.equal(JSON.parse(await readFile(join(runDir,'.stalker-completion.json'))).status,'notified');
+  assert.equal(JSON.parse(await readFile(join(runDir,'.stalker-completion.json'))).status,'published');
   await assert.rejects(readFile(join(runDir,'.stage-complete-notify.done')));
 });
 

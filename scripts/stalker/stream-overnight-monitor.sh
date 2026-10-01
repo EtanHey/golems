@@ -42,7 +42,7 @@ check_delivery() {
         local dashboard_url
         dashboard_url=$(printf '%s' "$receipt" | node -e 'let s="";process.stdin.on("data",b=>s+=b);process.stdin.on("end",()=>console.log(JSON.parse(s).dashboardUrl))')
         printf '# Morning Summary: %s (%s)\n\n## Pipeline Status: COMPLETE\n\nDashboard: %s\n' "$CHANNEL" "$DATE" "$dashboard_url" > "$STREAM_DIR/morning-summary.md"
-        log "PIPELINE COMPLETE — verified dashboard and notification: $dashboard_url"
+        log "PIPELINE COMPLETE — verified dashboard and retention: $dashboard_url"
         return 0
     fi
     if [ "${STALKER_MONITOR_ONCE:-0}" = "1" ]; then log "$receipt"; fi
