@@ -2,7 +2,6 @@
 import re
 
 
-# ── Rule 2: worktree location convention ─────────────────────────────────────
 
 
 def _segment_operator_before(tokens, seg_of, segment):

@@ -46,7 +46,7 @@ def test_real_path_layout_and_bytecode(tmp_path, layout):
     assert not list(package.rglob("__pycache__"))
 
 
-@pytest.mark.parametrize("damaged", ["__init__.py", "policy.py", "runtime.py", "scope.py", "shell_words.py", "chain_status.py", "syntax", "runtime-error", "foreign"])
+@pytest.mark.parametrize("damaged", ["__init__.py", "policy.py", "runtime.py", "scope.py", "shell_words.py", "chain_status.py", "wiring", "syntax", "runtime-error", "foreign"])
 def test_missing_or_corrupt_package_denies_through_launcher(tmp_path, damaged):
     hook = copied_hook(tmp_path / "source")
     package = hook.parent / "tmp_block_impl"
@@ -59,6 +59,18 @@ spec = importlib.util.spec_from_file_location(__name__ + '.policy', Path(__file_
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
+""")
+    elif damaged == "wiring":
+        module = package / "chain_status.py"
+        module.write_text(module.read_text() + """
+import sys, types
+class WiringFailure(types.ModuleType):
+    def __setattr__(self, name, value):
+        if name == '_is_separator':
+            print('must stay hidden')
+            raise RuntimeError('wiring unavailable')
+        super().__setattr__(name, value)
+sys.modules[__name__].__class__ = WiringFailure
 """)
     elif damaged in ("syntax", "runtime-error"):
         error = "this is invalid syntax !" if damaged == "syntax" else "raise RuntimeError('unavailable')"

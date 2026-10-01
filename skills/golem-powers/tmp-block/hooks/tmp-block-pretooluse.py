@@ -455,6 +455,9 @@ def _literal_branch_may_execute(tokens, target_index):
     return True
 
 
+# ── Rule 2: worktree location convention ─────────────────────────────────────
+
+
 def _worktree_add_args(tokens, cmd_pos, seg_of, scope_of):
     """Return [(raw_path_token, segment, scope, index)] for each creation."""
     found = []
@@ -3165,13 +3168,17 @@ def main():
         deny(f"⛔ TMP-BLOCK: {exc}.")
 
 
-_chain_status._is_separator = _is_separator
-_scope._is_separator = _is_separator
-_scope.re = re
-_shell_words._command_sub_word_continues = _command_sub_word_continues
-_shell_words._executable_subcommands = _executable_subcommands
-_shell_words._is_command_sub_open = _is_command_sub_open
-_shell_words._strip_heredoc_bodies = _strip_heredoc_bodies
+try:
+    with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+        _chain_status._is_separator = _is_separator
+        _scope._is_separator = _is_separator
+        _scope.re = re
+        _shell_words._command_sub_word_continues = _command_sub_word_continues
+        _shell_words._executable_subcommands = _executable_subcommands
+        _shell_words._is_command_sub_open = _is_command_sub_open
+        _shell_words._strip_heredoc_bodies = _strip_heredoc_bodies
+except BaseException:
+    _deny_policy_import_failure()
 
 if __name__ == "__main__":
     main()
