@@ -19,7 +19,6 @@
  * ENV defaults (override as needed for the active host):
  *   LLM_BACKEND=haiku
  *   STATE_BACKEND=supabase
- *   TELEGRAM_MODE=direct
  *   TZ=Asia/Jerusalem
  *
  * Usage:
@@ -30,10 +29,8 @@
 // Default cloud env vars (can be overridden)
 if (!process.env.LLM_BACKEND) process.env.LLM_BACKEND = "haiku";
 if (!process.env.STATE_BACKEND) process.env.STATE_BACKEND = "supabase";
-if (!process.env.TELEGRAM_MODE) process.env.TELEGRAM_MODE = "direct";
 
 // Catch unhandled errors before they crash the worker silently
-import { timingSafeEqual } from "node:crypto";
 import { installProcessGuards } from "@golems/shared/lib/process-guards";
 installProcessGuards("cloud-worker");
 
@@ -48,11 +45,6 @@ async function getAxiomHelpers() {
 }
 
 // ALL imports are lazy — health endpoint must start before any module loads
-async function getSendNotification() {
-  const mod = await import("@golems/shared/lib/telegram-direct");
-  return mod.sendNotification;
-}
-
 async function getUsage() {
   const mod = await import("@golems/shared/lib/cloud-llm");
   return {
@@ -115,20 +107,6 @@ async function safeRun(
     console.error(`[CloudWorker] ${name} FAILED (${elapsed}s):`, message);
     status = "error";
     error = message;
-
-    // Notify on failure
-    const notify = await getSendNotification();
-    await notify({
-      title: `${name} Failed`,
-      body: message.slice(0, 200),
-      source: "healthcheck",
-      priority: "high",
-    }).catch((notifyErr: unknown) => {
-      console.warn(
-        "[CloudWorker] Notification also failed:",
-        notifyErr instanceof Error ? notifyErr.message : notifyErr,
-      );
-    });
   }
 
   // Report to Axiom (fire-and-forget)
@@ -370,7 +348,6 @@ const singleMode = emailOnly;
 console.log("[CloudWorker] Starting...");
 console.log(`[CloudWorker] LLM_BACKEND=${process.env.LLM_BACKEND}`);
 console.log(`[CloudWorker] STATE_BACKEND=${process.env.STATE_BACKEND}`);
-console.log(`[CloudWorker] TELEGRAM_MODE=${process.env.TELEGRAM_MODE}`);
 console.log(
   `[CloudWorker] Israel time: ${new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" })}`,
 );
@@ -386,54 +363,6 @@ console.log(
 const PORT = parseInt(process.env.PORT || "8080", 10);
 const startTime = Date.now();
 let golemStatus = "loading";
-const UPTIMEROBOT_WEBHOOK_PREFIX = "/webhook/uptimerobot";
-const configuredUptimeRobotWebhookSecret =
-  process.env.UPTIMEROBOT_WEBHOOK_SECRET;
-const configuredUptimeRobotWebhookSecretBuffer =
-  configuredUptimeRobotWebhookSecret &&
-  configuredUptimeRobotWebhookSecret.length > 0
-    ? Buffer.from(configuredUptimeRobotWebhookSecret)
-    : null;
-
-if (!configuredUptimeRobotWebhookSecretBuffer) {
-  console.error(
-    "[CloudWorker] SECURITY WARNING: UPTIMEROBOT_WEBHOOK_SECRET is missing. UptimeRobot webhook requests will return 404 until it is configured.",
-  );
-}
-
-function getUptimeRobotWebhookSecretFromPath(pathname: string): string | null {
-  const prefix = `${UPTIMEROBOT_WEBHOOK_PREFIX}/`;
-  if (!pathname.startsWith(prefix)) return null;
-
-  const secret = pathname.slice(prefix.length);
-  if (!secret || secret.includes("/")) return null;
-
-  try {
-    return decodeURIComponent(secret);
-  } catch {
-    return null;
-  }
-}
-
-function isAuthorizedUptimeRobotWebhookPath(pathname: string): boolean {
-  if (!configuredUptimeRobotWebhookSecretBuffer) return false;
-
-  const incomingSecret = getUptimeRobotWebhookSecretFromPath(pathname);
-  if (!incomingSecret) return false;
-
-  const incomingSecretBuffer = Buffer.from(incomingSecret);
-  if (
-    incomingSecretBuffer.length !== configuredUptimeRobotWebhookSecretBuffer.length
-  ) {
-    return false;
-  }
-
-  return timingSafeEqual(
-    incomingSecretBuffer,
-    configuredUptimeRobotWebhookSecretBuffer,
-  );
-}
-
 Bun.serve({
   port: PORT,
   async fetch(req) {
@@ -447,7 +376,6 @@ Bun.serve({
           ...health.body,
           backend: process.env.LLM_BACKEND,
           stateBackend: process.env.STATE_BACKEND,
-          telegramMode: process.env.TELEGRAM_MODE,
           israelTime: new Date().toLocaleString("en-US", {
             timeZone: "Asia/Jerusalem",
           }),
@@ -494,38 +422,6 @@ Bun.serve({
       }
     }
 
-    if (
-      req.method === "POST" &&
-      (url.pathname === UPTIMEROBOT_WEBHOOK_PREFIX ||
-        url.pathname.startsWith(`${UPTIMEROBOT_WEBHOOK_PREFIX}/`))
-    ) {
-      // cyberMaster H7: keep the webhook indistinguishable from a normal 404
-      // unless the shared-secret path token matches exactly.
-      if (!isAuthorizedUptimeRobotWebhookPath(url.pathname)) {
-        return new Response("Not Found", { status: 404 });
-      }
-
-      try {
-        const form = await req.formData().catch(() => null);
-        const text = await req.text().catch(() => "");
-        const monitorName = form?.get("monitorFriendlyName") || "Unknown";
-        const alertType = form?.get("alertType") || "";
-        const alertDetails = form?.get("alertDetails") || text || "No details";
-        const isDown = String(alertType) === "1";
-
-        const notify = await getSendNotification();
-        await notify({
-          title: isDown ? `DOWN: ${monitorName}` : `UP: ${monitorName}`,
-          body: String(alertDetails),
-          source: "uptime",
-        });
-        return new Response("OK", { status: 200 });
-      } catch (e) {
-        console.error("[Webhook] UptimeRobot error:", e);
-        return new Response("Error", { status: 500 });
-      }
-    }
-
     return new Response("Not Found", { status: 404 });
   },
 });
@@ -568,19 +464,6 @@ try {
   const message = err instanceof Error ? err.message : String(err);
   console.error("[CloudWorker] Failed to load golems:", message);
   golemStatus = `error: ${message}`;
-
-  const notifyFail = await getSendNotification();
-  await notifyFail({
-    title: "Golem Load Failed",
-    body: message.slice(0, 200),
-    source: "healthcheck",
-    priority: "high",
-  }).catch((notifyErr: unknown) => {
-    console.warn(
-      "[CloudWorker] Load failure notification failed:",
-      notifyErr instanceof Error ? notifyErr.message : notifyErr,
-    );
-  });
 }
 
 // Flush Axiom on shutdown
@@ -596,17 +479,4 @@ process.on("SIGTERM", async () => {
     );
   }
   process.exit(0);
-});
-
-// Send startup notification
-const notifyStart = await getSendNotification();
-await notifyStart({
-  title: "Cloud Worker Started",
-  body: `Golems: ${golemStatus}`,
-  source: "healthcheck",
-}).catch((notifyErr: unknown) => {
-  console.warn(
-    "[CloudWorker] Startup notification failed:",
-    notifyErr instanceof Error ? notifyErr.message : notifyErr,
-  );
 });

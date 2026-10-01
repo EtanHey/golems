@@ -59,7 +59,7 @@ packages/services/
 
 ## Dependencies
 
-- `@golems/shared` — Supabase, event log, state store, LLM, telegram-direct
+- `@golems/shared` — Supabase, event log, state store, LLM
 - `@golems/teller` — (future) Financial reports in briefing
 
 ## Cloud Worker
@@ -71,7 +71,7 @@ but do not assume there is an active Railway host.
 | Schedule | Service | Description |
 |----------|---------|-------------|
 | Hourly 6am-7pm (skip 12pm) + 10pm | Email poller | Fetch + score emails |
-| 8am daily | Briefing | Morning summary to Telegram |
+| 8am daily | Briefing | Morning summary to stdout |
 | 2am daily | Soltome learner | Scrape posts + learn patterns |
 
 **Health endpoint:** `GET /health` when the worker process is running.
@@ -82,7 +82,6 @@ but do not assume there is an active Railway host.
 ```bash
 LLM_BACKEND=gemini
 STATE_BACKEND=supabase
-TELEGRAM_MODE=direct
 GOOGLE_GENERATIVE_AI_API_KEY=<your-key>
 SUPABASE_URL=...
 SUPABASE_SERVICE_KEY=...
