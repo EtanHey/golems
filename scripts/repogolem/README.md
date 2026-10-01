@@ -41,7 +41,14 @@ repogolem generate
 ```
 
 `generate` signs in to 1Password if needed, checks vault/item/field names, then
-resolves all references with a single `op run` before writing the cache.
+resolves all references through pinned varlock under Bun before writing the cache.
+The repo-local 1Password varlock plugin uses one `op run --no-masking` batch;
+it preserves captured manual-account sessions, forces `OP_CACHE`/`OP_DEBUG` off,
+and never retries individual refs or loads the WASM SDK. Raw varlock output is
+captured privately and remapped into the existing `REPOGOLEM_SECRET_<sha>` cache.
+Telemetry disabled: `VARLOCK_TELEMETRY_DISABLED=1` and `DO_NOT_TRACK=1`; no varlock
+telemetry config or network request is created. Inherited varlock overrides are
+removed; `OP_SESSION_*` and the original `TMPDIR` reach the provider unchanged.
 Set top-level `secrets: { backend: 1password }`; unknown backends fail closed.
 Existing configs with op refs and no backend default to 1password with one notice.
 
