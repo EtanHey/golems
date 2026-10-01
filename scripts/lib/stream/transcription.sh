@@ -85,6 +85,5 @@ transcribe_segment_with_fallback() {
     local message="Stalker: segment ${segment_id} transcription failed permanently after ${max_attempts} retries, audio at ${segment_file}"
     mkdir -p "$out_dir"
     printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$message" >> "$out_dir/transcription-failures.log"
-    notify_stalker_telegram "Stalker Transcription Failure" "$message" "high" "stalker-golem" || true
     return 1
 }

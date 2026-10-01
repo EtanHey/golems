@@ -29,3 +29,8 @@ real fixture-child process termination and watchdog coverage.
 Before extraction, changing Telegram JSON indentation from 2 to 1 in a separate
 base copy failed `notifications-success`. The lead/reviewer must additionally
 run an independent mutant before approval, per the split plan.
+
+On 2026-10-01, the approved Telegram retirement projects failure-send records
+and their alert-only markers out of the immutable `ad926ea1` fixtures. Remaining
+command traces, file bytes, exit status, and output checks stay exact. This
+projection does not record candidate output; actual captures remain unfiltered.

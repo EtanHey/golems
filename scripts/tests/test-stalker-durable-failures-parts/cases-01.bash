@@ -121,7 +121,7 @@ function split_case_011() {
     [ "$status" -ne 0 ]
     [ -f "$stream_dir/.stage-chat.failed" ]
     grep -F -q 'retryable=true' "$stream_dir/.stage-chat.failed"
-    [ "$(grep -c 'Stalker Pipeline Failure' "$ALERTS_FILE")" -eq 1 ]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_012() {
@@ -152,7 +152,7 @@ function split_case_013() {
     [ -f "$stream_dir/.stage-scoring.failed" ]
     grep -F -q 'scorer preflight failed before expensive processing' "$stream_dir/.stage-scoring.failed"
     grep -F -q 'retryable=true' "$stream_dir/.stage-scoring.failed"
-    [ "$(grep -c 'Stalker Pipeline Failure' "$ALERTS_FILE")" -eq 1 ]
+    [ ! -s "$ALERTS_FILE" ]
     [ ! -f "$stream_dir/full-audio.wav" ]
 }
 
@@ -251,7 +251,7 @@ function split_case_016() {
     [[ "$empty_status" -eq 0 \
         && "$empty_gems" -eq 0 \
         && "$empty_failed" -eq 1 \
-        && "$alert_count" -eq 1 ]]
+        && "$alert_count" -eq 0 ]]
 }
 
 function split_case_017() {
@@ -333,7 +333,6 @@ function split_case_019() {
     mkdir -p "$stream_dir"
     printf 'done\n' > "$stream_dir/.stage-scoring.done"
     printf 'failed\n' > "$stream_dir/.stage-scoring.failed"
-    printf 'alerted\n' > "$stream_dir/.stage-pipeline-failure-alerted.done"
     mv() { return 99; }
 
     run stalker_mark_scoring_started "$stream_dir" "$$"
@@ -342,18 +341,15 @@ function split_case_019() {
 
     done_exists=0
     failure_exists=0
-    alert_exists=0
     started_exists=0
     tmp_count=$(find "$stream_dir" -maxdepth 1 -name '.stage-scoring.started.tmp.*' | wc -l | tr -d ' ')
     [ -f "$stream_dir/.stage-scoring.done" ] && done_exists=1
     [ -f "$stream_dir/.stage-scoring.failed" ] && failure_exists=1
-    [ -f "$stream_dir/.stage-pipeline-failure-alerted.done" ] && alert_exists=1
     [ -f "$stream_dir/.stage-scoring.started" ] && started_exists=1
 
     [[ "$install_status" -ne 0 \
         && "$done_exists" -eq 1 \
         && "$failure_exists" -eq 1 \
-        && "$alert_exists" -eq 1 \
         && "$started_exists" -eq 0 \
         && "$tmp_count" -eq 0 ]]
 }
@@ -392,7 +388,8 @@ function split_case_021() {
     [ "$status" -eq 0 ]
     [ -f "$stale_dir/.stage-scoring.failed" ]
     [ ! -f "$stale_dir/gems.md" ]
-    grep -F -q "$(basename "$stale_dir")" "$ALERTS_FILE"
+    grep -F -q "$(basename "$stale_dir")" "$stale_dir/.stage-scoring.failed"
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_022() {
@@ -407,7 +404,8 @@ function split_case_022() {
 
     [ -f "$stale_dir/.stage-scoring.failed" ]
     [ ! -f "$stale_dir/gems.md" ]
-    grep -F -q "$(basename "$stale_dir")" "$ALERTS_FILE"
+    grep -F -q "$(basename "$stale_dir")" "$stale_dir/.stage-scoring.failed"
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_023() {
@@ -424,7 +422,7 @@ function split_case_023() {
     [ -f "$stream_dir/.stage-run-quality.failed" ]
     grep -F -q 'gem_count=0' "$stream_dir/.stage-run-quality.failed"
     grep -F -q 'chat_count=0' "$stream_dir/.stage-run-quality.failed"
-    [ "$(jq -s 'map(select(.title == "Stalker FAILED at stage 6")) | length' "$ALERTS_FILE")" -eq 1 ]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_024() {

@@ -135,9 +135,7 @@ SH
     grep -F -q 'retryable=true' "$stream_dir/.stage-scoring.failed"
     grep -F -q "$(basename "$stream_dir")" "$stream_dir/.stage-scoring.failed"
     grep -F -q 'interrupted before completion' "$stream_dir/.stage-scoring.failed"
-    [ -f "$telegram_capture" ]
-    grep -F -q '"title": "Stalker Pipeline Failure"' "$telegram_capture"
-    grep -F -q "$(basename "$stream_dir")" "$telegram_capture"
+    [ ! -f "$telegram_capture" ]
 }
 
 # issue #323: a slow scorer that owns a grandchild, so a reap has to walk the
@@ -419,8 +417,7 @@ SH
     [ -f "$stream_dir/.stage-scoring.failed" ]
     grep -F -q 'untrappable exit or SIGKILL' "$stream_dir/.stage-scoring.failed"
     grep -F -q "$(basename "$stream_dir")" "$stream_dir/.stage-scoring.failed"
-    grep -F -q '"title": "Stalker Pipeline Failure"' "$telegram_capture"
-    grep -F -q "$(basename "$stream_dir")" "$telegram_capture"
+    [ ! -f "$telegram_capture" ]
 }
 
 function split_case_012() {
