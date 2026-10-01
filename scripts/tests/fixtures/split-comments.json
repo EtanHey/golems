@@ -3002,6 +3002,897 @@
           ]
         ]
       }
+    },
+    {
+      "original_path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+      "pre_split_sha": "8d88b3b13b3c76dbd42afcdf337477af551dd416",
+      "parts": [
+        "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/policy.py"
+      ],
+      "split_sha": "b909d9870598dfac86f4c1247d857919d022a5a4",
+      "node_aliases": {},
+      "assignments": {
+        "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py": [
+          [
+            0,
+            0,
+            3019
+          ],
+          [
+            1,
+            1,
+            2904
+          ],
+          [
+            2,
+            2,
+            2904
+          ],
+          [
+            3,
+            3,
+            2904
+          ],
+          [
+            4,
+            4,
+            2899
+          ],
+          [
+            5,
+            6,
+            2806
+          ],
+          [
+            6,
+            7,
+            2806
+          ],
+          [
+            7,
+            8,
+            2805
+          ],
+          [
+            8,
+            9,
+            2805
+          ],
+          [
+            9,
+            10,
+            2805
+          ],
+          [
+            10,
+            11,
+            2805
+          ],
+          [
+            11,
+            12,
+            2805
+          ],
+          [
+            12,
+            13,
+            2805
+          ],
+          [
+            13,
+            14,
+            2805
+          ],
+          [
+            14,
+            15,
+            2805
+          ],
+          [
+            15,
+            16,
+            2805
+          ],
+          [
+            16,
+            17,
+            2805
+          ],
+          [
+            17,
+            18,
+            2805
+          ],
+          [
+            18,
+            19,
+            2805
+          ],
+          [
+            19,
+            20,
+            2805
+          ],
+          [
+            20,
+            21,
+            2805
+          ],
+          [
+            21,
+            22,
+            2805
+          ],
+          [
+            22,
+            23,
+            2805
+          ],
+          [
+            23,
+            24,
+            2795
+          ],
+          [
+            24,
+            25,
+            2795
+          ],
+          [
+            27,
+            26,
+            2792
+          ],
+          [
+            29,
+            27,
+            2789
+          ],
+          [
+            30,
+            28,
+            2789
+          ],
+          [
+            31,
+            29,
+            2789
+          ],
+          [
+            32,
+            30,
+            2789
+          ],
+          [
+            54,
+            31,
+            2605
+          ],
+          [
+            55,
+            32,
+            2605
+          ],
+          [
+            56,
+            33,
+            2605
+          ],
+          [
+            57,
+            34,
+            2571
+          ],
+          [
+            58,
+            35,
+            2571
+          ],
+          [
+            59,
+            36,
+            2571
+          ],
+          [
+            60,
+            37,
+            2538
+          ],
+          [
+            61,
+            38,
+            2528
+          ],
+          [
+            62,
+            39,
+            2528
+          ],
+          [
+            63,
+            40,
+            2520
+          ],
+          [
+            64,
+            41,
+            2520
+          ],
+          [
+            65,
+            42,
+            2520
+          ],
+          [
+            66,
+            43,
+            2448
+          ],
+          [
+            67,
+            44,
+            2448
+          ],
+          [
+            68,
+            45,
+            2448
+          ],
+          [
+            69,
+            46,
+            2448
+          ],
+          [
+            70,
+            47,
+            2448
+          ],
+          [
+            71,
+            48,
+            2447
+          ],
+          [
+            72,
+            49,
+            2447
+          ],
+          [
+            73,
+            50,
+            2447
+          ],
+          [
+            74,
+            51,
+            2330
+          ],
+          [
+            75,
+            52,
+            2330
+          ],
+          [
+            76,
+            53,
+            2330
+          ],
+          [
+            77,
+            54,
+            2330
+          ],
+          [
+            78,
+            55,
+            2327
+          ],
+          [
+            79,
+            56,
+            2281
+          ],
+          [
+            80,
+            57,
+            2281
+          ],
+          [
+            81,
+            58,
+            2210
+          ],
+          [
+            82,
+            59,
+            2210
+          ],
+          [
+            83,
+            60,
+            2210
+          ],
+          [
+            84,
+            61,
+            2210
+          ],
+          [
+            85,
+            62,
+            2120
+          ],
+          [
+            86,
+            63,
+            2120
+          ],
+          [
+            87,
+            64,
+            2120
+          ],
+          [
+            88,
+            65,
+            2096
+          ],
+          [
+            89,
+            66,
+            2096
+          ],
+          [
+            90,
+            67,
+            2081
+          ],
+          [
+            91,
+            68,
+            2004
+          ],
+          [
+            92,
+            69,
+            2004
+          ],
+          [
+            93,
+            70,
+            2004
+          ],
+          [
+            94,
+            71,
+            1830
+          ],
+          [
+            95,
+            72,
+            1830
+          ],
+          [
+            96,
+            73,
+            1830
+          ],
+          [
+            97,
+            74,
+            1776
+          ],
+          [
+            98,
+            75,
+            1776
+          ],
+          [
+            99,
+            76,
+            1776
+          ],
+          [
+            100,
+            77,
+            1776
+          ],
+          [
+            101,
+            78,
+            1776
+          ],
+          [
+            102,
+            79,
+            1776
+          ],
+          [
+            103,
+            80,
+            1736
+          ],
+          [
+            104,
+            81,
+            1736
+          ],
+          [
+            105,
+            82,
+            1736
+          ],
+          [
+            106,
+            83,
+            1736
+          ],
+          [
+            107,
+            84,
+            1721
+          ],
+          [
+            108,
+            85,
+            1721
+          ],
+          [
+            109,
+            86,
+            1721
+          ],
+          [
+            110,
+            87,
+            1296
+          ],
+          [
+            111,
+            88,
+            1296
+          ],
+          [
+            112,
+            89,
+            1191
+          ],
+          [
+            113,
+            90,
+            1191
+          ],
+          [
+            114,
+            91,
+            1103
+          ],
+          [
+            115,
+            92,
+            630
+          ],
+          [
+            116,
+            93,
+            566
+          ],
+          [
+            117,
+            94,
+            566
+          ],
+          [
+            118,
+            95,
+            527
+          ],
+          [
+            119,
+            96,
+            527
+          ],
+          [
+            120,
+            97,
+            522
+          ],
+          [
+            121,
+            98,
+            522
+          ],
+          [
+            122,
+            99,
+            513
+          ],
+          [
+            123,
+            100,
+            513
+          ],
+          [
+            124,
+            101,
+            513
+          ],
+          [
+            125,
+            102,
+            513
+          ],
+          [
+            126,
+            103,
+            513
+          ],
+          [
+            127,
+            104,
+            513
+          ],
+          [
+            128,
+            105,
+            513
+          ],
+          [
+            129,
+            106,
+            513
+          ],
+          [
+            130,
+            107,
+            513
+          ],
+          [
+            131,
+            108,
+            513
+          ],
+          [
+            132,
+            109,
+            513
+          ],
+          [
+            133,
+            110,
+            502
+          ],
+          [
+            134,
+            111,
+            502
+          ],
+          [
+            135,
+            112,
+            502
+          ],
+          [
+            136,
+            113,
+            502
+          ],
+          [
+            137,
+            114,
+            502
+          ],
+          [
+            138,
+            115,
+            502
+          ],
+          [
+            139,
+            116,
+            502
+          ],
+          [
+            140,
+            117,
+            502
+          ],
+          [
+            141,
+            118,
+            484
+          ],
+          [
+            142,
+            119,
+            233
+          ],
+          [
+            143,
+            120,
+            233
+          ],
+          [
+            144,
+            121,
+            233
+          ],
+          [
+            145,
+            122,
+            233
+          ],
+          [
+            146,
+            123,
+            222
+          ],
+          [
+            147,
+            124,
+            222
+          ],
+          [
+            148,
+            125,
+            150
+          ],
+          [
+            149,
+            126,
+            150
+          ],
+          [
+            150,
+            127,
+            150
+          ],
+          [
+            151,
+            128,
+            150
+          ],
+          [
+            152,
+            129,
+            137
+          ],
+          [
+            153,
+            130,
+            137
+          ],
+          [
+            154,
+            131,
+            123
+          ],
+          [
+            155,
+            132,
+            123
+          ],
+          [
+            156,
+            133,
+            123
+          ],
+          [
+            157,
+            134,
+            122
+          ],
+          [
+            158,
+            135,
+            122
+          ],
+          [
+            159,
+            136,
+            109
+          ],
+          [
+            160,
+            137,
+            98
+          ],
+          [
+            161,
+            138,
+            98
+          ],
+          [
+            162,
+            139,
+            98
+          ],
+          [
+            163,
+            140,
+            91
+          ],
+          [
+            164,
+            141,
+            91
+          ],
+          [
+            165,
+            142,
+            91
+          ],
+          [
+            166,
+            143,
+            77
+          ],
+          [
+            167,
+            144,
+            73
+          ],
+          [
+            168,
+            145,
+            73
+          ],
+          [
+            169,
+            146,
+            73
+          ],
+          [
+            170,
+            147,
+            73
+          ],
+          [
+            171,
+            148,
+            51
+          ],
+          [
+            172,
+            149,
+            51
+          ],
+          [
+            173,
+            150,
+            19
+          ],
+          [
+            174,
+            151,
+            19
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/policy.py": [
+          [
+            25,
+            0,
+            60
+          ],
+          [
+            26,
+            1,
+            60
+          ],
+          [
+            28,
+            2,
+            59
+          ],
+          [
+            33,
+            3,
+            58
+          ],
+          [
+            34,
+            4,
+            58
+          ],
+          [
+            35,
+            5,
+            50
+          ],
+          [
+            36,
+            6,
+            50
+          ],
+          [
+            37,
+            7,
+            50
+          ],
+          [
+            38,
+            8,
+            50
+          ],
+          [
+            39,
+            9,
+            48
+          ],
+          [
+            40,
+            10,
+            45
+          ],
+          [
+            41,
+            11,
+            45
+          ],
+          [
+            42,
+            12,
+            32
+          ],
+          [
+            43,
+            13,
+            32
+          ],
+          [
+            44,
+            14,
+            32
+          ],
+          [
+            45,
+            15,
+            28
+          ],
+          [
+            46,
+            16,
+            28
+          ],
+          [
+            47,
+            17,
+            28
+          ],
+          [
+            48,
+            18,
+            28
+          ],
+          [
+            49,
+            19,
+            20
+          ],
+          [
+            50,
+            20,
+            20
+          ],
+          [
+            51,
+            21,
+            20
+          ],
+          [
+            52,
+            22,
+            20
+          ],
+          [
+            53,
+            23,
+            20
+          ]
+        ]
+      }
     }
   ],
   "files": {
@@ -3557,6 +4448,194 @@
       "e52b8a493693e302e29654be45ab16af58582092b2eefaba274b05d53c0f700e": 1,
       "e86cb5dae9d33b9ca5fd02f3adcef0f1296a07db4e9570cf9302138d734c8da3": 1,
       "fbafe90fd6d882bf1558118c6bec60c43a88136acc2530852c11879405551481": 1
-    }
+    },
+    "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py": {
+      "027e0dff6b93af3f91d2124a101b3a1c24a4975fb5fc903f270d8924770f359e": 1,
+      "03065de17a3b5c8c2f453ed7adea2afe121e8e25955ecb47dd150af587fcbc26": 1,
+      "03c7184206640b2d16e4bfab019a9d7e3c58fc2ce54873287425ee1b3361496a": 1,
+      "06022471d5a47c3f65a206dd6fd031ec902fe03844fe257c1936a05591c7acd0": 1,
+      "088417a75e10ecaa37611f90eeea6afdebbb2078b2c30df7e82f5ffb64e90c87": 1,
+      "0a1d24a92690ed3f41381e528271458b2a482adad2f339bc6d7c7ccdb09eabcd": 1,
+      "0a5a072e0ec67547a90a7f3773a8c4b1c10ba4c6766386a9b0e7a89b4b1d2caa": 1,
+      "0a9c788625bb6461de2b0c2afde47ec8d3866bbf28e23db3202644670e556820": 1,
+      "0c37fc81f8df5eca5f0c392bbca63f74a3edada86d22a545f697596eb67ab2bc": 1,
+      "11676b9e688375fec3d1aab27bf33f684eea273254ce10326a86213add4c98ff": 1,
+      "125400d53d0a7d292234bbb8f22cde33888a4dbbd8eac9b8c718145e010cb18c": 1,
+      "12779dfd38bcd1bb3052fa6d166dc024e3b586329077f260ea29ec4d52bb5205": 1,
+      "127c62961fa99708e5afef083e33e0ee3445e5e2a3dd0b2d9e14e7cc1e1de917": 1,
+      "146374d1f0b2193f9a94e2dddb1a7df0e2c54b5d59de7940b8bf83210b641196": 1,
+      "14a6e03112915da93f60149d317a8d189f5ee498e51c306f1abd6681780b44fb": 1,
+      "19d83c4e8a13c2218e3dbe192cadb74c73a5ea0ae8a691dc4990644ad0845b83": 1,
+      "1c1bc979ad7583efe0b6d650888d9897864414a3cbae8fd956b848ee6dcccc4e": 1,
+      "1c7c74289e68dc39d408c5c0ef4232062aafcdff41416494f2bb72e24d0ee929": 1,
+      "1e9273ba11b8e0574cb6bea3d971e62bd633dced0606bcf06ece4589838ce3da": 1,
+      "1fea8d71e3d15d0238e322a4571a4794e7c2700f8f3348f1091ef3156c45f230": 1,
+      "213ac05d77afd874d7bcf7d3ac54ae90109b8c3af953441331483f32818f41ac": 1,
+      "25c78fe90dce693f6f07edd71b2f6a207165daf6e8e5f36b22ebeff4c1387424": 1,
+      "2661459fc0f04bb6eaaf174838bd927692e05f9daee746edd8f956cc95c730b0": 1,
+      "27e16d41df2ba36e0d5cf051b3e9eafa8fc689c04465cf22d6d3a92d04c261d8": 1,
+      "283f8338bb8bcc4bf04da38f26862596964e59342142d2802cc6dadfbaa977cd": 1,
+      "2badf37748e0df95ee54b7d61af8f77658317ac8b069674f8ff7d07b4ab93a71": 1,
+      "2bd8ee30bb6ef7c8af0334c65bbd863e224c6c2ea337ec2d49e144dd889604e6": 1,
+      "2dc84583fe107daad552492d08e346d62171d8ca124fed7e04046813f8492de7": 1,
+      "2ec58df5f7af3857ebcece08810572c2f7c958cef06597a696078ec184868d3b": 1,
+      "334359b90efed75da5f0ada1d5e6b256f4a6bd0aee7eb39c0f90182a021ffc8b": 2,
+      "33bc66cdbb73dfc63ef14fe4ce437911154995f735d67a25a893e3aa5f3da09b": 1,
+      "381f9bfc69d49d39040a7d5fc3197ce385019a2ba2de649622f841a8c658ed37": 1,
+      "39725f08846b0277ed2ab702ccffaffba4cde931ff4ff4c91ca582b2447520b2": 1,
+      "3a2f90d3c6caff86628a6d4364ca53959d57df8905cbd648545be2aa69c8fd7c": 1,
+      "3add03a8e7b45885e8c11950762115ea90bf40955d1692f8d2319a215679751c": 1,
+      "3b854526c8227a9f84914ac11946d616b41d3dd1ff9fc7a1ef8eaf9f50bb117d": 1,
+      "3cf7bacea6ede2ceb35027da7246b4418159ee73afbc8aa208356fab8ad6b85c": 1,
+      "45a4050c98c588f3afd32160001682d465a080c2d1bcfab104e48f40134d09d7": 1,
+      "48f4e95f25e04129169c46f92547a80c8210514266a30b5a68af05662a810414": 1,
+      "4a39b4914b6092a9119a87c6d9a4991f134008ee8447c5da9a57ac4a62ffbd52": 1,
+      "4d6fcc7c368349445c37ee23a00941b421bdc729925d0842b3ff9979b9ac93c6": 1,
+      "4e837b1d2d6e5f06961f15325fab6aa71462881be0c8644feb7dfb5c24bb5f13": 1,
+      "50aa320d5661eadbccb10e060ae37fbb8d71d603fc9eb81ecf43adf737345f78": 1,
+      "52a47ddf1d91eaa171cef1ee6e8069da7aadc2d10e90e7bebd7fd37cb8b8af28": 1,
+      "56270e4f4d0fbae6be2ec7a012781e105aff5cfabef7d36deb4e78ee22b8722a": 1,
+      "570e26c5b76c95c88fd2ef83de4d4a5e7ba5ffb5cf10439b55be4827f55d609d": 1,
+      "577d6e4f5817514cbb104d2ae494fda6bd90ec6eab2093f1f4adc46b53c63a36": 1,
+      "5865c1a549ff72c0b6c39a3f7d90a8710eb84a18dc2aa7a5e284638ec4e6fc98": 1,
+      "597072a68432a7ab1c0f4d554f9c78399449b54d7c39a62302f59d0ce20ae3fd": 1,
+      "5a0df7028fe16ee1eace68288f3a8ae7c7cfcbb854987b7449efa0f025528e0f": 1,
+      "5a2dcccfb96cc2cfa18e60562ca93065242c42b6fb79110f6986dd92001851f3": 1,
+      "5a32ff084b28843635e3010fdb83dd708877c2d63bad1a43319ff0712ab16803": 1,
+      "5ba7ddaddc5960c299a97f70050b3d8cc371565842ab457a3d2092269be7547d": 1,
+      "5fec2722996bddfa6bf3f5f3b4c9a4b31a02659f151a065837a7f8d808f69072": 1,
+      "603262b2a7c3338affde44bbc0aad9fc8a4c80fc75cefd895584b94026f2f875": 1,
+      "6511f1d7254805b6ba95d704b0d2ffbe395a5d148caf048c214a2ec00f47dcf6": 1,
+      "670d331843fda9ffc7b55db82ff01ef3da2c311e0d2f61b793ab612788022851": 1,
+      "67191b620d910786194bf1a8188d39d85805f250a8468ade26b78dbadcc7c421": 1,
+      "67227b8cb62917580fad895e287e9728bf52a5d4615d9876814c918006d3e303": 1,
+      "681dd020721861b01940686e861ba9a69e16feec2ad6895eeb96467e99c700b6": 1,
+      "6b27875167248712a2bd9e7f8668afd4654827044f7c22672eba3edf9f8d7405": 1,
+      "6d529e545ad90d2d72cce59c4a07d5a14abede1b2516dd330c9a53e8a4f32b68": 1,
+      "6e5738caaeb82612a20bdb55ce9e5f7f9a6e27c8e0f4409b5ce0d17fe91de4e1": 1,
+      "6ec84d20369701875afd18f89dd450a5e720c04a5db5573d7801ae37d05d69c1": 1,
+      "70b9cebec4209996f72aa32d4fd1fbf5cb8215afcb132693a9c5e490981cf350": 1,
+      "72b8de68a003817c036d35d2d607f74bc404e739a4134dc8bb7b488d8f5c3e86": 1,
+      "73b2c0dc621ecc7c97a6f138ca5b4fb48d68f88bb8340d28d238b5f413fba474": 1,
+      "773207722a52ea46fa39e2906b885e32de89979e4b54466d7ef32e785dd01bd2": 1,
+      "79148e140778e0a300c9c0c15ecc338112f728523e68f98aa9772132535d7a92": 1,
+      "79908d1e00a0ffa340c55cc78ff7925f7e697c2a87152e271f82fe785bbb6a53": 1,
+      "799a1f2ab1aa539baadb2068d446c65f2efb89be63bf6b16d24c2aa2f47a7ea2": 1,
+      "79f947bee188eae63c039858a822eea946e56ced4e0aa1e11966d55771ea61ee": 1,
+      "7a40e2cbfd4f6b8012f4f9edf4a7f9565f755ebadb6ee503f44c8b05825b1a70": 1,
+      "7a7d2f2a6ddbfa802081036652c2571410134f2aaff18f6f739654ca694b4a3d": 1,
+      "7b5e6c3daa748fff54b2c490c1e98423f8f74d822c843b5c2f958210bab23ca4": 1,
+      "7bd0420a0dffed964f24f5db9943271fcda2ece2eccba00ed48f64d0b889941d": 1,
+      "7dcb14687289c64ebd2a7a3e5bd08c8c7b28c823256cf319012ed503eedd8d80": 1,
+      "7dcd21e4d49056dc5e6cbf370aa52212b01c76a3915882c6c74226603ebd2fa9": 1,
+      "81233ff738145b1d1ceeb684cd5fbadcd4bd6008ade7b71199ef7fe9cc4c543b": 1,
+      "8145cb86941544dc9d74874dce52f38ddd333c4b8d023c5ca73c96e001d1ee4d": 1,
+      "8516eeb6ab1506eb6546b881109d59de9a3cec1e17d0361e3ae074d2c62e5ce2": 1,
+      "872b518ba01846eda08f71854499d14b4d90574370dcb7764ccefa681c5fc765": 1,
+      "8c986cf6d16ad61ef4f8c86cea0c570ca8205ba58576775dc398a1df94d99136": 1,
+      "8fc56364ac125ba3d900ec944abaf29053396a5757fd57bc1cbe60db3250d9ce": 1,
+      "9189dde161ed56e85dda5a186faaea790e7cade853d2413d4b6d361c4def7faa": 1,
+      "942fd7530fe572662073c976610d3c65bc5ccaeead52f6a8f8b7ec5c0e359ce9": 1,
+      "957599c7eeb6bfe419fc993706d59bfb857d6f5aa0e4c0cbdc416092b13d4cd6": 1,
+      "95f10b58e16cf0437a12b98118c114a5524cc4fd99f78f75cb351b9c07aa7a47": 1,
+      "978e4c3e1367efae38ec50a46da5c8da374cd627a561c13f1a7fc73b9d69a487": 1,
+      "9f08e4f8019fab87305d283ec3186d48b385ce851f634e7636495e1f4abd0909": 1,
+      "a2658a0178f5bc6c32b9cdde5b404948dcb05da7a34204b6ea696cfb2a46e912": 1,
+      "a2a3c79cb6f48a94fdf67b3badbe7d40b88808e5354b409b68d62257cb849a46": 1,
+      "a32a6facb2fbd8d945763f3bfcece9cc881a996c313a1eb4ad9f9f8e623becab": 1,
+      "a60941fb8ef69768d426a934f62825ea1dc1cd26cb7b213eabd7c9f0a8d06e00": 1,
+      "a948b5eaba30cb39efcdea8ee87244c49ba999898d761105b9e02f153682b011": 1,
+      "ab35986679ad4d350a62d50ba32000c6e8e3cefde98c60aa934e5da80333644d": 1,
+      "ab95b9ae985a1ccdcc8e6204b85dd1fab290f2ce933cecac8cedb1d9eb923171": 1,
+      "aff0ae78307c57111a552b96805d5f20328aac16750164dc8358f0f9027daf4e": 1,
+      "b042ed75c7b9169683cb3f645ac947d678d023cc619500bc1eb02ae5996a0824": 1,
+      "b0f08d93336754aa132ece8686d995b32958bce8e56accfb4c432f8dcf3d14ad": 1,
+      "b12a0bd26e6c31c005b273ae049d3d2b18e9c2d7382a8f749fbfe616f974529e": 1,
+      "b16fee50f34da8d0be3d3f5e654f90726b67805f099aa7553f62722fa98ec86e": 1,
+      "b27d242af5aa59dcfa54f770a981802209c99ea7102e5787752b6dcc8ac35339": 1,
+      "b5cfc5bf856d5530ec61c6730919369b78b25e194e8153d86efc749681b75fdb": 1,
+      "b6b279ed279d803564781390616ae5ab38cef6c23fbc31476791621a3fc396cd": 1,
+      "b710d5c1cf404549e374c635ebcf036587b2a76e22e55f8ec43f5bd4072e41aa": 1,
+      "b9383c59bf804da41d514cbb610da765cb5a774c8351fa39d2b5c15ec0d76a24": 1,
+      "bb5fcc31e7668fb6427d4f2ec3ae7dc618b035041c60b2b8ff55fb5d5fa481a2": 1,
+      "be46dbc56b11d20cda83a3651200c683182e24dd21b305b9a655c8b2a4113d67": 1,
+      "c5c1e4ff2e22865e988283924d1f7b212efab8ffbbb0c1c88585364bccba6346": 1,
+      "c666e8f4921dd674f25ec2b01549b53872c459fa7d8da70c306444ebf1da7814": 1,
+      "c7f7858faaf27ecbff185755ee63517b29be350c6acbca5df3af47b53dacb267": 1,
+      "c98d444cce78a465f39f36e04f37c2b0eb2f9ea82b98be515dbeb94324f5ae51": 1,
+      "c9bd7f692c1bf093b16b47cd32150daae6f332948e34f7a464b30ac49433d796": 1,
+      "caae48c4e9150cc7f323f873df71e9083ddd31da9dcb0d1678abbedff4d98deb": 1,
+      "cb0ecd1a36ccc181198898889cae9098726a07e09f8910070534693a4e255169": 1,
+      "ccc76a057cf27564c891f36151c1ccff3652786e8477b3c67388828be1602e6a": 1,
+      "cd6b41cd54528ee9dc5876d688e2c4369bee0d885ba3660b96c011112aca4943": 1,
+      "cd70e393e85f1e4c20bfe24150a6e27221adee97d75993ee094135cea5754007": 1,
+      "ce3b65d7f5f5db631f11c90c4bbd602e458f5505df6dcab7e8e92952be43d3ca": 1,
+      "d19aada00c513f95c15f80130421ffbde2be4f60cf746de151f7dc48be584001": 1,
+      "d2db0eaec02bd77192b51f1c87f3ad2d54d8b412d35bb83131385eca0b78456f": 1,
+      "d31df42bb647b1470a8f56cd8a1efd1ba29b902bbcb364f75cccf9975177f285": 1,
+      "d33c5a8695ac6d42e5544fc05f64a63eae877db4a325b6669052955f02eecc57": 1,
+      "d4b8445faf8008e42c619aa783bb2ba622459062d285ee23a51b528c554e7b7d": 1,
+      "d5496d75219a91f07d4ceb501c5d6ddcd268e1c8e4ead7f4e0588c11c56aaf6c": 1,
+      "d698841d3e6830ddf78628e4e54dfc88f99ebcc0f7d1a58b69176de27156810f": 1,
+      "d96ded12236d592a732ede0e1a9138cd7d012ae94dc03a5350ad580253db2c74": 1,
+      "da11de89a0e8ab9d0b1579463c71d1d6737e5124f7e7c06e68645261bd4242c0": 1,
+      "dc5fa5e9824e79a7ff19cbb6542ac75a43bf47b90976d4be315f7f6da8ac79fe": 1,
+      "dd3c6cc82b52962360c7144dd0ac655be238d6cdaec35cc8ce6f1f9f92525c92": 1,
+      "dfc9bd20fcfd254b03a3da9532c50399d8f2b85e2e5fe72cc80b4c7f0d50e340": 1,
+      "e0d5f17fb4862f67199b9b06214129e9f09c2edbcafcbfe8eca1a4d3e514d68e": 1,
+      "e3567a418cd855e983fa5eac27a7a8dd718f09d891b4643125fd5921dda26ef2": 1,
+      "e3efb5f29af757383ad8b07aea409a68f432e6f70cef1eb32a166364208d40a6": 1,
+      "e683dd4179d89e67cadfd168d293509d276e46332748b275b8e515015071799d": 1,
+      "e9412829eede44b4375f8a485528e3a74394c4670266dfa18bc1bc8a3363e293": 1,
+      "ebe0c1b038af676b223cad81b48f3a7b3ef8b968f91f239253c0912fe28e65c3": 1,
+      "ee0ec5dd00f26bf4f888b000dc84531f45d96fe540a2b18e940e488c64a4a55f": 1,
+      "ef58ca471621e217ff2dc31c85e257a043caf9e104921883ed731944f568e461": 1,
+      "ef96b3d8c6309b532e579ac57e2025ed431faeb433f3613b41350b28c2a6c95d": 1,
+      "efe758edd073fe7ce628ff33c7539447af1f17621316b7940212f9647e0d2f67": 1,
+      "f0516704204fd36a3a70081c7588b15068786eec24fb22f8bcbf9a3dfbbe5331": 1,
+      "f57201d273da2a2319426c16c7c8bfd3722a2805ef2c19eea6b21913813a483e": 1,
+      "f5f27c4765770a0567dc426686a57502f55da4efca59f53e0e28e13069576525": 1,
+      "f76b95ef79ac48aa1a9d7ed2f7db046414fead9c7e0bc2fdd7dc4790a6f81d68": 1,
+      "f85887236329214a30f943d8181a4fedcbff132f9d3bb3ffd1cd3b94b3bce232": 1,
+      "fac6408d6b9a34a0658cb16cb247a46e42987aedbf1fec6f2661f2e205dbbbc7": 1,
+      "fc32a839e825d21402a96e525e444d061ae4fbe1e70eff2ce2571b3d3dc7ed34": 1,
+      "ff3448a572eaa4d6a733f50816ed0fb48508cbd488ac6994aafb1b0a20b6031b": 1,
+      "ffbc53a8af92a09f2c483c94879f904ac2f7f74d48cc4bdfa716b6d960fbe580": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tmp_block_impl/policy.py": {
+      "05fbab6b3bc20629e58bf360d417b3891cde6a79776625673d3f7b4728a37bf9": 1,
+      "1eccf1e8f0d921905d8b2ff1e7991d4b7b624764ac408b3c4b58a553b76b423b": 1,
+      "22e943bcfe42c232135bdfb36b0119903a75feb31788651a77d991eaed24bfb5": 1,
+      "24db141cd4453bbcaab9d2bd0f6b795f0187fa83f92ca3d34da16188bb0a4dff": 1,
+      "2bc61770f549ecbb6beefe2c1ca0dd0e8cc32cca87dd30c0d9180dcb53ee9338": 1,
+      "324889ff8ba2bb5023d8a8f2d88e35d881a88afc4221c2dfde93fdc4457a6f83": 1,
+      "33c4d2bf5633d0c1f92921ab0e7d4ddda1d5245ca04d07b49f6dfda1ada8512b": 1,
+      "58506d60c8659a606e19528b04bc7e7ba4c1de9b77b7edcd7dc2df9464811895": 1,
+      "714f8c10ba75805b621700690362631c91bfc9321a55e76d0f01ab96ffdc0a1a": 1,
+      "7c9573eeeda80166843616848103a22719fcc9c400411bd5e69662c649ecc0b4": 1,
+      "7feb98d54e05f63e3dd7cae97ccd4923e4473bb846c9f096641dc6a00114db15": 1,
+      "872052358642010c138613db484383fa9c22ceb0c13e7798b47141605208126d": 1,
+      "8801dcce1e6b01d35a32ae3e4ec13228e9379438bc2ab72846b0fc7d91fee930": 1,
+      "8f2f73fd312ef96972ca325fba5148099c645aafc6f938da391d50abff1fd46e": 1,
+      "ab30c8f55612d4c3fe3e0db17310f0068108d3429334fa447bfca2c46fd444e5": 1,
+      "bd3b72bcd8f21183c130460be84fdad5b71a8718f5325b7de0b906885ae5fb4e": 1,
+      "bfb3deb0142d0ae601a50bf051bae1d1f7629243e2e6d8a0f7e7520f5839730f": 1,
+      "cb0be3473933fa4ac07f4ec029e5e0268e5461a674c516797dcc16033dfdc390": 1,
+      "ccb25d00f559aa1b56b66356003ff67b600a17877eca861a0c8495a13e5234af": 1,
+      "d3c631ddd0c55e22c555f6dc0b3f2f1136a666574150bb2fcefecb78036db9f5": 1,
+      "f68b42ec6ecaf9a8d4738f85c6ebdeb9e5c879d7ccb673e69d2735191ca09d72": 1,
+      "fab733f4bbba6b0d07b8485040e4af7dcbb52b5050a6604f063e338c80718e14": 1,
+      "fcc6c2d25a4b68fa700b837bd41c206538720daea34313ad60026328119d4a10": 1,
+      "fdbaf41700326e6313d9b2cb466b2a170676632bc7f768defe355ff511e106e8": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tmp_block_impl/runtime.py": {},
+    "skills/golem-powers/tmp-block/hooks/tmp_block_impl/__init__.py": {},
+    "skills/golem-powers/tmp-block/hooks/tests/test_callback_seams.py": {
+      "24d3940598c1abdd266bc70024c4ec33a8460cbfe747c1dd39711c1ae8837dac": 1,
+      "543cf7a9e6f1c231f34a69bc3db0936e56497bbe947ac6adf791048e9695bf96": 1,
+      "e0f2d36c20e4a8afc44eb8a22fbc782fe59d059d0931597cdf6552faa7e51e23": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tests/test_impl_layout.py": {},
+    "skills/golem-powers/tmp-block/hooks/tests/test_authoritative_path.py": {}
   }
 }

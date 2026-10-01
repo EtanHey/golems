@@ -61,6 +61,11 @@ def _copied_hooks(
         POWERS / "tmp-block" / "hooks" / "tmp-block-pretooluse.py",
         tmp_hook,
     )
+    shutil.copytree(
+        POWERS / "tmp-block" / "hooks" / "tmp_block_impl",
+        tmp_hook.parent / "tmp_block_impl",
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
 
     guardian = hooks / "git-guardian"
     (guardian / "hooks").mkdir(parents=True)

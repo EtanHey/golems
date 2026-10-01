@@ -180,6 +180,57 @@ try:
 except BaseException:  # policy dependency uncertainty must never become allow
     _deny_policy_import_failure()
 
+# Load implementation by the hook's real path, never a competing sys.path name.
+try:
+    with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+        from hashlib import sha256 as _impl_digest
+        from importlib import import_module as _impl_import
+        from importlib import util as _impl_util
+        from uuid import uuid4 as _impl_nonce
+
+        _IMPL_ROOT = os.path.realpath(os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "tmp_block_impl"
+        ))
+        _IMPL_NAME = "_golems_tmp_block_impl_" + _impl_digest(
+            _IMPL_ROOT.encode()
+        ).hexdigest()[:16] + "_" + _impl_nonce().hex
+        _previous_bytecode, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+        try:
+            _spec = _impl_util.spec_from_file_location(
+                _IMPL_NAME, os.path.join(_IMPL_ROOT, "__init__.py"),
+                submodule_search_locations=[_IMPL_ROOT],
+            )
+            _package = _impl_util.module_from_spec(_spec)
+            sys.modules[_IMPL_NAME] = _package
+            _spec.loader.exec_module(_package)
+            _policy = _impl_import(_IMPL_NAME + ".policy")
+            _runtime = _impl_import(_IMPL_NAME + ".runtime")
+            for _module, _leaf in (
+                (_package, "__init__.py"), (_policy, "policy.py"),
+                (_runtime, "runtime.py"),
+            ):
+                _expected = os.path.join(_IMPL_ROOT, _leaf)
+                if not os.path.isfile(_expected) or os.path.realpath(
+                    getattr(_module, "__file__", "")
+                ) != os.path.realpath(_expected):
+                    raise ImportError("unexpected tmp-block implementation origin")
+            for _name in (
+                "Unresolvable", "_has_temp_hint", "in_temp_class", "on_convention",
+                "_TMPDIR_TOKEN_RE", "_TEMP_HINT_RE", "_TEMP_PATH_TOKEN_RE",
+                "WORKTREE_DIR_NAME", "_CWD_CHANGING_CMDS",
+            ):
+                globals()[_name] = getattr(_policy, _name)
+            _runtime.callbacks.bind(
+                lambda raw: in_temp_class(raw), lambda: _temp_prefixes()
+            )
+            _policy._temp_prefixes = _runtime.callbacks.temp_prefixes
+            _policy.is_harness_scratchpad = is_harness_scratchpad
+        finally:
+            sys.dont_write_bytecode = _previous_bytecode
+except BaseException:
+    _deny_policy_import_failure()
+
+
 DEFAULT_LEDGER = os.path.expanduser("~/.claude/logs/tmp-block-ledger.jsonl")
 
 GUARDED_FILE_TOOLS = ("Write", "Edit", "NotebookEdit")
@@ -226,16 +277,8 @@ _APPLY_PATCH_TARGET_RE = re.compile(
 )
 
 
-# $TMPDIR token with an identifier boundary: `$TMPDIR/x`, `${TMPDIR}/x`,
-# `${TMPDIR:-/tmp}/x`, `${TMPDIR%/}/x` — but not `$TMPDIR_EXTRA`/`${TMPDIR2}`.
-_TMPDIR_TOKEN_RE = re.compile(r"^\$(?:TMPDIR(?![A-Za-z0-9_])|\{TMPDIR(?![A-Za-z0-9_]))")
-
-
 # git worktree add flags that consume a value.
 _WORKTREE_VALUE_FLAGS = {"-b", "-B", "--reason"}
-
-# Rule 2: the ratified in-repo worktree directory name.
-WORKTREE_DIR_NAME = ".worktrees"
 
 HATCH_TMP = "WEAVE_ALLOW_TMP"
 HATCH_WT = "WEAVE_ALLOW_WT_MIGRATION"
@@ -247,20 +290,6 @@ HATCH_WT = "WEAVE_ALLOW_WT_MIGRATION"
 # blind on the unexpanded literal (golems#676).
 _SIMPLE_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 _POSITIONAL_PARAM_RE = re.compile(r"\$(?:[1-9][0-9]*|[@*])")
-
-# Command words that move the shell's cwd, making a relative target
-# unresolvable from the hook's own cwd.
-_CWD_CHANGING_CMDS = {"cd", "pushd", "popd", "chdir"}
-
-
-class Unresolvable(Exception):
-    """The target cannot be judged statically -> REFUSE with the reason.
-
-    golems#676: git-guardian blocked a legitimate cleanup because it counted
-    components of an UNEXPANDED literal. A guard that cannot see the real path
-    must not guess — it must say so. #676 answered that with a prompt; the
-    2026-08-17 two-valued contract keeps the requirement (name the exact
-    resolution failure) and drops the prompt (see refuse_unresolvable)."""
 
 
 def allow():
@@ -285,28 +314,6 @@ def advise(reason):
         sys.stdout,
     )
     sys.exit(0)
-
-
-# GO-5 E2: an unresolvable target is only refused when the command itself shows
-# a temp hint (`P=$(mktemp); echo x > $P`, `${TMPDIR:-/tmp}/x`). A target that is
-# unreadable for any other reason (a conditional assignment, a loop value) gets
-# an advisory: an unknown value with no temp hint is not evidence of a temp write.
-_TEMP_HINT_RE = re.compile(
-    r"\bmktemp\b|\bTMPDIR\w*|/tmp\b|/var/folders\b"
-    # GO-5 #226 r2 (lead ruling): library/OS spellings of the temp location.
-    r"|\btempfile\b|\bmkdtemp\b|\bgettempdir\b|\bDARWIN_USER_TEMP_DIR\b|\.tmpdir\s*\("
-    r"|\$\{?(?:TMP|TEMP)\b"
-)
-# Literal temp-rooted paths in the command; a harness-scratchpad one is the
-# sanctioned location, so it is not a temp hint (the live GO-5 fixture).
-_TEMP_PATH_TOKEN_RE = re.compile(r"(?:/private)?(?:/tmp|/var/folders)/[^\s'\";|&)<>]*")
-
-
-def _has_temp_hint(text):
-    unsanctioned = _TEMP_PATH_TOKEN_RE.sub(
-        lambda m: "" if is_harness_scratchpad(m.group(0)) else m.group(0), text or ""
-    )
-    return bool(_TEMP_HINT_RE.search(unsanctioned))
 
 
 def refuse_or_advise_dynamic(dynamic_targets, command):
@@ -394,45 +401,6 @@ def deny(reason):
         sys.stdout,
     )
     sys.exit(2)
-
-
-def in_temp_class(raw_path):
-    """True if raw_path canonicalizes into the temp path-CLASS."""
-    if not isinstance(raw_path, str):
-        return False
-    s = raw_path.strip().strip('"').strip("'")
-    if not s:
-        return False
-    # A $TMPDIR token (incl. `${TMPDIR:-/tmp}`-style expansions, Codex P1
-    # round 9) is temp-intent by definition; an identifier boundary is
-    # required so `$TMPDIR_EXTRA`/`${TMPDIR2}` do NOT match (Bugbot Low).
-    if _TMPDIR_TOKEN_RE.match(s):
-        return True
-    if not (s.startswith("/") or s.startswith("~")):
-        return False
-    # Check BOTH the lexical form and the symlink-resolved form (Bugbot HIGH
-    # 6b9b2c5c): a /tmp-shaped path whose symlink resolves to durable storage
-    # is still temp-class (the path itself dies on reboot), and a
-    # durable-shaped path that resolves INTO the class is caught by realpath.
-    expanded = os.path.expanduser(s)
-    candidates = {os.path.normpath(expanded)}
-    try:
-        candidates.add(os.path.realpath(expanded))
-    except (OSError, ValueError):
-        pass
-    prefixes = _temp_prefixes()
-    for cand in candidates:
-        # The harness session scratchpad is the one sanctioned temp location
-        # (see is_harness_scratchpad). Skipping the candidate — rather than
-        # returning False outright — keeps the both-forms conservatism above:
-        # a scratchpad path whose symlink resolves into the bare temp class
-        # is still a temp write, because the OTHER candidate then matches.
-        if is_harness_scratchpad(cand, prefixes):
-            continue
-        for prefix in prefixes:
-            if cand == prefix or cand.startswith(prefix + "/"):
-                return True
-    return False
 
 
 def _literal_branch_may_execute(tokens, target_index):
@@ -2698,23 +2666,6 @@ def _worktree_anchor(
     if any(tokens[i] in ("--work-tree", "--git-dir") for i in current):
         raise Unresolvable("git --work-tree/--git-dir does not expose a safe cwd anchor")
     return anchor
-
-
-def on_convention(path):
-    """True iff the RESOLVED path sits inside a `.worktrees/` directory.
-
-    Both the lexical and the symlink-resolved forms must conform, so a
-    `.worktrees` symlink pointing at a sibling `*.wt` dir is not a route-around."""
-    candidates = {os.path.normpath(path)}
-    try:
-        candidates.add(os.path.normpath(os.path.realpath(path)))
-    except (OSError, ValueError):
-        pass
-    for cand in candidates:
-        parts = [p for p in cand.split(os.sep) if p]
-        if WORKTREE_DIR_NAME not in parts[:-1]:
-            return False
-    return True
 
 
 def _nearest_repo_root(start):
