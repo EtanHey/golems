@@ -1493,15 +1493,23 @@ def _static_shell_variable_state_before(
             and state_execution is not False
         )
 
-        # Dynamic eval and sourced code can assign arbitrary variable names.
-        dynamic_eval = command_name == "eval" and any(
-            "$" in tokens[index]
-            or "`" in tokens[index]
-            or _is_command_sub_open(tokens[index])
-            for index in command_args
+        # `eval` reparses its joined arguments as shell code. Only plain
+        # NAME=literal words expose all assignment targets to this pass; any
+        # other body can mutate arbitrary tracked variables and must fail
+        # closed instead of preserving stale state.
+        literal_eval_word = re.compile(
+            r"[A-Za-z_][A-Za-z0-9_]*=[^$`*?\[\]{};&|<>()\s]*"
+        )
+        opaque_eval = (
+            command_name == "eval"
+            and bool(command_args)
+            and not all(
+                literal_eval_word.fullmatch(tokens[index])
+                for index in command_args
+            )
         )
         if command_mutation_reaches and (
-            dynamic_eval or command_name in {"source", "."}
+            opaque_eval or command_name in {"source", "."}
         ):
             invalidate_all()
 
@@ -1592,7 +1600,7 @@ def _static_shell_variable_state_before(
             if not saw_assignment_target and not pending_value:
                 invalidate_assignment_target("MAPFILE")
 
-        if command_name == "for" and command_mutation_reaches and command_args:
+        if command_name in {"for", "select"} and command_mutation_reaches and command_args:
             name = tokens[command_args[0]]
             if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
                 invalidate_assignment_target(name)
