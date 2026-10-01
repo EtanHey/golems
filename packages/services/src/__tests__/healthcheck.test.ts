@@ -16,7 +16,6 @@ describe("healthcheck", () => {
     expect(names).toContain("Launchd Jobs");
     expect(names).not.toContain("Railway Cloud");
   });
-});
 
   it("accepts state without a destination ID and rejects invalid state", async () => {
     const home = mkdtempSync(join(import.meta.dir, ".state-home-"));
@@ -34,3 +33,4 @@ describe("healthcheck", () => {
       }
     } finally { rmSync(home, { recursive: true, force: true }); }
   });
+});
