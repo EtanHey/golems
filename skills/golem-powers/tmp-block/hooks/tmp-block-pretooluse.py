@@ -167,6 +167,9 @@ try:
             _nested_alias_segment,
             _nested_segment,
             _parse_bash,
+            PolicyEvaluationDeadlineExceeded,
+            cancel_policy_evaluation_deadline,
+            policy_evaluation_deadline,
             policy_command_size_reason,
             _segment_is_fully_exposed,
             _segment_is_prefix,
@@ -261,6 +264,7 @@ class Unresolvable(Exception):
 
 
 def allow():
+    cancel_policy_evaluation_deadline()
     json.dump({}, sys.stdout)
     sys.exit(0)
 
@@ -272,6 +276,7 @@ def advise(reason):
     `systemMessage` is shown to the human only (lead ruling: an advisory the
     model cannot see is a deleted gate). No `permissionDecision` is sent.
     """
+    cancel_policy_evaluation_deadline()
     json.dump(
         {
             "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": reason},
@@ -374,6 +379,7 @@ def deny(reason):
     them as unsupported for PreToolUse, and a hook that returns one is marked
     failed **and the tool call proceeds** — a refusal that silently becomes an
     allow is precisely the S04 half-fire this guard exists to prevent."""
+    cancel_policy_evaluation_deadline()
     reason = reason or "⛔ TMP-BLOCK: refused (no reason supplied)."
     json.dump(
         {
@@ -3256,7 +3262,7 @@ def log_bypass(tool_name, tool_input, targets, session_id, hatch=f"{HATCH_TMP}=1
         )
 
 
-def main():
+def _main_under_deadline():
     raw_input = ""
     try:
         raw_input = sys.stdin.read()
@@ -3390,6 +3396,8 @@ def main():
         allow()
     except SystemExit:
         raise
+    except PolicyEvaluationDeadlineExceeded:
+        raise
     except Exception as exc:  # GO-5 E2: a hook bug is an advisory, not a block on every call ...
         if _has_temp_hint(raw_input):
             # ... unless the payload itself points at a temp location: the S04
@@ -3405,6 +3413,14 @@ def main():
             "was NOT checked for temp writes. Keep durable content in the repo or its "
             "docs.local/, and report the error so the hook gets fixed."
         )
+
+
+def main():
+    try:
+        with policy_evaluation_deadline():
+            _main_under_deadline()
+    except PolicyEvaluationDeadlineExceeded as exc:
+        deny(f"⛔ TMP-BLOCK: {exc}.")
 
 
 if __name__ == "__main__":

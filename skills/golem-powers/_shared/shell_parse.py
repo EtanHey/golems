@@ -16,7 +16,10 @@ from __future__ import annotations
 import ast
 import os
 import re
+import signal as _signal
 import shlex
+import time as _time
+from contextlib import contextmanager as _contextmanager
 from fnmatch import fnmatchcase
 import hashlib as _hashlib
 import importlib as _importlib
@@ -26,15 +29,71 @@ import sys as _sys
 
 
 MAX_POLICY_COMMAND_BYTES = 32 * 1024
+POLICY_EVALUATION_DEADLINE_SECONDS = 3.0
+
+
+class PolicyEvaluationDeadlineExceeded(BaseException):
+    """The hook's in-process policy budget expired before a safe decision."""
+
+
+_policy_deadline_active = False
+
+
+def _raise_policy_deadline(_signum, _frame):
+    raise PolicyEvaluationDeadlineExceeded(
+        "policy evaluation exceeded its time budget; split the command or "
+        "write the content to a file and pass it by path"
+    )
+
+
+def cancel_policy_evaluation_deadline() -> None:
+    """Disarm the active policy timer before serializing a hook decision."""
+    if _policy_deadline_active:
+        _signal.setitimer(_signal.ITIMER_REAL, 0)
+
+
+@_contextmanager
+def policy_evaluation_deadline(
+    seconds: float = POLICY_EVALUATION_DEADLINE_SECONDS,
+):
+    """Bound policy work and restore any caller-owned SIGALRM state."""
+    global _policy_deadline_active
+    previous_handler = _signal.getsignal(_signal.SIGALRM)
+    previous_delay, previous_interval = _signal.getitimer(_signal.ITIMER_REAL)
+    started = _time.monotonic()
+    _signal.signal(_signal.SIGALRM, _raise_policy_deadline)
+    _policy_deadline_active = True
+    _signal.setitimer(_signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        cancel_policy_evaluation_deadline()
+        _policy_deadline_active = False
+        _signal.signal(_signal.SIGALRM, previous_handler)
+        if previous_delay > 0:
+            elapsed = _time.monotonic() - started
+            _signal.setitimer(
+                _signal.ITIMER_REAL,
+                max(previous_delay - elapsed, 1e-6),
+                previous_interval,
+            )
 
 
 def policy_command_size_reason(command: str) -> str | None:
     """Return a value-free refusal reason when policy parsing is out of budget."""
     if not isinstance(command, str):
         raise TypeError("shell command is not a string")
-    if len(command.encode("utf-8")) > MAX_POLICY_COMMAND_BYTES:
+    try:
+        encoded_size = len(command.encode("utf-8"))
+    except UnicodeEncodeError:
         return (
-            "command too large for the policy parser; split it "
+            "command cannot be encoded safely for the policy parser; split it "
+            "or write the content to a file and pass it by path"
+        )
+    if encoded_size > MAX_POLICY_COMMAND_BYTES:
+        return (
+            "command too large for the policy parser; split it or write the "
+            "content to a file and pass it by path "
             f"(maximum {MAX_POLICY_COMMAND_BYTES} bytes)"
         )
     return None

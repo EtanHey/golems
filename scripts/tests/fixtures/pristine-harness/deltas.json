@@ -2,8 +2,8 @@
   {
     "authority": "golems#425",
     "candidate_sha256": {
-      "darwin": "b1ce4a56fe6ec24954ded8c200960dbaf139bd6069f2b1a633fe7c360b37491b",
-      "linux": "b1ce4a56fe6ec24954ded8c200960dbaf139bd6069f2b1a633fe7c360b37491b"
+      "darwin": "87d22eff367f92ed4d557b716399a2293e602635233b278fba7b806e37480af9",
+      "linux": "87d22eff367f92ed4d557b716399a2293e602635233b278fba7b806e37480af9"
     },
     "case": "issue425-git-guardian-oversized-command",
     "reason": "Commands beyond the bounded policy-parser input are denied before parsing so a hook timeout cannot fail open."
@@ -11,8 +11,8 @@
   {
     "authority": "golems#425",
     "candidate_sha256": {
-      "darwin": "e8493da0c4ee1569c0a094015e10d1a0486c878983fa7e8a3bb9536173607198",
-      "linux": "e8493da0c4ee1569c0a094015e10d1a0486c878983fa7e8a3bb9536173607198"
+      "darwin": "c2033312398b8f7dc426e0372c458e09d2650552b4e85b616001d45f3fda6cbf",
+      "linux": "c2033312398b8f7dc426e0372c458e09d2650552b4e85b616001d45f3fda6cbf"
     },
     "case": "issue425-tmp-block-oversized-command",
     "reason": "Commands beyond the bounded policy-parser input are denied before parsing so a hook timeout cannot fail open."

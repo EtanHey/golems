@@ -181,6 +181,7 @@ def test_issue425_oversized_command_denies_quickly_and_value_free(durable_path):
     proc = run_hook(bash_payload(command), cwd=str(durable_path))
     elapsed = time.perf_counter() - start
     assert_denied(proc, must_mention=("command too large for the policy parser; split it",))
+    assert "write the content to a file and pass it by path" in proc.stdout
     assert "xxxxx" not in proc.stdout + proc.stderr
     assert elapsed < 3, f"oversized-command deny took {elapsed:.2f}s"
 
@@ -188,6 +189,47 @@ def test_issue425_oversized_command_denies_quickly_and_value_free(durable_path):
 def test_issue425_large_under_limit_quoted_heredoc_keeps_policy(durable_path):
     command = "cat > docs.local/fixture.txt <<'EOF'\n" + ("x" * (24 * 1024)) + "\nEOF"
     assert_allowed(run_hook(bash_payload(command), cwd=str(durable_path)))
+
+
+def test_issue425_small_adversarial_temp_write_hits_fail_closed_deadline(durable_path):
+    command = "eval :; " * 150 + "echo leaked > /tmp/r489-leak.md"
+    assert len(command.encode("utf-8")) < 2 * 1024
+    started = time.perf_counter()
+    proc = run_hook(bash_payload(command), cwd=str(durable_path))
+    elapsed = time.perf_counter() - started
+    assert_denied(proc)
+    assert elapsed < 3.5, f"small adversarial command took {elapsed:.2f}s"
+
+
+def test_issue425_lone_surrogate_denies_before_policy_can_fail_open(durable_path):
+    surrogate = "\ud800"
+    commands = (
+        f"echo x > /t''mp/r489q # {surrogate}",
+        f"git worktree add /t''mp/r489wt HEAD # {surrogate}",
+    )
+    for command in commands:
+        proc = run_hook(bash_payload(command), cwd=str(durable_path))
+        assert_denied(proc, must_mention=("policy parser",))
+
+
+def test_issue425_missing_policy_dependency_keeps_import_failure_deny(durable_path):
+    installed = durable_path / "installed" / "golem-powers"
+    shutil.copytree(HOOK.parents[1], installed / "tmp-block")
+    shutil.copytree(HOOK.parents[2] / "_shared", installed / "_shared")
+    (installed / "_shared" / "shell_parse.py").unlink()
+    copied_hook = installed / "tmp-block" / "hooks" / "tmp-block-pretooluse.py"
+    started = time.perf_counter()
+    proc = subprocess.run(
+        [sys.executable, str(copied_hook)],
+        input=json.dumps(bash_payload("echo safe")),
+        capture_output=True,
+        text=True,
+        timeout=5,
+        cwd=durable_path,
+    )
+    elapsed = time.perf_counter() - started
+    assert_denied(proc, must_mention=("security policy unavailable",))
+    assert elapsed < 3.5
 
 
 @pytest.mark.parametrize("word", sorted(TEMP_HINT_WORD_CASES))
@@ -226,4 +268,3 @@ def test_glued_suffixes_that_stay_in_one_class_are_still_judged(durable_path, mo
     assert_allowed(run_hook(bash_payload('printf x > "docs.local/post-$UNSET.log"'), cwd=str(durable_path)))
     assert_allowed(run_hook(bash_payload('P=~/Documents/x_$$.txt; printf x > "$P"'), cwd=str(durable_path)))
     assert_allowed(run_hook(bash_payload('printf x > "/tmpfoo/x"'), cwd=str(durable_path)))
-
