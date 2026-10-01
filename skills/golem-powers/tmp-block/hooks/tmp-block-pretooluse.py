@@ -205,6 +205,7 @@ try:
             _spec.loader.exec_module(_package)
             _policy = _impl_import(_IMPL_NAME + ".policy")
             _runtime = _impl_import(_IMPL_NAME + ".runtime")
+            _resolution = _impl_import(_IMPL_NAME + ".resolution")
             _anchors = _impl_import(_IMPL_NAME + ".anchors")
             _compounds = _impl_import(_IMPL_NAME + ".compounds")
             _assignments = _impl_import(_IMPL_NAME + ".assignments")
@@ -218,6 +219,7 @@ try:
             for _module, _leaf in (
                 (_package, "__init__.py"), (_policy, "policy.py"),
                 (_runtime, "runtime.py"),
+                (_resolution, "resolution.py"),
                 (_anchors, "anchors.py"),
                 (_compounds, "compounds.py"),
                 (_assignments, "assignments.py"),
@@ -245,6 +247,8 @@ try:
             )
             _policy._temp_prefixes = _runtime.callbacks.temp_prefixes
             _policy.is_harness_scratchpad = is_harness_scratchpad
+            for _name in ('resolve_targets',):
+                globals()[_name] = getattr(_resolution, _name)
             for _name in ('_bounded_loop_subshell_anchor', '_cwd_argument', '_shell_anchor_before', '_git_c_values', '_worktree_anchor'):
                 globals()[_name] = getattr(_anchors, _name)
             for _name in ('_literal_branch_may_execute', '_bounded_compound_value_sets_before', '_enclosing_loop_changes_cwd'):
@@ -1020,48 +1024,6 @@ def _apply_patch_temp_targets(tool_input, cwd=None):
     return hits
 
 
-def resolve_targets(
-    raw,
-    anchor=None,
-    variables=None,
-    *,
-    tokens=None,
-    cmd_pos=None,
-    seg_of=None,
-    scope_of=None,
-    target_index=None,
-):
-    """Resolve every bounded value a shell target can produce."""
-    value_sets = None
-    if (
-        tokens is not None
-        and cmd_pos is not None
-        and seg_of is not None
-        and scope_of is not None
-        and target_index is not None
-    ):
-        value_sets = _bounded_compound_value_sets_before(
-            tokens, cmd_pos, seg_of, scope_of, target_index, variables or {}
-        )
-    raw_values = _bounded_word_values(raw, variables, value_sets)
-    if (
-        tokens is not None
-        and cmd_pos is not None
-        and scope_of is not None
-        and target_index is not None
-        and any(not os.path.isabs(value) for value in raw_values)
-        and _enclosing_loop_changes_cwd(
-            tokens, cmd_pos, scope_of, target_index
-        )
-    ):
-        raise Unresolvable(
-            "an enclosing loop can change cwd between target evaluations"
-        )
-    return tuple(
-        dict.fromkeys(resolve_target(value, anchor, variables) for value in raw_values)
-    )
-
-
 def find_worktree_convention_issues(
     tool_name, tool_input, _budget=None, _initial_cwd=None
 ):
@@ -1595,6 +1557,7 @@ def main():
 
 
 
+
 try:
     with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
         _anchors.Unresolvable = Unresolvable
@@ -1645,6 +1608,11 @@ try:
         _prefixes.is_harness_scratchpad = is_harness_scratchpad
         _prefixes.on_convention = on_convention
         _prefixes.re = re
+        _resolution.Unresolvable = Unresolvable
+        _resolution._bounded_compound_value_sets_before = _bounded_compound_value_sets_before
+        _resolution._bounded_word_values = _bounded_word_values
+        _resolution._enclosing_loop_changes_cwd = _enclosing_loop_changes_cwd
+        _resolution.resolve_target = resolve_target
         _scope._is_separator = _is_separator
         _scope.re = re
         _shell_words._command_sub_word_continues = _command_sub_word_continues
