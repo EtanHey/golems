@@ -10,7 +10,7 @@ function split_case_033() {
     printf '### [00:10:00] Dropped moment\n**Score:** 10/10 | **Type:** insight\n**Gist:** must not be counted\n' > "$dropped_dir/gems.md"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
         && "$output" == *"Stalker Morning Digest FAILED - 2026-08-19"* \
@@ -31,7 +31,7 @@ function split_case_034() {
     printf 'status=ORPHAN_TAIL\n' > "$orphan_dir/.orphan-tail"
 
     STALKER_TELEGRAM_DRY_RUN=1 \
-    run "$STALKER_DIR/stalker-brainlayer-telegram.sh" digest "$root" 2026-08-19 --dry-run
+    run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 0 \
         && "$output" == *"Stalker Morning Digest - 2026-08-19"* \

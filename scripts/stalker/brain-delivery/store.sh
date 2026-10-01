@@ -1,5 +1,5 @@
 #!/bin/bash
-# Sourced by the public stalker-brainlayer-telegram.sh entry.
+# Sourced by the public stalker-brainlayer.sh entry.
 
 store_payloads() {
     local payloads_file="$1"
