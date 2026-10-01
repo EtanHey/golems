@@ -504,6 +504,42 @@
     "reason": "Nested arithmetic and command-substitution closing parentheses are retained during masking, preventing the surrounding executable text from being truncated."
   },
   {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
+      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
+    },
+    "case": "tmp-w7-seam-classifier-registered",
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
+      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
+    },
+    "case": "tmp-w7-seam-prefixes-registered",
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
+      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
+    },
+    "case": "tmp-w7-seam-classifier-unregistered",
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
+      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
+    },
+    "case": "tmp-w7-seam-prefixes-unregistered",
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
+  },
+  {
     "authority": "golems#481",
     "candidate_sha256": {
       "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
