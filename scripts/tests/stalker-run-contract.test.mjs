@@ -190,3 +190,9 @@ test('direct migration rejects legacy notified before retention recheck', async 
   const {runDir, receipt} = await setup(t);
   await assert.rejects(migrateCompletionReceipt(runDir, {receipt: {...receipt, version: 3, status: 'notified'}}), /eligible legacy/);
 });
+
+test('legacy receipts require the explicit migration path', async t => {
+  const {runDir, receipt, save} = await setup(t);
+  receipt.version = 3; await save();
+  await assert.rejects(verifyRunDelivery(runDir), /missing or wrong-run completion receipt/);
+});
