@@ -3244,7 +3244,7 @@
     },
     "scripts/tests/test-stalker-durable-failures-parts/cases-01.bash": {
       "22ff80694e356dc28e79186ab291a37cc3910c607e7e0384e7bbf91acb1d8ed3": 1,
-      "3667bb6922c0f881f5357826a9130fcce94a7144915ea65dfa472e65ae3b2049": 5,
+      "3667bb6922c0f881f5357826a9130fcce94a7144915ea65dfa472e65ae3b2049": 2,
       "4fcc08f4586da4d4a9a02984cc0e1b92854c8ca3253d252c521435ce322ad129": 1,
       "599cf5dd9f4cb03f1b4a6c556749de70ff80739e5722be7b9ee82d515cc24596": 1,
       "62cc6ebbfe71889f3aca1e2aada5eb62500063ed4d72d2a3448656fe4adccc21": 1,
@@ -3265,6 +3265,7 @@
     },
     "scripts/tests/test-stalker-durable-failures.bats": {
       "165d3560adc216546f291b0f4380e60e2f4c53025389b9a32536b1f0a4e7723d": 1,
+      "3667bb6922c0f881f5357826a9130fcce94a7144915ea65dfa472e65ae3b2049": 1,
       "4f42995fdc2e573bc8bc51d10cf40cd436bda8478b7138310cc9e2ac15a4f5e5": 1
     },
     "skills/golem-powers/audio-dashboard/evals/audio-dashboard-test-parts/cases01.mjs": {},
