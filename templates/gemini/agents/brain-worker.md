@@ -17,7 +17,7 @@ tools:
 # Explicit allowlisting blocks writes even with --dangerously-skip-permissions.
 mcpServers:
   - name: brainlayer
-    command: brainlayer-mcp-stdio-bridge
+    command: /opt/homebrew/bin/brainlayer-mcp-stdio-bridge
     enabledTools:
       - brain_search
       - brain_recall

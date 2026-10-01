@@ -12,7 +12,7 @@ def metadata(name):
 def list_field(frontmatter, name):
     block = re.search(rf"^{name}:\n((?:  [^\n]*\n)+)", frontmatter, re.M)
     assert block, f"missing {name} list"
-    return re.findall(r"^  - (\w+)$", block[1], re.M)
+    return re.findall(r"^  - (\S+)$", block[1], re.M)
 
 
 def test_brain_worker_is_isolated_read_only_subagent():
@@ -24,12 +24,15 @@ def test_brain_worker_is_isolated_read_only_subagent():
         "view_file", "grep_search", "find_by_name", "list_dir", "send_message"
     }
     # A mapping silently drops the whole agent in agy 1.2.14; use a list.
-    assert re.findall(r"^  - name: (\w+)$", agent, re.M) == ["brainlayer"]
+    servers = agent.split("mcpServers:\n", 1)[1]
+    assert len(re.findall(r"^\s*-\s+name:", servers, re.M)) == 1
+    assert re.findall(r"^\s*-\s+name: (\S+)$", servers, re.M) == ["brainlayer"]
+    assert not re.search(r"^\s*disabledTools:", servers, re.M)
     assert "mcpServers:\n  - name: brainlayer\n" in agent
-    assert "    command: brainlayer-mcp-stdio-bridge\n" in agent
+    assert "    command: /opt/homebrew/bin/brainlayer-mcp-stdio-bridge\n" in agent
     # An allowlist also rejects future writes, not only today's brain_store.
     block = agent.split("    enabledTools:\n", 1)[1]
-    assert set(re.findall(r"^      - (\w+)$", block, re.M)) == {
+    assert set(re.findall(r"^      - (\S+)$", block, re.M)) == {
         "brain_search", "brain_recall", "brain_expand"
     }
 
@@ -37,6 +40,7 @@ def test_brain_worker_is_isolated_read_only_subagent():
 def test_gatherer_declares_brain_worker_dependency_and_invocation():
     agent = metadata("gatherer")
     assert 'agents: [brain-worker]' in agent
+    assert re.search(r"^inheritCustomizations: false$", agent, re.M)
     assert "invoke_subagent" in list_field(agent, "tools")
     assert "run_command" not in list_field(agent, "tools")
 
@@ -44,4 +48,7 @@ def test_gatherer_declares_brain_worker_dependency_and_invocation():
 def test_no_mcp_dispatcher_registry_component_in_any_agent():
     for path in (ROOT / "templates/gemini/agents").glob("*.md"):
         agent = metadata(path.stem)
-        assert "call_mcp_tool" not in list_field(agent, "tools")
+        tools = list_field(agent, "tools")
+        assert "call_mcp_tool" not in tools
+        if "invoke_subagent" in tools:
+            assert re.search(r"^inheritCustomizations: false$", agent, re.M)

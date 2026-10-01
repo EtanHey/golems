@@ -16,10 +16,23 @@ Gatherers delegate independent BrainLayer questions and claim checks to the
 The subagent uses the Flash tier for `gemini.gather.text` in model-roles and
 returns compact, expanded source citations. It has no shell or file-write tools.
 MCP inheritance and customization inheritance are disabled; its explicit
-`mcpServers` list starts `brainlayer-mcp-stdio-bridge` from PATH and enables only
-`brain_search`, `brain_recall`, and `brain_expand`. The bridge uses the existing
-BrainBar socket configuration. Install the BrainLayer bridge on each host before
-using this subagent. Other inherited servers and future write tools are excluded.
+`mcpServers` list starts the packaged bridge at the absolute path
+`/opt/homebrew/bin/brainlayer-mcp-stdio-bridge` and enables only `brain_search`,
+`brain_recall`, and `brain_expand`. This avoids PATH shadowing by a hand-installed
+shim or proxy. Install the packaged BrainLayer bridge at that path on each host
+before using this subagent. The packaged bridge connects to BrainBar's MCP socket;
+other inherited servers and future write tools are excluded.
+
+Read-only enforcement depends on agy's `enabledTools` dispatcher filter.
+BrainBar exposes 17 tools, including store, update, archive, supersede and backup.
+Every agy upgrade must repeat the fake-server deny probe before this agent is used:
+verify the unique probe name loads, require an exact no-tool palette canary, then
+attempt writes only on a recording fake MCP server with no real-server access.
+Never attempt a write against real BrainLayer to prove a denial.
+
+The gatherer disables customization inheritance while retaining MCP inheritance
+and its scoped receipt tools. Only the declared brain-worker may be invoked;
+hidden built-in agents must fail the no-tool delegation probes before release.
 
 On agy 1.2.14, `mcpServers` in agent frontmatter must be a **list**, unlike the
 mapping in `mcp_config.json`. A mapping silently removes the custom agent from

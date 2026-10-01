@@ -4,6 +4,7 @@ description: Gather research, visual evidence, inventories and verification rece
 mainAgent: true
 subagent: false
 inheritMcp: true
+inheritCustomizations: false
 # MCP tools (call_mcp_tool, list/read_resource) are injected by inheritMcp; they are not registry components.
 agents: [brain-worker]
 tools:
