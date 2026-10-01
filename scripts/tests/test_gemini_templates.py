@@ -21,15 +21,23 @@ def test_gatherer_writes_only_brief_named_reports_and_one_receipt():
     for path in ("templates/gemini/agents/gatherer.md", "templates/gemini/GEMINI.md"):
         template = (ROOT / path).read_text()
         for clause in ("brief names a findings/report path", "docs.local/", "engine-issued report path",
-                       "never create a file inside tracked source", "exactly one receipt line",
+                       "never write to a tracked file",
+                       "the findings path must be under `docs.local/` or the engine-issued report path",
+                       "append exactly one receipt line", "never edit, reorder or delete existing collab lines",
                        "collab file the brief names", "### <id> → <lead> — <gather> findings: <path>",
                        "No other file writes", "no code, config, tests or docs edits",
                        "no git commits", "no installs"):
             assert clause in template, f"{path}: missing {clause}"
 
 
-def test_gatherer_keeps_default_tools_for_scoped_writes():
+def test_gatherer_tools_allow_scoped_writes_without_shell_or_subagents():
     agent = (ROOT / "templates/gemini/agents/gatherer.md").read_text()
     frontmatter = agent.split("---", 2)[1]
-    assert "retain default file tools for scoped report/receipt writes" in frontmatter
-    assert not re.search(r"^(?:tools|excludeDefaultComponents):", frontmatter, re.M)
+    assert "tools:" in frontmatter
+    tools = re.findall(r"^  - (\w+)$", frontmatter, re.M)
+    assert set(tools) == {"view_file", "read_url_content", "search_web", "send_message",
+                          "call_mcp_tool", "write_to_file", "replace_file_content",
+                          "list_dir", "grep_search", "find_by_name"}
+    assert len(tools) == 10
+    assert not {"run_command", "invoke_subagent"} & set(tools)
+    assert not re.search(r"^excludeDefaultComponents:", frontmatter, re.M)
