@@ -30,16 +30,17 @@ def test_gatherer_writes_only_brief_named_reports_and_one_receipt():
             assert clause in template, f"{path}: missing {clause}"
 
 
-def test_gatherer_tools_allow_scoped_writes_without_shell_or_subagents():
+def test_gatherer_tools_allow_scoped_writes_and_declared_brain_worker_without_shell():
     agent = (ROOT / "templates/gemini/agents/gatherer.md").read_text()
     frontmatter = agent.split("---", 2)[1]
     assert "tools:" in frontmatter
     tools = re.findall(r"^  - (\w+)$", frontmatter, re.M)
     assert set(tools) == {"view_file", "read_url_content", "search_web", "send_message",
                           "write_to_file", "replace_file_content",
-                          "list_dir", "grep_search", "find_by_name"}
-    assert len(tools) == 9
+                          "list_dir", "grep_search", "find_by_name", "invoke_subagent"}
+    assert len(tools) == 10
     assert "call_mcp_tool" not in tools
     assert "inheritMcp: true" in frontmatter
-    assert not {"run_command", "invoke_subagent"} & set(tools)
+    assert "run_command" not in tools
+    assert "agents: [brain-worker]" in frontmatter
     assert not re.search(r"^excludeDefaultComponents:", frontmatter, re.M)
