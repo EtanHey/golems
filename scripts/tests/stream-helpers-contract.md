@@ -34,3 +34,8 @@ On 2026-10-01, the approved Telegram retirement projects failure-send records
 and their alert-only markers out of the immutable `ad926ea1` fixtures. Remaining
 command traces, file bytes, exit status, and output checks stay exact. This
 projection does not record candidate output; actual captures remain unfiltered.
+
+The shared-helper retirement projection removes the two obsolete function
+names, disabled-send output, command/counter records and retry payloads from
+the immutable-base oracle. WhatsApp traces, payloads, queue files and status
+remain byte-exact; no reroute or recipient change is introduced.

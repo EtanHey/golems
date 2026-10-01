@@ -44,12 +44,15 @@ else
 fi
 SH
 
-    cat > "$FAKE_BIN/send-telegram" <<'SH'
+    chmod +x "$FAKE_BIN/brain-store" "$FAKE_BIN/brain-store-fail" "$FAKE_BIN/brain-store-fail-after-first"
+    cat > "$FAKE_BIN/curl" <<'SH'
 #!/bin/bash
-cat > "$TELEGRAM_CAPTURE"
+printf '%s\n' "$*" >> "$HTTP_CALLS"
+exit 9
 SH
+    chmod +x "$FAKE_BIN/curl"
+    export PATH="$FAKE_BIN:$PATH" HTTP_CALLS="$TMPDIR_/http-calls"
 
-    chmod +x "$FAKE_BIN/brain-store" "$FAKE_BIN/brain-store-fail" "$FAKE_BIN/brain-store-fail-after-first" "$FAKE_BIN/send-telegram"
 }
 
 teardown() {
@@ -316,11 +319,9 @@ PY
     printf '# partial transcript\n' > "$active_process_dir/transcript.md"
     printf '### [00:01] In-flight gem\n' > "$active_process_dir/gems.md"
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
-    TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
-    [ ! -f "$TMPDIR_/telegram.json" ]
+    [ ! -f "$HTTP_CALLS" ]
     title="${output%%$'\n'*}"
     body="${output#*$'\n'}"
     [[ "$status" -eq 75 \
@@ -351,25 +352,21 @@ reason=drive_reverify_failed
 message=WARNING: cleanup skipped - originals retained; Drive re-verify failed
 EOF
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
-    TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'WARNING: cleanup skipped - originals retained; Drive re-verify failed: examplechannel-2026-06-18-005309'* ]]
-    [ ! -f "$TMPDIR_/telegram.json" ]
+    [ ! -f "$HTTP_CALLS" ]
 }
 
 @test "stalker digest is not coupled to BrainLayer ingest status" {
     make_processed_run examplechannel-2026-06-18-005309 >/dev/null
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
-    TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
     [[ "$output" != *BrainLayer* ]]
-    [ ! -f "$TMPDIR_/telegram.json" ]
+    [ ! -f "$HTTP_CALLS" ]
 }
 
 @test "stalker digest states an explicit no-gems reason with BrainLayer dry-run" {
@@ -379,12 +376,10 @@ EOF
     printf 'done\n' > "$run_dir/.stage-brainlayer.done"
 
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
-    TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Top moments:"* ]] || false
     [[ "$output" == *"No highlights found — no gems.md found for processed runs"* ]] || false
-    [ ! -f "$TMPDIR_/telegram.json" ]
+    [ ! -f "$HTTP_CALLS" ]
 }
