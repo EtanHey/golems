@@ -153,7 +153,7 @@ export function runInstall(argv: string[]): number {
   const runtime = join(root, 'runtime'); safePath(home, runtime);
   mkdirSync(runtime, { recursive: true, mode: 0o700 });
   chmodSync(root, 0o700); chmodSync(runtime, 0o700);
-  for (const name of ['runtime.zsh', 'runtime-reader.ts', 'golem-dispatch.zsh', 'worktree-bootstrap.sh', 'config.example.yaml', 'repogolem-1password-plugin.ts', 'repogolem-secrets.ts', 'repogolem-check-refs.ts']) {
+  for (const name of ['runtime.zsh', 'runtime-reader.ts', 'golem-dispatch.zsh', 'worktree-bootstrap.sh', 'config.example.yaml', 'repogolem-file-plugin.ts', 'repogolem-1password-plugin.ts', 'repogolem-secrets.ts', 'repogolem-check-refs.ts']) {
     const target = join(runtime, name); safePath(home, target);
     copyFileSync(join(import.meta.dir, name), target); chmodSync(target, name === 'worktree-bootstrap.sh' ? 0o700 : 0o600);
   }

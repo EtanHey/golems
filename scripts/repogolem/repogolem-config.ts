@@ -60,7 +60,7 @@ import { runInstall } from "./repogolem-install";
 import { readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
 import { collectRefs, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
-import { varlockResolver } from "./repogolem-varlock";
+import { opRefsFor, varlockResolver } from "./repogolem-varlock";
 import { isOpCredential, checkRefs, opEnvironment } from "./repogolem-check-refs";
 
 const GENERATOR_ID = "golems/scripts/repogolem/repogolem-config.ts";
@@ -814,7 +814,7 @@ function runGenerate(argv: string[]) {
   if (args["check-refs"]) {
     if (args.check || args["secrets-from"]) fail("--check-refs cannot be combined with --check or --secrets-from");
     const { config: effective } = resolveConfig(configText, host);
-    const refs = collectRefs(effective);
+    const refs = opRefsFor(collectRefs(effective), effective);
     if (refs.length && !effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');
     return checkRefs(refs, process.env.REPOGOLEM_OP_BIN || "op", args["no-prompt"] === true);
   }
@@ -834,17 +834,18 @@ function runGenerate(argv: string[]) {
   assertSafeOutDir(outDir);
   const opBin = process.env.REPOGOLEM_OP_BIN || 'op';
   const opEnv = opEnvironment();
+  const { config: effective } = resolveConfig(configText, host);
+  const providerRefs = opRefsFor(generated.refs, effective);
   let secretsEnv: string;
   try {
-    if (!args['secrets-from'] && generated.refs.length) {
-      const { config: effective } = resolveConfig(configText, host);
+    if (!args['secrets-from'] && providerRefs.length) {
       if (!effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');
-      const status = checkRefs(generated.refs, opBin, false, opEnv);
+      const status = checkRefs(providerRefs, opBin, false, opEnv);
       if (status !== 0) return status;
     }
     const resolved = typeof args["secrets-from"] === "string"
       ? readTransferredSecrets(args["secrets-from"], generated.configSha, generated.machine, generated.refs)
-      : resolveRefs(generated.refs, varlockResolver(opBin, opEnv));
+      : resolveRefs(generated.refs, varlockResolver(opBin, opEnv, { ...effective, pluginBase: dirname(resolve(config)) }));
     secretsEnv = secretsEnvText(generated.secretsHeader, resolved);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
@@ -859,7 +860,7 @@ function runGenerate(argv: string[]) {
   });
   const refs = generated.refs.length;
   console.log(
-    `machine ${generated.machine ?? "(none)"}: ${refs} op:// refs resolved (${args["secrets-from"] ? "transferred cache; op not run" : refs > 0 ? "1 op session" : "op not run"})`,
+    `machine ${generated.machine ?? "(none)"}: ${refs} values resolved; ${providerRefs.length} op:// refs (${args["secrets-from"] ? "transferred cache; op not run" : providerRefs.length > 0 ? "1 op batch" : effective.secrets?.backend?.startsWith("plugin:") ? "BYO plugin" : "op not run"})`,
   );
   for (const name of OUTPUTS) console.log(`wrote ${join(outDir, name)}`);
   return 0;
