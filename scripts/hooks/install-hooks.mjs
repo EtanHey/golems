@@ -83,7 +83,18 @@ function context(o) {
   for (const name of E1_DELETED) {
     if (text.includes(name)) die(`REFUSED: ${name} is E1-deleted; it is never linked or registered`);
   }
-  const entries = JSON.parse(text).hosts?.[o.host];
+  const hosts = JSON.parse(text).hosts;
+  // Validate every host before status, dry-run, or apply can use the manifest.
+  // Claude Code reads seconds; millisecond-looking values can stall for hours.
+  for (const [host, hooks] of Object.entries(hosts ?? {})) {
+    for (const e of hooks) {
+      if (e.timeout === undefined && e.event !== "PreToolUse") continue;
+      if (!Number.isInteger(e.timeout) || e.timeout < 1 || e.timeout > 120) {
+        die(`REFUSED: ${host}/${e.id} timeout must be an integer in 1..120 seconds${e.timeout === undefined ? " (required for PreToolUse)" : `; got ${JSON.stringify(e.timeout)}`}`);
+      }
+    }
+  }
+  const entries = hosts?.[o.host];
   if (!Array.isArray(entries)) die(`manifest ${o.manifest} has no host "${o.host}"`);
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");

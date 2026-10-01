@@ -84,6 +84,68 @@ const live = (fx) => path.join(fx.repo, ".worktrees/hooks-live");
 const bakFiles = (fx) => spawnSync("ls", [path.join(fx.home, ".claude")], { encoding: "utf8" }).stdout
   .split("\n").filter((f) => f.startsWith("settings.json.bak-"));
 
+test("every shipped host uses integer timeout seconds in 1..120; PreToolUse requires one", () => {
+  const invalid = [];
+  for (const [host, entries] of Object.entries(realManifest.hosts)) {
+    for (const entry of entries) {
+      if (entry.timeout === undefined && entry.event !== "PreToolUse") continue;
+      if (!Number.isInteger(entry.timeout) || entry.timeout < 1 || entry.timeout > 120) {
+        invalid.push(`${host}/${entry.id}: timeout=${entry.timeout}`);
+      }
+    }
+  }
+  expect(invalid).toEqual([]);
+});
+
+for (const timeout of [undefined, null, 0, -1, 1.5, 121, 1000, "5", true]) {
+  test(`installer refuses invalid timeout ${JSON.stringify(timeout)} before any writes, on every host`, () => {
+    const fx = fixture();
+    const before = readFileSync(fx.settingsPath, "utf8");
+    for (const host of ["mbp", "m1"]) {
+      const manifest = manifestFor();
+      manifest.hosts.m1 = structuredClone(manifest.hosts.mbp);
+      if (timeout === undefined) delete manifest.hosts[host][0].timeout;
+      else manifest.hosts[host][0].timeout = timeout;
+      writeFileSync(fx.manifest, JSON.stringify(manifest));
+      for (const mode of ["--dry-run", "--status", "--apply"]) {
+        const result = run(fx, mode);
+        expect(result.status).not.toBe(0);
+        expect(result.out).toContain(`${host}/demo-gate`);
+        expect(result.out).toContain("timeout must be an integer in 1..120 seconds");
+        expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+        expect(existsSync(live(fx))).toBe(false);
+        expect(bakFiles(fx)).toHaveLength(0);
+      }
+    }
+  });
+}
+
+test("timeout validation covers non-PreToolUse and external entries", () => {
+  const fx = fixture();
+  for (const kind of ["golems", "external", "wrapped-external"]) {
+    const manifest = manifestFor();
+    Object.assign(manifest.hosts.mbp[0], { kind, event: "Stop", timeout: 121 });
+    writeFileSync(fx.manifest, JSON.stringify(manifest));
+    expect(run(fx, "--status").status).not.toBe(0);
+  }
+  const manifest = manifestFor();
+  Object.assign(manifest.hosts.mbp[1], { event: "PreToolUse" });
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  expect(run(fx, "--apply").status).not.toBe(0);
+});
+
+test("timeout boundaries 1 and 120 seconds remain valid", () => {
+  const fx = fixture();
+  for (const timeout of [1, 120]) {
+    const manifest = manifestFor();
+    manifest.hosts.mbp[0].timeout = timeout;
+    writeFileSync(fx.manifest, JSON.stringify(manifest));
+    expect(run(fx, "--apply").status).toBe(0);
+    expect(JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.PreToolUse[0].hooks[0].timeout).toBe(timeout);
+    expect(run(fx, "--status").status).toBe(0);
+  }
+});
+
 test("dry-run is the default and writes nothing", () => {
   const fx = fixture();
   const before = readFileSync(fx.settingsPath, "utf8");
