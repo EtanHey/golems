@@ -394,6 +394,51 @@ def test_go5_gap_false_positive_guards_stay_allowed(tmp_path):
         assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()) is None, command
 
 
+def _issue491_heredoc_body(line):
+    return f'gh issue create --body "$(cat <<\'EOF\'\n{line}\nEOF\n)"'
+
+
+def test_issue491_process_substitution_launcher_text_in_data_is_allowed(tmp_path):
+    backtick = "`"
+    lead_body = "\n".join((
+        "From the Opus R2 of #484. Pre-existing on master; same class as #481.",
+        "",
+        "**Residual stale-value shapes** (ALLOW on head; temp in zsh, the Bash tool's shell):",
+        f"- {backtick}… | read X{backtick}, {backtick}… | IFS= read -r X{backtick}, "
+        f"{backtick}… | X=<tmp>{backtick}, {backtick}… | for X in …{backtick}, "
+        f"{backtick}… | printf -v X{backtick}, {backtick}… | source <(…){backtick}",
+        f"- {backtick}print -v X …{backtick}, {backtick}: ${{X::=…}}{backtick}, "
+        f"{backtick}command command read X{backtick}",
+        f"- {backtick}export X+=…{backtick}, {backtick}declare X+=…{backtick}, "
+        f"{backtick}export X[0]=…{backtick}",
+        "",
+        "**Direction:** fail closed → any unmodelled mutation invalidates the variable.",
+    ))
+    commands = (
+        _issue491_heredoc_body(f"source <(x) {backtick}"),
+        _issue491_heredoc_body(f"bash <(x) {backtick}"),
+        _issue491_heredoc_body(f"; . <(x) {backtick}"),
+        f"echo 'source <(x) {backtick}'",
+        f"echo 'source <(x)'; echo 'a {backtick} b'",
+        f"bash <(echo git status); echo 'later {backtick} data'",
+        _issue491_heredoc_body(lead_body),
+    )
+
+    for command in commands:
+        assert git_safety.dangerous_shell_reason(
+            command, cwd=str(tmp_path), env=_home_env()
+        ) is None, command
+
+
+def test_issue491_real_process_substitution_launcher_stays_blocked(tmp_path):
+    reason = git_safety.dangerous_shell_reason(
+        "bash <(echo git push --force origin master)",
+        cwd=str(tmp_path), env=_home_env(),
+    )
+
+    assert reason and "git push --force" in reason
+
+
 def test_go5_gap_recursion_is_bounded_and_fails_closed(tmp_path):
     def nest(inner, depth):
         # Unquoted `eval eval … cmd`: each level peels one eval, no quoting growth.
@@ -511,5 +556,3 @@ def test_backticks_that_really_run_still_block(tmp_path):
         'echo "$(rm -rf ~)"',
     ):
         assert git_safety.dangerous_shell_reason(command, cwd=str(tmp_path), env=_home_env()), command
-
-

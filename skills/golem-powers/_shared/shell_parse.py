@@ -118,6 +118,32 @@ _heredocs._dollar_substitution = _dollar_substitution
 _heredocs._backtick_substitution = _backtick_substitution
 
 
+def executable_shell_structure(command: str) -> str:
+    """Length-preserving shell text with non-executable data blanked.
+
+    Command substitutions are checked recursively by their callers, so this
+    outer structural view hides them along with quotes, comments, and heredoc
+    bodies. Process substitutions remain visible for exact-span parsing.
+    """
+    return _structure.structural_source(_mask_heredoc_body_lines(command))
+
+
+def process_substitution_at(command: str, start: int) -> tuple[str, int]:
+    """Return the body and end offset of the process substitution at `start`.
+
+    Reuse the balanced substitution parser from the exact opening token. It
+    stops at that token's matching close instead of scanning later command
+    text, and malformed executed substitutions fail closed.
+    """
+    if command[start:start + 2] not in {"<(", ">("}:
+        raise ValueError("expected process substitution")
+    synthetic = command[:start] + "$" + command[start + 1:]
+    found = _dollar_substitution(synthetic, start)
+    if found is None:
+        raise ValueError("unterminated process substitution")
+    return found
+
+
 def _invoked_alias_bodies(command, _initial_state=None):
     """Return alias bodies expanded on later lines when Bash enables them."""
     if _initial_state is None:

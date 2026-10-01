@@ -263,6 +263,31 @@ def test_issue412_truncation_shapes_cannot_hide_force_push(tmp_path):
     assert allowed == []
 
 
+def test_issue491_data_false_positives_allow_and_real_controls_block_through_copied_hook(tmp_path):
+    _guardian, hook, launcher, other_cwd, env = _copied_hook(tmp_path)
+    backtick = "`"
+    data_commands = (
+        f"gh issue create --body \"$(cat <<'EOF'\nsource <(x) {backtick}\nEOF\n)\"",
+        f"gh issue create --body \"$(cat <<'EOF'\nbash <(x) {backtick}\nEOF\n)\"",
+        f"gh issue create --body \"$(cat <<'EOF'\n; . <(x) {backtick}\nEOF\n)\"",
+        f"echo 'source <(x) {backtick}'",
+        f"echo 'source <(x)'; echo 'a {backtick} b'",
+        f"bash <(echo git status); echo 'later {backtick} data'",
+    )
+    controls = (
+        "bash <(echo git push --force origin master)",
+        f"source <(echo {backtick}git push --force)",
+    )
+
+    for command in data_commands:
+        result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+        assert result.returncode == 0, (command, result.stdout, result.stderr)
+    for command in controls:
+        result = _run_copied_hook(hook, launcher, other_cwd, env, command)
+        assert result.returncode == 2, (command, result.stdout, result.stderr)
+        assert "golems-fail-open" not in result.stderr
+
+
 def test_second_policy_parse_error_is_value_free_red(monkeypatch):
     spec = importlib.util.spec_from_file_location("pre_tool_use_second_parse", HOOK)
     loaded = importlib.util.module_from_spec(spec)

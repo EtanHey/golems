@@ -36,6 +36,8 @@ _backtick_bodies = _pkg.shell_parse._backtick_bodies
 dollar_paren_bodies = _pkg.shell_parse.dollar_paren_bodies
 shell_text_without_heredoc_bodies = _pkg.shell_parse.shell_text_without_heredoc_bodies
 without_dollar_paren_bodies = _pkg.shell_parse.without_dollar_paren_bodies
+executable_shell_structure = _pkg.shell_parse.executable_shell_structure
+process_substitution_at = _pkg.shell_parse.process_substitution_at
 
 # Names remain patchable on this facade; implementation calls look them up here.
 for _module, _names in (
