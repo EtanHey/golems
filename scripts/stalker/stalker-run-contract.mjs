@@ -127,7 +127,7 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
 
 /** Explicit legacy migration; write only after all live and custody checks succeed. */
 export async function migrateCompletionReceipt(runDir, {receipt, fetchImpl} = {}) {
-  if (receipt?.version !== 3 || !['notified', 'complete'].includes(receipt.status)) {
+  if (receipt?.version !== 3 || receipt.status !== 'complete') {
     throw stageFailure(7, 'not an eligible legacy completion receipt');
   }
   const {notification, ...evidence} = receipt;

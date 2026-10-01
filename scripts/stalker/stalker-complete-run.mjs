@@ -57,7 +57,7 @@ export async function completeRun(runDir, options = {}) {
     if (!match) throw stageFailure(6, 'run directory must be channel-YYYY-MM-DD[-HHMMSS]');
     const [, channel, date] = match;
     receipt = await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
-    if (receipt?.version === 3 && ['notified', 'complete'].includes(receipt.status)) {
+    if (receipt?.version === 3 && receipt.status === 'complete') {
       try {
         const migrated = await migrateCompletionReceipt(runDir, {receipt, fetchImpl: options.fetchImpl});
         const result = await verifyRunDelivery(runDir, {receipt: migrated, fetchImpl: options.fetchImpl});

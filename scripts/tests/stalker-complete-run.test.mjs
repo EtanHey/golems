@@ -381,7 +381,7 @@ test('fixture media server rejects traversal outside its publication root', asyn
 });
 
 test('legacy migration persists v4 only after live and custody verification', async t => {
-  for (const status of ['notified', 'complete']) await t.test(status, async t => {
+  for (const status of ['complete']) await t.test(status, async t => {
     const {runDir, options, calls} = await setup(t);
     await completeRun(runDir, options);
     const path = join(runDir, '.stalker-completion.json');
@@ -399,4 +399,42 @@ test('legacy migration persists v4 only after live and custody verification', as
     await assert.rejects(completeRun(runDir, options), /stage 9/);
     assert.equal(await readFile(path, 'utf8'), saved);
   });
+});
+
+
+test('legacy notified resumes custody rather than migrating directly to complete', async t => {
+  const {runDir, options, calls} = await setup(t);
+  await completeRun(runDir, options);
+  const path = join(runDir, '.stalker-completion.json');
+  const original = JSON.parse(await readFile(path)); original.version = 3; original.status = 'notified';
+  await writeFile(path, JSON.stringify(original));
+  const before = [...calls]; options.archiveImpl = matchingArchive(calls);
+  assert.equal((await completeRun(runDir, options)).status, 'complete');
+  assert.ok(calls.slice(before.length).some(call => call.startsWith('archive:')));
+  assert.equal(calls.filter(call => call === 'generate').length, before.filter(call => call === 'generate').length);
+  assert.equal(calls.filter(call => call === 'sync').length, before.filter(call => call === 'sync').length);
+});
+
+test('legacy notified cannot become complete after the archive recheck fails', async t => {
+  const {runDir, options} = await setup(t);
+  await completeRun(runDir, options);
+  const path = join(runDir, '.stalker-completion.json');
+  const original = JSON.parse(await readFile(path)); original.version = 3; original.status = 'notified';
+  await writeFile(path, JSON.stringify(original));
+  let archiveCalls = 0;
+  options.archiveImpl = async () => { archiveCalls++; throw new Error('synthetic custody outage'); };
+  await assert.rejects(completeRun(runDir, options), /stage 9.*synthetic custody outage/);
+  assert.equal(archiveCalls, 1);
+  assert.notEqual(JSON.parse(await readFile(path)).status, 'complete');
+});
+
+test('live-hub outage preserves a legacy v3 completion receipt byte-for-byte', async t => {
+  const {runDir, options} = await setup(t);
+  await completeRun(runDir, options);
+  const path = join(runDir, '.stalker-completion.json');
+  const original = JSON.parse(await readFile(path)); original.version = 3;
+  const bytes = JSON.stringify(original); await writeFile(path, bytes);
+  options.fetchImpl = async () => { throw new Error('synthetic legacy hub outage'); };
+  await assert.rejects(completeRun(runDir, options), /stage 7.*synthetic legacy hub outage/);
+  assert.equal(await readFile(path, 'utf8'), bytes);
 });

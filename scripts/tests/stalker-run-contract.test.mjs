@@ -164,7 +164,7 @@ test('legacy version 2 completion receipts cannot satisfy retention-aware COMPLE
 });
 
 test('explicit v3 migration retains evidence and strips the retired field', async t => {
-  for (const status of ['notified', 'complete']) await t.test(status, async t => {
+  for (const status of ['complete']) await t.test(status, async t => {
     const {runDir, receipt} = await setup(t);
     const original = {...receipt, version: 3, status, notification: {messageId: 1}};
     const migrated = await migrateCompletionReceipt(runDir, {receipt: original});
@@ -183,4 +183,10 @@ test('migration cannot certify missing custody or unreachable publication', asyn
   await assert.rejects(migrateCompletionReceipt(runDir, {receipt: original}), /stage 9/);
   await saveRetention(runDir); responses.dashboardStatus = 404;
   await assert.rejects(migrateCompletionReceipt(runDir, {receipt: original}), /stage 7/);
+});
+
+
+test('direct migration rejects legacy notified before retention recheck', async t => {
+  const {runDir, receipt} = await setup(t);
+  await assert.rejects(migrateCompletionReceipt(runDir, {receipt: {...receipt, version: 3, status: 'notified'}}), /eligible legacy/);
 });
