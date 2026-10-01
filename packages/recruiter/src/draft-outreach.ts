@@ -360,9 +360,9 @@ export async function updateDraftStatus(
 }
 
 /**
- * Format a draft for Telegram display (short preview).
+ * Format a draft as text (short preview).
  */
-export function formatDraftForTelegram(draft: OutreachDraft, connectionName: string, jobTitle: string, company: string): string {
+export function formatDraftText(draft: OutreachDraft, connectionName: string, jobTitle: string, company: string): string {
   const lines: string[] = [];
   lines.push(`*Outreach Draft: ${connectionName}*`);
   lines.push(`Job: ${jobTitle} at ${company}`);
@@ -377,7 +377,7 @@ export function formatDraftForTelegram(draft: OutreachDraft, connectionName: str
   lines.push("");
   lines.push(`*Follow-up:* ${draft.followupPlan}`);
   lines.push("");
-  lines.push("Reply: approve / edit / skip");
+  lines.push("Review actions: approve / edit / skip");
   lines.push("Full draft on dashboard");
   return lines.join("\n");
 }
