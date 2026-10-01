@@ -4,13 +4,12 @@ description: Gather research, visual evidence, inventories and verification rece
 mainAgent: true
 subagent: false
 inheritMcp: true
-# Read tools plus scoped report/receipt write tools; no shell.
+# MCP tools (call_mcp_tool, list/read_resource) are injected by inheritMcp; they are not registry components.
 tools:
   - view_file
   - read_url_content
   - search_web
   - send_message
-  - call_mcp_tool
   - write_to_file
   - replace_file_content
   - list_dir

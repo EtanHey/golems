@@ -36,8 +36,10 @@ def test_gatherer_tools_allow_scoped_writes_without_shell_or_subagents():
     assert "tools:" in frontmatter
     tools = re.findall(r"^  - (\w+)$", frontmatter, re.M)
     assert set(tools) == {"view_file", "read_url_content", "search_web", "send_message",
-                          "call_mcp_tool", "write_to_file", "replace_file_content",
+                          "write_to_file", "replace_file_content",
                           "list_dir", "grep_search", "find_by_name"}
-    assert len(tools) == 10
+    assert len(tools) == 9
+    assert "call_mcp_tool" not in tools
+    assert "inheritMcp: true" in frontmatter
     assert not {"run_command", "invoke_subagent"} & set(tools)
     assert not re.search(r"^excludeDefaultComponents:", frontmatter, re.M)
