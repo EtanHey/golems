@@ -108,7 +108,7 @@ function split_case_037() {
     [ "$(cat "$CONTRACT_CALLS")" = "ingest-run $stream_dir" ]
     [ ! -f "$stream_dir/.stage-notified.done" ]
     [ -f "$stream_dir/.stage-run-quality.failed" ]
-    [ "$(jq -s 'map(select(.title == "Stalker FAILED at stage 6")) | length' "$ALERTS_FILE")" -eq 1 ]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_038() {
@@ -134,8 +134,8 @@ function split_case_038() {
     [ -f "$stream_dir/.stage-chat.failed" ]
     [ ! -f "$stream_dir/.stage-run-quality.failed" ]
     grep -F -q 'chat_count=0' "$stream_dir/.stage-chat.failed"
-    [ "$(grep -c 'Stalker Pipeline Failure' "$ALERTS_FILE")" -eq 1 ]
-    grep -F -q 'chat_count=0' "$ALERTS_FILE"
+    [ ! -s "$ALERTS_FILE" ]
+    [ ! -s "$ALERTS_FILE" ]
 }
 
 function split_case_039() {

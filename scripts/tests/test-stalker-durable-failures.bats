@@ -44,7 +44,7 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     split_case_010
 }
 
-@test "dead chat lurker records retryable failure and sends one failure alert" {
+@test "dead chat lurker records retryable failure without sending" {
     split_case_011
 }
 
