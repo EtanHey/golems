@@ -205,9 +205,15 @@ try:
             _spec.loader.exec_module(_package)
             _policy = _impl_import(_IMPL_NAME + ".policy")
             _runtime = _impl_import(_IMPL_NAME + ".runtime")
+            _scope = _impl_import(_IMPL_NAME + ".scope")
+            _shell_words = _impl_import(_IMPL_NAME + ".shell_words")
+            _chain_status = _impl_import(_IMPL_NAME + ".chain_status")
             for _module, _leaf in (
                 (_package, "__init__.py"), (_policy, "policy.py"),
                 (_runtime, "runtime.py"),
+                (_scope, "scope.py"),
+                (_shell_words, "shell_words.py"),
+                (_chain_status, "chain_status.py"),
             ):
                 _expected = os.path.join(_IMPL_ROOT, _leaf)
                 if not os.path.isfile(_expected) or os.path.realpath(
@@ -225,6 +231,12 @@ try:
             )
             _policy._temp_prefixes = _runtime.callbacks.temp_prefixes
             _policy.is_harness_scratchpad = is_harness_scratchpad
+            for _name in ('_paren_contexts', '_segment_indices', '_process_substitution_parens', '_case_pattern_parens', '_literal_array_parens', '_success_chain_reaches', '_scope_affects_target'):
+                globals()[_name] = getattr(_scope, _name)
+            for _name in ('_direct_exposed_scope_keys', '_after_substitution_word', '_substitution_word_text'):
+                globals()[_name] = getattr(_shell_words, _name)
+            for _name in ('_segment_operator_before', '_segment_operator_after', '_chain_status_after'):
+                globals()[_name] = getattr(_chain_status, _name)
         finally:
             sys.dont_write_bytecode = _previous_bytecode
 except BaseException:
@@ -443,56 +455,7 @@ def _literal_branch_may_execute(tokens, target_index):
     return True
 
 
-def _direct_exposed_scope_keys(command, scope_of):
-    """Map top-level lexer scope IDs to recursive substitution identities."""
-    scope_ids = []
-    for scope in scope_of:
-        if len(scope) == 1 and scope[0] not in scope_ids:
-            scope_ids.append(scope[0])
-    exposed = [
-        (outer_seg, sub_index)
-        for _body, outer_seg, sub_index, is_exposed in _executable_subcommands(
-            _strip_heredoc_bodies(command)
-        )
-        if is_exposed
-    ]
-    return dict(zip(scope_ids, exposed))
-
-
-def _after_substitution_word(tokens, scope_of, opener, parent_scope):
-    """Return the first token after the shell word containing `opener`.
-
-    Command substitutions are tokenized into child scopes, while any literal
-    suffix returns to the parent scope. A `)$+` close marker records that the
-    same shell word continues, so option values such as `--reason=$(x)suffix`
-    can be skipped without mistaking `suffix` for the worktree path.
-    """
-    j = opener + 1
-    while True:
-        while j < len(tokens) and scope_of[j] != parent_scope:
-            j += 1
-        if (
-            j == 0
-            or not _command_sub_word_continues(tokens[j - 1])
-            or j >= len(tokens)
-        ):
-            return j
-        if tokens[j] in (";", "|", "&", ">", ">>", "(", ")"):
-            return j
-        suffix = tokens[j]
-        j += 1
-        if not _is_command_sub_open(suffix):
-            return j
-
-
-def _substitution_word_text(tokens, scope_of, opener):
-    """Rebuild the token span for one shell word containing `$(...)`."""
-    if not _is_command_sub_open(tokens[opener]):
-        return tokens[opener]
-    end = _after_substitution_word(
-        tokens, scope_of, opener, scope_of[opener]
-    )
-    return " ".join(tokens[opener:end])
+# ── Rule 2: worktree location convention ─────────────────────────────────────
 
 
 def _worktree_add_args(tokens, cmd_pos, seg_of, scope_of):
@@ -1077,60 +1040,6 @@ def _apply_patch_temp_targets(tool_input, cwd=None):
     return hits
 
 
-# ── Rule 2: worktree location convention ─────────────────────────────────────
-
-
-def _segment_operator_before(tokens, seg_of, segment):
-    """Return the shell-list operator immediately before a non-empty segment."""
-    words = [
-        i
-        for i, token_segment in enumerate(seg_of)
-        if token_segment == segment and not _is_separator(tokens, i)
-    ]
-    if not words:
-        return None
-    parts = []
-    index = words[0] - 1
-    while index >= 0 and _is_separator(tokens, index):
-        parts.append(tokens[index])
-        index -= 1
-    return "".join(reversed(parts)) or None
-
-
-def _segment_operator_after(tokens, seg_of, segment):
-    """Return the shell-list operator immediately after a non-empty segment."""
-    words = [
-        i
-        for i, token_segment in enumerate(seg_of)
-        if token_segment == segment and not _is_separator(tokens, i)
-    ]
-    if not words:
-        return None
-    parts = []
-    index = words[-1] + 1
-    while index < len(tokens) and _is_separator(tokens, index):
-        parts.append(tokens[index])
-        index += 1
-    return "".join(parts) or None
-
-
-def _chain_status_after(operator, prior_status, command_status):
-    """Abstract Bash AND/OR-list status: True, False, or statically unknown."""
-    if operator == "&&":
-        if prior_status is False:
-            return False
-        if prior_status is True:
-            return command_status
-        return False if command_status is False else None
-    if operator == "||":
-        if prior_status is True:
-            return True
-        if prior_status is False:
-            return command_status
-        return True if command_status is True else None
-    return command_status
-
-
 def _static_shell_variables_before(
     tokens, cmd_pos, seg_of, scope_of, target_segment
 ):
@@ -1138,24 +1047,6 @@ def _static_shell_variables_before(
     return _static_shell_variable_state_before(
         tokens, cmd_pos, seg_of, scope_of, target_segment
     )[0]
-
-
-def _paren_contexts(tokens):
-    """Opening-parenthesis stack enclosing each token.
-
-    This is deliberately narrower than full shell scope modelling. It gives
-    the stale-value guard enough structure to distinguish a mutation inside a
-    subshell/process substitution from a later command back in the parent.
-    """
-    contexts = []
-    stack = []
-    for token in tokens:
-        contexts.append(tuple(stack))
-        if token == "(":
-            stack.append(len(contexts) - 1)
-        elif token == ")" and stack:
-            stack.pop()
-    return contexts
 
 
 def _static_shell_variable_state_before(
@@ -2298,69 +2189,6 @@ def resolve_target(raw, anchor=None, variables=None):
     return os.path.abspath(os.path.normpath(expanded))
 
 
-def _segment_indices(seg_of, segment):
-    """Token indices belonging to one parsed simple-command segment."""
-    return [i for i, seg in enumerate(seg_of) if seg == segment]
-
-
-def _process_substitution_parens(tokens):
-    """Parenthesis indices belonging to `<(...)` / `>(...)`, not subshells."""
-    indices = set()
-    stack = []
-    for i, token in enumerate(tokens):
-        if token == "(":
-            stack.append((i, i > 0 and tokens[i - 1] in ("<", ">")))
-        elif token == ")" and stack:
-            opened, process_substitution = stack.pop()
-            if process_substitution:
-                indices.update((opened, i))
-    return indices
-
-
-def _case_pattern_parens(tokens):
-    """Parentheses that terminate literal case patterns, not subshells."""
-    indices = set()
-    stack = []
-    index = 0
-    while index < len(tokens):
-        token = tokens[index]
-        if token == "case":
-            stack.append("await-in")
-        elif stack and stack[-1] == "await-in" and token == "in":
-            stack[-1] = "pattern"
-        elif stack and stack[-1] == "pattern" and token == ")":
-            indices.add(index)
-            stack[-1] = "body"
-        elif stack and stack[-1] == "body":
-            if tokens[index:index + 2] == [";", ";"]:
-                stack[-1] = "pattern"
-                index += 1
-            elif token == "esac":
-                stack.pop()
-        index += 1
-    return indices
-
-
-def _literal_array_parens(tokens):
-    """Parentheses delimiting a literal shell array assignment."""
-    indices = set()
-    for opener in range(1, len(tokens)):
-        if tokens[opener] != "(" or not re.fullmatch(
-            r"[A-Za-z_][A-Za-z0-9_]*=", tokens[opener - 1]
-        ):
-            continue
-        depth = 1
-        for closer in range(opener + 1, len(tokens)):
-            if tokens[closer] == "(":
-                depth += 1
-            elif tokens[closer] == ")":
-                depth -= 1
-                if depth == 0:
-                    indices.update((opener, closer))
-                    break
-    return indices
-
-
 def _bounded_loop_subshell_anchor(
     tokens,
     cmd_pos,
@@ -2437,40 +2265,6 @@ def _bounded_loop_subshell_anchor(
     ):
         return None
     return initial_cwd
-
-
-def _success_chain_reaches(tokens, seg_of, segment, target_segment):
-    """True when every command boundary through the target is `&&`.
-
-    A cwd change after `&&` is a valid anchor when the eventual worktree add
-    is gated by the same success chain: the add cannot run unless the cd did.
-    A `;`, pipeline, or background boundary breaks that guarantee.
-    """
-    current = _segment_indices(seg_of, segment)
-    target = _segment_indices(seg_of, target_segment)
-    if not current or not target:
-        return False
-    current_words = [i for i in current if not _is_separator(tokens, i)]
-    target_words = [i for i in target if not _is_separator(tokens, i)]
-    if not current_words or not target_words:
-        return False
-    i = current_words[-1] + 1
-    while i < target_words[0]:
-        if tokens[i:i + 2] == ["&", "&"]:
-            i += 2
-            continue
-        if _is_separator(tokens, i):
-            return False
-        i += 1
-    return True
-
-
-def _scope_affects_target(command_scope, target_scope):
-    """A parent or matching substitution scope can affect the target cwd."""
-    return (
-        len(command_scope) <= len(target_scope)
-        and target_scope[:len(command_scope)] == command_scope
-    )
 
 
 def _cwd_argument(
@@ -3373,6 +3167,18 @@ def main():
     except PolicyEvaluationDeadlineExceeded as exc:
         deny(f"⛔ TMP-BLOCK: {exc}.")
 
+
+try:
+    with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+        _chain_status._is_separator = _is_separator
+        _scope._is_separator = _is_separator
+        _scope.re = re
+        _shell_words._command_sub_word_continues = _command_sub_word_continues
+        _shell_words._executable_subcommands = _executable_subcommands
+        _shell_words._is_command_sub_open = _is_command_sub_open
+        _shell_words._strip_heredoc_bodies = _strip_heredoc_bodies
+except BaseException:
+    _deny_policy_import_failure()
 
 if __name__ == "__main__":
     main()
