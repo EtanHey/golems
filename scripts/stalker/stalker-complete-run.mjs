@@ -57,6 +57,7 @@ export async function completeRun(runDir, options = {}) {
       try {
         await verifyRunDelivery(runDir, {receipt: published, fetchImpl: options.fetchImpl, requireRetention: false});
         receipt = published;
+        await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
         resumeRetention = true;
       } catch (error) {
         if (error.liveVerificationFailure) throw error;

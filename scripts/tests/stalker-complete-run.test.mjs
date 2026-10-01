@@ -397,7 +397,12 @@ test('legacy notified resumes custody rather than migrating directly to complete
   const path = join(runDir, '.stalker-completion.json');
   const original = JSON.parse(await readFile(path)); original.version = 3; original.status = 'notified';
   await writeFile(path, JSON.stringify(original));
-  const before = [...calls]; options.archiveImpl = matchingArchive(calls);
+  const before = [...calls], archive = matchingArchive(calls);
+  options.archiveImpl = async expected => {
+    const checkpoint = JSON.parse(await readFile(path));
+    assert.deepEqual([checkpoint.version, checkpoint.status, 'notification' in checkpoint], [4, 'published', false]);
+    return archive(expected);
+  };
   assert.equal((await completeRun(runDir, options)).status, 'complete');
   assert.ok(calls.slice(before.length).some(call => call.startsWith('archive:')));
   assert.equal(calls.filter(call => call === 'generate').length, before.filter(call => call === 'generate').length);
@@ -414,7 +419,8 @@ test('legacy notified cannot become complete after the archive recheck fails', a
   options.archiveImpl = async () => { archiveCalls++; throw new Error('synthetic custody outage'); };
   await assert.rejects(completeRun(runDir, options), /stage 9.*synthetic custody outage/);
   assert.equal(archiveCalls, 1);
-  assert.notEqual(JSON.parse(await readFile(path)).status, 'complete');
+  const checkpoint = JSON.parse(await readFile(path));
+  assert.deepEqual([checkpoint.version, checkpoint.status, 'notification' in checkpoint], [4, 'published', false]);
 });
 
 test('live-hub outage preserves a legacy v3 completion receipt byte-for-byte', async t => {
