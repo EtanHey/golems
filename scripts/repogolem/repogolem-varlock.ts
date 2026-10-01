@@ -21,7 +21,7 @@ export function varlockResolver(opBin: string, childEnv: Record<string, string |
       env.VARLOCK_TELEMETRY_DISABLED = '1'; env.DO_NOT_TRACK = '1';
       env.OP_DEBUG = 'false'; env.OP_CACHE = 'false'; env.DEBUG = '';
       const cli = (childEnv.REPOGOLEM_TEST_MODE === '1' ? childEnv.REPOGOLEM_VARLOCK_BIN : undefined) || join(dirname(fileURLToPath(import.meta.resolve('varlock'))), '../bin/cli.js');
-      const proc = Bun.spawnSync([process.execPath, cli, 'load', '--path', join(scratch, '.env.schema'), '--format', 'json', '--skip-cache'], {
+      const proc = Bun.spawnSync([process.execPath, '--no-install', cli, 'load', '--path', join(scratch, '.env.schema'), '--format', 'json', '--skip-cache'], {
         cwd: scratch, env, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe', timeout: 120_000,
       });
       if (proc.exitCode !== 0) {

@@ -92,3 +92,7 @@ test('op children retain the original TMPDIR for the daemon socket', () => {
 test('production ignores the varlock binary override', () => {
   expect(generate({ REPOGOLEM_TEST_MODE: '0', REPOGOLEM_VARLOCK_BIN: '/does/not/exist' }).r.exitCode).toBe(0);
 });
+
+test('varlock child disables Bun automatic package installation', () => {
+  expect(generate({ REPOGOLEM_VARLOCK_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-varlock.ts'), FAKE_VARLOCK_MODE: 'no-install' }).r.exitCode).toBe(0);
+});
