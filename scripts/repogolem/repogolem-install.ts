@@ -5,6 +5,7 @@ import { parse as parseYaml } from 'yaml';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installedVarlock } from './repogolem-varlock-package';
 import { isDeepStrictEqual } from 'node:util';
 const start = '# >>> repogolem generated launchers >>>';
 const end = '# <<< repogolem generated launchers <<<';
@@ -168,7 +169,7 @@ export function runInstall(argv: string[]): number {
   const dependency = join(modules, 'varlock'); safePath(home, dependency);
   const stage = mkdtempSync(join(runtime, '.varlock-'));
   try {
-    const source = dirname(dirname(fileURLToPath(import.meta.resolve('varlock'))));
+    const source = installedVarlock(dirname(fileURLToPath(import.meta.url)));
     if (JSON.parse(readFileSync(join(source, 'package.json'), 'utf8')).version !== '1.21.1') throw new Error('varlock version must be 1.21.1');
     cpSync(source, stage, { recursive: true });
     function privateTree(path: string) {

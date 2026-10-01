@@ -3,6 +3,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installedVarlock } from './repogolem-varlock-package';
 import { secretKey, type Resolver } from './repogolem-secrets';
 export function varlockResolver(opBin: string, childEnv: Record<string, string | undefined>): Resolver {
   return refs => {
@@ -20,7 +21,7 @@ export function varlockResolver(opBin: string, childEnv: Record<string, string |
       for (const key of Object.keys(env)) if (/^_*VARLOCK/.test(key) || key.startsWith('REPOGOLEM_SECRET_')) delete env[key];
       env.VARLOCK_TELEMETRY_DISABLED = '1'; env.DO_NOT_TRACK = '1';
       env.OP_DEBUG = 'false'; env.OP_CACHE = 'false'; env.DEBUG = '';
-      const cli = (childEnv.REPOGOLEM_TEST_MODE === '1' ? childEnv.REPOGOLEM_VARLOCK_BIN : undefined) || join(dirname(fileURLToPath(import.meta.resolve('varlock'))), '../bin/cli.js');
+      const cli = (childEnv.REPOGOLEM_TEST_MODE === '1' ? childEnv.REPOGOLEM_VARLOCK_BIN : undefined) || join(installedVarlock(dirname(fileURLToPath(import.meta.url))), 'bin/cli.js');
       const proc = Bun.spawnSync([process.execPath, '--no-install', cli, 'load', '--path', join(scratch, '.env.schema'), '--format', 'json', '--skip-cache'], {
         cwd: scratch, env, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe', timeout: 120_000,
       });
