@@ -13,7 +13,6 @@ import {
   registerAllGolems,
   getPendingWork,
 } from "./status-aggregator";
-import { sendMorningNudge } from "./nudger";
 import { recordDay, getWeeklySummary } from "./tracker";
 import { loadProtocol } from "./protocol";
 import { generateCoaching, type CoachingOutput } from "./coaching-engine";
@@ -34,10 +33,9 @@ export async function planToday(): Promise<DailyPlan> {
   return generateDailyPlan(events, status);
 }
 
-/** Run the morning nudge — generates plan + sends to Telegram */
+/** Return the morning plan; this API does not deliver notifications. */
 export async function morningNudge(): Promise<DailyPlan> {
   const plan = await planToday();
-  await sendMorningNudge(plan);
   return plan;
 }
 
@@ -100,8 +98,8 @@ export { getEcosystemStatus } from "./status-aggregator";
 export { getTodayEvents } from "./calendar-client";
 export {
   generateDailyPlan,
-  formatPlanForTelegram,
-  formatCoachedPlanForTelegram,
+  formatPlanText,
+  formatCoachedPlanText,
 } from "./schedule-engine";
 export { getWeeklySummary } from "./tracker";
 export { generateCoaching } from "./coaching-engine";
@@ -110,7 +108,7 @@ export { syncCalendarToSupabase } from "./calendar-sync";
 export { generateDailyNote, type DailyData } from "./daily-brief";
 export {
   synthesizeBriefing,
-  formatForTelegram,
+  formatBriefingText,
   formatForVoice,
 } from "./morning-briefing";
 export type {

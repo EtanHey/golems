@@ -57,7 +57,7 @@ describe("Tracker", () => {
   });
 
   describe("formatWeeklySummary", () => {
-    test("formats summary for Telegram", () => {
+    test("formats summary text", () => {
       const message = formatWeeklySummary();
       expect(message).toContain("Weekly Summary");
       expect(message).toContain("Days tracked:");

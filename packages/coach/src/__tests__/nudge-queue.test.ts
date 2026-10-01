@@ -44,7 +44,7 @@ describe("NudgeSchema", () => {
       message: "Time for afternoon check-in",
       scheduledAt: "2026-03-10T14:00:00+03:00",
       status: "pending",
-      channel: "telegram",
+      channel: "voice",
       createdAt: "2026-03-10T07:00:00+03:00",
     };
 
@@ -62,7 +62,7 @@ describe("NudgeSchema", () => {
         message: `Test ${type}`,
         scheduledAt: "2026-03-10T14:00:00+03:00",
         status: "pending" as const,
-        channel: "telegram" as const,
+        channel: "voice" as const,
         createdAt: "2026-03-10T07:00:00+03:00",
       };
       const result = NudgeSchema.safeParse(nudge);
@@ -80,7 +80,7 @@ describe("NudgeSchema", () => {
         message: `Test ${priority}`,
         scheduledAt: "2026-03-10T14:00:00+03:00",
         status: "pending" as const,
-        channel: "telegram" as const,
+        channel: "voice" as const,
         createdAt: "2026-03-10T07:00:00+03:00",
       };
       const result = NudgeSchema.safeParse(nudge);
@@ -98,7 +98,7 @@ describe("NudgeSchema", () => {
         message: `Test ${status}`,
         scheduledAt: "2026-03-10T14:00:00+03:00",
         status,
-        channel: "telegram" as const,
+        channel: "voice" as const,
         createdAt: "2026-03-10T07:00:00+03:00",
       };
       const result = NudgeSchema.safeParse(nudge);
@@ -106,8 +106,8 @@ describe("NudgeSchema", () => {
     }
   });
 
-  test("validates both channels", () => {
-    for (const channel of ["telegram", "voice"] as const) {
+  test("validates the supported channel", () => {
+    for (const channel of ["voice"] as const) {
       const nudge = {
         id: `nudge-${channel}`,
         type: "reminder" as const,
@@ -131,7 +131,7 @@ describe("NudgeSchema", () => {
       message: "Test",
       scheduledAt: "2026-03-10T14:00:00+03:00",
       status: "pending",
-      channel: "telegram",
+      channel: "voice",
       createdAt: "2026-03-10T07:00:00+03:00",
     };
     const result = NudgeSchema.safeParse(nudge);
@@ -152,7 +152,7 @@ describe("NudgeSchema", () => {
       message: "Your recovery trend is improving",
       scheduledAt: "2026-03-10T14:00:00+03:00",
       status: "pending",
-      channel: "telegram",
+      channel: "voice",
       createdAt: "2026-03-10T07:00:00+03:00",
       metadata: { source: "journal", trend: "up" },
     };
@@ -166,6 +166,7 @@ describe("NudgeSchema", () => {
 describe("createNudge", () => {
   test("creates a nudge with defaults", () => {
     const nudge = createNudge({
+      channel: "voice",
       type: "reminder",
       message: "Time to stretch",
       scheduledAt: "2026-03-10T14:00:00+03:00",
@@ -175,9 +176,23 @@ describe("createNudge", () => {
     expect(nudge.type).toBe("reminder");
     expect(nudge.priority).toBe("medium"); // default
     expect(nudge.status).toBe("pending"); // default
-    expect(nudge.channel).toBe("telegram"); // default
+    expect(nudge.channel).toBe("voice"); // explicitly requested
     expect(nudge.message).toBe("Time to stretch");
     expect(nudge.createdAt).toBeDefined();
+  });
+
+  test("requires a channel rather than choosing a delivery route", () => {
+    expect(() => createNudge({ type: "reminder", message: "Test", scheduledAt: "now" } as any))
+      .toThrow();
+    expect(() => createNudge({ type: "reminder", message: "Test", scheduledAt: "now", channel: "obsolete" } as any))
+      .toThrow();
+  });
+
+  test("does not reroute obsolete queue records", () => {
+    const { appendFileSync } = require("fs");
+    const nudge = createNudge({ type: "reminder", message: "Test", scheduledAt: "now", channel: "voice" });
+    appendFileSync(TEST_QUEUE, JSON.stringify({ ...nudge, channel: "obsolete" }) + "\n");
+    expect(readQueue(TEST_QUEUE)).toEqual([]);
   });
 
   test("creates a nudge with overrides", () => {
@@ -200,6 +215,7 @@ describe("createNudge", () => {
 describe("queue file operations", () => {
   test("appendNudge writes to JSONL file", () => {
     const nudge = createNudge({
+      channel: "voice",
       type: "reminder",
       message: "Test nudge",
       scheduledAt: "2026-03-10T14:00:00+03:00",
@@ -216,6 +232,7 @@ describe("queue file operations", () => {
   test("appendNudge appends multiple nudges", () => {
     appendNudge(
       createNudge({
+        channel: "voice",
         type: "reminder",
         message: "First",
         scheduledAt: "2026-03-10T14:00:00+03:00",
@@ -224,6 +241,7 @@ describe("queue file operations", () => {
     );
     appendNudge(
       createNudge({
+        channel: "voice",
         type: "check-in",
         message: "Second",
         scheduledAt: "2026-03-10T15:00:00+03:00",
@@ -232,6 +250,7 @@ describe("queue file operations", () => {
     );
     appendNudge(
       createNudge({
+        channel: "voice",
         type: "alert",
         message: "Third",
         scheduledAt: "2026-03-10T16:00:00+03:00",
@@ -254,6 +273,7 @@ describe("queue file operations", () => {
   test("readQueue skips invalid JSON lines", () => {
     // Write a file with one valid and one invalid line
     const nudge = createNudge({
+      channel: "voice",
       type: "reminder",
       message: "Valid",
       scheduledAt: "2026-03-10T14:00:00+03:00",
@@ -264,6 +284,7 @@ describe("queue file operations", () => {
     appendFileSync(TEST_QUEUE, "this is not json\n");
     appendNudge(
       createNudge({
+        channel: "voice",
         type: "alert",
         message: "Also valid",
         scheduledAt: "2026-03-10T15:00:00+03:00",
@@ -283,6 +304,7 @@ describe("queue file operations", () => {
 describe("lifecycle operations", () => {
   test("markSent updates nudge status", () => {
     const nudge = createNudge({
+      channel: "voice",
       type: "reminder",
       message: "Test",
       scheduledAt: "2026-03-10T14:00:00+03:00",
@@ -297,6 +319,7 @@ describe("lifecycle operations", () => {
 
   test("markDismissed updates nudge status", () => {
     const nudge = createNudge({
+      channel: "voice",
       type: "insight",
       message: "Trend",
       scheduledAt: "2026-03-10T14:00:00+03:00",
@@ -311,16 +334,19 @@ describe("lifecycle operations", () => {
 
   test("getPending returns only pending nudges", () => {
     const n1 = createNudge({
+      channel: "voice",
       type: "reminder",
       message: "Pending 1",
       scheduledAt: "2026-03-10T14:00:00+03:00",
     });
     const n2 = createNudge({
+      channel: "voice",
       type: "check-in",
       message: "Pending 2",
       scheduledAt: "2026-03-10T15:00:00+03:00",
     });
     const n3 = createNudge({
+      channel: "voice",
       type: "alert",
       message: "Will be sent",
       scheduledAt: "2026-03-10T16:00:00+03:00",
@@ -339,16 +365,19 @@ describe("lifecycle operations", () => {
 
   test("clearSent removes sent nudges from queue", () => {
     const n1 = createNudge({
+      channel: "voice",
       type: "reminder",
       message: "Keep",
       scheduledAt: "2026-03-10T14:00:00+03:00",
     });
     const n2 = createNudge({
+      channel: "voice",
       type: "check-in",
       message: "Remove",
       scheduledAt: "2026-03-10T15:00:00+03:00",
     });
     const n3 = createNudge({
+      channel: "voice",
       type: "alert",
       message: "Also keep",
       scheduledAt: "2026-03-10T16:00:00+03:00",
@@ -370,6 +399,7 @@ describe("lifecycle operations", () => {
   test("getPending sorts by priority (high first)", () => {
     appendNudge(
       createNudge({
+        channel: "voice",
         type: "reminder",
         priority: "low",
         message: "Low",
@@ -379,6 +409,7 @@ describe("lifecycle operations", () => {
     );
     appendNudge(
       createNudge({
+        channel: "voice",
         type: "alert",
         priority: "high",
         message: "High",
@@ -388,6 +419,7 @@ describe("lifecycle operations", () => {
     );
     appendNudge(
       createNudge({
+        channel: "voice",
         type: "check-in",
         priority: "medium",
         message: "Medium",
