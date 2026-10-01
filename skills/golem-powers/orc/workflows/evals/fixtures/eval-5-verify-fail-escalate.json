@@ -41,7 +41,7 @@
   "negative_assertions": [
     "Does NOT send a 3rd, 4th, etc. HEADS-UP — 2-relay max is hard ceiling",
     "Does NOT claim the fact landed when verify failed (AP4, never-fabricate)",
-    "Does NOT escalate via a separate file (default channel is inline in orc's pane)",
+    "Does NOT escalate via a separate file or any out-of-band channel (default channel is inline in orc's pane)",
     "Does NOT silently drop the unresponsive owner without escalating"
   ],
   "stub_surface_responses": {
