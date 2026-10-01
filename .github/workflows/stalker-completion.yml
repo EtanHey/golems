@@ -2,7 +2,7 @@ name: stalker-completion
 on:
   pull_request:
     paths:
-      - 'scripts/stalker-*.mjs'
+      - 'scripts/stalker/**'
       - 'scripts/stalker/process-stream.sh'
       - 'scripts/stalker/process/**'
       - 'scripts/stalker/post-stream.sh'
@@ -20,7 +20,7 @@ on:
       - 'scripts/stalker/post-stream.sh'
       - 'scripts/stalker/stream-overnight-monitor.sh'
       - 'scripts/tests/fixtures/stalker-*'
-      - 'scripts/stalker-*.mjs'
+      - 'scripts/stalker/**'
       - 'scripts/tests/stalker-*.test.mjs'
       - '.github/workflows/stalker-completion.yml'
       - 'package.json'
