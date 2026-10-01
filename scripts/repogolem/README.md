@@ -41,7 +41,13 @@ repogolem generate
 ```
 
 `generate` signs in to 1Password if needed, checks vault/item/field names, then
-resolves all references with a single `op run` before writing the cache.
+resolves all references through pinned varlock under Bun before writing the cache.
+The repo-local 1Password varlock plugin uses one `op run --no-masking` batch;
+it preserves captured manual-account sessions, forces `OP_CACHE`/`OP_DEBUG` off,
+and never retries individual refs or loads the WASM SDK. Raw varlock output is
+captured privately and remapped into the existing `REPOGOLEM_SECRET_<sha>` cache.
+The exact-pinned upstream plugin is optional for explicit BYO use; its desktop
+auth drops manual sessions and may retry remaining refs after a batch error.
 Set top-level `secrets: { backend: 1password }`; unknown backends fail closed.
 Existing configs with op refs and no backend default to 1password with one notice.
 

@@ -1,6 +1,6 @@
 // Installation is dry-run unless --apply; no generation or secret resolution.
 import { createHash } from 'node:crypto';
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -151,7 +151,7 @@ export function runInstall(argv: string[]): number {
   const runtime = join(root, 'runtime'); safePath(home, runtime);
   mkdirSync(runtime, { recursive: true, mode: 0o700 });
   chmodSync(root, 0o700); chmodSync(runtime, 0o700);
-  for (const name of ['runtime.zsh', 'runtime-reader.ts', 'golem-dispatch.zsh', 'worktree-bootstrap.sh', 'config.example.yaml']) {
+  for (const name of ['runtime.zsh', 'runtime-reader.ts', 'golem-dispatch.zsh', 'worktree-bootstrap.sh', 'config.example.yaml', 'repogolem-1password-plugin.ts', 'repogolem-secrets.ts', 'repogolem-check-refs.ts']) {
     const target = join(runtime, name); safePath(home, target);
     copyFileSync(join(import.meta.dir, name), target); chmodSync(target, name === 'worktree-bootstrap.sh' ? 0o700 : 0o600);
   }
@@ -160,6 +160,24 @@ export function runInstall(argv: string[]): number {
     const target = join(runtime, 'dispatch', name); safePath(home, target);
     copyFileSync(join(import.meta.dir, 'dispatch', name), target); chmodSync(target, 0o600);
   }
+  // Snapshot the exact-pinned core into the installation. A fresh staging
+  // directory avoids following pre-existing nested links during package copy.
+  const modules = join(runtime, 'node_modules'); safePath(home, modules);
+  mkdirSync(modules, { recursive: true, mode: 0o700 }); chmodSync(modules, 0o700);
+  const dependency = join(modules, 'varlock'); safePath(home, dependency);
+  const stage = mkdtempSync(join(runtime, '.varlock-'));
+  try {
+    const source = dirname(dirname(import.meta.resolve('varlock').replace(/^file:\/\//, '')));
+    cpSync(source, stage, { recursive: true });
+    function privateTree(path: string) {
+      const stat = lstatSync(path);
+      if (stat.isSymbolicLink()) throw new Error('varlock package contains a symlink');
+      chmodSync(path, stat.isDirectory() ? 0o700 : 0o600);
+      if (stat.isDirectory()) for (const entry of readdirSync(path)) privateTree(join(path, entry));
+    }
+    privateTree(stage);
+    rmSync(dependency, { recursive: true, force: true }); renameSync(stage, dependency);
+  } finally { rmSync(stage, { recursive: true, force: true }); }
   const bundle = join(runtime, 'repogolem-cli.js'); safePath(home, bundle);
   const build = Bun.spawnSync(['bun', 'build', join(import.meta.dir, 'repogolem-config.ts'), '--target=bun', '--outfile', bundle], { stdout: 'pipe', stderr: 'pipe' });
   if (build.exitCode !== 0) throw new Error('CLI bundle failed; retry install or rollback; shell and seats unchanged');

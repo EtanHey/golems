@@ -180,3 +180,12 @@ test('completed installation refuses a missing seat link', () => {
   expect(run().code).toBe(0);rmSync(join(home,'.golems/config.yaml'));
   expect(run().code).toBe(2);expect(run(['--rollback']).code).toBe(2);
 });
+test('installed Bun CLI resolves through packaged varlock from an unrelated cwd', () => {
+  writeFileSync(config, readFileSync(config, 'utf8') + 'projects:\n  fixture:\n    path: /home/fixture\n    clis: [codex]\n    secrets:\n      TOKEN: op://example-vault/example-item/token\n');
+  expect(run().code).toBe(0);
+  const env = { ...process.env, HOME: home, REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'), REPOGOLEM_SOURCE_SHA: '0'.repeat(40) };
+  for (const key of Object.keys(env)) if (key === 'OP_SERVICE_ACCOUNT_TOKEN' || key.startsWith('OP_SESSION')) delete env[key];
+  const r = Bun.spawnSync([join(home, '.local/bin/repogolem'), 'generate', '--config', config, '--out-dir', join(home, '.config/repogolem/generated')], { cwd: home, env, stdout: 'pipe', stderr: 'pipe' });
+  expect(r.exitCode).toBe(0);
+  expect(readFileSync(join(home, '.config/repogolem/generated/secrets.env'), 'utf8')).toContain('resolved:op://example-vault/example-item/token');
+});

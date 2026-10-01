@@ -17,7 +17,7 @@
 // Ralph registry's sections appended as new top-level keys. `generate` turns
 // that file back into the registry.json golem-dispatch.zsh reads today and
 // the launchers.zsh Ralph's _ralph_generate_launchers_from_registry emits,
-// plus secrets.env: every op:// ref resolved in one `op run`
+// plus secrets.env: every op:// ref resolved through varlock in one op batch
 // (repogolem-secrets.ts). All three are 0600 in a 0700 dir outside any repo.
 // `init` writes config.example.yaml, with this machine's section, as a starter.
 //
@@ -59,7 +59,8 @@ import { runSync } from "./repogolem-sync";
 import { runInstall } from "./repogolem-install";
 import { readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
-import { collectRefs, opResolver, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
+import { collectRefs, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
+import { varlockResolver } from "./repogolem-varlock";
 import { isOpCredential, checkRefs, opEnvironment } from "./repogolem-check-refs";
 
 const GENERATOR_ID = "golems/scripts/repogolem/repogolem-config.ts";
@@ -843,7 +844,7 @@ function runGenerate(argv: string[]) {
     }
     const resolved = typeof args["secrets-from"] === "string"
       ? readTransferredSecrets(args["secrets-from"], generated.configSha, generated.machine, generated.refs)
-      : resolveRefs(generated.refs, opResolver(opBin, opEnv));
+      : resolveRefs(generated.refs, varlockResolver(opBin, opEnv));
     secretsEnv = secretsEnvText(generated.secretsHeader, resolved);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
