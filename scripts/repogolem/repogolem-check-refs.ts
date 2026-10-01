@@ -68,25 +68,29 @@ export function checkRefs(refs: string[], opBin: string, noPrompt = false, env =
     if (!process.stdin.isTTY) { console.error('1Password needs an interactive terminal; use --no-prompt with a CLI session or OP_SERVICE_ACCOUNT_TOKEN. Nothing written.'); return 3; }
     // Capture both desktop (empty output) and account export protocols.
     env.OP_BIOMETRIC_UNLOCK_ENABLED = 'true';
-    const accounts = metadata(['account', 'list', '--format', 'json'], true);
-    accounts.stdout?.fill(0);
     const testTimeout = process.env.REPOGOLEM_OP_BIN && Number(process.env.REPOGOLEM_TEST_SIGNIN_TIMEOUT_MS);
     const timeout = testTimeout && testTimeout > 0 && testTimeout < 120_000 ? testTimeout : 120_000;
+    const restoreTerminal = () => {
+      // op may disable password echo; restore the TTY after interrupted signin.
+      if (process.stdin.isTTY) try { Bun.spawnSync(['/bin/stty', 'sane'], { env: {}, stdin: 'inherit', stdout: 'ignore', stderr: 'ignore', timeout: 1_000 }); } catch {}
+    };
     try {
       const signed = Bun.spawnSync([opBin, 'signin'], {
         env, stdin: 'inherit', stdout: 'pipe', stderr: 'inherit', timeout,
       });
       try {
-        if (signed.exitCode !== 0 || signed.signal) return unsigned();
-        const output = signed.stdout.toString().replace(/\r?\n$/, '');
-        if (output) {
-          const match = /^export (OP_SESSION_[A-Za-z0-9_]+)="([^"\s]+)"$/.exec(output);
+        if (signed.exitedDueToTimeout || signed.signalCode) { restoreTerminal(); return unsigned(); }
+        if (signed.exitCode !== 0) return unsigned();
+        const lines = signed.stdout.toString().split(/\r?\n/).filter(line => line !== '' && !line.startsWith('#'));
+        if (lines.length > 1) return unsigned();
+        if (lines.length === 1) {
+          const match = /^export (OP_SESSION_[A-Za-z0-9_]+)="([^"\s]+)"$/.exec(lines[0]);
           if (!match || OP_SESSION_CONFIG.has(match[1])) return unsigned();
           env[match[1]] = match[2];
           env.OP_BIOMETRIC_UNLOCK_ENABLED = 'false';
         }
       } finally { signed.stdout.fill(0); }
-    } catch { return unsigned(); }
+    } catch { restoreTerminal(); return unsigned(); }
     if (metadata(['whoami', '--format', 'json']).exitCode !== 0) return unsigned();
   }
   const listed = metadata(['vault', 'list', '--format', 'json'], true);

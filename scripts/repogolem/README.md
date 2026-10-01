@@ -58,9 +58,11 @@ When unsigned, generation requires an interactive terminal. Sign-in enables
 biometric integration, inherits terminal stdin/stderr for prompts, and always
 captures stdout. An empty response uses desktop authentication; exactly one
 `export OP_SESSION_<account>="<token>"` line supplies an account-specific session
-only to op children. Other output fails closed. The session is removed from the
+only to op children. Blank lines and shell comments are ignored; other output
+fails closed. The session is removed from the
 Bun emitter environment and cleared from the generator's child env afterwards.
 Sign-in has a 120-second bound; metadata closes stdin and has 15-second bounds.
+After interrupted sign-in, the tool restores sane terminal settings (including echo).
 For automation, `repogolem generate --check-refs --no-prompt` disables biometric
 integration and never signs in: export a CLI session (`eval $(op signin)` on a
 manually added account) or `OP_SERVICE_ACCOUNT_TOKEN` beforehand.

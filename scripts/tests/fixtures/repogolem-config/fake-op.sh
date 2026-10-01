@@ -12,10 +12,14 @@ set -euo pipefail
 [[ -n "${FAKE_OP_LOG:-}" ]] && printf '%s\n' "$*" >>"$FAKE_OP_LOG"
 if [[ "${1:-}" == signin ]]; then
   [[ "${FAKE_OP_SIGNIN_FAILURE:-}" == fail || "${FAKE_OP_SIGNIN_FAILURE:-}" == cancel ]] && exit 1
-  [[ -n "${FAKE_OP_SIGNIN_OUTPUT:-}" ]] && { printf '%s\n' "$FAKE_OP_SIGNIN_OUTPUT"; exit 0; }
   [[ -n "${FAKE_OP_STATE:-}" ]] && : >"$FAKE_OP_STATE"
+  [[ -n "${FAKE_OP_NO_ECHO:-}" ]] && { stty -echo; stty -a > "$FAKE_OP_TERMINAL_LOG.before"; }
+  [[ -n "${FAKE_OP_SIGNIN_SIGNAL:-}" ]] && kill -TERM "$$"
+  [[ -n "${FAKE_OP_SIGNIN_OUTPUT:-}" ]] && { printf '%s\n' "$FAKE_OP_SIGNIN_OUTPUT"; exit 0; }
   [[ -n "${FAKE_OP_SIGNIN_HANG:-}" ]] && exec sleep 60
-  if [[ -n "${FAKE_OP_MANUAL:-}${FAKE_OP_EXPORT:-}${FAKE_OP_REQUIRE_SESSION:-}" ]]; then printf 'export OP_SESSION_fixture="%s"\n' "${FAKE_OP_TOKEN:-synthetic-token}"; fi
+  if [[ -n "${FAKE_OP_MANUAL:-}${FAKE_OP_EXPORT:-}${FAKE_OP_REQUIRE_SESSION:-}" ]]; then printf 'export OP_SESSION_fixture="%s"\n' "${FAKE_OP_TOKEN:-synthetic-token}"
+    printf '%s\n' "# This command is meant to be used with your shell's eval function." "# Run 'eval \$(op signin --account fixture)' ..." '# Use the --raw flag to only output the session token.'
+  fi
   exit 0
 fi
 if [[ -n "${FAKE_OP_REQUIRE_SESSION:-}" && -f "${FAKE_OP_STATE:-}" && "${OP_SESSION_fixture:-}" != "${FAKE_OP_TOKEN:-synthetic-token}" ]]; then exit 7; fi
