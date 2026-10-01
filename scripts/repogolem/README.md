@@ -2,7 +2,7 @@
 
 The public generator takes a user-owned YAML file through `--config` or
 `REPOGOLEM_CONFIG`. Keep the real instance in a private repository. Secrets
-in the file are `op://` references. Generation resolves them once and writes
+in the file are `op://` or named `varlock://` references. Generation resolves them once and writes
 `registry.json`, `launchers.zsh`, and `secrets.env` in
 `~/.config/repogolem/generated`: 0600 files in a 0700 directory outside Git.
 Resolved values are on disk; never commit them or copy them into logs.
@@ -46,6 +46,9 @@ The repo-local 1Password varlock plugin uses one `op run --no-masking` batch;
 it preserves captured manual-account sessions, forces `OP_CACHE`/`OP_DEBUG` off,
 and never retries individual refs or loads the WASM SDK. Raw varlock output is
 captured privately and remapped into the existing `REPOGOLEM_SECRET_<sha>` cache.
+The upstream 1Password plugin is not used: its desktop auth drops manual
+sessions and may retry remaining refs after a batch error. BYO plugins use
+the repoGolem bulk adapter contract below.
 Telemetry disabled: `VARLOCK_TELEMETRY_DISABLED=1` and `DO_NOT_TRACK=1`; no varlock
 telemetry config or network request is created. Inherited varlock overrides are
 removed; `OP_SESSION_*` and the original `TMPDIR` reach the provider unchanged.
@@ -96,3 +99,40 @@ sensitive raw op diagnostics.
 Sync selects the remote private repo from `--remote-repo`,
 `REPOGOLEM_REMOTE_REPO`, or `syncTargets.m1.repo` in the private YAML.
 The public tool has no fleet repository path default.
+
+## Named values and other backends
+
+`values` declares names and sensitivity; it never contains resolved values:
+
+```yaml
+secrets:
+  backend: file
+  # optional absolute path; default ~/.config/repogolem/values.env
+  valuesFile: /home/example/.config/repogolem/values.env
+values:
+  API_TOKEN: { sensitive: true }
+  GRILL_SEED_DIR: { sensitive: false }
+projects:
+  example:
+    path: /home/example/project
+    clis: [codex]
+    secrets:
+      API_TOKEN: varlock://API_TOKEN
+```
+
+The values file is private dotenv data, owned by you, exactly `0600`, outside
+all git worktrees. Symlinks and untrusted parents are refused. Missing declared
+values fail before generation writes. All named values are resolved, including
+personal paths used by agent templates. They share the existing private cache
+and runtime readers never consult providers.
+
+With `backend: 1password`, add `source: op://vault/item/field` to a named value to
+resolve it in the same deduplicated op batch. Names without a source come from
+the private values file. With `backend: file`, use `varlock://NAME` mappings;
+direct `op://` mappings require the 1Password backend.
+
+For BYO, set `backend: plugin:<npm-package-or-path>` and follow the
+[adapter contract](adapters/TEMPLATE/README.md). Plugins must be installed,
+trusted and compatible with its bulk resolver; raw password-manager plugins
+may require a wrapper. Generate captures all provider diagnostics and does not
+download plugins or persist varlock caches.

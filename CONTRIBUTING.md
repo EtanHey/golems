@@ -65,3 +65,14 @@ bun install
 - TypeScript for all new code
 - No `any` types — use proper interfaces
 - Use `@golems/shared` for Supabase, LLM, and notification utilities
+
+### repoGolem secret backends
+
+Backends use varlock's plugin API under Bun. Start with the
+[adapter template and contract](scripts/repogolem/adapters/TEMPLATE/README.md)
+and the repo-local 1Password plugin as the worked single-batch example.
+Keep secret values and personal settings in private provider storage or an
+owned `0600` values file outside all public repositories. Declare only names,
+sensitivity and optional provider references in schemas. Review the
+[varlock plugin guide](https://varlock.dev/guides/plugins/) and
+[upstream contributor guide](https://github.com/dmno-dev/varlock/blob/main/CONTRIBUTING.md).

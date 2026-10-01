@@ -36,13 +36,14 @@ export function collectRefs(config: unknown): string[] {
   const stray: string[] = [];
   const walk = (value: unknown, where: string, inRefMap: boolean) => {
     if (typeof value === "string") {
-      if (!value.startsWith("op://")) return;
+      if (!value.startsWith("op://") && !value.startsWith("varlock://")) return;
       if (inRefMap) refs.add(value);
       else stray.push(where);
     } else if (Array.isArray(value)) {
       value.forEach((item, index) => walk(item, `${where}.${index}`, false));
     } else if (isObject(value)) {
       for (const [key, child] of Object.entries(value)) {
+        if (!where && key === "values") continue;
         const path = where ? `${where}.${key}` : key;
         const refMap = (key === "env" || key === "secrets") && isObject(child);
         if (refMap) {
@@ -57,6 +58,9 @@ export function collectRefs(config: unknown): string[] {
   if (stray.length > 0) {
     throw new Error(`op:// refs resolve only inside env/secrets mappings; found elsewhere at:\n  ${stray.join("\n  ")}`);
   }
+  const definitions = isObject(config) && isObject(config.values) ? config.values : {};
+  for (const name of Object.keys(definitions)) refs.add(`varlock://${name}`);
+  for (const ref of refs) if (ref.startsWith('varlock://') && !Object.hasOwn(definitions, ref.slice(10))) throw new Error('undeclared varlock value; nothing written');
   return [...refs].sort();
 }
 
