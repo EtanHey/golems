@@ -46,7 +46,7 @@ def test_real_path_layout_and_bytecode(tmp_path, layout):
     assert not list(package.rglob("__pycache__"))
 
 
-@pytest.mark.parametrize("damaged", ["__init__.py", "policy.py", "runtime.py", "scope.py", "shell_words.py", "chain_status.py", "wiring", "words.py", "syntax", "runtime-error", "foreign"])
+@pytest.mark.parametrize("damaged", ["__init__.py", "policy.py", "runtime.py", "scope.py", "shell_words.py", "chain_status.py", "wiring", "words.py", "prefixes.py", "syntax", "runtime-error", "foreign"])
 def test_missing_or_corrupt_package_denies_through_launcher(tmp_path, damaged):
     hook = copied_hook(tmp_path / "source")
     package = hook.parent / "tmp_block_impl"
@@ -96,10 +96,11 @@ for name in ('Unresolvable', '_has_temp_hint', 'in_temp_class', 'on_convention',
              'WORKTREE_DIR_NAME', '_CWD_CHANGING_CMDS'):
     assert getattr(hook, name) is getattr(hook._policy, name), name
 assert hook._policy.is_harness_scratchpad is hook.is_harness_scratchpad
+assert hook._POSITIONAL_PARAM_RE is hook._prefixes._POSITIONAL_PARAM_RE
 assert hook._SIMPLE_VAR_RE is hook._words._SIMPLE_VAR_RE
 assert hook._MAX_STATIC_VALUES is hook._words._MAX_STATIC_VALUES
 assert type(hook._MAX_STATIC_VALUES) is int and hook._MAX_STATIC_VALUES == 256
-for module_name in ('scope', 'shell_words', 'chain_status', 'words'):
+for module_name in ('scope', 'shell_words', 'chain_status', 'words', 'prefixes'):
     module = getattr(hook, '_' + module_name)
     for name, value in vars(module).items():
         if callable(value) and getattr(value, '__module__', None) == module.__name__:
