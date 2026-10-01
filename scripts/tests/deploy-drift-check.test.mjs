@@ -292,10 +292,10 @@ describe("environment contracts", () => {
     }, "const days = process.env.ACTIVITY_DAYS_TO_KEEP ?? '7';");
     expect(contract.configuredKeys).toEqual([
       "ACTIVITY_DAYS_TO_KEEP",
+      "FIXTURE_BOT_TOKEN",
       "HOME",
       "PATH",
       "SESSIONS_TO_KEEP",
-      "FIXTURE_BOT_TOKEN",
     ]);
     expect(contract.unusedKeys).toEqual(["SESSIONS_TO_KEEP"]);
   });
