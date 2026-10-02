@@ -5,11 +5,13 @@
  * Uses dependency injection to avoid real API calls.
  */
 
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, test, expect, mock } from "bun:test";
 import {
   runMorningBriefing,
   type BriefingDeps,
 } from "../morning-briefing-runner";
+import { mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import type { CalendarEvent } from "../calendar-client";
 import type { EcosystemStatus } from "../status-aggregator";
 import type { Email } from "@golems/shared/email/types";
@@ -63,7 +65,6 @@ function makeDeps(overrides?: Partial<BriefingDeps>): BriefingDeps {
     getCalendarEvents: mock(() => Promise.resolve(makeEvents())),
     getEmails: mock(() => Promise.resolve(makeEmails())),
     getEcosystem: mock(() => Promise.resolve(makeEcosystem())),
-    sendTelegram: mock(() => Promise.resolve(true)),
     reportRun: mock(() => Promise.resolve()),
     ...overrides,
   };
@@ -72,18 +73,17 @@ function makeDeps(overrides?: Partial<BriefingDeps>): BriefingDeps {
 // --- Tests ---
 
 describe("runMorningBriefing", () => {
-  test("gathers the remaining data sources and sends to Telegram", async () => {
+  test("gathers the remaining data sources and returns the briefing", async () => {
     const deps = makeDeps();
-    const result = await runMorningBriefing({ mode: "telegram", deps });
+    const result = await runMorningBriefing({ mode: "voice", deps });
 
     expect(result.success).toBe(true);
-    expect(result.channel).toBe("telegram");
+    expect(result.channel).toBe("voice");
     expect(result.briefing).toBeDefined();
     expect(result.briefing).not.toHaveProperty("healthSummary");
     expect(result.briefing!.calendarOverview.eventCount).toBe(1);
     expect(result.briefing!.emailTriage).not.toBeNull();
 
-    expect(deps.sendTelegram).toHaveBeenCalledTimes(1);
     expect(deps.reportRun).toHaveBeenCalledTimes(1);
   });
 
@@ -94,11 +94,10 @@ describe("runMorningBriefing", () => {
       ),
     });
 
-    const result = await runMorningBriefing({ mode: "telegram", deps });
+    const result = await runMorningBriefing({ mode: "voice", deps });
 
     expect(result.success).toBe(true);
     expect(result.briefing!.calendarOverview.eventCount).toBe(0);
-    expect(deps.sendTelegram).toHaveBeenCalledTimes(1);
   });
 
   test("continues when email fails", async () => {
@@ -106,11 +105,10 @@ describe("runMorningBriefing", () => {
       getEmails: mock(() => Promise.reject(new Error("Email DB down"))),
     });
 
-    const result = await runMorningBriefing({ mode: "telegram", deps });
+    const result = await runMorningBriefing({ mode: "voice", deps });
 
     expect(result.success).toBe(true);
     expect(result.briefing!.emailTriage).toBeNull();
-    expect(deps.sendTelegram).toHaveBeenCalledTimes(1);
   });
 
   test("returns voice output when mode is voice", async () => {
@@ -121,20 +119,30 @@ describe("runMorningBriefing", () => {
     expect(result.channel).toBe("voice");
     expect(result.voiceText).toBeDefined();
     expect(result.voiceText!.length).toBeGreaterThan(0);
-    // Voice mode should NOT send Telegram
-    expect(deps.sendTelegram).not.toHaveBeenCalled();
     expect(deps.reportRun).toHaveBeenCalledTimes(1);
   });
 
-  test("reports failure when Telegram send fails", async () => {
-    const deps = makeDeps({
-      sendTelegram: mock(() => Promise.resolve(false)),
-    });
+  test("rejects an unsupported mode before fetching any data", async () => {
+    const deps = makeDeps();
+    await expect(runMorningBriefing({ mode: "background" as "voice", deps }))
+      .rejects.toThrow("explicit voice mode");
+    expect(deps.getCalendarEvents).not.toHaveBeenCalled();
+    expect(deps.getEmails).not.toHaveBeenCalled();
+    expect(deps.reportRun).not.toHaveBeenCalled();
+  });
 
-    const result = await runMorningBriefing({ mode: "telegram", deps });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("send");
+  test("CLI requires an explicit voice request", async () => {
+    const scratchHome = mkdtempSync(join(import.meta.dir, "cli-home-"));
+    try {
+      const proc = Bun.spawn([process.execPath, join(import.meta.dir, "../morning-briefing-cli.ts")], {
+        stdout: "pipe", stderr: "pipe",
+        env: { PATH: process.env.PATH, HOME: scratchHome, STATE_BACKEND: "file" },
+      });
+      const stderr = await new Response(proc.stderr).text();
+      expect(await proc.exited).toBe(1);
+      expect(stderr).toContain("--voice");
+      expect(await new Response(proc.stdout).text()).not.toContain("Running morning briefing");
+    } finally { rmSync(scratchHome, { recursive: true, force: true }); }
   });
 
   test("all data fetches run concurrently", async () => {
@@ -160,7 +168,7 @@ describe("runMorningBriefing", () => {
       }),
     });
 
-    await runMorningBriefing({ mode: "telegram", deps });
+    await runMorningBriefing({ mode: "voice", deps });
 
     // All starts should come before any ends (concurrent)
     // With Promise.all, microtask scheduling means all start before any end

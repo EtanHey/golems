@@ -2,7 +2,7 @@
  * Morning Briefing — Synthesis and formatting for the proactive coach.
  *
  * Pure functions that take gathered data and produce structured briefings.
- * Supports dual output: Telegram (markdown) and Voice (conversational).
+ * Supports dual output: Text (markdown) and Voice (conversational).
  */
 
 import type { CalendarEvent } from "./calendar-client";
@@ -111,9 +111,9 @@ export function synthesizeBriefing(data: MorningBriefingData): MorningBriefing {
 }
 
 /**
- * Format a morning briefing for Telegram (markdown).
+ * Format a morning briefing as text (markdown).
  */
-export function formatForTelegram(briefing: MorningBriefing): string {
+export function formatBriefingText(briefing: MorningBriefing): string {
   const lines: string[] = [];
   const sep = "\n━━━━━━━━━━━━━━━━━━━━━\n";
 

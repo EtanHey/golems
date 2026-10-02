@@ -8,7 +8,7 @@ CoachGolem — daily schedule planning with Huberman protocols, Google Calendar,
 - Reads status from all other golems for priority sorting
 - Integrates with Google Calendar for time-aware planning
 - Generates personalized daily plans with LLM coaching (Gemini Flash-Lite)
-- Sends morning nudges and evening wrap-ups via Telegram
+- Returns morning plans and supports explicitly requested voice briefings
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ bun scripts/cal.ts now        # Current time + next event
 /plan (basic):
   1. Read golem statuses + Google Calendar
   2. Generate priority-sorted daily plan
-  3. Format for Telegram
+  3. Return formatted text
 ```
 
 ## Design Principles
@@ -51,14 +51,13 @@ packages/coach/
 │   ├── calendar-client.ts     # Google Calendar API
 │   ├── schedule-engine.ts     # Merge calendar + golem states → DailyPlan
 │   ├── status-aggregator.ts   # Read getStatus() from all golems
-│   ├── nudger.ts              # Morning nudge + evening wrap-up
 │   └── tracker.ts             # Compliance tracking + weekly summary
 └── CLAUDE.md
 ```
 
 ## Dependencies
 
-- `@golems/shared` — Supabase, Telegram, state store, LLM
+- `@golems/shared` — Supabase, state store, LLM
 - `@golems/recruiter` — `getStatus()` for outreach counts
 - `@golems/teller` — `getStatus()` for financial summary
 - `googleapis` — Google Calendar API v3

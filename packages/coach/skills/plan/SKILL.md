@@ -19,4 +19,4 @@ Generate a prioritized daily plan from golem states + calendar.
    - Financial alerts (from TellerGolem)
    - Calendar meetings and deadlines
 4. Generate daily schedule with time blocks
-5. Send to Telegram as morning nudge
+5. Return the daily-plan summary

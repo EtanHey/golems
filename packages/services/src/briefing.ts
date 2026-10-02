@@ -25,7 +25,7 @@ import {
   getTodayEvents,
   getEcosystemStatus,
   generateDailyPlan,
-  formatPlanForTelegram,
+  formatPlanText,
 } from "@golems/coach/index";
 
 
@@ -231,7 +231,7 @@ async function sendBriefing() {
       getEcosystemStatus(),
     ]);
     const plan = generateDailyPlan(events, statuses);
-    const planMsg = formatPlanForTelegram(plan);
+    const planMsg = formatPlanText(plan);
     if (planMsg) {
       msg += "🗓 *Daily Plan*\n" + planMsg + "\n" + separator;
     }
