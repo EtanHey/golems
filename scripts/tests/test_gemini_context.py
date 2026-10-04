@@ -50,6 +50,7 @@ def test_agents_only_renders_dependency_without_touching_repo_context(tmp_path):
     gatherer = home / ".gemini/antigravity-cli/agents/gatherer.md"
     worker_dir = home / ".gemini/antigravity-cli/agents/brain-worker"
     assert f"agents: [{json.dumps(str(worker_dir))}]" in gatherer.read_text()
+    assert "inheritMcp: false" in gatherer.read_text().split("---", 2)[1]
     assert (worker_dir / "agent.md").exists()
     assert run(home, registry, "--apply", "--agents-only").returncode == 0
     assert not list(home.glob(".golems/backups/gemini-md/*/*"))

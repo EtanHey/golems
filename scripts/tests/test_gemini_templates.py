@@ -8,7 +8,7 @@ PERSONA_BOOT = re.compile(r"\b(?:persona|boot|brain_recall|initialization|ceremo
 
 def test_templates_define_gatherer_without_model_tier():
     agent = (ROOT / "templates/gemini/agents/gatherer.md").read_text()
-    for field in ("name: gatherer", "mainAgent: true", "subagent: false", "inheritMcp: true"):
+    for field in ("name: gatherer", "mainAgent: true", "subagent: false", "inheritMcp: false"):
         assert field in agent
     for template in (agent, (ROOT / "templates/gemini/GEMINI.md").read_text()):
         assert "/agent-routing" in template
@@ -40,7 +40,19 @@ def test_gatherer_tools_allow_scoped_writes_and_declared_brain_worker_without_sh
                           "list_dir", "grep_search", "find_by_name", "invoke_subagent"}
     assert len(tools) == 10
     assert "call_mcp_tool" not in tools
-    assert "inheritMcp: true" in frontmatter
+    assert "inheritMcp: false" in frontmatter
     assert "run_command" not in tools
     assert "agents: [brain-worker]" in frontmatter
     assert not re.search(r"^excludeDefaultComponents:", frontmatter, re.M)
+
+
+def test_gatherer_has_no_explicit_mcp_servers():
+    frontmatter = (ROOT / "templates/gemini/agents/gatherer.md").read_text().split("---", 2)[1]
+    assert not re.search(r"^\s*mcpServers\s*:", frontmatter, re.M)
+
+
+def test_gatherer_has_no_command_or_terminal_tools():
+    frontmatter = (ROOT / "templates/gemini/agents/gatherer.md").read_text().split("---", 2)[1]
+    tools = re.findall(r"^  - (\w+)$", frontmatter, re.M)
+    assert "run_command" not in tools
+    assert not any(tool.endswith("_terminal") for tool in tools)
