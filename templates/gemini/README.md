@@ -13,6 +13,18 @@ launch flow. Model defaults remain owned by the launcher's routing policy.
 
 Gatherers delegate independent BrainLayer questions and claim checks to the
 `brain-worker` subagent with `invoke_subagent`, at most four concurrently.
+The parent also enables the native `manage_subagents` and `wait` components:
+check its children, wait for their terminal results, then return the combined
+receipt. These are in-session lifecycle tools; they do not grant MCP or panes.
+An "awaiting" response without returned evidence is incomplete fan-out.
+
+Live probes on agy 1.2.16 verified both components load, native waiting returns
+a real BrainLayer result, and the parent retains zero MCP. The prior 1.2.14
+stall was not consistently reproduced on 1.2.16; this is completion-path
+hardening, not proof of an agy engine fix. Repeat the no-tool, fan-out and
+recording-fake-server deny canaries on every CLI upgrade. Do not enable MCP
+inheritance or add parent MCP servers to work around missing worker results.
+
 The subagent uses the Flash tier for `gemini.gather.text` in model-roles and
 returns compact, expanded source citations. It has no shell or file-write tools.
 MCP inheritance and customization inheritance are disabled; its explicit
@@ -36,6 +48,16 @@ uses `search_web` and `read_url_content`; BrainLayer questions go only through
 the read-only `brain-worker`. It retains its scoped receipt tools.
 Only the declared brain-worker may be invoked;
 hidden built-in agents must fail the no-tool delegation probes before release.
+
+Video-qa: shell + write, no MCP. Use `--agent video-qa` for /qa-video work that
+needs local media commands, background output/status checks, and denser sampling
+around unclear moments. Unlike the research gatherer, it can run its own shell
+and write evidence under the brief's artifact directory; it cannot use workspace
+MCP servers or cmux panes and has no subagent delegation.
+On agy 1.2.14, `run_command` is the registered shell component; command-status
+and input helpers are not separately registrable. Keep background job logs,
+PID and exit-status files in the artifact directory and poll them with shell
+commands or `view_file`.
 
 On agy 1.2.14, `mcpServers` in agent frontmatter must be a **list**, unlike the
 mapping in `mcp_config.json`. A mapping silently removes the custom agent from
@@ -64,10 +86,10 @@ resolved registry. It never generates a registry or resolves secrets.
 
 The default prints a table without writing. `--check` also fails for ritual
 patterns in global or repo context. `--apply` installs context and the global
-gatherer and brain-worker. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
+gatherer, brain-worker and video-qa. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
 only verified; a global ritual blocks apply.
 
-To install only the agent pair after merge, use
+To install only these agents after merge, use
 `bash scripts/install-gemini-context.sh --host mbp --agents-only --apply`.
 This skips repo GEMINI.md writes and retains the same backup/rollback contract.
 
