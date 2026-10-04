@@ -205,6 +205,8 @@ try:
             _spec.loader.exec_module(_package)
             _policy = _impl_import(_IMPL_NAME + ".policy")
             _runtime = _impl_import(_IMPL_NAME + ".runtime")
+            _worktree_args = _impl_import(_IMPL_NAME + ".worktree_args")
+            _worktrees = _impl_import(_IMPL_NAME + ".worktrees")
             _bypass = _impl_import(_IMPL_NAME + ".bypass")
             _tool_targets = _impl_import(_IMPL_NAME + ".tool_targets")
             _resolution = _impl_import(_IMPL_NAME + ".resolution")
@@ -221,6 +223,8 @@ try:
             for _module, _leaf in (
                 (_package, "__init__.py"), (_policy, "policy.py"),
                 (_runtime, "runtime.py"),
+                (_worktree_args, "worktree_args.py"),
+                (_worktrees, "worktrees.py"),
                 (_bypass, "bypass.py"),
                 (_tool_targets, "tool_targets.py"),
                 (_resolution, "resolution.py"),
@@ -251,6 +255,10 @@ try:
             )
             _policy._temp_prefixes = _runtime.callbacks.temp_prefixes
             _policy.is_harness_scratchpad = is_harness_scratchpad
+            for _name in ('_worktree_add_args', '_WORKTREE_VALUE_FLAGS'):
+                globals()[_name] = getattr(_worktree_args, _name)
+            for _name in ('find_worktree_convention_issues',):
+                globals()[_name] = getattr(_worktrees, _name)
             for _name in ('_hatched_segments', 'escape_hatch_covers', 'log_bypass', 'DEFAULT_LEDGER', 'HATCH_TMP', 'HATCH_WT'):
                 globals()[_name] = getattr(_bypass, _name)
             for _name in ('canonical_tool', 'find_temp_targets', '_apply_patch_temp_targets', 'GUARDED_FILE_TOOLS', 'APPLY_PATCH_TOOL', 'TOOL_ALIASES', '_APPLY_PATCH_TARGET_RE'):
@@ -281,10 +289,6 @@ try:
             sys.dont_write_bytecode = _previous_bytecode
 except BaseException:
     _deny_policy_import_failure()
-
-
-# git worktree add flags that consume a value.
-_WORKTREE_VALUE_FLAGS = {"-b", "-B", "--reason"}
 
 
 def allow():
@@ -396,63 +400,6 @@ def deny(reason):
         sys.stdout,
     )
     sys.exit(2)
-
-
-# ── Rule 2: worktree location convention ─────────────────────────────────────
-
-
-def _worktree_add_args(tokens, cmd_pos, seg_of, scope_of):
-    """Return [(raw_path_token, segment, scope, index)] for each creation."""
-    found = []
-    for idx in range(len(tokens) - 1):
-        if tokens[idx] == "worktree" and tokens[idx + 1] == "add":
-            # Require a git invocation earlier in the same statement segment —
-            # match by basename so `/usr/bin/git worktree add` is covered too
-            # (Bugbot f8d22aeb).
-            seg_start = idx
-            while seg_start > 0 and not _is_separator(tokens, seg_start - 1):
-                seg_start -= 1
-            if not any(
-                (tok == "git" or tok.endswith("/git"))
-                and cmd_pos[j]
-                and scope_of[j] == scope_of[idx]
-                for j, tok in enumerate(tokens[seg_start:idx], start=seg_start)
-            ):
-                continue
-            skip_next = False
-            j = idx + 2
-            while j < len(tokens):
-                arg = tokens[j]
-                if scope_of[j] != scope_of[idx]:
-                    break
-                if skip_next:
-                    skip_next = False
-                    if _is_command_sub_open(arg):
-                        j = _after_substitution_word(
-                            tokens, scope_of, j, scope_of[idx]
-                        )
-                        continue
-                    j += 1
-                    continue
-                if arg in (";", "|", "&", ">", ">>"):
-                    break
-                if arg in _WORKTREE_VALUE_FLAGS:
-                    skip_next = True
-                    j += 1
-                    continue
-                if arg.startswith("-"):
-                    j += 1
-                    if _is_command_sub_open(arg):
-                        # `--reason=$(...)` carries its value in a child
-                        # substitution scope. Skip that scope, then resume in
-                        # the parent to find the actual worktree path.
-                        j = _after_substitution_word(
-                            tokens, scope_of, j - 1, scope_of[idx]
-                        )
-                    continue
-                found.append((arg, seg_of[idx], scope_of[idx], j))
-                break  # first non-flag arg is the worktree path
-    return found
 
 
 def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
@@ -921,227 +868,6 @@ def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
     return hits
 
 
-def find_worktree_convention_issues(
-    tool_name, tool_input, _budget=None, _initial_cwd=None
-):
-    """Return (deny_hits, unresolved_hits) for `git worktree add` targets.
-
-    deny_hits: [(verb, resolved_path, segment, raw, anchor)] — resolved and
-    off-convention. unresolved_hits: [(raw, segment, why)] — unresolvable, so the
-    call is refused WITH its reason rather than blocked blind."""
-    if tool_name != "Bash":
-        return [], []
-    command = tool_input.get("command", "")
-    if not isinstance(command, str):
-        raise ValueError("Bash command is not a string")
-    if _budget is None:
-        _budget = [max(65536, len(command) * 32)]
-        _initial_cwd = os.getcwd()
-    _budget[0] -= len(command)
-    if _budget[0] < 0:
-        raise ValueError("executable-substitution analysis budget exhausted")
-    tokens, cmd_pos, seg_of, scope_of = _parse_bash(command)
-    exposed_scope_keys = _direct_exposed_scope_keys(command, scope_of)
-    adds = _worktree_add_args(tokens, cmd_pos, seg_of, scope_of)
-    deny_hits = []
-    unresolved_hits = []
-    for raw, seg, scope, target_index in adds:
-        variables = _static_shell_variable_state_before(
-            tokens, cmd_pos, seg_of, scope_of, seg, target_index
-        )[0]
-        hit_seg = seg
-        if len(scope) == 1 and scope[0] in exposed_scope_keys:
-            outer_seg, sub_index = exposed_scope_keys[scope[0]]
-            hit_seg = _nested_segment(
-                outer_seg, sub_index, max(0, seg - outer_seg)
-            )
-        try:
-            anchor = _worktree_anchor(
-                tokens,
-                cmd_pos,
-                seg_of,
-                scope_of,
-                seg,
-                scope,
-                _initial_cwd,
-                variables,
-                raw,
-                target_index,
-            )
-        except Unresolvable as exc:
-            if _literal_prefix_class(
-                raw,
-                None,
-                variables=variables,
-                tokens=tokens,
-                scope_of=scope_of,
-                target_index=target_index,
-            ) == "repo":
-                continue
-            unresolved_hits.append((raw, hit_seg, str(exc)))
-            continue
-        except Exception as exc:  # noqa: BLE001 — degrade to a refusal, per #676
-            if _literal_prefix_class(
-                raw,
-                None,
-                variables=variables,
-                tokens=tokens,
-                scope_of=scope_of,
-                target_index=target_index,
-            ) == "repo":
-                continue
-            unresolved_hits.append((raw, hit_seg, f"{exc.__class__.__name__}: {exc}"))
-            continue
-        try:
-            resolved_values = resolve_targets(
-                raw,
-                anchor,
-                variables,
-                tokens=tokens,
-                cmd_pos=cmd_pos,
-                seg_of=seg_of,
-                scope_of=scope_of,
-                target_index=target_index,
-            )
-        except Unresolvable as exc:
-            if _literal_prefix_class(
-                raw,
-                anchor,
-                variables=variables,
-                tokens=tokens,
-                scope_of=scope_of,
-                target_index=target_index,
-            ) == "repo":
-                continue
-            unresolved_hits.append((raw, hit_seg, str(exc)))
-            continue
-        except Exception as exc:  # noqa: BLE001 — degrade to a refusal, per #676
-            if _literal_prefix_class(
-                raw,
-                anchor,
-                variables=variables,
-                tokens=tokens,
-                scope_of=scope_of,
-                target_index=target_index,
-            ) == "repo":
-                continue
-            unresolved_hits.append((raw, hit_seg, f"{exc.__class__.__name__}: {exc}"))
-            continue
-        resolved = next(
-            (candidate for candidate in resolved_values if not on_convention(candidate)),
-            None,
-        )
-        if resolved is not None:
-            deny_hits.append(("git worktree add", resolved, hit_seg, raw, anchor))
-    for body, outer_seg, sub_index, exposed in _executable_subcommands(
-        _strip_heredoc_bodies(command)
-    ):
-        try:
-            child_cwd = _shell_anchor_before(
-                tokens,
-                cmd_pos,
-                seg_of,
-                scope_of,
-                outer_seg,
-                (),
-                _initial_cwd,
-            )
-        except Unresolvable:
-            child_cwd = None
-        child_denies, child_asks = find_worktree_convention_issues(
-            tool_name, {"command": body}, _budget, child_cwd
-        )
-        nested_denies = [
-            (
-                verb,
-                path,
-                _nested_segment(outer_seg, sub_index, child_seg, exposed),
-                raw,
-                anchor,
-            )
-            for verb, path, child_seg, raw, anchor in child_denies
-        ]
-        nested_unresolved = [
-            (
-                raw,
-                _nested_segment(outer_seg, sub_index, child_seg, exposed),
-                why,
-            )
-            for raw, child_seg, why in child_asks
-        ]
-        if exposed:
-            for i, (verb, path, nested_seg, raw, anchor) in enumerate(
-                nested_denies
-            ):
-                match = next(
-                    (
-                        j
-                        for j, existing in enumerate(deny_hits)
-                        if existing[0] == verb
-                        and existing[2] == outer_seg
-                        and existing[3] == raw
-                    ),
-                    None,
-                )
-                if match is not None:
-                    existing = deny_hits.pop(match)
-                    nested_denies[i] = (
-                        verb,
-                        existing[1],
-                        nested_seg,
-                        raw,
-                        existing[4],
-                    )
-            for raw, _nested_seg, why in nested_unresolved:
-                match = next(
-                    (
-                        j
-                        for j, existing in enumerate(unresolved_hits)
-                        if existing[0] == raw and existing[1] == outer_seg
-                    ),
-                    None,
-                )
-                if match is not None:
-                    unresolved_hits.pop(match)
-        deny_hits.extend(nested_denies)
-        unresolved_hits.extend(nested_unresolved)
-    for body, outer_seg, alias_index in _invoked_alias_bodies(command):
-        try:
-            alias_cwd = _shell_anchor_before(
-                tokens,
-                cmd_pos,
-                seg_of,
-                scope_of,
-                outer_seg,
-                (),
-                _initial_cwd,
-            )
-        except Unresolvable:
-            alias_cwd = None
-        child_denies, child_asks = find_worktree_convention_issues(
-            tool_name, {"command": body}, _budget, alias_cwd
-        )
-        deny_hits.extend(
-            (
-                verb,
-                path,
-                _nested_alias_segment(outer_seg, alias_index, child_seg),
-                raw,
-                anchor,
-            )
-            for verb, path, child_seg, raw, anchor in child_denies
-        )
-        unresolved_hits.extend(
-            (
-                raw,
-                _nested_alias_segment(outer_seg, alias_index, child_seg),
-                why,
-            )
-            for raw, child_seg, why in child_asks
-        )
-    return deny_hits, unresolved_hits
-
-
 def _main_under_deadline():
     raw_input = ""
     try:
@@ -1405,6 +1131,24 @@ try:
         _words._QUOTED_LBRACE = _QUOTED_LBRACE
         _words._QUOTED_RBRACE = _QUOTED_RBRACE
         _words.re = re
+        _worktree_args._after_substitution_word = _after_substitution_word
+        _worktree_args._is_command_sub_open = _is_command_sub_open
+        _worktree_args._is_separator = _is_separator
+        _worktrees.Unresolvable = Unresolvable
+        _worktrees._direct_exposed_scope_keys = _direct_exposed_scope_keys
+        _worktrees._executable_subcommands = _executable_subcommands
+        _worktrees._invoked_alias_bodies = _invoked_alias_bodies
+        _worktrees._literal_prefix_class = _literal_prefix_class
+        _worktrees._nested_alias_segment = _nested_alias_segment
+        _worktrees._nested_segment = _nested_segment
+        _worktrees._parse_bash = _parse_bash
+        _worktrees._shell_anchor_before = _shell_anchor_before
+        _worktrees._static_shell_variable_state_before = _static_shell_variable_state_before
+        _worktrees._strip_heredoc_bodies = _strip_heredoc_bodies
+        _worktrees._worktree_add_args = _worktree_add_args
+        _worktrees._worktree_anchor = _worktree_anchor
+        _worktrees.on_convention = on_convention
+        _worktrees.resolve_targets = resolve_targets
 except BaseException:
     _deny_policy_import_failure()
 
