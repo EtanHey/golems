@@ -43,15 +43,17 @@ test('a resumed process stage still validates delivery and fails before archive'
   assert.equal(await readFile(calls, 'utf8'), 'delivery\n');
 });
 
-test('post-stream re-enters notified retention after the original video was offloaded', async t => {
-  const { run, runDir, calls } = await fixture(t);
-  await rm(join(runDir, 'video.mp4'));
-  await writeFile(join(runDir, '.stalker-completion.json'), JSON.stringify({
-    version: 3, runName: 'examplechannel-2026-09-08-030512', status: 'notified',
-  }));
-  const result = run();
-  assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.equal(await readFile(calls, 'utf8'), 'delivery\n');
+test('post-stream re-enters local and legacy receipts after original video offload', async t => {
+  for (const [version, status] of [[3, 'notified'], [3, 'complete'], [4, 'published'], [4, 'complete']]) await t.test(`${version}/${status}`, async t => {
+    const {run, runDir, calls} = await fixture(t);
+    await rm(join(runDir, 'video.mp4'));
+    await writeFile(join(runDir, '.stalker-completion.json'), JSON.stringify({
+      version, runName: 'examplechannel-2026-09-08-030512', status,
+    }));
+    const result = run();
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(await readFile(calls, 'utf8'), 'delivery\n');
+  });
 });
 
 test('overnight monitor rejects the incident shape instead of announcing gems as complete', async t => {

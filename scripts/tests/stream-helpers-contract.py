@@ -64,7 +64,6 @@ stalker_merge_score_results missing gems.md; echo merge:$?
 stalker_gems_complete missing; echo complete:$?
 stalker_stage_status_summary missing
 stalker_resolve_command absent-fixture-command; echo resolve:$?
-STALKER_TELEGRAM_NOTIFY=0 notify_stalker_telegram title body
 STREAM_WHATSAPP_NOTIFY=0 notify_stalker_whatsapp body
 notify_stalker_whatsapp body
 ''',
@@ -83,14 +82,10 @@ printf 'Scored: fixture\\n' >> gems.md
 stalker_gems_complete gems.md; echo complete:$?
 ''',
     "notifications-success": '''
-notify_stalker_telegram 'Title "quoted"' $'Body\\nline'; echo telegram:$?
-STALKER_TELEGRAM_CMD="$BIN/telegram-command" notify_stalker_telegram title body high custom
 STREAM_WHATSAPP_RECIPIENT=fixture notify_stalker_whatsapp $'Message\\nline'; echo whatsapp:$?
 ''',
     "notifications-refusal": '''
 export FIXTURE_FAIL=99
-STALKER_TELEGRAM_CMD="$BIN/telegram-command" notify_stalker_telegram title body high custom
-echo telegram:$?
 STREAM_WHATSAPP_RECIPIENT=fixture notify_stalker_whatsapp body; echo whatsapp:$?
 ''',
     "transcription-retry": '''
@@ -149,7 +144,6 @@ if name == "date":
     print("20260102T030405Z" if args[-1] == "+%Y%m%dT%H%M%SZ" else "2026-01-02T03:04:05Z")
     sys.exit(0)
 record = {"command": name, "argv": args}
-if name == "telegram-command": record["stdin"] = sys.stdin.read()
 with (root / "commands.jsonl").open("a") as f: f.write(json.dumps(record) + "\\n")
 if name == "sleep": sys.exit(0)
 counter = root / (name + ".count")
@@ -174,14 +168,13 @@ def capture(root, case):
         data, bin_dir = sandbox / "data", sandbox / "bin"
         data.mkdir()
         bin_dir.mkdir()
-        for command in ("date", "curl", "whisper-cli", "sleep", "ffmpeg", "ffprobe", "telegram-command"):
+        for command in ("date", "curl", "whisper-cli", "sleep", "ffmpeg", "ffprobe"):
             path = bin_dir / command
             path.write_text(f"#!{sys.executable}\n" + STUB)
             path.chmod(0o755)
         env = {"PATH": str(bin_dir) + os.pathsep + os.environ["PATH"],
                "HOME": str(sandbox / "home"), "LC_ALL": "C", "TZ": "UTC",
                "ENTRY": str(root / ENTRY), "DATA": str(data), "BIN": str(bin_dir),
-               "STALKER_TELEGRAM_QUEUE_DIR": str(data / "telegram-queue"),
                "STALKER_WHATSAPP_QUEUE_DIR": str(data / "whatsapp-queue"),
                "STALKER_WHATSAPP_ENDPOINTS": "http://fixture.invalid/one http://fixture.invalid/two",
                "STALKER_RETRY_SLEEP_BASE": "0"}
