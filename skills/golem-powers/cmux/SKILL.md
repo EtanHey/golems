@@ -166,7 +166,7 @@ These cmux patterns are the reference implementation for golem-terminal's UDS AP
 | cmux | golem-terminal |
 |------|---------------|
 | `cmux split` | `orchestrate.py split <slot>` |
-| `cmux notify` | HTTP POST localhost:3847/notify |
+| `cmux notify` | Native cmux sidebar notification ring |
 | `cmux sidebar set` | UDS `status` command |
 | `cmux send` | UDS `send_input` command |
 | `cmux open-browser` | Built into sidebar pane |

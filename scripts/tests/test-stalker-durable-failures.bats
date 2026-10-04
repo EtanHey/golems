@@ -44,7 +44,7 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     split_case_010
 }
 
-@test "dead chat lurker records retryable failure and sends one failure alert" {
+@test "dead chat lurker records retryable failure without sending" {
     split_case_011
 }
 
@@ -108,11 +108,11 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     split_case_026
 }
 
-@test "vacuous morning digest still delivers its failure alert" {
+@test "vacuous morning digest prints its failure without sending" {
     split_case_027
 }
 
-@test "vacuous morning digest bounds twenty dropped-run evidence blocks before notify" {
+@test "vacuous morning digest bounds twenty dropped-run evidence blocks in its text" {
     split_case_028
 }
 
@@ -120,7 +120,7 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     split_case_029
 }
 
-@test "orphan-tail digest reserves dropped runs before the notify-server slice" {
+@test "orphan-tail digest reserves dropped runs in bounded text" {
     split_case_030
 }
 
@@ -158,4 +158,34 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
 
 @test "post-stream invokes completion for a non-empty eligible run" {
     split_case_039
+}
+
+@test "detached post-processing runs under nounset with a numeric recording epoch" {
+    python3 - "$STALKER_DIR/stream-watcher.sh" "$TMPDIR_/watcher-function.sh" <<'PYTEST'
+import pathlib, re, sys
+source = pathlib.Path(sys.argv[1]).read_text()
+function = re.search(r"^start_detached_post_processing\(\) \{\n.*?^\}", source, re.M | re.S).group()
+default = re.search(r"^RECORDING_STARTED_EPOCH=0$", source, re.M)
+pathlib.Path(sys.argv[2]).write_text((default.group() + "\n" if default else "") + function + "\n")
+PYTEST
+    mkdir -p "$TMPDIR_/stub" "$TMPDIR_/run"
+    mkfifo "$TMPDIR_/receipt"
+    cat > "$TMPDIR_/stub/post-stream.sh" <<'SH'
+#!/bin/bash
+printf 'RAN %s\n' "$5" > "$POST_RECEIPT"
+SH
+    export POST_RECEIPT="$TMPDIR_/receipt"
+    run bash -uc '
+        source "$1"
+        STREAM_DIR="$2/run" VIDEO_FILE=video CHAT_FILE=chat CHANNEL=synthetic
+        SCRIPTS_DIR="$2/stub"
+        log() { :; }
+        exec 3<> "$POST_RECEIPT"
+        start_detached_post_processing
+        read -r -t 5 receipt <&3
+        [[ "$receipt" =~ ^RAN\ [0-9]+$ ]] || exit 1
+        printf "%s\n" "$receipt"
+    ' bash "$TMPDIR_/watcher-function.sh" "$TMPDIR_"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ RAN\ [0-9]+ ]]
 }

@@ -6,7 +6,6 @@ import { fetchGolemStatuses, type StatusProbe } from "./data.js";
 
 function probe(cloudWorker: boolean): StatusProbe {
   return {
-    checkPort: async () => false,
     checkCloudWorker: async () => cloudWorker,
     countClaudeSessions: async () => 0,
   };
@@ -28,6 +27,15 @@ describe("golem status rows", () => {
     expect(row(down, "EmailGolem").status).toBe("stopped");
     expect(row(down, "EmailGolem").detail).toBe("cloud worker not running");
     expect(down.some((item) => item.name === "JobGolem")).toBe(false);
+  });
+
+  it("keeps Recruiter status unknown without probing a retired port", async () => {
+    for (const cloudWorker of [true, false]) {
+      const fixture = { ...probe(cloudWorker), checkPort: async () => { throw new Error("port probe must be absent"); } };
+      const recruiter = row(await fetchGolemStatuses(fixture), "RecruiterGolem");
+      expect(recruiter.status).toBe("unknown");
+      expect(recruiter.detail).toBe("library; status unavailable");
+    }
   });
 
   it("no longer looks for the nonexistent LaunchAgents", () => {

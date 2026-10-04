@@ -50,7 +50,7 @@
 
 ## Demo 5: Full Golems Ecosystem (Longer video, 2-3 min)
 
-**What to show:** BrainLayer + VoiceLayer + Telegram notifications working together
+**What to show:** BrainLayer + VoiceLayer working together
 **Script:**
 1. Start Claude Code session
 2. Agent searches memory: "What was I working on yesterday?" → brainlayer_current_context
@@ -58,9 +58,8 @@
 4. You say: "Let's continue that work"
 5. Agent recalls file timeline for auth.ts
 6. After making changes: agent consults "About to commit. Want to review?"
-7. Telegram notification arrives on phone
 
-**Why it works:** Shows the "multiplayer" experience — memory + voice + notifications as a cohesive system.
+**Why it works:** Shows the "multiplayer" experience — memory + voice as a cohesive system.
 
 ## Demo 6: BrainLayer CLI Tour (VHS, 30s GIF)
 

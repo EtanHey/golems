@@ -93,7 +93,6 @@ function validatedSummary(runDir, result) {
 }
 
 function legacyBypass(options) {
-  if (options.notify === false) return stageFailure(8, "notifications cannot be skipped");
   if (options.sync === false) return stageFailure(7, "hub sync cannot be skipped");
   if (options.verifyLive === false) return stageFailure(7, "live verification cannot be skipped");
   return null;
@@ -115,10 +114,7 @@ export async function runMorningDigest(options = {}) {
   const repoRoot = resolve(options.repoRoot ?? DEFAULT_REPO_ROOT);
   const stalkerRoot = join(repoRoot, "docs.local/stalker-golem");
   const receiptPath = join(stalkerRoot, "LAST-RUN.json");
-  const notify = options.notifyImpl
-    ?? (await import("./stalker-complete-run.mjs")).notifyDelivery;
   let runName;
-  let runFailureAlreadyAlerted = false;
 
   try {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) throw stageFailure(6, "date must be YYYY-MM-DD");
@@ -139,21 +135,14 @@ export async function runMorningDigest(options = {}) {
     const runs = [];
     for (const runDir of runDirs) {
       runName = basename(runDir);
-      let result;
-      try {
-        result = await complete(runDir, {
-          repoRoot,
-          orchestratorRoot: options.orchestratorRoot,
-          hubOrigin: options.hubOrigin,
-          fetchImpl: options.fetchImpl,
-          generateImpl: options.generateImpl,
-          syncImpl: options.syncImpl,
-          notifyImpl: options.notifyImpl,
-        });
-      } catch (error) {
-        runFailureAlreadyAlerted = true;
-        throw error;
-      }
+      const result = await complete(runDir, {
+        repoRoot,
+        orchestratorRoot: options.orchestratorRoot,
+        hubOrigin: options.hubOrigin,
+        fetchImpl: options.fetchImpl,
+        generateImpl: options.generateImpl,
+        syncImpl: options.syncImpl,
+      });
       runs.push(validatedSummary(runDir, result));
     }
     const receipt = { ts: new Date().toISOString(), status: "complete", date, runs };
@@ -162,15 +151,6 @@ export async function runMorningDigest(options = {}) {
   } catch (error) {
     const receipt = failureReceipt(date, error, runName);
     await atomicWrite(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`);
-    if (!runFailureAlreadyAlerted) {
-      await notify(
-        `Stalker FAILED at stage ${receipt.stage}`,
-        `${date ?? "invalid date"}: ${receipt.reason}`.slice(0, 900),
-        "high",
-      ).catch((notifyError) => {
-        process.stderr.write(`failure notification also FAILED: ${notifyError.message}\n`);
-      });
-    }
     throw error;
   }
 }
@@ -185,9 +165,9 @@ function optionValue(args, name, fallback) {
 }
 
 async function main(argv) {
+  if (argv.includes("--skip-notify")) throw stageFailure(6, "--skip-notify is retired");
   const result = await runMorningDigest({
     date: optionValue(argv, "--date", currentIdtDate()),
-    notify: !argv.includes("--skip-notify"),
     sync: !argv.includes("--skip-sync"),
     verifyLive: !argv.includes("--skip-live-verify"),
     repoRoot: optionValue(argv, "--repo-root", DEFAULT_REPO_ROOT),
