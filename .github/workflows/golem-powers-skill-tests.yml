@@ -107,6 +107,9 @@ jobs:
                    ./skills/golem-powers/never-fabricate/scripts/__tests__ \
                    ./skills/golem-powers/drive-filing/scripts
 
+      - name: Check canon routing SSOT
+        run: node scripts/ci/canon-drift-lint.mjs --check
+
       - name: node suites
         run: |
           node --test scripts/tests/bats-coverage.test.mjs \
