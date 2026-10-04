@@ -149,11 +149,6 @@ record_current_stream() {
 
     log "Recording from ${LIVE_PLATFORM}: $LIVE_URL"
     log "Video: $VIDEO_FILE"
-    notify_stalker_telegram \
-        "Stalker Stream Live" \
-        "${CHANNEL} LIVE on ${LIVE_PLATFORM} - recording to ${VIDEO_FILE} ($(date '+%Y-%m-%d %H:%M:%S %Z'))" \
-        "default" \
-        "stalker-golem" || true
 
     ytdlp_args=()
     while IFS= read -r arg; do
@@ -181,14 +176,7 @@ record_current_stream() {
     else
         VIDEO_SIZE=$(du -sh "$VIDEO_FILE" | cut -f1)
         CHAT_LINES=$(count_chat_lines "$CHAT_FILE")
-        FINISHED_EPOCH=$(date +%s)
-        DURATION=$(stalker_format_duration $((FINISHED_EPOCH - RECORDING_STARTED_EPOCH)))
         log "Captured: ${VIDEO_SIZE} video, ${CHAT_LINES} chat messages"
-        notify_stalker_telegram \
-            "Stalker Stream Ended" \
-            "${CHANNEL} stream ended after ${DURATION}. Recorded ${VIDEO_SIZE}, ${CHAT_LINES} chat msgs. Processing started." \
-            "default" \
-            "stalker-golem" || true
         start_detached_post_processing
     fi
 

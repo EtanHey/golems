@@ -117,7 +117,7 @@ tail -100 /tmp/golemszikaron-email-golem.log
 
 | Score | Category | Action | Examples |
 |-------|----------|--------|----------|
-| 10 | `interview`, `urgent` | Telegram alert NOW | Interview invite, payment failed |
+| 10 | `interview`, `urgent` | Stored as urgent for query tools | Interview invite, payment failed |
 | 7-9 | `job` | Morning briefing | Application status, recruiter message |
 | 5-6 | `subscription` | Track for monthly | Netflix receipt, renewal notice |
 | 3-4 | `other` | Log only | Job digests, rejections |
@@ -125,26 +125,14 @@ tail -100 /tmp/golemszikaron-email-golem.log
 
 ---
 
-## Notifications
+## Urgent triage
 
-Urgent emails (score 10) trigger immediate Telegram notifications.
-
-**Requires:** Telegram bot running on port 3847
-```bash
-cd ~/Gits/golems/packages/autonomous && bun run bot
-```
-
-Notification format:
-```
-📅 Urgent Email
-interview: Interview Scheduled: Senior SWE at Microsoft
-```
-
----
+Urgent emails (score 10) remain stored and available through email query tools.
+The triage loop does not send messages or mark them as notified.
 
 ## Morning Briefing Integration
 
-EmailGolem adds these sections to `/morning`:
+Services briefing reads these sections from EmailGolem:
 
 ### 24-Hour Email Digest
 ```
@@ -208,13 +196,6 @@ _3 job updates • 1 alert • 2 payments_
 - Check offline queue: `cat ~/.golems-zikaron/offline-queue.json`
 - Verify Supabase is accessible
 - Run manual sync: email-golem syncs on each startup
-
-### Notifications Not Working
-
-**No Telegram messages**
-- Check bot is running: `pgrep -fl telegram-bot`
-- Check port 3847: `curl http://localhost:3847/health`
-- Check logs for notification errors
 
 ### Scheduler Issues
 

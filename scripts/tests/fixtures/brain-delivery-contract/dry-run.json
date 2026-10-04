@@ -83,22 +83,5 @@
       "runs/example-2026-06-18-120000/video.mp4": "fixture video\n",
       "tmp/counter": "6"
     }
-  },
-  {
-    "stdout": "Stalker Morning Digest - 2026-06-18\n\ud83c\udfac Example \u2014 Jun 18 \u00b7 2m\n\ud83d\udc8e 2 gems \u00b7 2 chat \u00b7 \u2601\ufe0f backed up\n\nTop moments:\n\ud83d\udd25 8/10 \u00b7 00:02 \u00b7 Second (rant)\nSecond idea.\n\ud83d\udc8e 7/10 \u00b7 00:01 \u00b7 First (take)\nFirst idea.\n\n\ud83d\udcc1 Brain Drive \u203a stalker-golem/example/2026-06-18\n",
-    "stderr": "",
-    "exit": 0,
-    "files": {
-      "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs/example-2026-06-18-120000\", \"stalker-golem-codex-trackB\", \"golems\", \"7\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs/example-2026-06-18-120000\", \"stalker-golem-codex-trackB\", \"golems\", \"7\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs/example-2026-06-18-120000\", \"stalker-golem-codex-trackB\", \"golems\", \"7\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n",
-      "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
-      "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
-      "runs/example-2026-06-18-120000/_DRIVE-LEDGER.md": "- Drive Target: /fixture/Brain Drive/stalker-golem/example/run\n| video.mp4 | 14 | fixture | 120 |\n",
-      "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",
-      "runs/example-2026-06-18-120000/gems.md": "### [00:01] First\n**Score:** 7/10 | **Type:** take\n**Gist:** First idea.\n\n### [00:02] Second\n**Score:** 8/10 | **Type:** rant\n**Gist:** Second idea.\n",
-      "runs/example-2026-06-18-120000/transcript.md": "# Transcript\nA deterministic fixture.\n",
-      "runs/example-2026-06-18-120000/transcription-failures.log": "2026-06-18T00:00:00Z fixture failure\n",
-      "runs/example-2026-06-18-120000/video.mp4": "fixture video\n",
-      "tmp/counter": "6"
-    }
   }
 ]

@@ -17,22 +17,6 @@ const canonicalPath = candidate => { try { return realpathSync(candidate); } cat
 // Bump whenever the digest prompt, schema or grounding validator changes.
 const DIGEST_CONTRACT_VERSION = 3;
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-export async function notifyDelivery(title, body, priority = 'default') {
-  if (process.env.STALKER_TELEGRAM_NOTIFY === '0' || process.env.STALKER_TELEGRAM_DRY_RUN === '1') {
-    throw stageFailure(8, 'notifications disabled; completion cannot be certified');
-  }
-  const payload = { title, body: body.slice(0, 1900), source: 'stalker-golem', priority };
-  if (Buffer.byteLength(JSON.stringify(payload)) >= 4096) throw stageFailure(8, 'notification payload exceeds transport budget');
-  const response = await fetch(process.env.STALKER_TELEGRAM_NOTIFY_URL ?? 'http://127.0.0.1:3847/notify', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(15000),
-  });
-  const result = await response.json().catch(() => null);
-  if (response.status !== 200 || result?.delivered !== true || !Number.isSafeInteger(result.message_id) || result.message_id <= 0) {
-    throw stageFailure(8, `notification has no Telegram delivery receipt (HTTP ${response.status})`);
-  }
-  return { accepted: true, messageId: result.message_id, body: payload.body };
-}
-
 async function lockRun(runDir) {
   // Kernel-owned lock: releasing stdin or crashing releases it, with no stale PID marker.
   const code = 'import fcntl,sys\nf=open(sys.argv[1],"a")\ntry: fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)\nexcept BlockingIOError: sys.exit(75)\nprint("locked",flush=True)\nsys.stdin.read()';
@@ -50,51 +34,34 @@ async function lockRun(runDir) {
 export async function completeRun(runDir, options = {}) {
   runDir = resolve(runDir);
   const unlock = await lockRun(runDir);
-  const notify = options.notifyImpl ?? notifyDelivery;
   let stage = 6, receipt, preserveDeliveryReceipt = false;
   try {
     const name = basename(runDir), match = name.match(/^(.+)-(\d{4}-\d{2}-\d{2})(?:-\d{6})?$/);
     if (!match) throw stageFailure(6, 'run directory must be channel-YYYY-MM-DD[-HHMMSS]');
     const [, channel, date] = match;
     receipt = await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
-    if (receipt?.version === 3 && receipt.status === 'complete') {
-      try {
-        const migrated = await migrateCompletionReceipt(runDir, {receipt, fetchImpl: options.fetchImpl});
-        const result = await verifyRunDelivery(runDir, {receipt: migrated, fetchImpl: options.fetchImpl});
-        await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(migrated, null, 2));
-        return {...result, skipped: true};
-      } catch (error) {
-        if (error.liveVerificationFailure || (receipt.status === 'complete' && error.stage === 9)) {
-          preserveDeliveryReceipt = true;
-          throw error;
-        }
-      }
-    }
+    const legacy = receipt?.version === 3 && ['notified', 'complete'].includes(receipt.status);
     let initialError;
-    if (receipt?.status !== 'notified') {
-      try { return { ...(await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl })), skipped: true }; }
-      catch (error) { initialError = error; }
-    }
-    if ([3, 4].includes(receipt?.version) && receipt.status === 'complete' && initialError?.stage === 9) {
-      // Survivors cannot reconstruct the custody evidence for deleted originals.
-      preserveDeliveryReceipt = true;
-      throw initialError;
-    }
+    try {
+      const verified = legacy && receipt.status === 'complete' ? await migrateCompletionReceipt(runDir, {receipt, fetchImpl: options.fetchImpl}) : receipt;
+      const result = await verifyRunDelivery(runDir, {receipt: verified, fetchImpl: options.fetchImpl});
+      if (legacy) await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(verified, null, 2));
+      return {...result, skipped: true};
+    } catch (error) { initialError = error; }
     let resumeRetention = false;
-    if ([3, 4].includes(receipt?.version) && ['published', 'notified', 'complete'].includes(receipt.status)) {
-      if (initialError?.liveVerificationFailure) {
-        preserveDeliveryReceipt = true;
-        throw initialError;
-      }
+    if (legacy || (receipt?.version === 4 && ['published', 'complete'].includes(receipt.status))) {
+      preserveDeliveryReceipt = true;
+      if (initialError.liveVerificationFailure || (receipt.status === 'complete' && initialError.stage === 9)) throw initialError;
+      const {notification, ...evidence} = receipt;
+      const published = {...evidence, version: 4, status: 'published'};
       try {
-        await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
+        await verifyRunDelivery(runDir, {receipt: published, fetchImpl: options.fetchImpl, requireRetention: false});
+        receipt = published;
+        await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
         resumeRetention = true;
-        preserveDeliveryReceipt = true;
       } catch (error) {
-        if (error.liveVerificationFailure) {
-          preserveDeliveryReceipt = true;
-          throw error;
-        }
+        if (error.liveVerificationFailure) throw error;
+        preserveDeliveryReceipt = false;
         receipt = null;
       }
     }
@@ -124,18 +91,11 @@ export async function completeRun(runDir, options = {}) {
       const html = buildRunDashboard({ date, channel, runName: name, summary: digest.summary, cardMedia: selected });
       const publication = await publishRunDashboard({ runDir, repoRoot, orchestratorRoot, hubOrigin, html,
         assets, syncImpl: options.syncImpl });
-      receipt = { version: 3, runName: name, status: 'published', artifacts: await artifactHashes(runDir), publication,
+      receipt = { version: 4, runName: name, status: 'published', artifacts: await artifactHashes(runDir), publication,
         retention: { keepPaths: assets } };
-      await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireNotification: false, requireRetention: false });
+      await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
       await atomicWrite(join(runDir, '.stage-7-publish.done'), new Date().toISOString());
-      stage = 8;
-      const body = `Dashboard: ${publication.url}\n\n${digest.summary.highlights.slice(0, 3).map(item => `[${item.timestamp}] ${item.title}`).join('\n')}\n\n${digest.summary.highlights.length} highlights · ${digest.summary.claims.length} claims worth checking`;
-      const notification = await notify(`Stalker dashboard ready — ${channel} ${date}`, body);
-      receipt.notification = { ...notification, url: publication.url };
-      receipt.status = 'notified';
-      if (notification?.accepted !== true || !Number.isSafeInteger(notification.messageId) || notification.messageId <= 0
-        || !notification.body?.includes(publication.url)) throw stageFailure(8, 'notification has no valid dashboard delivery receipt');
-      // Preserve the real send before another fallible network verification.
+      // Durable local checkpoint before any retention work can offload originals.
       await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
       preserveDeliveryReceipt = true;
       await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
@@ -147,7 +107,6 @@ export async function completeRun(runDir, options = {}) {
     receipt.status = 'complete';
     const result = await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl });
     await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
-    for (const marker of ['.stage-complete-notify.done', '.stage-notified.done']) await atomicWrite(join(runDir, marker), new Date().toISOString());
     await rm(join(runDir, '.stalker-failure.json'), { force: true });
     console.log(`Stalker COMPLETE: ${receipt.publication.url}`);
     return result;
@@ -157,7 +116,6 @@ export async function completeRun(runDir, options = {}) {
     for (const file of ['.stage-complete-notify.done', '.stage-notified.done']) await rm(join(runDir, file), { force: true });
     console.error(`Stalker FAILED at stage ${failure.stage}: ${failure.reason}`);
     await atomicWrite(join(runDir, '.stalker-failure.json'), JSON.stringify(failure, null, 2));
-    await notify(`Stalker FAILED at stage ${failure.stage}`, `${basename(runDir)}: ${failure.reason}`.slice(0, 900), 'high').catch(() => console.error('Stalker failure notification also FAILED'));
     throw stageFailure(failure.stage, failure.reason);
   } finally { await unlock(); }
 }

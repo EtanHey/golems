@@ -1,10 +1,10 @@
 #!/usr/bin/env bats
-# Smoke tests for the Stalker Golem BrainLayer + Telegram contract.
-# Run with: bats scripts/tests/test-stalker-brainlayer-telegram.bats
+# Smoke tests for the Stalker Golem BrainLayer ingestion and local digest contract.
+# Run with: bats scripts/tests/test-stalker-brainlayer.bats
 
 setup() {
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-    CONTRACT="$REPO_ROOT/scripts/stalker/stalker-brainlayer-telegram.sh"
+    CONTRACT="$REPO_ROOT/scripts/stalker/stalker-brainlayer.sh"
     TMPDIR_="$(mktemp -d)"
     STALKER_ROOT="$TMPDIR_/stalker-golem"
     FAKE_BIN="$TMPDIR_/bin"
@@ -44,12 +44,15 @@ else
 fi
 SH
 
-    cat > "$FAKE_BIN/send-telegram" <<'SH'
+    chmod +x "$FAKE_BIN/brain-store" "$FAKE_BIN/brain-store-fail" "$FAKE_BIN/brain-store-fail-after-first"
+    cat > "$FAKE_BIN/curl" <<'SH'
 #!/bin/bash
-cat > "$TELEGRAM_CAPTURE"
+printf '%s\n' "$*" >> "$HTTP_CALLS"
+exit 9
 SH
+    chmod +x "$FAKE_BIN/curl"
+    export PATH="$FAKE_BIN:$PATH" HTTP_CALLS="$TMPDIR_/http-calls"
 
-    chmod +x "$FAKE_BIN/brain-store" "$FAKE_BIN/brain-store-fail" "$FAKE_BIN/brain-store-fail-after-first" "$FAKE_BIN/send-telegram"
 }
 
 teardown() {
@@ -294,7 +297,7 @@ PY
     [ "$(jq -s 'length' "$run_dir/orphaned_stores.jsonl")" = "3" ]
 }
 
-@test "stalker digest sends readable Telegram highlight reel with short backup path and warnings only when needed" {
+@test "stalker digest prints readable highlight reel with short backup path and warnings only when needed" {
     run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
     printf 'done\n' > "$run_dir/.stage-brainlayer.done"
     printf 'status=stored\nstored_count=4\nqueued_count=0\n' > "$run_dir/.brainlayer-status"
@@ -316,16 +319,13 @@ PY
     printf '# partial transcript\n' > "$active_process_dir/transcript.md"
     printf '### [00:01] In-flight gem\n' > "$active_process_dir/gems.md"
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
-    TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
-    title="$(jq -r '.title' "$TMPDIR_/telegram.json")"
-    source="$(jq -r '.source' "$TMPDIR_/telegram.json")"
-    body="$(jq -r '.body' "$TMPDIR_/telegram.json")"
+    [ ! -f "$HTTP_CALLS" ]
+    title="${output%%$'\n'*}"
+    body="${output#*$'\n'}"
     [[ "$status" -eq 75 \
         && "$title" = "Stalker Morning Digest FAILED - 2026-06-18" \
-        && "$source" = "stalker-golem" \
         && "$body" == *'🎬 Examplechannel — Jun 18 · duration unknown'* \
         && "$body" == *'💎 2 gems · 2 chat · ⚠️ not backed up'* \
         && "$body" == *'Top moments:'* \
@@ -352,40 +352,34 @@ reason=drive_reverify_failed
 message=WARNING: cleanup skipped - originals retained; Drive re-verify failed
 EOF
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
-    TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
-    grep -F -q 'WARNING: cleanup skipped - originals retained; Drive re-verify failed: examplechannel-2026-06-18-005309' "$TMPDIR_/telegram.json"
+    [[ "$output" == *'WARNING: cleanup skipped - originals retained; Drive re-verify failed: examplechannel-2026-06-18-005309'* ]]
+    [ ! -f "$HTTP_CALLS" ]
 }
 
 @test "stalker digest is not coupled to BrainLayer ingest status" {
     make_processed_run examplechannel-2026-06-18-005309 >/dev/null
 
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
-    TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
-    if grep -F -q 'BrainLayer' "$TMPDIR_/telegram.json"; then
-        false
-    fi
+    [[ "$output" != *BrainLayer* ]]
+    [ ! -f "$HTTP_CALLS" ]
 }
 
-@test "stalker digest states an explicit no-gems reason and dry-run does not send Telegram" {
+@test "stalker digest states an explicit no-gems reason with BrainLayer dry-run" {
     run_dir="$STALKER_ROOT/examplechannel-2026-06-18-005309"
     mkdir -p "$run_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$run_dir/_DRIVE-LEDGER.md"
     printf 'done\n' > "$run_dir/.stage-brainlayer.done"
 
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/send-telegram" \
-    TELEGRAM_CAPTURE="$TMPDIR_/telegram.json" \
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Top moments:"* ]] || false
     [[ "$output" == *"No highlights found — no gems.md found for processed runs"* ]] || false
-    [ ! -f "$TMPDIR_/telegram.json" ]
+    [ ! -f "$HTTP_CALLS" ]
 }

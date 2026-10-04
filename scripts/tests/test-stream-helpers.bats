@@ -408,7 +408,7 @@ SH
     [ "$output" = "server transcript" ]
 }
 
-@test "transcribe_segment_with_fallback: queues Telegram and fails when cli and server both fail" {
+@test "transcribe_segment_with_fallback: records failure when cli and server both fail" {
     mkdir -p "$TMPDIR_/bin"
     cat > "$TMPDIR_/bin/whisper-cli" <<'SH'
 #!/bin/bash
@@ -423,16 +423,13 @@ SH
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_RETRY_SLEEP_BASE=0 \
-    STALKER_TELEGRAM_QUEUE_DIR="$TMPDIR_/telegram-queue" \
     STALKER_WHATSAPP_QUEUE_DIR="$TMPDIR_/whatsapp-queue" \
     run transcribe_segment_with_fallback "$TMPDIR_/segment.wav" "$TMPDIR_/model.bin" 9 "$TMPDIR_"
 
     [ "$status" -ne 0 ]
     [ -f "$TMPDIR_/transcription-failures.log" ]
     grep -q "segment 9 transcription failed permanently" "$TMPDIR_/transcription-failures.log"
-    [ "$(find "$TMPDIR_/telegram-queue" -type f | wc -l | tr -d ' ')" = "1" ]
     [ ! -d "$TMPDIR_/whatsapp-queue" ]
-    grep -q '"title": "Stalker Transcription Failure"' "$(find "$TMPDIR_/telegram-queue" -type f | head -1)"
 }
 
 @test "notify_stalker_whatsapp: tries canonical 8741 and fallback bridge endpoints before queueing" {
@@ -461,72 +458,6 @@ http://127.0.0.1:8080/api/send
 http://127.0.0.1:8742/api/send" ]
     [ "$(find "$TMPDIR_/queue" -type f | wc -l | tr -d ' ')" = "1" ]
     grep -q '"message": "bridge down"' "$(find "$TMPDIR_/queue" -type f | head -1)"
-}
-
-@test "notify_stalker_telegram: STALKER_TELEGRAM_NOTIFY=0 skips curl and queue" {
-    mkdir -p "$TMPDIR_/bin"
-    cat > "$TMPDIR_/bin/curl" <<'SH'
-#!/bin/bash
-echo "curl should not run" >&2
-exit 9
-SH
-    chmod +x "$TMPDIR_/bin/curl"
-
-    PATH="$TMPDIR_/bin:$PATH" \
-    STALKER_TELEGRAM_NOTIFY=0 \
-    STALKER_TELEGRAM_QUEUE_DIR="$TMPDIR_/queue" \
-    run notify_stalker_telegram "Quiet" "body"
-
-    [ "$status" -eq 0 ]
-    [ "$output" = "Telegram notifications disabled by STALKER_TELEGRAM_NOTIFY=0" ]
-    [ ! -d "$TMPDIR_/queue" ]
-}
-
-@test "notify_stalker_telegram: posts title/body payload to local notification server" {
-    mkdir -p "$TMPDIR_/bin"
-    cat > "$TMPDIR_/bin/curl" <<'SH'
-#!/bin/bash
-printf '%s\n' "$*" > "$CURL_ARGS_FILE"
-while [ "$#" -gt 0 ]; do
-  if [ "$1" = "-d" ]; then
-    shift
-    printf '%s\n' "$1" > "$CURL_BODY_FILE"
-  fi
-  shift || true
-done
-exit 0
-SH
-    chmod +x "$TMPDIR_/bin/curl"
-
-    PATH="$TMPDIR_/bin:$PATH" \
-    CURL_ARGS_FILE="$TMPDIR_/args" \
-    CURL_BODY_FILE="$TMPDIR_/body" \
-    run notify_stalker_telegram "Digest" "stream summary" "high" "stalker-golem"
-
-    [ "$status" -eq 0 ]
-    grep -q "http://127.0.0.1:3847/notify" "$TMPDIR_/args"
-    grep -q '"title": "Digest"' "$TMPDIR_/body"
-    grep -q '"body": "stream summary"' "$TMPDIR_/body"
-    grep -q '"source": "stalker-golem"' "$TMPDIR_/body"
-    grep -q '"priority": "high"' "$TMPDIR_/body"
-}
-
-@test "notify_stalker_telegram: queues when configured command fails" {
-    mkdir -p "$TMPDIR_/bin"
-    cat > "$TMPDIR_/bin/send-telegram-fail" <<'SH'
-#!/bin/bash
-cat >/dev/null
-exit 12
-SH
-    chmod +x "$TMPDIR_/bin/send-telegram-fail"
-
-    STALKER_TELEGRAM_CMD="$TMPDIR_/bin/send-telegram-fail" \
-    STALKER_TELEGRAM_QUEUE_DIR="$TMPDIR_/telegram-queue" \
-    run notify_stalker_telegram "Digest" "stream summary" "high" "stalker-golem"
-
-    [ "$status" -ne 0 ]
-    [ "$(find "$TMPDIR_/telegram-queue" -type f | wc -l | tr -d ' ')" = "1" ]
-    grep -q '"title": "Digest"' "$(find "$TMPDIR_/telegram-queue" -type f | head -1)"
 }
 
 # --- stalker_circuit_should_open: agy scorer circuit breaker decision ---
