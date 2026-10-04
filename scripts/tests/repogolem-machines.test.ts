@@ -155,8 +155,8 @@ describe("machines", () => {
     const laptop = generate(example(), "example-laptop").registry;
     expect(Object.keys(host.projects)).toContain("example-lib");
     expect(Object.keys(laptop.projects)).not.toContain("example-lib");
-    expect(laptop.projects["example-app"].mcps).toEqual(["context7"]);
-    expect(host.projects["example-app"].mcps).toEqual(["context7", "example-api"]);
+    expect(laptop.projects["example-app"].mcps).toEqual(["example-docs"]);
+    expect(host.projects["example-app"].mcps).toEqual(["example-docs", "example-api"]);
   });
 
   test("machine clis bound each project's clis", () => {

@@ -1029,7 +1029,7 @@
       "category": "structure",
       "description": "Large-plan must point phase completion through pr-loop, which points pre-PR review ownership to agent-routing. Requires agent-routing, large-plan and pr-loop SKILL.md in context; not answerable from agent-routing alone.",
       "prompt": "Where does `/large-plan` say who reviews a bounded implementation phase? Follow the owning references and name the source of truth.",
-      "expected_output": "`/large-plan` only says that a bounded implementation phase ends in `/pr-loop`. `/pr-loop` points pre-PR reviewer identity and pane ownership to `/agent-routing` § Review routing, which is the source of truth; large-plan does not restate the routing rule.",
+      "expected_output": "`/large-plan` only says that a bounded implementation phase ends in `/pr-loop`. `/pr-loop` points pre-PR reviewer identity and pane ownership to `/agent-routing` § Routing rules (SSOT), which is the source of truth; large-plan does not restate the routing rule.",
       "assertions": [
         {
           "type": "content",
@@ -1040,8 +1040,8 @@
         {
           "type": "content",
           "name": "resolves-owner-to-agent-routing",
-          "description": "Resolves pre-PR reviewer and pane ownership to agent-routing Review routing.",
-          "text": "Names /agent-routing § Review routing as the owner"
+          "description": "Resolves pre-PR reviewer and pane ownership to agent-routing Routing rules (SSOT).",
+          "text": "Names /agent-routing § Routing rules (SSOT) as the owner"
         },
         {
           "type": "negative",
@@ -1268,7 +1268,7 @@
       "id": 46,
       "name": "ux-ui-implementation-review-split",
       "prompt": "Route a UX/UI PR to implement a redesigned settings screen. Who implements, who reviews, and when may the reviewer start?",
-      "expected_output": "The LEAD routes claude.judgment to implement, then starts a Codex reviewer using the resolved codex.implement model only after the implementer reports DONE, per canon #1.",
+      "expected_output": "The LEAD routes claude.judgment to implement, then starts a Codex reviewer using the resolved codex.implement model only after the implementer reports DONE, per /agent-routing § Routing rules (SSOT).",
       "assertions": [
         {
           "text": "Routes claude.judgment to implement and Codex with the codex.implement model to review",
@@ -1280,6 +1280,66 @@
         },
         {
           "text": "Does NOT use the ordinary Codex-implements/Claude-reviews split for UX/UI or start review on an unfinished diff",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "name": "security-implementation-interim-role",
+      "prompt": "Route a security fix PR. Who implements, who reviews, and what additional security verification is required?",
+      "expected_output": "Resolve codex.security through standards/model-roles.json for implementation (interim key-gated route); claude.judgment reviews after implementer DONE, routed by the lead. Add a codex-security deep scan per security PR. The SSOT table owns this route.",
+      "assertions": [
+        {
+          "text": "Routes implementation to codex.security resolved from standards/model-roles.json and review to claude.judgment",
+          "type": "behavioral"
+        },
+        {
+          "text": "Requires a codex-security deep scan per security PR",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT reverse the vendors or hardcode a model in place of codex.security",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "name": "worker-cannot-start-own-reviewer",
+      "prompt": "I am a Codex worker. My implementation is done and tests pass. Can I start my own Claude pair-reviewer now?",
+      "expected_output": "Refuse worker-started review. Report implementation DONE with evidence and ask the lead to route the claude.judgment pair-reviewer. Wait for lead-routed pair review before opening the PR and running /pr-loop; never substitute self-review.",
+      "assertions": [
+        {
+          "text": "Refuses the worker request and asks the lead to route the reviewer",
+          "type": "behavioral"
+        },
+        {
+          "text": "Keeps lead-routed pair review before PR creation and /pr-loop",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT run claude -p, spawn a reviewer subagent, or substitute self-review",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "name": "refactor-implementation-ssot",
+      "prompt": "Who implements a refactor? Name the routing source of truth, review role, and any prerequisite when deletions or test edits are involved.",
+      "expected_output": "Answer from /agent-routing § Routing rules (SSOT): everything else, including refactors, uses codex.implement for implementation and claude.judgment for other-vendor review. A claude.judgment deletion/test-edit decision comes first under decision rule 2; the lead routes review only after implementer DONE. Resolve models via standards/model-roles.json.",
+      "assertions": [
+        {
+          "text": "Names /agent-routing § Routing rules (SSOT) and assigns codex.implement to the refactor",
+          "type": "behavioral"
+        },
+        {
+          "text": "Assigns claude.judgment to review and to any deletion/test-edit decision before implementation",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT claim fleet canon or global instructions own the routing rules or assign the refactor to a gatherer",
           "type": "negative"
         }
       ]

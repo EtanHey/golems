@@ -1,4 +1,3 @@
-import { sendNotification } from "@golems/shared/lib/telegram-direct";
 import { logEvent } from "@golems/shared/lib/event-log";
 import { runLLMJSON } from "@golems/shared/lib/llm";
 import { extractVendor } from "./categorizer";
@@ -64,24 +63,9 @@ Respond JSON: {"isFailure": true/false, "vendor": "...", "amount": null_or_numbe
     detectedAt: new Date().toISOString(),
   };
 }
-/**
- * Send a Telegram alert for a payment failure and log the event for operational visibility.
- *
- * @param failure - The payment failure to alert about
- * @returns Promise that resolves when alert and logging are complete
- */
-export async function sendPaymentAlert(
-  failure: PaymentFailure
-): Promise<void> {
-  const amountStr = failure.amount ? ` ($${failure.amount})` : "";
-
+/** Record a payment failure in the existing operational event log (best effort). */
+export async function recordPaymentFailure(failure: PaymentFailure): Promise<void> {
   await Promise.allSettled([
-    sendNotification({
-      title: `Payment Failed: ${failure.vendor}`,
-      body: `${failure.reason}${amountStr}. ${failure.actionNeeded}`,
-      source: "email",
-      priority: "high",
-    }),
     logEvent("email_alert", {
       vendor: failure.vendor,
       reason: failure.reason,

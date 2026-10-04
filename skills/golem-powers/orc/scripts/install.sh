@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install orc's global Claude agents. brain-worker is INTERIM until the BrainLayer plugin ships it (orc 2026-09-29).
+# Install orc and coach global Claude agents. brain-worker is INTERIM until the BrainLayer plugin ships it (orc 2026-09-29).
 # HOME may point to a scratch directory; never hardcode the real ~/.claude.
 set -euo pipefail
 
@@ -19,13 +19,14 @@ if [ "$#" -ne 0 ]; then
     exit 1
 fi
 
-names=(orc-helper brain-worker)
+sources=("$skill_dir"/agents/*.md "$skill_dir"/../coach/agents/*.md "$skill_dir"/../qa-video/agents/*.md)
 today="$(date +%Y%m%d)"
 
 # Validate every source and destination before the first mutation, so a conflict
-# for either agent cannot leave the other agent partially installed.
-for name in "${names[@]}"; do
-    source="$skill_dir/agents/$name.md"
+# for any agent cannot leave the others partially installed.
+for source in "${sources[@]}"; do
+    name="$(basename "$source" .md)"
+    source="$(cd "$(dirname "$source")" && pwd)/$name.md"
     link="$agents_dir/$name.md"
     backup="$agents_dir/.$name.md.bak-$today"
     if [ ! -f "$source" ]; then
@@ -52,8 +53,9 @@ if [ ! -d "$agents_dir" ]; then
     fi
 fi
 
-for name in "${names[@]}"; do
-    source="$skill_dir/agents/$name.md"
+for source in "${sources[@]}"; do
+    name="$(basename "$source" .md)"
+    source="$(cd "$(dirname "$source")" && pwd)/$name.md"
     link="$agents_dir/$name.md"
     backup="$agents_dir/.$name.md.bak-$today"
     if [ -L "$link" ] && [ "$(readlink "$link")" = "$source" ]; then

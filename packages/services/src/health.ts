@@ -19,7 +19,6 @@ interface HealthResponse {
     uptime: number;
     backend?: string;
     stateBackend?: string;
-    telegramMode?: string;
     israelTime?: string;
     isWorkHours?: boolean;
     isWorkday?: boolean;

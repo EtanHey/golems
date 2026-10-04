@@ -11,6 +11,45 @@ agent for `--worker` or inherited `GOLEM_ROLE=worker` when installed, and warns
 while preserving the existing launch if it is missing. Leads use their existing
 launch flow. Model defaults remain owned by the launcher's routing policy.
 
+Gatherers delegate independent BrainLayer questions and claim checks to the
+`brain-worker` subagent with `invoke_subagent`, at most four concurrently.
+The subagent uses the Flash tier for `gemini.gather.text` in model-roles and
+returns compact, expanded source citations. It has no shell or file-write tools.
+MCP inheritance and customization inheritance are disabled; its explicit
+`mcpServers` list starts the packaged bridge at the absolute path
+`/opt/homebrew/bin/brainlayer-mcp-stdio-bridge` and enables only `brain_search`,
+`brain_recall`, and `brain_expand`. This avoids PATH shadowing by a hand-installed
+shim or proxy. Install the packaged BrainLayer bridge at that path on each host
+before using this subagent. The packaged bridge connects to BrainBar's MCP socket;
+other inherited servers and future write tools are excluded.
+
+Read-only enforcement depends on agy's `enabledTools` dispatcher filter.
+BrainBar exposes 17 tools, including store, update, archive, supersede and backup.
+Every agy upgrade must repeat the fake-server deny probe before this agent is used:
+verify the unique probe name loads, require an exact no-tool palette canary, then
+attempt writes only on a recording fake MCP server with no real-server access.
+Never attempt a write against real BrainLayer to prove a denial.
+
+Gatherer: no MCP or shell. MCP and customization inheritance are disabled so
+workspace servers cannot grant it pane spawning or terminal control. Web research
+uses `search_web` and `read_url_content`; BrainLayer questions go only through
+the read-only `brain-worker`. It retains its scoped receipt tools.
+Only the declared brain-worker may be invoked;
+hidden built-in agents must fail the no-tool delegation probes before release.
+
+On agy 1.2.14, `mcpServers` in agent frontmatter must be a **list**, unlike the
+mapping in `mcp_config.json`. A mapping silently removes the custom agent from
+discovery, and `--agent` can fall back to unrestricted defaults. Verify the named
+agent appears in `agy agent` before probing it. `call_mcp_tool` is injected by MCP
+configuration; it must never appear in the registry `tools` list. Stream-json
+`init.tools` lists the registry, not the session's actual callable tool set.
+
+The source gatherer declares `agents: [brain-worker]`. The installer renders this
+to the host's absolute `~/.gemini/antigravity-cli/agents/brain-worker` directory,
+containing `agent.md`. agy 1.2.14 does not resolve bare or home-relative agent
+dependencies, and expects directories rather than Markdown file paths. Use the
+installer instead of copying the source gatherer directly.
+
 A lead persona belongs in `~/.claude/agents/<name>.md`, injected through the
 registry's `projects.<project>.agentByCli.gemini` mapping. Other engines retain
 the existing `agent` fallback. Workers never receive that lead context.
@@ -25,8 +64,12 @@ resolved registry. It never generates a registry or resolves secrets.
 
 The default prints a table without writing. `--check` also fails for ritual
 patterns in global or repo context. `--apply` installs context and the global
-gatherer. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
+gatherer and brain-worker. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
 only verified; a global ritual blocks apply.
+
+To install only the agent pair after merge, use
+`bash scripts/install-gemini-context.sh --host mbp --agents-only --apply`.
+This skips repo GEMINI.md writes and retains the same backup/rollback contract.
 
 Existing repo files identical to CLAUDE.md and at most 200 lines are treated as
 stale copies. Larger copies and other existing content are conservatively marked

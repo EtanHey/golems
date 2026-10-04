@@ -76,13 +76,13 @@ For the matched profile, compare:
 === CONTEXT CHECK: taskowl ===
 Identity: taskowlClaude
 
-SKILLS (10 allowed, 42 loaded):
-  ✅ Allowed: context7, commit, github, pr-loop, coderabbit, never-fabricate
-  ❌ Extra (32): coach, cmux-agents, figma-swarm, orchestrator-status, ...
+SKILLS (9 allowed, 42 loaded):
+  ✅ Allowed: commit, github, pr-loop, coderabbit, never-fabricate
+  ❌ Extra (33): coach, cmux-agents, figma-swarm, orchestrator-status, ...
   ⚠️  Wasted: ~5.2k tokens (~2.6% of 200k context)
 
-MCPs (2 allowed, 7 loaded):
-  ✅ Active: linear, context7
+MCPs (1 allowed, 7 loaded):
+  ✅ Active: linear
   ❌ Should block: brainlayer, voicelayer, supabase
   ℹ️  Can't block (global): exa, notebooklm
 

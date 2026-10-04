@@ -12,7 +12,7 @@
 # Background PIDs, ordered results and cleanup stay in this one shell.
 
         maybe_heartbeat() {
-            local now stream_min processed body circuit_mode
+            local now stream_min processed circuit_mode
             now=$(date +%s)
             [ $((now - LAST_HEARTBEAT_EPOCH)) -ge "$STALKER_HEARTBEAT_SECS" ] || return 0
             LAST_HEARTBEAT_EPOCH="$now"
@@ -24,14 +24,6 @@
                 circuit_mode="agy+codex"
             fi
             log "  heartbeat: scored ${SCORED_SEGMENTS}, skipped ${SKIPPED_SEGMENTS}, failed ${SCORING_FAILURES} of ~${TOTAL_SEGMENTS} windows (${processed} seen); stream-minute ${stream_min}; ${GEM_COUNT} gems so far; circuit=${circuit_mode}"
-            if [ "${STALKER_HEARTBEAT_NOTIFY:-1}" = "1" ]; then
-                if [ "$circuit_mode" = "codex-only" ]; then
-                    body="Scored ${SCORED_SEGMENTS}, skipped ${SKIPPED_SEGMENTS}, failed ${SCORING_FAILURES} of ~${TOTAL_SEGMENTS} candidate windows (${processed} seen); at stream-minute ${stream_min}; ${GEM_COUNT} gems so far. Scorer: codex exec (agy circuit open)."
-                else
-                    body="Scored ${SCORED_SEGMENTS}, skipped ${SKIPPED_SEGMENTS}, failed ${SCORING_FAILURES} of ~${TOTAL_SEGMENTS} candidate windows (${processed} seen); at stream-minute ${stream_min}; ${GEM_COUNT} gems so far. Scorer: agy + codex fallback."
-                fi
-                notify_stalker_telegram "Stalker still processing ${STREAMER} (${DATE})" "$body" "low" "stalker-golem" || true
-            fi
         }
 
         # terminate_score_worker_groups — TERM every worker's process group,

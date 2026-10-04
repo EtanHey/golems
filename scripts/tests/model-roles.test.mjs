@@ -66,6 +66,15 @@ test('resolver known, unknown, candidate and optional fields', () => {
   assert.equal(run('gemini.gather.visual', '--field', 'launcher_tier').stdout, 'flash-high\n');
   assert.equal(run('claude.judgment', '--field', 'missing').status, 2);
 });
+test('security implementation resolves its configured model and preserves the key gate', () => {
+  const role = loadConfig().roles['codex.security'];
+  assert.ok(role, 'codex.security must be a configured role');
+  assert.equal(role.use_for, 'security implementation (interim Blue-less route)');
+  assert.equal(role.gate, 'Daybreak Blue resumes this role when Etan has hardware keys: one-line model swap');
+  const result = spawnSync(process.execPath, [join(root, 'scripts/model-roles.mjs'), 'codex.security', '--field', 'model'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, `${role.model}\n`);
+});
 test('prescriptions fail including CLI tiers and agent frontmatter', () => {
   for (const text of ['Use `gpt-6.1-sol` for implementation.', '`-m flash-high`', 'UX judgment stays on Opus.', 'Opus implements; Codex reviews.', 'Agent routing: Claude → Sonnet', '---\nmodel: sonnet\n---']) {
     const result = lint(fixture(text), config(), []); assert.equal(result.hits.length, 1, text);

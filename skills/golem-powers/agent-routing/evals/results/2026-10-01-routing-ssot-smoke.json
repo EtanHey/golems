@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-01",
+  "kind": "routing-response-smoke",
+  "skill": "agent-routing",
+  "eval_ids": [
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49
+  ],
+  "model_requested": "claude.subagent.cheap alias resolved through scripts/model-roles.mjs",
+  "model_effective": "claude-sonnet-5-5",
+  "model_observation_source": "CLI init and modelUsage",
+  "effort_requested": "medium",
+  "effort_effective": "NOT DETERMINED",
+  "effort_observation_source": "CLI output does not expose effective effort",
+  "tools_enabled": false,
+  "mcp_servers_enabled": false,
+  "scope": "One tools-disabled with-skill smoke. Manually scored proposed-route assertions only; no baseline, uplift, live delegation, review or installed-runtime proof.",
+  "assertions_passed": 19,
+  "assertions_total": 19,
+  "scoring": [
+    {
+      "id": 43,
+      "passed": 2,
+      "total": 2,
+      "reason": "One resolved cheap brain-worker; avoids lead-context lookup and fan-out."
+    },
+    {
+      "id": 44,
+      "passed": 3,
+      "total": 3,
+      "reason": "Judgment decides; literal callers insufficient; names by-name and policy reachability."
+    },
+    {
+      "id": 45,
+      "passed": 2,
+      "total": 2,
+      "reason": "Visual gather role; launcher command retains resolver; gathering only."
+    },
+    {
+      "id": 46,
+      "passed": 3,
+      "total": 3,
+      "reason": "UX/UI vendor split; lead routes after DONE; no unfinished-diff review."
+    },
+    {
+      "id": 47,
+      "passed": 3,
+      "total": 3,
+      "reason": "Security role with interim config gate; judgment reviews; per-PR deep scan."
+    },
+    {
+      "id": 48,
+      "passed": 3,
+      "total": 3,
+      "reason": "Refuses self-started reviewer; asks lead; pair precedes PR."
+    },
+    {
+      "id": 49,
+      "passed": 3,
+      "total": 3,
+      "reason": "SSOT table; implementation/judgment split; decision prerequisite."
+    }
+  ],
+  "caveats": [
+    "Case 49 adds an overbroad medium-effort prescription. This is outside the scored role-routing assertions; SSOT requires effort per /large-plan phase."
+  ],
+  "responses": [
+    {
+      "id": 43,
+      "answer": "Delegate to one `claude.subagent.cheap` brain-worker (Agent tool `model` set to the alias resolved via `node scripts/model-roles.mjs claude.subagent.cheap --field alias`). This is the bounded single-fact recall exception, so the judgment lead doesn't spend its own context. Reserve the judgment seat for multi-source or decision-grade history."
+    },
+    {
+      "id": 44,
+      "answer": "Not the cheap brain-worker or any gatherer. Deciding a deletion (callers=0, safe to delete) is `claude.judgment`'s call (decision rule 2). The zero-literal-callers grep may feed it, but a gatherer never concludes it. Literal greps miss by-name lookups, policy tables and agent-facing text (see the evidence: Flash-High called all 28 tools safe, which would have broken a by-name accessor). Judgment does the reachability reasoning first. If deletion is approved, `codex.implement` implements and `claude.judgment` reviews."
+    },
+    {
+      "id": 45,
+      "answer": "Route to a `gemini.gather.visual` gatherer through `/qa-video`: `{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`, which resolves to Flash-High. Use Pro-High only if explicitly requested, and never a Low tier. Claude should not read many frames itself. The gatherer returns read-only findings; the lead verifies and decides, and the gatherer never implements, reviews or decides."
+    },
+    {
+      "id": 46,
+      "answer": "UX/UI: `claude.judgment` implements and Codex (`codex.implement`) reviews, because the reviewer is always the other vendor. The reviewer is spawned or briefed only after the implementer reports done: its DONE marker or report line, or for a cloud implementer, PR head stable for at least 10 min with checks finished. A reviewer never reads a half-finished diff. The LEAD routes the reviewer. After the pair is happy, the implementer opens the remote PR and runs `/pr-loop`. Each of those inner-loop pair-review rounds is recorded in the PR body."
+    },
+    {
+      "id": 47,
+      "answer": "`codex.security` implements (currently the interim model per the Daybreak Blue hardware-key note, one config line switches it back). `claude.judgment` reviews, as the other vendor. Additional verification: a `codex-security` deep scan per security PR. The reviewer starts only after the implementer reports done. Then the implementer opens the PR and runs `/pr-loop`. The PR body records implementer, review rounds and defects."
+    },
+    {
+      "id": 48,
+      "answer": "No. A worker never starts its own reviewer. The LEAD routes the reviewer. Report done (DONE marker or report line) and ask the lead. If there's no reviewer pane, ask the lead. The lead is the escalation path, not a gate. For a refactor-type change, `claude.judgment` is the review role, spawned or briefed after your done report. Once you and the reviewer are both happy, you open the PR and run `/pr-loop`."
+    },
+    {
+      "id": 49,
+      "answer": "`codex.implement` implements a refactor (the 'Everything else' row of the Routing rules (SSOT) table in the agent-routing skill; roles resolve via `standards/model-roles.json`). `claude.judgment` reviews, as the other vendor. Prerequisite: if the refactor involves a code deletion or a test edit, `claude.judgment` must make the deletion/test-edit decision first (decision rule 2). A gatherer's grep may feed that decision but doesn't conclude it. Then `codex.implement` implements from the handoff. Pass effort explicitly at dispatch (medium, not default xhigh)."
+    }
+  ]
+}

@@ -29,7 +29,11 @@ afterEach(() => {
 
 function run(args: string[]) {
   // fake-op.sh stands in for 1Password: tests never run the real `op`.
-  const env = { ...process.env, REPOGOLEM_SOURCE_SHA: SOURCE_SHA, REPOGOLEM_OP_BIN: FAKE_OP };
+  const env = { ...process.env, REPOGOLEM_SOURCE_SHA: SOURCE_SHA, REPOGOLEM_OP_BIN: FAKE_OP,
+    FAKE_OP_VAULTS: JSON.stringify([{ id: 'fixture-vault', name: 'Fixture' }]),
+    FAKE_OP_ITEMS: JSON.stringify([{ id: 'beta', title: 'Beta' }, { id: 'secret-mcp', title: 'SecretMcp' }]),
+    FAKE_OP_FIELDS: JSON.stringify({ fields: [{ id: 'token', label: 'token' }, { id: 'credential', label: 'credential' }] }),
+  };
   const proc = Bun.spawnSync(["bun", CLI, ...args], { env, stdout: "pipe", stderr: "pipe" });
   return { code: proc.exitCode, stdout: proc.stdout.toString(), stderr: proc.stderr.toString() };
 }

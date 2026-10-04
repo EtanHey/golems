@@ -1,12 +1,12 @@
 # Stalker completion and recovery
 
-A processing marker is not a delivery receipt. A Stalker run is complete only after its human digest, admitted dashboard and Telegram delivery pass `stalker-run-contract.mjs`.
+A processing marker is not a delivery receipt. A Stalker run is complete only after its human digest, admitted dashboard, media verification and archive custody pass `stalker-run-contract.mjs`.
 
-Delivery runs before archive compression. It writes `digest.md`, `dashboard.html` and `.stalker-completion.json` inside the recording directory. Stage 6 generates a grounded digest, stage 7 publishes and checks the HTML hash plus hub manifest, and stage 8 requires the notification server's actual Telegram message ID. Failures keep `.stalker-failure.json` and leave completion open.
+Delivery runs before archive compression. It writes `digest.md`, `dashboard.html` and `.stalker-completion.json` inside the recording directory. The v4 local receipt uses `published` and `complete` statuses. Stage 6 generates a grounded digest, stage 7 checks the live HTML hash, hub manifest and every card's clip/poster hashes, and stage 9 verifies retention/custody. Stage 8 was retired on 2026-10-01. A durable `published` checkpoint precedes retention; only all completed checks permit `complete`. Failures keep `.stalker-failure.json` and leave completion open.
 
 ## Install configuration
 
-The canonical checkout needs the merged completion scripts and the updated Telegram notification server. Restart the exact Telegram LaunchAgent after changing its source. Configure the hub once in `docs.local/stalker-golem/delivery-config.json`:
+The canonical checkout needs the merged completion scripts. Configure the hub once in `docs.local/stalker-golem/delivery-config.json`:
 
 ```json
 {"hubOrigin":"https://dashboard.example"}
@@ -29,15 +29,15 @@ STREAM_AUTO_ARCHIVE=0 scripts/stalker/post-stream.sh \
   docs.local/stalker-golem/examplechannel-YYYY-MM-DD-HHMMSS/chat.log examplechannel
 ```
 
-Existing processing/scoring markers preserve earlier work. Delivery always rechecks the receipt and live hub. A failed notification retry reuses only a matching, versioned digest cache. Transcript or gems changes invalidate its input hash. Do not remove scoring markers or use `STALKER_FORCE_RESCORE` merely to repair delivery.
+Existing processing/scoring markers preserve earlier work. Delivery always rechecks the receipt and live hub. A publication retry reuses only a matching, versioned digest cache. Transcript or gems changes invalidate its input hash. Do not remove scoring markers or use `STALKER_FORCE_RESCORE` merely to repair delivery.
 
-Check a run without sending another message:
+Check a run against the live publication and local custody record:
 
 ```bash
 node scripts/stalker/stalker-run-contract.mjs path/to/run
 STALKER_MONITOR_ONCE=1 STALKER_RUN_DIR=path/to/run scripts/stalker/stream-overnight-monitor.sh
 ```
 
-The optional morning command enumerates each eligible run and invokes the same completion contract. Its date summary cannot replace per-run validation, and skip-notify/skip-sync/skip-live-verify cannot certify completion.
+The optional morning command enumerates each eligible run and invokes the same completion contract. Its date summary cannot replace per-run validation, and skip-sync/skip-live-verify cannot certify completion. `--skip-notify` is retired and rejected. Legacy v3 `notified`/`complete` receipts have an explicit migration path: preserve artifact, publication and retention evidence, revalidate live and custody checks, and atomically write v4 only after success. Partial retention resumes from existing custody evidence; a live or custody failure preserves the original receipt. A processing marker or old message ID alone cannot certify completion.
 
 The September 8 regression test is `September 8 ratchet: processing markers and gems cannot make a run COMPLETE` in `scripts/tests/stalker-run-contract.test.mjs`. The focused CI workflow runs this contract alongside each integrated delivery slice.

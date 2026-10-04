@@ -11,6 +11,8 @@ Configure API tokens in 1Password for use with golems.
 
 ---
 
+Context7 is a per-repository opt-in and is excluded from default token setup.
+
 ## Required Tokens
 
 | Token | Service | Where to get |
@@ -18,7 +20,6 @@ Configure API tokens in 1Password for use with golems.
 | GitHub PAT | GitHub CLI | github.com/settings/tokens |
 | Linear API Key | Linear skill | linear.app/settings/api |
 | Anthropic API Key | Claude | console.anthropic.com |
-| Context7 API Key | Context7 skill | context7.com/settings |
 
 ---
 
@@ -30,21 +31,6 @@ Store API keys for golem-powers skills in a single `golems` item with sections:
 
 ```bash
 op item create --category "API Credential" --vault "Private" --title "golems"
-```
-
-### Add Context7 API Key
-
-Get key from: https://context7.com/settings
-
-```bash
-op item edit "golems" --vault "Private" "context7.API_KEY[concealed]=ctx7sk_your_key_here"
-```
-
-**op:// path:** `op://Private/golems/context7/API_KEY`
-
-Verify:
-```bash
-op read "op://Private/golems/context7/API_KEY"
 ```
 
 ### Add Linear API Key
@@ -60,16 +46,6 @@ op item edit "golems" --vault "Private" "linear.API_KEY[concealed]=lin_api_your_
 Verify:
 ```bash
 op read "op://Private/golems/linear/API_KEY"
-```
-
-### Using Skills with 1Password
-
-Skills automatically read from 1Password when available. You can also inject manually:
-
-```bash
-# Run a skill command with injected ENV
-CONTEXT7_API_KEY=$(op read "op://Private/golems/context7/API_KEY") \
-  npx -y @upstash/context7-mcp@4.0.2 --help
 ```
 
 ---
@@ -177,13 +153,6 @@ fi
 echo ""
 echo "=== Golem-Powers Skills (golems item) ==="
 
-# Context7 API Key
-if op read "op://Private/golems/context7/API_KEY" &>/dev/null; then
-  echo "[OK] Context7 API key"
-else
-  echo "[MISSING] Context7 API key"
-fi
-
 # Linear API Key (golem-powers)
 if op read "op://Private/golems/linear/API_KEY" &>/dev/null; then
   echo "[OK] Linear API key (golem-powers)"
@@ -228,7 +197,6 @@ op signin
 - GitHub: Starts with `ghp_` or `github_pat_`
 - Linear: Starts with `lin_api_`
 - Anthropic: Starts with `sk-ant-`
-- Context7: Starts with `ctx7sk_`
 
 ---
 

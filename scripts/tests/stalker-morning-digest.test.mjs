@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { basename, join } from "node:path";
-import { test } from "node:test";
+import { test, beforeEach, afterEach } from "node:test";
 
 import { parseGems, runMorningDigest } from "../stalker/stalker-morning-digest.mjs";
+
+let sends;
+const notifyImpl = async (...args) => { sends.push(args); return {accepted: true}; };
+beforeEach(() => { sends = []; });
+afterEach(() => { assert.deepEqual(sends, []); });
 
 const DATE = "2026-09-08";
 const GEMS = `# Gems: examplechannel (${DATE})
@@ -78,12 +84,12 @@ test("checks every eligible run on every invocation and includes a later same-da
     calls.push(basename(runDir));
     return verified(runDir, calls.filter((name) => name === basename(runDir)).length > 1);
   };
-  const first = await runMorningDigest({ date: DATE, repoRoot, completeImpl });
+  const first = await runMorningDigest({ notifyImpl, date: DATE, repoRoot, completeImpl });
   assert.equal(first.status, "complete");
   assert.deepEqual(calls, [`examplechannel-${DATE}`, `examplechannel-${DATE}-030512`, `examplechannel-${DATE}-081500`]);
 
   await eligibleRun(stalkerRoot, `examplechannel-${DATE}-101501`);
-  const second = await runMorningDigest({ date: DATE, repoRoot, completeImpl });
+  const second = await runMorningDigest({ notifyImpl, date: DATE, repoRoot, completeImpl });
   assert.equal(second.status, "complete");
   assert.deepEqual(calls, [
     `examplechannel-${DATE}`,
@@ -104,53 +110,44 @@ test("checks every eligible run on every invocation and includes a later same-da
   ]);
 });
 
-test("pre-schedule absence is not success; post-schedule absence persists and alerts failure", async (t) => {
+test("pre-schedule absence is not success; post-schedule absence persists failure", async (t) => {
   const { repoRoot, receiptPath } = await setup(t, "no-runs");
-  const notifications = [];
-  const notifyImpl = async (...args) => { notifications.push(args); return { accepted: true }; };
 
-  const early = await runMorningDigest({
+  const early = await runMorningDigest({ notifyImpl,
     date: DATE,
     repoRoot,
     now: new Date("2026-09-08T03:00:00Z"),
-    notifyImpl,
   });
   assert.equal(early.status, "not-ready");
-  assert.equal(notifications.length, 0);
   await assert.rejects(readFile(receiptPath), { code: "ENOENT" });
 
   await assert.rejects(
-    runMorningDigest({
+    runMorningDigest({ notifyImpl,
       date: DATE,
       repoRoot,
       now: new Date("2026-09-08T05:00:00Z"),
-      notifyImpl,
-    }),
+      }),
     /FAILED at stage 6: no eligible Stalker runs found/,
   );
-  assert.match(notifications[0][0], /Stalker FAILED at stage 6/);
   const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
   assert.equal(receipt.status, "failed");
   assert.equal(receipt.stage, 6);
   assert.match(receipt.reason, /no eligible Stalker runs found/);
 });
 
-test("a run-level failure persists FAILED without a duplicate wrapper alert", async (t) => {
+test("a run-level failure persists FAILED without delivery", async (t) => {
   const { repoRoot, stalkerRoot, receiptPath } = await setup(t, "run-failure");
   await eligibleRun(stalkerRoot, `examplechannel-${DATE}-030512`);
-  let wrapperNotifications = 0;
   await assert.rejects(
-    runMorningDigest({
+    runMorningDigest({ notifyImpl,
       date: DATE,
       repoRoot,
       completeImpl: async () => {
         throw Object.assign(new Error("Stalker FAILED at stage 7: manifest missing"), { stage: 7 });
       },
-      notifyImpl: async () => { wrapperNotifications += 1; },
     }),
     /FAILED at stage 7: manifest missing/,
   );
-  assert.equal(wrapperNotifications, 0);
   const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
   assert.equal(receipt.status, "failed");
   assert.equal(receipt.stage, 7);
@@ -162,20 +159,26 @@ test("legacy skip options are rejected before completion can be certified", asyn
   await eligibleRun(stalkerRoot, `examplechannel-${DATE}-030512`);
   let completions = 0;
   const completeImpl = async (runDir) => { completions += 1; return verified(runDir); };
-  const notifications = [];
-  const notifyImpl = async (...args) => { notifications.push(args); };
 
   for (const disabled of [
-    { notify: false, expected: /stage 8.*notifications cannot be skipped/ },
     { sync: false, expected: /stage 7.*hub sync cannot be skipped/ },
     { verifyLive: false, expected: /stage 7.*live verification cannot be skipped/ },
   ]) {
     await assert.rejects(
-      runMorningDigest({ date: DATE, repoRoot, completeImpl, notifyImpl, ...disabled }),
+      runMorningDigest({ notifyImpl, date: DATE, repoRoot, completeImpl, ...disabled }),
       disabled.expected,
     );
   }
   assert.equal(completions, 0);
-  assert.equal(notifications.length, 3);
   assert.equal(JSON.parse(await readFile(receiptPath, "utf8")).status, "failed");
+});
+
+test('retired skip-notify CLI option cannot certify completion', async t => {
+  const {repoRoot, receiptPath} = await setup(t, 'retired-cli');
+  const result = spawnSync(process.execPath, [new URL('../stalker/stalker-morning-digest.mjs', import.meta.url).pathname,
+    '--skip-notify', '--date', DATE, '--repo-root', repoRoot], {
+    encoding: 'utf8', env: {PATH: process.env.PATH, HOME: process.env.HOME},
+  });
+  assert.equal(result.status, 1); assert.match(result.stderr, /--skip-notify is retired/);
+  await assert.rejects(readFile(receiptPath), {code: 'ENOENT'});
 });

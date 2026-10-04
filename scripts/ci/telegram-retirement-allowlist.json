@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "policyReason": "Exact reviewed exception data, parsed as policy rather than scanned as source instructions. All other tracked text uses anchored path and full-line rules.",
+  "files": {
+    ".publish-boundary-allow": {
+      "reason": "protective leak taxonomy",
+      "patterns": [
+        "^# Classes:.*telegram_chat_id$"
+      ]
+    },
+    "docs/architecture/decisions.md": {
+      "reason": "dated retirement history",
+      "patterns": [
+        "^The inbound bot and outbound Telegram route are retired\\. Existing plans, logs,$"
+      ]
+    },
+    "packages/coach/src/__tests__/nudge-queue.test.ts": {
+      "reason": "protective legacy-rejection fixture",
+      "patterns": [
+        "^\\s+scheduledAt: \"now\", createdAt: \"now\", status: \"pending\", channel: \"telegram\",$",
+        "^\\s+expect\\(\\(\\) => createNudge\\(\\{ type: \"reminder\", message: \"Test\", scheduledAt: \"now\", channel: \"telegram\" \\} as any\\)\\)$",
+        "^\\s+appendFileSync\\(TEST_QUEUE, JSON\\.stringify\\(\\{ \\.\\.\\.nudge, channel: \"telegram\" \\}\\) \\+ \"\\\\n\"\\);$"
+      ]
+    },
+    "packages/golem-skills/src/__tests__/update.test.ts": {
+      "reason": "protective retired-config pruning/nonmutation tests",
+      "patterns": [
+        "^\\s+const config = .*features: \\{ telegram: true, proactiveNudges: true, futureFeature: true \\} \\};$",
+        "^\\s+expect\\(config\\.features\\.telegram\\)\\.toBe\\(true\\);$",
+        "^\\s+expect\\(result\\.changes\\)\\.toEqual\\(\\[\"Removed retired feature: telegram\"\\]\\);$",
+        "^\\s+expect\\(result\\.config\\.features\\)\\.not\\.toHaveProperty\\(\"telegram\"\\);$"
+      ]
+    },
+    "packages/golem-skills/src/__tests__/wizard.test.ts": {
+      "reason": "protective generated-config absence tests",
+      "patterns": [
+        "^\\s+expect\\(parsed\\.features\\)\\.not\\.toHaveProperty\\(\"telegram\"\\);$",
+        "^\\s+expect\\(features\\)\\.not\\.toHaveProperty\\(\"telegram\"\\);$"
+      ]
+    },
+    "packages/golem-skills/src/update.ts": {
+      "reason": "protective upgrade cleanup; no channel capability",
+      "patterns": [
+        "^  if \\(\"telegram\" in migrated\\.features\\) \\{$",
+        "^    delete migrated\\.features\\.telegram;$",
+        "^    changes\\.push\\(\"Removed retired feature: telegram\"\\);$"
+      ]
+    },
+    "packages/services/src/__tests__/cloud-worker-health.test.ts": {
+      "reason": "protective health-schema absence assertion",
+      "patterns": [
+        "^\\s+expect\\(result\\.body\\)\\.not\\.toHaveProperty\\(\"telegramMode\"\\);$"
+      ]
+    },
+    "packages/services/src/__tests__/healthcheck.test.ts": {
+      "reason": "protective retired-service absence assertion",
+      "patterns": [
+        "^\\s+expect\\(names\\)\\.not\\.toContain\\(\"Telegram Bot\"\\);$"
+      ]
+    },
+    "packages/shared/src/__tests__/config.test.ts": {
+      "reason": "protective generated-route absence assertions",
+      "patterns": [
+        "^\\s+expect\\(parse\\(generated\\.yaml\\)\\)\\.not\\.toHaveProperty\\(\"telegram\"\\);$",
+        "^\\s+expect\\(generated\\.defaults\\)\\.not\\.toHaveProperty\\(\"telegram\"\\);$"
+      ]
+    },
+    "scripts/check-publish-boundary.sh": {
+      "reason": "protective required privacy class",
+      "patterns": [
+        "^expected_forbidden_classes='[a-z0-9_ -]+ telegram_chat_id'$"
+      ]
+    },
+    "scripts/publish-boundary-policy.yaml": {
+      "reason": "protective ID leak detector",
+      "patterns": [
+        "^  telegram_chat_id:$",
+        "^      - '.*telegram\\[_\\]\\?chat\\[_\\]\\?id.*'$"
+      ]
+    },
+    "scripts/tests/check-publish-boundary.test-parts/part-01.bash": {
+      "reason": "protective synthetic leak probes",
+      "patterns": [
+        "^setup_telegram_(chat_id|snake_case_user_id|camel_case_assignment|concatenated_supergroup_id)\\(\\) \\{$",
+        "^setup_synthetic_telegram_constants\\(\\) \\{$",
+        "^\\s+printf .*telegram(ChatId|_chat_id).* > \"\\$1/config\\.(ts|py)\"$",
+        "^\\s+'const telegram_chat_id = 123456789' \\\\$"
+      ]
+    },
+    "scripts/tests/check-publish-boundary.test-parts/part-02.bash": {
+      "reason": "protective leak rejection and scoped synthetic acceptance",
+      "patterns": [
+        "^expect_reject \"Telegram (chat ID|snake-case user ID|camel-case assignment|concatenated supergroup ID)\" \"telegram_chat_id\" setup_telegram_(chat_id|snake_case_user_id|camel_case_assignment|concatenated_supergroup_id) \"config\\.(ts|py)\"$",
+        "^expect_accept \"scoped synthetic Telegram constants\" setup_synthetic_telegram_constants$"
+      ]
+    },
+    "scripts/tests/stream-helpers-contract.md": {
+      "reason": "dated contract history",
+      "patterns": [
+        "^Before extraction, changing Telegram JSON indentation from 2 to 1 in a separate$",
+        "^On 2026-10-01, the approved Telegram retirement projects failure-send records$"
+      ]
+    },
+    "skills/golem-powers/git-guardian/hooks/pre_tool_use.py": {
+      "reason": "dated already-retired hook history",
+      "patterns": [
+        "^Historical retirement note \\(2026-09-25\\): GO-5 E2 removed the unrotated permissions_audit\\.jsonl \\(136\\.8 MB\\), the Telegram$"
+      ]
+    },
+    "skills/golem-powers/skill-creator/workflows/cleaner.md": {
+      "reason": "dated historical gap",
+      "patterns": [
+        "^\\*\\*Known gaps\\*\\* .*telegram-send \\(historical; retired 2026-10-01\\), mcp-reaper\\.$"
+      ]
+    },
+    "scripts/tests/deploy-drift-check.test.mjs": {
+      "reason": "Manifest-approved neutral redaction fixture; TOKEN suffix remains credential-sensitive and strict configuredKeys order is preserved.",
+      "patterns": [
+        "^        FIXTURE_BOT_TOKEN: \"must-never-appear\",$",
+        "^        FIXTURE_BOT_TOKEN: \"redacted\",$",
+        "^      \"FIXTURE_BOT_TOKEN\",$"
+      ]
+    },
+    "scripts/ci/check-telegram-retirement.mjs": {
+      "reason": "Guard policy path and intentionally broad detector definition; no delivery implementation.",
+      "patterns": [
+        "^const\\ POLICY_FILE\\ =\\ \"scripts/ci/telegram\\-retirement\\-allowlist\\.json\";$",
+        "^const\\ TERMS\\ =\\ \"telegram\\|grammy\\|telegraf\\|t\\\\\\\\\\.me/\\|bot_token\";$"
+      ]
+    },
+    "scripts/tests/check-telegram-retirement.test.mjs": {
+      "reason": "Guard regression tests and CLI/policy paths; synthetic rejected imports, credentials, links and exact parent-revert header.",
+      "patterns": [
+        "^const\\ guard\\ =\\ fileURLToPath\\(new\\ URL\\(\"\\.\\./ci/check\\-telegram\\-retirement\\.mjs\",\\ import\\.meta\\.url\\)\\);$",
+        "^const\\ policy\\ =\\ \"scripts/ci/telegram\\-retirement\\-allowlist\\.json\";$",
+        "^const\\ historical\\ =\\ \"Retired\\ Telegram\\ delivery\\ \\(2026\\-10\\-01\\)\\.\";$",
+        "^const\\ neutral\\ =\\ \"const\\ FIXTURE_BOT_TOKEN\\ =\\ 'synthetic';\";$",
+        "^\\ \\ \\ \\ \\ \\ \"docs/history\\.md\":\\ \\{\\ reason:\\ \"dated\\ retirement\",\\ patterns:\\ \\[\"\\^Retired\\ Telegram\\ delivery\\ \\\\\\\\\\(2026\\-10\\-01\\\\\\\\\\)\\\\\\\\\\.\\$\"\\]\\ \\},$",
+        "^\\ \\ \\ \\ \\ \\ \"scripts/fixture\\.mjs\":\\ \\{\\ reason:\\ \"neutral\\ redaction\\ fixture\",\\ patterns:\\ \\[\"\\^const\\ FIXTURE_BOT_TOKEN\\ =\\ 'synthetic';\\$\"\\]\\ \\},$",
+        "^\\ \\ appendFileSync\\(join\\(root,\\ \"docs/history\\.md\"\\),\\ \"Enable\\ Telegram\\ with\\ synthetic\\-private\\-payload\\.\\\\n\"\\);$",
+        "^\\ \\ put\\(\"src/new\\-route\\.ts\",\\ \"const\\ token\\ =\\ process\\.env\\.TELEGRAM_BOT_TOKEN;\\\\n\"\\);$",
+        "^\\ \\ put\\(\"scripts/tests/test\\-stalker\\-brainlayer\\.bats\",\\ \"\\#\\ Smoke\\ tests\\ for\\ the\\ Stalker\\ Golem\\ BrainLayer\\ \\+\\ Telegram\\ contract\\.\\\\n\"\\);$",
+        "^\\ \\ for\\ \\(const\\ line\\ of\\ \\['import\\ \\{\\ Bot\\ \\}\\ from\\ \"grammy\";',\\ 'import\\ \\{\\ Telegraf\\ \\}\\ from\\ \"telegraf\";',\\ 'Visit\\ https://t\\.me/syntheticbot',\\ 'const\\ token\\ =\\ process\\.env\\.boT_ToKeN;'\\]\\)\\ \\{$",
+        "^\\ \\ allow\\.files\\[\"docs/history\\.md\"\\]\\.patterns\\ =\\ \\[\"Telegram\"\\];$"
+      ]
+    },
+    ".github/workflows/golem-powers-skill-tests.yml": {
+      "reason": "CI invokes the residue guard and its negative-regression suite.",
+      "patterns": [
+        "^\\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ scripts/tests/check\\-telegram\\-retirement\\.test\\.mjs$",
+        "^\\ \\ \\ \\ \\ \\ \\-\\ name:\\ Enforce\\ Telegram\\ retirement$",
+        "^\\ \\ \\ \\ \\ \\ \\ \\ run:\\ node\\ scripts/ci/check\\-telegram\\-retirement\\.mjs$"
+      ]
+    }
+  }
+}

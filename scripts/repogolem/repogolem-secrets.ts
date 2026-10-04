@@ -10,6 +10,7 @@
 // and refs (refs are in the config already); values stay in memory until
 // written to secrets.env.
 import { createHash } from "node:crypto";
+import { isOpCredential } from "./repogolem-check-refs";
 
 export type Resolver = (refs: string[]) => string[];
 
@@ -33,15 +34,18 @@ export function secretKey(ref: string): string {
 export function collectRefs(config: unknown): string[] {
   const refs = new Set<string>();
   const stray: string[] = [];
+  const definitions = isObject(config) && isObject(config.values) ? config.values : {};
   const walk = (value: unknown, where: string, inRefMap: boolean) => {
     if (typeof value === "string") {
-      if (!value.startsWith("op://")) return;
+      if (!value.startsWith("op://") && !value.startsWith("varlock://")) return;
+      if (value.startsWith('varlock://') && !Object.hasOwn(definitions, value.slice(10))) throw new Error(`${where}: undeclared varlock value; nothing written`);
       if (inRefMap) refs.add(value);
       else stray.push(where);
     } else if (Array.isArray(value)) {
       value.forEach((item, index) => walk(item, `${where}.${index}`, false));
     } else if (isObject(value)) {
       for (const [key, child] of Object.entries(value)) {
+        if (!where && key === "values") continue;
         const path = where ? `${where}.${key}` : key;
         const refMap = (key === "env" || key === "secrets") && isObject(child);
         if (refMap) {
@@ -56,15 +60,17 @@ export function collectRefs(config: unknown): string[] {
   if (stray.length > 0) {
     throw new Error(`op:// refs resolve only inside env/secrets mappings; found elsewhere at:\n  ${stray.join("\n  ")}`);
   }
+  for (const name of Object.keys(definitions)) refs.add(`varlock://${name}`);
   return [...refs].sort();
 }
 
 // One `op run` for every ref: each ref rides in as an env var, op swaps in
 // the value, and a child bun prints them back as JSON on the piped stdout.
-// stdin/stderr stay attached so op's sign-in / Touch ID prompt works.
-export function opResolver(opBin: string): Resolver {
+// Authentication/preflight happens first; resolver diagnostics are suppressed
+// because CLI errors can contain values. Only parsed values reach the writer.
+export function opResolver(opBin: string, childEnv: Record<string, string | undefined> = process.env): Resolver {
   return (refs) => {
-    const env: Record<string, string | undefined> = { ...process.env };
+    const env: Record<string, string | undefined> = { ...childEnv };
     for (const key of Object.keys(env)) if (key.startsWith(REF_ENV)) delete env[key];
     refs.forEach((ref, index) => {
       env[`${REF_ENV}${index}`] = ref;
@@ -78,11 +84,11 @@ export function opResolver(opBin: string): Resolver {
     ].join(" ");
     const spawn = () => {
       try {
-        return Bun.spawnSync([opBin, "run", "--no-masking", "--", process.execPath, "-e", emit], {
+        return Bun.spawnSync([opBin, "run", "--no-masking", "--", "/usr/bin/env", ...Object.keys(env).filter(isOpCredential).flatMap(key => ["-u", key]), process.execPath, "--no-install", "-e", emit], {
           env,
           stdin: "inherit",
           stdout: "pipe",
-          stderr: "inherit",
+          stderr: "ignore",
         });
       } catch {
         throw new Error(`cannot run ${opBin} (1Password CLI); ${refs.length} op:// ref(s) unresolved, nothing written`);

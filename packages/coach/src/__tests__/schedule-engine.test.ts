@@ -1,8 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import {
   generateDailyPlan,
-  formatCoachedPlanForTelegram,
-  formatPlanForTelegram,
+  formatCoachedPlanText,
+  formatPlanText,
 } from "../schedule-engine";
 import type { CalendarEvent } from "../calendar-client";
 import type { EcosystemStatus } from "../status-aggregator";
@@ -146,13 +146,13 @@ describe("Schedule Engine", () => {
     });
   });
 
-  describe("formatPlanForTelegram", () => {
+  describe("formatPlanText", () => {
     test("formats plan as readable message", () => {
       const plan = generateDailyPlan(
         [makeEvent()],
         makeStatuses()
       );
-      const message = formatPlanForTelegram(plan);
+      const message = formatPlanText(plan);
 
       expect(message).toContain("Schedule:");
       expect(message).toContain("Team standup");
@@ -166,7 +166,7 @@ describe("Schedule Engine", () => {
         unhealthy: 0,
       });
       const plan = generateDailyPlan([], statuses);
-      const message = formatPlanForTelegram(plan);
+      const message = formatPlanText(plan);
 
       expect(message).not.toContain("Schedule:");
     });
@@ -175,7 +175,7 @@ describe("Schedule Engine", () => {
   describe("coached plan formatting without biometric data", () => {
     test("includes coaching and schedule without a health placeholder", () => {
       const plan = generateDailyPlan([makeEvent()], makeStatuses());
-      const message = formatCoachedPlanForTelegram({
+      const message = formatCoachedPlanText({
         plan,
         coaching: {
           advice: "Start with the highest-priority task.",

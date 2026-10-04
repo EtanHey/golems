@@ -124,7 +124,7 @@ After 2 failed relays, emit an **inline ESCALATION line in orc's own pane** that
 ESCALATION: HEADS-UP <fact verbatim> not absorbed by <owner agent> after 2 relays at <t1>, <t2>. Manual nudge recommended.
 ```
 
-This is **NOT** a Telegram ping, not a separate escalation file, not an out-of-band notification. It is one line in orc's own output that the next user check-in surfaces. The user reads it on the next round-trip and decides whether to intervene.
+This is an inline report in the existing conversation. It is one line in orc's own output that the next user check-in surfaces. The user reads it on the next round-trip and decides whether to intervene.
 
 ### Step 5 — Handle the conflation case
 

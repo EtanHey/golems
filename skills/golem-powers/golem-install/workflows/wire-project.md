@@ -50,8 +50,8 @@ Add your project entry to the `projects` object:
     "mynewproject": {
       "path": "/absolute/path/to/mynewproject",
       "displayName": "My New Project",
-      "mcps": ["Context7", "browser-tools"],
-      "mcpsLight": ["Context7"],
+      "mcps": ["browser-tools"],
+      "mcpsLight": [],
       "contexts": [
         "base",
         "skill-index",
@@ -104,12 +104,12 @@ Choose contexts based on your tech stack:
 Add MCPs from `mcpDefinitions` in the registry:
 
 ```json
-"mcps": ["Context7", "browser-tools", "supabase"],
-"mcpsLight": ["Context7"]  // For faster startup
+"mcps": ["browser-tools", "supabase"],
+"mcpsLight": []  // For faster startup
 ```
 
-Available MCPs:
-- `Context7` - Library documentation lookup
+Available MCPs (Context7 needs a per-project definition before opting in):
+- `Context7` - Optional library documentation lookup; add only for a repository that explicitly requests it. It is not a global or infra default.
 - `browser-tools` - Browser automation
 - `supabase` - Supabase MCP (requires secret)
 - `linear` - Linear issue tracking (requires secret)
@@ -175,8 +175,8 @@ For a Next.js + Supabase project:
 "myapp": {
   "path": "$HOME/projects/myapp",
   "displayName": "MyApp",
-  "mcps": ["Context7", "browser-tools", "supabase"],
-  "mcpsLight": ["Context7"],
+  "mcps": ["browser-tools", "supabase"],
+  "mcpsLight": [],
   "contexts": [
     "base",
     "skill-index",

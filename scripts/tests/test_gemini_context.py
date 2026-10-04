@@ -33,9 +33,53 @@ def test_dry_run_and_apply_are_separate_and_idempotent(tmp_path):
     assert (repo / "GEMINI.md").read_bytes() == TEMPLATE.read_bytes()
     agent = home / ".gemini/antigravity-cli/agents/gatherer.md"
     assert agent.exists() and agent.stat().st_mode & 0o777 == 0o600
+    worker = home / ".gemini/antigravity-cli/agents/brain-worker/agent.md"
+    assert worker.read_bytes() == (ROOT / "templates/gemini/agents/brain-worker.md").read_bytes()
+    assert worker.stat().st_mode & 0o777 == 0o600
     assert run(home, registry, "--apply").returncode == 0
     assert not list(home.glob(".golems/backups/gemini-md/*/*"))
     assert run(home, registry, "--check").returncode == 0
+
+
+def test_agents_only_renders_dependency_without_touching_repo_context(tmp_path):
+    home, repo, registry = fixture(tmp_path)
+    original = b"# Project context\n"
+    (repo / "GEMINI.md").write_bytes(original)
+    assert run(home, registry, "--apply", "--agents-only").returncode == 0
+    assert (repo / "GEMINI.md").read_bytes() == original
+    gatherer = home / ".gemini/antigravity-cli/agents/gatherer.md"
+    worker_dir = home / ".gemini/antigravity-cli/agents/brain-worker"
+    assert f"agents: [{json.dumps(str(worker_dir))}]" in gatherer.read_text()
+    assert "inheritMcp: false" in gatherer.read_text().split("---", 2)[1]
+    assert (worker_dir / "agent.md").exists()
+    assert run(home, registry, "--apply", "--agents-only").returncode == 0
+    assert not list(home.glob(".golems/backups/gemini-md/*/*"))
+
+
+def test_dependency_path_escapes_quotes_and_spaces(tmp_path):
+    home, repo, registry = fixture(tmp_path)
+    quoted = tmp_path / 'home "quoted" space'
+    home.rename(quoted)
+    assert run(quoted, registry, "--apply", "--agents-only").returncode == 0
+    gatherer = quoted / ".gemini/antigravity-cli/agents/gatherer.md"
+    line = next(line for line in gatherer.read_text().splitlines() if line.startswith("agents:"))
+    assert json.loads(line.removeprefix("agents: ")) == [
+        str(quoted / ".gemini/antigravity-cli/agents/brain-worker")
+    ]
+
+
+def test_worker_directory_symlink_refuses_entire_pair_install(tmp_path):
+    home, repo, registry = fixture(tmp_path)
+    agents = home / ".gemini/antigravity-cli/agents"
+    agents.mkdir(parents=True)
+    external = tmp_path / "external-worker"
+    external.mkdir()
+    (external / "agent.md").write_bytes(b"keep original")
+    (agents / "brain-worker").symlink_to(external, target_is_directory=True)
+    result = run(home, registry, "--agents-only", "--apply")
+    assert result.returncode != 0 and "symlink destination refused" in result.stderr
+    assert (external / "agent.md").read_bytes() == b"keep original"
+    assert not (agents / "gatherer.md").exists()
 
 
 def test_stale_claude_copy_is_backed_up_byte_for_byte(tmp_path):

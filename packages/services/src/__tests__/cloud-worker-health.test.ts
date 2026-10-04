@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+import { join } from "node:path";
 import {
   buildHealthResponse,
   buildReadyResponse,
@@ -64,5 +65,39 @@ describe("cloud-worker health endpoints", () => {
       expect(status).toBe(503);
       expect(body.ready).toBe(false);
     });
+  });
+});
+
+// Capture the production handler before scheduler startup; no listener or service runs.
+describe("retired webhook", () => {
+  it("returns 404 even with a configured old secret, without sending", async () => {
+    const worker = join(import.meta.dir, "../cloud-worker.ts");
+    const script = `
+      let handler;
+      let sends = 0;
+      const stop = new Error("handler captured");
+      Bun.serve = (options) => { handler = options.fetch; throw stop; };
+      globalThis.fetch = async () => { sends++; throw new Error("network forbidden"); };
+      try { await import(${JSON.stringify(worker)}); } catch (error) {
+        if (error !== stop) throw error;
+      }
+      const result = await handler(new Request("http://fixture/webhook/uptimerobot/synthetic-token", {
+        method: "POST", body: "alertType=1", headers: { "content-type": "application/x-www-form-urlencoded" }
+      }));
+      const health = await handler(new Request("http://fixture/health"));
+      console.log(JSON.stringify({ status: result.status, sends, health: health.status, body: await health.json() }));
+    `;
+    const child = Bun.spawn([process.execPath, "--eval", script], {
+      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", UPTIMEROBOT_WEBHOOK_SECRET: "synthetic-token" },
+      stdout: "pipe", stderr: "pipe",
+    });
+    const output = await new Response(child.stdout).text();
+    const errors = await new Response(child.stderr).text();
+    expect(await child.exited, errors).toBe(0);
+    const result = JSON.parse(output.trim().split("\n").at(-1)!);
+    expect(result.status).toBe(404);
+    expect(result.sends).toBe(0);
+    expect(result.health).toBe(503);
+    expect(result.body).not.toHaveProperty("telegramMode");
   });
 });

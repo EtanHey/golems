@@ -5,7 +5,7 @@ Infrastructure services — Cloud Worker, Morning Briefing, Bedtime Guardian and
 ## What It Does
 
 - **Cloud Worker** — scheduler entry point for email/briefing/soltome runs
-- **Morning Briefing** — 8am summary delivered to Telegram
+- **Morning Briefing** — 8am summary printed to stdout
 - **Bedtime Guardian** — Evening wind-down reminders
 - **Doctor** — health checks for all wiring (`bun run packages/services/src/doctor.ts`)
 
@@ -17,10 +17,10 @@ local or successor scheduler before assuming these jobs are active.
 | Schedule | Service | Description |
 |----------|---------|-------------|
 | Hourly 6am-7pm + 10pm | Email poller | Fetch + score emails |
-| 8am daily | Briefing | Morning summary to Telegram |
+| 8am daily | Briefing | Morning summary to stdout |
 | 2am daily | Soltome learner | Scrape posts + learn patterns |
 
-**Health:** `GET /` | **Usage:** `GET /usage` (API stats, token counts, cost)
+**Health:** `GET /health` | **Usage:** `GET /usage` (API stats, token counts, cost)
 
 ## Commands
 
@@ -44,9 +44,9 @@ packages/services/
 
 | Environment | What Runs |
 |-------------|-----------|
-| **Mac (launchd)** | Telegram bot, notification server, briefing |
+| **Mac (launchd)** | Briefing (when configured) |
 | **Local/successor scheduler** | Cloud Worker (email, briefing) |
 
 ## Dependencies
 
-- `@golems/shared` — Supabase, event log, state store, LLM, Telegram
+- `@golems/shared` — Supabase, event log, state store, LLM

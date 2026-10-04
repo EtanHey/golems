@@ -50,7 +50,6 @@ cat .claude/settings.local.json 2>/dev/null || echo "NO OVERRIDE"
 ### Skill Allowlist — ONLY Use These
 | Skill | Purpose |
 |-------|---------|
-| context7 | Docs lookup |
 | commit | Git commits |
 
 ### Project Rules
