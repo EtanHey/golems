@@ -156,11 +156,10 @@ function getClaudeCodeInstallInstructions(): string {
   return lines.join("\n");
 }
 
-const FEATURES = ["proactiveNudges", "telegram"] as const;
+const FEATURES = ["proactiveNudges"] as const;
 
 const FEATURE_DESCRIPTIONS: Record<string, string> = {
   proactiveNudges: "Coach sends periodic check-ins and reminders",
-  telegram: "Receive notifications via Telegram bot",
 };
 
 function ask(question: string): Promise<string> {

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Post-stream handler — remuxes, processes, archives, and notifies.
+# Post-stream handler — remuxes, processes, archives, and verifies completion.
 #
 # Usage: post-stream.sh <channel> <date>
 # Example: post-stream.sh examplechannel 2026-02-23
@@ -108,28 +108,6 @@ queue_brainlayer_replay() {
         log "WARNING: failed to queue unfinished BrainLayer payloads for replay"
         return 1
     fi
-}
-
-notify_brainlayer_queue() {
-    local stream_dir="$1"
-    local status_file="$stream_dir/.brainlayer-status"
-    local queued_count
-
-    [ "$TELEGRAM_DRY_RUN" = "0" ] || return 0
-    [ -f "$status_file" ] || return 0
-    grep -F -q 'status=queued' "$status_file" || return 0
-    stalker_stage_done "$stream_dir" "brainlayer-queue-notified" && return 0
-
-    queued_count="$(sed -n 's/^queued_count=//p' "$status_file" | head -1)"
-    queued_count="${queued_count:-unknown}"
-    if ! notify_stalker_telegram \
-        "Stalker BrainLayer replay queued - ${DATE}" \
-        "${CHANNEL} ${DATE}: ${queued_count} BrainLayer payload(s) queued for durable replay after ingest did not complete." \
-        "default" \
-        "stalker-golem"; then
-        log "WARNING: BrainLayer queue alert was preserved in the Telegram retry queue"
-    fi
-    mark_stalker_stage_done "$stream_dir" "brainlayer-queue-notified"
 }
 
 stalker_has_durable_delivery_receipt() {
@@ -273,14 +251,10 @@ if [ -f "$GEMS_FILE" ]; then
     GEM_COUNT="${GEM_COUNT:-0}"
 fi
 
-CONTRACT_SCRIPT="${STALKER_CONTRACT_SCRIPT:-$SCRIPT_DIR/stalker-brainlayer-telegram.sh}"
+CONTRACT_SCRIPT="${STALKER_CONTRACT_SCRIPT:-$SCRIPT_DIR/stalker-brainlayer.sh}"
 BRAINLAYER_DRY_RUN=0
-TELEGRAM_DRY_RUN=0
 if [ "${STALKER_BRAINLAYER_DRY_RUN:-${STALKER_BRAIN_STORE_DRY_RUN:-0}}" = "1" ]; then
     BRAINLAYER_DRY_RUN=1
-    TELEGRAM_DRY_RUN=1
-elif [ "${STALKER_TELEGRAM_DRY_RUN:-0}" = "1" ]; then
-    TELEGRAM_DRY_RUN=1
 fi
 DIGEST_QUALITY_STATUS=0
 # Legacy success markers never skip the live delivery contract.
@@ -324,16 +298,11 @@ else
             log "WARNING: BrainLayer contract ingest failed; queueing unfinished payloads for replay"
             queue_brainlayer_replay "$STREAM_DIR" "brain_store_failed" || true
         fi
-        notify_brainlayer_queue "$STREAM_DIR"
     fi
 fi
 
 if [ "$DIGEST_QUALITY_STATUS" -ne 0 ]; then
     exit "$DIGEST_QUALITY_STATUS"
-fi
-
-if command -v notify &> /dev/null; then
-    notify "Stream Processed" "${CHANNEL} ${DATE}: ${VIDEO_SIZE}, ${CHAT_LINES} chat msgs, ${GEM_COUNT} gems"
 fi
 
 if [[ "$STARTED_EPOCH" =~ ^[0-9]+$ ]] && [ "$STARTED_EPOCH" -gt 0 ]; then

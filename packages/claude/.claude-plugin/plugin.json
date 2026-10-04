@@ -1,12 +1,16 @@
 {
   "name": "claude-golem",
   "version": "1.0.0",
-  "description": "ClaudeGolem — orchestrator, Telegram router, and external face of the Golems ecosystem",
+  "description": "ClaudeGolem — persona and Claude CLI status plugin",
   "author": {
     "name": "Etan Heyman",
     "url": "https://github.com/EtanHey"
   },
   "repository": "https://github.com/EtanHey/golems",
   "license": "MIT",
-  "keywords": ["golem", "telegram", "orchestrator", "claude"]
+  "keywords": [
+    "golem",
+    "persona",
+    "claude"
+  ]
 }

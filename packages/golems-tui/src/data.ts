@@ -1,15 +1,6 @@
 import { $ } from "bun";
 import type { GolemInfo } from "./types.js";
 
-async function checkPort(port: number): Promise<boolean> {
-  try {
-    const result = await $`lsof -i :${port}`.quiet();
-    return result.exitCode === 0;
-  } catch {
-    return false;
-  }
-}
-
 // EmailGolem has no LaunchAgent of its own: the cloud worker schedules it.
 async function checkCloudWorker(): Promise<boolean> {
   try {
@@ -32,16 +23,14 @@ async function countClaudeSessions(): Promise<number> {
 }
 
 export interface StatusProbe {
-  checkPort(port: number): Promise<boolean>;
   checkCloudWorker(): Promise<boolean>;
   countClaudeSessions(): Promise<number>;
 }
 
-const liveProbe: StatusProbe = { checkPort, checkCloudWorker, countClaudeSessions };
+const liveProbe: StatusProbe = { checkCloudWorker, countClaudeSessions };
 
 export async function fetchGolemStatuses(probe: StatusProbe = liveProbe): Promise<GolemInfo[]> {
-  const [telegramRunning, cloudWorkerRunning, claudeSessions] = await Promise.all([
-    probe.checkPort(3847),
+  const [cloudWorkerRunning, claudeSessions] = await Promise.all([
     probe.checkCloudWorker(),
     probe.countClaudeSessions(),
   ]);
@@ -78,8 +67,8 @@ export async function fetchGolemStatuses(probe: StatusProbe = liveProbe): Promis
     {
       name: "RecruiterGolem",
       emoji: "💼",
-      status: telegramRunning ? "running" : "stopped",
-      detail: telegramRunning ? "ready" : "bot offline",
+      status: "unknown",
+      detail: "library; status unavailable",
       description: "Contact finder, outreach pipeline, interview practice with Elo.",
       trailerLines: [
         "$ golems recruit --find \"senior frontend\"",
