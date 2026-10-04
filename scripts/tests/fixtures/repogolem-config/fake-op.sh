@@ -64,7 +64,7 @@ while [[ $# -gt 0 && "$1" != -- ]]; do shift; done
 [[ "${1:-}" == -- ]] || { echo "fake-op: missing --" >&2; exit 3; }
 shift
 [[ -n "${FAKE_OP_BEFORE:-}" ]] && bash -c "$FAKE_OP_BEFORE"
-[[ -n "${FAKE_OP_FAIL:-}" ]] && { echo "[ERROR] fake-op: could not resolve a reference ${FAKE_OP_CANARY:-}" >&2; exit 1; }
+[[ -n "${FAKE_OP_FAIL:-}" ]] && { echo "[ERROR] 2026/10/01 12:34:56 could not find field or file token on item example-item in vault example-vault ${FAKE_OP_CANARY:-}" >&2; exit 1; }
 while IFS= read -r name; do
   value=${!name}
   [[ "$value" == op://* ]] || continue

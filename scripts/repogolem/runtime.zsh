@@ -3,7 +3,7 @@
 typeset -g _GOLEM_RUNTIME_DIR="${${(%):-%x}:A:h}"
 : ${REPOGOLEM_GENERATED_DIR:="$HOME/.config/repogolem/generated"}
 typeset -g RALPH_REGISTRY_FILE="$REPOGOLEM_GENERATED_DIR/registry.json"
-_golem_runtime_read() { bun "$_GOLEM_RUNTIME_DIR/runtime-reader.ts" "$1" "$REPOGOLEM_GENERATED_DIR" "${2:-}"; }
+_golem_runtime_read() { bun --no-install "$_GOLEM_RUNTIME_DIR/runtime-reader.ts" "$1" "$REPOGOLEM_GENERATED_DIR" "${2:-}"; }
 _golem_runtime_read check || return $?
 source "$_GOLEM_RUNTIME_DIR/golem-dispatch.zsh" || return $?
 
