@@ -205,12 +205,12 @@ export function runInstall(argv: string[]): number {
   const bin = join(home, '.local/bin/repogolem'); safePath(home, bin);
   atomic(bin, `#!/bin/sh\nexec bun --no-install ${quote(bundle)} "$@"\n`); chmodSync(bin, 0o700);
   if (seatTarget !== config) atomic(seatTarget, seatText);
+  if (Object.keys(agentLinks).length) { safePath(home,agentDir); mkdirSync(agentDir,{recursive:true,mode:0o700}); }
+  for (const name of Object.keys(previous?.agentLinks ?? {})) if (!Object.hasOwn(agentLinks,name)) rmSync(join(agentDir,name),{force:true});
+  for (const [name,target] of Object.entries(agentLinks)) if (!present(join(agentDir,name))) symlinkSync(target,join(agentDir,name));
   atomic(shell, after, state.shellMode);
   mkdirSync(dirname(seats), { recursive: true, mode: 0o700 });
   if (!present(seats)?.isSymbolicLink()) { rmSync(seats, { force: true }); symlinkSync(seatTarget, seats); }
-  if (Object.keys(agentLinks).length) { safePath(home,agentDir); mkdirSync(agentDir,{recursive:true,mode:0o700}); }
-  for (const name of Object.keys(previous?.agentLinks ?? {})) if (!Object.hasOwn(agentLinks,name)) rmSync(join(agentDir,name));
-  for (const [name,target] of Object.entries(agentLinks)) if (!present(join(agentDir,name))) symlinkSync(target,join(agentDir,name));
   atomic(statePath, JSON.stringify({ ...state, phase: 'installed', agentLinks }) + '\n');
   console.log('installed cache-only runtime and repogolem CLI; backups and recovery journal saved; generate not run');
   return 0;

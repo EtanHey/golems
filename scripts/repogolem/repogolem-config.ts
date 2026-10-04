@@ -45,6 +45,7 @@ import {
   mkdtempSync,
   openSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -678,16 +679,21 @@ function writeOutputsBound(outDir: string, texts: Record<(typeof OUTPUTS)[number
     assertTrustedPath(process.cwd());
     if (agents) {
       const stage = mkdtempSync('.agents-');
-      const old = `${stage}-old`;
       try {
         chmodSync(stage, DIR_MODE);
         for (const [name,text] of Object.entries(agents.files)) {
           const path = join(stage,name); writeFileSync(path,text,{mode:FILE_MODE,flag:'wx'}); chmodSync(path,FILE_MODE);
         }
-        if (existsSync('agents')) renameSync('agents',old);
-        try { renameSync(stage,'agents'); } catch (error) { if (existsSync(old)) renameSync(old,'agents'); throw error; }
+        // Keep the directory stable: each retained prompt swaps atomically,
+        // so installed links never dangle during regeneration.
+        if (!existsSync('agents')) renameSync(stage,'agents');
+        else {
+          chmodSync('agents',DIR_MODE);
+          for (const name of Object.keys(agents.files)) renameSync(join(stage,name),join('agents',name));
+          for (const name of readdirSync('agents')) if (!Object.hasOwn(agents.files,name)) rmSync(join('agents',name),{recursive:true,force:true});
+        }
         writeLeaf('agents.json',agents.receipt);
-      } finally { rmSync(stage,{recursive:true,force:true}); rmSync(old,{recursive:true,force:true}); }
+      } finally { rmSync(stage,{recursive:true,force:true}); }
     }
     for (const name of OUTPUTS) writeLeaf(name, texts[name]);
   } finally {
@@ -870,7 +876,7 @@ function runGenerate(argv: string[]) {
       ? readTransferredSecrets(args["secrets-from"], generated.configSha, generated.machine, generated.refs)
       : resolveRefs(generated.refs, varlockResolver(opBin, opEnv, { ...effective, pluginBase: dirname(resolve(config)) }));
     secretsEnv = secretsEnvText(generated.secretsHeader, resolved);
-    if (hasAgents) agents = renderAgents(agentInputs, resolved, generated.configSha, generated.machine);
+    if (hasAgents) agents = renderAgents(agentInputs, resolved, generated.configSha, generated.machine,effective);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   } finally {

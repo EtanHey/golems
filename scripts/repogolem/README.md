@@ -154,6 +154,10 @@ Set `agentTemplates: {fixture: /absolute/path/fixture.md}`. Its sibling
 declare the same name under config `values` and use `{{SEED_DIR}}` in the prompt.
 Both declarations must explicitly be non-sensitive. Unknown, malformed or
 sensitive placeholders refuse generation before any output changes.
+Aliases sharing a sensitive or project-secret source are refused before provider
+calls. Rendered text cannot contain any resolved sensitive value, including
+duplicates from file/BYO backends; matching is exact substring, with no minimum
+length. Placeholder values cannot contain control characters or newlines.
 Keep public templates and manifests free of personal data; only names belong
 there. Private values are resolved by the existing backend.
 
@@ -164,3 +168,8 @@ provider calls. `install --apply` requires a fresh private render, links it into
 `~/.claude/agents/`, and refuses existing unmanaged prompts. Rollback removes
 only unchanged installer-owned links. Removing a configured template and
 regenerating removes its old rendered file; reinstall reconciles managed links.
+Retained prompts swap by atomic per-file rename within a stable directory, so
+installed links remain valid during regeneration. Multiple prompts, receipts
+and other outputs are not a single transaction; a write failure can leave a
+stale mix that `--check` refuses. Interrupted installs reconcile absent retired
+links idempotently; agent-link operations precede shell changes.
