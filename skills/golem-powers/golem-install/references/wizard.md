@@ -169,11 +169,13 @@ bun <golem-install-dir>/scripts/install-codex-config.mjs \
   --source-dir <golems-checkout-or-golem-install-dir>/config/codex
 ```
 
-The installer updates only `default_subagent_model`,
-`default_subagent_reasoning_effort`, and `max_concurrent_threads_per_session` inside the existing
-`[agents]` table. It preserves every unrelated top-level key, agent setting, and MCP table, then
-removes the superseded `max_threads` alias so it cannot conflict with the canonical concurrency key,
-and copies `recon.toml` and `packet.toml` into `~/.codex/agents/`. Never replace the whole user config.
+The installer renders top-level `model`, `[agents].default_subagent_model`, and packet's model
+from `codex.implement` through the model-role resolver. Existing configs change only those two
+model keys; every non-model key is preserved, including effort and concurrency. New configs get
+the template defaults. Changed files receive exclusive content-addressed backups before atomic
+replacement; repeating the install with identical content does no writes. Agent files are rendered
+and backed up too. Standalone bundles must include the resolver, its validator, and both role files
+listed in `INSTALL_PROMPT.md`. Never replace the whole user config.
 Do not use `bun --check` as a syntax check for this installer: Bun executes the entrypoint. Import it
 through the focused test, or run the installer only when an actual install is intended.
 

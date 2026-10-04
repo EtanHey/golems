@@ -93,3 +93,24 @@ def validate_artifact_pattern(pattern: str) -> str:
     if candidate.is_absolute() or ".." in candidate.parts or not pattern:
         raise CodexWorkflowError(f"artifact pattern must be worktree-relative: {pattern!r}")
     return pattern
+
+
+def default_model() -> str:
+    """Resolve the stable implementation role at dispatch, including installed links."""
+    configured = os.environ.get("GOLEMS_MODEL_ROLES_ROOT")
+    roots = [Path(configured)] if configured else Path(__file__).resolve().parents
+    root = next((p for p in roots if (p / "scripts/model-roles.mjs").is_file()), None)
+    if root is None:
+        raise CodexWorkflowError("Missing model-role resolver; set GOLEMS_MODEL_ROLES_ROOT to a golems checkout")
+    try:
+        result = subprocess.run(
+            ["node", str(root / "scripts/model-roles.mjs"), "codex.implement", "--field", "model", "--stable"],
+            env={**os.environ, "GOLEMS_MODEL_ROLES_ROOT": str(root)},
+            capture_output=True, text=True, check=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise CodexWorkflowError("Cannot resolve stable codex.implement model") from error
+    model = result.stdout.strip()
+    if not model or "\n" in model:
+        raise CodexWorkflowError("Invalid model-role resolver output")
+    return model

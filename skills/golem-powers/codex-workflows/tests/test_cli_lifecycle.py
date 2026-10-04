@@ -32,7 +32,7 @@ import json
 from pathlib import Path
 import sys
 assert sys.argv[1:4] == ['exec', '--approve-for-me', '--json']
-assert sys.argv[sys.argv.index('--model') + 1] == 'gpt-5.6-luna'
+assert sys.argv[sys.argv.index('--model') + 1] == __import__('os').environ['EXPECTED_MODEL']
 assert 'model_reasoning_effort="xhigh"' in sys.argv
 Path('result.md').write_text('fixture artifact\\n')
 print(json.dumps({'type': 'thread.started', 'thread_id': 'fixture'}))
@@ -41,6 +41,7 @@ print(json.dumps({'type': 'turn.completed', 'usage': {'output_tokens': 7}}))
 ''')
     fixture.chmod(0o755)
     env["CODEX_BIN"] = str(fixture)
+    env["EXPECTED_MODEL"] = subprocess.run(["node", str(Path(__file__).resolve().parents[4] / "scripts/model-roles.mjs"), "codex.implement"], capture_output=True, text=True, check=True).stdout.strip()
     brief = tmp_path / "brief.md"
     brief.write_text("fixture only\n")
     manifest = repo / ".worktrees" / "fixture-run" / "manifest.json"
