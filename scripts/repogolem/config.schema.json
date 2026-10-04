@@ -8,7 +8,22 @@
   "properties": {
     "secrets": {
       "type": "object", "additionalProperties": false, "required": ["backend"],
-      "properties": { "backend": { "const": "1password" } }
+      "properties": {
+        "backend": { "type": "string", "pattern": "^(1password|file|plugin:.+)$" },
+        "valuesFile": { "type": "string", "pattern": "^/[^\\u0000\\n]+$" },
+        "pluginVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.-]+)?$" },
+        "resolver": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" }
+      }
+    },
+    "values": {
+      "type": "object", "propertyNames": { "allOf": [
+        { "$ref": "#/definitions/envName" },
+        { "not": { "pattern": "^(OP_|REPOGOLEM_|_*VARLOCK|PATH$|HOME$|TMPDIR$|NODE_|BUN_|DYLD_)" } }
+      ] },
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["sensitive"],
+        "properties": { "sensitive": { "type": "boolean" }, "source": { "$ref": "#/definitions/opRef" } }
+      }
     },
     "registryVersion": { "type": "string" },
     "coderabbit": {},
@@ -54,10 +69,10 @@
       "pattern": "^op://[^/\\n{}]+/[^/\\n{}]+/[^/\\n{}]+(/[^/\\n{}]+)?$"
     },
     "secretMap": {
-      "description": "Secrets: op:// references only, never values.",
+      "description": "Secrets: op:// or declared varlock:// references only, never values.",
       "type": "object",
       "propertyNames": { "$ref": "#/definitions/envName" },
-      "additionalProperties": { "$ref": "#/definitions/opRef" }
+      "additionalProperties": { "anyOf": [{ "$ref": "#/definitions/opRef" }, { "type": "string", "pattern": "^varlock://[A-Za-z_][A-Za-z0-9_]*$" }] }
     },
     "envMap": {
       "description": "Plain environment: an op:// ref (resolved by generate), a $VAR ref, or a non-secret literal.",
