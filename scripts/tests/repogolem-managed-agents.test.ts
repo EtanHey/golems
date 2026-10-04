@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { stringify } from 'yaml';
 import { prepareAgents, renderAgents } from '../repogolem/repogolem-agents';
 
@@ -9,11 +9,14 @@ const root = join(import.meta.dir, '../..');
 const templates = join(root, 'skills/golem-powers/orc/agents/templates');
 const cli = join(root, 'scripts/repogolem/repogolem-config.ts');
 // V2 rejects private values files inside any git worktree, even gitignored paths.
-const scratch = join(homedir(), '.local/state/golems-test/managed-agents');
-const contact = /[\w.+-]+@[\w.-]+\.[a-z]{2,}|\+\d[\d -]{8,}/i;
+const contact = /[\w.+-]+@[\w.-]+\.[a-z]{2,}|\+\d[\d -]{8,}|\b0\d{1,2}[- ]?\d{7}\b|(?:\(\d{3}\)|\b\d{3})[- ]\d{3}[- ]\d{4}\b/i;
+test('contact scan rejects synthetic international and local phone formats', () => {
+  for (const phone of ['+15555550123', '055-5550123', '(555) 555-0123', '555-555-0123'])
+    expect(phone).toMatch(contact);
+});
 let dir: string, home: string, out: string, config: string, valuesFile: string;
 beforeEach(() => {
-  mkdirSync(scratch, { recursive: true }); dir = mkdtempSync(join(scratch, 'case-'));
+  dir = mkdtempSync(join(tmpdir(), 'repogolem-managed-agents-'));
   home = join(dir, 'home'); mkdirSync(home);
   out = join(home, '.config/repogolem/generated'); config = join(dir, 'config.yaml');
   valuesFile = join(dir, 'values.env');
