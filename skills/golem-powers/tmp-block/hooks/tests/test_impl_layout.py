@@ -53,7 +53,7 @@ def test_missing_or_corrupt_package_denies_through_launcher(tmp_path, damaged):
     package.mkdir(exist_ok=True)
     if damaged == "foreign":
         shutil.copy2(package / "policy.py", package.parent / "foreign.py")
-        (package / "__init__.py").write_text("""import importlib.util, sys
+        (package / "__init__.py").write_text((package / "__init__.py").read_text() + """import importlib.util, sys
 from pathlib import Path
 spec = importlib.util.spec_from_file_location(__name__ + '.policy', Path(__file__).parent.parent / 'foreign.py')
 module = importlib.util.module_from_spec(spec)
