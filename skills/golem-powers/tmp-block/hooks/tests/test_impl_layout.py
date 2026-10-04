@@ -46,7 +46,7 @@ def test_real_path_layout_and_bytecode(tmp_path, layout):
     assert not list(package.rglob("__pycache__"))
 
 
-@pytest.mark.parametrize("damaged", ["__init__.py", "policy.py", "runtime.py", "scope.py", "shell_words.py", "chain_status.py", "wiring", "words.py", "prefixes.py", "variable_builtins.py", "variables.py", "assignments.py", "compounds.py", "anchors.py", "resolution.py", "tool_targets.py", "bypass.py", "worktree_args.py", "worktrees.py", "syntax", "runtime-error", "foreign"])
+@pytest.mark.parametrize("damaged", ["__init__.py", "policy.py", "runtime.py", "scope.py", "shell_words.py", "chain_status.py", "wiring", "words.py", "prefixes.py", "variable_builtins.py", "variables.py", "assignments.py", "compounds.py", "anchors.py", "resolution.py", "tool_targets.py", "bypass.py", "worktree_args.py", "worktrees.py", "write_targets.py", "syntax", "runtime-error", "foreign"])
 def test_missing_or_corrupt_package_denies_through_launcher(tmp_path, damaged):
     hook = copied_hook(tmp_path / "source")
     package = hook.parent / "tmp_block_impl"
@@ -105,7 +105,7 @@ assert hook._POSITIONAL_PARAM_RE is hook._prefixes._POSITIONAL_PARAM_RE
 assert hook._SIMPLE_VAR_RE is hook._words._SIMPLE_VAR_RE
 assert hook._MAX_STATIC_VALUES is hook._words._MAX_STATIC_VALUES
 assert type(hook._MAX_STATIC_VALUES) is int and hook._MAX_STATIC_VALUES == 256
-for module_name in ('scope', 'shell_words', 'chain_status', 'words', 'prefixes', 'variable_builtins', 'variables', 'assignments', 'compounds', 'anchors', 'resolution', 'tool_targets', 'bypass', 'worktree_args', 'worktrees'):
+for module_name in ('scope', 'shell_words', 'chain_status', 'words', 'prefixes', 'variable_builtins', 'variables', 'assignments', 'compounds', 'anchors', 'resolution', 'tool_targets', 'bypass', 'worktree_args', 'worktrees', 'write_targets'):
     module = getattr(hook, '_' + module_name)
     for name, value in vars(module).items():
         if callable(value) and getattr(value, '__module__', None) == module.__name__:
@@ -150,6 +150,34 @@ for file in sorted((Path(sys.argv[1]).parent / 'tmp_block_impl').glob('*.py')):
     implicit = {n for n in refs if n in namespace and isinstance(namespace[n], types.ModuleType) and namespace[n].__name__ in sys.stdlib_module_names and n not in imports}
     errors.append((file.name, sorted(missing), sorted(unused), sorted(implicit)))
 assert not any(missing or unused or implicit for _,missing,unused,implicit in errors), errors
+""")
+    result = subprocess.run([sys.executable, "-B", str(probe), str(HOOK)],
+                            capture_output=True, text=True, timeout=20)
+    assert (result.returncode, result.stdout, result.stderr) == (0, "", ""), result.stderr
+
+
+def test_shell_scan_shares_references_in_original_pass_order(tmp_path):
+    probe = tmp_path / "scan.py"
+    probe.write_text("""import importlib.util, sys
+spec = importlib.util.spec_from_file_location('unregistered', sys.argv[1])
+hook = importlib.util.module_from_spec(spec); spec.loader.exec_module(hook)
+namespace = hook._bash_temp_targets.__globals__
+seen = []
+for name in ('scan_redirect_targets', 'scan_tee_targets', 'scan_worktree_targets'):
+    original = namespace[name]
+    def witness(scan, name=name, original=original):
+        seen.append((name, scan, scan.budget[0]))
+        original(scan)
+    namespace[name] = witness
+command = 'echo x > /outside/stable'
+hits = hook._bash_temp_targets(command)
+assert [name for name, _, _ in seen] == ['scan_redirect_targets', 'scan_tee_targets', 'scan_worktree_targets']
+assert len({id(scan) for _, scan, _ in seen}) == 1
+scan = seen[0][1]
+assert scan.command is command and scan.hits is hits
+assert [budget for _, _, budget in seen] == [max(65536, len(command)*32)-len(command)]*3
+assert scan.budget[0] == seen[0][2]
+assert scan.tokens and len(scan.tokens) == len(scan.cmd_pos) == len(scan.seg_of) == len(scan.scope_of)
 """)
     result = subprocess.run([sys.executable, "-B", str(probe), str(HOOK)],
                             capture_output=True, text=True, timeout=20)

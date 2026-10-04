@@ -100,6 +100,7 @@ import re
 import sys
 from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
+from typing import NamedTuple
 from io import StringIO
 
 
@@ -205,6 +206,7 @@ try:
             _spec.loader.exec_module(_package)
             _policy = _impl_import(_IMPL_NAME + ".policy")
             _runtime = _impl_import(_IMPL_NAME + ".runtime")
+            _write_targets = _impl_import(_IMPL_NAME + ".write_targets")
             _worktree_args = _impl_import(_IMPL_NAME + ".worktree_args")
             _worktrees = _impl_import(_IMPL_NAME + ".worktrees")
             _bypass = _impl_import(_IMPL_NAME + ".bypass")
@@ -223,6 +225,7 @@ try:
             for _module, _leaf in (
                 (_package, "__init__.py"), (_policy, "policy.py"),
                 (_runtime, "runtime.py"),
+                (_write_targets, "write_targets.py"),
                 (_worktree_args, "worktree_args.py"),
                 (_worktrees, "worktrees.py"),
                 (_bypass, "bypass.py"),
@@ -255,6 +258,8 @@ try:
             )
             _policy._temp_prefixes = _runtime.callbacks.temp_prefixes
             _policy.is_harness_scratchpad = is_harness_scratchpad
+            for _name in ('ShellScan', 'scan_redirect_targets', 'scan_tee_targets', 'scan_worktree_targets'):
+                globals()[_name] = getattr(_write_targets, _name)
             for _name in ('_worktree_add_args', '_WORKTREE_VALUE_FLAGS'):
                 globals()[_name] = getattr(_worktree_args, _name)
             for _name in ('find_worktree_convention_issues',):
@@ -429,293 +434,13 @@ def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
     exposed_scope_keys = _direct_exposed_scope_keys(direct_command, scope_of)
     hits = []
 
-    # 1. Output redirects (covers heredoc bodies piped via `... <<EOF > path`).
-    for idx, tok in enumerate(tokens):
-        if tok in (">", ">>"):
-            if idx + 1 < len(tokens):
-                target_index = idx + 1
-                target = tokens[idx + 1]
-                if (
-                    target in ("<", ">")
-                    and idx + 2 < len(tokens)
-                    and tokens[idx + 2] == "("
-                ):
-                    # The outer redirect feeds a process substitution; the
-                    # nested tee/write command owns the actual file target.
-                    continue
-                if (
-                    target == "("
-                    and idx > 0
-                    and tokens[idx - 1] in ("<", ">")
-                ):
-                    continue
-                if target == "&":
-                    # `>&N` / `>&-` is an fd dup — but `>&word` is Bash's
-                    # second redirect-both-to-file form (Codex P1): the word
-                    # after `&` is the real target unless it is an fd/dash.
-                    if idx + 2 >= len(tokens):
-                        continue
-                    target_index = idx + 2
-                    target = tokens[idx + 2]
-                    if target.isdigit() or target == "-":
-                        continue
-                if in_temp_class(target):
-                    hits.append(("output redirect", target, seg_of[idx]))
-                else:
-                    variables, variable_prefixes = (
-                        _static_shell_variable_state_before(
-                            tokens, cmd_pos, seg_of, scope_of, seg_of[idx]
-                        )
-                    )
-                    anchor = None
-                    try:
-                        anchor = _shell_anchor_before(
-                            tokens,
-                            cmd_pos,
-                            seg_of,
-                            scope_of,
-                            seg_of[idx],
-                            scope_of[idx],
-                            _initial_cwd,
-                            variables,
-                        )
-                    except Unresolvable:
-                        anchor = _bounded_loop_subshell_anchor(
-                            tokens,
-                            cmd_pos,
-                            seg_of,
-                            scope_of,
-                            idx + 1,
-                            target,
-                            _initial_cwd,
-                            variables,
-                        )
-                    try:
-                        resolved = resolve_targets(
-                            target,
-                            anchor,
-                            variables,
-                            tokens=tokens,
-                            cmd_pos=cmd_pos,
-                            seg_of=seg_of,
-                            scope_of=scope_of,
-                            target_index=target_index,
-                        )
-                    except Unresolvable:
-                        resolved = None
-                    if resolved is not None:
-                        temp_target = next(
-                            (candidate for candidate in resolved if in_temp_class(candidate)),
-                            None,
-                        )
-                        if temp_target is not None:
-                            hits.append(("output redirect", temp_target, seg_of[idx]))
-                        continue
-                    prefix_class = _literal_prefix_class(
-                        target,
-                        anchor,
-                        variables=variables,
-                        variable_prefixes=variable_prefixes,
-                        tokens=tokens,
-                        scope_of=scope_of,
-                        target_index=target_index,
-                    )
-                    if prefix_class == "temp":
-                        hits.append(("output redirect", target, seg_of[idx]))
-                        continue
-                    if prefix_class in ("repo", "outside", "scratchpad"):
-                        continue
-                    # The substitution may rewrite an apparently durable
-                    # prefix into the temp class (`/repo$(printf
-                    # /../../tmp/x)`). Preserve this uncertainty for main()
-                    # to REFUSE as unresolvable; it is not enough evidence
-                    # for Rule 1's hard temp-class deny.
-                    hits.append(("dynamic output redirect", target, seg_of[idx]))
-
-    # 2. tee targets (skip flags; stop at statement separators/parens) —
-    # parens are standalone tokens so `> >(tee /tmp/out.md)` process
-    # substitution is covered too (Codex P1 round 4).
-    for idx, tok in enumerate(tokens):
-        if (
-            (tok == "tee" or tok.endswith("/tee"))
-            and cmd_pos[idx]
-            and _literal_branch_may_execute(tokens, idx)
-        ):
-            j = idx + 1
-            while j < len(tokens):
-                arg = tokens[j]
-                if scope_of[j] != scope_of[idx]:
-                    j += 1
-                    continue
-                if arg in (";", "|", "&", ">", ">>", "(", ")"):
-                    break
-                if arg.startswith("-"):
-                    j += 1
-                    continue
-                if _is_command_sub_open(arg):
-                    variables, variable_prefixes = (
-                        _static_shell_variable_state_before(
-                            tokens, cmd_pos, seg_of, scope_of, seg_of[idx]
-                        )
-                    )
-                    anchor = None
-                    try:
-                        anchor = _shell_anchor_before(
-                            tokens,
-                            cmd_pos,
-                            seg_of,
-                            scope_of,
-                            seg_of[idx],
-                            scope_of[idx],
-                            _initial_cwd,
-                            variables,
-                        )
-                    except Unresolvable:
-                        pass
-                    prefix_class = _literal_prefix_class(
-                        arg,
-                        anchor,
-                        variables=variables,
-                        variable_prefixes=variable_prefixes,
-                        tokens=tokens,
-                        scope_of=scope_of,
-                        target_index=j,
-                    )
-                    if prefix_class == "temp":
-                        hits.append(("tee", arg, seg_of[idx]))
-                    elif prefix_class not in ("repo", "outside", "scratchpad"):
-                        hits.append(("dynamic tee", arg, seg_of[idx]))
-                    j = _after_substitution_word(
-                        tokens, scope_of, j, scope_of[idx]
-                    )
-                    continue
-                if in_temp_class(arg):
-                    hits.append(("tee", arg, seg_of[idx]))
-                else:
-                    variables, variable_prefixes = (
-                        _static_shell_variable_state_before(
-                            tokens, cmd_pos, seg_of, scope_of, seg_of[idx]
-                        )
-                    )
-                    anchor = None
-                    try:
-                        anchor = _shell_anchor_before(
-                            tokens,
-                            cmd_pos,
-                            seg_of,
-                            scope_of,
-                            seg_of[idx],
-                            scope_of[idx],
-                            _initial_cwd,
-                            variables,
-                        )
-                    except Unresolvable:
-                        anchor = _bounded_loop_subshell_anchor(
-                            tokens,
-                            cmd_pos,
-                            seg_of,
-                            scope_of,
-                            j,
-                            arg,
-                            _initial_cwd,
-                            variables,
-                        )
-                    try:
-                        resolved = resolve_targets(
-                            arg,
-                            anchor,
-                            variables,
-                            tokens=tokens,
-                            cmd_pos=cmd_pos,
-                            seg_of=seg_of,
-                            scope_of=scope_of,
-                            target_index=j,
-                        )
-                    except Unresolvable:
-                        resolved = None
-                    if resolved is not None:
-                        temp_target = next(
-                            (candidate for candidate in resolved if in_temp_class(candidate)),
-                            None,
-                        )
-                        if temp_target is not None:
-                            hits.append(("tee", temp_target, seg_of[idx]))
-                    else:
-                        prefix_class = _literal_prefix_class(
-                            arg,
-                            anchor,
-                            variables=variables,
-                            variable_prefixes=variable_prefixes,
-                            tokens=tokens,
-                            scope_of=scope_of,
-                            target_index=j,
-                        )
-                        if prefix_class == "temp":
-                            hits.append(("tee", arg, seg_of[idx]))
-                        # `outside` proves the class as fully as `repo` does.
-                        # Omitting it here was a second instance of the same
-                        # two-class defect: `tee ~/Documents/t_$$.txt` refused
-                        # while the identical `> ~/Documents/t_$$.txt` allowed.
-                        elif prefix_class not in ("repo", "outside", "scratchpad"):
-                            hits.append(("dynamic tee", arg, seg_of[idx]))
-                j += 1
-
-    # 3. git worktree add <path> — creation only; `worktree list/remove` untouched.
-    for raw, seg, scope, target_index in _worktree_add_args(
-        tokens, cmd_pos, seg_of, scope_of
-    ):
-        variables = _static_shell_variables_before(
-            tokens, cmd_pos, seg_of, scope_of, seg
-        )
-        hit_seg = seg
-        if len(scope) == 1 and scope[0] in exposed_scope_keys:
-            outer_seg, sub_index = exposed_scope_keys[scope[0]]
-            hit_seg = _nested_segment(
-                outer_seg, sub_index, max(0, seg - outer_seg)
-            )
-        if in_temp_class(raw):
-            hits.append(("git worktree add", raw, hit_seg))
-            continue
-        try:
-            anchor = _worktree_anchor(
-                tokens,
-                cmd_pos,
-                seg_of,
-                scope_of,
-                seg,
-                scope,
-                _initial_cwd,
-                variables,
-            )
-            resolved = resolve_targets(
-                raw,
-                anchor,
-                variables,
-                tokens=tokens,
-                cmd_pos=cmd_pos,
-                seg_of=seg_of,
-                scope_of=scope_of,
-                target_index=target_index,
-            )
-        except Unresolvable:
-            if _literal_prefix_class(
-                raw,
-                None,
-                variables=variables,
-                tokens=tokens,
-                scope_of=scope_of,
-                target_index=target_index,
-            ) == "temp":
-                hits.append(("git worktree add", raw, hit_seg))
-            # Rule 2 refuses with the specific resolution failure. Rule 1
-            # only denies a path it can prove belongs to the temp class.
-            continue
-        temp_target = next(
-            (candidate for candidate in resolved if in_temp_class(candidate)),
-            None,
-        )
-        if temp_target is not None:
-            hits.append(("git worktree add", temp_target, hit_seg))
+    scan = ShellScan(
+        command, direct_command, tokens, cmd_pos, seg_of, scope_of,
+        exposed_scope_keys, _initial_cwd, _budget, hits,
+    )
+    scan_redirect_targets(scan)
+    scan_tee_targets(scan)
+    scan_worktree_targets(scan)
     for body, outer_seg, sub_index, exposed in _executable_subcommands(
         _strip_heredoc_bodies(direct_command)
     ):
@@ -1114,6 +839,7 @@ try:
         _tool_targets._bash_temp_targets = _bash_temp_targets
         _tool_targets.in_temp_class = _runtime.callbacks.classify_temp
         _tool_targets.re = re
+        _variable_builtins.NamedTuple = NamedTuple
         _variable_builtins.re = re
         _variables.BuiltinScan = BuiltinScan
         _variables._ASSIGNMENT_RE = _ASSIGNMENT_RE
@@ -1149,6 +875,21 @@ try:
         _worktrees._worktree_anchor = _worktree_anchor
         _worktrees.on_convention = on_convention
         _worktrees.resolve_targets = resolve_targets
+        _write_targets.NamedTuple = NamedTuple
+        _write_targets.Unresolvable = Unresolvable
+        _write_targets._after_substitution_word = _after_substitution_word
+        _write_targets._bounded_loop_subshell_anchor = _bounded_loop_subshell_anchor
+        _write_targets._is_command_sub_open = _is_command_sub_open
+        _write_targets._literal_branch_may_execute = _literal_branch_may_execute
+        _write_targets._literal_prefix_class = _literal_prefix_class
+        _write_targets._nested_segment = _nested_segment
+        _write_targets._shell_anchor_before = _shell_anchor_before
+        _write_targets._static_shell_variable_state_before = _static_shell_variable_state_before
+        _write_targets._static_shell_variables_before = _static_shell_variables_before
+        _write_targets._worktree_add_args = _worktree_add_args
+        _write_targets._worktree_anchor = _worktree_anchor
+        _write_targets.in_temp_class = _runtime.callbacks.classify_temp
+        _write_targets.resolve_targets = resolve_targets
 except BaseException:
     _deny_policy_import_failure()
 
