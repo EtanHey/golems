@@ -7,7 +7,7 @@
       "purpose": "Configured orchestrator identity"
     },
     {
-      "name": "REPOGOLEM_LAUNCHER",
+      "name": "AGENT_LAUNCHER",
       "sensitive": false,
       "purpose": "Configured repoGolem launcher command name"
     },
