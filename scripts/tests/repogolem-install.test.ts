@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test';
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const cli = join(import.meta.dir, '../repogolem/repogolem-config.ts');
@@ -179,4 +179,72 @@ for(const recovery of ['retry','rollback'])test(`journal recovers ${recovery} af
 test('completed installation refuses a missing seat link', () => {
   expect(run().code).toBe(0);rmSync(join(home,'.golems/config.yaml'));
   expect(run().code).toBe(2);expect(run(['--rollback']).code).toBe(2);
+});
+test('installed Bun CLI resolves through packaged varlock from an unrelated cwd', () => {
+  writeFileSync(config, readFileSync(config, 'utf8') + 'projects:\n  fixture:\n    path: /home/fixture\n    clis: [codex]\n    secrets:\n      TOKEN: op://example-vault/example-item/token\n');
+  expect(run().code).toBe(0);
+  const runtime = join(home, '.config/repogolem/runtime');
+  expect(readFileSync(join(home,'.local/bin/repogolem'),'utf8')).toContain('exec bun --no-install');
+  expect(JSON.parse(readFileSync(join(runtime,'node_modules/varlock/package.json'),'utf8')).version).toBe('1.21.1');
+  expect(existsSync(join(runtime,'repogolem-1password-plugin.ts'))).toBe(true);
+  const env = { ...process.env, HOME: home, REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'), REPOGOLEM_SOURCE_SHA: '0'.repeat(40) };
+  for (const key of Object.keys(env)) if (key === 'OP_SERVICE_ACCOUNT_TOKEN' || key.startsWith('OP_SESSION')) delete env[key];
+  const r = Bun.spawnSync([join(home, '.local/bin/repogolem'), 'generate', '--config', config, '--out-dir', join(home, '.config/repogolem/generated')], { cwd: home, env, stdout: 'pipe', stderr: 'pipe' });
+  expect(r.exitCode).toBe(0);
+  expect(readFileSync(join(home, '.config/repogolem/generated/secrets.env'), 'utf8')).toContain('resolved:op://example-vault/example-item/token');
+});
+
+test('installer rejects an unexpected varlock version before copying the package', () => {
+  const source = join(home, 'source % space');
+  cpSync(join(import.meta.dir, '../repogolem'), source, { recursive: true });
+  const dependency = join(source, 'node_modules/varlock');
+  mkdirSync(join(dependency, 'dist'), { recursive: true });
+  writeFileSync(join(dependency, 'package.json'), JSON.stringify({ name: 'varlock', version: '9.9.9', exports: './dist/index.js' }));
+  writeFileSync(join(dependency, 'dist/index.js'), '');
+  symlinkSync(join(import.meta.dir, '../../node_modules/yaml'), join(source, 'node_modules/yaml'));
+  const wrapper = join(source, 'install.ts');
+  writeFileSync(wrapper, `import { runInstall } from './repogolem-install'; try { process.exit(runInstall(${JSON.stringify(['--config', config, '--apply'])})); } catch (error) { console.error(error.message); process.exit(2); }`);
+  const r = Bun.spawnSync([process.execPath, wrapper], { env: { ...process.env, HOME: home }, stdout: 'pipe', stderr: 'pipe' });
+  expect(r.exitCode).toBe(2);
+  expect(r.stderr.toString()).toContain('varlock version must be 1.21.1');
+  expect(existsSync(join(home, '.config/repogolem/runtime/node_modules/varlock'))).toBe(false);
+});
+
+test('missing installed varlock core fails without npm requests or a Bun cache', async () => {
+  writeFileSync(config,readFileSync(config,'utf8')+'projects:\n  fixture:\n    path: /home/fixture\n    clis: [codex]\n    secrets:\n      TOKEN: op://example-vault/example-item/token\n');
+  expect(run().code).toBe(0);
+  rmSync(join(home,'.config/repogolem/runtime/node_modules/varlock'),{recursive:true});
+  let requests=0;const registry=Bun.serve({port:0,fetch(){requests++;return new Response('{}',{status:404});}});
+  try {
+    const env={...process.env,HOME:home,BUN_CONFIG_REGISTRY:registry.url.toString(),REPOGOLEM_OP_BIN:join(import.meta.dir,'fixtures/repogolem-config/fake-op.sh'),REPOGOLEM_SOURCE_SHA:'0'.repeat(40)};
+    for(const key of Object.keys(env))if(key==='OP_SERVICE_ACCOUNT_TOKEN'||key.startsWith('OP_SESSION'))delete env[key];
+    const r=Bun.spawn([process.execPath,join(home,'.config/repogolem/runtime/repogolem-cli.js'),'generate','--config',config],{env,stdout:'pipe',stderr:'pipe'});
+    const [code,stdout,stderr]=await Promise.all([r.exited,new Response(r.stdout).text(),new Response(r.stderr).text()]);
+    expect(code).toBe(2);expect(requests).toBe(0);expect(stdout+stderr).toContain('not installed');
+    expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);expect(existsSync(join(home,'.config/repogolem/generated'))).toBe(false);
+  }finally{registry.stop(true);}
+});
+
+test('isolated source resolution cannot auto-install a missing varlock core',async()=>{
+  const source=join(home,'isolated-source');cpSync(join(import.meta.dir,'../repogolem'),source,{recursive:true});
+  const probe=join(source,'probe.ts');writeFileSync(probe,`import {varlockResolver} from './repogolem-varlock';try{varlockResolver(${JSON.stringify(join(import.meta.dir,'fixtures/repogolem-config/fake-op.sh'))},process.env)(['op://example-vault/example-item/token']);}catch{process.exit(2);}`);
+  let requests=0;const registry=Bun.serve({port:0,fetch(){requests++;return new Response('{}',{status:404});}});
+  try{
+    const r=Bun.spawn([process.execPath,probe],{env:{PATH:process.env.PATH,HOME:home,BUN_CONFIG_REGISTRY:registry.url.toString(),BUN_INSTALL_CACHE_DIR:join(home,'.bun/install/cache')},stdout:'pipe',stderr:'pipe'});
+    expect(await r.exited).toBe(2);expect(requests).toBe(0);expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);
+  }finally{registry.stop(true);}
+});
+test('isolated installer source refuses missing varlock without registry requests or cache',async()=>{
+  const source=join(home,'isolated-installer');cpSync(join(import.meta.dir,'../repogolem'),source,{recursive:true});
+  // Supply only YAML by absolute fixture import; no node_modules may hide Bun's missing-package fallback.
+  const installer=join(source,'repogolem-install.ts');writeFileSync(installer,readFileSync(installer,'utf8').replace("from 'yaml'",'from '+JSON.stringify(join(import.meta.dir,'../../node_modules/yaml/dist/index.js'))));
+  const probe=join(source,'install-probe.ts');
+  writeFileSync(probe,"import {runInstall} from './repogolem-install';try{process.exit(runInstall(['--config',process.env.FIXTURE_CONFIG,'--apply']));}catch(e){console.error(e.message);process.exit(2);}");
+  let requests=0;const registry=Bun.serve({hostname:'127.0.0.1',port:0,fetch(){requests++;return new Response('{}',{status:404});}});
+  try{
+    const r=Bun.spawn([process.execPath,probe],{env:{PATH:process.env.PATH,HOME:home,FIXTURE_CONFIG:config,BUN_CONFIG_REGISTRY:registry.url.toString(),BUN_INSTALL_CACHE_DIR:join(home,'.bun/install/cache')},stdout:'pipe',stderr:'pipe'});
+    const [code,stdout,stderr]=await Promise.all([r.exited,new Response(r.stdout).text(),new Response(r.stderr).text()]);
+    expect(code).toBe(2);expect(requests).toBe(0);expect(stdout+stderr).toContain('not installed');
+    expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);expect(existsSync(join(home,'.local/bin/repogolem'))).toBe(false);
+  }finally{registry.stop(true);}
 });

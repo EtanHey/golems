@@ -26,7 +26,7 @@ Scan the skill index for skills that fit the task. Common combos:
 
 | Task Type | Skills to Include |
 |-----------|------------------|
-| Building components | failing test first (AGENTS.md law) + the `/tdd-guard` hook, `/figma-loop`, context7 MCP |
+| Building components | failing test first (AGENTS.md law) + the `/tdd-guard` hook, `/figma-loop`, project-scoped library docs when configured |
 | Full feature work | failing test first (AGENTS.md law) + the `/tdd-guard` hook, `/pr-loop`, `/coderabbit:review` |
 | Figma decomposition | `/figma-swarm`, `/figma-loop` |
 | Research/audit | Claude Desktop/Gemini research path, `/coderabbit:review` |

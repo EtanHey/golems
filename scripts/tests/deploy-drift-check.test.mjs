@@ -31,13 +31,13 @@ import {
 describe("launchd plist semantics", () => {
   test("scopes only golems-owned labels", () => {
     expect(isManagedLabel("com.golems.render-service")).toBe(true);
-    expect(isManagedLabel("com.golemszikaron.telegram")).toBe(true);
+    expect(isManagedLabel("com.golemszikaron.fixture-service")).toBe(true);
     expect(isManagedLabel("com.cmuxlayer.server")).toBe(false);
   });
 
   test("normalizes host paths and removes accepted host/secret environment overrides", () => {
     const source = {
-      Label: "com.golemszikaron.telegram",
+      Label: "com.golemszikaron.fixture-service",
       ProgramArguments: ["/Users/source/Gits/golems/app.ts"],
       EnvironmentVariables: { HOME: "/Users/source", PATH: "/bin", PORT: "9000" },
     };
@@ -46,10 +46,10 @@ describe("launchd plist semantics", () => {
         PORT: "9000",
         PATH: "/opt/homebrew/bin:/bin",
         HOME: "/Users/deployed",
-        TELEGRAM_BOT_TOKEN: "must-never-appear",
+        FIXTURE_BOT_TOKEN: "must-never-appear",
       },
       ProgramArguments: ["/Users/deployed/Gits/golems/app.ts"],
-      Label: "com.golemszikaron.telegram",
+      Label: "com.golemszikaron.fixture-service",
     };
 
     expect(plistsMatch(source, deployed)).toBe(true);
@@ -287,15 +287,15 @@ describe("environment contracts", () => {
         PATH: "/bin",
         SESSIONS_TO_KEEP: "7",
         ACTIVITY_DAYS_TO_KEEP: "7",
-        TELEGRAM_BOT_TOKEN: "redacted",
+        FIXTURE_BOT_TOKEN: "redacted",
       },
     }, "const days = process.env.ACTIVITY_DAYS_TO_KEEP ?? '7';");
     expect(contract.configuredKeys).toEqual([
       "ACTIVITY_DAYS_TO_KEEP",
+      "FIXTURE_BOT_TOKEN",
       "HOME",
       "PATH",
       "SESSIONS_TO_KEEP",
-      "TELEGRAM_BOT_TOKEN",
     ]);
     expect(contract.unusedKeys).toEqual(["SESSIONS_TO_KEEP"]);
   });

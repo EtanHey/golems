@@ -1,10 +1,13 @@
 // Installation is dry-run unless --apply; no generation or secret resolution.
 import { createHash } from 'node:crypto';
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { installedVarlock } from './repogolem-varlock-package';
 import { isDeepStrictEqual } from 'node:util';
+import { cachedAgents } from './repogolem-agents';
 const start = '# >>> repogolem generated launchers >>>';
 const end = '# <<< repogolem generated launchers <<<';
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
@@ -80,6 +83,14 @@ export function runInstall(argv: string[]): number {
   const statePath = join(root, 'install-state.json'), shell = join(home, '.zshrc'), seats = join(home, '.golems/config.yaml');
   for (const path of [root, shell, statePath, dirname(seats)]) safePath(home, path);
   const previous = existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) : null;
+  const agentDir = join(home, '.claude/agents');
+  for (const [name,target] of Object.entries(previous?.agentLinks ?? {})) {
+    if (!/^[A-Za-z][A-Za-z0-9_-]*\.md$/.test(name)) throw new Error('invalid installed agent journal');
+    safePath(home,agentDir);
+    const path = join(agentDir,name), stat = present(path);
+    if (!stat && previous.phase === 'installing') continue;
+    if (!stat?.isSymbolicLink() || stat.uid !== process.getuid?.() || readlinkSync(path) !== target) throw new Error('installed agent link changed; reconciliation required');
+  }
   const before = existsSync(shell) ? readFileSync(shell, 'utf8') : '';
   if (previous) verifySeats(previous, seats);
   if (rollback) {
@@ -98,6 +109,7 @@ export function runInstall(argv: string[]): number {
     if (previous.hadSeats) {
       atomic(seats, saved, previous.seatMode ?? 0o600);
     }
+    for (const name of Object.keys(previous.agentLinks ?? {})) rmSync(join(agentDir,name),{force:true});
     rmSync(statePath);
     console.log('restored shell and seat registry; installed runtime retained'); return 0;
   }
@@ -107,6 +119,13 @@ export function runInstall(argv: string[]): number {
   const configText = readFileSync(config, 'utf8');
   let parsed: any;
   try { parsed = parseYaml(configText); } catch { throw new Error('private config could not be parsed; values hidden'); }
+  const rendered = cachedAgents(parsed,configText,join(root,'generated'));
+  const agentLinks = Object.fromEntries(Object.keys(rendered?.files ?? {}).map(name => [name,join(root,'generated/agents',name)]));
+  if (Object.keys(agentLinks).length) safePath(home,agentDir);
+  for (const [name,target] of Object.entries(agentLinks)) {
+    const stat = present(join(agentDir,name));
+    if (stat && (!stat.isSymbolicLink() || previous?.agentLinks?.[name] !== target)) throw new Error('unmanaged agent exists; nothing written');
+  }
   const views = parsed?.machineSeatConfigs;
   let seatText = configText, seatTarget = config;
   if (views) {
@@ -140,7 +159,7 @@ export function runInstall(argv: string[]): number {
     atomic(join(root, 'zshrc.before'), before);
     if (existsSync(seats)) atomic(join(root, 'seats.before'), oldText);
   }
-  const state = { ...previous, config, seatTarget, managedBlock: managedBlock(config), phase: 'installing',
+  const state = { ...previous, config, seatTarget, managedBlock: managedBlock(config), phase: 'installing', agentLinks:{...previous?.agentLinks,...agentLinks},
     machineDigest: seatTarget === config ? null : digest(seatText), previousMachineDigest: previous?.phase === 'installing' ? previous.previousMachineDigest : previous?.machineDigest,
     hadSeats: previous?.hadSeats ?? existsSync(seats), hadShell: previous?.hadShell ?? existsSync(shell),
     shellMode: previous?.shellMode ?? (present(shell)?.mode ?? 0o600) & 0o777,
@@ -151,7 +170,7 @@ export function runInstall(argv: string[]): number {
   const runtime = join(root, 'runtime'); safePath(home, runtime);
   mkdirSync(runtime, { recursive: true, mode: 0o700 });
   chmodSync(root, 0o700); chmodSync(runtime, 0o700);
-  for (const name of ['runtime.zsh', 'runtime-reader.ts', 'golem-dispatch.zsh', 'worktree-bootstrap.sh', 'config.example.yaml']) {
+  for (const name of ['runtime.zsh', 'runtime-reader.ts', 'golem-dispatch.zsh', 'worktree-bootstrap.sh', 'config.example.yaml', 'repogolem-file-plugin.ts', 'repogolem-1password-plugin.ts', 'repogolem-secrets.ts', 'repogolem-check-refs.ts']) {
     const target = join(runtime, name); safePath(home, target);
     copyFileSync(join(import.meta.dir, name), target); chmodSync(target, name === 'worktree-bootstrap.sh' ? 0o700 : 0o600);
   }
@@ -160,17 +179,39 @@ export function runInstall(argv: string[]): number {
     const target = join(runtime, 'dispatch', name); safePath(home, target);
     copyFileSync(join(import.meta.dir, 'dispatch', name), target); chmodSync(target, 0o600);
   }
+  // Snapshot the exact-pinned core into the installation. A fresh staging
+  // directory avoids following pre-existing nested links during package copy.
+  const modules = join(runtime, 'node_modules'); safePath(home, modules);
+  mkdirSync(modules, { recursive: true, mode: 0o700 }); chmodSync(modules, 0o700);
+  const dependency = join(modules, 'varlock'); safePath(home, dependency);
+  const stage = mkdtempSync(join(runtime, '.varlock-'));
+  try {
+    const source = installedVarlock(dirname(fileURLToPath(import.meta.url)));
+    if (JSON.parse(readFileSync(join(source, 'package.json'), 'utf8')).version !== '1.21.1') throw new Error('varlock version must be 1.21.1');
+    cpSync(source, stage, { recursive: true });
+    function privateTree(path: string) {
+      const stat = lstatSync(path);
+      if (stat.isSymbolicLink()) throw new Error('varlock package contains a symlink');
+      chmodSync(path, stat.isDirectory() ? 0o700 : 0o600);
+      if (stat.isDirectory()) for (const entry of readdirSync(path)) privateTree(join(path, entry));
+    }
+    privateTree(stage);
+    rmSync(dependency, { recursive: true, force: true }); renameSync(stage, dependency);
+  } finally { rmSync(stage, { recursive: true, force: true }); }
   const bundle = join(runtime, 'repogolem-cli.js'); safePath(home, bundle);
-  const build = Bun.spawnSync(['bun', 'build', join(import.meta.dir, 'repogolem-config.ts'), '--target=bun', '--outfile', bundle], { stdout: 'pipe', stderr: 'pipe' });
+  const build = Bun.spawnSync(['bun', '--no-install', 'build', join(import.meta.dir, 'repogolem-config.ts'), '--target=bun', '--outfile', bundle], { stdout: 'pipe', stderr: 'pipe' });
   if (build.exitCode !== 0) throw new Error('CLI bundle failed; retry install or rollback; shell and seats unchanged');
   chmodSync(bundle, 0o600);
   const bin = join(home, '.local/bin/repogolem'); safePath(home, bin);
-  atomic(bin, `#!/bin/sh\nexec bun ${quote(bundle)} "$@"\n`); chmodSync(bin, 0o700);
+  atomic(bin, `#!/bin/sh\nexec bun --no-install ${quote(bundle)} "$@"\n`); chmodSync(bin, 0o700);
   if (seatTarget !== config) atomic(seatTarget, seatText);
+  if (Object.keys(agentLinks).length) { safePath(home,agentDir); mkdirSync(agentDir,{recursive:true,mode:0o700}); }
+  for (const name of Object.keys(previous?.agentLinks ?? {})) if (!Object.hasOwn(agentLinks,name)) rmSync(join(agentDir,name),{force:true});
+  for (const [name,target] of Object.entries(agentLinks)) if (!present(join(agentDir,name))) symlinkSync(target,join(agentDir,name));
   atomic(shell, after, state.shellMode);
   mkdirSync(dirname(seats), { recursive: true, mode: 0o700 });
   if (!present(seats)?.isSymbolicLink()) { rmSync(seats, { force: true }); symlinkSync(seatTarget, seats); }
-  atomic(statePath, JSON.stringify({ ...state, phase: 'installed' }) + '\n');
+  atomic(statePath, JSON.stringify({ ...state, phase: 'installed', agentLinks }) + '\n');
   console.log('installed cache-only runtime and repogolem CLI; backups and recovery journal saved; generate not run');
   return 0;
 }

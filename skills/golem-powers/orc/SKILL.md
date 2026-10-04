@@ -7,7 +7,7 @@ description: "Orchestrate multi-agent sprints/cmux/ecosystem work. Triggers: spr
 
 ## Global agent install
 
-Run `bash skills/golem-powers/orc/scripts/install.sh` from the golems checkout to link `orc-helper` and `brain-worker` into `~/.claude/agents/`. Use `--dry-run` to preview; the script backs up hand-placed files before linking. `brain-worker` is interim until the BrainLayer plugin ships it.
+Run `bash skills/golem-powers/orc/scripts/install.sh` from the golems checkout to link `orc/agents/*` (`orc-helper`, `brain-worker`) and `coach/agents/*` (`coach-mail`) into `~/.claude/agents/`. Use `--dry-run` to preview; the script backs up hand-placed files before linking. `brain-worker` is interim until the BrainLayer plugin ships it.
 
 > Fleet law: canon #1 owns lead routing, #7 owns monitors/collabs, and #8 owns cluster workflow. This skill keeps orc-specific state machine, recovery decisions, composition map, and operational mechanics.
 
@@ -112,16 +112,13 @@ Four standing lines — encode in every collab gate, succession brief, and opera
 3. **Consent-override path** — Every gate that protects operator attention MUST expose a clear override. Gates protect attention, not operator authority.
 4. **30-min stall sweep** — Maintain a periodic sweep on top of event monitors. **Recreate it on every generation succession** because session-local monitors die with the outgoing orc.
 
-**Approval/comms doctrine (gen-18 Track 1 #7):** visual gates use `SendUserFile` + Telegram `ok=true` (not `outbox.md`), CI-green in-policy PRs
+**Approval/comms doctrine (gen-18 Track 1 #7):** visual gates use `SendUserFile` and explicit operator confirmation, CI-green in-policy PRs
 are admin-merged instead of parked for the operator, and incident responses lead with operator framing before logs.
 
-**Notify doctrine:** notify = how we tell the operator when things are DONE —
-deliverable-completion pings (merged PR, shipped dashboard, terminal lane), hard blockers that need human action,
-or urgent errors; never chatter/status noise. The fleet shorthand is `POST http://localhost:3847/notify`; in
-literal shell commands use `http://127.0.0.1:3847/notify` because the Bun server binds loopback IPv4. Payloads
-must be JSON with a non-empty `title` and string `body`; code should prefer `sendNotification` from
-`@golems/shared/lib/notify`. The old local helper names are heritage names only; do not introduce new references
-to them, and never alias over a POSIX coreutil name.
+**Completion reporting:** report completed deliverables, hard blockers requiring
+operator action, and urgent errors in the lane's existing inline output and
+collab contract. Keep routine progress concise. No default external send route
+is enabled.
 
 **Fan-out depth (gen-18 Track 1 #8):** ultracode/comprehensive/exhaustive/audit-style fan-out dispatch uses >=17 cheap-model gatherers, >=3 adversarial verifiers, loop-until-dry quality stop, and persistent collab routing through `large-plan:collab`.
 
@@ -365,7 +362,7 @@ list_agents({agent_ids:[agent_id], detail:"full"})
     -> close_surface({scope:"agent", agent_id, force:true}) -> spawn_agent({...same task...})
     -> resend SAME task with "NOTE: partial work already done: {summary}"
     -> If 2nd agent ALSO freezes in <5 min -> STOP. Circuit breaker.
-      -> Telegram user. brain_store state. Wait. Don't burn context diagnosing.
+      -> Report inline and in collab. brain_store state. Wait. Don't burn context diagnosing.
   -> Long tool call (>5 min, build/test running) -> WAIT. This is normal.
 ```
 
@@ -424,7 +421,7 @@ For each Claude agent with assigned Cursor/Codex workers:
 
 ### BrainLayer down
 ```
-1. Echo "BRAINLAYER UNAVAILABLE" to collab + Telegram
+1. Echo "BRAINLAYER UNAVAILABLE" to collab and inline output
 2. Fall back to: git log --oneline -20, grep with targeted patterns
 3. Queue brain_store calls to local file (~/.brainlayer-queue.jsonl)
 4. Resume BrainLayer when MCP reconnects, flush queue
@@ -438,7 +435,7 @@ For each Claude agent with assigned Cursor/Codex workers:
 1. STOP spawning. The root cause is systemic.
 2. Commit any WIP in affected repos
 3. brain_store full state: surface IDs, open PRs, user's last instruction
-4. Telegram: "Sprint degraded -- N PRs merged, deferring rest. [root cause guess]"
+4. Inline output and collab: "Sprint degraded -- N PRs merged, deferring rest. [root cause guess]"
 5. Wait for user or environment recovery
 ```
 

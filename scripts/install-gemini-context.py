@@ -114,6 +114,7 @@ def main():
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--check", action="store_true")
     p.add_argument("--force-repo", action="append", default=[], metavar="NAME")
+    p.add_argument("--agents-only", action="store_true", help="install the gatherer/brain-worker pair without repo context writes")
     p.add_argument("--lead-persona", type=Path, help="private persona source; never inserted into GEMINI.md")
     p.add_argument("--lead-agent", help="registry agentByCli.gemini name for the private persona")
     a = p.parse_args()
@@ -129,7 +130,15 @@ def main():
     if set(a.force_repo) - projects.keys():
         p.error("--force-repo names must exist in this registry")
     template = (ROOT / "templates/gemini/GEMINI.md").read_bytes()
-    agent = (ROOT / "templates/gemini/agents/gatherer.md").read_bytes()
+    agents = {name: (ROOT / f"templates/gemini/agents/{name}.md").read_bytes()
+              for name in ("gatherer", "brain-worker")}
+    # agy 1.2.14 needs absolute directory dependencies; bare names silently fail.
+    worker_dir = home / ".gemini/antigravity-cli/agents/brain-worker"
+    marker = b"agents: [brain-worker]"
+    if agents["gatherer"].count(marker) != 1:
+        raise ValueError("gatherer must declare exactly one brain-worker dependency")
+    agents["gatherer"] = agents["gatherer"].replace(
+        marker, f"agents: [{json.dumps(str(worker_dir))}]".encode())
     plans, rows, seen = [], [], set()
 
     def plan(dest, data, name, before, suffix=".md"):
@@ -154,7 +163,7 @@ def main():
     global_bytes = read(global_file)
     global_ritual = row("GLOBAL", "VERIFY" if global_file.exists() else "MISSING", global_bytes, global_bytes)
     found_ritual = global_ritual
-    for name, project in sorted(projects.items()):
+    for name, project in sorted(projects.items()) if not a.agents_only else []:
         raw_path = project["path"]
         if not isinstance(raw_path, str) or not raw_path:
             raise ValueError(f"invalid project path: {name}")
@@ -185,11 +194,13 @@ def main():
         found_ritual |= row(name, action, before, after)
         if action in ("CREATE", "REPLACE"):
             plan(dest, after, name, before, "-GEMINI.md")
-    dest = home / ".gemini/antigravity-cli/agents/gatherer.md"
-    before = read(dest)
-    row("GATHERER", "KEEP" if dest.exists() and before == agent else "INSTALL", before, agent)
-    if not dest.exists() or before != agent:
-        plan(dest, agent, "gatherer", before)
+    for name, agent in agents.items():
+        dest = (worker_dir / "agent.md" if name == "brain-worker"
+                else home / f".gemini/antigravity-cli/agents/{name}.md")
+        before = read(dest)
+        row(name.upper(), "KEEP" if dest.exists() and before == agent else "INSTALL", before, agent)
+        if not dest.exists() or before != agent:
+            plan(dest, agent, name, before)
     if a.lead_persona:
         persona = a.lead_persona.read_bytes()
         dest = home / ".claude/agents" / (a.lead_agent + ".md")

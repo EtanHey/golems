@@ -1,0 +1,260 @@
+{
+  "synthetic": true,
+  "now": "2030-01-01T12:00:00Z",
+  "window": "newer_than:1d",
+  "sender_allowlist": [
+    "Synthetic Org 21"
+  ],
+  "threads": [
+    {
+      "thread_id": "synthetic-01",
+      "sender_org": "Synthetic Org 01",
+      "known_contact": false,
+      "category": "promotions",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 01",
+      "body": "SYNTHETIC_BODY_01\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-02",
+      "sender_org": "Synthetic Org 02",
+      "known_contact": false,
+      "category": "promotions",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 02",
+      "body": "SYNTHETIC_BODY_02\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-03",
+      "sender_org": "Synthetic Org 03",
+      "known_contact": false,
+      "category": "promotions",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 03",
+      "body": "SYNTHETIC_BODY_03\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-04",
+      "sender_org": "Synthetic Org 04",
+      "known_contact": false,
+      "category": "promotions",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 04",
+      "body": "SYNTHETIC_BODY_04\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-05",
+      "sender_org": "Synthetic Org 05",
+      "known_contact": false,
+      "category": "promotions",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 05",
+      "body": "SYNTHETIC_BODY_05\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-06",
+      "sender_org": "Synthetic Org 06",
+      "known_contact": false,
+      "category": "promotions",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 06",
+      "body": "SYNTHETIC_BODY_06\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-07",
+      "sender_org": "Synthetic Org 07",
+      "known_contact": false,
+      "category": "promotions",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 07",
+      "body": "SYNTHETIC_BODY_07\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-08",
+      "sender_org": "Synthetic Org 08",
+      "known_contact": false,
+      "category": "promotions",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 08",
+      "body": "SYNTHETIC_BODY_08\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-09",
+      "sender_org": "Synthetic Org 09",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic update 09",
+      "body": "SYNTHETIC_BODY_09\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-10",
+      "sender_org": "Synthetic Org 10",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic update 10",
+      "body": "SYNTHETIC_BODY_10\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-11",
+      "sender_org": "Synthetic Org 11",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic update 11",
+      "body": "SYNTHETIC_BODY_11\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-12",
+      "sender_org": "Synthetic Org 12",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic update 12",
+      "body": "SYNTHETIC_BODY_12\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-13",
+      "sender_org": "Synthetic Org 13",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic update 13",
+      "body": "SYNTHETIC_BODY_13\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-14",
+      "sender_org": "Synthetic Org 14",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic update 14",
+      "body": "SYNTHETIC_BODY_14\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-15",
+      "sender_org": "Synthetic Org 15",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic update 15",
+      "body": "SYNTHETIC_BODY_15\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-16",
+      "sender_org": "Synthetic Org 16",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic update 16",
+      "body": "SYNTHETIC_BODY_16\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-17",
+      "sender_org": "Synthetic Org 17",
+      "known_contact": false,
+      "category": "social",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 17",
+      "body": "SYNTHETIC_BODY_17\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-18",
+      "sender_org": "Synthetic Org 18",
+      "known_contact": false,
+      "category": "social",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 18",
+      "body": "SYNTHETIC_BODY_18\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-19",
+      "sender_org": "Synthetic Org 19",
+      "known_contact": false,
+      "category": "forums",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 19",
+      "body": "SYNTHETIC_BODY_19\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-20",
+      "sender_org": "Synthetic Org 20",
+      "known_contact": false,
+      "category": "forums",
+      "list_unsubscribe": false,
+      "subject": "Synthetic update 20",
+      "body": "SYNTHETIC_BODY_20\nBulk update with no required action.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-21",
+      "sender_org": "Synthetic Org 21",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": true,
+      "subject": "Synthetic interview request",
+      "body": "SYNTHETIC_BODY_21\nSelect an interview slot before 2030-01-02T17:00:00Z.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-22",
+      "sender_org": "Synthetic Org 22",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": false,
+      "subject": "Synthetic role request",
+      "body": "SYNTHETIC_BODY_22\nConfirm interest in the role before 2030-01-03T12:00:00Z.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-23",
+      "sender_org": "Synthetic Org 23",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": false,
+      "subject": "Synthetic existing-client delivery deadline",
+      "body": "SYNTHETIC_BODY_23\nAs your existing client, we need you to deliver the revised project before 2030-01-01T16:00:00Z.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-24",
+      "sender_org": "Synthetic Org 24",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": false,
+      "subject": "Synthetic bill request",
+      "body": "SYNTHETIC_BODY_24\nPay the bill before 2030-01-01T18:00:00Z.",
+      "received_at": "2030-01-01T10:00:00Z"
+    },
+    {
+      "thread_id": "synthetic-25",
+      "sender_org": "Synthetic Org 25",
+      "known_contact": false,
+      "category": "primary",
+      "list_unsubscribe": false,
+      "subject": "Synthetic proposal request",
+      "body": "SYNTHETIC_BODY_25\nSubmit a proposal before 2030-01-04T12:00:00Z.",
+      "received_at": "2030-01-01T10:00:00Z"
+    }
+  ]
+}

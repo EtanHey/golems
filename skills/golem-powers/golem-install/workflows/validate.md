@@ -67,7 +67,6 @@ echo ""
 
 # Golem-Powers API Keys (golems item)
 echo "=== Golem-Powers API Keys ==="
-check_warn "Context7 API key" "op read 'op://Private/golems/context7/API_KEY'"
 check_warn "Linear API key" "op read 'op://Private/golems/linear/API_KEY'"
 echo ""
 
@@ -145,14 +144,11 @@ Expected: Shows account and vaults.
 ### 5. Test Golem-Powers API Keys
 
 ```bash
-# Context7 API Key
-op read "op://Private/golems/context7/API_KEY"
-
 # Linear API Key
 op read "op://Private/golems/linear/API_KEY"
 ```
 
-Expected: Returns the API key value (starts with ctx7sk_ for Context7, lin_api_ for Linear).
+Expected: Returns the API key value (starts with lin_api_ for Linear).
 
 ### 6. Test Skill Symlinks
 
@@ -244,7 +240,7 @@ Once all checks pass:
 All these should be true:
 - [ ] All 8 CLIs installed (gh, op, gum, fswatch, jq, git, bun, cr)
 - [ ] 1Password signed in with vault access
-- [ ] Context7 and Linear API keys stored in golems item
+- [ ] Linear API key stored in golems item
 - [ ] ~/.config/golems/ exists
 - [ ] Individual skill symlinks created in ~/.claude/skills/
 - [ ] Skill commands work in Claude Code (e.g., `/pr-loop`, `/1password`)

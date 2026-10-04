@@ -4,18 +4,11 @@
     "stdout": "[01:02:03] Pass 0: No local scoring CLI found (need agy or codex exec)\n",
     "stderr": "",
     "files": {
-      ".stage-pipeline-failure-alerted.done": "2026-06-25T01:02:03Z\n",
       ".stage-scoring.failed": "status=FAILED\nstage=scoring\nretryable=true\nreason=scorer preflight failed before expensive processing: agy and codex are absent from PATH and HOME/.local/bin\ngem_count=0\nchat_count=2\nstream_dir=run/examplechannel-2026-06-25-040516\ngems_path=run/examplechannel-2026-06-25-040516/gems.md\nchat_path=run/examplechannel-2026-06-25-040516/chat.log\nfailed_at=2026-06-25T01:02:03Z\n",
       "chat.log": "[00:00:10] a: wow !clip\n[00:00:30] b: hype\n",
       "video.mp4": "synthetic video\n"
     },
-    "commands": [
-      {
-        "argv": [],
-        "command": "telegram",
-        "stdin": "{\n  \"title\": \"Stalker Pipeline Failure\",\n  \"body\": \"Stage: scoring. Reason: scorer preflight failed before expensive processing: agy and codex are absent from PATH and HOME/.local/bin. Statuses: scoring=failed. gem_count=0; chat_count=2. Stream: run/examplechannel-2026-06-25-040516. Gems: run/examplechannel-2026-06-25-040516/gems.md. Chat: run/examplechannel-2026-06-25-040516/chat.log. retryable=true; success markers remain open.\",\n  \"source\": \"stalker-golem\",\n  \"priority\": \"high\"\n}\n"
-      }
-    ],
+    "commands": [],
     "completion_calls": 0
   }
 ]

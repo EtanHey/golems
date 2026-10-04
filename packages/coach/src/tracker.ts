@@ -125,7 +125,7 @@ export function getWeeklySummary(): {
 }
 
 /**
- * Format weekly summary for Telegram.
+ * Format weekly summary as text.
  */
 export function formatWeeklySummary(): string {
   const summary = getWeeklySummary();

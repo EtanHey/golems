@@ -41,13 +41,11 @@ import { processHotMatch } from "@golems/recruiter/auto-outreach";
 
 ---
 
-## Telegram Architecture
+## Delivery retirement (2026-10-01)
 
-**Two topics only:**
-- **General** — interactive ClaudeGolem chat (no thread ID)
-- **Alerts** — all one-way notifications (jobs, email, nightshift, health, bedtime)
-
-Setup: `/setup alerts` in the Alerts topic. General works automatically.
+The inbound bot and outbound Telegram route are retired. Existing plans, logs,
+drafts, databases, digest stdout, dashboards and local completion receipts
+remain; no replacement channel is enabled by default.
 
 ---
 
@@ -55,7 +53,7 @@ Setup: `/setup alerts` in the Alerts topic. General works automatically.
 
 | Environment | Components | Why |
 |-------------|-----------|-----|
-| Mac (launchd) | Telegram bot, Night Shift, Briefing, BrainLayer | Needs local Claude CLI, file access |
+| Mac (launchd) | Night Shift, Briefing, BrainLayer | Needs local Claude CLI, file access |
 | Local/successor scheduler | Email poller, Cloud LLM | Scheduled tasks; Railway service deleted 2026-07-05 |
 | Supabase | Database, auth, storage | Shared state |
 
@@ -90,11 +88,9 @@ Setup: `/setup alerts` in the Alerts topic. General works automatically.
 
 ## Key Wiring
 
-### ClaudeGolem registers Composers
-```
-telegram-bot.ts → bot.use(claudeComposer)
-                → bot.use(recruiterComposer) // from @golems/recruiter
-```
+### ClaudeGolem persona and status
+`packages/claude/SOUL.md` defines the shared voice; its status plugin reads
+active CLI sessions and recent event-log entries.
 
 ### CoachGolem reads status
 ```
@@ -117,7 +113,6 @@ services/cloud-worker.ts → processEmails() from @golems/shared
 
 | Plist | Schedule | Process |
 |-------|----------|---------|
-| `com.golems.telegram.plist` | KeepAlive | Telegram bot |
 | `com.golems.nightshift.plist` | 4am daily | Night Shift |
 | `com.golems.briefing.plist` | 8am daily | Morning Briefing |
 | `com.golems.bedtime.plist` | 10pm daily | Bedtime Guardian |
@@ -129,7 +124,6 @@ Any `Bun.serve()` managed by launchd MUST handle SIGTERM:
 ```typescript
 process.on("SIGTERM", () => {
   server.stop(true); // Release port
-  bot.stop();
   process.exit(0);
 });
 ```

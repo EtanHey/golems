@@ -37,7 +37,7 @@
       "id": 1,
       "name": "mcp-description-cap-detection",
       "prompt": "The Claude Code changelog says: 'MCP tool descriptions and server instructions are now capped at 2KB to prevent OpenAPI-generated servers from bloating context.' How does this affect my setup?",
-      "expected_output": "Should check MCP server configs. Should note that the user has 5+ MCP servers (brainlayer, voicelayer, cmux, exa, supabase, context7, whatsapp, etc.). Should flag that servers with long tool descriptions or instructions may be truncated. Should specifically check brainlayer and voicelayer since those are custom servers with potentially long descriptions. Should classify as AFFECTS YOU.",
+      "expected_output": "Should check MCP server configs. Should note that the user has 5+ MCP servers (brainlayer, voicelayer, cmux, exa, supabase, whatsapp, etc.). Should flag that servers with long tool descriptions or instructions may be truncated. Should specifically check brainlayer and voicelayer since those are custom servers with potentially long descriptions. Should classify as AFFECTS YOU.",
       "root_cause_tested": "mcp_config_awareness — tests whether skill checks MCP configs and understands the impact of description caps",
       "files": ["~/.claude/settings.json"],
       "assertions": [

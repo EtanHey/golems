@@ -157,7 +157,6 @@ echo ""
 
 # Section: Skills API Keys
 echo "=== Skills API Keys (golems) ==="
-check_warn "Context7 API key" "op read 'op://Private/golems/context7/API_KEY' 2>/dev/null | grep -q '^ctx7sk'"
 check_warn "Linear API key" "op read 'op://Private/golems/linear/API_KEY' 2>/dev/null | grep -vq 'PLACEHOLDER'"
 echo ""
 fi
@@ -177,12 +176,11 @@ echo ""
 # symlinked there lists every sub-file as its own "skill".
 echo "=== Skill Symlinks (Claude Code — ~/.claude/skills/) ==="
 if [ -d ~/.claude/skills ]; then
-  # AIDEV-NOTE: spot-check names drift — github/ and context7/ were removed from
+  # AIDEV-NOTE: spot-check names drift — github/ was removed from
   # golem-powers while these lines still demanded their symlinks, so validate.sh
   # reported a broken install on a healthy machine. Only assert on skills the
   # checkout actually ships.
   check_skill_linked github
-  check_skill_linked context7
   check_skill_linked coderabbit
   # AIDEV-NOTE: three legacy shapes exist (symlink into golems, golems-cli backfill
   # symlink into ~/.claude/skills/<name>, and a REAL mkdir'd directory). Grepping

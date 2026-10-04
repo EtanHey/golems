@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import {
   generateOutreachDraft,
-  formatDraftForTelegram,
+  formatDraftText,
   type ConnectionInfo,
   type JobInfo,
   type MatchInfo,
@@ -140,10 +140,10 @@ describe("generateOutreachDraft", () => {
   });
 });
 
-describe("formatDraftForTelegram", () => {
-  test("formats a draft for Telegram display", () => {
+describe("formatDraftText", () => {
+  test("formats a draft as returned text", () => {
     const draft = generateOutreachDraft(mockConnection, mockJob, mockMatch);
-    const formatted = formatDraftForTelegram(draft, "Sarah Cohen", "Senior React Developer", "Wix");
+    const formatted = formatDraftText(draft, "Sarah Cohen", "Senior React Developer", "Wix");
 
     expect(formatted).toContain("Sarah Cohen");
     expect(formatted).toContain("Senior React Developer");
@@ -154,7 +154,7 @@ describe("formatDraftForTelegram", () => {
 
   test("truncates long messages", () => {
     const draft = generateOutreachDraft(mockConnection, mockJob, mockMatch);
-    const formatted = formatDraftForTelegram(draft, "Sarah Cohen", "Senior React Developer", "Wix");
+    const formatted = formatDraftText(draft, "Sarah Cohen", "Senior React Developer", "Wix");
     expect(formatted).toContain("...");
   });
 });

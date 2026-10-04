@@ -5,9 +5,7 @@
  * Usage: bun run src/doctor.ts
  *
  * Checks:
- * - Telegram bot process
  * - Ollama HTTP endpoint
- * - Notification server (port 3847)
  * - Launchd jobs registration
  * - State file existence
  * - .env file existence
@@ -87,25 +85,6 @@ function runCommand(cmd: string): { success: boolean; output: string } {
     return { success: true, output };
   } catch (error) {
     return { success: false, output: error instanceof Error ? error.message : "" };
-  }
-}
-
-// Check 1: Telegram bot
-async function checkTelegramBot() {
-  const result = runCommand("pgrep -f 'telegram-bot|bun.*bot' | head -1");
-  if (result.success && result.output.trim()) {
-    results.push({
-      name: "Telegram Bot",
-      status: "pass",
-      message: `Running (PID: ${result.output.trim()})`,
-    });
-  } else {
-    results.push({
-      name: "Telegram Bot",
-      status: "fail",
-      message: "Not running",
-      fix: "cd ~/Gits/golems/packages/claude && bun src/telegram-bot.ts",
-    });
   }
 }
 
@@ -224,30 +203,10 @@ async function checkMLX() {
   }
 }
 
-// Check 3: Notification server (TCP connect test — no side effects)
-async function checkNotificationServer() {
-  const portOpen = runCommand("lsof -i :3847 -sTCP:LISTEN | grep -q LISTEN");
-  if (portOpen.success) {
-    results.push({
-      name: "Notification Server",
-      status: "pass",
-      message: "Listening on port 3847",
-    });
-  } else {
-    results.push({
-      name: "Notification Server",
-      status: "fail",
-      message: "Not listening on port 3847",
-      fix: "launchctl kickstart -k gui/$(id -u)/com.golemszikaron.telegram  (the Telegram bot hosts the notification server)",
-    });
-  }
-}
-
 // Check 4: Launchd jobs
 async function checkLaunchd() {
   // Map service names to their launchd label prefixes
   const golems: Array<{ name: string; label: string }> = [
-    { name: "telegram", label: "com.golemszikaron.telegram" },
     { name: "briefing", label: "com.golemszikaron.briefing" },
   ];
   const launchResult = runCommand("launchctl list 2>/dev/null | grep -E 'golem|zikaron' || true");
@@ -310,7 +269,7 @@ async function checkEnvFile() {
       name: ".env File",
       status: "warn",
       message: "Missing .env in package root",
-      fix: "cp .env.example .env  (or create with TELEGRAM_BOT_TOKEN, etc.)",
+      fix: "cp .env.example .env  (or create with the credentials your enabled services require)",
     });
   }
 }
@@ -610,11 +569,9 @@ async function main() {
   console.log("Checking Golems health...\n");
   console.log(`  LLM Backend: ${GLM_BACKEND} (arch: ${process.arch})\n`);
 
-  await checkTelegramBot();
   await checkOllama();
   await checkOllamaModel();
   await checkMLX();
-  await checkNotificationServer();
   await checkLaunchd();
   await checkStateFile();
   await checkEnvFile();

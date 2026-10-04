@@ -54,11 +54,10 @@ packages/coach/
 │   ├── calendar-client.ts       # Google Calendar API (reuses Gmail OAuth2)
 │   ├── schedule-engine.ts       # Merge calendar + golem states → DailyPlan + coaching formatting
 │   ├── status-aggregator.ts     # Read getStatus() from all golems
-│   ├── morning-briefing.ts      # Morning briefing synthesis + dual formatting (Telegram/Voice)
+│   ├── morning-briefing.ts      # Morning briefing synthesis + dual formatting (Text/Voice)
 │   ├── morning-briefing-runner.ts # Entry point — data gathering, output routing
-│   ├── morning-briefing-cli.ts  # CLI entry: bun morning-briefing-cli.ts [--voice]
+│   ├── morning-briefing-cli.ts  # CLI entry: bun morning-briefing-cli.ts --voice
 │   ├── nudge-queue.ts           # Zod-validated JSONL nudge queue (reminder/check-in/insight/alert)
-│   ├── nudger.ts                # Morning Telegram nudge + evening wrap-up
 │   ├── tracker.ts               # Compliance tracking + weekly summary
 │   └── __tests__/               # Tests
 ├── .claude-plugin/plugin.json
@@ -93,7 +92,7 @@ packages/coach/
 
 ## Dependencies
 
-- `@golems/shared` — GolemStatus, telegram-direct, state-store, Vercel LLM
+- `@golems/shared` — GolemStatus, state-store, Vercel LLM
 - `@golems/recruiter` — getStatus() for draft/follow-up counts
 - `@golems/teller` — getStatus() for financial summary
 - `googleapis` — Google Calendar API v3
@@ -128,7 +127,7 @@ packages/coach/
 /plan (basic):
   1. Read all golem statuses + Google Calendar
   2. Generate daily plan with priority-sorted pending items
-  3. Format for Telegram
+  3. Return formatted text
 ```
 
 ## Wiring
@@ -141,5 +140,5 @@ packages/coach/
 ## Post-MVP Ideas
 
 - Weather API integration (outdoor workout decisions)
-- Midday nudge + evening wrap-up with health context
+- Explicit voice nudges with health context
 - `/coach why` command (explain today's recommendations)

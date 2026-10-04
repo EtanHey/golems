@@ -240,7 +240,7 @@ Item path format: `{project}/{service}/{key}`
 
 | Vault | Purpose | Example Items |
 |-------|---------|---------------|
-| `development` | Global dev tools | context7, github CLI tokens |
+| `development` | Global dev tools | github CLI tokens |
 | `Private` | Personal secrets | SSH keys, personal accounts |
 | `{project}` | Project-specific | linear API key, deploy keys |
 | `Shared` | Team secrets | Shared service accounts |
@@ -258,7 +258,7 @@ op vault create "development" --description "Global dev tools" --icon gears
 ### Where to Put Secrets
 
 **Global dev tools** → `development` vault:
-- context7, MCP tools, IDE plugins
+- Shared MCP tools, IDE plugins
 - Used across all projects
 
 **Project-specific** → `{project}` vault:
@@ -277,7 +277,7 @@ Use tags for cross-vault searching and organization:
 ```bash
 # Add tags when creating
 op item create --vault development --category "API Credential" \
-  --title "context7" 'API_KEY[password]=xxx' \
+  --title "example-mcp" 'API_KEY[password]=xxx' \
   --tags "dev-tools,mcp,documentation"
 
 # Search by tag across all vaults
@@ -299,7 +299,7 @@ op item list --tags "dev-tools"
 
 ```bash
 # Vault/Item/Field
-op://development/context7/API_KEY
+op://development/example-mcp/API_KEY
 op://myproject/linear/API_KEY
 op://Private/github/token
 ```

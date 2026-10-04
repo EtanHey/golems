@@ -135,7 +135,6 @@ Wire these MCPs via `~/.mcp.json` (at `$HOME/Gits/` for cross-repo access):
 |-----|--------|---------|
 | brainlayer | `brainlayer-mcp` | Memory search + store |
 | voicelayer | `voicelayer-mcp` | TTS + STT |
-| context7 | `npx @upstash/context7-mcp@4.0.2` | Library docs |
 | supabase | via config | Database |
 
 ```bash
@@ -143,6 +142,8 @@ Wire these MCPs via `~/.mcp.json` (at `$HOME/Gits/` for cross-repo access):
 which brainlayer-mcp || echo "Run: cd $HOME/Gits/brainlayer && bun link"
 which voicelayer-mcp || echo "Run: cd $HOME/Gits/voicelayer && bun link"
 ```
+
+Context7 is opt-in per repository. Do not install it globally or for infra seats; configure it only when a project explicitly requests library documentation lookup.
 
 ## Global CLAUDE.md
 
@@ -155,12 +156,12 @@ $ORCHESTRATOR_REPO/standards/
 
 | Item | Vault | Fields |
 |------|-------|--------|
-| `golems` | development | `context7.API_KEY`, `linear.API_KEY` |
+| `golems` | development | `linear.API_KEY` |
 | `ANTHROPIC` | development | `API_KEY` |
 
 ```bash
 # Verify 1Password access
-op item get "golems" --vault development --fields label=context7.API_KEY 2>/dev/null && echo "✅ 1P connected" || echo "❌ 1P not connected"
+op item get "golems" --vault development --fields label=linear.API_KEY 2>/dev/null && echo "✅ 1P connected" || echo "❌ 1P not connected"
 ```
 
 ## Golem Terminal (Optional)

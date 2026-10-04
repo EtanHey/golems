@@ -19,7 +19,7 @@ function trustedParents(path: string) {
     if (dir === dirname(dir)) break;
   }
 }
-function privatePath(path: string, directory = false) {
+export function privatePath(path: string, directory = false) {
   const stat = lstatSync(path);
   const mode = directory ? 0o700 : 0o600;
   if ((directory ? !stat.isDirectory() : !stat.isFile()) || stat.uid !== process.getuid?.() || (stat.mode & 0o777) !== mode) {
@@ -65,7 +65,7 @@ export function readRuntime(dir: string, environment: Record<string, string | un
   const values = parseCache(text);
   function walk(value: any, name = "config"): any {
     if (typeof value === "string") {
-      if (value.startsWith("op://")) {
+      if (value.startsWith("op://") || value.startsWith("varlock://")) {
         const key = `REPOGOLEM_SECRET_${createHash("sha256").update(value).digest("hex").slice(0, 32)}`;
         if (!Object.hasOwn(values, key)) throw new Error(`missing cached reference for ${name}`);
         return values[key];

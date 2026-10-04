@@ -18,10 +18,10 @@ function fakeHome() {
 }
 
 const G1_KEYS = [
-  "coordinationDir", "outbox", "outboxTitle", "seatRegistryPath", "mcpLauncher", "sleepGuardLabel", "notifyUrl",
+  "coordinationDir", "outbox", "outboxTitle", "seatRegistryPath", "mcpLauncher", "sleepGuardLabel",
 ];
 
-test("by default only the 7 G1 keys are written: an older cmuxlayer loader drops the whole file on an unknown key", () => {
+test("by default only the 6 G1 keys are written: an older cmuxlayer loader drops the whole file on an unknown key", () => {
   // Lead ruling (#231): cmuxlayer before #857 rejects unknown keys and falls back to
   // generic defaults for EVERYTHING, so worktreeBootstrap is opt-in.
   expect(Object.keys(golemsFleetConfig("/home/someone"))).toEqual(G1_KEYS);
@@ -29,18 +29,19 @@ test("by default only the 7 G1 keys are written: an older cmuxlayer loader drops
   installCmuxlayerFleet({ home, env: {} });
   const written = JSON.parse(readFileSync(path.join(home, ".config", "cmuxlayer", "fleet.json"), "utf8"));
   expect("worktreeBootstrap" in written).toBe(false);
+  expect(written.outbox).toBe(false);
+  expect(written).not.toHaveProperty("notifyUrl");
 });
 
 test("--with-worktree-bootstrap adds the key once cmuxlayer supports it", () => {
   const config = golemsFleetConfig("/home/someone", { withWorktreeBootstrap: true });
   expect(config).toEqual({
     coordinationDir: "/home/someone/.golems-zikaron",
-    outbox: true,
+    outbox: false,
     outboxTitle: "golems outbox",
     seatRegistryPath: "/home/someone/.golems/config.yaml",
     mcpLauncher: "/home/someone/.golems/bin/cmuxlayer-mcp",
     sleepGuardLabel: "com.golems.cmux-caffeinate",
-    notifyUrl: "http://127.0.0.1:3847/notify",
     worktreeBootstrap: "/home/someone/.config/ralphtools/worktree-bootstrap.sh",
   });
   for (const value of Object.values(config)) {
@@ -59,9 +60,9 @@ test("never overwrites an existing fleet.json, byte for byte", () => {
   const home = fakeHome();
   const target = path.join(home, ".config", "cmuxlayer", "fleet.json");
   mkdirSync(path.dirname(target), { recursive: true });
-  writeFileSync(target, '{"outbox":false}\n');
+  writeFileSync(target, '{"outbox":true,"notifyUrl":"https://fixture.invalid/retired"}\n');
   expect(installCmuxlayerFleet({ home, env: {} })).toEqual({ path: target, written: false });
-  expect(readFileSync(target, "utf8")).toBe('{"outbox":false}\n');
+  expect(readFileSync(target, "utf8")).toBe('{"outbox":true,"notifyUrl":"https://fixture.invalid/retired"}\n');
 });
 
 test("honours CMUXLAYER_FLEET_CONFIG, and the CLI reports what it did", () => {

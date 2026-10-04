@@ -130,10 +130,10 @@ export async function generateTaxReport(year: number): Promise<TaxReport> {
 }
 
 /**
- * Format a monthly report as a readable Telegram message with category and vendor breakdowns.
+ * Format a monthly report as readable text with category and vendor breakdowns.
  *
  * @param report - The monthly report to format
- * @returns Formatted text string ready for Telegram display
+ * @returns Formatted text string ready for display
  */
 export function formatMonthlyReportText(report: MonthlyReport): string {
   const lines: string[] = [];
