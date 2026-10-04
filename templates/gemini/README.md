@@ -37,6 +37,16 @@ the read-only `brain-worker`. It retains its scoped receipt tools.
 Only the declared brain-worker may be invoked;
 hidden built-in agents must fail the no-tool delegation probes before release.
 
+Video-qa: shell + write, no MCP. Use `--agent video-qa` for /qa-video work that
+needs local media commands, background output/status checks, and denser sampling
+around unclear moments. Unlike the research gatherer, it can run its own shell
+and write evidence under the brief's artifact directory; it cannot use workspace
+MCP servers or cmux panes and has no subagent delegation.
+On agy 1.2.14, `run_command` is the registered shell component; command-status
+and input helpers are not separately registrable. Keep background job logs,
+PID and exit-status files in the artifact directory and poll them with shell
+commands or `view_file`.
+
 On agy 1.2.14, `mcpServers` in agent frontmatter must be a **list**, unlike the
 mapping in `mcp_config.json`. A mapping silently removes the custom agent from
 discovery, and `--agent` can fall back to unrestricted defaults. Verify the named
@@ -64,10 +74,10 @@ resolved registry. It never generates a registry or resolves secrets.
 
 The default prints a table without writing. `--check` also fails for ritual
 patterns in global or repo context. `--apply` installs context and the global
-gatherer and brain-worker. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
+gatherer, brain-worker and video-qa. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
 only verified; a global ritual blocks apply.
 
-To install only the agent pair after merge, use
+To install only these agents after merge, use
 `bash scripts/install-gemini-context.sh --host mbp --agents-only --apply`.
 This skips repo GEMINI.md writes and retains the same backup/rollback contract.
 
