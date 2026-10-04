@@ -32,7 +32,9 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.ok(text, 'routing SSOT section is required');
   assert.match(text, /single source of truth for fleet routing/);
   assert.match(text, /\| UX\/UI \| `claude.judgment` \| Codex \(`codex.implement`\)/);
-  assert.match(text, /\| Security \| `codex.security` \| `claude.judgment` \|.*`codex-security` deep scan per security PR/);
+  assert.match(text, /\| Security \| `codex.security` at effort `high` \| `claude.judgment` \|.*`codex-security` deep scan per security PR/);
+  assert.match(text, /Security effort is `high` on the interim route/); // MF-2: canon-only rule carried into the SSOT
+  assert.match(text, /When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair/); // MF-1
   assert.match(text, /\| Everything else.*\| `codex.implement` \| `claude.judgment` \|/);
   assert.match(text, /only after.*implementer reports done/);
   assert.match(text, /DONE marker or report line/);
