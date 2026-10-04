@@ -7,7 +7,8 @@ assigned to PRs 3b/3c. This inventory does not grant routing authority to any co
 
 Baseline: `794413903835b458714b5ef57bdc68628fb99f7f`. The lead's 270-hit inventory
 contains 266 golems hits across 101 files, plus four hits in two external files.
-The all-skills scan covers 321 tracked Markdown files, including archived skills;
+The baseline scan covers 321 tracked Markdown files, including archived skills.
+This PR adds one inventory Markdown file, giving 322 files on its final head;
 `agent-routing/**` keeps the existing SSOT exemption.
 
 | Class | Hits | Treatment |
