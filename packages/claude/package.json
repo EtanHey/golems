@@ -1,7 +1,7 @@
 {
   "name": "@golems/claude",
   "version": "1.0.0",
-  "description": "ClaudeGolem — central orchestrator and Telegram router for the Golems ecosystem, coordinating domain-specific golems via Grammy composers.",
+  "description": "ClaudeGolem — persona and Claude CLI status plugin for the Golems ecosystem.",
   "author": "EtanHey",
   "license": "Apache-2.0",
   "private": true,
@@ -13,20 +13,9 @@
   },
   "keywords": [
     "golems",
-    "ai-agent",
-    "telegram",
-    "grammy",
-    "orchestration"
+    "ai-agent"
   ],
   "exports": {
     "./*": "./src/*.ts"
-  },
-  "scripts": {
-    "bot": "bun run src/telegram-bot.ts"
-  },
-  "dependencies": {
-    "@golems/services": "workspace:*",
-    "@golems/shared": "workspace:*",
-    "grammy": "^1.21.1"
   }
 }

@@ -44,7 +44,7 @@ load 'test-process-stream-agy-cli-parts/cases-02.bash'
     split_case_010
 }
 
-@test "SIGKILLed scoring is reconciled from its durable start marker and alerts" {
+@test "SIGKILLed scoring is reconciled from its durable start marker without sending" {
     split_case_011
 }
 

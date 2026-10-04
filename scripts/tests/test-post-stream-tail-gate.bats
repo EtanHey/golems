@@ -68,9 +68,9 @@ SH
 while [ "$#" -gt 0 ]; do
     if [ "$1" = "-d" ]; then
         shift
-        printf '%s\n' "$1" > "$TELEGRAM_BODY_FILE"
-        if [ -n "${TELEGRAM_CALL_LOG:-}" ]; then
-            printf '%s\n' "$1" >> "$TELEGRAM_CALL_LOG"
+        printf '%s\n' "$1" > "$ALERT_BODY_FILE"
+        if [ -n "${ALERT_CALL_LOG:-}" ]; then
+            printf '%s\n' "$1" >> "$ALERT_CALL_LOG"
         fi
         exit 0
     fi
@@ -138,7 +138,6 @@ mark_downstream_stages_done() {
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_NOTIFY=0 \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -153,7 +152,6 @@ mark_downstream_stages_done() {
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_NOTIFY=0 \
     run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -172,7 +170,6 @@ mark_downstream_stages_done() {
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_NOTIFY=0 \
     run "$POST_STREAM" "$tiny_dir" "$tiny_dir/video.ts" "$tiny_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -186,7 +183,6 @@ mark_downstream_stages_done() {
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_NOTIFY=0 \
     run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -205,7 +201,6 @@ mark_downstream_stages_done() {
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_NOTIFY=0 \
     run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -219,7 +214,6 @@ mark_downstream_stages_done() {
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_NOTIFY=0 \
     run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -237,7 +231,6 @@ mark_downstream_stages_done() {
     PATH="$TMPDIR_/bin:$PATH" \
     STREAM_WHATSAPP_NOTIFY=0 \
     STALKER_BRAINLAYER_DRY_RUN=1 \
-    STALKER_TELEGRAM_NOTIFY=0 \
     run "$POST_STREAM" "$tail_dir" "$tail_dir/video.ts" "$tail_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -487,7 +480,7 @@ SH
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store-fail" \
-    TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
+    ALERT_BODY_FILE="$TMPDIR_/alert-body.json" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -498,7 +491,7 @@ SH
     jq -s -e 'all(.[]; .reason == "brain_store_timeout")' "$full_dir/orphaned_stores.jsonl"
 }
 
-@test "post-stream sends one separate alert when BrainLayer payloads are queued" {
+@test "post-stream queues idempotently without sending an alert" {
     full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
@@ -512,15 +505,16 @@ SH
     for _ in 1 2; do
         PATH="$TMPDIR_/bin:$PATH" \
         STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store-fail" \
-        TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
-        TELEGRAM_CALL_LOG="$TMPDIR_/telegram-calls.jsonl" \
+        ALERT_BODY_FILE="$TMPDIR_/alert-body.json" \
+        ALERT_CALL_LOG="$TMPDIR_/alert-calls.jsonl" \
         run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
         [ "$status" -eq 0 ]
     done
 
-    [ "$(jq -s 'length' "$TMPDIR_/telegram-calls.jsonl")" = "1" ]
-    [ "$(jq -r '.title' "$TMPDIR_/telegram-body.json")" = "Stalker BrainLayer replay queued - 2026-06-18" ]
-    [ -f "$full_dir/.stage-brainlayer-queue-notified.done" ]
+    [ ! -f "$TMPDIR_/alert-calls.jsonl" ]
+    [ ! -f "$TMPDIR_/alert-body.json" ]
+    [ "$(jq -s 'length' "$full_dir/orphaned_stores.jsonl")" = "3" ]
+    [ ! -f "$full_dir/.stage-brainlayer-queue-notified.done" ]
 }
 
 @test "post-stream uses a bounded fallback when timeout utilities are unavailable" {
@@ -532,7 +526,7 @@ SH
     PATH="$TMPDIR_/bin:/usr/bin:/bin" \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store" \
     BRAIN_STORE_CAPTURE="$TMPDIR_/brain-store.jsonl" \
-    TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
+    ALERT_BODY_FILE="$TMPDIR_/alert-body.json" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -557,7 +551,7 @@ SH
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store-slow" \
     STALKER_BRAINLAYER_INGEST_TIMEOUT=1s \
     STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0 \
-    TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
+    ALERT_BODY_FILE="$TMPDIR_/alert-body.json" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
@@ -593,36 +587,16 @@ SH
 
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store-fail" \
-    TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
+    ALERT_BODY_FILE="$TMPDIR_/alert-body.json" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 0 ]
-    [ -f "$TMPDIR_/telegram-body.json" ]
+    [ ! -f "$TMPDIR_/alert-body.json" ]
     [ -f "$full_dir/.brainlayer-status" ]
     grep -F -q 'status=queued' "$full_dir/.brainlayer-status"
     [ -f "$full_dir/orphaned_stores.jsonl" ]
     [ ! -f "$full_dir/.stage-brainlayer.done" ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
-}
-
-@test "post-stream Telegram dry-run does not skip BrainLayer ingest" {
-    full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
-    mark_downstream_stages_done "$full_dir"
-    printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
-
-    PATH="$TMPDIR_/bin:$PATH" \
-    STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store" \
-    BRAIN_STORE_CAPTURE="$TMPDIR_/brain-store.jsonl" \
-    STALKER_TELEGRAM_DRY_RUN=1 \
-    TELEGRAM_BODY_FILE="$TMPDIR_/telegram-body.json" \
-    run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
-
-    [ "$status" -eq 0 ]
-    [ -f "$full_dir/.stage-brainlayer.done" ]
-    [ "$(jq -s 'length' "$TMPDIR_/brain-store.jsonl")" = "3" ]
-    [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
-    [ ! -f "$full_dir/.stage-notified.done" ]
-    [ ! -f "$TMPDIR_/telegram-body.json" ]
 }
 
 @test "post-stream ingests failure telemetry before returning a digest quality error" {
@@ -643,11 +617,11 @@ SH
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_CONTRACT_SCRIPT="$contract" \
     CONTRACT_CALLS="$TMPDIR_/contract-calls" \
-    TELEGRAM_BODY_FILE="$TMPDIR_/quality-alert.json" \
+    ALERT_BODY_FILE="$TMPDIR_/quality-alert.json" \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
     [ "$status" -eq 75 ]
     [ "$(cat "$TMPDIR_/contract-calls")" = "ingest-run" ]
-    [ "$(jq -r '.title' "$TMPDIR_/quality-alert.json")" = "Stalker FAILED at stage 6" ]
+    [ ! -f "$TMPDIR_/quality-alert.json" ]
     [ ! -f "$full_dir/.stage-notified.done" ]
 }

@@ -1,19 +1,16 @@
 import { describe, test, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
 import * as llm from "@golems/shared/lib/llm";
-import * as telegramDirect from "@golems/shared/lib/telegram-direct";
 import * as eventLog from "@golems/shared/lib/event-log";
-import { detectPaymentFailure, sendPaymentAlert } from "@golems/teller/alerts";
+import { detectPaymentFailure, recordPaymentFailure } from "@golems/teller/alerts";
 import type { ScoredEmail } from "@golems/teller/types";
 
 const mockRunOllamaJSON = mock(async () => null);
-const mockSendNotification = mock(async () => true);
 const mockLogEvent = mock(async () => {});
 
 // Use spyOn instead of mock.module to avoid global pollution
 beforeEach(() => {
   spyOn(llm, "runLLMJSON").mockImplementation(mockRunOllamaJSON);
   spyOn(llm, "runLLM").mockImplementation(async () => "");
-  spyOn(telegramDirect, "sendNotification").mockImplementation(mockSendNotification);
   spyOn(eventLog, "logEvent").mockImplementation(mockLogEvent);
 });
 
@@ -185,10 +182,8 @@ describe("detectPaymentFailure", () => {
   });
 });
 
-describe("sendPaymentAlert", () => {
+describe("recordPaymentFailure", () => {
   beforeEach(() => {
-    mockSendNotification.mockReset();
-    mockSendNotification.mockImplementation(async () => true);
     mockLogEvent.mockReset();
     mockLogEvent.mockImplementation(async () => {});
   });
@@ -202,30 +197,8 @@ describe("sendPaymentAlert", () => {
     detectedAt: "2026-02-07T10:00:00Z",
   };
 
-  test("calls sendNotification with correct params", async () => {
-    await sendPaymentAlert(failure);
-
-    expect(mockSendNotification).toHaveBeenCalledTimes(1);
-    expect(mockSendNotification).toHaveBeenCalledWith({
-      title: "Payment Failed: Netflix",
-      body: "Card declined ($15.99). Update payment method",
-      source: "email",
-      priority: "high",
-    });
-  });
-
-  test("sends notification without amount when undefined", async () => {
-    await sendPaymentAlert({ ...failure, amount: undefined });
-
-    expect(mockSendNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: "Card declined. Update payment method",
-      })
-    );
-  });
-
   test("logs email_alert event", async () => {
-    await sendPaymentAlert(failure);
+    await recordPaymentFailure(failure);
 
     expect(mockLogEvent).toHaveBeenCalledTimes(1);
     expect(mockLogEvent).toHaveBeenCalledWith("email_alert", {

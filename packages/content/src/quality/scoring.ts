@@ -175,7 +175,7 @@ export async function scoreImage(
 }
 
 /**
- * Format quality scores for display (Telegram preview, CLI).
+ * Format quality scores for display (preview, CLI).
  */
 export function formatScores(scores: QualityScores): string {
   const status = scores.passed ? "PASS" : "FAIL";

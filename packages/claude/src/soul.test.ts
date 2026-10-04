@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-// SOUL.md is the bot's system prompt, loaded at runtime (lib/bot-shared.ts).
+// SOUL.md preserves the ecosystem persona.
 const soul = readFileSync(join(import.meta.dir, "..", "SOUL.md"), "utf-8");
 
 describe("SOUL.md persona", () => {

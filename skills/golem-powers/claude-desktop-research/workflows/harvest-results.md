@@ -31,7 +31,7 @@ After batch-submitting N research prompts (via `fast-batch.md` or manually), eac
         2. Extract full response text via get_page_text
         3. Save to $ORCHESTRATOR_ROOT/docs.local/research/R{NN}-result.md
         4. Save to Obsidian batch folder (same location as prompts)
-        5. Notify via Telegram
+        5. Report completion inline
         6. brain_digest the result
       → Navigate back to project page
     → Check if ALL conversations are done → final summary notification
@@ -243,13 +243,11 @@ File format:
 
 Same format as above. This puts results alongside the original prompts for easy cross-reference in Obsidian.
 
-### Step 6: Notify
+### Step 6: Report completion
 
 After each successful harvest:
 
-```bash
-notify "Research Done" "R{NN} ({title}) harvested — {contentLength} chars, {sourceCount} sources"
-```
+Report inline: `R{NN} ({title}) harvested — {contentLength} chars, {sourceCount} sources`.
 
 ### Step 7: Navigate Back
 
@@ -309,7 +307,7 @@ brain_store(
   importance: 9
 )
 
-notify "Batch Complete" "All 10 research results harvested and digested into BrainLayer"
+Report inline: All 10 research results harvested and digested into BrainLayer.
 ```
 
 ## Polling Cadence
@@ -409,7 +407,7 @@ while not all_done:
             save(text, orchestrator_path)
             save(text, obsidian_path)
             conv.status = 'completed'
-            notify("Research Done", f"R{conv.id} harvested")
+            log(f"R{conv.id} harvested")
             navigate_back()
         else:
             log(f"R{conv.id} still running: {result.reason}")
@@ -429,5 +427,5 @@ for each completed result:
     brain_store(conclusions, tags=["research", "native-apps", conv.id])
 
 brain_store(batch_summary, tags=["milestone", "research", "batch-complete"])
-notify("Batch Complete", "All results harvested and digested")
+log("All results harvested and digested")
 ```

@@ -205,7 +205,7 @@ describe("Auto-Outreach (E6)", () => {
   });
 
   describe("formatHotMatchNotification", () => {
-    test("formats notification for Telegram", async () => {
+    test("formats a returned match summary", async () => {
       const { formatHotMatchNotification } = await import("@golems/recruiter/auto-outreach");
 
       const result: HotMatchResult = {
