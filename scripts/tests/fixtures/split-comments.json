@@ -11006,6 +11006,177 @@
         ]
       },
       "node_aliases": {}
+    },
+    {
+      "original_path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+      "pre_split_sha": "62069dc3396d6f44e34afcd6bb3b4e82ba9871eb",
+      "split_sha": "bc3d126e49bc0559109d8ae9655c9de67c87e8e2",
+      "parts": [
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/shell_targets.py",
+        "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py"
+      ],
+      "assignments": {
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/shell_targets.py": [
+          [
+            6,
+            0,
+            82
+          ],
+          [
+            7,
+            1,
+            82
+          ],
+          [
+            8,
+            2,
+            82
+          ],
+          [
+            9,
+            3,
+            82
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py": [
+          [
+            0,
+            0,
+            655
+          ],
+          [
+            1,
+            1,
+            539
+          ],
+          [
+            2,
+            2,
+            539
+          ],
+          [
+            3,
+            3,
+            539
+          ],
+          [
+            4,
+            4,
+            534
+          ],
+          [
+            5,
+            5,
+            491
+          ],
+          [
+            10,
+            6,
+            273
+          ],
+          [
+            11,
+            7,
+            273
+          ],
+          [
+            12,
+            8,
+            273
+          ],
+          [
+            13,
+            9,
+            272
+          ],
+          [
+            14,
+            10,
+            272
+          ],
+          [
+            15,
+            11,
+            259
+          ],
+          [
+            16,
+            12,
+            248
+          ],
+          [
+            17,
+            13,
+            248
+          ],
+          [
+            18,
+            14,
+            248
+          ],
+          [
+            19,
+            15,
+            241
+          ],
+          [
+            20,
+            16,
+            241
+          ],
+          [
+            21,
+            17,
+            241
+          ],
+          [
+            22,
+            18,
+            227
+          ],
+          [
+            23,
+            19,
+            223
+          ],
+          [
+            24,
+            20,
+            223
+          ],
+          [
+            25,
+            21,
+            223
+          ],
+          [
+            26,
+            22,
+            223
+          ],
+          [
+            27,
+            23,
+            201
+          ],
+          [
+            28,
+            24,
+            201
+          ],
+          [
+            29,
+            25,
+            169
+          ],
+          [
+            30,
+            26,
+            169
+          ]
+        ]
+      },
+      "node_aliases": {}
     }
   ],
   "files": {
@@ -11578,11 +11749,8 @@
       "6e5738caaeb82612a20bdb55ce9e5f7f9a6e27c8e0f4409b5ce0d17fe91de4e1": 1,
       "79908d1e00a0ffa340c55cc78ff7925f7e697c2a87152e271f82fe785bbb6a53": 1,
       "8516eeb6ab1506eb6546b881109d59de9a3cec1e17d0361e3ae074d2c62e5ce2": 1,
-      "a2a3c79cb6f48a94fdf67b3badbe7d40b88808e5354b409b68d62257cb849a46": 1,
       "aff0ae78307c57111a552b96805d5f20328aac16750164dc8358f0f9027daf4e": 1,
-      "b042ed75c7b9169683cb3f645ac947d678d023cc619500bc1eb02ae5996a0824": 1,
       "b12a0bd26e6c31c005b273ae049d3d2b18e9c2d7382a8f749fbfe616f974529e": 1,
-      "b16fee50f34da8d0be3d3f5e654f90726b67805f099aa7553f62722fa98ec86e": 1,
       "b5cfc5bf856d5530ec61c6730919369b78b25e194e8153d86efc749681b75fdb": 1,
       "b9383c59bf804da41d514cbb610da765cb5a774c8351fa39d2b5c15ec0d76a24": 1,
       "c666e8f4921dd674f25ec2b01549b53872c459fa7d8da70c306444ebf1da7814": 1,
@@ -11590,7 +11758,6 @@
       "cd6b41cd54528ee9dc5876d688e2c4369bee0d885ba3660b96c011112aca4943": 1,
       "d19aada00c513f95c15f80130421ffbde2be4f60cf746de151f7dc48be584001": 1,
       "d33c5a8695ac6d42e5544fc05f64a63eae877db4a325b6669052955f02eecc57": 1,
-      "d698841d3e6830ddf78628e4e54dfc88f99ebcc0f7d1a58b69176de27156810f": 1,
       "da11de89a0e8ab9d0b1579463c71d1d6737e5124f7e7c06e68645261bd4242c0": 1,
       "f5f27c4765770a0567dc426686a57502f55da4efca59f53e0e28e13069576525": 1,
       "fac6408d6b9a34a0658cb16cb247a46e42987aedbf1fec6f2661f2e205dbbbc7": 1
@@ -11779,6 +11946,12 @@
       "d96ded12236d592a732ede0e1a9138cd7d012ae94dc03a5350ad580253db2c74": 1,
       "e3567a418cd855e983fa5eac27a7a8dd718f09d891b4643125fd5921dda26ef2": 1,
       "f0516704204fd36a3a70081c7588b15068786eec24fb22f8bcbf9a3dfbbe5331": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tmp_block_impl/shell_targets.py": {
+      "a2a3c79cb6f48a94fdf67b3badbe7d40b88808e5354b409b68d62257cb849a46": 1,
+      "b042ed75c7b9169683cb3f645ac947d678d023cc619500bc1eb02ae5996a0824": 1,
+      "b16fee50f34da8d0be3d3f5e654f90726b67805f099aa7553f62722fa98ec86e": 1,
+      "d698841d3e6830ddf78628e4e54dfc88f99ebcc0f7d1a58b69176de27156810f": 1
     }
   }
 }
