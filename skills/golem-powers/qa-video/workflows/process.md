@@ -9,10 +9,25 @@
 See [stalker-pipeline.md](../references/stalker-pipeline.md) for the full media
 command reference and troubleshooting notes.
 
-## Phase 1: Dispatcher Preparation
+## Execution Contract: Agent-Owned Iterative Loop
 
-The dispatcher runs the single media entry point in its own Bash tool with
-`run_in_background: true`. No media command is delegated to a visual reader.
+Run each media step in your **own shell**; use background Bash
+(`run_in_background`) for long ffmpeg/whisper jobs and wait for completion before
+reading outputs. **Never open a terminal pane** or type into another surface to
+run media tools; never use `send_to` for media commands. If your profile has no
+shell, stop and ask the lead for the `video-qa` profile. Do not improvise a pane.
+Claude seats use their own Bash. Gemini seats run `agy --agent video-qa` (profile
+name pending confirmation from the golems profile lane; no cmuxlayer MCP).
+
+The agent owns the whole iterative loop: extract/transcribe → choose transcript
+AND scene hotspots → dense windows at 10 fps → read every contact sheet →
+**re-densify** unclear moments at up to 20 fps and/or with tighter windows →
+re-fetch and re-read until resolved or explicitly **NOT DETERMINED**. Scripts
+are per-step helpers; they do not replace hotspot judgement. Each finding cites
+its sheet + tile + timestamp from `frames.tsv`; unsupported claims remain
+transcript-only. An optional convenience index never gates the loop.
+
+## Phase 1: Audio Extraction + Transcription
 
 ```bash
 VIDEO="/path/to/recording.mov"
@@ -20,36 +35,18 @@ VIDEO="/path/to/recording.mov"
 WORKDIR="${WORKDIR:-$PROJECT_ROOT/docs/qa-session-$(date +%Y-%m-%d-%H%M)}"
 ROUND=1
 SUFFIX=""
-# Use a separate preparation directory for each round to retain prior evidence.
 [ "$ROUND" -gt 1 ] && SUFFIX="-round${ROUND}"
-PREPDIR="$WORKDIR/prepared${SUFFIX}"
+# Keep each round's raw extraction separate; findings stay in WORKDIR.
+MEDIADIR="$WORKDIR/media${SUFFIX}"
 SCRIPTS="<qa-video skill dir>/scripts"
-bash "$SCRIPTS/prepare.sh" "$VIDEO" "$PREPDIR" --fps 10 --mode qa
+# Own background Bash; wait for completion and verify audio/SRT/TXT exist.
+bash "$SCRIPTS/extract.sh" "$VIDEO" "$MEDIADIR"
+mkdir -p "$WORKDIR/frames${SUFFIX}"
 ```
 
-Wait for successful background completion, then read `$PREPDIR/manifest.json`
-and require `ready: true`. The manifest contains absolute ordered contact sheets,
-coverage frames, SRT/TXT, cues, index, exact tile timestamps, duration and tool
-versions. Missing dependencies or any failed media step block handoff; failed
-reruns remove the previous ready manifest. `WHISPER_MODEL` overrides the default
-`~/.cache/whisper/ggml-small.bin`. Static media gets an initial fallback window.
-
-Preparation extracts action-language transcript cues and scene cues using the
-existing scripts. If approved click logs exist, the dispatcher adds converted
-video-relative cues (Phase 3c) and rebuilds dense windows before handing off.
-
-## Reader Handoff
-
-In an Agent-tool context use `Agent(visual-gatherer)` (golems#553) over the
-manifest's sheets and transcript. In a cmux lane route the reading to a
-`gemini.gather.visual` gatherer pane. Its brief must say:
-
-> Read manifest.json and the listed sheets/transcript only; never spawn panes,
-> never send_to terminals, never run media tools.
-
-Read every sheet in manifest order. Claude handles semantic synthesis and
-persistence after the reader returns its evidence. The dispatcher owns any
-additional extraction or dense-window rebuild requested by the reader.
+Read `$MEDIADIR/transcript.srt`; confirm timestamps/content are usable.
+`WHISPER_MODEL` overrides `~/.cache/whisper/ggml-small.bin`. If transcription
+fails, stop this pass and report the failure; do not read a previous transcript.
 
 ## Phase 2: Transcript Analysis (LLM Hotspot Detection)
 
@@ -70,15 +67,27 @@ For each relevant segment, note the **start timestamp** (seconds from video star
 ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$VIDEO"
 ```
 
-## Phase 3: Supplemental Dispatcher Cues
+## Phase 3: Frame Extraction
 
-`prepare.sh` already produces dense windows and 30-second coverage frames.
-Coverage frames flag places needing further dense inspection; they never back a
-visual finding alone. If transcript analysis or coverage reveals a missed cue,
-the dispatcher adds it to the manifest's cues file, runs `dense-windows.sh` and
-removes readiness before rebuilding, validates the new artifacts, and atomically
-republishes the manifest's ordered sheet list before a new reader handoff. The
-reader reports requested timestamps and never executes extraction commands.
+Both QA and gems use dense windows around transcript AND scene hotspots;
+interval frames provide coverage only.
+
+### 3a. Regular Interval Frames (every 30 seconds)
+```bash
+DURATION=$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$VIDEO" | cut -d. -f1)
+FRAMEDIR="$WORKDIR/frames${SUFFIX}"
+
+if [[ ! "$DURATION" =~ ^[0-9]+$ ]] || [ "$DURATION" -le 0 ]; then
+  printf 'Could not determine a positive video duration: %s\n' "$DURATION" >&2
+  exit 1
+fi
+
+for t in $(seq 0 30 "$DURATION"); do
+  [ "$t" -lt "$DURATION" ] || continue
+  INTERVAL_TIMESTAMP="$t"
+  ffmpeg -y -nostdin -ss "$INTERVAL_TIMESTAMP" -i "$VIDEO" -vframes 1 -q:v 2 "$FRAMEDIR/interval-${INTERVAL_TIMESTAMP}s.jpg" 2>/dev/null
+done
+```
 
 ### 3c. Click Correlation (when `clicks.jsonl` exists)
 
@@ -90,15 +99,16 @@ data, redact captured text and URLs before sharing, and delete the raw log after
 the redacted findings and evidence frames are accepted. In QA mode, add each
 click as a row in `cues.tsv` (3d) instead of relying on the single click frame.
 
-### 3d. Dense Action Windows (QA mode — mandatory)
+### 3d. Dense Hotspot Windows (QA and gems — mandatory)
 
-Preparation already builds `cues.tsv` (`start_s<TAB>end_s<TAB>label`) from
-transcript and scene cues. For supplemental approved click or reader cues, the
-dispatcher invalidates readiness, appends cues, then rebuilds:
+Build `cues.tsv` (`start_s<TAB>end_s<TAB>label`) from transcript hotspots
+(action-language in QA; insights/claims/examples in gems), `scripts/scene-cues.sh` output and click logs (SKILL.md Key Design
+Decision #2), then:
 
 ```bash
 SCRIPTS="<qa-video skill dir>/scripts"
-"$SCRIPTS/dense-windows.sh" "$VIDEO" "$PREPDIR/cues.tsv" "$PREPDIR/dense" 10
+"$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
+"$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense${SUFFIX}" 10
 ```
 
 Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
@@ -106,13 +116,13 @@ Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
 (`sheet_file<TAB>tile<TAB>t_s`, the real PTS of every tile). Take citation
 timestamps from `frames.tsv`.
 
-## Phase 4: Visual Reader Analysis
+## Phase 4: Read Every Sheet, Then Re-Densify Unclear Moments
 
 **QA mode: read EVERY contact sheet listed in `index.tsv`, in order** (they're
-images — use the Read tool). No sampling: skipping a
+images — use the Read tool). No sampling, no "8-12 strategic frames": skipping a
 sheet means its window was never reviewed, and a finding from an unread sheet is
 invalid. If there are too many sheets for one pass, split them across batches
-(or the Gemini gatherer, Key Design Decision #10) — but every sheet is read.
+(in the same shell-enabled video-qa agent) — but every sheet is read.
 Interval frames are a coverage pass only: if one shows something, add a cue and
 re-run `dense-windows.sh`; never cite an interval frame as a finding's evidence.
 
@@ -133,6 +143,29 @@ without a sheet citation is transcript-only and must be labelled
 
 **Correlate** each frame with the corresponding SRT segment. The key advantage: you get BOTH what the user SAID and what they SAW, aligned by timestamp.
 
+### Mandatory Re-Densification Loop
+
+After the first read, list moments where cursor target, before/after state or
+motion remains unclear. For each, choose a tighter video-relative start/end and
+raise sampling up to 20 fps. Run in your own shell, with a fresh output directory
+for each pass so earlier citations remain valid:
+
+```bash
+# Example only: choose these bounds from the actual unclear moment.
+printf '12.1\t12.6\tunclear-click-target\n' > "$WORKDIR/refine-cues-01.tsv"
+bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues-01.tsv" \
+  "$WORKDIR/refine-01" 20 0 0
+```
+
+The final `0 0` disables cue padding, making this exactly one start/end/fps
+window. Re-fetch and read EVERY new sheet in its `index.tsv`; use that pass's
+`frames.tsv` for exact tile timestamps. Repeat at different bounds if needed.
+If 20 fps or source resolution cannot resolve the moment, mark it **NOT
+DETERMINED**, explain the limitation and request better evidence. Higher output
+fps cannot create detail absent from the original video. An unresolved moment
+never becomes a confirmed visual failure. Record every refinement pass and the
+sheet/tile/timestamp that finally supports the finding.
+
 ## Phase 5: Compile QA Findings Document
 
 Write to `$WORKDIR/qa-findings${SUFFIX}.md`:
@@ -143,7 +176,8 @@ Write to `$WORKDIR/qa-findings${SUFFIX}.md`:
 ## Summary
 - **Duration:** M:SS
 - **Hotspots found:** N
-- **Sheets read:** N / N in index.tsv (must be all)
+- **Sheets read:** N / N across initial + refinement indexes (must be all)
+- **Refinement passes:** [windows, fps, evidence, resolved / NOT DETERMINED]
 - **Critical issues:** N
 - **Major issues:** N
 - **Minor/UX issues:** N

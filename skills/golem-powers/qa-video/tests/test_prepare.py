@@ -1,5 +1,4 @@
 """Real ffmpeg media preparation; whisper output is deterministic in tests."""
-import json
 import os
 from pathlib import Path
 import shutil
@@ -7,12 +6,13 @@ import subprocess
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'prepare.sh'
-pytestmark = pytest.mark.skipif(not shutil.which('ffmpeg'), reason='ffmpeg missing: synthetic media prep requires ffmpeg')
+SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'extract.sh'
 
 
 @pytest.fixture
 def media(tmp_path):
+    if not shutil.which('ffmpeg'):
+        pytest.skip('ffmpeg missing: synthetic media prep requires ffmpeg')
     video = tmp_path / 'synthetic video.mp4'
     subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
                     '-f', 'lavfi', '-i', 'testsrc=size=160x90:rate=10',
@@ -40,37 +40,59 @@ Path(p + '.txt').write_text('Now I click here.\\n')
     return video, tmp_path / 'work dir', env
 
 
-def run(media, *args):
+def test_extract_and_redensify(media):
     video, work, env = media
-    return subprocess.run(['bash', str(SCRIPT), str(video), str(work), *args],
-                          env=env, capture_output=True, text=True)
-
-
-def test_manifest_and_repeat(media):
-    for mode, fps in [('qa', 10), ('gems', 5)]:
-        result = run(media, '--mode', mode, '--fps', str(fps))
+    scripts = SCRIPT.parent
+    result = subprocess.run(['bash', str(scripts/'extract.sh'), str(video), str(work)],
+                            env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert (work/'audio.wav').stat().st_size > 0
+    assert 'Now I click' in (work/'transcript.srt').read_text()
+    assert (work/'transcript.txt').is_file()
+    scene = subprocess.run(['bash', str(scripts/'scene-cues.sh'), str(video)],
+                           env=env, capture_output=True, text=True)
+    assert scene.returncode == 0, scene.stderr
+    cues = work/'cues.tsv'
+    cues.write_text('0.5\t1.5\taction\n' + scene.stdout)
+    for fps, start, end, name in [(10, 0.5, 1.5, 'dense'), (20, 1, 1.5, 'refine')]:
+        cues.write_text(f'{start}\t{end}\t{name}\n')
+        out = work/name
+        result = subprocess.run(['bash', str(scripts/'dense-windows.sh'), str(video),
+                                 str(cues), str(out), str(fps), '0', '0'],
+                                env=env, capture_output=True, text=True)
         assert result.returncode == 0, result.stderr
-        manifest = json.loads((media[1] / 'manifest.json').read_text())
-        assert manifest['ready'] is True
-        assert manifest['mode'] == mode and manifest['fps'] == fps
-        assert 3.9 <= manifest['duration_seconds'] <= 4.1
-        assert manifest['contact_sheets'] and manifest['coverage_frames']
-        paths = (manifest['contact_sheets'] + manifest['coverage_frames'] +
-                 list(manifest['transcript'].values()) +
-                 [manifest['cues'], manifest['index'], manifest['frame_timestamps']])
-        assert all(Path(p).is_absolute() and Path(p).is_file() for p in paths)
-        assert all(manifest['tool_versions'][t] for t in ['ffmpeg', 'ffprobe', 'whisper-cli'])
-        assert ('action' if mode == 'qa' else 'coverage-fallback') in Path(manifest['cues']).read_text()
-        assert len(manifest['contact_sheets']) == len(Path(manifest['index']).read_text().splitlines())
-    media[2]['WHISPER_TEST_FAIL'] = '1'
-    assert run(media).returncode != 0
-    assert not (media[1] / 'manifest.json').exists(), 'failed rerun must invalidate ready'
+        rows = [row.split('\t') for row in (out/'index.tsv').read_text().splitlines()]
+        assert rows and all(int(row[2]) == fps for row in rows)
+        assert all((out/row[0]).stat().st_size > 0 for row in rows)
+        times = [float(row.split('\t')[2]) for row in (out/'frames.tsv').read_text().splitlines()]
+        assert times and min(times) >= start and max(times) < end
+        assert times[1] - times[0] == pytest.approx(1/fps)
+    env['WHISPER_TEST_FAIL'] = '1'
+    result = subprocess.run(['bash', str(scripts/'extract.sh'), str(video), str(work)], env=env)
+    assert result.returncode != 0
+    assert not (work/'transcript.srt').exists()
 
 
-def test_missing_model_and_bad_options(media):
-    media[2]['WHISPER_MODEL'] = '/nonexistent/ggml-small.bin'
-    result = run(media)
+def test_missing_model(media):
+    video, work, env = media
+    work.mkdir()
+    (work/'transcript.srt').write_text('stale')
+    (work/'transcript.txt').write_text('stale')
+    env['WHISPER_MODEL'] = '/nonexistent/ggml-small.bin'
+    result = subprocess.run(['bash', str(SCRIPT.parent/'extract.sh'), str(video), str(work)],
+                            env=env, capture_output=True, text=True)
     assert result.returncode != 0 and 'model' in result.stderr
-    assert not (media[1] / 'manifest.json').exists()
-    assert run(media, '--fps', '0').returncode == 2
-    assert run(media, '--mode', 'other').returncode == 2
+    assert not (work/'transcript.srt').exists() and not (work/'transcript.txt').exists()
+
+
+def test_skill_owns_iterative_loop():
+    root = SCRIPT.parents[1]
+    for relative in ['SKILL.md', 'workflows/process.md', 'workflows/gems.md']:
+        text = (root/relative).read_text()
+        assert 'own shell' in text
+        assert 'never open a terminal pane' in text.lower()
+        assert 'video-qa' in text
+        assert 're-densify' in text
+        assert 'NOT DETERMINED' in text
+        assert 'sheet' in text and 'tile' in text and 'timestamp' in text
+        assert 'ready: true' not in text and 'prepare.sh' not in text

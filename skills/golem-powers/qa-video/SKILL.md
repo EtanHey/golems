@@ -11,14 +11,14 @@ execute: scripts/default.sh
 ## How It Works
 
 ```
-Screen recording / local video / YouTube video (downloaded by dispatcher)
-  → Dispatcher background Bash: prepare.sh --mode qa|gems
-    → ffmpeg audio + whisper-cli SRT/TXT
-      → transcript/scene cues + dense contact sheets + 30s coverage frames
-        → manifest.json ready: true
-          → visual-gatherer (Agent) / gemini.gather.visual (cmux) reads every sheet
-            → Claude synthesizes QA findings or gems
-              → BrainLayer persistence + requested handoff / archival
+Local recording / YouTube video (downloaded in the agent's own shell)
+  → extract.sh: ffmpeg audio + whisper-cli SRT/TXT
+    → Agent selects transcript hotspots + scene-cues.sh visual changes
+      → dense-windows.sh: 10 fps contact sheets + 30s coverage
+        → Agent reads EVERY sheet
+          → Unclear? Re-densify at up to 20 fps / tighter windows and re-read
+            → Resolved or NOT DETERMINED, with sheet/tile/timestamp evidence
+              → QA findings or gems, BrainLayer persistence, requested handoff
 ```
 
 ## The Cardinal Rule: Narrate Before You Act
@@ -48,7 +48,24 @@ Read the user's request and route to the right workflow:
 
 **If ambiguous:** Ask whether this is a QA recording to process or a video to extract gems from.
 
-**Subagent routing (delegated jobs):** The dispatcher owns all deterministic media preparation: run `scripts/prepare.sh` in its own background Bash (`run_in_background`), wait for that task to succeed, and read `manifest.json` to verify `ready: true` before delegating reading. In an Agent-tool context use `Agent(visual-gatherer)` (golems#553) over the manifest's sheets and transcript. In a cmux lane use the `gemini.gather.visual` gatherer pane with the restricted reader brief in rule 10. The reader never prepares media or controls terminals.
+**Execution and subagent routing:** Delegate the whole loop only to a shell-enabled video agent. Gemini uses `agy --agent video-qa`; Claude seats run the same loop in their own Bash. A read-only gatherer cannot own video QA. No dispatcher preparation layer or separate reader handoff is required.
+
+Run each media step in your **own shell**; use background Bash
+(`run_in_background`) for long ffmpeg/whisper jobs and wait for completion before
+reading outputs. **Never open a terminal pane** or type into another surface to
+run media tools; never use `send_to` for media commands. If your profile has no
+shell, stop and ask the lead for the `video-qa` profile. Do not improvise a pane.
+Claude seats use their own Bash. Gemini seats run `agy --agent video-qa` (profile
+name pending confirmation from the golems profile lane; no cmuxlayer MCP).
+
+The agent owns the whole iterative loop: extract/transcribe → choose transcript
+AND scene hotspots → dense windows at 10 fps → read every contact sheet →
+**re-densify** unclear moments at up to 20 fps and/or with tighter windows →
+re-fetch and re-read until resolved or explicitly **NOT DETERMINED**. Scripts
+are per-step helpers; they do not replace hotspot judgement. Each finding cites
+its sheet + tile + timestamp from `frames.tsv`; unsupported claims remain
+transcript-only. An optional convenience index never gates the loop.
+
 
 **Verdict integrity (before emitting a QA verdict or "QA complete"):** Run `/qa-verdict-gate` over the run. It enforces tri-state **PASS / FAIL / INCONCLUSIVE** — `FAIL` is reserved for a *confirmed-observed* failure (a screenshot/click that reached the surface or an observed error in a tool result); a path you **couldn't reach** ("couldn't load", "element not found", blocked at step 0) is `INCONCLUSIVE`, never FAIL or PASS — and a QA run only counts when a `qa-report.md` with all the checklist items exists. `bun skills/golem-powers/qa-verdict-gate/scripts/qa-verdict-gate-cli.mjs <transcript|->` (exit 3 = FLAG = the verdict isn't earned yet). Composes with `/false-green-gate` and `/never-fabricate`.
 
@@ -56,7 +73,7 @@ Read the user's request and route to the right workflow:
 
 ## Key Design Decisions (learned from real usage)
 
-1. **LLM reads the SRT directly** — no automated hotspot detection (sox/ImageMagick). Claude reading the transcript is a better hotspot detector than volume spikes or frame diffs. The automated signals (from the original Twitch stalker pipeline) are unnecessary for QA narration.
+1. **The agent reads the SRT directly** — It chooses semantic hotspots from narration and combines them with `scene-cues.sh` visual-change cues. Automated audio-volume spikes do not replace transcript judgement.
 
 2. **Dense action windows (mandatory)** — In QA mode, every action cue gets a dense-frame window, not a single frame. A click's target, hover state and resulting animation all happen in under a second; one frame every 30s plus ±5s hotspot frames cannot show what was clicked or how the UI reacted, and a 10-run eval found every "pixel-only" finding from that method was hallucinated or mis-scoped.
    - **Build `cues.tsv`** (`start_s<TAB>end_s<TAB>label`) from:
@@ -81,7 +98,7 @@ Read the user's request and route to the right workflow:
 
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-10. **Dispatcher prepares; gatherer reads** — The dispatcher runs `scripts/prepare.sh <video> <workdir> [--fps N] [--mode qa|gems]` in its own background Bash (`run_in_background`). Wait for successful task completion and `manifest.json` with `ready: true`; a missing manifest or failed task blocks handoff. Agent-tool contexts use `Agent(visual-gatherer)` (golems#553). cmux lanes use the **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`, resolved from the golems checkout). Its brief must say: "Read manifest.json and the listed sheets/transcript only; never spawn panes, never send_to terminals, never run media tools." Read every sheet in manifest order and preserve sheet/tile evidence. Claude owns synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival.
+10. **The video agent owns the iterative loop in its own shell** — Gemini uses `agy --agent video-qa` (profile name pending confirmation). Claude uses its own Bash. The agent extracts, chooses hotspots, reads every sheet, and re-densifies unclear moments until resolved or **NOT DETERMINED**; it never opens panes or types commands into another surface. A profile without shell tools must stop and ask the lead for `video-qa`. Synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival follow the evidence pass.
 
 ---
 
@@ -90,7 +107,6 @@ Read the user's request and route to the right workflow:
 | Tool | Check | Install |
 |------|-------|---------|
 | ffmpeg + ffprobe | `which ffmpeg ffprobe` | `brew install ffmpeg` |
-| Python 3 | `which python3` | `brew install python` |
 | whisper-cli | `which whisper-cli` | `brew install whisper-cpp` |
 | whisper model | `ls ~/.cache/whisper/ggml-small.bin` | `whisper-cli --download-model small` |
 | yt-dlp | `which yt-dlp` | `pip3 install yt-dlp` |
@@ -122,11 +138,16 @@ bash "$ORCHESTRATOR_REPO/scripts/qa/qa-record.sh" ~/Gits/<project>/docs/
 VIDEO="/path/to/recording.mov"
 WORKDIR="$HOME/Gits/<project>/docs/qa-session-$(date +%Y-%m-%d-%H%M)"
 SCRIPTS="<qa-video skill dir>/scripts"
-# Dispatcher Bash tool: run_in_background: true
-bash "$SCRIPTS/prepare.sh" "$VIDEO" "$WORKDIR" --fps 10 --mode qa
-# Wait for the background task; verify manifest.json ready: true, then hand its
-# absolute contact_sheets/transcript paths to the restricted visual reader.
-# Compile findings with sheet + tile -> timestamp citations from frames.tsv.
+# Run each command in YOUR OWN shell; background long media jobs, then wait.
+bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"
+# Read SRT; write chosen transcript hotspots to cues.tsv, then add scene cues.
+bash "$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
+bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
+# Read every sheet. If a moment is unclear, re-densify a single tighter window:
+printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
+bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
+# Re-read; repeat as needed, or mark NOT DETERMINED. Full workflow includes
+# 30-second coverage and sheet + tile + timestamp findings.
 ```
 
 **For the full step-by-step, load [workflows/process.md](workflows/process.md).**
