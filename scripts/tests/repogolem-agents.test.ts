@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test';
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
@@ -32,6 +32,28 @@ test('renders only declared non-sensitive values into private agents; cache-only
   expect(readFileSync(join(out,'agents.json'),'utf8')).not.toContain('private canary');
   expect(run('generate',['--check']).code).toBe(0);
   writeFileSync(agent,'tampered\n'); expect(run('generate',['--check']).code).toBe(1);
+});
+test('config-sensitive placeholder refuses directly in prepare, independently of render', () => {
+  expect(prepareAgents(settings)).toHaveLength(1); // Manifest stays non-sensitive.
+  settings.values.SEED_DIR.sensitive = true;
+  expect(() => prepareAgents(settings)).toThrow('agent templates:');
+});
+test('config-sensitive placeholder refuses before provider preflight and writes', () => {
+  const log = join(dir, 'provider.log');
+  settings.secrets = { backend: '1password' };
+  // An unrelated provider ref makes preflight observable without source collision.
+  settings.values.TOKEN.source = 'op://example-vault/example-item/token';
+  const env = { REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'),
+    FAKE_OP_LOG: log, BUN_RUNTIME_TRANSPILER_CACHE_PATH: join(dir, 'bun-cache') };
+  // Positive control: a valid preparation reaches the synthetic provider spy.
+  run('generate', [], cli, env);
+  expect(existsSync(log)).toBe(true);
+  rmSync(log); rmSync(home, { recursive: true }); mkdirSync(home);
+  settings.values.SEED_DIR.sensitive = true;
+  expect(run('generate', [], cli, env).code).toBe(2);
+  expect(existsSync(log)).toBe(false);
+  expect(existsSync(out)).toBe(false);
+  expect(readdirSync(home)).toEqual([]);
 });
 test('sensitive schema OR manifest declarations refuse before any output, including cache', () => {
   settings.values.SEED_DIR.sensitive=true; expect(run().code).toBe(2); expect(existsSync(out)).toBe(false);
