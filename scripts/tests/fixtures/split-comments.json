@@ -11835,7 +11835,9 @@
       "dc5fa5e9824e79a7ff19cbb6542ac75a43bf47b90976d4be315f7f6da8ac79fe": 1,
       "f85887236329214a30f943d8181a4fedcbff132f9d3bb3ffd1cd3b94b3bce232": 1
     },
-    "skills/golem-powers/tmp-block/hooks/tests/test_variable_state_differential.py": {},
+    "skills/golem-powers/tmp-block/hooks/tests/test_variable_state_differential.py": {
+      "b580ecbca3b853a9dd2ff23f85173881c7308b14574a807019d67eaac2e77f66": 1
+    },
     "skills/golem-powers/tmp-block/hooks/tmp_block_impl/variable_builtins.py": {
       "ccc76a057cf27564c891f36151c1ccff3652786e8477b3c67388828be1602e6a": 1,
       "dd3c6cc82b52962360c7144dd0ac655be238d6cdaec35cc8ce6f1f9f92525c92": 1,
