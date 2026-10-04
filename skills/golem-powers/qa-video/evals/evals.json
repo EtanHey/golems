@@ -1,0 +1,18 @@
+{
+  "skill_name": "qa-video",
+  "evals": [
+    {"id": 1, "name": "visual-agent-routing", "prompt": "Here are 12 screenshots, which show the error banner?", "assertions": [
+      {"type": "tool_usage", "name": "isolated-gatherer", "description": "Agent(subagent_type=visual-gatherer); score parent calls with run_suite.py."},
+      {"type": "negative", "name": "no-parent-images", "description": "No lead Read of the images."}
+    ]},
+    {"id": 2, "name": "judgment-stays-with-parent", "prompt": "Is this UI design good?", "assertions": [
+      {"type": "negative", "name": "not-gathering", "description": "No visual-gatherer dispatch for UX/UI judgment."}
+    ]},
+    {"id": 3, "name": "synthetic-accuracy", "prompt": "Inspect alpha.png and beta.png: exact label, error banner text or absent, blue circle count.", "assertions": [
+      {"type": "content", "name": "exact-observations", "description": "ALPHA: ERROR: OFFLINE, 3. BETA: absent, 5. Coverage 2/2."}
+    ]},
+    {"id": 4, "name": "tiny-timeout", "prompt": "Inspect the synthetic pair with --timeout 0.001.", "assertions": [
+      {"type": "content", "name": "honest-partial", "description": "One serial singleton retry round; partial coverage 0/2 and two NOT DETERMINED findings."}
+    ]}
+  ]
+}
