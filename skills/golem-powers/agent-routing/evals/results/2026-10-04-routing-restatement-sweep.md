@@ -13,10 +13,10 @@ This PR adds one inventory Markdown file, giving 322 files on its final head;
 
 | Class | Hits | Treatment |
 |---|---:|---|
-| POINTER | 87 | Temporary `tag: "ssot-sweep"`; remove in assigned slice |
+| POINTER | 88 | Temporary `tag: "ssot-sweep"`; remove in assigned slice |
 | DATA | 84 | Permanent, with historical/fixture/example reason |
 | FUNCTIONAL | 25 | Permanent, with parser/frontmatter/guard-contract reason |
-| FALSE POSITIVE | 70 | Permanent, with non-routing reason |
+| FALSE POSITIVE | 69 | Permanent, with non-routing reason |
 
 The CSV records every golems hit, its original line, a <=100-character excerpt,
 classification, action/reason and slice. The allowlist has 264 exact marker rows
@@ -59,12 +59,12 @@ changed in PR 3a.
 
 | Slice | Families | Pointer hits | Editing budget |
 |---|---|---:|---|
-| 3b | pr-loop (19), coderabbit (9), cmux-agents (3) | 31 | <=400 handwritten changed lines |
+| 3b | pr-loop (19), coderabbit (9), cmux-agents (3), codex-workflows harness default (1) | 32 | <=400 handwritten changed lines |
 | 3c | agada-bench (12), plan-council (12), skill-creator (10), large-plan (7), weave (5), codex-workflows (3), orc (3), collab-monitor (1), convention-audit (1), model-pin-gate (1), qa-video (1) | 56 | <=400 handwritten changed lines |
 
-Budget method: contiguous paragraph/table/fence neighborhoods total 113 old
+Budget method: contiguous paragraph/table/fence neighborhoods total 130 old
 lines for 3b and 254 for 3c. Reserving one new pointer per hit gives estimated
-handwritten totals of 144 and 310 lines, respectively. Generated
+handwritten totals of 162 and 310 lines, respectively. Generated
 allowlist row removals are exempt from the handwritten budget. If a behavioral
 issue or an unexpectedly broad rewrite appears, split that family again; do not
 change tool contracts merely to remove a scan hit. Functional parser tokens and
@@ -73,7 +73,7 @@ temporary rows cannot linger.
 
 ## Detector follow-up proposal
 
-70 hits are false positives. In a separate lint PR, consider clause boundaries
+69 hits are false positives. In a separate lint PR, consider clause boundaries
 at Markdown table cells/headings/fences and distinguish bot command examples and
 Blue Team terminology from model/role selection. Preserve wrapped assignment
 coverage with RED counterexamples before narrowing the detector. Do not blanket
@@ -92,3 +92,11 @@ exempt an adapter, workflow or evidence directory.
 The committed JSON proof records focused RED/GREEN and four caught mutations.
 The remote PR body/report carries full-suite and exact-head CI results; local
 checks alone do not establish hosted CI, review approval, merge or installation.
+
+## Inner-loop review disposition
+
+Lead-routed Opus approved with one reclassification: `codex-workflows/SKILL.md:42`
+is POINTER, temporary `ssot-sweep` debt assigned to 3b. Reason: harness default
+names a model literal; resolve via model-roles/SSOT. The harness code default is
+a separate conflict with the unbenched `codex.subagent.mechanical` candidate;
+the lead owns a separate issue/PR. PR 3a does not change that executable default.

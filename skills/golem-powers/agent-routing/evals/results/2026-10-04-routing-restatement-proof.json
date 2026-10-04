@@ -4,10 +4,10 @@
   "scan_files": 321,
   "baseline_hits": 266,
   "classification": {
-    "POINTER": 87,
+    "POINTER": 88,
     "DATA": 84,
     "FUNCTIONAL": 25,
-    "FALSE POSITIVE": 70
+    "FALSE POSITIVE": 69
   },
   "focused_tests": {
     "red": {
@@ -54,5 +54,11 @@
         "(fail) routing allowlist admits reviewed baseline but rejects new restatements and duplicate copies"
       ]
     }
-  ]
+  ],
+  "inner_loop_review": {
+    "reviewer": "lead-routed Opus",
+    "verdict": "APPROVE with one reclassification",
+    "change": "codex-workflows/SKILL.md:42 -> POINTER, temporary ssot-sweep, slice 3b",
+    "reason": "harness default names a model literal; resolve via model-roles/SSOT"
+  }
 }

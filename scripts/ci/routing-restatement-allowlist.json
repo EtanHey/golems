@@ -483,9 +483,10 @@
     {
       "file": "skills/golem-powers/codex-workflows/SKILL.md",
       "marker": "`gpt-5.6-luna`; record effective model/effort, output tokens, and wall-clock duration in the manifest and run log.",
-      "class": "FALSE POSITIVE",
-      "reason": "Describes implemented harness default with SSOT pointer; no new role selection.",
-      "count": 1
+      "class": "POINTER",
+      "reason": "harness default names a model literal; resolve via model-roles/SSOT",
+      "count": 1,
+      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/codex-workflows/evals/results/audit-2026-08-02.md",
