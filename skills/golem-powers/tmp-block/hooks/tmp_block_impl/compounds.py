@@ -1,4 +1,5 @@
 """Definitions moved byte-faithfully from the executable hook."""
+import os
 import re
 
 
@@ -42,6 +43,7 @@ def _literal_branch_may_execute(tokens, target_index):
     return True
 
 
+# AIDEV-TODO: golems#445 — moved whole (239 lines); decompose behind the pristine harness.
 def _bounded_compound_value_sets_before(
     tokens, cmd_pos, seg_of, scope_of, target_index, variables
 ):

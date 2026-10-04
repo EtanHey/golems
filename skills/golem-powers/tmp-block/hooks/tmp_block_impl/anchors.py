@@ -1,6 +1,4 @@
 """Definitions moved byte-faithfully from the executable hook."""
-import re
-import os
 
 
 def _bounded_loop_subshell_anchor(

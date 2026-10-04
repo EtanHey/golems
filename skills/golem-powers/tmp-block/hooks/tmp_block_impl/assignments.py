@@ -1,4 +1,5 @@
 """Definitions moved byte-faithfully from the executable hook."""
+import os
 import re
 
 

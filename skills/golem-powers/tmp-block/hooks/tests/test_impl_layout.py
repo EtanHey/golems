@@ -46,7 +46,7 @@ def test_real_path_layout_and_bytecode(tmp_path, layout):
     assert not list(package.rglob("__pycache__"))
 
 
-@pytest.mark.parametrize("damaged", ["__init__.py", "policy.py", "runtime.py", "scope.py", "shell_words.py", "chain_status.py", "wiring", "words.py", "prefixes.py", "variable_builtins.py", "variables.py", "assignments.py", "compounds.py", "anchors.py", "resolution.py", "tool_targets.py", "syntax", "runtime-error", "foreign"])
+@pytest.mark.parametrize("damaged", ["__init__.py", "policy.py", "runtime.py", "scope.py", "shell_words.py", "chain_status.py", "wiring", "words.py", "prefixes.py", "variable_builtins.py", "variables.py", "assignments.py", "compounds.py", "anchors.py", "resolution.py", "tool_targets.py", "bypass.py", "syntax", "runtime-error", "foreign"])
 def test_missing_or_corrupt_package_denies_through_launcher(tmp_path, damaged):
     hook = copied_hook(tmp_path / "source")
     package = hook.parent / "tmp_block_impl"
@@ -102,7 +102,7 @@ assert hook._POSITIONAL_PARAM_RE is hook._prefixes._POSITIONAL_PARAM_RE
 assert hook._SIMPLE_VAR_RE is hook._words._SIMPLE_VAR_RE
 assert hook._MAX_STATIC_VALUES is hook._words._MAX_STATIC_VALUES
 assert type(hook._MAX_STATIC_VALUES) is int and hook._MAX_STATIC_VALUES == 256
-for module_name in ('scope', 'shell_words', 'chain_status', 'words', 'prefixes', 'variable_builtins', 'variables', 'assignments', 'compounds', 'anchors', 'resolution', 'tool_targets'):
+for module_name in ('scope', 'shell_words', 'chain_status', 'words', 'prefixes', 'variable_builtins', 'variables', 'assignments', 'compounds', 'anchors', 'resolution', 'tool_targets', 'bypass'):
     module = getattr(hook, '_' + module_name)
     for name, value in vars(module).items():
         if callable(value) and getattr(value, '__module__', None) == module.__name__:
@@ -112,4 +112,42 @@ assert sys.dont_write_bytecode is (sys.argv[2] == 'True')
     env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
     result = subprocess.run([sys.executable, *(["-B"] if bytecode else []), str(probe), str(HOOK), str(bytecode)],
                             capture_output=True, text=True, timeout=20, env=env)
-    assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
+    assert (result.returncode, result.stdout, result.stderr) == (0, "", ""), result.stderr
+
+
+def test_split_module_names_are_resolved_and_used(tmp_path):
+    probe = tmp_path / "module_names.py"
+    probe.write_text("""import ast, builtins, importlib.util, symtable, sys, types
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('unregistered', sys.argv[1])
+hook = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(hook)
+errors = []
+external = {(n.value.id, n.attr) for n in ast.walk(ast.parse(Path(sys.argv[1]).read_text())) if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name)}
+for file in sorted((Path(sys.argv[1]).parent / 'tmp_block_impl').glob('*.py')):
+    module = getattr(hook, '_' + file.stem, None)
+    if module is None:
+        assert file.name == '__init__.py', file
+        continue
+    text = file.read_text(); refs = set(); imports = set(); definitions = set()
+    def collect(table):
+        refs.update(s.get_name() for s in table.get_symbols() if s.is_global() and s.is_referenced())
+        for child in table.get_children(): collect(child)
+    collect(symtable.symtable(text, str(file), 'exec'))
+    for node in ast.parse(text).body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            imports.update(a.asname or a.name.split('.')[0] for a in node.names)
+        elif isinstance(node, (ast.FunctionDef, ast.ClassDef)): definitions.add(node.name)
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            definitions.update(n.id for t in (node.targets if isinstance(node, ast.Assign) else [node.target]) for n in ast.walk(t) if isinstance(n, ast.Name))
+    namespace = vars(module)
+    missing = refs - namespace.keys() - vars(builtins).keys()
+    unused = imports - refs
+    unused.update(n for n,v in namespace.items() if not n.startswith('__') and n not in refs and n not in imports and getattr(hook, n, object()) is not v and ('_'+file.stem,n) not in external)
+    implicit = {n for n in refs if n in namespace and isinstance(namespace[n], types.ModuleType) and namespace[n].__name__ in sys.stdlib_module_names and n not in imports}
+    errors.append((file.name, sorted(missing), sorted(unused), sorted(implicit)))
+assert not any(missing or unused or implicit for _,missing,unused,implicit in errors), errors
+""")
+    result = subprocess.run([sys.executable, "-B", str(probe), str(HOOK)],
+                            capture_output=True, text=True, timeout=20)
+    assert (result.returncode, result.stdout, result.stderr) == (0, "", ""), result.stderr

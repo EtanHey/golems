@@ -1,5 +1,4 @@
 """Definitions moved byte-faithfully from the executable hook."""
-import re
 
 
 def _direct_exposed_scope_keys(command, scope_of):
