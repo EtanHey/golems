@@ -48,15 +48,26 @@ Read the user's request and route to the right workflow:
 
 **If ambiguous:** Ask whether this is a QA recording to process or a video to extract gems from.
 
-**Execution and subagent routing:** Delegate the whole loop only to a shell-enabled video agent. Gemini uses `agy --agent video-qa`; Claude seats run the same loop in their own Bash. A read-only gatherer cannot own video QA. No dispatcher preparation layer or separate reader handoff is required.
+**Execution routing:** Run the whole loop in a shell-enabled video agent. Gemini uses `agy --agent video-qa`; Claude seats run the same loop in their own Bash. The same agent owns extraction, sheet reads and refinement.
 
-Run each media step in your **own shell**; use background Bash
-(`run_in_background`) for long ffmpeg/whisper jobs and wait for completion before
-reading outputs. **Never open a terminal pane** or type into another surface to
-run media tools; never use `send_to` for media commands. If your profile has no
-shell, stop and ask the lead for the `video-qa` profile. Do not improvise a pane.
-Claude seats use their own Bash. Gemini seats run `agy --agent video-qa` (profile
-name pending confirmation from the golems profile lane; no cmuxlayer MCP).
+Run each media step in your **own shell**. Claude seats use background Bash;
+Gemini seats use `agy --agent video-qa` (confirmed in golems#563; production
+installation follows merge). **Never open a terminal pane** or type into another
+surface to run media tools; never use `send_to` for media commands. If your
+profile has no shell, stop and ask the lead for `video-qa`. Do not improvise.
+
+agy 1.2.14 cannot register `command_status` or `send_command_input`. Use the
+per-step helper `run-step.sh <artifact-dir> <step> -- <command> [args...]` in your
+own shell for long ffmpeg/whisper jobs, on both Claude and agy. It starts only
+that command and writes `<artifact-dir>/logs/<step>.log`, `<step>.pid` and
+`<step>.exit` (all three under `logs/`). Poll with your own Bash / agy
+`run_command` or `view_file` until `.exit` exists; require its numeric value to
+be `0`, then verify outputs before reading them. A launch return is not step
+completion. On a nonzero exit read `.log` and resolve the failure. Use a fresh
+step name for each refinement; never delegate polling to a terminal pane.
+`video-qa` has no MCP or delegation: keep the entire media loop inside it,
+then return the findings note to the calling Claude seat for BrainLayer
+persistence and Drive archival.
 
 The agent owns the whole iterative loop: extract/transcribe → choose transcript
 AND scene hotspots → dense windows at 10 fps → read every contact sheet →
@@ -98,7 +109,7 @@ transcript-only. An optional convenience index never gates the loop.
 
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-10. **The video agent owns the iterative loop in its own shell** — Gemini uses `agy --agent video-qa` (profile name pending confirmation). Claude uses its own Bash. The agent extracts, chooses hotspots, reads every sheet, and re-densifies unclear moments until resolved or **NOT DETERMINED**; it never opens panes or types commands into another surface. A profile without shell tools must stop and ask the lead for `video-qa`. Synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival follow the evidence pass.
+10. **The video agent owns the iterative loop in its own shell** — Gemini uses `agy --agent video-qa` (confirmed in golems#563). Claude uses its own Bash. The agent extracts, chooses hotspots, reads every sheet, and re-densifies unclear moments until resolved or **NOT DETERMINED**; it never opens panes or types commands into another surface. A profile without shell tools must stop and ask the lead for `video-qa`. Synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival follow the evidence pass.
 
 ---
 
@@ -138,15 +149,18 @@ bash "$ORCHESTRATOR_REPO/scripts/qa/qa-record.sh" ~/Gits/<project>/docs/
 VIDEO="/path/to/recording.mov"
 WORKDIR="$HOME/Gits/<project>/docs/qa-session-$(date +%Y-%m-%d-%H%M)"
 SCRIPTS="<qa-video skill dir>/scripts"
-# Run each command in YOUR OWN shell; background long media jobs, then wait.
-bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"
-# Read SRT; write chosen transcript hotspots to cues.tsv, then add scene cues.
-bash "$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
-bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
-# Read every sheet. If a moment is unclear, re-densify a single tighter window:
+# Run each command in YOUR OWN shell. After EACH launch, poll its logs/*.exit
+# and require 0 before continuing; read logs/*.log on failure.
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" extract -- bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"
+# Wait for extract.exit=0. Read SRT; write chosen transcript hotspots to cues.tsv, then add scene cues.
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
+# After logs/scene.exit exists and is 0, append the scene TSV output:
+cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
+# Wait for dense.exit=0. Read every sheet. If a moment is unclear, re-densify a single tighter window:
 printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
-bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
-# Re-read; repeat as needed, or mark NOT DETERMINED. Full workflow includes
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
+# Wait for refine-01.exit=0. Re-read; repeat as needed, or mark NOT DETERMINED. Full workflow includes
 # 30-second coverage and sheet + tile + timestamp findings.
 ```
 

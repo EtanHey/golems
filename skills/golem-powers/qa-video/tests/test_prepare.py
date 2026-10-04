@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import time
 
 import pytest
 
@@ -40,12 +41,25 @@ Path(p + '.txt').write_text('Now I click here.\\n')
     return video, tmp_path / 'work dir', env
 
 
+def background(scripts, work, step, command, env):
+    result = subprocess.run(['bash', str(scripts/'run-step.sh'), str(work), step, '--', *command],
+                            env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    logs = work/'logs'
+    assert int((logs/f'{step}.pid').read_text()) > 0
+    deadline = time.monotonic() + 20
+    receipt = logs/f'{step}.exit'
+    while not receipt.exists() and time.monotonic() < deadline:
+        time.sleep(0.02)
+    assert receipt.exists(), f'missing exit receipt: {step}'
+    assert (logs/f'{step}.log').is_file()
+    return int(receipt.read_text())
+
+
 def test_extract_and_redensify(media):
     video, work, env = media
     scripts = SCRIPT.parent
-    result = subprocess.run(['bash', str(scripts/'extract.sh'), str(video), str(work)],
-                            env=env, capture_output=True, text=True)
-    assert result.returncode == 0, result.stderr
+    assert background(scripts, work, 'extract', ['bash', str(scripts/'extract.sh'), str(video), str(work)], env) == 0
     assert (work/'audio.wav').stat().st_size > 0
     assert 'Now I click' in (work/'transcript.srt').read_text()
     assert (work/'transcript.txt').is_file()
@@ -57,10 +71,9 @@ def test_extract_and_redensify(media):
     for fps, start, end, name in [(10, 0.5, 1.5, 'dense'), (20, 1, 1.5, 'refine')]:
         cues.write_text(f'{start}\t{end}\t{name}\n')
         out = work/name
-        result = subprocess.run(['bash', str(scripts/'dense-windows.sh'), str(video),
-                                 str(cues), str(out), str(fps), '0', '0'],
-                                env=env, capture_output=True, text=True)
-        assert result.returncode == 0, result.stderr
+        assert background(scripts, work, name,
+                          ['bash', str(scripts/'dense-windows.sh'), str(video),
+                           str(cues), str(out), str(fps), '0', '0'], env) == 0
         rows = [row.split('\t') for row in (out/'index.tsv').read_text().splitlines()]
         assert rows and all(int(row[2]) == fps for row in rows)
         assert all((out/row[0]).stat().st_size > 0 for row in rows)
@@ -68,8 +81,7 @@ def test_extract_and_redensify(media):
         assert times and min(times) >= start and max(times) < end
         assert times[1] - times[0] == pytest.approx(1/fps)
     env['WHISPER_TEST_FAIL'] = '1'
-    result = subprocess.run(['bash', str(scripts/'extract.sh'), str(video), str(work)], env=env)
-    assert result.returncode != 0
+    assert background(scripts, work, 'extract', ['bash', str(scripts/'extract.sh'), str(video), str(work)], env) != 0
     assert not (work/'transcript.srt').exists()
 
 
@@ -92,6 +104,9 @@ def test_skill_owns_iterative_loop():
         assert 'own shell' in text
         assert 'never open a terminal pane' in text.lower()
         assert 'video-qa' in text
+        assert 'run-step.sh' in text and '.log' in text and '.pid' in text and '.exit' in text
+        assert 'run_command' in text and 'view_file' in text
+        assert 'pending confirmation' not in text
         assert 're-densify' in text
         assert 'NOT DETERMINED' in text
         assert 'sheet' in text and 'tile' in text and 'timestamp' in text

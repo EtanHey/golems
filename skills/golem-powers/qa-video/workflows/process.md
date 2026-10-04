@@ -11,13 +11,24 @@ command reference and troubleshooting notes.
 
 ## Execution Contract: Agent-Owned Iterative Loop
 
-Run each media step in your **own shell**; use background Bash
-(`run_in_background`) for long ffmpeg/whisper jobs and wait for completion before
-reading outputs. **Never open a terminal pane** or type into another surface to
-run media tools; never use `send_to` for media commands. If your profile has no
-shell, stop and ask the lead for the `video-qa` profile. Do not improvise a pane.
-Claude seats use their own Bash. Gemini seats run `agy --agent video-qa` (profile
-name pending confirmation from the golems profile lane; no cmuxlayer MCP).
+Run each media step in your **own shell**. Claude seats use background Bash;
+Gemini seats use `agy --agent video-qa` (confirmed in golems#563; production
+installation follows merge). **Never open a terminal pane** or type into another
+surface to run media tools; never use `send_to` for media commands. If your
+profile has no shell, stop and ask the lead for `video-qa`. Do not improvise.
+
+agy 1.2.14 cannot register `command_status` or `send_command_input`. Use the
+per-step helper `run-step.sh <artifact-dir> <step> -- <command> [args...]` in your
+own shell for long ffmpeg/whisper jobs, on both Claude and agy. It starts only
+that command and writes `<artifact-dir>/logs/<step>.log`, `<step>.pid` and
+`<step>.exit` (all three under `logs/`). Poll with your own Bash / agy
+`run_command` or `view_file` until `.exit` exists; require its numeric value to
+be `0`, then verify outputs before reading them. A launch return is not step
+completion. On a nonzero exit read `.log` and resolve the failure. Use a fresh
+step name for each refinement; never delegate polling to a terminal pane.
+`video-qa` has no MCP or delegation: keep the entire media loop inside it,
+then return the findings note to the calling Claude seat for BrainLayer
+persistence and Drive archival.
 
 The agent owns the whole iterative loop: extract/transcribe → choose transcript
 AND scene hotspots → dense windows at 10 fps → read every contact sheet →
@@ -39,12 +50,13 @@ SUFFIX=""
 # Keep each round's raw extraction separate; findings stay in WORKDIR.
 MEDIADIR="$WORKDIR/media${SUFFIX}"
 SCRIPTS="<qa-video skill dir>/scripts"
-# Own background Bash; wait for completion and verify audio/SRT/TXT exist.
-bash "$SCRIPTS/extract.sh" "$VIDEO" "$MEDIADIR"
+# Own shell launch. Poll MEDIADIR/logs/extract.exit and require 0;
+# then verify audio/SRT/TXT exist before Phase 2.
+bash "$SCRIPTS/run-step.sh" "$MEDIADIR" extract -- bash "$SCRIPTS/extract.sh" "$VIDEO" "$MEDIADIR"
 mkdir -p "$WORKDIR/frames${SUFFIX}"
 ```
 
-Read `$MEDIADIR/transcript.srt`; confirm timestamps/content are usable.
+After `$MEDIADIR/logs/extract.exit` exists and is `0`, read `$MEDIADIR/transcript.srt`; confirm timestamps/content are usable.
 `WHISPER_MODEL` overrides `~/.cache/whisper/ggml-small.bin`. If transcription
 fails, stop this pass and report the failure; do not read a previous transcript.
 
@@ -82,11 +94,12 @@ if [[ ! "$DURATION" =~ ^[0-9]+$ ]] || [ "$DURATION" -le 0 ]; then
   exit 1
 fi
 
-for t in $(seq 0 30 "$DURATION"); do
-  [ "$t" -lt "$DURATION" ] || continue
-  INTERVAL_TIMESTAMP="$t"
-  ffmpeg -y -nostdin -ss "$INTERVAL_TIMESTAMP" -i "$VIDEO" -vframes 1 -q:v 2 "$FRAMEDIR/interval-${INTERVAL_TIMESTAMP}s.jpg" 2>/dev/null
-done
+# Choose t=0, 30, 60, ... strictly before duration. Launch one at a time.
+t=0
+[ "$t" -lt "$DURATION" ] || exit 1
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" "coverage${SUFFIX}-${t}" -- ffmpeg -y -nostdin -ss "$t" -i "$VIDEO" -vframes 1 -q:v 2 "$FRAMEDIR/interval-${t}s.jpg"
+# Poll logs/coverage${SUFFIX}-${t}.exit; require 0 and a nonempty frame.
+# Then repeat for the next coverage timestamp.
 ```
 
 ### 3c. Click Correlation (when `clicks.jsonl` exists)
@@ -107,8 +120,11 @@ Decision #2), then:
 
 ```bash
 SCRIPTS="<qa-video skill dir>/scripts"
-"$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
-"$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense${SUFFIX}" 10
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" "scene${SUFFIX}" -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
+# Poll logs/scene${SUFFIX}.exit; require 0, then append its TSV:
+cat "$WORKDIR/logs/scene${SUFFIX}.log" >> "$WORKDIR/cues.tsv"
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" "dense${SUFFIX}" -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense${SUFFIX}" 10
+# Poll logs/dense${SUFFIX}.exit; require 0 before Phase 4.
 ```
 
 Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
@@ -153,10 +169,11 @@ for each pass so earlier citations remain valid:
 ```bash
 # Example only: choose these bounds from the actual unclear moment.
 printf '12.1\t12.6\tunclear-click-target\n' > "$WORKDIR/refine-cues-01.tsv"
-bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues-01.tsv" \
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues-01.tsv" \
   "$WORKDIR/refine-01" 20 0 0
 ```
 
+Poll `logs/refine-01.exit` and require `0` before re-reading.
 The final `0 0` disables cue padding, making this exactly one start/end/fps
 window. Re-fetch and read EVERY new sheet in its `index.tsv`; use that pass's
 `frames.tsv` for exact tile timestamps. Repeat at different bounds if needed.

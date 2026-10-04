@@ -14,13 +14,24 @@ or wants durable insights/takeaways from a video instead of QA findings.
 
 ## Execution Contract
 
-Run each media step in your **own shell**; use background Bash
-(`run_in_background`) for long ffmpeg/whisper jobs and wait for completion before
-reading outputs. **Never open a terminal pane** or type into another surface to
-run media tools; never use `send_to` for media commands. If your profile has no
-shell, stop and ask the lead for the `video-qa` profile. Do not improvise a pane.
-Claude seats use their own Bash. Gemini seats run `agy --agent video-qa` (profile
-name pending confirmation from the golems profile lane; no cmuxlayer MCP).
+Run each media step in your **own shell**. Claude seats use background Bash;
+Gemini seats use `agy --agent video-qa` (confirmed in golems#563; production
+installation follows merge). **Never open a terminal pane** or type into another
+surface to run media tools; never use `send_to` for media commands. If your
+profile has no shell, stop and ask the lead for `video-qa`. Do not improvise.
+
+agy 1.2.14 cannot register `command_status` or `send_command_input`. Use the
+per-step helper `run-step.sh <artifact-dir> <step> -- <command> [args...]` in your
+own shell for long ffmpeg/whisper jobs, on both Claude and agy. It starts only
+that command and writes `<artifact-dir>/logs/<step>.log`, `<step>.pid` and
+`<step>.exit` (all three under `logs/`). Poll with your own Bash / agy
+`run_command` or `view_file` until `.exit` exists; require its numeric value to
+be `0`, then verify outputs before reading them. A launch return is not step
+completion. On a nonzero exit read `.log` and resolve the failure. Use a fresh
+step name for each refinement; never delegate polling to a terminal pane.
+`video-qa` has no MCP or delegation: keep the entire media loop inside it,
+then return the findings note to the calling Claude seat for BrainLayer
+persistence and Drive archival.
 
 The agent owns the whole iterative loop: extract/transcribe → choose transcript
 AND scene hotspots → dense windows at 10 fps → read every contact sheet →
@@ -40,12 +51,13 @@ transcript-only. An optional convenience index never gates the loop.
    yt-dlp --write-info-json --merge-output-format mp4 -o "docs.local/qa-video/<slug>/source.%(ext)s" "<url>"
    ```
    Use the actual downloaded video path. Local video needs no download.
-3. In your own background Bash run
-   `bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"`, then wait and verify SRT/TXT.
+3. In your own shell launch
+   `bash "$SCRIPTS/run-step.sh" "$WORKDIR" extract -- bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"`, then poll `logs/extract.exit`, require `0` and verify SRT/TXT.
 4. Read the transcript and choose gem hotspots: insights, opinions, revelations,
    numbers, examples and warnings. Write their start/end/labels to `cues.tsv`;
    append `scene-cues.sh` output so silent slide/code changes are covered.
-5. Run `dense-windows.sh` on those cues at 10 fps. Also extract 30-second coverage
+5. Launch `dense-windows.sh` through `run-step.sh` on those cues at 10 fps;
+   poll its `.exit` and require `0`. Also extract 30-second coverage
    frames as in `process.md`. Read EVERY initial sheet in index order, correlating
    its exact `frames.tsv` tile timestamps with the SRT.
 6. **Re-densify** unclear slides, code, charts or transitions with tighter windows
@@ -53,8 +65,9 @@ transcript-only. An optional convenience index never gates the loop.
    or mark **NOT DETERMINED** with the source limitation. For a single exact window:
    ```bash
    printf '12.1\t12.6\tunclear-slide\n' > "$WORKDIR/refine-cues-01.tsv"
-   bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues-01.tsv" "$WORKDIR/refine-01" 20 0 0
+   bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues-01.tsv" "$WORKDIR/refine-01" 20 0 0
    ```
+   Poll `logs/refine-01.exit` and require `0` before reading.
    Use unique output directories per refinement. Cite sheet + tile + timestamp
    from that pass's `frames.tsv`; label unsupported visual claims transcript-only.
 7. Produce a structured gems note with:
