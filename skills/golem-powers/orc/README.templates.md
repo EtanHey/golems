@@ -10,6 +10,10 @@ The manifest records names and purposes only. Put actual values in the private
 values/secrets layer, never in this public directory. `REPOGOLEM_*` names are
 reserved by the config schema; the launcher value is `AGENT_LAUNCHER`.
 
+For `entity-grill`, configure its absolute template path under
+`agentTemplates.entity-grill` and declare `GRILL_SEED_DIR` under `values` with
+`sensitive: false`. Seed contents stay private and are read only at runtime.
+
 After private configuration is ready, the owner runs `repogolem generate` with
 Touch ID if its backend requires it. Then `repogolem generate --check` verifies
 the cached render; `repogolem install --apply` links the private generated prompt.
