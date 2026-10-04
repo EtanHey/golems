@@ -12,7 +12,7 @@ import pytest
 
 SKILL = Path(__file__).resolve().parents[1]
 INSTALL = SKILL / "scripts" / "install.sh"
-NAMES = ("orc-helper", "brain-worker")
+NAMES = ("orc-helper", "brain-worker", "coach-mail")
 SCRATCH = Path(__file__).resolve().parent / ".scratch"
 
 
@@ -55,11 +55,12 @@ def snapshot(root):
     return state
 
 
-def test_fresh_install_links_both_agents(home):
+def test_fresh_install_links_all_agents(home):
     result = run_install(home)
     assert result.returncode == 0, result.stdout + result.stderr
     for name in NAMES:
-        target = SKILL / "agents" / f"{name}.md"
+        owner = SKILL.parent / "coach" if name == "coach-mail" else SKILL
+        target = owner / "agents" / f"{name}.md"
         assert link(home, name).is_symlink()
         assert os.readlink(link(home, name)) == str(target)
         assert f"[link] {link(home, name)}" in result.stdout
@@ -113,3 +114,15 @@ def test_dry_run_changes_nothing(home, hand_placed):
     assert result.returncode == 0, result.stdout + result.stderr
     assert snapshot(home) == before
     assert "[dry-run]" in result.stdout
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_stale_symlink_is_replaced(home, name):
+    original = link(home, name)
+    original.parent.mkdir(parents=True)
+    original.symlink_to(home / "missing-agent.md")
+    result = run_install(home)
+    assert result.returncode == 0, result.stdout + result.stderr
+    owner = SKILL.parent / "coach" if name == "coach-mail" else SKILL
+    assert original.resolve() == owner / "agents" / f"{name}.md"
+    assert "[unlink]" in result.stdout
