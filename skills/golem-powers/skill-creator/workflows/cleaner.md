@@ -57,7 +57,7 @@ Run via `$HOME/.golems/skills/golem-powers/skill-creator/scripts/cleaner-<rule>.
 **Script:** `cleaner-detect-coverage-gaps.sh`
 **Detects:** recurring bash patterns in recent JSONLs (>20 invocations across last 10 sessions) where no skill description's Triggers list matches the pattern's keyword head.
 **Severity:** INFO (suggests a new workflow/skill or trigger-phrasing expansion).
-**Known gaps** (per recon-04): PR-watch (~150 bash calls/session polling `gh pr view --json state,mergeable,reviewDecision`), bl-status one-liner (~60 calls/session), tick logger (`printf '[%s] [tick]'`), `pgrep -fl BrainBarDaemon`, telegram-send, mcp-reaper.
+**Known gaps** (per recon-04): PR-watch (~150 bash calls/session polling `gh pr view --json state,mergeable,reviewDecision`), bl-status one-liner (~60 calls/session), tick logger (`printf '[%s] [tick]'`), `pgrep -fl BrainBarDaemon`, telegram-send (historical; retired 2026-10-01), mcp-reaper.
 **Fix:** add workflows to existing skills (e.g., `pr-loop/workflows/watch.md`) OR write new compact skills (~250ch description).
 
 ### Rule 8 — Orphan registration

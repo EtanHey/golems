@@ -91,8 +91,6 @@ elif name == "codex":
         sys.exit(9)
     result = '{"score":8,"type":"take","title":"Codex fallback highlight","summary":"Synthetic fallback found a highlight."}\n'
     pathlib.Path(args[args.index("--output-last-message") + 1]).write_text(result)
-elif name == "telegram":
-    trace(sys.stdin.read())
 elif name == "node":
     trace()
     with (data / "completion-calls").open("a") as f: f.write("called\n")
@@ -168,7 +166,7 @@ def capture(root, case):
         if case == "chat-json":
             chat = run / "chat.json"
             chat.write_text('[{"time_s":10,"user":"a","message":"wow !clip"},{"time_s":30,"user":"b","message":"hype"}]\n')
-        commands = ["date", "ps", "mktemp", "ffprobe", "ffmpeg", "sox", "curl", "whisper-cli", "timeout", "telegram", "node"]
+        commands = ["date", "ps", "mktemp", "ffprobe", "ffmpeg", "sox", "curl", "whisper-cli", "timeout", "node"]
         if case != "no-scorer": commands += ["agy", "codex"]
         for name in commands:
             stub = bin_dir / name
@@ -180,8 +178,6 @@ def capture(root, case):
             if override: (bin_dir / name).symlink_to(Path(override).resolve())
         env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home),
                "CONTRACT_DATA": str(data), "LC_ALL": "C", "TZ": "UTC",
-               "STALKER_TELEGRAM_CMD": str(bin_dir / "telegram"),
-               "STALKER_TELEGRAM_QUEUE_DIR": str(data / "queue"),
                "STALKER_TRANSCRIBE_ATTEMPTS": "1", "STALKER_RETRY_SLEEP_BASE": "0",
                "STALKER_SCORE_PARALLEL": "2" if case == "parallel-order" else "1",
                "STALKER_HEARTBEAT_NOTIFY": "0", "STALKER_HEARTBEAT_SECS": "9999",

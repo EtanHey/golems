@@ -9,7 +9,6 @@ function split_case_001() {
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
         PARALLEL_STATE_DIR="$parallel_state" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -40,7 +39,6 @@ function split_case_002() {
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
         PARALLEL_STATE_DIR="$parallel_state" \
         STALKER_SCORE_PARALLEL=1 \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -63,7 +61,6 @@ function split_case_003() {
         AGY_CALLS_FILE="$agy_calls" \
         STALKER_AGY_CIRCUIT_THRESHOLD=2 \
         STALKER_SCORE_PARALLEL=4 \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -81,21 +78,13 @@ function split_case_004() {
     stream_dir="$(make_scoring_fixture)"
     scorer_pids_file="$TMPDIR_/interrupt-scorer-pids"
     process_output="$TMPDIR_/interrupt-output"
-    telegram_capture="$TMPDIR_/interrupt-telegram.json"
     install_blocking_agy
-    cat > "$FAKE_BIN/capture-telegram" <<'SH'
-#!/bin/bash
-cat > "$TELEGRAM_CAPTURE_FILE"
-SH
-    chmod +x "$FAKE_BIN/capture-telegram"
 
     env -i \
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         SCORER_PIDS_FILE="$scorer_pids_file" \
-        TELEGRAM_CAPTURE_FILE="$telegram_capture" \
         STALKER_SCORE_PARALLEL=4 \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/capture-telegram" \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" > "$process_output" 2>&1 &
     process_pid=$!
@@ -135,7 +124,6 @@ SH
     grep -F -q 'retryable=true' "$stream_dir/.stage-scoring.failed"
     grep -F -q "$(basename "$stream_dir")" "$stream_dir/.stage-scoring.failed"
     grep -F -q 'interrupted before completion' "$stream_dir/.stage-scoring.failed"
-    [ ! -f "$telegram_capture" ]
 }
 
 # issue #323: a slow scorer that owns a grandchild, so a reap has to walk the
@@ -189,7 +177,6 @@ interrupt_parallel_scoring() {
         HOME="$TMPDIR_/home" \
         SLOW_AGY_PID_DIR="$pid_dir" \
         STALKER_SCORE_PARALLEL=2 \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" \
         > "$TMPDIR_/interrupt-$signal.stdout" 2> "$TMPDIR_/interrupt-$signal.stderr" &
@@ -372,20 +359,13 @@ function split_case_010() {
 function split_case_011() {
     stream_dir="$(make_scoring_fixture)"
     scorer_pids_file="$TMPDIR_/sigkill-scorer-pids"
-    telegram_capture="$TMPDIR_/sigkill-telegram.json"
     install_blocking_agy
-    cat > "$FAKE_BIN/capture-telegram" <<'SH'
-#!/bin/bash
-cat > "$TELEGRAM_CAPTURE_FILE"
-SH
-    chmod +x "$FAKE_BIN/capture-telegram"
 
     env -i \
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         SCORER_PIDS_FILE="$scorer_pids_file" \
         STALKER_SCORE_PARALLEL=4 \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" > "$TMPDIR_/sigkill-output" 2>&1 &
     process_pid=$!
@@ -407,8 +387,6 @@ SH
     [ ! -f "$stream_dir/.stage-scoring.done" ]
     [ ! -f "$stream_dir/.stage-scoring.failed" ]
 
-    TELEGRAM_CAPTURE_FILE="$telegram_capture" \
-    STALKER_TELEGRAM_CMD="$FAKE_BIN/capture-telegram" \
     run bash -c 'source "$1"; stalker_reconcile_interrupted_scoring_run "$2"' \
         _ "$REPO_ROOT/scripts/lib/stream-helpers.sh" "$stream_dir"
 
@@ -417,7 +395,6 @@ SH
     [ -f "$stream_dir/.stage-scoring.failed" ]
     grep -F -q 'untrappable exit or SIGKILL' "$stream_dir/.stage-scoring.failed"
     grep -F -q "$(basename "$stream_dir")" "$stream_dir/.stage-scoring.failed"
-    [ ! -f "$telegram_capture" ]
 }
 
 function split_case_012() {
@@ -427,7 +404,6 @@ function split_case_012() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -451,7 +427,6 @@ function split_case_013() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" --json-output
 
@@ -468,7 +443,6 @@ function split_case_014() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/twitch-examplechannel-2026-06-24.mp4" --json-output
 
@@ -485,7 +459,6 @@ function split_case_015() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/local-highlight.mp4" --json-output
 
@@ -505,7 +478,6 @@ function split_case_016() {
         HOME="$TMPDIR_/home" \
         TZ=Asia/Jerusalem \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" "$stream_dir/chat.json" --chat-json
@@ -524,7 +496,6 @@ function split_case_017() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
@@ -544,7 +515,6 @@ function split_case_018() {
         HOME="$TMPDIR_/home" \
         TZ=Asia/Jerusalem \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" "$stream_dir/chat.log"
@@ -564,7 +534,6 @@ function split_case_019() {
         HOME="$TMPDIR_/home" \
         TZ=UTC \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
@@ -584,7 +553,6 @@ function split_case_020() {
         HOME="$TMPDIR_/home" \
         TZ=Asia/Jerusalem \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
@@ -605,7 +573,6 @@ function split_case_021() {
         HOME="$TMPDIR_/home" \
         TZ=Asia/Jerusalem \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" "$stream_dir/chat.log"
@@ -625,7 +592,6 @@ function split_case_022() {
         HOME="$TMPDIR_/home" \
         TZ=UTC \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" "$stream_dir/chat.log"
@@ -644,7 +610,6 @@ function split_case_023() {
         HOME="$TMPDIR_/home" \
         TZ=UTC \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4" "$stream_dir/chat.log"
@@ -662,7 +627,6 @@ function split_case_024() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
