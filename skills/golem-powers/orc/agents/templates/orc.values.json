@@ -1,0 +1,25 @@
+{
+  "template": "orc.md",
+  "values": [
+    {
+      "name": "ORCHESTRATOR_AGENT",
+      "sensitive": false,
+      "purpose": "Configured orchestrator identity"
+    },
+    {
+      "name": "AGENT_LAUNCHER",
+      "sensitive": false,
+      "purpose": "Configured repoGolem launcher command name"
+    },
+    {
+      "name": "PRIVATE_HANDOFF_DIR",
+      "sensitive": false,
+      "purpose": "Private directory for dispatch briefs and handoffs"
+    },
+    {
+      "name": "PRIVATE_COLLAB_DIR",
+      "sensitive": false,
+      "purpose": "Private directory for collab channels"
+    }
+  ]
+}

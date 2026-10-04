@@ -58,6 +58,7 @@ def snapshot(root):
 def test_fresh_install_links_all_agents(home):
     result = run_install(home)
     assert result.returncode == 0, result.stdout + result.stderr
+    assert sorted(p.name for p in (home / ".claude/agents").iterdir()) == sorted(f"{n}.md" for n in NAMES)
     for name in NAMES:
         owner = SKILL.parent / {"coach-mail": "coach", "visual-gatherer": "qa-video"}.get(name, "orc")
         target = owner / "agents" / f"{name}.md"
