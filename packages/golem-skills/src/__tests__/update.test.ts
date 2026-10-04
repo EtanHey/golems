@@ -141,11 +141,20 @@ describe("migrateConfig", () => {
     expect(result.changes).toContain("Added missing field: features");
   });
 
+  test("prunes the retired legacy channel flag without mutating input", () => {
+    const config = { reposPath: "~/Gits", tools: {}, features: { telegram: true, proactiveNudges: true, futureFeature: true } };
+    const result = migrateConfig(config);
+    expect(result.config.features).toEqual({ proactiveNudges: true, futureFeature: true });
+    expect(config.features.telegram).toBe(true);
+    expect(result.changes).toEqual(["Removed retired feature: telegram"]);
+    expect(migrateConfig(result.config).changes).toEqual([]);
+  });
+
   test("preserves existing feature values", () => {
     const config = {
       reposPath: "~/Gits",
       tools: {},
-      features: { nightShift: true, proactiveNudges: false, telegram: false },
+      features: { nightShift: true, proactiveNudges: false },
     };
     const result = migrateConfig(config);
     expect(result.config.features!.nightShift).toBe(true);
@@ -160,7 +169,7 @@ describe("migrateConfig", () => {
     };
     const result = migrateConfig(config as any);
     expect(result.config.features!.proactiveNudges).toBe(false);
-    expect(result.config.features!.telegram).toBe(false);
+    expect(result.config.features).not.toHaveProperty("telegram");
     // nightShift preserved
     expect(result.config.features!.nightShift).toBe(true);
   });
@@ -169,7 +178,7 @@ describe("migrateConfig", () => {
     const config = {
       reposPath: "~/Gits",
       tools: {},
-      features: { nightShift: false, proactiveNudges: false, telegram: false },
+      features: { nightShift: false, proactiveNudges: false },
     };
     const result = migrateConfig(config);
     expect(result.changes).toHaveLength(0);

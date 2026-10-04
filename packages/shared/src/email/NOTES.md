@@ -121,7 +121,7 @@ Pattern can be reused for other googleapis integrations.
 1. **`scoreEmail(email)`** - Score single email via Ollama
 2. **`scoreEmails(emails, options)`** - Batch scoring with filtering/sorting
 3. **`extractSubscriptionInfo(subject, snippet, from)`** - Quick regex extraction
-4. **`shouldNotifyImmediately(email)`** - Check if score >= 10
+4. **`shouldNotifyImmediately(email)`** - Legacy score-threshold helper; triage no longer delivers messages (2026-10-01)
 5. **`shouldIncludeInBriefing(email)`** - Check if score >= 7
 6. **`shouldTrackSubscription(email)`** - Check subscription tracking eligibility
 
@@ -129,7 +129,7 @@ Pattern can be reused for other googleapis integrations.
 
 | Score | Constant | Action |
 |-------|----------|--------|
-| 10 | IMMEDIATE | Telegram alert NOW |
+| 10 | IMMEDIATE | Stored as urgent for query tools |
 | 7-9 | BRIEFING_MIN | Include in 24h briefing |
 | 5-6 | TRACK_MIN | Track for monthly subscription report |
 | 1-4 | IGNORE_MAX | Log only |
@@ -306,8 +306,7 @@ import {
   syncOfflineQueue,
   getRecentEmails,
   getSubscriptionSummary,
-  getUnnotifiedUrgentEmails,
-  markNotified
+  getUnnotifiedUrgentEmails
 } from './db-client';
 
 const client = createDbClient();
@@ -316,12 +315,8 @@ await syncOfflineQueue(client);
 // After scoring
 await saveEmail(client, { gmail_id, subject, from_address, snippet, score, category, received_at, notified: false });
 
-// Notifications
+// Urgent records remain queryable without delivery or notified mutation.
 const urgent = await getUnnotifiedUrgentEmails(client);
-for (const email of urgent) {
-  await notify(email);
-  await markNotified(client, email.id!);
-}
 
 // Briefing
 const emails = await getRecentEmails(client, 24, 5);
@@ -362,17 +357,17 @@ const subs = await getSubscriptionSummary(client);
 
 ### index.ts - Main Loop
 
-1. **`processEmails(options)`** - Main loop: fetch → score → save → notify
+1. **`processEmails(options)`** - Main loop: fetch → score → save → route
 2. **`processEmail(gmail, db, dryRun)`** - Process single email
 3. **CLI** with `--dry-run`, `--max=N`, `--help` flags
 4. **State management** - tracks `lastEmailCheck`, `processedEmailIds`
 5. **Deduplication** - skips already-processed emails
-6. **Notification** - sends to port 3847 if score >= 10
+6. **Urgent triage** - stores high-score records for queries; no delivery step
 
 ### briefing.ts Updates
 
 1. **Email digest section** (24h):
-   - Urgent (already notified)
+   - Urgent scored records
    - Job updates
    - Payments
    - Summary line with counts
@@ -385,7 +380,7 @@ const subs = await getSubscriptionSummary(client);
 3. **Better formatting**:
    - Unicode separators (━━━)
    - Category emojis
-   - Telegram markdown (*bold*, _italic_, `code`, [links](url))
+   - Readable digest text
 
 ### launchd Plist
 
@@ -411,11 +406,6 @@ const subs = await getSubscriptionSummary(client);
 - [ ] Payments not linked to subscriptions (needs lookup by service_name)
 - [ ] Consider: Supabase trigger to auto-link
 
-### Notification Server Dependency
-- [ ] Requires telegram-bot running on port 3847
-- [ ] Fails silently if server down (logs error, continues)
-- [ ] Document: Start telegram-bot before email-golem
-
 ### State Management
 - [ ] Uses shared `~/.golems-zikaron/state.json`
 - [ ] EmailGolem adds: `lastEmailCheck`, `processedEmailIds`
@@ -434,7 +424,7 @@ const subs = await getSubscriptionSummary(client);
 
 ## Questions for Docs
 
-1. Add `/emails` Telegram command to view recent scores?
+1. Which existing email query tool should surface recent scores?
 2. Add `/check-email` skill for manual trigger?
 3. How to handle false positives (high score but not urgent)?
 4. Store email body for better scoring? (currently just snippet)

@@ -212,7 +212,7 @@
           "type": "negative"
         },
         {
-          "text": "Does NOT send a Telegram or out-of-band escalation (default channel is inline)",
+          "text": "Does NOT send an out-of-band escalation (default channel is inline)",
           "type": "negative"
         }
       ]
