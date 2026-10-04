@@ -23,7 +23,6 @@ Should point to `$HOME/.golems/skills/golem-powers/whats-new`.
 - **exa MCP server** -- for fetching changelogs (required)
 - **brainlayer MCP server** -- for storing findings and checking last review (required)
 - **claude CLI** -- `claude --version` for current version detection
-- **notify** -- for Telegram alerts on HIGH risk changes (optional)
 
 ## First Run
 

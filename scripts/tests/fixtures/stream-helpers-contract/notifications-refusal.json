@@ -1,12 +1,10 @@
 {
-  "stdout": "telegram:1\nwhatsapp:1\n",
-  "stderr": "telegram-command fixture failure\nTelegram send failed via STALKER_TELEGRAM_CMD=<SANDBOX>/bin/telegram-command\nTelegram queued for retry: <SANDBOX>/data/telegram-queue/20260102T030405Z-<PID>-<RANDOM>-stalker-telegram.json\nWhatsApp send failed via http://fixture.invalid/one\nWhatsApp send failed via http://fixture.invalid/two\nWhatsApp queued for retry: <SANDBOX>/data/whatsapp-queue/20260102T030405Z-<PID>-<RANDOM>-stalker-whatsapp.json\n",
+  "stdout": "whatsapp:1\n",
+  "stderr": "WhatsApp send failed via http://fixture.invalid/one\nWhatsApp send failed via http://fixture.invalid/two\nWhatsApp queued for retry: <SANDBOX>/data/whatsapp-queue/20260102T030405Z-<PID>-<RANDOM>-stalker-whatsapp.json\n",
   "exit": 0,
   "files": {
-    "commands.jsonl": "{\"command\": \"telegram-command\", \"argv\": [], \"stdin\": \"{\\n  \\\"title\\\": \\\"title\\\",\\n  \\\"body\\\": \\\"body\\\",\\n  \\\"source\\\": \\\"custom\\\",\\n  \\\"priority\\\": \\\"high\\\"\\n}\\n\"}\n{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"5\", \"-X\", \"POST\", \"-H\", \"Content-Type: application/json\", \"-d\", \"{\\\"recipient\\\": \\\"fixture\\\", \\\"message\\\": \\\"body\\\"}\", \"http://fixture.invalid/one\"]}\n{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"5\", \"-X\", \"POST\", \"-H\", \"Content-Type: application/json\", \"-d\", \"{\\\"recipient\\\": \\\"fixture\\\", \\\"message\\\": \\\"body\\\"}\", \"http://fixture.invalid/two\"]}\n",
+    "commands.jsonl": "{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"5\", \"-X\", \"POST\", \"-H\", \"Content-Type: application/json\", \"-d\", \"{\\\"recipient\\\": \\\"fixture\\\", \\\"message\\\": \\\"body\\\"}\", \"http://fixture.invalid/one\"]}\n{\"command\": \"curl\", \"argv\": [\"-fsS\", \"-m\", \"5\", \"-X\", \"POST\", \"-H\", \"Content-Type: application/json\", \"-d\", \"{\\\"recipient\\\": \\\"fixture\\\", \\\"message\\\": \\\"body\\\"}\", \"http://fixture.invalid/two\"]}\n",
     "curl.count": "2",
-    "telegram-command.count": "1",
-    "telegram-queue/20260102T030405Z-<PID>-<RANDOM>-stalker-telegram.json": "{\n  \"title\": \"title\",\n  \"body\": \"body\",\n  \"source\": \"custom\",\n  \"priority\": \"high\"\n}\n",
     "whatsapp-queue/20260102T030405Z-<PID>-<RANDOM>-stalker-whatsapp.json": "{\n  \"recipient\": \"fixture\",\n  \"message\": \"body\",\n  \"queued_at\": \"2026-01-02T03:04:05Z\",\n  \"reason\": \"all WhatsApp bridge endpoints failed\"\n}\n"
   }
 }

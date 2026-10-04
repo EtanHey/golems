@@ -2,7 +2,7 @@
  * Nudge Queue — Zod-validated JSONL queue for proactive coach nudges.
  *
  * Nudges are queued by scheduled tasks (morning briefing, afternoon check-in,
- * evening wind-down) and consumed by the output channel (Telegram or Voice).
+ * evening wind-down) and consumed only by an explicitly selected voice client.
  *
  * File format: JSONL (one JSON object per line) at ~/.golems-zikaron/coach/nudges.jsonl
  */
@@ -24,7 +24,7 @@ import { randomUUID } from "crypto";
 const NudgeTypeSchema = z.enum(["reminder", "check-in", "insight", "alert"]);
 const NudgePrioritySchema = z.enum(["high", "medium", "low"]);
 const NudgeStatusSchema = z.enum(["pending", "sent", "dismissed"]);
-const NudgeChannelSchema = z.enum(["telegram", "voice"]);
+const NudgeChannelSchema = z.enum(["voice"]);
 
 export const NudgeSchema = z.object({
   id: z.string(),
@@ -70,7 +70,7 @@ export interface CreateNudgeInput {
   message: string;
   scheduledAt: string;
   priority?: NudgePriority;
-  channel?: NudgeChannel;
+  channel: NudgeChannel;
   metadata?: Record<string, unknown>;
 }
 
@@ -85,7 +85,7 @@ export function createNudge(input: CreateNudgeInput): Nudge {
     message: input.message,
     scheduledAt: input.scheduledAt,
     status: "pending",
-    channel: input.channel ?? "telegram",
+    channel: NudgeChannelSchema.parse(input.channel),
     createdAt: new Date().toISOString(),
     ...(input.metadata ? { metadata: input.metadata } : {}),
   };

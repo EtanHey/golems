@@ -55,7 +55,7 @@ Apply any stored corrections BEFORE showing the draft.
 
 ## Common Patterns
 
-### WhatsApp / Telegram message
+### WhatsApp message
 
 ```text
 היי [שם],
@@ -83,7 +83,7 @@ Apply any stored corrections BEFORE showing the draft.
 ## What NOT to Do
 
 - No `שלום` — sounds old. Use `היי` or nothing
-- No `,בברכה` sign-offs in WhatsApp/Telegram
+- No `,בברכה` sign-offs in WhatsApp
 - No `אשמח לשמוע` — verbose. Say what you want directly
 - No `בהתאם לניסיוני הרב` — cringe
 - No em dashes. Ever.

@@ -378,8 +378,7 @@ def create_golem_entities():
             "metadata": {
                 "role": "orchestrator",
                 "package": "packages/claude",
-                "telegram": True,
-                "description": "Telegram bot, orchestrator, external face of the golem ecosystem",
+                "description": "Persona and CLI status plugin for the golem ecosystem",
             },
         },
         {
@@ -465,7 +464,7 @@ def create_project_entities():
             "type": "project",
             "metadata": {
                 "description": "Autonomous AI agent ecosystem — Bun workspace with 13 packages",
-                "stack": "TypeScript, Bun, Supabase, Claude API, Grammy",
+                "stack": "TypeScript, Bun, Supabase, Claude API",
                 "repo": "github.com/EtanHey/golems",
             },
         },
@@ -529,7 +528,6 @@ def create_technology_entities():
         {"name": "Gemini", "type": "technology", "metadata": {"category": "llm", "model": "Gemini 2.5 Flash-Lite", "use": "Free cloud LLM for scoring/research"}},
         {"name": "ElevenLabs", "type": "technology", "metadata": {"category": "stt", "model": "Scribe v2", "cost": "$0.0067/min", "use": "Hebrew STT winner"}},
         {"name": "CodeRabbit", "type": "technology", "metadata": {"category": "review", "plan": "Free (3/hr)", "use": "AI code review on PRs"}},
-        {"name": "Grammy", "type": "technology", "metadata": {"category": "framework", "use": "Telegram bot framework"}},
         {"name": "GLiNER", "type": "technology", "metadata": {"category": "ner", "model": "multi-v2.1", "use": "Bilingual entity extraction"}},
     ]
 
@@ -598,7 +596,6 @@ def create_relations():
         ("ElevenLabs", "voicelayer", "transcribes_for"),
         ("GLiNER", "brainlayer", "extracts_for"),
         ("CodeRabbit", "golems", "reviews"),
-        ("Grammy", "golems", "framework_for"),
     ]
 
     created = 0

@@ -111,7 +111,8 @@ jobs:
         run: |
           node --test scripts/tests/bats-coverage.test.mjs \
                       scripts/tests/google-drive-oauth-guard.test.mjs \
-                      scripts/tests/stalker-morning-launchd.test.mjs
+                      scripts/tests/stalker-morning-launchd.test.mjs \
+                      scripts/tests/check-telegram-retirement.test.mjs
 
       - name: shell suites
         run: |
@@ -142,6 +143,9 @@ jobs:
 
       - name: Preserve split comments and their locations
         run: python scripts/ci/check-split-comments.py
+
+      - name: Enforce Telegram retirement
+        run: node scripts/ci/check-telegram-retirement.mjs
 
       - name: Pristine split baseline gate
         run: python scripts/ci/pristine-harness.py check

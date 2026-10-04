@@ -327,9 +327,9 @@ export function generateDailyPlan(
 }
 
 /**
- * Format a daily plan for Telegram.
+ * Format a daily plan as text.
  */
-export function formatPlanForTelegram(plan: DailyPlan): string {
+export function formatPlanText(plan: DailyPlan): string {
   const lines: string[] = [];
 
   lines.push(`${plan.greeting}!`);
@@ -356,10 +356,10 @@ export function formatPlanForTelegram(plan: DailyPlan): string {
 }
 
 /**
- * Format a coached plan for Telegram.
+ * Format a coached plan as text.
  * Includes coaching advice, workout, schedule, and protocol reminders.
  */
-export function formatCoachedPlanForTelegram(coachedPlan: CoachedPlan): string {
+export function formatCoachedPlanText(coachedPlan: CoachedPlan): string {
   const { plan, coaching } = coachedPlan;
   const lines: string[] = [];
 

@@ -60,7 +60,7 @@ export interface FullConfig extends GolemConfig {
   features?: Record<string, boolean>;
 }
 
-const EXPECTED_FEATURES = ["proactiveNudges", "telegram"] as const;
+const EXPECTED_FEATURES = ["proactiveNudges"] as const;
 
 // --- Pure functions (testable) ---
 
@@ -97,16 +97,21 @@ export function diffTools(
 
 /**
  * Migrate config to latest schema. Adds missing fields with defaults.
- * Never removes user values — only adds what's missing.
+ * Prunes the retired channel flag and preserves other user values.
  */
 export function migrateConfig(config: FullConfig): ConfigMigration {
   const changes: string[] = [];
-  const migrated = { ...config };
+  const migrated = { ...config, features: config.features ? { ...config.features } : undefined };
 
   // Ensure features field exists
   if (!migrated.features) {
     migrated.features = {};
     changes.push("Added missing field: features");
+  }
+
+  if ("telegram" in migrated.features) {
+    delete migrated.features.telegram;
+    changes.push("Removed retired feature: telegram");
   }
 
   // Ensure all expected features exist (default to false)

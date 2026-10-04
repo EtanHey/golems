@@ -4,13 +4,13 @@
  * Handles auto-outreach for hot job matches, interview practice,
  * company research, and connection matching.
  *
- * Triggered by: Telegram commands (/practice, /outreach)
+ * Exposes library APIs for outreach and practice.
  */
 
 import type { GolemStatus } from "@golems/shared/lib/shared-types";
 import { getSupabase } from "@golems/shared/lib/supabase-factory";
 
-/** Standard status interface for dashboard/Telegram */
+/** Standard status interface for dashboard */
 export async function getStatus(): Promise<GolemStatus> {
   const supabase = getSupabase();
   let draftCount = 0;

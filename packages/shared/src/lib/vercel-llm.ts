@@ -65,11 +65,6 @@ let totalCalls = 0;
 let totalInputTokens = 0;
 let totalOutputTokens = 0;
 
-// Error rate tracking — alert on consecutive failures
-let consecutiveErrors = 0;
-let alertSentForBatch = false;
-const ERROR_ALERT_THRESHOLD = 5; // Alert after 5 consecutive failures
-
 function trackUsage(
   model: string,
   source: string,
@@ -160,10 +155,6 @@ export async function runCloudFree(
       const durationMs = Date.now() - startMs;
       trackUsage(p.model, source, inputTokens, outputTokens, durationMs);
 
-      // Reset error tracking on success
-      consecutiveErrors = 0;
-      alertSentForBatch = false;
-
       return result.text.trim();
     } catch (err: unknown) {
       const errObj = err as Record<string, unknown>;
@@ -177,8 +168,6 @@ export async function runCloudFree(
         console.warn(`[Cloud LLM] ${p.name} rate limited, trying fallback...`);
         continue;
       }
-      // Only count terminal failures (no more fallbacks remaining)
-      if (isLastProvider) consecutiveErrors++;
       console.error(
         `[Cloud LLM] Error from ${p.name} (source: ${source}):`,
         errMsg || err,
@@ -189,31 +178,6 @@ export async function runCloudFree(
         error_type: `${p.name}_api_error`,
         status_code: typeof errObj?.statusCode === "number" ? errObj.statusCode : undefined,
       });
-
-      // Alert on consecutive failures (once per batch)
-      if (consecutiveErrors >= ERROR_ALERT_THRESHOLD && !alertSentForBatch) {
-        alertSentForBatch = true;
-        import("./telegram-direct")
-          .then(({ sendNotification }) => {
-            sendNotification({
-              title: "LLM Quota Alert",
-              body: `${consecutiveErrors} consecutive LLM failures (${p.name}). Jobs/emails may be degraded. Error: ${errMsg?.slice(0, 100) ?? "unknown"}`,
-              source: "healthcheck",
-              priority: "high",
-            }).catch((notifyErr: unknown) => {
-              console.warn(
-                "[Cloud LLM] Alert notification failed:",
-                notifyErr instanceof Error ? notifyErr.message : notifyErr,
-              );
-            });
-          })
-          .catch((importErr: unknown) => {
-            console.warn(
-              "[Cloud LLM] Failed to import telegram-direct:",
-              importErr instanceof Error ? importErr.message : importErr,
-            );
-          });
-      }
 
       if (!isLastProvider) continue;
       return null;

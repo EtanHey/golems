@@ -5,7 +5,7 @@ PreToolUse hook: permission routing.
 GREEN / YELLOW: allow. RED: block (dangerous rm, forced push, railway down,
 destructive SQL, writes into secret files).
 
-GO-5 E2 removed the unrotated permissions_audit.jsonl (136.8 MB), the Telegram
+Historical retirement note (2026-09-25): GO-5 E2 removed the unrotated permissions_audit.jsonl (136.8 MB), the Telegram
 `notify` call (never on PATH), the disabled P9 sleep gate, and the Task
 tracker (E1: agent_states that nothing read).
 """

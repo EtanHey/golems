@@ -9,7 +9,7 @@
  * 2. Find contacts (GitHub contributors, optional Hunter/Lusha)
  * 3. Generate outreach drafts using semantic style
  * 4. Save to outreach DB
- * 5. Return results for Telegram notification
+ * 5. Return results for review
  */
 
 import { researchCompany, extractTechStack, type CompanyInfo, type GitHubOrgLookup } from "./company-research";
@@ -199,7 +199,7 @@ export async function processHotMatches(
 }
 
 /**
- * Format notification message for Telegram
+ * Format returned match summary
  */
 export function formatHotMatchNotification(result: HotMatchResult): string {
   const lines: string[] = [];
@@ -223,7 +223,7 @@ export function formatHotMatchNotification(result: HotMatchResult): string {
     lines.push(`👥 ${result.contactsFound} contacts found`);
     lines.push(`📝 ${result.draftsCreated} drafts ready`);
     lines.push("");
-    lines.push("Use /outreach to review and approve");
+    lines.push("Drafts saved for review and approval");
   } else {
     lines.push("⚠️ No contacts found automatically");
     lines.push("Consider manual LinkedIn research");
@@ -267,7 +267,7 @@ export function formatHotMatchSummary(results: HotMatchResult[]): string {
 
   if (totalDrafts > 0) {
     lines.push("");
-    lines.push("Use /outreach to review drafts");
+    lines.push("Drafts saved for review");
   }
 
   return lines.join("\n");

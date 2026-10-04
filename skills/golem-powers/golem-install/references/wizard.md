@@ -86,7 +86,6 @@ Create it interactively:
 
    | Feature | Default | Description |
    |---------|---------|-------------|
-   | `telegram` | **OFF** | Telegram notifications |
    | `emailGolem` | **OFF** | Email triage and scoring |
 
 5. **Write the config:**
@@ -107,7 +106,6 @@ Create it interactively:
      # ... other detected tools
 
    features:
-     telegram: false
      emailGolem: false
 
    mcpServers:
@@ -307,7 +305,6 @@ Codex agents:  <actual config merge and recon/packet copy outcome>
 === Manual Setup Needed ===
   - [ ] Configure Supabase access token in config.yaml
   - [ ] Set up 1Password: op account list
-  - [ ] Enable Telegram if needed: update config.yaml features.telegram
 ```
 
 Render one release-gate line for every helper result. Do not replace `REFUSE`, failed installs, or skipped actions with a success sample. List anything that needs manual setup — secrets, tokens, artifacts, or services that could not be configured.

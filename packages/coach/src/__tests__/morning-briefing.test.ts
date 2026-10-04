@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  formatForTelegram,
+  formatBriefingText,
   formatForVoice,
   synthesizeBriefing,
   type MorningBriefingData,
@@ -171,9 +171,9 @@ describe("synthesizeBriefing without biometric data", () => {
   });
 });
 
-describe("formatForTelegram", () => {
+describe("formatBriefingText", () => {
   test("formats the available sections without an empty health section", () => {
-    const text = formatForTelegram(synthesizeBriefing(makeFullBriefingData()));
+    const text = formatBriefingText(synthesizeBriefing(makeFullBriefingData()));
 
     expect(text).toContain("Team Standup");
     expect(text).toContain("Interview scheduled");
@@ -184,7 +184,7 @@ describe("formatForTelegram", () => {
   test("omits email triage when email data is absent", () => {
     const data = makeFullBriefingData();
     data.emails = null;
-    const text = formatForTelegram(synthesizeBriefing(data));
+    const text = formatBriefingText(synthesizeBriefing(data));
 
     expect(text).not.toContain("Email Triage");
     expect(text).toContain("Team Standup");
@@ -201,10 +201,10 @@ describe("formatForVoice", () => {
     expect(voice).not.toMatch(/recovery|health data unavailable/i);
   });
 
-  test("voice output stays no longer than Telegram output", () => {
+  test("voice output stays no longer than formatted text", () => {
     const briefing = synthesizeBriefing(makeFullBriefingData());
     expect(formatForVoice(briefing).length).toBeLessThanOrEqual(
-      formatForTelegram(briefing).length,
+      formatBriefingText(briefing).length,
     );
   });
 });

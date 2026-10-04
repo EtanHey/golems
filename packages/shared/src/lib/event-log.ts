@@ -72,9 +72,6 @@ export type EventType =
   | "email_unsubscribe_attempt"
   // Job pipeline
   | "job_match"
-  // Telegram chat
-  | "telegram_message_in"
-  | "telegram_message_out"
   // Content pipeline
   | "pipeline_draft_ready"
   | "pipeline_draft_rejected"
