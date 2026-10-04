@@ -397,7 +397,7 @@ For complex ideas, the router can chain pipelines:
 Pipeline runs are logged to `pipeline_runs` Supabase table:
 - Pipeline ID, idea text, idea type classification
 - Success/failure, duration, quality score
-- User feedback (1-5 via Telegram reactions)
+- User feedback (1-5 manually supplied)
 - Used by the learning loop to improve routing over time
 
 ---
@@ -426,7 +426,7 @@ The n8n automation layer and Bun render microservice live in a separate package.
 1. **Topic Discovery** — from code commits, research, conversations
 2. **Drafting** — LLM generates draft matching owner's voice
 3. **Critique Waves** — parallel agents critique → refine → polish
-4. **Approval** — human approves via Telegram `/drafts` command
+4. **Approval** — human reviews the saved draft before publishing
 5. **Publishing** — post to Soltome (2 credits) or LinkedIn
 
 ## Writing Voice

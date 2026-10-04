@@ -21,7 +21,7 @@
     "test-repogolem-dispatch.bats",
     "test-session-handoff-context-occupancy.bats",
     "test-skill-catalog-lint.bats",
-    "test-stalker-brainlayer-telegram.bats",
+    "test-stalker-brainlayer.bats",
     "test-stalker-durable-failures.bats",
     "test-stream-helpers.bats",
     "test-sync-config.bats",

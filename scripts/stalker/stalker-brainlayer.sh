@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stalker Golem BrainLayer + Telegram contract.
+# Stalker Golem BrainLayer ingestion and digest contract.
 #
 # Subcommands:
 #   ingest-run <stream-dir> [--dry-run]
@@ -26,9 +26,9 @@ source "$SCRIPT_DIR/brain-delivery/digest.sh"
 usage() {
     cat >&2 <<'USAGE'
 Usage:
-  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]
-  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>
-  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]
+  stalker-brainlayer.sh ingest-run <stream-dir> [--dry-run]
+  stalker-brainlayer.sh queue-run <stream-dir> <reason>
+  stalker-brainlayer.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]
 USAGE
 }
 
@@ -70,18 +70,14 @@ main() {
             local stalker_root="$1"
             local digest_date="$2"
             shift 2
-            local dry_run=0
-            if is_dry_run_env || [ "${STALKER_TELEGRAM_DRY_RUN:-0}" = "1" ]; then
-                dry_run=1
-            fi
             while [ "$#" -gt 0 ]; do
                 case "$1" in
-                    --dry-run) dry_run=1 ;;
+                    --dry-run) ;;
                     *) echo "Unknown digest option: $1" >&2; usage; exit 2 ;;
                 esac
                 shift
             done
-            send_digest "$stalker_root" "$digest_date" "$dry_run"
+            print_digest "$stalker_root" "$digest_date"
             ;;
         *)
             echo "Unknown command: $command" >&2

@@ -1,7 +1,7 @@
 [
   {
     "stdout": "",
-    "stderr": "Usage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "stderr": "Usage:\n  stalker-brainlayer.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
     "exit": 2,
     "files": {
       "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
@@ -16,7 +16,7 @@
   },
   {
     "stdout": "",
-    "stderr": "Unknown command: unknown\nUsage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "stderr": "Unknown command: unknown\nUsage:\n  stalker-brainlayer.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
     "exit": 2,
     "files": {
       "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
@@ -31,7 +31,7 @@
   },
   {
     "stdout": "",
-    "stderr": "Usage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "stderr": "Usage:\n  stalker-brainlayer.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
     "exit": 2,
     "files": {
       "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
@@ -46,7 +46,7 @@
   },
   {
     "stdout": "",
-    "stderr": "Unknown ingest-run option: --unknown\nUsage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "stderr": "Unknown ingest-run option: --unknown\nUsage:\n  stalker-brainlayer.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
     "exit": 2,
     "files": {
       "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
@@ -61,7 +61,7 @@
   },
   {
     "stdout": "",
-    "stderr": "Unknown digest option: --unknown\nUsage:\n  stalker-brainlayer-telegram.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer-telegram.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer-telegram.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
+    "stderr": "Unknown digest option: --unknown\nUsage:\n  stalker-brainlayer.sh ingest-run <stream-dir> [--dry-run]\n  stalker-brainlayer.sh queue-run <stream-dir> <reason>\n  stalker-brainlayer.sh digest <stalker-root> <YYYY-MM-DD> [--dry-run]\n",
     "exit": 2,
     "files": {
       "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",

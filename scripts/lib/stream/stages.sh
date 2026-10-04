@@ -62,8 +62,7 @@ stalker_mark_scoring_started() {
         return 1
     fi
     rm -f "$out_dir/.stage-scoring.done" \
-        "$out_dir/.stage-scoring.failed" \
-        "$out_dir/.stage-pipeline-failure-alerted.done"
+        "$out_dir/.stage-scoring.failed"
 }
 
 stalker_reconcile_interrupted_scoring_run() {
@@ -134,16 +133,6 @@ stalker_record_stage_failure() {
         printf 'chat_path=%s\n' "${chat_file:-not-provided}"
         printf 'failed_at=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     } > "$marker"
-
-    if [ ! -f "$out_dir/.stage-pipeline-failure-alerted.done" ]; then
-        local stages body
-        stages=$(stalker_stage_status_summary "$out_dir")
-        body="Stage: ${stage}. Reason: ${reason}. Statuses: ${stages}. gem_count=${gem_count}; chat_count=${chat_count}. Stream: ${out_dir}. Gems: ${out_dir}/gems.md. Chat: ${chat_file:-not-provided}. retryable=true; success markers remain open."
-        local failure_title="Stalker Pipeline Failure"
-        [ "$stage" != "run-quality" ] || failure_title="Stalker FAILED at stage 6"
-        notify_stalker_telegram "$failure_title" "$body" "high" "stalker-golem" || true
-        mark_stalker_stage_done "$out_dir" "pipeline-failure-alerted"
-    fi
 }
 
 stalker_require_run_quality() {

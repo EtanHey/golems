@@ -10,9 +10,8 @@ EmailGolem is an automated email triage system that:
 1. Polls Gmail hourly in the daytime, via the cloud worker (`packages/services/src/cloud-worker.ts`)
 2. Scores emails using Ollama (qwen2.5-coder:32b)
 3. Stores results in Supabase with offline resilience
-4. Sends immediate Telegram alerts for urgent emails (score 10)
-5. Provides 24h email digest in morning briefing
-6. Tracks subscriptions for monthly spend reports
+4. Provides 24h email digest in morning briefing
+5. Tracks subscriptions for monthly spend reports
 
 ---
 
@@ -27,12 +26,7 @@ Gmail API (poll every 10 min)
            ↓
     db-client.ts     ← Supabase with offline queue
            ↓
-  ┌────────┴────────┐
-  │                 │
-Score >= 10      Score 5-9
-  │                 │
-Telegram NOW    briefing.ts
-(port 3847)     (morning digest)
+    Morning briefing and query tools
 ```
 
 ---
@@ -53,7 +47,7 @@ Telegram NOW    briefing.ts
 
 | Score | Action | Examples |
 |-------|--------|----------|
-| **10** | Telegram NOW | Interview invite, payment failed, urgent deadline |
+| **10** | Stored as urgent for query tools | Interview invite, payment failed, urgent deadline |
 | **7-9** | Morning briefing | Job status update, recruiter message |
 | **5-6** | Track for monthly | Subscription receipts, renewal confirmations |
 | **3-4** | Log only | Job digests, rejections, confirmations |
@@ -137,22 +131,6 @@ All Supabase operations use `safeInsert()` / `safeUpsert()`:
 
 ## Integration Points
 
-### Notifications (port 3847)
-```typescript
-await fetch("http://localhost:3847/notify", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    title: "📅 Urgent Email",
-    body: "Interview: Microsoft...",
-    source: "email-golem",
-    priority: "high"
-  })
-});
-```
-
-Requires `telegram-bot.ts` running.
-
 ### Morning Briefing
 `briefing.ts` imports from this module:
 - `getRecentEmails(client, 24, 5)` - 24h, score >= 5
@@ -206,8 +184,7 @@ Tests mock `googleapis` and Supabase - no real API calls.
 ### Add a new email category
 1. Add to `EmailCategory` type in `types.ts`
 2. Update `buildScoringPrompt()` in `scorer.ts`
-3. Add emoji to `CATEGORY_EMOJIS` in `index.ts`
-4. Update briefing formatting if needed
+3. Update briefing formatting if needed
 
 ### Add a new subscription service
 Add to `KNOWN_SERVICES` map in `scorer.ts`:

@@ -45,7 +45,7 @@ There are 11 workspace packages under `packages/`:
 
 | Package | What it is |
 |---|---|
-| `claude` | Telegram bot and notification server |
+| `claude` | Persona and Claude CLI status plugin |
 | `coach` | Daily scheduling, calendar sync, habit tracking, briefings |
 | `content` | Content pipelines (LinkedIn, ghostwriting) and Remotion video rendering |
 | `golem-skills` | The CLI, published as `golems-cli`: installs and lists skills, checks setup |
@@ -59,7 +59,7 @@ There are 11 workspace packages under `packages/`:
 
 The package tests need no credentials; CI runs them with no secrets. Running
 the domain packages for real is different: they call outside services
-(Supabase, Telegram, calendar and job-board APIs) and read credentials from
+(Supabase, calendar and job-board APIs) and read credentials from
 the environment. Where a package
 has its own `README.md` or `CLAUDE.md`, that file says what it needs.
 
