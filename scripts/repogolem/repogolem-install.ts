@@ -7,6 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installedVarlock } from './repogolem-varlock-package';
 import { isDeepStrictEqual } from 'node:util';
+import { cachedAgents } from './repogolem-agents';
 const start = '# >>> repogolem generated launchers >>>';
 const end = '# <<< repogolem generated launchers <<<';
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
@@ -82,6 +83,14 @@ export function runInstall(argv: string[]): number {
   const statePath = join(root, 'install-state.json'), shell = join(home, '.zshrc'), seats = join(home, '.golems/config.yaml');
   for (const path of [root, shell, statePath, dirname(seats)]) safePath(home, path);
   const previous = existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) : null;
+  const agentDir = join(home, '.claude/agents');
+  for (const [name,target] of Object.entries(previous?.agentLinks ?? {})) {
+    if (!/^[A-Za-z][A-Za-z0-9_-]*\.md$/.test(name)) throw new Error('invalid installed agent journal');
+    safePath(home,agentDir);
+    const path = join(agentDir,name), stat = present(path);
+    if (!stat && previous.phase === 'installing') continue;
+    if (!stat?.isSymbolicLink() || stat.uid !== process.getuid?.() || readlinkSync(path) !== target) throw new Error('installed agent link changed; reconciliation required');
+  }
   const before = existsSync(shell) ? readFileSync(shell, 'utf8') : '';
   if (previous) verifySeats(previous, seats);
   if (rollback) {
@@ -100,6 +109,7 @@ export function runInstall(argv: string[]): number {
     if (previous.hadSeats) {
       atomic(seats, saved, previous.seatMode ?? 0o600);
     }
+    for (const name of Object.keys(previous.agentLinks ?? {})) rmSync(join(agentDir,name),{force:true});
     rmSync(statePath);
     console.log('restored shell and seat registry; installed runtime retained'); return 0;
   }
@@ -109,6 +119,13 @@ export function runInstall(argv: string[]): number {
   const configText = readFileSync(config, 'utf8');
   let parsed: any;
   try { parsed = parseYaml(configText); } catch { throw new Error('private config could not be parsed; values hidden'); }
+  const rendered = cachedAgents(parsed,configText,join(root,'generated'));
+  const agentLinks = Object.fromEntries(Object.keys(rendered?.files ?? {}).map(name => [name,join(root,'generated/agents',name)]));
+  if (Object.keys(agentLinks).length) safePath(home,agentDir);
+  for (const [name,target] of Object.entries(agentLinks)) {
+    const stat = present(join(agentDir,name));
+    if (stat && (!stat.isSymbolicLink() || previous?.agentLinks?.[name] !== target)) throw new Error('unmanaged agent exists; nothing written');
+  }
   const views = parsed?.machineSeatConfigs;
   let seatText = configText, seatTarget = config;
   if (views) {
@@ -142,7 +159,7 @@ export function runInstall(argv: string[]): number {
     atomic(join(root, 'zshrc.before'), before);
     if (existsSync(seats)) atomic(join(root, 'seats.before'), oldText);
   }
-  const state = { ...previous, config, seatTarget, managedBlock: managedBlock(config), phase: 'installing',
+  const state = { ...previous, config, seatTarget, managedBlock: managedBlock(config), phase: 'installing', agentLinks:{...previous?.agentLinks,...agentLinks},
     machineDigest: seatTarget === config ? null : digest(seatText), previousMachineDigest: previous?.phase === 'installing' ? previous.previousMachineDigest : previous?.machineDigest,
     hadSeats: previous?.hadSeats ?? existsSync(seats), hadShell: previous?.hadShell ?? existsSync(shell),
     shellMode: previous?.shellMode ?? (present(shell)?.mode ?? 0o600) & 0o777,
@@ -188,10 +205,13 @@ export function runInstall(argv: string[]): number {
   const bin = join(home, '.local/bin/repogolem'); safePath(home, bin);
   atomic(bin, `#!/bin/sh\nexec bun --no-install ${quote(bundle)} "$@"\n`); chmodSync(bin, 0o700);
   if (seatTarget !== config) atomic(seatTarget, seatText);
+  if (Object.keys(agentLinks).length) { safePath(home,agentDir); mkdirSync(agentDir,{recursive:true,mode:0o700}); }
+  for (const name of Object.keys(previous?.agentLinks ?? {})) if (!Object.hasOwn(agentLinks,name)) rmSync(join(agentDir,name),{force:true});
+  for (const [name,target] of Object.entries(agentLinks)) if (!present(join(agentDir,name))) symlinkSync(target,join(agentDir,name));
   atomic(shell, after, state.shellMode);
   mkdirSync(dirname(seats), { recursive: true, mode: 0o700 });
   if (!present(seats)?.isSymbolicLink()) { rmSync(seats, { force: true }); symlinkSync(seatTarget, seats); }
-  atomic(statePath, JSON.stringify({ ...state, phase: 'installed' }) + '\n');
+  atomic(statePath, JSON.stringify({ ...state, phase: 'installed', agentLinks }) + '\n');
   console.log('installed cache-only runtime and repogolem CLI; backups and recovery journal saved; generate not run');
   return 0;
 }
