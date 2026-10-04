@@ -126,7 +126,7 @@ spec = importlib.util.spec_from_file_location('unregistered', sys.argv[1])
 hook = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(hook)
 errors = []
-external = {(n.value.id, n.attr) for n in ast.walk(ast.parse(Path(sys.argv[1]).read_text())) if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name)}
+external = {(n.value.id, n.attr) for n in ast.walk(ast.parse(Path(sys.argv[1]).read_text())) if isinstance(n, ast.Attribute) and isinstance(n.ctx, ast.Load) and isinstance(n.value, ast.Name)}
 for file in sorted((Path(sys.argv[1]).parent / 'tmp_block_impl').glob('*.py')):
     module = getattr(hook, '_' + file.stem, None)
     if module is None:
@@ -147,9 +147,16 @@ for file in sorted((Path(sys.argv[1]).parent / 'tmp_block_impl').glob('*.py')):
     missing = refs - namespace.keys() - vars(builtins).keys()
     unused = imports - refs
     unused.update(n for n,v in namespace.items() if not n.startswith('__') and n not in refs and n not in imports and getattr(hook, n, object()) is not v and ('_'+file.stem,n) not in external)
-    implicit = {n for n in refs if n in namespace and isinstance(namespace[n], types.ModuleType) and namespace[n].__name__ in sys.stdlib_module_names and n not in imports}
-    errors.append((file.name, sorted(missing), sorted(unused), sorted(implicit)))
-assert not any(missing or unused or implicit for _,missing,unused,implicit in errors), errors
+    implicit = {n for n in refs if n in namespace and (getattr(namespace[n], '__name__', '') if isinstance(namespace[n], types.ModuleType) else getattr(namespace[n], '__module__', '').split('.')[0] if isinstance(namespace[n], (type, types.FunctionType, types.BuiltinFunctionType)) else '') in sys.stdlib_module_names and n not in imports}
+    wires = {a.attr for a in ast.walk(ast.parse(Path(sys.argv[1]).read_text())) if isinstance(a, ast.Attribute) and isinstance(a.ctx, ast.Store) and isinstance(a.value, ast.Name) and a.value.id == '_'+file.stem}
+    for call in ast.walk(ast.parse(Path(sys.argv[1]).read_text())):
+        if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and call.func.id == 'wire' and call.args and isinstance(call.args[0], ast.Name) and call.args[0].id == '_'+file.stem:
+            wires.update(keyword.arg for keyword in call.keywords)
+    wires.update(hook._package.DEPENDENCIES.get(file.stem, ()))
+    redundant = wires & (imports | definitions)
+    stale = wires - refs
+    errors.append((file.name, sorted(missing), sorted(unused), sorted(implicit), sorted(redundant), sorted(stale)))
+assert not any(missing or unused or implicit or redundant or stale for _,missing,unused,implicit,redundant,stale in errors), errors
 """)
     result = subprocess.run([sys.executable, "-B", str(probe), str(HOOK)],
                             capture_output=True, text=True, timeout=20)

@@ -100,7 +100,6 @@ import re
 import sys
 from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
-from typing import NamedTuple
 from io import StringIO
 
 
@@ -204,96 +203,28 @@ try:
             _package = _impl_util.module_from_spec(_spec)
             sys.modules[_IMPL_NAME] = _package
             _spec.loader.exec_module(_package)
-            _policy = _impl_import(_IMPL_NAME + ".policy")
-            _runtime = _impl_import(_IMPL_NAME + ".runtime")
-            _shell_targets = _impl_import(_IMPL_NAME + ".shell_targets")
-            _write_targets = _impl_import(_IMPL_NAME + ".write_targets")
-            _worktree_args = _impl_import(_IMPL_NAME + ".worktree_args")
-            _worktrees = _impl_import(_IMPL_NAME + ".worktrees")
-            _bypass = _impl_import(_IMPL_NAME + ".bypass")
-            _tool_targets = _impl_import(_IMPL_NAME + ".tool_targets")
-            _resolution = _impl_import(_IMPL_NAME + ".resolution")
-            _anchors = _impl_import(_IMPL_NAME + ".anchors")
-            _compounds = _impl_import(_IMPL_NAME + ".compounds")
-            _assignments = _impl_import(_IMPL_NAME + ".assignments")
-            _variables = _impl_import(_IMPL_NAME + ".variables")
-            _variable_builtins = _impl_import(_IMPL_NAME + ".variable_builtins")
-            _prefixes = _impl_import(_IMPL_NAME + ".prefixes")
-            _words = _impl_import(_IMPL_NAME + ".words")
-            _scope = _impl_import(_IMPL_NAME + ".scope")
-            _shell_words = _impl_import(_IMPL_NAME + ".shell_words")
-            _chain_status = _impl_import(_IMPL_NAME + ".chain_status")
-            for _module, _leaf in (
-                (_package, "__init__.py"), (_policy, "policy.py"),
-                (_runtime, "runtime.py"),
-                (_shell_targets, "shell_targets.py"),
-                (_write_targets, "write_targets.py"),
-                (_worktree_args, "worktree_args.py"),
-                (_worktrees, "worktrees.py"),
-                (_bypass, "bypass.py"),
-                (_tool_targets, "tool_targets.py"),
-                (_resolution, "resolution.py"),
-                (_anchors, "anchors.py"),
-                (_compounds, "compounds.py"),
-                (_assignments, "assignments.py"),
-                (_variables, "variables.py"),
-                (_variable_builtins, "variable_builtins.py"),
-                (_prefixes, "prefixes.py"),
-                (_words, "words.py"),
-                (_scope, "scope.py"),
-                (_shell_words, "shell_words.py"),
-                (_chain_status, "chain_status.py"),
-            ):
-                _expected = os.path.join(_IMPL_ROOT, _leaf)
+            if not os.path.isfile(os.path.join(_IMPL_ROOT, "__init__.py")) or os.path.realpath(
+                getattr(_package, "__file__", "")
+            ) != os.path.realpath(os.path.join(_IMPL_ROOT, "__init__.py")):
+                raise ImportError("unexpected tmp-block implementation origin")
+            _impl_modules, _impl_exports = {}, {}
+            for _leaf, _exports in _package.EXPORTS:
+                _module = _impl_import(_IMPL_NAME + "." + _leaf)
+                _expected = os.path.join(_IMPL_ROOT, _leaf + ".py")
                 if not os.path.isfile(_expected) or os.path.realpath(
                     getattr(_module, "__file__", "")
                 ) != os.path.realpath(_expected):
                     raise ImportError("unexpected tmp-block implementation origin")
-            for _name in (
-                "Unresolvable", "_has_temp_hint", "in_temp_class", "on_convention",
-                "_TMPDIR_TOKEN_RE", "_TEMP_HINT_RE", "_TEMP_PATH_TOKEN_RE",
-                "WORKTREE_DIR_NAME", "_CWD_CHANGING_CMDS",
-            ):
-                globals()[_name] = getattr(_policy, _name)
+                globals()["_" + _leaf] = _module
+                _impl_modules[_leaf] = _module
+                for _name in _exports:
+                    globals()[_name] = getattr(_module, _name)
+                    _impl_exports[_name] = getattr(_module, _name)
             _runtime.callbacks.bind(
                 lambda raw: in_temp_class(raw), lambda: _temp_prefixes()
             )
             _policy._temp_prefixes = _runtime.callbacks.temp_prefixes
             _policy.is_harness_scratchpad = is_harness_scratchpad
-            for _name in ('_bash_temp_targets',):
-                globals()[_name] = getattr(_shell_targets, _name)
-            for _name in ('ShellScan', 'scan_redirect_targets', 'scan_tee_targets', 'scan_worktree_targets'):
-                globals()[_name] = getattr(_write_targets, _name)
-            for _name in ('_worktree_add_args', '_WORKTREE_VALUE_FLAGS'):
-                globals()[_name] = getattr(_worktree_args, _name)
-            for _name in ('find_worktree_convention_issues',):
-                globals()[_name] = getattr(_worktrees, _name)
-            for _name in ('_hatched_segments', 'escape_hatch_covers', 'log_bypass', 'DEFAULT_LEDGER', 'HATCH_TMP', 'HATCH_WT'):
-                globals()[_name] = getattr(_bypass, _name)
-            for _name in ('canonical_tool', 'find_temp_targets', '_apply_patch_temp_targets', 'GUARDED_FILE_TOOLS', 'APPLY_PATCH_TOOL', 'TOOL_ALIASES', '_APPLY_PATCH_TARGET_RE'):
-                globals()[_name] = getattr(_tool_targets, _name)
-            for _name in ('resolve_targets',):
-                globals()[_name] = getattr(_resolution, _name)
-            for _name in ('_bounded_loop_subshell_anchor', '_cwd_argument', '_shell_anchor_before', '_git_c_values', '_worktree_anchor'):
-                globals()[_name] = getattr(_anchors, _name)
-            for _name in ('_literal_branch_may_execute', '_bounded_compound_value_sets_before', '_enclosing_loop_changes_cwd'):
-                globals()[_name] = getattr(_compounds, _name)
-            for _name in ('_assignment_is_inside_control_compound', '_assignment_effects_between', '_literal_array_values_before'):
-                globals()[_name] = getattr(_assignments, _name)
-            for _name in ('_static_shell_variables_before', '_static_shell_variable_state_before'):
-                globals()[_name] = getattr(_variables, _name)
-            BuiltinScan = _variable_builtins.BuiltinScan
-            invalidate_builtin_targets = _variable_builtins.invalidate_builtin_targets
-            for _name in ('_nearest_repo_root', '_literal_prefix_scan', '_has_literal_parent_component', '_literal_prefix_class', 'suggest_fixed_target', '_POSITIONAL_PARAM_RE'):
-                globals()[_name] = getattr(_prefixes, _name)
-            for _name in ('_bounded_brace_values', '_bounded_word_values', 'resolve_target', '_SIMPLE_VAR_RE', '_MAX_STATIC_VALUES'):
-                globals()[_name] = getattr(_words, _name)
-            for _name in ('_paren_contexts', '_segment_indices', '_process_substitution_parens', '_case_pattern_parens', '_literal_array_parens', '_success_chain_reaches', '_scope_affects_target'):
-                globals()[_name] = getattr(_scope, _name)
-            for _name in ('_direct_exposed_scope_keys', '_after_substitution_word', '_substitution_word_text'):
-                globals()[_name] = getattr(_shell_words, _name)
-            for _name in ('_segment_operator_before', '_segment_operator_after', '_chain_status_after'):
-                globals()[_name] = getattr(_chain_status, _name)
         finally:
             sys.dont_write_bytecode = _previous_bytecode
 except BaseException:
@@ -572,162 +503,36 @@ def main():
         deny(f"⛔ TMP-BLOCK: {exc}.")
 
 
-
-
-
-
-
-
-
-
 try:
     with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
-        _anchors.Unresolvable = Unresolvable
-        _anchors._ASSIGNMENT_RE = _ASSIGNMENT_RE
-        _anchors._CWD_CHANGING_CMDS = _CWD_CHANGING_CMDS
-        _anchors._SIMPLE_VAR_RE = _SIMPLE_VAR_RE
-        _anchors._bounded_compound_value_sets_before = _bounded_compound_value_sets_before
-        _anchors._case_pattern_parens = _case_pattern_parens
-        _anchors._function_signature_parens = _function_signature_parens
-        _anchors._is_separator = _is_separator
-        _anchors._literal_array_parens = _literal_array_parens
-        _anchors._process_substitution_parens = _process_substitution_parens
-        _anchors._scope_affects_target = _scope_affects_target
-        _anchors._segment_indices = _segment_indices
-        _anchors._success_chain_reaches = _success_chain_reaches
-        _anchors.resolve_target = resolve_target
-        _assignments.Unresolvable = Unresolvable
-        _assignments._ASSIGNMENT_RE = _ASSIGNMENT_RE
-        _assignments._MAX_STATIC_VALUES = _MAX_STATIC_VALUES
-        _assignments._bounded_word_values = _bounded_word_values
-        _assignments._is_separator = _is_separator
-        _assignments._segment_operator_after = _segment_operator_after
-        _assignments._segment_operator_before = _segment_operator_before
-        _assignments.re = re
-        _bypass._ASSIGNMENT_RE = _ASSIGNMENT_RE
-        _bypass._WRAPPER_CMDS = _WRAPPER_CMDS
-        _bypass._WRAPPER_VALUE_OPTS = _WRAPPER_VALUE_OPTS
-        _bypass._executable_subcommands = _executable_subcommands
-        _bypass._invoked_alias_bodies = _invoked_alias_bodies
-        _bypass._is_separator = _is_separator
-        _bypass._nested_alias_segment = _nested_alias_segment
-        _bypass._nested_segment = _nested_segment
-        _bypass._parse_bash = _parse_bash
-        _bypass._shell_command_payloads = _shell_command_payloads
-        _bypass._shell_tokens = _shell_tokens
-        _bypass._strip_heredoc_bodies = _strip_heredoc_bodies
-        _bypass.datetime = datetime
-        _bypass.deny = deny
-        _bypass.json = json
-        _chain_status._is_separator = _is_separator
-        _compounds.Unresolvable = Unresolvable
-        _compounds._ASSIGNMENT_RE = _ASSIGNMENT_RE
-        _compounds._CWD_CHANGING_CMDS = _CWD_CHANGING_CMDS
-        _compounds._MAX_STATIC_VALUES = _MAX_STATIC_VALUES
-        _compounds._assignment_effects_between = _assignment_effects_between
-        _compounds._bounded_word_values = _bounded_word_values
-        _compounds._is_command_sub_close = _is_command_sub_close
-        _compounds._is_command_sub_open = _is_command_sub_open
-        _compounds._is_separator = _is_separator
-        _compounds._literal_array_values_before = _literal_array_values_before
-        _compounds._scope_affects_target = _scope_affects_target
-        _compounds._static_shell_variables_before = _static_shell_variables_before
-        _compounds.re = re
-        _prefixes.WORKTREE_DIR_NAME = WORKTREE_DIR_NAME
-        _prefixes._QUOTED_LBRACE = _QUOTED_LBRACE
-        _prefixes._QUOTED_RBRACE = _QUOTED_RBRACE
-        _prefixes._SIMPLE_VAR_RE = _SIMPLE_VAR_RE
-        _prefixes._executable_subcommands = _executable_subcommands
-        _prefixes._substitution_word_text = _substitution_word_text
-        _prefixes.in_temp_class = _runtime.callbacks.classify_temp
-        _prefixes.is_harness_scratchpad = is_harness_scratchpad
-        _prefixes.on_convention = on_convention
-        _prefixes.re = re
-        _resolution.Unresolvable = Unresolvable
-        _resolution._bounded_compound_value_sets_before = _bounded_compound_value_sets_before
-        _resolution._bounded_word_values = _bounded_word_values
-        _resolution._enclosing_loop_changes_cwd = _enclosing_loop_changes_cwd
-        _resolution.resolve_target = resolve_target
-        _scope._is_separator = _is_separator
-        _scope.re = re
-        _shell_targets.ShellScan = ShellScan
-        _shell_targets.Unresolvable = Unresolvable
-        _shell_targets._UNRESOLVED_EVAL_MARKER = _UNRESOLVED_EVAL_MARKER
-        _shell_targets._direct_exposed_scope_keys = _direct_exposed_scope_keys
-        _shell_targets._executable_subcommands = _executable_subcommands
-        _shell_targets._invoked_alias_bodies = _invoked_alias_bodies
-        _shell_targets._mask_function_definition_bodies = _mask_function_definition_bodies
-        _shell_targets._mask_quoted_operator_words = _mask_quoted_operator_words
-        _shell_targets._nested_alias_segment = _nested_alias_segment
-        _shell_targets._nested_segment = _nested_segment
-        _shell_targets._parse_bash = _parse_bash
-        _shell_targets._segment_is_fully_exposed = _segment_is_fully_exposed
-        _shell_targets._segment_is_prefix = _segment_is_prefix
-        _shell_targets._shell_anchor_before = _shell_anchor_before
-        _shell_targets._shell_command_payloads = _shell_command_payloads
-        _shell_targets._strip_heredoc_bodies = _strip_heredoc_bodies
-        _shell_targets._worktree_add_args = _worktree_add_args
-        _shell_targets.scan_redirect_targets = scan_redirect_targets
-        _shell_targets.scan_tee_targets = scan_tee_targets
-        _shell_targets.scan_worktree_targets = scan_worktree_targets
-        _shell_words._command_sub_word_continues = _command_sub_word_continues
-        _shell_words._executable_subcommands = _executable_subcommands
-        _shell_words._is_command_sub_open = _is_command_sub_open
-        _shell_words._strip_heredoc_bodies = _strip_heredoc_bodies
-        _tool_targets._bash_temp_targets = _bash_temp_targets
-        _tool_targets.in_temp_class = _runtime.callbacks.classify_temp
-        _tool_targets.re = re
-        _variable_builtins.NamedTuple = NamedTuple
-        _variable_builtins.re = re
-        _variables.BuiltinScan = BuiltinScan
-        _variables._ASSIGNMENT_RE = _ASSIGNMENT_RE
-        _variables._SIMPLE_VAR_RE = _SIMPLE_VAR_RE
-        _variables._chain_status_after = _chain_status_after
-        _variables._is_separator = _is_separator
-        _variables._literal_prefix_scan = _literal_prefix_scan
-        _variables._paren_contexts = _paren_contexts
-        _variables._segment_operator_after = _segment_operator_after
-        _variables._segment_operator_before = _segment_operator_before
-        _variables._success_chain_reaches = _success_chain_reaches
-        _variables.invalidate_builtin_targets = invalidate_builtin_targets
-        _variables.re = re
-        _words.Unresolvable = Unresolvable
-        _words._QUOTED_LBRACE = _QUOTED_LBRACE
-        _words._QUOTED_RBRACE = _QUOTED_RBRACE
-        _words.re = re
-        _worktree_args._after_substitution_word = _after_substitution_word
-        _worktree_args._is_command_sub_open = _is_command_sub_open
-        _worktree_args._is_separator = _is_separator
-        _worktrees.Unresolvable = Unresolvable
-        _worktrees._direct_exposed_scope_keys = _direct_exposed_scope_keys
-        _worktrees._executable_subcommands = _executable_subcommands
-        _worktrees._invoked_alias_bodies = _invoked_alias_bodies
-        _worktrees._literal_prefix_class = _literal_prefix_class
-        _worktrees._nested_alias_segment = _nested_alias_segment
-        _worktrees._nested_segment = _nested_segment
-        _worktrees._parse_bash = _parse_bash
-        _worktrees._shell_anchor_before = _shell_anchor_before
-        _worktrees._static_shell_variable_state_before = _static_shell_variable_state_before
-        _worktrees._strip_heredoc_bodies = _strip_heredoc_bodies
-        _worktrees._worktree_add_args = _worktree_add_args
-        _worktrees._worktree_anchor = _worktree_anchor
-        _worktrees.on_convention = on_convention
-        _worktrees.resolve_targets = resolve_targets
-        _write_targets.NamedTuple = NamedTuple
-        _write_targets.Unresolvable = Unresolvable
-        _write_targets._after_substitution_word = _after_substitution_word
-        _write_targets._bounded_loop_subshell_anchor = _bounded_loop_subshell_anchor
-        _write_targets._is_command_sub_open = _is_command_sub_open
-        _write_targets._literal_branch_may_execute = _literal_branch_may_execute
-        _write_targets._literal_prefix_class = _literal_prefix_class
-        _write_targets._nested_segment = _nested_segment
-        _write_targets._shell_anchor_before = _shell_anchor_before
-        _write_targets._static_shell_variable_state_before = _static_shell_variable_state_before
-        _write_targets._static_shell_variables_before = _static_shell_variables_before
-        _write_targets._worktree_add_args = _worktree_add_args
-        _write_targets._worktree_anchor = _worktree_anchor
-        _write_targets.in_temp_class = _runtime.callbacks.classify_temp
-        _write_targets.resolve_targets = resolve_targets
+        _package.bind(_impl_modules, _impl_exports,
+                      _ASSIGNMENT_RE=_ASSIGNMENT_RE,
+                      _QUOTED_LBRACE=_QUOTED_LBRACE,
+                      _QUOTED_RBRACE=_QUOTED_RBRACE,
+                      _UNRESOLVED_EVAL_MARKER=_UNRESOLVED_EVAL_MARKER,
+                      _WRAPPER_CMDS=_WRAPPER_CMDS,
+                      _WRAPPER_VALUE_OPTS=_WRAPPER_VALUE_OPTS,
+                      _command_sub_word_continues=_command_sub_word_continues,
+                      _executable_subcommands=_executable_subcommands,
+                      _function_signature_parens=_function_signature_parens,
+                      _invoked_alias_bodies=_invoked_alias_bodies,
+                      _is_command_sub_close=_is_command_sub_close,
+                      _is_command_sub_open=_is_command_sub_open,
+                      _is_separator=_is_separator,
+                      _mask_function_definition_bodies=_mask_function_definition_bodies,
+                      _mask_quoted_operator_words=_mask_quoted_operator_words,
+                      _nested_alias_segment=_nested_alias_segment,
+                      _nested_segment=_nested_segment,
+                      _parse_bash=_parse_bash,
+                      _segment_is_fully_exposed=_segment_is_fully_exposed,
+                      _segment_is_prefix=_segment_is_prefix,
+                      _shell_command_payloads=_shell_command_payloads,
+                      _shell_tokens=_shell_tokens,
+                      _strip_heredoc_bodies=_strip_heredoc_bodies,
+                      deny=deny,
+                      in_temp_class=_runtime.callbacks.classify_temp,
+                      is_harness_scratchpad=is_harness_scratchpad,
+        )
 except BaseException:
     _deny_policy_import_failure()
 

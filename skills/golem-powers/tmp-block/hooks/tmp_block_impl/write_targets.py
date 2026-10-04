@@ -2,7 +2,6 @@
 from typing import NamedTuple
 
 
-
 class ShellScan(NamedTuple):
     command: object
     direct_command: object
@@ -14,6 +13,7 @@ class ShellScan(NamedTuple):
     initial_cwd: object
     budget: object
     hits: object
+
 
 def scan_redirect_targets(scan):
     command = scan.command
