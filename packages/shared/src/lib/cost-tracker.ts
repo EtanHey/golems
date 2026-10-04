@@ -6,7 +6,7 @@
  * Falls back to JSONL when Supabase is unavailable.
  *
  * Tracks three tiers:
- * - "paid": Haiku API calls (cloud worker, telegram bot)
+ * - "paid": Haiku API calls (cloud worker)
  * - "free": CLI helpers (gemini, cursor, codex)
  * - "subscription": Claude Code ($200/mo subscription, actual value tracked)
  *

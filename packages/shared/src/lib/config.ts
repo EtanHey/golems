@@ -69,14 +69,6 @@ export interface GolemsConfig {
     codex: string;
   };
 
-  /** Telegram settings */
-  telegram: {
-    /** Bot token (prefer env var TELEGRAM_BOT_TOKEN) */
-    token?: string;
-    /** Notification server port */
-    notifyPort: number;
-  };
-
   /** Observability (Axiom log drain) */
   observability: {
     /** Axiom dataset name (set after creating account at axiom.co) */
@@ -281,9 +273,6 @@ const DEFAULTS: GolemsConfig = {
     gh: "/usr/local/bin/gh",
     cursor: `${HOME}/.local/bin/cursor`,
     codex: `${HOME}/.nvm/versions/node/v22.0.0/bin/npx`,
-  },
-  telegram: {
-    notifyPort: 3847,
   },
   observability: {
     enabled: false,
@@ -703,10 +692,6 @@ tools:
   gh: "/usr/local/bin/gh"
   cursor: "${HOME}/.local/bin/cursor"
   codex: "${HOME}/.nvm/versions/node/v22.0.0/bin/npx"
-
-# Telegram bot
-telegram:
-  notifyPort: 3847
 
 # Observability (Axiom log drain)
 # Sign up at axiom.co (free tier: 500MB/day)

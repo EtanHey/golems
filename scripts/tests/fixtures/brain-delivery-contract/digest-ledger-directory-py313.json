@@ -15,11 +15,11 @@
     }
   },
   {
-    "stdout": "",
+    "stdout": "Stalker Morning Digest FAILED - 2026-06-18\n\n",
     "stderr": "Traceback (most recent call last):\n<TRACEBACK_FRAMES>\nIsADirectoryError: [Errno 21] Is a directory: '<SANDBOX>/data/runs/example-2026-06-18-120000/_DRIVE-LEDGER.md'\n",
     "exit": 1,
     "files": {
-      "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-c\", \"import json, sys; print(json.dumps({\\\"title\\\": sys.argv[1], \\\"body\\\": sys.argv[2], \\\"source\\\": sys.argv[4], \\\"priority\\\": sys.argv[3]}, indent=2))\", \"Stalker Morning Digest FAILED - 2026-06-18\", \"\", \"default\", \"stalker-golem\"]}\n{\"command\": \"telegram\", \"argv\": [], \"stdin\": \"{\\n  \\\"title\\\": \\\"Stalker Morning Digest FAILED - 2026-06-18\\\",\\n  \\\"body\\\": \\\"\\\",\\n  \\\"source\\\": \\\"stalker-golem\\\",\\n  \\\"priority\\\": \\\"default\\\"\\n}\\n\"}\n",
+      "commands.jsonl": "{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n{\"command\": \"python3\", \"argv\": [\"-\", \"<SANDBOX>/data/runs\", \"2026-06-18\"], \"stdin\": \"python source; EOF after source\"}\n",
       "runs/example-2026-06-18-120000/.stage-archive.done": "done\n",
       "runs/example-2026-06-18-120000/.stage-process.done": "done\n",
       "runs/example-2026-06-18-120000/chat.log": "one\ntwo\n",

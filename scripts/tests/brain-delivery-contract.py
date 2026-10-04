@@ -11,7 +11,7 @@ import tempfile
 
 BASE = "e180e9ee12cd4ed3ee3bb2c1353cb21bd9ebbf93"
 ROOT = Path(__file__).resolve().parents[2]
-ENTRY = "scripts/stalker/stalker-brainlayer-telegram.sh"
+ENTRY = "scripts/stalker/stalker-brainlayer.sh"
 FIXTURES = Path(__file__).parent / "fixtures/brain-delivery-contract"
 DATE = "2026-06-18"
 RUN = f"example-{DATE}-120000"
@@ -42,7 +42,7 @@ source = None
 if name == "python3" and args[0] == "-":
     source = sys.stdin.buffer.read()
     record["stdin"] = "python source; EOF after source"
-elif name in ("brain-store", "telegram"):
+elif name == "brain-store":
     record["stdin"] = sys.stdin.read()
 with (data / "commands.jsonl").open("a") as f: f.write(json.dumps(record) + "\\n")
 if name == "python3":
@@ -54,9 +54,6 @@ if name == "brain-store":
     if os.environ.get("STORE_MODE") == "fail" or (os.environ.get("STORE_MODE") == "partial" and count > 1):
         print("fixture store failure", file=sys.stderr)
         sys.exit(9)
-if name == "telegram" and os.environ.get("TELEGRAM_FAIL") == "1":
-    print("fixture telegram failure", file=sys.stderr)
-    sys.exit(9)
 '''
 
 CLOCK = '''import datetime
@@ -110,8 +107,7 @@ def scenario(name, data, env):
         steps = [(ingest + ["--dry-run"], {}), (ingest, {"STALKER_BRAINLAYER_DRY_RUN": "1"}),
                  (ingest, {"STALKER_BRAIN_STORE_DRY_RUN": "1"}),
                  (digest, {"STALKER_BRAINLAYER_DRY_RUN": "1"}),
-                 (digest, {"STALKER_BRAIN_STORE_DRY_RUN": "1"}),
-                 (digest, {"STALKER_TELEGRAM_DRY_RUN": "1"})]
+                 (digest, {"STALKER_BRAIN_STORE_DRY_RUN": "1"})]
     elif name == "store-success":
         steps = [(ingest, {}), (ingest, {})]
     elif name == "partial-retry":
@@ -162,15 +158,13 @@ def scenario(name, data, env):
             (run / "_DRIVE-LEDGER.md").mkdir()
         elif name == "digest-permission":
             (run / "gems.md").chmod(0)
-        elif name == "digest-refusal":
-            env["TELEGRAM_FAIL"] = "1"
         steps = [(digest + ["--dry-run"], {}), (digest, {})]
     return steps
 
 
 CASES = ("usage", "dry-run", "store-success", "partial-retry", "queue-idempotent",
          "batch-success", "batch-partial", "batch-startup-failure", "payload-exception",
-         "empty-run", "digest-empty", "digest-mixed", "digest-no-scored-gems", "digest-refusal", "digest-exception",
+         "empty-run", "digest-empty", "digest-mixed", "digest-no-scored-gems", "digest-exception",
          "digest-unprocessed-exception", "digest-chat-directory", "digest-ledger-directory", "digest-permission")
 
 
@@ -211,7 +205,7 @@ def capture(root, case):
         (backend / "paths.py").write_text('def get_db_path(): return "fixture-db"\n')
         (backend / "store.py").write_text(BATCH_STORE)
         (backend / "vector_store.py").write_text('import os\nfrom pathlib import Path\nclass VectorStore:\n    def __init__(self, path):\n        with (Path(os.environ["DATA"]) / "opens").open("a") as f: f.write(str(path) + "\\n")\n')
-        for command in ("date", "mktemp", "python3", "brain-store", "telegram"):
+        for command in ("date", "mktemp", "python3", "brain-store"):
             path = bin_dir / command
             path.write_text(f"#!{sys.executable}\n" + STUB)
             path.chmod(0o755)
@@ -219,9 +213,7 @@ def capture(root, case):
                "LC_ALL": "C", "TZ": "UTC", "DATA": str(data), "REAL_PYTHON": sys.executable,
                "PYTHONPATH": str(site), "PYTHONDONTWRITEBYTECODE": "1",
                "STALKER_BRAIN_STORE_CMD": str(bin_dir / "brain-store"),
-               "STALKER_BRAINLAYER_SRC": str(backend.parent),
-               "STALKER_TELEGRAM_CMD": str(bin_dir / "telegram"),
-               "STALKER_TELEGRAM_QUEUE_DIR": str(data / "telegram-queue")}
+               "STALKER_BRAINLAYER_SRC": str(backend.parent)}
 
         def normalize(value):
             value = value.replace(str(sandbox).encode(), b"<SANDBOX>")
@@ -251,8 +243,7 @@ def main():
     record = len(sys.argv) == 3 and sys.argv[1] == "--record"
     root = Path(sys.argv[2] if record else os.environ.get("BRAIN_CONTRACT_ROOT", ROOT)).resolve()
     if record:
-        assert (root / ENTRY).read_bytes() == subprocess.check_output(["git", "show", f"{BASE}:{ENTRY}"], cwd=ROOT)
-        FIXTURES.mkdir(parents=True, exist_ok=True)
+        raise SystemExit("Retired entry: use the approved immutable-base projection, not --record")
     for case in (os.environ.get("BRAIN_CONTRACT_CASE"),) if os.environ.get("BRAIN_CONTRACT_CASE") else CASES:
         version = f"py{sys.version_info.major}{sys.version_info.minor}"
         versioned = case in EXCEPTION_CASES
