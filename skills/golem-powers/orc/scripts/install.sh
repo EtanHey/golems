@@ -19,7 +19,7 @@ if [ "$#" -ne 0 ]; then
     exit 1
 fi
 
-sources=("$skill_dir"/agents/*.md "$skill_dir"/../coach/agents/*.md)
+sources=("$skill_dir"/agents/*.md "$skill_dir"/../coach/agents/*.md "$skill_dir"/../qa-video/agents/*.md)
 today="$(date +%Y%m%d)"
 
 # Validate every source and destination before the first mutation, so a conflict

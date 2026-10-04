@@ -12,7 +12,7 @@ import pytest
 
 SKILL = Path(__file__).resolve().parents[1]
 INSTALL = SKILL / "scripts" / "install.sh"
-NAMES = ("orc-helper", "brain-worker", "coach-mail")
+NAMES = ("orc-helper", "brain-worker", "coach-mail", "visual-gatherer")
 SCRATCH = Path(__file__).resolve().parent / ".scratch"
 
 
@@ -59,7 +59,7 @@ def test_fresh_install_links_all_agents(home):
     result = run_install(home)
     assert result.returncode == 0, result.stdout + result.stderr
     for name in NAMES:
-        owner = SKILL.parent / "coach" if name == "coach-mail" else SKILL
+        owner = SKILL.parent / {"coach-mail": "coach", "visual-gatherer": "qa-video"}.get(name, "orc")
         target = owner / "agents" / f"{name}.md"
         assert link(home, name).is_symlink()
         assert os.readlink(link(home, name)) == str(target)
@@ -123,6 +123,6 @@ def test_stale_symlink_is_replaced(home, name):
     original.symlink_to(home / "missing-agent.md")
     result = run_install(home)
     assert result.returncode == 0, result.stdout + result.stderr
-    owner = SKILL.parent / "coach" if name == "coach-mail" else SKILL
+    owner = SKILL.parent / {"coach-mail": "coach", "visual-gatherer": "qa-video"}.get(name, "orc")
     assert original.resolve() == owner / "agents" / f"{name}.md"
     assert "[unlink]" in result.stdout
