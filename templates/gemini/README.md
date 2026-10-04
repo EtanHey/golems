@@ -30,8 +30,11 @@ verify the unique probe name loads, require an exact no-tool palette canary, the
 attempt writes only on a recording fake MCP server with no real-server access.
 Never attempt a write against real BrainLayer to prove a denial.
 
-The gatherer disables customization inheritance while retaining MCP inheritance
-and its scoped receipt tools. Only the declared brain-worker may be invoked;
+Gatherer: no MCP or shell. MCP and customization inheritance are disabled so
+workspace servers cannot grant it pane spawning or terminal control. Web research
+uses `search_web` and `read_url_content`; BrainLayer questions go only through
+the read-only `brain-worker`. It retains its scoped receipt tools.
+Only the declared brain-worker may be invoked;
 hidden built-in agents must fail the no-tool delegation probes before release.
 
 On agy 1.2.14, `mcpServers` in agent frontmatter must be a **list**, unlike the
