@@ -11,32 +11,34 @@ command reference and troubleshooting notes.
 
 ## Execution Contract: Agent-Owned Iterative Loop
 
-Run each media step in your **own shell**. Claude seats use background Bash;
-Gemini seats use `agy --agent video-qa` (confirmed in golems#563; production
-installation follows merge). **Never open a terminal pane** or type into another
-surface to run media tools; never use `send_to` for media commands. If your
-profile has no shell, stop and ask the lead for `video-qa`. Do not improvise.
+Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
+The pipeline sub-agent owns the whole iterative loop in its **own shell**;
+never read images in the lead or pipeline sub-agent. Read text with Read;
+call `scripts/visual-gather.py` directly from Bash for every sheet/frame.
+A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
+inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
+screenshot questions outside this pipeline.
 
-agy 1.2.14 cannot register `command_status` or `send_command_input`. Use the
-per-step helper `run-step.sh <artifact-dir> <step> -- <command> [args...]` in your
-own shell for long ffmpeg/whisper jobs, on both Claude and agy. It starts only
-that command and writes `<artifact-dir>/logs/<step>.log`, `<step>.pid` and
-`<step>.exit` (all three under `logs/`). Poll with your own Bash / agy
-`run_command` or `view_file` until `.exit` exists; require its numeric value to
-be `0`, then verify outputs before reading them. A launch return is not step
-completion. On a nonzero exit read `.log` and resolve the failure. Use a fresh
-step name for each refinement; never delegate polling to a terminal pane.
-`video-qa` has no MCP or delegation: keep the entire media loop inside it,
-then return the findings note to the calling Claude seat for BrainLayer
-persistence and Drive archival.
+Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
+Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
+same loop in its own shell and may view images itself. **Never open a terminal pane**
+or type into another surface to run media tools; never `send_to` media commands.
+If the selected profile has no shell, stop and ask the lead for the shell-enabled
+pipeline profile (or `video-qa` for the explicitly requested visible route).
 
-The agent owns the whole iterative loop: extract/transcribe → choose transcript
-AND scene hotspots → dense windows at 10 fps → read every contact sheet →
-**re-densify** unclear moments at up to 20 fps and/or with tighter windows →
-re-fetch and re-read until resolved or explicitly **NOT DETERMINED**. Scripts
-are per-step helpers; they do not replace hotspot judgement. Each finding cites
-its sheet + tile + timestamp from `frames.tsv`; unsupported claims remain
-transcript-only. An optional convenience index never gates the loop.
+Long jobs use `run-step.sh <artifact-dir> <step> -- <command> [args...]`:
+`logs/<step>.log`, `<step>.pid`, `<step>.exit` all live under the artifact directory's
+`logs/`. Poll `.exit` via own Bash or agy `run_command`/`view_file`; require numeric
+`0` and verify outputs before continuing. Read `.log` on failure. agy 1.2.14 has
+no `command_status`/`send_command_input`; a launch return is not completion.
+Use fresh step names/output directories for refinements. `video-qa` has no MCP
+or delegation; return text to the parent for persistence and archival.
+
+Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
+read every sheet through the visual helper → **re-densify** unclear moments at
+up to 20 fps / tighter windows → re-fetch and re-read until resolved or **NOT
+DETERMINED**. Cite sheet + tile + timestamp from `frames.tsv`. Scripts support
+judgement; an optional convenience index never gates the loop.
 
 ## Phase 1: Audio Extraction + Transcription
 
@@ -134,16 +136,30 @@ timestamps from `frames.tsv`.
 
 ## Phase 4: Read Every Sheet, Then Re-Densify Unclear Moments
 
-**QA mode: read EVERY contact sheet listed in `index.tsv`, in order** (they're
-images — use the Read tool). No sampling, no "8-12 strategic frames": skipping a
-sheet means its window was never reviewed, and a finding from an unread sheet is
-invalid. If there are too many sheets for one pass, split them across batches
-(in the same shell-enabled video-qa agent) — but every sheet is read.
-Interval frames are a coverage pass only: if one shows something, add a cue and
-re-run `dense-windows.sh`; never cite an interval frame as a finding's evidence.
+**Read EVERY contact sheet in `index.tsv`, in order, through the helper.**
+The lead and pipeline sub-agent never read images with Read or image tools.
+They receive text observations only. Build absolute sheet paths from the index;
+include every initial and refinement sheet. Call the helper serially in small
+batches (up to six, fewer if its output cap omits findings):
 
-Before Phase 5, confirm coverage: the number of sheets you read equals the row
-count of `index.tsv`. If not, the QA pass is incomplete.
+```bash
+python3 "$SCRIPTS/visual-gather.py" --question \
+  'For each sheet, describe cursor targets and before/after states with zero-based row-major tile indexes. Mark unclear moments NOT DETERMINED; never invent timestamps.' \
+  --timeout 90 "$WORKDIR/dense${SUFFIX}/sheet_001.jpg" \
+  > "$WORKDIR/visual-dense-01.txt"
+# Example path only: use actual index.tsv rows. Read the TEXT result.
+```
+
+Exit 0 alone does not prove coverage: require `Coverage: N/N; complete` and
+one usable observation for every supplied path. On partial coverage, omitted
+output or NOT DETERMINED, retry only those sheets in smaller serial batches;
+then refine unclear moments below. Track reviewed paths against every index,
+not merely the number of calls. Unread/unresolved evidence makes the pass
+incomplete or NOT DETERMINED. Match returned tile indexes to `frames.tsv`;
+Gemini must not infer timestamps. Coverage frames also go through the helper:
+if one shows something, add a cue and extract dense evidence before citing it.
+For an explicitly requested visible `video-qa` worker, view every sheet/frame
+there and keep the same coverage and refinement ledger.
 
 For each window (sheet), state:
 
@@ -173,9 +189,9 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows
   "$WORKDIR/refine-01" 20 0 0
 ```
 
-Poll `logs/refine-01.exit` and require `0` before re-reading.
+Poll `logs/refine-01.exit` and require `0` before calling the visual helper again.
 The final `0 0` disables cue padding, making this exactly one start/end/fps
-window. Re-fetch and read EVERY new sheet in its `index.tsv`; use that pass's
+window. Re-fetch and call the visual helper for EVERY new sheet in its `index.tsv`; use that pass's
 `frames.tsv` for exact tile timestamps. Repeat at different bounds if needed.
 If 20 fps or source resolution cannot resolve the moment, mark it **NOT
 DETERMINED**, explain the limitation and request better evidence. Higher output
@@ -231,7 +247,9 @@ Write to `$WORKDIR/qa-findings${SUFFIX}.md`:
 - **UX** — Not a bug but confusing, ugly, or hard to use
 - **Enhancement** — Feature idea, future improvement
 
-## Phase 6: Store in BrainLayer
+## Phase 6: Parent Stores in BrainLayer
+
+Return the text findings and evidence ledger to the parent, which runs:
 
 ```
 brain_store(

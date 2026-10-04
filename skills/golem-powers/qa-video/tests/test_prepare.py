@@ -104,6 +104,10 @@ def test_skill_owns_iterative_loop():
         assert 'own shell' in text
         assert 'never open a terminal pane' in text.lower()
         assert 'video-qa' in text
+        assert 'qa-video-runner' in text and 'video-gems' in text
+        assert 'visual-gather.py' in text
+        assert 'explicitly' in text and 'visible worker' in text
+        assert 'never read images' in text.lower()
         assert 'run-step.sh' in text and '.log' in text and '.pid' in text and '.exit' in text
         assert 'run_command' in text and 'view_file' in text
         assert 'pending confirmation' not in text
@@ -111,3 +115,16 @@ def test_skill_owns_iterative_loop():
         assert 'NOT DETERMINED' in text
         assert 'sheet' in text and 'tile' in text and 'timestamp' in text
         assert 'ready: true' not in text and 'prepare.sh' not in text
+
+
+def test_qa_pipeline_agent_contract():
+    root = SCRIPT.parents[1]
+    agent = (root/'agents/qa-video-runner.md').read_text()
+    import json
+    roles = json.loads((root.parents[2]/'standards/model-roles.json').read_text())
+    assert '\nrole: claude.subagent.cheap\n' in agent
+    assert '\nmodel: ' + roles['roles']['claude.subagent.cheap']['alias'] + '\n' in agent
+    assert '\ntools: Bash, Write, Read\n' in agent
+    assert 'never read images' in agent.lower()
+    assert 'visual-gather.py' in agent and 'NOT DETERMINED' in agent
+    assert 'Agent tool' in agent and 're-densify' in agent.lower()
