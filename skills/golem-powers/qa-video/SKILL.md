@@ -11,23 +11,14 @@ execute: scripts/default.sh
 ## How It Works
 
 ```
-Screen Recording (.mov)
-  → ffmpeg audio extraction
-    → whisper-cli transcription (SRT + TXT)
-      → LLM reads SRT, identifies QA-relevant segments
-        → Dense action windows (5–20 fps contact sheets) + 30s coverage frames
-          → Claude Vision reads every sheet + correlates with transcript
-            → Structured QA findings document
-              → Agent handoff (Codex/Claude worker via cmux)
-
-YouTube / gems request
-  → yt-dlp audio + metadata
-    → whisper-cli transcription (SRT + TXT)
-      → keyword hotspot detection for insights, claims, data, and examples
-        → yt-dlp/ffmpeg frame extraction at hotspot timestamps
-          → vision pass over frames + transcript context
-            → brain_digest full content
-              → brain_store structured gems
+Screen recording / local video / YouTube video (downloaded by dispatcher)
+  → Dispatcher background Bash: prepare.sh --mode qa|gems
+    → ffmpeg audio + whisper-cli SRT/TXT
+      → transcript/scene cues + dense contact sheets + 30s coverage frames
+        → manifest.json ready: true
+          → visual-gatherer (Agent) / gemini.gather.visual (cmux) reads every sheet
+            → Claude synthesizes QA findings or gems
+              → BrainLayer persistence + requested handoff / archival
 ```
 
 ## The Cardinal Rule: Narrate Before You Act
@@ -57,7 +48,7 @@ Read the user's request and route to the right workflow:
 
 **If ambiguous:** Ask whether this is a QA recording to process or a video to extract gems from.
 
-**Subagent routing (delegated jobs):** When a video QA/extraction job is delegated to a subagent, it MUST be the dedicated pipeline subagent (`subagent_type: video-gems` / video-extract — whisper transcription + hotspot finding + 100–250ms frame extraction). Spawning a general-purpose agent and telling it to "use the qa-video skill" is a **routing violation** — TaskStop it and respawn with the proper pipeline subagent. Same class as the batch-session-miners rule: dedicated pipeline subagent, never a general-purpose stand-in.
+**Subagent routing (delegated jobs):** The dispatcher owns all deterministic media preparation: run `scripts/prepare.sh` in its own background Bash (`run_in_background`), wait for that task to succeed, and read `manifest.json` to verify `ready: true` before delegating reading. In an Agent-tool context use `Agent(visual-gatherer)` (golems#553) over the manifest's sheets and transcript. In a cmux lane use the `gemini.gather.visual` gatherer pane with the restricted reader brief in rule 10. The reader never prepares media or controls terminals.
 
 **Verdict integrity (before emitting a QA verdict or "QA complete"):** Run `/qa-verdict-gate` over the run. It enforces tri-state **PASS / FAIL / INCONCLUSIVE** — `FAIL` is reserved for a *confirmed-observed* failure (a screenshot/click that reached the surface or an observed error in a tool result); a path you **couldn't reach** ("couldn't load", "element not found", blocked at step 0) is `INCONCLUSIVE`, never FAIL or PASS — and a QA run only counts when a `qa-report.md` with all the checklist items exists. `bun skills/golem-powers/qa-verdict-gate/scripts/qa-verdict-gate-cli.mjs <transcript|->` (exit 3 = FLAG = the verdict isn't earned yet). Composes with `/false-green-gate` and `/never-fabricate`.
 
@@ -90,7 +81,7 @@ Read the user's request and route to the right workflow:
 
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-10. **Gemini handles visual-heavy frame batches** — Per `/agent-routing` rule 7, route bulk frame/OCR/visual reads to the **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`, resolved from the golems checkout). Claude wraps up with synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival.
+10. **Dispatcher prepares; gatherer reads** — The dispatcher runs `scripts/prepare.sh <video> <workdir> [--fps N] [--mode qa|gems]` in its own background Bash (`run_in_background`). Wait for successful task completion and `manifest.json` with `ready: true`; a missing manifest or failed task blocks handoff. Agent-tool contexts use `Agent(visual-gatherer)` (golems#553). cmux lanes use the **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`, resolved from the golems checkout). Its brief must say: "Read manifest.json and the listed sheets/transcript only; never spawn panes, never send_to terminals, never run media tools." Read every sheet in manifest order and preserve sheet/tile evidence. Claude owns synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival.
 
 ---
 
@@ -98,7 +89,8 @@ Read the user's request and route to the right workflow:
 
 | Tool | Check | Install |
 |------|-------|---------|
-| ffmpeg | `which ffmpeg` | `brew install ffmpeg` |
+| ffmpeg + ffprobe | `which ffmpeg ffprobe` | `brew install ffmpeg` |
+| Python 3 | `which python3` | `brew install python` |
 | whisper-cli | `which whisper-cli` | `brew install whisper-cpp` |
 | whisper model | `ls ~/.cache/whisper/ggml-small.bin` | `whisper-cli --download-model small` |
 | yt-dlp | `which yt-dlp` | `pip3 install yt-dlp` |
@@ -128,27 +120,13 @@ bash "$ORCHESTRATOR_REPO/scripts/qa/qa-record.sh" ~/Gits/<project>/docs/
 **Process a video:**
 ```bash
 VIDEO="/path/to/recording.mov"
-WORKDIR="~/Gits/<project>/docs/qa-session-$(date +%Y-%m-%d)"
-mkdir -p "$WORKDIR/frames"
-
-# 1. Extract audio
-ffmpeg -i "$VIDEO" -vn -acodec pcm_s16le -ar 16000 -ac 1 "$WORKDIR/audio.wav"
-
-# 2. Transcribe
-whisper-cli -m ~/.cache/whisper/ggml-small.bin -f "$WORKDIR/audio.wav" \
-  --output-srt --output-txt -of "$WORKDIR/transcript" -l auto
-
-# 3. Build cues.tsv: action-language transcript segments + scene cues + click logs
+WORKDIR="$HOME/Gits/<project>/docs/qa-session-$(date +%Y-%m-%d-%H%M)"
 SCRIPTS="<qa-video skill dir>/scripts"
-"$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
-
-# 4. Dense action windows (mandatory): 10 fps default, 5-20 allowed, 20 for animations
-"$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
-#    plus one coverage frame every 30s into $WORKDIR/frames
-
-# 5. Read EVERY sheet in index.tsv order; per window: cursor target, before/after
-#    state, visual defects. Cite sheet + tile -> timestamp, else label transcript-only
-# 6. Compile findings doc
+# Dispatcher Bash tool: run_in_background: true
+bash "$SCRIPTS/prepare.sh" "$VIDEO" "$WORKDIR" --fps 10 --mode qa
+# Wait for the background task; verify manifest.json ready: true, then hand its
+# absolute contact_sheets/transcript paths to the restricted visual reader.
+# Compile findings with sheet + tile -> timestamp citations from frames.tsv.
 ```
 
 **For the full step-by-step, load [workflows/process.md](workflows/process.md).**

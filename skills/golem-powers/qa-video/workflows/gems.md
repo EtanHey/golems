@@ -14,21 +14,28 @@ or wants durable insights/takeaways from a video instead of QA findings.
 
 ## Steps
 
-1. Create a scratch directory under `/tmp/qa-video-gems/<slug>/`.
-2. Download metadata and audio:
+1. The dispatcher creates a session directory under `docs.local/qa-video/<slug>/`.
+2. For YouTube, the dispatcher downloads metadata and **video** in its own Bash
+   (audio-only downloads cannot produce sheets):
    ```bash
-   yt-dlp --write-info-json --extract-audio --audio-format wav -o "/tmp/qa-video-gems/<slug>/%(title)s.%(ext)s" "<url>"
+   yt-dlp --write-info-json --merge-output-format mp4 -o "docs.local/qa-video/<slug>/source.%(ext)s" "<url>"
    ```
-3. Transcribe with `whisper-cli`, producing SRT and TXT.
-4. Read the transcript and identify hotspot timestamps for:
-   - surprising insights
-   - strong opinions
-   - technical revelations
-   - hard numbers or benchmark claims
-   - reusable examples, workflows, or warnings
-5. Extract frames at each hotspot timestamp with `yt-dlp`/`ffmpeg`.
-6. Read each frame with transcript context. Capture slide text, code, charts,
-   UI state, speaker claims, and any visual evidence that changes the meaning.
+   Use the actual downloaded video path for `VIDEO`. For local media, use the
+   supplied video directly. `yt-dlp` is required only for remote downloads.
+3. The dispatcher runs `scripts/prepare.sh "$VIDEO" "$WORKDIR" --mode gems`
+   in its own background Bash (`run_in_background: true`), waits for successful
+   completion, and verifies `manifest.json` has `ready: true`. It extracts audio,
+   SRT/TXT, deterministic gem/scene cues, dense sheets and 30-second coverage.
+4. Only then delegate reading: in an Agent-tool context use
+   `Agent(visual-gatherer)` (golems#553) over the manifest's sheets/transcript;
+   in a cmux lane use a `gemini.gather.visual` gatherer pane. Its brief says:
+   "Read manifest.json and the listed sheets/transcript only; never spawn panes,
+   never send_to terminals, never run media tools."
+5. The reader reads every listed sheet in order with transcript context and
+   identifies insights, opinions, revelations, numbers, examples and warnings.
+   Additional media requests go back to the dispatcher for cue/window rebuilds.
+6. Capture slide text, code, charts, UI state and speaker claims with sheet/tile
+   timestamps; distinguish transcript-only claims from visual evidence.
 7. Produce a structured gems note with:
    - source title, URL, channel/speaker, and date if available
    - top gems with timestamps

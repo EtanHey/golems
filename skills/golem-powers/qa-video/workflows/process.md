@@ -9,35 +9,47 @@
 See [stalker-pipeline.md](../references/stalker-pipeline.md) for the full media
 command reference and troubleshooting notes.
 
-## Phase 1: Audio Extraction + Transcription
+## Phase 1: Dispatcher Preparation
+
+The dispatcher runs the single media entry point in its own Bash tool with
+`run_in_background: true`. No media command is delegated to a visual reader.
 
 ```bash
 VIDEO="/path/to/recording.mov"
 : "${PROJECT_ROOT:?set PROJECT_ROOT to the project repo being tested}"
 WORKDIR="${WORKDIR:-$PROJECT_ROOT/docs/qa-session-$(date +%Y-%m-%d-%H%M)}"
 ROUND=1
-
-# Create directory structure
-mkdir -p "$WORKDIR/frames"
-[ "$ROUND" -gt 1 ] && mkdir -p "$WORKDIR/frames-round${ROUND}"
-
-# Suffix for multi-round support
 SUFFIX=""
+# Use a separate preparation directory for each round to retain prior evidence.
 [ "$ROUND" -gt 1 ] && SUFFIX="-round${ROUND}"
-
-# 1. Extract audio
-ffmpeg -i "$VIDEO" -vn -acodec pcm_s16le -ar 16000 -ac 1 "$WORKDIR/audio${SUFFIX}.wav"
-
-# 2. Transcribe with whisper-cli
-whisper-cli -m "$HOME/.cache/whisper/ggml-small.bin" \
-  -f "$WORKDIR/audio${SUFFIX}.wav" \
-  --output-srt --output-txt \
-  -of "$WORKDIR/transcript${SUFFIX}" \
-  -l auto
-# Outputs: transcript.srt (timestamps) + transcript.txt (plain)
+PREPDIR="$WORKDIR/prepared${SUFFIX}"
+SCRIPTS="<qa-video skill dir>/scripts"
+bash "$SCRIPTS/prepare.sh" "$VIDEO" "$PREPDIR" --fps 10 --mode qa
 ```
 
-**Verify:** Read `transcript.srt` — confirm it has content and timestamps look reasonable. If whisper-cli fails, try `mlx_whisper` as fallback.
+Wait for successful background completion, then read `$PREPDIR/manifest.json`
+and require `ready: true`. The manifest contains absolute ordered contact sheets,
+coverage frames, SRT/TXT, cues, index, exact tile timestamps, duration and tool
+versions. Missing dependencies or any failed media step block handoff; failed
+reruns remove the previous ready manifest. `WHISPER_MODEL` overrides the default
+`~/.cache/whisper/ggml-small.bin`. Static media gets an initial fallback window.
+
+Preparation extracts action-language transcript cues and scene cues using the
+existing scripts. If approved click logs exist, the dispatcher adds converted
+video-relative cues (Phase 3c) and rebuilds dense windows before handing off.
+
+## Reader Handoff
+
+In an Agent-tool context use `Agent(visual-gatherer)` (golems#553) over the
+manifest's sheets and transcript. In a cmux lane route the reading to a
+`gemini.gather.visual` gatherer pane. Its brief must say:
+
+> Read manifest.json and the listed sheets/transcript only; never spawn panes,
+> never send_to terminals, never run media tools.
+
+Read every sheet in manifest order. Claude handles semantic synthesis and
+persistence after the reader returns its evidence. The dispatcher owns any
+additional extraction or dense-window rebuild requested by the reader.
 
 ## Phase 2: Transcript Analysis (LLM Hotspot Detection)
 
@@ -58,67 +70,15 @@ For each relevant segment, note the **start timestamp** (seconds from video star
 ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$VIDEO"
 ```
 
-## Phase 3: Frame Extraction
+## Phase 3: Supplemental Dispatcher Cues
 
-Frame types (3a–3d below):
-
-**QA mode** (the default route from SKILL.md) extracts: 3a interval frames as a
-coverage pass only, plus **3d dense action windows (mandatory)**. 3b hotspot
-frames are the sparse, non-QA route (e.g. gems) and never back a QA finding.
-
-### 3a. Regular Interval Frames (every 30 seconds)
-```bash
-DURATION=$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$VIDEO" | cut -d. -f1)
-FRAMEDIR="$WORKDIR/frames${SUFFIX:+"-round${ROUND}"}"
-
-if [[ ! "$DURATION" =~ ^[0-9]+$ ]] || [ "$DURATION" -le 0 ]; then
-  printf 'Could not determine a positive video duration: %s\n' "$DURATION" >&2
-  exit 1
-fi
-
-for t in $(seq 0 30 "$DURATION"); do
-  INTERVAL_TIMESTAMP="$t"
-  ffmpeg -ss "$INTERVAL_TIMESTAMP" -i "$VIDEO" -vframes 1 -q:v 2 "$FRAMEDIR/interval-${INTERVAL_TIMESTAMP}s.jpg" 2>/dev/null
-done
-```
-
-### 3b. Hotspot Frames (with context) — non-QA only
-> **QA mode:** superseded by the mandatory dense action windows (`scripts/dense-windows.sh`, SKILL.md Key Design Decision #2). Single ±5s frames cannot show a click's target or the UI's reaction; use them only outside QA mode.
-
-For each identified hotspot timestamp:
-```bash
-# Example: hotspot at 154 seconds
-HOTSPOT=154
-BEFORE=$((HOTSPOT - 5))
-[ "$BEFORE" -lt 0 ] && BEFORE=0
-AT="$HOTSPOT"
-AFTER=$((HOTSPOT + 5))
-ffmpeg -ss "$BEFORE" -i "$VIDEO" -vframes 1 -q:v 2 "$FRAMEDIR/hotspot-${HOTSPOT}s-before5s.jpg" 2>/dev/null
-ffmpeg -ss "$AT"     -i "$VIDEO" -vframes 1 -q:v 2 "$FRAMEDIR/hotspot-${HOTSPOT}s-at.jpg" 2>/dev/null
-ffmpeg -ss "$AFTER"  -i "$VIDEO" -vframes 1 -q:v 2 "$FRAMEDIR/hotspot-${HOTSPOT}s-after5s.jpg" 2>/dev/null
-```
-
-**Why both:** Regular intervals catch visual bugs described after the fact. Hotspot frames catch the exact moment + context. Together they provide full coverage.
-
-**Two-pass frame extraction (non-QA only):** In practice, the first pass extracts frames at ALL identified hotspot timestamps (may be 20-30). After reading a subset of frames, you'll identify which are redundant. The second pass refines — deduplicate similar timestamps and extract only the most informative set. Don't try to perfectly select timestamps upfront.
-
-**If ffmpeg fails with exit code 234:** Retry with background execution:
-```bash
-# Re-run the exact failed command in the background, preserving its established
-# timestamp and output filename. Choose the matching command; do not invent a
-# third filename pattern.
-
-# Regular interval retry:
-ffmpeg -ss "$INTERVAL_TIMESTAMP" -i "$VIDEO" -vframes 1 -q:v 2 \
-  "$FRAMEDIR/interval-${INTERVAL_TIMESTAMP}s.jpg" 2>/dev/null &
-
-# Hotspot-at retry (for a failed before/after frame, preserve that command's
-# BEFORE/AFTER timestamp and before5s/after5s filename instead):
-ffmpeg -ss "$AT" -i "$VIDEO" -vframes 1 -q:v 2 \
-  "$FRAMEDIR/hotspot-${HOTSPOT}s-at.jpg" 2>/dev/null &
-```
-Wait for the selected retry, then verify its expected file exists and is not
-empty.
+`prepare.sh` already produces dense windows and 30-second coverage frames.
+Coverage frames flag places needing further dense inspection; they never back a
+visual finding alone. If transcript analysis or coverage reveals a missed cue,
+the dispatcher adds it to the manifest's cues file, runs `dense-windows.sh` and
+removes readiness before rebuilding, validates the new artifacts, and atomically
+republishes the manifest's ordered sheet list before a new reader handoff. The
+reader reports requested timestamps and never executes extraction commands.
 
 ### 3c. Click Correlation (when `clicks.jsonl` exists)
 
@@ -132,14 +92,13 @@ click as a row in `cues.tsv` (3d) instead of relying on the single click frame.
 
 ### 3d. Dense Action Windows (QA mode — mandatory)
 
-Build `cues.tsv` (`start_s<TAB>end_s<TAB>label`) from action-language transcript
-segments, `scripts/scene-cues.sh` output and click logs (SKILL.md Key Design
-Decision #2), then:
+Preparation already builds `cues.tsv` (`start_s<TAB>end_s<TAB>label`) from
+transcript and scene cues. For supplemental approved click or reader cues, the
+dispatcher invalidates readiness, appends cues, then rebuilds:
 
 ```bash
 SCRIPTS="<qa-video skill dir>/scripts"
-"$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
-"$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense${SUFFIX}" 10
+"$SCRIPTS/dense-windows.sh" "$VIDEO" "$PREPDIR/cues.tsv" "$PREPDIR/dense" 10
 ```
 
 Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
@@ -147,10 +106,10 @@ Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
 (`sheet_file<TAB>tile<TAB>t_s`, the real PTS of every tile). Take citation
 timestamps from `frames.tsv`.
 
-## Phase 4: Claude Vision Analysis
+## Phase 4: Visual Reader Analysis
 
 **QA mode: read EVERY contact sheet listed in `index.tsv`, in order** (they're
-images — use the Read tool). No sampling, no "8-12 strategic frames": skipping a
+images — use the Read tool). No sampling: skipping a
 sheet means its window was never reviewed, and a finding from an unread sheet is
 invalid. If there are too many sheets for one pass, split them across batches
 (or the Gemini gatherer, Key Design Decision #10) — but every sheet is read.
@@ -171,16 +130,6 @@ For each window (sheet), state:
 timestamp from `frames.tsv` (e.g. `sheet_004.jpg tile 7 → 12.700s`). A finding
 without a sheet citation is transcript-only and must be labelled
 **transcript-only**.
-
-*Non-QA sparse route (e.g. gems):* reading 8-12 strategically chosen hotspot
-frames is fine there; it is never acceptable for QA findings.
-
-For each non-QA frame:
-
-1. What page/component is showing?
-2. Is there a visible bug, error message, or unexpected state?
-3. Does the screen match what the user was describing at this timestamp?
-4. Any UI issues not mentioned in narration (layout, alignment, contrast, responsiveness)?
 
 **Correlate** each frame with the corresponding SRT segment. The key advantage: you get BOTH what the user SAID and what they SAW, aligned by timestamp.
 
