@@ -10730,6 +10730,282 @@
         ]
       },
       "node_aliases": {}
+    },
+    {
+      "original_path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+      "pre_split_sha": "a1e808361514abbaf00f320ec8dcbf7b791f8dff",
+      "split_sha": "dbe389da016fef35a339b6530ad096c8496b31fd",
+      "parts": [
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/write_targets.py",
+        "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py"
+      ],
+      "assignments": {
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/write_targets.py": [
+          [
+            6,
+            0,
+            286
+          ],
+          [
+            7,
+            1,
+            276
+          ],
+          [
+            8,
+            2,
+            276
+          ],
+          [
+            9,
+            3,
+            268
+          ],
+          [
+            10,
+            4,
+            268
+          ],
+          [
+            11,
+            5,
+            268
+          ],
+          [
+            12,
+            6,
+            196
+          ],
+          [
+            13,
+            7,
+            196
+          ],
+          [
+            14,
+            8,
+            196
+          ],
+          [
+            15,
+            9,
+            196
+          ],
+          [
+            16,
+            10,
+            196
+          ],
+          [
+            17,
+            11,
+            184
+          ],
+          [
+            18,
+            12,
+            184
+          ],
+          [
+            19,
+            13,
+            184
+          ],
+          [
+            20,
+            14,
+            67
+          ],
+          [
+            21,
+            15,
+            67
+          ],
+          [
+            22,
+            16,
+            67
+          ],
+          [
+            23,
+            17,
+            67
+          ],
+          [
+            24,
+            18,
+            53
+          ],
+          [
+            25,
+            19,
+            7
+          ],
+          [
+            26,
+            20,
+            7
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py": [
+          [
+            0,
+            0,
+            810
+          ],
+          [
+            1,
+            1,
+            694
+          ],
+          [
+            2,
+            2,
+            694
+          ],
+          [
+            3,
+            3,
+            694
+          ],
+          [
+            4,
+            4,
+            689
+          ],
+          [
+            5,
+            5,
+            646
+          ],
+          [
+            27,
+            6,
+            344
+          ],
+          [
+            28,
+            7,
+            344
+          ],
+          [
+            29,
+            8,
+            344
+          ],
+          [
+            30,
+            9,
+            344
+          ],
+          [
+            31,
+            10,
+            253
+          ],
+          [
+            32,
+            11,
+            253
+          ],
+          [
+            33,
+            12,
+            253
+          ],
+          [
+            34,
+            13,
+            252
+          ],
+          [
+            35,
+            14,
+            252
+          ],
+          [
+            36,
+            15,
+            239
+          ],
+          [
+            37,
+            16,
+            228
+          ],
+          [
+            38,
+            17,
+            228
+          ],
+          [
+            39,
+            18,
+            228
+          ],
+          [
+            40,
+            19,
+            221
+          ],
+          [
+            41,
+            20,
+            221
+          ],
+          [
+            42,
+            21,
+            221
+          ],
+          [
+            43,
+            22,
+            207
+          ],
+          [
+            44,
+            23,
+            203
+          ],
+          [
+            45,
+            24,
+            203
+          ],
+          [
+            46,
+            25,
+            203
+          ],
+          [
+            47,
+            26,
+            203
+          ],
+          [
+            48,
+            27,
+            181
+          ],
+          [
+            49,
+            28,
+            181
+          ],
+          [
+            50,
+            29,
+            149
+          ],
+          [
+            51,
+            30,
+            149
+          ]
+        ]
+      },
+      "node_aliases": {}
     }
   ],
   "files": {
@@ -11292,51 +11568,30 @@
       "0a9c788625bb6461de2b0c2afde47ec8d3866bbf28e23db3202644670e556820": 1,
       "14a6e03112915da93f60149d317a8d189f5ee498e51c306f1abd6681780b44fb": 1,
       "1c1bc979ad7583efe0b6d650888d9897864414a3cbae8fd956b848ee6dcccc4e": 1,
-      "1fea8d71e3d15d0238e322a4571a4794e7c2700f8f3348f1091ef3156c45f230": 1,
       "2661459fc0f04bb6eaaf174838bd927692e05f9daee746edd8f956cc95c730b0": 1,
-      "2bd8ee30bb6ef7c8af0334c65bbd863e224c6c2ea337ec2d49e144dd889604e6": 1,
       "33bc66cdbb73dfc63ef14fe4ce437911154995f735d67a25a893e3aa5f3da09b": 1,
       "381f9bfc69d49d39040a7d5fc3197ce385019a2ba2de649622f841a8c658ed37": 1,
       "3a2f90d3c6caff86628a6d4364ca53959d57df8905cbd648545be2aa69c8fd7c": 1,
-      "3add03a8e7b45885e8c11950762115ea90bf40955d1692f8d2319a215679751c": 1,
-      "3cf7bacea6ede2ceb35027da7246b4418159ee73afbc8aa208356fab8ad6b85c": 1,
       "48f4e95f25e04129169c46f92547a80c8210514266a30b5a68af05662a810414": 1,
       "56270e4f4d0fbae6be2ec7a012781e105aff5cfabef7d36deb4e78ee22b8722a": 1,
-      "5a32ff084b28843635e3010fdb83dd708877c2d63bad1a43319ff0712ab16803": 1,
       "603262b2a7c3338affde44bbc0aad9fc8a4c80fc75cefd895584b94026f2f875": 1,
-      "670d331843fda9ffc7b55db82ff01ef3da2c311e0d2f61b793ab612788022851": 1,
-      "681dd020721861b01940686e861ba9a69e16feec2ad6895eeb96467e99c700b6": 1,
-      "6d529e545ad90d2d72cce59c4a07d5a14abede1b2516dd330c9a53e8a4f32b68": 1,
       "6e5738caaeb82612a20bdb55ce9e5f7f9a6e27c8e0f4409b5ce0d17fe91de4e1": 1,
-      "72b8de68a003817c036d35d2d607f74bc404e739a4134dc8bb7b488d8f5c3e86": 1,
-      "73b2c0dc621ecc7c97a6f138ca5b4fb48d68f88bb8340d28d238b5f413fba474": 1,
       "79908d1e00a0ffa340c55cc78ff7925f7e697c2a87152e271f82fe785bbb6a53": 1,
-      "7a40e2cbfd4f6b8012f4f9edf4a7f9565f755ebadb6ee503f44c8b05825b1a70": 1,
-      "7dcb14687289c64ebd2a7a3e5bd08c8c7b28c823256cf319012ed503eedd8d80": 1,
       "8516eeb6ab1506eb6546b881109d59de9a3cec1e17d0361e3ae074d2c62e5ce2": 1,
-      "872b518ba01846eda08f71854499d14b4d90574370dcb7764ccefa681c5fc765": 1,
-      "8c986cf6d16ad61ef4f8c86cea0c570ca8205ba58576775dc398a1df94d99136": 1,
       "a2a3c79cb6f48a94fdf67b3badbe7d40b88808e5354b409b68d62257cb849a46": 1,
-      "ab35986679ad4d350a62d50ba32000c6e8e3cefde98c60aa934e5da80333644d": 1,
       "aff0ae78307c57111a552b96805d5f20328aac16750164dc8358f0f9027daf4e": 1,
       "b042ed75c7b9169683cb3f645ac947d678d023cc619500bc1eb02ae5996a0824": 1,
       "b12a0bd26e6c31c005b273ae049d3d2b18e9c2d7382a8f749fbfe616f974529e": 1,
       "b16fee50f34da8d0be3d3f5e654f90726b67805f099aa7553f62722fa98ec86e": 1,
-      "b27d242af5aa59dcfa54f770a981802209c99ea7102e5787752b6dcc8ac35339": 1,
       "b5cfc5bf856d5530ec61c6730919369b78b25e194e8153d86efc749681b75fdb": 1,
-      "b6b279ed279d803564781390616ae5ab38cef6c23fbc31476791621a3fc396cd": 1,
       "b9383c59bf804da41d514cbb610da765cb5a774c8351fa39d2b5c15ec0d76a24": 1,
       "c666e8f4921dd674f25ec2b01549b53872c459fa7d8da70c306444ebf1da7814": 1,
       "c9bd7f692c1bf093b16b47cd32150daae6f332948e34f7a464b30ac49433d796": 1,
-      "caae48c4e9150cc7f323f873df71e9083ddd31da9dcb0d1678abbedff4d98deb": 1,
       "cd6b41cd54528ee9dc5876d688e2c4369bee0d885ba3660b96c011112aca4943": 1,
       "d19aada00c513f95c15f80130421ffbde2be4f60cf746de151f7dc48be584001": 1,
       "d33c5a8695ac6d42e5544fc05f64a63eae877db4a325b6669052955f02eecc57": 1,
       "d698841d3e6830ddf78628e4e54dfc88f99ebcc0f7d1a58b69176de27156810f": 1,
-      "d96ded12236d592a732ede0e1a9138cd7d012ae94dc03a5350ad580253db2c74": 1,
       "da11de89a0e8ab9d0b1579463c71d1d6737e5124f7e7c06e68645261bd4242c0": 1,
-      "e3567a418cd855e983fa5eac27a7a8dd718f09d891b4643125fd5921dda26ef2": 1,
-      "f0516704204fd36a3a70081c7588b15068786eec24fb22f8bcbf9a3dfbbe5331": 1,
       "f5f27c4765770a0567dc426686a57502f55da4efca59f53e0e28e13069576525": 1,
       "fac6408d6b9a34a0658cb16cb247a46e42987aedbf1fec6f2661f2e205dbbbc7": 1
     },
@@ -11501,6 +11756,29 @@
     },
     "skills/golem-powers/tmp-block/hooks/tmp_block_impl/worktrees.py": {
       "6c81eee714f2a793a0910b3579e1fe73c3dfd75aaf1a375ef62cfbade620509b": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tmp_block_impl/write_targets.py": {
+      "1fea8d71e3d15d0238e322a4571a4794e7c2700f8f3348f1091ef3156c45f230": 1,
+      "2bd8ee30bb6ef7c8af0334c65bbd863e224c6c2ea337ec2d49e144dd889604e6": 1,
+      "3add03a8e7b45885e8c11950762115ea90bf40955d1692f8d2319a215679751c": 1,
+      "3cf7bacea6ede2ceb35027da7246b4418159ee73afbc8aa208356fab8ad6b85c": 1,
+      "5a32ff084b28843635e3010fdb83dd708877c2d63bad1a43319ff0712ab16803": 1,
+      "670d331843fda9ffc7b55db82ff01ef3da2c311e0d2f61b793ab612788022851": 1,
+      "681dd020721861b01940686e861ba9a69e16feec2ad6895eeb96467e99c700b6": 1,
+      "6d529e545ad90d2d72cce59c4a07d5a14abede1b2516dd330c9a53e8a4f32b68": 1,
+      "72b8de68a003817c036d35d2d607f74bc404e739a4134dc8bb7b488d8f5c3e86": 1,
+      "73b2c0dc621ecc7c97a6f138ca5b4fb48d68f88bb8340d28d238b5f413fba474": 1,
+      "7a40e2cbfd4f6b8012f4f9edf4a7f9565f755ebadb6ee503f44c8b05825b1a70": 1,
+      "7dcb14687289c64ebd2a7a3e5bd08c8c7b28c823256cf319012ed503eedd8d80": 1,
+      "872b518ba01846eda08f71854499d14b4d90574370dcb7764ccefa681c5fc765": 1,
+      "8c986cf6d16ad61ef4f8c86cea0c570ca8205ba58576775dc398a1df94d99136": 1,
+      "ab35986679ad4d350a62d50ba32000c6e8e3cefde98c60aa934e5da80333644d": 1,
+      "b27d242af5aa59dcfa54f770a981802209c99ea7102e5787752b6dcc8ac35339": 1,
+      "b6b279ed279d803564781390616ae5ab38cef6c23fbc31476791621a3fc396cd": 1,
+      "caae48c4e9150cc7f323f873df71e9083ddd31da9dcb0d1678abbedff4d98deb": 1,
+      "d96ded12236d592a732ede0e1a9138cd7d012ae94dc03a5350ad580253db2c74": 1,
+      "e3567a418cd855e983fa5eac27a7a8dd718f09d891b4643125fd5921dda26ef2": 1,
+      "f0516704204fd36a3a70081c7588b15068786eec24fb22f8bcbf9a3dfbbe5331": 1
     }
   }
 }
