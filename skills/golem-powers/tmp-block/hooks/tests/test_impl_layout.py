@@ -182,3 +182,27 @@ assert scan.tokens and len(scan.tokens) == len(scan.cmd_pos) == len(scan.seg_of)
     result = subprocess.run([sys.executable, "-B", str(probe), str(HOOK)],
                             capture_output=True, text=True, timeout=20)
     assert (result.returncode, result.stdout, result.stderr) == (0, "", ""), result.stderr
+
+
+@pytest.mark.parametrize("registered", [False, True])
+def test_response_and_deadline_owners_stay_in_facade(tmp_path, registered):
+    probe = tmp_path / "owners.py"
+    probe.write_text("""import importlib.util, sys
+spec = importlib.util.spec_from_file_location('s2_owner', sys.argv[1])
+hook = importlib.util.module_from_spec(spec)
+if sys.argv[2] == 'True': sys.modules[spec.name] = hook
+spec.loader.exec_module(hook)
+for name in ('_deny_policy_import_failure', 'allow', 'advise',
+             'refuse_or_advise_dynamic', 'refuse_unresolvable', 'deny',
+             '_main_under_deadline', 'main'):
+    function = getattr(hook, name)
+    assert function.__module__ == hook.__name__, name
+    assert function.__globals__ is hook.__dict__, name
+for name, function in vars(hook).items():
+    code = getattr(function, '__code__', None)
+    if code and {'policy_evaluation_deadline', 'cancel_policy_evaluation_deadline', '_main_under_deadline'} & set(code.co_names):
+        assert function.__globals__ is hook.__dict__, name
+""")
+    result = subprocess.run([sys.executable, "-B", str(probe), str(HOOK), str(registered)],
+                            capture_output=True, text=True, timeout=20)
+    assert (result.returncode, result.stdout, result.stderr) == (0, "", ""), result.stderr
