@@ -6,6 +6,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Six images leave room for per-image paths and compact findings under 2000 chars.
+FIRST_BATCH_SIZE = 6
+
 
 def model_id(tier, listing):
     # agy models orders current models first; use its concrete ID, never guess.
@@ -44,7 +47,10 @@ def parse(result, paths):
 
 def gather(paths, run):
     paths = list(dict.fromkeys(paths))
-    found = parse(run(paths), paths)
+    found = {}
+    for start in range(0, len(paths), FIRST_BATCH_SIZE):
+        batch = paths[start:start + FIRST_BATCH_SIZE]
+        found.update(parse(run(batch), batch))
     # One retry round, smaller batches, one call stream at a time. A singleton
     # cannot shrink; retry it once. No recursive retry or guessed observations.
     for path in paths:
@@ -78,7 +84,9 @@ def main():
         paths = list(dict.fromkeys(args.images))
         if any(not Path(p).is_absolute() or not Path(p).is_file() for p in paths):
             raise ValueError('supply existing absolute image paths')
-        repo = Path(__file__).resolve().parents[4]
+        repo = Path(subprocess.check_output(
+            ['git', '-C', str(Path(__file__).resolve().parent), 'rev-parse', '--show-toplevel'],
+            text=True, timeout=10).strip())
         tier = subprocess.check_output(['node', str(repo / 'scripts/model-roles.mjs'),
                                        'gemini.gather.visual', '--field', 'launcher_tier'],
                                       text=True, timeout=10).strip()

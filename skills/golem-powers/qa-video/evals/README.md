@@ -10,6 +10,8 @@ Document Reads are allowed; image Reads and Reads without an auditable path fail
 `python3 evals/run_suite.py --live` runs the real helper twice, sequentially:
 synthetic accuracy, then a forced 1ms print timeout with one singleton retry round.
 Never run this concurrently with another Gemini call stream. Default CI is offline.
+The first round uses batches of at most six images; only missing results from
+those batches receive one serial singleton retry.
 Timeout and stream/truncation recovery are also covered in `../tests/`.
 
 Fixtures are generated, synthetic 480x240 RGB PNGs: Arial 28px labels, white

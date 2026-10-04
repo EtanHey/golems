@@ -27,6 +27,32 @@ def test_success_is_capped_and_paths_are_explicit():
     assert len(text) <= 2500
 
 
+def test_twenty_images_use_four_first_round_batches():
+    paths = [f'/{i}.png' for i in range(20)]
+    calls = []
+    def run(batch):
+        calls.append(batch)
+        return result([{'path': p, 'finding': 'visible'} for p in batch])
+    text = v.gather(paths, run)
+    assert calls == [paths[0:6], paths[6:12], paths[12:18], paths[18:20]]
+    assert 'Coverage: 20/20; complete' in text
+
+
+def test_only_failed_batch_members_get_one_singleton_retry():
+    paths = [f'/{i}.png' for i in range(20)]
+    calls = []
+    failed = paths[6:12]
+    def run(batch):
+        calls.append(batch)
+        if batch == failed or batch == [failed[0]]:
+            return CompletedProcess([], 1, '', 'timeout')
+        return result([{'path': p, 'finding': 'visible'} for p in batch])
+    text = v.gather(paths, run)
+    assert calls == [paths[0:6], failed, paths[12:18], paths[18:20]] + [[p] for p in failed]
+    assert 'Coverage: 19/20; partial' in text
+    assert f'{failed[0]}: NOT DETERMINED' in text
+
+
 @pytest.mark.parametrize('failure', [
     CompletedProcess([], 1, '', 'print timeout'),
     CompletedProcess([], 0, '<truncated', ''),
@@ -74,14 +100,21 @@ def test_model_id_is_resolved_from_available_models():
 def test_cli_adds_only_supplied_image_directories(monkeypatch, capsys):
     image = str(SKILL / 'evals/fixtures/alpha.png')
     commands = []
+    lookups = []
     monkeypatch.setattr(v.sys, 'argv', ['visual', '--question', 'OCR', image])
-    monkeypatch.setattr(v.subprocess, 'check_output', lambda args, **kw:
-                        'flash-high' if args[0] == 'node' else 'gemini-3.8-flash-high\tGemini 3.8 Flash (High)')
+    def check_output(args, **kwargs):
+        lookups.append(args)
+        if args[0] == 'git':
+            return '/discovered-checkout\n'
+        return 'flash-high' if args[0] == 'node' else 'gemini-3.8-flash-high\tGemini 3.8 Flash (High)'
+    monkeypatch.setattr(v.subprocess, 'check_output', check_output)
     def run(args, **kwargs):
         commands.append(args)
         return result([{'path': image, 'finding': 'ALPHA'}])
     monkeypatch.setattr(v.subprocess, 'run', run)
     assert v.main() == 0
+    assert lookups[0] == ['git', '-C', str((SKILL / 'scripts').resolve()), 'rev-parse', '--show-toplevel']
+    assert lookups[1][1] == '/discovered-checkout/scripts/model-roles.mjs'
     assert commands[0][-2:] == ['--add-dir', str(Path(image).parent)]
     assert '--dangerously-skip-permissions' not in commands[0]
     assert 'Coverage: 1/1; complete' in capsys.readouterr().out
