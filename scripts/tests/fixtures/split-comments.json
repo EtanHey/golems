@@ -10412,6 +10412,324 @@
         ]
       },
       "node_aliases": {}
+    },
+    {
+      "original_path": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+      "pre_split_sha": "cc04137d516bc10988f83dd4acc7115c3cc954b7",
+      "split_sha": "29f13e5969e66057f45ecee2ab62a6019ff4a665",
+      "parts": [
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/worktree_args.py",
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/worktrees.py",
+        "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py"
+      ],
+      "assignments": {
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/worktree_args.py": [
+          [
+            6,
+            0,
+            47
+          ],
+          [
+            7,
+            1,
+            46
+          ],
+          [
+            8,
+            2,
+            41
+          ],
+          [
+            9,
+            3,
+            41
+          ],
+          [
+            10,
+            4,
+            41
+          ],
+          [
+            11,
+            5,
+            7
+          ],
+          [
+            12,
+            6,
+            7
+          ],
+          [
+            13,
+            7,
+            7
+          ]
+        ],
+        "skills/golem-powers/tmp-block/hooks/tmp_block_impl/worktrees.py": [],
+        "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py": [
+          [
+            0,
+            0,
+            1046
+          ],
+          [
+            1,
+            1,
+            931
+          ],
+          [
+            2,
+            2,
+            931
+          ],
+          [
+            3,
+            3,
+            931
+          ],
+          [
+            4,
+            4,
+            926
+          ],
+          [
+            5,
+            5,
+            883
+          ],
+          [
+            14,
+            6,
+            656
+          ],
+          [
+            15,
+            7,
+            646
+          ],
+          [
+            16,
+            8,
+            646
+          ],
+          [
+            17,
+            9,
+            638
+          ],
+          [
+            18,
+            10,
+            638
+          ],
+          [
+            19,
+            11,
+            638
+          ],
+          [
+            20,
+            12,
+            566
+          ],
+          [
+            21,
+            13,
+            566
+          ],
+          [
+            22,
+            14,
+            566
+          ],
+          [
+            23,
+            15,
+            566
+          ],
+          [
+            24,
+            16,
+            566
+          ],
+          [
+            25,
+            17,
+            565
+          ],
+          [
+            26,
+            18,
+            565
+          ],
+          [
+            27,
+            19,
+            565
+          ],
+          [
+            28,
+            20,
+            448
+          ],
+          [
+            29,
+            21,
+            448
+          ],
+          [
+            30,
+            22,
+            448
+          ],
+          [
+            31,
+            23,
+            448
+          ],
+          [
+            32,
+            24,
+            445
+          ],
+          [
+            33,
+            25,
+            399
+          ],
+          [
+            34,
+            26,
+            399
+          ],
+          [
+            35,
+            27,
+            328
+          ],
+          [
+            36,
+            28,
+            328
+          ],
+          [
+            37,
+            29,
+            328
+          ],
+          [
+            38,
+            30,
+            328
+          ],
+          [
+            39,
+            31,
+            237
+          ],
+          [
+            40,
+            32,
+            237
+          ],
+          [
+            41,
+            33,
+            237
+          ],
+          [
+            42,
+            34,
+            236
+          ],
+          [
+            43,
+            35,
+            236
+          ],
+          [
+            44,
+            36,
+            223
+          ],
+          [
+            45,
+            37,
+            212
+          ],
+          [
+            46,
+            38,
+            212
+          ],
+          [
+            47,
+            39,
+            212
+          ],
+          [
+            48,
+            40,
+            205
+          ],
+          [
+            49,
+            41,
+            205
+          ],
+          [
+            50,
+            42,
+            205
+          ],
+          [
+            51,
+            43,
+            191
+          ],
+          [
+            52,
+            44,
+            187
+          ],
+          [
+            53,
+            45,
+            187
+          ],
+          [
+            54,
+            46,
+            187
+          ],
+          [
+            55,
+            47,
+            187
+          ],
+          [
+            56,
+            48,
+            165
+          ],
+          [
+            57,
+            49,
+            165
+          ],
+          [
+            58,
+            50,
+            133
+          ],
+          [
+            59,
+            51,
+            133
+          ]
+        ]
+      },
+      "node_aliases": {}
     }
   ],
   "files": {
@@ -10972,13 +11290,10 @@
       "03065de17a3b5c8c2f453ed7adea2afe121e8e25955ecb47dd150af587fcbc26": 1,
       "088417a75e10ecaa37611f90eeea6afdebbb2078b2c30df7e82f5ffb64e90c87": 1,
       "0a9c788625bb6461de2b0c2afde47ec8d3866bbf28e23db3202644670e556820": 1,
-      "11676b9e688375fec3d1aab27bf33f684eea273254ce10326a86213add4c98ff": 1,
-      "125400d53d0a7d292234bbb8f22cde33888a4dbbd8eac9b8c718145e010cb18c": 1,
       "14a6e03112915da93f60149d317a8d189f5ee498e51c306f1abd6681780b44fb": 1,
       "1c1bc979ad7583efe0b6d650888d9897864414a3cbae8fd956b848ee6dcccc4e": 1,
       "1fea8d71e3d15d0238e322a4571a4794e7c2700f8f3348f1091ef3156c45f230": 1,
       "2661459fc0f04bb6eaaf174838bd927692e05f9daee746edd8f956cc95c730b0": 1,
-      "27e16d41df2ba36e0d5cf051b3e9eafa8fc689c04465cf22d6d3a92d04c261d8": 1,
       "2bd8ee30bb6ef7c8af0334c65bbd863e224c6c2ea337ec2d49e144dd889604e6": 1,
       "33bc66cdbb73dfc63ef14fe4ce437911154995f735d67a25a893e3aa5f3da09b": 1,
       "381f9bfc69d49d39040a7d5fc3197ce385019a2ba2de649622f841a8c658ed37": 1,
@@ -11001,8 +11316,6 @@
       "8516eeb6ab1506eb6546b881109d59de9a3cec1e17d0361e3ae074d2c62e5ce2": 1,
       "872b518ba01846eda08f71854499d14b4d90574370dcb7764ccefa681c5fc765": 1,
       "8c986cf6d16ad61ef4f8c86cea0c570ca8205ba58576775dc398a1df94d99136": 1,
-      "9189dde161ed56e85dda5a186faaea790e7cade853d2413d4b6d361c4def7faa": 1,
-      "978e4c3e1367efae38ec50a46da5c8da374cd627a561c13f1a7fc73b9d69a487": 1,
       "a2a3c79cb6f48a94fdf67b3badbe7d40b88808e5354b409b68d62257cb849a46": 1,
       "ab35986679ad4d350a62d50ba32000c6e8e3cefde98c60aa934e5da80333644d": 1,
       "aff0ae78307c57111a552b96805d5f20328aac16750164dc8358f0f9027daf4e": 1,
@@ -11013,19 +11326,16 @@
       "b5cfc5bf856d5530ec61c6730919369b78b25e194e8153d86efc749681b75fdb": 1,
       "b6b279ed279d803564781390616ae5ab38cef6c23fbc31476791621a3fc396cd": 1,
       "b9383c59bf804da41d514cbb610da765cb5a774c8351fa39d2b5c15ec0d76a24": 1,
-      "bb5fcc31e7668fb6427d4f2ec3ae7dc618b035041c60b2b8ff55fb5d5fa481a2": 1,
       "c666e8f4921dd674f25ec2b01549b53872c459fa7d8da70c306444ebf1da7814": 1,
       "c9bd7f692c1bf093b16b47cd32150daae6f332948e34f7a464b30ac49433d796": 1,
       "caae48c4e9150cc7f323f873df71e9083ddd31da9dcb0d1678abbedff4d98deb": 1,
       "cd6b41cd54528ee9dc5876d688e2c4369bee0d885ba3660b96c011112aca4943": 1,
       "d19aada00c513f95c15f80130421ffbde2be4f60cf746de151f7dc48be584001": 1,
       "d33c5a8695ac6d42e5544fc05f64a63eae877db4a325b6669052955f02eecc57": 1,
-      "d5496d75219a91f07d4ceb501c5d6ddcd268e1c8e4ead7f4e0588c11c56aaf6c": 1,
       "d698841d3e6830ddf78628e4e54dfc88f99ebcc0f7d1a58b69176de27156810f": 1,
       "d96ded12236d592a732ede0e1a9138cd7d012ae94dc03a5350ad580253db2c74": 1,
       "da11de89a0e8ab9d0b1579463c71d1d6737e5124f7e7c06e68645261bd4242c0": 1,
       "e3567a418cd855e983fa5eac27a7a8dd718f09d891b4643125fd5921dda26ef2": 1,
-      "e9412829eede44b4375f8a485528e3a74394c4670266dfa18bc1bc8a3363e293": 1,
       "f0516704204fd36a3a70081c7588b15068786eec24fb22f8bcbf9a3dfbbe5331": 1,
       "f5f27c4765770a0567dc426686a57502f55da4efca59f53e0e28e13069576525": 1,
       "fac6408d6b9a34a0658cb16cb247a46e42987aedbf1fec6f2661f2e205dbbbc7": 1
@@ -11178,6 +11488,19 @@
       "dfc9bd20fcfd254b03a3da9532c50399d8f2b85e2e5fe72cc80b4c7f0d50e340": 1,
       "ee0ec5dd00f26bf4f888b000dc84531f45d96fe540a2b18e940e488c64a4a55f": 1,
       "efe758edd073fe7ce628ff33c7539447af1f17621316b7940212f9647e0d2f67": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tmp_block_impl/worktree_args.py": {
+      "11676b9e688375fec3d1aab27bf33f684eea273254ce10326a86213add4c98ff": 1,
+      "125400d53d0a7d292234bbb8f22cde33888a4dbbd8eac9b8c718145e010cb18c": 1,
+      "27e16d41df2ba36e0d5cf051b3e9eafa8fc689c04465cf22d6d3a92d04c261d8": 1,
+      "9189dde161ed56e85dda5a186faaea790e7cade853d2413d4b6d361c4def7faa": 1,
+      "978e4c3e1367efae38ec50a46da5c8da374cd627a561c13f1a7fc73b9d69a487": 1,
+      "bb5fcc31e7668fb6427d4f2ec3ae7dc618b035041c60b2b8ff55fb5d5fa481a2": 1,
+      "d5496d75219a91f07d4ceb501c5d6ddcd268e1c8e4ead7f4e0588c11c56aaf6c": 1,
+      "e9412829eede44b4375f8a485528e3a74394c4670266dfa18bc1bc8a3363e293": 1
+    },
+    "skills/golem-powers/tmp-block/hooks/tmp_block_impl/worktrees.py": {
+      "6c81eee714f2a793a0910b3579e1fe73c3dfd75aaf1a375ef62cfbade620509b": 1
     }
   }
 }
