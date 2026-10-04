@@ -114,7 +114,7 @@ def main():
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--check", action="store_true")
     p.add_argument("--force-repo", action="append", default=[], metavar="NAME")
-    p.add_argument("--agents-only", action="store_true", help="install the gatherer/brain-worker pair without repo context writes")
+    p.add_argument("--agents-only", action="store_true", help="install gatherer, brain-worker and video-qa without repo context writes")
     p.add_argument("--lead-persona", type=Path, help="private persona source; never inserted into GEMINI.md")
     p.add_argument("--lead-agent", help="registry agentByCli.gemini name for the private persona")
     a = p.parse_args()
@@ -131,7 +131,7 @@ def main():
         p.error("--force-repo names must exist in this registry")
     template = (ROOT / "templates/gemini/GEMINI.md").read_bytes()
     agents = {name: (ROOT / f"templates/gemini/agents/{name}.md").read_bytes()
-              for name in ("gatherer", "brain-worker")}
+              for name in ("gatherer", "brain-worker", "video-qa")}
     # agy 1.2.14 needs absolute directory dependencies; bare names silently fail.
     worker_dir = home / ".gemini/antigravity-cli/agents/brain-worker"
     marker = b"agents: [brain-worker]"

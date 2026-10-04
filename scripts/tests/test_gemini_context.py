@@ -36,6 +36,9 @@ def test_dry_run_and_apply_are_separate_and_idempotent(tmp_path):
     worker = home / ".gemini/antigravity-cli/agents/brain-worker/agent.md"
     assert worker.read_bytes() == (ROOT / "templates/gemini/agents/brain-worker.md").read_bytes()
     assert worker.stat().st_mode & 0o777 == 0o600
+    video_qa = home / ".gemini/antigravity-cli/agents/video-qa.md"
+    assert video_qa.read_bytes() == (ROOT / "templates/gemini/agents/video-qa.md").read_bytes()
+    assert video_qa.stat().st_mode & 0o777 == 0o600
     assert run(home, registry, "--apply").returncode == 0
     assert not list(home.glob(".golems/backups/gemini-md/*/*"))
     assert run(home, registry, "--check").returncode == 0
@@ -52,6 +55,9 @@ def test_agents_only_renders_dependency_without_touching_repo_context(tmp_path):
     assert f"agents: [{json.dumps(str(worker_dir))}]" in gatherer.read_text()
     assert "inheritMcp: false" in gatherer.read_text().split("---", 2)[1]
     assert (worker_dir / "agent.md").exists()
+    video_qa = home / ".gemini/antigravity-cli/agents/video-qa.md"
+    assert video_qa.read_bytes() == (ROOT / "templates/gemini/agents/video-qa.md").read_bytes()
+    assert "inheritMcp: false" in video_qa.read_text().split("---", 2)[1]
     assert run(home, registry, "--apply", "--agents-only").returncode == 0
     assert not list(home.glob(".golems/backups/gemini-md/*/*"))
 
