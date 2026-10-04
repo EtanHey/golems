@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-09-30",
+  "updated": "2026-10-01",
   "swap_rule": "A model change = bench it with the skill-creator harness, then edit ONE line here. No skill/agent file names a role-owned model directly (drift lint).",
   "roles": {
     "claude.judgment": {
@@ -19,6 +19,11 @@
     "codex.implement": {
       "model": "gpt-6.1-sol",
       "use_for": "all non-UX/UI implementation (Etan 2026-09-29 split)"
+    },
+    "codex.security": {
+      "model": "gpt-6.1-sol",
+      "use_for": "security implementation (interim Blue-less route)",
+      "gate": "Daybreak Blue resumes this role when Etan has hardware keys: one-line model swap"
     },
     "codex.subagent.mechanical": {
       "model": "gpt-6-luna",

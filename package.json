@@ -19,6 +19,7 @@
     "ajv": "^8.18.0",
     "parse5": "7.3.0",
     "tmi.js": "^1.8.5",
+    "varlock": "1.21.1",
     "yaml": "^2.8.3"
   },
   "devDependencies": {

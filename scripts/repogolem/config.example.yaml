@@ -22,9 +22,9 @@ global:
   # prelaunch: ["export EXAMPLE_LOG_LEVEL=debug"] # shell commands run before each agent CLI starts
 
 mcpDefinitions:
-  context7:
+  example-docs:
     command: npx
-    args: ["-y", "@upstash/context7-mcp@1.0.0"]
+    args: ["-y", "example-docs-mcp@1.0.0"]
   example-api:
     command: npx
     args: ["-y", "example-api-mcp"]
@@ -37,7 +37,7 @@ projects:
   example-app:
     path: example-app
     displayName: Example App
-    mcps: [context7]
+    mcps: [example-docs]
     clis: [claude, codex]
     secrets:
       EXAMPLE_TOKEN: "op://example-vault/example-item/token"
@@ -59,7 +59,7 @@ machines:
     overrides:
       projects:
         example-app:
-          mcps: [context7, example-api]
+          mcps: [example-docs, example-api]
   example-laptop:
     reposPath: ~/code
     clis: [claude]

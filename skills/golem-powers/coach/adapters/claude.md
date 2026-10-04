@@ -28,6 +28,10 @@ brain_store(
 )
 ```
 
+## Email delegation
+
+Email sweeps go to the `coach-mail` sub-agent, never `general-purpose` and never inline; reply/send requests must not dispatch `coach-mail`, including preparatory lookups; see `/agent-routing` for general dispatch rules.
+
 ## Calendar via MCP
 
 ```bash

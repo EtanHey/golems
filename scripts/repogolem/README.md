@@ -2,7 +2,7 @@
 
 The public generator takes a user-owned YAML file through `--config` or
 `REPOGOLEM_CONFIG`. Keep the real instance in a private repository. Secrets
-in the file are `op://` references. Generation resolves them once and writes
+in the file are `op://` or named `varlock://` references. Generation resolves them once and writes
 `registry.json`, `launchers.zsh`, and `secrets.env` in
 `~/.config/repogolem/generated`: 0600 files in a 0700 directory outside Git.
 Resolved values are on disk; never commit them or copy them into logs.
@@ -37,23 +37,44 @@ The installed runtime and CLI are retained.
 In a new shell, the operator performs the first real generation:
 
 ```sh
-op signin && repogolem generate --check-refs && repogolem generate && repogolem generate --check
+repogolem generate
 ```
 
-1Password desktop Touch ID only prompts after a terminal `op signin`.
-(With app integration off, use `eval $(op signin)` instead.)
+`generate` signs in to 1Password if needed, checks vault/item/field names, then
+resolves all references through pinned varlock under Bun before writing the cache.
+The repo-local 1Password varlock plugin uses one `op run --no-masking` batch;
+it preserves captured manual-account sessions, forces `OP_CACHE`/`OP_DEBUG` off,
+and never retries individual refs or loads the WASM SDK. Raw varlock output is
+captured privately and remapped into the existing `REPOGOLEM_SECRET_<sha>` cache.
+Telemetry disabled: `VARLOCK_TELEMETRY_DISABLED=1` and `DO_NOT_TRACK=1`; no varlock
+telemetry config or network request is created. Inherited varlock overrides are
+removed; `OP_SESSION_*` and the original `TMPDIR` reach the provider unchanged.
+Bun automatic installation is disabled. Core discovery reads installed package
+files only and requires version `1.21.1`; a missing package fails without fetching.
+Set top-level `secrets: { backend: 1password }`; unknown backends fail closed.
+Existing configs with op refs and no backend default to 1password with one notice.
 
-Run `repogolem generate --check-refs`, expect exit 0, then
-`generate`. It prints the selected machine's `vault/item/field` names grouped
-by vault and checks vault/item existence only. It uses one metadata item-list
-call per vault, matching item titles or IDs; it never fetches item details,
-reads field values, logs metadata JSON, or writes generated files.
-Exit 0 means vaults/items exist, exit 2 means missing/inaccessible refs or a check
-error, and exit 3 means sign-in/authorization is unavailable. It writes no output/cache.
-The default allows [desktop app integration](https://www.1password.dev/cli/app-integration)
-and Touch ID. For automation, use `repogolem generate --check-refs --no-prompt`:
-it disables biometric integration and returns 3 without prompting when there
-is no CLI session. Both modes close stdin and bound each CLI call to 15 seconds.
+`repogolem generate --check-refs` runs the same preflight without generation.
+It prints reference names grouped by vault, lists items once per vault and
+fetches each distinct item once with `op item get --format json`. This decrypts
+items in memory to project only field labels, IDs and sections; values are never
+printed, logged or cached by the preflight (`OP_CACHE=false`). Matching is
+case-insensitive and section-aware. Exit 2 names missing/inaccessible references;
+exit 3 means sign-in failed, was cancelled, or authorization remains unavailable.
+Both failures leave generated files untouched.
+
+When unsigned, generation requires an interactive terminal. Sign-in enables
+biometric integration, inherits terminal stdin/stderr for prompts, and always
+captures stdout. An empty response uses desktop authentication; exactly one
+`export OP_SESSION_<account>="<token>"` line supplies an account-specific session
+only to op children. Blank lines and shell comments are ignored; other output
+fails closed. The session is removed from the
+Bun emitter environment and cleared from the generator's child env afterwards.
+Sign-in has a 120-second bound; metadata closes stdin and has 15-second bounds.
+After interrupted sign-in, the tool restores sane terminal settings (including echo).
+For automation, `repogolem generate --check-refs --no-prompt` disables biometric
+integration and never signs in: export a CLI session (`eval $(op signin)` on a
+manually added account) or `OP_SERVICE_ACCOUNT_TOKEN` beforehand.
 `--check` instead verifies existing generated files without running op.
 
 Unattended launcher calls read cached data without sourcing secret assignments
@@ -68,6 +89,59 @@ references on the sending Mac once, and streams the cache over SSH under
 and a new noclobber incoming file protect the transfer. Remote generation
 refuses changed config/host stamps or incomplete cached references.
 
+Sync still calls the resolver directly, without generation preflight or self-sign-in.
+Resolver failures report exit status/counts to stderr while suppressing potentially
+sensitive raw op diagnostics.
+
 Sync selects the remote private repo from `--remote-repo`,
 `REPOGOLEM_REMOTE_REPO`, or `syncTargets.m1.repo` in the private YAML.
 The public tool has no fleet repository path default.
+
+## Named values and other backends
+
+`values` declares names and sensitivity; it never contains resolved values:
+
+```yaml
+secrets:
+  backend: file
+  # optional absolute path; default ~/.config/repogolem/values.env
+  valuesFile: /home/example/.config/repogolem/values.env
+values:
+  API_TOKEN: { sensitive: true }
+  GRILL_SEED_DIR: { sensitive: false }
+projects:
+  example:
+    path: /home/example/project
+    clis: [codex]
+    secrets:
+      API_TOKEN: varlock://API_TOKEN
+```
+
+The values file is private dotenv data, owned by you, exactly `0600`, outside
+all git worktrees. Symlinks and untrusted parents are refused. Missing declared
+values fail before generation writes. All named values are resolved, including
+personal paths used by agent templates. They share the existing private cache
+and runtime readers never consult providers.
+
+With `backend: 1password`, add `source: op://vault/item/field` to a named value to
+resolve it in the same deduplicated op batch. Names without a source come from
+the private values file. With `backend: file`, use `varlock://NAME` mappings;
+direct `op://` mappings require the 1Password backend.
+
+For BYO, set `backend: plugin:<npm-package-or-path>` and follow the
+[adapter contract](adapters/TEMPLATE/README.md). Plugins must be installed,
+trusted and compatible with its bulk resolver; raw password-manager plugins
+may require a wrapper. Generate captures all provider diagnostics and does not
+download plugins or persist varlock caches. Bun automatic installation is disabled.
+Adapters must be CommonJS `.cjs`; a plugin runs as your OS user with full
+privileges. The private `secrets.backend` config is the trust boundary. Pin npm
+adapters with an exact version and lockfile; `secrets.pluginVersion` optionally
+checks the installed version. File/BYO children receive only HOME, PATH, LANG,
+USER, scratch TMPDIR and forced telemetry/debug controls; no host tokens.
+A `source` declaration with the file backend is an error. Runtime control names
+(PATH, HOME, TMPDIR, NODE_*, BUN_*, DYLD_*) are reserved values names.
+Bare dotfiles repositories using `--work-tree=$HOME` are not detected by the
+ancestor `.git` check; keep values outside those worktrees too.
+Single-quote literal dotenv values containing `$`; interpolation and function
+calls are refused. An `env:` string beginning `varlock://` is now a named ref,
+not a literal; undeclared names report their config key path.

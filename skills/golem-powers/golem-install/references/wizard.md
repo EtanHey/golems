@@ -114,9 +114,6 @@ Create it interactively:
      brainlayer:
        command: socat
        args: ["STDIO", "UNIX-CONNECT:/tmp/brainbar.sock"]
-     context7:
-       command: npx
-       args: ["-y", "@upstash/context7-mcp@latest"]
      supabase:
        command: npx
        args: ["-y", "@supabase/mcp-server-supabase@latest"]
