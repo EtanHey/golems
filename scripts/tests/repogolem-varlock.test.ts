@@ -69,8 +69,8 @@ test('telemetry creates no config or network request in scratch HOME', () => {
   mkdirSync(xdg, { recursive: true, mode: 0o700 });
   const wrapper = join(dir, 'fetch-guard.ts');
   const cli = join(root, 'node_modules/varlock/bin/cli.js');
-  writeFileSync(wrapper, `globalThis.fetch = async () => { require('node:fs').appendFileSync(${JSON.stringify(log)}, 'network-attempt\\n'); throw new Error('network blocked'); }; await import(${JSON.stringify(cli)});`);
-  const { r } = generate({ HOME: home, XDG_CONFIG_HOME: xdg, REPOGOLEM_VARLOCK_BIN: wrapper, VARLOCK_TELEMETRY_DISABLED: '0', DO_NOT_TRACK: '0' });
+  writeFileSync(wrapper, `globalThis.fetch = async () => { require('node:fs').appendFileSync(process.env.REPOGOLEM_TEST_NETWORK_LOG, 'network-attempt\\n'); throw new Error('network blocked'); }; await import(process.env.REPOGOLEM_TEST_VARLOCK_CLI);`);
+  const { r } = generate({ HOME: home, XDG_CONFIG_HOME: xdg, REPOGOLEM_VARLOCK_BIN: wrapper, REPOGOLEM_TEST_NETWORK_LOG: log, REPOGOLEM_TEST_VARLOCK_CLI: cli, VARLOCK_TELEMETRY_DISABLED: '0', DO_NOT_TRACK: '0' });
   expect(r.exitCode).toBe(0);
   expect(existsSync(join(xdg, 'varlock/config.json'))).toBe(false);
   expect(existsSync(log)).toBe(false);
@@ -91,4 +91,24 @@ test('op children retain the original TMPDIR for the daemon socket', () => {
 });
 test('production ignores the varlock binary override', () => {
   expect(generate({ REPOGOLEM_TEST_MODE: '0', REPOGOLEM_VARLOCK_BIN: '/does/not/exist' }).r.exitCode).toBe(0);
+});
+
+test('varlock child disables Bun automatic package installation', () => {
+  expect(generate({ REPOGOLEM_VARLOCK_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-varlock.ts'), FAKE_VARLOCK_MODE: 'no-install' }).r.exitCode).toBe(0);
+});
+test('missing child import cannot contact the registry or create an install cache', async () => {
+  let requests = 0;
+  const registry = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch() { requests++; return new Response('', { status: 404 }); } });
+  try {
+    const home = join(dir, 'home'); mkdirSync(home);
+    const wrapper = join(home, 'missing.ts'), config = join(home, 'config.json'), out = join(home, 'out');
+    writeFileSync(wrapper, "await import('repogolem-missing-child-fixture');");
+    writeFileSync(config, JSON.stringify({ projects: { fixture: { path: '/home/fixture', secrets: { TOKEN: 'op://example-vault/example-item/token' } } } }));
+    const r = Bun.spawn([process.execPath, join(root, 'scripts/repogolem/repogolem-config.ts'), 'generate', '--config', config, '--out-dir', out], {
+      env: { PATH: process.env.PATH, HOME: home, BUN_CONFIG_REGISTRY: registry.url.toString(), BUN_INSTALL_CACHE_DIR: join(home, '.bun/install/cache'), REPOGOLEM_TEST_MODE: '1', REPOGOLEM_VARLOCK_BIN: wrapper, REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh') }, stdout: 'pipe', stderr: 'pipe',
+    });
+    const [code] = await Promise.all([r.exited, new Response(r.stdout).text(), new Response(r.stderr).text()]);
+    expect(code).toBe(2); expect(requests).toBe(0);
+    expect(existsSync(join(home, '.bun/install/cache'))).toBe(false); expect(existsSync(out)).toBe(false);
+  } finally { registry.stop(true); }
 });

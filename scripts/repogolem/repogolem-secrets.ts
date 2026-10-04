@@ -80,7 +80,7 @@ export function opResolver(opBin: string, childEnv: Record<string, string | unde
     ].join(" ");
     const spawn = () => {
       try {
-        return Bun.spawnSync([opBin, "run", "--no-masking", "--", "/usr/bin/env", ...Object.keys(env).filter(isOpCredential).flatMap(key => ["-u", key]), process.execPath, "-e", emit], {
+        return Bun.spawnSync([opBin, "run", "--no-masking", "--", "/usr/bin/env", ...Object.keys(env).filter(isOpCredential).flatMap(key => ["-u", key]), process.execPath, "--no-install", "-e", emit], {
           env,
           stdin: "inherit",
           stdout: "pipe",
