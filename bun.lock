@@ -18,10 +18,6 @@
     "packages/claude": {
       "name": "@golems/claude",
       "version": "1.0.0",
-      "dependencies": {
-        "@golems/services": "workspace:*",
-        "@golems/shared": "workspace:*",
-      },
     },
     "packages/coach": {
       "name": "@golems/coach",

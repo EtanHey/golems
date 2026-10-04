@@ -1,10 +1,10 @@
 # @golems/shared
 
-> Foundation library — Supabase, LLM, email, state, notifications, and shared types for all golem packages.
+> Foundation library — Supabase, LLM, email, state, and shared types for all golem packages.
 
 ## Role
 
-Shared is the **infrastructure layer** that every golem depends on. It provides database access, LLM abstraction, email processing, state management, and Telegram notifications. No golem-specific logic lives here — only reusable utilities.
+Shared is the **infrastructure layer** that every golem depends on. It provides database access, LLM abstraction, email processing, and state management. No golem-specific logic lives here — only reusable utilities.
 
 ---
 
@@ -52,7 +52,6 @@ packages/shared/src/
 │   ├── llm.ts                   # Multi-backend LLM runner (Haiku, Ollama, MLX, Gemini, Groq)
 │   ├── cloud-llm.ts             # Haiku backend with token/cost tracking
 │   ├── ollama-helper.ts         # Local Ollama wrapper
-│   ├── telegram-direct.ts       # Dual-mode: localhost:3847 or Bot API
 │   ├── state-store.ts           # File/Supabase state abstraction
 │   ├── event-log.ts             # Golem action logging ("while you were down")
 │   ├── load-env.ts              # .env loader for launchd (import FIRST)
@@ -110,12 +109,6 @@ import { runCloudFree, runCloudFreeJSON } from "@golems/shared/lib/vercel-llm";
 - `gemini`: Gemini 2.5 Flash-Lite (1K RPD free, Google)
 - `groq`: Llama 4 Scout (1K RPD free, Groq)
 - Auto-fallback between providers on 429
-
-### `lib/telegram-direct`
-Dual-mode notification sender. `TELEGRAM_MODE=local|direct`.
-```typescript
-import { sendNotification } from "@golems/shared/lib/telegram-direct";
-```
 
 ### `lib/state-store`
 State abstraction. `STATE_BACKEND=file|supabase`.
