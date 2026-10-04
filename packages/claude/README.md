@@ -1,65 +1,16 @@
 # @golems/claude
 
-ClaudeGolem — Telegram bot, orchestrator, and external face of the Golems ecosystem.
+ClaudeGolem persona and Claude CLI status plugin.
 
-## What It Does
+`SOUL.md` defines the ecosystem's casual, concise voice. The status command and
+skill inspect active Claude CLI sessions and recent local event-log entries.
+The package has no background service or listener to start.
 
-- Receives Telegram messages and routes to domain golems via Grammy Composers
-- Spawns Claude CLI sessions for free-text conversations
-- Runs a notification HTTP server on port 3847
-- Handles SIGTERM gracefully for launchd management
+- `SOUL.md`: shared persona guidance.
+- `commands/status.md`: session and event-log status command.
+- `skills/status/SKILL.md`: status workflow.
+- `.claude-plugin/plugin.json`: plugin metadata.
+- `src/soul.test.ts`: persona checks.
 
-## Quick Start
-
-```bash
-cd packages/claude
-bun src/telegram-bot.ts
-```
-
-Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_IDS` env vars.
-
-## Telegram Commands
-
-| Command | Description |
-|---------|-------------|
-| `/start` | Welcome message + command list |
-| `/status` | Health, queue, daily stats |
-| `/trigger <svc>` | Manual runs (email/briefing) |
-| `/morning` | Morning briefing |
-| Free text | Spawn Claude CLI conversation |
-
-## Notify Server
-
-HTTP server on `127.0.0.1:3847`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/notify` | POST | Send notification to Telegram (title required, body truncated) |
-| `/health` | GET | Health check |
-
-## Architecture
-
-```
-packages/claude/
-├── src/
-│   ├── telegram-bot.ts          # Auth (fail-closed) + rate limit + composer + shutdown
-│   ├── composers/
-│   │   └── claude-composer.ts   # All commands + free text → Claude CLI
-│   └── lib/
-│       ├── bot-shared.ts        # State, CLI spawning, queue processing
-│       └── notify-server.ts     # HTTP notification server
-└── CLAUDE.md
-```
-
-## Key Patterns
-
-- **Fail-closed auth** — empty `TELEGRAM_ALLOWED_IDS` = reject all
-- **Rate limiting** — 10 messages per minute per user
-- **Claude CLI** — strips `ANTHROPIC_API_KEY` from env, uses `--print` for subscription auth
-- **Graceful shutdown** — handles SIGTERM for launchd `KeepAlive=true`
-
-## Dependencies
-
-- `@golems/shared` — Supabase, event log, state store
-- `@golems/services` — briefing triggers
-- `grammy` — Telegram Bot Framework
+Run the persona checks with `bun test packages/claude/src/soul.test.ts` from
+the workspace root.

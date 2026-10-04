@@ -12,7 +12,6 @@ SH
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -44,7 +43,6 @@ SH
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -73,7 +71,6 @@ function split_case_027() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -98,7 +95,6 @@ EOF
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -116,7 +112,6 @@ function split_case_029() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -135,7 +130,6 @@ function split_case_030() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -180,7 +174,6 @@ SH
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
         AGY_COUNT_FILE="$TMPDIR_/agy-count.txt" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -242,7 +235,6 @@ SH
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
         CODEX_ARGS_FILE="$CODEX_ARGS_FILE" \
         CODEX_TIMEOUT_FILE="$CODEX_TIMEOUT_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -304,7 +296,6 @@ SH
         STALKER_CODEX_MODEL="configured-test-model" \
         STALKER_CODEX_EFFORT="medium" \
         STALKER_CODEX_TIMEOUT="7s" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -354,7 +345,6 @@ SH
         CODEX_TIMEOUT_FILE="$CODEX_TIMEOUT_FILE" \
         STALKER_CODEX_TIMEOUT="7s" \
         STALKER_SCORE_PARALLEL=1 \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
@@ -374,7 +364,6 @@ function split_case_035() {
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         STALKER_GEM_SCORE_WINDOW_SECS=10 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
@@ -407,7 +396,6 @@ SH
         PATH="$FAKE_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
-        STALKER_TELEGRAM_NOTIFY=0 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 

@@ -9,7 +9,7 @@ function split_case_033() {
     printf 'one\ntwo\nthree\nfour\nfive\nsix\nseven\n' > "$dropped_dir/chat.log"
     printf '### [00:10:00] Dropped moment\n**Score:** 10/10 | **Type:** insight\n**Gist:** must not be counted\n' > "$dropped_dir/gems.md"
 
-    STALKER_TELEGRAM_DRY_RUN=1 \
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 75 \
@@ -30,7 +30,7 @@ function split_case_034() {
     printf '### [00:05:00] Counted moment\n**Score:** 8/10 | **Type:** insight\n**Gist:** counted\n' > "$processed_dir/gems.md"
     printf 'status=ORPHAN_TAIL\n' > "$orphan_dir/.orphan-tail"
 
-    STALKER_TELEGRAM_DRY_RUN=1 \
+    PATH="$FAKE_BIN:$PATH" \
     run "$STALKER_DIR/stalker-brainlayer.sh" digest "$root" 2026-08-19 --dry-run
 
     [[ "$status" -eq 0 \
@@ -55,7 +55,6 @@ function split_case_035() {
         ALERTS_FILE="$ALERTS_FILE" \
         STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
@@ -75,7 +74,6 @@ function split_case_036() {
         STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_COMPLETION_EXIT=17 \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
@@ -97,7 +95,6 @@ function split_case_037() {
         STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_CONTRACT_SCRIPT="$contract" \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STALKER_BRAINLAYER_INGEST_TIMEOUT=1s \
         STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0 \
         STREAM_AUTO_ARCHIVE=1 \
@@ -125,7 +122,6 @@ function split_case_038() {
         STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_CONTRACT_SCRIPT="$contract" \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 
@@ -134,7 +130,6 @@ function split_case_038() {
     [ -f "$stream_dir/.stage-chat.failed" ]
     [ ! -f "$stream_dir/.stage-run-quality.failed" ]
     grep -F -q 'chat_count=0' "$stream_dir/.stage-chat.failed"
-    [ ! -s "$ALERTS_FILE" ]
     [ ! -s "$ALERTS_FILE" ]
 }
 
@@ -156,7 +151,6 @@ EOF
         STALKER_COMPLETION_SCRIPT="$STALKER_COMPLETION_SCRIPT" \
         STALKER_COMPLETION_CALLS="$STALKER_COMPLETION_CALLS" \
         STALKER_CONTRACT_SCRIPT="$contract" \
-        STALKER_TELEGRAM_CMD="$FAKE_BIN/telegram-capture" \
         STREAM_AUTO_ARCHIVE=1 \
         "$POST_STREAM" "$stream_dir" "$stream_dir/video.mp4" "$stream_dir/chat.log" examplechannel 0
 

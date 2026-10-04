@@ -200,6 +200,21 @@ features:
     );
   });
 
+  test("generated YAML and defaults omit the retired channel block", async () => {
+    const result = runConfigCode("", `
+      const fs = await import("node:fs");
+      const path = process.env.HOME + "/.golems/config.yaml";
+      fs.unlinkSync(path);
+      config.initConfig();
+      console.log(JSON.stringify({ yaml: fs.readFileSync(path, "utf8"), defaults: config.loadConfig() }));
+    `);
+    expect(result.status).toBe(0);
+    const generated = JSON.parse(result.stdout);
+    const { parse } = await import("yaml");
+    expect(parse(generated.yaml)).not.toHaveProperty("telegram");
+    expect(generated.defaults).not.toHaveProperty("telegram");
+  });
+
   test("config file can be written and read back", () => {
     const yaml = `reposPath: "/test/path"\n`;
     writeFileSync(configFile, yaml);
