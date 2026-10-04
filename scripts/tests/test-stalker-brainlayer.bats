@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Smoke tests for the Stalker Golem BrainLayer + Telegram contract.
+# Smoke tests for the Stalker Golem BrainLayer ingestion and local digest contract.
 # Run with: bats scripts/tests/test-stalker-brainlayer.bats
 
 setup() {

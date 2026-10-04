@@ -68,7 +68,6 @@ export const TRANSLATIONS = {
 
   // Golems
   "golem.claude": { en: "ClaudeGolem", he: "גולם-קלוד" },
-  "golem.telegram": { en: "Telegram Bot", he: "בוט טלגרם" },
   "golem.email": { en: "Email Golem", he: "גולם-אימייל" },
   "golem.job": { en: "Job Golem", he: "גולם-עבודה" },
   "golem.recruiter": { en: "Recruiter Golem", he: "גולם-מגייס" },
