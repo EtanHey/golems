@@ -15,7 +15,6 @@ class ShellScan(NamedTuple):
     budget: object
     hits: object
 
-
 def scan_redirect_targets(scan):
     command = scan.command
     direct_command = scan.direct_command
