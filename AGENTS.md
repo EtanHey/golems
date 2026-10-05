@@ -45,6 +45,8 @@ Durable content goes in the repo or its `docs.local/` — never `/tmp`,
 invisible to the rest of the fleet. Worktrees go in `<repo>/.worktrees/<name>`.
 Genuinely ephemeral? `WEAVE_ALLOW_TMP=1 <command>` — allowed and logged.
 Claude and Cursor panes are held to this by the `tmp-block` PreToolUse hook;
-**Codex panes are not wired**, so in a Codex lane it is a rule you follow, not a
-rail that catches you. Full contract, and why Codex is unwired:
+**Codex wiring requires the hooks-live install and hook trust review**; do not
+assume a Codex seat enforces the guard until its native denial is verified.
+The installer reports wiring with `--status` but labels trust unverified.
+Full contract and coverage limits:
 `skills/golem-powers/tmp-block/SKILL.md`.

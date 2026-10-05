@@ -261,7 +261,7 @@ same sentence.
 |---|---|---|---|---|
 | Claude Code | `~/.claude/settings.json` | `Bash` | `Write`/`Edit`/`NotebookEdit` | enforcing since 2026-06-07 |
 | Cursor | `~/.claude/settings.json` — read **unconditionally**, no opt-in | `Shell` | `Write` | `Write` was **already** enforcing; `Shell` was a silent no-op until this change |
-| Codex | `~/.codex/hooks.json` or inline `[hooks]` | `Bash` | `apply_patch` | **not installed** — see below |
+| Codex | `~/.codex/hooks.json` | `Bash` | `apply_patch` | hooks-live installer supports wiring; verify each installed seat |
 
 **Cursor was never unguarded, and never fully guarded.** Its bundle
 (2026.08.11-e8db854) carries a literal `claudeUserConfigPath` pointing at
@@ -290,21 +290,24 @@ to `~/Documents` under `codex sandbox` returns `Operation not permitted`), so
   detection frontier above — because it is a kernel-level sandbox rather than a
   static parse.
 
-**Codex is deliberately NOT wired by this change.** Two things must be verified
-live first, and Codex was usage-limited until 2026-08-20 06:32:
+**Codex uses a transport adapter, not the Claude hook command directly.**
+Codex 0.160.0 ignores stdout JSON at exit 2 unless there is a blocking reason
+on stderr. `scripts/hooks/codex-policy-hook.py` runs this existing gate and
+git-guardian, translates deliberate denials into exit-0 Codex JSON, and denies
+transport failures with a static repair hint. The registered shell fallback
+uses stderr + exit 2 if the interpreter or adapter cannot start.
 
-1. Whether Codex honours a refusal delivered as **exit 2 with JSON on stdout**.
-   The documented deny shape is emitted, but the exit-code contract is not
-   documented and was not measured.
-2. That the hook's **trust review** has been completed. Codex skips a
-   non-managed hook until its exact definition is reviewed and trusted via
-   `/hooks`. An untrusted hook does not fail loudly — it silently does not run,
-   which is the one failure mode this guard must never ship.
+`scripts/hooks/install-hooks.sh --host <mbp|m1> --update --apply` registers both
+gates from the selected pinned manifest into `~/.codex/hooks.json`, backs up
+changed hook configuration, and preserves `config.toml`. It never creates trust
+hashes or overrides an existing disabled-hooks setting. Review definitions via
+`/hooks`; `--status` reports wiring while explicitly leaving trust unverified.
 
-Until both are measured, Codex coverage is a **documented, unenforced** rule:
-the fleet law is in the Codex instruction surface, and no claim of Codex
-enforcement belongs in a report. OpenAI's own docs say it plainly — *"Treat
-tool hooks as a useful guardrail, not a complete enforcement boundary."*
+A synthetic local Responses fixture exercises the real 0.160 CLI, including
+denial before execution and permitted commands. It does not prove an installed
+authenticated fleet seat; the lead must run that proof after deployment.
+Outer hook timeouts, skipped/untrusted hooks and persistent-shell `write_stdin`
+remain runtime limits. See [version-pinned research](../../../docs/codex-policy-hooks.md).
 
 ## Install & evals
 
