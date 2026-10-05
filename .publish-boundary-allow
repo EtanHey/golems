@@ -39,7 +39,6 @@ scripts/benchmark-glm.ts
 scripts/tests/test-check-instruction-shape.bats
 scripts/tests/test-stream-helpers.bats
 scripts/tests/test-worktree-gc.bats
-scripts/test_precompact.py
 skill-evals/fixtures/nightly-journal-empty-whatsapp.txt
 skill-evals/fixtures/nightly-journal-normal.txt
 skill-evals/fixtures/nightly-journal-read-only.txt
@@ -48,7 +47,6 @@ skills/golem-powers/audio-dashboard/evals/narration-vendor-drift.test.mjs
 skills/golem-powers/crash-resume-index/evals/crash-resume-index.test.mjs
 
 # Frustration/operator-language detector implementation and authored test corpus.
-hooks/precompact-checkpoint.py
 skills/golem-powers/frustration-capture/SKILL.md
 skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py
 skills/golem-powers/frustration-capture/hooks/tests/test_session_false_positive_corpus.py

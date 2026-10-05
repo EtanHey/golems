@@ -301,7 +301,7 @@ test("the shipped manifest names no E1 hook and carries the ruled M1 set exactly
   for (const name of E1_DELETED) expect(text).not.toContain(name);
   expect(realManifest.hosts.m1.map((h) => h.id).sort()).toEqual([
     "brainlayer-prompt-search", "brainlayer-session-start", "daemon-gate-precheck", "model-pin-gate",
-    "pre_tool_use", "precompact-checkpoint", "reviewer-order-gate", "tmp-block",
+    "pre_tool_use", "reviewer-order-gate", "tmp-block",
   ]);
   expect(realManifest.hosts.m1.some((h) => h.event === "Stop")).toBe(false);
 });
