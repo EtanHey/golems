@@ -24,6 +24,8 @@ def workspace(tmp_path, monkeypatch):
     deep.mkdir(parents=True)
     unrelated = home / 'Downloads' / 'scratch'
     unrelated.mkdir(parents=True)
+    for relative in ['Documents']:
+        (home / relative).mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv('HOME', str(home))
     return home, repo, deep, unrelated
 
@@ -147,6 +149,7 @@ def test_r2_parse_error_without_force(workspace):
 ])
 def test_r2_home_and_agent_roots(workspace, target):
     home, repo, _, _ = workspace
+    (home / target).mkdir(parents=True, exist_ok=True)
     assert guardian.dangerous_shell_reason(f'rm -r "{home}/{target}"', cwd=str(repo))
 
 
@@ -306,6 +309,7 @@ def test_r2_link_and_move_controls(workspace, command):
 ])
 def test_r2_real_hook_boundary(workspace, command):
     home, repo, _, _ = workspace
+    (home / '.claude/hooks').mkdir(parents=True)
     env = {key: value for key, value in os.environ.items()
            if key not in {'CLAUDE_WORKER', 'AUTONOMOUS', 'GIT_GUARDIAN_LIB'}}
     env.update(HOME=str(home), GIT_GUARDIAN_LIB=str(SKILL))

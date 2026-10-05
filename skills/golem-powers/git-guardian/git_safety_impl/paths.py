@@ -133,15 +133,36 @@ def _contains_repo_root(root: str, target: str, within_fn) -> bool:
         return True
     ancestor = root
     while True:
-        try:
-            if os.path.samefile(ancestor, target):
-                return True
-        except OSError:
-            pass
+        if _same_path(ancestor, target):
+            return True
+        # A volume/firmlink ancestor can expose the same descendant tree while
+        # having a different identity from every textual ancestor. Compare the
+        # descendant at each relative suffix. Ordinary rm does not traverse a
+        # symlink child: never infer containment through such a child.
+        relative = os.path.relpath(root, ancestor)
+        candidate = target
+        symlink_child = False
+        for part in relative.split(os.sep):
+            if part == '.':
+                continue
+            candidate = os.path.join(candidate, part)
+            if os.path.islink(candidate):
+                symlink_child = True
+                break
+        if not symlink_child and _same_path(candidate, root):
+            return True
         parent = os.path.dirname(ancestor)
         if parent == ancestor:
             return False
         ancestor = parent
+
+
+def _same_path(left: str, right: str) -> bool:
+    """Physical identity, with a spelling fallback for case aliases/unknowns."""
+    try:
+        return os.path.samefile(left, right)
+    except OSError:
+        return os.path.realpath(left).casefold() == os.path.realpath(right).casefold()
 
 
 def _expand_tilde(value: str, variables: dict[str, str]) -> tuple[str, bool]:
@@ -184,37 +205,42 @@ def _probe_repo_children(target: str, max_depth: int = 3, entry_cap: int = 5000)
 
 
 def _protected_root_reason(resolved, physical, home, cwd, protected_cwd, *,
-                           within_fn, outermost_repo_root_fn, is_harness_scratchpad_fn):
+                           within_fn, outermost_repo_root_fn, is_harness_scratchpad_fn,
+                           uncertain=False, filtered_find=False):
     container = os.path.realpath(os.path.join(home, "Gits"))
     if _contains_repo_root(container, physical, within_fn):
         return "rm targeting repo container or its ancestor"
-    # Fold spelling as well as identity: APFS aliases may not exist yet.
-    for home_root, candidate in ((home, resolved), (os.path.realpath(home), physical)):
-        if within_fn(candidate.casefold(), home_root.casefold()):
-            parts = os.path.relpath(candidate.casefold(), home_root.casefold()).split(os.sep)
-            if len(parts) == 1:
-                return "rm targeting top-level home directory"
-            if len(parts) == 2 and parts[0] in {".claude", ".codex", ".cmux", ".config", ".ssh", "library"}:
-                return "rm targeting agent configuration directory"
+    directory_target = os.path.isdir(physical) or uncertain
+    if not directory_target:
+        try:
+            os.stat(physical)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            directory_target = True
+    if _contains_repo_root(home, physical, within_fn):
+        return "rm targeting home directory or its ancestor"
+    if directory_target and _same_path(os.path.dirname(physical), home):
+        return "rm targeting top-level home directory"
     for name in (".claude", ".codex", ".cmux", ".config", ".ssh", "Library"):
         config = os.path.realpath(os.path.join(home, name))
         if _contains_repo_root(config, physical, within_fn):
             return "rm targeting agent configuration root or its ancestor"
-        if within_fn(physical.casefold(), config.casefold()):
-            relative = os.path.relpath(physical.casefold(), config.casefold())
-            if len(relative.split(os.sep)) <= 1:
-                return "rm targeting agent configuration directory"
+        if directory_target and _same_path(os.path.dirname(physical), config):
+            return "rm targeting agent configuration directory"
     for anchor in (protected_cwd, cwd):
         if not anchor:
             continue
         active_repo = outermost_repo_root_fn(os.path.realpath(anchor))
         if active_repo is not None and not is_harness_scratchpad_fn(active_repo):
-            if physical != active_repo and _contains_repo_root(active_repo, physical, within_fn):
+            if not _same_path(physical, active_repo) and _contains_repo_root(active_repo, physical, within_fn):
                 return "rm targeting ancestor of active repo"
     repo = outermost_repo_root_fn(physical)
-    if repo == physical and not is_harness_scratchpad_fn(repo):
+    if repo and _same_path(repo, physical) and not filtered_find and not is_harness_scratchpad_fn(repo):
         return "rm targeting repo root"
-    if within_fn(physical, container) and repo is None and _probe_repo_children(physical):
+    if (directory_target and repo is None
+            and _contains_repo_root(physical, container, within_fn)
+            and _probe_repo_children(physical)):
         return "rm targeting nested repo container or uninspectable container"
     return None
 
@@ -226,6 +252,8 @@ def _rm_target_reason(
     protected_cwd: str | None = None,
     protected_only: bool = False,
     follow_symlinks: bool = False,
+    filtered_find: bool = False,
+    assume_directory: bool = False,
 ) -> str | None:
     literal_parts = [part for part in target.split(os.sep) if part]
     if ".." in literal_parts and not protected_only:
@@ -264,10 +292,13 @@ def _rm_target_reason(
             resolved, physical, home, cwd, protected_cwd, within_fn=within_fn,
             outermost_repo_root_fn=outermost_repo_root_fn,
             is_harness_scratchpad_fn=is_harness_scratchpad_fn,
+            uncertain=not complete or assume_directory, filtered_find=filtered_find,
         )
         if reason:
             return reason
     if protected_only:
+        if '.git' in [part.casefold() for part in physical.split(os.sep)]:
+            return "find deletion root inside repository metadata"
         return None if complete else "rm target cannot be resolved safely"
 
     repo = outermost_repo_root_fn(resolved)
