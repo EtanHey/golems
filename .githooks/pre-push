@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Opt-in full package suite; enable repository hooks once per clone with:
+#   git config core.hooksPath .githooks
+# Queue through the pinned installed helper; missing coordination fails open.
+
+HS="$HOME/Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then python3 "$HS" -- bun run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun run test; fi
