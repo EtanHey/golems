@@ -135,6 +135,22 @@ def _contains_repo_root(root: str, target: str, within_fn) -> bool:
     while True:
         if _same_path(ancestor, target):
             return True
+        # A volume/firmlink ancestor can expose the same descendant tree while
+        # having a different identity from every textual ancestor. Compare the
+        # descendant at each relative suffix. Ordinary rm does not traverse a
+        # symlink child: never infer containment through such a child.
+        relative = os.path.relpath(root, ancestor)
+        candidate = target
+        symlink_child = False
+        for part in relative.split(os.sep):
+            if part == '.':
+                continue
+            candidate = os.path.join(candidate, part)
+            if os.path.islink(candidate):
+                symlink_child = True
+                break
+        if not symlink_child and _same_path(candidate, root):
+            return True
         parent = os.path.dirname(ancestor)
         if parent == ancestor:
             return False
@@ -202,8 +218,8 @@ def _protected_root_reason(resolved, physical, home, cwd, protected_cwd, *,
             pass
         except OSError:
             directory_target = True
-    if _same_path(physical, home):
-        return "rm targeting home directory"
+    if _contains_repo_root(home, physical, within_fn):
+        return "rm targeting home directory or its ancestor"
     if directory_target and _same_path(os.path.dirname(physical), home):
         return "rm targeting top-level home directory"
     for name in (".claude", ".codex", ".cmux", ".config", ".ssh", "Library"):
@@ -281,6 +297,8 @@ def _rm_target_reason(
         if reason:
             return reason
     if protected_only:
+        if '.git' in [part.casefold() for part in physical.split(os.sep)]:
+            return "find deletion root inside repository metadata"
         return None if complete else "rm target cannot be resolved safely"
 
     repo = outermost_repo_root_fn(resolved)

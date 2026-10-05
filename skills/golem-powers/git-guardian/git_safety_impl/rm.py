@@ -228,8 +228,8 @@ def _find_deletion_roots(args):
 
 def _selective_find_filter(option, pattern):
     """A filename class needs literal content beyond wildcard punctuation."""
-    if option not in {'-name', '-iname', '-path', '-ipath'}:
-        return False  # find regex dialects are not Python regex semantics
+    if option not in {'-name', '-iname'}:
+        return False  # path prefixes may select whole metadata/top-level trees
     tail = re.sub(r'\[[^\]]*\]', '', os.path.basename(pattern))
     return any(char.isalnum() or char == '_' for char in tail)
 
@@ -250,12 +250,8 @@ def _find_root_filtered(target, branches, mindepth, grouped):
         for option, pattern in filters:
             if not _selective_find_filter(option, pattern):
                 continue
-            # A universal path tail merely excludes the starting '.' spelling;
-            # it can still select every descendant, including the repo metadata.
-            if option in {'-path', '-ipath'} and fnmatch.fnmatchcase('.', os.path.basename(pattern)):
-                continue
-            value = os.path.basename(target.rstrip('/')) if option in {'-name', '-iname'} else target.rstrip('/')
-            if option in {'-iname', '-ipath', '-iregex'}:
+            value = os.path.basename(target.rstrip('/'))
+            if option == '-iname':
                 value, pattern = value.casefold(), pattern.casefold()
             try:
                 matches = bool(re.fullmatch(pattern, value)) if 'regex' in option else fnmatch.fnmatchcase(value, pattern)
