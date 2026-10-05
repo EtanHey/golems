@@ -111,7 +111,12 @@ Codex exec_command is currently outside this hook.
 The owner provisions a dedicated SSH signing key in the 1Password SSH agent,
 exports only its public key to `~/.config/golems/human-confirm.pub`, and puts
 `human <public-key-line>` in mode-0600
-`~/.config/golems/human-confirm.allowed_signers`. Use 1Password's **per key,
+`~/.config/golems/human-confirm-anchor/allowed_signers` (directory mode 0700).
+Then run `~/Gits/golems/.worktrees/hooks-live/scripts/golems-confirm-pin`. It
+shows each principal's key fingerprint and waits for you to type `PIN`. Then it
+locks the file and prints a line for
+`skills/golem-powers/human-confirm-gate/anchor.pins`. That line lands by
+reviewed PR, and only then does hooks-live install the gate. Use 1Password's **per key,
 per request** authorization setting, and leave **Approve for all applications**
 off. Other approval modes cache authorization; a cached signature is not proof
 of new owner presence. See [1Password's authorization model](https://www.1password.dev/ssh/agent/security).
@@ -124,8 +129,10 @@ alias golems-confirm="$PWD/scripts/golems-confirm"
 golems-confirm /path/to/worker/worktree topic lease --sha <full-remote-sha> --session <Claude-session-id>
 ```
 
-The helper prints the exact command/cwd/scope before requesting the signature,
-issues a mode-0600 token with a two-minute TTL, and checks the issuer's public
+The helper prints the exact command/cwd/scope before requesting the signature
+and uses `ssh-keygen -U` to require the agent. Agent ancestry checks only catch
+detectable misuse; the 1Password per-request prompt establishes owner presence.
+It issues a mode-0600 token with a two-minute TTL, and checks the issuer's public
 key against the trust anchor. Execute exactly that displayed command in the
 specified worker session. `force` and `delete` actions generate their commands;
 `rewrite` and `settings` require `--command` with the exact tool command.
