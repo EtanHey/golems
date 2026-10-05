@@ -70,9 +70,10 @@ def find_temp_targets(tool_name, tool_input):
         targets = []
         for reading in ansi_c_readings(command):
             with ansi_c_reading(reading):
-                for target in _bash_temp_targets(command):
-                    if target not in targets:
-                        targets.append(target)
+                for branch in evaluate_shell_readings(lambda: _bash_temp_targets(command)):
+                    for target in branch:
+                        if target not in targets:
+                            targets.append(target)
         return targets
 
     if tool_name == APPLY_PATCH_TOOL:
