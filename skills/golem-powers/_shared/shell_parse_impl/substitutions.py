@@ -402,8 +402,11 @@ def _shell_command_payloads(tokens, cmd_pos, seg_of):
                 and "c" in option[1:]
             )
             if carries_command and cursor + 1 < len(tokens):
+                # The outer lexer does not retain PID expansion provenance.
+                # An ambiguous Zsh payload must also retain its regular-quote
+                # reading after an outer shell materializes that expansion.
                 payloads.append(
-                    (shell_code(tokens[cursor + 1], "zsh" if os.path.basename(token).lower() == "zsh" else "bash" if os.path.basename(token).lower() in {"bash", "sh"} else "both"), segment, payload_index)
+                    (shell_code(tokens[cursor + 1], "both" if os.path.basename(token).lower() == "zsh" else "bash" if os.path.basename(token).lower() in {"bash", "sh"} else "both"), segment, payload_index)
                 )
                 payload_index += 1
                 break
