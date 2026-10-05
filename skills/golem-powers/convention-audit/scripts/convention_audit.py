@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only, Luna-pinned fan-out for single-source-of-truth audits."""
+"""Read-only, role-resolved fan-out for single-source-of-truth audits."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ import argparse
 import hashlib
 import importlib.util
 import sys
+import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +54,15 @@ _synthesis_prompt = _impl.audit._synthesis_prompt
 _git_state = _impl.audit._git_state
 _revision = _impl.audit._revision
 _parser = _impl.cli._parser
-MODEL = "gpt-5.6-luna"
+def _model() -> str:
+    configured = os.environ.get("GOLEMS_MODEL_ROLES_ROOT")
+    roots = [Path(configured)] if configured else Path(__file__).resolve().parents
+    root = next((p for p in roots if (p / "scripts/model-roles.mjs").is_file()), None)
+    if root is None: raise RuntimeError("Missing stable model-role resolver")
+    try:
+        return subprocess.check_output(["node", str(root / "scripts/model-roles.mjs"), "codex.implement", "--stable"],
+            env={**os.environ, "GOLEMS_MODEL_ROLES_ROOT": str(root)}, text=True, stderr=subprocess.PIPE, timeout=10).strip()
+    except (OSError, subprocess.SubprocessError) as error: raise RuntimeError("Cannot resolve stable codex.implement") from error
 DEFAULT_EFFORT = "max"
 FALLBACK_EFFORT = "xhigh"
 
@@ -62,11 +72,11 @@ def build_codex_command(*, codex_binary: str, repo: Path, output_schema: Path,
                         output_last_message: Path | None = None) -> list[str]:
     return _impl.codex_runner.build_codex_command(codex_binary=codex_binary, repo=repo,
         output_schema=output_schema, effort=effort, json_events=json_events,
-        output_last_message=output_last_message, model=MODEL)
+        output_last_message=output_last_message, model=_model())
 
 
 def verify_effective_pin(banner: str, *, requested_effort: str) -> dict[str, str]:
-    return _impl.codex_runner.verify_effective_pin(banner, requested_effort=requested_effort, model=MODEL)
+    return _impl.codex_runner.verify_effective_pin(banner, requested_effort=requested_effort, model=_model())
 
 
 def preflight_pin(codex_binary: str, repo: Path, schema: Path, *, timeout: int,
@@ -74,7 +84,7 @@ def preflight_pin(codex_binary: str, repo: Path, schema: Path, *, timeout: int,
                   allow_fallback: bool = True) -> dict[str, Any]:
     return _impl.codex_runner.preflight_pin(codex_binary, repo, schema, timeout=timeout,
         evidence_path=evidence_path, allow_fallback=allow_fallback,
-        config=_impl.codex_runner.RunnerConfig(MODEL, DEFAULT_EFFORT, FALLBACK_EFFORT),
+        config=_impl.codex_runner.RunnerConfig(_model(), DEFAULT_EFFORT, FALLBACK_EFFORT),
         build_command=build_codex_command, verify_pin=verify_effective_pin, run_process=_run_process)
 
 

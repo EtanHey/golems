@@ -42,12 +42,14 @@ if ! "$HARNESS" parallel \
 fi
 
 MANIFEST="$RUN_ROOT/manifest.json"
-python3 - "$MANIFEST" "$SPEC" "$RESULT" <<'PY'
+ROLE_MODEL="$(node "$REPO/scripts/model-roles.mjs" codex.implement --field model --stable)"
+python3 - "$MANIFEST" "$SPEC" "$RESULT" "$ROLE_MODEL" <<'PY'
 import json
 from pathlib import Path
 import sys
 
-manifest_path, spec_path, result_path = map(Path, sys.argv[1:])
+manifest_path, spec_path, result_path = map(Path, sys.argv[1:4])
+role_model = sys.argv[4]
 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 spec = json.loads(spec_path.read_text(encoding="utf-8"))
 expected_degraded = [
@@ -77,7 +79,7 @@ for name, expected in expected_workers.items():
         and worker["output_tokens"] > 0,
         "wall_seconds_positive": isinstance(worker.get("wall_seconds"), (int, float))
         and worker["wall_seconds"] > 0,
-        "model_luna": worker.get("model") == "gpt-5.6-luna",
+        "model_role": worker.get("model") == role_model,
         "effort_xhigh": worker.get("effort") == "xhigh",
         "degraded_mode_exact": worker.get("degraded_mode") == expected_degraded,
         "log_exists": Path(worker["log"]).is_file(),

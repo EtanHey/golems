@@ -20,7 +20,7 @@ bash skills/golem-powers/convention-audit/scripts/run.sh \
   --output-dir /absolute/path/to/reports
 ```
 
-The runner fans out raw `codex exec` workers across six concept lenses, then sends their candidates through a separate synthesis worker. Every worker requests `gpt-5.6-luna` with `max` reasoning. It may fall back to `xhigh` only when Codex explicitly rejects `max`; all other pin failures stop the run. A successful preflight must accept the requested model and effort, and its raw startup banner is retained in `pin-preflight.log`. That banner is acceptance evidence from the CLI, not independent server-side model telemetry. repoGolem aliases are forbidden because they can drop model and effort.
+The runner fans out raw `codex exec` workers across six concept lenses, then sends their candidates through a separate synthesis worker. Every worker resolves `codex.implement` through `scripts/model-roles.mjs --stable` with `max` reasoning. It may fall back to `xhigh` only when Codex explicitly rejects `max`; all other pin failures stop the run. A successful preflight must accept the requested model and effort, and its raw startup banner is retained in `pin-preflight.log`. That banner is acceptance evidence from the CLI, not independent server-side model telemetry. repoGolem aliases are forbidden because they can drop model and effort.
 
 The time/query lens also receives a deterministic Python-source inventory for lower-bound SQLite `datetime()` comparisons. This is a narrow seed, not a general detector: the model workers remain responsible for other languages, query shapes, and convention families.
 

@@ -15,7 +15,10 @@ session model and effort unless explicitly overridden. Verify launcher defaults 
 config rather than assuming a bare launch is current. Coordination belongs to `claude.judgment`.
 
 `codex.subagent.mechanical` is **CANDIDATE: bench before use**. Read its `status` and `gate`
-from the config; do not dispatch it or choose it per job before the bench. Until promotion, bounded mechanical work uses `codex.implement`.
+from the config. Exception: Etan's 2026-10-04 ruling authorises this role for Codex-internal
+mechanical sub-agents (default child and named `packet`) through the resolver's
+`codex-internal-subagent` use. This is not a benchmark promotion. Headless or visible workers
+continue to use `codex.implement`; other candidate uses remain gated.
 If the resolved model is absent from the refreshed runtime catalog, stop and report the mismatch;
 do not choose an older model automatically or infer runtime availability from API pages.
 
@@ -70,7 +73,7 @@ For the effort rungs, see `/large-plan` § "Choosing effort per phase".
 | Open-ended implementation or review | `codex.implement` | Record ambiguity and chosen phase effort. |
 | One hard blocker | `codex.implement` | Name the blocker and why the chosen phase effort helps. |
 | Read-heavy Codex child | `codex.implement` | Named `recon`; choose phase effort and verify runtime. |
-| Mechanical candidate | `codex.subagent.mechanical` | **Do not dispatch before its bench.** |
+| Internal mechanical child | `codex.subagent.mechanical` | Named `packet`; Etan-authorised internal use only, verify runtime. |
 
 ## Dispatch and Verification
 
@@ -82,11 +85,10 @@ brainlayerCodex -s -m "$(node scripts/model-roles.mjs codex.implement --field mo
 ```
 
 Codex custom agents live in `~/.codex/agents/*.toml`; defaults live in
-`~/.codex/config.toml`. Do not edit host settings in a routing-doc lane. Resolve the worker
-role when dispatching children and check any named or default subagent pin against it.
-Do not use named `packet` while it selects the mechanical candidate before promotion.
-The concurrency key is `max_concurrent_threads_per_session`; never retain legacy `max_threads`
-beside it because Codex rejects the duplicate.
+`~/.codex/config.toml`. Do not edit host settings in a routing-doc lane. Resolve `codex.implement` for workers/recon and `codex.subagent.mechanical` for internal
+mechanical children/packet; check each effective pin against its role.
+The concurrency key is `max_concurrent_threads_per_session`. The model-only installer preserves
+existing concurrency settings; review legacy `max_threads` separately before changing them.
 
 Verify every child's effective model and effort from its own `turn_context` after its own
 `task_started` in `~/.codex/sessions/**/rollout-*.jsonl`. Never use prompt text, registry data,

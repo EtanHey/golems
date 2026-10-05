@@ -11,6 +11,7 @@ import sys
 
 from .config import (
     CodexWorkflowError,
+    default_model,
     DEGRADED_MODE,
     LAUNCH_ONLY_EXIT,
     validate_worker_name,
@@ -71,7 +72,7 @@ def build_parser(default_runs_dir: Path) -> argparse.ArgumentParser:
     target.add_argument("--run-id")
     target.add_argument("--manifest")
     agent.add_argument("--run-dir", default=str(default_runs_dir))
-    agent.add_argument("--model", default="gpt-5.6-luna")
+    agent.add_argument("--model")
     agent.add_argument("--effort", choices=["xhigh", "max"], default="xhigh")
     agent.add_argument("--report-dir", action="append", default=[])
     agent.add_argument("--artifact", action="append", default=[])
@@ -135,7 +136,7 @@ def main(argv: list[str] | None, *, actions: CliActions) -> int:
                 worker_name=args.name,
                 brief=args.brief,
                 lead=args.lead,
-                model=args.model,
+                model=args.model if args.model is not None else default_model(),
                 effort=args.effort,
                 report_dirs=args.report_dir,
                 artifacts=args.artifact,

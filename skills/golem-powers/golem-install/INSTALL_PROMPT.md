@@ -105,7 +105,8 @@ Install the golem-install bundle from EtanHey/golems without cloning the reposit
 SKILL.md, references/wizard.md, references/list-skills.md, workflows/wizard-setup.md,
 scripts/wizard-preflight.sh, scripts/repo-action.mjs, scripts/install-codex-config.mjs,
 scripts/install-cmuxlayer-fleet.mjs, the root
-config/codex directory, and the root release-gate.json into ~/.claude/skills/golem-install
+config/codex directory, scripts/model-roles.mjs, scripts/ci/check-model-role-drift.mjs,
+standards/model-roles.json, standards/model-roles.schema.json, and the root release-gate.json into ~/.claude/skills/golem-install
 (keeping each file's subdirectory), then run /golem-install and ask for the wizard.
 ```
 
@@ -115,14 +116,14 @@ set -euo pipefail
 RAW=https://raw.githubusercontent.com/EtanHey/golems/master
 BASE=$RAW/skills/golem-powers/golem-install
 DEST=~/.claude/skills/golem-install
-mkdir -p "$DEST/references" "$DEST/workflows" "$DEST/scripts" "$DEST/config/codex/agents"
+mkdir -p "$DEST/references" "$DEST/workflows" "$DEST/scripts" "$DEST/config/codex/agents" "$DEST/scripts/ci" "$DEST/standards"
 curl -fsSL "$BASE/SKILL.md" -o "$DEST/SKILL.md"
 for f in references/wizard.md references/list-skills.md workflows/wizard-setup.md \
          scripts/wizard-preflight.sh scripts/repo-action.mjs scripts/install-codex-config.mjs \
          scripts/install-cmuxlayer-fleet.mjs; do
   curl -fsSL "$BASE/$f" -o "$DEST/$f"
 done
-for f in config/codex/config.toml config/codex/agents/recon.toml config/codex/agents/packet.toml release-gate.json; do
+for f in scripts/model-roles.mjs scripts/ci/check-model-role-drift.mjs standards/model-roles.json standards/model-roles.schema.json config/codex/config.toml config/codex/agents/recon.toml config/codex/agents/packet.toml release-gate.json; do
   curl -fsSL "$RAW/$f" -o "$DEST/$f"
 done
 ls "$DEST/SKILL.md" "$DEST/release-gate.json" "$DEST/scripts/repo-action.mjs" \

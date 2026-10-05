@@ -1,7 +1,6 @@
 {
   "repo": "__REPO__",
   "lead": "codex-workflows-eval",
-  "model": "gpt-5.6-luna",
   "effort": "xhigh",
   "workers": [
     {

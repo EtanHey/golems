@@ -38,8 +38,11 @@ Run the harness through `scripts/codex-workflows.sh`. Detailed interfaces are in
    `TASK_DONE`, PR URLs, and failures from structured finished-log events.
 6. Choose the pin through
    [`agent-routing/references/model-and-effort.md`](../agent-routing/references/model-and-effort.md),
-   which owns the routing and escalation rules. The implemented harness default remains
-   `gpt-5.6-luna`; record effective model/effort, output tokens, and wall-clock duration in the manifest and run log.
+   which owns the routing and escalation rules. When model is omitted, the harness resolves
+   `codex.implement` through `scripts/model-roles.mjs --field model --stable`. Installed
+   copies need a linked checkout or `GOLEMS_MODEL_ROLES_ROOT=<golems-checkout>`; missing
+   registries and unbenched defaults fail closed. Record effective model/effort,
+   output tokens and wall-clock duration in the manifest and run log.
 7. Treat `TASK_DONE` as a signal, not artifact proof. Harvest only declared
    worktree-relative, non-symlink artifacts; do not clean up before harvest.
 
