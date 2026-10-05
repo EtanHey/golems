@@ -47,6 +47,9 @@ def evaluate(payload, home):
         target = args.get('file_path', args.get('notebook_path', ''))
         if policy_path(target, payload.get('cwd', str(home)), home):
             raise ValueError('agent writes to confirmation policy/tokens are forbidden')
+        from git_config import destructive_edit
+        if destructive_edit(name, args, payload.get('cwd', str(home))):
+            raise ValueError('agent writes of destructive push configuration are forbidden')
         return
     if not isinstance(args.get('command'), str):
         return

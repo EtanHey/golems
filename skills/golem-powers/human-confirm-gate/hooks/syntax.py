@@ -21,6 +21,13 @@ VALUE_OPTIONS = {
 }
 
 
+def executable(word):
+    """(casefolded basename, implied git subcommand): APFS is case-insensitive, and
+    git's per-subcommand executables run that git subcommand directly."""
+    base = os.path.basename(word).casefold()
+    return ('git', base[4:]) if base.startswith('git-') and len(base) > 4 else (base, None)
+
+
 def argv_at(tokens, segments, scopes, i):
     args, redirects = [], []
     j = i + 1

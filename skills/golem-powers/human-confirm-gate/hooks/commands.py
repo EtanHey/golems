@@ -12,6 +12,7 @@ if _SHARED not in sys.path:
 import shell_parse as shell
 import syntax
 import gh_policy
+import git_config
 
 
 def literal(word):
@@ -22,11 +23,7 @@ def literal(word):
 
 def configured_alias(repo, name):
     if name == 'push':
-        config = subprocess.run(['/usr/bin/git', '-C', repo, 'config', '--get-regexp', r'^remote\..*\.(push|mirror)$'],
-                                capture_output=True, text=True, timeout=1)
-        if config.returncode not in (0, 1) or any(' +' in line or (line.split()[0].endswith('.mirror') and line.split()[-1].lower() not in ('false', 'no', 'off', '0')) for line in config.stdout.splitlines()):
-            raise ValueError('implicit force/mirror configuration; make scope explicit')
-        return None
+        return None  # git never aliases a builtin; configured push routes: git_config.effective_push
     result = subprocess.run(['/usr/bin/git', '-C', repo, 'config', '--get', 'alias.' + name.lower()],
                             capture_output=True, text=True, timeout=1)
     if result.returncode not in (0, 1):
@@ -60,7 +57,7 @@ def push_operation(args, repo):
         literal(word)
     destructive = any(any(flag.startswith(a.split('=', 1)[0]) for flag in ('--force', '--force-with-lease', '--force-if-includes', '--delete', '--mirror', '--prune'))
                       or re.fullmatch(r'-[A-Za-z]*[fd][A-Za-z]*', a)
-                      or a.startswith(('+', ':')) for a in args)
+                      or a.startswith('+') or a.startswith(':') and a != ':' for a in args)
     if not destructive:
         return []
     leases = [a for a in args if a.startswith('--force-with-lease=')]
@@ -78,7 +75,7 @@ def push_operation(args, repo):
                 return [dict(class_='lease', repo=repo, remote=remote, ref=dest,
                              sha=match[2], source=source)]
     refs = [a for a in positional[1:]]
-    return [dict(class_='delete' if any(a.startswith(':') for a in refs) or any(a.startswith('--delete') or a == '-d' for a in args) else 'force',
+    return [dict(class_='delete' if any(a.startswith(':') and a != ':' for a in refs) or any(a.startswith('--delete') or a == '-d' for a in args) else 'force',
                  repo=repo, refs=refs, remote=positional[0] if positional else '')]
 
 
@@ -134,10 +131,11 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         if not positions[i]: continue
         current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
         word = resolve_word(word, current)
-        base = os.path.basename(word)
+        base, direct = syntax.executable(word)
         args, redirects = syntax.argv_at(tokens, segments, scopes, i)
         args = [resolve_word(a, current) for a in args]
         redirects = [(op, resolve_word(target, current)) for op, target in redirects]
+        if direct is not None: args = [direct, *args]  # a per-subcommand executable is `git <sub>`
         if any(target.casefold().endswith('/.git/config') or target.casefold() == '.git/config'
                for target in syntax.write_targets(base, args, redirects)):
             _state['config'] = True
@@ -162,15 +160,15 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         # operands of echo/printf/cat/etc. are not command positions.
         if base not in syntax.DATA and base not in syntax.SHELLS:
             for j, arg in enumerate(args):
-                if os.path.basename(arg) in ('git', 'gh') and syntax.guarded_words(args[j + 1:]):
+                if syntax.executable(arg)[0] in ('git', 'gh') and syntax.guarded_words(args[j + 1:]):
                     result += operations(syntax.joined(args[j:]), cwd, alias_lookup, depth + 1, current, _state)
                 elif ' ' in arg:
                     words = shlex.split(arg)
-                    if words and os.path.basename(words[0]) in ('git', 'gh') and syntax.guarded_words(words[1:]):
+                    if words and syntax.executable(words[0])[0] in ('git', 'gh') and syntax.guarded_words(words[1:]):
                         result += operations(arg, cwd, alias_lookup, depth + 1, current, _state)
         if base == 'eval' and any('$' in a or '`' in a for a in args):
             raise ValueError('unresolved eval payload; use a literal command')
-        if base == 'xargs' and any(os.path.basename(a) in ('git', 'gh', 'sh', 'bash', 'zsh', 'fish') for a in args):
+        if base == 'xargs' and any(syntax.executable(a)[0] in ('git', 'gh', 'sh', 'bash', 'zsh', 'fish') for a in args):
             raise ValueError('xargs supplies unresolved arguments; use a literal command')
         if base == 'env' and any(a == '-S' or a.startswith('--split-string') for a in args):
             if any(syntax.guarded_words(shlex.split(a)) for a in args):
@@ -207,7 +205,10 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             if not words: continue
             sub, *tail = words
             literal(sub)
-            if sub == 'config' and not any(a.startswith(('--get', '--list', '-l', '--show')) for a in tail): _state['config'] = True
+            if sub == 'config' and not any(a.startswith(('--get', '--list', '-l', '--show')) for a in tail):
+                _state['config'] = True
+                setter = git_config.destructive_setter(tail)  # storing a force/delete push route
+                if setter: result.append(dict(setter, repo=repo))
             if sub == 'remote' and tail[:1] in (['add'], ['set-url']): _state['config'] = True
             relevant = sub in ('push', 'send-pack', 'filter-repo', 'filter-branch', 'replace') or sub not in GIT_BUILTINS
             if relevant and (repo is None or _state['config'] or overrides):
@@ -223,7 +224,14 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             elif sub in ('push', 'send-pack'):
                 if any('refs/replace/' in a for a in tail):
                     result.append(dict(class_='rewrite', repo=repo, refs=tail))
-                result += push_operation(tail, repo)
+                digest = None
+                if sub == 'push' and alias_lookup is configured_alias:
+                    # Judge the refspecs git would really use (config push/mirror routes).
+                    tail, digest = git_config.effective_push(tail, repo)
+                pushes = push_operation(tail, repo)
+                for op in pushes:
+                    if digest is not None: op['push_config_sha256'] = digest
+                result += pushes
             elif sub in ('filter-repo', 'filter-branch', 'replace'):
                 result.append(dict(class_='rewrite', repo=repo, refs=tail))
             elif sub == 'rebase':
