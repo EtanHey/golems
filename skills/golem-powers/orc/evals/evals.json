@@ -26,11 +26,11 @@
     },
     {
       "id": 2,
-      "prompt": "I spawned 3 agents in cmux to work on different repos. I sent them their tasks with send_input and it returned ok:true for all 3. I'm going to take a shower now, be back in 20 min. Keep an eye on them.",
-      "expected_output": "Should: (1) NOT trust ok:true blindly — verify delivery with read_screen, (2) Set up CronCreate BEFORE telling user to go, (3) Include loop ID in response.",
+      "prompt": "I spawned 3 agents in cmux to work on different repos. I sent them their tasks with send_to and it returned delivery receipts for all 3. I'm going to take a shower now, be back in 20 min. Keep an eye on them.",
+      "expected_output": "Should: (1) NOT trust a delivery receipt blindly — verify delivery with read_screen, (2) Set up CronCreate BEFORE telling user to go, (3) Include loop ID in response.",
       "assertions": [
         {
-          "text": "Verifies prompt delivery with read_screen after send_input",
+          "text": "Checks send_to delivery receipts and verifies prompt delivery with read_screen",
           "type": "behavioral"
         },
         {

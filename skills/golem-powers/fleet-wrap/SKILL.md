@@ -42,8 +42,8 @@ Order: handoff → stop monitors → final dashboard (if fleet-wide wrap) → cl
      **Wrap-blocking:** `hooks-live=absent`; `drift` not `0` (incl. `?`); a hook line other than `ok`/`external(registered)`; `golems-fail-open` not `ok`; any `E1 … PRESENT`; a nonzero exit or no `hooks-live=` header at all (the installer died before reporting).
      Quote each blocking line on the dashboard and in the one message.
      Never run `--apply`/`--update` during a wrap: that is the hooks owner's (golemsLead).
-2. **KILL ALL POLLING.** `CronList` → `CronDelete` every monitor/heartbeat/status
-   cron you own; `TaskStop` background monitors; report the stopped IDs in the
+2. **KILL ALL POLLING.** Follow `/collab-monitor` to stop every owned watch;
+   `TaskStop` native Monitor task IDs and stop packaged fallback producers; report the stopped IDs in the
    wrap-up (orc REF9). Zero exceptions — a "harmless" 5-minute status cron is
    exactly how the WhatsApp-all-night failure happened.
 3. **ONE final dashboard** (`/html-dashboard`, cloned template — never from

@@ -191,7 +191,8 @@ Any `sleep N` in Bash where N ≥ 5 is rejected by `pre_tool_use.py`. Two or mor
 For PID-wait: `until ! kill -0 $PID 2>/dev/null; do sleep 2; done` (exempt)
 For agent-wait: `mcp__cmuxlayer__wait_for(agent_id=..., target_state="done", timeout_ms=...)`
 For log-watch: the `Monitor` background tool
-For event-driven scheduling: `CronCreate` with a short interval
+For addressed event watches: native Monitor or the packaged fallback per `/collab-monitor`
+Timed one-shot wakes: ScheduleWakeup/CronCreate per `collab-monitor/references/cron-payloads.md`.
 For background process launch (the test scenario, not a wait): `nohup ... &` (exempt)
 
 Hook-block messages start with `🚨 SLEEP` and trigger a self-correct loop, not a flag-to-user prompt — pick one of the alternatives above and retry instead of asking. Reset window: `rm /tmp/claude-pre-tool-use-sleep-history.json`.

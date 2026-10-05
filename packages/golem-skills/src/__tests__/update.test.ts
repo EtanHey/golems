@@ -154,10 +154,10 @@ describe("migrateConfig", () => {
     const config = {
       reposPath: "~/Gits",
       tools: {},
-      features: { nightShift: true, proactiveNudges: false },
+      features: { futureFeature: true, proactiveNudges: false },
     };
     const result = migrateConfig(config);
-    expect(result.config.features!.nightShift).toBe(true);
+    expect(result.config.features!.futureFeature).toBe(true);
     expect(result.changes).toHaveLength(0);
   });
 
@@ -165,20 +165,20 @@ describe("migrateConfig", () => {
     const config = {
       reposPath: "~/Gits",
       tools: {},
-      features: { nightShift: true },
+      features: { futureFeature: true },
     };
     const result = migrateConfig(config as any);
     expect(result.config.features!.proactiveNudges).toBe(false);
     expect(result.config.features).not.toHaveProperty("telegram");
-    // nightShift preserved
-    expect(result.config.features!.nightShift).toBe(true);
+    // Unknown future feature preserved (not a currently offered wizard option)
+    expect(result.config.features!.futureFeature).toBe(true);
   });
 
   test("returns no changes for up-to-date config", () => {
     const config = {
       reposPath: "~/Gits",
       tools: {},
-      features: { nightShift: false, proactiveNudges: false },
+      features: { futureFeature: false, proactiveNudges: false },
     };
     const result = migrateConfig(config);
     expect(result.changes).toHaveLength(0);

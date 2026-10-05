@@ -132,8 +132,16 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 
 ### For public repos (bot reviewers configured):
 
+Use native `Monitor` for CI completion and addressed review handoffs when the
+harness exposes it; otherwise use `/collab-monitor`'s packaged fallback with an
+attached consumer. Native calls use `timeout_ms: 1800000`; cancel with TaskStop
+and re-arm at expiry/after compaction. Use one `gh pr checks <N> --watch` command
+for CI. Query slim state/activity counts, then fetch full review bodies once
+when they change. Timed one-shot wakes remain ScheduleWakeup/CronCreate per
+`collab-monitor/references/cron-payloads.md`.
+
 ```bash
-# Poll for reviews (preferred: /loop 2m, or CronCreate */2, or manual sleep 90)
+# Fetch after a review handoff or activity-count change
 gh pr view <N> --comments
 ```
 

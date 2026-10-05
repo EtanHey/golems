@@ -99,6 +99,7 @@ export function getPendingWork(status: EcosystemStatus): PendingWorkItem[] {
 
     if (!golem.details) continue;
 
+    // Optional external status field; no current in-tree producer.
     const overdueFollowups = golem.details.overdueFollowups;
     if (typeof overdueFollowups === "number" && overdueFollowups > 0) {
       items.push({

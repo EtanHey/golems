@@ -14,7 +14,7 @@ Generate a prioritized daily plan from golem states + calendar.
 1. Read `getStatus()` from all active golems (email, teller)
 2. Read Google Calendar events for today/this week
 3. Merge into prioritized task list:
-   - Drafts to approve (from ContentGolem)
+   - Email to review (from EmailGolem)
    - Financial alerts (from TellerGolem)
    - Calendar meetings and deadlines
 4. Generate daily schedule with time blocks

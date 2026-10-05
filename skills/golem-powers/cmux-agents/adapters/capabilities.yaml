@@ -70,27 +70,18 @@ adapters:
     unique:
       - million_token_context     # 1M tokens — can ingest entire codebases
       - free_tier                 # 2 RPM, no cost
-    models:
-      - { id: "gemini-2.5-pro", use: "default, large context research" }
+    model_policy: "agent-routing/references/model-and-effort.md"
 
 # Task routing — which CLI is best for what
-routing:
-  deep_reasoning: claude          # Best reasoning, MCP access, session continuity
-  codebase_audit: cursor          # @codebase indexing, text output, PR bugbot
-  structured_output: codex        # Output contracts, fast execution, GPT-5.4
-  large_context_research: gemini  # 1M tokens, free tier
-  fast_parallel: codex            # Worktrees + full-auto mode
-  small_prs: codex                # Fast, no setup overhead
-  big_refactors: claude           # Deep reasoning, multi-file, worktree native
-  cross_model_verify: [claude, cursor]  # Different blind spots
+routing_policy: "/agent-routing § Routing rules (SSOT)"
 
 # Platform features — what's CLI-specific vs universally available
 # This is the key to AI-agnostic skills: never assume a platform feature exists.
 # Always check capability before using, and provide universal fallbacks.
 platform_features:
   scheduled_polling:
-    claude_code: CronCreate           # Native tool
-    universal: "nohup bash -c 'while true; do ...; sleep 300; done' &"
+    claude_code: Monitor              # Follow /collab-monitor for schema and re-arm
+    universal: "packaged fallback per /collab-monitor"
   worktree_isolation:
     claude_code: "claude --worktree <name>"
     universal: "git worktree add -b <branch> ../<dir> <base>"

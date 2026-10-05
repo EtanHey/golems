@@ -152,25 +152,12 @@ Every agent must know:
 - What it can run in parallel
 - Resource constraints (CPU, GPU, RAM)
 
-### 4. Set polling cadence
+### 4. Arm addressed watches
 
-State it in the file header: `"read this file every N min"`. Typical values:
-- 5 min: active overnight work, agents need tight coordination
-- 15 min: daytime parallel work, agents mostly independent
-- On-demand: agents only check when they finish a task
-
-**Use `/loop` for automated monitoring (Claude Code v2.1.71+):**
-```bash
-# Orchestrator monitors collab file changes every 5 min:
-/loop 5m Read the collab file at <path>/collab.md. Check for status changes, blockers, or completed phases. Take action if needed.
-
-# Monitor PR review comments:
-/loop 2m gh pr view <N> --comments | tail -20
-
-# Use CronCreate for background scheduled checks:
-CronCreate(schedule="*/5 * * * *", command="bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh run --once @<listen-name> <path>/collab.md")
-```
-This replaces the old `fswatch -1` + `run_in_background` pattern.
+Watches: follow `/collab-monitor` before dispatch and after every compaction;
+a DONE marker or version match still needs artifact or real-client verification.
+Use native Monitor for addressed collab and PR events, with its documented
+30-minute expiry and re-arm rules; use the packaged fallback on Codex seats.
 
 ### 5. Launch agents with the collab path in their prompt
 
@@ -237,7 +224,7 @@ Short. Timestamped. Bold status keywords. One line per update.
 14. **Stale `working` status** — agent crashes or hangs, status stays `working` forever. If no Messages update for 30+ min from a `working` agent, orchestrator should check on them.
 15. **Missing MCP servers in cross-repo agents** — agent launched in repo B has no access to MCP servers configured in repo A's `.mcp.json`. ALWAYS use `--mcp-config` when launching agents in different repos. See scaffold step 9 for CLI template.
 16. **Registering hooks before creating the file** — Agent adds a hook to `settings.json` pointing to a file that doesn't exist yet. Hook runner returns exit code 2 (file not found), which blocks ALL tool calls for ALL agents in the repo. **Rule: create the hook file first, register it second. Never the reverse.**
-17. **No cron cleanup** — `CronCreate` crons persist until explicitly deleted. When a collab ends, orchestrator must `CronDelete` all monitoring crons. Otherwise they keep running and wasting resources.
+17. **No watch cleanup** — when a collab ends, stop owned Monitor task IDs with TaskStop and stop packaged fallback watches per `/collab-monitor`.
 18. **`/loop` without termination** — `/loop` runs indefinitely. When all phases are `done` or `signed-off`, stop the loop. Don't leave it polling a dead collab.
 19. **Fire-and-forget delegation** — Orchestrator sends a task to an agent without an armed liveness watcher. A crash or stall emits no addressed message, so the packaged collab monitor alone cannot detect it. **Rule: before EVERY delegation, arm a process-exit or scheduled process/registry liveness watcher. The packaged collab monitor may additionally deliver addressed status, blocker, and completion messages, but MUST NOT be the only worker-liveness guard.**
 20. **Silent progress** — Agent does work but doesn't use `TaskCreate`/`TaskUpdate`. Orchestrator and UI have no visibility into what's happening. **All agents MUST use task tools for progress tracking.**
@@ -345,7 +332,7 @@ brain_entity("cmux")         # How does it dispatch commands?
 When agents work while the human sleeps:
 
 1. **Scaffold the collab BEFORE the human goes to sleep.** All sections filled, all constraints declared.
-2. **Each agent sets a polling timer** — use `/loop 5m Read collab file, check for updates, take action` (preferred) or `CronCreate` for background checks.
+2. **Each agent arms an addressed watch** — follow `/collab-monitor`, including expiry and compaction re-arm.
 3. **CPU/thermal safety rules in Key Constraints** — which heavy processes can run simultaneously.
 4. **Blocker escalation** — if blocked on human action, update status to `blocked:human` with exactly what's needed. Don't keep retrying.
 5. **Sign off when done** — prevents other agents from waiting for you.
