@@ -24,8 +24,8 @@
 // checkouts; hooks-live is not a working tree anyone checks out.
 import { spawnSync } from "node:child_process";
 import {
-  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, statSync, symlinkSync,
-  unlinkSync, writeFileSync,
+  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync,
+  statSync, symlinkSync, unlinkSync, writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -160,6 +160,17 @@ function desiredHooks(current, managed) {
   return hooks;
 }
 
+// Deregister refused gates: drop every command of theirs from their event.
+function withoutHooks(hooks, refused) {
+  for (const e of refused) {
+    hooks[e.event] = (hooks[e.event] ?? []).map((g) => ({
+      ...g, hooks: (g.hooks ?? []).filter((h) => !String(h.command ?? "").includes(e.match)) }))
+      .filter((g) => g.hooks.length > 0);
+    if (hooks[e.event].length === 0) delete hooks[e.event];
+  }
+  return hooks;
+}
+
 function linkState(at, to) {
   let st;
   try {
@@ -198,6 +209,112 @@ function pinLive(o, live, sha) {
   return `hooks-live: pinned at ${sha}`;
 }
 
+// AIDEV-NOTE: never install-and-deny. An entry with `requiresPin` (the
+// human-confirm gate's committed anchor fingerprints) is only active when that
+// file at the pinned sha holds >=1 fingerprint; otherwise it is unlinked and
+// deregistered. Grammar shared with tokens.parse_pins via
+// skills/golem-powers/human-confirm-gate/tests/pin-vectors.json.
+// Order: gate merges -> owner runs golems-confirm-pin -> pin PR merges -> install.
+const PIN_LINE = /^(?:#[\x20-\x7e]*|[0-9a-f]{64}(?: +[A-Za-z0-9._-]+)?)?$/;
+export function pinnedFingerprints(raw) {
+  if (raw === undefined || raw === null) return 0;
+  const bytes = Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw), "utf8");
+  if (bytes.some((b) => b !== 0x0a && (b < 0x20 || b > 0x7e))) return 0;
+  const lines = bytes.toString("latin1").split("\n");
+  if (!lines.every((l) => PIN_LINE.test(l))) return 0;
+  return new Set(lines.filter((l) => l && !l.startsWith("#")).map((l) => l.slice(0, 64))).size;
+}
+
+function pinReady(o, sha, e) {
+  if (!e.requiresPin) return true;
+  const r = spawnSync("git", ["show", `${sha}:${e.requiresPin}`], { cwd: o.repo });
+  return r.status === 0 && pinnedFingerprints(r.stdout) > 0;
+}
+
+// git as --status must run it against hooks-live: repo config cannot answer for
+// the worktree (fsmonitor/untracked cache) and replace refs cannot swap objects.
+function liveGit(live, ...args) {
+  return git(live, "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "--no-replace-objects", ...args);
+}
+
+// Import dirs of every launcher-run Python hook (its source dir, or the dir of
+// a single-file source) plus _shared. Hooks run with -B, so nothing in
+// hooks-live legitimately writes bytecode there.
+function importDirs(ctx) {
+  const dirs = new Set(["skills/golem-powers/_shared"]);
+  for (const e of ctx.golems.filter((g) => g.command?.includes("golems-fail-open.py"))) {
+    dirs.add(e.source.endsWith(".py") ? path.posix.dirname(e.source) : e.source);
+  }
+  return [...dirs];
+}
+
+// Stale bytecode caches left in hooks-live by runs before -B; cache only.
+function cacheDirs(ctx) {
+  const found = [];
+  const walk = (rel) => {
+    for (const name of readdirSync(path.join(ctx.live, rel))) {
+      const child = path.posix.join(rel, name);
+      if (!lstatSync(path.join(ctx.live, child)).isDirectory()) continue;
+      if (name === "__pycache__") found.push(child);
+      else walk(child);
+    }
+  };
+  for (const dir of importDirs(ctx)) if (existsSync(path.join(ctx.live, dir))) walk(dir);
+  return found;
+}
+
+// AIDEV-NOTE: porcelain alone trusts the index. Index flags and replace refs
+// are reported, and every Python hook's import dirs (see importDirs) are
+// compared byte-for-byte with HEAD, so hidden edits and ignored extras
+// (compiled modules, caches, shadow packages) show.
+function treeIntegrity(ctx, head) {
+  const problems = [];
+  const flags = liveGit(ctx.live, "ls-files", "-v");
+  const hidden = flags === null ? null : flags.split("\n").filter((l) => /^(S|[a-z]) /.test(l)).map((l) => l.slice(2));
+  if (hidden === null || hidden.length) problems.push(`INDEX FLAGS hide ${hidden === null ? "? (ls-files failed)" : `${hidden.length} path(s): ${hidden.slice(0, 5).join(", ")}`}`);
+  const replaced = liveGit(ctx.live, "for-each-ref", "--format=%(refname)", "refs/replace/");
+  if (replaced === null || replaced) problems.push(`REPLACE REFS present: ${replaced === null ? "? (for-each-ref failed)" : replaced.split("\n").length}`);
+  {
+    const id = "hooks";
+    const dirs = importDirs(ctx);
+    const listing = liveGit(ctx.live, "ls-tree", "-r", "-z", "--full-tree", head, "--", ...dirs);
+    if (listing === null) return [...problems, `${id} cannot list HEAD`];
+    const tracked = new Map(listing.split("\0").filter(Boolean).map((row) => {
+      const [meta, file] = row.split("\t");
+      const [mode, , sha] = meta.split(" ");
+      return [file, { mode, sha }];
+    }));
+    const onDisk = [];
+    const walk = (rel) => {
+      for (const name of readdirSync(path.join(ctx.live, rel))) {
+        const child = path.posix.join(rel, name);
+        const st = lstatSync(path.join(ctx.live, child));
+        if (st.isDirectory()) walk(child);
+        else onDisk.push(child);
+      }
+    };
+    for (const dir of dirs) if (existsSync(path.join(ctx.live, dir))) walk(dir);
+    const extra = onDisk.filter((f) => !tracked.has(f));
+    const missing = [...tracked.keys()].filter((f) => !onDisk.includes(f));
+    const regular = onDisk.filter((f) => tracked.has(f) && !lstatSync(path.join(ctx.live, f)).isSymbolicLink());
+    const r = regular.length === 0 ? { status: 0, stdout: "" }
+      : spawnSync("git", ["-C", ctx.live, "hash-object", "--no-filters", "--stdin-paths"],
+        { encoding: "utf8", input: `${regular.join("\n")}\n` });
+    const hashes = r.status === 0 ? r.stdout.trim().split("\n") : [];
+    const changed = regular.filter((f, i) => hashes[i] !== tracked.get(f).sha || tracked.get(f).mode === "120000");
+    changed.push(...onDisk.filter((f) => tracked.has(f) && lstatSync(path.join(ctx.live, f)).isSymbolicLink()
+      && tracked.get(f).mode !== "120000"));
+    if (r.status !== 0) problems.push(`${id} cannot hash its import dirs`);
+    for (const [label, list] of [["differ from HEAD", changed], ["unexpected (untracked or ignored)", extra], ["missing", missing]]) {
+      if (list.length) problems.push(`${id} import files ${label}: ${list.length} (${list.slice(0, 5).join(", ")})`);
+    }
+  }
+  return problems;
+}
+
+// The recorded pin lets --status notice a hooks-live HEAD moved outside --apply.
+const pinRecord = (ctx) => path.join(ctx.hooksDir, "golems-hooks-live.sha");
+
 function relock(repo, live) {
   spawnSync("git", ["worktree", "unlock", live], { cwd: repo });
   mustGit(repo, "worktree", "lock", "--reason", LOCK_REASON, live);
@@ -220,15 +337,23 @@ function install(o) {
     console.log(`WARN ${msg}; --apply will refuse.`);
   }
   console.log(pinLive(o, ctx.live, sha));
+  const refused = ctx.golems.filter((g) => !pinReady(o, sha, g));
+  for (const e of refused) {
+    console.log(`REFUSED ${e.id}: ${e.requiresPin} has no owner fingerprint at ${sha}; ${o.apply ? "unlinked and deregistered" : "would be unlinked and deregistered"}. `
+      + "Owner runs scripts/golems-confirm-pin, the fingerprint PR merges, then re-run --update.");
+  }
+  ctx.golems = ctx.golems.filter((g) => !refused.includes(g));
   for (const e of ctx.golems) {
     if (o.apply && !existsSync(e.to)) die(`source missing in hooks-live: ${e.source} (for ${e.id})`);
     const state = linkState(e.at, e.to);
     console.log(`link ${e.id}: ${state === "ok" ? "ok" : `${state} -> link ${e.at} -> ${e.to}`}`);
   }
-  const next = { ...settings.json, hooks: desiredHooks(settings.json.hooks, [...ctx.golems, ...ctx.wrapped]) };
+  const next = { ...settings.json, hooks: withoutHooks(desiredHooks(settings.json.hooks, [...ctx.golems, ...ctx.wrapped]), refused) };
   const nextText = `${JSON.stringify(next, null, 2)}\n`;
   const changed = nextText !== settings.text;
   console.log(`settings.json: ${changed ? "would change" : "unchanged"} (${ctx.golems.length + ctx.wrapped.length} managed hooks)`);
+  const caches = existsSync(ctx.live) ? cacheDirs(ctx) : [];
+  if (caches.length) console.log(`hooks-live: ${o.apply ? "clearing" : "would clear"} ${caches.length} stale __pycache__ dir(s) (hooks run -B)`);
   if (ctx.codex) console.log(`codex hooks.json: ${ctx.codex.old === ctx.codex.next ? "unchanged" : "would change"}; config.toml preserved; trust requires /hooks review`);
   if (!o.apply) {
     console.log("dry-run: nothing written (pass --apply)");
@@ -240,6 +365,13 @@ function install(o) {
     copyFileSync(WRAPPER_SRC, wrapper);
     chmodSync(wrapper, 0o755);
   }
+  for (const e of refused) {
+    const state = linkState(e.at, e.to);
+    if (state === "copy(not link)") renameSync(e.at, `${e.at}.bak-${stamp()}`);
+    else if (state !== "missing") unlinkSync(e.at);
+  }
+  writeFileSync(pinRecord(ctx), `${sha}\n`);
+  for (const cache of cacheDirs(ctx)) rmSync(path.join(ctx.live, cache), { recursive: true, force: true });
   for (const e of ctx.golems) {
     const state = linkState(e.at, e.to);
     if (state === "ok") continue;
@@ -289,13 +421,37 @@ function status(o) {
   const master = git(o.repo, "rev-parse", "--verify", "origin/master");
   const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
   console.log(`hooks-live=${current ?? "absent"} master=${master ?? "unknown"} drift=${drift}`);
+  let bad = false;
+  // AIDEV-NOTE: the gate's anchor pin is only as strong as this tree. Detects
+  // in-place edits/untracked files, a HEAD off origin/master, and a HEAD moved
+  // outside --apply (recorded pin). It cannot see a same-UID edit that is
+  // reverted before --status runs.
+  if (current) {
+    const dirty = liveGit(ctx.live, "status", "--porcelain", "--untracked-files=all");
+    if (dirty === null || dirty) {
+      bad = true;
+      console.log(`hooks-live DIRTY: ${dirty === null ? "git status failed" : `${dirty.split("\n").length} changed/untracked path(s)`}`);
+    }
+    if (!master || spawnSync("git", ["merge-base", "--is-ancestor", current, master], { cwd: o.repo }).status !== 0) {
+      bad = true;
+      console.log("hooks-live HEAD is not on origin/master");
+    }
+    const recorded = existsSync(pinRecord(ctx)) ? readFileSync(pinRecord(ctx), "utf8").trim() : null;
+    if (recorded !== current) {
+      bad = true;
+      console.log(`hooks-live HEAD ${recorded ? `!= recorded pin ${recorded}` : "has no recorded pin (re-run --apply)"}`);
+    }
+    for (const problem of treeIntegrity(ctx, current)) {
+      bad = true;
+      console.log(`hooks-live ${problem}`);
+    }
+  }
   const helper = path.join(ctx.live, "scripts/hooks/heavy-suite.py");
   console.log(`heavy-suite ${existsSync(helper) && statSync(helper).isFile() ? `available ${helper}` : "missing (suites run unqueued)"}`);
   // Only registered hook commands count: a hook name in permissions or env is not a registration.
   const hooks = existsSync(ctx.settingsPath) ? JSON.parse(readFileSync(ctx.settingsPath, "utf8")).hooks ?? {} : {};
   const commands = Object.values(hooks).flat().flatMap((g) => g.hooks ?? []).map((h) => String(h.command ?? ""));
   const text = commands.join("\n");
-  let bad = false;
   if (codexStatus(ctx.codex)) bad = true;
   for (const e of ctx.entries) {
     if (e.kind === "wrapped-external") {
@@ -311,14 +467,20 @@ function status(o) {
     }
     const g = ctx.golems.find((x) => x.id === e.id);
     let state = linkState(g.at, g.to);
-    if (state === "ok" && !registeredExactly(hooks, g)) {
+    if (current && !pinReady(o, current, g)) {
+      // A refused (unpinned) gate is deliberately unregistered: not drift.
+      const active = state !== "missing" || registrationMatches(hooks, g).length > 0;
+      if (active) bad = true;
+      state = active ? "refused(unpinned) but STILL ACTIVE" : "refused(unpinned)";
+    } else if (state === "ok" && !registeredExactly(hooks, g)) {
       state = registrationMatches(hooks, g).length ? "drifted" : "unregistered";
       bad = true;
     }
     if (state === "dangling" || state === "copy(not link)") bad = true;
     console.log(`${e.id} ${state}`);
   }
-  const settingsDrift = [...ctx.golems, ...ctx.wrapped].filter((e) => !registeredExactly(hooks, e)).length;
+  const active = ctx.golems.filter((g) => !(current && !pinReady(o, current, g)));
+  const settingsDrift = [...active, ...ctx.wrapped].filter((e) => !registeredExactly(hooks, e)).length;
   console.log(`settings-drift=${settingsDrift}`);
   if (current && settingsDrift) bad = true;
   const wrapper = path.join(ctx.hooksDir, "golems-fail-open.py");

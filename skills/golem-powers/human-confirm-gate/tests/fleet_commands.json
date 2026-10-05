@@ -1,0 +1,802 @@
+[
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -40 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -45 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -45 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -60 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -60 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -30 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -50 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -45 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -20 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -30 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -40 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -60 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -45 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -50 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -2 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -40 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -70 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -40 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -60 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -25 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -20 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -25 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -15 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -12 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -8 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -30 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -40 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -12 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -30 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -6 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -40 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -1 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -15 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -2 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -4 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "head -1 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -1 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "sed -n fixture fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -6 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -4 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "tail -3 fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  },
+  {
+    "command": "cat fixture",
+    "expected": "allow"
+  }
+]

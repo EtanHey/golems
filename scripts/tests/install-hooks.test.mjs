@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { E1_DELETED } from "../hooks/install-hooks.mjs";
+import { E1_DELETED, pinnedFingerprints } from "../hooks/install-hooks.mjs";
 
 // Every test builds a git fixture and spawns node; a cold CI runner needs headroom.
 setDefaultTimeout(30_000);
@@ -300,7 +300,7 @@ test("the shipped manifest names no E1 hook and carries the ruled M1 set exactly
   const text = JSON.stringify(realManifest);
   for (const name of E1_DELETED) expect(text).not.toContain(name);
   expect(realManifest.hosts.m1.map((h) => h.id).sort()).toEqual([
-    "brainlayer-prompt-search", "brainlayer-session-start", "daemon-gate-precheck", "model-pin-gate",
+    "brainlayer-prompt-search", "brainlayer-session-start", "daemon-gate-precheck", "human-confirm-gate", "model-pin-gate",
     "pre_tool_use", "reviewer-order-gate", "tmp-block",
   ]);
   expect(realManifest.hosts.m1.some((h) => h.event === "Stop")).toBe(false);
@@ -443,6 +443,170 @@ test("--status: a linked hook whose command is no longer registered reports unre
   expect(run(fx, "--status").out).toMatch(/demo-gate unregistered/);
 });
 
+test("human confirmation ships once on each host through hooks-live with the shared wrapper", () => {
+  const reference = realManifest.hosts.mbp.find((h) => h.id === "human-confirm-gate");
+  expect(reference.matcher).toBe("Bash|Monitor|Write|Edit|MultiEdit|NotebookEdit");
+  expect(reference.timeout).toBe(10);
+  expect(reference.command).toBe("{python} -I -B {hooks}/golems-fail-open.py {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
+  for (const entries of Object.values(realManifest.hosts)) {
+    expect(entries.filter((h) => h.id === "human-confirm-gate")).toEqual([reference]);
+  }
+});
+
+function addPinGate(fx, pins) {
+  const manifest = manifestFor();
+  manifest.hosts.mbp.push({ id: "pin-gate", kind: "golems", event: "PreToolUse", matcher: "Bash", link: "pin-gate",
+    source: "skills/golem-powers/pin-gate", match: "pin-gate.py", requiresPin: "skills/golem-powers/pin-gate/anchor.pins",
+    timeout: 5, command: "{python} {hooks}/golems-fail-open.py {hooks}/pin-gate/hooks/pin-gate.py" });
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  mkdirSync(path.join(fx.repo, "skills/golem-powers/pin-gate/hooks"), { recursive: true });
+  writeFileSync(path.join(fx.repo, "skills/golem-powers/pin-gate/hooks/pin-gate.py"), "print('{}')\n");
+  const file = path.join(fx.repo, "skills/golem-powers/pin-gate/anchor.pins");
+  if (pins === null) rmSync(file, { force: true });
+  else writeFileSync(file, pins);
+  git(fx.repo, "add", "-A");
+  git(fx.repo, "commit", "-qm", "pin gate", "--allow-empty");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+}
+
+const FINGERPRINT = "a".repeat(64);
+
+test("never install-and-deny: an unpinned requiresPin gate is REFUSED while other hooks install", () => {
+  for (const pins of [null, "", "# placeholder: no owner fingerprint yet\n", "TODO\n", `${FINGERPRINT}  mbp\nnot-hex\n`]) {
+    const fx = fixture();
+    addPinGate(fx, pins);
+    const r = run(fx, "--apply");
+    expect(r.status).toBe(0);
+    expect(r.out).toMatch(/REFUSED pin-gate: skills\/golem-powers\/pin-gate\/anchor\.pins has no owner fingerprint/);
+    expect(existsSync(path.join(fx.home, ".claude/hooks/pin-gate"))).toBe(false);
+    expect(readFileSync(fx.settingsPath, "utf8")).not.toContain("pin-gate.py");
+    expect(lstatSync(path.join(fx.home, ".claude/hooks/demo-gate")).isSymbolicLink()).toBe(true);
+    expect(run(fx, "--status").out).toMatch(/pin-gate refused\(unpinned\)/);
+    expect(run(fx, "--status").status).toBe(0);
+    expect(run(fx).out).toMatch(/REFUSED pin-gate/);  // dry-run reports it too
+  }
+});
+
+test("a pinned requiresPin gate activates once the fingerprint lands at the installed sha", () => {
+  const fx = fixture();
+  addPinGate(fx, "# owner fingerprints\n");
+  expect(run(fx, "--apply").out).toMatch(/REFUSED pin-gate/);
+  writeFileSync(path.join(fx.repo, "skills/golem-powers/pin-gate/anchor.pins"), `# owner fingerprints\n${FINGERPRINT}  mbp\n`);
+  git(fx.repo, "commit", "-qam", "owner pin");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const r = run(fx, "--apply", "--update");
+  expect(r.status).toBe(0);
+  expect(r.out).not.toMatch(/REFUSED/);
+  expect(readlinkSync(path.join(fx.home, ".claude/hooks/pin-gate"))).toBe(path.join(live(fx), "skills/golem-powers/pin-gate"));
+  expect(readFileSync(fx.settingsPath, "utf8")).toContain("pin-gate/hooks/pin-gate.py");
+});
+
+test("pin grammar matches the gate: shared vectors with tokens.parse_pins", () => {
+  const vectors = JSON.parse(readFileSync(path.join(here, "../../skills/golem-powers/human-confirm-gate/tests/pin-vectors.json"), "utf8")).vectors;
+  expect(vectors.length).toBeGreaterThan(20);
+  for (const v of vectors) {
+    expect([v.text, pinnedFingerprints(Buffer.from(v.text, "utf8"))]).toEqual([v.text, v.count ?? 0]);
+  }
+  expect(pinnedFingerprints(undefined)).toBe(0);
+});
+
+test("--update to an unpinned sha unlinks and deregisters an active gate (never install-and-deny)", () => {
+  const fx = fixture();
+  addPinGate(fx, `${FINGERPRINT}  mbp\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(readFileSync(fx.settingsPath, "utf8")).toContain("pin-gate.py");
+  writeFileSync(path.join(fx.repo, "skills/golem-powers/pin-gate/anchor.pins"), "# emptied\n");
+  git(fx.repo, "commit", "-qam", "unpin");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const r = run(fx, "--apply", "--update");
+  expect(r.status).toBe(0);
+  expect(r.out).toMatch(/REFUSED pin-gate: .* unlinked and deregistered/);
+  expect(existsSync(path.join(fx.home, ".claude/hooks/pin-gate"))).toBe(false);
+  expect(readFileSync(fx.settingsPath, "utf8")).not.toContain("pin-gate.py");
+  expect(readFileSync(fx.settingsPath, "utf8")).toContain("demo-gate.py");
+  const st = run(fx, "--status");
+  expect(st.out).toMatch(/pin-gate refused\(unpinned\)\n/);
+  expect(st.status).toBe(0);
+});
+
+test("--status flags a refused gate that is still linked or registered", () => {
+  const fx = fixture();
+  addPinGate(fx, `${FINGERPRINT}  mbp\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  writeFileSync(path.join(fx.repo, "skills/golem-powers/pin-gate/anchor.pins"), "# emptied\n");
+  git(fx.repo, "commit", "-qam", "unpin");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  git(live(fx), "checkout", "-q", "--detach", git(fx.repo, "rev-parse", "origin/master"));  // moved outside --apply
+  const st = run(fx, "--status");
+  expect(st.out).toMatch(/pin-gate refused\(unpinned\) but STILL ACTIVE/);
+  expect(st.status).toBe(1);
+});
+
+test("--status detects hooks-live tampering: tracked edits, untracked files, foreign or unrecorded HEAD", () => {
+  const fx = fixture();
+  addPinGate(fx, `${FINGERPRINT}  mbp\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  const clean = run(fx, "--status");
+  expect([clean.status, clean.out]).toEqual([0, expect.not.stringMatching(/DIRTY|not on origin|recorded pin/)]);
+  const pins = path.join(live(fx), "skills/golem-powers/pin-gate/anchor.pins");
+  const original = readFileSync(pins, "utf8");
+  writeFileSync(pins, `${original}${"b".repeat(64)}  rogue\n`);  // in-place edit, uncommitted
+  let st = run(fx, "--status");
+  expect(st.out).toMatch(/hooks-live DIRTY: 1 changed\/untracked path/);
+  expect(st.status).toBe(1);
+  writeFileSync(pins, original);
+  writeFileSync(path.join(live(fx), "skills/golem-powers/pin-gate/hooks/extra.py"), "pass\n");  // untracked
+  st = run(fx, "--status");
+  expect(st.out).toMatch(/hooks-live DIRTY/);
+  expect(st.status).toBe(1);
+  rmSync(path.join(live(fx), "skills/golem-powers/pin-gate/hooks/extra.py"));
+  // A local commit inside hooks-live: off origin/master and not the recorded pin.
+  writeFileSync(pins, `${"c".repeat(64)}  rogue\n`);
+  git(live(fx), "commit", "-qam", "local re-pin");
+  st = run(fx, "--status");
+  expect(st.out).toMatch(/hooks-live HEAD is not on origin\/master/);
+  expect(st.out).toMatch(/!= recorded pin/);
+  expect(st.status).toBe(1);
+  rmSync(path.join(fx.home, ".claude/hooks/golems-hooks-live.sha"));
+  git(live(fx), "checkout", "-q", "--detach", git(fx.repo, "rev-parse", "origin/master"));
+  st = run(fx, "--status");
+  expect(st.out).toMatch(/has no recorded pin/);
+  expect(st.status).toBe(1);
+});
+
+test("the shipped human-confirm gate requires its committed anchor pin on every host", () => {
+  for (const entries of Object.values(realManifest.hosts)) {
+    const gate = entries.find((h) => h.id === "human-confirm-gate");
+    expect(gate.requiresPin).toBe("skills/golem-powers/human-confirm-gate/anchor.pins");
+    expect(existsSync(path.join(here, "../..", gate.requiresPin))).toBe(true);
+  }
+});
+
+test("--status compares every Python hook's import dirs byte-for-byte with HEAD; --apply clears stale caches", () => {
+  const fx = fixture();
+  addPinGate(fx, `${FINGERPRINT}  mbp\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  const hook = path.join(live(fx), "skills/golem-powers/pin-gate/hooks/pin-gate.py");
+  writeFileSync(hook, "print('changed')\n");
+  let st = run(fx, "--status");
+  expect(st.status).toBe(1);
+  expect(st.out).toMatch(/hooks import files differ from HEAD: 1 \(skills\/golem-powers\/pin-gate\/hooks\/pin-gate.py\)/);
+  writeFileSync(hook, "print('{}')\n");
+  // An ordinary (non-gate) hook dir is covered too: compiled files and caches are findings.
+  const demo = path.join(live(fx), "skills/golem-powers/demo-gate/hooks");
+  writeFileSync(path.join(demo, "json.pyc"), "");
+  mkdirSync(path.join(demo, "__pycache__"));
+  writeFileSync(path.join(demo, "__pycache__/demo-gate.cpython-313.pyc"), "");
+  st = run(fx, "--status");
+  expect(st.status).toBe(1);
+  expect(st.out).toMatch(/hooks import files unexpected \(untracked or ignored\): 2 /);
+  rmSync(path.join(demo, "json.pyc"));
+  const apply = run(fx, "--apply");
+  expect(apply.out).toMatch(/clearing 1 stale __pycache__ dir/);
+  expect(existsSync(path.join(demo, "__pycache__"))).toBe(false);
+  expect(run(fx, "--status").out).not.toMatch(/import files|INDEX|REPLACE/);
+});
+
 function pinnedManifestFixture() {
   const fx = fixture();
   const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
@@ -552,12 +716,14 @@ test('invalid update manifest refuses before moving an existing pin', () => {
 test('--status reports installed heavy-suite availability without changing settings or the pin', () => {
   const fx = fixture();
   expect(run(fx, '--status').out).toContain('heavy-suite missing (suites run unqueued)');
+  // The helper is tracked at the pinned sha: an untracked file in hooks-live is tampering.
+  mkdirSync(path.join(fx.repo, 'scripts/hooks'), { recursive: true });
+  writeFileSync(path.join(fx.repo, 'scripts/hooks/heavy-suite.py'), 'fixture');
+  git(fx.repo, 'add', '-A'); git(fx.repo, 'commit', '-qm', 'helper'); git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
   expect(run(fx, '--apply').status).toBe(0);
   const sha = git(live(fx), 'rev-parse', 'HEAD');
   const settings = readFileSync(fx.settingsPath, 'utf8');
   const helper = path.join(live(fx), 'scripts/hooks/heavy-suite.py');
-  mkdirSync(path.dirname(helper), { recursive: true });
-  writeFileSync(helper, 'fixture');
   const result = run(fx, '--status');
   expect(result.status).toBe(0);
   expect(result.out).toContain(`heavy-suite available ${helper}`);
