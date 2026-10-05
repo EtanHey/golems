@@ -90,6 +90,10 @@ jobs:
                    ./scripts/tests/launchd-portability.test.mjs \
                    ./scripts/tests/reconcile-to-mac.test.mjs \
                    ./scripts/tests/release-gate.test.mjs \
+                   ./scripts/tests/repogolem-agents.test.ts \
+                   ./scripts/tests/repogolem-managed-agents.test.ts \
+                   ./scripts/tests/repogolem-values.test.ts \
+                   ./scripts/tests/repogolem-varlock.test.ts \
                    ./scripts/tests/repogolem-config.test.ts \
                    ./scripts/tests/repogolem-mcp-argv.test.ts \
                    ./scripts/tests/repogolem-machines.test.ts \
@@ -113,6 +117,7 @@ jobs:
       - name: node suites
         run: |
           node --test scripts/tests/bats-coverage.test.mjs \
+                      scripts/tests/codex-internal-role.test.mjs \
                       scripts/tests/google-drive-oauth-guard.test.mjs \
                       scripts/tests/stalker-morning-launchd.test.mjs \
                       scripts/tests/check-telegram-retirement.test.mjs
