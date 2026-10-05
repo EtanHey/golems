@@ -6,9 +6,17 @@ SHELLS = {'sh', 'bash', 'zsh', 'dash', 'ksh', 'fish'}
 DATA = {'echo', 'printf', 'cat', 'rg', 'grep', 'sed', 'awk', 'test', '[', '[[', 'git', 'gh', 'trap'}
 WRAPPERS = {'timeout', 'gtimeout', 'builtin', 'arch', 'xcrun', 'script', 'watch',
             'parallel', 'nice', 'nohup', 'env', 'sudo', 'stdbuf', 'caffeinate', 'time', 'exec', 'command'}
-VALUE_OPTIONS = {'-k', '--kill-after', '-s', '--signal', '-n', '--interval', '-d', '--differences',
-                 '-o', '-e', '-i', '-u', '-g', '-C', '--chdir', '--unset', '--user', '--group',
-                 '--sdk', '--toolchain'}
+VALUE_OPTIONS = {
+    'timeout': {'-k', '--kill-after', '-s', '--signal'},
+    'gtimeout': {'-k', '--kill-after', '-s', '--signal'},
+    'nice': {'-n', '--adjustment'}, 'env': {'-u', '--unset', '-C', '--chdir'},
+    'sudo': {'-u', '--user', '-g', '--group', '-C', '-p', '--prompt', '-r', '-t'},
+    'stdbuf': {'-i', '-o', '-e', '--input', '--output', '--error'},
+    'watch': {'-n', '--interval'},
+    'caffeinate': {'-t', '-w'}, 'time': {'-o', '--output', '-f', '--format'},
+    'arch': {'-arch', '-e', '-u'}, 'xcrun': {'--sdk', '--toolchain', '-sdk', '-toolchain'},
+    'exec': {'-a'}, 'parallel': {'-j', '--jobs', '-n', '-N', '-S', '--sshlogin'},
+}
 
 
 def argv_at(tokens, segments, scopes, i):
@@ -40,6 +48,10 @@ def wrapper_payload(base, args):
         return
     if base not in WRAPPERS:
         return
+    if base == 'script' and any(a in ('-c', '--command') for a in args):
+        index = next(i for i, a in enumerate(args) if a in ('-c', '--command'))
+        yield ['sh', '-c', args[index + 1]]
+        return
     i = 0
     while i < len(args):
         arg = args[i]
@@ -49,11 +61,11 @@ def wrapper_payload(base, args):
             i += 1; continue
         if not arg.startswith('-'):
             break
-        i += 2 if arg in VALUE_OPTIONS else 1
+        i += 2 if arg in VALUE_OPTIONS.get(base, set()) else 1
     if base in ('timeout', 'gtimeout', 'script'):
         i += 1  # duration / output transcript file
     if i < len(args):
-        yield args[i:]
+        yield ['sh', '-c', ' '.join(args[i:])] if base in ('watch', 'parallel') and '-x' not in args[:i] else args[i:]
 
 
 def shell_payload(base, args):

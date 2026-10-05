@@ -92,7 +92,7 @@ def resolve_word(word, bindings):
 
 def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
     values = dict(initial)
-    if any(t in ('(', '&', '|', 'if', 'for', 'while', 'case') for t in tokens):
+    if any(t in ('(', '&', '|', 'if', 'for', 'while', 'case') for t in tokens[:limit]):
         return {}  # Parent bindings are uncertain across control/subshell scope.
     if any(positions[i] and t in ('eval', 'source', '.', 'read', 'unset', 'declare', 'typeset', 'local', 'let', 'trap') for i, t in enumerate(tokens[:limit])):
         return {}  # These builtins can invalidate earlier literal assignments.
@@ -139,7 +139,11 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         if any(target.casefold().endswith('/.git/config') or target.casefold() == '.git/config'
                for target in syntax.write_targets(base, args, redirects)):
             _state['config'] = True
-        if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()):
+        policy_hint = any(shell._ASSIGNMENT_RE.match(t) and (positions[j] or j and tokens[j - 1] == 'export') and
+                          syntax.policy_path(t.split('=', 1)[1], cwd or '/', Path.home())
+                          for j, t in enumerate(tokens[:i]))
+        uncertain_policy_target = policy_hint and any('$' in t or '`' in t for t in syntax.write_targets(base, args, redirects))
+        if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
         if ('$' in word or '`' in word) and syntax.guarded_words(args):
             raise ValueError('unresolved executable for protected operation')

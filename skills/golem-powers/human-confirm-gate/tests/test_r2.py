@@ -40,6 +40,7 @@ class R2(Gate):
                         'git -c user.name=x -c user.email=y commit -m fixture',
                         'git -C ~/x status']:
             with self.subTest(command=command): self.assertEqual(self.run_hook(command)[0], 0)
+        self.assertEqual(self.run_hook("gh api graphql -f 'query=mutation{addComment(input:{body:fixture}){clientMutationId}}'")[0], 0)
 
     def test_r1_shell_inputs_and_git_executors(self):
         for command in ["bash <<'X'\ngit push -f origin topic\nX",
@@ -76,4 +77,4 @@ class R2(Gate):
                         'gh repo sync o/fork --force', 'gh repo archive o/r',
                         'gh repo rename new-name', 'gh repo edit --default-branch main']:
             with self.subTest(command=command): self.assertEqual(self.run_hook(command)[0], 2)
-
+        self.assertEqual(self.run_hook("gh api graphql -f 'query=mutation{deleteBranchProtectionRule(input:{id:1}){clientMutationId}}'")[0], 2)

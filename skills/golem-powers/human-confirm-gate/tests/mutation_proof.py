@@ -7,9 +7,10 @@ root = Path(__file__).resolve().parents[4]
 (root / 'docs.local/human-confirm-gate').mkdir(parents=True, exist_ok=True)
 gate = Path('skills/golem-powers/human-confirm-gate')
 mutations = [
+    ('wrapper-option-arity', 'syntax.py', "'watch': {'-n', '--interval'}", "'watch': {'-n', '--interval', '-d'}", 'test_surfaces.Surfaces.test_r1_policy_surface'),
     ('unresolved-executor', 'commands.py', "if ('$' in word or '`' in word) and syntax.guarded_words(args):", 'if False:', 'test_gate.Gate.test_unresolved_executor_denies_non_push'),
     ('mutable-bindings', 'commands.py', "if any(positions[i] and t in ('eval', 'source', '.', 'read', 'unset', 'declare', 'typeset', 'local', 'let', 'trap') for i, t in enumerate(tokens[:limit])):", 'if False:', 'test_commands.Commands.test_assignment_scope_uncertainty_denies'),
-    ('control-scope', 'commands.py', "if any(t in ('(', '&', '|', 'if', 'for', 'while', 'case') for t in tokens):", 'if False:', 'test_commands.Commands.test_assignment_scope_uncertainty_denies'),
+    ('control-scope', 'commands.py', "if any(t in ('(', '&', '|', 'if', 'for', 'while', 'case') for t in tokens[:limit]):", 'if False:', 'test_commands.Commands.test_assignment_scope_uncertainty_denies'),
     ('assignment-resolution', 'commands.py', 'word = resolve_word(word, current)', 'word = word', 'test_commands.Commands.test_resolved_normal_push'),
     ('xargs', 'commands.py', "if base == 'xargs' and any(os.path.basename(a) in ('git', 'gh', 'sh', 'bash', 'zsh', 'fish') for a in args):", 'if False:', 'test_commands.Commands.test_issue_500_expansions'),
     ('unresolved-eval', 'commands.py', ['if shell._UNRESOLVED_EVAL_MARKER in tokens:', "if base == 'eval' and any('$' in a or '`' in a for a in args):"], ['if False:', 'if False:'], 'test_commands.Commands.test_unknown_fails_closed'),
@@ -36,7 +37,7 @@ mutations = [
     ('gh-graphql', 'gh_policy.py', "if path == 'graphql':", 'if False:', 'test_r2.R2.test_r1_same_call_config_and_gh'),
     ('gh-endpoint-normalize', 'gh_policy.py', "return re.sub('/+', '/', unquote(value)).strip('/')", 'return value', 'test_r2.R2.test_r1_same_call_config_and_gh'),
     ('ordinary-gh-overblock', 'gh_policy.py', 'guarded = settings_path(path, method)', "guarded = method not in ('GET', 'HEAD', 'OPTIONS')", 'test_r2.R2.test_r1_ordinary_commands'),
-    ('policy-bash', 'commands.py', "if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()):", 'if False:', 'test_surfaces.Surfaces.test_r1_policy_surface'),
+    ('policy-bash', 'commands.py', "if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:", 'if False:', 'test_surfaces.Surfaces.test_r1_policy_surface'),
     ('policy-case', 'syntax.py', 'os.path.realpath(os.path.join(cwd, word)).casefold()', 'os.path.realpath(os.path.join(cwd, word))', 'test_surfaces.Surfaces.test_r1_policy_surface'),
     ('alternate-surface', 'human-confirm-pretooluse.py', "if not isinstance(args.get('command'), str):", "if name != 'Bash':", 'test_surfaces.Surfaces.test_r1_policy_surface'),
     ('notebook-path', 'human-confirm-pretooluse.py', "args.get('file_path', args.get('notebook_path', ''))", "args.get('file_path', '')", 'test_surfaces.Surfaces.test_r1_policy_surface'),
