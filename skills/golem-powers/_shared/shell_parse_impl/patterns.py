@@ -6,6 +6,7 @@ import re
 
 from .substitutions import _backtick_substitution, _dollar_substitution
 from .tokens import _RAW_FOR_WORD_RE, _RAW_SHELL_TOKEN_RE
+from .quotes import ansi_c_quote, ansi_c_opens_at
 
 
 def builtin_alias_eligibility(source):
@@ -31,6 +32,11 @@ def builtin_alias_eligibility(source):
                 comment = False
                 flush()
             i += 1
+            continue
+        if quote is None and ansi_c_opens_at(source, i):
+            value, i = ansi_c_quote(source, i)
+            word.extend(value)
+            alias_eligible = False
             continue
         if quote != "'" and source.startswith("$(", i):
             found = _dollar_substitution(source, i)
@@ -89,7 +95,17 @@ def shell_case_pattern(raw_pattern):
     normalized = []
     quote = None
     escaped = False
-    for char in raw_pattern:
+    i = 0
+    while i < len(raw_pattern):
+        if quote is None and not escaped and ansi_c_opens_at(raw_pattern, i):
+            value, i = ansi_c_quote(raw_pattern, i)
+            normalized.extend(
+                {"*": "[*]", "?": "[?]", "[": "[[]"}.get(char, char)
+                for char in value
+            )
+            continue
+        char = raw_pattern[i]
+        i += 1
         if escaped:
             normalized.append({"*": "[*]", "?": "[?]", "[": "[[]"}.get(char, char))
             escaped = False
@@ -164,7 +180,9 @@ def literal_for_word_counts(source):
         definite = 0
         dynamic = False
         for word in words:
-            if word.startswith("'") and word.endswith("'"):
+            if word.startswith("$'") and ansi_c_quote(word, 0)[1] == len(word):
+                definite += 1
+            elif word.startswith("'") and word.endswith("'"):
                 definite += 1
             elif word.startswith('"') and word.endswith('"'):
                 if "$@" not in word:
