@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'skills/golem-powers/human-confirm-gate/hooks'))
 from commands import operations
-from tokens import SSH, private_read
+from tokens import SSH, anchor_bytes, verify_signature
 
 
 def owner_terminal():
@@ -83,7 +83,7 @@ def issue(argv=None, *, home=None):
     if not ops or any(op['class'] != args.action or not matches(op) for op in ops):
         raise ValueError('command does not match requested ref/action scope')
     root = home / '.config/golems/human-confirm'; root.mkdir(parents=True, mode=0o700, exist_ok=True)
-    policy = root.parent / 'human-confirm.allowed_signers'; private_read(policy)
+    anchor = anchor_bytes(home)
     now = time.time(); nonce = uuid.uuid4().hex
     token = dict(version=1, kind='human', nonce=nonce, issued_at=now, expires_at=now + args.ttl,
                  command_sha256=hashlib.sha256((repo + '\0' + command).encode()).hexdigest(),
@@ -96,8 +96,8 @@ def issue(argv=None, *, home=None):
         with os.fdopen(fd, 'wb') as stream:
             stream.write(raw); stream.flush(); os.fsync(stream.fileno())
         sign([SSH, '-Y', 'sign', '-U', '-q', '-f', str(key), '-n', 'golems-confirm', str(path)], check=True, timeout=120)
-        subprocess.run([SSH, '-Y', 'verify', '-f', str(policy), '-I', 'human', '-n', 'golems-confirm', '-s', str(path) + '.sig'],
-                       input=raw, capture_output=True, check=True, timeout=2)
+        if not verify_signature(raw, anchor, 'human', str(path) + '.sig'):
+            raise ValueError('signature does not match pinned anchor')
         if time.time() >= token['expires_at']:
             raise ValueError('approval expired while signing; issue a fresh token')
     except BaseException:

@@ -38,24 +38,24 @@ mutations = [
     ('gh-endpoint-normalize', 'gh_policy.py', "return re.sub('/+', '/', unquote(value)).strip('/')", 'return value', 'test_r2.R2.test_r1_same_call_config_and_gh'),
     ('ordinary-gh-overblock', 'gh_policy.py', 'guarded = settings_path(path, method)', "guarded = method not in ('GET', 'HEAD', 'OPTIONS')", 'test_r2.R2.test_r1_ordinary_commands'),
     ('policy-bash', 'commands.py', "if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:", 'if False:', 'test_surfaces.Surfaces.test_r1_policy_surface'),
-    ('policy-case', 'syntax.py', 'os.path.realpath(os.path.join(cwd, word)).casefold()', 'os.path.realpath(os.path.join(cwd, word))', 'test_surfaces.Surfaces.test_r1_policy_surface'),
+    ('policy-case', 'syntax.py', "os.path.realpath(os.path.join(cwd or '/', expand_home(raw, home))).casefold()", "os.path.realpath(os.path.join(cwd or '/', expand_home(raw, home)))", 'test_surfaces.Surfaces.test_r1_policy_surface'),
     ('alternate-surface', 'human-confirm-pretooluse.py', "if not isinstance(args.get('command'), str):", "if name != 'Bash':", 'test_surfaces.Surfaces.test_r1_policy_surface'),
     ('notebook-path', 'human-confirm-pretooluse.py', "args.get('file_path', args.get('notebook_path', ''))", "args.get('file_path', '')", 'test_surfaces.Surfaces.test_r1_policy_surface'),
     ('agent-write', 'human-confirm-pretooluse.py', "if policy_path(target, payload.get('cwd', str(home)), home):", 'if False:', 'test_gate.Gate.test_agent_write_rejected'),
     ('fail-closed', 'human-confirm-pretooluse.py', '        denied = True', '        denied = False', 'test_gate.Gate.test_invalid_payload_fails_closed'),
-    ('nofollow', 'tokens.py', 'os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK', 'os.O_RDONLY | os.O_NONBLOCK', 'test_integrity.Integrity.test_nofollow_and_uid'),
-    ('uid', 'tokens.py', 'info.st_uid != os.getuid()', 'False', 'test_integrity.Integrity.test_nofollow_and_uid'),
+    ('nofollow', 'tokens.py', 'fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)', 'fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)', 'test_integrity.Integrity.test_nofollow_and_uid'),
+    ('uid', 'tokens.py', 'or info.st_uid != os.getuid() or info.st_size > 65536', 'or False or info.st_size > 65536', 'test_integrity.Integrity.test_nofollow_and_uid'),
     ('version', 'tokens.py', "token['version'] != 1", 'False', 'test_integrity.Integrity.test_version_nonce_and_anchor_mode'),
     ('nonce-filename', 'tokens.py', "path.name != nonce + '.json'", 'False', 'test_integrity.Integrity.test_version_nonce_and_anchor_mode'),
-    ('mode', 'tokens.py', 'stat.S_IMODE(info.st_mode) != 0o600', 'False', 'test_integrity.Integrity.test_version_nonce_and_anchor_mode'),
+    ('mode', 'tokens.py', 'stat.S_IMODE(info.st_mode) != 0o600', 'False', 'test_gate.Gate.test_signature_mode_and_ref_sha'),
     ('principal-swap', 'tokens.py', "'-I', kind", "'-I', 'lead' if kind == 'human' else 'human'", 'test_integrity.Integrity.test_separate_principal_keys'),
-    ('signature', 'tokens.py', 'if verified.returncode:', 'if False:', 'test_integrity.Integrity.test_unsigned_fresh_token'),
+    ('signature', 'tokens.py', "if not verify_signature(raw, anchor, kind, str(path) + '.sig'):", 'if False:', 'test_integrity.Integrity.test_unsigned_fresh_token'),
     ('ttl', 'tokens.py', "if not (token['issued_at'] <= now < token['expires_at'] <= token['issued_at'] + 300):", 'if False:', 'test_gate.Gate.test_wrong_scope_expired_or_unsigned'),
     ('digest', 'tokens.py', "token['command_sha256'] != digest", 'False', 'test_gate.Gate.test_wrong_scope_expired_or_unsigned'),
     ('scope', 'tokens.py', "token['operations'] != ops", 'False', 'test_gate.Gate.test_wrong_scope_expired_or_unsigned'),
     ('session', 'tokens.py', "token['session_id'] != payload['session_id']", 'False', 'test_gate.Gate.test_wrong_scope_expired_or_unsigned'),
     ('expiry-recheck', 'tokens.py', "if time.time() >= token['expires_at']:", 'if False:', 'test_gate.Gate.test_expiry_during_metadata_lookup'),
-    ('replay', 'tokens.py', 'os.O_CREAT | os.O_EXCL | os.O_WRONLY', 'os.O_CREAT | os.O_WRONLY', 'test_gate.Gate.test_human_consumed_once'),
+    ('replay', 'tokens.py', 'os.open(spent, os.O_CREAT | os.O_EXCL | os.O_WRONLY', 'os.open(spent, os.O_CREAT | os.O_WRONLY', 'test_gate.Gate.test_human_consumed_once'),
     ('lead-class', 'tokens.py', "if len(ops) != 1 or ops[0]['class'] != 'lease':", 'if False:', 'test_integrity.Integrity.test_lead_class_exact_command_and_collab_directory'),
     ('lead-exact-words', 'tokens.py', 'if words != prefix + expected:', 'if False:', 'test_integrity.Integrity.test_lead_class_exact_command_and_collab_directory'),
     ('collab-directory', 'tokens.py', 'if collab_root not in collab.resolve().parents:', 'if False:', 'test_integrity.Integrity.test_lead_class_exact_command_and_collab_directory'),
@@ -72,6 +72,43 @@ mutations = [
     ('issuer-agent', '@issuer', '    owner_terminal()', '    pass', 'test_issue.Issue.test_issuer_does_not_skip_agent_detection'),
     ('issuer-agent-only', '@issuer', "'-Y', 'sign', '-U', '-q'", "'-Y', 'sign', '-q'", 'test_issue.Issue.test_owner_helper_signs_via_public_key_agent_interface'),
     ('issuer-orphan', '@issuer', "raise ValueError('cannot establish owner login-terminal ancestry')", 'return', 'test_issue.Issue.test_orphan_and_agent_markers_refuse'),
+    ('anchor-fingerprint', 'tokens.py', 'if hashlib.sha256(raw).hexdigest() not in pinned_fingerprints(PINS):', 'if False:', 'test_anchor.Anchor.test_anchor_rewrite_denies_human_and_lead_tokens'),
+    ('anchor-pin-in-policy-dir', 'tokens.py', 'not in pinned_fingerprints(PINS):', "not in parse_pins((home / ANCHOR.parent / 'human-confirm.anchor.sha256').read_bytes()):", 'test_anchor.Anchor.test_policy_dir_rewrite_cannot_mint_tokens_even_with_a_same_dir_pin'),
+    ('pin-working-tree', 'tokens.py', ['if committed.returncode or committed.stdout != pins.read_bytes():', 'return parse_pins(committed.stdout)'], ['if False:', 'return parse_pins(pins.read_bytes())'], 'test_anchor.Anchor.test_only_the_committed_pin_counts'),
+    ('pin-grammar', 'tokens.py', "[0-9a-f]{64}(?: +[A-Za-z0-9._-]+)?)?')", "[0-9a-f]{64}(?:\\s+\\S+)?)?')", 'test_anchor.Platform.test_pin_grammar_matches_shared_vectors'),
+    ('anchor-grammar-runtime', 'tokens.py', '    describe_anchor(raw)\n    return raw', '    return raw', 'test_anchor.Anchor.test_pin_requires_owner_review_of_principals_and_keys'),
+    ('pin-confirm', 'tokens.py', 'if confirm is None or not confirm(rows):', 'if False:', 'test_anchor.Anchor.test_pin_requires_owner_review_of_principals_and_keys'),
+    ('pin-one-key-per-principal', 'tokens.py', "or fields[0] in seen", "or False", 'test_anchor.Anchor.test_pin_requires_owner_review_of_principals_and_keys'),
+    ('ssh-keygen-list-reader', 'syntax.py', "and 'l' in a and 'Y' not in a for a in args)", "and False for a in args)", 'test_anchor.Anchor.test_unrelated_commands_stay_allowed'),
+    ('ancestors-anchor-only', 'syntax.py', "    if ancestors and roots[0].startswith(target.rstrip('/') + '/'):", "    if ancestors and any(r.startswith(target.rstrip('/') + '/') for r in roots):", 'test_anchor.Anchor.test_unrelated_commands_stay_allowed'),
+    ('anchor-flags', 'tokens.py', "and getattr(info, 'st_flags', 0) & stat.UF_IMMUTABLE)", ')', 'test_anchor.Anchor.test_missing_immutable_flags_or_unsafe_metadata_deny'),
+    ('anchor-dir-lock', 'tokens.py', 'locked(os.fstat(directory), stat.S_ISDIR, 0o700)', 'True', 'test_anchor.Anchor.test_missing_immutable_flags_or_unsafe_metadata_deny'),
+    ('anchor-nofollow', 'tokens.py', 'os.open(ANCHOR.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)', 'os.open(ANCHOR.name, os.O_RDONLY | os.O_NONBLOCK, dir_fd=directory)', 'test_anchor.Anchor.test_symlinked_anchor_denies_even_with_identical_bytes'),
+    ('anchor-links', 'tokens.py', 'and info.st_nlink == 1', '', 'test_anchor.Anchor.test_hard_links_cannot_be_added_and_preexisting_aliases_deny'),
+    ('flag-unresolved', 'syntax.py', 'if any(unresolved(a, home) for a in args):\n        return True', 'if False:\n        return True', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('flag-recursive', 'syntax.py', "and 'R' in a for a in args)", "and False for a in args)", 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('flag-case', 'syntax.py', '    base = os.path.basename(word).casefold()\n    if base in DATA:', '    base = os.path.basename(word)\n    if base in DATA:', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('flag-setfile', 'syntax.py', "FLAG_EXECUTORS = {'chflags', 'setfile'}", "FLAG_EXECUTORS = {'chflags'}", 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('flag-indirect', 'syntax.py', 'if base in INDIRECT or base not in WRAPPERS', 'if base not in WRAPPERS', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('flag-wrapper-cwd', 'syntax.py', 'flag_write(executor, args[j + 1:], None, home)', 'flag_write(executor, args[j + 1:], cwd, home)', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('flag-unresolved-executor', 'syntax.py', '        if any(flag_clear(a) for a in args):\n            return flag_write', '        if False:\n            return flag_write', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('flag-unresolved-numeric', 'syntax.py', 'if any(flag_clear(a, numeric=True) for a in args) and any(', 'if False and any(', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('flag-renamed-binary', 'syntax.py', '    return any(flag_clear(a) for a in args) and any(', '    return False and any(', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('anchor-non-reader', 'syntax.py', "if any(anchor_path(c, cwd, home, ancestors=base in ('ln', 'link')) for a in args for c in _candidates(a)):", 'if False:', 'test_anchor.Anchor.test_opaque_writers_cannot_change_the_locked_anchor'),
+    ('ln-ancestor', 'syntax.py', "ancestors=base in ('ln', 'link')", 'ancestors=False', 'test_anchor.Anchor.test_symlink_aliases_are_policy_targets_and_cannot_write'),
+    ('option-value', 'syntax.py', "    if '=' in arg: yield arg.split('=', 1)[1]\n", '', 'test_anchor.Anchor.test_opaque_writers_cannot_change_the_locked_anchor'),
+    ('pinned-tree', 'syntax.py', "(home / '.config/golems/human-confirm-anchor', gate, gate.parent / '_shared')", "(home / '.config/golems/human-confirm-anchor',)", 'test_anchor.Anchor.test_pinned_tree_is_protected'),
+    ('cd-stack', 'commands.py', "target.startswith(('-', '+'))", 'False', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('popd', 'commands.py', "if base in ('cd', 'pushd', 'popd'):", "if base in ('cd', 'pushd'):", 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('pin-replace-objects', 'tokens.py', ["[GIT, '--no-replace-objects', '-C'", "'GIT_NO_REPLACE_OBJECTS': '1', "], ["[GIT, '-C'", ''], 'test_anchor.Platform.test_pin_is_read_from_the_named_tree_without_object_replacement'),
+    ('pin-ceiling', 'tokens.py', ", 'GIT_CEILING_DIRECTORIES': str(tree.parent)}", '}', 'test_anchor.Platform.test_pin_is_read_from_the_named_tree_without_object_replacement'),
+    ('pin-nested-marker', 'tokens.py', "if any(os.path.lexists(directory / '.git') for directory in pins.parents[:3]):", 'if False:', 'test_anchor.Platform.test_pin_is_read_from_the_named_tree_without_object_replacement'),
+    ('pin-discovered-repo', 'tokens.py', ["'--no-replace-objects', '-C', str(tree), 'cat-file'", 'timeout=2, env=env)'], ["'--no-replace-objects', 'cat-file'", 'timeout=2, env=env, cwd=pins.parent)'], 'test_anchor.Platform.test_pin_is_read_from_the_named_tree_without_object_replacement'),
+    ('import-stdlib-first', 'human-confirm-pretooluse.py', "sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) not in (HERE, os.path.realpath(SHARED))]", 'pass', 'test_anchor.Platform.test_hook_imports_put_the_stdlib_first_and_never_read_tree_bytecode'),
+    ('import-no-bytecode', 'human-confirm-pretooluse.py', "sys.pycache_prefix = '/dev/null/golems-human-confirm'", 'pass', 'test_anchor.Platform.test_hook_imports_put_the_stdlib_first_and_never_read_tree_bytecode'),
+    ('import-stray-check', 'human-confirm-pretooluse.py', 'if stray_importables():', 'if False:', 'test_anchor.Platform.test_compiled_file_beside_the_sources_denies_every_call'),
+    ('launcher-preload', '@launcher', 'import pkgutil  # noqa: F401', 'import os  # noqa: F401', 'test_anchor.Platform.test_launcher_preloads_runpy_lazy_imports_from_the_stdlib'),
+    ('trusted-gh-checks', 'tokens.py', ' and not info.st_mode & 0o022 and info.st_uid in (0, os.getuid())', '', 'test_anchor.Platform.test_trusted_gh_is_a_fixed_owner_checked_candidate_never_caller_path'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
 (root / 'docs.local/human-confirm-gate/r2-mutation-control.log').write_text(control.stdout + control.stderr)
@@ -88,7 +125,13 @@ for name, file, old, new, test in mutations:
         shutil.copy(root / 'scripts/hooks/manifest.json', scratch / 'scripts/hooks/manifest.json')
         shutil.copy(root / 'scripts/golems-confirm', scratch / 'scripts/golems-confirm')
         (scratch / 'docs.local/human-confirm-gate').mkdir(parents=True)
-        target = scratch / 'scripts/golems-confirm' if file == '@issuer' else scratch / gate / 'hooks' / file
+        private = root / 'docs.local/human-confirm-anchor-integrity/test_private_f1b.py'
+        if test.startswith('test_private_f1b.'):
+            if not private.exists():
+                print(name, 'SKIPPED (private tests absent)', flush=True); continue
+            shutil.copy(private, scratch / gate / 'tests' / private.name)
+        target = {'@issuer': scratch / 'scripts/golems-confirm',
+                  '@launcher': scratch / 'scripts/hooks/fail-open.py'}.get(file, scratch / gate / 'hooks' / file)
         text = target.read_text()
         changed = text
         for before, after in zip(old if isinstance(old, list) else [old], new if isinstance(new, list) else [new]):
