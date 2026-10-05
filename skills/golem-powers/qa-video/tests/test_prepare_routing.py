@@ -33,6 +33,8 @@ def score(capture):
             agents.append(args.get('subagent_type'))
         if 'cmux' in tool:
             assert case == 'visible' and actor == 'parent', 'unrequested pane access'
+            if tool.endswith(('list_agents', 'list_surfaces')):
+                continue  # Parent discovers topology before the explicit visible spawn.
             assert tool.endswith('spawn_agent'), 'media commands sent to surface'
             assert args.get('cli') == 'gemini' and 'agy --agent video-qa' in args.get('prompt', '')
             panes.append(call)
@@ -59,6 +61,8 @@ def accepted(case):
                   {'qa': 'qa-video-runner', 'gems': 'video-gems'}[case]}},
                  {'actor': 'pipeline', 'tool': 'Bash', 'arguments':
                   {'command': 'python3 /skill/scripts/visual-gather.py --question facts /frame.png'}}])
+    if case == 'visible':
+        calls.insert(0, {'tool': 'mcp__cmuxlayer__list_surfaces', 'arguments': {}})
     return {'case': case, 'prompt': PROMPTS[case], 'image_paths': ['/frame.png', '/extensionless'], 'calls': calls}
 
 
@@ -85,6 +89,8 @@ def test_reject_route_counterexamples():
     c = accepted('visible'); c['calls'] = accepted('qa')['calls']; bad.append(c)
     c = accepted('qa'); c['calls'][0]['actor'] = 'pipeline'; bad.append(c)
     c = accepted('qa'); c['calls'].append({'tool': 'view_image'}); bad.append(c)
+    c = accepted('visible'); c['calls'].append({'tool': 'mcp__cmuxlayer__send_to', 'arguments': {'text': 'ffmpeg'}}); bad.append(c)
+    c = accepted('visible'); c['calls'].pop(); bad.append(c)
     for c in bad:
         with pytest.raises(AssertionError):
             score(copy.deepcopy(c))
