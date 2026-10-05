@@ -14,6 +14,7 @@
 ## Model Selection
 
 Routing (role selection): see `/agent-routing` § Routing rules (SSOT).
+Every non-Cursor spawn pins its model explicitly (canon #5).
 
 For managed visible `spawn_agent` / repoGolem launches, use `claude.judgment` through the
 bare launcher at 1M; verify its pin against the resolved role. Do not pass a managed model

@@ -39,8 +39,9 @@ done
 
 ## Cursor's Unique Advantage in the Loop
 
-Cursor exposes `@codebase` indexing. For role ownership, use the routing pointer above;
-for the diff-pass procedure, see [review loop § 8a.2](../references/review-loop.md#8a2--routing-for-diff-passes).
+Cursor exposes `@codebase` indexing. The diff pass is read-only (review loop § 8a.2).
+For role ownership, use the routing pointer above;
+for the diff-pass procedure, see [review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only).
 
 ```bash
 # Read-only pre-PR audit — report only, zero Bugbot quota

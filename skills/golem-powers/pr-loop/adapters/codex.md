@@ -66,7 +66,7 @@ gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed
 ```
 
 Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
-Diff-pass procedure: [review loop § 8a.2](../references/review-loop.md#8a2--routing-for-diff-passes).
+Diff-pass procedure: [review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only).
 
 ## CI + Review Waiting (Codex — NO sleep-poll loops)
 

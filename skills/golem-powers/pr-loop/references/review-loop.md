@@ -90,7 +90,9 @@ Trigger: Bugbot answered `usage limit reached` on skill-creator #51, a non-core 
 > to raise Cursor's cap, and offered him the reversal; no ratification or objection is on record.
 > If the cap is raised, this tiering is the clause to revisit.
 
-#### 8a.2 — Routing for diff passes
+#### 8a.2 — The Cursor diff pass is READ-ONLY
+
+A Cursor pass reports findings only; it never edits files or pushes to the PR branch.
 
 Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
 
