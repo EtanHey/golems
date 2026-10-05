@@ -103,7 +103,7 @@ def desynced_patch_head(command):
     if not match:
         return False
     prefix = head[:match.start()]
-    prefix = re.sub(r"^\s*cd[ \t]+(?:\\.|[^\s;&|<>])+[ \t]*&&[ \t]*", "", prefix)
+    prefix = re.sub(r"^\s*cd[ \t]+(?:\\.|[^\s;&|<>\\])+[ \t]*&&[ \t]*", "", prefix)
     # Only assignment prefixes qualify. Ordinary commands with an unquoted
     # tool-name argument or quoted documentation retain their Bash decision.
     return bool(re.fullmatch(

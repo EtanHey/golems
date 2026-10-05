@@ -226,6 +226,16 @@ class CodexPolicyHookTests(unittest.TestCase):
                     with self.subTest(gate=gate, alias=alias, command=command):
                         self.check(run(gate, payload(command)), False)
 
+    def test_escaped_cd_data_prefix_stays_allowed_within_budget(self):
+        # A non-intercepted docs command must not exhaust the adapter deadline
+        # while rejecting an unsupported cd shape with many escaped characters.
+        command = "cd\t" + "\\!" * 28 + "; X=(one) echo apply_patch <<'DOC'\n*** Begin Patch\nDOC"
+        for gate in TARGETS:
+            with self.subTest(gate=gate):
+                started = time.monotonic()
+                self.check(run(gate, payload(command)), False)
+                self.assertLess(time.monotonic() - started, 3)
+
     def test_transport_refusal_and_adapter_failure_have_distinct_reasons(self):
         patch = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+x\n*** End Patch"
         for gate in TARGETS:
