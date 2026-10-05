@@ -22,6 +22,7 @@ false-green-gate/install-snippet.json	/Users/example	Test or evaluation evidence
 fleet-wrap-gate/install-snippet.json	/Users/example	Test or evaluation evidence intentionally preserves this machine-path specimen.
 git-guardian/hooks/pre_tool_use.py	~/Gits/golems	Runtime recovery guidance intentionally names the canonical hook installer checkout.
 git-guardian/tests/_test_git_safety_parts/cases01.py	/opt/homebrew/bin/git	Test or evaluation evidence intentionally preserves this machine-path specimen.
+git-guardian/tests/test_repo_parent_rm.py	~/Gits/project	Synthetic policy-decision fixture intentionally preserves a home-relative repository specimen; no shell command is executed.
 golem-install/evals/evals.json	~/Gits/golems	Test or evaluation evidence intentionally preserves this machine-path specimen.
 html-dashboard/templates/template.html	~/Gits/brainlayer	Display template contains a non-executed sample path.
 install-runbook-linter/fixtures/green-runbook.md	/opt/homebrew/bin/brew	Test or evaluation evidence intentionally preserves this machine-path specimen.

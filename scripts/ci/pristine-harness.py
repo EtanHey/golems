@@ -430,8 +430,11 @@ def ruling_reference(value):
 
 
 def delta_metadata(reason, authority):
-    reason, authority = normalize_metadata(reason), normalize_metadata(authority)
-    if not visible_metadata(reason) or not visible_metadata(authority):
+    # Ruling identifiers are compact, but human-readable reasons keep word boundaries.
+    reason = " ".join("".join(char for char in unicodedata.normalize("NFKC", reason)
+                              if unicodedata.category(char) != "Cf").split()) if isinstance(reason, str) else ""
+    authority = normalize_metadata(authority)
+    if not visible_metadata(normalize_metadata(reason)) or not visible_metadata(authority):
         raise ValueError("delta reason and authority must be nonempty strings with visible alphanumeric content, not placeholders")
     if not ruling_reference(authority):
         raise ValueError("delta authority requires a concrete lead ruling reference")
