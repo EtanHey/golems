@@ -1307,10 +1307,9 @@
     {
       "file": "skills/golem-powers/pr-loop/references/review-loop.md",
       "marker": "# Read-only Cursor review \u2014 costs no Bugbot quota, needs no @mention",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
+      "class": "FUNCTIONAL",
+      "reason": "Read-only Cursor review command (Auto, no model flag per canon #1); review mechanics, not implementer/reviewer routing.",
+      "count": 1
     },
     {
       "file": "skills/golem-powers/pr-loop/references/review-loop.md",
