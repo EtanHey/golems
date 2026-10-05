@@ -11,6 +11,14 @@ Collab Guard Hook: a PreToolUse hook on Write/Edit to collab/**/*.md files.
 GO-5 E2 removed the old PR-Loop/TDD keyword check.
 """
 
+import os
+import sys
+
+# AIDEV-NOTE: no hook dir is ever FIRST on sys.path, even when this file runs
+# without the launcher: the stdlib must win over anything planted beside it.
+_HOOK_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != _HOOK_DIR] + [_HOOK_DIR]
+
 import json
 import os
 import re

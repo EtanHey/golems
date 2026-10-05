@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 """Codex transport for existing policy gates; no command-classification policy."""
+import os
+import sys
+
+# AIDEV-NOTE: no hook dir is ever FIRST on sys.path, even when this file runs
+# without the launcher: the stdlib must win over anything planted beside it.
+_HOOK_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != _HOOK_DIR] + [_HOOK_DIR]
+
 import importlib.util
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
@@ -14,6 +22,10 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
+# Policy children get the Claude launcher's import hardening (-I -B, runpy
+# preload, hook dir last). Its fail-open exit 0 + stderr is a denial here.
+LAUNCHER = ROOT / "scripts/hooks/fail-open.py"
+ISOLATED = ("-I", "-B")
 TARGETS = {
     "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
@@ -292,13 +304,13 @@ def evaluate():
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
     for item in transport_inputs(p):
-        command = [sys.executable, str(ROOT / TARGETS[gate])]
+        command = [sys.executable, *ISOLATED, str(LAUNCHER), str(ROOT / TARGETS[gate])]
         data = item
         if gate == "git-guardian" and item["tool_name"] == "apply_patch":
             data = guardian_inputs(item)
             if not data:
                 continue
-            command = [sys.executable, str(Path(__file__).resolve()), "--guardian-batch"]
+            command = [sys.executable, *ISOLATED, str(Path(__file__).resolve()), "--guardian-batch"]
         # Leave a cleanup margin: simultaneous child/global deadlines can throw
         # SIGALRM inside Popen.__del__, leaking an unraisable traceback to stderr.
         remaining = BUDGET_SECONDS - 1 - (time.monotonic() - started)

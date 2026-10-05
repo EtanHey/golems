@@ -1,5 +1,7 @@
 """Transport parity against the existing, shared pristine command corpus."""
 import json
+from unittest import mock
+import io
 import importlib.util
 import os
 from pathlib import Path
@@ -12,6 +14,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 ADAPTER = ROOT / "scripts/hooks/codex-policy-hook.py"
+LAUNCHER = ROOT / "scripts/hooks/fail-open.py"
 TARGETS = {
     "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
@@ -27,9 +30,9 @@ def clean_env():
     return env
 
 
-def run(gate, payload, adapter=ADAPTER, cwd=ROOT, env=None):
+def run(gate, payload, adapter=ADAPTER, cwd=ROOT, env=None, python=sys.executable):
     data = payload if isinstance(payload, str) else json.dumps(payload)
-    return subprocess.run([sys.executable, str(adapter), gate], input=data,
+    return subprocess.run([python, str(adapter), gate], input=data,
                           capture_output=True, text=True, cwd=cwd,
                           env=env or clean_env(), timeout=12)
 
@@ -366,7 +369,7 @@ class CodexPolicyHookTests(unittest.TestCase):
                 self.assertNotIn("PRIVATE_VALUE", reason)
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             adapter = Path(scratch) / "scripts/hooks/codex-policy-hook.py"
-            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter); shutil.copyfile(LAUNCHER, adapter.with_name("fail-open.py"))
             # An actual missing parser is an installation/runtime failure.
             result = self.check(run("tmp-block", payload(f"apply_patch <<'EOF'\n{patch}\nEOF"), adapter), True)
             reason = result["hookSpecificOutput"]["permissionDecisionReason"]
@@ -379,7 +382,7 @@ class CodexPolicyHookTests(unittest.TestCase):
             base = Path(scratch)
             adapter = base / "scripts/hooks/codex-policy-hook.py"
             adapter.parent.mkdir(parents=True)
-            shutil.copyfile(ADAPTER, adapter)
+            shutil.copyfile(ADAPTER, adapter); shutil.copyfile(LAUNCHER, adapter.with_name("fail-open.py"))
             hook = base / TARGETS["tmp-block"]
             hook.parent.mkdir(parents=True)
             bodies = [None, "broken syntax PRIVATE-VALUE", "raise RuntimeError('PRIVATE-VALUE')",
@@ -440,7 +443,7 @@ class CodexPolicyHookTests(unittest.TestCase):
     def test_gate_stderr_on_allow_is_static_denial(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
-            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter); shutil.copyfile(LAUNCHER, adapter.with_name("fail-open.py"))
             hook = base / TARGETS["tmp-block"]; hook.parent.mkdir(parents=True)
             hook.write_text("import sys; print('{}'); print('PRIVATE-VALUE', file=sys.stderr)")
             result = self.check(run("tmp-block", payload("pwd"), adapter), True)
@@ -460,7 +463,7 @@ class CodexPolicyHookTests(unittest.TestCase):
     def test_timeout_has_split_hint_without_reinstall(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
-            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter); shutil.copyfile(LAUNCHER, adapter.with_name("fail-open.py"))
             hook = base / TARGETS["tmp-block"]; hook.parent.mkdir(parents=True)
             hook.write_text("import time; time.sleep(20)")
             result = self.check(run("tmp-block", payload("pwd"), adapter), True)
@@ -508,13 +511,19 @@ class CodexPolicyHookTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch)
             counter = base / "python-starts.txt"
-            (base / "sitecustomize.py").write_text(
+            # Policy children run -I (PYTHONPATH ignored), so count starts with a
+            # sitecustomize in a throwaway venv's site-packages, which -I keeps.
+            venv = base / "venv"
+            subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)], check=True)
+            python = str(venv / "bin/python3")
+            purelib = subprocess.run([python, "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"],
+                                     capture_output=True, text=True, check=True).stdout.strip()
+            (Path(purelib) / "sitecustomize.py").write_text(
                 "import os,time\n"
                 "with open(os.environ['CODEX_TEST_START_COUNTER'], 'a') as starts:\n"
                 "    starts.write(str(os.getpid()) + '\\n')\n"
                 "time.sleep(0.11)\n")
             env = clean_env()
-            env["PYTHONPATH"] = str(base)
             env["CODEX_TEST_START_COUNTER"] = str(counter)
             for gate in TARGETS:
                 for wrapped in (False, True):
@@ -523,7 +532,7 @@ class CodexPolicyHookTests(unittest.TestCase):
                         command = f"apply_patch <<'EOF'\n{body}EOF" if wrapped else body
                         counter.write_text("")
                         started = time.monotonic()
-                        proc = run(gate, payload(command, "Bash" if wrapped else "apply_patch"), env=env)
+                        proc = run(gate, payload(command, "Bash" if wrapped else "apply_patch"), env=env, python=python)
                         starts = counter.read_text().splitlines()
                         elapsed = time.monotonic() - started
                         with self.subTest(gate=gate, wrapped=wrapped, sensitive=sensitive):
@@ -537,7 +546,7 @@ class CodexPolicyHookTests(unittest.TestCase):
     def test_guardian_batch_runtime_failures_fail_closed(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
-            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter); shutil.copyfile(LAUNCHER, adapter.with_name("fail-open.py"))
             relative = "skills/golem-powers/tmp-block/hooks/tmp_block_impl/tool_targets.py"
             parser = base / relative; parser.parent.mkdir(parents=True)
             shutil.copyfile(ROOT / relative, parser)
@@ -566,7 +575,7 @@ class CodexPolicyHookTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch)
             adapter = base / "scripts/hooks/codex-policy-hook.py"
-            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter); shutil.copyfile(LAUNCHER, adapter.with_name("fail-open.py"))
             marker = base / "late-effect.txt"
             child = f"import time; from pathlib import Path; time.sleep(8); Path({str(marker)!r}).write_text('late')"
             hook = base / TARGETS["tmp-block"]; hook.parent.mkdir(parents=True)
@@ -580,12 +589,37 @@ class CodexPolicyHookTests(unittest.TestCase):
     def test_corrupt_patch_parser_cannot_contaminate_denial(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
-            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter); shutil.copyfile(LAUNCHER, adapter.with_name("fail-open.py"))
             module = base / "skills/golem-powers/tmp-block/hooks/tmp_block_impl/tool_targets.py"
             module.parent.mkdir(parents=True)
             module.write_text("print('PRIVATE-VALUE'); raise RuntimeError('PRIVATE-VALUE')")
             result = self.check(run("git-guardian", payload("*** Begin Patch\n*** End Patch", "apply_patch"), adapter), True)
             self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
+
+
+class ChildIsolation(unittest.TestCase):
+    def test_policy_children_run_through_the_launcher_isolated(self):
+        """Each policy child gets the launcher's hardening: -I -B, preload, hook dir last."""
+        spec = importlib.util.spec_from_file_location("codex_adapter_under_test", ADAPTER)
+        adapter = importlib.util.module_from_spec(spec); spec.loader.exec_module(adapter)
+        launched = []
+
+        class Recorder:
+            def __init__(self, argv, **kwargs):
+                launched.append(argv); self.args = argv; self.pid = os.getpid(); self.returncode = 0
+            def communicate(self, data, timeout=None):
+                return '{}', ''
+            def wait(self):
+                return 0
+        with mock.patch.object(adapter.subprocess, "Popen", Recorder), \
+             mock.patch.object(adapter.os, "killpg"), \
+             mock.patch.object(adapter.sys, "argv", ["adapter", "tmp-block"]), \
+             mock.patch.object(adapter.sys, "stdin", io.StringIO(json.dumps(payload("ls")))):
+            adapter.evaluate()
+        launcher = str(ROOT / "scripts/hooks/fail-open.py")
+        self.assertTrue(launched)
+        for argv in launched:
+            self.assertEqual(argv[1:4], ["-I", "-B", launcher])
 
 
 if __name__ == "__main__":

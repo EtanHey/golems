@@ -75,7 +75,7 @@ function setup(id, e) {
     dirs: [...new Set([...pyDirs(path.join(tree, isFile ? path.dirname(source) : source)), ...pyDirs(path.join(tree, "skills/golem-powers/_shared"))])] };
 }
 
-function invoke(fx, payload, marker) {
+function invoke(fx, payload, marker, direct = false) {
   const cwd = path.join(fx.tree, "work");
   mkdirSync(cwd, { recursive: true });
   const event = { session_id: "planted", cwd, hook_event_name: "PreToolUse", ...payload };
@@ -89,7 +89,8 @@ function invoke(fx, payload, marker) {
   if (payload.cwdOnMain && !existsSync(path.join(cwd, ".git"))) {
     spawnSync("git", ["init", "-q", "-b", "main", cwd]);
   }
-  const r = spawnSync("python3", [...fx.flags, fx.launcher, fx.entry], { cwd, encoding: "utf8", input: JSON.stringify(event),
+  const argv = direct ? [fx.entry] : [...fx.flags, fx.launcher, fx.entry];  // direct: no launcher, no -I
+  const r = spawnSync("python3", argv, { cwd, encoding: "utf8", input: JSON.stringify(event),
     env: { PATH: process.env.PATH, HOME: fx.home, PLANT_MARKER: marker, CLAUDE_PROJECT_DIR: cwd } });
   return r.status;
 }
@@ -113,5 +114,18 @@ for (const id of Object.keys(PAYLOADS)) {
     expect([id, existsSync(marker) ? readFileSync(marker, "utf8").trim() : "never ran"]).toEqual([id, "never ran"]);
     if (payload.deny) expect([id, planted]).toEqual([id, 2]);
     else expect([id, planted]).toEqual([id, clean]);
+  });
+}
+
+for (const id of Object.keys(PAYLOADS)) {
+  test(`${id}: run directly (launcher bypassed), a planted stdlib-named module still never runs`, () => {
+    const fx = setup(`${id}-direct`, entries.get(id));
+    const payload = PAYLOADS[id];
+    const clean = invoke(fx, payload, path.join(fx.tree, "clean.marker"), true);
+    compile(fx.dirs.flatMap((d) => SHADOWED.map((m) => path.join(d, `${m}.pyc`))));
+    const marker = path.join(fx.tree, "planted.marker");
+    const planted = invoke(fx, payload, marker, true);
+    expect([id, existsSync(marker) ? readFileSync(marker, "utf8").trim() : "never ran"]).toEqual([id, "never ran"]);
+    expect([id, planted]).toEqual([id, clean]);
   });
 }
