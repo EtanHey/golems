@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch as mock_patch
 
 ROOT = Path(__file__).resolve().parents[2]
 ADAPTER = ROOT / "scripts/hooks/codex-policy-hook.py"
@@ -290,8 +291,29 @@ class CodexPolicyHookTests(unittest.TestCase):
             f"*** Add File: docs.local/allowed-{i}.md\n+x\n" for i in range(64)) + "*** End Patch\n"
         self.check(run("git-guardian", payload(patch, "apply_patch")), False)
         self.check(run("git-guardian", payload(patch.replace("allowed-63.md", "../../../.env"), "apply_patch")), True)
+        too_many = patch.replace("*** End Patch", "*** Add File: docs.local/allowed-64.md\n+x\n*** End Patch")
+        result = self.check(run("git-guardian", payload(too_many, "apply_patch")), True)
+        self.assertIn("split the patch", result["hookSpecificOutput"]["permissionDecisionReason"])
         repeated = "*** Begin Patch\n" + "*** Update File: docs.local/ok.md\n+x\n" * 128 + "*** End Patch\n"
         self.check(run("git-guardian", payload(repeated, "apply_patch")), False)
+
+    def test_patch_policy_process_count_is_bounded(self):
+        spec = importlib.util.spec_from_file_location("bounded_adapter", ADAPTER)
+        adapter = importlib.util.module_from_spec(spec); spec.loader.exec_module(adapter)
+        patch = "*** Begin Patch\n" + "".join(
+            f"*** Add File: docs.local/allowed-{i}.md\n+x\n" for i in range(64)) + "*** End Patch\n"
+        for gate in TARGETS:
+            for wrapped in (False, True):
+                command = f"apply_patch <<'EOF'\n{patch}EOF" if wrapped else patch
+                data = payload(command, "Bash" if wrapped else "apply_patch")
+                with self.subTest(gate=gate, wrapped=wrapped), \
+                        mock_patch.object(sys, "argv", [str(ADAPTER), gate]), \
+                        mock_patch.object(sys, "stdin", adapter.StringIO(json.dumps(data))), \
+                        mock_patch.dict(os.environ, clean_env(), clear=True), \
+                        mock_patch.object(adapter.subprocess, "Popen", wraps=subprocess.Popen) as launch:
+                    result = adapter.evaluate()
+                    self.assertLessEqual(launch.call_count, 2 if wrapped else 1)
+                    self.assertNotEqual(result.get("hookSpecificOutput", {}).get("permissionDecision"), "deny")
 
     def test_timeout_has_split_hint_without_reinstall(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
@@ -303,6 +325,35 @@ class CodexPolicyHookTests(unittest.TestCase):
             reason = result["hookSpecificOutput"]["permissionDecisionReason"]
             self.assertIn("split the patch", reason)
             self.assertNotIn("reinstall", reason.lower())
+
+    def test_guardian_batch_preserves_worker_and_symlink_cwd(self):
+        patch = "*** Begin Patch\n*** Add File: .env\n+x\n*** End Patch\n"
+        env = clean_env(); env["CLAUDE_WORKER"] = "1"
+        self.check(run("git-guardian", payload(patch, "apply_patch"), env=env), False)
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            link = Path(scratch) / "cwd"; link.symlink_to(ROOT, target_is_directory=True)
+            p = payload(patch, "apply_patch"); p["cwd"] = str(link)
+            self.check(run("git-guardian", p), True)
+            p["tool_input"]["command"] = patch.replace(".env", "docs.local/allowed.md")
+            self.check(run("git-guardian", p), False)
+
+    def test_guardian_batch_runtime_failures_fail_closed(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            relative = "skills/golem-powers/tmp-block/hooks/tmp_block_impl/tool_targets.py"
+            parser = base / relative; parser.parent.mkdir(parents=True)
+            shutil.copyfile(ROOT / relative, parser)
+            hook = base / TARGETS["git-guardian"]; hook.parent.mkdir(parents=True)
+            bodies = ["print('{}'); raise SystemExit(1)",
+                      "print('{}'); print('PRIVATE-VALUE', file=sys.stderr); raise SystemExit(0)",
+                      "print('{}')", "raise RuntimeError('PRIVATE-VALUE')", "time.sleep(10)"]
+            patch = "*** Begin Patch\n*** Add File: docs.local/allowed.md\n+x\n*** End Patch\n"
+            for body in bodies:
+                with self.subTest(body=body):
+                    hook.write_text("import sys,time\ndef main():\n    " + body + "\n")
+                    result = self.check(run("git-guardian", payload(patch, "apply_patch"), adapter), True)
+                    self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
 
     def test_payload_cwd_reaches_both_policies(self):
         p = payload("git worktree add /workspace/sibling/x HEAD")
