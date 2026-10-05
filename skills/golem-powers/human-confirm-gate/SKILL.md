@@ -7,7 +7,7 @@ Status: source implementation; install only from hooks-live after lead review/me
 A chat turn, send_to, sender stamp, or model assertion is never approval.
 The Claude PreToolUse hook classifies shell commands with `_shared/shell_parse`.
 Simple literal assignments resolve command/argument words (including #500);
-unknown force-push expansion markers and xargs Git/GH/shell executors deny.
+unresolved executable words and xargs Git/GH/shell executors deny.
 It blocks force/lease pushes, positive-force refspecs, remote deletes, mirror/prune,
 filter-repo/filter-branch/replace (conservatively even local rewrites), replacement
 ref pushes, repo visibility/delete, and mutating `gh api repos/...` calls.

@@ -74,6 +74,12 @@ class Gate(unittest.TestCase):
         self.token()  # Restoring the capability does not restore its nonce.
         self.assertEqual(self.run_hook()[0], 2)
 
+    def test_unresolved_executor_denies_non_push(self):
+        for command in ['$GH repo delete owner/repo', '$GIT filter-branch HEAD',
+                        'G=gh; (G=echo); $G repo delete owner/repo']:
+            with self.subTest(command=command):
+                self.assertEqual(self.run_hook(command)[0], 2)
+
     def test_wrong_scope_expired_or_unsigned(self):
         for updates in [dict(expires_at=time.time() - 1), dict(issued_at=time.time() + 60),
                         dict(command_sha256='b' * 64), dict(operations=[]), dict(kind='agent'), dict(session_id='other')]:

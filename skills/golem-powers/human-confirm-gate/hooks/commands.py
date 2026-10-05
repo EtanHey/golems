@@ -125,8 +125,8 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
         word = resolve_word(word, current)
         base = os.path.basename(word)
-        if ('$' in word or '`' in word) and any('push' in t for t in tokens):
-            raise ValueError('dynamic executable with force-push markers')
+        if '$' in word or '`' in word:
+            raise ValueError('unresolved executable; use a literal command')
         args = []
         for j in range(i + 1, len(tokens)):
             if base in ('git', 'gh') and tokens[j] in ('>', '>>', '<', '<<', '<<<'):

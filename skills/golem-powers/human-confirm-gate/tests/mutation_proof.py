@@ -7,6 +7,7 @@ root = Path(__file__).resolve().parents[4]
 (root / 'docs.local/human-confirm-gate').mkdir(parents=True, exist_ok=True)
 gate = Path('skills/golem-powers/human-confirm-gate')
 mutations = [
+ ('unresolved-executor-disabled', 'commands.py', "if '$' in word or '`' in word:", "if ('$' in word or '`' in word) and any('push' in t for t in tokens):"),
  ('mutable-bindings-disabled', 'commands.py', "if any(positions[i] and t in ('eval', 'source', '.', 'read', 'unset', 'export', 'declare', 'typeset', 'local', 'let', 'trap') for i, t in enumerate(tokens[:limit])):", "if False:"),
  ('issuer-public-key-disabled', '@issuer', "if not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\\s]+ [A-Za-z0-9+/=]+', key.read_text()):", "if False:"),
  ('issuer-scope-disabled', '@issuer', "if not ops or any(op['class'] != args.action or not matches(op) for op in ops):", "if False:"),
