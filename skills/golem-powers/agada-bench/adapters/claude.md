@@ -8,6 +8,8 @@
 
 Routing: see `/agent-routing` § Routing rules (SSOT). Resolve the adapter role via `scripts/model-roles.mjs` from the golems checkout.
 
+Record the resolved `--model` value beside the run ID in the generated spawn-brief header (the dispatch record); verify and record the effective runtime model separately before comparing runs.
+
 ```
 claudeJudge -s
 ```
