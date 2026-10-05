@@ -425,3 +425,29 @@ def test_r2_created_alias_delete_tools(workspace, command):
     home, repo, _, _ = workspace
     assert not (home / 'Downloads/new').exists()
     assert guardian.dangerous_shell_reason(command, cwd=str(repo))
+
+
+@pytest.mark.parametrize('option', [
+    '--exclude docs.local/scratch', '--log-file docs.local/log',
+    '--filter "- docs.local/scratch"', '-f "- docs.local/scratch"',
+    '-avf "- docs.local/scratch"', '-avf "P docs.local/scratch"',
+    '--exclude=docs.local/scratch',
+    '--future-option docs.local/scratch',
+])
+def test_r2_rsync_destination_option_positions(workspace, option):
+    home, repo, _, _ = workspace
+    command = f'rsync -a --delete ~/Downloads/scratch/ ~/Gits {option}'
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo))
+
+
+@pytest.mark.parametrize('option', [
+    '--exclude docs.local/scratch', '--log-file docs.local/log',
+    '--filter "- docs.local/scratch"', '-f "- docs.local/scratch"',
+    '-avf "- docs.local/scratch"', '-avf "P docs.local/scratch"',
+    '--exclude=docs.local/scratch',
+    '-avf"- docs.local/scratch"', '--stats',
+])
+def test_r2_rsync_destination_option_controls(workspace, option):
+    home, repo, _, _ = workspace
+    command = f'rsync -a --delete ~/Downloads/scratch/ docs.local/scratch {option}'
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo)) is None

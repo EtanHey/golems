@@ -96,6 +96,66 @@ def _created_target_reason(api, target, cwd, variables, _created_paths):
     return None
 
 
+def _rsync_destination(words, position):
+    """Separate rsync option values from operands, including trailing options.
+
+    Unknown long options after operands make the destination ambiguous; protect
+    that boundary instead of treating a possible option value as a directory.
+    """
+    value_options = {
+        "--exclude", "--include", "--exclude-from", "--include-from", "--filter",
+        "--files-from", "--rsh", "--rsync-path", "--log-file", "--log-file-format",
+        "--backup-dir", "--suffix", "--temp-dir", "--partial-dir", "--link-dest",
+        "--compare-dest", "--copy-dest", "--block-size", "--bwlimit", "--timeout",
+        "--contimeout", "--max-delete", "--min-size", "--max-size", "--max-alloc",
+        "--remote-option", "--out-format", "--password-file", "--modify-window",
+        "--chmod", "--chown", "--usermap", "--groupmap", "--iconv", "--address",
+        "--port", "--checksum-choice", "--compress-choice", "--compress-level",
+        "--skip-compress", "--info", "--debug", "--write-batch", "--only-write-batch",
+        "--read-batch", "--protocol", "--sockopts",
+    }
+    flag_options = {
+        "--archive", "--recursive", "--dirs", "--relative", "--links", "--copy-links",
+        "--keep-dirlinks", "--copy-dirlinks", "--safe-links", "--hard-links", "--perms",
+        "--acls", "--xattrs", "--owner", "--group", "--devices", "--specials", "--times",
+        "--sparse", "--inplace", "--append", "--append-verify", "--preallocate",
+        "--dry-run", "--whole-file", "--checksum", "--compress", "--verbose", "--quiet",
+        "--stats", "--progress", "--human-readable", "--numeric-ids", "--itemize-changes",
+        "--list-only", "--ignore-times", "--size-only", "--update", "--ignore-existing",
+        "--existing", "--ignore-non-existing", "--ignore-missing-args", "--force",
+        "--delay-updates", "--partial", "--prune-empty-dirs", "--protect-args",
+        "--secluded-args", "--old-args", "--from0", "--copy-unsafe-links",
+    }
+    operands = []
+    index = position + 1
+    options = True
+    while index < len(words):
+        word = words[index]
+        consumes_value = False
+        if options and word == "--":
+            options = False
+        elif options and word.startswith("--"):
+            option = word.split("=", 1)[0]
+            consumes_value = option in value_options and "=" not in word
+            if (operands and "=" not in word and option not in value_options | flag_options
+                    and not option.startswith(("--delete", "--no-"))):
+                return None
+        elif options and word.startswith("-") and word != "-":
+            # First value-taking letter owns the rest of a short bundle.
+            for offset, letter in enumerate(word[1:], 1):
+                if letter in "efBTM@":
+                    consumes_value = offset == len(word) - 1
+                    break
+        else:
+            operands.append(word)
+        index += 1
+        if consumes_value:
+            if index >= len(words):
+                return None
+            index += 1
+    return operands[-1] if operands else None
+
+
 def _rm_reason_in_words(
     api: dict,
     words: list[str],
@@ -391,7 +451,9 @@ def _rm_reason_in_words(
         return None
 
     if command_name == "rsync" and any(word.startswith("--delete") for word in words[position + 1:]):
-        destination = words[-1]
+        destination = _rsync_destination(words, position)
+        if destination is None:
+            return "rsync deletion destination cannot be parsed safely"
         if re.match(r"^[^/]+:", destination):
             return None  # remote filesystems are outside this local boundary
         reason = _created_target_reason(api, destination, cwd, argument_variables, _created_paths)
