@@ -87,8 +87,9 @@ static message, unless all of these hold:
 SSH verifies the checked bytes through a pipe and never reopens the path.
 
 **Hook imports.** The installer runs this gate as `python3 -I -B` through the
-shared launcher. The launcher loads what `runpy` needs before any hook
-directory joins `sys.path`. The gate then:
+shared launcher, like every golems Python hook. The launcher loads what
+`runpy` needs first, and adds every hook directory LAST on `sys.path`, never
+first. The gate then:
 - takes its own directory and `_shared` off `sys.path` while the stdlib loads,
   and adds them back last;
 - compiles its modules from source, never reading cached bytecode;

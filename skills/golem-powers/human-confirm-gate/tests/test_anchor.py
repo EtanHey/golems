@@ -11,6 +11,7 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import unittest
 import uuid
@@ -367,15 +368,19 @@ class Platform(unittest.TestCase):
             (hook.parent / 'extra.pyc').write_bytes(b'')  # any compiled module, whatever its name
             self.assertEqual(run(), 2)
 
-    def test_launcher_preloads_runpy_lazy_imports_before_any_hook_dir_joins(self):
+    def test_launcher_preloads_runpy_lazy_imports_from_the_stdlib(self):
         launcher = ROOT.parents[2] / 'scripts/hooks/fail-open.py'
-        probe = ('import importlib.util, sys; before = [m in sys.modules for m in ("pkgutil", "warnings")];'
-                 'spec = importlib.util.spec_from_file_location("launcher", %r);' % str(launcher) +
+        # Load the launcher module only (main() never runs, sys.path is untouched),
+        # then check the security property: runpy's lazy imports are already
+        # loaded, from the stdlib. Which of them the interpreter itself imported
+        # at startup varies by build, so pre-launch membership is not asserted.
+        probe = ('import importlib.util, sys; spec = importlib.util.spec_from_file_location("launcher", %r);' % str(launcher) +
                  'mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod);'
-                 'print([before, [m in sys.modules for m in ("pkgutil", "warnings")]])')
-        out = subprocess.run(['python3', '-I', '-S', '-c', probe], capture_output=True, text=True, check=True).stdout
-        # Loading the launcher (before main() touches sys.path) already holds runpy's lazy imports.
-        self.assertEqual(out.strip(), '[[False, False], [True, True]]')
+                 'origins = {m: getattr(getattr(sys.modules.get(m), "__spec__", None), "origin", None) for m in ("pkgutil", "warnings")};'
+                 'import json, os, sysconfig; std = os.path.realpath(sysconfig.get_paths()["stdlib"]);'
+                 'print(json.dumps({m: bool(o) and os.path.realpath(o).startswith(std + os.sep) for m, o in origins.items()}))')
+        out = subprocess.run([sys.executable, '-I', '-S', '-c', probe], capture_output=True, text=True, check=True).stdout
+        self.assertEqual(json.loads(out), {'pkgutil': True, 'warnings': True})
 
     def test_stray_importables_flag_compiled_modules_links_and_shadow_packages(self):
         import tempfile, runpy, sys

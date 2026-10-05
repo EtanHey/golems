@@ -107,7 +107,7 @@ mutations = [
     ('import-stdlib-first', 'human-confirm-pretooluse.py', "sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) not in (HERE, os.path.realpath(SHARED))]", 'pass', 'test_anchor.Platform.test_hook_imports_put_the_stdlib_first_and_never_read_tree_bytecode'),
     ('import-no-bytecode', 'human-confirm-pretooluse.py', "sys.pycache_prefix = '/dev/null/golems-human-confirm'", 'pass', 'test_anchor.Platform.test_hook_imports_put_the_stdlib_first_and_never_read_tree_bytecode'),
     ('import-stray-check', 'human-confirm-pretooluse.py', 'if stray_importables():', 'if False:', 'test_anchor.Platform.test_compiled_file_beside_the_sources_denies_every_call'),
-    ('launcher-preload', '@launcher', 'import pkgutil  # noqa: F401', 'import os  # noqa: F401', 'test_anchor.Platform.test_launcher_preloads_runpy_lazy_imports_before_any_hook_dir_joins'),
+    ('launcher-preload', '@launcher', 'import pkgutil  # noqa: F401', 'import os  # noqa: F401', 'test_anchor.Platform.test_launcher_preloads_runpy_lazy_imports_from_the_stdlib'),
     ('trusted-gh-checks', 'tokens.py', ' and not info.st_mode & 0o022 and info.st_uid in (0, os.getuid())', '', 'test_anchor.Platform.test_trusted_gh_is_a_fixed_owner_checked_candidate_never_caller_path'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
