@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .quotes import shell_code
+
 import os
 
 from .heredocs import _after_heredoc_bodies
@@ -401,7 +403,7 @@ def _shell_command_payloads(tokens, cmd_pos, seg_of):
             )
             if carries_command and cursor + 1 < len(tokens):
                 payloads.append(
-                    (tokens[cursor + 1], segment, payload_index)
+                    (shell_code(tokens[cursor + 1], "zsh" if os.path.basename(token).lower() == "zsh" else "bash" if os.path.basename(token).lower() in {"bash", "sh"} else "both"), segment, payload_index)
                 )
                 payload_index += 1
                 break

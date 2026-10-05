@@ -152,6 +152,8 @@ try:
             _ASSIGNMENT_RE,
             ansi_c_readings,
             ansi_c_reading,
+            evaluate_shell_readings,
+            ShellReadingBudgetExceeded,
             _QUOTED_LBRACE,
             _QUOTED_RBRACE,
             _UNRESOLVED_EVAL_MARKER,
@@ -521,20 +523,21 @@ def main():
             original_input = sys.stdin
             captured = []
             try:
-                for reading in readings:
+                def evaluate():
+                    global _capturing_reading
                     sys.stdin = StringIO(raw)
-                    with ansi_c_reading(reading):
-                        if len(readings) == 1:
+                    output = StringIO()
+                    try:
+                        _capturing_reading = True
+                        with redirect_stdout(output):
                             _main_under_deadline()
-                        output = StringIO()
-                        try:
-                            _capturing_reading = True
-                            with redirect_stdout(output):
-                                _main_under_deadline()
-                        except SystemExit as decision:
-                            captured.append((decision.code, output.getvalue()))
-                        finally:
-                            _capturing_reading = False
+                    except SystemExit as decision:
+                        return decision.code, output.getvalue()
+                    finally:
+                        _capturing_reading = False
+                for reading in readings:
+                    with ansi_c_reading(reading):
+                        captured.extend(evaluate_shell_readings(evaluate, lambda row: row[0] != 0))
                     if captured[-1][0] != 0:
                         break  # deny dominates; another reading cannot allow it
             finally:
@@ -544,7 +547,7 @@ def main():
             cancel_policy_evaluation_deadline()
             sys.stdout.write(output)
             raise SystemExit(code)
-    except PolicyEvaluationDeadlineExceeded as exc:
+    except (PolicyEvaluationDeadlineExceeded, ShellReadingBudgetExceeded) as exc:
         deny(f"⛔ TMP-BLOCK: {exc}.")
 
 
@@ -553,6 +556,7 @@ try:
         _package.bind(_impl_modules, _impl_exports,
                       ansi_c_readings=ansi_c_readings,
                       ansi_c_reading=ansi_c_reading,
+                      evaluate_shell_readings=evaluate_shell_readings,
                       _ASSIGNMENT_RE=_ASSIGNMENT_RE,
                       _QUOTED_LBRACE=_QUOTED_LBRACE,
                       _QUOTED_RBRACE=_QUOTED_RBRACE,

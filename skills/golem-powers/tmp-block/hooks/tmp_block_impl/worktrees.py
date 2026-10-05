@@ -1,9 +1,15 @@
 """Definitions moved byte-faithfully from the executable hook."""
 import os
+from shell_parse import shell_code_reading
 
 
 # AIDEV-TODO: golems#445 — moved whole (219 lines); decompose behind the pristine harness.
-def find_worktree_convention_issues(
+def find_worktree_convention_issues(tool_name, tool_input, _budget=None, _initial_cwd=None):
+    with shell_code_reading(tool_input.get("command", "")):
+        return _find_worktree_convention_issues_in_reading(tool_name, tool_input, _budget, _initial_cwd)
+
+
+def _find_worktree_convention_issues_in_reading(
     tool_name, tool_input, _budget=None, _initial_cwd=None
 ):
     """Return (deny_hits, unresolved_hits) for `git worktree add` targets.

@@ -4,6 +4,78 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 _reading = ContextVar("golems_ansi_c_reading", default=None)
+_level_choices = ContextVar("golems_shell_level_choices", default=None)
+
+
+class ShellReadingBudgetExceeded(BaseException):
+    """The consistent shell-reading search exceeded its bounded branch count."""
+
+
+class _ReadingRequired(BaseException):
+    def __init__(self, key, readings):
+        self.key, self.readings = key, readings
+
+
+class _ShellCode(str):
+    def __new__(cls, source, reading):
+        result = super().__new__(cls, source)
+        result.reading = reading
+        return result
+
+
+def shell_code(source, reading):
+    """Keep a decoded executable payload's shell mode through recursive policy."""
+    return _ShellCode(source, reading)
+
+
+@contextmanager
+def shell_code_reading(source, shell=None):
+    selected = shell if shell is not None else getattr(source, "reading", None)
+    if selected == "both":
+        with ansi_c_reading(None):
+            readings = ansi_c_readings(source)
+        key = (_reading.get(), str(source))
+        choices = _level_choices.get()
+        selected = choices.get(key) if choices is not None else (_reading.get() or readings[0])
+        if selected is None:
+            if len(readings) > 1:
+                raise _ReadingRequired(key, readings)
+            selected = readings[0]
+    if selected is None:
+        yield _reading.get()
+    else:
+        with ansi_c_reading(selected):
+            yield selected
+
+
+def evaluate_shell_readings(callback, stop=None):
+    """Replay the entire policy for each required decoded-level reading.
+
+    One branch map is shared by target, cwd, expansion and hatch scans. A
+    reading requested midway through policy evaluation restarts that policy;
+    a partial scan can never authorize a different reading's targets.
+    """
+    if _level_choices.get() is not None:
+        return [callback()]
+    pending, results, attempts = [{}], [], 0
+    while pending:
+        attempts += 1
+        if attempts > 128:
+            raise ShellReadingBudgetExceeded("shell reading analysis budget exhausted; split the command")
+        choices = pending.pop()
+        token = _level_choices.set(choices)
+        try:
+            try:
+                result = callback()
+            except _ReadingRequired as request:
+                pending.extend({**choices, request.key: reading} for reading in reversed(request.readings))
+                continue
+            results.append(result)
+            if stop is not None and stop(result):
+                break
+        finally:
+            _level_choices.reset(token)
+    return results
 
 
 def _preceding_dollars(source, start):

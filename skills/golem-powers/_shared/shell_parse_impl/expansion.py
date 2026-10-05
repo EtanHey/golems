@@ -13,6 +13,7 @@ from .heredocs import _mask_heredoc_body_lines
 from .positions import _parse_bash, _segment_for_offset
 from .substitutions import _executable_subcommands
 from .tokens import _FUNCTION_LOOKUP_SUPPRESSORS
+from .quotes import shell_code, shell_code_reading
 
 
 def _emit_substitutions(command, expansion_state, unit, function_state_at):
@@ -135,80 +136,82 @@ def _emit_eval(command, expansion_state, unit, function_state_at,
         if payload is None:
             continue
         eval_source, eval_variables, bodies, expanded_bodies = payload
-        eval_source = _eval_payloads.resolve_eval_source(
-            eval_source,
-            eval_variables,
-            enabled=enabled,
-            expansion_state=expansion_state,
-        )
-        invoked.append(
-            (
+        eval_outer_segment = _segment_for_offset(command, offset) + seg_of[i]
+        with shell_code_reading(eval_source, "both") as reading:
+            eval_source = _eval_payloads.resolve_eval_source(
                 eval_source,
-                _segment_for_offset(command, offset) + seg_of[i],
-                invocation_index,
+                eval_variables,
+                enabled=enabled,
+                expansion_state=expansion_state,
             )
-        )
-        invocation_index += 1
-        expansion_state.invocation_index = invocation_index
-        if "$(" in eval_source or "`" in eval_source:
+            eval_source = shell_code(eval_source, reading)
             invoked.append(
                 (
-                    eval_source.replace("$(", " ")
-                    .replace(")$", " ")
-                    .replace("`", " "),
-                    _segment_for_offset(command, offset) + seg_of[i],
+                    eval_source,
+                    eval_outer_segment,
                     invocation_index,
                 )
             )
             invocation_index += 1
             expansion_state.invocation_index = invocation_index
-        eval_tokens, eval_cmd_pos, eval_seg_of, _ = _parse_bash(eval_source)
-        for eval_index, name in enumerate(eval_tokens):
-            if not eval_cmd_pos[eval_index]:
-                continue
-            segment_commands = [
-                eval_tokens[j]
-                for j in range(eval_index)
-                if eval_seg_of[j] == eval_seg_of[eval_index]
-                and eval_cmd_pos[j]
-            ]
-            if (
-                segment_commands
-                and os.path.basename(segment_commands[0])
-                in _FUNCTION_LOOKUP_SUPPRESSORS
-            ):
-                continue
-            if not active_compounds_execute(
-                eval_tokens[:eval_index],
-                _patterns.case_pattern_groups(eval_source),
-                _patterns.literal_for_word_counts(eval_source),
-            ):
-                continue
-            invoked_names = (
-                [name]
-                if name in bodies
-                else list(bodies)
-                if "$" in name or "`" in name
-                else []
-            )
-            for invoked_name in invoked_names:
+            if "$(" in eval_source or "`" in eval_source:
                 invoked.append(
                     (
-                        _function_expansion.expand_function(
-                            expansion_state,
-                            expanded_bodies.get(
-                                invoked_name,
-                                bodies[invoked_name],
-                            ),
-                            bodies=bodies,
-                            expanded_bodies=expanded_bodies,
-                        ),
-                        _segment_for_offset(command, offset) + seg_of[i],
+                        shell_code(eval_source.replace("$(", " ")
+                                   .replace(")$", " ").replace("`", " "), reading),
+                        eval_outer_segment,
                         invocation_index,
                     )
                 )
                 invocation_index += 1
                 expansion_state.invocation_index = invocation_index
+            eval_tokens, eval_cmd_pos, eval_seg_of, _ = _parse_bash(eval_source)
+            for eval_index, name in enumerate(eval_tokens):
+                if not eval_cmd_pos[eval_index]:
+                    continue
+                segment_commands = [
+                    eval_tokens[j]
+                    for j in range(eval_index)
+                    if eval_seg_of[j] == eval_seg_of[eval_index]
+                    and eval_cmd_pos[j]
+                ]
+                if (
+                    segment_commands
+                    and os.path.basename(segment_commands[0])
+                    in _FUNCTION_LOOKUP_SUPPRESSORS
+                ):
+                    continue
+                if not active_compounds_execute(
+                    eval_tokens[:eval_index],
+                    _patterns.case_pattern_groups(eval_source),
+                    _patterns.literal_for_word_counts(eval_source),
+                ):
+                    continue
+                invoked_names = (
+                    [name]
+                    if name in bodies
+                    else list(bodies)
+                    if "$" in name or "`" in name
+                    else []
+                )
+                for invoked_name in invoked_names:
+                    invoked.append(
+                        (
+                            shell_code(_function_expansion.expand_function(
+                                expansion_state,
+                                expanded_bodies.get(
+                                    invoked_name,
+                                    bodies[invoked_name],
+                                ),
+                                bodies=bodies,
+                                expanded_bodies=expanded_bodies,
+                            ), reading),
+                            eval_outer_segment,
+                            invocation_index,
+                        )
+                    )
+                    invocation_index += 1
+                    expansion_state.invocation_index = invocation_index
 
 
 def _emit_alias(command, expansion_state, unit, function_state_at,

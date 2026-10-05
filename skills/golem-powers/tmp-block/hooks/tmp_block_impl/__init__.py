@@ -3,11 +3,11 @@
 EXPORTS = (
     ('policy', ('Unresolvable', '_has_temp_hint', 'in_temp_class', 'on_convention', '_TMPDIR_TOKEN_RE', '_TEMP_HINT_RE', '_TEMP_PATH_TOKEN_RE', 'WORKTREE_DIR_NAME', '_CWD_CHANGING_CMDS')),
     ('runtime', ()),
-    ('shell_targets', ('_bash_temp_targets',)),
+    ('shell_targets', ('_bash_temp_targets', '_bash_temp_targets_in_reading')),
     ('write_targets', ('ShellScan', 'scan_redirect_targets', 'scan_tee_targets', 'scan_worktree_targets')),
     ('worktree_args', ('_worktree_add_args', '_WORKTREE_VALUE_FLAGS')),
-    ('worktrees', ('find_worktree_convention_issues',)),
-    ('bypass', ('_hatched_segments', 'escape_hatch_covers', 'log_bypass', 'DEFAULT_LEDGER', 'HATCH_TMP', 'HATCH_WT')),
+    ('worktrees', ('find_worktree_convention_issues', '_find_worktree_convention_issues_in_reading')),
+    ('bypass', ('_hatched_segments', '_hatched_segments_in_reading', 'escape_hatch_covers', 'log_bypass', 'DEFAULT_LEDGER', 'HATCH_TMP', 'HATCH_WT')),
     ('tool_targets', ('canonical_tool', 'find_temp_targets', '_apply_patch_temp_targets', 'GUARDED_FILE_TOOLS', 'APPLY_PATCH_TOOL', 'TOOL_ALIASES', '_APPLY_PATCH_TARGET_RE')),
     ('resolution', ('resolve_targets',)),
     ('anchors', ('_bounded_loop_subshell_anchor', '_cwd_argument', '_shell_anchor_before', '_git_c_values', '_worktree_anchor')),
@@ -73,6 +73,7 @@ DEPENDENCIES = {
     ),
     'tool_targets': (
         '_bash_temp_targets', 'in_temp_class', 'ansi_c_readings', 'ansi_c_reading',
+        'evaluate_shell_readings',
     ),
     'variables': (
         'BuiltinScan', '_ASSIGNMENT_RE', '_SIMPLE_VAR_RE', '_chain_status_after', '_is_separator',
