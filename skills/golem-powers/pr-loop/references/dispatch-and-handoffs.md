@@ -63,13 +63,11 @@ Etan, verbatim — relayed via orc, the ellipsis is his:
 > when they're Fable, make sure they're not creating Fable sub-agents and workflows full of Fables
 > when they don't actually need them, instead of just pin-gating it."
 
-Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold;
-every spawn pinned explicitly; Fable only where judgment is the bottleneck, never for mechanical
-steps; delegate decisions to `claude.judgment`, bounded parity work to `claude.subagent.cheap`,
-and implementation to `codex.implement`. Resolve the role via `node scripts/model-roles.mjs
-<role> --field model|alias` (one field). Choose effort per `/large-plan` phase, record
-`role · effort · why`, and pass it explicitly at dispatch. The gate
-(`model-pin-gate`) is the backstop, not the decision.
+Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold.
+Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
+Resolve roles via `node scripts/model-roles.mjs <role> --field model|alias` (one field).
+Choose effort per `/large-plan` phase, record `role · effort · why`, and pass it explicitly
+at dispatch. The gate (`model-pin-gate`) is the backstop, not the decision.
 
 ## Review-Without-Merge ≠ Draft
 

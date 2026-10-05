@@ -13,6 +13,8 @@
 
 ## Model Selection
 
+Routing (role selection): see `/agent-routing` § Routing rules (SSOT).
+
 For managed visible `spawn_agent` / repoGolem launches, use `claude.judgment` through the
 bare launcher at 1M; verify its pin against the resolved role. Do not pass a managed model
 parameter that overrides the launcher pin. `claude.subagent.cheap` is for bounded in-process
@@ -23,7 +25,6 @@ Choose effort per `/large-plan` phase with a why and pass it explicitly at dispa
 | Role | Selection | Use When |
 |---|---|---|
 | `claude.judgment` | Bare managed launcher; raw CLI resolves alias and passes phase effort | Decisions, orchestration, synthesis, review |
-| `claude.subagent.cheap` | Agent tool's `model`: resolved alias | Single-fact recall, pane mechanics, verifiers |
 
 ```bash
 # Raw CLI only; visible peers use repoGolem launchers:

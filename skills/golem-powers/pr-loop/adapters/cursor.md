@@ -1,13 +1,13 @@
 # Cursor CLI — pr-loop Adapter
 
-> Capability gaps for Cursor running the PR loop. Cursor is better for review/audit steps than implementation.
+> Capability gaps for Cursor running the PR loop. Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
 
 ## What Cursor CAN Do
 
 | Step | Command | Notes |
 |------|---------|-------|
 | Branch | `git checkout -b feat/name` | Full git access |
-| Implement | `cursor agent "PROMPT"` | File edits via agent mode |
+| Implement | See routing pointer above | Select the implementing role there |
 | Test | `bun test` or `npm test` | Shell access |
 | Commit | `git add <files> && git commit` | No cr review pre-check |
 | Push | `git push -u origin feat/name` | |
@@ -39,9 +39,8 @@ done
 
 ## Cursor's Unique Advantage in the Loop
 
-Cursor's `@codebase` indexing makes it strong for the **review step**, even if it can't orchestrate
-the full loop. **The Cursor review pass is READ-ONLY** ([review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-review-pass-is-read-only)): report findings, never
-edit. Cursor or a Gemini gatherer gathers and verifies; Codex implements (canon #1).
+Cursor exposes `@codebase` indexing. For role ownership, use the routing pointer above;
+for the diff-pass procedure, see [review loop § 8a.2](../references/review-loop.md#8a2--routing-for-diff-passes).
 
 ```bash
 # Read-only pre-PR audit — report only, zero Bugbot quota
@@ -50,7 +49,7 @@ cursor-agent -p --output-format text \
    Report findings only. Do NOT edit, create, or delete any file."
 ```
 
-Model selection is owned by fleet canon #1. If this pass exhausts the shared quota, report the dispatch as the cause, not
+If this pass exhausts the shared quota, report the dispatch as the cause, not
 the resulting `resource_exhausted` as an external finding (canon #3).
 
 Cursor **Bugbot** is a different thing and is **not** part of this pass: it is opt-in, core paths only
@@ -95,8 +94,5 @@ For worker endpoints, draft handling, and head verification, read
 
 ## Recommended Usage
 
-Use Cursor for pr-loop only when:
-- Repo is simple (no required review bots)
-- A Claude session handles post-merge BrainLayer updates
-
-**Best pattern:** Cursor implements + commits + pushes + creates PR → Claude handles review polling + merge + brain_store.
+Use the routing pointer above to select roles for the loop.
+Post-merge BrainLayer updates require a BrainLayer-capable session.

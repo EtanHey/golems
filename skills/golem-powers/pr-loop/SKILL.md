@@ -9,7 +9,7 @@ description: "Full PR loop plus the agent-identity signature on GitHub writes. T
 
 ## Ownership
 
-Who implements and who opens the inner-loop reviewer pane is owned by `/agent-routing` § Review routing. Never start that reviewer yourself unless that routing law makes you the owner.
+Who implements and who opens the inner-loop reviewer pane is owned by `/agent-routing` § Routing rules (SSOT). Never start that reviewer yourself unless that routing law makes you the owner.
 
 This skill begins at branch preparation and ends at the authority-appropriate endpoint:
 
@@ -51,7 +51,7 @@ Run the loop in this order:
 - Two review rounds are the normal minimum; three is the maximum for new non-critical findings.
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
 - Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for daemon/engine/transport diffs.
-- Cursor review passes are read-only and never edit the PR branch; fleet canon #1 owns their model selection.
+- Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
 - `--body` on `gh pr merge` sets the MERGE COMMIT message, **not** the PR description.
 - "git log is where you look when you already know something is wrong; the PR page is where you look to find out." Put actionable receipts in the PR body before merge.
 - PR-referenced artifacts must be committed or quoted inline; gitignored `docs.local/` paths alone are not reviewable.
@@ -89,7 +89,7 @@ Run the loop in this order:
 
 ## Cross-Skill Routing
 
-- `/agent-routing` § Review routing owns the inner-loop reviewer and implementation routing.
+- `/agent-routing` § Routing rules (SSOT) owns the inner-loop reviewer and implementation routing.
 - `/coderabbit` owns receiving-side review technique; this skill owns advancement through the PR loop.
 - `/never-fabricate` owns verification receipts and claim discipline.
 - `/deploy-verify` owns post-merge deployed/live proof.
