@@ -68,6 +68,10 @@ with their own execution facilities remain outside these two matchers. Native
 hooks are guardrails, not a complete security boundary. A sandbox adds filesystem
 coverage but changes the fleet's permission behavior and is a separate decision.
 
+The existing git-guardian `CLAUDE_WORKER` exemption is retained for policy parity.
+Codex dispatch does not set it, but an inherited value would exempt the same
+commands as on Claude. Removing that exemption is a separate policy change.
+
 Scratch-home runtime tests must distinguish policy denial from sandbox failure,
 and must prove permitted commands still execute. A deterministic local Responses
 fixture can exercise the real CLI without provider charges; it is runtime proof,
