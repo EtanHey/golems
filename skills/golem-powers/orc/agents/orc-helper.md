@@ -66,6 +66,8 @@ color: blue
 ```
 TARGET: repo + role (spawn fresh) OR agent_id (existing)
 WORKER: cli (claude|codex|gemini|cursor) + effort
+PROFILE: CLI + agy profile / required tool access (see /agent-routing § Goal Contract)
+SCOPE: read only brief + named files + repo instructions; no other agents' reports/inboxes/briefs/collab threads unless authorized; on mismatch report `BLOCKED: <task> needs <capability>; profile <x> lacks it` and stop (see /agent-routing § Goal Contract)
 BRIEF: <path to docs.local/...md>   (pointer only; never an inline payload over 500 bytes)
 MONITORING: report path + DONE marker + ping triggers
 GOAL CLAUSE: (optional) condition I treat as completion

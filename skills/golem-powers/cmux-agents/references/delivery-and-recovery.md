@@ -118,6 +118,8 @@ checkpoint (record agent_ids + last-known state)
 Fleet law for collab claims, DONE markers, and guard handoffs lives in canon #7. For cmux delivery, run `workflows/prompt-audit.md` §8 and include:
 
 - absolute verified paths and real environment facts;
+- a named profile and tool access matched to the task (see `/agent-routing` § Goal Contract);
+- the stay-on-task scope and capability-mismatch `BLOCKED:` stop clause (see `/agent-routing` § Goal Contract);
 - max output length, output format, audience, and what not to include;
 - response markers plus a final DONE line;
 - **the effort for THIS job**, named on the brief and matching the launch command (see below);
