@@ -46,5 +46,5 @@ invisible to the rest of the fleet. Worktrees go in `<repo>/.worktrees/<name>`.
 Genuinely ephemeral? `WEAVE_ALLOW_TMP=1 <command>` — allowed and logged.
 Claude and Cursor panes are held to this by the `tmp-block` PreToolUse hook;
 **Codex enforcement requires hooks-live install and owner trust review in plain `codex`**;
-a seat counts as guarded only after native denial is verified. `--status` reports wiring, trust unverified. Contract and limits:
+a seat counts as guarded only after native denial is verified. The installer's `--status` reports wiring, trust unverified. Contract and limits:
 `skills/golem-powers/tmp-block/SKILL.md`.

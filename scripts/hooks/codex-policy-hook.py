@@ -179,7 +179,7 @@ def guardian_batch():
     for item in items:
         if (not isinstance(item, dict) or item.get("tool_name") != "Write"
                 or not isinstance(item.get("cwd"), str)
-                or os.path.realpath(item["cwd"]) != os.getcwd()):
+                or not os.path.samefile(item["cwd"], ".")):
             raise ValueError("invalid batch item")
         ti = item.get("tool_input")
         if not isinstance(ti, dict) or not isinstance(ti.get("file_path"), str):

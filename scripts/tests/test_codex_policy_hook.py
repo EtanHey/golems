@@ -9,7 +9,6 @@ import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch as mock_patch
 
 ROOT = Path(__file__).resolve().parents[2]
 ADAPTER = ROOT / "scripts/hooks/codex-policy-hook.py"
@@ -297,24 +296,6 @@ class CodexPolicyHookTests(unittest.TestCase):
         repeated = "*** Begin Patch\n" + "*** Update File: docs.local/ok.md\n+x\n" * 128 + "*** End Patch\n"
         self.check(run("git-guardian", payload(repeated, "apply_patch")), False)
 
-    def test_patch_policy_process_count_is_bounded(self):
-        spec = importlib.util.spec_from_file_location("bounded_adapter", ADAPTER)
-        adapter = importlib.util.module_from_spec(spec); spec.loader.exec_module(adapter)
-        patch = "*** Begin Patch\n" + "".join(
-            f"*** Add File: docs.local/allowed-{i}.md\n+x\n" for i in range(64)) + "*** End Patch\n"
-        for gate in TARGETS:
-            for wrapped in (False, True):
-                command = f"apply_patch <<'EOF'\n{patch}EOF" if wrapped else patch
-                data = payload(command, "Bash" if wrapped else "apply_patch")
-                with self.subTest(gate=gate, wrapped=wrapped), \
-                        mock_patch.object(sys, "argv", [str(ADAPTER), gate]), \
-                        mock_patch.object(sys, "stdin", adapter.StringIO(json.dumps(data))), \
-                        mock_patch.dict(os.environ, clean_env(), clear=True), \
-                        mock_patch.object(adapter.subprocess, "Popen", wraps=subprocess.Popen) as launch:
-                    result = adapter.evaluate()
-                    self.assertLessEqual(launch.call_count, 2 if wrapped else 1)
-                    self.assertNotEqual(result.get("hookSpecificOutput", {}).get("permissionDecision"), "deny")
-
     def test_timeout_has_split_hint_without_reinstall(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
@@ -337,6 +318,61 @@ class CodexPolicyHookTests(unittest.TestCase):
             p["tool_input"]["command"] = patch.replace(".env", "docs.local/allowed.md")
             self.check(run("git-guardian", p), False)
 
+    def test_guardian_batch_accepts_case_variant_cwd(self):
+        variant = str(ROOT).swapcase()
+        if not os.path.isdir(variant) or not os.path.samefile(variant, ROOT):
+            self.skipTest("fixture requires a case-insensitive filesystem")
+        patch = "*** Begin Patch\n*** Add File: docs.local/allowed.md\n+x\n*** End Patch\n"
+        for wrapped in (False, True):
+            command = f"cd '{variant}' && apply_patch <<'EOF'\n{patch}EOF" if wrapped else patch
+            p = payload(command, "Bash" if wrapped else "apply_patch")
+            p["cwd"] = variant
+            with self.subTest(wrapped=wrapped):
+                self.check(run("git-guardian", p), False)
+                p["tool_input"]["command"] = command.replace("docs.local/allowed.md", ".env")
+                self.check(run("git-guardian", p), True)
+
+    def test_guardian_batch_rejects_different_cwd_identity(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            for cwd in (scratch, str(Path(scratch) / "missing")):
+                item = {"tool_name": "Write", "cwd": cwd,
+                        "tool_input": {"file_path": "docs.local/allowed.md"}}
+                with self.subTest(cwd=cwd):
+                    result = self.check(run("--guardian-batch", [item]), True)
+                    self.assertIn("unavailable", result["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_patch_policy_process_count_is_bounded(self):
+        patch = "*** Begin Patch\n" + "".join(
+            f"*** Add File: docs.local/allowed-{i}.md\n+x\n" for i in range(64)) + "*** End Patch\n"
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            base = Path(scratch)
+            counter = base / "python-starts.txt"
+            (base / "sitecustomize.py").write_text(
+                "import os,time\n"
+                "with open(os.environ['CODEX_TEST_START_COUNTER'], 'a') as starts:\n"
+                "    starts.write(str(os.getpid()) + '\\n')\n"
+                "time.sleep(0.11)\n")
+            env = clean_env()
+            env["PYTHONPATH"] = str(base)
+            env["CODEX_TEST_START_COUNTER"] = str(counter)
+            for gate in TARGETS:
+                for wrapped in (False, True):
+                    for sensitive in (False, True):
+                        body = patch.replace("allowed-63.md", "../../../.env") if sensitive else patch
+                        command = f"apply_patch <<'EOF'\n{body}EOF" if wrapped else body
+                        counter.write_text("")
+                        started = time.monotonic()
+                        proc = run(gate, payload(command, "Bash" if wrapped else "apply_patch"), env=env)
+                        starts = counter.read_text().splitlines()
+                        elapsed = time.monotonic() - started
+                        with self.subTest(gate=gate, wrapped=wrapped, sensitive=sensitive):
+                            self.check(proc, sensitive and gate == "git-guardian")
+                            # Count the adapter itself and every Python descendant.
+                            self.assertEqual(len(starts), 3 if wrapped else 2)
+                            self.assertEqual(len(set(starts)), len(starts))
+                            print("Delayed Python starts:", gate, wrapped, sensitive,
+                                  len(starts), round(elapsed, 3))
+
     def test_guardian_batch_runtime_failures_fail_closed(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
@@ -354,6 +390,9 @@ class CodexPolicyHookTests(unittest.TestCase):
                     hook.write_text("import sys,time\ndef main():\n    " + body + "\n")
                     result = self.check(run("git-guardian", payload(patch, "apply_patch"), adapter), True)
                     self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
+                    reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+                    self.assertIn("split the patch" if body == "time.sleep(10)" else "unavailable", reason)
+                    self.assertNotIn("native apply_patch", reason)
 
     def test_payload_cwd_reaches_both_policies(self):
         p = payload("git worktree add /workspace/sibling/x HEAD")
