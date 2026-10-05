@@ -127,6 +127,14 @@ instead of re-deriving the rules as prose:
 | `shell_text_without_heredoc_bodies(command)` | Removes file-write heredoc prose from destructive scans while retaining executable substitutions in unquoted heredocs. |
 | `dangerous_shell_reason(command, cwd, env)` | Combined hook-facing F8 verdict for rm breadth and destructive command patterns. |
 
+#501 also denies recursive forced `rm` of the standard `~/Gits` directory or
+an ancestor of the active checkout. The initial checkout remains protected
+after a `cd` in the same command; aliases with a trailing slash are resolved
+physically. Removing a symlink itself, safe deep cleanup and sanctioned
+disposable fixtures keep their existing behavior. This check does not crawl
+unrelated directories looking for repositories; unknown nonstandard repo
+containers outside the active checkout remain outside this boundary.
+
 Wrapper evaluation is capped at 64 nested commands. Deeper input and any
 `RecursionError` fail closed with a value-free reason. The hook also converts
 unexpected policy-evaluation exceptions to a value-free block; only launcher or

@@ -124,10 +124,28 @@ def _literal_tail_after_unresolved_var(
     return saw_unresolved and any(part not in ("", ".") for part in tail_parts)
 
 
+def _contains_repo_root(root: str, target: str, within_fn) -> bool:
+    """Ancestor identity, including case aliases on insensitive filesystems."""
+    if within_fn(root, target):
+        return True
+    ancestor = root
+    while True:
+        try:
+            if os.path.samefile(ancestor, target):
+                return True
+        except (FileNotFoundError, NotADirectoryError):
+            pass
+        parent = os.path.dirname(ancestor)
+        if parent == ancestor:
+            return False
+        ancestor = parent
+
+
 def _rm_target_reason(
     target: str, cwd: str, variables: dict[str, str], *,
     expand_known_vars_fn, literal_tail_fn, outermost_repo_root_fn,
     gitfile_owner_fn, within_fn, is_harness_scratchpad_fn,
+    protected_cwd: str | None = None,
 ) -> str | None:
     literal_parts = [part for part in target.split(os.sep) if part]
     if ".." in literal_parts:
@@ -150,6 +168,25 @@ def _rm_target_reason(
         return "rm targeting root filesystem"
     if resolved == home:
         return "rm targeting home directory"
+
+    # #501: walking UP from a repo parent never encounters its children's .git.
+    # Protect the fleet container even outside a checkout, plus ancestors of the
+    # initial/current checkout. Resolve aliases for identity, without crawling
+    # the target tree or moving the established nested-fixture breadth boundary.
+    physical = os.path.realpath(resolved)
+    container = os.path.realpath(os.path.join(home, "Gits"))
+    # Without a trailing slash, rm removes a symlink itself, not its referent.
+    follows_target = not complete or not os.path.islink(resolved) or prefix.endswith(("/", "/."))
+    if follows_target:
+        if _contains_repo_root(container, physical, within_fn):
+            return "rm targeting repo container or its ancestor"
+        for anchor in (protected_cwd, cwd):
+            if not anchor:
+                continue
+            active_repo = outermost_repo_root_fn(os.path.realpath(anchor))
+            if active_repo is not None and not is_harness_scratchpad_fn(active_repo):
+                if physical != active_repo and _contains_repo_root(active_repo, physical, within_fn):
+                    return "rm targeting ancestor of active repo"
 
     repo = outermost_repo_root_fn(resolved)
     # GO-5 PR-4: a repo living inside the harness session scratchpad (a throwaway

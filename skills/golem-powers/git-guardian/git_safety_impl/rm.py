@@ -31,6 +31,7 @@ def _rm_reason_in_words(
     variables: dict[str, str],
     *,
     dynamic_input: bool = False,
+    protected_cwd: str | None = None,
     argument_variables: dict[str, str] | None = None,
     _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
@@ -65,6 +66,7 @@ def _rm_reason_in_words(
             variables,
             dynamic_input=dynamic_input,
             argument_variables=argument_variables,
+            protected_cwd=protected_cwd,
             _depth=_depth + 1,
             _find_cache=_find_cache,
         )
@@ -93,6 +95,7 @@ def _rm_reason_in_words(
                 variables,
                 dynamic_input=dynamic_input,
                 argument_variables=argument_variables,
+                protected_cwd=protected_cwd,
                 _depth=_depth + 1,
                 _find_cache={},
             )
@@ -119,6 +122,7 @@ def _rm_reason_in_words(
             local_variables,
             dynamic_input=dynamic_input,
             argument_variables=argument_variables,
+            protected_cwd=protected_cwd,
             _depth=_depth + 1,
             _find_cache=_find_cache,
         )
@@ -135,6 +139,7 @@ def _rm_reason_in_words(
             variables,
             dynamic_input=dynamic_input,
             argument_variables=argument_variables,
+            protected_cwd=protected_cwd,
             _depth=_depth + 1,
             _find_cache=_find_cache,
         )
@@ -151,6 +156,7 @@ def _rm_reason_in_words(
             variables,
             dynamic_input=dynamic_input,
             argument_variables=argument_variables,
+            protected_cwd=protected_cwd,
             _depth=_depth + 1,
             _find_cache=_find_cache,
         )
@@ -162,7 +168,7 @@ def _rm_reason_in_words(
                 option.startswith("-") and not option.startswith("--") and "c" in option[1:]
             ):
                 blocked, reason = is_dangerous_rm(
-                    api, words[index + 1], cwd=cwd, env=variables, _depth=_depth + 1
+                    api, words[index + 1], cwd=cwd, env=variables, _depth=_depth + 1, protected_cwd=protected_cwd
                 )
                 return reason if blocked else None
         return None
@@ -187,6 +193,7 @@ def _rm_reason_in_words(
                         variables,
                         dynamic_input=dynamic_input,
                         argument_variables=argument_variables,
+                        protected_cwd=protected_cwd,
                         _depth=_depth + 1,
                         _find_cache=_find_cache,
                     )
@@ -213,6 +220,7 @@ def _rm_reason_in_words(
             variables,
             dynamic_input=True,
             argument_variables=argument_variables,
+            protected_cwd=protected_cwd,
             _depth=_depth + 1,
             _find_cache=_find_cache,
         )
@@ -230,7 +238,7 @@ def _rm_reason_in_words(
     if dynamic_input:
         return "rm target supplied dynamically by xargs"
     for target in targets:
-        reason = api["_rm_target_reason"](target, cwd, argument_variables)
+        reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd)
         if reason:
             return reason
     return None
@@ -239,6 +247,7 @@ def _rm_reason_in_words(
 def is_dangerous_rm(
     api: dict, command: str, *, cwd: str | None = None, env=None, _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
+    protected_cwd: str | None = None,
 ):
     """Return `(blocked, reason)` after resolving cwd and shell assignments."""
     if _depth > api["_MAX_WRAPPER_DEPTH"]:
@@ -282,6 +291,8 @@ def is_dangerous_rm(
 
     variables = dict(os.environ if env is None else env)
     current = os.path.abspath(cwd or os.getcwd())
+    if protected_cwd is None:
+        protected_cwd = current
     assignment_re = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", re.DOTALL)
 
     for words, operator_before, operator_after in segments:
@@ -374,6 +385,7 @@ def is_dangerous_rm(
             current,
             local_variables,
             argument_variables=argument_variables,
+            protected_cwd=protected_cwd,
             _depth=_depth,
             _find_cache=_find_cache,
         )
