@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transcript-first debrief: <=12 stills, incremental evidence, 600s total budget."""
+"""Transcript-first debrief: <=12 stills, preserved evidence, length-aware budget."""
 import argparse
 import importlib.util
 import json
@@ -56,13 +56,33 @@ def command(argv, log, deadline):
         if process.returncode:
             raise subprocess.CalledProcessError(process.returncode, argv)
 
+def evidence_note(work, mode, status, selected, citations):
+    readings = {}
+    findings = work/'visual/findings.jsonl'
+    if findings.exists():
+        for line in findings.read_text().splitlines():
+            try:
+                item = json.loads(line)
+                readings[item['sheet']] = item
+            except (ValueError, KeyError):
+                continue
+    quotes = []
+    for i, moment in enumerate(selected['moments']):
+        image = work/f'moment-{i:02d}.jpg'
+        item = readings.get(str(image), {})
+        visual = item.get('finding', '') if item.get('ok') else 'visual: NOT DETERMINED (budget/failed)'
+        citation = 'Frame (tile 0, real PTS): '+citations[i] if i < len(citations) else 'Frame: NOT DETERMINED'
+        quotes.append(f'## {moment["start"]:g}s — transcript-only claim\n{moment["text"]}\n{citation}\n{visual}')
+    (work/'debrief.md').write_text(f'# {mode.title()} evidence note\nStatus: {status}\n'
+                                 'Primary evidence: transcript.srt. Claims require verification.\n\n'+'\n\n'.join(quotes)+'\n')
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('video', type=Path)
     parser.add_argument('--workdir', required=True, type=Path)
     parser.add_argument('--mode', choices=['debrief', 'review', 'gems'], default='debrief')
     parser.add_argument('--concurrency', type=int, default=3)
-    parser.add_argument('--budget-seconds', type=float, default=600)
+    parser.add_argument('--budget-seconds', type=float, help='Parent deadline override; default max(600, 24 * video minutes)')
     parser.add_argument('--helper', type=Path, default=HERE/'visual-gather.py', help='Offline helper override')
     args = parser.parse_args()
     work = args.workdir.resolve()
@@ -71,7 +91,7 @@ def main():
     inputs = {'logs', args.video.name, args.video.with_suffix('.info.json').name} - reserved
     if work.exists() and any(p.name not in inputs for p in work.iterdir()):
         parser.error('use a fresh empty workdir; prior evidence must survive')
-    if not 0 < args.budget_seconds < float('inf') or args.concurrency < 1:
+    if (args.budget_seconds is not None and not 0 < args.budget_seconds < float('inf')) or args.concurrency < 1:
         parser.error('positive finite budget and positive concurrency required')
     work.mkdir(parents=True, exist_ok=True)
     (work/'logs').mkdir(exist_ok=True)
@@ -79,14 +99,26 @@ def main():
     batch = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(batch)
     started = time.monotonic()
+    automatic_budget = args.budget_seconds is None
+    if automatic_budget:
+        args.budget_seconds = 600
     deadline = started + args.budget_seconds
     phases, status = {}, 'PARTIAL'
+    selected, citations = None, []
 
     def progress(text):
         batch.atomic(work/'progress.txt', text+'\n')
         phases[text] = round(time.monotonic()-started, 3)
 
     try:
+        if automatic_budget:
+            duration = float(subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries',
+                             'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',
+                             str(args.video.resolve())], text=True, stderr=subprocess.PIPE, timeout=10))
+            if not 0 < duration < float('inf'):
+                raise ValueError('ffprobe duration must be positive and finite')
+            args.budget_seconds = max(600, 24 * duration/60)
+            deadline = started + args.budget_seconds
         progress('transcribing · ETA unknown · budget %gs' % args.budget_seconds)
         command(['bash', str(HERE/'extract.sh'), str(args.video.resolve()), str(work)], work/'logs/extract.log', deadline)
         transcript = (work/'transcript.srt').read_text()
@@ -95,9 +127,9 @@ def main():
         duration = selected['duration_seconds']
         if duration <= 0:
             raise ValueError('empty/invalid timestamped transcript; no debrief earned')
-        prefix = f'transcribed {int(duration)//60}:{int(duration)%60:02d} · picked {len(selected["moments"])} moments · '
+        prefix = f'transcribed {int(duration)//60}:{int(duration)%60:02d} · picked {len(selected["moments"])} moments · total budget {args.budget_seconds:g}s · '
         progress(prefix+'extracting targeted stills · ETA unknown')
-        sheets, citations = [], []
+        sheets = []
         for i, moment in enumerate(selected['moments']):
             image, log = work/f'moment-{i:02d}.jpg', work/f'logs/frame-{i:02d}.log'
             command(['ffmpeg', '-hide_banner', '-nostdin', '-y', '-ss', str(moment['start']), '-copyts',
@@ -122,17 +154,23 @@ def main():
             status = 'COMPLETE' if result == 0 else json.loads((work/'visual/summary.json').read_text())['status']
         else:
             status = 'TRANSCRIPT_ONLY'
-        progress(prefix+'compiling evidence note · ETA <5s')
-        observations = (work/'visual/findings.jsonl').read_text() if sheets else ''
-        quotes = '\n\n'.join(f'## {m["start"]:g}s — transcript-only claim\n{m["text"]}\nFrame (tile 0, real PTS): {c}'
-                             for m, c in zip(selected['moments'], citations))
-        (work/'debrief.md').write_text(f'# {args.mode.title()} evidence note\nStatus: {status}\nClaims require verification.\n\n'+quotes+'\n\n## Visual observations\n'+observations)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         status = 'BUDGET_EXCEEDED' if isinstance(error, subprocess.TimeoutExpired) else 'PARTIAL'
         (work/'failure.txt').write_text(str(error)+'\nNOT DETERMINED: unfinished evidence\n')
     elapsed = time.monotonic()-started
     if elapsed >= args.budget_seconds:
         status = 'BUDGET_EXCEEDED'
+    if (work/'transcript.srt').exists():
+        if selected is None:
+            selected = plan((work/'transcript.srt').read_text(), args.concurrency)
+            batch.atomic(work/'plan.json', json.dumps(selected, indent=2)+'\n')
+        progress('compiling evidence note · ETA <5s')
+        evidence_note(work, args.mode, status, selected, citations)
+    elapsed = time.monotonic()-started
+    if elapsed >= args.budget_seconds and status != 'BUDGET_EXCEEDED':
+        status = 'BUDGET_EXCEEDED'
+        if selected is not None:
+            evidence_note(work, args.mode, status, selected, citations)
     progress(f'{status} · elapsed {elapsed:.3f}s · budget {args.budget_seconds:g}s')
     batch.atomic(work/'timing.json', json.dumps({'mode': args.mode, 'status': status,
                  'wall_seconds': elapsed, 'budget_seconds': args.budget_seconds, 'phases': phases}, indent=2)+'\n')

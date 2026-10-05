@@ -39,7 +39,7 @@ no `command_status`/`send_command_input`; a launch return is not completion.
 Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
-**Mode: gems (or debrief/review)** — TRANSCRIPT-FIRST, 600s wall-clock budget. Select ≤12 questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each. No blanket 30s coverage and no scene sweep unless the transcript references visuals. Dense 10 fps/re-densify behavior belongs to qa. Write root progress.txt at every phase and findings incrementally. The parent runs the runner in the background and reads progress.txt on delay questions.
+**Mode: gems (or debrief/review)** — TRANSCRIPT-FIRST, default max(600, 24 × video minutes) seconds wall-clock budget; explicit --budget-seconds from the parent wins. Preserve transcript-derived debrief.md on budget/partial exits; absent visual reads stay NOT DETERMINED. Select ≤12 questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each. No blanket 30s coverage and no scene sweep unless the transcript references visuals. Dense 10 fps/re-densify behavior belongs to qa. Write root progress.txt at every phase and findings incrementally. The parent runs the runner in the background and reads progress.txt on delay questions.
 
 ## Steps
 
@@ -53,10 +53,10 @@ or delegation; return text to the parent for persistence and archival.
    Use the actual downloaded video path. Local video needs no download.
 3. In your own shell launch `bash "$SCRIPTS/run-step.sh" "$WORKDIR" gems -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode gems`.
    Use a fresh workdir (source video/info.json and run-step logs are allowed); progress.txt covers every phase.
-   Poll logs/gems.exit, require 0, then inspect timing.json and actual outputs.
+   Poll logs/gems.exit and inspect timing.json and actual outputs. A nonzero budget/partial exit still earns a transcript-only debrief.md when SRT exists; read it and report missing visual coverage.
 4. Read the full transcript and plan.json; the English keyword planner ranks candidate moments across the duration, capped at 12. Synthesize insights/opinions/numbers and warnings from the full transcript, including transcript-only material.
 5. Read targeted visual-batch.py findings.jsonl as they arrive; match each sheet + tile 0 + timestamp to frames.tsv (real PTS). NEVER hand-roll a shell loop. Keep absent/unclear observations NOT DETERMINED; no invented visuals.
-6. If a referenced slide/code/chart needs another look, choose a tighter targeted still or ≤2 fps short window within the remaining 600s total budget. Preserve each pass and citation. If unresolved or budget exhausted, report the limit.
+6. If a referenced slide/code/chart needs another look, choose a tighter targeted still or ≤2 fps short window within the remaining computed total budget (or explicit parent deadline). Preserve each pass and citation. If unresolved or budget exhausted, report the limit.
 7. Produce a structured gems note with:
    - source title, URL, channel/speaker, and date if available
    - top gems with timestamps

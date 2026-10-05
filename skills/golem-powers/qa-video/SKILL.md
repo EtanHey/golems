@@ -8,7 +8,7 @@ execute: scripts/default.sh
 
 > Record your screen while narrating, or provide a YouTube/local video for knowledge extraction. The pipeline extracts speech, pulls visual context, and produces either structured QA findings or durable gems.
 
-**Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** TRANSCRIPT-FIRST; transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then one still or a ≤2 fps short window per moment. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **600s total wall-clock**, including transcription and notes.
+**Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** TRANSCRIPT-FIRST; transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then one still or a ≤2 fps short window per moment. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **max(600, 24 × video minutes) seconds total wall-clock**, including transcription and notes (25min → 600s; 90min → 2160s). An explicit parent remaining deadline wins. Preserve debrief.md whenever the transcript exists, even on budget/partial exits; unread visuals stay NOT DETERMINED.
 
 ## How It Works — QA mode
 
