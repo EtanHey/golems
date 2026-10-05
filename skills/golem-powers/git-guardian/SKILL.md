@@ -127,13 +127,26 @@ instead of re-deriving the rules as prose:
 | `shell_text_without_heredoc_bodies(command)` | Removes file-write heredoc prose from destructive scans while retaining executable substitutions in unquoted heredocs. |
 | `dangerous_shell_reason(command, cwd, env)` | Combined hook-facing F8 verdict for rm breadth and destructive command patterns. |
 
-#501 also denies recursive forced `rm` of the standard `~/Gits` directory or
-an ancestor of the active checkout. The initial checkout remains protected
-after a `cd` in the same command; aliases with a trailing slash are resolved
-physically. Removing a symlink itself, safe deep cleanup and sanctioned
-disposable fixtures keep their existing behavior. This check does not crawl
-unrelated directories looking for repositories; unknown nonstandard repo
-containers outside the active checkout remain outside this boundary.
+#501 denies recursive `rm` (with or without force) of `~/Gits`, ancestors
+of the active checkout, direct children of `$HOME`, and the first level of
+`~/.claude`, `~/.codex`, `~/.cmux`, `~/.config`, `~/.ssh` and `~/Library`.
+Home/config spelling is case-folded. Inside `~/Gits`, targets outside a checkout
+are probed for `.git` at depth at most 3 with a 5,000-entry cap; cap or filesystem
+errors fail closed. The initial checkout stays protected after `cd`; `~`, `~+`
+and `~-` use tracked HOME/cwd/oldpwd, and other tilde prefixes fail closed.
+
+The same target policy covers `find -delete` roots and local `rsync --delete*`
+destinations. Moving protected roots is denied; deleting a path affected by an
+earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
+itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
+An exact in-repo `find . -name __pycache__ -type d -prune -exec rm -r {} +`
+cache cleanup also remains allowed (including `-R`, `-rf`, `-fr`).
+
+This is a bounded shell model, not a shell interpreter. Nonstandard containers
+outside `~/Gits` and the active checkout, remote rsync destinations, `trash`,
+interpreter deletion one-liners and filesystem changes between evaluation and
+execution remain outside its boundary. The lead tracks interpreter deletion
+as a separate issue; passing this policy is not permission to delete.
 
 Wrapper evaluation is capped at 64 nested commands. Deeper input and any
 `RecursionError` fail closed with a value-free reason. The hook also converts
