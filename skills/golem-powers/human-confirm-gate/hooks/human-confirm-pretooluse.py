@@ -1,22 +1,54 @@
 #!/usr/bin/env python3
 """Catch policy errors before fail-open.py; intentional denial exits 2."""
-import json
 import os
 import sys
+
+# AIDEV-NOTE: import hardening. hooks-live is a same-UID tree, so nothing
+# planted beside these sources may stand in for the stdlib or gate modules:
+# the tree leaves sys.path while the stdlib loads and rejoins last, gate and
+# _shared modules compile from source (cached bytecode is never read), and
+# stray compiled modules or shadow packages deny every call.
+HERE = os.path.dirname(os.path.realpath(__file__))
+SHARED = os.path.join(os.path.dirname(os.path.dirname(HERE)), '_shared')
+sys.dont_write_bytecode = True
+sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) not in (HERE, os.path.realpath(SHARED))]
+import ast, base64, fnmatch, hashlib, importlib.machinery, json, re, shlex, signal, stat, subprocess, time  # noqa: E401,F401
+import urllib.parse  # noqa: F401
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 from pathlib import Path
+
+COMPILED = tuple(importlib.machinery.EXTENSION_SUFFIXES) + ('.so', '.pyd', '.pyc', '.pyo')
+
+
+def stray_importables(here=HERE, shared=SHARED):
+    """Entries that could load instead of the gate's tracked sources."""
+    stray = []
+    for directory in (here, shared, os.path.join(shared, 'shell_parse_impl')):
+        for entry in os.scandir(directory):
+            if entry.name == '__pycache__':
+                continue  # never read: see sys.pycache_prefix below
+            if entry.is_symlink() or entry.is_file() and entry.name.endswith(COMPILED):
+                stray.append(entry.path)
+            elif entry.is_dir() and (directory != shared or entry.name in ('shell_parse', 'shell_parse_impl.py')):
+                stray.append(entry.path)
+    return stray
+
+
+sys.pycache_prefix = '/dev/null/golems-human-confirm'  # cannot exist: compile from source
+sys.path += [HERE, SHARED]
 
 
 def evaluate(payload, home):
     name, args = payload['tool_name'], payload['tool_input']
     protected = home / '.config/golems'
-    if name in ('Write', 'Edit', 'NotebookEdit'):
-        target = Path(args.get('file_path', args.get('notebook_path', ''))).resolve()
-        if target == protected or protected in target.parents:
+    if name in ('Write', 'Edit', 'MultiEdit', 'NotebookEdit'):
+        from syntax import policy_path
+        target = args.get('file_path', args.get('notebook_path', ''))
+        if policy_path(target, payload.get('cwd', str(home)), home):
             raise ValueError('agent writes to confirmation policy/tokens are forbidden')
         return
-    if name != 'Bash':
+    if not isinstance(args.get('command'), str):
         return
     from commands import operations, shell
     from tokens import authorize
@@ -30,6 +62,8 @@ def main():
     denied = False
     try:
         with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            if stray_importables():
+                raise ValueError('stray importable files beside the gate sources')
             payload = json.load(sys.stdin)
             evaluate(payload, Path(os.path.expanduser('~')).resolve())
     except BaseException:

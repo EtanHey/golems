@@ -63,3 +63,30 @@ test("a runtime error and a syntax error in the hook also fail open with one std
     expect(r.stderr).toContain(errorName);
   }
 });
+
+test("isolated mode (-I -B) keeps every stdlib path entry and still resolves sibling imports", () => {
+  const d = scratch();
+  const isolated = JSON.parse(spawnSync("python3", ["-I", "-c", "import sys, json; print(json.dumps(sys.path))"],
+    { encoding: "utf8" }).stdout);
+  writeFileSync(path.join(d, "policy.py"), "REASON = 'sibling'\n");
+  writeFileSync(path.join(d, "gate.py"), "import json, sys\nfrom policy import REASON\nprint(json.dumps([REASON, sys.path]))\n");
+  const r = spawnSync("python3", ["-I", "-B", wrapper, path.join(d, "gate.py")], { encoding: "utf8", input: "{}" });
+  expect(r.status).toBe(0);
+  const [reason, seen] = JSON.parse(r.stdout);
+  expect(reason).toBe("sibling");
+  expect(seen.at(-1)).toBe(require("node:fs").realpathSync(d));  // the hook dir joins LAST
+  expect(seen.slice(0, -1)).toEqual(isolated);  // every stdlib entry kept, in order, ahead of it
+});
+
+test("no hook dir is ever first on sys.path, isolated or not; the launcher's own dir is dropped", () => {
+  const d = scratch();
+  writeFileSync(path.join(d, "gate.py"), "import json, sys\nprint(json.dumps(sys.path))\n");
+  for (const flags of [[], ["-I", "-B"]]) {
+    const r = spawnSync("python3", [...flags, wrapper, path.join(d, "gate.py")], { encoding: "utf8", input: "{}" });
+    expect(r.status).toBe(0);
+    const seen = JSON.parse(r.stdout);
+    const real = require("node:fs").realpathSync(d);
+    expect([flags.join(" "), seen.indexOf(real)]).toEqual([flags.join(" "), seen.length - 1]);
+    expect(seen).not.toContain(path.dirname(require("node:fs").realpathSync(wrapper)));
+  }
+});
