@@ -40,6 +40,12 @@ def payload(command, tool="Bash"):
 
 
 class CodexPolicyHookTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # These fixtures must also work in a fresh checkout with no ignored
+        # docs.local scaffolding, including individually selected N1 probes.
+        (ROOT / "docs.local/codex-hooks-port").mkdir(parents=True, exist_ok=True)
+
     def check(self, proc, deny):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         result = json.loads(proc.stdout)
@@ -116,6 +122,62 @@ class CodexPolicyHookTests(unittest.TestCase):
             patch = f"*** Begin Patch\n*** Delete File: {path}\n*** End Patch\n"
             self.check(run(gate, payload(patch, "apply_patch")), deny)
 
+    def test_bash_patch_envelopes_use_both_existing_policies(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            env = clean_env(); env["TMPDIR"] = scratch
+            for gate, path in [("tmp-block", scratch + "/leak.md"), ("git-guardian", ".env")]:
+                for alias in ("apply_patch", "applypatch"):
+                    for indent in ("", "\t"):
+                        patch = f"*** Begin Patch\n{indent}*** Add File: {path}\n+x\n*** End Patch"
+                        forms = [f"{alias} <<'EOF'\n{patch}\nEOF\n",
+                                 f"{alias} <<< '{patch}'",
+                                 f"printf '%s\\n' '{patch}' | {alias}"]
+                        for command in forms:
+                            with self.subTest(gate=gate, command=command):
+                                self.check(run(gate, payload(command), env=env), True)
+            for target in (scratch, os.path.relpath(scratch, ROOT)):
+                command = f"cd '{target}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: relative.md\n+x\n*** End Patch\nEOF"
+                self.check(run("tmp-block", payload(command), env=env), True)
+            ordinary = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+don't reinterpret this prose\n*** End Patch"
+            for command in [f"apply_patch <<'EOF'\n{ordinary}\nEOF",
+                            f"cd '{ROOT}' && apply_patch <<'EOF'\n{ordinary}\nEOF",
+                            f'applypatch <<< "{ordinary}"',
+                            f'printf "%s\\n" "{ordinary}" | apply_patch']:
+                for gate in TARGETS:
+                    self.check(run(gate, payload(command), env=env), False)
+            p = payload(f"apply_patch <<'EOF'\n{ordinary}\nEOF"); del p["cwd"]
+            for gate in TARGETS:
+                self.check(run(gate, p, env=env), False)
+            # Deletion keeps tmp-block's established allowance; guardian still
+            # judges a sensitive delete using its existing Write projection.
+            for gate, target, deny in [("tmp-block", scratch + "/old.md", False),
+                                       ("git-guardian", ".env", True)]:
+                command = f"apply_patch <<'EOF'\n*** Begin Patch\n*** Delete File: {target}\n*** End Patch\nEOF"
+                self.check(run(gate, payload(command), env=env), deny)
+
+    def test_opaque_bash_patch_transport_fails_closed_without_values(self):
+        ordinary = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+x\n*** End Patch"
+        commands = [
+            "apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: .env\n+x\nEOF",
+            "apply_patch <<< '*** Begin Patch\\n*** Add File: .env\\n+x\\n*** End Patch'",
+            "printf '%b' '*** Begin P\\x61tch\\n*** Add File: .env\\n+x\\n*** End Patch' | apply_patch",
+            "apply_patch <<< $'*** Begin P\\x61tch\\n*** Add File: .env\\n+x\\n*** End Patch'",
+            f"cd $PRIVATE_VALUE && apply_patch <<'EOF'\n{ordinary}\nEOF",
+            f"cd $(printf PRIVATE_VALUE) && apply_patch <<'EOF'\n{ordinary}\nEOF",
+            f"printf x; cd docs.local && apply_patch <<'EOF'\n{ordinary}\nEOF",
+            f"# PRIVATE_VALUE\ncd docs.local && apply_patch <<EOF\n{ordinary}\nEOF",
+            f"command apply_patch <<'EOF'\n{ordinary}\nEOF",
+            f"apply\\_patch <<'EOF'\n{ordinary}\nEOF",
+            f"apply_patch <<EOF\n{ordinary}\nEOF\nprintf PRIVATE_VALUE",
+            "printf '*** Begin Patch\n*** Add File: %s\n+x\n*** End Patch' .env | apply_patch",
+            "apply_patch <<< '*** Begin Patch\n*** Add File: $PRIVATE_VALUE\n+x\n*** End Patch'",
+            f"apply_patch <<'EOF'\n{ordinary}\nEOF\napplypatch <<'EOF'\n{ordinary}\nEOF",
+        ]
+        for gate in TARGETS:
+            for command in commands:
+                with self.subTest(gate=gate, command=command):
+                    result = self.check(run(gate, payload(command)), True)
+                    self.assertNotIn("PRIVATE_VALUE", json.dumps(result))
     def test_missing_broken_malformed_and_timed_out_gate_fail_closed(self):
         (ROOT / "docs.local").mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:

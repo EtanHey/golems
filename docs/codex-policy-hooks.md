@@ -104,7 +104,12 @@ write with per-call `workdir` in a temp-class directory is allowed because the
 hook sees the ordinary session cwd; a permitted `sh` session followed by
 `write_stdin` containing `git push -f` executes without another hook call. This
 adapter cannot recover omitted workdir or intercept a tool with no hook payload.
-Explicit `cd`/absolute temp paths remain checked. No broad relative-write or
+Absolute temp paths are checked. Shell-wrapped `apply_patch`/`applypatch`
+envelopes are also evaluated through both existing patch policies, including
+relative headers after a literal leading `cd <dir> &&`. Ambiguous bodies,
+multiple envelopes, and unresolved cwd changes are denied; use a native
+`apply_patch` call or a literal heredoc instead of an encoded/dynamic body.
+This does not recover the omitted per-call `workdir`. No broad relative-write or
 interactive-shell ban is added to the shared policy; filesystem sandboxing and
 upstream hook coverage changes need separate decisions. Fresh-seat proof must
 state these holes, persist trust from plain Codex, then verify another launch.

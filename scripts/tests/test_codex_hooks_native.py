@@ -30,6 +30,7 @@ class NativeHooksTests(unittest.TestCase):
             git = bin_dir / "git"
             git.write_text("#!/bin/sh\nprintf FAKE_GIT_EXECUTED\n")
             git.chmod(0o700)
+            tempdir = base / "temp-class"; tempdir.mkdir()
             commands = [
                 # Baseline-safe: the literal temp write is unreachable even if
                 # the hook fails. The marker distinguishes handler execution.
@@ -37,6 +38,11 @@ class NativeHooksTests(unittest.TestCase):
                 "git push --force origin main",  # fake git; no remote effects
                 "printf allowed > allowed.txt",
                 "git status --short",
+                f"apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: {tempdir}/heredoc-leak.md\n+x\n*** End Patch\nEOF",
+                "apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: .env\n+SYNTHETIC=x\n*** End Patch\nEOF",
+                f"cd '{tempdir}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: cd-leak.md\n+x\n*** End Patch\nEOF",
+                "applypatch <<'EOF'\n*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\nEOF",
+                f"cd '{workspace}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: allowed-heredoc.md\n+allowed\n*** End Patch\nEOF",
             ]
             patches = [
                 "*** Begin Patch\n  *** Add File: .env\n+SYNTHETIC=x\n*** End Patch\n",
@@ -91,6 +97,7 @@ requires_openai_auth = false
 supports_websockets = false
 [features]
 enable_request_compression = false
+plugins = false
 [features.code_mode]
 enabled = false
 [shell_environment_policy.set]
@@ -116,7 +123,6 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
             env = os.environ.copy()
             for key in ("CLAUDE_WORKER", "WEAVE_ALLOW_TMP", "WEAVE_ALLOW_WT_MIGRATION", "GIT_GUARDIAN_LIB"):
                 env.pop(key, None)
-            tempdir = base / "temp-class"; tempdir.mkdir()
             env.update(HOME=str(home), CODEX_HOME=str(home), TMPDIR=str(tempdir),
                        TMP_BLOCK_LEDGER=str(base / "ledger.jsonl"))
             try:
@@ -128,7 +134,7 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                 server.shutdown()
                 server.server_close()
             self.assertEqual(result.returncode, 0, result.stderr[-3000:])
-            self.assertEqual(len(requests), 8, result.stderr[-3000:])
+            self.assertEqual(len(requests), 13, result.stderr[-3000:])
             outputs = {}
             for request in requests:
                 for item in request.get("input", []):
@@ -140,13 +146,18 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
             self.assertNotIn("FAKE_GIT_EXECUTED", outputs["call-1"])
             self.assertEqual((workspace / "allowed.txt").read_text(), "allowed")
             self.assertIn("FAKE_GIT_EXECUTED", outputs["call-3"])
+            self.assertEqual(list(tempdir.iterdir()), [], "Bash patch bypass wrote into temp class")
+            for index in (4, 5, 6, 7):
+                self.assertIn("blocked by PreToolUse hook", outputs[f"call-{index}"])
+            self.assertIn("TMP-BLOCK", outputs["call-6"], "cd patch must reach existing policy")
+            self.assertEqual((workspace / "allowed-heredoc.md").read_text().strip(), "allowed")
             self.assertFalse((workspace / ".env").exists())
             self.assertFalse((workspace / "credentials.json").exists())
-            for index in (4, 5):
+            for index in (9, 10):
                 self.assertIn("BLOCKED", outputs[f"call-{index}"])
             self.assertEqual((workspace / "allowed-note.md").read_text().strip(), "allowed")
             self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
-            print("Native 0.160 fixture: 4 pre-execution denials, 3 real allowed executions; paid tokens=0")
+            print("Native 0.160 fixture: 8 pre-execution denials, 4 real allowed executions; paid tokens=0")
 
 
 if __name__ == "__main__":

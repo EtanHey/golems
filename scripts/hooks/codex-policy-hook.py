@@ -64,19 +64,91 @@ def gate_result(proc):
     return value
 
 
-def guardian_inputs(payload):
-    if payload["tool_name"] != "apply_patch":
-        return [payload]
-    # Reuse tmp-block's existing patch header parser; project writes into the
-    # guardian's existing Write path instead of inventing a second file policy.
-    module_path = ROOT / "skills/golem-powers/tmp-block/hooks/tmp_block_impl/tool_targets.py"
-    spec = importlib.util.spec_from_file_location("codex_patch_targets", module_path)
+def load_parser(relative, name):
+    spec = importlib.util.spec_from_file_location(name, ROOT / relative)
     module = importlib.util.module_from_spec(spec)
     output, errors = StringIO(), StringIO()
     with redirect_stdout(output), redirect_stderr(errors):
         spec.loader.exec_module(module)
     if output.getvalue() or errors.getvalue():
-        raise ValueError("patch parser emitted unexpected output")
+        raise ValueError("parser emitted unexpected output")
+    return module
+
+
+def transport_inputs(payload):
+    command = payload["tool_input"]["command"]
+    raw_names = re.findall(r"\bapply_?patch\b", command)
+    if payload["tool_name"] != "Bash" or (not raw_names and "*** Begin Patch" not in command):
+        return [payload]
+    parser = load_parser("skills/golem-powers/_shared/shell_parse.py", "codex_shell_parser")
+    tokens, positions, _, _ = parser._parse_bash(command)
+    names = [token for i, token in enumerate(tokens)
+             if positions[i] and token in ("apply_patch", "applypatch")]
+    if not names and (not raw_names or "*** Begin Patch" not in command):
+        return [payload]
+    # Codex intercepts shell heredocs after the Bash hook, without firing an
+    # apply_patch hook. Decode transport only; both policies remain unchanged.
+    if len(names) != 1 or len(raw_names) > 1 or command.count("*** Begin Patch") != 1 or command.count("*** End Patch") != 1:
+        raise ValueError("ambiguous patch transport")
+    cwd = payload["tool_input"]["cwd"]
+    changes = [i for i, token in enumerate(tokens)
+               if positions[i] and token in ("cd", "pushd", "popd", "chdir")]
+    if changes:
+        if changes != [0] or tokens[0] != "cd" or len(tokens) < 5 or tokens[2:4] != ["&", "&"]:
+            raise ValueError("ambiguous patch cwd")
+        target = tokens[1]
+        # Codex's intercepted cd target is literal, not shell-expanded. Refuse
+        # dynamic or escaped spellings instead of guessing another directory.
+        prefix = command.split("&&", 1)[0]
+        if not re.fullmatch(r"\s*cd[ \t]+(?:'[^'\n]+'|\"[^\"\n]+\"|[^\s;&|<>\"'()]+)[ \t]*", prefix):
+            raise ValueError("ambiguous cd prefix")
+        if target.startswith("-") or any(c in prefix for c in "$`\\~*?{["):
+            raise ValueError("unresolved patch cwd")
+        cwd = os.path.realpath(os.path.join(cwd, target))
+        if not os.path.isdir(cwd):
+            raise ValueError("invalid patch cwd")
+    begin = command.index("*** Begin Patch")
+    end = command.index("*** End Patch") + len("*** End Patch")
+    prefix = command[:begin]
+    # A heredoc body is literal in Codex's interceptor. Quoted multiline
+    # arguments (here-string / printf pipe) use the existing shell tokenizer.
+    head = prefix.rsplit("&&", 1)[-1] if changes else prefix
+    heredoc = re.fullmatch(
+        r"\s*apply_?patch[ \t]+<<-?[ \t]*(?P<quote>['\"]?)"
+        r"(?P<delimiter>[A-Za-z_][A-Za-z0-9_]*)(?P=quote)[ \t]*\n[^\S\n]*", head)
+    if heredoc:
+        tail = command[end:]
+        if not re.fullmatch(r"[ \t\r]*\n" + re.escape(heredoc["delimiter"]) + r"[ \t]*(?:\n\s*)?", tail):
+            raise ValueError("ambiguous heredoc suffix")
+        patch = command[begin:end]
+    else:
+        words = parser._shell_tokens(command)
+        words = words[4:] if changes else words
+        bodies = [token for token in words
+                  if token.startswith("*** Begin Patch\n") and token.rstrip().endswith("*** End Patch")]
+        if len(bodies) != 1 or any(c in bodies[0] for c in "$`\\"):
+            raise ValueError("unresolved patch body")
+        here_string = words == [names[0], "<<<", bodies[0]]
+        printf_pipe = (len(words) == 5 and words[0] == "printf"
+                       and words[1] in ("%s", "%s\\n", "%sn")
+                       and words[2:] == [bodies[0], "|", names[0]])
+        if not here_string and not printf_pipe:
+            raise ValueError("ambiguous patch producer")
+        patch = bodies[0].rstrip()
+    lines = patch.split("\n")
+    if len(lines) < 3 or lines[0].strip() != "*** Begin Patch" or lines[-1].strip() != "*** End Patch":
+        raise ValueError("invalid patch body")
+    synthetic = {**payload, "tool_name": "apply_patch", "cwd": cwd,
+                 "tool_input": {"command": patch, "cwd": cwd}}
+    return [payload, synthetic]
+
+
+def guardian_inputs(payload):
+    if payload["tool_name"] != "apply_patch":
+        return [payload]
+    # Reuse tmp-block's existing patch header parser; project writes into the
+    # guardian's existing Write path instead of inventing a second file policy.
+    module = load_parser("skills/golem-powers/tmp-block/hooks/tmp_block_impl/tool_targets.py", "codex_patch_targets")
     command = payload["tool_input"]["command"]
     # Deleting a sensitive file is also a guardian file operation. tmp-block
     # still receives the original envelope and retains its delete allowance.
@@ -106,13 +178,16 @@ def evaluate():
         raise ValueError("invalid cwd")
     # Native Codex Bash omits workdir from tool_input; tmp-block's patch path
     # resolver expects cwd there. Both child processes also start in that cwd.
-    p = {**p, "tool_input": {**ti, "cwd": cwd}}
+    p = {**p, "cwd": cwd, "tool_input": {**ti, "cwd": cwd}}
     env = os.environ.copy()
     # Preserve existing policy environment semantics, including the worker
     # exemption. Only the library source is fixed to hooks-live.
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
-    for item in guardian_inputs(p) if gate == "git-guardian" else [p]:
+    inputs = transport_inputs(p)
+    if gate == "git-guardian":
+        inputs = [item for envelope in inputs for item in guardian_inputs(envelope)]
+    for item in inputs:
         # Leave a cleanup margin: simultaneous child/global deadlines can throw
         # SIGALRM inside Popen.__del__, leaking an unraisable traceback to stderr.
         remaining = BUDGET_SECONDS - 1 - (time.monotonic() - started)
@@ -120,7 +195,7 @@ def evaluate():
             raise TimeoutError("gate budget exceeded")
         proc = subprocess.Popen([sys.executable, str(ROOT / TARGETS[gate])],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, cwd=cwd, env=env, start_new_session=True)
+            text=True, cwd=item["cwd"], env=env, start_new_session=True)
         try:
             stdout, stderr = proc.communicate(json.dumps(item), timeout=remaining)
         finally:
