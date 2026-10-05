@@ -150,6 +150,12 @@ active-ancestor protections. Unfiltered, broad, negated or ambiguous branches
 retain breadth checks. Regex dialects and wildcard-only filename classes do
 not qualify for a breadth exemption. Positive age filters below a top-level
 directory retain the repo-root boundary.
+Filename waivers preserve repository metadata: fixed names and object-name shapes
+stay protected, and a read-only traversal checks actual metadata names below
+selected roots and followed directory aliases. Outer depth limits come from the
+root parser. Directory/metadata discovery refuses above 5,000 entries or 64
+levels, on cycles, or on filesystem errors. Ordinary nonmetadata regular files
+do not consume that discovery budget.
 Moving protected roots is denied; deleting a path affected by an
 earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
 itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
