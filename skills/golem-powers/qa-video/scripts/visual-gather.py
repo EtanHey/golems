@@ -2,12 +2,17 @@
 """Headless visual gathering: image bytes stay in Gemini's context."""
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 # Six images leave room for per-image paths and compact findings under 2000 chars.
 FIRST_BATCH_SIZE = 6
+
+
+class DispatchError(RuntimeError):
+    pass
 
 
 def model_id(tier, listing):
@@ -21,6 +26,15 @@ def model_id(tier, listing):
 
 def parse(result, paths):
     raw = result.stdout + result.stderr
+    try:
+        success = json.loads(result.stdout).get('status') == 'SUCCESS'
+    except (ValueError, AttributeError):
+        success = False
+    if result.returncode or not success:
+        match = re.search(r'quota|\b429\b|rate.?limit|resource_exhausted|unauthenticated|'
+                          r'authentication|invalid.?credential|auth.?error|permission denied|\b401\b|\b403\b', raw, re.I)
+        if match:
+            raise DispatchError('DISPATCH_STOPPED: our own visual dispatch hit ' + match.group(0))
     if result.returncode or any(token in raw.lower() for token in
                                ('<truncated', 'stream was interrupted')):
         return {}
@@ -90,7 +104,8 @@ def main():
         tier = subprocess.check_output(['node', str(repo / 'scripts/model-roles.mjs'),
                                        'gemini.gather.visual', '--field', 'launcher_tier'],
                                       text=True, timeout=10).strip()
-        listing = subprocess.check_output(['agy', 'models'], text=True, timeout=20)
+        listing = subprocess.check_output(['agy', 'models'], text=True, timeout=20,
+                                          stderr=subprocess.PIPE)
         model = model_id(tier, listing)
         print(f'requested tier={tier}; agy --model={model}; effective model: NOT DETERMINED here', file=sys.stderr)
 
@@ -112,7 +127,16 @@ def main():
             except subprocess.TimeoutExpired:
                 return subprocess.CompletedProcess([], 1, '', 'timeout')
         print(gather(paths, run))
-    except (ValueError, OSError, subprocess.SubprocessError):
+    except DispatchError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
+        if isinstance(error, subprocess.CalledProcessError):
+            try:
+                parse(subprocess.CompletedProcess([], error.returncode, error.output or '', error.stderr or ''), [])
+            except DispatchError as dispatch:
+                print(str(dispatch), file=sys.stderr)
+                return 2
         print(f'Coverage: 0/{len(set(args.images))}; partial. NOT DETERMINED: setup failed.')
         return 1
     return 0

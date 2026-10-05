@@ -15,7 +15,7 @@ Local recording / YouTube video (downloaded in the agent's own shell)
   → extract.sh: ffmpeg audio + whisper-cli SRT/TXT
     → Agent selects transcript hotspots + scene-cues.sh visual changes
       → dense-windows.sh: 10 fps contact sheets + 30s coverage
-        → Pipeline calls visual-gather.py for EVERY sheet
+        → visual-batch.py reads EVERY sheet concurrently (default 3, cap 4)
           → Unclear? Re-densify at up to 20 fps / tighter windows and re-read
             → Resolved or NOT DETERMINED, with sheet/tile/timestamp evidence
               → QA findings or gems, BrainLayer persistence, requested handoff
@@ -52,8 +52,8 @@ Read the user's request and route to the right workflow:
 
 | Request | Execution owner | Image reader |
 |---|---|---|
-| QA a recording (default) | `Agent(qa-video-runner)` with video, project, artifact directory and round | `visual-gather.py` called directly from its Bash |
-| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `visual-gather.py` called directly from its Bash |
+| QA a recording (default) | `Agent(qa-video-runner)` with video, project, artifact directory and round | `visual-batch.py` in its own shell |
+| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `visual-batch.py` in its own shell |
 | Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
 
 **Subagent routing:** Dispatch the full pipeline once using this table. Do not
@@ -67,7 +67,9 @@ If that local agent lacks the helper contract, include this workflow in its brie
 Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
 The pipeline sub-agent owns the whole iterative loop in its **own shell**;
 never read images in the lead or pipeline sub-agent. Read text with Read;
-call `scripts/visual-gather.py` directly from Bash for every sheet/frame.
+call `scripts/visual-batch.py` from your own shell for every sheet/frame.
+The driver invokes visual-gather.py concurrently and returns text only.
+NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
 A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
 inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
 screenshot questions outside this pipeline.
@@ -111,7 +113,7 @@ judgement; an optional convenience index never gates the loop.
      - (b) `scripts/scene-cues.sh <video>` output — visual changes catch silent clicks and UI changes the narrator never mentions
      - (c) click logs, if `qa_click_logger` data exists for the session
    - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (5–20 allowed; use 20 fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus `frames.tsv` (`sheet_file<TAB>tile<TAB>t_s`). Times are the extracted frames' real PTS, so `window_start_s` can be later than the padded cue start; tile *i* (row-major, 0-based) is at `window_start_s + i/fps`, and `frames.tsv` is exact.
-   - **Have the visual helper read EVERY contact sheet, in order.** For each window, state: what the cursor targets, the before/after UI state, and any visual defect.
+   - **Have visual-batch.py read EVERY contact sheet.** For each window, state: what the cursor targets, the before/after UI state, and any visual defect.
    - **Cite or label.** A visual finding must cite `sheet + tile index → timestamp` (e.g. `sheet_004.jpg tile 7 → 12.7s`). A finding with no sheet citation is transcript-only and must be labelled **transcript-only**.
 
 3. **Interval frames are a coverage pass only** — Still extract one frame every 30 seconds so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
@@ -130,7 +132,7 @@ judgement; an optional convenience index never gates the loop.
 
 10. **One pipeline route** — QA uses `qa-video-runner`, gems uses `video-gems`.
     Each owns extraction, hotspots and re-densification in its own Bash and calls
-    `visual-gather.py` directly for images; lead/sub-agent contexts receive text
+    `visual-batch.py` for images; lead/sub-agent contexts receive text
     only. A cmux `video-qa` worker is allowed only on Etan's explicit visible-worker
     request. This rule and the routing table are the same contract. Persistence
     and archival follow the evidence pass.
@@ -181,7 +183,7 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$
 # After logs/scene.exit exists and is 0, append the scene TSV output:
 cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
-# Wait for dense.exit=0. Call visual-gather.py for every sheet (process.md Phase 4). If a moment is unclear, re-densify a single tighter window:
+# Wait for dense.exit=0. Run visual-batch.py on index.tsv (process.md Phase 4). If a moment is unclear, re-densify a single tighter window:
 printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
 # Wait for refine-01.exit=0. Call the visual helper again; repeat as needed, or mark NOT DETERMINED. Full workflow includes
