@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import posixpath
 import re
 import shlex
@@ -41,6 +42,27 @@ def pr_body_is_empty(body: str | None, *, api: dict | None = None) -> bool:
 _GLOBAL_OPTS_WITH_SEPARATE_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
 
 
+# AIDEV-NOTE: git also ships one executable per subcommand; running one is
+# `git <sub>`. Names compare case-insensitively (APFS). In split_git, which
+# scans every token, only known subcommands count, so ordinary words don't.
+_GIT_FAMILY_SUBCOMMANDS = {
+    "add", "am", "apply", "branch", "checkout", "cherry-pick", "clean", "commit", "fetch",
+    "filter-branch", "gc", "merge", "mv", "pull", "push", "rebase", "reset", "restore", "revert",
+    "rm", "send-pack", "stash", "switch", "tag", "update-ref", "worktree",
+}
+
+
+def git_family(token: str) -> str | None:
+    """'' for git itself, the implied subcommand for a per-subcommand git executable,
+    None when `token` is not a git executable."""
+    name = os.path.basename(token).lower()
+    if name == "git":
+        return ""
+    if name.startswith("git-") and len(name) > 4:
+        return name[4:]
+    return None
+
+
 def split_git(command: str, *, api: dict | None = None):
     """Return (subcommand, args) for a git invocation, skipping global options, or None
     if `command` is not a git invocation."""
@@ -50,10 +72,17 @@ def split_git(command: str, *, api: dict | None = None):
     except ValueError:
         tokens = command.split()
     # Match the git binary by basename, so `/usr/bin/git` and `$(brew --prefix)/bin/git`
-    # are recognized too (not just the literal `git` token).
-    git_idx = next((j for j, t in enumerate(tokens) if t == "git" or t.endswith("/git")), None)
+    # are recognized too (not just the literal `git` token), in any case.
+    git_idx, family = None, None
+    for j, t in enumerate(tokens):
+        family = git_family(t)
+        if family == "" or family in _GIT_FAMILY_SUBCOMMANDS:
+            git_idx = j
+            break
     if git_idx is None:
         return None
+    if family:
+        return family, tokens[git_idx + 1:]  # takes no git global options
     i = git_idx + 1
     while i < len(tokens):
         token = tokens[i]

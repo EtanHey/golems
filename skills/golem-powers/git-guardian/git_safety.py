@@ -117,6 +117,10 @@ def _wrapper_depth_reason() -> str:
 def pr_body_is_empty(body: str | None) -> bool:
     return _git.pr_body_is_empty(body, api=globals())
 
+def git_family(token: str):
+    return _git.git_family(token)
+
+
 def split_git(command: str):
     return _git.split_git(command, api=globals())
 
