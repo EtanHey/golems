@@ -31,6 +31,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import { planCodexHooks, applyCodexHooks, codexStatus, CODEX_TRUST_HINT } from "./codex-hooks-install.mjs";
 
 // Hooks deleted by E1 (hooks-audit.md, 2026-09-24). Matched as substrings of the
 // whole manifest, so no id, link, source or command can smuggle one back.
@@ -86,7 +87,8 @@ function context(o, sha) {
   for (const name of E1_DELETED) {
     if (text.includes(name)) die(`REFUSED: ${name} is E1-deleted; it is never linked or registered`);
   }
-  const hosts = JSON.parse(text).hosts;
+  const manifest = JSON.parse(text);
+  const hosts = manifest.hosts;
   // Validate every host before status, dry-run, or apply can use the manifest.
   // Claude Code reads seconds; millisecond-looking values can stall for hours.
   for (const [host, hooks] of Object.entries(hosts ?? {})) {
@@ -108,7 +110,8 @@ function context(o, sha) {
     ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: expand(e.command),
   }));
   const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
-  return { entries, golems, wrapped, hooksDir, live, settingsPath: path.join(homedir(), ".claude", "settings.json") };
+  const codex = planCodexHooks({ manifest, host: o.host, live, codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) });
+  return { entries, golems, wrapped, hooksDir, live, codex, settingsPath: path.join(homedir(), ".claude", "settings.json") };
 }
 
 // The node on PATH (e.g. a version manager's stable shim), not process.execPath:
@@ -205,6 +208,12 @@ function install(o) {
   // Read/validate the immutable selected manifest before creating or moving the pin.
   const ctx = context(o, sha);
   const settings = readSettings(ctx.settingsPath);
+  // Validate the Codex destination and selected source before either host's
+  // config is written. The manifest comes from the selected pin (#505/#577).
+  if (ctx.codex) {
+    if (!ctx.codex.enabled) die("Codex hooks disabled by existing config; review that setting before installation");
+    if (git(o.repo, "show", `${sha}:scripts/hooks/codex-policy-hook.py`) === null) die("Codex adapter absent from selected pin");
+  }
   if (!settings.canonical) {
     const msg = `${ctx.settingsPath} is not canonical 2-space JSON; rewriting it would change unrelated bytes`;
     if (o.apply) die(`${msg}. Refusing.`);
@@ -220,6 +229,7 @@ function install(o) {
   const nextText = `${JSON.stringify(next, null, 2)}\n`;
   const changed = nextText !== settings.text;
   console.log(`settings.json: ${changed ? "would change" : "unchanged"} (${ctx.golems.length + ctx.wrapped.length} managed hooks)`);
+  if (ctx.codex) console.log(`codex hooks.json: ${ctx.codex.old === ctx.codex.next ? "unchanged" : "would change"}; config.toml preserved; trust requires /hooks review`);
   if (!o.apply) {
     console.log("dry-run: nothing written (pass --apply)");
     return 0;
@@ -253,6 +263,11 @@ function install(o) {
     renameSync(tmp, ctx.settingsPath);
   }
   console.log("applied");
+  if (ctx.codex) {
+    ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py"));
+    applyCodexHooks(ctx.codex);
+    console.log(CODEX_TRUST_HINT);
+  }
   return 0;
 }
 
@@ -281,6 +296,7 @@ function status(o) {
   const commands = Object.values(hooks).flat().flatMap((g) => g.hooks ?? []).map((h) => String(h.command ?? ""));
   const text = commands.join("\n");
   let bad = false;
+  if (codexStatus(ctx.codex)) bad = true;
   for (const e of ctx.entries) {
     if (e.kind === "wrapped-external") {
       const expected = ctx.wrapped.find((x) => x.id === e.id);

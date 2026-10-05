@@ -1284,7 +1284,7 @@
     },
     {
       "file": "skills/golem-powers/tmp-block/SKILL.md",
-      "marker": "2. That the hook's **trust review** has been completed. Codex skips a",
+      "marker": "**plain `codex` with no `--profile`** so trust persists in base config.toml.",
       "class": "FALSE POSITIVE",
       "reason": "Hook trust behavior in Codex; no assignment of implementation or review.",
       "count": 1

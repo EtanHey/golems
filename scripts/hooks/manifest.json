@@ -31,5 +31,35 @@
       { "id": "brainlayer-session-start", "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "brainlayer-session-start.py" },
       { "id": "brainlayer-prompt-search", "kind": "external", "owner": "brainlayer", "event": "UserPromptSubmit", "match": "brainlayer-prompt-search.py" }
     ]
+  },
+  "codex_hosts": {
+    "mbp": [
+      {
+        "gate": "tmp-block",
+        "source": "scripts/hooks/codex-policy-hook.py",
+        "matcher": "^(Bash|apply_patch)$",
+        "timeout": 10
+      },
+      {
+        "gate": "git-guardian",
+        "source": "scripts/hooks/codex-policy-hook.py",
+        "matcher": "^(Bash|apply_patch)$",
+        "timeout": 10
+      }
+    ],
+    "m1": [
+      {
+        "gate": "tmp-block",
+        "source": "scripts/hooks/codex-policy-hook.py",
+        "matcher": "^(Bash|apply_patch)$",
+        "timeout": 10
+      },
+      {
+        "gate": "git-guardian",
+        "source": "scripts/hooks/codex-policy-hook.py",
+        "matcher": "^(Bash|apply_patch)$",
+        "timeout": 10
+      }
+    ]
   }
 }
