@@ -119,3 +119,7 @@ scripts/tests/check-publish-boundary.test-parts/part-01.bash
 # Relocated unchanged synthetic fixtures; retain old path history coverage.
 # Classes: identity-pii, mcp_executable_exact_version, publication-operational-data
 scripts/tests/check-publish-boundary.test-parts/part-02.bash
+
+# History-only: deleted from the tree; kept for the history ratchet.
+hooks/precompact-checkpoint.py
+scripts/test_precompact.py
