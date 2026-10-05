@@ -14,9 +14,6 @@ skills/golem-powers/cyber/scripts/launchd-secret-linter/fixtures/red-plist.plist
 skills/golem-powers/launchd-secret-linter/tests/test_plist_secret_lint.py
 
 # Synthetic health/schedule prompts used by behavioral evaluations.
-skill-evals/behavioral/coach.yaml
-skill-evals/fixtures/coach-schedule-request.txt
-skill-evals/promptfoo-behavioral.yaml
 
 # Public vendor names, synthetic people, and authored email/categorization fixtures.
 packages/coach/src/__tests__/morning-briefing-runner.test.ts
@@ -39,9 +36,6 @@ scripts/benchmark-glm.ts
 scripts/tests/test-check-instruction-shape.bats
 scripts/tests/test-stream-helpers.bats
 scripts/tests/test-worktree-gc.bats
-skill-evals/fixtures/nightly-journal-empty-whatsapp.txt
-skill-evals/fixtures/nightly-journal-normal.txt
-skill-evals/fixtures/nightly-journal-read-only.txt
 
 skills/golem-powers/audio-dashboard/evals/narration-vendor-drift.test.mjs
 skills/golem-powers/crash-resume-index/evals/crash-resume-index.test.mjs
