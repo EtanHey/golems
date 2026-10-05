@@ -33,16 +33,19 @@ import sys
 from contextlib import nullcontext, redirect_stderr, redirect_stdout
 from io import StringIO
 
+FAIL_CLOSED_PROTOCOL = 1
+REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`."
+
 
 def _warn(message):
     print(f"golems-fail-open: {message} (allowing)".replace("\n", " "), file=sys.stderr)
 
 
 def _block():
-    print(json.dumps({"hookSpecificOutput": {
+    print(json.dumps({"decision": "block", "reason": REPAIR_REASON, "hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",
-        "permissionDecisionReason": "BLOCKED: policy hook unavailable; reinstall: bash scripts/hooks/install-hooks.sh --host <host> --apply",
+        "permissionDecisionReason": REPAIR_REASON,
     }}, separators=(",", ":")))
     return 2
 

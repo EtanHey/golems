@@ -50,11 +50,13 @@ function addWrappedStopHook(fx) {
   writeFileSync(fx.manifest, JSON.stringify(manifest));
 }
 
-function fixture({ settings } = {}) {
+function fixture({ settings, ownerLayout = false } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "install-hooks-")));
   dirs.push(root);
   const origin = path.join(root, "origin.git");
-  const repo = path.join(root, "golems");
+  const home = path.join(root, "home");
+  const repo = ownerLayout ? path.join(home, "Gits/golems") : path.join(root, "golems");
+  mkdirSync(path.dirname(repo), { recursive: true });
   git(root, "init", "-q", "--bare", "-b", "master", origin);
   git(root, "clone", "-q", origin, repo);
   mkdirSync(path.join(repo, "skills/golem-powers/demo-gate/hooks"), { recursive: true });
@@ -63,7 +65,6 @@ function fixture({ settings } = {}) {
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "seed");
   git(repo, "push", "-q", "origin", "HEAD:master");
-  const home = path.join(root, "home");
   mkdirSync(path.join(home, ".claude/hooks"), { recursive: true });
   const text = settings ?? `${JSON.stringify({ ...UNRELATED, hooks: { SessionStart: [{ hooks: [EXTERNAL] }] } }, null, 2)}\n`;
   writeFileSync(path.join(home, ".claude/settings.json"), text);
@@ -469,4 +470,118 @@ test("--status: a linked hook whose command is no longer registered reports unre
   delete s.hooks.PreToolUse;
   writeFileSync(fx.settingsPath, `${JSON.stringify(s, null, 2)}\n`);
   expect(run(fx, "--status").out).toMatch(/demo-gate unregistered/);
+});
+
+const legacyLauncher = "import os,sys\nif not os.path.isfile(sys.argv[1]):\n print('legacy missing target (allowing)', file=sys.stderr)\n sys.exit(0)\n";
+function closedFixture() {
+  const fx = fixture();
+  const manifest = manifestFor();
+  manifest.hosts.mbp[0].id = "tmp-block";
+  manifest.hosts.mbp[0].command = manifest.hosts.mbp[0].command.replace("golems-fail-open.py ", "golems-fail-open.py --fail-closed ");
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  return fx;
+}
+
+test("policy status rejects missing fail-closed registration and stale launcher; apply repairs the pair", () => {
+  const fx = closedFixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const original = readFileSync(fx.settingsPath, "utf8");
+  writeFileSync(fx.settingsPath, original.replace("--fail-closed ", ""));
+  let result = run(fx, "--status");
+  expect(result.status).not.toBe(0);
+  expect(result.out).toContain("fail-closed=no");
+  writeFileSync(fx.settingsPath, original);
+  const copy = path.join(fx.home, ".claude/hooks/golems-fail-open.py");
+  writeFileSync(copy, legacyLauncher);
+  result = run(fx, "--status");
+  expect(result.status).not.toBe(0); expect(result.out).toContain("golems-fail-open stale");
+  expect(result.out).toContain("fail-closed=no");
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(readFileSync(copy).equals(readFileSync(wrapper))).toBe(true);
+  expect(run(fx, "--status").status).toBe(0);
+  const denied = spawnSync("python3", [copy, "--fail-closed", path.join(fx.root, "missing.py")], { encoding: "utf8" });
+  expect(denied.status).toBe(2);
+  const open = fixture();
+  expect(run(open, "--apply").status).toBe(0);
+  writeFileSync(path.join(open.home, ".claude/hooks/golems-fail-open.py"), legacyLauncher);
+  expect(run(open, "--status").status).not.toBe(0);
+});
+
+test("installer refuses a legacy source launcher paired with fail-closed before pin or settings writes", () => {
+  const fx = closedFixture();
+  const source = path.join(fx.root, "installer"); mkdirSync(source);
+  cpSync(installer, path.join(source, "install-hooks.mjs"));
+  writeFileSync(path.join(source, "fail-open.py"), legacyLauncher);
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const result = spawnSync("node", [path.join(source, "install-hooks.mjs"), "--repo", fx.repo,
+    "--manifest", fx.manifest, "--host", "mbp", "--apply"], { encoding: "utf8", env: { ...process.env, HOME: fx.home } });
+  expect(result.status).not.toBe(0); expect(result.stderr).toContain("fail-closed protocol");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before); expect(existsSync(live(fx))).toBe(false);
+});
+
+test("missing locked hooks-live recovers through the actual owner hint from an unrelated cwd", () => {
+  const fx = fixture({ ownerLayout: true });
+  const sourceRepo = path.resolve(here, "../..");
+  for (const name of ["git-guardian", "tmp-block", "_shared"]) {
+    cpSync(path.join(sourceRepo, "skills/golem-powers", name), path.join(fx.repo, "skills/golem-powers", name), { recursive: true });
+  }
+  mkdirSync(path.join(fx.repo, "scripts/hooks"), { recursive: true });
+  for (const name of ["install-hooks.mjs", "install-hooks.sh", "fail-open.py"]) {
+    cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
+  }
+  const manifest = { hosts: { mbp: realManifest.hosts.mbp.filter((e) => ["tmp-block", "pre_tool_use"].includes(e.id)) } };
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  writeFileSync(path.join(fx.repo, "scripts/hooks/manifest.json"), JSON.stringify(manifest));
+  // Match the real repo's ignored bytecode; fixture copies may contain it.
+  writeFileSync(path.join(fx.repo, ".gitignore"), "__pycache__/\n*.pyc\n");
+  git(fx.repo, "add", "."); git(fx.repo, "commit", "-qm", "policies"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  expect(run(fx, "--apply").status).toBe(0);
+  const commands = () => JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command);
+  const request = JSON.stringify({ tool_name: "Bash", tool_input: { command: "echo fixture" }, cwd: fx.repo, session_id: "synthetic-recovery" });
+  const call = (command) => spawnSync("sh", ["-c", command], { input: request, encoding: "utf8", env: { ...process.env, HOME: fx.home } });
+  for (const command of commands()) expect(call(command).status).toBe(0);
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toContain("locked ");
+  rmSync(live(fx), { recursive: true });
+  for (const command of commands()) expect(call(command).status).toBe(2);
+  const other = path.join(fx.repo, ".worktrees/other-locked");
+  git(fx.repo, "worktree", "add", "-q", "--detach", other, "HEAD");
+  git(fx.repo, "worktree", "lock", "--reason", "foreign pin", other);
+  rmSync(other, { recursive: true });
+  const metadata = git(fx.repo, "worktree", "list", "--porcelain");
+  expect(run(fx, "--update").status).toBe(0);
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toBe(metadata);
+  // Pin F1 independently of the printed hint: old pinLive cannot recover.
+  let result = run(fx, "--update", "--apply");
+  expect(result.status, result.out).toBe(0);
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toContain(`worktree ${other}\nHEAD`);
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toContain("locked foreign pin");
+  rmSync(live(fx), { recursive: true });
+  const blocked = call(commands()[0]);
+  const reason = JSON.parse(blocked.stdout).reason;
+  const match = reason.match(/`! (bash [^`]+)`/);
+  expect(match).not.toBeNull();
+  const recovery = match[1].replace("<host>", "mbp");
+  // Simulates a human terminal / ! prompt command; live Claude ! bypass not claimed.
+  result = spawnSync("bash", ["-c", recovery], { cwd: fx.home, encoding: "utf8", env: { ...process.env, HOME: fx.home } });
+  expect(result.status, result.stderr).toBe(0);
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(git(fx.repo, "rev-parse", "origin/master"));
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toContain("locked ");
+  for (const command of commands()) expect(call(command).status).toBe(0);
+  // A broken but existing pin must move to a healthy successor via the same hint.
+  const policy = "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py";
+  const healthy = readFileSync(path.join(fx.repo, policy));
+  writeFileSync(path.join(fx.repo, policy), "def broken(:\n");
+  git(fx.repo, "add", policy); git(fx.repo, "commit", "-qm", "broken synthetic pin");
+  const brokenSha = git(fx.repo, "rev-parse", "HEAD");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const brokenInstall = run(fx, "--update", brokenSha, "--apply");
+  expect(brokenInstall.status, brokenInstall.out).toBe(0);
+  expect(call(commands().find((c) => c.includes("tmp-block"))).status).toBe(2);
+  writeFileSync(path.join(fx.repo, policy), healthy);
+  git(fx.repo, "add", policy); git(fx.repo, "commit", "-qm", "healthy synthetic successor");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  result = spawnSync("bash", ["-c", recovery], { cwd: fx.home, encoding: "utf8", env: { ...process.env, HOME: fx.home } });
+  expect(result.status, result.stderr).toBe(0);
+  expect(git(live(fx), "rev-parse", "HEAD")).not.toBe(brokenSha);
+  for (const command of commands()) expect(call(command).status).toBe(0);
 });

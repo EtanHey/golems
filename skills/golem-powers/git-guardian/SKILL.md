@@ -135,12 +135,19 @@ imports this skill's `git_safety.py`; it is distinct from the project
 `block-dangerous-commands.py` and the human-confirm gate. Both host manifests
 run it through `golems-fail-open.py --fail-closed` (#488). A missing, unreadable,
 syntax-broken or crashed hook denies with a static, value-free reinstall hint:
-`bash scripts/hooks/install-hooks.sh --host <host> --apply`.
+`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.
+Flag this to the user: blocked Bash cannot perform agent recovery. A human uses
+the prompt or an outside terminal (omit `!` there). The installer clears the
+missing pin's locked registration, and `--update` repairs broken existing pins.
+The prompt's `!` bypass remains the #411 assumption, not live-verified here.
 Legitimate allow/deny results pass through. Other gates keep the default
 fail-open launcher mode; tmp-block is the other selected policy gate.
 The launcher is an installed copy so it survives a dangling hooks-live tree;
 a missing/broken launcher or skipped harness registration remains outside its
 own enforcement boundary. Lead installs through hooks-live after review/merge.
+Known residuals: import-time hangs, native exits and harness timeouts can still
+fail open, and registration/launcher edits can disable enforcement. Separate
+follow-ups track these; only Python-level stdout/stderr is captured.
 
 The "discard only what THIS session owns" rule is the key nuance: discarding your own
 in-session edits is fine; discarding another agent's or the user's uncommitted work is the

@@ -41,6 +41,7 @@ export const E1_DELETED = [
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WRAPPER_SRC = path.join(here, "fail-open.py");
 const LOCK_REASON = "GO-5 pinned hook source; move only with scripts/hooks/install-hooks.sh --update";
+const supportsFailClosed = (bytes) => /^FAIL_CLOSED_PROTOCOL = 1$/m.test(bytes.toString());
 
 function die(message, code = 1) {
   process.stderr.write(`install-hooks: ${message}\n`);
@@ -177,6 +178,15 @@ function pinLive(o, live) {
   if (!sha) die(`cannot resolve ${o.update ?? "origin/master"} in ${o.repo}`);
   if (!o.apply) return current ? `hooks-live: move ${current} -> ${sha}` : `hooks-live: create at ${sha}`;
   if (!current) {
+    // Recover only this missing pin's registration; never unlock another tree.
+    if (!existsSync(live)) {
+      const records = mustGit(o.repo, "worktree", "list", "--porcelain", "-z").split("\0\0");
+      const record = records.map((r) => r.split("\0")).find((r) => r[0] === `worktree ${path.resolve(live)}`);
+      if (record) {
+        if (record.some((f) => f === "locked" || f.startsWith("locked "))) mustGit(o.repo, "worktree", "unlock", live);
+        mustGit(o.repo, "worktree", "prune", "--expire=now");
+      }
+    }
     mustGit(o.repo, "worktree", "add", "-q", "--detach", live, sha);
   } else if (current !== sha) {
     if (git(live, "status", "--porcelain")) die(`${live} has local changes; refusing to move it`);
@@ -193,6 +203,9 @@ function relock(repo, live) {
 
 function install(o) {
   const ctx = context(o);
+  if (ctx.golems.some((e) => e.command.includes("--fail-closed")) && !supportsFailClosed(readFileSync(WRAPPER_SRC))) {
+    die("REFUSED: source launcher lacks fail-closed protocol; update the installer checkout before applying");
+  }
   const settings = readSettings(ctx.settingsPath);
   if (!settings.canonical) {
     const msg = `${ctx.settingsPath} is not canonical 2-space JSON; rewriting it would change unrelated bytes`;
@@ -255,6 +268,9 @@ function status(o) {
   const hooks = existsSync(ctx.settingsPath) ? JSON.parse(readFileSync(ctx.settingsPath, "utf8")).hooks ?? {} : {};
   const commands = Object.values(hooks).flat().flatMap((g) => g.hooks ?? []).map((h) => String(h.command ?? ""));
   const text = commands.join("\n");
+  const wrapper = path.join(ctx.hooksDir, "golems-fail-open.py");
+  const source = readFileSync(WRAPPER_SRC);
+  const wrapperState = !existsSync(wrapper) ? "dangling" : readFileSync(wrapper).equals(source) ? "ok" : "stale";
   let bad = false;
   for (const e of ctx.entries) {
     if (e.kind === "wrapped-external") {
@@ -276,13 +292,14 @@ function status(o) {
     let state = linkState(g.at, g.to);
     if (state === "ok" && !commands.includes(g.cmd)) state = "unregistered";
     if (state === "dangling" || state === "copy(not link)") bad = true;
-    console.log(`${e.id} ${state}`);
+    const closed = e.command.includes("--fail-closed");
+    const closedOk = state === "ok" && wrapperState === "ok" && supportsFailClosed(source);
+    if (closed && !closedOk) bad = true;
+    console.log(`${e.id} ${state}${closed ? ` fail-closed=${closedOk ? "yes" : "no"}` : ""}`);
   }
-  const wrapper = path.join(ctx.hooksDir, "golems-fail-open.py");
   if (text.includes(wrapper)) {
-    const w = !existsSync(wrapper) ? "dangling" : readFileSync(wrapper).equals(readFileSync(WRAPPER_SRC)) ? "ok" : "stale";
-    if (w === "dangling") bad = true;
-    console.log(`golems-fail-open ${w}`);
+    if (wrapperState !== "ok") bad = true;
+    console.log(`golems-fail-open ${wrapperState}`);
   }
   for (const name of E1_DELETED) {
     if (text.includes(name)) {

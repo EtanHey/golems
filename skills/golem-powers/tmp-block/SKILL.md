@@ -19,12 +19,20 @@ installer `scripts/install.sh` is described in `hooks/INSTALL.md`.
 Both host manifests run this policy gate through the installed copy of
 `golems-fail-open.py --fail-closed` (#488). A missing, unreadable, syntax-broken
 or crashed hook produces a static, value-free denial with the reinstall hint
-`bash scripts/hooks/install-hooks.sh --host <host> --apply`. Failed-hook output
+`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.
+Flag this to the user: the blocked agent cannot run Bash recovery. A human runs
+the command from the prompt or an outside terminal (omit `!` in a terminal).
+The installer clears the missing pin's locked registration before recreating
+it; `--update` also replaces a broken existing pin. The prompt's `!` bypass is
+the #411 assumption, not live-verified here. Failed-hook output
 is discarded; legitimate allow/deny results and advisories pass through. This
 does not change the payload-level advisory rules below. Git-guardian's
 `pre_tool_use.py` is the other selected policy gate; other gates retain the
 default fail-open mode. The launcher itself must exist and be registered to
 enforce this boundary; lead installs through hooks-live after review/merge.
+Known residuals: import-time hangs, native exits and harness timeouts can still
+fail open. Registration/launcher edits can disable enforcement. Those are
+separate follow-ups; this launcher captures only Python-level stdout/stderr.
 
 ## Scope
 

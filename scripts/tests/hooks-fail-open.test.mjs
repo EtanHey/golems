@@ -36,15 +36,18 @@ test("missing target and import error exit 0 with exactly one stderr line", () =
   expect(r.stderr).toContain("ModuleNotFoundError");
 });
 
+const repairReason = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.";
 const closedBlock = {
+  decision: "block",
+  reason: repairReason,
   hookSpecificOutput: {
     hookEventName: "PreToolUse",
     permissionDecision: "deny",
-    permissionDecisionReason: "BLOCKED: policy hook unavailable; reinstall: bash scripts/hooks/install-hooks.sh --host <host> --apply",
+    permissionDecisionReason: repairReason,
   },
 };
 
-for (const failure of ["missing-arg", "missing", "syntax", "dangling", "unreadable", "crash", "imports", "bad-exit"]) {
+for (const failure of ["missing-arg", "missing", "syntax", "dangling", "unreadable", "crash", "imports", "bad-exit", "exit-1", "exit-3"]) {
   test(`fail-closed copy gives one static value-free block: ${failure}`, () => {
     const d = scratch();
     const launcher = path.join(d, "golems-fail-open.py");
@@ -63,7 +66,9 @@ for (const failure of ["missing-arg", "missing", "syntax", "dangling", "unreadab
     writeFileSync(imports, "import missing_sensitive_module\n");
     const badExit = path.join(d, "sensitive-exit.py");
     writeFileSync(badExit, "import sys\nprint('sensitive-output')\nsys.exit('sensitive-value')\n");
-    const target = { missing, syntax, dangling, unreadable, crash, imports, "bad-exit": badExit }[failure];
+    const exit1 = path.join(d, "exit1.py"), exit3 = path.join(d, "exit3.py");
+    writeFileSync(exit1, "import sys\nsys.exit(1)\n"); writeFileSync(exit3, "import sys\nsys.exit(3)\n");
+    const target = { missing, syntax, dangling, unreadable, crash, imports, "bad-exit": badExit, "exit-1": exit1, "exit-3": exit3 }[failure];
     const r = wrap(target, { closed: true, launcher });
     expect(r.status, target).toBe(2);
     expect(r.stderr, target).toBe("");
