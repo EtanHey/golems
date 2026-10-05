@@ -122,3 +122,6 @@ skill-evals/fixtures/nightly-journal-read-only.txt
 packages/recruiter/src/__tests__/auto-outreach.test.ts
 packages/recruiter/src/__tests__/obsidian-export.test.ts
 packages/recruiter/src/__tests__/outreach-db.test.ts
+
+# History-only: launch drafts deleted from the tree; kept for the history ratchet.
+packages/content/prompts/launch/text/reddit-localllama-bl.md
