@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync,
-  statSync, symlinkSync, writeFileSync,
+  statSync, symlinkSync, writeFileSync, renameSync,
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -50,7 +50,7 @@ function addWrappedStopHook(fx) {
   writeFileSync(fx.manifest, JSON.stringify(manifest));
 }
 
-function fixture({ settings } = {}) {
+function fixture({ settings, privateSuite = true } = {}) {
   const scratch = path.join(here, "../../docs.local/install-hooks-fixtures");
   mkdirSync(scratch, { recursive: true });
   const root = realpathSync(mkdtempSync(path.join(scratch, "install-hooks-")));
@@ -62,6 +62,8 @@ function fixture({ settings } = {}) {
   mkdirSync(path.join(repo, "skills/golem-powers/demo-gate/hooks"), { recursive: true });
   writeFileSync(path.join(repo, "skills/golem-powers/demo-gate/hooks/demo-gate.py"), "print('{}')\n");
   writeFileSync(path.join(repo, "skills/golem-powers/demo-gate/hooks/demo.mjs"), "process.stdout.write('{}');\n");
+  mkdirSync(path.join(repo, "scripts/hooks"), { recursive: true });
+  writeFileSync(path.join(repo, "scripts/hooks/codex-policy-hook.py"), "# synthetic candidate adapter\n");
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "seed");
   git(repo, "push", "-q", "origin", "HEAD:master");
@@ -71,12 +73,19 @@ function fixture({ settings } = {}) {
   writeFileSync(path.join(home, ".claude/settings.json"), text);
   const manifest = path.join(root, "manifest.json");
   writeFileSync(manifest, JSON.stringify(manifestFor()));
+  if (privateSuite) {
+    const privateRoot = path.join(repo, "docs.local/private-guard-suites"); mkdirSync(privateRoot, { recursive: true });
+    const file = path.join(privateRoot, "test_fixture.py");
+    writeFileSync(file, "import pytest\nparametrize=pytest.mark.parametrize\n@parametrize('i',range(96))\ndef test_fixture(i):\n    assert i >= 0\n");
+    writeFileSync(path.join(privateRoot, "manifest.json"), JSON.stringify({version:2, expectedCases:96,
+      fixtures:[{path:file,sha256:createHash("sha256").update(readFileSync(file)).digest("hex")}],dependencies:[]}));
+  }
   return { root, repo, home, manifest, settingsPath: path.join(home, ".claude/settings.json") };
 }
 
 function run(fx, ...args) {
   const env = fixtureEnv(fx);
-  const r = spawnSync("node", [installer, "--repo", fx.repo, "--manifest", fx.manifest, "--host", "mbp", ...args], {
+  const r = spawnSync("node", [installer, "--repo", fx.repo, "--manifest", fx.manifest, "--host", fx.host ?? "mbp", ...args], {
     encoding: "utf8", env,
   });
   return { status: r.status, out: `${r.stdout}${r.stderr}` };
@@ -91,11 +100,14 @@ function fixtureEnv(fx) {
     GOLEMS_HEAVY_LOCK: path.join(fx.root, "fixture-heavy.lock"), ...(fx.env ?? {}) };
   // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.
   delete env.GOLEMS_HEAVY_SUITE_HELD;
+  const bin = path.join(fx.root, "machine-bin"); mkdirSync(bin, { recursive: true });
+  writeFileSync(path.join(bin, "scutil"), `#!/bin/sh\nprintf '%s\\n' '${fx.machine ?? (fx.host === "m1" ? "Locals-MacBook-Pro" : "MacBook-Pro")}'\n`, { mode: 0o755 });
+  env.PATH = `${bin}:${env.PATH}`;
   return env;
 }
 
 function guardedFixture({ privateSuite = "absent", candidate = "pass" } = {}) {
-  const fx = fixture();
+  const fx = fixture({ privateSuite: false });
   const guards = ["skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "skills/golem-powers/git-guardian/git_safety.py", "skills/golem-powers/_shared/shell_parse.py",
     "scripts/hooks/codex-policy-hook.py"];
@@ -114,7 +126,7 @@ function guardedFixture({ privateSuite = "absent", candidate = "pass" } = {}) {
       "        if parent == home: break\n        assert not (parent/'.git').exists(), 'fixture inherited an enclosing repository'\n");
   }
   if (candidate === "public-fail") writeFileSync(path.join(fx.repo, "scripts/tests/test_codex_policy_hook.py"), "def test_public():\n    assert False\n");
-  if (candidate !== "pass") writeFileSync(path.join(fx.repo, "FAIL_ME"), "synthetic failure");
+  if (candidate !== "pass" && candidate !== "public-fail") writeFileSync(path.join(fx.repo, "FAIL_ME"), "synthetic failure");
   if (candidate === "pytest") writeFileSync(path.join(fx.repo, "pytest.py"),
     "import sys\np=sys.argv[sys.argv.index('--junitxml')+1]\nopen(p,'w').write('<testsuite tests=\"96\">'+'<testcase/>'*96+'</testsuite>')\n");
   if (candidate === "conftest") writeFileSync(path.join(fx.repo, "conftest.py"),
@@ -135,9 +147,13 @@ function guardedFixture({ privateSuite = "absent", candidate = "pass" } = {}) {
   return fx;
 }
 
-test("absent private suites warn and install after public guard verification", () => {
-  const fx = guardedFixture(); const result = run(fx, "--apply");
-  expect(result.status).toBe(0); expect(result.out).toContain("WARN private regression gate ABSENT");
+test("other host absent private suites warn once and install after public verification", () => {
+  const fx = guardedFixture(); fx.host = "m1";
+  const manifest = manifestFor(); manifest.hosts.m1 = structuredClone(manifest.hosts.mbp);
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const result = run(fx, "--apply");
+  expect(result.status).toBe(0); expect(result.out.match(/WARN private regression gate ABSENT/g)).toHaveLength(1);
+  expect(result.out).toContain("PASS (private ABSENT)");
   expect(existsSync(live(fx))).toBe(true); expect(bakFiles(fx)).toHaveLength(1);
 });
 
@@ -162,8 +178,8 @@ test("an update checks the candidate adapter instead of the installed adapter", 
   expect(readFileSync(fx.settingsPath, "utf8")).toBe(before); expect(bakFiles(fx)).toEqual(backups);
 });
 
-test("absent private suites still refuse a failing public guard suite", () => {
-  const fx = guardedFixture({ candidate: "public-fail" });
+test("failing public guard suite refuses even with passing private suites", () => {
+  const fx = guardedFixture({ privateSuite: "present", candidate: "public-fail" });
   const before = readFileSync(fx.settingsPath, "utf8"); const result = run(fx, "--apply");
   expect(result.status).not.toBe(0); expect(result.out).toContain("public regression suite failed");
   expect(existsSync(live(fx))).toBe(false); expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
@@ -848,4 +864,129 @@ test('--status reports installed heavy-suite availability without changing setti
   expect(readFileSync(fx.settingsPath, 'utf8')).toBe(settings);
   rmSync(helper);
   expect(run(fx, '--status').out).toContain('heavy-suite missing (suites run unqueued)');
+});
+
+for (const mode of ["keep", "same-sha"]) {
+  for (const drift of ["tracked", "untracked", "ignored", "assume-unchanged", "skip-worktree"]) {
+    test(`live integrity refuses ${drift} on ${mode} without host writes`, () => {
+      const fx = guardedFixture({ privateSuite: "present" });
+      expect(run(fx, "--apply").status).toBe(0);
+      const sha = git(live(fx), "rev-parse", "HEAD");
+      const source = "scripts/hooks/codex-policy-hook.py";
+      if (drift === "untracked") writeFileSync(path.join(live(fx), "scripts/hooks/local.py"), "# local\n");
+      else if (drift === "ignored") {
+        const exclude = path.resolve(live(fx), git(live(fx), "rev-parse", "--git-path", "info/exclude"));
+        mkdirSync(path.dirname(exclude), { recursive: true });
+        writeFileSync(exclude, "scripts/hooks/local.py\n");
+        writeFileSync(path.join(live(fx), "scripts/hooks/local.py"), "# local\n");
+      }
+      else {
+        if (drift !== "tracked") git(live(fx), "update-index", `--${drift}`, source);
+        writeFileSync(path.join(live(fx), source), "# changed live adapter\n");
+      }
+      const settings = readFileSync(fx.settingsPath), backups = bakFiles(fx);
+      const args = mode === "keep" ? ["--apply"] : ["--update", sha, "--apply"];
+      const result = run(fx, ...args);
+      expect(result.status).not.toBe(0);
+      expect(result.out).toContain("live source is dirty");
+      expect(readFileSync(fx.settingsPath)).toEqual(settings);
+      expect(bakFiles(fx)).toEqual(backups);
+      expect(git(live(fx), "rev-parse", "HEAD")).toBe(sha);
+    });
+  }
+}
+for (const removed of ["absent", "renamed"]) {
+  test(`mbp requires private suites when ${removed}`, () => {
+    const fx = guardedFixture({ privateSuite: removed === "renamed" ? "present" : "absent" });
+    if (removed === "renamed") renameSync(path.join(fx.repo, "docs.local/private-guard-suites"), path.join(fx.repo, "docs.local/renamed-suites"));
+    const before = readFileSync(fx.settingsPath);
+    const result = run(fx, "--apply");
+    expect(result.status).not.toBe(0);
+    expect(result.out).toContain("required private suites unavailable");
+    expect(existsSync(live(fx))).toBe(false);
+    expect(readFileSync(fx.settingsPath)).toEqual(before);
+    expect(bakFiles(fx)).toHaveLength(0);
+  });
+}
+
+for (const mode of ["keep", "same-sha", "new-sha", "gate-refused"]) {
+  test(`derived bytecode is purged before and after concurrent gate write on ${mode}`, () => {
+    const fx = guardedFixture({ privateSuite: "present" });
+    expect(run(fx, "--apply").status).toBe(0);
+    const hook = path.join(live(fx), "skills/golem-powers/demo-gate/hooks/demo-gate.py");
+    const cache = path.join(path.dirname(hook), "__pycache__");
+    const compile = spawnSync("python3", ["-c", "import py_compile,sys; py_compile.compile(sys.argv[1])", hook]);
+    expect(compile.status).toBe(0); expect(existsSync(cache)).toBe(true);
+    const testFile = path.join(fx.repo, "scripts/tests/test_codex_policy_hook.py");
+    writeFileSync(testFile, `import os, py_compile\nfrom pathlib import Path\ndef test_concurrent_cache():\n    live=Path(os.environ['HOME']).parent/'golems/.worktrees/hooks-live'\n    cache=live/'skills/golem-powers/demo-gate/hooks/__pycache__'\n    assert not cache.exists(), 'pre-gate purge missing'\n    py_compile.compile(str(live/'skills/golem-powers/demo-gate/hooks/demo-gate.py'), doraise=True)\n    assert cache.exists()\n`);
+    git(fx.repo, "add", testFile); git(fx.repo, "commit", "-qm", "gate cache writer");
+    const next = git(fx.repo, "rev-parse", "HEAD");
+    // Keep and same-sha still exercise a concurrent write through the private stage.
+    const privateRoot = path.join(fx.repo, "docs.local/private-guard-suites");
+    const file = path.join(privateRoot, "test_cache.py");
+    writeFileSync(file, readFileSync(testFile));
+    const m = JSON.parse(readFileSync(path.join(privateRoot, "manifest.json")));
+    m.fixtures.push({path:file,sha256:createHash("sha256").update(readFileSync(file)).digest("hex")}); m.expectedCases++;
+    writeFileSync(path.join(privateRoot, "manifest.json"), JSON.stringify(m));
+    // Only one stage writes: the private stage for keep/same, public stage for new.
+    if (mode === "new-sha") { m.fixtures.pop(); m.expectedCases--; writeFileSync(path.join(privateRoot, "manifest.json"), JSON.stringify(m)); }
+    const current = git(live(fx), "rev-parse", "HEAD");
+    const result = run(fx, ...(mode === "keep" ? [] : ["--update", mode === "same-sha" ? current : next]), "--apply");
+    if (mode === "gate-refused") expect(result.status).not.toBe(0);
+    else expect(result.status).toBe(0);
+    expect(existsSync(cache)).toBe(false);
+    expect(git(live(fx), "rev-parse", "HEAD")).toBe(mode === "new-sha" ? next : current);
+  });
+}
+test("machine identity refuses m1 flag on mbp even with absent private suites", () => {
+  const fx = guardedFixture(); fx.host = "m1"; fx.machine = "MacBook-Pro";
+  const m = manifestFor(); m.hosts.m1 = structuredClone(m.hosts.mbp); writeFileSync(fx.manifest, JSON.stringify(m));
+  const before = readFileSync(fx.settingsPath); const result = run(fx, "--apply");
+  expect(result.status).not.toBe(0); expect(result.out).toContain("machine identity");
+  expect(existsSync(live(fx))).toBe(false); expect(readFileSync(fx.settingsPath)).toEqual(before);
+});
+test("machine identity ignores an environment host override and refuses unknown machines", () => {
+  const fx = guardedFixture({ privateSuite: "present" }); fx.machine = "unknown-machine"; fx.env = { REPOGOLEM_HOST: "MacBook-Pro" };
+  const result = run(fx, "--apply"); expect(result.status).not.toBe(0); expect(result.out).toContain("machine identity");
+  expect(existsSync(live(fx))).toBe(false); expect(bakFiles(fx)).toHaveLength(0);
+});
+for (const mode of ["keep", "same-sha"]) {
+  test(`live integrity rejects dirt despite inherited Git environment on ${mode}`, () => {
+    const fx = guardedFixture({ privateSuite: "present" }); expect(run(fx, "--apply").status).toBe(0);
+    const sha = git(live(fx), "rev-parse", "HEAD"); const source = "scripts/hooks/codex-policy-hook.py";
+    const clean = path.join(fx.root, "clean"); git(fx.root, "clone", "-q", fx.repo, clean);
+    writeFileSync(path.join(live(fx), source), "# dirty live\n");
+    fx.env = { GIT_WORK_TREE: clean };
+    const before = readFileSync(fx.settingsPath), backups = bakFiles(fx);
+    const result = run(fx, ...(mode === "keep" ? [] : ["--update", sha]), "--apply");
+    expect(result.status).not.toBe(0); expect(result.out).toContain("live source is dirty");
+    expect(readFileSync(fx.settingsPath)).toEqual(before); expect(bakFiles(fx)).toEqual(backups);
+    expect(git(live(fx), "rev-parse", "HEAD")).toBe(sha);
+  });
+}
+
+test("clean installer ignores inherited Git directory instead of refusing a valid source", () => {
+  const fx = guardedFixture({ privateSuite: "present" });
+  const foreign = path.join(fx.root, "unrelated.git"); git(fx.root, "init", "-q", "--bare", foreign);
+  fx.env = { GIT_DIR: foreign, GIT_INDEX_FILE: path.join(foreign, "index") };
+  const result = run(fx, "--apply"); expect(result.status).toBe(0);
+  expect(git(live(fx), "rev-parse", "--git-common-dir")).toBe(path.join(fx.repo, ".git"));
+});
+
+test("all install and status Git calls scrub inherited Git variables, including pin and tamper checks", () => {
+  const fx = fixture(); addPinGate(fx, `${FINGERPRINT} fixture\n`);
+  const realGit = spawnSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).stdout.trim();
+  const bin = path.join(fx.root, "machine-bin"); mkdirSync(bin, { recursive: true });
+  const trace = path.join(fx.root, "git-calls.jsonl");
+  writeFileSync(path.join(bin, "git"), "#!/usr/bin/env python3\nimport json, os, sys\n" +
+    `with open(${JSON.stringify(trace)}, 'a') as f:\n    f.write(json.dumps({'args':sys.argv[1:],'gitEnv':[k for k in os.environ if k.startswith('GIT_')]})+'\\n')\n` +
+    `os.execv(${JSON.stringify(realGit)}, [${JSON.stringify(realGit)}, *sys.argv[1:]])\n`, { mode: 0o755 });
+  fx.env = { GIT_GATE_SENTINEL: "synthetic" };
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(run(fx, "--status").status).toBe(0);
+  const calls = readFileSync(trace, "utf8").trim().split("\n").map(JSON.parse);
+  for (const command of ["show", "hash-object", "merge-base", "ls-files", "for-each-ref", "unlock"]) {
+    expect(calls.some((c) => c.args.includes(command))).toBe(true);
+  }
+  expect(calls.filter((c) => c.gitEnv.length)).toEqual([]);
 });

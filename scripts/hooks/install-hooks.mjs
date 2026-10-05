@@ -50,13 +50,18 @@ function die(message, code = 1) {
   process.exit(code);
 }
 
+function gitProcess(cwd, args, options = {}) {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+  return spawnSync("git", ["--no-optional-locks", "-C", cwd, "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+    "--no-replace-objects", ...args], { encoding: "utf8", ...options, env });
+}
 function git(cwd, ...args) {
-  const r = spawnSync("git", args, { cwd, encoding: "utf8" });
+  const r = gitProcess(cwd, args);
   return r.status === 0 ? r.stdout.trim() : null;
 }
 
 function mustGit(cwd, ...args) {
-  const r = spawnSync("git", args, { cwd, encoding: "utf8" });
+  const r = gitProcess(cwd, args);
   if (r.status !== 0) die(`git ${args.join(" ")} failed: ${r.stderr.trim()}`);
   return r.stdout.trim();
 }
@@ -192,19 +197,21 @@ function selectedPin(o, live) {
   return sha;
 }
 
-function pinLive(o, live, sha) {
+function pinLive(o, live, sha, dirs = []) {
   const current = existsSync(live) ? git(live, "rev-parse", "HEAD") : null;
   if (current && !o.update) {
-    if (o.apply) relock(o.repo, live);
+    if (o.apply) { purgeBytecode(live, dirs); relock(o.repo, live); }
     return `hooks-live: keep ${current}`;
   }
   if (!o.apply) return current ? `hooks-live: move ${current} -> ${sha}` : `hooks-live: create at ${sha}`;
   if (!current) {
     mustGit(o.repo, "worktree", "add", "-q", "--detach", live, sha);
   } else if (current !== sha) {
-    if (git(live, "status", "--porcelain")) die(`${live} has local changes; refusing to move it`);
+    assertLiveClean(live, dirs);
+    purgeBytecode(live, dirs);
     mustGit(live, "checkout", "-q", "--detach", sha);
   }
+  purgeBytecode(live, dirs);
   relock(o.repo, live);
   return `hooks-live: pinned at ${sha}`;
 }
@@ -227,14 +234,25 @@ export function pinnedFingerprints(raw) {
 
 function pinReady(o, sha, e) {
   if (!e.requiresPin) return true;
-  const r = spawnSync("git", ["show", `${sha}:${e.requiresPin}`], { cwd: o.repo });
+  const r = gitProcess(o.repo, ["show", `${sha}:${e.requiresPin}`], { encoding: null });
   return r.status === 0 && pinnedFingerprints(r.stdout) > 0;
 }
 
 // git as --status must run it against hooks-live: repo config cannot answer for
 // the worktree (fsmonitor/untracked cache) and replace refs cannot swap objects.
+function liveGitProcess(live, args, options = {}) {
+  const dir = git(live, "rev-parse", "--absolute-git-dir");
+  if (!dir) return { status: 1, stdout: "", stderr: "cannot resolve live git directory" };
+  return gitProcess(live, [`--git-dir=${dir}`, `--work-tree=${path.resolve(live)}`, ...args], options);
+}
 function liveGit(live, ...args) {
-  return git(live, "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "--no-replace-objects", ...args);
+  const r = liveGitProcess(live, args);
+  return r.status === 0 ? r.stdout.trim() : null;
+}
+function mustLiveGit(live, ...args) {
+  const r = liveGitProcess(live, args);
+  if (r.status !== 0) die(`live git ${args.join(" ")} failed: ${r.stderr?.trim()}`);
+  return r.stdout.trim();
 }
 
 // Import dirs of every launcher-run Python hook (its source dir, or the dir of
@@ -246,21 +264,6 @@ function importDirs(ctx) {
     dirs.add(e.source.endsWith(".py") ? path.posix.dirname(e.source) : e.source);
   }
   return [...dirs];
-}
-
-// Stale bytecode caches left in hooks-live by runs before -B; cache only.
-function cacheDirs(ctx) {
-  const found = [];
-  const walk = (rel) => {
-    for (const name of readdirSync(path.join(ctx.live, rel))) {
-      const child = path.posix.join(rel, name);
-      if (!lstatSync(path.join(ctx.live, child)).isDirectory()) continue;
-      if (name === "__pycache__") found.push(child);
-      else walk(child);
-    }
-  };
-  for (const dir of importDirs(ctx)) if (existsSync(path.join(ctx.live, dir))) walk(dir);
-  return found;
 }
 
 // AIDEV-NOTE: porcelain alone trusts the index. Index flags and replace refs
@@ -298,8 +301,8 @@ function treeIntegrity(ctx, head) {
     const missing = [...tracked.keys()].filter((f) => !onDisk.includes(f));
     const regular = onDisk.filter((f) => tracked.has(f) && !lstatSync(path.join(ctx.live, f)).isSymbolicLink());
     const r = regular.length === 0 ? { status: 0, stdout: "" }
-      : spawnSync("git", ["-C", ctx.live, "hash-object", "--no-filters", "--stdin-paths"],
-        { encoding: "utf8", input: `${regular.join("\n")}\n` });
+      : liveGitProcess(ctx.live, ["hash-object", "--no-filters", "--stdin-paths"],
+        { input: `${regular.join("\n")}\n` });
     const hashes = r.status === 0 ? r.stdout.trim().split("\n") : [];
     const changed = regular.filter((f, i) => hashes[i] !== tracked.get(f).sha || tracked.get(f).mode === "120000");
     changed.push(...onDisk.filter((f) => tracked.has(f) && lstatSync(path.join(ctx.live, f)).isSymbolicLink()
@@ -316,11 +319,74 @@ function treeIntegrity(ctx, head) {
 const pinRecord = (ctx) => path.join(ctx.hooksDir, "golems-hooks-live.sha");
 
 function relock(repo, live) {
-  spawnSync("git", ["worktree", "unlock", live], { cwd: repo });
+  gitProcess(repo, ["worktree", "unlock", live]);
   mustGit(repo, "worktree", "lock", "--reason", LOCK_REASON, live);
 }
 
+// LocalHostNames configured by orchestrator/repogolem/config.yaml. Like
+// repogolem-config.ts, read scutil; installation deliberately has no env override.
+function machineHost() {
+  const r = spawnSync("scutil", ["--get", "LocalHostName"], { encoding: "utf8" });
+  const name = r.status === 0 ? r.stdout.trim() : "";
+  const host = { "MacBook-Pro": "mbp", "Locals-MacBook-Pro": "m1" }[name];
+  if (!host) die("machine identity unavailable or unmapped; refusing installation");
+  return host;
+}
+// Only untracked regular bytecode / real cache directories are disposable.
+// Never follow symlinks or exempt a tracked edit because of its filename.
+function derivedPath(live, rel) {
+  const parts = rel.split("/");
+  const cache = parts.indexOf("__pycache__");
+  if (cache < 0 && !rel.endsWith(".pyc")) return null;
+  const limit = cache < 0 ? parts.length : cache + 1;
+  let prefix = live;
+  for (const part of parts.slice(0, limit)) {
+    prefix = path.join(prefix, part);
+    try { if (lstatSync(prefix).isSymbolicLink()) return null; }
+    catch (error) { if (error.code !== "ENOENT") throw error; }
+  }
+  return parts.slice(0, limit).join("/");
+}
+export function assertLiveClean(live, dirs = []) {
+  if (!existsSync(live)) return;
+  const rows = mustLiveGit(live, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignored=no").split("\0").filter(Boolean);
+  const dirty = rows.some((row) => !row.startsWith("?? ") || !derivedPath(live, row.slice(3)));
+  const flags = mustLiveGit(live, "ls-files", "-v", "-z");
+  const ignoredHooks = mustLiveGit(live, "ls-files", "--others", "--ignored", "--exclude-standard", "-z",
+    "--", "scripts/hooks", "skills/golem-powers", ...dirs).split("\0").filter(Boolean);
+  if (dirty || /(^|\0)[a-zS]/.test(flags) || ignoredHooks.some((rel) => !derivedPath(live, rel))) {
+    die("live source is dirty (local changes or hidden index flags); refusing installation");
+  }
+}
+function bytecodePaths(live, dirs = []) {
+  if (!existsSync(live)) return [];
+  const files = [mustLiveGit(live, "ls-files", "--others", "--exclude-standard", "-z"),
+    mustLiveGit(live, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")];
+  const derived = new Set(files.flatMap((s) => s.split("\0").filter(Boolean)).map((rel) => derivedPath(live, rel)).filter(Boolean));
+  const walk = (rel) => {
+    const at = path.join(live, rel);
+    if (!existsSync(at) || !lstatSync(at).isDirectory()) return;
+    if (path.basename(rel) === "__pycache__") { derived.add(rel); return; }
+    for (const name of readdirSync(at)) walk(path.join(rel, name));
+  };
+  for (const rel of new Set(["scripts/hooks", "skills/golem-powers", ".claude/hooks", "hooks", ...dirs])) walk(rel);
+  return [...derived];
+}
+function purgeBytecode(live, dirs = []) {
+  if (!existsSync(live)) return;
+  const derived = bytecodePaths(live, dirs);
+  const tracked = mustLiveGit(live, "ls-files", "-z").split("\0").filter(Boolean);
+  if ([...derived].some((rel) => tracked.some((file) => file === rel || file.startsWith(rel + "/")))) {
+    die("tracked cache content cannot be purged; refusing installation");
+  }
+  const caches = derived.filter((rel) => path.basename(rel) === "__pycache__");
+  if (caches.length) console.log(`hooks-live: clearing ${caches.length} stale __pycache__ dir(s) (hooks run -B)`);
+  for (const rel of derived) rmSync(path.join(live, rel), { recursive: true, force: true });
+}
+
 function install(o) {
+  const machine = o.apply ? machineHost() : o.host;
+  if (o.apply && machine !== o.host) die(`machine identity ${machine} does not match requested host ${o.host}; refusing installation`);
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   // Read/validate the immutable selected manifest before creating or moving the pin.
   const ctx = context(o, sha);
@@ -338,17 +404,22 @@ function install(o) {
   }
   // Gate every selected source; missing guards and git errors cannot skip it.
   const gate = path.join(here, "private-regression-gate.py");
-  console.log(`private regression gate: python3 -I ${gate} ${o.repo} ${sha}; suites=${o.repo}/docs.local/private-guard-suites`);
+  const gateArgs = ["-I", gate, o.repo, sha, ...(machine === "mbp" ? ["--require-private"] : [])];
+  console.log(`private regression gate: python3 ${gateArgs.join(" ")}; suites=${o.repo}/docs.local/private-guard-suites`);
   if (o.apply) {
+    assertLiveClean(ctx.live, importDirs(ctx));
+    purgeBytecode(ctx.live, importDirs(ctx));
     const env = { ...process.env };
     for (const key of ["PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP"]) delete env[key];
     const resolved = spawnSync("sh", ["-c", "command -v python3"], { env, encoding: "utf8" });
     const python = resolved.stdout?.trim();
     if (resolved.status !== 0 || !python || !path.isAbsolute(python)) die("isolated Python runner unavailable");
-    const result = spawnSync(python, ["-I", gate, o.repo, sha], { env, stdio: "inherit", timeout: 3_600_000 });
+    const result = spawnSync(python, gateArgs, { env, stdio: "inherit", timeout: 3_600_000 });
+    assertLiveClean(ctx.live, importDirs(ctx));
+    purgeBytecode(ctx.live, importDirs(ctx));
     if (result.status !== 0) die("private regression gate refused; hooks-live and host configuration untouched");
   }
-  console.log(pinLive(o, ctx.live, sha));
+  console.log(pinLive(o, ctx.live, sha, importDirs(ctx)));
   const refused = ctx.golems.filter((g) => !pinReady(o, sha, g));
   for (const e of refused) {
     console.log(`REFUSED ${e.id}: ${e.requiresPin} has no owner fingerprint at ${sha}; ${o.apply ? "unlinked and deregistered" : "would be unlinked and deregistered"}. `
@@ -364,7 +435,7 @@ function install(o) {
   const nextText = `${JSON.stringify(next, null, 2)}\n`;
   const changed = nextText !== settings.text;
   console.log(`settings.json: ${changed ? "would change" : "unchanged"} (${ctx.golems.length + ctx.wrapped.length} managed hooks)`);
-  const caches = existsSync(ctx.live) ? cacheDirs(ctx) : [];
+  const caches = !o.apply ? bytecodePaths(ctx.live, importDirs(ctx)).filter((rel) => path.basename(rel) === "__pycache__") : [];
   if (caches.length) console.log(`hooks-live: ${o.apply ? "clearing" : "would clear"} ${caches.length} stale __pycache__ dir(s) (hooks run -B)`);
   if (ctx.codex) console.log(`codex hooks.json: ${ctx.codex.old === ctx.codex.next ? "unchanged" : "would change"}; config.toml preserved; trust requires /hooks review`);
   if (!o.apply) {
@@ -383,7 +454,6 @@ function install(o) {
     else if (state !== "missing") unlinkSync(e.at);
   }
   writeFileSync(pinRecord(ctx), `${sha}\n`);
-  for (const cache of cacheDirs(ctx)) rmSync(path.join(ctx.live, cache), { recursive: true, force: true });
   for (const e of ctx.golems) {
     const state = linkState(e.at, e.to);
     if (state === "ok") continue;
@@ -444,7 +514,7 @@ function status(o) {
       bad = true;
       console.log(`hooks-live DIRTY: ${dirty === null ? "git status failed" : `${dirty.split("\n").length} changed/untracked path(s)`}`);
     }
-    if (!master || spawnSync("git", ["merge-base", "--is-ancestor", current, master], { cwd: o.repo }).status !== 0) {
+    if (!master || gitProcess(o.repo, ["merge-base", "--is-ancestor", current, master]).status !== 0) {
       bad = true;
       console.log("hooks-live HEAD is not on origin/master");
     }
