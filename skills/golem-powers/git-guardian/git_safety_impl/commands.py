@@ -277,10 +277,11 @@ def _dangerous_non_rm_in_words(
         if words[position + 1:position + 2] == ["down"]:
             return "Dangerous command: railway down"
         return None
-    if command_name != "git":
+    family = api['git_family'](words[position])
+    if family is None:
         return None
 
-    parsed = api['split_git'](shlex.join(["git", *words[position + 1:]]))
+    parsed = api['split_git'](shlex.join(["git", *([family] if family else []), *words[position + 1:]]))
     if parsed is None:
         return None
     subcommand, arguments = parsed
