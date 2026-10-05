@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/EtanHey/golems/blob/master/scripts/repogolem/config.schema.json",
   "title": "repoGolem config",
-  "description": "One config for every machine: shared projects, mcpDefinitions and global settings, plus a machines section per LocalHostName. Secrets use op:// references or varlock:// named refs declared under values; secrets.backend selects 1password (default), file, or plugin:<npm-package-or-path>. Direct op:// refs require 1password; `repogolem-config.ts generate` resolves refs through the configured backend. Other top-level keys (e.g. seatRegistry) pass through untouched.",
+  "description": "One config for every machine: shared projects, mcpDefinitions and global settings, plus a machines section per LocalHostName. Secrets use op:// references or varlock:// named refs declared under values; secrets.backend selects 1password (default), file, or plugin:<npm-package-or-path>. The file backend accepts only varlock:// refs. Direct op:// refs resolve through 1password or a plugin: adapter; `repogolem-config.ts generate` resolves refs through the configured backend. Other top-level keys (e.g. seatRegistry) pass through untouched.",
   "type": "object",
   "required": ["projects"],
   "properties": {
