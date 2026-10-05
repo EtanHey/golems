@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSync, readdirSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { planCodexHooks, applyCodexHooks, codexStatus, codexCommand } from "../hooks/codex-hooks-install.mjs";
@@ -121,7 +122,7 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
     const repo = path.join(f.root, "repo");
     const origin = path.join(f.root, "origin.git");
     const git = (...args) => {
-      const r = spawnSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", ...args], { cwd: repo, encoding: "utf8" });
+      const r = spawnSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@localhost", ...args], { cwd: repo, encoding: "utf8" });
       if (r.status) throw new Error(r.stderr); return r.stdout.trim();
     };
     rmSync(f.live, { recursive: true, force: true });
@@ -133,10 +134,18 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
     writeFileSync(path.join(repo, "scripts/hooks/manifest.json"), JSON.stringify(manifest));
     git("add", "."); git("commit", "-qm", "selected pin"); git("push", "-q", "origin", "HEAD:master");
     const selected = git("rev-parse", "HEAD");
+    const privateRoot = path.join(repo, "docs.local/private-guard-suites"); mkdirSync(privateRoot, { recursive: true });
+    const file = path.join(privateRoot, "test_fixture.py");
+    writeFileSync(file, "import pytest\nparametrize=pytest.mark.parametrize\n@parametrize('i',range(96))\ndef test_fixture(i):\n    assert i >= 0\n");
+    writeFileSync(path.join(privateRoot, "manifest.json"), JSON.stringify({ version:2, expectedCases:96,
+      fixtures:[{path:file,sha256:createHash("sha256").update(readFileSync(file)).digest("hex")}],dependencies:[] }));
     // Neither main checkout contents nor the caller's default manifest are used.
     writeFileSync(path.join(repo, "scripts/hooks/manifest.json"), "uncommitted invoking drift");
     const env = { ...process.env, HOME: path.join(f.root, "home"), CODEX_HOME: f.codexHome,
       GOLEMS_HEAVY_LOCK: path.join(f.root, "fixture-heavy.lock") };
+    const bin = path.join(f.root, "machine-bin"); mkdirSync(bin);
+    writeFileSync(path.join(bin, "scutil"), `#!/bin/sh\nprintf '%s\\n' '${host === "mbp" ? "MacBook-Pro" : "Locals-MacBook-Pro"}'\n`, { mode: 0o755 });
+    env.PATH = `${bin}:${env.PATH}`;
     delete env.GOLEMS_HEAVY_SUITE_HELD;
     const invoke = (...args) => spawnSync("node", [path.resolve(import.meta.dir, "../hooks/install-hooks.mjs"),
       "--host", host, "--repo", repo, ...args], { env, encoding: "utf8" });
