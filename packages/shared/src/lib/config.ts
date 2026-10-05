@@ -91,7 +91,6 @@ export interface GolemsConfig {
   features: {
     emailGolem: boolean;
     jobGolem: boolean;
-    recruiterGolem: boolean;
     tellerGolem: boolean;
     soltome: boolean;
   };
@@ -284,7 +283,6 @@ const DEFAULTS: GolemsConfig = {
   features: {
     emailGolem: true,
     jobGolem: true,
-    recruiterGolem: true,
     tellerGolem: true,
     soltome: true,
   },
@@ -709,7 +707,6 @@ costs:
 features:
   emailGolem: true
   jobGolem: true
-  recruiterGolem: true
   tellerGolem: true
   soltome: true
 

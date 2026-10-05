@@ -6,6 +6,10 @@
 
 ## Launcher
 
+Routing: see `/agent-routing` § Routing rules (SSOT). Resolve the adapter role via `scripts/model-roles.mjs` from the golems checkout.
+
+Record the resolved `--model` value beside the run ID in the generated spawn-brief header (the dispatch record); verify and record the effective runtime model separately before comparing runs.
+
 ```
 codexJudge -s
 ```
@@ -13,7 +17,7 @@ codexJudge -s
 `codexJudge` is a zsh function spawning the Codex CLI with the agada-bench system prompt. `-s` skips onboarding. If unavailable in shell:
 
 ```bash
-codex --model gpt-5-codex \
+codex --model "$(node scripts/model-roles.mjs codex.implement --field model)" \
       --system "You are codexJudge, a relevance judge for agada-bench. Independent voter; do not bias toward the other judges' consensus. Read rubric and corpus from paths given; emit JSONL to output path."
 ```
 
@@ -104,7 +108,7 @@ Same as claudeJudge: `dispatch-judges.py` polls output file size + last-modified
 
 ```yaml
 adapter: codex
-model: gpt-5-codex
+role: codex.implement
 launcher: codexJudge -s
 mcp_required: none
 input_format: jsonl-pointer

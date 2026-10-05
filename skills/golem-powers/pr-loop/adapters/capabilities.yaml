@@ -8,7 +8,7 @@ adapters:
     git_ops: true
     cr_review_precommit: true        # cr review --plain before commit
     coderabbit_subagent: true        # Agent(subagent_type="coderabbit:code-reviewer")
-    review_polling: native           # CronCreate + /loop tool
+    review_polling: native_monitor   # /collab-monitor; timeout_ms 1800000, TaskStop/re-arm
     brainlayer_postmerge: true       # brain_store after merge (mandatory)
     worktree_isolation: native       # claude --worktree feat/name
     cursor_bugbot_trigger: true      # gh pr comment "@cursor @bugbot review"
@@ -21,7 +21,7 @@ adapters:
     git_ops: true
     cr_review_precommit: conditional # Only if cr CLI installed
     coderabbit_subagent: false       # No Agent() tool
-    review_polling: shell_loop_only  # for i in seq; do gh api ...; sleep 30; done
+    review_polling: attached_fallback # /collab-monitor for handoffs; gh pr checks --watch for CI
     brainlayer_postmerge: false      # No MCP access
     worktree_isolation: manual       # git worktree add required before spawning
     cursor_bugbot_trigger: conditional # Needs gh installed + authenticated; use gh pr comment "@cursor @bugbot review"
@@ -36,17 +36,14 @@ adapters:
     identity_signature: partial      # seat/role/harness yes; model must be "unknown"
     full_loop: partial               # See adapters/cursor.md
 
-# Task routing
-routing:
-  full_autonomous_loop: claude       # Claude does the complete loop autonomously
-  implement_only: codex              # Codex implements, Claude handles review+merge
-  parallel_prs: claude               # Native --worktree for isolation
+# Role/model ownership lives in one canonical skill section.
+routing_policy: "/agent-routing § Routing rules (SSOT)"
 
 # Gaps requiring orchestration
 gaps:
   codex_missing:
     - brainlayer_postmerge           # Must be done by Claude session after Codex merges
-    - coderabbit_subagent            # Use shell polling as fallback
+    - coderabbit_subagent            # Use routed handoffs and /collab-monitor fallback
     - native_review_tooling          # Trigger bots via gh pr comment; no native reviewer tool
   cursor_missing:
     - live_model_provenance          # No verified per-turn model source; sign with model "unknown"

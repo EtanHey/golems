@@ -10,7 +10,6 @@ stage launch in parallel; `stages[N+1]` does not launch until every worker in
 {
   "repo": "$HOME/Gits/example",
   "lead": "lead-name",
-  "model": "gpt-5.6-luna",
   "effort": "xhigh",
   "continue_on_failure": false,
   "stages": [
@@ -44,3 +43,5 @@ The default is fail-closed: a failed launch, worker failure, timeout, parser
 failure, or incomplete completion stops the pipeline before the next stage.
 Set `continue_on_failure: true` only when later stages are explicitly safe with
 partial inputs; the manifest records that policy.
+
+Omit the model to resolve `codex.implement`; pass an explicit model only with a written reason.

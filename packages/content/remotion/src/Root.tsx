@@ -57,6 +57,8 @@ export const FadeIn: React.FC<Props> = ({ delay, children }) => {
   layout: "stacked",
 };
 
+// Historical architecture preview; Recruiter/Railway nodes await a video refresh.
+// Current workspace inventory lives in README.md; this is not a live status diagram.
 const archDiagramDefaults: ArchDiagramProps = {
   title: "Golems Architecture",
   subtitle: "Autonomous AI Agent Ecosystem",

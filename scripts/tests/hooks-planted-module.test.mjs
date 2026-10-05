@@ -28,7 +28,6 @@ const PAYLOADS = {
   "collab-guard": { tool_name: "Write", tool_input: { content: "short\n" }, deny: true, collab: true },
   "tdd-guard": { tool_name: "Write", tool_input: { file_path: "src/feature.ts", content: "export const x = 1;\n" } },
   "stamp-lint": { tool_name: "Write", tool_input: { file_path: "notes.md", content: "hello\n" }, hook_event_name: "PostToolUse" },
-  "precompact-checkpoint": { hook_event_name: "PreCompact", trigger: "auto", transcript_path: "missing.jsonl" },
   "frustration-capture": { hook_event_name: "UserPromptSubmit", prompt: "no, that's wrong, I told you already" },
   "daemon-gate-precheck": { tool_name: "Bash", tool_input: { command: "ls" } },
 };

@@ -11,23 +11,14 @@ execute: scripts/default.sh
 ## How It Works
 
 ```
-Screen Recording (.mov)
-  → ffmpeg audio extraction
-    → whisper-cli transcription (SRT + TXT)
-      → LLM reads SRT, identifies QA-relevant segments
-        → Dense action windows (5–20 fps contact sheets) + 30s coverage frames
-          → Claude Vision reads every sheet + correlates with transcript
-            → Structured QA findings document
-              → Agent handoff (Codex/Claude worker via cmux)
-
-YouTube / gems request
-  → yt-dlp audio + metadata
-    → whisper-cli transcription (SRT + TXT)
-      → keyword hotspot detection for insights, claims, data, and examples
-        → yt-dlp/ffmpeg frame extraction at hotspot timestamps
-          → vision pass over frames + transcript context
-            → brain_digest full content
-              → brain_store structured gems
+Local recording / YouTube video (downloaded in the agent's own shell)
+  → extract.sh: ffmpeg audio + whisper-cli SRT/TXT
+    → Agent selects transcript hotspots + scene-cues.sh visual changes
+      → dense-windows.sh: 10 fps contact sheets + 30s coverage
+        → visual-batch.py reads EVERY sheet concurrently (default 3, cap 4)
+          → Unclear? Re-densify at up to 20 fps / tighter windows and re-read
+            → Resolved or NOT DETERMINED, with sheet/tile/timestamp evidence
+              → QA findings or gems, BrainLayer persistence, requested handoff
 ```
 
 ## The Cardinal Rule: Narrate Before You Act
@@ -57,7 +48,58 @@ Read the user's request and route to the right workflow:
 
 **If ambiguous:** Ask whether this is a QA recording to process or a video to extract gems from.
 
-**Subagent routing (delegated jobs):** When a video QA/extraction job is delegated to a subagent, it MUST be the dedicated pipeline subagent (`subagent_type: video-gems` / video-extract — whisper transcription + hotspot finding + 100–250ms frame extraction). Spawning a general-purpose agent and telling it to "use the qa-video skill" is a **routing violation** — TaskStop it and respawn with the proper pipeline subagent. Same class as the batch-session-miners rule: dedicated pipeline subagent, never a general-purpose stand-in.
+**Execution routing — ONE route per request:**
+
+| Request | Execution owner | Image reader |
+|---|---|---|
+| QA a recording (default) | `Agent(qa-video-runner)` with video, project, artifact directory and round | `visual-batch.py` in its own shell |
+| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `visual-batch.py` in its own shell |
+| Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
+
+**Subagent routing:** Dispatch the full pipeline once using this table. Do not
+open an unrequested Gemini pane or run the default pipeline in the lead.
+`qa-video-runner` is packaged in `agents/qa-video-runner.md`; install/link it into
+Claude's agent directory before dispatch using `orc/scripts/install.sh`
+(the existing installer discovers qa-video agents). `video-gems` currently lives in
+`~/.claude/agents/video-gems.md`; its packaging/helper update is a lead follow-up.
+If that local agent lacks the helper contract, include this workflow in its brief.
+
+Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
+The pipeline sub-agent owns the whole iterative loop in its **own shell**;
+never read images in the lead or pipeline sub-agent. Read text with Read;
+call `scripts/visual-batch.py` from your own shell for every sheet/frame.
+The driver invokes visual-gather.py concurrently and returns text only.
+NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
+The budget stops new launches; in-flight helpers may drain past it. Each helper
+timeout is clamped to remaining budget +30s (10s floor).
+A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
+inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
+screenshot questions outside this pipeline.
+
+Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
+Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
+same loop in its own shell and may view images itself. Its profile permits
+artifacts only in the assigned `docs.local` directory or engine report path;
+pass that absolute workdir explicitly. For QA, the parent persists the final note and
+cited evidence under the project `docs/` directory before BrainLayer storage.
+**Never open a terminal pane**
+or type into another surface to run media tools; never `send_to` media commands.
+If the selected profile has no shell, stop and ask the lead for the shell-enabled
+pipeline profile (or `video-qa` for the explicitly requested visible route).
+
+Long jobs use `run-step.sh <artifact-dir> <step> -- <command> [args...]`:
+`logs/<step>.log`, `<step>.pid`, `<step>.exit` all live under the artifact directory's
+`logs/`. Poll `.exit` via own Bash or agy `run_command`/`view_file`; require numeric
+`0` and verify outputs before continuing. Read `.log` on failure. agy 1.2.14 has
+no `command_status`/`send_command_input`; a launch return is not completion.
+Use fresh step names/output directories for refinements. `video-qa` has no MCP
+or delegation; return text to the parent for persistence and archival.
+
+Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
+read every sheet through the visual helper → **re-densify** unclear moments at
+up to 20 fps / tighter windows → re-fetch and re-read until resolved or **NOT
+DETERMINED**. Cite sheet + tile + timestamp from `frames.tsv`. Scripts support
+judgement; an optional convenience index never gates the loop.
 
 **Verdict integrity (before emitting a QA verdict or "QA complete"):** Run `/qa-verdict-gate` over the run. It enforces tri-state **PASS / FAIL / INCONCLUSIVE** — `FAIL` is reserved for a *confirmed-observed* failure (a screenshot/click that reached the surface or an observed error in a tool result); a path you **couldn't reach** ("couldn't load", "element not found", blocked at step 0) is `INCONCLUSIVE`, never FAIL or PASS — and a QA run only counts when a `qa-report.md` with all the checklist items exists. `bun skills/golem-powers/qa-verdict-gate/scripts/qa-verdict-gate-cli.mjs <transcript|->` (exit 3 = FLAG = the verdict isn't earned yet). Composes with `/false-green-gate` and `/never-fabricate`.
 
@@ -65,7 +107,7 @@ Read the user's request and route to the right workflow:
 
 ## Key Design Decisions (learned from real usage)
 
-1. **LLM reads the SRT directly** — no automated hotspot detection (sox/ImageMagick). Claude reading the transcript is a better hotspot detector than volume spikes or frame diffs. The automated signals (from the original Twitch stalker pipeline) are unnecessary for QA narration.
+1. **The agent reads the SRT directly** — It chooses semantic hotspots from narration and combines them with `scene-cues.sh` visual-change cues. Automated audio-volume spikes do not replace transcript judgement.
 
 2. **Dense action windows (mandatory)** — In QA mode, every action cue gets a dense-frame window, not a single frame. A click's target, hover state and resulting animation all happen in under a second; one frame every 30s plus ±5s hotspot frames cannot show what was clicked or how the UI reacted, and a 10-run eval found every "pixel-only" finding from that method was hallucinated or mis-scoped.
    - **Build `cues.tsv`** (`start_s<TAB>end_s<TAB>label`) from:
@@ -73,7 +115,7 @@ Read the user's request and route to the right workflow:
      - (b) `scripts/scene-cues.sh <video>` output — visual changes catch silent clicks and UI changes the narrator never mentions
      - (c) click logs, if `qa_click_logger` data exists for the session
    - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (5–20 allowed; use 20 fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus `frames.tsv` (`sheet_file<TAB>tile<TAB>t_s`). Times are the extracted frames' real PTS, so `window_start_s` can be later than the padded cue start; tile *i* (row-major, 0-based) is at `window_start_s + i/fps`, and `frames.tsv` is exact.
-   - **Read EVERY contact sheet, in order.** For each window, state: what the cursor targets, the before/after UI state, and any visual defect.
+   - **Have visual-batch.py read EVERY contact sheet.** For each window, state: what the cursor targets, the before/after UI state, and any visual defect.
    - **Cite or label.** A visual finding must cite `sheet + tile index → timestamp` (e.g. `sheet_004.jpg tile 7 → 12.7s`). A finding with no sheet citation is transcript-only and must be labelled **transcript-only**.
 
 3. **Interval frames are a coverage pass only** — Still extract one frame every 30 seconds so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
@@ -90,7 +132,12 @@ Read the user's request and route to the right workflow:
 
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-10. **Gemini handles visual-heavy frame batches** — Per `/agent-routing` rule 7, route bulk frame/OCR/visual reads to the **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`, resolved from the golems checkout). Claude wraps up with synthesis, `brain_digest`, `brain_store`, ledger updates, and Drive archival.
+10. **One pipeline route** — QA uses `qa-video-runner`, gems uses `video-gems`.
+    Each owns extraction, hotspots and re-densification in its own Bash and calls
+    `visual-batch.py` for images; lead/sub-agent contexts receive text
+    only. A cmux `video-qa` worker is allowed only on Etan's explicit visible-worker
+    request. This rule and the routing table are the same contract. Persistence
+    and archival follow the evidence pass.
 
 ---
 
@@ -98,7 +145,7 @@ Read the user's request and route to the right workflow:
 
 | Tool | Check | Install |
 |------|-------|---------|
-| ffmpeg | `which ffmpeg` | `brew install ffmpeg` |
+| ffmpeg + ffprobe | `which ffmpeg ffprobe` | `brew install ffmpeg` |
 | whisper-cli | `which whisper-cli` | `brew install whisper-cpp` |
 | whisper model | `ls ~/.cache/whisper/ggml-small.bin` | `whisper-cli --download-model small` |
 | yt-dlp | `which yt-dlp` | `pip3 install yt-dlp` |
@@ -128,27 +175,21 @@ bash "$ORCHESTRATOR_REPO/scripts/qa/qa-record.sh" ~/Gits/<project>/docs/
 **Process a video:**
 ```bash
 VIDEO="/path/to/recording.mov"
-WORKDIR="~/Gits/<project>/docs/qa-session-$(date +%Y-%m-%d)"
-mkdir -p "$WORKDIR/frames"
-
-# 1. Extract audio
-ffmpeg -i "$VIDEO" -vn -acodec pcm_s16le -ar 16000 -ac 1 "$WORKDIR/audio.wav"
-
-# 2. Transcribe
-whisper-cli -m ~/.cache/whisper/ggml-small.bin -f "$WORKDIR/audio.wav" \
-  --output-srt --output-txt -of "$WORKDIR/transcript" -l auto
-
-# 3. Build cues.tsv: action-language transcript segments + scene cues + click logs
+WORKDIR="$HOME/Gits/<project>/docs/qa-session-$(date +%Y-%m-%d-%H%M)"
 SCRIPTS="<qa-video skill dir>/scripts"
-"$SCRIPTS/scene-cues.sh" "$VIDEO" >> "$WORKDIR/cues.tsv"
-
-# 4. Dense action windows (mandatory): 10 fps default, 5-20 allowed, 20 for animations
-"$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
-#    plus one coverage frame every 30s into $WORKDIR/frames
-
-# 5. Read EVERY sheet in index.tsv order; per window: cursor target, before/after
-#    state, visual defects. Cite sheet + tile -> timestamp, else label transcript-only
-# 6. Compile findings doc
+# Run each command in YOUR OWN shell. After EACH launch, poll its logs/*.exit
+# and require 0 before continuing; read logs/*.log on failure.
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" extract -- bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"
+# Wait for extract.exit=0. Read SRT; write chosen transcript hotspots to cues.tsv, then add scene cues.
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
+# After logs/scene.exit exists and is 0, append the scene TSV output:
+cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
+# Wait for dense.exit=0. Run visual-batch.py on index.tsv (process.md Phase 4). If a moment is unclear, re-densify a single tighter window:
+printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
+# Wait for refine-01.exit=0. Call the visual helper again; repeat as needed, or mark NOT DETERMINED. Full workflow includes
+# 30-second coverage and sheet + tile + timestamp findings.
 ```
 
 **For the full step-by-step, load [workflows/process.md](workflows/process.md).**

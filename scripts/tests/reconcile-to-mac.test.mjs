@@ -365,7 +365,7 @@ describe("profile safety", () => {
   test("production audio-dashboard host-tool checks resolve the non-interactive SSH PATH", () => {
     const production = JSON.parse(readFileSync(join(here, "../sync/reconcile-profile.json"), "utf8"));
     const target = production.targets.m1;
-    const pathPrefix = 'export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; ';
+    const pathPrefix = 'export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"; ';
     const hardDeps = target.hostEnvCheckers.find((item) => item.id === "audio-dashboard-hard-deps");
     const tts = target.runtimeChecks.find((item) => item.id === "audio-dashboard-tts-8880");
 
@@ -374,6 +374,8 @@ describe("profile safety", () => {
     expect(hardDeps.provisionCommand).toStartWith(pathPrefix);
     expect(hardDeps.verifyCommand).toStartWith(pathPrefix);
     expect(tts.checkCommand).toStartWith(pathPrefix);
+    expect(hardDeps.provisionCommand).toContain("brew install bun");
+    expect(hardDeps.provisionCommand).not.toContain("bun.sh/install");
   });
 
   test("production profile packages all canonical skills and guards every checkout retirement", () => {

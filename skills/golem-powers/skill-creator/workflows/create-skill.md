@@ -121,9 +121,7 @@ disable-model-invocation: true
 allow-implicit-invocation: false
 ```
 
-This matters here because Codex holds a first-class implementation lane (fleet
-canon rule 1). A user-invoked-only skill that ships Claude-side only is dead on
-half the fleet.
+Routing: see `/agent-routing` § Routing rules (SSOT). A user-invoked-only skill needs declarations for both adapters.
 
 ### 4. Write the SKILL.md
 

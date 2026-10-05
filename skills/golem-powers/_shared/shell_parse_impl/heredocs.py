@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from .masks import _blank_quoted
+from .quotes import ansi_c_quote, ansi_c_opens_at
 
 
 # AIDEV-NOTE: heredocs and substitutions depend on each other. The facade
@@ -117,12 +118,23 @@ def _mask_heredoc_body_lines(command):
 
 def _heredoc_delimiter_word(line, start):
     """Return Bash quote-removed heredoc delimiter and whether it was quoted."""
+    parsed = _heredoc_delimiter_span(line, start)
+    return parsed[:2] if parsed else None
+
+
+def _heredoc_delimiter_span(line, start):
+    """The same delimiter with its source end, including ANSI-C quote spans."""
     out = []
     quote = None
     quoted = False
     i = start
     while i < len(line):
         char = line[i]
+        if quote is None and ansi_c_opens_at(line, i):
+            value, i = ansi_c_quote(line, i)
+            out.append(value)
+            quoted = True
+            continue
         if quote is not None:
             if char == quote:
                 quote = None
@@ -151,7 +163,7 @@ def _heredoc_delimiter_word(line, start):
         out.append(char)
         i += 1
     delimiter = "".join(out)
-    return (delimiter, quoted) if delimiter else None
+    return (delimiter, quoted, i) if delimiter else None
 
 
 def _after_heredoc_bodies(command, start):

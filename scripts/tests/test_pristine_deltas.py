@@ -319,7 +319,7 @@ def test_nfkc_format_and_whitespace_normalization(tmp_path):
     row.update(reason="  Ｒｅｖｉｅｗｅｄ\u200b change ", authority=" ｇｏｌｅｍｓ＃４１２\u2060 ", allow_deny_to_allow=" golems #412\ufeff ")
     path = tmp_path / "deltas.json"; path.write_text(json.dumps([row]))
     loaded = harness.load_deltas(path, ["example"])[0]
-    assert loaded["reason"] == "Reviewedchange"
+    assert loaded["reason"] == "Reviewed change"
     assert loaded["authority"] == loaded["allow_deny_to_allow"] == "golems#412"
 
 
@@ -338,3 +338,17 @@ def test_record_delta_rejects_invalid_metadata_without_writing(tmp_path, key):
     with pytest.raises(ValueError):
         harness.record_delta(path,["example"],"example",metadata["reason"],metadata["authority"],capture("candidate"),"darwin")
     assert path.read_text() == "[]\n"
+
+
+def test_record_preserves_readable_reason_and_existing_declarations(tmp_path):
+    path = tmp_path / "deltas.json"
+    actual = capture("candidate")
+    row = delta(actual, linux="a" * 64)
+    row["reason"] = "Existing reviewed reason"
+    path.write_text(json.dumps([row]))
+    harness.record_delta(path, ["example", "second"], "second",
+                         "  Protected root removal\tretains its reason.  ",
+                         "golems#501", actual, "darwin")
+    rows = {item["case"]: item for item in json.loads(path.read_text())}
+    assert rows["example"]["reason"] == "Existing reviewed reason"
+    assert rows["second"]["reason"] == "Protected root removal retains its reason."

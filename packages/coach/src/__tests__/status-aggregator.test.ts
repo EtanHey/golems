@@ -14,6 +14,31 @@ function makeStatuses(overrides: Partial<EcosystemStatus> = {}): EcosystemStatus
 }
 
 describe("Status Aggregator", () => {
+  test("default registry keeps email and teller without loading retired recruiter", () => {
+    // Isolate module mocks from the other package tests; no provider is contacted.
+    const source = `
+      import { mock } from "bun:test";
+      for (const name of ["recruiter", "teller", "email"]) {
+        const specifier = name === "email" ? "@golems/shared/email/index" : "@golems/" + name + "/index";
+        mock.module(specifier, () => ({ getStatus: async () => ({ name, healthy: true, lastRun: null, summary: "fixture" }) }));
+      }
+      const { registerAllGolems, getEcosystemStatus } = await import(${JSON.stringify(new URL("../status-aggregator.ts", import.meta.url).pathname)});
+      await registerAllGolems();
+      console.log(JSON.stringify(await getEcosystemStatus()));
+    `;
+    const result = Bun.spawnSync([process.execPath, "-e", source]);
+    expect(result.exitCode).toBe(0);
+    const status = JSON.parse(result.stdout.toString());
+    expect(status.golems.map((g: { name: string }) => g.name).sort()).toEqual(["email", "teller"]);
+    expect(status.healthy).toBe(2);
+  });
+
+  test("retired outreach draft details create no Coach work item", () => {
+    expect(getPendingWork(makeStatuses({ golems: [{
+      name: "recruiter", healthy: true, lastRun: null, summary: "old snapshot",
+      details: { draftCount: 2 },
+    }] }))).toEqual([]);
+  });
   describe("getPendingWork", () => {
     test("extracts pending job matches", () => {
       const statuses = makeStatuses({
@@ -38,7 +63,7 @@ describe("Status Aggregator", () => {
       const statuses = makeStatuses({
         golems: [
           {
-            name: "recruiter",
+            name: "email",
             healthy: true,
             lastRun: null,
             summary: "3 overdue",
@@ -82,7 +107,7 @@ describe("Status Aggregator", () => {
             details: { pendingMatches: 2 },
           },
           {
-            name: "recruiter",
+            name: "email",
             healthy: true,
             lastRun: null,
             summary: "ok",

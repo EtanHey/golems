@@ -14,7 +14,6 @@ skills/golem-powers/codex-workflows/scripts/codex-workflows.sh agent \
   --brief /absolute/path/worker-a-brief.md \
   --lead lead-name \
   --run-id example-r1 \
-  --model gpt-5.6-luna \
   --effort medium
 ```
 
@@ -69,3 +68,5 @@ skills/golem-powers/codex-workflows/scripts/codex-workflows.sh cleanup \
   --worker worker-a \
   --delete-branches
 ```
+
+Omit the model to resolve `codex.implement`; pass an explicit model only with a written reason.

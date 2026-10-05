@@ -10,7 +10,6 @@ them.
 {
   "repo": "$HOME/Gits/example",
   "lead": "lead-name",
-  "model": "gpt-5.6-luna",
   "effort": "xhigh",
   "workers": [
     {
@@ -67,3 +66,5 @@ skills/golem-powers/codex-workflows/scripts/codex-workflows.sh harvest \
 
 The default destination is `<run-dir>/<run-id>/harvest`. Each artifact lands at
 `<run-dir>/<run-id>/harvest/<worker>/artifacts/<worktree-relative-path>`.
+
+Omit the model to resolve `codex.implement`; pass an explicit model only with a written reason.

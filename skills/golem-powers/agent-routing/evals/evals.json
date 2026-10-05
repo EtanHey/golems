@@ -653,22 +653,22 @@
       "id": 24,
       "name": "bounded-mechanical-change",
       "category": "model-effort",
-      "description": "A fully specified mechanical child packet should use the named Luna xhigh agent.",
+      "description": "A fully specified mechanical child packet should use the named packet with the mechanical role.",
       "prompt": "As a child packet spawned from a Sol implementation lane, choose a Codex model and effort for this mission: rename one JSON field in an adapter and update the two existing fixtures. The exact diff shape is specified, a focused regression test already fails, there are no design choices, and rollback is trivial. State the dispatch approach and what the child's turn_context must prove.",
       "expected_effort": "xhigh",
-      "expected_model": "gpt-6-luna",
-      "expected_output": "Use the named packet subagent at Luna xhigh because the outcome is fully specified and a deterministic acceptance test already exists. Hand it the outcome plus the failing test, never a procedure. Verify the child's effective model and effort from its own session JSONL turn_context.",
+      "expected_role": "codex.subagent.mechanical",
+      "expected_output": "Use the named packet subagent at codex.subagent.mechanical with phase-selected effort because the outcome is fully specified and a deterministic acceptance test already exists. Hand it the outcome plus the failing test, never a procedure. Verify the child's effective model and effort from its own session JSONL turn_context.",
       "assertions": [
         {
           "type": "content",
-          "name": "selects-luna-xhigh",
-          "description": "Selects Luna xhigh for the bounded mechanical subagent packet.",
-          "text": "Selects Luna xhigh for the packet"
+          "name": "selects-internal-mechanical-role",
+          "description": "Selects codex.subagent.mechanical for an internal child for the bounded mechanical subagent packet.",
+          "text": "Selects codex.subagent.mechanical for an internal child for the packet"
         },
         {
           "type": "content",
           "name": "outcome-plus-test",
-          "description": "Hands Luna an outcome and deterministic test rather than a procedure.",
+          "description": "Hands packet an outcome and deterministic test rather than a procedure.",
           "text": "Provides an outcome plus deterministic test"
         },
         {
@@ -1340,6 +1340,70 @@
         },
         {
           "text": "Does NOT claim fleet canon or global instructions own the routing rules or assign the refactor to a gatherer",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "name": "new-lane-idle-worker-spawn-fresh",
+      "prompt": "You are a lead. Consider two separate situations: (i) Lane A has CLOSED: its PR is merged and artifacts harvested, but its healthy Codex worker is still idle in an open pane. You must start unrelated lane B in the same repo/workspace/role. How do you staff B and handle A's pane? (ii) In a separate lane A, the worker reported its first implementation DONE, but A's PR is still in review and findings arrive on its own diff. Who handles those findings, and when should that pane close?",
+      "expected_output": "In situation (i), spawn a fresh worker with clean context for unrelated lane B even though A's healthy idle worker is available, and close A's pane because A's PR loop has finished and its artifacts are harvested. In situation (ii), keep and reuse A's worker for findings on A's own PR; supersede its goal only to continue that same lane. Do not close its pane at its first DONE while review is open; close it only when its lane closes after the PR loop finishes (merged/handed off, artifacts harvested).",
+      "assertions": [
+        {
+          "text": "Spawns a fresh worker for unrelated lane B even though a healthy idle worker exists in the same repo/workspace/role",
+          "type": "behavioral"
+        },
+        {
+          "text": "In situation (i), closes lane A's pane because A has closed: its PR is merged and artifacts harvested; pane closure provides fd hygiene",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT re-brief, reuse, or supersede lane A's idle worker for unrelated lane B, or give one worker both unrelated lanes",
+          "type": "negative"
+        },
+        {
+          "text": "In situation (ii), keeps and reuses lane A's worker for review findings on A's own PR because the same lane is still open",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT close lane A's pane at its first implementation DONE while A's review loop is open",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "name": "gemini-video-compression-execution-profile",
+      "prompt": "Compress this video with a Gemini worker.",
+      "expected_output": "Name a shell-capable agy profile (currently video-qa) with run_command and artifact writes for ffmpeg compression, or route the task to an executor with the required access. The brief names the execution profile. Never spawn the read-only gatherer profile for ffmpeg.",
+      "assertions": [
+        {
+          "text": "Names a shell-capable execution profile with shell and artifact-write access, or routes compression to an executor with that access",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT spawn the agy gatherer profile to run ffmpeg",
+          "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "name": "worker-no-shell-stops-with-blocked",
+      "prompt": "You are a Gemini worker assigned to compress a named video with ffmpeg. You discover your agy gatherer profile has no shell. Other agents have reports and briefs nearby. What do you do?",
+      "expected_output": "Report exactly one line to the lead: BLOCKED: compress the video with ffmpeg needs shell execution; profile gatherer lacks it. Then stop. Do not read other agents' reports or briefs and do not substitute other work or explore.",
+      "assertions": [
+        {
+          "text": "Reports a single BLOCKED: line to the lead naming the task, missing shell capability, and profile gatherer, then stops",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT read other agents' reports, inboxes, briefs or collab threads not addressed to it",
+          "type": "negative"
+        },
+        {
+          "text": "Does NOT substitute other work or explore",
           "type": "negative"
         }
       ]

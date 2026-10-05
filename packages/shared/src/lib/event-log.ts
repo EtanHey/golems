@@ -60,7 +60,7 @@ export type GolemActor =
   | "claudegolem"
   | "jobgolem"
   | "emailgolem"
-  | "recruitergolem"
+  | "recruitergolem" // Historical actor/inbox label; package retired 2026-10-05.
   | "tellergolem"
   | "bedtimeguardian";
 

@@ -8,6 +8,7 @@ import math
 
 from .config import (
     CodexWorkflowError,
+    default_model,
     LAUNCH_ONLY_EXIT,
     validate_artifact_pattern,
     validate_worker_name,
@@ -91,9 +92,9 @@ def validate_composition_spec(spec: Any, *, pipeline: bool) -> dict[str, Any]:
         raise CodexWorkflowError(f"spec repo does not exist: {repo}")
     if not isinstance(lead, str) or not lead.strip():
         raise CodexWorkflowError("spec lead is required")
-    model = spec.get("model", "gpt-5.6-luna")
+    model = spec.get("model")
     effort = spec.get("effort", "xhigh")
-    if not isinstance(model, str) or not model:
+    if "model" in spec and (not isinstance(model, str) or not model):
         raise CodexWorkflowError("spec model must be a nonempty string")
     if effort not in {"xhigh", "max"}:
         raise CodexWorkflowError("spec effort must be xhigh or max")
@@ -144,6 +145,9 @@ def validate_composition_spec(spec: Any, *, pipeline: bool) -> dict[str, Any]:
                 raise CodexWorkflowError(f"duplicate worker name: {worker['name']}")
             names.add(worker["name"])
         normalized["workers"] = normalized_workers
+    workers = [worker for stage in normalized["stages"] for worker in stage["workers"]] if pipeline else normalized["workers"]
+    if "model" not in spec and any(worker.get("model") is None for worker in workers):
+        normalized["model"] = default_model()
     return normalized
 
 

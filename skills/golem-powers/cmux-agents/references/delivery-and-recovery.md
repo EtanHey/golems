@@ -118,6 +118,8 @@ checkpoint (record agent_ids + last-known state)
 Fleet law for collab claims, DONE markers, and guard handoffs lives in canon #7. For cmux delivery, run `workflows/prompt-audit.md` §8 and include:
 
 - absolute verified paths and real environment facts;
+- a named profile and tool access matched to the task (see `/agent-routing` § Goal Contract);
+- the stay-on-task scope and capability-mismatch `BLOCKED:` stop clause (see `/agent-routing` § Goal Contract);
 - max output length, output format, audience, and what not to include;
 - response markers plus a final DONE line;
 - **the effort for THIS job**, named on the brief and matching the launch command (see below);
@@ -135,13 +137,12 @@ Etan, verbatim — relayed via orc, the ellipsis is his:
 > when they're Fable, make sure they're not creating Fable sub-agents and workflows full of Fables
 > when they don't actually need them, instead of just pin-gating it."
 
-Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold;
-every spawn pinned explicitly; Fable only where judgment is the bottleneck, never for mechanical
-steps; delegate decisions to `claude.judgment`, bounded parity work to `claude.subagent.cheap`,
-and implementation to `codex.implement`. Resolve the role via `node scripts/model-roles.mjs
-<role> --field model|alias` (one field). Choose effort per `/large-plan` phase, record
-`role · effort · why`, and pass it explicitly at dispatch. The gate
-(`model-pin-gate`) is the backstop, not the decision.
+Sub-agents and workflows only when the task needs parallelism or a context the seat cannot hold.
+Every non-Cursor spawn pins its model explicitly (canon #5).
+Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
+Resolve roles via `node scripts/model-roles.mjs <role> --field model|alias` (one field).
+Choose effort per `/large-plan` phase, record `role · effort · why`, and pass it explicitly
+at dispatch. The gate (`model-pin-gate`) is the backstop, not the decision.
 
 ### Effort Is Set Per Dispatch (Etan, 2026-09-05)
 

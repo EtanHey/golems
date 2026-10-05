@@ -14,6 +14,90 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const scriptPath = path.join(here, "..", "ci", "canon-drift-lint.mjs");
 const tempDirs = [];
 
+function routingFixture() {
+  const fixture = makeFixture();
+  const routingRoot = path.dirname(fixture.canonPath);
+  const file = "skills/example/SKILL.md";
+  const scanned = path.join(routingRoot, file);
+  mkdirSync(path.dirname(scanned), { recursive: true });
+  writeFileSync(scanned, "# Rules\nCodex implements.\n");
+  const row = { file, marker: "Codex implements.", class: "POINTER", reason: "Pending SSOT pointer replacement", tag: "ssot-sweep", count: 1 };
+  const routingAllowlistPath = path.join(routingRoot, "allowlist.json");
+  const allow = (rows = [row]) => writeFileSync(routingAllowlistPath, JSON.stringify({ exclusions: rows }));
+  allow();
+  const options = { ...fixture, routingRoot, routingAllowlistPath, check: true, routingScan: [scanned] };
+  return { scanned, row, allow, options };
+}
+
+test("routing allowlist admits reviewed baseline but rejects new restatements and duplicate copies", () => {
+  const { scanned, options } = routingFixture();
+  const baseline = lintCanonDrift(options);
+  expect(baseline.exitCode).toBe(0);
+  expect(baseline.routing.exemptions).toHaveLength(1);
+  // Repeated CLI paths must not count the same file twice.
+  expect(lintCanonDrift({ ...options, routingScan: [scanned, scanned] }).exitCode).toBe(0);
+  for (const extra of ["Claude reviews.", "Codex implements."]) {
+    writeFileSync(scanned, `Codex implements.\n${extra}\n`);
+    const result = lintCanonDrift(options);
+    expect(result.exitCode, extra).toBe(1);
+    expect(result.routing.hits).toHaveLength(1);
+  }
+});
+
+test("routing allowlist rejects stale markers, changed lines, deleted files and omitted scans", () => {
+  const { scanned, row, allow, options } = routingFixture();
+  allow([{ ...row, marker: "Opus reviews." }]);
+  expect(lintCanonDrift(options).routing.stale).toHaveLength(1);
+  allow();
+  writeFileSync(scanned, "Codex implements. Claude reviews.\n");
+  expect(lintCanonDrift(options).exitCode).toBe(1); // exact marker, not substring
+  writeFileSync(scanned, "# Routing: /agent-routing\n");
+  expect(lintCanonDrift(options).routing.stale).toHaveLength(1);
+  rmSync(scanned);
+  expect(lintCanonDrift({ ...options, routingScan: [] }).exitCode).toBe(1);
+});
+
+test("routing allowlist validates reasons, classes, counts, tags and duplicate rows", () => {
+  const { row, allow, options } = routingFixture();
+  for (const invalid of [
+    { ...row, reason: " " }, { ...row, marker: "" }, { ...row, marker: "a\nb" },
+    { ...row, class: "anything" }, { ...row, count: 0 }, { ...row, count: 1.5 },
+    { ...row, tag: undefined }, { ...row, class: "DATA" }, { ...row, file: "../other.md" },
+  ]) {
+    allow([invalid]);
+    expect(() => lintCanonDrift(options)).toThrow(/routing allowlist/);
+  }
+  allow([row, row]);
+  expect(() => lintCanonDrift(options)).toThrow(/duplicate/);
+  for (const classification of ["DATA", "FUNCTIONAL", "FALSE POSITIVE"]) {
+    allow([{ ...row, class: classification, tag: undefined }]);
+    expect(lintCanonDrift(options).exitCode).toBe(0);
+  }
+});
+
+test("routing exemptions survive line shifts but never bypass canon routing or the SSOT exemption", () => {
+  const { scanned, options } = routingFixture();
+  writeFileSync(scanned, "# Added heading\n\nCodex implements.\n");
+  expect(lintCanonDrift(options).exitCode).toBe(0);
+  writeFileSync(options.canonPath, `${CANON_START}\nCodex implements.\n${CANON_END}`);
+  expect(lintCanonDrift(options).routing.hits).toHaveLength(1);
+  const ssot = path.join(options.routingRoot, "skills/golem-powers/agent-routing/SKILL.md");
+  mkdirSync(path.dirname(ssot), { recursive: true });
+  writeFileSync(ssot, "Claude reviews. Opus.\n");
+  writeFileSync(options.canonPath, canonBlock);
+  expect(lintCanonDrift({ ...options, routingScan: [scanned, ssot] }).exitCode).toBe(0);
+});
+
+test("CLI routing allowlist option fails on an unlisted new routing assignment", () => {
+  const { scanned, options, allow } = routingFixture();
+  allow([]);
+  const run = spawnSync("node", [scriptPath, "--check", "--canon", options.canonPath,
+    "--installed", options.installedPath, "--routing-allowlist", options.routingAllowlistPath,
+    "--routing-scan", scanned], { encoding: "utf8" });
+  expect(run.status).toBe(1);
+  expect(JSON.parse(run.stdout).routing.hits).toHaveLength(1);
+});
+
 const contractIds = [
   "agent-routing",
   "PR-loop",

@@ -26,16 +26,10 @@ Agent(
 
 ## Collab Monitoring
 
-```bash
-# Preferred: /loop (foreground, stops when you stop it)
-/loop 5m Read <plan-dir>/collab.md. Check status changes, blockers, completed phases. If all phases are done, the lead checks every worker's CLEANUP RECEIPT and runs the prune step first, then advance round.
-
-# Alternative: CronCreate (background, survives session)
-CronCreate(schedule="*/5 * * * *", command="bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh run --once @<listen-name> <plan-dir>/collab.md")
-
-# MANDATORY: CronDelete when plan is complete — crons persist until deleted
-CronDelete(<cron-id>)
-```
+Watches: follow `/collab-monitor` before dispatch and after every compaction;
+a DONE marker or version match still needs artifact or real-client verification.
+Use its native Monitor how-to, 30-minute expiry and re-arm rules; stop the returned
+task ID with TaskStop when the plan closes. Codex seats use its packaged fallback.
 
 ## Plan Mode
 
@@ -69,9 +63,9 @@ brain_search(query="<plan-name> decisions")
 | Phase Type | Model | Why |
 |------------|-------|-----|
 | Orchestration, scaffolding | `claude.judgment` | Decisions and coordination |
-| Implementation phase | `codex.implement` (UX/UI: `claude.judgment`) | Phase chooses effort and explains why; canon #1 exceptions apply |
-| Bounded lookup or verifier | `claude.subagent.cheap` | In-process parity work only; never judgment |
-| PR-gating review, audit judgment | `claude.judgment` | Decision-grade reasoning |
+| Implementation phase | See `/agent-routing` § Routing rules (SSOT) | Phase chooses effort and explains why |
+| Bounded lookup or verifier | See routing pointer above | In-process parity work only; never judgment |
+| PR-gating review, audit judgment | See routing pointer above | Decision-grade reasoning |
 
 Resolve role model/alias with `node scripts/model-roles.mjs <role> --field model|alias`
 (one field) from the golems checkout. Every phase records `role · effort · why`; choose
@@ -83,7 +77,7 @@ is a candidate: bench before use.
 
 - `Agent(isolation="worktree")` — native phase isolation
 - `Agent(run_in_background=true)` — async parallel phases
-- `CronCreate` / `/loop` — collab file monitoring
+- `Monitor` — collab watches per `/collab-monitor`
 - `EnterPlanMode` — structured spec before execution
 - `claude --resume` — session continuity across days
 - MCP access (BrainLayer for plan decisions, Supabase, etc.)

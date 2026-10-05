@@ -1,8 +1,14 @@
 """Definitions moved byte-faithfully from the executable hook."""
 import os
+from shell_parse import shell_code_reading
 
 
 def _bash_temp_targets(command, _budget=None, _initial_cwd=None):
+    with shell_code_reading(command):
+        return _bash_temp_targets_in_reading(command, _budget, _initial_cwd)
+
+
+def _bash_temp_targets_in_reading(command, _budget=None, _initial_cwd=None):
     """Return [(verb, path, segment)] for write-shaped constructs targeting the
     class. `segment` is the simple-command index (split on ;|&) — a
     `WEAVE_ALLOW_TMP=1` assignment prefix only applies to its own simple

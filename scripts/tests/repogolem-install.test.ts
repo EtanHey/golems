@@ -1,3 +1,5 @@
+import { isolatedBunTestEnv, assertNoBunInstallCache } from './fixtures/bun-test-env';
+import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { cpSync, chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,7 +16,7 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(home, { recursive: true, force: true }));
 function run(extra: string[] = [], apply = true, environment = {}) {
-  const r = Bun.spawnSync([process.execPath, cli, 'install', '--config', config, ...(apply && !extra.includes('--dry-run') ? ['--apply'] : []), ...extra], { env: { ...process.env, HOME: home, REPOGOLEM_OP_BIN: '/does/not/exist', ...environment }, stdout: 'pipe', stderr: 'pipe' });
+  const r = Bun.spawnSync([process.execPath, cli, 'install', '--config', config, ...(apply && !extra.includes('--dry-run') ? ['--apply'] : []), ...extra], { env: isolatedBunTestEnv({ ...process.env, HOME: home, REPOGOLEM_OP_BIN: '/does/not/exist', ...environment }), stdout: 'pipe', stderr: 'pipe' });
   return { code: r.exitCode, text: r.stdout.toString() + r.stderr.toString() };
 }
 test('dry run leaves zshrc, seats and installation untouched', () => {
@@ -49,7 +51,7 @@ test('refuses mismatched seat prefixes and symlinked shell targets', () => {
 });
 test('installed bundled CLI runs from outside the checkout without node_modules', () => {
   expect(run().code).toBe(0);
-  const r = Bun.spawnSync([join(home, '.local/bin/repogolem'), 'init', '--config', join(home, 'starter.yaml'), '--host', 'fixture-host'], { cwd: home, env: { ...process.env, HOME: home }, stdout: 'pipe', stderr: 'pipe' });
+  const r = Bun.spawnSync([join(home, '.local/bin/repogolem'), 'init', '--config', join(home, 'starter.yaml'), '--host', 'fixture-host'], { cwd: home, env: isolatedBunTestEnv({ ...process.env, HOME: home }), stdout: 'pipe', stderr: 'pipe' });
   expect(r.exitCode).toBe(0);
   expect(readFileSync(join(home, 'starter.yaml'), 'utf8')).toContain('fixture-host');
 });
@@ -187,7 +189,7 @@ test('installed Bun CLI resolves through packaged varlock from an unrelated cwd'
   expect(readFileSync(join(home,'.local/bin/repogolem'),'utf8')).toContain('exec bun --no-install');
   expect(JSON.parse(readFileSync(join(runtime,'node_modules/varlock/package.json'),'utf8')).version).toBe('1.21.1');
   expect(existsSync(join(runtime,'repogolem-1password-plugin.ts'))).toBe(true);
-  const env = { ...process.env, HOME: home, REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'), REPOGOLEM_SOURCE_SHA: '0'.repeat(40) };
+  const env = isolatedBunTestEnv({ ...process.env, HOME: home, REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'), REPOGOLEM_SOURCE_SHA: '0'.repeat(40) });
   for (const key of Object.keys(env)) if (key === 'OP_SERVICE_ACCOUNT_TOKEN' || key.startsWith('OP_SESSION')) delete env[key];
   const r = Bun.spawnSync([join(home, '.local/bin/repogolem'), 'generate', '--config', config, '--out-dir', join(home, '.config/repogolem/generated')], { cwd: home, env, stdout: 'pipe', stderr: 'pipe' });
   expect(r.exitCode).toBe(0);
@@ -204,7 +206,7 @@ test('installer rejects an unexpected varlock version before copying the package
   symlinkSync(join(import.meta.dir, '../../node_modules/yaml'), join(source, 'node_modules/yaml'));
   const wrapper = join(source, 'install.ts');
   writeFileSync(wrapper, `import { runInstall } from './repogolem-install'; try { process.exit(runInstall(${JSON.stringify(['--config', config, '--apply'])})); } catch (error) { console.error(error.message); process.exit(2); }`);
-  const r = Bun.spawnSync([process.execPath, wrapper], { env: { ...process.env, HOME: home }, stdout: 'pipe', stderr: 'pipe' });
+  const r = Bun.spawnSync([process.execPath, wrapper], { env: isolatedBunTestEnv({ ...process.env, HOME: home }), stdout: 'pipe', stderr: 'pipe' });
   expect(r.exitCode).toBe(2);
   expect(r.stderr.toString()).toContain('varlock version must be 1.21.1');
   expect(existsSync(join(home, '.config/repogolem/runtime/node_modules/varlock'))).toBe(false);
@@ -216,12 +218,12 @@ test('missing installed varlock core fails without npm requests or a Bun cache',
   rmSync(join(home,'.config/repogolem/runtime/node_modules/varlock'),{recursive:true});
   let requests=0;const registry=Bun.serve({port:0,fetch(){requests++;return new Response('{}',{status:404});}});
   try {
-    const env={...process.env,HOME:home,BUN_CONFIG_REGISTRY:registry.url.toString(),REPOGOLEM_OP_BIN:join(import.meta.dir,'fixtures/repogolem-config/fake-op.sh'),REPOGOLEM_SOURCE_SHA:'0'.repeat(40)};
+    const env=isolatedBunTestEnv({...process.env,HOME:home,BUN_CONFIG_REGISTRY:registry.url.toString(),REPOGOLEM_OP_BIN:join(import.meta.dir,'fixtures/repogolem-config/fake-op.sh'),REPOGOLEM_SOURCE_SHA:'0'.repeat(40)});
     for(const key of Object.keys(env))if(key==='OP_SERVICE_ACCOUNT_TOKEN'||key.startsWith('OP_SESSION'))delete env[key];
     const r=Bun.spawn([process.execPath,join(home,'.config/repogolem/runtime/repogolem-cli.js'),'generate','--config',config],{env,stdout:'pipe',stderr:'pipe'});
     const [code,stdout,stderr]=await Promise.all([r.exited,new Response(r.stdout).text(),new Response(r.stderr).text()]);
     expect(code).toBe(2);expect(requests).toBe(0);expect(stdout+stderr).toContain('not installed');
-    expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);expect(existsSync(join(home,'.config/repogolem/generated'))).toBe(false);
+    assertNoBunInstallCache(home);expect(existsSync(join(home,'.config/repogolem/generated'))).toBe(false);
   }finally{registry.stop(true);}
 });
 
@@ -230,8 +232,8 @@ test('isolated source resolution cannot auto-install a missing varlock core',asy
   const probe=join(source,'probe.ts');writeFileSync(probe,`import {varlockResolver} from './repogolem-varlock';try{varlockResolver(${JSON.stringify(join(import.meta.dir,'fixtures/repogolem-config/fake-op.sh'))},process.env)(['op://example-vault/example-item/token']);}catch{process.exit(2);}`);
   let requests=0;const registry=Bun.serve({port:0,fetch(){requests++;return new Response('{}',{status:404});}});
   try{
-    const r=Bun.spawn([process.execPath,probe],{env:{PATH:process.env.PATH,HOME:home,BUN_CONFIG_REGISTRY:registry.url.toString(),BUN_INSTALL_CACHE_DIR:join(home,'.bun/install/cache')},stdout:'pipe',stderr:'pipe'});
-    expect(await r.exited).toBe(2);expect(requests).toBe(0);expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);
+    const r=Bun.spawn([process.execPath,probe],{env: isolatedBunTestEnv({PATH:process.env.PATH,HOME:home,BUN_CONFIG_REGISTRY:registry.url.toString(),BUN_INSTALL_CACHE_DIR:join(home,'.bun/install/cache')}),stdout:'pipe',stderr:'pipe'});
+    expect(await r.exited).toBe(2);expect(requests).toBe(0);assertNoBunInstallCache(home);
   }finally{registry.stop(true);}
 });
 test('isolated installer source refuses missing varlock without registry requests or cache',async()=>{
@@ -242,9 +244,84 @@ test('isolated installer source refuses missing varlock without registry request
   writeFileSync(probe,"import {runInstall} from './repogolem-install';try{process.exit(runInstall(['--config',process.env.FIXTURE_CONFIG,'--apply']));}catch(e){console.error(e.message);process.exit(2);}");
   let requests=0;const registry=Bun.serve({hostname:'127.0.0.1',port:0,fetch(){requests++;return new Response('{}',{status:404});}});
   try{
-    const r=Bun.spawn([process.execPath,probe],{env:{PATH:process.env.PATH,HOME:home,FIXTURE_CONFIG:config,BUN_CONFIG_REGISTRY:registry.url.toString(),BUN_INSTALL_CACHE_DIR:join(home,'.bun/install/cache')},stdout:'pipe',stderr:'pipe'});
+    const r=Bun.spawn([process.execPath,probe],{env: isolatedBunTestEnv({PATH:process.env.PATH,HOME:home,FIXTURE_CONFIG:config,BUN_CONFIG_REGISTRY:registry.url.toString(),BUN_INSTALL_CACHE_DIR:join(home,'.bun/install/cache')}),stdout:'pipe',stderr:'pipe'});
     const [code,stdout,stderr]=await Promise.all([r.exited,new Response(r.stdout).text(),new Response(r.stderr).text()]);
     expect(code).toBe(2);expect(requests).toBe(0);expect(stdout+stderr).toContain('not installed');
-    expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);expect(existsSync(join(home,'.local/bin/repogolem'))).toBe(false);
+    assertNoBunInstallCache(home);expect(existsSync(join(home,'.local/bin/repogolem'))).toBe(false);
   }finally{registry.stop(true);}
+});
+
+function machineEditFixture() {
+  const seat = readFileSync(config, 'utf8');
+  const prior = seat + 'voice:\n  enabled: true\n';
+  const current = seat + 'machineRole: worker\n';
+  const source = (text: string) => seat + 'machineSeatConfigs:\n  fixture-host: |\n' + text.trimEnd().split('\n').map(line => '    ' + line).join('\n') + '\n';
+  writeFileSync(config, source(prior));
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  writeFileSync(config, source(current));
+  const target = join(home, '.config/repogolem/machine-config.yaml');
+  const journal = join(home, '.config/repogolem/install-state.json');
+  writeFileSync(target, current);
+  return { seat, current, target, journal };
+}
+for (const dry of [false, true]) test(`machine edit matching current render reconciles (${dry ? 'dry-run' : 'apply'})`, () => {
+  const { seat, current, target, journal } = machineEditFixture();
+  const before = readFileSync(journal, 'utf8');
+  const result = run(['--host', 'fixture-host', ...(dry ? ['--dry-run'] : [])]);
+  expect(result.code).toBe(0);
+  expect(result.text).toContain('machine view reconciled: matches current render');
+  expect(readFileSync(target, 'utf8')).toBe(current);
+  if (dry) expect(readFileSync(journal, 'utf8')).toBe(before);
+  else {
+    expect(JSON.parse(readFileSync(journal, 'utf8')).machineDigest).toBe(createHash('sha256').update(current).digest('hex'));
+    expect(run(['--rollback']).code).toBe(0);
+    expect(readFileSync(join(home, '.golems/config.yaml'), 'utf8')).toBe(seat);
+  }
+});
+for (const dry of [false, true]) test(`unmatched machine edit refuses with key-only diagnostics (${dry ? 'dry-run' : 'apply'})`, () => {
+  const { current, target, journal } = machineEditFixture();
+  const edited = current + 'privateToken: NEVER_PRINT_THIS_VALUE\n';
+  writeFileSync(target, edited);
+  const before = readFileSync(journal, 'utf8');
+  const result = run(['--host', 'fixture-host', ...(dry ? ['--dry-run'] : [])]);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('privateToken');
+  expect(result.text).not.toContain('NEVER_PRINT_THIS_VALUE');
+  expect(readFileSync(target, 'utf8')).toBe(edited);
+  expect(readFileSync(journal, 'utf8')).toBe(before);
+});
+test('rollback refuses matching-current hand edit until install adopts it', () => {
+  const { current, target, journal } = machineEditFixture();
+  const before = readFileSync(journal, 'utf8');
+  expect(run(['--rollback']).code).toBe(2);
+  expect(readFileSync(target, 'utf8')).toBe(current);
+  expect(readFileSync(journal, 'utf8')).toBe(before);
+});
+test('semantically equal machine edit with different bytes still refuses', () => {
+  const { current, target, journal } = machineEditFixture();
+  writeFileSync(target, current + '# manual comment\n');
+  const before = readFileSync(journal, 'utf8');
+  expect(run(['--host', 'fixture-host']).code).toBe(2);
+  expect(readFileSync(journal, 'utf8')).toBe(before);
+});
+
+test('reconciled machine view remains recoverable after an interrupted build', () => {
+  const { seat, current, target, journal } = machineEditFixture();
+  const bin = join(home, 'reconcile-fault'); mkdirSync(bin);
+  writeFileSync(join(bin, 'bun'), '#!/bin/sh\nexit 77\n', { mode: 0o700 });
+  expect(run(['--host', 'fixture-host'], true, { PATH: bin + ':' + process.env.PATH }).code).toBe(2);
+  expect(JSON.parse(readFileSync(journal, 'utf8')).machineDigest).toBe(createHash('sha256').update(current).digest('hex'));
+  expect(readFileSync(target, 'utf8')).toBe(current);
+  expect(run(['--rollback']).code).toBe(0);
+  expect(readFileSync(join(home, '.golems/config.yaml'), 'utf8')).toBe(seat);
+});
+test('malformed machine edit refuses without YAML excerpts or values', () => {
+  const { target, journal } = machineEditFixture();
+  writeFileSync(target, 'privateToken: [NEVER_PRINT_THIS_VALUE\n');
+  const before = readFileSync(journal, 'utf8');
+  const result = run(['--host', 'fixture-host']);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('values hidden');
+  expect(result.text).not.toContain('NEVER_PRINT_THIS_VALUE');
+  expect(readFileSync(journal, 'utf8')).toBe(before);
 });

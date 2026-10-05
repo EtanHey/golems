@@ -2,15 +2,21 @@
 from datetime import datetime
 import json
 import os
+from shell_parse import shell_code_reading
 
 
-DEFAULT_LEDGER = os.path.expanduser("~/.claude/logs/tmp-block-ledger.jsonl")
+DEFAULT_LEDGER = "~/.claude/logs/tmp-block-ledger.jsonl"
 
 HATCH_TMP = "WEAVE_ALLOW_TMP"
 HATCH_WT = "WEAVE_ALLOW_WT_MIGRATION"
 
 
 def _hatched_segments(command, var=HATCH_TMP, _budget=None):
+    with shell_code_reading(command):
+        return _hatched_segments_in_reading(command, var, _budget)
+
+
+def _hatched_segments_in_reading(command, var=HATCH_TMP, _budget=None):
     """Segments whose simple command carries a `<var>=1` assignment
     prefix. Bash scopes `VAR=1 cmd` to that simple command alone, so the
     hatch covers exactly its own segment: a hatch on a harmless first command

@@ -14,17 +14,17 @@ Generate A4-ready branded HTML documents with color-coded sections, pricing tabl
 ## How It Works
 
 1. Build a JSON file with the document content
-2. Run `bun scripts/branded-doc.ts input.json output.html`
+2. Run `bun skills/branded-doc/scripts/branded-doc.ts input.json output.html`
 3. Open the HTML in a browser and print to PDF
 
 ## Quick Start
 
 ```bash
 # Generate from JSON file
-bun scripts/branded-doc.ts /tmp/doc-input.json ~/Documents/output.html
+bun skills/branded-doc/scripts/branded-doc.ts docs.local/doc-input.json ~/Documents/output.html
 
 # Pipe from stdin
-cat /tmp/doc-input.json | bun scripts/branded-doc.ts - ~/Documents/output.html
+cat docs.local/doc-input.json | bun skills/branded-doc/scripts/branded-doc.ts - ~/Documents/output.html
 ```
 
 ## JSON Schema

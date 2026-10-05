@@ -24,7 +24,6 @@
       "name": "@golems/coach",
       "version": "1.0.0",
       "dependencies": {
-        "@golems/recruiter": "workspace:*",
         "@golems/shared": "workspace:*",
         "@golems/teller": "workspace:*",
         "googleapis": "^174.0.1",
@@ -97,13 +96,6 @@
       },
       "devDependencies": {
         "@types/bun": "latest",
-      },
-    },
-    "packages/recruiter": {
-      "name": "@golems/recruiter",
-      "version": "1.0.0",
-      "dependencies": {
-        "@golems/shared": "workspace:*",
       },
     },
     "packages/services": {
@@ -185,8 +177,6 @@
     "@golems/green-invoice-mcp": ["@golems/green-invoice-mcp@workspace:packages/green-invoice-mcp"],
 
     "@golems/mock-mcp": ["@golems/mock-mcp@workspace:packages/mock-mcp"],
-
-    "@golems/recruiter": ["@golems/recruiter@workspace:packages/recruiter"],
 
     "@golems/services": ["@golems/services@workspace:packages/services"],
 

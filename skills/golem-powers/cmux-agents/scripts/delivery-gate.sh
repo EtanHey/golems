@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # delivery-gate.sh — Verify prompt delivery to a cmux agent surface
 #
-# After send_input + send_key, the agent terminal may be frozen or unresponsive.
+# After send_to, the agent terminal may be frozen or unresponsive.
 # This script checks that token_count increased and status is non-null,
 # using exponential backoff (2s, 4s, 8s). On failure, returns exit code 1
 # so the caller can fall back to Agent tool.

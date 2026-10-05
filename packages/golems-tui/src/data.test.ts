@@ -29,12 +29,11 @@ describe("golem status rows", () => {
     expect(down.some((item) => item.name === "JobGolem")).toBe(false);
   });
 
-  it("keeps Recruiter status unknown without probing a retired port", async () => {
+  it("omits the retired Recruiter package without probing its port", async () => {
     for (const cloudWorker of [true, false]) {
       const fixture = { ...probe(cloudWorker), checkPort: async () => { throw new Error("port probe must be absent"); } };
-      const recruiter = row(await fetchGolemStatuses(fixture), "RecruiterGolem");
-      expect(recruiter.status).toBe("unknown");
-      expect(recruiter.detail).toBe("library; status unavailable");
+      const rows = await fetchGolemStatuses(fixture);
+      expect(rows.some((item) => item.name === "RecruiterGolem")).toBe(false);
     }
   });
 
