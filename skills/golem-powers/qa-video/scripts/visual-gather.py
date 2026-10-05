@@ -24,6 +24,28 @@ def model_id(tier, listing):
     raise ValueError('configured visual tier unavailable in agy models')
 
 
+def safe_cause(text, workdir):
+    text = re.sub(r'\x1b\[[\d;]*[A-Za-z]', '', text)
+    text = re.sub(r'(?i)Bearer\s+\S+|(?:api[-_]?key|token|secret|password|credential)\s*[:=]\s*[^\s,;]+|'
+                  r'(?:sk-|AIza)[\w-]{10,}|[A-Za-z0-9_-]{40,}', '[REDACTED]', text)
+    text = re.sub(r'https?://\S+', '[URL]', text)
+    text = re.sub(r'/[^\s\'"<>]+', lambda m: m[0] if Path(m[0]).resolve().is_relative_to(Path(workdir).resolve()) else '[PATH]', text)
+    return ' '.join(text.split())[-300:] or 'helper failed without diagnostic'
+
+
+def resolve_model():
+    repo = Path(subprocess.check_output(['git', '-C', str(Path(__file__).resolve().parent),
+                                       'rev-parse', '--show-toplevel'], text=True, timeout=10).strip())
+    tier = subprocess.check_output(['node', str(repo/'scripts/model-roles.mjs'),
+                                   'gemini.gather.visual', '--field', 'launcher_tier'], text=True, timeout=10).strip()
+    try:
+        listing = subprocess.check_output(['agy', 'models'], text=True, timeout=20, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as error:
+        parse(subprocess.CompletedProcess([], error.returncode, error.output or '', error.stderr or ''), [])
+        raise
+    return tier, model_id(tier, listing)
+
+
 def parse(result, paths):
     raw = result.stdout + result.stderr
     try:
@@ -35,6 +57,7 @@ def parse(result, paths):
                           r'authentication|invalid.?credential|auth.?error|permission denied|\b401\b|\b403\b', raw, re.I)
         if match:
             raise DispatchError('DISPATCH_STOPPED: our own visual dispatch hit ' + match.group(0))
+        print(safe_cause('visual call failed: '+raw, Path(paths[0]).parent if paths else '.'), file=sys.stderr)
     if result.returncode or any(token in raw.lower() for token in
                                ('<truncated', 'stream was interrupted')):
         return {}
@@ -90,6 +113,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--question', required=True)
     parser.add_argument('--timeout', type=float, default=90)
+    parser.add_argument('--model', help='Already resolved concrete model ID; skip setup probes')
     parser.add_argument('images', nargs='+')
     args = parser.parse_args()
     try:
@@ -98,15 +122,7 @@ def main():
         paths = list(dict.fromkeys(args.images))
         if any(not Path(p).is_absolute() or not Path(p).is_file() for p in paths):
             raise ValueError('supply existing absolute image paths')
-        repo = Path(subprocess.check_output(
-            ['git', '-C', str(Path(__file__).resolve().parent), 'rev-parse', '--show-toplevel'],
-            text=True, timeout=10).strip())
-        tier = subprocess.check_output(['node', str(repo / 'scripts/model-roles.mjs'),
-                                       'gemini.gather.visual', '--field', 'launcher_tier'],
-                                      text=True, timeout=10).strip()
-        listing = subprocess.check_output(['agy', 'models'], text=True, timeout=20,
-                                          stderr=subprocess.PIPE)
-        model = model_id(tier, listing)
+        tier, model = ('provided', args.model) if args.model else resolve_model()
         print(f'requested tier={tier}; agy --model={model}; effective model: NOT DETERMINED here', file=sys.stderr)
 
         def run(batch):
@@ -138,6 +154,7 @@ def main():
                 print(str(dispatch), file=sys.stderr)
                 return 2
         print(f'Coverage: 0/{len(set(args.images))}; partial. NOT DETERMINED: setup failed.')
+        print(safe_cause('SETUP_FAILED: '+type(error).__name__+': '+(getattr(error, 'stderr', '') or str(error)), Path(args.images[0]).parent), file=sys.stderr)
         return 1
     return 0
 

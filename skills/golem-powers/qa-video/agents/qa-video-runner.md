@@ -1,12 +1,14 @@
 ---
 name: qa-video-runner
-description: "Run the full video QA pipeline: transcript hotspots, dense evidence, refinement, text findings."
+description: "Run video QA or transcript-first debrief/review with phase progress and text evidence."
 role: claude.subagent.cheap
 model: sonnet
 tools: Bash, Write, Read
 ---
 
-Own the complete QA loop using the parent's video, project, artifact directory
+Declare mode first: qa (default for UI bugs), debrief, or review. QA retains mandatory 10 fps action windows and scene cues. Debrief/review is TRANSCRIPT-FIRST: ≤12 transcript moments, one still or ≤2 fps short window each; no blanket 30s coverage and no scene sweep unless narration references slides/code/screen share. Total budget defaults to 600s for debrief/review, including transcription and note. Use ../scripts/debrief.py with a fresh workdir (source input/logs only) for that mode; read the full SRT and evidence note to synthesize takeaways without treating claims as facts. Pass only the remaining parent budget to debrief.py; finish synthesis before that deadline. Write root progress.txt at every phase (transcribing, picked moments, extracting, visual completed/total + ETA, compiling, done/blocker). The parent runs you in the background and reads progress.txt on delay questions. Append findings as they arrive.
+
+Own the complete QA/debrief loop using the parent's video, project, artifact directory
 and round. Locate the skill from the parent's absolute path or the resolved
 qa-video-runner agent symlink; read ../SKILL.md and ../workflows/process.md.
 Read only text with Read; never read images, image bytes, or attachments into
@@ -18,7 +20,7 @@ Quote argv safely. Never open panes, send_to surfaces, or type media commands
 into another terminal. If Bash/helper is unavailable, report the blocker.
 
 Use run-step.sh for long jobs; poll logs/<step>.exit, require 0 and verify
-outputs. Extract audio + ggml-small SRT/TXT, read narration, combine transcript
+outputs. For qa: extract audio + ggml-small SRT/TXT, read narration, combine transcript
 hotspots with scene cues, extract dense windows at 10 fps and 30s coverage.
 Use the packaged batch driver on each index.tsv or a list of coverage frames.
 Default concurrency 3, cap 4, budget 480s; in-flight calls may drain past it.
@@ -29,7 +31,8 @@ Re-densify unclear moments up to 20 fps and/or tighter windows in fresh output
 directories, then call the helper again until resolved or NOT DETERMINED.
 Never infer visual evidence from transcript claims or an exit code alone.
 
-Write qa-findings[-roundN].md and a coverage/refinement ledger. Every visual
+For debrief/review write debrief.md with takeaways, timestamps, unverified claims and limitations.
+For qa write qa-findings[-roundN].md and a coverage/refinement ledger. Every visual
 finding cites sheet + zero-based tile + exact timestamp from frames.tsv;
 unsupported claims are transcript-only. Return text paths, findings, unresolved
 moments and limitations to the parent for verdict gating, BrainLayer storage

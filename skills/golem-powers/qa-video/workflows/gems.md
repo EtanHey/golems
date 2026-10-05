@@ -39,11 +39,7 @@ no `command_status`/`send_command_input`; a launch return is not completion.
 Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
-Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
-read every sheet through the visual helper → **re-densify** unclear moments at
-up to 20 fps / tighter windows → re-fetch and re-read until resolved or **NOT
-DETERMINED**. Cite sheet + tile + timestamp from `frames.tsv`. Scripts support
-judgement; an optional convenience index never gates the loop.
+**Mode: gems (or debrief/review)** — TRANSCRIPT-FIRST, 600s wall-clock budget. Select ≤12 questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each. No blanket 30s coverage and no scene sweep unless the transcript references visuals. Dense 10 fps/re-densify behavior belongs to qa. Write root progress.txt at every phase and findings incrementally. The parent runs the runner in the background and reads progress.txt on delay questions.
 
 ## Steps
 
@@ -55,26 +51,12 @@ judgement; an optional convenience index never gates the loop.
    yt-dlp --write-info-json --merge-output-format mp4 -o "docs.local/qa-video/<slug>/source.%(ext)s" "<url>"
    ```
    Use the actual downloaded video path. Local video needs no download.
-3. In your own shell launch
-   `bash "$SCRIPTS/run-step.sh" "$WORKDIR" extract -- bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"`, then poll `logs/extract.exit`, require `0` and verify SRT/TXT.
-4. Read the transcript and choose gem hotspots: insights, opinions, revelations,
-   numbers, examples and warnings. Write their start/end/labels to `cues.tsv`;
-   append `scene-cues.sh` output so silent slide/code changes are covered.
-5. Launch `dense-windows.sh` through `run-step.sh` on those cues at 10 fps;
-   poll its `.exit` and require `0`. Also extract 30-second coverage
-   frames as in `process.md`. Run `visual-batch.py` on the initial index.tsv (process.md Phase 4), require complete path
-   coverage and correlate its exact `frames.tsv` tile timestamps with the SRT.
-6. **Re-densify** unclear slides, code, charts or transitions with tighter windows
-   and up to 20 fps, then re-fetch and call the helper for every new sheet.
-   Repeat until resolved
-   or mark **NOT DETERMINED** with the source limitation. For a single exact window:
-   ```bash
-   printf '12.1\t12.6\tunclear-slide\n' > "$WORKDIR/refine-cues-01.tsv"
-   bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues-01.tsv" "$WORKDIR/refine-01" 20 0 0
-   ```
-   Poll `logs/refine-01.exit` and require `0` before calling the visual helper again.
-   Use unique output directories per refinement. Cite sheet + tile + timestamp
-   from that pass's `frames.tsv`; label unsupported visual claims transcript-only.
+3. In your own shell launch `bash "$SCRIPTS/run-step.sh" "$WORKDIR" gems -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode gems`.
+   Use a fresh workdir (source video/info.json and run-step logs are allowed); progress.txt covers every phase.
+   Poll logs/gems.exit, require 0, then inspect timing.json and actual outputs.
+4. Read the full transcript and plan.json; the English keyword planner ranks candidate moments across the duration, capped at 12. Synthesize insights/opinions/numbers and warnings from the full transcript, including transcript-only material.
+5. Read targeted visual-batch.py findings.jsonl as they arrive; match each sheet + tile 0 + timestamp to frames.tsv (real PTS). NEVER hand-roll a shell loop. Keep absent/unclear observations NOT DETERMINED; no invented visuals.
+6. If a referenced slide/code/chart needs another look, choose a tighter targeted still or ≤2 fps short window within the remaining 600s total budget. Preserve each pass and citation. If unresolved or budget exhausted, report the limit.
 7. Produce a structured gems note with:
    - source title, URL, channel/speaker, and date if available
    - top gems with timestamps

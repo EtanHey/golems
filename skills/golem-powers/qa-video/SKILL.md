@@ -8,7 +8,9 @@ execute: scripts/default.sh
 
 > Record your screen while narrating, or provide a YouTube/local video for knowledge extraction. The pipeline extracts speech, pulls visual context, and produces either structured QA findings or durable gems.
 
-## How It Works
+**Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** TRANSCRIPT-FIRST; transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then one still or a ≤2 fps short window per moment. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **600s total wall-clock**, including transcription and notes.
+
+## How It Works — QA mode
 
 ```
 Local recording / YouTube video (downloaded in the agent's own shell)
@@ -18,8 +20,10 @@ Local recording / YouTube video (downloaded in the agent's own shell)
         → visual-batch.py reads EVERY sheet concurrently (default 3, cap 4)
           → Unclear? Re-densify at up to 20 fps / tighter windows and re-read
             → Resolved or NOT DETERMINED, with sheet/tile/timestamp evidence
-              → QA findings or gems, BrainLayer persistence, requested handoff
+              → QA findings, BrainLayer persistence, requested handoff
 ```
+
+**Parent progress contract:** dispatch the selected runner in the background. Pass mode, absolute workdir and total deadline; use run_in_background=true for Agent dispatch. The runner rewrites root `progress.txt` at every phase and appends `visual/findings.jsonl` as reads finish. When the user asks “what's taking so long”, read `progress.txt` and report its phase/count/ETA plus any blocker; never wait silently for the final note. A launch receipt is not completion: inspect the exit receipt and actual outputs.
 
 ## The Cardinal Rule: Narrate Before You Act
 
@@ -38,10 +42,11 @@ Read the user's request and route to the right workflow:
 | User says | Route to |
 |-----------|----------|
 | "let's do QA", "test this", "QA round" | [workflows/record.md](workflows/record.md) — Pre-QA checklist + recording setup |
-| "process this video", "I recorded QA", path to .mov file | [workflows/process.md](workflows/process.md) — Stalker pipeline processing |
+| "I recorded QA", QA path to .mov file | [workflows/process.md](workflows/process.md) — Stalker pipeline processing |
 | "send fixes to Codex", "hand off findings" | [workflows/handoff.md](workflows/handoff.md) — Agent handoff pattern |
 | "next round", "retest", "QA round N" | [workflows/iterate.md](workflows/iterate.md) — Multi-round QA cycle |
 | "set up click capture", "qa-record" | [references/click-capture.md](references/click-capture.md) — CGEventTap + qa-record.sh |
+| "debrief", "review this video" | [workflows/process.md](workflows/process.md) — transcript-first debrief/review |
 | YouTube URL, "video gems", "extract from video", "insights/takeaways from this video" | [workflows/gems.md](workflows/gems.md) — YouTube/local-video knowledge extraction with transcript + frames |
 
 **Override signals:** If the user says "gems", "insights", or "takeaways", use the gems workflow regardless of source. If they say "QA", "bugs", or "findings", use the QA workflow regardless of source.
@@ -53,6 +58,7 @@ Read the user's request and route to the right workflow:
 | Request | Execution owner | Image reader |
 |---|---|---|
 | QA a recording (default) | `Agent(qa-video-runner)` with video, project, artifact directory and round | `visual-batch.py` in its own shell |
+| Debrief/review (default) | `Agent(qa-video-runner)` with mode=debrief/review, source and artifact directory | `visual-batch.py` in its own shell |
 | Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `visual-batch.py` in its own shell |
 | Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
 
@@ -64,7 +70,7 @@ Claude's agent directory before dispatch using `orc/scripts/install.sh`
 `~/.claude/agents/video-gems.md`; its packaging/helper update is a lead follow-up.
 If that local agent lacks the helper contract, include this workflow in its brief.
 
-Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
+Default pipeline: `Agent(qa-video-runner)` for QA/debrief/review, `Agent(video-gems)` for gems.
 The pipeline sub-agent owns the whole iterative loop in its **own shell**;
 never read images in the lead or pipeline sub-agent. Read text with Read;
 call `scripts/visual-batch.py` from your own shell for every sheet/frame.
@@ -95,7 +101,7 @@ no `command_status`/`send_command_input`; a launch return is not completion.
 Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
-Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
+**QA mode:** Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
 read every sheet through the visual helper → **re-densify** unclear moments at
 up to 20 fps / tighter windows → re-fetch and re-read until resolved or **NOT
 DETERMINED**. Cite sheet + tile + timestamp from `frames.tsv`. Scripts support
@@ -107,7 +113,7 @@ judgement; an optional convenience index never gates the loop.
 
 ## Key Design Decisions (learned from real usage)
 
-1. **The agent reads the SRT directly** — It chooses semantic hotspots from narration and combines them with `scene-cues.sh` visual-change cues. Automated audio-volume spikes do not replace transcript judgement.
+1. **The agent reads the SRT directly** — It chooses semantic hotspots from narration; QA combines them with `scene-cues.sh` visual-change cues. Automated audio-volume spikes do not replace transcript judgement.
 
 2. **Dense action windows (mandatory)** — In QA mode, every action cue gets a dense-frame window, not a single frame. A click's target, hover state and resulting animation all happen in under a second; one frame every 30s plus ±5s hotspot frames cannot show what was clicked or how the UI reacted, and a 10-run eval found every "pixel-only" finding from that method was hallucinated or mis-scoped.
    - **Build `cues.tsv`** (`start_s<TAB>end_s<TAB>label`) from:
@@ -118,7 +124,7 @@ judgement; an optional convenience index never gates the loop.
    - **Have visual-batch.py read EVERY contact sheet.** For each window, state: what the cursor targets, the before/after UI state, and any visual defect.
    - **Cite or label.** A visual finding must cite `sheet + tile index → timestamp` (e.g. `sheet_004.jpg tile 7 → 12.7s`). A finding with no sheet citation is transcript-only and must be labelled **transcript-only**.
 
-3. **Interval frames are a coverage pass only** — Still extract one frame every 30 seconds so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
+3. **QA interval frames are a coverage pass only** — Still extract one frame every 30 seconds so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
 
 4. **Whisper model: `ggml-small`** — Fast on Apple Silicon (~14s for 7min video), accurate enough for English QA narration. The `ggml-large-v3` is better but 5x slower — not worth it for QA.
 
@@ -133,7 +139,7 @@ judgement; an optional convenience index never gates the loop.
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
 10. **One pipeline route** — QA uses `qa-video-runner`, gems uses `video-gems`.
-    Each owns extraction, hotspots and re-densification in its own Bash and calls
+    Each owns mode-appropriate extraction, hotspots and refinement in its own Bash and calls
     `visual-batch.py` for images; lead/sub-agent contexts receive text
     only. A cmux `video-qa` worker is allowed only on Etan's explicit visible-worker
     request. This rule and the routing table are the same contract. Persistence
@@ -172,7 +178,7 @@ bash "$ORCHESTRATOR_REPO/scripts/qa/qa-record.sh" ~/Gits/<project>/docs/
 # Cmd+Shift+5 → Record Selected Portion → narrate while testing
 ```
 
-**Process a video:**
+**Process a QA video:**
 ```bash
 VIDEO="/path/to/recording.mov"
 WORKDIR="$HOME/Gits/<project>/docs/qa-session-$(date +%Y-%m-%d-%H%M)"
