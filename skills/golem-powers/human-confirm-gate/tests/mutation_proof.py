@@ -7,6 +7,8 @@ root = Path(__file__).resolve().parents[4]
 (root / 'docs.local/human-confirm-gate').mkdir(parents=True, exist_ok=True)
 gate = Path('skills/golem-powers/human-confirm-gate')
 mutations = [
+ ('consumption-expiry-disabled', 'tokens.py', "if time.time() >= token['expires_at']:", "if False:"),
+ ('redirect-disabled', 'commands.py', "if base in ('git', 'gh') and tokens[j] in ('>', '>>', '<', '<<', '<<<'):", "if False:"),
  ('classifier-disabled', 'commands.py', "    result = []\n", "    return []\n    result = []\n"),
  ('shell-wrapper-disabled', 'commands.py', "    nested = shell._shell_command_payloads(tokens, positions, segments)", "    nested = []"),
  ('rewrite-disabled', 'commands.py', "elif sub in ('filter-repo', 'filter-branch', 'replace'):", "elif sub in () :"),

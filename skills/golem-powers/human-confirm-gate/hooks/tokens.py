@@ -87,9 +87,16 @@ def authorize(payload, ops, home, metadata_fn=lead_metadata):
                     continue
             # O_EXCL makes concurrent attempts mutually exclusive. A restored token
             # remains spent; retain nonce tombstones permanently, delete capability.
+            if time.time() >= token['expires_at']:
+                continue
             spent = root / (nonce + '.spent')
             fd = os.open(spent, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
-            os.close(fd)
+            os.fsync(fd); os.close(fd)
+            directory = os.open(root, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
             path.unlink(); Path(str(path) + '.sig').unlink()
             return True
         except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):

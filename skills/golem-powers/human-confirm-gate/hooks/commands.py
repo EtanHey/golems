@@ -20,7 +20,7 @@ def configured_alias(repo, name):
     if name == 'push':
         config = subprocess.run(['/usr/bin/git', '-C', repo, 'config', '--get-regexp', r'^remote\..*\.(push|mirror)$'],
                                 capture_output=True, text=True, timeout=1)
-        if config.returncode not in (0, 1) or any(' +' in line or line.endswith(' true') for line in config.stdout.splitlines()):
+        if config.returncode not in (0, 1) or any(' +' in line or (line.split()[0].endswith('.mirror') and line.split()[-1].lower() not in ('false', 'no', 'off', '0')) for line in config.stdout.splitlines()):
             raise ValueError('implicit force/mirror configuration; make scope explicit')
         return None
     result = subprocess.run(['/usr/bin/git', '-C', repo, 'config', '--get', 'alias.' + name],
@@ -93,9 +93,13 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0):
         if not positions[i]:
             continue
         base = os.path.basename(word)
+        if ('$' in word or '`' in word) and any('push' in t for t in tokens) and any('--force' in t or t == '-f' for t in tokens):
+            raise ValueError('dynamic executable with force-push markers')
         args = []
         for j in range(i + 1, len(tokens)):
-            if segments[j] != segments[i] or scopes[j] != scopes[i] or tokens[j] in (';', '&', '|', '>', '>>', ')', '}$'):
+            if base in ('git', 'gh') and tokens[j] in ('>', '>>', '<', '<<', '<<<'):
+                raise ValueError('interleaved redirection obscures command arguments; split the command')
+            if segments[j] != segments[i] or scopes[j] != scopes[i] or tokens[j] in (';', '&', '|', ')', '}$'):
                 break
             args.append(tokens[j])
         if base == 'env' and any(a == '-S' or a.startswith('--split-string') for a in args):
@@ -106,7 +110,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0):
             cwd = os.path.realpath(os.path.join(cwd, literal(args[0])))
         if base == 'git':
             for prefix in tokens[:i]:
-                if prefix.startswith(('GIT_CONFIG', 'GIT_DIR=', 'GIT_WORK_TREE=')):
+                if prefix.startswith(('GIT_CONFIG', 'GIT_DIR=', 'GIT_WORK_TREE=', 'HOME=')):
                     raise ValueError('Git environment changes obscure repository/config scope')
             repo, aliases, words = git_words(args, cwd)
             if not words:

@@ -9,7 +9,8 @@ The Claude PreToolUse hook classifies shell commands with `_shared/shell_parse`.
 It blocks force/lease pushes, positive-force refspecs, remote deletes, mirror/prune,
 filter-repo/filter-branch/replace (conservatively even local rewrites), replacement
 ref pushes, repo visibility/delete, and mutating `gh api repos/...` calls.
-Ordinary pushes pass. Unresolved Git arguments, unsupported Git global options,
+Ordinary literal pushes pass. Git/gh redirections must be split into separate
+commands. Unresolved Git arguments, unsupported Git global options,
 unclosed input, and policy/import/runtime errors deliberately deny (exit 2).
 The common fail-open launcher retains its existing infrastructure contract:
 a missing script or Python syntax failure before `main()` runs allows. This

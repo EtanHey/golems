@@ -52,7 +52,7 @@ class Commands(unittest.TestCase):
                            'ref': 'refs/heads/topic', 'sha': sha, 'source': 'HEAD'}])
 
     def test_unknown_fails_closed(self):
-        for command in ['git push --force "unterminated', 'git push "$FLAGS" origin main',
+        for command in ['git push --force "unterminated', '$GIT push --force origin main', 'git push "$FLAGS" origin main',
                         'git "$SUBCOMMAND" origin main', 'git push -f origin "$REF"', "env -S 'git push -f origin main'", "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.origin.push GIT_CONFIG_VALUE_0=+HEAD:main git push origin"]:
             with self.subTest(command=command), self.assertRaises(ValueError):
                 self.check(command)

@@ -57,7 +57,9 @@ class Gate(unittest.TestCase):
 
     def test_denies_without_token_and_allows_normal(self):
         for command in ['git push -f origin main', self.command, 'bash -c "git push -f origin main"',
-                        'git push origin :topic', 'gh api -X PATCH repos/o/r/rulesets/1']:
+                        'git push origin :topic', 'gh api -X PATCH repos/o/r/rulesets/1',
+                        'git push >out --force origin main', 'git push 2>out -f origin main',
+                        'git push 2>&1 -f origin main', 'gh api >out -X PATCH repos/o/r/rulesets/1']:
             with self.subTest(command=command): self.assertEqual(self.run_hook(command)[0], 2)
         self.assertEqual(self.run_hook('git push origin topic')[0], 0)
 
@@ -95,6 +97,16 @@ class Gate(unittest.TestCase):
         self.assertFalse(authorize(payload, ops, self.home, lambda _: ('topic', pr)))
         self.assertTrue(authorize(payload, ops, self.home, lambda _: ('main', pr)))
         self.assertFalse(authorize(payload, ops, self.home, lambda _: ('main', pr)))
+
+    def test_expiry_during_metadata_lookup(self):
+        from unittest.mock import patch
+        from tokens import authorize
+        from commands import operations
+        token = json.loads(self.token('lead').read_text())
+        payload = dict(cwd=str(self.repo), tool_input=dict(command=self.command), session_id='worker')
+        pr = dict(state='OPEN', mergedAt=None, isCrossRepository=False, headRefName='topic', headRefOid=self.sha)
+        with patch('tokens.time.time', side_effect=[token['issued_at'] + 1, token['expires_at'] + 1]):
+            self.assertFalse(authorize(payload, operations(self.command, str(self.repo)), self.home, lambda _: ('main', pr)))
 
     def test_signature_mode_and_ref_sha(self):
         path = self.token(); token = json.loads(path.read_text()); token['unsigned_claim'] = 'owner approved'
