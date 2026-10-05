@@ -598,8 +598,7 @@ class CodexPolicyHookTests(unittest.TestCase):
 
 
 class ChildIsolation(unittest.TestCase):
-    def test_policy_children_run_through_the_launcher_isolated(self):
-        """Each policy child gets the launcher's hardening: -I -B, preload, hook dir last."""
+    def launched(self, gate, data):
         spec = importlib.util.spec_from_file_location("codex_adapter_under_test", ADAPTER)
         adapter = importlib.util.module_from_spec(spec); spec.loader.exec_module(adapter)
         launched = []
@@ -613,13 +612,27 @@ class ChildIsolation(unittest.TestCase):
                 return 0
         with mock.patch.object(adapter.subprocess, "Popen", Recorder), \
              mock.patch.object(adapter.os, "killpg"), \
-             mock.patch.object(adapter.sys, "argv", ["adapter", "tmp-block"]), \
-             mock.patch.object(adapter.sys, "stdin", io.StringIO(json.dumps(payload("ls")))):
+             mock.patch.object(adapter.sys, "argv", ["adapter", gate]), \
+             mock.patch.object(adapter.sys, "stdin", io.StringIO(json.dumps(data))):
             adapter.evaluate()
+        return launched
+
+    def test_policy_children_run_through_the_launcher_isolated(self):
+        """Each policy child gets the launcher's hardening: -I -B, preload, hook dir last."""
         launcher = str(ROOT / "scripts/hooks/fail-open.py")
-        self.assertTrue(launched)
-        for argv in launched:
-            self.assertEqual(argv[1:4], ["-I", "-B", launcher])
+        for gate in TARGETS:
+            launched = self.launched(gate, payload("ls"))
+            self.assertTrue(launched)
+            for argv in launched:
+                self.assertEqual(argv[1:4], ["-I", "-B", launcher])
+
+    def test_guardian_batch_self_call_is_isolated(self):
+        """apply_patch under git-guardian re-enters the adapter: that child is -I -B too."""
+        patch = "*** Begin Patch\n*** Add File: docs.local/allowed.md\n+x\n*** End Patch\n"
+        launched = self.launched("git-guardian", payload(patch, "apply_patch"))
+        batch = [argv for argv in launched if argv[-1] == "--guardian-batch"]
+        self.assertEqual(len(batch), 1)
+        self.assertEqual(batch[0][1:], ["-I", "-B", str(ADAPTER.resolve()), "--guardian-batch"])
 
 
 if __name__ == "__main__":

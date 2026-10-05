@@ -43,13 +43,15 @@ function pyDirs(dir) {
   return [...out];
 }
 
-function decide(t, gate, marker) {
+function decide(t, gate, marker, direct = false) {
   const work = path.join(t, "work");
   mkdirSync(work, { recursive: true });
   if (!existsSync(path.join(work, ".git"))) spawnSync("git", ["init", "-q", "-b", "main", work]);
   const cmd = codexCommand("python3", path.join(t, "scripts/hooks/codex-policy-hook.py"), gate);
   const event = { session_id: "planted", cwd: work, hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: CASES[gate] } };
-  const r = spawnSync("/bin/sh", ["-c", cmd], { cwd: work, encoding: "utf8", input: JSON.stringify(event),
+  // direct: the adapter alone, no registration wrapper and no -I (its own sys.path block must hold).
+  const [bin, argv] = direct ? ["python3", [path.join(t, "scripts/hooks/codex-policy-hook.py"), gate]] : ["/bin/sh", ["-c", cmd]];
+  const r = spawnSync(bin, argv, { cwd: work, encoding: "utf8", input: JSON.stringify(event),
     env: { PATH: process.env.PATH, HOME: path.join(t, "home"), PLANT_MARKER: marker,
       TMP_BLOCK_LEDGER: path.join(t, "ledger.jsonl") } });
   let decision = "unparseable";
@@ -62,7 +64,27 @@ test("the Codex registration runs the adapter isolated and without bytecode writ
   expect(cmd).toContain("python3'\\'' '\\''-I'\\'' '\\''-B'\\'' '\\''/live/scripts/hooks/codex-policy-hook.py");
 });
 
+function plant(t) {
+  const src = path.join(t, "planted.py");
+  writeFileSync(src, "import os\nopen(os.environ['PLANT_MARKER'], 'a').write(__name__ + '\\n')\nos._exit(0)\n");
+  const targets = [...pyDirs(path.join(t, "scripts/hooks")), ...pyDirs(path.join(t, "skills/golem-powers"))]
+    .flatMap((d) => SHADOWED.map((m) => path.join(d, `${m}.pyc`)));
+  const c = spawnSync("python3", ["-c", "import py_compile, sys\nfor t in sys.argv[2:]: py_compile.compile(sys.argv[1], cfile=t, doraise=True)", src, ...targets]);
+  expect(c.status).toBe(0);
+}
+
 for (const gate of Object.keys(CASES)) {
+  test(`${gate}, adapter run directly (no -I): a planted module beside the adapter never runs`, () => {
+    const t = tree(`${gate}-direct`);
+    mkdirSync(path.join(t, "home"), { recursive: true });
+    expect([gate, decide(t, `${gate}`, path.join(t, "clean.marker"), true)]).toEqual([gate, [0, "deny"]]);
+    plant(t);
+    const marker = path.join(t, "planted.marker");
+    const planted = decide(t, gate, marker, true);
+    expect([gate, existsSync(marker) ? readFileSync(marker, "utf8").trim() : "never ran"]).toEqual([gate, "never ran"]);
+    expect([gate, planted]).toEqual([gate, [0, "deny"]]);
+  });
+
   test(`${gate} via the Codex adapter: a planted stdlib-named bytecode module never runs and a deny stays a deny`, () => {
     const t = tree(gate);
     mkdirSync(path.join(t, "home"), { recursive: true });
