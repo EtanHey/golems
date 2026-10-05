@@ -824,7 +824,7 @@
       "darwin": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f"
     },
     "case": "mined-005",
-    "reason": "Protectedrootremovalnowreportsthedirectrepository-rootreasonbeforethelegacygenericremovalreason."
+    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
   },
   {
     "authority": "golems#501",
@@ -832,7 +832,7 @@
       "darwin": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f"
     },
     "case": "r2-api-dangerous_shell_reason-00",
-    "reason": "Protectedrootremovalnowreportsthedirectrepository-rootreasonbeforethelegacygenericremovalreason."
+    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
   },
   {
     "authority": "golems#501",
@@ -840,7 +840,7 @@
       "darwin": "52edde4bc98fb4fca081bae845e45ed2ead312403c9c42a6b99ab6af0a418e17"
     },
     "case": "r2-api-is_dangerous_rm-01",
-    "reason": "Protectedrootremovalnowreportsthedirectrepository-rootreasonbeforethelegacygenericremovalreason."
+    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
   },
   {
     "authority": "golems#501",
@@ -848,7 +848,7 @@
       "darwin": "582ee303966f2927f5147e80eabc475b0fb8e0893ce8e1599c564533eb8749cf"
     },
     "case": "topup-is-rm-01",
-    "reason": "Homeremovalnowreportsthedirectprotected-homereasonbeforethelegacygenericremovalreason."
+    "reason": "Home removal now reports the direct protected-home reason before the legacy generic removal reason."
   },
   {
     "authority": "golems#501",
@@ -856,6 +856,6 @@
       "darwin": "ed85540c2d4aeff89ccb6eaf8efbacc3743db2c9d5786a085f2e8f6efbf5ac59"
     },
     "case": "topup-is-rm-13",
-    "reason": "Recursiveprotected-rootremovalisdeniedbytherepositoryguardevenwithouttheforceoption."
+    "reason": "Recursive protected-root removal is denied by the repository guard even without the force option."
   }
 ]
