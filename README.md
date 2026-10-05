@@ -100,6 +100,47 @@ does not prove a skill works in every setup.
 The Python skill suites and gate evals run with `bash scripts/ci/run-skill-tests.sh`.
 You need `python3` with `pytest` installed.
 
+## Human confirmation for destructive commands
+
+The Claude human-confirm gate requires a signed, scoped, one-use token for
+force pushes, remote deletion, history rewrites and repo administration.
+Chat text and agent messages never satisfy it. The source implementation
+must be reviewed and installed through hooks-live before it protects a client;
+Codex exec_command is currently outside this hook.
+
+The owner provisions a dedicated SSH signing key in the 1Password SSH agent,
+exports only its public key to `~/.config/golems/human-confirm.pub`, and puts
+`human <public-key-line>` in mode-0600
+`~/.config/golems/human-confirm-anchor/allowed_signers` (directory mode 0700).
+Then run `~/Gits/golems/.worktrees/hooks-live/scripts/golems-confirm-pin`. It
+shows each principal's key fingerprint and waits for you to type `PIN`. Then it
+locks the file and prints a line for
+`skills/golem-powers/human-confirm-gate/anchor.pins`. That line lands by
+reviewed PR, and only then does hooks-live install the gate. Use 1Password's **per key,
+per request** authorization setting, and leave **Approve for all applications**
+off. Other approval modes cache authorization; a cached signature is not proof
+of new owner presence. See [1Password's authorization model](https://www.1password.dev/ssh/agent/security).
+No private key is exported, and the helper never calls `op`.
+
+From a separate owner terminal with the 1Password `SSH_AUTH_SOCK` configured:
+
+```sh
+alias golems-confirm="$PWD/scripts/golems-confirm"
+golems-confirm /path/to/worker/worktree topic lease --sha <full-remote-sha> --session <Claude-session-id>
+```
+
+The helper prints the exact command/cwd/scope before requesting the signature
+and uses `ssh-keygen -U` to require the agent. Agent ancestry checks only catch
+detectable misuse; the 1Password per-request prompt establishes owner presence.
+It issues a mode-0600 token with a two-minute TTL, and checks the issuer's public
+key against the trust anchor. Execute exactly that displayed command in the
+specified worker session. `force` and `delete` actions generate their commands;
+`rewrite` and `settings` require `--command` with the exact tool command.
+Known agent ancestry or non-interactive issuance refuses. Private token/key
+separation and an immutable trusted hook/anchor remain deployment assumptions:
+a malicious process with the same UID can replace local policy; this is not a
+sandbox. See [the complete gate contract](skills/golem-powers/human-confirm-gate/SKILL.md).
+
 ## CLI
 
 The CLI lives in `packages/golem-skills`. Run it from a clone:
