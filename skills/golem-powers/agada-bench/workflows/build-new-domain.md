@@ -167,7 +167,7 @@ python scripts/route-pending-rt.py \
 ```
 
 For every `pending-rt` row, the routing decision tree (W3.3) assigns one of:
-- `cascade-opus`: single-judge outlier with high agreement among the other two → cheap Opus-4-7 call resolves.
+- `cascade-opus`: single-judge outlier with high agreement among the other two → adjudication resolves. Routing: see `/agent-routing` § Routing rules (SSOT).
 - `etan-adjudicate`: genuine 3-way disagreement with no dominant pattern → human queue.
 - `discard-fm14`: fully-distinct labels with spread=3 → corpus pair is too ambiguous to use; tag FM14, drop from gold.
 

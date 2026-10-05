@@ -65,7 +65,7 @@ test('large-plan generated phases and authored templates retain config-driven st
     const run = spawnSync('bash', [join(root, 'skills/golem-powers/large-plan/scripts/scaffold-plan.sh'), dir, 'role-wiring', '2'], { encoding: 'utf8' });
     assert.equal(run.status, 0, run.stderr);
     for (const text of [readFileSync(join(dir, 'phase-1/README.md'), 'utf8'), readFileSync(join(dir, 'phase-2/README.md'), 'utf8'), read('skills/golem-powers/large-plan/SKILL.md'), read('skills/golem-powers/large-plan/workflows/scaffold.md'), read('skills/golem-powers/large-plan/workflows/collab.md')]) {
-      for (const role of roles) assert.ok(text.includes(role), role);
+      assert.match(text, /`\/agent-routing`.*Routing rules \(SSOT\)/);
       assert.ok(text.includes('standards/model-roles.json'));
       assert.ok(text.includes('scripts/model-roles.mjs'));
     }
@@ -89,7 +89,8 @@ test('large-plan generated phases and authored templates retain config-driven st
     }
     assert.doesNotMatch(staffing, /effort: medium\b/);
     const implementer = generated.split('\n').find(line => line.startsWith('- **Implementer:**'));
-    assert.match(implementer, /UX\/UI phases: `claude.judgment` implements, Codex reviews; security phases: Daybreak Blue implements, `claude.judgment` reviews; see canon #1/);
+    assert.match(implementer, /role selected via `\/agent-routing` § Routing rules \(SSOT\)/);
+    assert.doesNotMatch(staffing, /Daybreak Blue implements|Claude reviews|Codex reviews/);
     for (const path of ['skills/golem-powers/large-plan/SKILL.md', 'skills/golem-powers/large-plan/workflows/scaffold.md', 'skills/golem-powers/large-plan/scripts/scaffold-plan.sh']) {
       assert.equal(read(path).replaceAll('\\`', '`').split('\n').find(line => line.startsWith('- **Implementer:**')), implementer, path);
     }

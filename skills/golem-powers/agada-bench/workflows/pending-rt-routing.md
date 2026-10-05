@@ -33,7 +33,7 @@ For each pending-RT row (qid, chunk_id) with labels {j1: L1, j2: L2, j3: L3}:
        AND fm_union contains FM6 (PreCompact pollution)
        AND the 2 majority judges' confidence ≥ 80
     THEN route = cascade-opus
-         (Opus-4-7 reads the chunk + rubric + 3 judge reasonings + outputs a label;
+         (The adjudicator reads the chunk + rubric + 3 judge reasonings + outputs a label;
           empirically resolves 12 of 13 v1.1 cases.)
 
   CASE 2 — fully-distinct labels with spread 3
@@ -76,7 +76,7 @@ Outputs:
 
 ## Cascade-opus mechanics
 
-Single cheap Opus-4-7 call per pending-RT row:
+Single adjudication call per pending-RT row. Routing: see `/agent-routing` § Routing rules (SSOT). Resolve `claude.judgment` via `node scripts/model-roles.mjs claude.judgment --field model`.
 
 ```
 SYSTEM: You are an adjudicator for the agada-bench rubric v1.1.
@@ -92,7 +92,7 @@ USER:   RUBRIC: <verbatim content of references/grading-rubric.md>
         ...
 ```
 
-Opus-4-7's label replaces the consensus label; `resolution_method` becomes `cascade-opus-resolved`; `notes` records the cascade rationale verbatim.
+The adjudicator's label replaces the consensus label; `resolution_method` becomes `cascade-opus-resolved`; `notes` records the cascade rationale verbatim.
 
 Cost per call: ≤ $0.10 with prompt caching on the rubric. 14 pending-RT rows from v1.1 ≈ $1.40 total. Compare to 7h of Etan time.
 

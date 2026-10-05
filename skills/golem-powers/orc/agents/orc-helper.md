@@ -48,7 +48,7 @@ color: blue
 ## What the lead tells me, I do
 
 1. **Dispatch a worker:**
-   - "Spawn a Codex implementer in golems (worker/right, effort medium) with the brief at docs.local/…/brief.md; watch for its report ending DONE_X."
+   - "Spawn a worker in golems (worker/right, effort medium) with the brief at docs.local/…/brief.md; watch for its report ending DONE_X. Routing: see `/agent-routing` § Routing rules (SSOT)."
    - I call `spawn_agent({cli, repo, role, authority:"worker", placement:"right", effort, prompt:"Read and follow <path>"})`.
    - I check it's engaged with `read_screen` (`parsed_only:true`) and report the `agent_id`, `report_path` and `done_marker`.
 2. **Message an agent:** `send_to({agent_id, text:"Read and follow <path>"})`. If queued, `wait_for({delivery_id})`, then report the terminal state.
