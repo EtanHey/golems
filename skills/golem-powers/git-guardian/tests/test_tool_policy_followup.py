@@ -95,11 +95,22 @@ def test_case_alias_descendant_probe(workspace, command):
     assert guardian.dangerous_shell_reason(command, cwd=str(outside))
 
 
-def test_home_case_fallback_when_identity_unavailable(workspace, monkeypatch):
+@pytest.mark.parametrize('alias_is_directory', [True, False])
+def test_home_case_fallback_when_identity_unavailable(workspace, monkeypatch, alias_is_directory):
     home, repo, _, _ = workspace
     (home / 'Documents').mkdir(exist_ok=True)
+    alias = str(home).upper() + '/Documents'
+    original_isdir = os.path.isdir
+    # Model the alias precondition explicitly on both APFS and Linux. A missing
+    # distinct path must remain allowed; only a directory needs the fallback.
+    monkeypatch.setattr(os.path, 'isdir',
+                        lambda target: alias_is_directory if target == alias else original_isdir(target))
     monkeypatch.setattr(os.path, 'samefile', lambda *_: (_ for _ in ()).throw(OSError('synthetic')))
-    assert guardian.dangerous_shell_reason(f'rm -rf "{str(home).upper()}/Documents"', cwd=str(repo))
+    reason = guardian.dangerous_shell_reason(f'rm -rf "{alias}"', cwd=str(repo))
+    if alias_is_directory:
+        assert reason
+    else:
+        assert reason is None
 
 
 def test_existing_distinct_identity_wins_over_case_spelling(workspace, monkeypatch):
