@@ -164,13 +164,14 @@ Domain leads are orchestrators one tier below orc:
 2. Lead goals preserve orchestration duties: delegate, maintain health gates, synthesize, and verify.
 3. A lead is a managed `agent_id` with `role:"orchestrator"` and left-column placement.
 4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Routing rules (SSOT).
-5. Reuse an existing healthy worker for the same repo/workspace/role lane; supersede its goal instead of spawning a duplicate.
+5. A new lane or task gets a fresh worker, even if a healthy idle worker exists in the same repo/workspace/role; reuse or supersede a worker's goal only to continue the same lane (its review rounds, follow-ups on its own diff, or re-scopes of the same deliverable), never for two unrelated lanes. Close panes on harvest for fd hygiene; churn control comes from closing panes, not recycling workers across tasks.
 
 ## Goal Contract
 
 Every complex or multi-hour dispatch uses one absolute file-backed goal containing the full user
-mission, constraints, green/no-green criteria, report path, and exact DONE marker. Reuse and
-supersede before spawning. A lane may close only as verified `DONE`, file-backed
+mission, constraints, green/no-green criteria, report path, and exact DONE marker. Supersede an
+existing worker's goal only to continue the same lane; a new lane gets a fresh worker. A lane may
+close only as verified `DONE`, file-backed
 `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED` with successor evidence. A DONE marker is only a prompt to
 verify the contracted artifact.
 

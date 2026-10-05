@@ -1343,6 +1343,30 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 50,
+      "name": "new-lane-idle-worker-spawn-fresh",
+      "prompt": "You are a lead with an idle, healthy Codex worker in the same repo/workspace/role that just finished lane A. You must now start unrelated lane B. What do you do with the idle worker and how do you staff B? Separately, a review-round follow-up arrives on lane A's own PR while A's worker is still available: who handles that follow-up?",
+      "expected_output": "Spawn a fresh worker with clean context for unrelated lane B, even though A's healthy idle worker is available. Close A's pane on harvest for fd hygiene instead of recycling it into B. Reuse A's worker for a review-round follow-up on A's own PR; supersede its goal only to continue that same lane.",
+      "assertions": [
+        {
+          "text": "Spawns a fresh worker for unrelated lane B even though a healthy idle worker exists in the same repo/workspace/role",
+          "type": "behavioral"
+        },
+        {
+          "text": "Closes lane A's pane on harvest for fd hygiene rather than recycling workers across unrelated tasks",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT re-brief, reuse, or supersede lane A's idle worker for unrelated lane B, or give one worker both unrelated lanes",
+          "type": "negative"
+        },
+        {
+          "text": "Reuses lane A's available worker for a review-round follow-up on A's own PR because it continues the same lane",
+          "type": "behavioral"
+        }
+      ]
     }
   ]
 }
