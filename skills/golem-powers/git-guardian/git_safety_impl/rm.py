@@ -6,6 +6,7 @@ import os
 import re
 import shlex
 
+from . import shell_parse
 from .paths import _expand_tilde
 
 def _skip_options(
@@ -25,18 +26,59 @@ def _skip_options(
     return position
 
 
-def _without_redirections(words: list[str]) -> list[str]:
-    """Redirection operands are shell plumbing, not deletion destinations."""
-    result = []
+def _without_redirections(source: str) -> str:
+    """Blank shell redirections before shlex erases quote/escape provenance.
+
+    Literal quoted or escaped operators remain deletion operands. Consume a
+    redirect's entire shell word, including concatenated quotes/substitutions,
+    without consuming the next command or a process-substitution argument.
+    """
+    structure = shell_parse.executable_shell_structure(source)
+    result = list(source)
     index = 0
-    while index < len(words):
-        match = re.match(r"^(?:[0-9]+)?(?:>>?|<<?)(.*)$", words[index])
-        if match:
-            index += 1 if match.group(1) else 2
-        else:
-            result.append(words[index]); index += 1
-    # Nested-find memoization keys include token-list identity.
-    return words if result == words else result
+    while index < len(source):
+        if structure[index:index + 2] in {"<(", ">("}:
+            try:
+                _, index = shell_parse.process_substitution_at(source, index)
+            except ValueError:
+                return source  # preserve malformed syntax for the fail-closed lexer
+            continue
+        if structure[index] not in "<>":
+            index += 1
+            continue
+        start = index
+        # A preceding unquoted descriptor belongs to the redirection only when
+        # it is the complete word (foo2>log still leaves operand foo2).
+        while start > 0 and structure[start - 1].isdigit():
+            start -= 1
+        if start > 0 and structure[start - 1] not in " \t\r\n;|&()":
+            start = index
+        if index > 0 and structure[index - 1] == "&":
+            start = index - 1
+        match = re.match(r"(?:<<<|<<-|<<|>>|<>|>\||>&|<&|>|<)", structure[index:])
+        end = index + len(match.group())
+        while end < len(source) and source[end] in " \t":
+            end += 1
+        try:
+            while end < len(source) and source[end] not in " \t\r\n;|&()<>":
+                if source[end] in "'\"":
+                    end = shell_parse._data_argument_quote_end(source, end) + 1
+                    if end > len(source):
+                        return source
+                elif source[end] == "\\":
+                    end += 2
+                elif source.startswith("$(", end):
+                    end = shell_parse._data_dollar_paren_end(source, end)
+                elif source[end] == "`":
+                    end = shell_parse._data_backtick_end(source, end)
+                else:
+                    end += 1
+        except ValueError:
+            return source
+        for offset in range(start, min(end, len(source))):
+            result[offset] = " "
+        index = end
+    return "".join(result)
 
 
 def _rm_reason_in_words(
@@ -54,7 +96,6 @@ def _rm_reason_in_words(
     _created_paths: list[str | None] | None = None,
 ) -> str | None:
     """Inspect command positions, including wrapper-owned nested commands."""
-    words = _without_redirections(words)
     if _depth > api["_MAX_WRAPPER_DEPTH"]:
         return api["_wrapper_depth_reason"]()
     if argument_variables is None:
@@ -376,7 +417,7 @@ def is_dangerous_rm(
         _created_paths = []
     active = api["shell_text_without_heredoc_bodies"](command)
     lexer = shlex.shlex(
-        api["_shell_text_with_comments_blanked"](active).replace("\n", " ; "),
+        _without_redirections(api["_shell_text_with_comments_blanked"](active)).replace("\n", " ; "),
         posix=True,
         punctuation_chars=";&|()",
     )
@@ -448,8 +489,11 @@ def is_dangerous_rm(
                 or operator_before == "||"
                 or (operator_before == "&&" and operator_after != "&&")
             ):
+                # A condition may execute the assignment; retain its unknown
+                # marker so later literal-tail resolution cannot treat it as
+                # an untouched inherited scratch variable.
                 for name, _value in assignments:
-                    variables.pop(name, None)
+                    variables[name] = None
             else:
                 variables.update(assignments)
             continue

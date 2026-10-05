@@ -298,6 +298,11 @@ def test_r2_link_and_move_controls(workspace, command):
     'rsync -a --delete ~/Downloads/scratch/ ~/Gits/',
     'ln -s ~/Gits ~/Downloads/g && rm -rf ~/Downloads/g/',
     'HOME=/; rm -rf ~{home}/Gits',
+    "rm -rf '>' ~/Gits",
+    r'rm -rf \> ~/Gits',
+    "rsync --delete ~/Downloads/scratch/ '>' ~/Gits/",
+    'true && H=$(echo ~); rm -rf "$H/Documents"',
+    'if true; then H=$(echo ~); fi; rm -rf "$H/Documents"',
 ])
 def test_r2_real_hook_boundary(workspace, command):
     home, repo, _, _ = workspace
@@ -340,3 +345,36 @@ def test_r2_config_physical_alias(workspace, tmp_path):
 def test_r2_implicit_link_and_attached_destination(workspace, command):
     home, repo, _, _ = workspace
     assert guardian.dangerous_shell_reason(command, cwd=str(repo))
+
+
+# Fresh scan regressions for shell operands and uncertain assignments.
+@pytest.mark.parametrize('command', [
+    "rm -rf '>' ~/Gits",
+    "rm -rf '2>' ~/Gits",
+    r'rm -rf \> ~/Gits',
+    "rsync --delete ~/Downloads/scratch/ '>' ~/Gits/",
+    'true && H=$(echo ~); rm -rf "$H/Documents"',
+    'false || H=$(echo ~); rm -rf "$H/Documents"',
+    'if true; then H=$(echo ~); fi; rm -rf "$H/Documents"',
+    'H=~/Downloads/scratch; true && H=$(echo ~); rm -rf "$H/Documents"',
+    'rm -rf docs.local/scratch >/dev/null; rm -rf ~/Gits',
+])
+def test_r2_scan_parser_regressions(workspace, command):
+    home, repo, _, _ = workspace
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo))
+
+
+@pytest.mark.parametrize('command', [
+    'rm -rf docs.local/scratch > docs.local/result',
+    'rm -rf docs.local/scratch 2>docs.local/result',
+    'rm -rf docs.local/scratch >"docs.local/log spaced"',
+    'rm -rf docs.local/scratch >$(echo docs.local/log)',
+    'rm -rf docs.local/scratch >"docs.local/$(echo log)"',
+    'rm -rf docs.local/scratch >docs.local/log && rm -rf docs.local/other',
+    'rsync --delete ~/Downloads/scratch/ docs.local/scratch/ > docs.local/log',
+    "rsync --delete ~/Downloads/scratch/ docs.local/scratch/ >'docs.local/log spaced'",
+    "echo 'rm -rf > ~/Gits'",
+])
+def test_r2_scan_redirection_cleanup_controls(workspace, command):
+    home, repo, _, _ = workspace
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo)) is None
