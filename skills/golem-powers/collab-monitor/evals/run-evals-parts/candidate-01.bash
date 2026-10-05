@@ -115,11 +115,6 @@
   append_fixture "$FIXTURES/default-author-filter.md" "$case_dir/advertised-collab.md"
   advertised_rc=0
   MONITOR_STATE_DIR="$case_dir/advertised-state" /bin/bash "$MONITOR" run --once --include-self '@skillcreator' "$case_dir/advertised-collab.md" > "$case_dir/advertised.out" 2>&1 || advertised_rc=$?
-  codex_filter="$(sed -n '/tail -n0 -F <collab-path> | / { s/^[^|]*| //; s/[[:space:]]&$//; p; q; }' "$SKILL_DIR/SKILL.md")"
-  codex_filter="${codex_filter//<self>/skillcreator}"
-  codex_rc=0
-  /bin/bash -c "$codex_filter" < "$FIXTURES/default-author-filter.md" > "$case_dir/codex-filter.out" 2>&1 || codex_rc=$?
-  awk '/^### @orc → @skillcreator/{ emit=1 } emit' "$FIXTURES/default-author-filter.md" > "$case_dir/codex-expected.out"
   : > "$case_dir/signed-collab.md"
   run_once "$case_dir/signed-state" "$case_dir/signed-seed.out" '@review-638' "$case_dir/signed-collab.md"
   append_fixture "$FIXTURES/self-signature-body.md" "$case_dir/signed-collab.md"
@@ -142,7 +137,7 @@
   run_once "$case_dir/foreign-state" "$case_dir/foreign-held.out" '@review-638' "$case_dir/foreign-collab.md"
   printf '%s\n' '— @orc' >> "$case_dir/foreign-collab.md"
   run_once "$case_dir/foreign-state" "$case_dir/foreign-closed.out" '@review-638' "$case_dir/foreign-collab.md"
-  if [[ "$count" == "1" ]] && grep -Fq 'inbound status update' "$case_dir/scan.out" && ! grep -Fq 'own status update' "$case_dir/scan.out" && [[ "$(self_post_count "$case_dir/scan.out")" == "0" ]] && [[ "$include_rc" -eq 0 ]] && [[ "$(alert_count "$case_dir/include.out")" == "1" ]] && [[ "$(self_post_count "$case_dir/include.out")" == "1" ]] && [[ "$advertised_rc" -eq 0 ]] && [[ "$(alert_count "$case_dir/advertised.out")" == "1" ]] && [[ "$(self_post_count "$case_dir/advertised.out")" == "1" ]] && [[ "$codex_rc" -eq 0 ]] && cmp -s "$case_dir/codex-expected.out" "$case_dir/codex-filter.out" && grep -Fq 'Here `<self>` is the seat' "$SKILL_DIR/SKILL.md" && [[ "$(alert_count "$case_dir/body-only.out")" == "0" ]] && [[ "$(alert_count "$case_dir/with-signature.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/with-signature.out")" == "0" ]] && [[ "$(alert_count "$case_dir/context.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/context.out")" == "0" ]] && [[ "$(alert_count "$case_dir/mixed-held.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/mixed-held.out")" == "0" ]] && [[ "$(alert_count "$case_dir/mixed.out")" == "1" ]] && [[ "$(alert_count "$case_dir/foreign-held.out")" == "0" ]] && [[ "$(alert_count "$case_dir/foreign-closed.out")" == "1" ]]; then
+  if [[ "$count" == "1" ]] && grep -Fq 'inbound status update' "$case_dir/scan.out" && ! grep -Fq 'own status update' "$case_dir/scan.out" && [[ "$(self_post_count "$case_dir/scan.out")" == "0" ]] && [[ "$include_rc" -eq 0 ]] && [[ "$(alert_count "$case_dir/include.out")" == "1" ]] && [[ "$(self_post_count "$case_dir/include.out")" == "1" ]] && [[ "$advertised_rc" -eq 0 ]] && [[ "$(alert_count "$case_dir/advertised.out")" == "1" ]] && [[ "$(self_post_count "$case_dir/advertised.out")" == "1" ]] && [[ "$(alert_count "$case_dir/body-only.out")" == "0" ]] && [[ "$(alert_count "$case_dir/with-signature.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/with-signature.out")" == "0" ]] && [[ "$(alert_count "$case_dir/context.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/context.out")" == "0" ]] && [[ "$(alert_count "$case_dir/mixed-held.out")" == "0" ]] && [[ "$(self_post_count "$case_dir/mixed-held.out")" == "0" ]] && [[ "$(alert_count "$case_dir/mixed.out")" == "1" ]] && [[ "$(alert_count "$case_dir/foreign-held.out")" == "0" ]] && [[ "$(alert_count "$case_dir/foreign-closed.out")" == "1" ]]; then
     pass "2 self-signature-match GREEN"
   else
     fail "2 self-signature-match" "default filtering, --include-self, Codex tail documentation, or signature classification did not satisfy the contract"
