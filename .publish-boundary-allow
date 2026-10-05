@@ -13,19 +13,11 @@ skills/golem-powers/cyber/scripts/launchd-secret-linter/fixtures/red-plist.plist
 # current allowlist, so the old path must stay.
 skills/golem-powers/launchd-secret-linter/tests/test_plist_secret_lint.py
 
-# Synthetic health/schedule prompts used by behavioral evaluations.
-skill-evals/behavioral/coach.yaml
-skill-evals/fixtures/coach-schedule-request.txt
-skill-evals/promptfoo-behavioral.yaml
-
 # Public vendor names, synthetic people, and authored email/categorization fixtures.
 packages/coach/src/__tests__/morning-briefing-runner.test.ts
 packages/coach/src/__tests__/morning-briefing.test.ts
 packages/golems-tui/src/data.ts
 packages/green-invoice-mcp/src/__tests__/mcp-server.test.ts
-packages/recruiter/src/__tests__/auto-outreach.test.ts
-packages/recruiter/src/__tests__/obsidian-export.test.ts
-packages/recruiter/src/__tests__/outreach-db.test.ts
 packages/shared/src/__tests__/email-golem/draft-reply.test.ts
 packages/shared/src/__tests__/email-golem/followup.test.ts
 packages/shared/src/__tests__/email-golem/gmail-client.test.ts
@@ -39,23 +31,17 @@ scripts/benchmark-glm.ts
 scripts/tests/test-check-instruction-shape.bats
 scripts/tests/test-stream-helpers.bats
 scripts/tests/test-worktree-gc.bats
-scripts/test_precompact.py
-skill-evals/fixtures/nightly-journal-empty-whatsapp.txt
-skill-evals/fixtures/nightly-journal-normal.txt
-skill-evals/fixtures/nightly-journal-read-only.txt
 
 skills/golem-powers/audio-dashboard/evals/narration-vendor-drift.test.mjs
 skills/golem-powers/crash-resume-index/evals/crash-resume-index.test.mjs
 
 # Frustration/operator-language detector implementation and authored test corpus.
-hooks/precompact-checkpoint.py
 skills/golem-powers/frustration-capture/SKILL.md
 skills/golem-powers/frustration-capture/hooks/frustration-capture-prompt.py
 skills/golem-powers/frustration-capture/hooks/tests/test_session_false_positive_corpus.py
 skills/golem-powers/weave/registry/validate-registry.sh
 
 # Generic transcript/session processing mechanics and synthetic evaluation output.
-packages/content/prompts/launch/text/reddit-localllama-bl.md
 packages/services/CLAUDE.md
 skills/golem-powers/agada-bench/workflows/build-new-domain.md
 skills/golem-powers/drive-filing/references/archive-procedure.md
@@ -121,3 +107,21 @@ scripts/tests/check-publish-boundary.test-parts/part-01.bash
 # Relocated unchanged synthetic fixtures; retain old path history coverage.
 # Classes: identity-pii, mcp_executable_exact_version, publication-operational-data
 scripts/tests/check-publish-boundary.test-parts/part-02.bash
+
+# History-only: deleted from the tree; kept for the history ratchet.
+hooks/precompact-checkpoint.py
+scripts/test_precompact.py
+skill-evals/behavioral/coach.yaml
+skill-evals/fixtures/coach-schedule-request.txt
+skill-evals/promptfoo-behavioral.yaml
+skill-evals/fixtures/nightly-journal-empty-whatsapp.txt
+skill-evals/fixtures/nightly-journal-normal.txt
+skill-evals/fixtures/nightly-journal-read-only.txt
+# History-only: packages/recruiter retired in slice 6 (2026-10-05);
+# the nightly ratchet re-scans older commits with the current allowlist.
+packages/recruiter/src/__tests__/auto-outreach.test.ts
+packages/recruiter/src/__tests__/obsidian-export.test.ts
+packages/recruiter/src/__tests__/outreach-db.test.ts
+
+# History-only: launch drafts deleted from the tree; kept for the history ratchet.
+packages/content/prompts/launch/text/reddit-localllama-bl.md

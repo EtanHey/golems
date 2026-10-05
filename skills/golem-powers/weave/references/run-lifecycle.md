@@ -140,8 +140,8 @@ is a calendar fact, not an incident:
 1. **cursor-AUTO** (Cursor Pro included tier) — itself exhaustible: explicit
    `--model auto` returned the usage-limit error at ~sess 348/805, operator-verified
    ("we exhausted cursor auto tier"). [g3:54-64 → skills-audit-notes.md:191; tree-wf-review-priorart.md:42-43]
-2. **luna/terra (cheap 5.6) at MEDIUM effort** on small slices. [g3:60]
-3. **sol for centerpieces only.** [g3:60]
+2. Choose the next eligible gather route via `/agent-routing` § Routing rules (SSOT); retain the small-slice boundary. [g3:60]
+3. Keep centerpiece mining deepest (`references/topology.md`); use the routing pointer above. [g3:60]
 
 > **Spark is a separate implementation-shaped bucket — its own class, NOT compared to sol.**
 > Spark's "unfit for mining" verdict was an **effort-config artifact** (xhigh

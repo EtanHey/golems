@@ -44,7 +44,7 @@ What this means for skill-creator workflows: a workflow that uses a Claude `suba
 
 ### create-skill
 
-skillCreatorCodex is excellent at implementation work — once the design + evals are scoped (typically by skillCreatorClaude), Codex implements the skill content, writes evals.json, runs the live-eval-runner.sh comparisons, and produces the PR. The Anthropic Agent SDK pricing post-June-15 makes Codex the natural default for heavy implementation work.
+Once the design + evals are scoped, the implementation workflow writes skill content and evals.json, runs the live-eval-runner.sh comparisons, and produces the PR. Routing: see `/agent-routing` § Routing rules (SSOT).
 
 ### live-eval
 
@@ -127,7 +127,7 @@ wait
 
 - Read every output file — Codex equivalent of /never-fabricate.
 - For PRs: follow `AGENTS.md` rules. Don't push without explicit instruction.
-- Codex's strength is mechanical implementation; for architectural calls, hand back to skillCreatorClaude.
+- Architectural calls: see `/agent-routing` § Routing rules (SSOT).
 - Model and effort choice is owned by
   [`agent-routing/references/model-and-effort.md`](../../agent-routing/references/model-and-effort.md);
   `spawn_agents_on_csv` changes fan-out shape, not that routing law.
@@ -136,8 +136,8 @@ wait
 
 | Workflow | Typical cost | Notes |
 |---|---|---|
-| Create-skill implementation | "$0" (within OpenAI Plus/Pro sub) | Codex bills against existing sub; effectively free relative to Anthropic |
+| Create-skill implementation | "$0" (within OpenAI Plus/Pro sub) | Routing: see `/agent-routing` § Routing rules (SSOT) |
 | Mine-session (per JSONL) | "$0" + ~30s | Parser does the work; Codex just reports |
 | EOD mining wave | "$0" | Strong fit for Codex — mechanical, parallelizable |
 
-Use Codex for the implementation half of skill work and the parallel mining half. Reserve Claude for architectural reasoning and live A/B dispatching.
+The workflows cover implementation, parallel mining, architectural reasoning, and live A/B dispatching; use the routing pointer above.

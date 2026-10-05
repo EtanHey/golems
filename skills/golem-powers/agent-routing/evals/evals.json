@@ -1343,6 +1343,34 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 50,
+      "name": "new-lane-idle-worker-spawn-fresh",
+      "prompt": "You are a lead. Consider two separate situations: (i) Lane A has CLOSED: its PR is merged and artifacts harvested, but its healthy Codex worker is still idle in an open pane. You must start unrelated lane B in the same repo/workspace/role. How do you staff B and handle A's pane? (ii) In a separate lane A, the worker reported its first implementation DONE, but A's PR is still in review and findings arrive on its own diff. Who handles those findings, and when should that pane close?",
+      "expected_output": "In situation (i), spawn a fresh worker with clean context for unrelated lane B even though A's healthy idle worker is available, and close A's pane because A's PR loop has finished and its artifacts are harvested. In situation (ii), keep and reuse A's worker for findings on A's own PR; supersede its goal only to continue that same lane. Do not close its pane at its first DONE while review is open; close it only when its lane closes after the PR loop finishes (merged/handed off, artifacts harvested).",
+      "assertions": [
+        {
+          "text": "Spawns a fresh worker for unrelated lane B even though a healthy idle worker exists in the same repo/workspace/role",
+          "type": "behavioral"
+        },
+        {
+          "text": "In situation (i), closes lane A's pane because A has closed: its PR is merged and artifacts harvested; pane closure provides fd hygiene",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT re-brief, reuse, or supersede lane A's idle worker for unrelated lane B, or give one worker both unrelated lanes",
+          "type": "negative"
+        },
+        {
+          "text": "In situation (ii), keeps and reuses lane A's worker for review findings on A's own PR because the same lane is still open",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT close lane A's pane at its first implementation DONE while A's review loop is open",
+          "type": "negative"
+        }
+      ]
     }
   ]
 }

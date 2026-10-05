@@ -69,9 +69,9 @@ brain_search(query="<plan-name> decisions")
 | Phase Type | Model | Why |
 |------------|-------|-----|
 | Orchestration, scaffolding | `claude.judgment` | Decisions and coordination |
-| Implementation phase | `codex.implement` (UX/UI: `claude.judgment`) | Phase chooses effort and explains why; canon #1 exceptions apply |
-| Bounded lookup or verifier | `claude.subagent.cheap` | In-process parity work only; never judgment |
-| PR-gating review, audit judgment | `claude.judgment` | Decision-grade reasoning |
+| Implementation phase | See `/agent-routing` § Routing rules (SSOT) | Phase chooses effort and explains why |
+| Bounded lookup or verifier | See routing pointer above | In-process parity work only; never judgment |
+| PR-gating review, audit judgment | See routing pointer above | Decision-grade reasoning |
 
 Resolve role model/alias with `node scripts/model-roles.mjs <role> --field model|alias`
 (one field) from the golems checkout. Every phase records `role · effort · why`; choose

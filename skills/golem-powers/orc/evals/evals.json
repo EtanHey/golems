@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "I need to understand how the BrainBar daemon works. Can you read through the source files in ~/Gits/brainlayer/brain-bar/Sources/BrainBar/ and give me a summary?",
-      "expected_output": "Should query BrainLayer FIRST (brain_search) before reading any files. If BrainLayer has relevant info, use that. Only read files as a last resort, and if needed, spawn a haiku subagent to do the file reading.",
+      "expected_output": "Should query BrainLayer FIRST (brain_search) before reading any files. If BrainLayer has relevant info, use that. Only read files as a last resort, and if needed, follow /agent-routing § Routing rules (SSOT) to choose the file-reading gatherer.",
       "assertions": [
         {
           "text": "Calls brain_search before attempting to read any files",
@@ -19,7 +19,7 @@
           "type": "negative"
         },
         {
-          "text": "If file reading is needed, suggests spawning a subagent rather than reading directly",
+          "text": "If file reading is needed, follows /agent-routing § Routing rules (SSOT) to select a gatherer rather than bulk-reading directly",
           "type": "behavioral"
         }
       ]
