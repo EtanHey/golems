@@ -5,6 +5,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import signal
@@ -20,8 +21,10 @@ REPAIR_REASON = (
     "BLOCKED: Codex policy hook unavailable; refusing tool call. "
     "FLAG THIS TO THE USER: repair with "
     "scripts/hooks/install-hooks.sh --host <host> --update --apply; "
-    "then review the hooks through /hooks."
+    "then review /hooks from plain codex with no --profile."
 )
+BUDGET_SECONDS = 7
+TIMEOUT_REASON = "BLOCKED: policy check timed out or patch is too large; split the patch or retry a smaller tool call."
 
 
 def denial(reason=REPAIR_REASON):
@@ -77,10 +80,10 @@ def guardian_inputs(payload):
     command = payload["tool_input"]["command"]
     # Deleting a sensitive file is also a guardian file operation. tmp-block
     # still receives the original envelope and retains its delete allowance.
-    command = command.replace("\n*** Delete File:", "\n*** Update File:")
-    paths = [m.group(2) for m in module._APPLY_PATCH_TARGET_RE.finditer(command)]
+    command = re.sub(r"(?m)^([^\S\n]*\*\*\*[^\S\n]+)Delete File:", r"\1Update File:", command)
+    paths = list(dict.fromkeys(m.group(2) for m in module._APPLY_PATCH_TARGET_RE.finditer(command)))
     if len(paths) > 64:
-        raise ValueError("patch budget exceeded")
+        raise TimeoutError("patch budget exceeded")
     return [{**payload, "tool_name": "Write", "tool_input": {"file_path": p}} for p in paths]
 
 
@@ -110,7 +113,9 @@ def evaluate():
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
     for item in guardian_inputs(p) if gate == "git-guardian" else [p]:
-        remaining = 3 - (time.monotonic() - started)
+        # Leave a cleanup margin: simultaneous child/global deadlines can throw
+        # SIGALRM inside Popen.__del__, leaking an unraisable traceback to stderr.
+        remaining = BUDGET_SECONDS - 1 - (time.monotonic() - started)
         if remaining <= 0:
             raise TimeoutError("gate budget exceeded")
         proc = subprocess.Popen([sys.executable, str(ROOT / TARGETS[gate])],
@@ -136,9 +141,11 @@ if __name__ == "__main__":
         raise TimeoutError("adapter budget exceeded")
 
     signal.signal(signal.SIGALRM, timeout)
-    signal.setitimer(signal.ITIMER_REAL, 3)
+    signal.setitimer(signal.ITIMER_REAL, BUDGET_SECONDS)
     try:
         result = evaluate()
+    except (TimeoutError, subprocess.TimeoutExpired):
+        result = denial(TIMEOUT_REASON)
     except BaseException:
         result = denial()
     finally:

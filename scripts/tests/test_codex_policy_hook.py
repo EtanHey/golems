@@ -31,7 +31,7 @@ def run(gate, payload, adapter=ADAPTER, cwd=ROOT, env=None):
     data = payload if isinstance(payload, str) else json.dumps(payload)
     return subprocess.run([sys.executable, str(adapter), gate], input=data,
                           capture_output=True, text=True, cwd=cwd,
-                          env=env or clean_env(), timeout=8)
+                          env=env or clean_env(), timeout=12)
 
 
 def payload(command, tool="Bash"):
@@ -135,7 +135,78 @@ class CodexPolicyHookTests(unittest.TestCase):
                     if body is not None:
                         hook.write_text(body)
                     result = self.check(run("tmp-block", payload("pwd"), adapter), True)
-                    self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
+                self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
+
+    def test_indented_patch_headers_use_shared_policy(self):
+        for prefix in ("", "  ", "\t", " \t ", "\u2003", "\r"):
+            for verb in ("Add File", "Update File", "Move to", "Delete File"):
+                for gate, path in [("tmp-block", "/tmp/indent.md"), ("git-guardian", ".env")]:
+                    with self.subTest(prefix=prefix, verb=verb, gate=gate):
+                        patch = f"*** Begin Patch\n{prefix}*** {verb}: {path}  \n+x\n*** End Patch\n"
+                        p = payload(patch, "apply_patch")
+                        deny = gate == "git-guardian" or verb != "Delete File"
+                        self.check(run(gate, p), deny)
+                        if gate == "tmp-block":
+                            original = subprocess.run([sys.executable, str(ROOT / TARGETS[gate])],
+                                input=json.dumps(p), capture_output=True, text=True, env=clean_env())
+                            self.assertEqual(original.returncode == 2, deny)
+                allowed = f"*** Begin Patch\n{prefix}*** {verb}: docs.local/ok.md\n+x\n*** End Patch\n"
+                for gate in TARGETS:
+                    self.check(run(gate, payload(allowed, "apply_patch")), False)
+
+    def test_guardian_library_override_cannot_replace_pinned_policy(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            lib = Path(scratch)
+            (lib / "git_safety.py").write_text(
+                "from contextlib import nullcontext\n"
+                "class PolicyEvaluationDeadlineExceeded(Exception): pass\n"
+                "policy_evaluation_deadline = nullcontext\n"
+                "cancel_policy_evaluation_deadline = lambda: None\n"
+                "dangerous_shell_reason = lambda text: None\n"
+                "policy_command_size_reason = lambda text: None\n"
+                "shell_text_without_heredoc_bodies = lambda text: text\n")
+            env = clean_env(); env["GIT_GUARDIAN_LIB"] = str(lib)
+            p = payload("git push --force origin main")
+            original = subprocess.run([sys.executable, str(ROOT / TARGETS["git-guardian"])],
+                input=json.dumps(p), capture_output=True, text=True, env=env)
+            self.assertEqual(original.returncode, 0, "permissive override control was invalid")
+            self.check(run("git-guardian", p, env=env), True)
+
+    def test_payload_temp_cwd_overrides_process_cwd(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            env = clean_env(); env["TMPDIR"] = scratch
+            p = payload("printf x > relative.md"); p["cwd"] = scratch
+            self.check(run("tmp-block", p, cwd=ROOT, env=env), True)
+            p["cwd"] = str(ROOT)
+            self.check(run("tmp-block", p, cwd=ROOT, env=env), False)
+
+    def test_gate_stderr_on_allow_is_static_denial(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            hook = base / TARGETS["tmp-block"]; hook.parent.mkdir(parents=True)
+            hook.write_text("import sys; print('{}'); print('PRIVATE-VALUE', file=sys.stderr)")
+            result = self.check(run("tmp-block", payload("pwd"), adapter), True)
+            self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
+
+    def test_large_patch_and_last_sensitive_target(self):
+        patch = "*** Begin Patch\n" + "".join(
+            f"*** Add File: docs.local/allowed-{i}.md\n+x\n" for i in range(64)) + "*** End Patch\n"
+        self.check(run("git-guardian", payload(patch, "apply_patch")), False)
+        self.check(run("git-guardian", payload(patch.replace("allowed-63.md", "../../../.env"), "apply_patch")), True)
+        repeated = "*** Begin Patch\n" + "*** Update File: docs.local/ok.md\n+x\n" * 128 + "*** End Patch\n"
+        self.check(run("git-guardian", payload(repeated, "apply_patch")), False)
+
+    def test_timeout_has_split_hint_without_reinstall(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            hook = base / TARGETS["tmp-block"]; hook.parent.mkdir(parents=True)
+            hook.write_text("import time; time.sleep(20)")
+            result = self.check(run("tmp-block", payload("pwd"), adapter), True)
+            reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertIn("split the patch", reason)
+            self.assertNotIn("reinstall", reason.lower())
 
     def test_payload_cwd_reaches_both_policies(self):
         p = payload("git worktree add /workspace/sibling/x HEAD")
@@ -150,11 +221,13 @@ class CodexPolicyHookTests(unittest.TestCase):
             adapter = base / "scripts/hooks/codex-policy-hook.py"
             adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
             marker = base / "late-effect.txt"
-            child = f"import time; from pathlib import Path; time.sleep(4); Path({str(marker)!r}).write_text('late')"
+            child = f"import time; from pathlib import Path; time.sleep(8); Path({str(marker)!r}).write_text('late')"
             hook = base / TARGETS["tmp-block"]; hook.parent.mkdir(parents=True)
             hook.write_text(f"import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',{child!r}]); time.sleep(10)")
             self.check(run("tmp-block", payload("pwd"), adapter), True)
-            time.sleep(1.5)
+            # Past the descendant's eight-second effect even with the child's
+            # six-second deadline; a kill-parent-only mutation must be caught.
+            time.sleep(2.5)
             self.assertFalse(marker.exists(), "timed-out gate descendant survived")
 
     def test_corrupt_patch_parser_cannot_contaminate_denial(self):

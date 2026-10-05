@@ -298,16 +298,30 @@ transport failures with a static repair hint. The registered shell fallback
 uses stderr + exit 2 if the interpreter or adapter cannot start.
 
 `scripts/hooks/install-hooks.sh --host <mbp|m1> --update --apply` registers both
-gates from the selected pinned manifest into `~/.codex/hooks.json`, backs up
+gates from the selected pinned manifest into `$CODEX_HOME/hooks.json` (default
+`~/.codex/hooks.json`), backs up
 changed hook configuration, and preserves `config.toml`. It never creates trust
-hashes or overrides an existing disabled-hooks setting. Review definitions via
-`/hooks`; `--status` reports wiring while explicitly leaving trust unverified.
+hashes or overrides an existing disabled-hooks setting. Review `/hooks` from
+**plain `codex` with no `--profile`** so trust persists in base config.toml.
+repoGolem's per-launch profile is deleted on exit, taking trust given there
+with it. `--apply` prints this instruction; `--status` reports wiring and
+base-config trust as missing/disabled/present-unverified, with nonzero status for
+missing/disabled trust. A stored hash needs native review; positional hook keys
+change when groups are reordered. Profile/CLI overrides and managed requirements
+can change effective enablement and are outside this base-config status check.
 
 A synthetic local Responses fixture exercises the real 0.160 CLI, including
 denial before execution and permitted commands. It does not prove an installed
 authenticated fleet seat; the lead must run that proof after deployment.
-Outer hook timeouts, skipped/untrusted hooks and persistent-shell `write_stdin`
-remain runtime limits. See [version-pinned research](../../../docs/codex-policy-hooks.md).
+Outer hook timeouts and skipped/untrusted hooks remain runtime limits. Codex
+omits per-call `workdir` from Bash hook input: a relative write executed in a
+temp-class workdir can pass when session cwd is ordinary. `write_stdin` into a
+persistent shell has no hook payload, so a force push typed there is unhooked.
+Both holes are proven on real 0.160; this adapter cannot recover missing context
+or intercept that input. Seven-second policy checks and deduplicated patch paths
+stay within the ten-second native timeout; large/timed-out calls ask to split
+the patch. Indented patch headers use the shared parser, and temp deletes remain
+allowed. See [version-pinned research](../../../docs/codex-policy-hooks.md).
 
 ## Install & evals
 

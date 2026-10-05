@@ -38,6 +38,11 @@ class NativeHooksTests(unittest.TestCase):
                 "printf allowed > allowed.txt",
                 "git status --short",
             ]
+            patches = [
+                "*** Begin Patch\n  *** Add File: .env\n+SYNTHETIC=x\n*** End Patch\n",
+                "*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\n",
+                "*** Begin Patch\n \t *** Add File: allowed-note.md\n+allowed\n*** End Patch\n",
+            ]
             requests = []
 
             class Handler(BaseHTTPRequestHandler):
@@ -54,6 +59,9 @@ class NativeHooksTests(unittest.TestCase):
                                 "name": "exec_command", "arguments": json.dumps({
                                     "cmd": commands[index], "workdir": str(workspace),
                                     "login": False, "yield_time_ms": 1000})}
+                    elif index < len(commands) + len(patches):
+                        item = {"type": "custom_tool_call", "call_id": f"call-{index}",
+                                "name": "apply_patch", "input": patches[index - len(commands)]}
                     else:
                         item = {"type": "message", "id": "m-final", "role": "assistant",
                                 "content": [{"type": "output_text", "text": "NATIVE_FIXTURE_DONE"}]}
@@ -101,12 +109,16 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                     capture_output=True, text=True, check=True)
                 return r.stdout.strip()
             (home / "hooks.json").write_text(json.dumps({"hooks": {"PreToolUse": [
-                {"matcher": "^Bash$", "hooks": [{"type": "command",
+                {"matcher": "^(Bash|apply_patch)$", "hooks": [{"type": "command",
                  "command": hook_command(gate), "timeout": 10}]}
                 for gate in ("tmp-block", "git-guardian")
             ]}}))
             env = os.environ.copy()
-            env.update(HOME=str(home), CODEX_HOME=str(home))
+            for key in ("CLAUDE_WORKER", "WEAVE_ALLOW_TMP", "WEAVE_ALLOW_WT_MIGRATION", "GIT_GUARDIAN_LIB"):
+                env.pop(key, None)
+            tempdir = base / "temp-class"; tempdir.mkdir()
+            env.update(HOME=str(home), CODEX_HOME=str(home), TMPDIR=str(tempdir),
+                       TMP_BLOCK_LEDGER=str(base / "ledger.jsonl"))
             try:
                 result = subprocess.run([shutil.which("codex"), "exec", "--json",
                     "--skip-git-repo-check", "--dangerously-bypass-hook-trust",
@@ -116,11 +128,11 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                 server.shutdown()
                 server.server_close()
             self.assertEqual(result.returncode, 0, result.stderr[-3000:])
-            self.assertEqual(len(requests), 5, result.stderr[-3000:])
+            self.assertEqual(len(requests), 8, result.stderr[-3000:])
             outputs = {}
             for request in requests:
                 for item in request.get("input", []):
-                    if item.get("type") == "function_call_output":
+                    if item.get("type") in ("function_call_output", "custom_tool_call_output"):
                         outputs[item["call_id"]] = str(item["output"])
             self.assertIn("TMP-BLOCK", outputs["call-0"])
             self.assertFalse((workspace / "blocked-temp-executed.txt").exists())
@@ -128,8 +140,13 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
             self.assertNotIn("FAKE_GIT_EXECUTED", outputs["call-1"])
             self.assertEqual((workspace / "allowed.txt").read_text(), "allowed")
             self.assertIn("FAKE_GIT_EXECUTED", outputs["call-3"])
+            self.assertFalse((workspace / ".env").exists())
+            self.assertFalse((workspace / "credentials.json").exists())
+            for index in (4, 5):
+                self.assertIn("BLOCKED", outputs[f"call-{index}"])
+            self.assertEqual((workspace / "allowed-note.md").read_text().strip(), "allowed")
             self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
-            print("Native 0.160 fixture: 2 pre-execution denials, 2 real allowed executions; paid tokens=0")
+            print("Native 0.160 fixture: 4 pre-execution denials, 3 real allowed executions; paid tokens=0")
 
 
 if __name__ == "__main__":
