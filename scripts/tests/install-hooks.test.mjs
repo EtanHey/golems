@@ -501,12 +501,77 @@ test("a pinned requiresPin gate activates once the fingerprint lands at the inst
   expect(readFileSync(fx.settingsPath, "utf8")).toContain("pin-gate/hooks/pin-gate.py");
 });
 
-test("pin grammar matches the gate: >=1 lowercase sha256 per line, comments ignored, any bad line voids all", () => {
+test("pin grammar matches the gate: shared vectors with tokens.parse_pins", () => {
+  const vectors = JSON.parse(readFileSync(path.join(here, "../../skills/golem-powers/human-confirm-gate/tests/pin-vectors.json"), "utf8")).vectors;
+  expect(vectors.length).toBeGreaterThan(20);
+  for (const v of vectors) {
+    expect([v.text, pinnedFingerprints(Buffer.from(v.text, "utf8"))]).toEqual([v.text, v.count ?? 0]);
+  }
   expect(pinnedFingerprints(undefined)).toBe(0);
-  expect(pinnedFingerprints("# none\n\n")).toBe(0);
-  expect(pinnedFingerprints(`${FINGERPRINT}\n${"b".repeat(64)}  m1 # owner\n`)).toBe(2);
-  expect(pinnedFingerprints(`${FINGERPRINT.toUpperCase()}\n`)).toBe(0);
-  expect(pinnedFingerprints(`${FINGERPRINT}\nsha256:${FINGERPRINT}\n`)).toBe(0);
+});
+
+test("--update to an unpinned sha unlinks and deregisters an active gate (never install-and-deny)", () => {
+  const fx = fixture();
+  addPinGate(fx, `${FINGERPRINT}  mbp\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(readFileSync(fx.settingsPath, "utf8")).toContain("pin-gate.py");
+  writeFileSync(path.join(fx.repo, "skills/golem-powers/pin-gate/anchor.pins"), "# emptied\n");
+  git(fx.repo, "commit", "-qam", "unpin");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const r = run(fx, "--apply", "--update");
+  expect(r.status).toBe(0);
+  expect(r.out).toMatch(/REFUSED pin-gate: .* unlinked and deregistered/);
+  expect(existsSync(path.join(fx.home, ".claude/hooks/pin-gate"))).toBe(false);
+  expect(readFileSync(fx.settingsPath, "utf8")).not.toContain("pin-gate.py");
+  expect(readFileSync(fx.settingsPath, "utf8")).toContain("demo-gate.py");
+  const st = run(fx, "--status");
+  expect(st.out).toMatch(/pin-gate refused\(unpinned\)\n/);
+  expect(st.status).toBe(0);
+});
+
+test("--status flags a refused gate that is still linked or registered", () => {
+  const fx = fixture();
+  addPinGate(fx, `${FINGERPRINT}  mbp\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  writeFileSync(path.join(fx.repo, "skills/golem-powers/pin-gate/anchor.pins"), "# emptied\n");
+  git(fx.repo, "commit", "-qam", "unpin");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  git(live(fx), "checkout", "-q", "--detach", git(fx.repo, "rev-parse", "origin/master"));  // moved outside --apply
+  const st = run(fx, "--status");
+  expect(st.out).toMatch(/pin-gate refused\(unpinned\) but STILL ACTIVE/);
+  expect(st.status).toBe(1);
+});
+
+test("--status detects hooks-live tampering: tracked edits, untracked files, foreign or unrecorded HEAD", () => {
+  const fx = fixture();
+  addPinGate(fx, `${FINGERPRINT}  mbp\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  const clean = run(fx, "--status");
+  expect([clean.status, clean.out]).toEqual([0, expect.not.stringMatching(/DIRTY|not on origin|recorded pin/)]);
+  const pins = path.join(live(fx), "skills/golem-powers/pin-gate/anchor.pins");
+  const original = readFileSync(pins, "utf8");
+  writeFileSync(pins, `${original}${"b".repeat(64)}  rogue\n`);  // in-place edit, uncommitted
+  let st = run(fx, "--status");
+  expect(st.out).toMatch(/hooks-live DIRTY: 1 changed\/untracked path/);
+  expect(st.status).toBe(1);
+  writeFileSync(pins, original);
+  writeFileSync(path.join(live(fx), "skills/golem-powers/pin-gate/hooks/extra.py"), "pass\n");  // untracked
+  st = run(fx, "--status");
+  expect(st.out).toMatch(/hooks-live DIRTY/);
+  expect(st.status).toBe(1);
+  rmSync(path.join(live(fx), "skills/golem-powers/pin-gate/hooks/extra.py"));
+  // A local commit inside hooks-live: off origin/master and not the recorded pin.
+  writeFileSync(pins, `${"c".repeat(64)}  rogue\n`);
+  git(live(fx), "commit", "-qam", "local re-pin");
+  st = run(fx, "--status");
+  expect(st.out).toMatch(/hooks-live HEAD is not on origin\/master/);
+  expect(st.out).toMatch(/!= recorded pin/);
+  expect(st.status).toBe(1);
+  rmSync(path.join(fx.home, ".claude/hooks/golems-hooks-live.sha"));
+  git(live(fx), "checkout", "-q", "--detach", git(fx.repo, "rev-parse", "origin/master"));
+  st = run(fx, "--status");
+  expect(st.out).toMatch(/has no recorded pin/);
+  expect(st.status).toBe(1);
 });
 
 test("the shipped human-confirm gate requires its committed anchor pin on every host", () => {

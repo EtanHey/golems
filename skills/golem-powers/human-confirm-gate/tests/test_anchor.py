@@ -29,42 +29,74 @@ class Anchor(unittest.TestCase):
     run_hook = test_gate.Gate.run_hook
     unlock = test_gate.Gate.unlock
     lock = test_gate.Gate.lock
+    commit_pins = test_gate.Gate.commit_pins
 
     def fresh_token(self):
         return self.token(nonce=uuid.uuid4().hex)
 
     def rogue_rewrite(self):
-        """Owner-simulated post-tamper state: the anchor admits a second human key."""
+        """Owner-simulated post-tamper state: a grammatical anchor naming a rogue human key."""
+        rogue = self.home / 'rogue-key'
+        if not rogue.exists():
+            subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(rogue)], check=True)
         self.unlock()
-        self.policy.write_text(self.policy.read_text() + 'human ' + self.lead_key.with_suffix('.pub').read_text())
+        self.policy.write_text('human ' + rogue.with_suffix('.pub').read_text() + 'lead ' + self.lead_key.with_suffix('.pub').read_text())
+        self.lock()
+        self.key = rogue
+
+    def cosmetic_rewrite(self):
+        """Same keys, different bytes: every signature stays valid, only the pin differs."""
+        self.unlock()
+        self.policy.write_text(self.policy.read_text() + '# owner note\n')
         self.lock()
 
     def test_valid_pin_allows_and_tree_pin_mismatch_denies_all(self):
         self.fresh_token()
         self.assertEqual(self.run_hook()[0], 0)
+        good = self.pins.read_text()
         for pins in ('', '# no fingerprints\n', 'f' * 64 + '  other-host\n', 'not-a-fingerprint\n',
-                     self.pins.read_text() + 'garbage line\n'):
+                     good + 'garbage line\n', good.replace('  fixture-host', '\tfixture-host')):
             with self.subTest(pins=pins):
-                self.pins.write_text(pins)
+                self.commit_pins(pins)
                 self.fresh_token()
                 self.assertEqual(self.run_hook()[0], 2)
+        self.commit_pins(good)
         self.pins.unlink()
         self.fresh_token()
         self.assertEqual(self.run_hook()[0], 2)
 
+    def test_only_the_committed_pin_counts(self):
+        good = self.pins.read_text()
+        self.rogue_rewrite()
+        rogue = hashlib.sha256(self.policy.read_bytes()).hexdigest()
+        # A working-tree edit of the pinned tree (uncommitted) never re-pins.
+        for text in (good + rogue + '  rogue\n', rogue + '\n'):
+            with self.subTest(text=text):
+                self.pins.write_text(text)
+                self.fresh_token()
+                self.assertEqual(self.run_hook()[0], 2)
+        self.pins.write_text(good)
+        git_dir = self.pins.parents[3] / '.git'
+        shutil.move(git_dir, self.home / 'moved-git')  # not a checkout: deny
+        try:
+            self.fresh_token()
+            self.assertEqual(self.run_hook()[0], 2)
+        finally:
+            shutil.move(self.home / 'moved-git', git_dir)
+
     def test_anchor_rewrite_denies_human_and_lead_tokens(self):
         from tokens import authorize
         from commands import operations
-        self.rogue_rewrite()
+        self.cosmetic_rewrite()
         self.fresh_token()  # legitimately signed, still denied: ALL tokens
-        self.assertEqual(self.run_hook()[0], 2)
-        self.key = self.lead_key
-        self.fresh_token()  # rogue signer the rewritten anchor would admit
         self.assertEqual(self.run_hook()[0], 2)
         payload = dict(cwd=str(self.repo), tool_input=dict(command=self.command), session_id='worker')
         self.token('lead')
         pr = dict(state='OPEN', mergedAt=None, isCrossRepository=False, headRefName='topic', headRefOid=self.sha)
         self.assertFalse(authorize(payload, operations(self.command, str(self.repo)), self.home, lambda _: ('main', pr)))
+        self.rogue_rewrite()
+        self.fresh_token()  # rogue signer the rewritten anchor would admit
+        self.assertEqual(self.run_hook()[0], 2)
 
     def test_policy_dir_rewrite_cannot_mint_tokens_even_with_a_same_dir_pin(self):
         # Outcome of the retracted class: flags cleared, anchor and an adjacent
@@ -81,6 +113,36 @@ class Anchor(unittest.TestCase):
             self.assertEqual(self.run_hook()[0], 2)
         finally:
             os.chflags(adjacent, 0)
+
+    def test_pin_requires_owner_review_of_principals_and_keys(self):
+        from tokens import pin_anchor
+        self.unlock()
+        human, lead = (k.with_suffix('.pub').read_text().split() for k in (self.key, self.lead_key))
+        shown = []
+        self.assertEqual(len(pin_anchor(self.home, confirm=lambda lines: shown.extend(lines) or True)), 64)
+        self.assertEqual([line.split()[0] for line in shown], ['human', 'lead'])
+        self.assertTrue(all('SHA256:' in line for line in shown))
+        self.unlock()
+        with self.assertRaisesRegex(ValueError, 'not confirmed'):
+            pin_anchor(self.home, confirm=lambda lines: False)
+        self.assertFalse(self.policy.stat().st_flags & stat.UF_IMMUTABLE)
+        valid = self.policy.read_text()
+        for bad in (valid + 'agent ' + ' '.join(lead[:2]) + '\n',              # unknown principal
+                    valid + 'human ' + ' '.join(lead[:2]) + '\n',              # second human key
+                    'human,lead ' + ' '.join(human[:2]) + '\n',                 # shared principal key
+                    'human cert-authority ' + ' '.join(human[:2]) + '\n',       # CA admits any cert
+                    'human ' + human[0] + ' not-base64!\n'):
+            with self.subTest(bad=bad[:40]):
+                self.policy.write_text(bad)
+                with self.assertRaises(ValueError):
+                    pin_anchor(self.home, confirm=lambda lines: True)
+                self.assertFalse(self.policy.stat().st_flags & stat.UF_IMMUTABLE)
+        # The runtime enforces the same anchor grammar even when its bytes are pinned.
+        self.policy.write_text(valid + 'human ' + ' '.join(lead[:2]) + '\n')
+        self.commit_pins(hashlib.sha256(self.policy.read_bytes()).hexdigest() + '\n')
+        self.lock()
+        self.fresh_token()
+        self.assertEqual(self.run_hook()[0], 2)
 
     def test_missing_immutable_flags_or_unsafe_metadata_deny(self):
         for path in (self.policy, self.policy.parent):
@@ -170,6 +232,8 @@ class Anchor(unittest.TestCase):
                    f'timeout 5 chflags nouchg {q(folder)}', f'env chflags nouchg {q(folder)}',
                    f'F=chflags; $F nouchg {q(folder)}', f'$UNSET_EXEC nouchg {q(folder)}',
                    f'$UNSET_EXEC -R 0 {q(str(self.home / ".config"))}', './cf nouchg ' + unresolved['star'],
+                   f'$UNSET_EXEC 0 {q(str(self.policy))}', f'$UNSET_EXEC nouchg {unresolved["star"]}',
+                   'cd "$UNSET_DIR"; $UNSET_EXEC nouchg allowed_signers',
                    # Each isolates one rule that other layers would otherwise mask.
                    f'CHFLAGS -R 0 {q(str(self.home / ".config"))}', 'SetFile -a l ' + unresolved['star'],
                    'env -C "$UNSET_DIR" chflags 0 allowed_signers', 'timeout 5 chflags 0 allowed_signers',
@@ -198,7 +262,13 @@ class Anchor(unittest.TestCase):
                         'cat ' + q(str(self.policy)), 'ls -la ' + q(str(self.policy.parent)),
                         'cd ' + q(str(self.policy.parent)) + ' && ls',
                         'ssh-keygen -Y verify -f ' + q(str(self.policy)) + ' -I human -n golems-confirm -s x.sig < x',
-                        'cat ' + q(str(self.pins)), 'shasum -a 256 ' + q(str(self.policy))):
+                        'cat ' + q(str(self.pins)), 'shasum -a 256 ' + q(str(self.policy)),
+                        '"$BIN" test "$FILE" --timeout 5000', '$PY script.py 1 *.txt', '$RUN 100 ./out',
+                        'cd "$UNSET_DIR" && "$TOOL" 1 data.csv', '`which node` 5 .',
+                        'ln -s . x', 'ssh-keygen -lf ' + q(str(self.policy)),
+                        # At an ancestor of the pinned tree (not of the anchor), e.g. the repo root.
+                        'cd ' + q(str(self.home / 'live')) + ' && ln -s . x',
+                        'cd ' + q(str(self.home / 'live')) + ' && $PY script.py 1 .'):
             with self.subTest(command=command): self.assertEqual(self.run_hook(command)[0], 0)
 
     def test_pinned_tree_is_protected(self):
@@ -247,10 +317,21 @@ class Platform(unittest.TestCase):
             fixture = test_gate.Gate('test_denies_without_token_and_allows_normal')
             with self.assertRaises(unittest.SkipTest): fixture.setUp()
 
+    def test_pin_grammar_matches_shared_vectors(self):
+        from tokens import parse_pins
+        vectors = json.loads((ROOT / 'tests/pin-vectors.json').read_text())['vectors']
+        for vector in vectors:
+            with self.subTest(text=vector['text']):
+                raw = vector['text'].encode()
+                if vector['count'] is None:
+                    with self.assertRaises(ValueError): parse_pins(raw)
+                else:
+                    self.assertEqual(len(parse_pins(raw)), vector['count'])
+
     def test_committed_pins_parse(self):
-        from tokens import PINS, pinned_fingerprints
+        from tokens import PINS, parse_pins
         self.assertEqual(PINS, ROOT / 'anchor.pins')
-        pinned_fingerprints(PINS)  # well-formed; may be empty until the owner pins
+        parse_pins(PINS.read_bytes())  # well-formed; may be empty until the owner pins
 
 
 if __name__ == '__main__':

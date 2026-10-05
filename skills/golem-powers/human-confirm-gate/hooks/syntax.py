@@ -161,12 +161,15 @@ def policy_path(raw, cwd, home):
 
 
 def anchor_path(raw, cwd, home, ancestors=False):
-    """raw names the anchor or pinned tree (or, with ancestors, a directory above one)."""
+    """raw names the anchor or pinned tree (or, with ancestors, a directory above the anchor dir).
+
+    Flags only matter on the locked anchor, so only its ancestors count; the
+    pinned tree is covered by the committed-blob check at token time."""
     target = _resolved(raw, cwd, home)
-    for root in anchor_roots(home):
-        if target == root or target.startswith(root + '/') or ancestors and root.startswith(target.rstrip('/') + '/'):
-            return True
-    return _aliases(target, home)
+    roots = anchor_roots(home)
+    if ancestors and roots[0].startswith(target.rstrip('/') + '/'):
+        return True
+    return any(target == root or target.startswith(root + '/') for root in roots) or _aliases(target, home)
 
 
 def write_targets(base, args, redirects):
@@ -233,15 +236,22 @@ def anchor_tamper(word, args, cwd, home):
         return False
     if base in FLAG_EXECUTORS:
         return flag_write(base, args, cwd, home)
-    if ('$' in word or '`' in word) and any(flag_clear(a, numeric=True) for a in args):
-        return flag_write('chflags', ['-R', '--', '0'] + [a for a in args if not a.startswith('-')], cwd, home)
+    if '$' in word or '`' in word:
+        operands = [a for a in args if not a.startswith('-')]
+        if any(flag_clear(a) for a in args):
+            return flag_write('chflags', ['-R', '--', '0'] + operands, cwd, home)
+        # Numeric words are usually counts/timeouts: only a literal anchor operand counts.
+        if any(flag_clear(a, numeric=True) for a in args) and any(
+                not unresolved(a, home) and cwd is not None and anchor_path(a, cwd, home, ancestors=True) for a in operands):
+            return True
     for j, arg in enumerate(args):
         executor = os.path.basename(arg).casefold()
         if executor in FLAG_EXECUTORS and args[j + 1:]:
             # Wrapped: targets must be absolute (wrappers may change cwd); indirect: unknowable.
             if base in INDIRECT or base not in WRAPPERS or flag_write(executor, args[j + 1:], None, home):
                 return True
-    if base in READERS or base == 'ssh-keygen' and ('verify' in args or '-l' in args):
+    if base in READERS or base == 'ssh-keygen' and ('verify' in args or any(
+            a.startswith('-') and not a.startswith('--') and 'l' in a and 'Y' not in a for a in args)):
         return False
     if any(anchor_path(c, cwd, home, ancestors=base in ('ln', 'link')) for a in args for c in _candidates(a)):
         return True

@@ -19,13 +19,51 @@ ANCHOR = Path('.config/golems/human-confirm-anchor/allowed_signers')
 PINS = Path(__file__).resolve().parents[1] / 'anchor.pins'
 
 
-def pinned_fingerprints(pins):
-    """Owner-pinned SHA-256 values; any malformed line voids the whole pin."""
-    lines = [line.split('#', 1)[0].strip() for line in Path(pins).read_text('ascii').splitlines()]
-    lines = [line for line in lines if line]
-    if not all(re.fullmatch(r'[0-9a-f]{64}(?:\s+\S+)?', line) for line in lines):
+_PIN_LINE = re.compile(rb'(?:#[\x20-\x7e]*|[0-9a-f]{64}(?: +[A-Za-z0-9._-]+)?)?')
+
+
+def parse_pins(raw):
+    """Shared pin grammar (tests/pin-vectors.json, install-hooks pinnedFingerprints).
+
+    ASCII, LF lines; each line is empty, a printable `#` comment, or 64
+    lowercase hex plus an optional ` label`. Anything else voids the pin."""
+    lines = raw.split(b'\n')
+    if not all(_PIN_LINE.fullmatch(line) for line in lines):
         raise ValueError('malformed confirmation anchor pin')
-    return {line.split()[0] for line in lines}
+    return {line[:64].decode() for line in lines if line[:1] not in (b'', b'#')}
+
+
+def pinned_fingerprints(pins):
+    """Fingerprints committed at the hook tree's HEAD; working-tree edits never count."""
+    pins = Path(pins)
+    committed = subprocess.run([GIT, 'cat-file', 'blob', 'HEAD:./' + pins.name], cwd=pins.parent,
+                               capture_output=True, timeout=2, env={'PATH': '/usr/bin:/bin'})
+    if committed.returncode or committed.stdout != pins.read_bytes():
+        raise ValueError('anchor pin differs from the pinned commit')
+    return parse_pins(committed.stdout)
+
+
+def describe_anchor(raw):
+    """One `principal  type  SHA256:fp  comment` line per key, or raise.
+
+    Exactly one key each for `human` and/or `lead`; no options, so no
+    cert-authority and no shared principals."""
+    import base64
+    rows, seen = [], set()
+    for line in raw.decode('ascii').splitlines():
+        if not line.strip() or line.lstrip().startswith('#'):
+            continue
+        fields = line.split()
+        if len(fields) < 3 or fields[0] not in ('human', 'lead') or fields[0] in seen \
+                or not re.fullmatch(r'(?:ssh-|ecdsa-|sk-)[A-Za-z0-9@.-]+', fields[1]):
+            raise ValueError('allowed signers must hold one plain key each for human and lead')
+        blob = base64.b64decode(fields[2], validate=True)
+        digest = base64.b64encode(hashlib.sha256(blob).digest()).decode().rstrip('=')
+        seen.add(fields[0])
+        rows.append(f"{fields[0]}  {fields[1]}  SHA256:{digest}  {' '.join(fields[3:])}".rstrip())
+    if 'human' not in seen:
+        raise ValueError('allowed signers has no human key')
+    return rows
 
 
 def locked(info, kind, mode):
@@ -48,11 +86,12 @@ def anchor_bytes(home):
         os.close(directory)
     if hashlib.sha256(raw).hexdigest() not in pinned_fingerprints(PINS):
         raise ValueError('confirmation trust anchor does not match the pinned fingerprint')
+    describe_anchor(raw)
     return raw
 
 
-def pin_anchor(home):
-    """Owner terminal only: lock the reviewed anchor, return its fingerprint.
+def pin_anchor(home, confirm=None):
+    """Owner terminal only: show the keys, lock after confirmation, return the fingerprint.
 
     The fingerprint lands in anchor.pins through a reviewed PR; never repin
     automatically on a mismatch."""
@@ -64,11 +103,16 @@ def pin_anchor(home):
     raw = private_read(policy)
     if len(raw) > 4096 or policy.lstat().st_nlink != 1:
         raise ValueError('unsafe confirmation trust anchor')
+    rows = describe_anchor(raw)
+    if confirm is None or not confirm(rows):
+        raise ValueError('keys not confirmed by the owner; nothing locked')
     policy.parent.chmod(0o700)
     for path in (policy, policy.parent):
         os.chflags(path, stat.UF_IMMUTABLE)
     if not (locked(policy.parent.lstat(), stat.S_ISDIR, 0o700) and locked(policy.lstat(), stat.S_ISREG, 0o600)):
         raise ValueError('confirmation trust anchor did not lock')
+    if private_read(policy) != raw:
+        raise ValueError('confirmation trust anchor changed while locking')
     return hashlib.sha256(raw).hexdigest()
 
 
@@ -120,7 +164,7 @@ def authorize(payload, ops, home, metadata_fn=lead_metadata):
     root = home / '.config/golems/human-confirm'
     try:
         anchor = anchor_bytes(home)
-    except (OSError, ValueError, UnicodeError):
+    except (OSError, ValueError, UnicodeError, subprocess.SubprocessError):
         return False  # static hook denial; never trust any token after tampering
     digest = hashlib.sha256((payload['cwd'] + '\0' + payload['tool_input']['command']).encode()).hexdigest()
     for path in sorted(root.glob('*.json')):

@@ -35,14 +35,16 @@ class Gate(unittest.TestCase):
         self.policy.write_text('human ' + self.key.with_suffix('.pub').read_text() + 'lead ' + self.lead_key.with_suffix('.pub').read_text())
         self.policy.chmod(0o600)
         from tokens import pin_anchor
-        fingerprint = pin_anchor(self.home)
+        fingerprint = pin_anchor(self.home, confirm=lambda lines: True)
         # The pin rides the pinned hook tree, never the policy dir: run a copy.
         live = self.home / 'live/skills/golem-powers'
         shutil.copytree(ROOT / 'hooks', live / 'human-confirm-gate/hooks', ignore=shutil.ignore_patterns('__pycache__'))
         (live / '_shared').symlink_to(ROOT.parent / '_shared')
         self.hook = live / 'human-confirm-gate/hooks/human-confirm-pretooluse.py'
         self.pins = live / 'human-confirm-gate/anchor.pins'
-        self.pins.write_text('# fixture\n' + fingerprint + '  fixture-host\n')
+        # Like hooks-live, the fixture tree is a git checkout with the pin committed.
+        subprocess.run(['git', 'init', '-q', str(self.home / 'live')], check=True)
+        Gate.commit_pins(self, '# fixture\n' + fingerprint + '  fixture-host\n')
         pins = patch('tokens.PINS', self.pins); pins.start(); self.addCleanup(pins.stop)
         self.repo = self.home / 'repo'
         subprocess.run(['git', 'init', '-q', str(self.repo)], check=True)
@@ -50,6 +52,16 @@ class Gate(unittest.TestCase):
         self.command = f'git push --force-with-lease=refs/heads/topic:{self.sha} origin HEAD:refs/heads/topic'
         self.collab = self.home / 'Gits/orchestrator/collab/fixture.md'
         self.collab.parent.mkdir(parents=True)
+
+    def commit_pins(self, text):
+        self.pins.write_text(text)
+        root = self.home / 'live'
+        # Never let git walk up into the real checkout: the fixture repo must exist.
+        assert (root / '.git').is_dir() and self.pins.is_relative_to(root), root
+        git = ['git', '--git-dir', str(root / '.git'), '--work-tree', str(root)]
+        subprocess.run(git + ['add', '-A'], check=True)
+        subprocess.run(git + ['-c', 'user.name=F', '-c', 'user.email=f@example.com',
+                              'commit', '-q', '--allow-empty', '-m', 'pin'], check=True)
 
     def unlock(self):
         for path in (self.policy.parent, self.policy):

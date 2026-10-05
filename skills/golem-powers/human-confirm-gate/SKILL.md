@@ -54,40 +54,77 @@ advisory detection. The per-request signer prompt is the owner-presence control.
 ### Trust anchor integrity
 The anchor lives in its own directory, `~/.config/golems/human-confirm-anchor/`,
 so locking it never touches the other files under `~/.config/golems`.
-Create that directory mode 0700 in an owner terminal and place the allowed
-signers file there. After reviewing its keys, run
-`python3 scripts/golems-confirm-pin` from that owner terminal. It sets macOS
-`uchg` on the file and directory and prints one fingerprint line.
-That line lands in this skill's `anchor.pins` through a reviewed PR. The pin
-therefore lives in the pinned hooks-live tree, not in the policy directory, so
+It holds exactly one plain key for `human` and at most one for `lead`.
+Options are not allowed, so no `cert-authority` and no shared principals.
+
+**Provisioning (owner terminal):**
+1. Create the directory mode 0700 and place the allowed signers file there.
+2. Run `golems-confirm-pin` from the pinned tree:
+   `~/Gits/golems/.worktrees/hooks-live/scripts/golems-confirm-pin`. Do not
+   run it from a dev checkout an agent can edit.
+3. It prints each principal with its key's `SHA256:` fingerprint. Compare
+   them with your signer, then type `PIN`. Only then does it set macOS `uchg`
+   on the file and the directory and print one pin line.
+4. That line lands in this skill's `anchor.pins` through a reviewed PR.
+
+The pin lives in the pinned hooks-live tree, not the policy directory, so
 clearing flags and rewriting the anchor cannot also re-pin it.
-Every token check opens the anchor fd-relative with no symlinks and verifies
-these, or the hook issues its static denial for every human and lead token:
-- `uchg` on the file and the directory;
-- mode 0700 on the directory and 0600 on the file, and owner UID;
-- a single link to the file;
-- SHA-256 equal to a pinned fingerprint. A missing, empty or malformed pin denies.
+
+`anchor.pins` grammar is shared with `install-hooks` (`tests/pin-vectors.json`):
+ASCII, LF lines; each line is empty, a printable `#` comment, or 64 lowercase
+hex plus an optional ` label` (`[A-Za-z0-9._-]+`). Anything else voids the pin.
+
+**Every token check** denies every human and lead token, with the hook's
+static message, unless all of these hold:
+- `anchor.pins` in the hook tree is byte-identical to its blob at that
+  tree's git HEAD, so uncommitted edits in hooks-live never re-pin;
+- the anchor, opened fd-relative with no symlinks, has `uchg` on the file and
+  the directory, mode 0700/0600, owner UID and a single link;
+- its SHA-256 is pinned, and its principals pass the grammar above.
 
 SSH verifies the checked bytes through a pipe and never reopens the path.
-`install-hooks` refuses to activate this gate while `anchor.pins` holds no
-fingerprint (it never installs a gate that would deny every token). Order:
-merge, then the owner pins, then the fingerprint PR, then hooks-live install.
-Key rotation means an owner-terminal unlock, review and repin, plus a new pin PR.
-Never repin automatically on a mismatch.
 
-Early fail-closed checks are defence in depth, not the boundary. They deny:
+**Installer.** `install-hooks` never activates this gate while `anchor.pins`
+holds no fingerprint. An `--update` to an unpinned commit unlinks and
+deregisters it, and `--status` reports `refused(unpinned)`. Order: merge, then
+the owner pins, then the fingerprint PR, then hooks-live install. Key rotation
+means an owner-terminal unlock, review and repin, plus a new pin PR. Never
+repin automatically on a mismatch.
+
+**What `install-hooks --status` detects** (exit 1):
+- tracked edits or untracked files anywhere in hooks-live;
+- a hooks-live HEAD that is not on origin/master;
+- a HEAD that differs from the SHA recorded by the last `--apply`, or no
+  recorded SHA.
+
+It cannot see a same-UID edit that is reverted before it runs, or tampering
+with git's own refs and recorded SHA together. The hook does not inspect its
+own source at runtime: a same-UID process that rewrites hooks-live's hook code
+or commits there defeats the gate until `--status` flags it.
+
+**Early fail-closed argv checks** are defence in depth, not the boundary. They deny:
 - `chflags`/`SetFile` whose targets are unresolved (glob, brace, variable,
   substitution, `~user`), relative under an unknown or wrapper-changed cwd,
-  or able to reach the anchor or pinned tree, including `-R` on an ancestor;
+  or able to reach the anchor or pinned tree, including `-R` on an anchor ancestor;
 - flag executors fed targets by `xargs`, `parallel` or `find`;
-- any non-reader command naming the anchor directory or pinned tree, so
-  `ln` (also of an ancestor), `rsync`, `ditto`, `dd`, `curl -o` and `tar -C`;
-- Write/Edit tools on the anchor or pinned tree.
+- non-reader commands whose literal operands name the anchor directory or
+  pinned tree (`ln` also of an anchor ancestor), and Write/Edit to either.
+
+They do NOT catch:
+- writes through clustered short options, awk/sed write commands, or relative
+  operands after an unresolvable `cd`;
+- `git` inside hooks-live;
+- removing an ancestor of hooks-live (the fail-open launcher then allows);
+- interpreter code (`python -c`, `osascript`).
+
+The anchor's uchg/hash and the committed pin are what catch these outcomes.
+
+**By-design over-denies:**
+- `chflags` with any glob, or with a relative target under an unknown cwd or a
+  wrapper (e.g. `timeout 5 chflags …`);
+- `--opt=<anchor path>` and copying the anchor out with a non-reader.
 
 `cd -`, `pushd`/`popd` stacks and CDPATH searches make cwd unknown.
-Interpreter code (`python -c`, `osascript`) and `git` operations inside
-hooks-live stay outside static inspection. A same-UID process can still
-replace hooks-live itself: that shows as drift in `install-hooks --status`.
 This is tamper evidence within the tool boundary, not an OS sandbox.
 Anchor provisioning/runtime are macOS-only. Unsupported hosts refuse tokens;
 CI skips those runtime fixtures explicitly, while structural tests still run.
