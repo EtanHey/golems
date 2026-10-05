@@ -1,3 +1,4 @@
+import { isolatedBunTestEnv, assertNoBunInstallCache } from './fixtures/bun-test-env';
 // Shapes from varlock@1.21.1 CLI load JSON and the repo-local plugin
 // local plugin bulk resolver: one op run --no-masking -- <Bun JSON emitter>.
 // Installed op strings: `could not find field or file %s on item %s in vault %s`.
@@ -16,7 +17,7 @@ function generate(extra: Record<string, string> = {}) {
   const env = { ...process.env };
   for (const k of Object.keys(env)) if (isOpCredential(k)) delete env[k];
   const r = Bun.spawnSync([process.execPath, join(root, 'scripts/repogolem/repogolem-config.ts'), 'generate', '--config', config, '--out-dir', out, '--home', '/home/fixture'], {
-    env: { ...env, REPOGOLEM_TEST_MODE: '1', REPOGOLEM_SOURCE_SHA: '0'.repeat(40), REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'), FAKE_OP_LOG: log, FAKE_OP_CANARY: 'PROVIDER_ERROR_CANARY', FAKE_OP_SUFFIX: '\nSECRET_CANARY', ...extra }, stdout: 'pipe', stderr: 'pipe', timeout: 10000,
+    env: isolatedBunTestEnv({ ...env, REPOGOLEM_TEST_MODE: '1', REPOGOLEM_SOURCE_SHA: '0'.repeat(40), REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'), FAKE_OP_LOG: log, FAKE_OP_CANARY: 'PROVIDER_ERROR_CANARY', FAKE_OP_SUFFIX: '\nSECRET_CANARY', ...extra }), stdout: 'pipe', stderr: 'pipe', timeout: 10000,
   });
   const calls = existsSync(log) ? readFileSync(log, 'utf8') : '';
   const output = r.stdout.toString() + r.stderr.toString();
@@ -105,10 +106,18 @@ test('missing child import cannot contact the registry or create an install cach
     writeFileSync(wrapper, "await import('repogolem-missing-child-fixture');");
     writeFileSync(config, JSON.stringify({ projects: { fixture: { path: '/home/fixture', secrets: { TOKEN: 'op://example-vault/example-item/token' } } } }));
     const r = Bun.spawn([process.execPath, join(root, 'scripts/repogolem/repogolem-config.ts'), 'generate', '--config', config, '--out-dir', out], {
-      env: { PATH: process.env.PATH, HOME: home, BUN_CONFIG_REGISTRY: registry.url.toString(), BUN_INSTALL_CACHE_DIR: join(home, '.bun/install/cache'), REPOGOLEM_TEST_MODE: '1', REPOGOLEM_VARLOCK_BIN: wrapper, REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh') }, stdout: 'pipe', stderr: 'pipe',
+      env: isolatedBunTestEnv({ PATH: process.env.PATH, HOME: home, BUN_CONFIG_REGISTRY: registry.url.toString(), BUN_INSTALL_CACHE_DIR: join(home, '.bun/install/cache'), REPOGOLEM_TEST_MODE: '1', REPOGOLEM_VARLOCK_BIN: wrapper, REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh') }), stdout: 'pipe', stderr: 'pipe',
     });
     const [code] = await Promise.all([r.exited, new Response(r.stdout).text(), new Response(r.stderr).text()]);
     expect(code).toBe(2); expect(requests).toBe(0);
-    expect(existsSync(join(home, '.bun/install/cache'))).toBe(false); expect(existsSync(out)).toBe(false);
+    assertNoBunInstallCache(home); expect(existsSync(out)).toBe(false);
   } finally { registry.stop(true); }
+});
+
+test('install-cache absence guard rejects a synthetic package entry', () => {
+  assertNoBunInstallCache(dir);
+  const cache = join(dir, '.bun/install/cache');
+  mkdirSync(join(cache, 'fixture-package@1.0.0'), { recursive: true });
+  writeFileSync(join(cache, 'fixture-package@1.0.0/package.json'), '{"name":"fixture-package","version":"1.0.0"}');
+  expect(() => assertNoBunInstallCache(dir)).toThrow();
 });
