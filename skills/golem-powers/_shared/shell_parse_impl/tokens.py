@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from .quotes import ansi_c_quote
+from .quotes import ansi_c_quote, ansi_c_opens_at
 
 # Shell assignment token (`FOO=bar`, `FOO+=bar`, `FOO[0]=bar`) — used to
 # identify assignment words while preserving the base variable name. Array
@@ -78,7 +78,7 @@ def _shell_tokens(command):
             char = command[j]
             if char.isspace() or char in ";|()<> &":
                 return False
-            if command.startswith("$'", j):
+            if ansi_c_opens_at(command, j):
                 value, j = ansi_c_quote(command, j)
                 if value:
                     return True
@@ -110,7 +110,7 @@ def _shell_tokens(command):
 
     while i < n:
         c = command[i]
-        if command.startswith("$'", i):
+        if ansi_c_opens_at(command, i):
             buf, i = ansi_c_quote(command, i)
             cur += buf.replace("{", _QUOTED_LBRACE).replace("}", _QUOTED_RBRACE)
             continue

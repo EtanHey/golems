@@ -72,7 +72,7 @@ DEPENDENCIES = {
         '_strip_heredoc_bodies',
     ),
     'tool_targets': (
-        '_bash_temp_targets', 'in_temp_class',
+        '_bash_temp_targets', 'in_temp_class', 'ansi_c_readings', 'ansi_c_reading',
     ),
     'variables': (
         'BuiltinScan', '_ASSIGNMENT_RE', '_SIMPLE_VAR_RE', '_chain_status_after', '_is_separator',

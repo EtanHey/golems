@@ -6,7 +6,7 @@ import re
 
 from .substitutions import _backtick_substitution, _dollar_substitution
 from .tokens import _RAW_FOR_WORD_RE, _RAW_SHELL_TOKEN_RE
-from .quotes import ansi_c_quote
+from .quotes import ansi_c_quote, ansi_c_opens_at
 
 
 def builtin_alias_eligibility(source):
@@ -33,7 +33,7 @@ def builtin_alias_eligibility(source):
                 flush()
             i += 1
             continue
-        if quote is None and source.startswith("$'", i):
+        if quote is None and ansi_c_opens_at(source, i):
             value, i = ansi_c_quote(source, i)
             word.extend(value)
             alias_eligible = False
@@ -97,7 +97,7 @@ def shell_case_pattern(raw_pattern):
     escaped = False
     i = 0
     while i < len(raw_pattern):
-        if quote is None and not escaped and raw_pattern.startswith("$'", i):
+        if quote is None and not escaped and ansi_c_opens_at(raw_pattern, i):
             value, i = ansi_c_quote(raw_pattern, i)
             normalized.extend(
                 {"*": "[*]", "?": "[?]", "[": "[[]"}.get(char, char)

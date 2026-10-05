@@ -1,5 +1,52 @@
 """Consume ANSI-C quoted data without exposing its contents as shell syntax."""
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+_reading = ContextVar("golems_ansi_c_reading", default=None)
+
+
+def _preceding_dollars(source, start):
+    count = 0
+    index = start - 1
+    while index >= 0 and source[index] == "$":
+        slash = index - 1
+        while slash >= 0 and source[slash] == chr(92):
+            slash -= 1
+        if (index - slash - 1) % 2:
+            break
+        count += 1
+        index -= 1
+    return count
+
+
+def ansi_c_opens_at(source, start):
+    if not source.startswith("$'", start):
+        return False
+    return _reading.get() != "bash" or _preceding_dollars(source, start) % 2 == 0
+
+
+def ansi_c_readings(source):
+    active = _reading.get()
+    if active is not None:
+        return (active,)
+    index = 0
+    while True:
+        index = source.find("$'", index)
+        if index < 0:
+            return ("zsh",)
+        if _preceding_dollars(source, index) % 2:
+            return ("bash", "zsh")
+        index += 2
+
+
+@contextmanager
+def ansi_c_reading(reading):
+    token = _reading.set(reading)
+    try:
+        yield
+    finally:
+        _reading.reset(token)
 
 
 def ansi_c_quote(source, start):

@@ -150,6 +150,8 @@ try:
         from harness_paths import _temp_prefixes, is_harness_scratchpad  # noqa: E402
         from shell_parse import (  # noqa: E402
             _ASSIGNMENT_RE,
+            ansi_c_readings,
+            ansi_c_reading,
             _QUOTED_LBRACE,
             _QUOTED_RBRACE,
             _UNRESOLVED_EVAL_MARKER,
@@ -229,6 +231,16 @@ try:
             sys.dont_write_bytecode = _previous_bytecode
 except BaseException:
     _deny_policy_import_failure()
+
+
+# Captured readings share the original deadline. A provisional allow/deny must
+# not disarm it before the other reading has been checked.
+_capturing_reading = False
+_cancel_policy_deadline = cancel_policy_evaluation_deadline
+
+def cancel_policy_evaluation_deadline():
+    if not _capturing_reading:
+        _cancel_policy_deadline()
 
 
 def allow():
@@ -496,9 +508,42 @@ def _main_under_deadline():
 
 
 def main():
+    global _capturing_reading
     try:
         with policy_evaluation_deadline():
-            _main_under_deadline()
+            raw = sys.stdin.read()
+            try:
+                payload = json.loads(raw)
+                command = payload.get('tool_input', {}).get('command', '')
+            except (ValueError, AttributeError):
+                command = ''
+            readings = ansi_c_readings(command) if isinstance(command, str) else ('zsh',)
+            original_input = sys.stdin
+            captured = []
+            try:
+                for reading in readings:
+                    sys.stdin = StringIO(raw)
+                    with ansi_c_reading(reading):
+                        if len(readings) == 1:
+                            _main_under_deadline()
+                        output = StringIO()
+                        try:
+                            _capturing_reading = True
+                            with redirect_stdout(output):
+                                _main_under_deadline()
+                        except SystemExit as decision:
+                            captured.append((decision.code, output.getvalue()))
+                        finally:
+                            _capturing_reading = False
+                    if captured[-1][0] != 0:
+                        break  # deny dominates; another reading cannot allow it
+            finally:
+                sys.stdin = original_input
+                _capturing_reading = False
+            code, output = next((row for row in captured if row[0] != 0), captured[0])
+            cancel_policy_evaluation_deadline()
+            sys.stdout.write(output)
+            raise SystemExit(code)
     except PolicyEvaluationDeadlineExceeded as exc:
         deny(f"⛔ TMP-BLOCK: {exc}.")
 
@@ -506,6 +551,8 @@ def main():
 try:
     with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
         _package.bind(_impl_modules, _impl_exports,
+                      ansi_c_readings=ansi_c_readings,
+                      ansi_c_reading=ansi_c_reading,
                       _ASSIGNMENT_RE=_ASSIGNMENT_RE,
                       _QUOTED_LBRACE=_QUOTED_LBRACE,
                       _QUOTED_RBRACE=_QUOTED_RBRACE,
