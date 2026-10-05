@@ -1,7 +1,7 @@
 # Agent Handoff: QA Findings → Implementing Agent
 
 ## When to Use
-After processing a video and compiling findings, send them to an implementing agent (Codex, Claude worker, or other CLI agent) for fixes.
+After processing a video and compiling findings, hand them off for fixes. Routing: see `/agent-routing` § Routing rules (SSOT).
 
 ## Handoff Prompt Template
 

@@ -139,9 +139,9 @@ Round M (parallel with Phase X, Phase Y) OR Round M (sequential).
 
 ## Tools
 - **Gatherer:** `gemini.gather.text` (or `gemini.gather.visual`) → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Implementer:** `codex.implement` → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line> (UX/UI phases: `claude.judgment` implements, Codex reviews; security phases: Daybreak Blue implements, `claude.judgment` reviews; see canon #1)
-- **Reviewer / decisions:** `claude.judgment` (lead-routed) → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Lookup / pane mechanics / verifier:** `claude.subagent.cheap` → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Implementer:** <role selected via `/agent-routing` § Routing rules (SSOT)> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Reviewer / decisions:** <role selected via the routing pointer above> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Lookup / pane mechanics / verifier:** <role selected via the routing pointer above> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
 - **Config:** golems `standards/model-roles.json`; resolve each required field with `node scripts/model-roles.mjs <role> --field <field>`. Candidate roles require their bench gate before use.
 - **MCPs:** [list relevant MCP servers]
 
@@ -245,9 +245,9 @@ See [workflows/collab.md](workflows/collab.md) for the full protocol, mandatory 
 |---------|-------------|-------------------|
 | **Parallel phase agents** | `Agent(isolation="worktree", run_in_background=true)` | Pre-create worktrees, then launch repoGolem workers with `-w <abs-path>` |
 | **Phase worktree isolation** | `Agent(isolation="worktree")` — auto-creates + cleans up | `git worktree add -b feature/phase-N ../<dir> master`, then pass the absolute path |
-| **Collab file monitoring** | `CronCreate` or `/loop 5m` | `bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md && bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>` in a monitored long-running command session |
+| **Collab file monitoring** | Native Monitor per `/collab-monitor`; re-arm after expiry and compaction | `bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md && bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>` in a monitored long-running command session |
 | **Worker liveness** | Process-exit notification or a scheduled process/registry check | `skills/golem-powers/codex-workflows/scripts/codex-workflows.sh watch --run-id <run-id>`; read the finished log once, never poll `read_screen` |
-| **Cron cleanup (plan done)** | `CronDelete(<id>)` — mandatory | `bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh stop @<listen-name>` |
+| **Watch cleanup (plan done)** | `TaskStop` the returned Monitor task ID | `bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh stop @<listen-name>` |
 | **Plan mode (spec first)** | `EnterPlanMode → ExitPlanMode` | Write plan to `docs.local/plan/<name>/README.md` manually |
 | **Memory persistence** | `brain_store()` / `brain_search()` via BrainLayer | Append to `<plan-dir>/findings.md` |
 | **Session resume** | `claude --resume` | Not available — pass `<plan-dir>/README.md` in next session's context |

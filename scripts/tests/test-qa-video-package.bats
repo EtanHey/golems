@@ -15,7 +15,7 @@ local_references() {
   } | sed '/^$/d' | sort -u
 }
 
-@test "qa-video local references exist and scripts are executable" {
+@test "qa-video local references exist and shell entrypoints are executable" {
   failures=""
 
   while IFS= read -r relative_path; do
@@ -26,7 +26,8 @@ local_references() {
     target="$SKILL_DIR/$relative_path"
     if [ ! -f "$target" ]; then
       failures="${failures}missing: ${relative_path}"$'\n'
-    elif [[ "$relative_path" == scripts/* ]] && [ ! -x "$target" ]; then
+    # Python helpers are invoked with python3; only shell entrypoints need +x.
+    elif [[ "$relative_path" == scripts/* && "$relative_path" != *.py ]] && [ ! -x "$target" ]; then
       failures="${failures}not executable: ${relative_path}"$'\n'
     fi
   done <<< "$(local_references)"

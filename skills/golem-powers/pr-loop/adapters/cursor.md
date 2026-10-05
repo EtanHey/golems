@@ -1,13 +1,13 @@
 # Cursor CLI — pr-loop Adapter
 
-> Capability gaps for Cursor running the PR loop. Cursor is better for review/audit steps than implementation.
+> Capability gaps for Cursor running the PR loop. Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
 
 ## What Cursor CAN Do
 
 | Step | Command | Notes |
 |------|---------|-------|
 | Branch | `git checkout -b feat/name` | Full git access |
-| Implement | `cursor agent "PROMPT"` | File edits via agent mode |
+| Implement | See routing pointer above | Select the implementing role there |
 | Test | `bun test` or `npm test` | Shell access |
 | Commit | `git add <files> && git commit` | No cr review pre-check |
 | Push | `git push -u origin feat/name` | |
@@ -20,28 +20,24 @@
 | Gap | Impact | Workaround |
 |-----|--------|-----------|
 | No `cr review` pre-commit check | Commits without CodeRabbit pre-screening | Run `cr review --plain` manually if cr installed |
-| No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use shell polling loop |
-| No `CronCreate` | Can't schedule review polling | `for i in $(seq 1 6); do ... sleep 30; done` |
+| No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use routed review handoffs |
+| No native `Monitor` | Needs an attached watch consumer | `/collab-monitor` packaged fallback for handoffs; `gh pr checks <N> --watch` for CI |
 | No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |
 | No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |
 
-## Shell-Based Review Polling (Cursor workaround)
+## CI and Review Waiting
 
-```bash
-# Poll for CodeRabbit (max 3 min)
-for i in $(seq 1 6); do
-  review=$(gh api repos/EtanHey/golems/pulls/NUMBER/reviews \
-    --jq '.[] | select(.user.login == "coderabbitai") | .state' 2>/dev/null)
-  if [ -n "$review" ]; then echo "CodeRabbit: $review"; break; fi
-  sleep 30
-done
-```
+Use one `gh pr checks <N> --watch` call for CI completion. For addressed review
+handoffs, use the `/collab-monitor` packaged fallback with an attached consumer;
+re-arm at its 30-minute expiry and after compaction. Query slim state/activity
+counts and fetch full review bodies only when those change. Timed one-shot
+wakes follow `collab-monitor/references/cron-payloads.md` and the current schema.
 
 ## Cursor's Unique Advantage in the Loop
 
-Cursor's `@codebase` indexing makes it strong for the **review step**, even if it can't orchestrate
-the full loop. **The Cursor review pass is READ-ONLY** ([review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-review-pass-is-read-only)): report findings, never
-edit. Cursor or a Gemini gatherer gathers and verifies; Codex implements (canon #1).
+Cursor exposes `@codebase` indexing. The diff pass is read-only (review loop § 8a.2).
+For role ownership, use the routing pointer above;
+for the diff-pass procedure, see [review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only).
 
 ```bash
 # Read-only pre-PR audit — report only, zero Bugbot quota
@@ -50,7 +46,7 @@ cursor-agent -p --output-format text \
    Report findings only. Do NOT edit, create, or delete any file."
 ```
 
-Model selection is owned by fleet canon #1. If this pass exhausts the shared quota, report the dispatch as the cause, not
+If this pass exhausts the shared quota, report the dispatch as the cause, not
 the resulting `resource_exhausted` as an external finding (canon #3).
 
 Cursor **Bugbot** is a different thing and is **not** part of this pass: it is opt-in, core paths only
@@ -95,8 +91,5 @@ For worker endpoints, draft handling, and head verification, read
 
 ## Recommended Usage
 
-Use Cursor for pr-loop only when:
-- Repo is simple (no required review bots)
-- A Claude session handles post-merge BrainLayer updates
-
-**Best pattern:** Cursor implements + commits + pushes + creates PR → Claude handles review polling + merge + brain_store.
+Use the routing pointer above to select roles for the loop.
+Post-merge BrainLayer updates require a BrainLayer-capable session.

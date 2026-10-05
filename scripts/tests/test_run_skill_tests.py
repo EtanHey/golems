@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -80,14 +81,18 @@ def test_runner_also_runs_every_gate_eval_suite():
     assert "skills/golem-powers/false-green-gate/evals/run_suite.py" in listed
 
 
-def test_runner_runs_top_level_script_tests():
-    # N+1: scripts/test_precompact.py (a stdlib script, exit 0 = pass) sat at
-    # scripts/ top level where no CI job ran it.
+def test_runner_runs_top_level_script_tests(tmp_path):
+    # Isolate discovery from the inventory of production scripts.
+    runner = tmp_path / "scripts" / "ci" / RUNNER.name
+    runner.parent.mkdir(parents=True)
+    shutil.copy2(RUNNER, runner)
+    suite = tmp_path / "skills" / "golem-powers" / "example" / "tests"
+    suite.mkdir(parents=True)
+    (suite / "test_example.py").write_text("# discovery fixture\n")
+    fixture = tmp_path / "scripts" / "test_discovery_fixture.py"
+    fixture.write_text("raise SystemExit(0)\n")
     env = {**os.environ, "RUN_SKILL_TESTS_LIST_ONLY": "1"}
     result = subprocess.run(
-        [str(RUNNER)], cwd=ROOT, env=env, text=True, capture_output=True, check=True,
+        [str(runner)], cwd=tmp_path, env=env, text=True, capture_output=True, check=True,
     )
-    listed = set(result.stdout.splitlines())
-    on_disk = {str(path.relative_to(ROOT)) for path in (ROOT / "scripts").glob("test_*.py")}
-    assert "scripts/test_precompact.py" in on_disk
-    assert on_disk <= listed, sorted(on_disk - listed)
+    assert "scripts/test_discovery_fixture.py" in result.stdout.splitlines()

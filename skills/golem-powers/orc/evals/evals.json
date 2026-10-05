@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "I need to understand how the BrainBar daemon works. Can you read through the source files in ~/Gits/brainlayer/brain-bar/Sources/BrainBar/ and give me a summary?",
-      "expected_output": "Should query BrainLayer FIRST (brain_search) before reading any files. If BrainLayer has relevant info, use that. Only read files as a last resort, and if needed, spawn a haiku subagent to do the file reading.",
+      "expected_output": "Should query BrainLayer FIRST (brain_search) before reading any files. If BrainLayer has relevant info, use that. Only read files as a last resort, and if needed, follow /agent-routing § Routing rules (SSOT) to choose the file-reading gatherer.",
       "assertions": [
         {
           "text": "Calls brain_search before attempting to read any files",
@@ -19,18 +19,18 @@
           "type": "negative"
         },
         {
-          "text": "If file reading is needed, suggests spawning a subagent rather than reading directly",
+          "text": "If file reading is needed, follows /agent-routing § Routing rules (SSOT) to select a gatherer rather than bulk-reading directly",
           "type": "behavioral"
         }
       ]
     },
     {
       "id": 2,
-      "prompt": "I spawned 3 agents in cmux to work on different repos. I sent them their tasks with send_input and it returned ok:true for all 3. I'm going to take a shower now, be back in 20 min. Keep an eye on them.",
-      "expected_output": "Should: (1) NOT trust ok:true blindly — verify delivery with read_screen, (2) Set up CronCreate BEFORE telling user to go, (3) Include loop ID in response.",
+      "prompt": "I spawned 3 agents in cmux to work on different repos. I sent them their tasks with send_to and it returned delivery receipts for all 3. I'm going to take a shower now, be back in 20 min. Keep an eye on them.",
+      "expected_output": "Should: (1) NOT trust a delivery receipt blindly — verify delivery with read_screen, (2) Set up CronCreate BEFORE telling user to go, (3) Include loop ID in response.",
       "assertions": [
         {
-          "text": "Verifies prompt delivery with read_screen after send_input",
+          "text": "Checks send_to delivery receipts and verifies prompt delivery with read_screen",
           "type": "behavioral"
         },
         {

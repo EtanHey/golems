@@ -90,12 +90,11 @@ Trigger: Bugbot answered `usage limit reached` on skill-creator #51, a non-core 
 > to raise Cursor's cap, and offered him the reversal; no ratification or objection is on record.
 > If the cap is raised, this tiering is the clause to revisit.
 
-#### 8a.2 — The Cursor review pass is READ-ONLY
+#### 8a.2 — The Cursor diff pass is READ-ONLY
 
-When the loop wants Cursor's eyes on a diff, that is a `cursor-workflows` / `cursor-agent -p` **review**
-pass — never a write pass, never an implementation pass. Cursor or a Gemini gatherer gathers and
-verifies; Codex implements (canon #1). A Cursor pass that edits files inside the PR loop is a routing
-violation, not a shortcut.
+A Cursor pass reports findings only; it never edits files or pushes to the PR branch.
+
+Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
 
 ```bash
 # Read-only Cursor review — costs no Bugbot quota, needs no @mention
@@ -104,7 +103,6 @@ cursor-agent -p --output-format text \
    Report findings only. Do NOT edit, create, or delete any file."
 ```
 
-- Model selection is owned by fleet canon #1.
 - Because it spends no Bugbot quota, this pass is still available on a repo whose policy bans Bugbot
   (8a.0) and on a non-core diff where Bugbot is correctly off the panel.
 - If the pass exhausts Cursor's shared quota through its own dispatch, report **that dispatch** as the
@@ -116,8 +114,9 @@ ships; until then, sign them by hand like any other comment.
 
 Reviewer roster reality can degrade. If Greptile is unavailable, Cursor/Bugbot
 is billing-blocked, or CodeRabbit is rate-limited, do not burn dead mentions.
-Use Codex + Macroscope + `cr review --plain` before commit within this PR loop
-(not a substitute for the routed pair review), and document which reviewers were unavailable in the PR.
+Use the routing pointer in Step 8a.2 to select a replacement reviewer, retain the
+Macroscope + `cr review --plain` pre-commit checks (not a substitute for the routed
+pair review), and document which reviewers were unavailable in the PR.
 
 ### For private repos (no bot reviewers):
 
@@ -133,8 +132,16 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 
 ### For public repos (bot reviewers configured):
 
+Use native `Monitor` for CI completion and addressed review handoffs when the
+harness exposes it; otherwise use `/collab-monitor`'s packaged fallback with an
+attached consumer. Native calls use `timeout_ms: 1800000`; cancel with TaskStop
+and re-arm at expiry/after compaction. Use one `gh pr checks <N> --watch` command
+for CI. Query slim state/activity counts, then fetch full review bodies once
+when they change. Timed one-shot wakes remain ScheduleWakeup/CronCreate per
+`collab-monitor/references/cron-payloads.md`.
+
 ```bash
-# Poll for reviews (preferred: /loop 2m, or CronCreate */2, or manual sleep 90)
+# Fetch after a review handoff or activity-count change
 gh pr view <N> --comments
 ```
 
@@ -169,7 +176,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 |--------|------|----------------------|
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
-| Cursor (read-only pass) | Diff review through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — model selection: fleet canon #1; never a write pass (Step 8a.2). |
+| Cursor (diff pass) | Diff findings through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — see routing pointer in Step 8a.2. |
 | Cursor Bugbot | Bug detection — **opt-in, core paths only** | Not on the default panel (see Step 8a tiering) and never where repo policy bans it (Step 8a.0). On a daemon/engine/transport diff: `gh pr comment <N> --body "@cursor @bugbot review"`. Re-review after fixes: `gh pr comment <N> --body "@cursor @bugbot re-review"`. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | Check via CI status |

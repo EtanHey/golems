@@ -23,7 +23,7 @@
 |-----|--------|-----------|
 | No `cr review` pre-commit check | Commits without CodeRabbit pre-screening | Run `cr review --plain` manually if cr is installed |
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Slim-poll review state (see CI + Review Waiting below) |
-| No `CronCreate` | Can't schedule review polling | `gh pr checks <N> --watch` blocks for CI — no scheduling, no sleep loops |
+| No native `Monitor` | Needs an attached watch consumer | `gh pr checks <N> --watch` for CI; `/collab-monitor` packaged fallback for addressed handoffs |
 | No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |
 | No native review-bot tool | Can't invoke Codex Cloud or Cursor Bugbot through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens, filtered by the repo's bot policy |
 | No `AGENTS.md` bot-policy check in the loop | Can summon a bot the target repo bans | Read the target repo's `AGENTS.md` PR-workflow section BEFORE the first `@mention` ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)), and name the applied policy in the PR body |
@@ -65,9 +65,8 @@ gh pr comment <N> --body "@cursor @bugbot review"      # core paths ONLY — opt
 gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed round 1
 ```
 
-A cheaper Cursor pass with no Bugbot quota cost is the read-only `cursor-agent -p` review
-([review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-review-pass-is-read-only)) —
-model selection is owned by fleet canon #1; findings only, never a write pass.
+Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
+Diff-pass procedure: [review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only).
 
 ## CI + Review Waiting (Codex — NO sleep-poll loops)
 
@@ -102,6 +101,11 @@ Rules:
   `reviewDecision` — which stays empty on self-account repos.
 - Fetch full `comments,reviews,latestReviews` exactly once, when a state
   field changes or a count increases — never inside a poll cycle.
+
+For addressed review handoffs, arm the `/collab-monitor` packaged fallback with
+an attached consumer and bounded 30-minute re-arm. Respect engine mailbox
+contracts. Timed one-shot wakes use the current harness schema; see
+`collab-monitor/references/cron-payloads.md`.
 
 ## Agent Identity Signature — Codex read paths (ratified 2026-08-08)
 
@@ -153,4 +157,4 @@ Use Codex for pr-loop ONLY when:
 - A Claude session can handle post-merge BrainLayer updates
 - `gh` CLI is installed and authenticated in the environment
 
-**Best pattern:** Codex implements + opens the PR + triggers review bots through `gh` + watches CI with `gh pr checks --watch` + slim-polls review state; use a Claude session only when you need post-merge BrainLayer tracking.
+**Loop mechanics:** Open the PR, trigger review bots through `gh`, watch CI with `gh pr checks --watch`, and slim-poll review state. Use the routing pointer above for role ownership and a BrainLayer-capable session for post-merge tracking.

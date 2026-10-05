@@ -58,6 +58,5 @@ packages/coach/
 ## Dependencies
 
 - `@golems/shared` — Supabase, state store, LLM
-- `@golems/recruiter` — `getStatus()` for outreach counts
 - `@golems/teller` — `getStatus()` for financial summary
 - `googleapis` — Google Calendar API v3

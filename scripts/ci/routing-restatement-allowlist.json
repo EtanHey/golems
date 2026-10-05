@@ -1,0 +1,1398 @@
+{
+  "description": "CX37 reviewed baseline. Exact trimmed hit-line markers; counts cap repeated content. POINTER rows are temporary ssot-sweep debt removed by 3b/3c; other classes are permanent with reasons. No whole-file exemptions.",
+  "exclusions": [
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "> Every non-Cursor spawn pins its model explicitly (canon #5); a non-default model such as Fable is used only by explicit per-invocation selection, never inherited. Routing: see `/agent-routing` \u00a7 Routing rules (SSOT).",
+      "class": "FUNCTIONAL",
+      "reason": "the gate's own enforced contract, canon #5",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/build-new-domain.md",
+      "marker": "- `cascade-opus`: single-judge outlier with high agreement among the other two \u2192 adjudication resolves. Routing: see `/agent-routing` \u00a7 Routing rules (SSOT).",
+      "class": "FUNCTIONAL",
+      "reason": "Retained cascade-opus/cascade-opus-resolved parser and resolution_method tokens; model choice has been replaced with the routing SSOT.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "The adjudicator's label replaces the consensus label; `resolution_method` becomes `cascade-opus-resolved`; `notes` records the cascade rationale verbatim.",
+      "class": "FUNCTIONAL",
+      "reason": "Retained cascade-opus/cascade-opus-resolved parser and resolution_method tokens; model choice has been replaced with the routing SSOT.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/SKILL.md",
+      "marker": "| `--pending-rt-cascade` | `opus-4-7` | Functional queue-routing token accepted by the parser; v1 queues rows without dispatching a model. |",
+      "class": "FUNCTIONAL",
+      "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/SKILL.md",
+      "marker": "Its original recipe said \"cheap Opus resolves\"; current adjudication uses the role above.",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/references/judge-panel.md",
+      "marker": "| claudeJudge | Anthropic Claude (Opus class) | Balanced calibration anchor + tiebreaker | Mean confidence 86.6 (not overconfident); 0 hallucinations on Runs 2/3/4; cleanest reasoning_short prose. |",
+      "class": "DATA",
+      "reason": "historical judge-family attribution beside measured Runs 2/3/4 results",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/references/judge-panel.md",
+      "marker": "| codexJudge | OpenAI GPT (Codex/GPT-5 class) | Most independent voter | Mean pairwise \u03ba = 0.48 \u2014 lowest in panel. Catches FM11 \u00d7 17 + FM8 \u00d7 3 uniquely (not flagged by any other judge). |",
+      "class": "DATA",
+      "reason": "historical judge-family attribution beside measured Runs 2/3/4 results",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/references/prior-runs.md",
+      "marker": "- **Notes**: High pending-RT density was the W3.3 motivation. Most cascade-opus resolved cleanly.",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/build-new-domain.md",
+      "marker": "--cascade opus-4-7 \\",
+      "class": "FUNCTIONAL",
+      "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/build-new-domain.md",
+      "marker": "After cascade resolves, `gold.jsonl` is rewritten in place with the resolved labels and `resolution_method` updated to `cascade-opus-resolved` (etc.).",
+      "class": "FUNCTIONAL",
+      "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/build-new-domain.md",
+      "marker": "cascade-opus-resolved: 5",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "THEN route = cascade-opus",
+      "class": "FUNCTIONAL",
+      "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "--cascade opus-4-7 \\",
+      "class": "FUNCTIONAL",
+      "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "3. Updates `gold.jsonl` in place for `cascade-opus` and `discard-fm14` routes.",
+      "class": "FUNCTIONAL",
+      "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "## Cascade-opus mechanics",
+      "class": "FUNCTIONAL",
+      "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "Override the default `cascade opus-4-7` only when:",
+      "class": "FUNCTIONAL",
+      "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "| 1 | TechGym | 1 | cascade-opus (1) |",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "| 2 | Freelance | 3 | cascade-opus (3) |",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "| 3 | Recruiting | 9 | cascade-opus (8), etan (1) |",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "So 12 cascade-opus, 1 etan, 1 discard. Expect similar proportions on new domains; if pending-RT density > 20% of corpus rows, the rubric mismatch with the domain is the real issue (run `workflows/add-domain.md`).",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/run-bench.md",
+      "marker": "- **codex-as-outlier in pending-RT**: 12 of 13 pending-RT cases across all runs have codex as the lone outlier (typically on FM6-PreCompact). The W3.3 cascade-to-opus default resolves these cheaply.",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/audio-dashboard/SKILL.md",
+      "marker": "evals/fixtures/calibration/2026-07-17-fable-blind-weave-transcript-fidelity.json`.",
+      "class": "DATA",
+      "reason": "Preserve dated calibration artifact name and evidence; not model selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/audio-dashboard/SKILL.md",
+      "marker": "The 33-scene `fable-blind-weave-2026-07-15` calibration has zero false trips:",
+      "class": "DATA",
+      "reason": "Preserve dated calibration artifact name and evidence; not model selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/audio-dashboard/SKILL.md",
+      "marker": "bun evals/generate-onset-energy-calibration.mjs --job <job.json> --out evals/fixtures/calibration/2026-07-17-fable-blind-weave-onset-energy.json",
+      "class": "DATA",
+      "reason": "Preserve dated calibration artifact name and evidence; not model selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/claude-desktop-research/SKILL.md",
+      "marker": "3. Optionally mirror to `$ORCHESTRATOR_ROOT/docs.local/claude-desktop/projects/<project>/` for local review",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/claude-desktop-research/workflows/fast-batch.md",
+      "marker": "- The model selector (Opus 4.6 Extended) DOES persist",
+      "class": "FALSE POSITIVE",
+      "reason": "Browser selector persistence behavior; not a recommended model.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/claude-desktop-research/workflows/harvest-results.md",
+      "marker": "> **Source:** claude.ai Research (Opus 4.6 Extended)",
+      "class": "DATA",
+      "reason": "Preserve worked research-output attribution template; not model selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/cmux-agents/adapters/claude.md",
+      "marker": "- `-S` / `--sonnet` is a legacy model selector, refused for full panes; resolve roles for new commands",
+      "class": "FALSE POSITIVE",
+      "reason": "Legacy selector refusal describes launcher compatibility; not a recommended model choice.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/cmux-agents/adapters/cursor.md",
+      "marker": "Trigger on PRs: `@cursor @bugbot review` (as PR comment)",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/cmux-agents/adapters/cursor.md",
+      "marker": "- PR review bot (`@cursor @bugbot review`)",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/cmux-agents/references/delivery-and-recovery.md",
+      "marker": "> when they're Fable, make sure they're not creating Fable sub-agents and workflows full of Fables",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/cmux-agents/workflows/prompt-audit.md",
+      "marker": "| Research/audit | Claude Desktop/Gemini research path, `/coderabbit:review` |",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coach/agents/coach-mail.md",
+      "marker": "model: sonnet",
+      "class": "FUNCTIONAL",
+      "reason": "Agent frontmatter model is parsed by harness and checked against role config; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/INSTALL_PROMPT.md",
+      "marker": "> Use when reviewing uncommitted changes, preparing PRs, requesting or receiving code review, handling reviewer comments, checking security/secrets/a11y/code quality, or deciding whether to accept or reject reviewer feedback. Runs AI review via CLI and covers review triage, false-positive pushback, red/blue team profiles, PR-ready gates. NOT for: runtime debugging or test execution.",
+      "class": "FALSE POSITIVE",
+      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/INSTALL_PROMPT.md",
+      "marker": "-o ~/.claude/skills/coderabbit/workflows/review.md",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/INSTALL_PROMPT.md",
+      "marker": "-o ~/.claude/skills/coderabbit/scripts/review.sh",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/SKILL.md",
+      "marker": "coderabbit review --agent   # Codex/AI-agent local review output",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/SKILL.md",
+      "marker": "## Local Review Gate (Codex)",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/SKILL.md",
+      "marker": "In Codex environments, use `coderabbit review --agent` (not `--plain`) for the local review gate.",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/SKILL.md",
+      "marker": "| [blue-team](workflows/blue-team.md) | Architecture/quality/maintainability review profile |",
+      "class": "FALSE POSITIVE",
+      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/SKILL.md",
+      "marker": "to the red-team / blue-team prompt review** (`references/red-team-prompt.md`,",
+      "class": "FALSE POSITIVE",
+      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/references/blue-team-prompt.md",
+      "marker": "# Blue Team Review \u2014 Quality System Prompt",
+      "class": "FALSE POSITIVE",
+      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/references/blue-team-prompt.md",
+      "marker": "You are a Blue Team quality reviewer. Your job is to ensure this code SHOULD be deployed. You evaluate whether it meets the bar for maintainability, correctness, and production readiness.",
+      "class": "FALSE POSITIVE",
+      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/workflows/blue-team.md",
+      "marker": "# Blue Team Review Workflow",
+      "class": "FALSE POSITIVE",
+      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/workflows/blue-team.md",
+      "marker": "- `cursor` CLI installed and authenticated",
+      "class": "FALSE POSITIVE",
+      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/coderabbit/workflows/red-team.md",
+      "marker": "- `cursor` CLI installed and authenticated",
+      "class": "FALSE POSITIVE",
+      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/codex-workflows/evals/results/audit-2026-08-02.md",
+      "marker": "- Four real two-worker Luna/xhigh fanouts pass and their harvested logs are",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/collab-monitor/evals/fixtures/addressed-event-two.md",
+      "marker": "### @reviewer \u2192 @skillcreator \u2014 codex-workflows PR #644 round 2 at `e8db3f9f`: **ACCEPT**",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/collab-monitor/evals/fixtures/addressed-event.md",
+      "marker": "### @golemsCodex \u2192 @skillcreator \u2014 agent-routing effort diff ready for routed Claude review (2026-08-02 17:15:50 IDT)",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/collab-monitor/references/cron-payloads.md",
+      "marker": "That means the payload should render live facts before Claude reasons about them. Claude should see current data, not a baked claim like `BLOCKED REVIEW_REQUIRED`.",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/results/round2-served-run/report.md",
+      "marker": "- Accepted preflight model: `gpt-5.6-luna`",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/results/round2-served-run/report.md",
+      "marker": "| authorized_round_2_served | gpt-5.6-luna | gpt-5.6-luna | max | CLI status line: round2-served-run/pin-preflight.log lines 7-13; 1 preflight observation applied to 7 workers by construction; per-worker banners are not emitted under --json | CLI status line: round2-served-run/pin-preflight.log lines 7-13; 1 preflight observation applied to 7 workers by construction; per-worker banners are not emitted under --json |",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "Status: SKIPPED \u2014 CodeRabbit local auth server could not bind in the sandbox; fell back to an independent Claude Sonnet 5 review.",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "- CRITICAL: known-answer unit fixture proves aggregation but not live Luna discovery \u2014 ACCEPTED (blocks merge until `run_live_eval.py` produces a passing real-run artifact)",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "- HIGH: effective-pin banner format lacks a live Luna/max capture \u2014 ACCEPTED (the parser fails closed; the live eval must verify the real banner before merge)",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "## Iteration 2 Claude pair review",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "Reviewer artifact: `/opt/private/coordination/docs.local/reviews/2026-08-02-convention-audit/claude-pair-rereview.md`",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "- Clean isolated control: PASS \u2014 3/3, zero findings, contamination marker present, Luna/max,",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "target state unchanged, Luna/max, no fallback, 18,986 output tokens, 184.544 seconds.",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "by `@skillcreator` and is not replaced by the local Claude pair-review ACCEPT.",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/convention-audit/evals/review-disposition-log.md",
+      "marker": "- No new live Luna calls were spent.",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/frustration-capture/SKILL.md",
+      "marker": "| `routing-violation` | Wrong agent/tool for the task | \"Cursor is for gathering, not implementing\" |",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/gemini-research/SKILL.md",
+      "marker": "| **Flow** | Paste prompt \u2192 Gemini produces a research PLAN \u2192 **review + Edit the plan** \u2192 **Start Research** \u2192 wait \u2192 read report |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/golem-install/SKILL.md",
+      "marker": "`bun <golem-install-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`",
+      "class": "FUNCTIONAL",
+      "reason": "Describes install-codex-config rendering the role SSOT into model settings while preserving other config; installer behavior, not routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/large-plan/SKILL.md",
+      "marker": "| Research X | gemini | done |",
+      "class": "FALSE POSITIVE",
+      "reason": "Illustrative status/collab row; clause scanner bleeds from adjacent table text.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/large-plan/adapters/cursor.md",
+      "marker": "@cursor @bugbot review",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/large-plan/adapters/cursor.md",
+      "marker": "Re-review after fixes: `@cursor @bugbot re-review`",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/large-plan/workflows/collab.md",
+      "marker": "| agentB | `gemini.gather.text` | 2, 4 | $HOME/Gits/repo-b | idle |",
+      "class": "FALSE POSITIVE",
+      "reason": "Illustrative status/collab row; clause scanner bleeds from adjacent table text.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/large-plan/workflows/execute-phase.md",
+      "marker": "**Why:** Bot reviewers (CodeRabbit, Cursor Bugbot) take 10-20 minutes. Local audit catches the same issues in one pass, reducing fix-push-wait cycles.",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/large-plan/workflows/execute-phase.md",
+      "marker": "Wait ~20 min for reviewers (CodeRabbit, Cursor Bugbot, DeepSource). Start next phase prep while waiting.",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "description: \"PreToolUse guard: unpinned Fable-seat spawns and sub-apex Fable targets block. Triggers: model pin, Fable seat, spawn.\"",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "Fable.",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "| `Agent`, `Task`, or `Workflow` explicitly targeting Fable from a non-apex seat | BLOCK: `MODELPIN_FABLE_BELOW_APEX` |",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "| cmux `spawn_agent`, `dispatch_to_agent`, or `new_split` targeting Fable from a non-apex seat | BLOCK: `MODELPIN_CMUX_FABLE_TARGET` |",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "| explicit Fable target from `orchestrator`, `orc`, or `skillcreatorLead` | PASS |",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "| explicit non-Fable model (`opus`, `sonnet`, `haiku`, or another explicit non-Fable model) | PASS |",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "| `Workflow` script pins Fable, apex seat, before `WEEKLY_RESET_AT` | ADVISORY: `MODELPIN_FABLE_IN_WORKFLOW` (Etan 2026-09-05 amnesty) |",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "| `Workflow` script pins Fable, any seat, after `WEEKLY_RESET_AT` | FLAG: `MODELPIN_FABLE_IN_WORKFLOW` (07-18 law) |",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "| `Agent`/`Task` pins Fable from an apex seat, before / after `WEEKLY_RESET_AT` | ADVISORY / FLAG: `MODELPIN_FABLE_SUBAGENT` |",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "| `Agent`/`Task`/`Workflow` targets Fable from a non-apex seat (any date) | FLAG: `MODELPIN_FABLE_BELOW_APEX` |",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "\"tool_input\": { \"model\": \"opus\", \"prompt\": \"...\" }",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "the transcript. If the model is absent or unreadable and no explicit Fable",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "- Explicit Fable targets are allowed only when the payload carries an apex seat",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
+      "marker": "Fable targets.",
+      "class": "FUNCTIONAL",
+      "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/never-fabricate/SKILL.md",
+      "marker": "- Claude claimed \"3 models validated, all complete and correct\" without reading the file",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/never-fabricate/evals/fixtures/audit-model-a.md",
+      "marker": "# Audit: Input Validation \u2014 Model A (GPT-5.2)",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/never-fabricate/evals/fixtures/audit-model-c.md",
+      "marker": "# Audit: Input Validation \u2014 Model C (Claude Opus 4)",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/never-fabricate/references/rules.md",
+      "marker": "| \"LIVE EVAL complete, Sonnet agent tested\" | No new cmux surfaces spawned. Eval was simulated. | User asked \"did it test on real tabs?\" |",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/orc/agents/orc-helper.md",
+      "marker": "model: sonnet",
+      "class": "FUNCTIONAL",
+      "reason": "Agent frontmatter model is parsed by harness and checked against role config; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/orc/agents/templates/entity-grill.md",
+      "marker": "model: opus",
+      "class": "FUNCTIONAL",
+      "reason": "Agent frontmatter model is parsed by harness and checked against role config; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/orc/agents/templates/orc.md",
+      "marker": "model: opus",
+      "class": "FUNCTIONAL",
+      "reason": "Agent frontmatter model is parsed by harness and checked against role config; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/SKILL.md",
+      "marker": "`codex.implement`, and the separately declared R3 Fable 5 seat. Never use background subagents.",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/SKILL.md",
+      "marker": "- Pin every seat explicitly and verify the effective model from the pane. The Fable seat uses raw",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/SKILL.md",
+      "marker": "`claude --dangerously-skip-permissions --model claude-fable-5` because the repoGolem launcher cannot express it.",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/ballots-green/r1-opus.md",
+      "marker": "\u2014 R1 \u00b7 opus \u00b7 Claude Code",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/ballots-green/r2-sol.md",
+      "marker": "\u2014 R2 \u00b7 sol \u00b7 Codex",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/ballots-green/r3-fable.md",
+      "marker": "\u2014 R3 \u00b7 fable \u00b7 Claude CLI",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/ballots-red/r1-opus.md",
+      "marker": "\u2014 R1 \u00b7 opus \u00b7 Claude Code",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/ballots-red/r2-sol.md",
+      "marker": "\u2014 R2 \u00b7 sol \u00b7 Codex",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/ballots-red/r3-fable.md",
+      "marker": "\u2014 R3 \u00b7 fable \u00b7 Claude CLI",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/green-ballot.md",
+      "marker": "\u2014 R1 \u00b7 opus \u00b7 Claude Code",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/real-ballots/r1-opus.md",
+      "marker": "## R1 (Claude / Opus 5, 1M) \u2014 REAL round 2 \u00b7 plan v2 \u00b7 scored 2026-08-09 09:2xZ",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/real-ballots/r1-opus.md",
+      "marker": "\u2014 R1 \u00b7 Claude/Opus 5 (1M) \u00b7 council seat, review role \u00b7 Claude Code harness",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/real-ballots/r3-fable.md",
+      "marker": "### @council-R3 (Fable, voting seat) \u2192 REAL round 2 \u2014 migration plan v2 (2026-08-09 12:2x IDT)",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/real-ballots/r3-fable.md",
+      "marker": "\u2014 R3 \u00b7 council voting seat \u00b7 claude/fable-5",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/real-collab.md",
+      "marker": "### @council-R3 (Fable, voting seat) \u2192 REAL round 2 \u2014 migration plan v2 (2026-08-09 12:2x IDT)",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/real-collab.md",
+      "marker": "\u2014 R3 \u00b7 council voting seat \u00b7 claude/fable-5",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/real-collab.md",
+      "marker": "## R1 (Claude / Opus 5, 1M) \u2014 REAL round 2 \u00b7 plan v2 \u00b7 scored 2026-08-09 09:2xZ",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/real-collab.md",
+      "marker": "\u2014 R1 \u00b7 Claude/Opus 5 (1M) \u00b7 council seat, review role \u00b7 Claude Code harness",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 2
+    },
+    {
+      "file": "skills/golem-powers/plan-council/fixtures/red-ballot.md",
+      "marker": "\u2014 planAuthor \u00b7 fable",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/seat-briefs.md",
+      "marker": "## R3 \u2014 Fable 5",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/seat-briefs.md",
+      "marker": "You are R3, an independent Fable 5 voting judge in a plan council.",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/seat-briefs.md",
+      "marker": "MODEL PIN: this seat MUST be launched with the raw command `claude --dangerously-skip-permissions --model claude-fable-5`; if the",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/seat-briefs.md",
+      "marker": "live pane does not report Fable 5, stop and report MODEL_PIN_MISMATCH_R3.",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/seat-briefs.md",
+      "marker": "Signature: \u2014 R3 \u00b7 fable \u00b7 Claude CLI",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/seat-briefs.md",
+      "marker": "Launch: `claude --dangerously-skip-permissions --model claude-fable-5 \"Read and follow [R3_BRIEF_PATH]\"`.",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/worked-example.md",
+      "marker": "| R1 | Opus | deploy truth 25; data safety/reversibility 20; diagnosis fidelity 20; sequencing and gate integrity 15; scope completeness 10; human-cost realism 10 |",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/worked-example.md",
+      "marker": "| R3 | Fable | receipt fidelity 25; gate soundness 25; blast-radius control 20; sequencing 15; ratification traceability 15 |",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/worked-example.md",
+      "marker": "The reviewed plan was Fable-authored.",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/references/worked-example.md",
+      "marker": "| Lane | Fable same-family | Opus | Codex | Conservative non-family | Same-family delta |",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/workflows/run-council.md",
+      "marker": "2. Create 3 visible cmux panes. Use repo launchers for the judgment and implement roles; use the separate raw Fable command.",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/workflows/run-council.md",
+      "marker": "| R2 | `codex.implement` | `<repo>Codex -s -m \"$(node scripts/model-roles.mjs codex.implement --field model)\" -E \"$phase_effort\" \"Read and follow <R2-brief-path>\"`; verify model and phase effort. |",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/plan-council/workflows/run-council.md",
+      "marker": "| R3 | Fable 5 | `claude --dangerously-skip-permissions --model claude-fable-5 \"Read and follow <R3-brief-path>\"`. |",
+      "class": "FUNCTIONAL",
+      "reason": "plan-council seat/launch contract; the R3 Fable seat is an explicit per-invocation selection (canon #5); R2 resolves via model-roles.mjs",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/INSTALL_PROMPT.md",
+      "marker": "mkdir -p ~/.claude/skills/pr-loop/references",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/claude.md",
+      "marker": "## Review Polling Options (Claude-specific)",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/claude.md",
+      "marker": "\"$JSONL\" | tail -1)                                                   # e.g. claude-opus-5",
+      "class": "DATA",
+      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/claude.md",
+      "marker": "`08d077d1` (orchestrator) contains **three different models in one file** \u2014 `claude-fable-5`,",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/claude.md",
+      "marker": "`claude-opus-4-8`, and `claude-opus-5` \u2014 because Etan switched models mid-session. A value read at",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/claude.md",
+      "marker": "- `--worktree` isolation \u2014 `claude --worktree feat/name` for parallel PRs",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "> Capability gaps for Codex running the PR loop. Codex can handle git/gh ops and shell-trigger GitHub reviews, but it lacks native review tooling and BrainLayer access.",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "| Trigger review bots | `gh pr comment <N> --body \"@codex review\"` | Shell path, not a native reviewer tool |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "| Trigger Bugbot | `gh pr comment <N> --body \"@cursor @bugbot review\"` | **Opt-in, core paths only** ([review loop \u00a7 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (\u00a7 8a.0). Not part of the default panel. Re-review with `@cursor @bugbot re-review` |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "| No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "## Shell Review Triggers (Codex fallback)",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "grep -n -i 'bugbot\\|greptile\\|coderabbit\\|codex review\\|do not route' AGENTS.md CLAUDE.md 2>/dev/null",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "# Trigger the standard review stack from a Codex session (subject to that policy)",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "gh pr comment <N> --body \"@codex review\"",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "gh pr comment <N> --body \"@cursor @bugbot review\"      # core paths ONLY \u2014 opt-in",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "## CI + Review Waiting (Codex \u2014 NO sleep-poll loops)",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "Codex, Bugbot) whose findings land as comments WITHOUT changing",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "MODEL=$(jq -r 'select(.payload.type==\"turn_context\") | .payload.model' \"$ROLL\" | tail -1)  # e.g. gpt-5.6-sol",
+      "class": "DATA",
+      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "Use Codex for pr-loop ONLY when:",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/cursor.md",
+      "marker": "| No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/cursor.md",
+      "marker": "| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed \u2014 Bugbot is **opt-in, core paths only** ([review loop \u00a7 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (\u00a7 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md",
+      "marker": "> when they're Fable, make sure they're not creating Fable sub-agents and workflows full of Fables",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "\u2014 brainlayerClaude (lead) \u00b7 claude-code/opus-4.6",
+      "class": "DATA",
+      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "<!-- golem-id v1 {\"seat\":\"brainlayerClaude\",\"role\":\"lead\",\"harness\":\"claude-code\",\"model\":\"claude-opus-4.6\",\"model_source\":\"session-jsonl\",\"session\":\"db7f3bb9\",\"ts\":\"2026-08-08T18:40:00Z\"} -->",
+      "class": "DATA",
+      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "> boot a maintenance Claude or orc Claude with a model of fable without me changing the model \u2014 I",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "orchestrator session JSONL (`08d077d1`) carries `claude-fable-5`, `claude-opus-4-8`, and",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "`claude-opus-5` turns in the same file. A boot-time read would have mis-signed most of it.",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "Co-Authored-By: brainlayerClaude running claude-opus-4.6 <noreply@anthropic.com>",
+      "class": "DATA",
+      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "| 1 | Self-reported model | `\"model\":\"gpt-5.4\"` because the agent believes it is GPT-5.4 | Read the session record; `/agent-routing` `references/model-and-effort.md` \u00a7 Dispatch and Verification owns runtime proof |",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "| 3 | Cached-at-spawn model | signature says `fable` all session after Etan switched to Opus | Re-read per invocation |",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/pr-creation.md",
+      "marker": "\u21b3 Codex env: run `coderabbit review --agent` with a ~3 minute",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/pr-creation.md",
+      "marker": "\u2014 golemsClaude (lead) \u00b7 claude-code/opus-4.6",
+      "class": "DATA",
+      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/pr-creation.md",
+      "marker": "<!-- golem-id v1 {\"seat\":\"golemsClaude\",\"role\":\"lead\",\"harness\":\"claude-code\",\"model\":\"claude-opus-4.6\",\"model_source\":\"session-jsonl\",\"session\":\"db7f3bb9\",\"ts\":\"2026-08-08T18:40:00Z\"} -->",
+      "class": "DATA",
+      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "grep -n -i 'bugbot\\|greptile\\|coderabbit\\|codex review\\|do not route' AGENTS.md CLAUDE.md 2>/dev/null",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "- `Bot policy: brainlayer AGENTS.md (\"do not route mandatory reviews to Bugbot or Greptile\") \u2192 panel = CodeRabbit + Codex.`",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "gh pr comment <N> --body \"@codex review\"",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 2
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "gh pr comment <N> --body \"@cursor @bugbot review\"   # core paths ONLY \u2014 opt-in",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "# Read-only Cursor review \u2014 costs no Bugbot quota, needs no @mention",
+      "class": "FUNCTIONAL",
+      "reason": "Read-only Cursor review command (Auto, no model flag per canon #1); review mechanics, not implementer/reviewer routing.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "coderabbit review --agent  # Codex env, bounded to ~3 minutes",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "| CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "| Codex Cloud | AI code review | `gh pr comment <N> --body \"@codex review\"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md \"Review guidelines\". Flags P0/P1 by default. |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "| Cursor Bugbot | Bug detection \u2014 **opt-in, core paths only** | Not on the default panel (see Step 8a tiering) and never where repo policy bans it (Step 8a.0). On a daemon/engine/transport diff: `gh pr comment <N> --body \"@cursor @bugbot review\"`. Re-review after fixes: `gh pr comment <N> --body \"@cursor @bugbot re-review\"`. Bot responds as `cursor[bot]`. |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/qa-video/agents/qa-video-runner.md",
+      "marker": "model: sonnet",
+      "class": "FUNCTIONAL",
+      "reason": "Agent frontmatter model pin required by fleet canon #5; Claude Code reads it to select the model; role SSOT is the role: line.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/qa-video/agents/visual-gatherer.md",
+      "marker": "model: sonnet",
+      "class": "FUNCTIONAL",
+      "reason": "Agent frontmatter model is parsed by harness and checked against role config; preserve behavior.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/repogolem/SKILL.md",
+      "marker": "- `-s` = skip permissions. For Codex it is a compatibility no-op; `golem-install` validates `approval_policy = \"never\"` and `sandbox_mode = \"danger-full-access\"` in host config. Capital `-S`/`--sonnet` is a separate Claude-only model request and is refused for full panes.",
+      "class": "FALSE POSITIVE",
+      "reason": "Legacy selector refusal describes launcher compatibility; not a recommended model choice.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/repogolem/SKILL.md",
+      "marker": "# claude.subagent.cheap: resolve alias for an Agent child; not a visible full pane",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/reviewer-order-gate/SKILL.md",
+      "marker": "| (b) on a cloud-session branch (`claude/\u2026`) | as above, and the head commit is \u226510 min old. Cloud sessions write no DONE marker, so for them done = head stable \u226510 min + checks finished |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/SKILL.md",
+      "marker": "| `session-miner` | `agents/session-miner.md` (model: inherit) | `agents/session-miner.toml` (model: gpt-5.3-codex-spark) | [mine-session.md](workflows/mine-session.md) |",
+      "class": "FUNCTIONAL",
+      "reason": "documents the packaged agent's actual TOML model metadata",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/adapters/claude.md",
+      "marker": "| Workflow | Typical cost (Opus 4.7) | Notes |",
+      "class": "DATA",
+      "reason": "Preserve comparative cost table; no dispatch/model instruction.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/alias-mention-with-provenance-2026-08-04.md",
+      "marker": "| with_skill | sonnet | claude-sonnet-5 | high | CLI status line | CLI status line |",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/compliant.md",
+      "marker": "| baseline | sonnet | claude-sonnet-5 | high | session JSONL `model` field | CLI status line |",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/compliant.md",
+      "marker": "| with_skill | sonnet | claude-sonnet-5 | high | API response metadata | API response metadata |",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/markdown-extra-column.md",
+      "marker": "| with_skill | sonnet | claude-sonnet-5 | high | CLI status line | CLI status line | clean run |",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/missing-provenance.md",
+      "marker": "The coordinator used six Sonnet sub-agents and the run passed every assertion.",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/not-determined-score-not-calculated.md",
+      "marker": "| static_review | sonnet | NOT DETERMINED | NOT DETERMINED | NOT DETERMINED \u2014 no runtime session existed | NOT DETERMINED \u2014 no runtime session existed |",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/not-determined-with-delta.md",
+      "marker": "| static_review | sonnet | NOT DETERMINED | NOT DETERMINED | NOT DETERMINED \u2014 no runtime session existed | NOT DETERMINED \u2014 no runtime session existed |",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/provenance-only-in-code-fence.md",
+      "marker": "| baseline | sonnet | claude-sonnet-5 | high | session JSONL `model` field | CLI status line |",
+      "class": "DATA",
+      "reason": "Preserve evaluation fixture or captured ballot; models are test data.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/references/scoring-rubric.md",
+      "marker": "- Mentally simulate: \"Would a Sonnet agent with this skill pass these assertions?\"",
+      "class": "FALSE POSITIVE",
+      "reason": "Evaluation thought experiment/model comparison; no dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/workflows/ab-compare.md",
+      "marker": "- Comparing the same skill across models (Sonnet vs Opus vs Haiku)",
+      "class": "FALSE POSITIVE",
+      "reason": "Evaluation thought experiment/model comparison; no dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/skill-creator/workflows/cleaner.md",
+      "marker": "**Known dupes** (per recon-01): retired CLI-agent launcher skill \u2194 cmux-agents, retired structural-authoring skill \u2194 skill-creator, claude-web-research \u2194 claude-desktop-research (already deprecated), retired review-router \u2194 coderabbit, golem-install \u2194 wizard, linkedin-post \u2194 maintenance/workflows/linkedin.",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/tmp-block/SKILL.md",
+      "marker": "2. That the hook's **trust review** has been completed. Codex skips a",
+      "class": "FALSE POSITIVE",
+      "reason": "Hook trust behavior in Codex; no assignment of implementation or review.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/tmp-block/hooks/INSTALL.md",
+      "marker": "2. that the hook's **trust review** has been completed \u2014 Codex silently skips a",
+      "class": "FALSE POSITIVE",
+      "reason": "Hook trust behavior in Codex; no assignment of implementation or review.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
+      "marker": "A multi-way deep-mining fan-out next to the live Opus fleet = OOM + token",
+      "class": "FALSE POSITIVE",
+      "reason": "Resource-pressure warning about existing fleet; not model selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
+      "marker": "> **Spark is a separate implementation-shaped bucket \u2014 its own class, NOT compared to sol.**",
+      "class": "DATA",
+      "reason": "historical measured experiment",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
+      "marker": "2. Historical 2026-07-28 evidence: an audit checkpoint after mining (CP1, opus, \"re-derive claimed state\") caught 5 real defects incl. an imp-10 cite pointing at an agent paraphrase of Etan (:22-23). Run the current checkpoint with `claude.judgment`, resolved through `node scripts/model-roles.mjs claude.judgment --field model`; choose phase effort and pass it explicitly.",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
+      "marker": "- **Lead reads syntheses, never raw miner output.** Etan: \"You're not supposed to waste a fable token on reading these type of stuff.\" Direction reports \u2192 a convergence lens; findings \u2192 a synthesis lens; the lead reads \u2264250-line syntheses and routes. Reading a worker report into the lead's context is a violation, not a shortcut.",
+      "class": "DATA",
+      "reason": "verbatim Etan quote",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
+      "marker": "- **Lineage, not no-spawn.** Etan (verbatim): \"I dont hate that it spawned a codex sol for something, I just wish skillcreator lead would have known its its grandchild.\" Headless workers inherit the control-plane MCP and CAN spawn. Every worker brief requires `artifacts/children.json` (`{agent_id, surface, cli, model, title, purpose, state_at_exit}`) and names children in its report. The \u00a73 miner skeleton now carries the `children.json` line; `scripts/weave-cursor-run.py` (prompt emitter + status check) and `weave-run.py status` must emit and check it too \u2014 owed (golems FOLLOW-UP, cause_layer: code), as is a `children` field in the codex-workflows manifest \u2014 registry R-046.",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
+      "marker": "- **V1 verifier carve-outs (measured: 0 of 104 Luna FAILs survived Opus appeal across 7 rounds).** The same carve-out applies to the \u00a73 denominator predicate (see the denominators bullet below). Six systematic verifier errors, now mandatory in the V1 brief: (1) long `tool_result`/multi-paragraph records are not \"empty\" \u2014 read the full line, `grep -n -F` the quote before calling it absent; (2) `promptSource:\"queued\"` and `sdk`+`entrypoint=sdk-cli` are operator speech; `sdk`+`sdk-ts` is a lead relay; `typed` is direct user capture by default (consistent with `/never-fabricate` \u00a7direct-capture) and is downgraded to relay ONLY on evidence \u2014 a `send_to` delivery receipt (live 9-tool surface; the pre-cut send tools count the same) in a lead session targeting that pane, or third-person self-attribution in the turn (\"Etan has ruled\u2026\" \u2014 measured specimen cmuxlayer__d05bc84f#1). A shared provenance predicate used by weave and never-fabricate is owed (FOLLOW-UP, golems) so the two consumers cannot diverge; (3) `voice_ask` and `AskUserQuestion` tool_results ARE Etan speaking/typing \u2014 never reject them as tool_result; (4) verify `checked_lines` covers the cited `jsonl_line`; (5) ellipsis/backtick/markdown differences are not verbatim failures; (6) a \"correction attributed to Etan\" in a session where no operator turn mentions the topic is a FABRICATED-ATTRIBUTION finding \u2192 CORRECTED + importance cut. The appeal round is not optional; its rescue rate is V1's health metric.",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
+      "marker": "- **Shape honesty:** the 08-24 run used capped queues + Opus singletons, not the canonical one-expanding-Workflow (\u00a74g (verification-and-discharge.md)). Verification quality held (0 refuted) but the round agenda was hand-driven. Run R2/R4 as a Workflow when the operator says \"use a workflow\"; otherwise script this fallback end-to-end (fold \u2192 collect \u2192 adjudicate \u2192 aggregate) rather than hand-driving it.",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
+      "marker": "Agents inheriting global CLAUDE.md rules append `CLAUDE_COUNTER: N` to returns and occasionally into findings files. Keep the \"reply exactly: WEAVE_MINE_DONE \u2026\" contract AND **scrub findings files before aggregation** (drop non-JSON lines) \u2014 `weave-ledger.py` counts them malformed otherwise (one leaked line scrubbed in gen-15). (Sonnet miners' `CLAUDE_COUNTER: 1` footer can also mask the DONE receipt \u2192 disk-truth > receipt.) [g1:26 \u2192 2026-06-03.md:28]",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/verification-and-discharge.md",
+      "marker": "The unpinned-inherits-Fable bug is what capped pass-1. The loop is **budget-aware",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/weave/references/verification-and-discharge.md",
+      "marker": "loop-until-dry** \u2014 the mechanized answer to Etan's \"1 haiku, no verifiers\"",
+      "class": "DATA",
+      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/whats-new/INSTALL_PROMPT.md",
+      "marker": "- **claude CLI** -- `claude --version` for current version detection",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/whats-new/INSTALL_PROMPT.md",
+      "marker": "The first run will have no prior review baseline, so it shows the last 2-3 Claude Code versions and the latest Wispr Flow release.",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/whats-new/SKILL.md",
+      "marker": "content: \"whats-new review YYYY-MM-DD: Claude Code vX.Y.Z, Codex vX.Y.Z, Cursor vX.Y.Z, Wispr Flow latest. AFFECTS: [count] items ([summary]). NEW CAPABILITIES: [count] items ([summary]). Key actions: [list]. VoiceBar notes: [summary].\",",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/whats-new/references/changelog-sources.md",
+      "marker": "- **Agent mode** -- `cursor agent` for background tasks, `--trust` for auto-approval",
+      "class": "FALSE POSITIVE",
+      "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    }
+  ]
+}

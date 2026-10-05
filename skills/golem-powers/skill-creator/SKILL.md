@@ -203,8 +203,8 @@ surface class as `delivered:true` or exit 0 without live verification.
 |------------|-----------|-----|
 | Bounded Claude behavior skills | `claude.subagent.cheap` | In-process or permitted headless tests only |
 | Visible or decision-grade Claude behavior | `claude.judgment` | Full panes retain the bare launcher pin |
-| Code implementation skills | `codex.implement` | Tests code quality |
-| Audit/review skills | Cursor (default) | Tests review thoroughness |
+| Code implementation skills | See `/agent-routing` § Routing rules (SSOT) | Tests code quality |
+| Audit/review skills | See routing pointer above | Tests review thoroughness |
 
 Resolve model/alias with `node scripts/model-roles.mjs <role> --field model|alias` (one field)
 from the golems checkout. Keep substitutions in commands; choose effort per `/large-plan` phase

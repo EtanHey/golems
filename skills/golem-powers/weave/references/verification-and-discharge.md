@@ -226,7 +226,7 @@ re-score). Rules, all enforced at the moment a doc is WRITTEN:
 
 > **DESIGN SPEC — harness implementation pending (ships with the substrate-law + phase-recursion + final-boss bundle).**
 
-The design requires the phase-recursion loop to exit only through **one apex agent** (Fable) returning
+The design requires the phase-recursion loop to exit only through **one apex agent** (the run's single top seat, model chosen per canon #5) returning
 `FINISH` or `{phases-to-re-run}`. **No workflow self-declares done.** This was
 "the single highest-leverage protocol addition… the ONLY mechanism that caught a
 completeness defect by refusing to finish, which no eval assertion can express."

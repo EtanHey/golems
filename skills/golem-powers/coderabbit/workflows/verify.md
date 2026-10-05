@@ -1,6 +1,6 @@
 # Verify Workflow (Ralph Integration)
 
-Fast verification for Ralph V-* stories. Runs BEFORE Claude to catch obvious issues cheaply.
+Fast verification for Ralph V-* stories. Runs before full verification to catch obvious issues cheaply.
 
 ## Purpose
 
@@ -37,7 +37,7 @@ This outputs minimal, token-efficient results.
 Check for:
 - **CRITICAL** or **HIGH** severity → FAIL, fix required
 - **MEDIUM** severity → Review, may need fix
-- **LOW** or clean → PASS, proceed to Claude verification
+- **LOW** or clean → PASS, proceed to full verification; routing: see `/agent-routing` § Routing rules (SSOT)
 
 ### Step 3: Decision
 
@@ -47,7 +47,7 @@ CodeRabbit found issues:
 - [CRITICAL] SQL injection in user input handler
 - [MEDIUM] Unused variable 'temp'
 
-Fix these before Claude verification.
+Fix these before full verification.
 ```
 
 **If clean:**

@@ -77,7 +77,7 @@ Good pattern: 1 planner + 3 domain experts providing intel + 1 critic reviewing 
 | orcClaude DOES | orcClaude does NOT |
 |----------------|-------------------|
 | Coordinate, delegate, verify, checkpoint | Implement code (spawn agent instead) |
-| Query BrainLayer, synthesize across repos | Bulk-read files (spawn haiku subagent) |
+| Query BrainLayer, synthesize across repos | Bulk-read files (see `/agent-routing` § Routing rules (SSOT)) |
 | Make orchestration decisions | Absorb frozen agent work (respawn instead*) |
 | Forward gems to ALL active agents | Hoard information |
 | Set up monitoring BEFORE user goes AFK | Say "I'll monitor" without an explicit `wait_for` / file contract |
@@ -191,7 +191,8 @@ Any `sleep N` in Bash where N ≥ 5 is rejected by `pre_tool_use.py`. Two or mor
 For PID-wait: `until ! kill -0 $PID 2>/dev/null; do sleep 2; done` (exempt)
 For agent-wait: `mcp__cmuxlayer__wait_for(agent_id=..., target_state="done", timeout_ms=...)`
 For log-watch: the `Monitor` background tool
-For event-driven scheduling: `CronCreate` with a short interval
+For addressed event watches: native Monitor or the packaged fallback per `/collab-monitor`
+Timed one-shot wakes: ScheduleWakeup/CronCreate per `collab-monitor/references/cron-payloads.md`.
 For background process launch (the test scenario, not a wait): `nohup ... &` (exempt)
 
 Hook-block messages start with `🚨 SLEEP` and trigger a self-correct loop, not a flag-to-user prompt — pick one of the alternatives above and retry instead of asking. Reset window: `rm /tmp/claude-pre-tool-use-sleep-history.json`.
@@ -517,7 +518,7 @@ tail -20 <active-collab-file>                   # Collab state
 ## Context Budget
 
 - Approaching compaction warning -> brain_store full state (surface IDs, cron IDs, open PRs, repo locks, user's last instruction)
-- Heavy file work -> spawn haiku subagent, keep YOUR context clean
+- Heavy file work -> see `/agent-routing` § Routing rules (SSOT); keep YOUR context clean
 - If you're writing more than 20 lines of code -> you should have spawned an agent
 - Let auto-compaction happen. No proactive compaction, no context-% thresholds that trigger handoffs, and no unrequested lead or seat rotation because context is growing. Rotate or hand off only when Etan asks, or at a /large-plan phase boundary the plan itself defines (Etan, 2026-09-24). Workers may compact (S4); the orc seat NEVER `/compact`s (C14)
 - Succession: full-day weave that seeds gen-N+1, fired on operator instruction — never on a percentage threshold (C14).

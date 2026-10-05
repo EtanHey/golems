@@ -11,7 +11,7 @@ Before changing a package, read its `CLAUDE.md` if it has one.
 ## Key Relationships
 
 - **ClaudeGolem** preserves persona guidance and Claude CLI status workflows
-- **CoachGolem** reads getStatus() from Recruiter and Teller (read-only)
+- **CoachGolem** reads getStatus() from Teller (read-only)
 - **Services** (briefing) imports from Coach for daily plan generation
 - **Cloud Worker** remains a local/successor-host runnable scheduler; Railway service was deleted on 2026-07-05
 - **Most packages** depend on Shared for Supabase, LLM, state; golem-skills, golems-tui, green-invoice-mcp and mock-mcp do not

@@ -9,7 +9,7 @@ Reads a Claude Code session JSONL and emits a 10-section markdown digest:
 4. Task list evolution
 5. Files created (Write calls)
 6. brain_* call outcomes (search/store/digest/recall)
-7. Sub-agent communications (cmux send_input / read_screen)
+7. Sub-agent communications (cmux send_to + historical send_input / read_screen)
 8. Cron / monitoring (CronCreate/Delete/ScheduleWakeup)
 9. BrainLayer health events
 10. Session close state (last assistant text, away_summary, last 30 events)
@@ -169,6 +169,13 @@ def build_dispatches(tool_calls):
         if name == "TaskCreate":
             subj = inp.get("subject", "")
             out.append((idx, ts, "TaskCreate", "-", subj[:90]))
+        elif name == "mcp__cmuxlayer__send_to":
+            if inp.get("mode") == "key":
+                continue
+            target = inp.get("agent_id") or inp.get("surface") or "?"
+            text = inp.get("text", "") or ""
+            kind = "send_to(command)" if inp.get("mode") == "command" else "send_to"
+            out.append((idx, ts, kind, str(target), text.split("\n", 1)[0][:140]))
         elif name == "mcp__cmuxlayer__send_input":
             surface = inp.get("surface", inp.get("surface_id", "?"))
             text = inp.get("text", "") or inp.get("input", "") or ""
@@ -266,7 +273,15 @@ def collect_brain_outcomes(tool_calls, tool_results):
 def collect_agent_comms(tool_calls, tool_results):
     comms = defaultdict(list)
     for idx, ts, name, inp, tid in tool_calls:
-        if name == "mcp__cmuxlayer__send_input":
+        if name == "mcp__cmuxlayer__send_to":
+            if inp.get("mode") == "key":
+                continue
+            target = str(inp.get("agent_id") or inp.get("surface") or "?")
+            text = inp.get("text", "") or ""
+            if inp.get("mode") == "command":
+                text = "[COMMAND] " + text
+            comms[target].append((idx, ts, "SENT", text))
+        elif name == "mcp__cmuxlayer__send_input":
             surface = str(inp.get("surface", "?"))
             text = inp.get("text", "") or inp.get("input", "") or ""
             comms[surface].append((idx, ts, "SENT", text))
@@ -511,7 +526,7 @@ def render(
             L.append("")
 
     # Section 7: Sub-agent communications
-    L.append("## 7. Sub-agent communications (cmux send_input / read_screen)")
+    L.append("## 7. Sub-agent communications (cmux send_to + historical send_input / read_screen)")
     L.append("")
     if not agent_comms:
         L.append("_(no cmux comms)_")
