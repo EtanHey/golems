@@ -76,11 +76,10 @@ def durable_path(tmp_path):
 
 def run_hook(payload=None, env_extra=None, raw_stdin=None, cwd=None):
     env = os.environ.copy()
-    # Deterministic baseline: tests opt IN to the escape hatch / ledger / worker env.
+    # Keep the per-test ledger isolation; tests opt IN to hatch / worker env.
     for var in (
         "WEAVE_ALLOW_TMP",
         "WEAVE_ALLOW_WT_MIGRATION",
-        "TMP_BLOCK_LEDGER",
         "CLAUDE_WORKER",
     ):
         env.pop(var, None)

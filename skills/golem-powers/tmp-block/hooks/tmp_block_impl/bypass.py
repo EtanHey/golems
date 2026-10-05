@@ -4,7 +4,7 @@ import json
 import os
 
 
-DEFAULT_LEDGER = os.path.expanduser("~/.claude/logs/tmp-block-ledger.jsonl")
+DEFAULT_LEDGER = "~/.claude/logs/tmp-block-ledger.jsonl"
 
 HATCH_TMP = "WEAVE_ALLOW_TMP"
 HATCH_WT = "WEAVE_ALLOW_WT_MIGRATION"
