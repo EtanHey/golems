@@ -43,4 +43,4 @@ Call the CI tools from `scripts/ci/` and the sync tools from `scripts/sync/`.
 - Security and repo guards: `guard-no-docslocal.sh`, `google-drive-oauth-guard.mjs` (+ `install-…`), `materialize-deep-security-plan.sh`
 - Document generators: `branded-doc.ts`, `explanatory-doc.ts`, `summarize-file.sh`
 - Host upkeep: `storage-cleanup.sh` (+ `storage-audit-prompt.md`), `worktree-gc.sh`, `setup-golem-profiles.sh`
-- One-offs kept for their tests: `migrate-to-kg.py` (a one-off migration into BrainLayer), and `jev-*-replay.py` (read-only replays of gate decisions over frozen fixtures)
+- One-off kept for its tests: `migrate-to-kg.py` (a one-off migration into BrainLayer)
