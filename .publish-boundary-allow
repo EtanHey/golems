@@ -118,3 +118,8 @@ skill-evals/promptfoo-behavioral.yaml
 skill-evals/fixtures/nightly-journal-empty-whatsapp.txt
 skill-evals/fixtures/nightly-journal-normal.txt
 skill-evals/fixtures/nightly-journal-read-only.txt
+# History-only: packages/recruiter retired in slice 6 (2026-10-05);
+# the nightly ratchet re-scans older commits with the current allowlist.
+packages/recruiter/src/__tests__/auto-outreach.test.ts
+packages/recruiter/src/__tests__/obsidian-export.test.ts
+packages/recruiter/src/__tests__/outreach-db.test.ts

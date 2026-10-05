@@ -6,11 +6,12 @@
 
 ## Golem Taxonomy
 
-**Only 3 domain golems** + 1 orchestrator:
+**Only 3 domain golems** + 1 orchestrator at componentization; RecruiterGolem
+was retired on 2026-10-05. The rows below preserve the original design:
 
 | Component | Type | Package |
 |-----------|------|---------|
-| RecruiterGolem | Domain golem | `@golems/recruiter` |
+| RecruiterGolem (retired 2026-10-05) | Former domain golem | `@golems/recruiter` (historical) |
 | TellerGolem | Domain golem | `@golems/teller` |
 | CoachGolem | Domain golem | `@golems/coach` |
 | ClaudeGolem | Orchestrator | `@golems/claude` |
@@ -36,7 +37,8 @@ Each golem/service = its own package with:
 ```typescript
 // Always use package imports, never relative cross-package
 import { scorer } from "@golems/shared/email/scorer";
-import { processHotMatch } from "@golems/recruiter/auto-outreach";
+// Historical example; recruiter retired 2026-10-05:
+// import { processHotMatch } from "@golems/recruiter/auto-outreach";
 ```
 
 ---
@@ -94,7 +96,7 @@ active CLI sessions and recent event-log entries.
 
 ### CoachGolem reads status
 ```
-coach/index.ts → getStatus() from recruiter, teller (read-only)
+coach/index.ts → getStatus() from teller, email (read-only; recruiter retired 2026-10-05)
 ```
 
 ### Services briefing imports from Coach

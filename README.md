@@ -41,7 +41,7 @@ untracked folders.
 
 ## Packages
 
-There are 11 workspace packages under `packages/`:
+There are 10 workspace packages under `packages/`:
 
 | Package | What it is |
 |---|---|
