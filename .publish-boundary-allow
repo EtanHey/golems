@@ -13,8 +13,6 @@ skills/golem-powers/cyber/scripts/launchd-secret-linter/fixtures/red-plist.plist
 # current allowlist, so the old path must stay.
 skills/golem-powers/launchd-secret-linter/tests/test_plist_secret_lint.py
 
-# Synthetic health/schedule prompts used by behavioral evaluations.
-
 # Public vendor names, synthetic people, and authored email/categorization fixtures.
 packages/coach/src/__tests__/morning-briefing-runner.test.ts
 packages/coach/src/__tests__/morning-briefing.test.ts
@@ -117,3 +115,9 @@ scripts/tests/check-publish-boundary.test-parts/part-02.bash
 # History-only: deleted from the tree; kept for the history ratchet.
 hooks/precompact-checkpoint.py
 scripts/test_precompact.py
+skill-evals/behavioral/coach.yaml
+skill-evals/fixtures/coach-schedule-request.txt
+skill-evals/promptfoo-behavioral.yaml
+skill-evals/fixtures/nightly-journal-empty-whatsapp.txt
+skill-evals/fixtures/nightly-journal-normal.txt
+skill-evals/fixtures/nightly-journal-read-only.txt
