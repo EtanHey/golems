@@ -448,6 +448,7 @@ function pinnedManifestFixture() {
   const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
   mkdirSync(directory, { recursive: true });
   cpSync(installer, path.join(directory, 'install-hooks.mjs'));
+  cpSync(path.join(here, '../hooks/codex-hooks-install.mjs'), path.join(directory, 'codex-hooks-install.mjs'));
   cpSync(wrapper, path.join(directory, 'fail-open.py'));
   writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifestFor()));
   fx.defaultInstaller = path.join(directory, 'install-hooks.mjs');

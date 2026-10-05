@@ -42,7 +42,10 @@ def canonical_tool(tool_name):
 # apply_patch envelope headers that CREATE or REWRITE a path. `Delete File` is
 # absent on purpose: the contract has never denied a delete.
 _APPLY_PATCH_TARGET_RE = re.compile(
-    r"^\*\*\*\s+(Add File|Update File|Move to):\s*(.+?)\s*$", re.MULTILINE
+    # Codex trims each header line, including Unicode whitespace. Never let
+    # whitespace matching consume a newline and hide a following header.
+    r"^[^\S\n]*\*\*\*[^\S\n]+(Add File|Update File|Move to):[^\S\n]*(.+?)[^\S\n]*$",
+    re.MULTILINE,
 )
 
 
