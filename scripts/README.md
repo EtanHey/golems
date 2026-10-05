@@ -41,6 +41,5 @@ Call the CI tools from `scripts/ci/` and the sync tools from `scripts/sync/`.
 ## Other top-level files
 
 - Security and repo guards: `guard-no-docslocal.sh`, `google-drive-oauth-guard.mjs` (+ `install-…`), `materialize-deep-security-plan.sh`
-- Document generators: `branded-doc.ts`, `explanatory-doc.ts`, `summarize-file.sh`
-- Host upkeep: `storage-cleanup.sh` (+ `storage-audit-prompt.md`), `worktree-gc.sh`, `setup-golem-profiles.sh`
-- One-off kept for its tests: `migrate-to-kg.py` (a one-off migration into BrainLayer)
+- Document generators live with their skills: `skills/branded-doc/scripts/` and `skills/explanatory-doc/scripts/`.
+- Host upkeep: `storage-cleanup.sh`, `worktree-gc.sh`, `setup-golem-profiles.sh`

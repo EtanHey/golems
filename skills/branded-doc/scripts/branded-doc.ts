@@ -6,9 +6,9 @@
  * Matches the branded template at ~/Documents/freelance/templates/branded-feedback.html
  *
  * Usage:
- *   bun scripts/branded-doc.ts <input.json>              # Read from file, output to stdout
- *   bun scripts/branded-doc.ts <input.json> <output.html> # Read from file, write to file
- *   cat input.json | bun scripts/branded-doc.ts -         # Read from stdin
+ *   bun skills/branded-doc/scripts/branded-doc.ts <input.json>              # Read from file, output to stdout
+ *   bun skills/branded-doc/scripts/branded-doc.ts <input.json> <output.html> # Read from file, write to file
+ *   cat input.json | bun skills/branded-doc/scripts/branded-doc.ts -         # Read from stdin
  *
  * JSON Schema:
  *   {
@@ -514,9 +514,9 @@ async function main() {
 
   if (!inputPath) {
     console.error(
-      "Usage: bun scripts/branded-doc.ts <input.json> [output.html]",
+      "Usage: bun skills/branded-doc/scripts/branded-doc.ts <input.json> [output.html]",
     );
-    console.error("       cat input.json | bun scripts/branded-doc.ts -");
+    console.error("       cat input.json | bun skills/branded-doc/scripts/branded-doc.ts -");
     process.exit(1);
   }
 

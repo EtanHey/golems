@@ -35,7 +35,6 @@ export function resetRegistry(): void {
 
 export async function registerAllGolems(): Promise<void> {
   const packages = [
-    { name: "recruiter", import: () => import("@golems/recruiter/index") },
     { name: "teller", import: () => import("@golems/teller/index") },
     { name: "email", import: () => import("@golems/shared/email/index") },
   ];
@@ -123,15 +122,6 @@ export function getPendingWork(status: EcosystemStatus): PendingWorkItem[] {
       items.push({
         item: `${uncategorized} uncategorized transactions`,
         priority: "low",
-        golem: golem.name,
-      });
-    }
-
-    const draftCount = golem.details.draftCount;
-    if (typeof draftCount === "number" && draftCount > 0) {
-      items.push({
-        item: `${draftCount} outreach drafts pending`,
-        priority: "medium",
         golem: golem.name,
       });
     }
