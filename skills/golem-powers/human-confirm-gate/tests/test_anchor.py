@@ -373,6 +373,32 @@ class Platform(unittest.TestCase):
             found = set(hook['stray_importables'](str(here), str(shared)))
             self.assertEqual(found, {str(p) for p in stray + [here / 'pkg', shared / 'shell_parse', here / 'linked.py']})
 
+    def test_trusted_gh_is_a_fixed_owner_checked_candidate_never_caller_path(self):
+        import tempfile, tokens
+        from types import SimpleNamespace
+        self.assertEqual(tokens.GH_CANDIDATES, tuple(os.path.join(prefix, 'bin', 'gh') for prefix in
+                                                     (os.path.join('/', 'opt', 'homebrew'), os.path.join('/', 'usr', 'local'))))
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            missing, loose, good = (Path(tmp) / name for name in ('missing', 'loose', 'good'))
+            for path, mode in ((loose, 0o775), (good, 0o755)):
+                path.write_text('#!/bin/sh\n'); path.chmod(mode)
+            self.assertEqual(tokens.trusted_binary((missing, loose, good)), str(good))  # group-writable skipped
+            with self.assertRaises(ValueError): tokens.trusted_binary((missing, loose))
+            Path(tmp, 'dir').mkdir()
+            with self.assertRaises(ValueError): tokens.trusted_binary((Path(tmp, 'dir'),))
+            real = os.stat(good)
+            foreign = SimpleNamespace(st_mode=real.st_mode, st_uid=os.getuid() + 1)
+            with patch('tokens.os.stat', return_value=foreign), self.assertRaises(ValueError):
+                tokens.trusted_binary((good,))
+        with patch.dict(os.environ, PATH=str(root)):  # caller PATH is never consulted
+            calls = []
+            with patch('tokens.trusted_binary', side_effect=lambda c: calls.append(c) or 'GH'), \
+                 patch('tokens.read_command', side_effect=['topic', 'git@github.com:o/r.git', '{"defaultBranchRef":{"name":"main"}}', '{}']) as read:
+                tokens.lead_metadata(dict(repo='.', ref='refs/heads/topic', source='HEAD', remote='origin'))
+            self.assertEqual(calls, [tokens.GH_CANDIDATES, tokens.GH_CANDIDATES])
+            self.assertEqual(read.call_args.args[0][0], 'GH')
+
     def test_pin_grammar_matches_shared_vectors(self):
         from tokens import parse_pins
         vectors = json.loads((ROOT / 'tests/pin-vectors.json').read_text())['vectors']

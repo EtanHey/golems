@@ -108,6 +108,7 @@ mutations = [
     ('import-no-bytecode', 'human-confirm-pretooluse.py', "sys.pycache_prefix = '/dev/null/golems-human-confirm'", 'pass', 'test_private_f1b.PrivateF1b.test_own_module_bytecode_or_shadow_package_is_refused'),
     ('import-stray-check', 'human-confirm-pretooluse.py', 'if stray_importables():', 'if False:', 'test_private_f1b.PrivateF1b.test_own_module_bytecode_or_shadow_package_is_refused'),
     ('launcher-preload', '@launcher', 'import pkgutil  # noqa: F401', 'import os  # noqa: F401', 'test_private_f1b.PrivateF1b.test_launcher_lazy_imports_cannot_be_shadowed'),
+    ('trusted-gh-checks', 'tokens.py', ' and not info.st_mode & 0o022 and info.st_uid in (0, os.getuid())', '', 'test_anchor.Platform.test_trusted_gh_is_a_fixed_owner_checked_candidate_never_caller_path'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
 (root / 'docs.local/human-confirm-gate/r2-mutation-control.log').write_text(control.stdout + control.stderr)

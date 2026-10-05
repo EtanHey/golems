@@ -10,7 +10,23 @@ from pathlib import Path
 
 GIT = '/usr/bin/git'
 SSH = '/usr/bin/ssh-keygen'
-GH = '/opt/homebrew/bin/gh'
+# AIDEV-NOTE: gh is never taken from the caller's PATH. It must be one of
+# these fixed Homebrew locations (arm64, then x86_64), built from parts so the
+# shipped payload stays portable, and pass trusted_binary's ownership checks.
+GH_CANDIDATES = tuple(os.path.join(prefix, 'bin', 'gh') for prefix in
+                      (os.path.join('/', 'opt', 'homebrew'), os.path.join('/', 'usr', 'local')))
+
+
+def trusted_binary(candidates):
+    """First candidate that is a regular file owned by root or this user and not group/world-writable."""
+    for path in candidates:
+        try:
+            info = os.stat(path)
+        except OSError:
+            continue
+        if stat.S_ISREG(info.st_mode) and not info.st_mode & 0o022 and info.st_uid in (0, os.getuid()):
+            return str(path)
+    raise ValueError('no trusted binary among fixed candidates')
 
 
 ANCHOR = Path('.config/golems/human-confirm-anchor/allowed_signers')
@@ -162,8 +178,8 @@ def lead_metadata(op):
     if not match:
         raise ValueError('lead scope needs one GitHub remote')
     target = match[1]
-    metadata = json.loads(read_command([GH, 'repo', 'view', target, '--json', 'defaultBranchRef']))
-    pr = json.loads(read_command([GH, 'pr', 'view', branch, '--repo', target, '--json',
+    metadata = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'repo', 'view', target, '--json', 'defaultBranchRef']))
+    pr = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'pr', 'view', branch, '--repo', target, '--json',
                                  'state,mergedAt,headRefName,isCrossRepository,headRefOid']))
     return metadata['defaultBranchRef']['name'], pr
 

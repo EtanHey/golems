@@ -59,9 +59,8 @@ Options are not allowed, so no `cert-authority` and no shared principals.
 
 **Provisioning (owner terminal):**
 1. Create the directory mode 0700 and place the allowed signers file there.
-2. Run `golems-confirm-pin` from the pinned tree:
-   `~/Gits/golems/.worktrees/hooks-live/scripts/golems-confirm-pin`. Do not
-   run it from a dev checkout an agent can edit.
+2. Run `scripts/golems-confirm-pin` from the pinned tree (the golems repo's
+   `.worktrees/hooks-live`). Do not run it from a dev checkout an agent can edit.
 3. It prints each principal with its key's `SHA256:` fingerprint. Compare
    them with your signer, then type `PIN`. Only then does it set macOS `uchg`
    on the file and the directory and print one pin line.
@@ -186,7 +185,7 @@ remote must resolve to one GitHub URL, and live read-only GH metadata must show
 that exact remote repo's open, unmerged, same-repository PR at the exact lease
 SHA, on a non-default branch. The signed session/ref grant asserts worker
 ownership; branch names and GitHub author alone do not establish worker identity.
-Metadata failures or timeouts deny. Binaries are fixed system Git/SSH and Homebrew
-gh, avoiding caller PATH substitution. No real destructive operation is used in
+Metadata failures or timeouts deny. Binaries are fixed system Git/SSH, and
+gh from fixed, ownership-checked Homebrew locations, avoiding caller PATH substitution. No real destructive operation is used in
 verification; integration tests invoke the hook subprocess with signed synthetic
 capabilities and disposable repos under docs.local.
