@@ -4,6 +4,8 @@
 - `VIDEO` — path to the .mov screen recording
 - `PROJECT_ROOT` — project repo receiving the QA session artifacts
 - `WORKDIR` — optional existing session directory containing the recording and click log; defaults to a new timestamped directory under `$PROJECT_ROOT/docs/`
+- For an explicitly requested visible `video-qa` worker, set an absolute `WORKDIR` under
+  `$PROJECT_ROOT/docs.local/qa-video/` to obey its profile artifact scope.
 - `ROUND` — round number for multi-round QA (default: 1)
 
 See [stalker-pipeline.md](../references/stalker-pipeline.md) for the full media
@@ -201,7 +203,10 @@ sheet/tile/timestamp that finally supports the finding.
 
 ## Phase 5: Compile QA Findings Document
 
-Write to `$WORKDIR/qa-findings${SUFFIX}.md`:
+Write to `$WORKDIR/qa-findings${SUFFIX}.md`. For the visible-worker route,
+keep intermediates and this note in the assigned `docs.local` workdir; return
+text paths to the parent, which copies the final note and cited evidence into
+`$PROJECT_ROOT/docs/qa-session-.../`, preserving citation paths before Phase 6:
 
 ```markdown
 # QA Session [Round N] — [Project] — YYYY-MM-DD
