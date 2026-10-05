@@ -350,6 +350,10 @@ def _metadata_traversal_reason(api, target, cwd, variables, branches, follow_mod
         if (stat.S_ISLNK(root_info.st_mode) and follow_mode == 'P'
                 and not value.endswith(('/', '/.'))):
             return None  # find does not walk a non-followed command-line alias
+        if stat.S_ISLNK(root_info.st_mode) and not stat.S_ISDIR(os.stat(lexical).st_mode):
+            # A followed CLI file alias unlinks its entry, not its target. Resolve
+            # only its parent so metadata-directory aliases remain protected.
+            root = os.path.join(os.path.realpath(os.path.dirname(lexical)), os.path.basename(lexical))
         # Every root may contain nested metadata; -L also exposes alias targets.
         stack = [(root, 0, False, frozenset())]
         count = 0
