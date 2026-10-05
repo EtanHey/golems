@@ -129,7 +129,7 @@ class Cases02:
             "$HOME/.local/bin/codex",
             "git remote show origin",
             "Never live-grep",
-            "gpt-5.6-luna",
+            "codex.implement",
             "output tokens",
             "wall-clock",
             "lead-reachable-only",

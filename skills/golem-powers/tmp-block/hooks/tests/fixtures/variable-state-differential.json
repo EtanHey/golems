@@ -1,0 +1,554 @@
+{
+  "precut_function_sha256": "7b30805b09500f616e179cba844ec49e9e53dbdef85ec0f7e994bf7339915ba4",
+  "sources": [
+    {
+      "source": "probe.py",
+      "sha256": "1d978f206f5c1d2f6d8d81d9564f552ce82eada664d97905bb05fcfe157a2147",
+      "rows": 96
+    },
+    {
+      "source": "installed_probe.py",
+      "sha256": "1f47a099a3ff62788b89dc5abb942d5b41e93ad97768c97303da39eb6dbdb373",
+      "rows": 9
+    },
+    {
+      "source": "approved8d88-corpus #481/#486 and their #480/#466 IDs",
+      "sha256": "13a24923b041b9f295b6f79819568f2a7a2daeec63e7fbc90ee936adea1553f7",
+      "rows": 28
+    }
+  ],
+  "commands": [
+    {
+      "id": "484-probe.py:brace group",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; git worktree add \"$X\" HEAD; }"
+    },
+    {
+      "id": "484-probe.py:read <<<",
+      "command": "X={REPO}/.worktrees/w; read X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:eval",
+      "command": "X={REPO}/.worktrees/w; eval 'X=/tmp/q'; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:procsub inside",
+      "command": "X={REPO}/.worktrees/w; cat <( X=/tmp/q; git worktree add \"$X\" HEAD )"
+    },
+    {
+      "id": "484-probe.py:brace then outside",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:brace export",
+      "command": "X={REPO}/.worktrees/w; { export X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:brace export inside",
+      "command": "X={REPO}/.worktrees/w; { export X=/tmp/q; git worktree add \"$X\" HEAD; }"
+    },
+    {
+      "id": "484-probe.py:brace declare",
+      "command": "X={REPO}/.worktrees/w; { declare X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:eval outside dq",
+      "command": "X={REPO}/.worktrees/w; eval \"X=/tmp/q\"; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:eval split",
+      "command": "X={REPO}/.worktrees/w; eval X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:eval concat",
+      "command": "X={REPO}/.worktrees/w; eval X''=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:eval var",
+      "command": "X={REPO}/.worktrees/w; C=X=/tmp/q; eval $C; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:mapfile",
+      "command": "X={REPO}/.worktrees/w; mapfile -t X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:readarray",
+      "command": "X={REPO}/.worktrees/w; readarray -t X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:printf -v",
+      "command": "X={REPO}/.worktrees/w; printf -v X %s /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:printf -v X= form",
+      "command": "X={REPO}/.worktrees/w; printf -vX %s /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:declare -n nameref",
+      "command": "X={REPO}/.worktrees/w; Y=/tmp/q; declare -n X=Y; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:declare -n ref write",
+      "command": "X={REPO}/.worktrees/w; declare -n R=X; R=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:IFS= read -r",
+      "command": "X={REPO}/.worktrees/w; IFS= read -r X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:read -r X <<<",
+      "command": "X={REPO}/.worktrees/w; read -r X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:read from pipe (subshell)",
+      "command": "X={REPO}/.worktrees/w; echo /tmp/q | read X; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:read -p prompt",
+      "command": "X={REPO}/.worktrees/w; read -p x X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:read from file redirect",
+      "command": "X={REPO}/.worktrees/w; read X < f; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:read heredoc",
+      "command": "X={REPO}/.worktrees/w; read X <<EOF\n/tmp/q\nEOF\ngit worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:source procsub",
+      "command": "X={REPO}/.worktrees/w; source <(echo X=/tmp/q); git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:. procsub",
+      "command": "X={REPO}/.worktrees/w; . <(echo X=/tmp/q); git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:source file",
+      "command": "X={REPO}/.worktrees/w; source ./env.sh; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:for X in",
+      "command": "X={REPO}/.worktrees/w; for X in /tmp/q; do git worktree add \"$X\" HEAD; done"
+    },
+    {
+      "id": "484-probe.py:for X in then outside",
+      "command": "X={REPO}/.worktrees/w; for X in /tmp/q; do :; done; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:while read X",
+      "command": "X={REPO}/.worktrees/w; while read X; do git worktree add \"$X\" HEAD; done <<< /tmp/q"
+    },
+    {
+      "id": "484-probe.py:${X:=} default",
+      "command": "unset X; : ${X:=/tmp/q}; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:${X:=} after P (no effect, set)",
+      "command": "X={REPO}/.worktrees/w; : ${X:=/tmp/q}; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:X+= append",
+      "command": "X={REPO}/.worktrees; X+=/../../../../tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:X+= plain",
+      "command": "X={REPO}/.worktrees/w; X+=x; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:arith (( X=1 ))",
+      "command": "X={REPO}/.worktrees/w; (( X=5 )); git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:let",
+      "command": "X={REPO}/.worktrees/w; let X=5; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:function sets global",
+      "command": "X={REPO}/.worktrees/w; f() { X=/tmp/q; }; f; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:function one-line no ;",
+      "command": "X={REPO}/.worktrees/w; f() { X=/tmp/q; }\nf\ngit worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:function declare -g",
+      "command": "X={REPO}/.worktrees/w; f() { declare -g X=/tmp/q; }; f; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:getopts",
+      "command": "X={REPO}/.worktrees/w; getopts X: X -X/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:export after cmd",
+      "command": "X={REPO}/.worktrees/w; true && export X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:if block",
+      "command": "X={REPO}/.worktrees/w; if true; then X=/tmp/q; fi; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:if block cond",
+      "command": "X={REPO}/.worktrees/w; if X=/tmp/q; then git worktree add \"$X\" HEAD; fi"
+    },
+    {
+      "id": "484-probe.py:case",
+      "command": "X={REPO}/.worktrees/w; case a in a) X=/tmp/q;; esac; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:while body",
+      "command": "X={REPO}/.worktrees/w; while true; do X=/tmp/q; break; done; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:until",
+      "command": "X={REPO}/.worktrees/w; until X=/tmp/q; do :; done; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:newline sep",
+      "command": "X={REPO}/.worktrees/w; \nX=/tmp/q\ngit worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:backslash-newline",
+      "command": "X={REPO}/.worktrees/w; X=\\\n/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:cd relative",
+      "command": "X={REPO}/.worktrees/w; cd /tmp && git worktree add q HEAD"
+    },
+    {
+      "id": "484-probe.py:local at top-level (errors)",
+      "command": "X={REPO}/.worktrees/w; local X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:readonly",
+      "command": "X={REPO}/.worktrees/w; readonly X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:declare -x",
+      "command": "X={REPO}/.worktrees/w; declare -x X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:export -n?",
+      "command": "X={REPO}/.worktrees/w; export X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:coproc",
+      "command": "X={REPO}/.worktrees/w; coproc { X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:array X[0]=",
+      "command": "X={REPO}/.worktrees/w; X[0]=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:array X=( )",
+      "command": "X={REPO}/.worktrees/w; X=(/tmp/q); git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:brace array",
+      "command": "X={REPO}/.worktrees/w; { X[0]=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:time prefix",
+      "command": "X={REPO}/.worktrees/w; time X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:! prefix",
+      "command": "X={REPO}/.worktrees/w; ! X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:command builtin",
+      "command": "X={REPO}/.worktrees/w; command eval X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:builtin eval",
+      "command": "X={REPO}/.worktrees/w; builtin eval X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:builtin read",
+      "command": "X={REPO}/.worktrees/w; builtin read X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:command read",
+      "command": "X={REPO}/.worktrees/w; command read X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:\\read",
+      "command": "X={REPO}/.worktrees/w; \\read X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:'read'",
+      "command": "X={REPO}/.worktrees/w; 'read' X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:unquoted target $X",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; }; git worktree add $X HEAD"
+    },
+    {
+      "id": "484-probe.py:${X} braces",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; }; git worktree add \"${X}\" HEAD"
+    },
+    {
+      "id": "484-probe.py:via second var",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; }; Y=$X; git worktree add \"$Y\" HEAD"
+    },
+    {
+      "id": "484-probe.py:git -C",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; }; git -C {REPO} worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:worktree in brace, second",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; } && git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:|| chain",
+      "command": "X={REPO}/.worktrees/w; false || { X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:pipe brace (subshell)",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; } | cat; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:& bg brace",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; } & git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:subshell nested brace",
+      "command": "X={REPO}/.worktrees/w; ( { X=/tmp/q; }; git worktree add \"$X\" HEAD )"
+    },
+    {
+      "id": "484-probe.py:$( ) subst assign",
+      "command": "X={REPO}/.worktrees/w; X=$(echo /tmp/q); git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:cmdsub brace inner",
+      "command": "X={REPO}/.worktrees/w; echo $( { X=/tmp/q; }; git worktree add \"$X\" HEAD )"
+    },
+    {
+      "id": "484-probe.py:procsub then brace",
+      "command": "X={REPO}/.worktrees/w; cat <( true ); { X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:procsub unbalanced paren str",
+      "command": "X={REPO}/.worktrees/w; echo ')'; { X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:paren in string, eval",
+      "command": "X={REPO}/.worktrees/w; echo '('; eval X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:paren-open string then subshell mut",
+      "command": "X={REPO}/.worktrees/w; echo '('; X=/tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:case paren pattern",
+      "command": "X={REPO}/.worktrees/w; case a in (a) X=/tmp/q;; esac; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:case pattern ) closes",
+      "command": "X={REPO}/.worktrees/w; case a in a) :;; esac; { X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:case ) then brace mutate before",
+      "command": "X={REPO}/.worktrees/w; case a in a) { X=/tmp/q; };; esac; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:subshell ) close then brace",
+      "command": "X={REPO}/.worktrees/w; ( : ); { X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:CONTROL plain",
+      "command": "X={REPO}/.worktrees/w; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:CONTROL cmd-local prefix",
+      "command": "X={REPO}/.worktrees/w; X=/tmp/q true; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:CONTROL procsub no leak",
+      "command": "X={REPO}/.worktrees/w; cat <( X=/tmp/q; true ); git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:CONTROL hatch to .worktrees",
+      "command": "WEAVE_ALLOW_WT_MIGRATION=1 git worktree add {REPO}/.worktrees/w HEAD"
+    },
+    {
+      "id": "484-probe.py:CONTROL brace in-convention",
+      "command": "X={REPO}/.worktrees/w; { X={REPO}/.worktrees/v; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:CONTROL echo in brace",
+      "command": "X={REPO}/.worktrees/w; { echo hi; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:CONTROL read other var",
+      "command": "X={REPO}/.worktrees/w; read Y <<< a; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-probe.py:subshell",
+      "command": "X={REPO}/.worktrees/w; ( X=/tmp/q; git worktree add \"$X\" HEAD )"
+    },
+    {
+      "id": "484-probe.py:local",
+      "command": "X={REPO}/.worktrees/w; f() { local X=/tmp/q; git worktree add \"$X\" HEAD; }; f"
+    },
+    {
+      "id": "484-probe.py:466 cmdsub",
+      "command": "echo $(X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD)"
+    },
+    {
+      "id": "484-probe.py:479 outer X cmdsub",
+      "command": "X={REPO}/.worktrees/w; echo $(X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD)"
+    },
+    {
+      "id": "484-probe.py:479 backtick",
+      "command": "X={REPO}/.worktrees/w; echo `X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD`"
+    },
+    {
+      "id": "484-installed_probe.py:1",
+      "command": "X={REPO}/.worktrees/w; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-installed_probe.py:2",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; }; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-installed_probe.py:3",
+      "command": "X={REPO}/.worktrees/w; read X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-installed_probe.py:4",
+      "command": "X={REPO}/.worktrees/w; eval 'X=/tmp/q'; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-installed_probe.py:5",
+      "command": "X={REPO}/.worktrees/w; X=$(mktemp -d); git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-installed_probe.py:6",
+      "command": "X={REPO}/.worktrees/w; command read X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-installed_probe.py:7",
+      "command": "X={REPO}/.worktrees/w; eval 'true; X=/tmp/q'; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-installed_probe.py:8",
+      "command": "X={REPO}/.worktrees/w; select X in /tmp/q; do break; done; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "484-installed_probe.py:9",
+      "command": "X={REPO}/.worktrees/w; printf -v X %s /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "tmp-w7-r1-authoritative-primary-path",
+      "command": "X=/tmp/w; echo $(X=/tmp/q; git worktree add \"$X\" HEAD)"
+    },
+    {
+      "id": "issue466-wt-hatch-inner-temp",
+      "command": "echo $(X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD)"
+    },
+    {
+      "id": "issue466-wt-hatch-outer-convention-inner-temp",
+      "command": "X={REPO}/.worktrees/w; echo $(X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD)"
+    },
+    {
+      "id": "issue466-wt-hatch-in-convention-control",
+      "command": "WEAVE_ALLOW_WT_MIGRATION=1 git worktree add {REPO}/.worktrees/w HEAD"
+    },
+    {
+      "id": "issue481-stale-outer-brace-assignment",
+      "command": "X={REPO}/.worktrees/w; { X=/tmp/q; git worktree add \"$X\" HEAD; }"
+    },
+    {
+      "id": "issue481-stale-outer-read-assignment",
+      "command": "X={REPO}/.worktrees/w; read X <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-stale-outer-eval-assignment",
+      "command": "X={REPO}/.worktrees/w; eval 'X=/tmp/q'; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-stale-outer-process-substitution-assignment",
+      "command": "X={REPO}/.worktrees/w; cat <( X=/tmp/q; git worktree add \"$X\" HEAD )"
+    },
+    {
+      "id": "issue481-stale-outer-plain-control",
+      "command": "X={REPO}/.worktrees/w; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-stale-outer-subshell-control",
+      "command": "X={REPO}/.worktrees/w; ( X=/tmp/q; git worktree add \"$X\" HEAD )"
+    },
+    {
+      "id": "issue481-stale-outer-local-control",
+      "command": "X={REPO}/.worktrees/w; f() { local X=/tmp/q; git worktree add \"$X\" HEAD; }; f"
+    },
+    {
+      "id": "issue481-static-eval-semicolon",
+      "command": "X={REPO}/.worktrees/w; eval 'true; X=/tmp/q'; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-static-eval-multiple-assignments",
+      "command": "X={REPO}/.worktrees/w; eval 'Y=1; X=/tmp/q'; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-static-eval-concatenated",
+      "command": "X={REPO}/.worktrees/w; eval \"true;X=/tmp/q\"; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-static-eval-read",
+      "command": "X={REPO}/.worktrees/w; eval 'read X' <<< /tmp/q; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-select-assignment",
+      "command": "X={REPO}/.worktrees/w; select X in /tmp/q; do break; done <<< 1; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-static-eval-assignment-only-control",
+      "command": "X={REPO}/.worktrees/w; eval Y=literal Z=other; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue481-select-unrelated-control",
+      "command": "X={REPO}/.worktrees/w; select Y in /tmp/q; do break; done <<< 1; git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue480-hatch-unresolved-subshell",
+      "command": "( X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD )"
+    },
+    {
+      "id": "issue480-hatch-unresolved-brace",
+      "command": "{ X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD; }"
+    },
+    {
+      "id": "issue480-hatch-unresolved-local",
+      "command": "f() { local X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD; }; f"
+    },
+    {
+      "id": "issue480-hatch-unresolved-read",
+      "command": "read X <<< /tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue480-hatch-unresolved-eval",
+      "command": "eval 'X=/tmp/q'; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD"
+    },
+    {
+      "id": "issue480-hatch-unresolved-process-substitution",
+      "command": "cat <( X=/tmp/q; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD )"
+    },
+    {
+      "id": "issue480-hatch-unresolved-unset",
+      "command": "WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$UNSET_VAR\" HEAD"
+    },
+    {
+      "id": "issue480-hatch-literal-control",
+      "command": "WEAVE_ALLOW_WT_MIGRATION=1 git worktree add {REPO}/.worktrees/w HEAD"
+    },
+    {
+      "id": "issue480-hatch-seen-variable-control",
+      "command": "WT={REPO}/.worktrees/w; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$WT\" HEAD"
+    },
+    {
+      "id": "issue480-hatch-resolved-function-global-temp",
+      "command": "X={REPO}/.worktrees/w; f() { declare -g X=/tmp/q; }; f; WEAVE_ALLOW_WT_MIGRATION=1 git worktree add \"$X\" HEAD"
+    }
+  ]
+}

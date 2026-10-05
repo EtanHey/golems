@@ -13,6 +13,18 @@ launch flow. Model defaults remain owned by the launcher's routing policy.
 
 Gatherers delegate independent BrainLayer questions and claim checks to the
 `brain-worker` subagent with `invoke_subagent`, at most four concurrently.
+The parent also enables the native `manage_subagents` and `wait` components:
+check its children, wait for their terminal results, then return the combined
+receipt. These are in-session lifecycle tools; they do not grant MCP or panes.
+An "awaiting" response without returned evidence is incomplete fan-out.
+
+Live probes on agy 1.2.16 verified both components load, native waiting returns
+a real BrainLayer result, and the parent retains zero MCP. The prior 1.2.14
+stall was not consistently reproduced on 1.2.16; this is completion-path
+hardening, not proof of an agy engine fix. Repeat the no-tool, fan-out and
+recording-fake-server deny canaries on every CLI upgrade. Do not enable MCP
+inheritance or add parent MCP servers to work around missing worker results.
+
 The subagent uses the Flash tier for `gemini.gather.text` in model-roles and
 returns compact, expanded source citations. It has no shell or file-write tools.
 MCP inheritance and customization inheritance are disabled; its explicit

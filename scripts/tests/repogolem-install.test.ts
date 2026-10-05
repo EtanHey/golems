@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { cpSync, chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -247,4 +248,79 @@ test('isolated installer source refuses missing varlock without registry request
     expect(code).toBe(2);expect(requests).toBe(0);expect(stdout+stderr).toContain('not installed');
     expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);expect(existsSync(join(home,'.local/bin/repogolem'))).toBe(false);
   }finally{registry.stop(true);}
+});
+
+function machineEditFixture() {
+  const seat = readFileSync(config, 'utf8');
+  const prior = seat + 'voice:\n  enabled: true\n';
+  const current = seat + 'machineRole: worker\n';
+  const source = (text: string) => seat + 'machineSeatConfigs:\n  fixture-host: |\n' + text.trimEnd().split('\n').map(line => '    ' + line).join('\n') + '\n';
+  writeFileSync(config, source(prior));
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  writeFileSync(config, source(current));
+  const target = join(home, '.config/repogolem/machine-config.yaml');
+  const journal = join(home, '.config/repogolem/install-state.json');
+  writeFileSync(target, current);
+  return { seat, current, target, journal };
+}
+for (const dry of [false, true]) test(`machine edit matching current render reconciles (${dry ? 'dry-run' : 'apply'})`, () => {
+  const { seat, current, target, journal } = machineEditFixture();
+  const before = readFileSync(journal, 'utf8');
+  const result = run(['--host', 'fixture-host', ...(dry ? ['--dry-run'] : [])]);
+  expect(result.code).toBe(0);
+  expect(result.text).toContain('machine view reconciled: matches current render');
+  expect(readFileSync(target, 'utf8')).toBe(current);
+  if (dry) expect(readFileSync(journal, 'utf8')).toBe(before);
+  else {
+    expect(JSON.parse(readFileSync(journal, 'utf8')).machineDigest).toBe(createHash('sha256').update(current).digest('hex'));
+    expect(run(['--rollback']).code).toBe(0);
+    expect(readFileSync(join(home, '.golems/config.yaml'), 'utf8')).toBe(seat);
+  }
+});
+for (const dry of [false, true]) test(`unmatched machine edit refuses with key-only diagnostics (${dry ? 'dry-run' : 'apply'})`, () => {
+  const { current, target, journal } = machineEditFixture();
+  const edited = current + 'privateToken: NEVER_PRINT_THIS_VALUE\n';
+  writeFileSync(target, edited);
+  const before = readFileSync(journal, 'utf8');
+  const result = run(['--host', 'fixture-host', ...(dry ? ['--dry-run'] : [])]);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('privateToken');
+  expect(result.text).not.toContain('NEVER_PRINT_THIS_VALUE');
+  expect(readFileSync(target, 'utf8')).toBe(edited);
+  expect(readFileSync(journal, 'utf8')).toBe(before);
+});
+test('rollback refuses matching-current hand edit until install adopts it', () => {
+  const { current, target, journal } = machineEditFixture();
+  const before = readFileSync(journal, 'utf8');
+  expect(run(['--rollback']).code).toBe(2);
+  expect(readFileSync(target, 'utf8')).toBe(current);
+  expect(readFileSync(journal, 'utf8')).toBe(before);
+});
+test('semantically equal machine edit with different bytes still refuses', () => {
+  const { current, target, journal } = machineEditFixture();
+  writeFileSync(target, current + '# manual comment\n');
+  const before = readFileSync(journal, 'utf8');
+  expect(run(['--host', 'fixture-host']).code).toBe(2);
+  expect(readFileSync(journal, 'utf8')).toBe(before);
+});
+
+test('reconciled machine view remains recoverable after an interrupted build', () => {
+  const { seat, current, target, journal } = machineEditFixture();
+  const bin = join(home, 'reconcile-fault'); mkdirSync(bin);
+  writeFileSync(join(bin, 'bun'), '#!/bin/sh\nexit 77\n', { mode: 0o700 });
+  expect(run(['--host', 'fixture-host'], true, { PATH: bin + ':' + process.env.PATH }).code).toBe(2);
+  expect(JSON.parse(readFileSync(journal, 'utf8')).machineDigest).toBe(createHash('sha256').update(current).digest('hex'));
+  expect(readFileSync(target, 'utf8')).toBe(current);
+  expect(run(['--rollback']).code).toBe(0);
+  expect(readFileSync(join(home, '.golems/config.yaml'), 'utf8')).toBe(seat);
+});
+test('malformed machine edit refuses without YAML excerpts or values', () => {
+  const { target, journal } = machineEditFixture();
+  writeFileSync(target, 'privateToken: [NEVER_PRINT_THIS_VALUE\n');
+  const before = readFileSync(journal, 'utf8');
+  const result = run(['--host', 'fixture-host']);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('values hidden');
+  expect(result.text).not.toContain('NEVER_PRINT_THIS_VALUE');
+  expect(readFileSync(journal, 'utf8')).toBe(before);
 });

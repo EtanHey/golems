@@ -28,7 +28,7 @@
     "codex.subagent.mechanical": {
       "model": "gpt-6-luna",
       "status": "candidate",
-      "gate": "bench after fleet convergence (skill-creator); not yet benched",
+      "gate": "bench after fleet convergence (skill-creator); not yet benched. Exception: Etan 2026-10-04 via orc authorises this role for Codex-internal mechanical sub-agents only; workers remain codex.implement",
       "use_for": "rebases, CI polling, version bumps, file moves",
       "never_for": "judgment of any kind"
     },
