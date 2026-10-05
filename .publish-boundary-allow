@@ -18,9 +18,6 @@ packages/coach/src/__tests__/morning-briefing-runner.test.ts
 packages/coach/src/__tests__/morning-briefing.test.ts
 packages/golems-tui/src/data.ts
 packages/green-invoice-mcp/src/__tests__/mcp-server.test.ts
-packages/recruiter/src/__tests__/auto-outreach.test.ts
-packages/recruiter/src/__tests__/obsidian-export.test.ts
-packages/recruiter/src/__tests__/outreach-db.test.ts
 packages/shared/src/__tests__/email-golem/draft-reply.test.ts
 packages/shared/src/__tests__/email-golem/followup.test.ts
 packages/shared/src/__tests__/email-golem/gmail-client.test.ts

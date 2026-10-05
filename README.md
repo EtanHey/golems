@@ -52,7 +52,6 @@ There are 11 workspace packages under `packages/`:
 | `golems-tui` | Terminal dashboard built on React Ink |
 | `green-invoice-mcp` | MCP server for Green Invoice, an Israeli invoicing service |
 | `mock-mcp` | Mock MCP server for testing agent skills |
-| `recruiter` | Outreach drafting, interview practice, Elo-rated skill tracking |
 | `services` | Morning briefing, scheduler worker, `doctor` health checks |
 | `shared` | Supabase, LLM, email, state, and MCP helpers the other packages share |
 | `teller` | Subscription tracking, payment categorization, spending reports, payment-failure alerts |
