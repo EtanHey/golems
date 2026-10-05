@@ -100,15 +100,22 @@ def main():
     parser.add_argument('--true-positives', type=Path)
     args = parser.parse_args()
     if args.capture_projects:
+        if args.snapshot.exists():
+            raise FileExistsError('capture requires a new snapshot path')
         sources = sorted(args.capture_projects.glob('*/*.jsonl'), key=lambda p: p.stat().st_mtime, reverse=True)[:400]
         snapshot, rows = capture(sources)
-        args.snapshot.write_text(json.dumps(snapshot, indent=2) + '\n')
     else:
         rows = replay(json.loads(args.snapshot.read_text()))
     positives = json.loads(args.true_positives.read_text()) if args.true_positives else {}
     result = audit(rows, _classifier(args.baseline_lib), _classifier(args.candidate_lib), positives)
     if result['total'] != 200:
         raise ValueError('corpus gate requires exactly 200 frozen commands')
+    if args.capture_projects:
+        # Exclusive creation also closes the check/write race. A failed import
+        # or malformed sample leaves no snapshot behind; a valid failing verdict
+        # remains reproducible from its explicit frozen sample.
+        with args.snapshot.open('x') as frozen:
+            frozen.write(json.dumps(snapshot, indent=2) + '\n')
     print(json.dumps(result, indent=2))
     return bool(result['unclassified_new_denies'])
 
