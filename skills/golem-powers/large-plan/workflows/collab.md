@@ -47,7 +47,7 @@ Staff by role from golems `standards/model-roles.json`; resolve with
 |-------|------|--------|----------|--------|
 | agentA | `codex.implement` | 1, 3 | $HOME/Gits/repo-a | idle |
 | agentB | `gemini.gather.text` | 2, 4 | $HOME/Gits/repo-b | idle |
-| reviewer | `claude.judgment` (lead-routed) | PR gates | $HOME/Gits/repo-a | idle |
+| reviewer | <role per `/agent-routing` § Routing rules (SSOT)> | PR gates | $HOME/Gits/repo-a | idle |
 
 Frame batches use `gemini.gather.visual`; single-fact recall, pane mechanics and
 verifiers use `claude.subagent.cheap`. Candidate roles require their bench gate.

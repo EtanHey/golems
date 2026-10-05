@@ -67,7 +67,7 @@ Until any of these fire, **don't build v2.** v1.1's empirical record (FM12 = 0/1
 **Components:**
 1. **Normalized ensemble entropy** per row: `H = -Σ p_label × log(p_label)` where `p_label` is the panel's empirical label distribution.
 2. **Risk-coverage curve sweep** to find optimal τ. v1.5 candidate: τ = 0.55 (rows with H > 0.55 abstain). Calibrate via labeled holdout from Phase A.
-3. **Cascade-then-HITL escalation**: abstained rows → cascade Opus → if still abstain → Etan queue. (Already partly implemented as W3.3's pending-RT routing; Phase B formalizes the abstention metric.)
+3. **Cascade-then-HITL escalation**: abstained rows → cascade adjudication → if still abstain → Etan queue. Routing: see `/agent-routing` § Routing rules (SSOT). (Already partly implemented as W3.3's pending-RT routing; Phase B formalizes the abstention metric.)
 
 **Cost estimate**: 1 sprint after Phase A.
 
@@ -77,7 +77,7 @@ Until any of these fire, **don't build v2.** v1.1's empirical record (FM12 = 0/1
 
 **Components:**
 1. **Local sentence-transformer** (e.g., `all-MiniLM-L6-v2`): embed every chunk + query; surface near-duplicates and paraphrase candidates for the FM1/FM2 detectors.
-2. **Prompted anti-consensus critic**: an Opus pass that argues AGAINST the majority for each near-consensus row, flagging suppressed dissent.
+2. **Prompted anti-consensus critic**: a pass that argues AGAINST the majority for each near-consensus row, flagging suppressed dissent. Routing: see `/agent-routing` § Routing rules (SSOT).
 3. **No ACPO LoRA**: the published codebase is a stub. Skip the LoRA fine-tune; the prompted critic is ≥80% as effective at <5% the cost.
 
 **Cost estimate**: 1 sprint after Phase B.

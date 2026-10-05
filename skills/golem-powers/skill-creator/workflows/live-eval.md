@@ -186,8 +186,8 @@ git branch -D "${SANDBOX}"
 |------------|-------|-------|
 | Bounded in-process/headless Claude behavior | Claude Code | Resolved `claude.subagent.cheap` alias |
 | Visible or decision-grade Claude behavior | Claude Code | `claude.judgment`, verify bare launcher pin |
-| Code implementation | Codex | Resolved `codex.implement` model |
-| Audit/review | Cursor | Default |
+| Code implementation | See `/agent-routing` § Routing rules (SSOT) | Resolve the selected role via `scripts/model-roles.mjs` |
+| Audit/review | See routing pointer above | Resolve the selected role via `scripts/model-roles.mjs` |
 
 For non-Claude agents follow `/cmux-agents`: pass the resolved Codex model and phase effort
 explicitly; Cursor retains its own launcher policy.

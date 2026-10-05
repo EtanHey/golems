@@ -6,6 +6,8 @@
 
 ## Launcher
 
+Routing: see `/agent-routing` § Routing rules (SSOT). Resolve the adapter role via `scripts/model-roles.mjs` from the golems checkout.
+
 ```
 claudeJudge -s
 ```
@@ -15,7 +17,7 @@ claudeJudge -s
 If `claudeJudge` isn't available in the shell, fall back to:
 
 ```bash
-claude --model claude-opus-4-7 \
+claude --model "$(node scripts/model-roles.mjs claude.judgment --field model)" \
        --system "You are claudeJudge, a relevance judge for agada-bench. Read the rubric and corpus from the paths you'll be given, then emit JSONL one row per (query_id, chunk_id) pair to the output path." \
        --no-mcp
 ```
@@ -105,7 +107,7 @@ If any check fails after `--judge-timeout` (default 30 min for claudeJudge), the
 
 ```yaml
 adapter: claude
-model: claude-opus-4-7
+role: claude.judgment
 launcher: claudeJudge -s
 mcp_required: none           # Judge runs without MCP to avoid bench contamination
 input_format: jsonl-pointer  # Brief points to corpus.jsonl + rubric file paths

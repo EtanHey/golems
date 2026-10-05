@@ -2,6 +2,20 @@
   "description": "CX37 reviewed baseline. Exact trimmed hit-line markers; counts cap repeated content. POINTER rows are temporary ssot-sweep debt removed by 3b/3c; other classes are permanent with reasons. No whole-file exemptions.",
   "exclusions": [
     {
+      "file": "skills/golem-powers/agada-bench/workflows/build-new-domain.md",
+      "marker": "- `cascade-opus`: single-judge outlier with high agreement among the other two \u2192 adjudication resolves. Routing: see `/agent-routing` \u00a7 Routing rules (SSOT).",
+      "class": "FUNCTIONAL",
+      "reason": "Retained cascade-opus/cascade-opus-resolved parser and resolution_method tokens; model choice has been replaced with the routing SSOT.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
+      "marker": "The adjudicator's label replaces the consensus label; `resolution_method` becomes `cascade-opus-resolved`; `notes` records the cascade rationale verbatim.",
+      "class": "FUNCTIONAL",
+      "reason": "Retained cascade-opus/cascade-opus-resolved parser and resolution_method tokens; model choice has been replaced with the routing SSOT.",
+      "count": 1
+    },
+    {
       "file": "skills/golem-powers/agada-bench/SKILL.md",
       "marker": "| `--pending-rt-cascade` | `opus-4-7` | Functional queue-routing token accepted by the parser; v1 queues rows without dispatching a model. |",
       "class": "FUNCTIONAL",
@@ -14,38 +28,6 @@
       "class": "DATA",
       "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/adapters/claude.md",
-      "marker": "claude --model claude-opus-4-7 \\",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/adapters/claude.md",
-      "marker": "model: claude-opus-4-7",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/adapters/codex.md",
-      "marker": "codex --model gpt-5-codex \\",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/adapters/codex.md",
-      "marker": "model: gpt-5-codex",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/agada-bench/references/judge-panel.md",
@@ -71,35 +53,11 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/agada-bench/references/roadmap-v2.md",
-      "marker": "3. **Cascade-then-HITL escalation**: abstained rows \u2192 cascade Opus \u2192 if still abstain \u2192 Etan queue. (Already partly implemented as W3.3's pending-RT routing; Phase B formalizes the abstention metric.)",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/references/roadmap-v2.md",
-      "marker": "2. **Prompted anti-consensus critic**: an Opus pass that argues AGAINST the majority for each near-consensus row, flagging suppressed dissent.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
       "file": "skills/golem-powers/agada-bench/workflows/build-new-domain.md",
       "marker": "--cascade opus-4-7 \\",
       "class": "FUNCTIONAL",
       "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/workflows/build-new-domain.md",
-      "marker": "- `cascade-opus`: single-judge outlier with high agreement among the other two \u2192 cheap Opus-4-7 call resolves.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/agada-bench/workflows/build-new-domain.md",
@@ -124,14 +82,6 @@
     },
     {
       "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
-      "marker": "(Opus-4-7 reads the chunk + rubric + 3 judge reasonings + outputs a label;",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
       "marker": "--cascade opus-4-7 \\",
       "class": "FUNCTIONAL",
       "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
@@ -150,22 +100,6 @@
       "class": "FUNCTIONAL",
       "reason": "Parser accepts opus-4-7/cascade-opus queue tokens; changing spelling breaks the tool contract.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
-      "marker": "Single cheap Opus-4-7 call per pending-RT row:",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
-      "marker": "Opus-4-7's label replaces the consensus label; `resolution_method` becomes `cascade-opus-resolved`; `notes` records the cascade rationale verbatim.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/agada-bench/workflows/pending-rt-routing.md",
@@ -623,42 +557,10 @@
     },
     {
       "file": "skills/golem-powers/large-plan/SKILL.md",
-      "marker": "- **Implementer:** `codex.implement` \u2192 model: <resolved model> \u00b7 effort: <low|medium|high|xhigh|default> \u00b7 why: <one line> (UX/UI phases: `claude.judgment` implements, Codex reviews; security phases: Daybreak Blue implements, `claude.judgment` reviews; see canon #1)",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/large-plan/SKILL.md",
-      "marker": "- **Reviewer / decisions:** `claude.judgment` (lead-routed) \u2192 model: <resolved model> \u00b7 effort: <low|medium|high|xhigh|default> \u00b7 why: <one line>",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/large-plan/SKILL.md",
       "marker": "| Research X | gemini | done |",
       "class": "FALSE POSITIVE",
       "reason": "Illustrative status/collab row; clause scanner bleeds from adjacent table text.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/large-plan/adapters/claude.md",
-      "marker": "| Implementation phase | `codex.implement` (UX/UI: `claude.judgment`) | Phase chooses effort and explains why; canon #1 exceptions apply |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/large-plan/adapters/claude.md",
-      "marker": "| PR-gating review, audit judgment | `claude.judgment` | Decision-grade reasoning |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/large-plan/adapters/cursor.md",
@@ -682,14 +584,6 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/large-plan/workflows/collab.md",
-      "marker": "| reviewer | `claude.judgment` (lead-routed) | PR gates | $HOME/Gits/repo-a | idle |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
       "file": "skills/golem-powers/large-plan/workflows/execute-phase.md",
       "marker": "**Why:** Bot reviewers (CodeRabbit, Cursor Bugbot) take 10-20 minutes. Local audit catches the same issues in one pass, reducing fix-push-wait cycles.",
       "class": "FALSE POSITIVE",
@@ -704,35 +598,11 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/large-plan/workflows/scaffold.md",
-      "marker": "- **Implementer:** `codex.implement` \u2192 model: <resolved model> \u00b7 effort: <low|medium|high|xhigh|default> \u00b7 why: <one line> (UX/UI phases: `claude.judgment` implements, Codex reviews; security phases: Daybreak Blue implements, `claude.judgment` reviews; see canon #1)",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/large-plan/workflows/scaffold.md",
-      "marker": "- **Reviewer / decisions:** `claude.judgment` (lead-routed) \u2192 model: <resolved model> \u00b7 effort: <low|medium|high|xhigh|default> \u00b7 why: <one line>",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
       "file": "skills/golem-powers/model-pin-gate/SKILL.md",
       "marker": "description: \"PreToolUse guard: unpinned Fable-seat spawns and sub-apex Fable targets block. Triggers: model pin, Fable seat, spawn.\"",
       "class": "FUNCTIONAL",
       "reason": "Model-pin hook contract/input example names tested guard branches and verdicts; preserve behavior.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/model-pin-gate/SKILL.md",
-      "marker": "> Fable is apex-only. Worker fan-out should name the model it needs instead of inheriting or targeting Fable by accident.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/model-pin-gate/SKILL.md",
@@ -854,22 +724,6 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/orc/SKILL.md",
-      "marker": "| Query BrainLayer, synthesize across repos | Bulk-read files (spawn haiku subagent) |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/orc/SKILL.md",
-      "marker": "- Heavy file work -> spawn haiku subagent, keep YOUR context clean",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
       "file": "skills/golem-powers/orc/agents/orc-helper.md",
       "marker": "model: sonnet",
       "class": "FUNCTIONAL",
@@ -889,14 +743,6 @@
       "class": "FUNCTIONAL",
       "reason": "Agent frontmatter model is parsed by harness and checked against role config; preserve behavior.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/orc/agents/orc-helper.md",
-      "marker": "- \"Spawn a Codex implementer in golems (worker/right, effort medium) with the brief at docs.local/\u2026/brief.md; watch for its report ending DONE_X.\"",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/plan-council/SKILL.md",
@@ -1595,14 +1441,6 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/qa-video/workflows/handoff.md",
-      "marker": "After processing a video and compiling findings, send them to an implementing agent (Codex, Claude worker, or other CLI agent) for fixes.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
       "file": "skills/golem-powers/repogolem/SKILL.md",
       "marker": "- `-s` = skip permissions. For Codex it is a compatibility no-op; `golem-install` validates `approval_policy = \"never\"` and `sandbox_mode = \"danger-full-access\"` in host config. Capital `-S`/`--sonnet` is a separate Claude-only model request and is refused for full panes.",
       "class": "FALSE POSITIVE",
@@ -1625,22 +1463,6 @@
     },
     {
       "file": "skills/golem-powers/skill-creator/SKILL.md",
-      "marker": "| Code implementation skills | `codex.implement` | Tests code quality |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/skill-creator/SKILL.md",
-      "marker": "| Audit/review skills | Cursor (default) | Tests review thoroughness |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/skill-creator/SKILL.md",
       "marker": "| `session-miner` | `agents/session-miner.md` (model: inherit) | `agents/session-miner.toml` (model: gpt-5.3-codex-spark) | [mine-session.md](workflows/mine-session.md) |",
       "class": "POINTER",
       "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
@@ -1653,38 +1475,6 @@
       "class": "DATA",
       "reason": "Preserve comparative cost table; no dispatch/model instruction.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/skill-creator/adapters/codex.md",
-      "marker": "skillCreatorCodex is excellent at implementation work \u2014 once the design + evals are scoped (typically by skillCreatorClaude), Codex implements the skill content, writes evals.json, runs the live-eval-runner.sh comparisons, and produces the PR. The Anthropic Agent SDK pricing post-June-15 makes Codex the natural default for heavy implementation work.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/skill-creator/adapters/codex.md",
-      "marker": "- Codex's strength is mechanical implementation; for architectural calls, hand back to skillCreatorClaude.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/skill-creator/adapters/codex.md",
-      "marker": "| Create-skill implementation | \"$0\" (within OpenAI Plus/Pro sub) | Codex bills against existing sub; effectively free relative to Anthropic |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/skill-creator/adapters/codex.md",
-      "marker": "Use Codex for the implementation half of skill work and the parallel mining half. Reserve Claude for architectural reasoning and live A/B dispatching.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/skill-creator/evals/fixtures/eval-provenance/alias-mention-with-provenance-2026-08-04.md",
@@ -1764,30 +1554,6 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/skill-creator/workflows/create-skill.md",
-      "marker": "This matters here because Codex holds a first-class implementation lane (fleet",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/skill-creator/workflows/live-eval.md",
-      "marker": "| Code implementation | Codex | Resolved `codex.implement` model |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/skill-creator/workflows/live-eval.md",
-      "marker": "| Audit/review | Cursor | Default |",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
       "file": "skills/golem-powers/tmp-block/SKILL.md",
       "marker": "2. That the hook's **trust review** has been completed. Codex skips a",
       "class": "FALSE POSITIVE",
@@ -1807,22 +1573,6 @@
       "class": "FALSE POSITIVE",
       "reason": "Resource-pressure warning about existing fleet; not model selection.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
-      "marker": "2. **luna/terra (cheap 5.6) at MEDIUM effort** on small slices. [g3:60]",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/weave/references/run-lifecycle.md",
-      "marker": "3. **sol for centerpieces only.** [g3:60]",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/weave/references/run-lifecycle.md",
@@ -1874,14 +1624,6 @@
       "class": "DATA",
       "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/weave/references/verification-and-discharge.md",
-      "marker": "The design requires the phase-recursion loop to exit only through **one apex agent** (Fable) returning",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/weave/references/verification-and-discharge.md",
