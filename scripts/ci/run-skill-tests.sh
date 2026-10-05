@@ -31,7 +31,8 @@ while IFS= read -r -d '' suite; do
 done < <(
   find skills/golem-powers -path 'skills/golem-powers/_archive' -prune -o \
     -type f \( -path '*/evals/run_suite.py' -o \
-      -path '*/collab-monitor/evals/route-contract.py' \) -print0 | sort -z
+      -path '*/collab-monitor/evals/route-contract.py' -o \
+      -path '*/collab-monitor/evals/monitor-howto.py' \) -print0 | sort -z
   # Stdlib test scripts at scripts/ top level (exit 0 = pass) run the same
   # way as the gate suites.
   find scripts -maxdepth 1 -name 'test_*.py' -type f -print0 | sort -z
