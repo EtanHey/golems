@@ -323,6 +323,36 @@ class CodexPolicyHookTests(unittest.TestCase):
                         result = self.check(run(gate, payload(command)), deny)
                         if deny: self.assertIn("native apply_patch", result["hookSpecificOutput"]["permissionDecisionReason"])
 
+    def test_lenient_patch_body_framing_is_refused(self):
+        patch = "*** Begin Patch\n*** Add File: docs.local/example.md\n+x\n*** End Patch"
+        # Safe data heads exercise the accepted-cost boundary without publishing
+        # a working tokenizer-desync spelling. Live cases stay in private fixtures.
+        for opener in ("<<EOF", "<<'EOF'", '<<"EOF"'):
+            for closer in ("EOF", "suffixEOF"):
+                for padding in ("", " \t"):
+                    body = f"{padding}{opener}\n{patch}\n{closer}{padding}"
+                    for alias in ("apply_patch", "applypatch"):
+                        command = f"printf '%s' '{alias}' <<'DOC'\n{body}\nDOC"
+                        for gate in TARGETS:
+                            with self.subTest(opener=opener, closer=closer, padding=padding, alias=alias, gate=gate):
+                                result = self.check(run(gate, payload(command)), True)
+                                self.assertIn("native apply_patch", result["hookSpecificOutput"]["permissionDecisionReason"])
+        for body in (f"<<OTHER\n{patch}\nEOF", f"<<EOF\n{patch}\nOTHER",
+                     f"<<EOF\n\n{patch}\nEOF", f"<<EOF\n{patch}\n\nEOF",
+                     f"Example text\n{patch}\nEOF"):
+            for gate in TARGETS:
+                self.check(run(gate, payload(f"printf '%s' 'apply_patch' <<'DOC'\n{body}\nDOC")), False)
+        for gate in TARGETS:
+            self.check(run(gate, payload(f"cat <<'DOC'\n<<EOF\n{patch}\nEOF\nDOC")), False)
+
+    def test_invalid_lenient_wrapper_opening_stays_allowed(self):
+        patch = "*** Begin Patch\n*** Add File: docs.local/example.md\n+x\n*** End Patch"
+        for alias in ("apply_patch", "applypatch"):
+            for gate in TARGETS:
+                with self.subTest(alias=alias, gate=gate):
+                    command = f"printf '%s' '{alias}' <<'DOC'\n<<EOF \n{patch}\nEOF\nDOC"
+                    self.check(run(gate, payload(command)), False)
+
     def test_transport_refusal_and_adapter_failure_have_distinct_reasons(self):
         patch = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+x\n*** End Patch"
         for gate in TARGETS:
