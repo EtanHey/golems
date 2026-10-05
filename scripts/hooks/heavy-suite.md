@@ -1,32 +1,36 @@
-# Machine-wide heavy suite queue
+# Heavy suite queue
 
-Wrap the full-suite command in each repository's pre-push or release hook:
+Opt in by replacing the suite command in each repository's pre-push/release hook:
 
 ```sh
-python3 "$HOME/Gits/golems/scripts/hooks/heavy-suite.py" -- bun run test
+HS="$HOME/Gits/golems/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then python3 "$HS" -- bun run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun run test; fi
 ```
 
-Replace `bun run test` with that repository's existing full-suite command. This
-is an opt-in wrapper; it does not install or modify another repository's hooks.
-Golems has no tracked pre-push hook. Its package suite can use the same command;
-the skill suite uses `...heavy-suite.py -- bash scripts/ci/run-skill-tests.sh`.
+Replace `bun run test` in both branches with that repository's existing suite.
+For the skill suite, use `bash scripts/ci/run-skill-tests.sh`, retaining its environment requirements
+(including isolated TMP_BLOCK_LEDGER). This wrapper installs no hooks itself.
 
-All opted-in commands share `~/.local/state/golems/heavy-suite.lock`. A waiting
-command acquires the advisory lock, then waits while the 1-minute load (the same
-value shown by `uptime`) exceeds 20. Set `GOLEMS_HEAVY_MAX_LOAD` or `--max-load`
-for a different threshold; `GOLEMS_HEAVY_POLL_SECONDS` / `--poll-seconds` controls
-the load check interval (default 5 seconds). Lightweight targeted tests need not
-use the wrapper. It cannot serialize commands that have not opted in.
+By default, opted-in commands for the same OS user share
+`~/.local/state/golems/heavy-suite.lock`. Use `GOLEMS_HEAVY_LOCK` for an explicit
+shared path (or an isolated test path). Different users must configure the same
+accessible path to share a queue. Kernel ownership is authoritative; stale PID
+metadata is replaced. Never delete the lock file: a new inode could allow overlap.
 
-The kernel releases a dead owner's lock; the next holder replaces its stale
-record. PID metadata is informational. Never delete the lock file, even when
-it looks stale: unlinking would create two independently locked inodes. The
-suite child inherits the descriptor so wrapper death does not free the slot
-while that child still runs. SIGINT/SIGTERM are forwarded to its process group.
-The wrapper preserves command exit status and prints SUITE START/DONE receipts.
+After acquiring the lock, the wrapper waits while uptime's 1-minute load exceeds
+20. `GOLEMS_HEAVY_MAX_LOAD` / `--max-load` changes the threshold;
+`GOLEMS_HEAVY_POLL_SECONDS` / `--poll-seconds` changes the 5-second poll interval.
+WAIT logs are throttled to 30 seconds and show the holder PID/executable/start.
+`GOLEMS_HEAVY_MAX_WAIT_SECONDS` / `--max-wait-seconds` sets one budget for lock
+and load waits (default 1800 seconds). Expiry proceeds with a LOUD warning;
+lock expiry runs unqueued, load expiry runs while retaining its acquired lock.
+`GOLEMS_HEAVY_FORCE=1` explicitly bypasses both with a warning. Missing helper,
+Python, or unusable lock setup runs the original suite unqueued; a broken suite
+command or failing suite still fails the hook. This is scheduling, not a policy gate.
 
-Wrap the suite itself, rather than an entire release script that invokes a
-wrapped pre-push hook; nesting wrappers would wait on the outer lock. Keep the
-fleet collab START/DONE posts until all full-suite callers have opted in. Existing
-suite environment requirements (including TMP_BLOCK_LEDGER test isolation) still
-apply. Tests use synthetic HOME and child commands, not real suites.
+The child inherits the descriptor, keeping its slot if the wrapper is SIGKILL'd.
+Normal completion explicitly unlocks before close, so surviving daemons cannot
+keep the queue held. INT/TERM/HUP are forwarded to the child's process group.
+An inherited `GOLEMS_HEAVY_SUITE_HELD` marker makes nested wrappers re-entrant.
+The wrapper preserves suite exit status. Keep fleet START/DONE posts until all
+callers opt in; commands outside the wrapper, forced runs and expired waits may
+overlap. Tests use synthetic homes, locks and commands, never a real full suite.
