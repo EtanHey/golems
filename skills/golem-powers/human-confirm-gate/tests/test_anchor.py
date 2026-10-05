@@ -11,6 +11,7 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import unittest
 import uuid
@@ -367,15 +368,19 @@ class Platform(unittest.TestCase):
             (hook.parent / 'extra.pyc').write_bytes(b'')  # any compiled module, whatever its name
             self.assertEqual(run(), 2)
 
-    def test_launcher_preloads_runpy_lazy_imports_before_any_hook_dir_joins(self):
+    def test_launcher_preloads_runpy_lazy_imports_from_the_stdlib(self):
         launcher = ROOT.parents[2] / 'scripts/hooks/fail-open.py'
-        probe = ('import importlib.util, sys; before = [m in sys.modules for m in ("pkgutil", "warnings")];'
-                 'spec = importlib.util.spec_from_file_location("launcher", %r);' % str(launcher) +
+        # Load the launcher module only (main() never runs, sys.path is untouched),
+        # then check the security property: runpy's lazy imports are already
+        # loaded, from the stdlib. Which of them the interpreter itself imported
+        # at startup varies by build, so pre-launch membership is not asserted.
+        probe = ('import importlib.util, sys; spec = importlib.util.spec_from_file_location("launcher", %r);' % str(launcher) +
                  'mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod);'
-                 'print([before, [m in sys.modules for m in ("pkgutil", "warnings")]])')
-        out = subprocess.run(['python3', '-I', '-S', '-c', probe], capture_output=True, text=True, check=True).stdout
-        # Loading the launcher (before main() touches sys.path) already holds runpy's lazy imports.
-        self.assertEqual(out.strip(), '[[False, False], [True, True]]')
+                 'origins = {m: getattr(getattr(sys.modules.get(m), "__spec__", None), "origin", None) for m in ("pkgutil", "warnings")};'
+                 'import json, os, sysconfig; std = os.path.realpath(sysconfig.get_paths()["stdlib"]);'
+                 'print(json.dumps({m: bool(o) and os.path.realpath(o).startswith(std + os.sep) for m, o in origins.items()}))')
+        out = subprocess.run([sys.executable, '-I', '-S', '-c', probe], capture_output=True, text=True, check=True).stdout
+        self.assertEqual(json.loads(out), {'pkgutil': True, 'warnings': True})
 
     def test_stray_importables_flag_compiled_modules_links_and_shadow_packages(self):
         import tempfile, runpy, sys
@@ -399,6 +404,32 @@ class Platform(unittest.TestCase):
             (here / 'linked.py').symlink_to(here / 'tokens.py')
             found = set(hook['stray_importables'](str(here), str(shared)))
             self.assertEqual(found, {str(p) for p in stray + [here / 'pkg', shared / 'shell_parse', here / 'linked.py']})
+
+    def test_trusted_gh_is_a_fixed_owner_checked_candidate_never_caller_path(self):
+        import tempfile, tokens
+        from types import SimpleNamespace
+        self.assertEqual(tokens.GH_CANDIDATES, tuple(os.path.join(prefix, 'bin', 'gh') for prefix in
+                                                     (os.path.join('/', 'opt', 'homebrew'), os.path.join('/', 'usr', 'local'))))
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            missing, loose, good = (Path(tmp) / name for name in ('missing', 'loose', 'good'))
+            for path, mode in ((loose, 0o775), (good, 0o755)):
+                path.write_text('#!/bin/sh\n'); path.chmod(mode)
+            self.assertEqual(tokens.trusted_binary((missing, loose, good)), str(good))  # group-writable skipped
+            with self.assertRaises(ValueError): tokens.trusted_binary((missing, loose))
+            Path(tmp, 'dir').mkdir()
+            with self.assertRaises(ValueError): tokens.trusted_binary((Path(tmp, 'dir'),))
+            real = os.stat(good)
+            foreign = SimpleNamespace(st_mode=real.st_mode, st_uid=os.getuid() + 1)
+            with patch('tokens.os.stat', return_value=foreign), self.assertRaises(ValueError):
+                tokens.trusted_binary((good,))
+        with patch.dict(os.environ, PATH=str(root)):  # caller PATH is never consulted
+            calls = []
+            with patch('tokens.trusted_binary', side_effect=lambda c: calls.append(c) or 'GH'), \
+                 patch('tokens.read_command', side_effect=['topic', 'git@github.com:o/r.git', '{"defaultBranchRef":{"name":"main"}}', '{}']) as read:
+                tokens.lead_metadata(dict(repo='.', ref='refs/heads/topic', source='HEAD', remote='origin'))
+            self.assertEqual(calls, [tokens.GH_CANDIDATES, tokens.GH_CANDIDATES])
+            self.assertEqual(read.call_args.args[0][0], 'GH')
 
     def test_pin_grammar_matches_shared_vectors(self):
         from tokens import parse_pins
