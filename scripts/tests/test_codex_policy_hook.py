@@ -39,6 +39,53 @@ def payload(command, tool="Bash"):
             "cwd": str(ROOT), "hook_event_name": "PreToolUse"}
 
 
+def desynced_patch_cases(target):
+    """Synthetic review classes; callers choose only fixture-owned targets."""
+    cases = {
+        'escaped_space_value': "X=$'\\'' Y=a\\ b apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'escaped_space_hash': "X=$'\\'' Y=\\ #z apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'brace_space_value': "X=$'\\'' Y=${z:-a b} apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'backtick_space_value': "X=$'\\'' Y=`echo a b` apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'line_continuation': "X=$'\\'' \\\napply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'ansic_newline': "X=$'\\'\n' apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'sq_newline_value': "X=$'\\'' Y='\n' apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'assign_prefixed_cd': "X=$'\\'' cd sub && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'cd_then_assign_cd': "Y=1 cd sub && X=$'\\'' apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'redirect_before_name': "X=$'\\'' 2>/dev/null apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'locale_string': 'X=$"\\"" apply_patch <<\'EOF\'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF',
+        'locale_plus_ansic': 'X=$"\'" X=$\'\\\'\' apply_patch <<\'EOF\'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF',
+        'nested_dq_in_ansic': 'X=$\'"\\\'\' apply_patch <<\'EOF\'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF',
+        'escaped_quote_bare': "X=\\' X=$'\\'' apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'unbalanced_paren_escaped': "X=$'\\'' Y=\\( apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'delim_with_paren': "Y=\\( X=$'\\'' apply_patch <<E\\)F\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nE)F",
+        'hash_in_value': "X=$'\\'' Y=a#b apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'here_string_like': "X=$'\\'' Y=<<<a apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'array_index_assign': "X[$'\\'']=1 apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'array_nested': "X=(a $'\\'' (b)) apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'dq_cmdsub_quote': 'X="$(echo \\")" X=$\'\\\'\' apply_patch <<\'EOF\'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF',
+        'two_desync': "X=$'\\'' X=(a) apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'tab_sep': "X=$'\\''\tapply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'cd_quoted_dir': "cd 'sub' && X=$'\\'' apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'cd_dq_space': 'cd "s b" && X=$\'\\\'\' apply_patch <<\'EOF\'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF',
+        'delim_unquoted': "X=$'\\'' apply_patch <<EOF\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'delim_dash': "X=$'\\'' apply_patch <<-'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'dollar_sq_delim': "X=$'\\'' apply_patch <<$'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'value_with_semicolon_quoted': "X=$'\\'' Y=a';'b apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'crlf': "X=$'\\'' apply_patch <<'EOF'\r\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'leading_blank_line': "\nX=$'\\'' apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'leading_space': "   X=$'\\'' apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'cd_ansic_dir': "cd $'\\'' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'ansic_dq_mix': 'X=$\'a\'"$\'\\\'\'" apply_patch <<\'EOF\'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF',
+        'backslash_newline_in_value': "X=$'\\''a\\\nb apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'process_sub_value': "X=$'\\'' Y=<(true) apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'bare_paren_value': "X=$'\\'' Y=a(b) apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'extglob_value': "X=$'\\'' Y=@(a|b) apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF",
+        'quoted-delimiter-space': "X=$'\\'' apply_patch <<'E F'\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nE F",
+        'concatenated-delimiter': 'X=$\'\\\'\' apply_patch <<E"O"F\n*** Begin Patch\n*** Add File: __TARGET__\n+x\n*** End Patch\nEOF',
+    }
+    return {name: command.replace("__TARGET__", target) for name, command in cases.items()}
+
+
 class CodexPolicyHookTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -191,6 +238,120 @@ class CodexPolicyHookTests(unittest.TestCase):
                 for command in commands:
                     with self.subTest(gate=gate, command=command):
                         self.check(run(gate, payload(command)), False)
+
+    def test_bash_patch_prefix_parser_desync_is_refused(self):
+        prefixes = {"ansi-c-escaped-quote": "X=$'\\'' ", "array-assignment": "X=(one) ",
+                    "ansi-c-long-value": "X=$'prefix\\'suffix' ",
+                    "array-spaces": "X=(one two) ", "array-append": "X+=(one) "}
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            env = clean_env(); env["TMPDIR"] = scratch
+            for gate, target in (("tmp-block", str(Path(scratch) / "hidden.md")),
+                                 ("git-guardian", ".env")):
+                for name, prefix in prefixes.items():
+                    for alias in ("apply_patch", "applypatch"):
+                        for cd in ("", f"cd '{ROOT}' && "):
+                            command = f"{cd}{prefix}{alias} <<'EOF'\n*** Begin Patch\n*** Add File: {target}\n+x\n*** End Patch\nEOF"
+                            with self.subTest(gate=gate, prefix=name, alias=alias, cd=bool(cd)):
+                                result = self.check(run(gate, payload(command), env=env), True)
+                                reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+                                self.assertIn("native apply_patch", reason)
+                                self.assertNotIn("unavailable", reason)
+
+    def test_patch_head_mentions_in_first_line_data_remain_allowed(self):
+        for alias in ("apply_patch", "applypatch"):
+            commands = [
+                f"git commit -m 'docs: {alias} <<EOF and *** Begin Patch markers'",
+                f"printf '%s' '{alias} <<EOF' <<'DOC'\n*** Begin Patch\nDOC",
+                f"X='{alias} <<EOF' cat <<'DOC'\n*** Begin Patch\nDOC",
+                f"X=(one) printf '%s' '{alias} <<EOF' <<'DOC'\n*** Begin Patch\nDOC",
+                f"cat <<'DOC' # explain {alias} <<EOF\n*** Begin Patch\nDOC",
+                f"X=(one) echo {alias} <<'DOC'\n*** Begin Patch\nDOC",
+                f"X=$'\\'' printf '%s' '{alias} <<EOF' <<'DOC'\n*** Begin Patch\nDOC",
+            ]
+            for gate in TARGETS:
+                for command in commands:
+                    with self.subTest(gate=gate, alias=alias, command=command):
+                        self.check(run(gate, payload(command)), False)
+
+    def test_escaped_cd_data_prefix_stays_allowed_within_budget(self):
+        # A non-intercepted docs command must not exhaust the adapter deadline
+        # while rejecting an unsupported cd shape with many escaped characters.
+        command = "cd\t" + "\\!" * 28 + "; X=(one) echo apply_patch <<'DOC'\n*** Begin Patch\nDOC"
+        for gate in TARGETS:
+            with self.subTest(gate=gate):
+                started = time.monotonic()
+                self.check(run(gate, payload(command)), False)
+                self.assertLess(time.monotonic() - started, 3)
+
+    def test_composed_desync_patch_shapes_are_refused(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            cwd = Path(scratch) / "workspace"; cwd.mkdir()
+            (cwd / "sub").mkdir(); (cwd / "s b").mkdir()
+            tempdir = Path(scratch) / "temp-class"; tempdir.mkdir()
+            env = clean_env(); env["TMPDIR"] = str(tempdir)
+            for gate, target in (("tmp-block", str(tempdir / "hidden.md")),
+                                 ("git-guardian", str(cwd / ".env"))):
+                for name, command in desynced_patch_cases(target).items():
+                    for alias in ("apply_patch", "applypatch"):
+                        with self.subTest(gate=gate, shape=name, alias=alias):
+                            p = payload(command.replace("apply_patch", alias)); p["cwd"] = str(cwd)
+                            result = self.check(run(gate, p, env=env), True)
+                            reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+                            self.assertIn("native apply_patch", reason)
+                            self.assertNotIn("unavailable", reason)
+
+    def test_desync_scan_reuses_parser_size_bound(self):
+        command = "X=" + "(" * 100000 + "x" + ")" * 100000 + " apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: docs.local/note.md\n+x\n*** End Patch\nEOF"
+        for gate in TARGETS:
+            with self.subTest(gate=gate):
+                started = time.monotonic()
+                result = self.check(run(gate, payload(command)), True)
+                self.assertLess(time.monotonic() - started, 3)
+                self.assertIn("too large", result["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_complete_patch_data_cost_and_controls(self):
+        patch = "*** Begin Patch\n*** Add File: docs.local/note.md\n+x\n*** End Patch"
+        for alias in ("apply_patch", "applypatch"):
+            for gate in TARGETS:
+                for label, command, deny in [
+                    ("head-mention-complete-body", f"printf '%s' '{alias}' <<'DOC'\n{patch}\nDOC", True),
+                    ("complete-body-no-head-mention", f"cat <<'DOC'\n{patch}\nDOC", False),
+                    ("body-mention-only", f"cat <<'DOC'\n{patch.replace('+x', '+' + alias)}\nDOC", False),
+                    ("complete-patch-after-prose", f"printf '%s' '{alias}' <<'DOC'\nExample text\n{patch}\nDOC", False),
+                ]:
+                    with self.subTest(gate=gate, alias=alias, shape=label):
+                        result = self.check(run(gate, payload(command)), deny)
+                        if deny: self.assertIn("native apply_patch", result["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_lenient_patch_body_framing_is_refused(self):
+        patch = "*** Begin Patch\n*** Add File: docs.local/example.md\n+x\n*** End Patch"
+        # Safe data heads exercise the accepted-cost boundary without publishing
+        # a working tokenizer-desync spelling. Live cases stay in private fixtures.
+        for opener in ("<<EOF", "<<'EOF'", '<<"EOF"'):
+            for closer in ("EOF", "suffixEOF"):
+                for padding in ("", " \t"):
+                    body = f"{padding}{opener}\n{patch}\n{closer}{padding}"
+                    for alias in ("apply_patch", "applypatch"):
+                        command = f"printf '%s' '{alias}' <<'DOC'\n{body}\nDOC"
+                        for gate in TARGETS:
+                            with self.subTest(opener=opener, closer=closer, padding=padding, alias=alias, gate=gate):
+                                result = self.check(run(gate, payload(command)), True)
+                                self.assertIn("native apply_patch", result["hookSpecificOutput"]["permissionDecisionReason"])
+        for body in (f"<<OTHER\n{patch}\nEOF", f"<<EOF\n{patch}\nOTHER",
+                     f"<<EOF\n\n{patch}\nEOF", f"<<EOF\n{patch}\n\nEOF",
+                     f"Example text\n{patch}\nEOF"):
+            for gate in TARGETS:
+                self.check(run(gate, payload(f"printf '%s' 'apply_patch' <<'DOC'\n{body}\nDOC")), False)
+        for gate in TARGETS:
+            self.check(run(gate, payload(f"cat <<'DOC'\n<<EOF\n{patch}\nEOF\nDOC")), False)
+
+    def test_invalid_lenient_wrapper_opening_stays_allowed(self):
+        patch = "*** Begin Patch\n*** Add File: docs.local/example.md\n+x\n*** End Patch"
+        for alias in ("apply_patch", "applypatch"):
+            for gate in TARGETS:
+                with self.subTest(alias=alias, gate=gate):
+                    command = f"printf '%s' '{alias}' <<'DOC'\n<<EOF \n{patch}\nEOF\nDOC"
+                    self.check(run(gate, payload(command)), False)
 
     def test_transport_refusal_and_adapter_failure_have_distinct_reasons(self):
         patch = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+x\n*** End Patch"

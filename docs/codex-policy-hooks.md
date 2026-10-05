@@ -114,12 +114,20 @@ Absolute temp paths are checked. Direct, command-position `apply_patch`/`applypa
 invocations with supported literal inline envelopes are evaluated through both
 existing patch policies, including relative headers after a literal leading
 `cd <dir> &&`. Unsupported forms of those recognized direct invocations are
-refused with a native-tool hint. Names and markers in docs, quoted arguments or
-heredoc data do not trigger extraction; ordinary commands keep their existing
-policy decisions. This is lexical coverage, not a blanket denial of opaque or
-encoded producers.
+refused with a native-tool hint. Names and markers in ordinary documentation,
+quoted arguments and incomplete patch examples retain their Bash decisions,
+subject to the complete-patch data refusal described below. This is lexical
+coverage, not a blanket denial of opaque or encoded producers.
 Repeated boundary-marker text within a direct shell patch, including literal
 patch content, is conservatively refused; use the native patch tool for it.
+Parser desync remains a lexical coverage limit (#616). When command positions
+are lost, a recognizable trailing heredoc carrying one complete patch, including
+Codex's lenient body wrapper, is refused if the tool name occurs before its
+operator. This also refuses data heredocs whose
+head merely mentions the tool and whose body is a complete patch; ordinary prose
+and incomplete patch examples retain their Bash decisions. The shared 32 KiB
+command limit and a bounded delimiter scan keep this fallback within the hook budget.
+Bare command-position patch invocations without a patch marker are also refused.
 This does not recover the omitted per-call `workdir`. No broad relative-write or
 interactive-shell ban is added to the shared policy; filesystem sandboxing and
 upstream hook coverage changes need separate decisions.

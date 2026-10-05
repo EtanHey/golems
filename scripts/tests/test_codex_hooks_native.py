@@ -1,5 +1,6 @@
 """Real Codex CLI, synthetic local Responses server, scratch home; no paid calls."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,10 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 ADAPTER = ROOT / "scripts/hooks/codex-policy-hook.py"
+_cases_spec = importlib.util.spec_from_file_location("codex_hook_cases", ROOT / "scripts/tests/test_codex_policy_hook.py")
+_cases = importlib.util.module_from_spec(_cases_spec)
+_cases_spec.loader.exec_module(_cases)
+desynced_patch_cases = _cases.desynced_patch_cases
 
 
 @unittest.skipUnless(shutil.which("codex"), "Codex CLI not installed")
@@ -44,6 +49,25 @@ class NativeHooksTests(unittest.TestCase):
                 "applypatch <<'EOF'\n*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\nEOF",
                 f"cd '{workspace}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: allowed-heredoc.md\n+allowed apply_patch\n*** End Patch\nEOF",
             ]
+            # Exercise prefix classes that desync the shared tokenizer while
+            # Codex still intercepts the heredoc in-process, before any shell.
+            for label, prefix in (("ansi-c", "X=$'\\'' "), ("array", "X=(one) ")):
+                for cd in (False, True):
+                    lead = f"cd '{workspace}' && " if cd else ""
+                    alias = "applypatch" if cd else "apply_patch"
+                    commands.append(f"{lead}{prefix}{alias} <<'EOF'\n*** Begin Patch\n*** Add File: {tempdir}/{label}-{cd}.md\n+x\n*** End Patch\nEOF")
+            (workspace / "sub").mkdir(); (workspace / "s b").mkdir()
+            for name, command in desynced_patch_cases(str(tempdir / "shape-leak.md")).items():
+                commands.append(command.replace("shape-leak.md", name + ".md"))
+            # Optional private regression catalogue; public code carries no new
+            # working bypass spelling while the shared tokenizer fix is pending.
+            private_cases = os.environ.get("CODEX_NATIVE_PRIVATE_CASES")
+            if private_cases:
+                cases = json.loads(Path(private_cases).read_text())
+                self.assertIsInstance(cases, dict)
+                for command in cases.values():
+                    self.assertIsInstance(command, str)
+                    commands.append(command.replace("__TEMP_CLASS__", str(tempdir)))
             patches = [
                 "*** Begin Patch\n  *** Add File: .env\n+SYNTHETIC=x\n*** End Patch\n",
                 "*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\n",
@@ -134,7 +158,7 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                 server.shutdown()
                 server.server_close()
             self.assertEqual(result.returncode, 0, result.stderr[-3000:])
-            self.assertEqual(len(requests), 13, result.stderr[-3000:])
+            self.assertEqual(len(requests), len(commands) + len(patches) + 1, result.stderr[-3000:])
             outputs = {}
             for request in requests:
                 for item in request.get("input", []):
@@ -153,11 +177,14 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
             self.assertEqual((workspace / "allowed-heredoc.md").read_text().strip(), "allowed apply_patch")
             self.assertFalse((workspace / ".env").exists())
             self.assertFalse((workspace / "credentials.json").exists())
-            for index in (9, 10):
+            for index in range(9, len(commands)):
+                self.assertIn("blocked by PreToolUse hook", outputs[f"call-{index}"])
+                self.assertIn("native apply_patch", outputs[f"call-{index}"])
+            for index in (len(commands), len(commands) + 1):
                 self.assertIn("BLOCKED", outputs[f"call-{index}"])
             self.assertEqual((workspace / "allowed-note.md").read_text().strip(), "allowed")
             self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
-            print("Native 0.160 fixture: 8 pre-execution denials, 4 real allowed executions; paid tokens=0")
+            print(f"Native 0.160 fixture: {len(commands) + len(patches) - 4} pre-execution denials, 4 real allowed executions; paid tokens=0")
 
 
 if __name__ == "__main__":
