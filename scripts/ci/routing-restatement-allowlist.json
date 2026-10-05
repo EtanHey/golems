@@ -488,21 +488,6 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/collab-monitor/SKILL.md",
-      "marker": "Claude seats hand that block to the harness as `Monitor({ command: <the block>, description: 'PR",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/collab-monitor/SKILL.md",
-      "marker": "repo: \"<repo>\", cli: \"claude\",",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
       "file": "skills/golem-powers/collab-monitor/evals/fixtures/addressed-event-two.md",
       "marker": "### @reviewer \u2192 @skillcreator \u2014 codex-workflows PR #644 round 2 at `e8db3f9f`: **ACCEPT**",
       "class": "DATA",
