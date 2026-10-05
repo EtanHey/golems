@@ -129,6 +129,14 @@ def _impl_module(name):
         _sys.dont_write_bytecode = previous
 
 
+_quotes = _impl_module("quotes")
+ansi_c_opens_at = _quotes.ansi_c_opens_at
+ansi_c_readings = _quotes.ansi_c_readings
+ansi_c_reading = _quotes.ansi_c_reading
+shell_code_reading = _quotes.shell_code_reading
+evaluate_shell_readings = _quotes.evaluate_shell_readings
+ShellReadingBudgetExceeded = _quotes.ShellReadingBudgetExceeded
+
 _tokens = _impl_module("tokens")
 for _name in (
     "_ASSIGNMENT_RE", "_RAW_SHELL_TOKEN_RE", "_RAW_FOR_WORD_RE",

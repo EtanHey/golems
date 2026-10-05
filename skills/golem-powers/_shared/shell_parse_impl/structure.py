@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from .substitutions import _backtick_substitution, _dollar_substitution
+from .quotes import ansi_c_quote, ansi_c_opens_at
 
 
 function_name_pattern = r"[A-Za-z_][A-Za-z0-9_]*"
@@ -75,7 +76,7 @@ def structural_source_with_status(source):
                         structural[i] = " "
             i += 1
             continue
-        if source.startswith("$'", i):
+        if ansi_c_opens_at(source, i):
             quote = "ansi-c"
             i += 2
             continue
@@ -349,6 +350,13 @@ def mask_quoted_braces(source):
     i = 0
     while i < len(source):
         char = source[i]
+        if quote is None and ansi_c_opens_at(source, i):
+            _value, end = ansi_c_quote(source, i)
+            for index in range(i, end):
+                if masked[index] in '{}':
+                    masked[index] = '_'
+            i = end
+            continue
         if quote != "'" and source.startswith("$(", i):
             found = _dollar_substitution(source, i)
             if found is not None:

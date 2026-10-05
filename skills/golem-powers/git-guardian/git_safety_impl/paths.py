@@ -90,14 +90,15 @@ def _literal_tail_after_unresolved_var(
 
     W16 / backlog #17: an unexpanded variable is UNKNOWN, never zero-component. A
     literal tail component puts the target at least one level BELOW whatever the
-    variable holds, so `$SP/mergetest` can be neither `/` nor the home directory nor
-    a bare repo root whatever `$SP` turns out to be. Globs and command substitutions
-    do not qualify — those leave the target unknowable in both directions.
+    variable holds. Preserve scratch tails such as `$SP/mergetest`, but `Gits`
+    could be the protected HOME child. An unresolved in-command assignment also
+    loses this allowance. Globs and command substitutions do not qualify.
     """
     if "$(" in target or "`" in target:
         return False
     cursor = 0
     saw_unresolved = False
+    assigned_unknown = False
     tail_parts: list[str] = []
     while cursor < len(target):
         if target[cursor] == "$":
@@ -106,6 +107,7 @@ def _literal_tail_after_unresolved_var(
                 return False
             if variables.get(match.group(1) or match.group(2)) is None:
                 saw_unresolved = True
+                assigned_unknown |= (match.group(1) or match.group(2)) in variables
                 tail_parts = []  # only the tail below the LAST unknown counts
             cursor = match.end()
             continue
@@ -121,19 +123,145 @@ def _literal_tail_after_unresolved_var(
         cursor += 1
     # "." does not count: `$X/.` resolves straight back to `$X`, which would defeat the
     # one-level-below guarantee the whole allowance rests on.
-    return saw_unresolved and any(part not in ("", ".") for part in tail_parts)
+    tail = [part for part in tail_parts if part not in ("", ".")]
+    return saw_unresolved and bool(tail) and not assigned_unknown and tail[-1].casefold() != "gits"
+
+
+def _contains_repo_root(root: str, target: str, within_fn) -> bool:
+    """Ancestor identity, including case aliases on insensitive filesystems."""
+    if within_fn(root, target):
+        return True
+    ancestor = root
+    while True:
+        if _same_path(ancestor, target):
+            return True
+        # A volume/firmlink ancestor can expose the same descendant tree while
+        # having a different identity from every textual ancestor. Compare the
+        # descendant at each relative suffix. Ordinary rm does not traverse a
+        # symlink child: never infer containment through such a child.
+        relative = os.path.relpath(root, ancestor)
+        candidate = target
+        symlink_child = False
+        for part in relative.split(os.sep):
+            if part == '.':
+                continue
+            candidate = os.path.join(candidate, part)
+            if os.path.islink(candidate):
+                symlink_child = True
+                break
+        if not symlink_child and _same_path(candidate, root):
+            return True
+        parent = os.path.dirname(ancestor)
+        if parent == ancestor:
+            return False
+        ancestor = parent
+
+
+def _same_path(left: str, right: str) -> bool:
+    """Physical identity, with a spelling fallback for case aliases/unknowns."""
+    try:
+        return os.path.samefile(left, right)
+    except OSError:
+        return os.path.realpath(left).casefold() == os.path.realpath(right).casefold()
+
+
+def _expand_tilde(value: str, variables: dict[str, str]) -> tuple[str, bool]:
+    """Shell tilde prefixes from tracked state; never consult passwd for ~user."""
+    if not value.startswith("~"):
+        return value, True
+    head, sep, tail = value.partition("/")
+    key = {"~": "HOME", "~+": "PWD", "~-": "OLDPWD"}.get(head)
+    root = variables.get(key) if key else None
+    if not root or not os.path.isabs(root):
+        return "", False
+    return root + (sep + tail if sep else ""), True
+
+
+def _probe_repo_children(target: str, max_depth: int = 3, entry_cap: int = 5000) -> bool:
+    """Bounded, non-symlink-following probe; uncertainty protects the container."""
+    try:
+        os.stat(target)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    pending = [(target, 0)]
+    count = 0
+    try:
+        while pending:
+            directory, depth = pending.pop()
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    count += 1
+                    if count >= entry_cap:
+                        return True
+                    if entry.name.casefold() == ".git":
+                        return True
+                    if depth < max_depth and entry.is_dir(follow_symlinks=False):
+                        pending.append((entry.path, depth + 1))
+    except OSError:
+        return True
+    return False
+
+
+def _protected_root_reason(resolved, physical, home, cwd, protected_cwd, *,
+                           within_fn, outermost_repo_root_fn, is_harness_scratchpad_fn,
+                           uncertain=False, filtered_find=False):
+    container = os.path.realpath(os.path.join(home, "Gits"))
+    if _contains_repo_root(container, physical, within_fn):
+        return "rm targeting repo container or its ancestor"
+    directory_target = os.path.isdir(physical) or uncertain
+    if not directory_target:
+        try:
+            os.stat(physical)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            directory_target = True
+    if _contains_repo_root(home, physical, within_fn):
+        return "rm targeting home directory or its ancestor"
+    if directory_target and _same_path(os.path.dirname(physical), home):
+        return "rm targeting top-level home directory"
+    for name in (".claude", ".codex", ".cmux", ".config", ".ssh", "Library"):
+        config = os.path.realpath(os.path.join(home, name))
+        if _contains_repo_root(config, physical, within_fn):
+            return "rm targeting agent configuration root or its ancestor"
+        if directory_target and _same_path(os.path.dirname(physical), config):
+            return "rm targeting agent configuration directory"
+    for anchor in (protected_cwd, cwd):
+        if not anchor:
+            continue
+        active_repo = outermost_repo_root_fn(os.path.realpath(anchor))
+        if active_repo is not None and not is_harness_scratchpad_fn(active_repo):
+            if not _same_path(physical, active_repo) and _contains_repo_root(active_repo, physical, within_fn):
+                return "rm targeting ancestor of active repo"
+    repo = outermost_repo_root_fn(physical)
+    if repo and _same_path(repo, physical) and not filtered_find and not is_harness_scratchpad_fn(repo):
+        return "rm targeting repo root"
+    if (directory_target and repo is None
+            and _contains_repo_root(physical, container, within_fn)
+            and _probe_repo_children(physical)):
+        return "rm targeting nested repo container or uninspectable container"
+    return None
 
 
 def _rm_target_reason(
     target: str, cwd: str, variables: dict[str, str], *,
     expand_known_vars_fn, literal_tail_fn, outermost_repo_root_fn,
     gitfile_owner_fn, within_fn, is_harness_scratchpad_fn,
+    protected_cwd: str | None = None,
+    protected_only: bool = False,
+    follow_symlinks: bool = False,
+    filtered_find: bool = False,
+    assume_directory: bool = False,
 ) -> str | None:
     literal_parts = [part for part in target.split(os.sep) if part]
-    if ".." in literal_parts:
+    if ".." in literal_parts and not protected_only:
         return f"rm relative parent target too broad: {target}"
     prefix, complete = expand_known_vars_fn(target, variables)
-    prefix = os.path.expanduser(prefix)
+    prefix, tilde_complete = _expand_tilde(prefix, variables)
+    if not tilde_complete:
+        return "rm tilde target cannot be resolved safely"
     if not prefix:
         if literal_tail_fn(target, variables):
             return None
@@ -150,6 +278,28 @@ def _rm_target_reason(
         return "rm targeting root filesystem"
     if resolved == home:
         return "rm targeting home directory"
+
+    # #501: walking UP from a repo parent never encounters its children's .git.
+    # Protect the fleet container even outside a checkout, plus ancestors of the
+    # initial/current checkout. Resolve aliases for identity and bound descendant
+    # probing to the container; keep the nested-fixture breadth boundary.
+    physical = os.path.realpath(resolved)
+    # rm/default find unlink the link itself; directory-traversing tools must
+    # evaluate its physical target even without a trailing slash.
+    follows_target = follow_symlinks or not complete or not os.path.islink(resolved) or prefix.endswith(("/", "/."))
+    if follows_target:
+        reason = _protected_root_reason(
+            resolved, physical, home, cwd, protected_cwd, within_fn=within_fn,
+            outermost_repo_root_fn=outermost_repo_root_fn,
+            is_harness_scratchpad_fn=is_harness_scratchpad_fn,
+            uncertain=not complete or assume_directory, filtered_find=filtered_find,
+        )
+        if reason:
+            return reason
+    if protected_only:
+        if '.git' in [part.casefold() for part in physical.split(os.sep)]:
+            return "find deletion root inside repository metadata"
+        return None if complete else "rm target cannot be resolved safely"
 
     repo = outermost_repo_root_fn(resolved)
     # GO-5 PR-4: a repo living inside the harness session scratchpad (a throwaway
