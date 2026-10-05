@@ -1,3 +1,4 @@
+import { isolatedBunTestEnv, assertNoBunInstallCache } from './fixtures/bun-test-env';
 import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +13,7 @@ function run(backend='file', values: NonNullable<BackendSettings['values']> = { 
   const config=join(dir,'config.yaml');
   writeFileSync(config,JSON.stringify({secrets:{backend,...(options.defaultFile ? {} : {valuesFile:file}),...extra},values,projects:{fixture:{path:'/home/fixture',clis:['codex'],secrets:{TOKEN:'varlock://TOKEN'}}}}));
   const environment={...process.env}; if(backend==='1password') for(const key of Object.keys(environment)) if(isOpCredential(key)) delete environment[key];
-  const r=Bun.spawnSync([process.execPath,options.program??cli,'generate','--config',config,'--out-dir',out,'--home','/home/fixture'],{env:{...environment,REPOGOLEM_OP_BIN:'/no-real-op',REPOGOLEM_SOURCE_SHA:'0'.repeat(40),...options.env},stdout:'pipe',stderr:'pipe'});
+  const r=Bun.spawnSync([process.execPath,options.program??cli,'generate','--config',config,'--out-dir',out,'--home','/home/fixture'],{env: isolatedBunTestEnv({...environment,REPOGOLEM_OP_BIN:'/no-real-op',REPOGOLEM_SOURCE_SHA:'0'.repeat(40),...options.env}),stdout:'pipe',stderr:'pipe'});
   const text=r.stdout.toString()+r.stderr.toString(); expect(text).not.toContain('VALUES_CANARY');
   if(existsSync(out))expect(readFileSync(join(out,'registry.json'),'utf8')).not.toContain('VALUES_CANARY');
   return {code:r.exitCode,text};
@@ -73,7 +74,7 @@ test('symlink and in-repo values sources are refused',()=>{
 test('installed CLI loads the packaged file plugin with personal settings kept out of registry',()=>{
   const config=join(dir,'install.yaml');
   writeFileSync(config,'seatRegistry:\n  seats:\n    fixture:\n      launcherPrefix: custom\nprojects: {}\n');
-  const r=Bun.spawnSync([process.execPath,cli,'install','--config',config,'--apply'],{env:{...process.env,HOME:dir,REPOGOLEM_OP_BIN:'/no-real-op'},stdout:'pipe',stderr:'pipe'});
+  const r=Bun.spawnSync([process.execPath,cli,'install','--config',config,'--apply'],{env: isolatedBunTestEnv({...process.env,HOME:dir,REPOGOLEM_OP_BIN:'/no-real-op'}),stdout:'pipe',stderr:'pipe'});
   expect(r.exitCode).toBe(0);
   expect(run('file',undefined,{}, {program:join(dir,'.config/repogolem/runtime/repogolem-cli.js'),env:{HOME:dir}}).code).toBe(0);
 });
@@ -89,10 +90,10 @@ test('uninstalled npm backend never requests a registry or creates a Bun cache',
   let requests=0;const registry=Bun.serve({port:0,fetch(){requests++;return new Response('{}',{status:404});}});
   try {
     const config=join(dir,'missing-package.yaml');writeFileSync(config,JSON.stringify({secrets:{backend:'plugin:repogolem-missing-fixture'},values:{TOKEN:{sensitive:true}},projects:{}}));
-    const r=Bun.spawn([process.execPath,cli,'generate','--config',config,'--out-dir',out],{env:{...process.env,HOME:home,BUN_CONFIG_REGISTRY:registry.url.toString()},stdout:'pipe',stderr:'pipe'});
+    const r=Bun.spawn([process.execPath,cli,'generate','--config',config,'--out-dir',out],{env: isolatedBunTestEnv({...process.env,HOME:home,BUN_CONFIG_REGISTRY:registry.url.toString()}),stdout:'pipe',stderr:'pipe'});
     const [code,stdout,stderr]=await Promise.all([r.exited,new Response(r.stdout).text(),new Response(r.stderr).text()]);
     expect(code).toBe(2);expect(stdout+stderr).not.toContain('VALUES_CANARY');
-    expect(existsSync(join(home,'.bun/install/cache'))).toBe(false);expect(requests).toBe(0);expect(existsSync(out)).toBe(false);
+    assertNoBunInstallCache(home);expect(requests).toBe(0);expect(existsSync(out)).toBe(false);
   }finally{registry.stop(true);}
 });
 test('isolated CJS adapter gets no 1Password credentials',()=>{
