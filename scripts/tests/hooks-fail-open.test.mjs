@@ -74,6 +74,19 @@ test("isolated mode (-I -B) keeps every stdlib path entry and still resolves sib
   expect(r.status).toBe(0);
   const [reason, seen] = JSON.parse(r.stdout);
   expect(reason).toBe("sibling");
-  expect(seen[0]).toBe(require("node:fs").realpathSync(d));
-  expect(seen.slice(1)).toEqual(isolated);  // inserted, never overwriting sys.path[0]
+  expect(seen.at(-1)).toBe(require("node:fs").realpathSync(d));  // the hook dir joins LAST
+  expect(seen.slice(0, -1)).toEqual(isolated);  // every stdlib entry kept, in order, ahead of it
+});
+
+test("no hook dir is ever first on sys.path, isolated or not; the launcher's own dir is dropped", () => {
+  const d = scratch();
+  writeFileSync(path.join(d, "gate.py"), "import json, sys\nprint(json.dumps(sys.path))\n");
+  for (const flags of [[], ["-I", "-B"]]) {
+    const r = spawnSync("python3", [...flags, wrapper, path.join(d, "gate.py")], { encoding: "utf8", input: "{}" });
+    expect(r.status).toBe(0);
+    const seen = JSON.parse(r.stdout);
+    const real = require("node:fs").realpathSync(d);
+    expect([flags.join(" "), seen.indexOf(real)]).toEqual([flags.join(" "), seen.length - 1]);
+    expect(seen).not.toContain(path.dirname(require("node:fs").realpathSync(wrapper)));
+  }
 });
