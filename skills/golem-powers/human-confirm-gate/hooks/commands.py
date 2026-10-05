@@ -6,8 +6,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / '_shared'))
+_SHARED = str(Path(__file__).resolve().parents[2] / '_shared')
+if _SHARED not in sys.path:
+    sys.path.append(_SHARED)  # after the stdlib: nothing in the tree may shadow it
 import shell_parse as shell
+import syntax
+import gh_policy
 
 
 def literal(word):
@@ -23,7 +27,7 @@ def configured_alias(repo, name):
         if config.returncode not in (0, 1) or any(' +' in line or (line.split()[0].endswith('.mirror') and line.split()[-1].lower() not in ('false', 'no', 'off', '0')) for line in config.stdout.splitlines()):
             raise ValueError('implicit force/mirror configuration; make scope explicit')
         return None
-    result = subprocess.run(['/usr/bin/git', '-C', repo, 'config', '--get', 'alias.' + name],
+    result = subprocess.run(['/usr/bin/git', '-C', repo, 'config', '--get', 'alias.' + name.lower()],
                             capture_output=True, text=True, timeout=1)
     if result.returncode not in (0, 1):
         raise ValueError('cannot resolve git alias')
@@ -31,23 +35,24 @@ def configured_alias(repo, name):
 
 
 def git_words(words, cwd):
-    repo, aliases, i = cwd, {}, 0
+    repo, aliases, overrides, i = cwd, {}, False, 0
     while i < len(words) and words[i].startswith('-'):
         option = words[i]
         if option in ('-C', '-c'):
-            value = literal(words[i + 1]); i += 2
+            value = words[i + 1]; i += 2
             if option == '-C':
-                repo = os.path.realpath(os.path.join(repo, value))
-            elif value.startswith('alias.'):
-                key, value = value.split('=', 1); aliases[key[6:]] = value
+                if '$' in value or '`' in value: repo = None
+                elif repo is not None: repo = os.path.realpath(os.path.join(repo, os.path.expanduser(value)))
+            elif value.lower().startswith('alias.'):
+                key, value = value.split('=', 1); aliases[key[6:].lower()] = value
             else:
-                # Config can inject force refspecs / receive-pack executors.
-                raise ValueError('git config override needs separate inspection')
-        elif option in ('--no-pager', '--paginate'):
-            i += 1
+                overrides = True
+        elif option in ('--git-dir', '--work-tree', '--config-env', '--namespace'):
+            overrides = True; i += 2
         else:
-            raise ValueError('unsupported git global option')
-    return repo, aliases, words[i:]
+            overrides |= option.startswith(('--git-dir=', '--work-tree=', '--config-env=', '--namespace='))
+            i += 1
+    return repo, aliases, words[i:], overrides
 
 
 def push_operation(args, repo):
@@ -77,83 +82,168 @@ def push_operation(args, repo):
                  repo=repo, refs=refs, remote=positional[0] if positional else '')]
 
 
-def operations(command, cwd, alias_lookup=configured_alias, depth=0):
+_VAR = re.compile(r'\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))')
+
+
+def resolve_word(word, bindings):
+    def replace(match):
+        value = bindings.get(match[1] or match[2])
+        return value if value is not None and not any(c.isspace() for c in value) else match[0]
+    return _VAR.sub(replace, word)
+
+
+def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
+    values = dict(initial)
+    if any(t in ('(', '&', '|', 'if', 'for', 'while', 'case') for t in tokens[:limit]):
+        return {}  # Parent bindings are uncertain across control/subshell scope.
+    if any(positions[i] and t in ('eval', 'source', '.', 'read', 'unset', 'declare', 'typeset', 'local', 'let', 'trap') for i, t in enumerate(tokens[:limit])):
+        return {}  # These builtins can invalidate earlier literal assignments.
+    for i, word in enumerate(tokens[:limit]):
+        match = shell._ASSIGNMENT_RE.match(word)
+        previous = max((j for j in range(i) if positions[j]), default=-1)
+        env_assignment = (previous >= 0 and os.path.basename(tokens[previous]) in ('env', 'export') and
+                          all('=' in t or t in ('-i', '--ignore-environment', '--') for t in tokens[previous + 1:i]))
+        if scopes[i] == target and (positions[i] or env_assignment) and match and not match['subscript'] and not match['append']:
+            name, value = word.split('=', 1)
+            value = resolve_word(value, values)
+            values[name] = value if '$' not in value and '`' not in value else None
+    return values
+
+
+GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry cherry-pick clean clone commit config describe diff difftool fetch for-each-ref gc grep help init log ls-files ls-remote ls-tree merge mergetool mv notes pull push range-diff rebase reflog remote reset restore revert rev-list rev-parse rm show show-ref sparse-checkout stash status submodule switch tag update-index update-ref version worktree".split())
+
+
+def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None):
     if depth > 8 or shell.policy_command_size_reason(command):
         raise ValueError('command inspection budget exceeded')
     if shell.executable_shell_structure_has_open_state(command):
         raise ValueError('unparseable shell input')
     tokens, positions, segments, scopes = shell._parse_bash(command)
+    bindings = dict(bindings or {})
+    if shell._UNRESOLVED_EVAL_MARKER in tokens:
+        raise ValueError('unresolved eval payload')
     result = []
-    nested = shell._shell_command_payloads(tokens, positions, segments)
-    nested += [(body, seg, idx) for body, seg, idx, _ in shell._executable_subcommands(command)]
+    _state = _state if _state is not None else {'config': False}
+    nested = [(body, seg, idx) for body, seg, idx, _ in shell._executable_subcommands(command)]
     nested += shell._invoked_alias_bodies(command)
-    for body, _, _ in nested:
-        result += operations(body, cwd, alias_lookup, depth + 1)
+    for body, segment, _ in nested:
+        limit = max((i + 1 for i, seg in enumerate(segments) if seg <= segment), default=0)
+        child_bindings = assigned_bindings(tokens, positions, limit, bindings, scopes)
+        result += operations(body, cwd, alias_lookup, depth + 1, child_bindings, _state)
     for i, word in enumerate(tokens):
-        if not positions[i]:
-            continue
+        if not positions[i]: continue
+        current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
+        word = resolve_word(word, current)
         base = os.path.basename(word)
-        if ('$' in word or '`' in word) and any('push' in t for t in tokens) and any('--force' in t or t == '-f' for t in tokens):
-            raise ValueError('dynamic executable with force-push markers')
-        args = []
-        for j in range(i + 1, len(tokens)):
-            if base in ('git', 'gh') and tokens[j] in ('>', '>>', '<', '<<', '<<<'):
-                raise ValueError('interleaved redirection obscures command arguments; split the command')
-            if segments[j] != segments[i] or scopes[j] != scopes[i] or tokens[j] in (';', '&', '|', ')', '}$'):
-                break
-            args.append(tokens[j])
+        args, redirects = syntax.argv_at(tokens, segments, scopes, i)
+        args = [resolve_word(a, current) for a in args]
+        redirects = [(op, resolve_word(target, current)) for op, target in redirects]
+        if any(target.casefold().endswith('/.git/config') or target.casefold() == '.git/config'
+               for target in syntax.write_targets(base, args, redirects)):
+            _state['config'] = True
+        policy_hint = any(shell._ASSIGNMENT_RE.match(t) and (positions[j] or j and tokens[j - 1] == 'export') and
+                          syntax.policy_path(t.split('=', 1)[1], cwd or '/', Path.home())
+                          for j, t in enumerate(tokens[:i]))
+        uncertain_policy_target = policy_hint and any('$' in t or '`' in t for t in syntax.write_targets(base, args, redirects))
+        if syntax.anchor_tamper(word, args, cwd, Path.home()):
+            raise ValueError('agent changes to the confirmation trust anchor or pinned hook tree are forbidden')
+        if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:
+            raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
+        if ('$' in word or '`' in word) and syntax.guarded_words(args):
+            raise ValueError('unresolved executable for protected operation')
+        for child in syntax.wrapper_payload(base, args):
+            child_bindings = dict(current)
+            if base == 'env':
+                for arg in args[:args.index(child[0])]:
+                    if shell._ASSIGNMENT_RE.match(arg):
+                        name, value = arg.split('=', 1); child_bindings[name] = value
+            result += operations(syntax.joined(child), cwd, alias_lookup, depth + 1, child_bindings, _state)
+        # Unknown executors carrying a protected argv are conservative. Data
+        # operands of echo/printf/cat/etc. are not command positions.
+        if base not in syntax.DATA and base not in syntax.SHELLS:
+            for j, arg in enumerate(args):
+                if os.path.basename(arg) in ('git', 'gh') and syntax.guarded_words(args[j + 1:]):
+                    result += operations(syntax.joined(args[j:]), cwd, alias_lookup, depth + 1, current, _state)
+                elif ' ' in arg:
+                    words = shlex.split(arg)
+                    if words and os.path.basename(words[0]) in ('git', 'gh') and syntax.guarded_words(words[1:]):
+                        result += operations(arg, cwd, alias_lookup, depth + 1, current, _state)
+        if base == 'eval' and any('$' in a or '`' in a for a in args):
+            raise ValueError('unresolved eval payload; use a literal command')
+        if base == 'xargs' and any(os.path.basename(a) in ('git', 'gh', 'sh', 'bash', 'zsh', 'fish') for a in args):
+            raise ValueError('xargs supplies unresolved arguments; use a literal command')
         if base == 'env' and any(a == '-S' or a.startswith('--split-string') for a in args):
-            raise ValueError('env split-string is opaque; use an explicit command')
-        if base == 'cd':
-            if len(args) != 1:
-                raise ValueError('unresolved working directory')
-            cwd = os.path.realpath(os.path.join(cwd, literal(args[0])))
+            if any(syntax.guarded_words(shlex.split(a)) for a in args):
+                raise ValueError('env split-string is opaque; use an explicit command')
+        if base in syntax.SHELLS:
+            body = syntax.shell_payload(base, args)
+            if body is not None:
+                result += operations(body, cwd, alias_lookup, depth + 1, current, _state)
+            else:
+                if any(op == '<<<' for op, _ in redirects):
+                    for op, body in redirects:
+                        if op == '<<<': result += operations(body, cwd, alias_lookup, depth + 1, current, _state)
+                elif any(op == '<<' for op, _ in redirects):
+                    delimiters = {target for op, target in redirects if op == '<<'}
+                    for delimiter, body in syntax.heredoc_bodies(command, shell):
+                        if delimiter in delimiters: result += operations(body, cwd, alias_lookup, depth + 1, current, _state)
+                elif '<(' in command or '|' in tokens[:i] or any(op == '<' for op, _ in redirects):
+                    raise ValueError('opaque shell script/stdin source')
+        if base == 'trap' and args:
+            result += operations(args[0], cwd, alias_lookup, depth + 1, current, _state)
+        if base in ('cd', 'pushd', 'popd'):
+            # Directory stacks, `cd -`, CDPATH and dynamic targets make cwd unknown.
+            operands = [a for a in args if a not in ('-P', '-L', '-e', '-@', '-n', '--')]
+            target = operands[0] if len(operands) == 1 and base != 'popd' else None
+            target = str(Path.home()) if base == 'cd' and not operands else target
+            searched = target is not None and not target.startswith(('/', '.', '~', '$')) and (
+                'CDPATH' in command or os.environ.get('CDPATH'))
+            if cwd is None or target is None or searched or target.startswith(('-', '+')) or syntax.unresolved(target, Path.home()):
+                cwd = None
+            else:
+                cwd = os.path.realpath(os.path.join(cwd, syntax.expand_home(target, Path.home())))
         if base == 'git':
-            for prefix in tokens[:i]:
-                if prefix.startswith(('GIT_CONFIG', 'GIT_DIR=', 'GIT_WORK_TREE=', 'HOME=')):
-                    raise ValueError('Git environment changes obscure repository/config scope')
-            repo, aliases, words = git_words(args, cwd)
-            if not words:
-                continue
+            repo, aliases, words, overrides = git_words(args, cwd)
+            if not words: continue
             sub, *tail = words
             literal(sub)
-            alias = aliases.get(sub) or alias_lookup(repo, sub)
+            if sub == 'config' and not any(a.startswith(('--get', '--list', '-l', '--show')) for a in tail): _state['config'] = True
+            if sub == 'remote' and tail[:1] in (['add'], ['set-url']): _state['config'] = True
+            relevant = sub in ('push', 'send-pack', 'filter-repo', 'filter-branch', 'replace') or sub not in GIT_BUILTINS
+            if relevant and (repo is None or _state['config'] or overrides):
+                raise ValueError('uncertain repository/config scope for protected operation')
+            if relevant and any(prefix.startswith(('GIT_CONFIG', 'GIT_DIR=', 'GIT_WORK_TREE=', 'HOME=')) for prefix in tokens[:i]):
+                raise ValueError('Git environment changes obscure repository/config scope')
+            alias = aliases.get(sub.lower())
+            if sub == 'push' or sub not in GIT_BUILTINS:
+                alias = alias or alias_lookup(repo, sub.lower())
             if alias:
                 body = alias[1:] if alias.startswith('!') else 'git ' + alias
-                result += operations('cd ' + shlex.quote(repo) + '; ' + body + ' ' + shlex.join(tail), repo, alias_lookup, depth + 1)
-            elif sub == 'push':
-                # Replacement refs can survive in a later tool call. Their push
-                # requires confirmation even without an explicit force flag.
+                result += operations(body + ' ' + shlex.join(tail), repo, alias_lookup, depth + 1, current, _state)
+            elif sub in ('push', 'send-pack'):
                 if any('refs/replace/' in a for a in tail):
                     result.append(dict(class_='rewrite', repo=repo, refs=tail))
                 result += push_operation(tail, repo)
             elif sub in ('filter-repo', 'filter-branch', 'replace'):
                 result.append(dict(class_='rewrite', repo=repo, refs=tail))
+            elif sub == 'rebase':
+                for j, arg in enumerate(tail):
+                    if arg in ('-x', '--exec'):
+                        result += operations(tail[j + 1], repo, alias_lookup, depth + 1, current, _state)
+                    elif arg.startswith('--exec='):
+                        result += operations(arg.split('=', 1)[1], repo, alias_lookup, depth + 1, current, _state)
+            elif sub == 'submodule' and 'foreach' in tail:
+                body = tail[tail.index('foreach') + 1:]
+                while body and body[0].startswith('-'): body = body[1:]
+                result += operations(' '.join(body), repo, alias_lookup, depth + 1, current, _state)
+            elif sub == 'bisect' and tail[:1] == ['run']:
+                result += operations(syntax.joined(tail[1:]), repo, alias_lookup, depth + 1, current, _state)
         elif base == 'gh':
-            while args and args[0] in ('-R', '--repo', '--hostname'):
-                args = args[2:]
-            if args[:1] == ['api'] or args[:2] in (['repo', 'delete'], ['repo', 'edit']):
-                for arg in args:
-                    literal(arg)
-            if args[:2] in (['repo', 'delete'], ['repo', 'edit']) and (args[1] == 'delete' or any(a.startswith('--visibility') for a in args)):
-                result.append(dict(class_='settings', repo=cwd, target=args[2:]))
-            elif args[:1] == ['api']:
-                method, endpoint = 'GET', ''
-                for j, arg in enumerate(args[1:], 1):
-                    if arg in ('-X', '--method'):
-                        method = args[j + 1].upper()
-                    elif arg.startswith('-X') and arg != '-X':
-                        method = arg[2:].upper()
-                    elif arg.startswith('--method='):
-                        method = arg.split('=', 1)[1].upper()
-                    elif arg in ('-f', '-F', '--field', '--raw-field', '--input') or arg.startswith(('--field=', '--raw-field=', '--input=', '-f', '-F')):
-                        if method == 'GET': method = 'POST'
-                    elif arg.startswith(('repos/', '/repos/', 'https://api.github.com/repos/')):
-                        endpoint = arg
-                if method not in ('GET', 'HEAD', 'OPTIONS') and endpoint:
-                    result.append(dict(class_='settings', repo=cwd, target=endpoint, method=method))
-    # Public JSON uses the class spelling; deterministic order is token scope.
+            if cwd is None and syntax.guarded_words(args): raise ValueError('unknown settings cwd')
+            result += gh_policy.operations(args, cwd)
+    # Normalize and deduplicate repeated wrapper/substitution views.
+    unique = []
     for op in result:
-        if 'class_' in op:
-            op['class'] = op.pop('class_')
-    return result
+        if 'class_' in op: op['class'] = op.pop('class_')
+        if op not in unique: unique.append(op)
+    return unique
