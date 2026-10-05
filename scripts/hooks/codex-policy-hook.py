@@ -167,6 +167,42 @@ def guardian_inputs(payload):
     return [{**payload, "tool_name": "Write", "tool_input": {"file_path": p}} for p in paths]
 
 
+def guardian_batch():
+    """Amortize imports, retaining the existing entry point for every write."""
+    raw = sys.stdin.read(1024 * 1024 + 1)
+    items = json.loads(raw)
+    if len(raw) > 1024 * 1024 or not isinstance(items, list) or not 1 <= len(items) <= 64:
+        raise ValueError("invalid policy batch")
+    os.environ.pop("GIT_GUARDIAN_LIB", None)
+    gate = load_parser(TARGETS["git-guardian"], "codex_guardian")
+    result = {}
+    for item in items:
+        if (not isinstance(item, dict) or item.get("tool_name") != "Write"
+                or not isinstance(item.get("cwd"), str)
+                or not os.path.samefile(item["cwd"], ".")):
+            raise ValueError("invalid batch item")
+        ti = item.get("tool_input")
+        if not isinstance(ti, dict) or not isinstance(ti.get("file_path"), str):
+            raise ValueError("invalid batch target")
+        output, errors = StringIO(), StringIO()
+        original_stdin = sys.stdin
+        try:
+            sys.stdin = StringIO(json.dumps(item))
+            with redirect_stdout(output), redirect_stderr(errors):
+                try:
+                    gate.main()
+                except SystemExit as exc:
+                    code = exc.code
+                else:
+                    raise ValueError("gate did not exit")
+        finally:
+            sys.stdin = original_stdin
+        result = gate_result(subprocess.CompletedProcess([], code, output.getvalue(), errors.getvalue()))
+        if result.get("hookSpecificOutput", {}).get("permissionDecision") == "deny":
+            break
+    return result
+
+
 def evaluate():
     started = time.monotonic()
     gate = sys.argv[1] if len(sys.argv) == 2 else None
@@ -192,20 +228,24 @@ def evaluate():
     # exemption. Only the library source is fixed to hooks-live.
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
-    inputs = transport_inputs(p)
-    if gate == "git-guardian":
-        inputs = [item for envelope in inputs for item in guardian_inputs(envelope)]
-    for item in inputs:
+    for item in transport_inputs(p):
+        command = [sys.executable, str(ROOT / TARGETS[gate])]
+        data = item
+        if gate == "git-guardian" and item["tool_name"] == "apply_patch":
+            data = guardian_inputs(item)
+            if not data:
+                continue
+            command = [sys.executable, str(Path(__file__).resolve()), "--guardian-batch"]
         # Leave a cleanup margin: simultaneous child/global deadlines can throw
         # SIGALRM inside Popen.__del__, leaking an unraisable traceback to stderr.
         remaining = BUDGET_SECONDS - 1 - (time.monotonic() - started)
         if remaining <= 0:
             raise TimeoutError("gate budget exceeded")
-        proc = subprocess.Popen([sys.executable, str(ROOT / TARGETS[gate])],
+        proc = subprocess.Popen(command,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, cwd=item["cwd"], env=env, start_new_session=True)
         try:
-            stdout, stderr = proc.communicate(json.dumps(item), timeout=remaining)
+            stdout, stderr = proc.communicate(json.dumps(data), timeout=remaining)
         finally:
             # A broken gate must not leave descendants executing after denial.
             try:
@@ -226,7 +266,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGALRM, timeout)
     signal.setitimer(signal.ITIMER_REAL, BUDGET_SECONDS)
     try:
-        result = evaluate()
+        result = guardian_batch() if sys.argv[1:] == ["--guardian-batch"] else evaluate()
     except (TimeoutError, subprocess.TimeoutExpired):
         result = denial(TIMEOUT_REASON)
     except PatchTransportRefusal:
