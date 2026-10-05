@@ -11,6 +11,7 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import unittest
 import uuid
@@ -316,6 +317,119 @@ class Platform(unittest.TestCase):
                 pin_anchor(Path('/synthetic-unprovisioned-home'))
             fixture = test_gate.Gate('test_denies_without_token_and_allows_normal')
             with self.assertRaises(unittest.SkipTest): fixture.setUp()
+
+    def test_pin_is_read_from_the_named_tree_without_object_replacement(self):
+        import tempfile, tokens
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            pins = Path(tmp) / 'tree/skills/golem-powers/human-confirm-gate/anchor.pins'
+            pins.parent.mkdir(parents=True); pins.write_bytes(b'')
+            seen = {}
+            def fake(argv, **kwargs):
+                seen.update(argv=argv, env=kwargs['env'], cwd=kwargs.get('cwd'))
+                return subprocess.CompletedProcess(argv, 0, b'', b'')
+            with patch('tokens.subprocess.run', side_effect=fake):
+                self.assertEqual(tokens.pinned_fingerprints(pins), set())
+            tree = os.path.realpath(Path(tmp) / 'tree')
+            self.assertEqual(seen['argv'][1:4], ['--no-replace-objects', '-C', tree])
+            self.assertEqual(seen['argv'][-1], 'HEAD:skills/golem-powers/human-confirm-gate/anchor.pins')
+            self.assertEqual(seen['env'], {'PATH': '/usr/bin:/bin', 'GIT_NO_REPLACE_OBJECTS': '1',
+                                           'GIT_CEILING_DIRECTORIES': os.path.dirname(tree)})
+            self.assertIsNone(seen['cwd'])
+            for level in pins.parents[:3]:
+                with self.subTest(marker=level.name):
+                    (level / '.git').write_text('x')
+                    with patch('tokens.subprocess.run', side_effect=fake), self.assertRaisesRegex(ValueError, 'nested'):
+                        tokens.pinned_fingerprints(pins)
+                    (level / '.git').unlink()
+
+    def test_hook_imports_put_the_stdlib_first_and_never_read_tree_bytecode(self):
+        hook = ROOT / 'hooks/human-confirm-pretooluse.py'
+        here, shared = os.path.realpath(ROOT / 'hooks'), os.path.realpath(ROOT.parent / '_shared')
+        # Start with the tree FIRST, as `python3 hook.py` or a launcher would leave it.
+        probe = ('import runpy, sys, json; sys.path[:0] = [%r, %r]; g = runpy.run_path(%r);' % (here, shared, str(hook)) +
+                 'here = g["HERE"]; std = next(i for i, p in enumerate(sys.path) if p.endswith("lib-dynload") or "/lib/python3" in p);'
+                 'print(json.dumps([sys.path.index(here) > std, sys.dont_write_bytecode, sys.pycache_prefix]))')
+        out = subprocess.run(['python3', '-I', '-c', probe], capture_output=True, text=True, check=True).stdout
+        self.assertEqual(json.loads(out), [True, True, '/dev/null/golems-human-confirm'])
+
+    def test_compiled_file_beside_the_sources_denies_every_call(self):
+        import tempfile, shutil
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            live = Path(tmp) / 'skills/golem-powers'
+            shutil.copytree(ROOT / 'hooks', live / 'human-confirm-gate/hooks', ignore=shutil.ignore_patterns('__pycache__'))
+            (live / '_shared').symlink_to(ROOT.parent / '_shared')
+            hook = live / 'human-confirm-gate/hooks/human-confirm-pretooluse.py'
+            payload = json.dumps(dict(tool_name='Bash', cwd=tmp, session_id='s', tool_input=dict(command='ls')))
+            run = lambda: subprocess.run(['python3', '-I', '-B', str(hook)], input=payload, text=True,
+                                         capture_output=True, env=dict(os.environ, HOME=tmp)).returncode
+            self.assertEqual(run(), 0)
+            (hook.parent / 'extra.pyc').write_bytes(b'')  # any compiled module, whatever its name
+            self.assertEqual(run(), 2)
+
+    def test_launcher_preloads_runpy_lazy_imports_from_the_stdlib(self):
+        launcher = ROOT.parents[2] / 'scripts/hooks/fail-open.py'
+        # Load the launcher module only (main() never runs, sys.path is untouched),
+        # then check the security property: runpy's lazy imports are already
+        # loaded, from the stdlib. Which of them the interpreter itself imported
+        # at startup varies by build, so pre-launch membership is not asserted.
+        probe = ('import importlib.util, sys; spec = importlib.util.spec_from_file_location("launcher", %r);' % str(launcher) +
+                 'mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod);'
+                 'origins = {m: getattr(getattr(sys.modules.get(m), "__spec__", None), "origin", None) for m in ("pkgutil", "warnings")};'
+                 'import json, os, sysconfig; std = os.path.realpath(sysconfig.get_paths()["stdlib"]);'
+                 'print(json.dumps({m: bool(o) and os.path.realpath(o).startswith(std + os.sep) for m, o in origins.items()}))')
+        out = subprocess.run([sys.executable, '-I', '-S', '-c', probe], capture_output=True, text=True, check=True).stdout
+        self.assertEqual(json.loads(out), {'pkgutil': True, 'warnings': True})
+
+    def test_stray_importables_flag_compiled_modules_links_and_shadow_packages(self):
+        import tempfile, runpy, sys
+        saved = (list(sys.path), sys.pycache_prefix, sys.dont_write_bytecode)
+        try:
+            hook = runpy.run_path(str(ROOT / 'hooks/human-confirm-pretooluse.py'))
+        finally:
+            sys.path[:], sys.pycache_prefix, sys.dont_write_bytecode = saved
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            here, shared = Path(tmp) / 'hooks', Path(tmp) / '_shared'
+            for d in (here / '__pycache__', shared / 'shell_parse_impl', shared / 'tests', shared / '__pycache__'):
+                d.mkdir(parents=True)
+            for f in (here / 'tokens.py', shared / 'shell_parse.py', shared / 'shell_parse_impl/units.py',
+                      here / '__pycache__/tokens.cpython-313.pyc', shared / '__pycache__/x.pyc'):
+                f.write_text('')
+            self.assertEqual(hook['stray_importables'](str(here), str(shared)), [])
+            stray = [here / 'mod.pyc', here / ('tokens' + hook['COMPILED'][0]), shared / 'shell_parse_impl/units.pyc']
+            for f in stray: f.write_text('')
+            (here / 'pkg').mkdir(); (shared / 'shell_parse').mkdir()
+            (here / 'linked.py').symlink_to(here / 'tokens.py')
+            found = set(hook['stray_importables'](str(here), str(shared)))
+            self.assertEqual(found, {str(p) for p in stray + [here / 'pkg', shared / 'shell_parse', here / 'linked.py']})
+
+    def test_trusted_gh_is_a_fixed_owner_checked_candidate_never_caller_path(self):
+        import tempfile, tokens
+        from types import SimpleNamespace
+        self.assertEqual(tokens.GH_CANDIDATES, tuple(os.path.join(prefix, 'bin', 'gh') for prefix in
+                                                     (os.path.join('/', 'opt', 'homebrew'), os.path.join('/', 'usr', 'local'))))
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            missing, loose, good = (Path(tmp) / name for name in ('missing', 'loose', 'good'))
+            for path, mode in ((loose, 0o775), (good, 0o755)):
+                path.write_text('#!/bin/sh\n'); path.chmod(mode)
+            self.assertEqual(tokens.trusted_binary((missing, loose, good)), str(good))  # group-writable skipped
+            with self.assertRaises(ValueError): tokens.trusted_binary((missing, loose))
+            Path(tmp, 'dir').mkdir()
+            with self.assertRaises(ValueError): tokens.trusted_binary((Path(tmp, 'dir'),))
+            real = os.stat(good)
+            foreign = SimpleNamespace(st_mode=real.st_mode, st_uid=os.getuid() + 1)
+            with patch('tokens.os.stat', return_value=foreign), self.assertRaises(ValueError):
+                tokens.trusted_binary((good,))
+        with patch.dict(os.environ, PATH=str(root)):  # caller PATH is never consulted
+            calls = []
+            with patch('tokens.trusted_binary', side_effect=lambda c: calls.append(c) or 'GH'), \
+                 patch('tokens.read_command', side_effect=['topic', 'git@github.com:o/r.git', '{"defaultBranchRef":{"name":"main"}}', '{}']) as read:
+                tokens.lead_metadata(dict(repo='.', ref='refs/heads/topic', source='HEAD', remote='origin'))
+            self.assertEqual(calls, [tokens.GH_CANDIDATES, tokens.GH_CANDIDATES])
+            self.assertEqual(read.call_args.args[0][0], 'GH')
 
     def test_pin_grammar_matches_shared_vectors(self):
         from tokens import parse_pins

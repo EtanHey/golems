@@ -22,8 +22,8 @@
 // checkouts; hooks-live is not a working tree anyone checks out.
 import { spawnSync } from "node:child_process";
 import {
-  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, statSync, symlinkSync,
-  unlinkSync, writeFileSync,
+  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync,
+  statSync, symlinkSync, unlinkSync, writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -220,6 +220,87 @@ function pinReady(o, sha, e) {
   return r.status === 0 && pinnedFingerprints(r.stdout) > 0;
 }
 
+// git as --status must run it against hooks-live: repo config cannot answer for
+// the worktree (fsmonitor/untracked cache) and replace refs cannot swap objects.
+function liveGit(live, ...args) {
+  return git(live, "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "--no-replace-objects", ...args);
+}
+
+// Import dirs of every launcher-run Python hook (its source dir, or the dir of
+// a single-file source) plus _shared. Hooks run with -B, so nothing in
+// hooks-live legitimately writes bytecode there.
+function importDirs(ctx) {
+  const dirs = new Set(["skills/golem-powers/_shared"]);
+  for (const e of ctx.golems.filter((g) => g.command?.includes("golems-fail-open.py"))) {
+    dirs.add(e.source.endsWith(".py") ? path.posix.dirname(e.source) : e.source);
+  }
+  return [...dirs];
+}
+
+// Stale bytecode caches left in hooks-live by runs before -B; cache only.
+function cacheDirs(ctx) {
+  const found = [];
+  const walk = (rel) => {
+    for (const name of readdirSync(path.join(ctx.live, rel))) {
+      const child = path.posix.join(rel, name);
+      if (!lstatSync(path.join(ctx.live, child)).isDirectory()) continue;
+      if (name === "__pycache__") found.push(child);
+      else walk(child);
+    }
+  };
+  for (const dir of importDirs(ctx)) if (existsSync(path.join(ctx.live, dir))) walk(dir);
+  return found;
+}
+
+// AIDEV-NOTE: porcelain alone trusts the index. Index flags and replace refs
+// are reported, and every Python hook's import dirs (see importDirs) are
+// compared byte-for-byte with HEAD, so hidden edits and ignored extras
+// (compiled modules, caches, shadow packages) show.
+function treeIntegrity(ctx, head) {
+  const problems = [];
+  const flags = liveGit(ctx.live, "ls-files", "-v");
+  const hidden = flags === null ? null : flags.split("\n").filter((l) => /^(S|[a-z]) /.test(l)).map((l) => l.slice(2));
+  if (hidden === null || hidden.length) problems.push(`INDEX FLAGS hide ${hidden === null ? "? (ls-files failed)" : `${hidden.length} path(s): ${hidden.slice(0, 5).join(", ")}`}`);
+  const replaced = liveGit(ctx.live, "for-each-ref", "--format=%(refname)", "refs/replace/");
+  if (replaced === null || replaced) problems.push(`REPLACE REFS present: ${replaced === null ? "? (for-each-ref failed)" : replaced.split("\n").length}`);
+  {
+    const id = "hooks";
+    const dirs = importDirs(ctx);
+    const listing = liveGit(ctx.live, "ls-tree", "-r", "-z", "--full-tree", head, "--", ...dirs);
+    if (listing === null) return [...problems, `${id} cannot list HEAD`];
+    const tracked = new Map(listing.split("\0").filter(Boolean).map((row) => {
+      const [meta, file] = row.split("\t");
+      const [mode, , sha] = meta.split(" ");
+      return [file, { mode, sha }];
+    }));
+    const onDisk = [];
+    const walk = (rel) => {
+      for (const name of readdirSync(path.join(ctx.live, rel))) {
+        const child = path.posix.join(rel, name);
+        const st = lstatSync(path.join(ctx.live, child));
+        if (st.isDirectory()) walk(child);
+        else onDisk.push(child);
+      }
+    };
+    for (const dir of dirs) if (existsSync(path.join(ctx.live, dir))) walk(dir);
+    const extra = onDisk.filter((f) => !tracked.has(f));
+    const missing = [...tracked.keys()].filter((f) => !onDisk.includes(f));
+    const regular = onDisk.filter((f) => tracked.has(f) && !lstatSync(path.join(ctx.live, f)).isSymbolicLink());
+    const r = regular.length === 0 ? { status: 0, stdout: "" }
+      : spawnSync("git", ["-C", ctx.live, "hash-object", "--no-filters", "--stdin-paths"],
+        { encoding: "utf8", input: `${regular.join("\n")}\n` });
+    const hashes = r.status === 0 ? r.stdout.trim().split("\n") : [];
+    const changed = regular.filter((f, i) => hashes[i] !== tracked.get(f).sha || tracked.get(f).mode === "120000");
+    changed.push(...onDisk.filter((f) => tracked.has(f) && lstatSync(path.join(ctx.live, f)).isSymbolicLink()
+      && tracked.get(f).mode !== "120000"));
+    if (r.status !== 0) problems.push(`${id} cannot hash its import dirs`);
+    for (const [label, list] of [["differ from HEAD", changed], ["unexpected (untracked or ignored)", extra], ["missing", missing]]) {
+      if (list.length) problems.push(`${id} import files ${label}: ${list.length} (${list.slice(0, 5).join(", ")})`);
+    }
+  }
+  return problems;
+}
+
 // The recorded pin lets --status notice a hooks-live HEAD moved outside --apply.
 const pinRecord = (ctx) => path.join(ctx.hooksDir, "golems-hooks-live.sha");
 
@@ -253,6 +334,8 @@ function install(o) {
   const nextText = `${JSON.stringify(next, null, 2)}\n`;
   const changed = nextText !== settings.text;
   console.log(`settings.json: ${changed ? "would change" : "unchanged"} (${ctx.golems.length + ctx.wrapped.length} managed hooks)`);
+  const caches = existsSync(ctx.live) ? cacheDirs(ctx) : [];
+  if (caches.length) console.log(`hooks-live: ${o.apply ? "clearing" : "would clear"} ${caches.length} stale __pycache__ dir(s) (hooks run -B)`);
   if (!o.apply) {
     console.log("dry-run: nothing written (pass --apply)");
     return 0;
@@ -269,6 +352,7 @@ function install(o) {
     else if (state !== "missing") unlinkSync(e.at);
   }
   writeFileSync(pinRecord(ctx), `${sha}\n`);
+  for (const cache of cacheDirs(ctx)) rmSync(path.join(ctx.live, cache), { recursive: true, force: true });
   for (const e of ctx.golems) {
     const state = linkState(e.at, e.to);
     if (state === "ok") continue;
@@ -307,7 +391,7 @@ function status(o) {
   // outside --apply (recorded pin). It cannot see a same-UID edit that is
   // reverted before --status runs.
   if (current) {
-    const dirty = git(ctx.live, "status", "--porcelain", "--untracked-files=all");
+    const dirty = liveGit(ctx.live, "status", "--porcelain", "--untracked-files=all");
     if (dirty === null || dirty) {
       bad = true;
       console.log(`hooks-live DIRTY: ${dirty === null ? "git status failed" : `${dirty.split("\n").length} changed/untracked path(s)`}`);
@@ -320,6 +404,10 @@ function status(o) {
     if (recorded !== current) {
       bad = true;
       console.log(`hooks-live HEAD ${recorded ? `!= recorded pin ${recorded}` : "has no recorded pin (re-run --apply)"}`);
+    }
+    for (const problem of treeIntegrity(ctx, current)) {
+      bad = true;
+      console.log(`hooks-live ${problem}`);
     }
   }
   // Only registered hook commands count: a hook name in permissions or env is not a registration.

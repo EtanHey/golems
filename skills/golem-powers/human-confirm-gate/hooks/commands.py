@@ -6,7 +6,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / '_shared'))
+_SHARED = str(Path(__file__).resolve().parents[2] / '_shared')
+if _SHARED not in sys.path:
+    sys.path.append(_SHARED)  # after the stdlib: nothing in the tree may shadow it
 import shell_parse as shell
 import syntax
 import gh_policy

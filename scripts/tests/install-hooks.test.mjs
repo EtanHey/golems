@@ -447,7 +447,7 @@ test("human confirmation ships once on each host through hooks-live with the sha
   const reference = realManifest.hosts.mbp.find((h) => h.id === "human-confirm-gate");
   expect(reference.matcher).toBe("Bash|Monitor|Write|Edit|MultiEdit|NotebookEdit");
   expect(reference.timeout).toBe(10);
-  expect(reference.command).toBe("{python} {hooks}/golems-fail-open.py {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
+  expect(reference.command).toBe("{python} -I -B {hooks}/golems-fail-open.py {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
   for (const entries of Object.values(realManifest.hosts)) {
     expect(entries.filter((h) => h.id === "human-confirm-gate")).toEqual([reference]);
   }
@@ -580,4 +580,29 @@ test("the shipped human-confirm gate requires its committed anchor pin on every 
     expect(gate.requiresPin).toBe("skills/golem-powers/human-confirm-gate/anchor.pins");
     expect(existsSync(path.join(here, "../..", gate.requiresPin))).toBe(true);
   }
+});
+
+test("--status compares every Python hook's import dirs byte-for-byte with HEAD; --apply clears stale caches", () => {
+  const fx = fixture();
+  addPinGate(fx, `${FINGERPRINT}  mbp\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  const hook = path.join(live(fx), "skills/golem-powers/pin-gate/hooks/pin-gate.py");
+  writeFileSync(hook, "print('changed')\n");
+  let st = run(fx, "--status");
+  expect(st.status).toBe(1);
+  expect(st.out).toMatch(/hooks import files differ from HEAD: 1 \(skills\/golem-powers\/pin-gate\/hooks\/pin-gate.py\)/);
+  writeFileSync(hook, "print('{}')\n");
+  // An ordinary (non-gate) hook dir is covered too: compiled files and caches are findings.
+  const demo = path.join(live(fx), "skills/golem-powers/demo-gate/hooks");
+  writeFileSync(path.join(demo, "json.pyc"), "");
+  mkdirSync(path.join(demo, "__pycache__"));
+  writeFileSync(path.join(demo, "__pycache__/demo-gate.cpython-313.pyc"), "");
+  st = run(fx, "--status");
+  expect(st.status).toBe(1);
+  expect(st.out).toMatch(/hooks import files unexpected \(untracked or ignored\): 2 /);
+  rmSync(path.join(demo, "json.pyc"));
+  const apply = run(fx, "--apply");
+  expect(apply.out).toMatch(/clearing 1 stale __pycache__ dir/);
+  expect(existsSync(path.join(demo, "__pycache__"))).toBe(false);
+  expect(run(fx, "--status").out).not.toMatch(/import files|INDEX|REPLACE/);
 });
