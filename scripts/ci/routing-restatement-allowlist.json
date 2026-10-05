@@ -481,43 +481,11 @@
       "tag": "ssot-sweep"
     },
     {
-      "file": "skills/golem-powers/codex-workflows/SKILL.md",
-      "marker": "`gpt-5.6-luna`; record effective model/effort, output tokens, and wall-clock duration in the manifest and run log.",
-      "class": "POINTER",
-      "reason": "harness default names a model literal; resolve via model-roles/SSOT",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
       "file": "skills/golem-powers/codex-workflows/evals/results/audit-2026-08-02.md",
       "marker": "- Four real two-worker Luna/xhigh fanouts pass and their harvested logs are",
       "class": "DATA",
       "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/codex-workflows/workflows/agent.md",
-      "marker": "--model gpt-5.6-luna \\",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/codex-workflows/workflows/parallel.md",
-      "marker": "\"model\": \"gpt-5.6-luna\",",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
-    },
-    {
-      "file": "skills/golem-powers/codex-workflows/workflows/pipeline.md",
-      "marker": "\"model\": \"gpt-5.6-luna\",",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/collab-monitor/SKILL.md",
@@ -554,14 +522,6 @@
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
-    },
-    {
-      "file": "skills/golem-powers/convention-audit/SKILL.md",
-      "marker": "The runner fans out raw `codex exec` workers across six concept lenses, then sends their candidates through a separate synthesis worker. Every worker requests `gpt-5.6-luna` with `max` reasoning. It may fall back to `xhigh` only when Codex explicitly rejects `max`; all other pin failures stop the run. A successful preflight must accept the requested model and effort, and its raw startup banner is retained in `pin-preflight.log`. That banner is acceptance evidence from the CLI, not independent server-side model telemetry. repoGolem aliases are forbidden because they can drop model and effort.",
-      "class": "POINTER",
-      "reason": "Replace routing/model choice with /agent-routing section Routing rules (SSOT) and role.",
-      "count": 1,
-      "tag": "ssot-sweep"
     },
     {
       "file": "skills/golem-powers/convention-audit/evals/results/round2-served-run/report.md",
@@ -652,6 +612,13 @@
       "marker": "| **Flow** | Paste prompt \u2192 Gemini produces a research PLAN \u2192 **review + Edit the plan** \u2192 **Start Research** \u2192 wait \u2192 read report |",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/golem-install/SKILL.md",
+      "marker": "`bun <golem-install-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`",
+      "class": "FUNCTIONAL",
+      "reason": "Describes install-codex-config rendering the role SSOT into model settings while preserving other config; installer behavior, not routing policy.",
       "count": 1
     },
     {
@@ -1611,6 +1578,13 @@
       "marker": "| Cursor Bugbot | Bug detection \u2014 **opt-in, core paths only** | Not on the default panel (see Step 8a tiering) and never where repo policy bans it (Step 8a.0). On a daemon/engine/transport diff: `gh pr comment <N> --body \"@cursor @bugbot review\"`. Re-review after fixes: `gh pr comment <N> --body \"@cursor @bugbot re-review\"`. Bot responds as `cursor[bot]`. |",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/qa-video/agents/qa-video-runner.md",
+      "marker": "model: sonnet",
+      "class": "FUNCTIONAL",
+      "reason": "Agent frontmatter model pin required by fleet canon #5; Claude Code reads it to select the model; role SSOT is the role: line.",
       "count": 1
     },
     {
