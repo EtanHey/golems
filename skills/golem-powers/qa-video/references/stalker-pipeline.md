@@ -2,6 +2,11 @@
 
 > Originally built for the monitored channel's Twitch streams, adapted for QA screen recordings.
 
+For current QA/gems execution, follow [process.md](../workflows/process.md):
+use the pipeline sub-agent, own-shell step receipts, dense windows and visual
+helper reads. The sparse hotspot examples below are legacy reference only;
+they do not replace mandatory dense sampling or re-densification.
+
 ## Complete Command Reference
 
 ### Audio Extraction

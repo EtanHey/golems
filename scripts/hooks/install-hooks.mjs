@@ -7,7 +7,9 @@
 // Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
 // `--update` moves it (default origin/master), so a `git checkout` in the main
 // checkout can never swap a live hook. Every golems hook in the host's manifest
-// entry is SYMLINKED from hooks-live into ~/.claude/hooks (copies silently break
+// entry is read from the selected commit (including dry-run updates), never
+// from the invoking checkout. --manifest is an explicit fixture/override path.
+// Each golems hook is SYMLINKED from hooks-live into ~/.claude/hooks (copies silently break
 // the gates' `../../_shared` imports) and registered in ~/.claude/settings.json.
 // `external` entries are owned by another repo and left byte-identical.
 // `wrapped-external` entries register a golems wrapper around another repo's
@@ -60,7 +62,7 @@ function mustGit(cwd, ...args) {
 
 function parseArgs(argv) {
   const o = { apply: false, status: false, update: null, host: null,
-    repo: path.join(homedir(), "Gits/golems"), manifest: path.join(here, "manifest.json") };
+    repo: path.join(homedir(), "Gits/golems"), manifest: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--apply") o.apply = true;
@@ -78,8 +80,9 @@ function stamp() {
   return new Date().toISOString().replace(/[:.]/g, "").replace("T", "-").slice(0, 17);
 }
 
-function context(o) {
-  const text = readFileSync(o.manifest, "utf8");
+function context(o, sha) {
+  const text = o.manifest ? readFileSync(o.manifest, "utf8") : git(o.repo, "show", `${sha}:scripts/hooks/manifest.json`);
+  if (text === null) die(`pinned manifest missing at ${sha}; refusing invoking-checkout fallback`);
   for (const name of E1_DELETED) {
     if (text.includes(name)) die(`REFUSED: ${name} is E1-deleted; it is never linked or registered`);
   }
@@ -95,7 +98,7 @@ function context(o) {
     }
   }
   const entries = hosts?.[o.host];
-  if (!Array.isArray(entries)) die(`manifest ${o.manifest} has no host "${o.host}"`);
+  if (!Array.isArray(entries)) die(`manifest ${o.manifest ?? sha} has no host "${o.host}"`);
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");
   const node = entries.some((e) => e.command?.includes("{node}")) ? pathNode() : "";
@@ -166,15 +169,21 @@ function linkState(at, to) {
   return readlinkSync(at) === to ? "ok" : `foreign(${readlinkSync(at)})`;
 }
 
-function pinLive(o, live) {
+function selectedPin(o, live) {
+  const current = existsSync(live) ? git(live, "rev-parse", "HEAD") : null;
+  if (current && (!o.update || o.status)) return current;
+  if (o.apply && !o.status) mustGit(o.repo, "fetch", "-q", "origin", "master");
+  const sha = git(o.repo, "rev-parse", "--verify", `${o.status ? "origin/master" : o.update ?? "origin/master"}^{commit}`);
+  if (!sha) die(`cannot resolve selected hook pin in ${o.repo}`);
+  return sha;
+}
+
+function pinLive(o, live, sha) {
   const current = existsSync(live) ? git(live, "rev-parse", "HEAD") : null;
   if (current && !o.update) {
     if (o.apply) relock(o.repo, live);
     return `hooks-live: keep ${current}`;
   }
-  if (o.apply) mustGit(o.repo, "fetch", "-q", "origin", "master");
-  const sha = git(o.repo, "rev-parse", "--verify", `${o.update ?? "origin/master"}^{commit}`);
-  if (!sha) die(`cannot resolve ${o.update ?? "origin/master"} in ${o.repo}`);
   if (!o.apply) return current ? `hooks-live: move ${current} -> ${sha}` : `hooks-live: create at ${sha}`;
   if (!current) {
     mustGit(o.repo, "worktree", "add", "-q", "--detach", live, sha);
@@ -192,14 +201,16 @@ function relock(repo, live) {
 }
 
 function install(o) {
-  const ctx = context(o);
+  const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
+  // Read/validate the immutable selected manifest before creating or moving the pin.
+  const ctx = context(o, sha);
   const settings = readSettings(ctx.settingsPath);
   if (!settings.canonical) {
     const msg = `${ctx.settingsPath} is not canonical 2-space JSON; rewriting it would change unrelated bytes`;
     if (o.apply) die(`${msg}. Refusing.`);
     console.log(`WARN ${msg}; --apply will refuse.`);
   }
-  console.log(pinLive(o, ctx.live));
+  console.log(pinLive(o, ctx.live, sha));
   for (const e of ctx.golems) {
     if (o.apply && !existsSync(e.to)) die(`source missing in hooks-live: ${e.source} (for ${e.id})`);
     const state = linkState(e.at, e.to);
@@ -245,8 +256,20 @@ function install(o) {
   return 0;
 }
 
+function registrationMatches(hooks, e) {
+  return Object.entries(hooks).flatMap(([event, groups]) => groups.flatMap((group) => (group.hooks ?? [])
+    .filter((hook) => String(hook.command ?? "").includes(e.match))
+    .map((hook) => ({ event, matcher: group.matcher ?? null, hook }))));
+}
+function registeredExactly(hooks, e) {
+  const matches = registrationMatches(hooks, e);
+  return matches.length === 1 && matches[0].event === e.event && matches[0].matcher === (e.matcher ?? null)
+    && isDeepStrictEqual(matches[0].hook, hookSpec(e));
+}
+
 function status(o) {
-  const ctx = context(o);
+  const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
+  const ctx = context(o, sha);
   const current = existsSync(ctx.live) ? git(ctx.live, "rev-parse", "HEAD") : null;
   const master = git(o.repo, "rev-parse", "--verify", "origin/master");
   const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
@@ -259,11 +282,7 @@ function status(o) {
   for (const e of ctx.entries) {
     if (e.kind === "wrapped-external") {
       const expected = ctx.wrapped.find((x) => x.id === e.id);
-      const matches = (hooks[e.event] ?? []).flatMap((group) => (group.hooks ?? [])
-        .filter((hook) => String(hook.command ?? "").includes(e.match))
-        .map((hook) => ({ matcher: group.matcher ?? null, hook })));
-      const ok = matches.length === 1 && matches[0].matcher === (e.matcher ?? null)
-        && isDeepStrictEqual(matches[0].hook, hookSpec(expected));
+      const ok = registeredExactly(hooks, expected);
       if (!ok) bad = true;
       console.log(`${e.id} ${ok ? "ok" : "drifted"}`);
       continue;
@@ -274,10 +293,16 @@ function status(o) {
     }
     const g = ctx.golems.find((x) => x.id === e.id);
     let state = linkState(g.at, g.to);
-    if (state === "ok" && !commands.includes(g.cmd)) state = "unregistered";
+    if (state === "ok" && !registeredExactly(hooks, g)) {
+      state = registrationMatches(hooks, g).length ? "drifted" : "unregistered";
+      bad = true;
+    }
     if (state === "dangling" || state === "copy(not link)") bad = true;
     console.log(`${e.id} ${state}`);
   }
+  const settingsDrift = [...ctx.golems, ...ctx.wrapped].filter((e) => !registeredExactly(hooks, e)).length;
+  console.log(`settings-drift=${settingsDrift}`);
+  if (current && settingsDrift) bad = true;
   const wrapper = path.join(ctx.hooksDir, "golems-fail-open.py");
   if (text.includes(wrapper)) {
     const w = !existsSync(wrapper) ? "dangling" : readFileSync(wrapper).equals(readFileSync(WRAPPER_SRC)) ? "ok" : "stale";

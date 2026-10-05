@@ -1,0 +1,64 @@
+{
+  "scope": "Routing SSOT PR 3a: classification and CI gate only; no policy rewrites.",
+  "baseline": "794413903835b458714b5ef57bdc68628fb99f7f",
+  "scan_files": 321,
+  "baseline_hits": 266,
+  "classification": {
+    "POINTER": 88,
+    "DATA": 84,
+    "FUNCTIONAL": 25,
+    "FALSE POSITIVE": 69
+  },
+  "focused_tests": {
+    "red": {
+      "pass": 16,
+      "fail": 5
+    },
+    "green": {
+      "pass": 21,
+      "fail": 0
+    }
+  },
+  "mutations": [
+    {
+      "mutation": "ignore-unlisted",
+      "exitCode": 1,
+      "caught": true,
+      "failures": [
+        "(fail) routing allowlist admits reviewed baseline but rejects new restatements and duplicate copies",
+        "(fail) CLI routing allowlist option fails on an unlisted new routing assignment",
+        "(fail) repeatable --routing-scan enforces whole files and exempts the two SSOT paths"
+      ]
+    },
+    {
+      "mutation": "ignore-stale",
+      "exitCode": 1,
+      "caught": true,
+      "failures": [
+        "(fail) routing allowlist rejects stale markers, changed lines, deleted files and omitted scans"
+      ]
+    },
+    {
+      "mutation": "substring-marker",
+      "exitCode": 1,
+      "caught": true,
+      "failures": [
+        "(fail) routing allowlist rejects stale markers, changed lines, deleted files and omitted scans"
+      ]
+    },
+    {
+      "mutation": "unbounded-occurrences",
+      "exitCode": 1,
+      "caught": true,
+      "failures": [
+        "(fail) routing allowlist admits reviewed baseline but rejects new restatements and duplicate copies"
+      ]
+    }
+  ],
+  "inner_loop_review": {
+    "reviewer": "lead-routed Opus",
+    "verdict": "APPROVE with one reclassification",
+    "change": "codex-workflows/SKILL.md:42 -> POINTER, temporary ssot-sweep, slice 3b",
+    "reason": "harness default names a model literal; resolve via model-roles/SSOT"
+  }
+}

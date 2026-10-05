@@ -442,3 +442,107 @@ test("--status: a linked hook whose command is no longer registered reports unre
   writeFileSync(fx.settingsPath, `${JSON.stringify(s, null, 2)}\n`);
   expect(run(fx, "--status").out).toMatch(/demo-gate unregistered/);
 });
+
+function pinnedManifestFixture() {
+  const fx = fixture();
+  const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
+  mkdirSync(directory, { recursive: true });
+  cpSync(installer, path.join(directory, 'install-hooks.mjs'));
+  cpSync(wrapper, path.join(directory, 'fail-open.py'));
+  writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifestFor()));
+  fx.defaultInstaller = path.join(directory, 'install-hooks.mjs');
+  fx.pinnedManifest = path.join(fx.repo, 'scripts/hooks/manifest.json');
+  mkdirSync(path.dirname(fx.pinnedManifest), { recursive: true });
+  return fx;
+}
+function commitManifest(fx, timeout = 15, matcher = 'Write') {
+  const manifest = manifestFor();
+  Object.assign(manifest.hosts.mbp[0], { timeout, matcher });
+  writeFileSync(fx.pinnedManifest, JSON.stringify(manifest));
+  git(fx.repo, 'add', '.'); git(fx.repo, 'commit', '-qm', 'manifest revision');
+  git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  return git(fx.repo, 'rev-parse', 'HEAD');
+}
+function runDefault(fx, ...args) {
+  const r = spawnSync('node', [fx.defaultInstaller, '--repo', fx.repo, '--host', 'mbp', ...args],
+    { env: { ...process.env, HOME: fx.home }, encoding: 'utf8' });
+  return { status: r.status, out: r.stdout + r.stderr };
+}
+test('default manifest comes from the selected pin despite an older invoking checkout', () => {
+  const fx = pinnedManifestFixture(); const first = commitManifest(fx);
+  expect(runDefault(fx, '--apply').status).toBe(0);
+  let settings = JSON.parse(readFileSync(fx.settingsPath, 'utf8'));
+  expect(settings.hooks.PreToolUse[0].matcher).toBe('Write');
+  expect(settings.hooks.PreToolUse[0].hooks[0].timeout).toBe(15);
+  commitManifest(fx, 25, 'Read');
+  expect(runDefault(fx, '--apply').status).toBe(0);
+  expect(git(live(fx), 'rev-parse', 'HEAD')).toBe(first);
+  settings = JSON.parse(readFileSync(fx.settingsPath, 'utf8'));
+  expect(settings.hooks.PreToolUse[0].hooks[0].timeout).toBe(15);
+  expect(runDefault(fx, '--apply', '--update').status).toBe(0);
+  settings = JSON.parse(readFileSync(fx.settingsPath, 'utf8'));
+  expect(settings.hooks.PreToolUse[0].matcher).toBe('Read');
+  expect(settings.hooks.PreToolUse[0].hooks[0].timeout).toBe(25);
+});
+test('update dry-run uses the future pinned manifest without moving the worktree or settings', () => {
+  const fx = pinnedManifestFixture(); const first = commitManifest(fx, 5, 'Bash');
+  expect(runDefault(fx, '--apply').status).toBe(0);
+  const before = readFileSync(fx.settingsPath, 'utf8'); commitManifest(fx, 25);
+  const result = runDefault(fx, '--dry-run', '--update');
+  expect(result.status).toBe(0); expect(result.out).toContain('settings.json: would change');
+  expect(git(live(fx), 'rev-parse', 'HEAD')).toBe(first);
+  expect(readFileSync(fx.settingsPath, 'utf8')).toBe(before);
+});
+test('invalid selected manifest refuses before creating hooks-live or settings backups', () => {
+  const fx = pinnedManifestFixture(); commitManifest(fx, 1000);
+  const before = readFileSync(fx.settingsPath, 'utf8');
+  const result = runDefault(fx, '--apply');
+  expect(result.status).not.toBe(0); expect(result.out).toContain('timeout must be an integer');
+  expect(existsSync(live(fx))).toBe(false);
+  expect(readFileSync(fx.settingsPath, 'utf8')).toBe(before); expect(bakFiles(fx)).toHaveLength(0);
+});
+test('status reads the pinned manifest and detects managed registration drift at SHA drift zero', () => {
+  const fx = pinnedManifestFixture(); commitManifest(fx, 5, 'Bash');
+  expect(runDefault(fx, '--apply').status).toBe(0);
+  const baseline = readFileSync(fx.settingsPath, 'utf8');
+  // A broken invoking manifest must not affect the pinned status contract.
+  writeFileSync(path.join(path.dirname(fx.defaultInstaller), 'manifest.json'), 'not JSON');
+  expect(runDefault(fx, '--status').status).toBe(0);
+  for (const change of [
+    (s) => { s.hooks.PreToolUse[0].hooks[0].timeout = 10; },
+    (s) => { s.hooks.PreToolUse[0].matcher = 'Write'; },
+    (s) => { s.hooks.PreToolUse[0].hooks[0].command += ' --changed'; },
+    (s) => { s.hooks.PreToolUse[0].hooks[0].async = true; },
+    (s) => { s.hooks.Stop = [{ hooks: [structuredClone(s.hooks.PreToolUse[0].hooks[0])] }]; },
+  ]) {
+    const settings = JSON.parse(baseline); change(settings);
+    const changed = JSON.stringify(settings, null, 2) + '\n'; writeFileSync(fx.settingsPath, changed);
+    const result = runDefault(fx, '--status');
+    expect(result.out).toContain('drift=0'); expect(result.out).toContain('demo-gate drifted');
+    expect(result.status).not.toBe(0); expect(readFileSync(fx.settingsPath, 'utf8')).toBe(changed);
+  }
+});
+
+test('explicit update SHA selects its manifest rather than the newer branch manifest', () => {
+  const fx = pinnedManifestFixture(); const first = commitManifest(fx, 15);
+  commitManifest(fx, 25, 'Read');
+  expect(runDefault(fx, '--apply', '--update', first).status).toBe(0);
+  expect(git(live(fx), 'rev-parse', 'HEAD')).toBe(first);
+  expect(JSON.parse(readFileSync(fx.settingsPath, 'utf8')).hooks.PreToolUse[0].hooks[0].timeout).toBe(15);
+});
+test('missing pinned manifest refuses invoking checkout fallback without writes', () => {
+  const fx = pinnedManifestFixture(); const before = readFileSync(fx.settingsPath, 'utf8');
+  const result = runDefault(fx, '--apply');
+  expect(result.status).not.toBe(0); expect(result.out).toContain('pinned manifest missing');
+  expect(existsSync(live(fx))).toBe(false);
+  expect(readFileSync(fx.settingsPath, 'utf8')).toBe(before);
+});
+test('invalid update manifest refuses before moving an existing pin', () => {
+  const fx = pinnedManifestFixture(); const first = commitManifest(fx);
+  expect(runDefault(fx, '--apply').status).toBe(0);
+  const before = readFileSync(fx.settingsPath, 'utf8'); const backups = bakFiles(fx);
+  commitManifest(fx, 1000);
+  expect(runDefault(fx, '--apply', '--update').status).not.toBe(0);
+  expect(git(live(fx), 'rev-parse', 'HEAD')).toBe(first);
+  expect(readFileSync(fx.settingsPath, 'utf8')).toBe(before); expect(bakFiles(fx)).toEqual(backups);
+});

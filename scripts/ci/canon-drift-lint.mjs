@@ -166,9 +166,33 @@ export function scanRouting(text, filePath, offset = 0) {
   return [...hits.values()].sort((a, b) => a.line - b.line);
 }
 
+function routingAllowlist(options) {
+  if (!options.routingAllowlistPath) return [];
+  const { exclusions } = JSON.parse(readFileSync(path.resolve(expandHome(options.routingAllowlistPath)), "utf8"));
+  if (!Array.isArray(exclusions)) throw new Error("routing allowlist requires exclusions array");
+  const seen = new Set();
+  return exclusions.map((row) => {
+    if (!row || typeof row.file !== "string" || !/^skills\/.+\.md$/.test(row.file) ||
+        row.file.split("/").some(part => part === ".." || part === "." || !part) || row.file.includes("\\") ||
+        typeof row.marker !== "string" || !row.marker.trim() || /[\r\n]/.test(row.marker) ||
+        row.marker !== row.marker.trim() || typeof row.reason !== "string" || !row.reason.trim() ||
+        !["POINTER", "DATA", "FUNCTIONAL", "FALSE POSITIVE"].includes(row.class) ||
+        !Number.isSafeInteger(row.count) || row.count < 1 ||
+        (row.class === "POINTER" ? row.tag !== "ssot-sweep" : row.tag !== undefined)) {
+      throw new Error("routing allowlist requires a skill file, exact line marker, reason, class, positive count and POINTER tag ssot-sweep only");
+    }
+    const key = JSON.stringify([row.file, row.marker]);
+    if (seen.has(key)) throw new Error(`routing allowlist duplicate: ${row.file}: ${row.marker}`);
+    seen.add(key);
+    return { ...row, path: path.resolve(options.routingRoot ?? repoRoot, row.file), used: 0 };
+  });
+}
+
 export function lintCanonDrift(options = {}) {
   const result = compareCanonDrift(options);
   const hits = [];
+  const exemptions = [];
+  const allowlist = routingAllowlist(options);
   if (options.check) {
     for (const filePath of [result.source.path, result.installed.path]) {
       const text = readTextIfExists(filePath);
@@ -177,12 +201,27 @@ export function lintCanonDrift(options = {}) {
       if (range) hits.push(...scanRouting(range.block, filePath, text.slice(0, range.start).split("\n").length - 1));
     }
   }
-  for (const input of options.routingScan ?? []) {
-    const filePath = path.resolve(expandHome(input));
-    hits.push(...scanRouting(readFileSync(filePath, "utf8"), filePath));
+  const files = new Set((options.routingScan ?? []).map(input => path.resolve(expandHome(input))));
+  for (const filePath of files) {
+    const text = readFileSync(filePath, "utf8");
+    const lines = text.split("\n");
+    for (const hit of scanRouting(text, filePath)) {
+      const marker = lines[hit.line - 1].trim();
+      const row = allowlist.find(row => row.path === filePath && row.marker === marker && row.used < row.count);
+      if (row) {
+        row.used += 1;
+        exemptions.push({ ...hit, class: row.class, reason: row.reason, ...(row.tag ? { tag: row.tag } : {}) });
+      } else hits.push(hit);
+    }
   }
-  result.routing = { hits, count: hits.length };
-  if (hits.length) Object.assign(result, { status: "routing-drift", ok: false, exitCode: 1 });
+  // All rows must still exempt the declared number of actual hits. This also catches
+  // deleted files, omitted scan paths, and markers that remain but no longer route.
+  const stale = allowlist.filter(row => row.used !== row.count).map(row => ({
+    file: row.file, marker: row.marker, expected: row.count, matched: row.used,
+    message: `${row.file}: stale routing allowlist marker (expected ${row.count}, matched ${row.used})`,
+  }));
+  result.routing = { hits, count: hits.length, exemptions, stale };
+  if (hits.length || stale.length) Object.assign(result, { status: "routing-drift", ok: false, exitCode: 1 });
   return result;
 }
 
@@ -260,6 +299,12 @@ function parseArgs(args) {
     if (arg === "--routing-scan" || arg.startsWith("--routing-scan=")) {
       const parsed = readOption(args, i);
       (options.routingScan ??= []).push(parsed.value);
+      i += parsed.consumed;
+      continue;
+    }
+    if (arg === "--routing-allowlist" || arg.startsWith("--routing-allowlist=")) {
+      const parsed = readOption(args, i);
+      options.routingAllowlistPath = parsed.value;
       i += parsed.consumed;
       continue;
     }
