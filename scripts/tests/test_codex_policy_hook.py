@@ -178,6 +178,40 @@ class CodexPolicyHookTests(unittest.TestCase):
                 with self.subTest(gate=gate, command=command):
                     result = self.check(run(gate, payload(command)), True)
                     self.assertNotIn("PRIVATE_VALUE", json.dumps(result))
+
+    def test_patch_mentions_in_data_remain_allowed(self):
+        for alias in ("apply_patch", "applypatch"):
+            commands = [
+                f"cat > notes.md <<'EOF'\nExample for {alias}:\n*** Begin Patch\n*** Add File: a.md\n+a\n*** End Patch\nEOF",
+                f"{alias} <<'EOF'\n*** Begin Patch\n*** Update File: docs.local/doc.md\n@@\n-old\n+mention {alias} here\n*** End Patch\nEOF",
+                f"git commit -m 'docs: explain {alias} and *** Begin Patch markers'",
+                f"python3 - <<'EOF'\nprint('{alias}')\nprint('*** Begin Patch')\nEOF",
+            ]
+            for gate in TARGETS:
+                for command in commands:
+                    with self.subTest(gate=gate, command=command):
+                        self.check(run(gate, payload(command)), False)
+
+    def test_transport_refusal_and_adapter_failure_have_distinct_reasons(self):
+        patch = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+x\n*** End Patch"
+        for gate in TARGETS:
+            for command in ("apply_patch <<'EOF'\n*** Begin Patch\nEOF",
+                            f"cd $PRIVATE_VALUE && apply_patch <<'EOF'\n{patch}\nEOF"):
+                result = self.check(run(gate, payload(command)), True)
+                reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+                self.assertIn("native apply_patch", reason)
+                self.assertNotIn("unavailable", reason)
+                self.assertNotIn("install-hooks.sh", reason)
+                self.assertNotIn("PRIVATE_VALUE", reason)
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            adapter = Path(scratch) / "scripts/hooks/codex-policy-hook.py"
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            # An actual missing parser is an installation/runtime failure.
+            result = self.check(run("tmp-block", payload(f"apply_patch <<'EOF'\n{patch}\nEOF"), adapter), True)
+            reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertIn("unavailable", reason)
+            self.assertIn("install-hooks.sh", reason)
+
     def test_missing_broken_malformed_and_timed_out_gate_fail_closed(self):
         (ROOT / "docs.local").mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:

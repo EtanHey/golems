@@ -42,7 +42,7 @@ class NativeHooksTests(unittest.TestCase):
                 "apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: .env\n+SYNTHETIC=x\n*** End Patch\nEOF",
                 f"cd '{tempdir}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: cd-leak.md\n+x\n*** End Patch\nEOF",
                 "applypatch <<'EOF'\n*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\nEOF",
-                f"cd '{workspace}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: allowed-heredoc.md\n+allowed\n*** End Patch\nEOF",
+                f"cd '{workspace}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: allowed-heredoc.md\n+allowed apply_patch\n*** End Patch\nEOF",
             ]
             patches = [
                 "*** Begin Patch\n  *** Add File: .env\n+SYNTHETIC=x\n*** End Patch\n",
@@ -150,7 +150,7 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
             for index in (4, 5, 6, 7):
                 self.assertIn("blocked by PreToolUse hook", outputs[f"call-{index}"])
             self.assertIn("TMP-BLOCK", outputs["call-6"], "cd patch must reach existing policy")
-            self.assertEqual((workspace / "allowed-heredoc.md").read_text().strip(), "allowed")
+            self.assertEqual((workspace / "allowed-heredoc.md").read_text().strip(), "allowed apply_patch")
             self.assertFalse((workspace / ".env").exists())
             self.assertFalse((workspace / "credentials.json").exists())
             for index in (9, 10):

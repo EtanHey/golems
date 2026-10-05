@@ -35,6 +35,10 @@ Paths and line numbers below refer to that tag, not the current default branch.
   projects Delete headers onto its existing sensitive-file Write policy.
 - [core/src/tools/handlers/unified_exec/write_stdin.rs:129](https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs#L129)
   supplies no new pre-tool-use payload for an existing shell session.
+- [arg0/src/lib.rs:393–402](https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/arg0/src/lib.rs#L393-L402)
+  installs `apply_patch` and `applypatch` as PATH executables. Their
+  [standalone entry point](https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/apply-patch/src/standalone_executable.rs#L16-L41)
+  reads a patch argument or stdin, beyond the literal heredoc interceptor.
 
 The [official hooks documentation](https://learn.chatgpt.com/docs/hooks) describes
 `hooks.json` and inline `[hooks]`, Bash/apply_patch payloads, supported deny JSON,
@@ -59,8 +63,10 @@ Notification runs after the agent: [core/src/hook_runtime.rs:609](https://github
 ## Required proof and limits
 
 The adapter must normalize deliberate Claude denials into exit-0 Codex deny
-JSON. Missing gates, exceptions, malformed output, and child timeouts must yield
-a static denial with a repair hint. A shell fallback must emit stderr + exit 2
+JSON. Missing gates, runtime failures and malformed output must yield
+a static denial with a repair hint. Unsupported direct shell-patch forms receive
+a specific instruction to use native `apply_patch`; timeouts retain the split
+hint. A shell fallback must emit stderr + exit 2
 if the adapter or interpreter cannot start. It must not use the fail-open path.
 The adapter deduplicates patch targets and has a seven-second total budget
 inside the ten-second native timeout. Large/timed-out requests receive a static
@@ -104,15 +110,28 @@ write with per-call `workdir` in a temp-class directory is allowed because the
 hook sees the ordinary session cwd; a permitted `sh` session followed by
 `write_stdin` containing `git push -f` executes without another hook call. This
 adapter cannot recover omitted workdir or intercept a tool with no hook payload.
-Absolute temp paths are checked. Shell-wrapped `apply_patch`/`applypatch`
-envelopes are also evaluated through both existing patch policies, including
-relative headers after a literal leading `cd <dir> &&`. Ambiguous bodies,
-multiple envelopes, and unresolved cwd changes are denied; use a native
-`apply_patch` call or a literal heredoc instead of an encoded/dynamic body.
+Absolute temp paths are checked. Direct, command-position `apply_patch`/`applypatch`
+invocations with supported literal inline envelopes are evaluated through both
+existing patch policies, including relative headers after a literal leading
+`cd <dir> &&`. Unsupported forms of those recognized direct invocations are
+refused with a native-tool hint. Names and markers in docs, quoted arguments or
+heredoc data do not trigger extraction; ordinary commands keep their existing
+policy decisions. This is lexical coverage, not a blanket denial of opaque or
+encoded producers.
+Repeated boundary-marker text within a direct shell patch, including literal
+patch content, is conservatively refused; use the native patch tool for it.
 This does not recover the omitted per-call `workdir`. No broad relative-write or
 interactive-shell ban is added to the shared policy; filesystem sandboxing and
-upstream hook coverage changes need separate decisions. Fresh-seat proof must
-state these holes, persist trust from plain Codex, then verify another launch.
+upstream hook coverage changes need separate decisions.
+
+**Known coverage hole: indirect shell patch execution.** The PATH executables
+accept arguments or stdin. Indirect invocations without a command-position name
+visible to the shared parser are not projected into patch policy; the existing
+Bash gates evaluate only their shell payload. This was already unchecked at
+the parent PR and is not closed here. A sandbox or PATH-level control requires a
+separate decision. Fresh-seat proof must state this hole alongside omitted
+workdir, unhooked `write_stdin`, trust/enablement skips and native outer hook
+failure; persist trust from plain Codex, then verify another launch.
 
 The existing git-guardian `CLAUDE_WORKER` exemption is retained for policy parity.
 Codex dispatch does not set it, but an inherited value would exempt the same

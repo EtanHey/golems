@@ -25,6 +25,14 @@ REPAIR_REASON = (
 )
 BUDGET_SECONDS = 7
 TIMEOUT_REASON = "BLOCKED: policy check timed out or patch is too large; split the patch or retry a smaller tool call."
+PATCH_TRANSPORT_REASON = (
+    "BLOCKED: shell-wrapped apply_patch requires a single literal patch with "
+    "a resolvable cwd; use the native apply_patch tool."
+)
+
+
+class PatchTransportRefusal(ValueError):
+    """Unsupported shell patch input, rather than a broken policy adapter."""
 
 
 def denial(reason=REPAIR_REASON):
@@ -84,29 +92,29 @@ def transport_inputs(payload):
     tokens, positions, _, _ = parser._parse_bash(command)
     names = [token for i, token in enumerate(tokens)
              if positions[i] and token in ("apply_patch", "applypatch")]
-    if not names and (not raw_names or "*** Begin Patch" not in command):
+    if not names:
         return [payload]
     # Codex intercepts shell heredocs after the Bash hook, without firing an
     # apply_patch hook. Decode transport only; both policies remain unchanged.
-    if len(names) != 1 or len(raw_names) > 1 or command.count("*** Begin Patch") != 1 or command.count("*** End Patch") != 1:
-        raise ValueError("ambiguous patch transport")
+    if len(names) != 1 or command.count("*** Begin Patch") != 1 or command.count("*** End Patch") != 1:
+        raise PatchTransportRefusal("ambiguous patch transport")
     cwd = payload["tool_input"]["cwd"]
     changes = [i for i, token in enumerate(tokens)
                if positions[i] and token in ("cd", "pushd", "popd", "chdir")]
     if changes:
         if changes != [0] or tokens[0] != "cd" or len(tokens) < 5 or tokens[2:4] != ["&", "&"]:
-            raise ValueError("ambiguous patch cwd")
+            raise PatchTransportRefusal("ambiguous patch cwd")
         target = tokens[1]
         # Codex's intercepted cd target is literal, not shell-expanded. Refuse
         # dynamic or escaped spellings instead of guessing another directory.
         prefix = command.split("&&", 1)[0]
         if not re.fullmatch(r"\s*cd[ \t]+(?:'[^'\n]+'|\"[^\"\n]+\"|[^\s;&|<>\"'()]+)[ \t]*", prefix):
-            raise ValueError("ambiguous cd prefix")
+            raise PatchTransportRefusal("ambiguous cd prefix")
         if target.startswith("-") or any(c in prefix for c in "$`\\~*?{["):
-            raise ValueError("unresolved patch cwd")
+            raise PatchTransportRefusal("unresolved patch cwd")
         cwd = os.path.realpath(os.path.join(cwd, target))
         if not os.path.isdir(cwd):
-            raise ValueError("invalid patch cwd")
+            raise PatchTransportRefusal("invalid patch cwd")
     begin = command.index("*** Begin Patch")
     end = command.index("*** End Patch") + len("*** End Patch")
     prefix = command[:begin]
@@ -119,7 +127,7 @@ def transport_inputs(payload):
     if heredoc:
         tail = command[end:]
         if not re.fullmatch(r"[ \t\r]*\n" + re.escape(heredoc["delimiter"]) + r"[ \t]*(?:\n\s*)?", tail):
-            raise ValueError("ambiguous heredoc suffix")
+            raise PatchTransportRefusal("ambiguous heredoc suffix")
         patch = command[begin:end]
     else:
         words = parser._shell_tokens(command)
@@ -127,17 +135,17 @@ def transport_inputs(payload):
         bodies = [token for token in words
                   if token.startswith("*** Begin Patch\n") and token.rstrip().endswith("*** End Patch")]
         if len(bodies) != 1 or any(c in bodies[0] for c in "$`\\"):
-            raise ValueError("unresolved patch body")
+            raise PatchTransportRefusal("unresolved patch body")
         here_string = words == [names[0], "<<<", bodies[0]]
         printf_pipe = (len(words) == 5 and words[0] == "printf"
                        and words[1] in ("%s", "%s\\n", "%sn")
                        and words[2:] == [bodies[0], "|", names[0]])
         if not here_string and not printf_pipe:
-            raise ValueError("ambiguous patch producer")
+            raise PatchTransportRefusal("ambiguous patch producer")
         patch = bodies[0].rstrip()
     lines = patch.split("\n")
     if len(lines) < 3 or lines[0].strip() != "*** Begin Patch" or lines[-1].strip() != "*** End Patch":
-        raise ValueError("invalid patch body")
+        raise PatchTransportRefusal("invalid patch body")
     synthetic = {**payload, "tool_name": "apply_patch", "cwd": cwd,
                  "tool_input": {"command": patch, "cwd": cwd}}
     return [payload, synthetic]
@@ -221,6 +229,8 @@ if __name__ == "__main__":
         result = evaluate()
     except (TimeoutError, subprocess.TimeoutExpired):
         result = denial(TIMEOUT_REASON)
+    except PatchTransportRefusal:
+        result = denial(PATCH_TRANSPORT_REASON)
     except BaseException:
         result = denial()
     finally:
