@@ -1,10 +1,10 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync,
   statSync, symlinkSync, writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,7 +21,7 @@ const dirs = [];
 afterEach(() => dirs.splice(0).forEach((d) => rmSync(d, { recursive: true, force: true })));
 
 const git = (cwd, ...args) => {
-  const r = spawnSync("git", ["-c", "user.name=F", "-c", "user.email=f@example.com", ...args], { cwd, encoding: "utf8" });
+  const r = spawnSync("git", ["-c", "user.name=F", "-c", "user.email=f@localhost", ...args], { cwd, encoding: "utf8" });
   if (r.status !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr}`);
   return r.stdout.trim();
 };
@@ -51,7 +51,9 @@ function addWrappedStopHook(fx) {
 }
 
 function fixture({ settings } = {}) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), "install-hooks-")));
+  const scratch = path.join(here, "../../docs.local/install-hooks-fixtures");
+  mkdirSync(scratch, { recursive: true });
+  const root = realpathSync(mkdtempSync(path.join(scratch, "install-hooks-")));
   dirs.push(root);
   const origin = path.join(root, "origin.git");
   const repo = path.join(root, "golems");
@@ -73,7 +75,7 @@ function fixture({ settings } = {}) {
 }
 
 function run(fx, ...args) {
-  const env = { ...process.env, HOME: fx.home, ...(fx.env ?? {}) };
+  const env = fixtureEnv(fx);
   const r = spawnSync("node", [installer, "--repo", fx.repo, "--manifest", fx.manifest, "--host", "mbp", ...args], {
     encoding: "utf8", env,
   });
@@ -83,6 +85,120 @@ function run(fx, ...args) {
 const live = (fx) => path.join(fx.repo, ".worktrees/hooks-live");
 const bakFiles = (fx) => spawnSync("ls", [path.join(fx.home, ".claude")], { encoding: "utf8" }).stdout
   .split("\n").filter((f) => f.startsWith("settings.json.bak-"));
+
+function fixtureEnv(fx) {
+  const env = { ...process.env, HOME: fx.home, CODEX_HOME: path.join(fx.home, ".codex"),
+    GOLEMS_HEAVY_LOCK: path.join(fx.root, "fixture-heavy.lock"), ...(fx.env ?? {}) };
+  // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.
+  delete env.GOLEMS_HEAVY_SUITE_HELD;
+  return env;
+}
+
+function guardedFixture({ privateSuite = "absent", candidate = "pass" } = {}) {
+  const fx = fixture();
+  const guards = ["skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
+    "skills/golem-powers/git-guardian/git_safety.py", "skills/golem-powers/_shared/shell_parse.py",
+    "scripts/hooks/codex-policy-hook.py"];
+  for (const name of guards) {
+    const file = path.join(fx.repo, name); mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, "# synthetic candidate adapter\n");
+  }
+  for (const name of ["skills/golem-powers/_shared/tests/test_public.py",
+    "skills/golem-powers/tmp-block/tests/test_public.py", "skills/golem-powers/tmp-block/hooks/tests/test_public.py",
+    "skills/golem-powers/git-guardian/tests/test_public.py", "skills/golem-powers/git-guardian/hooks/tests/test_public.py",
+    "scripts/tests/test_codex_policy_hook.py"]) {
+    const file = path.join(fx.repo, name); mkdirSync(path.dirname(file), { recursive: true });
+    const unique = file.endsWith("test_public.py") ? file.replace("test_public.py", "test_public_" + name.split("/").slice(2, -1).join("_") + ".py") : file;
+    writeFileSync(unique, "import os\nfrom pathlib import Path\ndef test_public(tmp_path):\n" +
+      "    home=Path(os.environ['HOME'])\n    for parent in tmp_path.parents:\n" +
+      "        if parent == home: break\n        assert not (parent/'.git').exists(), 'fixture inherited an enclosing repository'\n");
+  }
+  if (candidate === "public-fail") writeFileSync(path.join(fx.repo, "scripts/tests/test_codex_policy_hook.py"), "def test_public():\n    assert False\n");
+  if (candidate !== "pass") writeFileSync(path.join(fx.repo, "FAIL_ME"), "synthetic failure");
+  if (candidate === "pytest") writeFileSync(path.join(fx.repo, "pytest.py"),
+    "import sys\np=sys.argv[sys.argv.index('--junitxml')+1]\nopen(p,'w').write('<testsuite tests=\"96\">'+'<testcase/>'*96+'</testsuite>')\n");
+  if (candidate === "conftest") writeFileSync(path.join(fx.repo, "conftest.py"),
+    "def pytest_collection_modifyitems(items):\n    for item in items: item._obj=lambda: None\n");
+  git(fx.repo, "add", "."); git(fx.repo, "commit", "-qm", "synthetic guarded source");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  if (privateSuite !== "absent") {
+    const root = path.join(fx.repo, "docs.local/private-guard-suites"); mkdirSync(root, { recursive: true });
+    const file = path.join(root, "test_trusted.py");
+    writeFileSync(file, "import os, pytest\nfrom pathlib import Path\nparametrize = pytest.mark.parametrize\n@parametrize('i', range(96))\n" +
+      "def test_candidate(i):\n    root=Path(os.environ['GOLEMS_GUARD_CANDIDATE'])\n" +
+      "    assert not (root/'FAIL_ME').exists()\n" +
+      "    assert (root/'scripts/hooks/codex-policy-hook.py').read_text() == '# synthetic candidate adapter\\n'\n");
+    const manifest = { version: 2, expectedCases: 96, fixtures: [{ path: file,
+      sha256: createHash("sha256").update(readFileSync(file)).digest("hex") }], dependencies: [] };
+    writeFileSync(path.join(root, "manifest.json"), privateSuite === "malformed" ? "[]" : JSON.stringify(manifest));
+  }
+  return fx;
+}
+
+test("absent private suites warn and install after public guard verification", () => {
+  const fx = guardedFixture(); const result = run(fx, "--apply");
+  expect(result.status).toBe(0); expect(result.out).toContain("WARN private regression gate ABSENT");
+  expect(existsSync(live(fx))).toBe(true); expect(bakFiles(fx)).toHaveLength(1);
+});
+
+test("present complete private suites test the candidate adapter and install", () => {
+  const fx = guardedFixture({ privateSuite: "present" }); const result = run(fx, "--apply");
+  expect(result.status).toBe(0); expect(result.out).toContain("PASS 96 private cases");
+  expect(existsSync(live(fx))).toBe(true); expect(bakFiles(fx)).toHaveLength(1);
+});
+
+test("an update checks the candidate adapter instead of the installed adapter", () => {
+  const fx = guardedFixture({ privateSuite: "present" });
+  expect(run(fx, "--apply").status).toBe(0);
+  const installed = git(live(fx), "rev-parse", "HEAD");
+  const before = readFileSync(fx.settingsPath, "utf8"); const backups = bakFiles(fx);
+  writeFileSync(path.join(fx.repo, "scripts/hooks/codex-policy-hook.py"), "# changed candidate adapter\n");
+  git(fx.repo, "add", "."); git(fx.repo, "commit", "-qm", "synthetic adapter regression");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const candidate = git(fx.repo, "rev-parse", "HEAD");
+  const result = run(fx, "--update", candidate, "--apply");
+  expect(result.status).not.toBe(0); expect(result.out).toContain("private regression suite failed");
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(installed);
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before); expect(bakFiles(fx)).toEqual(backups);
+});
+
+test("absent private suites still refuse a failing public guard suite", () => {
+  const fx = guardedFixture({ candidate: "public-fail" });
+  const before = readFileSync(fx.settingsPath, "utf8"); const result = run(fx, "--apply");
+  expect(result.status).not.toBe(0); expect(result.out).toContain("public regression suite failed");
+  expect(existsSync(live(fx))).toBe(false); expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+  expect(bakFiles(fx)).toHaveLength(0);
+});
+
+for (const candidate of ["fail", "pytest", "conftest", "environment"]) {
+  test(`present failing suites refuse ${candidate} candidate before host writes`, () => {
+    const fx = guardedFixture({ privateSuite: "present", candidate });
+    if (candidate === "environment") {
+      const startup = path.join(fx.root, "startup"); mkdirSync(startup);
+      writeFileSync(path.join(startup, "sitecustomize.py"), "import os\nos._exit(0)\n");
+      fx.env = { PYTHONPATH: startup, PYTHONHOME: startup, PYTHONSTARTUP: path.join(startup, "sitecustomize.py") };
+    }
+    const before = readFileSync(fx.settingsPath, "utf8"); const result = run(fx, "--apply");
+    expect(result.status).not.toBe(0); expect(result.out).toContain("private regression gate refused");
+    expect(result.out).toContain("private regression suite failed");
+    expect(existsSync(live(fx))).toBe(false); expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+    expect(bakFiles(fx)).toHaveLength(0); expect(existsSync(path.join(fx.home, ".codex/hooks.json"))).toBe(false);
+    expect(git(fx.repo, "worktree", "list", "--porcelain")).not.toContain("hooks-private-gate-");
+  });
+}
+
+test("present malformed manifest and renamed guards refuse before host writes", () => {
+  for (const kind of ["malformed", "renamed"]) {
+    const fx = guardedFixture({ privateSuite: kind === "malformed" ? kind : "absent" });
+    if (kind === "renamed") {
+      git(fx.repo, "mv", "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py", "skills/golem-powers/tmp-block/hooks/renamed.py");
+      git(fx.repo, "commit", "-qm", "synthetic guard rename"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+    }
+    const before = readFileSync(fx.settingsPath, "utf8"); const result = run(fx, "--apply");
+    expect(result.status).not.toBe(0); expect(existsSync(live(fx))).toBe(false);
+    expect(readFileSync(fx.settingsPath, "utf8")).toBe(before); expect(bakFiles(fx)).toHaveLength(0);
+  }
+});
 
 test("every shipped host uses integer timeout seconds in 1..120; PreToolUse requires one", () => {
   const invalid = [];
@@ -450,6 +566,7 @@ function pinnedManifestFixture() {
   cpSync(installer, path.join(directory, 'install-hooks.mjs'));
   cpSync(path.join(here, '../hooks/codex-hooks-install.mjs'), path.join(directory, 'codex-hooks-install.mjs'));
   cpSync(wrapper, path.join(directory, 'fail-open.py'));
+  cpSync(path.join(here, '../hooks/private-regression-gate.py'), path.join(directory, 'private-regression-gate.py'));
   writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifestFor()));
   fx.defaultInstaller = path.join(directory, 'install-hooks.mjs');
   fx.pinnedManifest = path.join(fx.repo, 'scripts/hooks/manifest.json');
@@ -466,7 +583,7 @@ function commitManifest(fx, timeout = 15, matcher = 'Write') {
 }
 function runDefault(fx, ...args) {
   const r = spawnSync('node', [fx.defaultInstaller, '--repo', fx.repo, '--host', 'mbp', ...args],
-    { env: { ...process.env, HOME: fx.home }, encoding: 'utf8' });
+    { env: fixtureEnv(fx), encoding: 'utf8' });
   return { status: r.status, out: r.stdout + r.stderr };
 }
 test('default manifest comes from the selected pin despite an older invoking checkout', () => {

@@ -219,6 +219,18 @@ function install(o) {
     if (o.apply) die(`${msg}. Refusing.`);
     console.log(`WARN ${msg}; --apply will refuse.`);
   }
+  // Gate every selected source; missing guards and git errors cannot skip it.
+  const gate = path.join(here, "private-regression-gate.py");
+  console.log(`private regression gate: python3 -I ${gate} ${o.repo} ${sha}; suites=${o.repo}/docs.local/private-guard-suites`);
+  if (o.apply) {
+    const env = { ...process.env };
+    for (const key of ["PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP"]) delete env[key];
+    const resolved = spawnSync("sh", ["-c", "command -v python3"], { env, encoding: "utf8" });
+    const python = resolved.stdout?.trim();
+    if (resolved.status !== 0 || !python || !path.isAbsolute(python)) die("isolated Python runner unavailable");
+    const result = spawnSync(python, ["-I", gate, o.repo, sha], { env, stdio: "inherit", timeout: 3_600_000 });
+    if (result.status !== 0) die("private regression gate refused; hooks-live and host configuration untouched");
+  }
   console.log(pinLive(o, ctx.live, sha));
   for (const e of ctx.golems) {
     if (o.apply && !existsSync(e.to)) die(`source missing in hooks-live: ${e.source} (for ${e.id})`);

@@ -135,7 +135,9 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
     const selected = git("rev-parse", "HEAD");
     // Neither main checkout contents nor the caller's default manifest are used.
     writeFileSync(path.join(repo, "scripts/hooks/manifest.json"), "uncommitted invoking drift");
-    const env = { ...process.env, HOME: path.join(f.root, "home"), CODEX_HOME: f.codexHome };
+    const env = { ...process.env, HOME: path.join(f.root, "home"), CODEX_HOME: f.codexHome,
+      GOLEMS_HEAVY_LOCK: path.join(f.root, "fixture-heavy.lock") };
+    delete env.GOLEMS_HEAVY_SUITE_HELD;
     const invoke = (...args) => spawnSync("node", [path.resolve(import.meta.dir, "../hooks/install-hooks.mjs"),
       "--host", host, "--repo", repo, ...args], { env, encoding: "utf8" });
     const before = readFileSync(path.join(f.codexHome, "config.toml"));
