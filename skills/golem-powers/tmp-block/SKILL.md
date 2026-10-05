@@ -261,7 +261,7 @@ same sentence.
 |---|---|---|---|---|
 | Claude Code | `~/.claude/settings.json` | `Bash` | `Write`/`Edit`/`NotebookEdit` | enforcing since 2026-06-07 |
 | Cursor | `~/.claude/settings.json` — read **unconditionally**, no opt-in | `Shell` | `Write` | `Write` was **already** enforcing; `Shell` was a silent no-op until this change |
-| Codex | `~/.codex/hooks.json` or inline `[hooks]` | `Bash` | `apply_patch` | **not installed** — see below |
+| Codex | `~/.codex/hooks.json` | `Bash` | `apply_patch` | hooks-live installer supports wiring; verify each installed seat |
 
 **Cursor was never unguarded, and never fully guarded.** Its bundle
 (2026.08.11-e8db854) carries a literal `claudeUserConfigPath` pointing at
@@ -290,21 +290,38 @@ to `~/Documents` under `codex sandbox` returns `Operation not permitted`), so
   detection frontier above — because it is a kernel-level sandbox rather than a
   static parse.
 
-**Codex is deliberately NOT wired by this change.** Two things must be verified
-live first, and Codex was usage-limited until 2026-08-20 06:32:
+**Codex uses a transport adapter, not the Claude hook command directly.**
+Codex 0.160.0 ignores stdout JSON at exit 2 unless there is a blocking reason
+on stderr. `scripts/hooks/codex-policy-hook.py` runs this existing gate and
+git-guardian, translates deliberate denials into exit-0 Codex JSON, and denies
+transport failures with a static repair hint. The registered shell fallback
+uses stderr + exit 2 if the interpreter or adapter cannot start.
 
-1. Whether Codex honours a refusal delivered as **exit 2 with JSON on stdout**.
-   The documented deny shape is emitted, but the exit-code contract is not
-   documented and was not measured.
-2. That the hook's **trust review** has been completed. Codex skips a
-   non-managed hook until its exact definition is reviewed and trusted via
-   `/hooks`. An untrusted hook does not fail loudly — it silently does not run,
-   which is the one failure mode this guard must never ship.
+`scripts/hooks/install-hooks.sh --host <mbp|m1> --update --apply` registers both
+gates from the selected pinned manifest into `$CODEX_HOME/hooks.json` (default
+`~/.codex/hooks.json`), backs up
+changed hook configuration, and preserves `config.toml`. It never creates trust
+hashes or overrides an existing disabled-hooks setting. Review `/hooks` from
+**plain `codex` with no `--profile`** so trust persists in base config.toml.
+repoGolem's per-launch profile is deleted on exit, taking trust given there
+with it. `--apply` prints this instruction; `--status` reports wiring and
+base-config trust as missing/disabled/present-unverified, with nonzero status for
+missing/disabled trust. A stored hash needs native review; positional hook keys
+change when groups are reordered. Profile/CLI overrides and managed requirements
+can change effective enablement and are outside this base-config status check.
 
-Until both are measured, Codex coverage is a **documented, unenforced** rule:
-the fleet law is in the Codex instruction surface, and no claim of Codex
-enforcement belongs in a report. OpenAI's own docs say it plainly — *"Treat
-tool hooks as a useful guardrail, not a complete enforcement boundary."*
+A synthetic local Responses fixture exercises the real 0.160 CLI, including
+denial before execution and permitted commands. It does not prove an installed
+authenticated fleet seat; the lead must run that proof after deployment.
+Outer hook timeouts and skipped/untrusted hooks remain runtime limits. Codex
+omits per-call `workdir` from Bash hook input: a relative write executed in a
+temp-class workdir can pass when session cwd is ordinary. `write_stdin` into a
+persistent shell has no hook payload, so a force push typed there is unhooked.
+Both holes are proven on real 0.160; this adapter cannot recover missing context
+or intercept that input. Seven-second policy checks and deduplicated patch paths
+stay within the ten-second native timeout; large/timed-out calls ask to split
+the patch. Indented patch headers use the shared parser, and temp deletes remain
+allowed. See [version-pinned research](../../../docs/codex-policy-hooks.md).
 
 ## Install & evals
 
