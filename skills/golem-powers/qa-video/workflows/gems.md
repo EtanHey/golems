@@ -17,7 +17,9 @@ or wants durable insights/takeaways from a video instead of QA findings.
 Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
 The pipeline sub-agent owns the whole iterative loop in its **own shell**;
 never read images in the lead or pipeline sub-agent. Read text with Read;
-call `scripts/visual-gather.py` directly from Bash for every sheet/frame.
+call `scripts/visual-batch.py` from your own shell for every sheet/frame.
+The driver invokes visual-gather.py concurrently and returns text only.
+NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
 A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
 inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
 screenshot questions outside this pipeline.
@@ -60,8 +62,7 @@ judgement; an optional convenience index never gates the loop.
    append `scene-cues.sh` output so silent slide/code changes are covered.
 5. Launch `dense-windows.sh` through `run-step.sh` on those cues at 10 fps;
    poll its `.exit` and require `0`. Also extract 30-second coverage
-   frames as in `process.md`. Call `visual-gather.py` from Bash for EVERY
-   initial sheet in index order (process.md Phase 4), require complete path
+   frames as in `process.md`. Run `visual-batch.py` on the initial index.tsv (process.md Phase 4), require complete path
    coverage and correlate its exact `frames.tsv` tile timestamps with the SRT.
 6. **Re-densify** unclear slides, code, charts or transitions with tighter windows
    and up to 20 fps, then re-fetch and call the helper for every new sheet.

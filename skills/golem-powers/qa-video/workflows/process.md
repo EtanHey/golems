@@ -16,7 +16,9 @@ command reference and troubleshooting notes.
 Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
 The pipeline sub-agent owns the whole iterative loop in its **own shell**;
 never read images in the lead or pipeline sub-agent. Read text with Read;
-call `scripts/visual-gather.py` directly from Bash for every sheet/frame.
+call `scripts/visual-batch.py` from your own shell for every sheet/frame.
+The driver invokes visual-gather.py concurrently and returns text only.
+NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
 A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
 inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
 screenshot questions outside this pipeline.
@@ -138,30 +140,27 @@ timestamps from `frames.tsv`.
 
 ## Phase 4: Read Every Sheet, Then Re-Densify Unclear Moments
 
-**Read EVERY contact sheet in `index.tsv`, in order, through the helper.**
-The lead and pipeline sub-agent never read images with Read or image tools.
-They receive text observations only. Build absolute sheet paths from the index;
-include every initial and refinement sheet. Call the helper serially in small
-batches (up to six, fewer if its output cap omits findings):
+**Read EVERY contact sheet through the packaged batch driver.**
+The lead and pipeline sub-agent receive text only. Each helper call reads one
+sheet, concurrently (default 3, hard cap 4). Use a fresh batch workdir per pass:
 
 ```bash
-python3 "$SCRIPTS/visual-gather.py" --question \
-  'For each sheet, describe cursor targets and before/after states with zero-based row-major tile indexes. Mark unclear moments NOT DETERMINED; never invent timestamps.' \
-  --timeout 90 "$WORKDIR/dense${SUFFIX}/sheet_001.jpg" \
-  > "$WORKDIR/visual-dense-01.txt"
-# Example path only: use actual index.tsv rows. Read the TEXT result.
+python3 "$SCRIPTS/visual-batch.py" --index "$WORKDIR/dense${SUFFIX}/index.tsv" \
+  --workdir "$WORKDIR/visual-dense-01" --budget-seconds 480 --question \
+  'Describe cursor targets and before/after states with zero-based tile indexes. Mark unclear moments NOT DETERMINED; never invent timestamps.'
 ```
 
-Exit 0 alone does not prove coverage: require `Coverage: N/N; complete` and
-one usable observation for every supplied path. On partial coverage, omitted
-output or NOT DETERMINED, retry only those sheets in smaller serial batches;
-then refine unclear moments below. Track reviewed paths against every index,
-not merely the number of calls. Unread/unresolved evidence makes the pass
-incomplete or NOT DETERMINED. Match returned tile indexes to `frames.tsv`;
-Gemini must not infer timestamps. Coverage frames also go through the helper:
-if one shows something, add a cue and extract dense evidence before citing it.
-For an explicitly requested visible `video-qa` worker, view every sheet/frame
-there and keep the same coverage and refinement ledger.
+For coverage frames, supply their absolute paths instead of `--index`.
+NEVER hand-roll a shell loop over sheets. Helper shells must be Bash 3.2 safe.
+Read `progress.txt`, `progress.json`, `visual/findings.jsonl` as calls finish and
+`visual/summary.json` at the end. Exit 0 requires complete observations; inspect
+findings and match tile indexes to `frames.tsv`. Budget expiry stops new calls,
+allows bounded in-flight calls to finish, and returns `BUDGET_EXCEEDED` with
+unread sheets marked NOT DETERMINED. Quota/auth errors stop dispatch with a
+nonzero exit and the cause: our own visual dispatch. Do not relaunch blindly.
+Retry/refine only unresolved sheets within the remaining session budget, using
+a fresh workdir. An unread/unresolved sheet never supports a visual finding.
+An explicitly requested visible `video-qa` worker keeps the same evidence ledger.
 
 For each window (sheet), state:
 
@@ -193,7 +192,7 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows
 
 Poll `logs/refine-01.exit` and require `0` before calling the visual helper again.
 The final `0 0` disables cue padding, making this exactly one start/end/fps
-window. Re-fetch and call the visual helper for EVERY new sheet in its `index.tsv`; use that pass's
+window. Run visual-batch.py on the new `index.tsv` in a fresh batch workdir; use that pass's
 `frames.tsv` for exact tile timestamps. Repeat at different bounds if needed.
 If 20 fps or source resolution cannot resolve the moment, mark it **NOT
 DETERMINED**, explain the limitation and request better evidence. Higher output
