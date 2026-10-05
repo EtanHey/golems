@@ -25,6 +25,14 @@ REPAIR_REASON = (
 )
 BUDGET_SECONDS = 7
 TIMEOUT_REASON = "BLOCKED: policy check timed out or patch is too large; split the patch or retry a smaller tool call."
+PATCH_TRANSPORT_REASON = (
+    "BLOCKED: shell-wrapped apply_patch requires a single literal patch with "
+    "a resolvable cwd; use the native apply_patch tool."
+)
+
+
+class PatchTransportRefusal(ValueError):
+    """Unsupported shell patch input, rather than a broken policy adapter."""
 
 
 def denial(reason=REPAIR_REASON):
@@ -64,19 +72,91 @@ def gate_result(proc):
     return value
 
 
-def guardian_inputs(payload):
-    if payload["tool_name"] != "apply_patch":
-        return [payload]
-    # Reuse tmp-block's existing patch header parser; project writes into the
-    # guardian's existing Write path instead of inventing a second file policy.
-    module_path = ROOT / "skills/golem-powers/tmp-block/hooks/tmp_block_impl/tool_targets.py"
-    spec = importlib.util.spec_from_file_location("codex_patch_targets", module_path)
+def load_parser(relative, name):
+    spec = importlib.util.spec_from_file_location(name, ROOT / relative)
     module = importlib.util.module_from_spec(spec)
     output, errors = StringIO(), StringIO()
     with redirect_stdout(output), redirect_stderr(errors):
         spec.loader.exec_module(module)
     if output.getvalue() or errors.getvalue():
-        raise ValueError("patch parser emitted unexpected output")
+        raise ValueError("parser emitted unexpected output")
+    return module
+
+
+def transport_inputs(payload):
+    command = payload["tool_input"]["command"]
+    raw_names = re.findall(r"\bapply_?patch\b", command)
+    if payload["tool_name"] != "Bash" or (not raw_names and "*** Begin Patch" not in command):
+        return [payload]
+    parser = load_parser("skills/golem-powers/_shared/shell_parse.py", "codex_shell_parser")
+    tokens, positions, _, _ = parser._parse_bash(command)
+    names = [token for i, token in enumerate(tokens)
+             if positions[i] and token in ("apply_patch", "applypatch")]
+    if not names:
+        return [payload]
+    # Codex intercepts shell heredocs after the Bash hook, without firing an
+    # apply_patch hook. Decode transport only; both policies remain unchanged.
+    if len(names) != 1 or command.count("*** Begin Patch") != 1 or command.count("*** End Patch") != 1:
+        raise PatchTransportRefusal("ambiguous patch transport")
+    cwd = payload["tool_input"]["cwd"]
+    changes = [i for i, token in enumerate(tokens)
+               if positions[i] and token in ("cd", "pushd", "popd", "chdir")]
+    if changes:
+        if changes != [0] or tokens[0] != "cd" or len(tokens) < 5 or tokens[2:4] != ["&", "&"]:
+            raise PatchTransportRefusal("ambiguous patch cwd")
+        target = tokens[1]
+        # Codex's intercepted cd target is literal, not shell-expanded. Refuse
+        # dynamic or escaped spellings instead of guessing another directory.
+        prefix = command.split("&&", 1)[0]
+        if not re.fullmatch(r"\s*cd[ \t]+(?:'[^'\n]+'|\"[^\"\n]+\"|[^\s;&|<>\"'()]+)[ \t]*", prefix):
+            raise PatchTransportRefusal("ambiguous cd prefix")
+        if target.startswith("-") or any(c in prefix for c in "$`\\~*?{["):
+            raise PatchTransportRefusal("unresolved patch cwd")
+        cwd = os.path.realpath(os.path.join(cwd, target))
+        if not os.path.isdir(cwd):
+            raise PatchTransportRefusal("invalid patch cwd")
+    begin = command.index("*** Begin Patch")
+    end = command.index("*** End Patch") + len("*** End Patch")
+    prefix = command[:begin]
+    # A heredoc body is literal in Codex's interceptor. Quoted multiline
+    # arguments (here-string / printf pipe) use the existing shell tokenizer.
+    head = prefix.rsplit("&&", 1)[-1] if changes else prefix
+    heredoc = re.fullmatch(
+        r"\s*apply_?patch[ \t]+<<-?[ \t]*(?P<quote>['\"]?)"
+        r"(?P<delimiter>[A-Za-z_][A-Za-z0-9_]*)(?P=quote)[ \t]*\n[^\S\n]*", head)
+    if heredoc:
+        tail = command[end:]
+        if not re.fullmatch(r"[ \t\r]*\n" + re.escape(heredoc["delimiter"]) + r"[ \t]*(?:\n\s*)?", tail):
+            raise PatchTransportRefusal("ambiguous heredoc suffix")
+        patch = command[begin:end]
+    else:
+        words = parser._shell_tokens(command)
+        words = words[4:] if changes else words
+        bodies = [token for token in words
+                  if token.startswith("*** Begin Patch\n") and token.rstrip().endswith("*** End Patch")]
+        if len(bodies) != 1 or any(c in bodies[0] for c in "$`\\"):
+            raise PatchTransportRefusal("unresolved patch body")
+        here_string = words == [names[0], "<<<", bodies[0]]
+        printf_pipe = (len(words) == 5 and words[0] == "printf"
+                       and words[1] in ("%s", "%s\\n", "%sn")
+                       and words[2:] == [bodies[0], "|", names[0]])
+        if not here_string and not printf_pipe:
+            raise PatchTransportRefusal("ambiguous patch producer")
+        patch = bodies[0].rstrip()
+    lines = patch.split("\n")
+    if len(lines) < 3 or lines[0].strip() != "*** Begin Patch" or lines[-1].strip() != "*** End Patch":
+        raise PatchTransportRefusal("invalid patch body")
+    synthetic = {**payload, "tool_name": "apply_patch", "cwd": cwd,
+                 "tool_input": {"command": patch, "cwd": cwd}}
+    return [payload, synthetic]
+
+
+def guardian_inputs(payload):
+    if payload["tool_name"] != "apply_patch":
+        return [payload]
+    # Reuse tmp-block's existing patch header parser; project writes into the
+    # guardian's existing Write path instead of inventing a second file policy.
+    module = load_parser("skills/golem-powers/tmp-block/hooks/tmp_block_impl/tool_targets.py", "codex_patch_targets")
     command = payload["tool_input"]["command"]
     # Deleting a sensitive file is also a guardian file operation. tmp-block
     # still receives the original envelope and retains its delete allowance.
@@ -85,6 +165,42 @@ def guardian_inputs(payload):
     if len(paths) > 64:
         raise TimeoutError("patch budget exceeded")
     return [{**payload, "tool_name": "Write", "tool_input": {"file_path": p}} for p in paths]
+
+
+def guardian_batch():
+    """Amortize imports, retaining the existing entry point for every write."""
+    raw = sys.stdin.read(1024 * 1024 + 1)
+    items = json.loads(raw)
+    if len(raw) > 1024 * 1024 or not isinstance(items, list) or not 1 <= len(items) <= 64:
+        raise ValueError("invalid policy batch")
+    os.environ.pop("GIT_GUARDIAN_LIB", None)
+    gate = load_parser(TARGETS["git-guardian"], "codex_guardian")
+    result = {}
+    for item in items:
+        if (not isinstance(item, dict) or item.get("tool_name") != "Write"
+                or not isinstance(item.get("cwd"), str)
+                or not os.path.samefile(item["cwd"], ".")):
+            raise ValueError("invalid batch item")
+        ti = item.get("tool_input")
+        if not isinstance(ti, dict) or not isinstance(ti.get("file_path"), str):
+            raise ValueError("invalid batch target")
+        output, errors = StringIO(), StringIO()
+        original_stdin = sys.stdin
+        try:
+            sys.stdin = StringIO(json.dumps(item))
+            with redirect_stdout(output), redirect_stderr(errors):
+                try:
+                    gate.main()
+                except SystemExit as exc:
+                    code = exc.code
+                else:
+                    raise ValueError("gate did not exit")
+        finally:
+            sys.stdin = original_stdin
+        result = gate_result(subprocess.CompletedProcess([], code, output.getvalue(), errors.getvalue()))
+        if result.get("hookSpecificOutput", {}).get("permissionDecision") == "deny":
+            break
+    return result
 
 
 def evaluate():
@@ -106,23 +222,30 @@ def evaluate():
         raise ValueError("invalid cwd")
     # Native Codex Bash omits workdir from tool_input; tmp-block's patch path
     # resolver expects cwd there. Both child processes also start in that cwd.
-    p = {**p, "tool_input": {**ti, "cwd": cwd}}
+    p = {**p, "cwd": cwd, "tool_input": {**ti, "cwd": cwd}}
     env = os.environ.copy()
     # Preserve existing policy environment semantics, including the worker
     # exemption. Only the library source is fixed to hooks-live.
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
-    for item in guardian_inputs(p) if gate == "git-guardian" else [p]:
+    for item in transport_inputs(p):
+        command = [sys.executable, str(ROOT / TARGETS[gate])]
+        data = item
+        if gate == "git-guardian" and item["tool_name"] == "apply_patch":
+            data = guardian_inputs(item)
+            if not data:
+                continue
+            command = [sys.executable, str(Path(__file__).resolve()), "--guardian-batch"]
         # Leave a cleanup margin: simultaneous child/global deadlines can throw
         # SIGALRM inside Popen.__del__, leaking an unraisable traceback to stderr.
         remaining = BUDGET_SECONDS - 1 - (time.monotonic() - started)
         if remaining <= 0:
             raise TimeoutError("gate budget exceeded")
-        proc = subprocess.Popen([sys.executable, str(ROOT / TARGETS[gate])],
+        proc = subprocess.Popen(command,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, cwd=cwd, env=env, start_new_session=True)
+            text=True, cwd=item["cwd"], env=env, start_new_session=True)
         try:
-            stdout, stderr = proc.communicate(json.dumps(item), timeout=remaining)
+            stdout, stderr = proc.communicate(json.dumps(data), timeout=remaining)
         finally:
             # A broken gate must not leave descendants executing after denial.
             try:
@@ -143,9 +266,11 @@ if __name__ == "__main__":
     signal.signal(signal.SIGALRM, timeout)
     signal.setitimer(signal.ITIMER_REAL, BUDGET_SECONDS)
     try:
-        result = evaluate()
+        result = guardian_batch() if sys.argv[1:] == ["--guardian-batch"] else evaluate()
     except (TimeoutError, subprocess.TimeoutExpired):
         result = denial(TIMEOUT_REASON)
+    except PatchTransportRefusal:
+        result = denial(PATCH_TRANSPORT_REASON)
     except BaseException:
         result = denial()
     finally:

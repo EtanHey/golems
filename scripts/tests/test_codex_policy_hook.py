@@ -40,6 +40,12 @@ def payload(command, tool="Bash"):
 
 
 class CodexPolicyHookTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # These fixtures must also work in a fresh checkout with no ignored
+        # docs.local scaffolding, including individually selected N1 probes.
+        (ROOT / "docs.local/codex-hooks-port").mkdir(parents=True, exist_ok=True)
+
     def check(self, proc, deny):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         result = json.loads(proc.stdout)
@@ -115,6 +121,96 @@ class CodexPolicyHookTests(unittest.TestCase):
         for gate, path, deny in [("git-guardian", ".env", True), ("tmp-block", "/tmp/to-delete.txt", False)]:
             patch = f"*** Begin Patch\n*** Delete File: {path}\n*** End Patch\n"
             self.check(run(gate, payload(patch, "apply_patch")), deny)
+
+    def test_bash_patch_envelopes_use_both_existing_policies(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            env = clean_env(); env["TMPDIR"] = scratch
+            for gate, path in [("tmp-block", scratch + "/leak.md"), ("git-guardian", ".env")]:
+                for alias in ("apply_patch", "applypatch"):
+                    for indent in ("", "\t"):
+                        patch = f"*** Begin Patch\n{indent}*** Add File: {path}\n+x\n*** End Patch"
+                        forms = [f"{alias} <<'EOF'\n{patch}\nEOF\n",
+                                 f"{alias} <<< '{patch}'",
+                                 f"printf '%s\\n' '{patch}' | {alias}"]
+                        for command in forms:
+                            with self.subTest(gate=gate, command=command):
+                                self.check(run(gate, payload(command), env=env), True)
+            for target in (scratch, os.path.relpath(scratch, ROOT)):
+                command = f"cd '{target}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: relative.md\n+x\n*** End Patch\nEOF"
+                self.check(run("tmp-block", payload(command), env=env), True)
+            ordinary = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+don't reinterpret this prose\n*** End Patch"
+            for command in [f"apply_patch <<'EOF'\n{ordinary}\nEOF",
+                            f"cd '{ROOT}' && apply_patch <<'EOF'\n{ordinary}\nEOF",
+                            f'applypatch <<< "{ordinary}"',
+                            f'printf "%s\\n" "{ordinary}" | apply_patch']:
+                for gate in TARGETS:
+                    self.check(run(gate, payload(command), env=env), False)
+            p = payload(f"apply_patch <<'EOF'\n{ordinary}\nEOF"); del p["cwd"]
+            for gate in TARGETS:
+                self.check(run(gate, p, env=env), False)
+            # Deletion keeps tmp-block's established allowance; guardian still
+            # judges a sensitive delete using its existing Write projection.
+            for gate, target, deny in [("tmp-block", scratch + "/old.md", False),
+                                       ("git-guardian", ".env", True)]:
+                command = f"apply_patch <<'EOF'\n*** Begin Patch\n*** Delete File: {target}\n*** End Patch\nEOF"
+                self.check(run(gate, payload(command), env=env), deny)
+
+    def test_opaque_bash_patch_transport_fails_closed_without_values(self):
+        ordinary = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+x\n*** End Patch"
+        commands = [
+            "apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: .env\n+x\nEOF",
+            "apply_patch <<< '*** Begin Patch\\n*** Add File: .env\\n+x\\n*** End Patch'",
+            "printf '%b' '*** Begin P\\x61tch\\n*** Add File: .env\\n+x\\n*** End Patch' | apply_patch",
+            "apply_patch <<< $'*** Begin P\\x61tch\\n*** Add File: .env\\n+x\\n*** End Patch'",
+            f"cd $PRIVATE_VALUE && apply_patch <<'EOF'\n{ordinary}\nEOF",
+            f"cd $(printf PRIVATE_VALUE) && apply_patch <<'EOF'\n{ordinary}\nEOF",
+            f"printf x; cd docs.local && apply_patch <<'EOF'\n{ordinary}\nEOF",
+            f"# PRIVATE_VALUE\ncd docs.local && apply_patch <<EOF\n{ordinary}\nEOF",
+            f"command apply_patch <<'EOF'\n{ordinary}\nEOF",
+            f"apply\\_patch <<'EOF'\n{ordinary}\nEOF",
+            f"apply_patch <<EOF\n{ordinary}\nEOF\nprintf PRIVATE_VALUE",
+            "printf '*** Begin Patch\n*** Add File: %s\n+x\n*** End Patch' .env | apply_patch",
+            "apply_patch <<< '*** Begin Patch\n*** Add File: $PRIVATE_VALUE\n+x\n*** End Patch'",
+            f"apply_patch <<'EOF'\n{ordinary}\nEOF\napplypatch <<'EOF'\n{ordinary}\nEOF",
+        ]
+        for gate in TARGETS:
+            for command in commands:
+                with self.subTest(gate=gate, command=command):
+                    result = self.check(run(gate, payload(command)), True)
+                    self.assertNotIn("PRIVATE_VALUE", json.dumps(result))
+
+    def test_patch_mentions_in_data_remain_allowed(self):
+        for alias in ("apply_patch", "applypatch"):
+            commands = [
+                f"cat > notes.md <<'EOF'\nExample for {alias}:\n*** Begin Patch\n*** Add File: a.md\n+a\n*** End Patch\nEOF",
+                f"{alias} <<'EOF'\n*** Begin Patch\n*** Update File: docs.local/doc.md\n@@\n-old\n+mention {alias} here\n*** End Patch\nEOF",
+                f"git commit -m 'docs: explain {alias} and *** Begin Patch markers'",
+                f"python3 - <<'EOF'\nprint('{alias}')\nprint('*** Begin Patch')\nEOF",
+            ]
+            for gate in TARGETS:
+                for command in commands:
+                    with self.subTest(gate=gate, command=command):
+                        self.check(run(gate, payload(command)), False)
+
+    def test_transport_refusal_and_adapter_failure_have_distinct_reasons(self):
+        patch = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+x\n*** End Patch"
+        for gate in TARGETS:
+            for command in ("apply_patch <<'EOF'\n*** Begin Patch\nEOF",
+                            f"cd $PRIVATE_VALUE && apply_patch <<'EOF'\n{patch}\nEOF"):
+                result = self.check(run(gate, payload(command)), True)
+                reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+                self.assertIn("native apply_patch", reason)
+                self.assertNotIn("unavailable", reason)
+                self.assertNotIn("install-hooks.sh", reason)
+                self.assertNotIn("PRIVATE_VALUE", reason)
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            adapter = Path(scratch) / "scripts/hooks/codex-policy-hook.py"
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            # An actual missing parser is an installation/runtime failure.
+            result = self.check(run("tmp-block", payload(f"apply_patch <<'EOF'\n{patch}\nEOF"), adapter), True)
+            reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertIn("unavailable", reason)
+            self.assertIn("install-hooks.sh", reason)
 
     def test_missing_broken_malformed_and_timed_out_gate_fail_closed(self):
         (ROOT / "docs.local").mkdir(exist_ok=True)
@@ -194,6 +290,9 @@ class CodexPolicyHookTests(unittest.TestCase):
             f"*** Add File: docs.local/allowed-{i}.md\n+x\n" for i in range(64)) + "*** End Patch\n"
         self.check(run("git-guardian", payload(patch, "apply_patch")), False)
         self.check(run("git-guardian", payload(patch.replace("allowed-63.md", "../../../.env"), "apply_patch")), True)
+        too_many = patch.replace("*** End Patch", "*** Add File: docs.local/allowed-64.md\n+x\n*** End Patch")
+        result = self.check(run("git-guardian", payload(too_many, "apply_patch")), True)
+        self.assertIn("split the patch", result["hookSpecificOutput"]["permissionDecisionReason"])
         repeated = "*** Begin Patch\n" + "*** Update File: docs.local/ok.md\n+x\n" * 128 + "*** End Patch\n"
         self.check(run("git-guardian", payload(repeated, "apply_patch")), False)
 
@@ -207,6 +306,93 @@ class CodexPolicyHookTests(unittest.TestCase):
             reason = result["hookSpecificOutput"]["permissionDecisionReason"]
             self.assertIn("split the patch", reason)
             self.assertNotIn("reinstall", reason.lower())
+
+    def test_guardian_batch_preserves_worker_and_symlink_cwd(self):
+        patch = "*** Begin Patch\n*** Add File: .env\n+x\n*** End Patch\n"
+        env = clean_env(); env["CLAUDE_WORKER"] = "1"
+        self.check(run("git-guardian", payload(patch, "apply_patch"), env=env), False)
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            link = Path(scratch) / "cwd"; link.symlink_to(ROOT, target_is_directory=True)
+            p = payload(patch, "apply_patch"); p["cwd"] = str(link)
+            self.check(run("git-guardian", p), True)
+            p["tool_input"]["command"] = patch.replace(".env", "docs.local/allowed.md")
+            self.check(run("git-guardian", p), False)
+
+    def test_guardian_batch_accepts_case_variant_cwd(self):
+        variant = str(ROOT).swapcase()
+        if not os.path.isdir(variant) or not os.path.samefile(variant, ROOT):
+            self.skipTest("fixture requires a case-insensitive filesystem")
+        patch = "*** Begin Patch\n*** Add File: docs.local/allowed.md\n+x\n*** End Patch\n"
+        for wrapped in (False, True):
+            command = f"cd '{variant}' && apply_patch <<'EOF'\n{patch}EOF" if wrapped else patch
+            p = payload(command, "Bash" if wrapped else "apply_patch")
+            p["cwd"] = variant
+            with self.subTest(wrapped=wrapped):
+                self.check(run("git-guardian", p), False)
+                p["tool_input"]["command"] = command.replace("docs.local/allowed.md", ".env")
+                self.check(run("git-guardian", p), True)
+
+    def test_guardian_batch_rejects_different_cwd_identity(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            for cwd in (scratch, str(Path(scratch) / "missing")):
+                item = {"tool_name": "Write", "cwd": cwd,
+                        "tool_input": {"file_path": "docs.local/allowed.md"}}
+                with self.subTest(cwd=cwd):
+                    result = self.check(run("--guardian-batch", [item]), True)
+                    self.assertIn("unavailable", result["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_patch_policy_process_count_is_bounded(self):
+        patch = "*** Begin Patch\n" + "".join(
+            f"*** Add File: docs.local/allowed-{i}.md\n+x\n" for i in range(64)) + "*** End Patch\n"
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            base = Path(scratch)
+            counter = base / "python-starts.txt"
+            (base / "sitecustomize.py").write_text(
+                "import os,time\n"
+                "with open(os.environ['CODEX_TEST_START_COUNTER'], 'a') as starts:\n"
+                "    starts.write(str(os.getpid()) + '\\n')\n"
+                "time.sleep(0.11)\n")
+            env = clean_env()
+            env["PYTHONPATH"] = str(base)
+            env["CODEX_TEST_START_COUNTER"] = str(counter)
+            for gate in TARGETS:
+                for wrapped in (False, True):
+                    for sensitive in (False, True):
+                        body = patch.replace("allowed-63.md", "../../../.env") if sensitive else patch
+                        command = f"apply_patch <<'EOF'\n{body}EOF" if wrapped else body
+                        counter.write_text("")
+                        started = time.monotonic()
+                        proc = run(gate, payload(command, "Bash" if wrapped else "apply_patch"), env=env)
+                        starts = counter.read_text().splitlines()
+                        elapsed = time.monotonic() - started
+                        with self.subTest(gate=gate, wrapped=wrapped, sensitive=sensitive):
+                            self.check(proc, sensitive and gate == "git-guardian")
+                            # Count the adapter itself and every Python descendant.
+                            self.assertEqual(len(starts), 3 if wrapped else 2)
+                            self.assertEqual(len(set(starts)), len(starts))
+                            print("Delayed Python starts:", gate, wrapped, sensitive,
+                                  len(starts), round(elapsed, 3))
+
+    def test_guardian_batch_runtime_failures_fail_closed(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            base = Path(scratch); adapter = base / "scripts/hooks/codex-policy-hook.py"
+            adapter.parent.mkdir(parents=True); shutil.copyfile(ADAPTER, adapter)
+            relative = "skills/golem-powers/tmp-block/hooks/tmp_block_impl/tool_targets.py"
+            parser = base / relative; parser.parent.mkdir(parents=True)
+            shutil.copyfile(ROOT / relative, parser)
+            hook = base / TARGETS["git-guardian"]; hook.parent.mkdir(parents=True)
+            bodies = ["print('{}'); raise SystemExit(1)",
+                      "print('{}'); print('PRIVATE-VALUE', file=sys.stderr); raise SystemExit(0)",
+                      "print('{}')", "raise RuntimeError('PRIVATE-VALUE')", "time.sleep(10)"]
+            patch = "*** Begin Patch\n*** Add File: docs.local/allowed.md\n+x\n*** End Patch\n"
+            for body in bodies:
+                with self.subTest(body=body):
+                    hook.write_text("import sys,time\ndef main():\n    " + body + "\n")
+                    result = self.check(run("git-guardian", payload(patch, "apply_patch"), adapter), True)
+                    self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
+                    reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+                    self.assertIn("split the patch" if body == "time.sleep(10)" else "unavailable", reason)
+                    self.assertNotIn("native apply_patch", reason)
 
     def test_payload_cwd_reaches_both_policies(self):
         p = payload("git worktree add /workspace/sibling/x HEAD")
