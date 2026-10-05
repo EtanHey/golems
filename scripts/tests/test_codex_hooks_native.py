@@ -1,5 +1,6 @@
 """Real Codex CLI, synthetic local Responses server, scratch home; no paid calls."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,10 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 ADAPTER = ROOT / "scripts/hooks/codex-policy-hook.py"
+_cases_spec = importlib.util.spec_from_file_location("codex_hook_cases", ROOT / "scripts/tests/test_codex_policy_hook.py")
+_cases = importlib.util.module_from_spec(_cases_spec)
+_cases_spec.loader.exec_module(_cases)
+desynced_patch_cases = _cases.desynced_patch_cases
 
 
 @unittest.skipUnless(shutil.which("codex"), "Codex CLI not installed")
@@ -51,6 +56,9 @@ class NativeHooksTests(unittest.TestCase):
                     lead = f"cd '{workspace}' && " if cd else ""
                     alias = "applypatch" if cd else "apply_patch"
                     commands.append(f"{lead}{prefix}{alias} <<'EOF'\n*** Begin Patch\n*** Add File: {tempdir}/{label}-{cd}.md\n+x\n*** End Patch\nEOF")
+            (workspace / "sub").mkdir(); (workspace / "s b").mkdir()
+            for name, command in desynced_patch_cases(str(tempdir / "shape-leak.md")).items():
+                commands.append(command.replace("shape-leak.md", name + ".md"))
             patches = [
                 "*** Begin Patch\n  *** Add File: .env\n+SYNTHETIC=x\n*** End Patch\n",
                 "*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\n",
@@ -141,7 +149,7 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                 server.shutdown()
                 server.server_close()
             self.assertEqual(result.returncode, 0, result.stderr[-3000:])
-            self.assertEqual(len(requests), 17, result.stderr[-3000:])
+            self.assertEqual(len(requests), len(commands) + len(patches) + 1, result.stderr[-3000:])
             outputs = {}
             for request in requests:
                 for item in request.get("input", []):
@@ -160,14 +168,14 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
             self.assertEqual((workspace / "allowed-heredoc.md").read_text().strip(), "allowed apply_patch")
             self.assertFalse((workspace / ".env").exists())
             self.assertFalse((workspace / "credentials.json").exists())
-            for index in range(9, 13):
+            for index in range(9, len(commands)):
                 self.assertIn("blocked by PreToolUse hook", outputs[f"call-{index}"])
                 self.assertIn("native apply_patch", outputs[f"call-{index}"])
-            for index in (13, 14):
+            for index in (len(commands), len(commands) + 1):
                 self.assertIn("BLOCKED", outputs[f"call-{index}"])
             self.assertEqual((workspace / "allowed-note.md").read_text().strip(), "allowed")
             self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
-            print("Native 0.160 fixture: 12 pre-execution denials, 4 real allowed executions; paid tokens=0")
+            print(f"Native 0.160 fixture: {len(commands) + len(patches) - 4} pre-execution denials, 4 real allowed executions; paid tokens=0")
 
 
 if __name__ == "__main__":

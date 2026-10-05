@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 import subprocess
 import signal
+import shlex
 import sys
 import time
 
@@ -84,30 +85,52 @@ def load_parser(relative, name):
 
 
 def desynced_patch_head(command):
-    """Recognize assignment-prefixed heredocs without decoding shell values."""
-    if "*** Begin Patch" not in command:
+    """Refuse a complete trailing patch heredoc despite lost command positions."""
+    lines = command.split("\n")
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if len(lines) < 4:
         return False
-    head = command.split("\n", 1)[0]
-    # Quoted prose and assignment values are data. Handle ANSI-C escaped quotes
-    # independently of the shared tokenizer that lost the command position.
-    head = re.sub(r"\$'(?:\\.|[^'\\])*'|'[^']*'|\"(?:\\.|[^\"\\])*\"", "Q", head)
-    head = re.sub(r"(?<!\S)#[^\n]*", "", head)
-    # Collapse balanced array/substitution groups; their contents cannot be
-    # the top-level command name. Nothing here is evaluated or shell-expanded.
-    while "(" in head:
-        collapsed = re.sub(r"\([^()]*\)", "Q", head)
-        if collapsed == head:
-            break
-        head = collapsed
-    match = re.search(r"\bapply_?patch[ \t]*<<", head)
-    if not match:
+    delimiter_line = lines[-1].lstrip("\t").rstrip("\r")
+    end = len(lines) - 2
+    while end >= 0 and not lines[end].strip():
+        end -= 1
+    if end < 0 or lines[end].strip() != "*** End Patch":
         return False
-    prefix = head[:match.start()]
-    prefix = re.sub(r"^\s*cd[ \t]+(?:\\.|[^\s;&|<>\\])+[ \t]*&&[ \t]*", "", prefix)
-    # Only assignment prefixes qualify. Ordinary commands with an unquoted
-    # tool-name argument or quoted documentation retain their Bash decision.
-    return bool(re.fullmatch(
-        r"\s*(?:[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=[^\s;&|<>]*[ \t]+)+", prefix))
+    name = re.search(r"\bapply_?patch\b", command)
+    if not name:
+        return False
+    # Match the intercepted body shape, not assignment or prefix grammar.
+    # The caller enforces the shared 32 KiB limit; candidate count also bounds
+    # delimiter decoding when quoted data contains many apparent operators.
+    offset, previous, checked = 0, None, 0
+    for line in lines[:end]:
+        if line.strip() == "*** Begin Patch" and previous is not None:
+            head_offset, head = previous
+            for op in re.finditer(r"(?<!<)<<-?(?!<)[ \t]*", head):
+                if name.start() >= head_offset + op.start():
+                    continue
+                checked += 1
+                if checked > 64:
+                    raise TimeoutError("heredoc scan budget exceeded")
+                raw = head[op.end():]
+                # ANSI-C delimiter spelling is also recognized conservatively.
+                if raw.startswith("$'"):
+                    raw = raw[1:]
+                lexer = shlex.shlex(raw, posix=True)
+                lexer.whitespace_split = True
+                lexer.commenters = ""
+                try:
+                    delimiter = lexer.get_token()
+                except ValueError:
+                    continue
+                if (delimiter and delimiter_line.startswith(delimiter)
+                        and not delimiter_line[len(delimiter):].strip(" \t\r")):
+                    return True
+        if line.strip():
+            previous = (offset, line)
+        offset += len(line) + 1
+    return False
 
 
 def transport_inputs(payload):
@@ -116,6 +139,8 @@ def transport_inputs(payload):
     if payload["tool_name"] != "Bash" or (not raw_names and "*** Begin Patch" not in command):
         return [payload]
     parser = load_parser("skills/golem-powers/_shared/shell_parse.py", "codex_shell_parser")
+    if parser.policy_command_size_reason(command):
+        raise TimeoutError("command size budget exceeded")
     tokens, positions, _, _ = parser._parse_bash(command)
     names = [token for i, token in enumerate(tokens)
              if positions[i] and token in ("apply_patch", "applypatch")]

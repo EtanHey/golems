@@ -120,8 +120,12 @@ policy decisions. This is lexical coverage, not a blanket denial of opaque or
 encoded producers.
 Repeated boundary-marker text within a direct shell patch, including literal
 patch content, is conservatively refused; use the native patch tool for it.
-Parser desync remains a lexical coverage limit; recognizable assignment-prefixed
-heredoc heads that lose their command position are refused with the native-tool hint.
+Parser desync remains a lexical coverage limit (#616). When command positions
+are lost, a recognizable trailing heredoc carrying one complete patch is refused
+if the tool name occurs before its operator. This also refuses data heredocs whose
+head merely mentions the tool and whose body is a complete patch; ordinary prose
+and incomplete patch examples retain their Bash decisions. The shared 32 KiB
+command limit and a bounded delimiter scan keep this fallback within the hook budget.
 Bare command-position patch invocations without a patch marker are also refused.
 This does not recover the omitted per-call `workdir`. No broad relative-write or
 interactive-shell ban is added to the shared policy; filesystem sandboxing and
