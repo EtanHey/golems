@@ -166,16 +166,17 @@ function linkState(at, to) {
   return readlinkSync(at) === to ? "ok" : `foreign(${readlinkSync(at)})`;
 }
 
+// Returns [message, sha the hooks will run from (after --apply)].
 function pinLive(o, live) {
   const current = existsSync(live) ? git(live, "rev-parse", "HEAD") : null;
   if (current && !o.update) {
     if (o.apply) relock(o.repo, live);
-    return `hooks-live: keep ${current}`;
+    return [`hooks-live: keep ${current}`, current];
   }
   if (o.apply) mustGit(o.repo, "fetch", "-q", "origin", "master");
   const sha = git(o.repo, "rev-parse", "--verify", `${o.update ?? "origin/master"}^{commit}`);
   if (!sha) die(`cannot resolve ${o.update ?? "origin/master"} in ${o.repo}`);
-  if (!o.apply) return current ? `hooks-live: move ${current} -> ${sha}` : `hooks-live: create at ${sha}`;
+  if (!o.apply) return [current ? `hooks-live: move ${current} -> ${sha}` : `hooks-live: create at ${sha}`, sha];
   if (!current) {
     mustGit(o.repo, "worktree", "add", "-q", "--detach", live, sha);
   } else if (current !== sha) {
@@ -183,7 +184,24 @@ function pinLive(o, live) {
     mustGit(live, "checkout", "-q", "--detach", sha);
   }
   relock(o.repo, live);
-  return `hooks-live: pinned at ${sha}`;
+  return [`hooks-live: pinned at ${sha}`, sha];
+}
+
+// AIDEV-NOTE: never install-and-deny. An entry with `requiresPin` (the
+// human-confirm gate's committed anchor fingerprints) is only activated when
+// that file at the pinned sha holds >=1 well-formed fingerprint; same grammar
+// as tokens.pinned_fingerprints. Order: gate merges -> owner runs
+// golems-confirm-pin -> fingerprint PR merges -> install.
+export function pinnedFingerprints(text) {
+  const lines = (text ?? "").split("\n").map((l) => l.split("#")[0].trim()).filter(Boolean);
+  if (!lines.every((l) => /^[0-9a-f]{64}(?:\s+\S+)?$/.test(l))) return 0;
+  return lines.length;
+}
+
+function pinReady(o, sha, e) {
+  if (!e.requiresPin) return true;
+  const r = spawnSync("git", ["show", `${sha}:${e.requiresPin}`], { cwd: o.repo, encoding: "utf8" });
+  return r.status === 0 && pinnedFingerprints(r.stdout) > 0;
 }
 
 function relock(repo, live) {
@@ -199,7 +217,13 @@ function install(o) {
     if (o.apply) die(`${msg}. Refusing.`);
     console.log(`WARN ${msg}; --apply will refuse.`);
   }
-  console.log(pinLive(o, ctx.live));
+  const [pinned, sha] = pinLive(o, ctx.live);
+  console.log(pinned);
+  for (const e of ctx.golems.filter((g) => !pinReady(o, sha, g))) {
+    console.log(`REFUSED ${e.id}: ${e.requiresPin} has no owner fingerprint at ${sha}; not linked or registered. `
+      + "Owner runs scripts/golems-confirm-pin, the fingerprint PR merges, then re-run --update.");
+  }
+  ctx.golems = ctx.golems.filter((g) => pinReady(o, sha, g));
   for (const e of ctx.golems) {
     if (o.apply && !existsSync(e.to)) die(`source missing in hooks-live: ${e.source} (for ${e.id})`);
     const state = linkState(e.at, e.to);
@@ -275,6 +299,7 @@ function status(o) {
     const g = ctx.golems.find((x) => x.id === e.id);
     let state = linkState(g.at, g.to);
     if (state === "ok" && !commands.includes(g.cmd)) state = "unregistered";
+    if (state === "missing" && current && !pinReady(o, current, g)) state = "refused(unpinned)";
     if (state === "dangling" || state === "copy(not link)") bad = true;
     console.log(`${e.id} ${state}`);
   }

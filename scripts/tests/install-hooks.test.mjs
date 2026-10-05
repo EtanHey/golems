@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { E1_DELETED } from "../hooks/install-hooks.mjs";
+import { E1_DELETED, pinnedFingerprints } from "../hooks/install-hooks.mjs";
 
 // Every test builds a git fixture and spawns node; a cold CI runner needs headroom.
 setDefaultTimeout(30_000);
@@ -450,5 +450,69 @@ test("human confirmation ships once on each host through hooks-live with the sha
   expect(reference.command).toBe("{python} {hooks}/golems-fail-open.py {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
   for (const entries of Object.values(realManifest.hosts)) {
     expect(entries.filter((h) => h.id === "human-confirm-gate")).toEqual([reference]);
+  }
+});
+
+function addPinGate(fx, pins) {
+  const manifest = manifestFor();
+  manifest.hosts.mbp.push({ id: "pin-gate", kind: "golems", event: "PreToolUse", matcher: "Bash", link: "pin-gate",
+    source: "skills/golem-powers/pin-gate", match: "pin-gate.py", requiresPin: "skills/golem-powers/pin-gate/anchor.pins",
+    timeout: 5, command: "{python} {hooks}/golems-fail-open.py {hooks}/pin-gate/hooks/pin-gate.py" });
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  mkdirSync(path.join(fx.repo, "skills/golem-powers/pin-gate/hooks"), { recursive: true });
+  writeFileSync(path.join(fx.repo, "skills/golem-powers/pin-gate/hooks/pin-gate.py"), "print('{}')\n");
+  const file = path.join(fx.repo, "skills/golem-powers/pin-gate/anchor.pins");
+  if (pins === null) rmSync(file, { force: true });
+  else writeFileSync(file, pins);
+  git(fx.repo, "add", "-A");
+  git(fx.repo, "commit", "-qm", "pin gate", "--allow-empty");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+}
+
+const FINGERPRINT = "a".repeat(64);
+
+test("never install-and-deny: an unpinned requiresPin gate is REFUSED while other hooks install", () => {
+  for (const pins of [null, "", "# placeholder: no owner fingerprint yet\n", "TODO\n", `${FINGERPRINT}  mbp\nnot-hex\n`]) {
+    const fx = fixture();
+    addPinGate(fx, pins);
+    const r = run(fx, "--apply");
+    expect(r.status).toBe(0);
+    expect(r.out).toMatch(/REFUSED pin-gate: skills\/golem-powers\/pin-gate\/anchor\.pins has no owner fingerprint/);
+    expect(existsSync(path.join(fx.home, ".claude/hooks/pin-gate"))).toBe(false);
+    expect(readFileSync(fx.settingsPath, "utf8")).not.toContain("pin-gate.py");
+    expect(lstatSync(path.join(fx.home, ".claude/hooks/demo-gate")).isSymbolicLink()).toBe(true);
+    expect(run(fx, "--status").out).toMatch(/pin-gate refused\(unpinned\)/);
+    expect(run(fx, "--status").status).toBe(0);
+    expect(run(fx).out).toMatch(/REFUSED pin-gate/);  // dry-run reports it too
+  }
+});
+
+test("a pinned requiresPin gate activates once the fingerprint lands at the installed sha", () => {
+  const fx = fixture();
+  addPinGate(fx, "# owner fingerprints\n");
+  expect(run(fx, "--apply").out).toMatch(/REFUSED pin-gate/);
+  writeFileSync(path.join(fx.repo, "skills/golem-powers/pin-gate/anchor.pins"), `# owner fingerprints\n${FINGERPRINT}  mbp\n`);
+  git(fx.repo, "commit", "-qam", "owner pin");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const r = run(fx, "--apply", "--update");
+  expect(r.status).toBe(0);
+  expect(r.out).not.toMatch(/REFUSED/);
+  expect(readlinkSync(path.join(fx.home, ".claude/hooks/pin-gate"))).toBe(path.join(live(fx), "skills/golem-powers/pin-gate"));
+  expect(readFileSync(fx.settingsPath, "utf8")).toContain("pin-gate/hooks/pin-gate.py");
+});
+
+test("pin grammar matches the gate: >=1 lowercase sha256 per line, comments ignored, any bad line voids all", () => {
+  expect(pinnedFingerprints(undefined)).toBe(0);
+  expect(pinnedFingerprints("# none\n\n")).toBe(0);
+  expect(pinnedFingerprints(`${FINGERPRINT}\n${"b".repeat(64)}  m1 # owner\n`)).toBe(2);
+  expect(pinnedFingerprints(`${FINGERPRINT.toUpperCase()}\n`)).toBe(0);
+  expect(pinnedFingerprints(`${FINGERPRINT}\nsha256:${FINGERPRINT}\n`)).toBe(0);
+});
+
+test("the shipped human-confirm gate requires its committed anchor pin on every host", () => {
+  for (const entries of Object.values(realManifest.hosts)) {
+    const gate = entries.find((h) => h.id === "human-confirm-gate");
+    expect(gate.requiresPin).toBe("skills/golem-powers/human-confirm-gate/anchor.pins");
+    expect(existsSync(path.join(here, "../..", gate.requiresPin))).toBe(true);
   }
 });
