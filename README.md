@@ -135,16 +135,22 @@ bun scripts/repogolem/repogolem-config.ts generate --check   # exit 1 + the stal
   join it), `clis` (the CLIs that machine has) and `overrides` (objects merge,
   lists replace, `null` drops a project). `generate` picks the section by
   `scutil --get LocalHostName`, or by `--host` / `REPOGOLEM_HOST`.
-- **Secrets are op:// refs only.** The schema rejects a literal under
-  `secrets:`. The config holds no values, so you can keep it in a private
-  repo.
-- **`generate` is the only step that resolves them.** It resolves every ref
-  in one `op run` (one 1Password unlock) and writes
+- **Secrets use references.** Project mappings accept `op://vault/item/field`
+  or `varlock://NAME` named refs; literals are rejected. `secrets.backend`
+  selects `1password` (the default), `file`, or `plugin:<npm-package-or-path>`.
+  Declare named refs under `values`. The file backend reads a private
+  `secrets.valuesFile`; the `file` backend accepts only `varlock://` refs.
+  Direct `op://` refs resolve through `1password` or a `plugin:` adapter.
+  See [backend setup](scripts/repogolem/README.md#named-values-and-other-backends).
+- **`generate` resolves refs through the configured backend.** The 1Password
+  backend uses one deduplicated `op run` batch (one unlock); `file` and
+  `plugin:` backends use their configured value source or bulk resolver.
+  Generate writes
   `~/.config/repogolem/generated/{registry.json,launchers.zsh,secrets.env}`.
   Each file is stamped with the config's sha256. `--check` only reads these
-  files and never calls `op`. `golem-dispatch.zsh` still resolves refs through
-  Ralph's loader today. Moving it to read `secrets.env` is the next step, and
-  after that an unattended spawn never waits on a prompt.
+  files and never calls `op`. `golem-dispatch.zsh` reads the generated cache
+  through the installed runtime, so an unattended spawn does not resolve refs
+  or wait on a provider prompt.
 
 **The tradeoff: resolved values are on disk.** `secrets.env` holds them in
 plain text, so an agent can start without an unlock prompt. The rule is that
