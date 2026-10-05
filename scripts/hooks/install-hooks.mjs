@@ -31,7 +31,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
-import { planCodexHooks, applyCodexHooks, codexStatus } from "./codex-hooks-install.mjs";
+import { planCodexHooks, applyCodexHooks, codexStatus, CODEX_TRUST_HINT } from "./codex-hooks-install.mjs";
 
 // Hooks deleted by E1 (hooks-audit.md, 2026-09-24). Matched as substrings of the
 // whole manifest, so no id, link, source or command can smuggle one back.
@@ -110,7 +110,7 @@ function context(o, sha) {
     ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: expand(e.command),
   }));
   const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
-  const codex = planCodexHooks({ manifest, host: o.host, live, codexHome: path.join(homedir(), ".codex") });
+  const codex = planCodexHooks({ manifest, host: o.host, live, codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) });
   return { entries, golems, wrapped, hooksDir, live, codex, settingsPath: path.join(homedir(), ".claude", "settings.json") };
 }
 
@@ -266,6 +266,7 @@ function install(o) {
   if (ctx.codex) {
     ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py"));
     applyCodexHooks(ctx.codex);
+    console.log(CODEX_TRUST_HINT);
   }
   return 0;
 }
