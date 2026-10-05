@@ -52,10 +52,44 @@ class Commands(unittest.TestCase):
                            'ref': 'refs/heads/topic', 'sha': sha, 'source': 'HEAD'}])
 
     def test_unknown_fails_closed(self):
-        for command in ['git push --force "unterminated', 'git push "$FLAGS" origin main',
+        for command in ['git push --force "unterminated', '$GIT push --force origin main', 'eval "$UNKNOWN"', 'git push "$FLAGS" origin main',
                         'git "$SUBCOMMAND" origin main', 'git push -f origin "$REF"', "env -S 'git push -f origin main'", "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.origin.push GIT_CONFIG_VALUE_0=+HEAD:main git push origin"]:
             with self.subTest(command=command), self.assertRaises(ValueError):
                 self.check(command)
+
+    def test_issue_500_expansions(self):
+        for command in ['GIT=git; $GIT push --force origin master',
+                        'GIT=git; ${GIT} push --force origin master',
+                        'G=git; "$G" push -f origin main',
+                        'F=-f; git push $F origin main',
+                        'env GIT=git sh -c "$GIT push --force origin master"',
+                        'eval "git push --force"', 'command git push --force']:
+            with self.subTest(command=command): self.assertTrue(self.check(command))
+        for command in ['xargs git push origin main', 'echo main | xargs git push -f origin']:
+            with self.subTest(command=command), self.assertRaises(ValueError): self.check(command)
+
+    def test_assignment_scope_uncertainty_denies(self):
+        for command in ['F=--quiet; eval F=-f; git push $F origin main',
+                        'F=--quiet; read F; git push $F origin main',
+                        'G=git; false && G=echo; $G push --force origin main',
+                        'G=git; (G=echo); $G push --force origin main',
+                        'G=git; echo "$(G=echo)"; $G push --force origin main']:
+            with self.subTest(command=command):
+                try:
+                    result = self.check(command)
+                except ValueError:
+                    result = ['denied unresolved scope']
+                self.assertTrue(result)
+
+    def test_resolved_normal_push(self):
+        from commands import operations
+        calls = []
+        try:
+            result = operations('G=git; "$G" push origin topic', '/repo', alias_lookup=lambda repo, name: calls.append(name))
+        except ValueError as exc:
+            self.fail('literal assignment must resolve: ' + str(exc))
+        self.assertEqual(result, [])
+        self.assertIn('push', calls)
 
     def test_configured_alias(self):
         from commands import operations
