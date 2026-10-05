@@ -6,6 +6,7 @@ import os
 
 from .heredocs import _after_heredoc_bodies
 from .positions import _segment_for_offset
+from .quotes import ansi_c_quote
 
 
 def _parameter_expansion_end(command, start):
@@ -21,6 +22,9 @@ def _parameter_expansion_end(command, start):
     i = start + 2
     while i < len(command):
         char = command[i]
+        if quote is None and command.startswith("$'", i):
+            _value, i = ansi_c_quote(command, i)
+            continue
         if char == "\\" and quote != "'":
             i += 2
             continue
@@ -78,6 +82,10 @@ def _dollar_substitution(command, start):
     i = start + 2
     while i < len(command):
         char = command[i]
+        if quote is None and command.startswith("$'", i):
+            _value, i = ansi_c_quote(command, i)
+            at_command_start = False
+            continue
         if char == "\\":
             i += 2
             continue
@@ -268,6 +276,10 @@ def _executable_subcommands(command):
     i = 0
     while i < len(command):
         char = command[i]
+        if not in_double and command.startswith("$'", i):
+            _value, i = ansi_c_quote(command, i)
+            at_boundary = False
+            continue
         if char == "\\":
             at_boundary = False
             i += 2

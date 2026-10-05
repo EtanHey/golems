@@ -8,6 +8,8 @@ import shlex
 
 
 from .substitutions import _dollar_substitution
+from .heredocs import _heredoc_delimiter_span
+from .masks import _blank_quoted
 
 
 # ── git-guardian: file-write heredoc stripping (moved from git_safety.py) ──────
@@ -16,12 +18,12 @@ from .substitutions import _dollar_substitution
 # unquoted ones. Both live here so they can converge in one place (GO-5 PR-4).
 
 
-_HEREDOC_RE = re.compile(r"(?<!<)<<(-?)\s*([^\s;|&<>]+)")
+_HEREDOC_RE = re.compile(r"(?<!<)<<(?!<)(-?)\s*")
 
 
 def _heredoc_word(raw: str) -> tuple[str, bool]:
-    quoted = any(char in raw for char in "'\"\\")
-    return raw.replace("'", "").replace('"', "").replace("\\", ""), quoted
+    parsed = _heredoc_delimiter_span(raw, 0)
+    return parsed[:2] if parsed else ('', False)
 
 
 def _literal_file_heredoc_header(header: str, *, piped: bool = False) -> bool:
@@ -333,17 +335,16 @@ def shell_text_without_heredoc_bodies(
                             output.append(kept + ending)
                     output.append(source_line)
             continue
-        for match in _HEREDOC_RE.finditer(line):
-            delimiter, quoted = _heredoc_word(match.group(2))
-            if delimiter:
+        for match in _HEREDOC_RE.finditer(_blank_quoted(line)):
+            parsed = _heredoc_delimiter_span(line, match.end())
+            if parsed:
+                delimiter, quoted, word_end = parsed
                 segment_start = max(
                     line.rfind(separator, 0, match.start())
                     for separator in (";", "|", "&")
                 )
-                segment_end = _simple_command_end(line, match.end())
-                header = _HEREDOC_RE.sub(
-                    "", line[segment_start + 1:segment_end]
-                )
+                segment_end = _simple_command_end(line, word_end)
+                header = line[segment_start + 1:match.start()] + line[word_end:segment_end]
                 piped = segment_end < len(line) and line[segment_end] == "|"
                 file_write = _literal_file_heredoc_header(
                     header, piped=piped

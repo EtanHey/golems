@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from .quotes import ansi_c_quote
 
 
 def _blank_quoted(line):
@@ -14,6 +15,17 @@ def _blank_quoted(line):
     n = len(line)
     while i < n:
         c = line[i]
+        if in_quote is None and line.startswith("$'", i):
+            _value, end = ansi_c_quote(line, i)
+            # Keep the opener visible: heredoc-start regexes must stop their
+            # whitespace scan before this quoted delimiter, not at EOF.
+            out.append("$'" + ' ' * (end - i - 2))
+            i = end
+            continue
+        if in_quote is None and c == '\\' and i + 1 < n:
+            out.append(line[i:i + 2])
+            i += 2
+            continue
         if in_quote is not None:
             if in_quote == '"' and c == "\\" and i + 1 < n:
                 out.append("  ")
@@ -35,6 +47,14 @@ def _blank_quoted(line):
 
 def _mask_quoted_operator_words(command):
     """Keep quoted shell operators from becoming redirect/separator tokens."""
+    def mask_ansi(match):
+        value, _end = ansi_c_quote(match.group(), 0)
+        if value and all(char in '<>|&;()' for char in value):
+            return "$'" + '_' * (len(match.group()) - 3) + "'"
+        return match.group()
+
+    command = re.sub(r"\$'(?:\\[\s\S]|[^'\\])*'", mask_ansi, command)
+
     def mask(match):
         return f"{match.group('quote')}{'_' * len(match.group('body'))}{match.group('quote')}"
 

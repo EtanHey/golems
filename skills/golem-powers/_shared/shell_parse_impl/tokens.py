@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from .quotes import ansi_c_quote
 
 # Shell assignment token (`FOO=bar`, `FOO+=bar`, `FOO[0]=bar`) — used to
 # identify assignment words while preserving the base variable name. Array
@@ -19,11 +20,11 @@ _ASSIGNMENT_RE = re.compile(
 # backslash-newline), so there is exactly one way to match it: no exponential
 # backtracking on an unclosed quote (CodeQL py/redos #3/#4).
 _RAW_SHELL_TOKEN_RE = re.compile(
-    r"'[^']*'|\"(?:\\[\s\S]|[^\"\\])*\"|;;&|;&|;;|\|\||&&|[;|&()]|[^\s;|&()]+"
+    r"\$'(?:\\[\s\S]|[^'\\])*'|'[^']*'|\"(?:\\[\s\S]|[^\"\\])*\"|;;&|;&|;;|\|\||&&|[;|&()]|[^\s;|&()]+"
 )
 
 
-_RAW_FOR_WORD_RE = re.compile(r"'[^']*'|\"(?:\\[\s\S]|[^\"\\])*\"|\S+")
+_RAW_FOR_WORD_RE = re.compile(r"\$'(?:\\[\s\S]|[^'\\])*'|'[^']*'|\"(?:\\[\s\S]|[^\"\\])*\"|\S+")
 # Preserve whether a brace was shell-quoted. Unquoted `{a,b}` is a bounded
 # expansion; quoted braces are literal filename characters and retain the
 # guard's conservative REFUSE behavior.
@@ -77,6 +78,11 @@ def _shell_tokens(command):
             char = command[j]
             if char.isspace() or char in ";|()<> &":
                 return False
+            if command.startswith("$'", j):
+                value, j = ansi_c_quote(command, j)
+                if value:
+                    return True
+                continue
             if char == "$" and j + 1 < n and command[j + 1] in "\"'":
                 # ANSI-C / locale quote prefix: `$''` and `$""` emit no
                 # characters, just like their unprefixed empty forms.
@@ -104,6 +110,13 @@ def _shell_tokens(command):
 
     while i < n:
         c = command[i]
+        if command.startswith("$'", i):
+            buf, i = ansi_c_quote(command, i)
+            cur += buf.replace("{", _QUOTED_LBRACE).replace("}", _QUOTED_RBRACE)
+            continue
+        if command.startswith('$"', i):
+            i += 1
+            c = command[i]
         if command.startswith("$((", i):
             # Arithmetic expansion is data, not executable command scope.
             # Keep it opaque in the current word so dynamic-target handling
@@ -142,11 +155,6 @@ def _shell_tokens(command):
             i += 1
             continue
         if c in "\"'":
-            # ANSI-C / locale quoting (`$'/tmp/x'`, `$"..."`) produces the
-            # inner string — drop the `$` sigil so the target normalizes to
-            # the path Bash actually writes (Codex P1 round 9).
-            if cur.endswith("$"):
-                cur = cur[:-1]
             quote = c
             i += 1
             buf = ""
