@@ -25,13 +25,16 @@ class Gate(unittest.TestCase):
         self.policy = self.store.parent / 'human-confirm.allowed_signers'
         self.key = self.home / 'key'
         subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(self.key)], check=True)
-        self.policy.write_text('human ' + self.key.with_suffix('.pub').read_text() + 'lead ' + self.key.with_suffix('.pub').read_text())
+        self.lead_key = self.home / 'lead-key'
+        subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(self.lead_key)], check=True)
+        self.policy.write_text('human ' + self.key.with_suffix('.pub').read_text() + 'lead ' + self.lead_key.with_suffix('.pub').read_text())
         self.policy.chmod(0o600)
         self.repo = self.home / 'repo'
         subprocess.run(['git', 'init', '-q', str(self.repo)], check=True)
         self.sha = 'a' * 40
         self.command = f'git push --force-with-lease=refs/heads/topic:{self.sha} origin HEAD:refs/heads/topic'
-        self.collab = self.home / 'collab.md'
+        self.collab = self.home / 'Gits/orchestrator/collab/fixture.md'
+        self.collab.parent.mkdir(parents=True)
 
     def tearDown(self):
         self.scratch.cleanup()
@@ -46,7 +49,7 @@ class Gate(unittest.TestCase):
         path = self.store / (token['nonce'] + '.json')
         path.write_text(json.dumps(token, sort_keys=True)); path.chmod(0o600)
         path.with_suffix('.json.sig').unlink(missing_ok=True)
-        subprocess.run(['ssh-keygen', '-Y', 'sign', '-q', '-f', str(self.key), '-n', 'golems-confirm', str(path)], check=True)
+        subprocess.run(['ssh-keygen', '-Y', 'sign', '-q', '-f', str(self.lead_key if kind == 'lead' else self.key), '-n', 'golems-confirm', str(path)], check=True)
         self.collab.write_text('GOLEMS_CONFIRM ' + json.dumps(token, sort_keys=True, separators=(',', ':')) + '\n')
         return path
 

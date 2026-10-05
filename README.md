@@ -124,8 +124,10 @@ alias golems-confirm="$PWD/scripts/golems-confirm"
 golems-confirm /path/to/worker/worktree topic lease --sha <full-remote-sha> --session <Claude-session-id>
 ```
 
-The helper prints the exact command/cwd/scope before requesting the signature,
-issues a mode-0600 token with a two-minute TTL, and checks the issuer's public
+The helper prints the exact command/cwd/scope before requesting the signature
+and uses `ssh-keygen -U` to require the agent. Agent ancestry checks only catch
+detectable misuse; the 1Password per-request prompt establishes owner presence.
+It issues a mode-0600 token with a two-minute TTL, and checks the issuer's public
 key against the trust anchor. Execute exactly that displayed command in the
 specified worker session. `force` and `delete` actions generate their commands;
 `rewrite` and `settings` require `--command` with the exact tool command.

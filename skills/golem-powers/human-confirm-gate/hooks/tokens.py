@@ -82,6 +82,9 @@ def authorize(payload, ops, home, metadata_fn=lead_metadata):
                 if branch == default or pr['state'] != 'OPEN' or pr['mergedAt'] is not None or pr['isCrossRepository'] or pr['headRefName'] != branch or pr['headRefOid'] != ops[0]['sha']:
                     continue
                 collab = Path(token['collab'])
+                collab_root = (home / 'Gits/orchestrator/collab').resolve()
+                if collab_root not in collab.resolve().parents:
+                    continue
                 line = 'GOLEMS_CONFIRM ' + json.dumps(token, sort_keys=True, separators=(',', ':'))
                 if line not in collab.read_text().splitlines():
                     continue

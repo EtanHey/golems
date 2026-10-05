@@ -445,7 +445,7 @@ test("--status: a linked hook whose command is no longer registered reports unre
 
 test("human confirmation ships once on each host through hooks-live with the shared wrapper", () => {
   const reference = realManifest.hosts.mbp.find((h) => h.id === "human-confirm-gate");
-  expect(reference.matcher).toBe("Bash|Write|Edit|NotebookEdit");
+  expect(reference.matcher).toBe("Bash|Monitor|Write|Edit|MultiEdit|NotebookEdit");
   expect(reference.timeout).toBe(10);
   expect(reference.command).toBe("{python} {hooks}/golems-fail-open.py {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
   for (const entries of Object.values(realManifest.hosts)) {

@@ -11,12 +11,13 @@ from pathlib import Path
 def evaluate(payload, home):
     name, args = payload['tool_name'], payload['tool_input']
     protected = home / '.config/golems'
-    if name in ('Write', 'Edit', 'NotebookEdit'):
-        target = Path(args.get('file_path', args.get('notebook_path', ''))).resolve()
-        if target == protected or protected in target.parents:
+    if name in ('Write', 'Edit', 'MultiEdit', 'NotebookEdit'):
+        from syntax import policy_path
+        target = args.get('file_path', args.get('notebook_path', ''))
+        if policy_path(target, payload.get('cwd', str(home)), home):
             raise ValueError('agent writes to confirmation policy/tokens are forbidden')
         return
-    if name != 'Bash':
+    if not isinstance(args.get('command'), str):
         return
     from commands import operations, shell
     from tokens import authorize
