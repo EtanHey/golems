@@ -317,6 +317,34 @@ test("every shipped host set carries the same git-guardian and tmp-block guards"
   }
 });
 
+test("only tmp-block and the installed git-guardian policy gate opt into fail-closed, on every host", () => {
+  for (const entries of Object.values(realManifest.hosts)) {
+    expect(entries.filter((e) => e.command?.includes("--fail-closed")).map((e) => e.id).sort())
+      .toEqual(["pre_tool_use", "tmp-block"]);
+    for (const id of ["pre_tool_use", "tmp-block"]) {
+      const entry = entries.find((e) => e.id === id);
+      expect(entry.command).toContain("golems-fail-open.py --fail-closed ");
+    }
+    expect(entries.find((e) => e.id === "pre_tool_use").source)
+      .toBe("skills/golem-powers/git-guardian/hooks/pre_tool_use.py");
+  }
+});
+
+test("scratch-HOME installer registers fail-closed and its copied launcher denies a vanished hooks-live target", () => {
+  const fx = fixture();
+  const manifest = manifestFor();
+  manifest.hosts.mbp[0].command = manifest.hosts.mbp[0].command.replace("golems-fail-open.py ", "golems-fail-open.py --fail-closed ");
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  expect(run(fx, "--apply").status).toBe(0);
+  const command = JSON.parse(readFileSync(fx.settingsPath)).hooks.PreToolUse[0].hooks[0].command;
+  expect(command).toContain("golems-fail-open.py --fail-closed ");
+  rmSync(path.join(live(fx), "skills/golem-powers/demo-gate/hooks/demo-gate.py"));
+  const r = spawnSync("sh", ["-c", command], { encoding: "utf8", input: "{}", env: { ...process.env, HOME: fx.home } });
+  expect(r.status).toBe(2);
+  expect(r.stderr).toBe("");
+  expect(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision).toBe("deny");
+});
+
 test("{node} is the PATH node (`command -v node`), so a node upgrade that removes the old realpath keeps hooks running", () => {
   const fx = fixture();
   const m = manifestFor();

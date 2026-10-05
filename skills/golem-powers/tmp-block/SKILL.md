@@ -16,6 +16,16 @@ the live fleet-wide guard whatever branch happens to be checked out. Install wit
 **A merge does not deploy this hook; `--update --apply` moves the pin.** The legacy copy
 installer `scripts/install.sh` is described in `hooks/INSTALL.md`.
 
+Both host manifests run this policy gate through the installed copy of
+`golems-fail-open.py --fail-closed` (#488). A missing, unreadable, syntax-broken
+or crashed hook produces a static, value-free denial with the reinstall hint
+`bash scripts/hooks/install-hooks.sh --host <host> --apply`. Failed-hook output
+is discarded; legitimate allow/deny results and advisories pass through. This
+does not change the payload-level advisory rules below. Git-guardian's
+`pre_tool_use.py` is the other selected policy gate; other gates retain the
+default fail-open mode. The launcher itself must exist and be registered to
+enforce this boundary; lead installs through hooks-live after review/merge.
+
 ## Scope
 
 A PreToolUse guard. The deny covers Write/Edit and Bash writes. The worktree location `<repo>/.worktrees/<name>` is the ratified convention.

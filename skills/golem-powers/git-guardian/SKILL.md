@@ -129,8 +129,18 @@ instead of re-deriving the rules as prose:
 
 Wrapper evaluation is capped at 64 nested commands. Deeper input and any
 `RecursionError` fail closed with a value-free reason. The hook also converts
-unexpected policy-evaluation exceptions to a value-free block; only launcher or
-hook-infrastructure failures retain the `golems-fail-open.py` allow behavior.
+unexpected policy-evaluation exceptions to a value-free block. The installed
+git-guardian gate is `pre_tool_use.py` (source `hooks/pre_tool_use.py`), which
+imports this skill's `git_safety.py`; it is distinct from the project
+`block-dangerous-commands.py` and the human-confirm gate. Both host manifests
+run it through `golems-fail-open.py --fail-closed` (#488). A missing, unreadable,
+syntax-broken or crashed hook denies with a static, value-free reinstall hint:
+`bash scripts/hooks/install-hooks.sh --host <host> --apply`.
+Legitimate allow/deny results pass through. Other gates keep the default
+fail-open launcher mode; tmp-block is the other selected policy gate.
+The launcher is an installed copy so it survives a dangling hooks-live tree;
+a missing/broken launcher or skipped harness registration remains outside its
+own enforcement boundary. Lead installs through hooks-live after review/merge.
 
 The "discard only what THIS session owns" rule is the key nuance: discarding your own
 in-session edits is fine; discarding another agent's or the user's uncommitted work is the
