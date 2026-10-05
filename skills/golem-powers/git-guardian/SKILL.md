@@ -154,6 +154,12 @@ Moving protected roots is denied; deleting a path affected by an
 earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
 itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
 Earlier `mkdir` retains protected directory roles while permitting known deep cleanup.
+
+The opt-in `scripts/cleanup_corpus_gate.py` compares decision functions on exactly
+200 frozen local commands. Capture requires `--capture-projects`; CI uses only
+synthetic fixtures. It never executes commands and retains hashes plus private
+source references. Each new denial requires a true-positive reason and evidence;
+unclassified denials, missing frozen rows or a truncated sample fail the gate.
 An exact in-repo `find . -name __pycache__ -type d -prune -exec rm -r {} +`
 cache cleanup also remains allowed (including `-R`, `-rf`, `-fr`).
 

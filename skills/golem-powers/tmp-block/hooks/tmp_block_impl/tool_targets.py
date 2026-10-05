@@ -67,7 +67,14 @@ def find_temp_targets(tool_name, tool_input):
         command = tool_input.get("command", "")
         if not isinstance(command, str):
             raise ValueError("Bash command is not a string")
-        return _bash_temp_targets(command)
+        targets = []
+        for reading in ansi_c_readings(command):
+            with ansi_c_reading(reading):
+                for branch in evaluate_shell_readings(lambda: _bash_temp_targets(command)):
+                    for target in branch:
+                        if target not in targets:
+                            targets.append(target)
+        return targets
 
     if tool_name == APPLY_PATCH_TOOL:
         return _apply_patch_temp_targets(tool_input)
