@@ -11,7 +11,10 @@ class Surfaces(Gate):
                         'rm ~/.config/golems/human-confirm/*.spent',
                         'export ROOT=~/.config/golems; rm "$ROOT/human-confirm/a.spent"']:
             with self.subTest(command=command): self.assertEqual(self.run_hook(command)[0], 2)
+        self.assertEqual(self.run_hook('P=~/.config/golems/human-confirm.allowed_signers; echo fake | tee "$P"')[0], 2)
         for command in ['timeout 30 rm ~/.config/golems/human-confirm/*.spent',
+                        'watch -d rm ~/.config/golems/human-confirm/*.spent',
+                        "watch -d 'rm ~/.config/golems/human-confirm/*.spent'",
                         'find . -exec rm ~/.config/golems/human-confirm/*.spent \\;']:
             with self.subTest(command=command): self.assertEqual(self.run_hook(command)[0], 2)
         self.assertEqual(self.run_hook('cat ~/.config/golems/human-confirm.allowed_signers')[0], 0)

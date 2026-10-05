@@ -81,7 +81,7 @@ def operations(args, cwd):
         # Settings/delete mutations only. PR comments and review mutations are
         # routine fleet traffic; an opaque input cannot establish that boundary.
         guarded = opaque or any(re.search(r'\bmutation\b', value) and re.search(
-            r'\b(?:deleteRef|updateRef|deleteRepository|updateRepository|createRepositoryRuleset|updateRepositoryRuleset|deleteRepositoryRuleset|transferRepository)\b', value)
+            r'\b(?:deleteRef|updateRef|(?:create|update|delete)(?:Repository(?:Ruleset)?|BranchProtectionRule|Environment)|(?:un)?archiveRepository|transferRepository)\b', value)
             for value in body)
         if any('$' in value or '`' in value for value in body): raise ValueError('dynamic GraphQL payload')
     if guarded:
