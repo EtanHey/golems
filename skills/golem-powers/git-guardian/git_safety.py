@@ -42,6 +42,10 @@ executable_shell_structure_has_open_state = (
     _pkg.shell_parse.executable_shell_structure_has_open_state
 )
 process_substitution_at = _pkg.shell_parse.process_substitution_at
+_shell_operator_words = _pkg.shell_parse._shell_operator_words
+_without_policy_redirections = _rm._without_redirections
+shell_code = _pkg.shell_parse._quotes.shell_code
+shell_code_reading = _pkg.shell_parse.shell_code_reading
 policy_command_size_reason = _pkg.shell_parse.policy_command_size_reason
 PolicyEvaluationDeadlineExceeded = _pkg.shell_parse.PolicyEvaluationDeadlineExceeded
 cancel_policy_evaluation_deadline = _pkg.shell_parse.cancel_policy_evaluation_deadline
@@ -85,6 +89,9 @@ def _shell_text_with_comments_blanked(command: str) -> str:
             if char == quote:
                 quote = None
             index += 1
+            continue
+        if _pkg.shell_parse.ansi_c_opens_at(command, index):
+            _, index = _pkg.shell_parse._tokens.ansi_c_quote(command, index)
             continue
         if char in "'\"":
             quote = char
@@ -160,9 +167,22 @@ def _is_dangerous_rm_at_depth(
     return _rm.is_dangerous_rm(globals(), command, cwd=cwd, env=env, _depth=_depth)
 
 
+def _policy_readings(command, callback, stop, *, root=True):
+    def evaluate():
+        mode = "both" if root and not hasattr(command, "reading") else None
+        with shell_code_reading(command, mode):
+            return callback()
+    return _pkg.shell_parse.evaluate_shell_readings(evaluate, stop)
+
+
 def is_dangerous_rm(command: str, *, cwd: str | None = None, env=None):
     try:
-        return _is_dangerous_rm_at_depth(command, cwd=cwd, env=env, _depth=0)
+        results = _policy_readings(command,
+            lambda: _is_dangerous_rm_at_depth(command, cwd=cwd, env=env, _depth=0),
+            lambda result: result[0])
+        return next((result for result in results if result[0]), (False, None))
+    except _pkg.shell_parse.ShellReadingBudgetExceeded:
+        return True, "shell reading analysis budget exhausted; refusing to evaluate"
     except RecursionError:
         return True, _wrapper_depth_reason()
 
@@ -181,7 +201,11 @@ def _dangerous_git_reason_at_depth(command: str, *, _depth: int) -> str | None:
 
 def _dangerous_git_reason(command: str) -> str | None:
     try:
-        return _dangerous_git_reason_at_depth(command, _depth=0)
+        results = _policy_readings(command,
+            lambda: _dangerous_git_reason_at_depth(command, _depth=0), bool)
+        return next((result for result in results if result), None)
+    except _pkg.shell_parse.ShellReadingBudgetExceeded:
+        return "shell reading analysis budget exhausted; refusing to evaluate"
     except RecursionError:
         return _wrapper_depth_reason()
 
@@ -193,6 +217,11 @@ def _executed_payloads(command: str, active: str) -> list[str]:
 
 def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _depth: int = 0):
     try:
-        return _shell.dangerous_shell_reason(command, cwd=cwd, env=env, _depth=_depth, api=globals())
+        results = _policy_readings(command,
+            lambda: _shell.dangerous_shell_reason(command, cwd=cwd, env=env, _depth=_depth, api=globals()),
+            bool, root=_depth == 0)
+        return next((result for result in results if result), None)
+    except _pkg.shell_parse.ShellReadingBudgetExceeded:
+        return "shell reading analysis budget exhausted; refusing to evaluate"
     except RecursionError:
         return _wrapper_depth_reason()

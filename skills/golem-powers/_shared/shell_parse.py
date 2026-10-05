@@ -142,7 +142,7 @@ for _name in (
     "_ASSIGNMENT_RE", "_RAW_SHELL_TOKEN_RE", "_RAW_FOR_WORD_RE",
     "_QUOTED_LBRACE", "_QUOTED_RBRACE", "_is_command_sub_open",
     "_is_command_sub_close", "_command_sub_word_continues",
-    "_shell_tokens", "_is_separator", "_WRAPPER_CMDS",
+    "_shell_tokens", "_shell_operator_words", "_is_separator", "_WRAPPER_CMDS",
     "_FUNCTION_LOOKUP_SUPPRESSORS", "_UNRESOLVED_EVAL_MARKER",
 ):
     globals()[_name] = getattr(_tokens, _name)

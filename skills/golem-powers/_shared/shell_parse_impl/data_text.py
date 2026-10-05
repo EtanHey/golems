@@ -9,7 +9,7 @@ import shlex
 
 from .substitutions import _dollar_substitution
 from .heredocs import _heredoc_delimiter_span
-from .masks import _blank_quoted
+from .structure import structural_source_with_status
 
 
 # ── git-guardian: file-write heredoc stripping (moved from git_safety.py) ──────
@@ -305,6 +305,7 @@ def shell_text_without_heredoc_bodies(
     heredocs execute nothing; unquoted heredocs expose only `$()`/backticks.
     """
     output = []
+    header_source = ''
     pending: list[tuple[str, bool, bool, bool]] = []
     for source_line in command.splitlines(keepends=True):
         line = source_line.rstrip("\r\n")
@@ -335,7 +336,13 @@ def shell_text_without_heredoc_bodies(
                             output.append(kept + ending)
                     output.append(source_line)
             continue
-        for match in _HEREDOC_RE.finditer(_blank_quoted(line)):
+        # Carry shell quote state across header lines, but never feed heredoc
+        # prose back into that state. A closing multiline data quote can
+        # otherwise mask the real heredoc operator on the same line.
+        offset = len(header_source)
+        header_source += source_line
+        header_scan = structural_source_with_status(header_source)[0][offset:offset + len(line)]
+        for match in _HEREDOC_RE.finditer(header_scan):
             parsed = _heredoc_delimiter_span(line, match.end())
             if parsed:
                 delimiter, quoted, word_end = parsed
