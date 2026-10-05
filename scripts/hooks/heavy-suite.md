@@ -3,8 +3,10 @@
 Opt in by replacing the suite command in each repository's pre-push/release hook:
 
 ```sh
-HS="$HOME/Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then python3 "$HS" -- bun run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun run test; fi
+if command -v git >/dev/null; then unset $(git rev-parse --local-env-vars); fi; HS="$HOME/Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then python3 "$HS" -- bun run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun run test; fi
 ```
+
+Clear Git’s local environment first: inherited hook variables can redirect fixture commits into the real repository and alter its HEAD or `core.bare` config.
 
 The helper comes from the installed, pinned hooks-live tree, moved only by
 `install-hooks.mjs --apply --update`. There is no dev-checkout fallback.
