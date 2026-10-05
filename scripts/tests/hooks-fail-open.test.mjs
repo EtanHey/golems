@@ -63,3 +63,17 @@ test("a runtime error and a syntax error in the hook also fail open with one std
     expect(r.stderr).toContain(errorName);
   }
 });
+
+test("isolated mode (-I -B) keeps every stdlib path entry and still resolves sibling imports", () => {
+  const d = scratch();
+  const isolated = JSON.parse(spawnSync("python3", ["-I", "-c", "import sys, json; print(json.dumps(sys.path))"],
+    { encoding: "utf8" }).stdout);
+  writeFileSync(path.join(d, "policy.py"), "REASON = 'sibling'\n");
+  writeFileSync(path.join(d, "gate.py"), "import json, sys\nfrom policy import REASON\nprint(json.dumps([REASON, sys.path]))\n");
+  const r = spawnSync("python3", ["-I", "-B", wrapper, path.join(d, "gate.py")], { encoding: "utf8", input: "{}" });
+  expect(r.status).toBe(0);
+  const [reason, seen] = JSON.parse(r.stdout);
+  expect(reason).toBe("sibling");
+  expect(seen[0]).toBe(require("node:fs").realpathSync(d));
+  expect(seen.slice(1)).toEqual(isolated);  // inserted, never overwriting sys.path[0]
+});

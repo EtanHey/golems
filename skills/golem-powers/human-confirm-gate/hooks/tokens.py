@@ -34,10 +34,18 @@ def parse_pins(raw):
 
 
 def pinned_fingerprints(pins):
-    """Fingerprints committed at the hook tree's HEAD; working-tree edits never count."""
+    """Fingerprints committed at the pinned tree's HEAD; working-tree edits never count.
+
+    The repository is named, never discovered from the gate dir: object
+    replacement is off and discovery cannot leave the tree root."""
     pins = Path(pins)
-    committed = subprocess.run([GIT, 'cat-file', 'blob', 'HEAD:./' + pins.name], cwd=pins.parent,
-                               capture_output=True, timeout=2, env={'PATH': '/usr/bin:/bin'})
+    tree = Path(os.path.realpath(pins.parents[3]))
+    if any(os.path.lexists(directory / '.git') for directory in pins.parents[:3]):
+        raise ValueError('nested repository marker inside the pinned tree')
+    env = {'PATH': '/usr/bin:/bin', 'GIT_NO_REPLACE_OBJECTS': '1', 'GIT_CEILING_DIRECTORIES': str(tree.parent)}
+    committed = subprocess.run([GIT, '--no-replace-objects', '-C', str(tree), 'cat-file', 'blob',
+                                'HEAD:' + pins.relative_to(pins.parents[3]).as_posix()],
+                               capture_output=True, timeout=2, env=env)
     if committed.returncode or committed.stdout != pins.read_bytes():
         raise ValueError('anchor pin differs from the pinned commit')
     return parse_pins(committed.stdout)

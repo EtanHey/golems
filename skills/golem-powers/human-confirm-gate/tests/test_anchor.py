@@ -317,6 +317,62 @@ class Platform(unittest.TestCase):
             fixture = test_gate.Gate('test_denies_without_token_and_allows_normal')
             with self.assertRaises(unittest.SkipTest): fixture.setUp()
 
+    def test_pin_is_read_from_the_named_tree_without_object_replacement(self):
+        import tempfile, tokens
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            pins = Path(tmp) / 'tree/skills/golem-powers/human-confirm-gate/anchor.pins'
+            pins.parent.mkdir(parents=True); pins.write_bytes(b'')
+            seen = {}
+            def fake(argv, **kwargs):
+                seen.update(argv=argv, env=kwargs['env'], cwd=kwargs.get('cwd'))
+                return subprocess.CompletedProcess(argv, 0, b'', b'')
+            with patch('tokens.subprocess.run', side_effect=fake):
+                self.assertEqual(tokens.pinned_fingerprints(pins), set())
+            tree = os.path.realpath(Path(tmp) / 'tree')
+            self.assertEqual(seen['argv'][1:4], ['--no-replace-objects', '-C', tree])
+            self.assertEqual(seen['argv'][-1], 'HEAD:skills/golem-powers/human-confirm-gate/anchor.pins')
+            self.assertEqual(seen['env'], {'PATH': '/usr/bin:/bin', 'GIT_NO_REPLACE_OBJECTS': '1',
+                                           'GIT_CEILING_DIRECTORIES': os.path.dirname(tree)})
+            self.assertIsNone(seen['cwd'])
+            for level in pins.parents[:3]:
+                with self.subTest(marker=level.name):
+                    (level / '.git').write_text('x')
+                    with patch('tokens.subprocess.run', side_effect=fake), self.assertRaisesRegex(ValueError, 'nested'):
+                        tokens.pinned_fingerprints(pins)
+                    (level / '.git').unlink()
+
+    def test_hook_imports_put_the_stdlib_first_and_never_read_tree_bytecode(self):
+        hook = ROOT / 'hooks/human-confirm-pretooluse.py'
+        probe = ('import runpy, sys, json; g = runpy.run_path(%r);' % str(hook) +
+                 'here = g["HERE"]; std = next(i for i, p in enumerate(sys.path) if p.endswith("lib-dynload") or "/lib/python3" in p);'
+                 'print(json.dumps([sys.path.index(here) > std, sys.dont_write_bytecode, sys.pycache_prefix]))')
+        out = subprocess.run(['python3', '-I', '-c', probe], capture_output=True, text=True, check=True).stdout
+        self.assertEqual(json.loads(out), [True, True, '/dev/null/golems-human-confirm'])
+
+    def test_stray_importables_flag_compiled_modules_links_and_shadow_packages(self):
+        import tempfile, runpy, sys
+        saved = (list(sys.path), sys.pycache_prefix, sys.dont_write_bytecode)
+        try:
+            hook = runpy.run_path(str(ROOT / 'hooks/human-confirm-pretooluse.py'))
+        finally:
+            sys.path[:], sys.pycache_prefix, sys.dont_write_bytecode = saved
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            here, shared = Path(tmp) / 'hooks', Path(tmp) / '_shared'
+            for d in (here / '__pycache__', shared / 'shell_parse_impl', shared / 'tests', shared / '__pycache__'):
+                d.mkdir(parents=True)
+            for f in (here / 'tokens.py', shared / 'shell_parse.py', shared / 'shell_parse_impl/units.py',
+                      here / '__pycache__/tokens.cpython-313.pyc', shared / '__pycache__/x.pyc'):
+                f.write_text('')
+            self.assertEqual(hook['stray_importables'](str(here), str(shared)), [])
+            stray = [here / 'mod.pyc', here / ('tokens' + hook['COMPILED'][0]), shared / 'shell_parse_impl/units.pyc']
+            for f in stray: f.write_text('')
+            (here / 'pkg').mkdir(); (shared / 'shell_parse').mkdir()
+            (here / 'linked.py').symlink_to(here / 'tokens.py')
+            found = set(hook['stray_importables'](str(here), str(shared)))
+            self.assertEqual(found, {str(p) for p in stray + [here / 'pkg', shared / 'shell_parse', here / 'linked.py']})
+
     def test_pin_grammar_matches_shared_vectors(self):
         from tokens import parse_pins
         vectors = json.loads((ROOT / 'tests/pin-vectors.json').read_text())['vectors']

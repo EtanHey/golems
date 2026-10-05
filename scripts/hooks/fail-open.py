@@ -24,8 +24,10 @@ byte-for-byte with this source.
 """
 
 import os
+import pkgutil  # noqa: F401  runpy imports these lazily; load them before a hook dir joins sys.path
 import runpy
 import sys
+import warnings  # noqa: F401
 
 
 def _warn(message):
@@ -42,7 +44,12 @@ def main():
         return 0
     sys.argv = sys.argv[1:]
     # Match `python3 target.py`: sibling imports resolve from the real file's dir.
-    sys.path[0] = os.path.dirname(os.path.realpath(target))
+    # Under -I/-P, sys.path[0] is stdlib, not this launcher's dir: keep it.
+    hook_dir = os.path.dirname(os.path.realpath(target))
+    if sys.flags.safe_path:
+        sys.path.insert(0, hook_dir)
+    else:
+        sys.path[0] = hook_dir
     try:
         runpy.run_path(target, run_name="__main__")
     except SystemExit:

@@ -22,8 +22,8 @@
 // checkouts; hooks-live is not a working tree anyone checks out.
 import { spawnSync } from "node:child_process";
 import {
-  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, renameSync, statSync, symlinkSync,
-  unlinkSync, writeFileSync,
+  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, statSync,
+  symlinkSync, unlinkSync, writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -220,6 +220,62 @@ function pinReady(o, sha, e) {
   return r.status === 0 && pinnedFingerprints(r.stdout) > 0;
 }
 
+// git as --status must run it against hooks-live: repo config cannot answer for
+// the worktree (fsmonitor/untracked cache) and replace refs cannot swap objects.
+function liveGit(live, ...args) {
+  return git(live, "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "--no-replace-objects", ...args);
+}
+
+// AIDEV-NOTE: porcelain alone trusts the index. Index flags and replace refs
+// are reported, and every requiresPin gate's import dirs (its source dir and
+// _shared) are compared byte-for-byte with HEAD, so hidden edits and ignored
+// extras (compiled modules, shadow packages) show. __pycache__ is skipped: the
+// gate never reads cached bytecode.
+function treeIntegrity(ctx, head) {
+  const problems = [];
+  const flags = liveGit(ctx.live, "ls-files", "-v");
+  const hidden = flags === null ? null : flags.split("\n").filter((l) => /^(S|[a-z]) /.test(l)).map((l) => l.slice(2));
+  if (hidden === null || hidden.length) problems.push(`INDEX FLAGS hide ${hidden === null ? "? (ls-files failed)" : `${hidden.length} path(s): ${hidden.slice(0, 5).join(", ")}`}`);
+  const replaced = liveGit(ctx.live, "for-each-ref", "--format=%(refname)", "refs/replace/");
+  if (replaced === null || replaced) problems.push(`REPLACE REFS present: ${replaced === null ? "? (for-each-ref failed)" : replaced.split("\n").length}`);
+  for (const e of ctx.golems.filter((g) => g.requiresPin)) {
+    const dirs = [e.source, path.posix.join(path.posix.dirname(e.source), "_shared")];
+    const listing = liveGit(ctx.live, "ls-tree", "-r", "-z", "--full-tree", head, "--", ...dirs);
+    if (listing === null) { problems.push(`${e.id} cannot list HEAD`); continue; }
+    const tracked = new Map(listing.split("\0").filter(Boolean).map((row) => {
+      const [meta, file] = row.split("\t");
+      const [mode, , sha] = meta.split(" ");
+      return [file, { mode, sha }];
+    }));
+    const onDisk = [];
+    const walk = (rel) => {
+      for (const name of readdirSync(path.join(ctx.live, rel))) {
+        if (name === "__pycache__") continue;
+        const child = path.posix.join(rel, name);
+        const st = lstatSync(path.join(ctx.live, child));
+        if (st.isDirectory()) walk(child);
+        else onDisk.push(child);
+      }
+    };
+    for (const dir of dirs) if (existsSync(path.join(ctx.live, dir))) walk(dir);
+    const extra = onDisk.filter((f) => !tracked.has(f));
+    const missing = [...tracked.keys()].filter((f) => !onDisk.includes(f));
+    const regular = onDisk.filter((f) => tracked.has(f) && !lstatSync(path.join(ctx.live, f)).isSymbolicLink());
+    const r = regular.length === 0 ? { status: 0, stdout: "" }
+      : spawnSync("git", ["-C", ctx.live, "hash-object", "--no-filters", "--stdin-paths"],
+        { encoding: "utf8", input: `${regular.join("\n")}\n` });
+    const hashes = r.status === 0 ? r.stdout.trim().split("\n") : [];
+    const changed = regular.filter((f, i) => hashes[i] !== tracked.get(f).sha || tracked.get(f).mode === "120000");
+    changed.push(...onDisk.filter((f) => tracked.has(f) && lstatSync(path.join(ctx.live, f)).isSymbolicLink()
+      && tracked.get(f).mode !== "120000"));
+    if (r.status !== 0) problems.push(`${e.id} cannot hash its import dirs`);
+    for (const [label, list] of [["differ from HEAD", changed], ["unexpected (untracked or ignored)", extra], ["missing", missing]]) {
+      if (list.length) problems.push(`${e.id} import files ${label}: ${list.length} (${list.slice(0, 5).join(", ")})`);
+    }
+  }
+  return problems;
+}
+
 // The recorded pin lets --status notice a hooks-live HEAD moved outside --apply.
 const pinRecord = (ctx) => path.join(ctx.hooksDir, "golems-hooks-live.sha");
 
@@ -307,7 +363,7 @@ function status(o) {
   // outside --apply (recorded pin). It cannot see a same-UID edit that is
   // reverted before --status runs.
   if (current) {
-    const dirty = git(ctx.live, "status", "--porcelain", "--untracked-files=all");
+    const dirty = liveGit(ctx.live, "status", "--porcelain", "--untracked-files=all");
     if (dirty === null || dirty) {
       bad = true;
       console.log(`hooks-live DIRTY: ${dirty === null ? "git status failed" : `${dirty.split("\n").length} changed/untracked path(s)`}`);
@@ -320,6 +376,10 @@ function status(o) {
     if (recorded !== current) {
       bad = true;
       console.log(`hooks-live HEAD ${recorded ? `!= recorded pin ${recorded}` : "has no recorded pin (re-run --apply)"}`);
+    }
+    for (const problem of treeIntegrity(ctx, current)) {
+      bad = true;
+      console.log(`hooks-live ${problem}`);
     }
   }
   // Only registered hook commands count: a hook name in permissions or env is not a registration.

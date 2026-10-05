@@ -100,6 +100,14 @@ mutations = [
     ('pinned-tree', 'syntax.py', "(home / '.config/golems/human-confirm-anchor', gate, gate.parent / '_shared')", "(home / '.config/golems/human-confirm-anchor',)", 'test_anchor.Anchor.test_pinned_tree_is_protected'),
     ('cd-stack', 'commands.py', "target.startswith(('-', '+'))", 'False', 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
     ('popd', 'commands.py', "if base in ('cd', 'pushd', 'popd'):", "if base in ('cd', 'pushd'):", 'test_anchor.Anchor.test_flag_changes_that_could_reach_the_anchor_deny'),
+    ('pin-replace-objects', 'tokens.py', ["[GIT, '--no-replace-objects', '-C'", "'GIT_NO_REPLACE_OBJECTS': '1', "], ["[GIT, '-C'", ''], 'test_private_f1b.PrivateF1b.test_replace_ref_cannot_substitute_the_committed_pin'),
+    ('pin-ceiling', 'tokens.py', ", 'GIT_CEILING_DIRECTORIES': str(tree.parent)}", '}', 'test_private_f1b.PrivateF1b.test_missing_tree_marker_cannot_fall_back_to_an_outer_repository'),
+    ('pin-nested-marker', 'tokens.py', "if any(os.path.lexists(directory / '.git') for directory in pins.parents[:3]):", 'if False:', 'test_anchor.Platform.test_pin_is_read_from_the_named_tree_without_object_replacement'),
+    ('pin-discovered-repo', 'tokens.py', ["'--no-replace-objects', '-C', str(tree), 'cat-file'", 'timeout=2, env=env)'], ["'--no-replace-objects', 'cat-file'", 'timeout=2, env=env, cwd=pins.parent)'], 'test_anchor.Platform.test_pin_is_read_from_the_named_tree_without_object_replacement'),
+    ('import-stdlib-first', 'human-confirm-pretooluse.py', "sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) not in (HERE, os.path.realpath(SHARED))]", 'pass', 'test_private_f1b.PrivateF1b.test_stdlib_shadowing_from_the_hook_dir_is_refused'),
+    ('import-no-bytecode', 'human-confirm-pretooluse.py', "sys.pycache_prefix = '/dev/null/golems-human-confirm'", 'pass', 'test_private_f1b.PrivateF1b.test_own_module_bytecode_or_shadow_package_is_refused'),
+    ('import-stray-check', 'human-confirm-pretooluse.py', 'if stray_importables():', 'if False:', 'test_private_f1b.PrivateF1b.test_own_module_bytecode_or_shadow_package_is_refused'),
+    ('launcher-preload', '@launcher', 'import pkgutil  # noqa: F401', 'import os  # noqa: F401', 'test_private_f1b.PrivateF1b.test_launcher_lazy_imports_cannot_be_shadowed'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
 (root / 'docs.local/human-confirm-gate/r2-mutation-control.log').write_text(control.stdout + control.stderr)
@@ -116,7 +124,13 @@ for name, file, old, new, test in mutations:
         shutil.copy(root / 'scripts/hooks/manifest.json', scratch / 'scripts/hooks/manifest.json')
         shutil.copy(root / 'scripts/golems-confirm', scratch / 'scripts/golems-confirm')
         (scratch / 'docs.local/human-confirm-gate').mkdir(parents=True)
-        target = scratch / 'scripts/golems-confirm' if file == '@issuer' else scratch / gate / 'hooks' / file
+        private = root / 'docs.local/human-confirm-anchor-integrity/test_private_f1b.py'
+        if test.startswith('test_private_f1b.'):
+            if not private.exists():
+                print(name, 'SKIPPED (private tests absent)', flush=True); continue
+            shutil.copy(private, scratch / gate / 'tests' / private.name)
+        target = {'@issuer': scratch / 'scripts/golems-confirm',
+                  '@launcher': scratch / 'scripts/hooks/fail-open.py'}.get(file, scratch / gate / 'hooks' / file)
         text = target.read_text()
         changed = text
         for before, after in zip(old if isinstance(old, list) else [old], new if isinstance(new, list) else [new]):

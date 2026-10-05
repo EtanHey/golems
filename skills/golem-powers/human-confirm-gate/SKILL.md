@@ -77,12 +77,24 @@ hex plus an optional ` label` (`[A-Za-z0-9._-]+`). Anything else voids the pin.
 **Every token check** denies every human and lead token, with the hook's
 static message, unless all of these hold:
 - `anchor.pins` in the hook tree is byte-identical to its blob at that
-  tree's git HEAD, so uncommitted edits in hooks-live never re-pin;
+  tree's git HEAD, so uncommitted edits in hooks-live never re-pin. Git is
+  pointed at the tree root explicitly, with object replacement off and
+  discovery stopped at the root. Any repository marker between the pin and
+  the root denies;
 - the anchor, opened fd-relative with no symlinks, has `uchg` on the file and
   the directory, mode 0700/0600, owner UID and a single link;
 - its SHA-256 is pinned, and its principals pass the grammar above.
 
 SSH verifies the checked bytes through a pipe and never reopens the path.
+
+**Hook imports.** The installer runs this gate as `python3 -I -B` through the
+shared launcher. The launcher loads what `runpy` needs before any hook
+directory joins `sys.path`. The gate then:
+- takes its own directory and `_shared` off `sys.path` while the stdlib loads,
+  and adds them back last;
+- compiles its modules from source, never reading cached bytecode;
+- denies every call while compiled modules, symlinks or shadow packages sit
+  beside its sources.
 
 **Installer.** `install-hooks` never activates this gate while `anchor.pins`
 holds no fingerprint. An `--update` to an unpinned commit unlinks and
@@ -91,14 +103,20 @@ the owner pins, then the fingerprint PR, then hooks-live install. Key rotation
 means an owner-terminal unlock, review and repin, plus a new pin PR. Never
 repin automatically on a mismatch.
 
-**What `install-hooks --status` detects** (exit 1):
-- tracked edits or untracked files anywhere in hooks-live;
+**What `install-hooks --status` detects** (exit 1). Git runs with
+fsmonitor and the untracked cache off, and object replacement disabled:
+- tracked edits, and untracked files that are not gitignored, in hooks-live;
+- index flags (skip-worktree, assume-unchanged) on any path, and any replace refs;
+- for each `requiresPin` gate, its source dir and `_shared` compared
+  byte-for-byte with HEAD. That reports changed, missing and extra files,
+  ignored ones included. `__pycache__` is skipped because the gate never reads it;
 - a hooks-live HEAD that is not on origin/master;
 - a HEAD that differs from the SHA recorded by the last `--apply`, or no
   recorded SHA.
 
-It cannot see a same-UID edit that is reverted before it runs, or tampering
-with git's own refs and recorded SHA together. The hook does not inspect its
+It does not cover ignored files outside the gate's import dirs. It cannot see
+a same-UID edit that is reverted before it runs, or tampering with git's own
+refs and recorded SHA together. The hook does not inspect its
 own source at runtime: a same-UID process that rewrites hooks-live's hook code
 or commits there defeats the gate until `--status` flags it.
 
