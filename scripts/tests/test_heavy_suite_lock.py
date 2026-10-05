@@ -197,7 +197,23 @@ def test_lock_deadline_displays_holder_without_unlocking_it(monkeypatch, tmp_pat
 def test_missing_helper_one_liner_runs_suite(tmp_path):
     doc = SCRIPT.with_suffix('.md').read_text()
     one_liner = doc.split('```sh\n',1)[1].split('\n```',1)[0]
+    dev = tmp_path / 'Gits/golems/scripts/hooks/heavy-suite.py'
+    dev.parent.mkdir(parents=True)
+    dev.write_text("raise SystemExit('unexpected dev fallback')\n")
     fake_bin = tmp_path / 'bin'; fake_bin.mkdir()
     bun = fake_bin / 'bun'; bun.write_text('#!/bin/sh\nexit 7\n'); bun.chmod(0o755)
     result = subprocess.run(['sh','-c',one_liner],env={**env(tmp_path),'PATH':str(fake_bin)+os.pathsep+os.environ['PATH']},capture_output=True,text=True,timeout=1)
     assert result.returncode == 7 and 'helper missing' in result.stderr
+
+
+def test_documented_one_liner_uses_installed_helper(tmp_path):
+    one_liner = SCRIPT.with_suffix('.md').read_text().split('```sh\n', 1)[1].split('\n```', 1)[0]
+    installed = tmp_path / 'Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py'
+    installed.parent.mkdir(parents=True)
+    installed.write_text("import sys; assert sys.argv[1:] == ['--', 'bun', 'run', 'test']; print('installed-helper'); raise SystemExit(7)\n")
+    dev = tmp_path / 'Gits/golems/scripts/hooks/heavy-suite.py'
+    dev.parent.mkdir(parents=True)
+    dev.write_text("raise SystemExit('unexpected dev helper')\n")
+    result = subprocess.run(['sh', '-c', one_liner], env=env(tmp_path), capture_output=True, text=True, timeout=5)
+    assert result.returncode == 7 and result.stdout == 'installed-helper\n'
+    assert 'unqueued' not in result.stderr
