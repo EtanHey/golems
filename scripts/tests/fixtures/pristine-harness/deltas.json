@@ -822,7 +822,6 @@
     "authority": "golems#501",
     "candidate_sha256": {
       "darwin": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f",
-      "linux": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f",
       "linux": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f"
     },
     "case": "mined-005",
@@ -832,7 +831,6 @@
     "authority": "golems#501",
     "candidate_sha256": {
       "darwin": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f",
-      "linux": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f",
       "linux": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f"
     },
     "case": "r2-api-dangerous_shell_reason-00",
