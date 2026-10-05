@@ -11,10 +11,9 @@ Generate a prioritized daily plan from golem states + calendar.
 
 ## Planned Process
 
-1. Read `getStatus()` from all active golems (recruiter, teller, content)
+1. Read `getStatus()` from all active golems (email, teller)
 2. Read Google Calendar events for today/this week
 3. Merge into prioritized task list:
-   - Interviews to prep for (from RecruiterGolem)
    - Drafts to approve (from ContentGolem)
    - Financial alerts (from TellerGolem)
    - Calendar meetings and deadlines

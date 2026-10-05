@@ -18,9 +18,6 @@ packages/coach/src/__tests__/morning-briefing-runner.test.ts
 packages/coach/src/__tests__/morning-briefing.test.ts
 packages/golems-tui/src/data.ts
 packages/green-invoice-mcp/src/__tests__/mcp-server.test.ts
-packages/recruiter/src/__tests__/auto-outreach.test.ts
-packages/recruiter/src/__tests__/obsidian-export.test.ts
-packages/recruiter/src/__tests__/outreach-db.test.ts
 packages/shared/src/__tests__/email-golem/draft-reply.test.ts
 packages/shared/src/__tests__/email-golem/followup.test.ts
 packages/shared/src/__tests__/email-golem/gmail-client.test.ts
@@ -45,7 +42,6 @@ skills/golem-powers/frustration-capture/hooks/tests/test_session_false_positive_
 skills/golem-powers/weave/registry/validate-registry.sh
 
 # Generic transcript/session processing mechanics and synthetic evaluation output.
-packages/content/prompts/launch/text/reddit-localllama-bl.md
 packages/services/CLAUDE.md
 skills/golem-powers/agada-bench/workflows/build-new-domain.md
 skills/golem-powers/drive-filing/references/archive-procedure.md
@@ -121,3 +117,11 @@ skill-evals/promptfoo-behavioral.yaml
 skill-evals/fixtures/nightly-journal-empty-whatsapp.txt
 skill-evals/fixtures/nightly-journal-normal.txt
 skill-evals/fixtures/nightly-journal-read-only.txt
+# History-only: packages/recruiter retired in slice 6 (2026-10-05);
+# the nightly ratchet re-scans older commits with the current allowlist.
+packages/recruiter/src/__tests__/auto-outreach.test.ts
+packages/recruiter/src/__tests__/obsidian-export.test.ts
+packages/recruiter/src/__tests__/outreach-db.test.ts
+
+# History-only: launch drafts deleted from the tree; kept for the history ratchet.
+packages/content/prompts/launch/text/reddit-localllama-bl.md
