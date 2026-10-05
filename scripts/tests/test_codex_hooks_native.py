@@ -44,6 +44,13 @@ class NativeHooksTests(unittest.TestCase):
                 "applypatch <<'EOF'\n*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\nEOF",
                 f"cd '{workspace}' && apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: allowed-heredoc.md\n+allowed apply_patch\n*** End Patch\nEOF",
             ]
+            # Exercise prefix classes that desync the shared tokenizer while
+            # Codex still intercepts the heredoc in-process, before any shell.
+            for label, prefix in (("ansi-c", "X=$'\\'' "), ("array", "X=(one) ")):
+                for cd in (False, True):
+                    lead = f"cd '{workspace}' && " if cd else ""
+                    alias = "applypatch" if cd else "apply_patch"
+                    commands.append(f"{lead}{prefix}{alias} <<'EOF'\n*** Begin Patch\n*** Add File: {tempdir}/{label}-{cd}.md\n+x\n*** End Patch\nEOF")
             patches = [
                 "*** Begin Patch\n  *** Add File: .env\n+SYNTHETIC=x\n*** End Patch\n",
                 "*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\n",
@@ -134,7 +141,7 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                 server.shutdown()
                 server.server_close()
             self.assertEqual(result.returncode, 0, result.stderr[-3000:])
-            self.assertEqual(len(requests), 13, result.stderr[-3000:])
+            self.assertEqual(len(requests), 17, result.stderr[-3000:])
             outputs = {}
             for request in requests:
                 for item in request.get("input", []):
@@ -153,11 +160,14 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
             self.assertEqual((workspace / "allowed-heredoc.md").read_text().strip(), "allowed apply_patch")
             self.assertFalse((workspace / ".env").exists())
             self.assertFalse((workspace / "credentials.json").exists())
-            for index in (9, 10):
+            for index in range(9, 13):
+                self.assertIn("blocked by PreToolUse hook", outputs[f"call-{index}"])
+                self.assertIn("native apply_patch", outputs[f"call-{index}"])
+            for index in (13, 14):
                 self.assertIn("BLOCKED", outputs[f"call-{index}"])
             self.assertEqual((workspace / "allowed-note.md").read_text().strip(), "allowed")
             self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
-            print("Native 0.160 fixture: 8 pre-execution denials, 4 real allowed executions; paid tokens=0")
+            print("Native 0.160 fixture: 12 pre-execution denials, 4 real allowed executions; paid tokens=0")
 
 
 if __name__ == "__main__":

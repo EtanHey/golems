@@ -192,6 +192,40 @@ class CodexPolicyHookTests(unittest.TestCase):
                     with self.subTest(gate=gate, command=command):
                         self.check(run(gate, payload(command)), False)
 
+    def test_bash_patch_prefix_parser_desync_is_refused(self):
+        prefixes = {"ansi-c-escaped-quote": "X=$'\\'' ", "array-assignment": "X=(one) ",
+                    "ansi-c-long-value": "X=$'prefix\\'suffix' ",
+                    "array-spaces": "X=(one two) ", "array-append": "X+=(one) "}
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            env = clean_env(); env["TMPDIR"] = scratch
+            for gate, target in (("tmp-block", str(Path(scratch) / "hidden.md")),
+                                 ("git-guardian", ".env")):
+                for name, prefix in prefixes.items():
+                    for alias in ("apply_patch", "applypatch"):
+                        for cd in ("", f"cd '{ROOT}' && "):
+                            command = f"{cd}{prefix}{alias} <<'EOF'\n*** Begin Patch\n*** Add File: {target}\n+x\n*** End Patch\nEOF"
+                            with self.subTest(gate=gate, prefix=name, alias=alias, cd=bool(cd)):
+                                result = self.check(run(gate, payload(command), env=env), True)
+                                reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+                                self.assertIn("native apply_patch", reason)
+                                self.assertNotIn("unavailable", reason)
+
+    def test_patch_head_mentions_in_first_line_data_remain_allowed(self):
+        for alias in ("apply_patch", "applypatch"):
+            commands = [
+                f"git commit -m 'docs: {alias} <<EOF and *** Begin Patch markers'",
+                f"printf '%s' '{alias} <<EOF' <<'DOC'\n*** Begin Patch\nDOC",
+                f"X='{alias} <<EOF' cat <<'DOC'\n*** Begin Patch\nDOC",
+                f"X=(one) printf '%s' '{alias} <<EOF' <<'DOC'\n*** Begin Patch\nDOC",
+                f"cat <<'DOC' # explain {alias} <<EOF\n*** Begin Patch\nDOC",
+                f"X=(one) echo {alias} <<'DOC'\n*** Begin Patch\nDOC",
+                f"X=$'\\'' printf '%s' '{alias} <<EOF' <<'DOC'\n*** Begin Patch\nDOC",
+            ]
+            for gate in TARGETS:
+                for command in commands:
+                    with self.subTest(gate=gate, alias=alias, command=command):
+                        self.check(run(gate, payload(command)), False)
+
     def test_transport_refusal_and_adapter_failure_have_distinct_reasons(self):
         patch = "*** Begin Patch\n*** Add File: docs.local/ordinary.md\n+x\n*** End Patch"
         for gate in TARGETS:

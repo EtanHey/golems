@@ -83,6 +83,33 @@ def load_parser(relative, name):
     return module
 
 
+def desynced_patch_head(command):
+    """Recognize assignment-prefixed heredocs without decoding shell values."""
+    if "*** Begin Patch" not in command:
+        return False
+    head = command.split("\n", 1)[0]
+    # Quoted prose and assignment values are data. Handle ANSI-C escaped quotes
+    # independently of the shared tokenizer that lost the command position.
+    head = re.sub(r"\$'(?:\\.|[^'\\])*'|'[^']*'|\"(?:\\.|[^\"\\])*\"", "Q", head)
+    head = re.sub(r"(?<!\S)#[^\n]*", "", head)
+    # Collapse balanced array/substitution groups; their contents cannot be
+    # the top-level command name. Nothing here is evaluated or shell-expanded.
+    while "(" in head:
+        collapsed = re.sub(r"\([^()]*\)", "Q", head)
+        if collapsed == head:
+            break
+        head = collapsed
+    match = re.search(r"\bapply_?patch[ \t]*<<", head)
+    if not match:
+        return False
+    prefix = head[:match.start()]
+    prefix = re.sub(r"^\s*cd[ \t]+(?:\\.|[^\s;&|<>])+[ \t]*&&[ \t]*", "", prefix)
+    # Only assignment prefixes qualify. Ordinary commands with an unquoted
+    # tool-name argument or quoted documentation retain their Bash decision.
+    return bool(re.fullmatch(
+        r"\s*(?:[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=[^\s;&|<>]*[ \t]+)+", prefix))
+
+
 def transport_inputs(payload):
     command = payload["tool_input"]["command"]
     raw_names = re.findall(r"\bapply_?patch\b", command)
@@ -93,6 +120,8 @@ def transport_inputs(payload):
     names = [token for i, token in enumerate(tokens)
              if positions[i] and token in ("apply_patch", "applypatch")]
     if not names:
+        if desynced_patch_head(command):
+            raise PatchTransportRefusal("unresolved patch command position")
         return [payload]
     # Codex intercepts shell heredocs after the Bash hook, without firing an
     # apply_patch hook. Decode transport only; both policies remain unchanged.
