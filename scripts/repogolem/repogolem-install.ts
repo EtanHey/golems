@@ -56,13 +56,29 @@ function restoreLegacy(current: string, original: string) {
   }
   return lines.join('\n');
 }
-function verifySeats(state: any, seats: string) {
+function changedMachineKeys(observed: string, expected: string) {
+  try {
+    const actual = parseYaml(observed), wanted = parseYaml(expected);
+    if (!actual || !wanted || typeof actual !== 'object' || typeof wanted !== 'object') return 'document shape differs';
+    const keys = [...new Set([...Object.keys(actual), ...Object.keys(wanted)])]
+      .filter(key => !isDeepStrictEqual(actual[key], wanted[key]));
+    // Only conventional key names enter diagnostics; YAML errors and values stay private.
+    const names = keys.filter(key => /^[A-Za-z][A-Za-z0-9_-]*$/.test(key)).sort();
+    return keys.length ? `changed top-level keys: ${names.join(', ') || '(nonstandard names hidden)'}` : 'bytes differ; parsed keys match';
+  } catch { return 'document could not be compared; values hidden'; }
+}
+function verifySeats(state: any, seats: string, current?: { target: string; text: string }) {
   const stat = present(seats), pending = state.phase === 'installing';
   const target = state.seatTarget ?? state.config;
   if (stat?.isSymbolicLink() && stat.uid === process.getuid?.() && readlinkSync(seats) === target) {
     if (state.machineDigest) {
-      const observed = present(target) && digest(readFileSync(target, 'utf8'));
-      if (observed !== state.machineDigest && !(pending && observed === state.previousMachineDigest)) throw new Error('installed machine seat view changed; rollback refused');
+      const text = present(target) ? readFileSync(target, 'utf8') : null;
+      const observed = text === null ? null : digest(text);
+      if (observed !== state.machineDigest && !(pending && observed === state.previousMachineDigest)) {
+        if (current && target === current.target && text === current.text) return true;
+        const diagnostic = current && text !== null ? `; ${changedMachineKeys(text, current.text)}` : '';
+        throw new Error(`installed machine seat view changed; ${current ? 'install' : 'rollback'} refused${diagnostic}`);
+      }
     }
   // A pending attempt may have unlinked the original file before linking its view.
   } else if (!pending || (stat && (!state.hadSeats || !stat.isFile() || digest(readFileSync(seats, 'utf8')) !== state.originalSeatDigest))) {
@@ -92,7 +108,7 @@ export function runInstall(argv: string[]): number {
     if (!stat?.isSymbolicLink() || stat.uid !== process.getuid?.() || readlinkSync(path) !== target) throw new Error('installed agent link changed; reconciliation required');
   }
   const before = existsSync(shell) ? readFileSync(shell, 'utf8') : '';
-  if (previous) verifySeats(previous, seats);
+  if (previous && rollback) verifySeats(previous, seats);
   if (rollback) {
     if (!previous) throw new Error('no installer backup to roll back');
     const clean = removeManaged(before, previous);
@@ -138,6 +154,7 @@ export function runInstall(argv: string[]): number {
     seatText = views[host]; seatTarget = join(root, 'machine-config.yaml'); safePath(home, seatTarget);
   }
   if (previous && (previous.seatTarget ?? previous.config) !== seatTarget) throw new Error('existing installation seat target differs; roll back first');
+  const reconciled = previous && verifySeats(previous, seats, { target: seatTarget, text: seatText });
   const clean = (previous ? removeManaged(before, previous) : before);
   if (!previous && (clean.includes(start) || clean.includes(end))) throw new Error('unmanaged installer block; nothing written');
   const after = clean.split('\n').filter(line => !legacy.test(line)).join('\n').replace(/\n*$/, '\n') + managedBlock(config);
@@ -151,6 +168,10 @@ export function runInstall(argv: string[]): number {
   if (!views && oldText) {
     const oldDocument = parseYaml(oldText);
     if (Object.entries(oldDocument ?? {}).some(([key, value]) => !isDeepStrictEqual(value, parsed?.[key]))) throw new Error('old seat settings must be preserved; nothing written');
+  }
+  if (reconciled) {
+    previous.machineDigest = digest(seatText);
+    console.log('machine view reconciled: matches current render');
   }
   if (dry) { console.log(`would install runtime and CLI; link seat registry to ${seatTarget}; swap ${shell}; no generate or op`); return 0; }
   mkdirSync(root, { recursive: true, mode: 0o700 }); chmodSync(root, 0o700);
