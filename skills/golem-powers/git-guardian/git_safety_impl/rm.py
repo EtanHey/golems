@@ -161,6 +161,44 @@ def _rsync_destination(words, position):
     return operands[-1] if operands else None
 
 
+def _selective_name_group(args):
+    """A single positive OR of name filters, with only AND constraints outside."""
+    if args.count('(') != 1 or args.count(')') != 1 or args.count('-delete') != 1:
+        return None
+    start, end = args.index('('), args.index(')')
+    if start >= end or args.index('-delete') < end:
+        return None
+    group, branches = args[start + 1:end], []
+    index = 0
+    while index < len(group):
+        if group[index] not in {'-name', '-iname'} or index + 1 >= len(group):
+            return None
+        branches.append(([(group[index], group[index + 1])], False))
+        index += 2
+        if index < len(group):
+            if group[index] not in {'-o', '-or'} or index + 1 == len(group):
+                return None
+            index += 1
+    outside = args[:start] + args[end + 1:]
+    index = 0
+    while index < len(outside):
+        word = outside[index]
+        if word in {'-type', '-mindepth', '-maxdepth', '-mmin', '-mtime', '-f'}:
+            if index + 1 >= len(outside):
+                return None
+            index += 2
+            continue
+        if word.startswith('-') and word not in {
+            '-delete', '-a', '-and', '-H', '-L', '-P', '-E', '-X', '-d', '-s', '-x',
+            '-depth', '-mount', '-xdev', '-follow', '--',
+        }:
+            return None
+        if word in {'!', ',', '-not', '-o', '-or', ';', '+'}:
+            return None
+        index += 1
+    return branches or None
+
+
 def _find_deletion_roots(args):
     """BSD/bfs roots anywhere, excluding values and nested command operands."""
     values = {
@@ -223,6 +261,10 @@ def _find_deletion_roots(args):
         else:
             roots.append(word)
         index += 1
+    if grouped:
+        selective_group = _selective_name_group(args)
+        if selective_group:
+            branches, grouped = selective_group, False
     return roots or ['.'], follow, branches, mindepth, grouped
 
 
@@ -232,6 +274,34 @@ def _selective_find_filter(option, pattern):
         return False  # path prefixes may select whole metadata/top-level trees
     tail = re.sub(r'\[[^\]]*\]', '', os.path.basename(pattern))
     return any(char.isalnum() or char == '_' for char in tail)
+
+
+def _bounded_temp_find_cleanup(api, args, cwd, variables, protected_cwd, created_paths):
+    """A one-level selective temp-directory cleanup has statically safe roots."""
+    if (args.count('-exec') != 1 or len(args) < 5
+            or args[-5:-3] != ['-exec', 'rm'] or args[-3] not in {'-rf', '-fr', '-r', '-R'}
+            or args[-2:] != ['{}', '+'] or any(word in args for word in ('-L', '-H', '-follow'))):
+        return False
+    predicates = args[:-5]
+    if (predicates.count('-maxdepth') != 1 or predicates.count('-type') != 1
+            or predicates[predicates.index('-maxdepth') + 1:][:1] != ['1']
+            or predicates[predicates.index('-type') + 1:][:1] != ['d']):
+        return False
+    parsed = _find_deletion_roots(predicates + ['-delete'])
+    if parsed is None:
+        return False
+    roots, _follow, branches, mindepth, grouped = parsed
+    for target in roots:
+        value, complete = api['_expand_known_vars'](target, variables)
+        value, tilde_complete = _expand_tilde(value, variables)
+        physical = os.path.realpath(os.path.join(cwd, value))
+        if (not complete or not tilde_complete or not _find_root_filtered(target, branches, mindepth, grouped)
+                or not any(api['_within'](physical, os.path.realpath(prefix))
+                           for prefix in ('/tmp', '/private/tmp', '/var/folders', '/private/var/folders'))
+                or _created_target_reason(api, target, cwd, variables, created_paths)
+                or api['_rm_target_reason'](target, cwd, variables, protected_cwd)):
+            return False
+    return bool(roots)
 
 
 def _find_root_filtered(target, branches, mindepth, grouped):
@@ -424,15 +494,25 @@ def _rm_reason_in_words(
             _find_cache=_find_cache, _created_paths=_created_paths,
         )
 
+    if command_name == "eval":
+        payload = " ".join(words[position + 1:])
+        with api['shell_code_reading'](payload, 'both'):
+            blocked, reason = is_dangerous_rm(api, payload, cwd=cwd, env=variables,
+                _depth=_depth + 1, protected_cwd=protected_cwd, _created_paths=_created_paths)
+        return reason if blocked else None
+
     if command_name in {"bash", "sh", "zsh", "dash", "ksh"}:
         for index in range(position + 1, len(words) - 1):
             option = words[index]
             if option == "--command" or (
                 option.startswith("-") and not option.startswith("--") and "c" in option[1:]
             ):
-                blocked, reason = is_dangerous_rm(
-                    api, words[index + 1], cwd=cwd, env=variables, _depth=_depth + 1, protected_cwd=protected_cwd, _created_paths=_created_paths
-                )
+                # Decoding argv loses outer PID/quote provenance; retain both
+                # readings rather than narrowing the existing guarded policy.
+                with api['shell_code_reading'](words[index + 1], 'both'):
+                    blocked, reason = is_dangerous_rm(
+                        api, words[index + 1], cwd=cwd, env=variables, _depth=_depth + 1,
+                        protected_cwd=protected_cwd, _created_paths=_created_paths)
                 return reason if blocked else None
         return None
 
@@ -440,6 +520,8 @@ def _rm_reason_in_words(
         # Preserve the established cache-only prune cleanup. Exact grammar keeps
         # sibling actions, OR expressions and arbitrary dynamic roots conservative.
         args = words[position + 1:]
+        if _bounded_temp_find_cleanup(api, args, cwd, argument_variables, protected_cwd, _created_paths):
+            return None
         if (len(args) == 11 and args[:7] == [".", "-name", "__pycache__", "-type", "d", "-prune", "-exec"]
                 and os.path.basename(args[7]) == "rm" and args[8] in {"-r", "-R", "-rf", "-fr"}
                 and args[9:] == ["{}", "+"] and api["_outermost_repo_root"](cwd)):
@@ -634,15 +716,9 @@ def is_dangerous_rm(
     if _created_paths is None:
         _created_paths = []
     active = api["shell_text_without_heredoc_bodies"](command)
-    lexer = shlex.shlex(
-        _without_redirections(api["_shell_text_with_comments_blanked"](active)).replace("\n", " ; "),
-        posix=True,
-        punctuation_chars=";&|()",
-    )
-    lexer.whitespace_split = True
-    lexer.commenters = ""
     try:
-        tokens = list(lexer)
+        tokens = api['_shell_operator_words'](
+            _without_redirections(api["_shell_text_with_comments_blanked"](active)))
     except ValueError:
         direct_rm = re.search(
             r"(?:^|[;&|(\n]\s*)(?:[^\s;&|]*/)?rm\b"
@@ -654,8 +730,9 @@ def is_dangerous_rm(
     segments = []
     segment = []
     preceding_operator = None
-    for token in tokens:
-        if token and all(char in ";&|()" for char in token):
+    for token, is_operator in tokens:
+        if is_operator and (all(char in ';&|()' for char in token)
+                            or token.startswith((')$', ')`'))):
             if segment:
                 segments.append((segment, preceding_operator, token))
                 segment = []

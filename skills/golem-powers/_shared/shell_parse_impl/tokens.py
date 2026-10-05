@@ -48,7 +48,25 @@ def _command_sub_word_continues(token):
 
 
 # AIDEV-TODO: Decompose the lexer in a follow-up with its own goldens.
-def _shell_tokens(command):
+class _ShellOperator(str):
+    """Unforgeable lexical origin; input text alone cannot create this tag."""
+
+
+def _shell_operator_words(command):
+    """Words plus operator provenance for policy segmentation."""
+    words = _shell_tokens(command, _operator_origin=True, _strict_quotes=True)
+    result = []
+    for word in words:
+        operator = isinstance(word, _ShellOperator)
+        value = str(word).replace(_QUOTED_LBRACE, '{').replace(_QUOTED_RBRACE, '}')
+        if operator and result and result[-1][1] and value in {'&', '|', ';'} and result[-1][0] == value:
+            result[-1] = (value * 2, True)
+        else:
+            result.append((value, operator))
+    return result
+
+
+def _shell_tokens(command, *, _operator_origin=False, _strict_quotes=False):
     """Quote-aware tokenizer. Quoted content merges into the surrounding token
     (so `echo "x > /tmp/y"` carries no redirect), while >, >>, parens and
     statement separators become standalone tokens even when glued
@@ -59,6 +77,7 @@ def _shell_tokens(command):
     i = 0
     n = len(command)
     paren_stack = []
+    operator = _ShellOperator if _operator_origin else str
 
     def flush():
         nonlocal cur
@@ -111,7 +130,10 @@ def _shell_tokens(command):
     while i < n:
         c = command[i]
         if ansi_c_opens_at(command, i):
+            start = i
             buf, i = ansi_c_quote(command, i)
+            if _strict_quotes and not re.fullmatch(r"\$'(?:\\[\s\S]|[^'\\])*'", command[start:i]):
+                raise ValueError('unclosed ANSI-C quote')
             cur += buf.replace("{", _QUOTED_LBRACE).replace("}", _QUOTED_RBRACE)
             continue
         if command.startswith('$"', i):
@@ -129,7 +151,32 @@ def _shell_tokens(command):
                 elif command[j] == ")":
                     depth -= 1
                 j += 1
-            cur += command[i:j]
+            if _operator_origin:
+                # Guardian previously inspected these executable bodies through
+                # its punctuation lexer. Keep arithmetic identifiers opaque,
+                # while retaining command-substitution execution boundaries.
+                # Reuse the shared quote-aware views rather than fork their
+                # arithmetic/command-substitution ambiguity rules here.
+                from .data_text import _data_dollar_paren_end
+                from .data_substitutions import _dollar_paren_spans
+                from .substitutions import _executable_subcommands
+                j = _data_dollar_paren_end(command, i)
+                expression = command[i:j]
+                spans = _dollar_paren_spans(expression)
+                if spans and spans[0][0] == 0:
+                    bodies = [expression[2:spans[0][1] - 1]]
+                else:
+                    bodies = [body for body, *_ in _executable_subcommands(expression)]
+                cur += expression
+                if bodies:
+                    flush()
+                    for body in bodies:
+                        tokens.append(operator('('))
+                        tokens.extend(_shell_tokens(body, _operator_origin=True,
+                                                    _strict_quotes=_strict_quotes))
+                        tokens.append(operator(')'))
+            else:
+                cur += command[i:j]
             i = j
             continue
         if c == "$" and i + 1 < n and command[i + 1] == "(":
@@ -138,8 +185,13 @@ def _shell_tokens(command):
             # ignore them without hiding executable inner writes from either
             # guard. Dynamic cd/worktree arguments still carry the literal
             # `$(` token and are rejected by resolve_target().
-            cur += "$("
-            flush()
+            if _operator_origin:
+                cur += '$'
+                flush()
+                tokens.append(operator('('))
+            else:
+                cur += "$("
+                flush()
             paren_stack.append("command-substitution")
             i += 2
             continue
@@ -147,10 +199,15 @@ def _shell_tokens(command):
             if paren_stack and paren_stack[-1] == "backtick":
                 flush()
                 paren_stack.pop()
-                tokens.append(")`+" if suffix_emits_token(i + 1) else ")`")
+                tokens.append(operator(")`+" if suffix_emits_token(i + 1) else ")`"))
             else:
-                cur += "`("
-                flush()
+                if _operator_origin:
+                    cur += '`'
+                    flush()
+                    tokens.append(operator('('))
+                else:
+                    cur += "`("
+                    flush()
                 paren_stack.append("backtick")
             i += 1
             continue
@@ -158,6 +215,7 @@ def _shell_tokens(command):
             quote = c
             i += 1
             buf = ""
+            closed = False
             while i < n:
                 if quote == '"' and command[i] == "\\" and i + 1 < n:
                     buf += command[i + 1]
@@ -165,9 +223,12 @@ def _shell_tokens(command):
                     continue
                 if command[i] == quote:
                     i += 1
+                    closed = True
                     break
                 buf += command[i]
                 i += 1
+            if _strict_quotes and not closed:
+                raise ValueError('unclosed shell quote')
             if "{" in buf or "}" in buf:
                 if quote == "'":
                     buf = buf.replace("{", _QUOTED_LBRACE).replace(
@@ -206,7 +267,7 @@ def _shell_tokens(command):
             # A newline terminates the simple command like `;` (Codex P1
             # round 5) — segment-scoped hatch logic depends on this.
             flush()
-            tokens.append(";")
+            tokens.append(operator(";"))
             i += 1
             continue
         if c.isspace():
@@ -222,16 +283,16 @@ def _shell_tokens(command):
             flush()
             if c == "(":
                 paren_stack.append("group")
-                tokens.append(c)
+                tokens.append(operator(c))
             elif c == ")" and paren_stack:
                 kind = paren_stack.pop()
                 if kind == "command-substitution":
                     continues_word = suffix_emits_token(i + 1)
-                    tokens.append(")$+" if continues_word else ")$")
+                    tokens.append(operator(")$+" if continues_word else ")$"))
                 else:
-                    tokens.append(c)
+                    tokens.append(operator(c))
             else:
-                tokens.append(c)
+                tokens.append(operator(c))
             i += 1
             continue
         if c == "<":
@@ -240,7 +301,7 @@ def _shell_tokens(command):
             j = i
             while j < n and command[j] in "<-":
                 j += 1
-            tokens.append(command[i:j])
+            tokens.append(operator(command[i:j]))
             i = j
             continue
         if c == ">":
@@ -256,10 +317,16 @@ def _shell_tokens(command):
                 # `>|` noclobber-override (Codex P1) and the `>>|` shape
                 # (Bugbot 4749534e — invalid bash, but bind the path, not `|`).
                 i += 1
-            tokens.append(op)
+            tokens.append(operator(op))
             i += 1
             continue
         if c == "&":
+            if _operator_origin and i > 0 and command[i - 1] in '<>' and tokens and isinstance(tokens[-1], _ShellOperator):
+                # Descriptor duplication belongs to the redirect, not to the
+                # shell's command-separator grammar. Preserve lexical origin.
+                tokens[-1] = operator(str(tokens[-1]) + '&')
+                i += 1
+                continue
             if i + 1 < n and command[i + 1] == ">":
                 # `&>` / `&>>` / `&>|` — redirect all output.
                 flush()
@@ -271,11 +338,11 @@ def _shell_tokens(command):
                 if j < n and command[j] == "|":
                     # `&>|` (Macroscope) / `&>>|` (Bugbot 4749534e) variants.
                     j += 1
-                tokens.append(op)
+                tokens.append(operator(op))
                 i = j
                 continue
             flush()
-            tokens.append("&")
+            tokens.append(operator("&"))
             i += 1
             continue
         cur += c

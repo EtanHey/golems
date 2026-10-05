@@ -334,7 +334,7 @@ def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
             continue
         name = os.path.basename(words[0])
         if name == "eval" and len(words) > 1:
-            payloads.append(" ".join(words[1:]))
+            payloads.append(api['shell_code'](" ".join(words[1:]), 'both'))
             for argument in words[1:]:
                 for body in api['dollar_paren_bodies'](argument):
                     try:
@@ -367,7 +367,7 @@ def _executed_payloads(command: str, active: str, *, api: dict) -> list[str]:
                                     else None
                                 )
                                 if printed:
-                                    payloads.append(printed)
+                                    payloads.append(api['shell_code'](printed, 'both'))
                                 output_words = []
                                 stdout_redirected = False
                                 pending_redirect = None
