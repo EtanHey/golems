@@ -300,7 +300,7 @@ test("the shipped manifest names no E1 hook and carries the ruled M1 set exactly
   const text = JSON.stringify(realManifest);
   for (const name of E1_DELETED) expect(text).not.toContain(name);
   expect(realManifest.hosts.m1.map((h) => h.id).sort()).toEqual([
-    "brainlayer-prompt-search", "brainlayer-session-start", "daemon-gate-precheck", "model-pin-gate",
+    "brainlayer-prompt-search", "brainlayer-session-start", "daemon-gate-precheck", "human-confirm-gate", "model-pin-gate",
     "pre_tool_use", "precompact-checkpoint", "reviewer-order-gate", "tmp-block",
   ]);
   expect(realManifest.hosts.m1.some((h) => h.event === "Stop")).toBe(false);
@@ -441,4 +441,14 @@ test("--status: a linked hook whose command is no longer registered reports unre
   delete s.hooks.PreToolUse;
   writeFileSync(fx.settingsPath, `${JSON.stringify(s, null, 2)}\n`);
   expect(run(fx, "--status").out).toMatch(/demo-gate unregistered/);
+});
+
+test("human confirmation ships once on each host through hooks-live with the shared wrapper", () => {
+  const reference = realManifest.hosts.mbp.find((h) => h.id === "human-confirm-gate");
+  expect(reference.matcher).toBe("Bash|Write|Edit|NotebookEdit");
+  expect(reference.timeout).toBe(10);
+  expect(reference.command).toBe("{python} {hooks}/golems-fail-open.py {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
+  for (const entries of Object.values(realManifest.hosts)) {
+    expect(entries.filter((h) => h.id === "human-confirm-gate")).toEqual([reference]);
+  }
 });
