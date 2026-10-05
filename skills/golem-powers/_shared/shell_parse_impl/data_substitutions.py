@@ -4,6 +4,7 @@ from __future__ import annotations
 
 
 from .data_text import _data_backtick_end, _data_dollar_paren_end
+from .quotes import ansi_c_quote, ansi_c_opens_at
 
 
 def _backtick_bodies(command: str) -> list[str]:
@@ -13,6 +14,9 @@ def _backtick_bodies(command: str) -> list[str]:
     index = 0
     while index < len(command):
         char = command[index]
+        if quote is None and ansi_c_opens_at(command, index):
+            _value, index = ansi_c_quote(command, index)
+            continue
         if char == "\\" and quote != "'":
             index += 2
             continue
@@ -40,6 +44,9 @@ def _dollar_paren_spans(text: str) -> list[tuple[int, int]]:
     index = 0
     while index < len(text):
         char = text[index]
+        if quote is None and ansi_c_opens_at(text, index):
+            _value, index = ansi_c_quote(text, index)
+            continue
         if char == "\\" and quote != "'":
             index += 2
             continue
@@ -121,4 +128,3 @@ def without_dollar_paren_bodies(text: str) -> str:
         cursor = end
     out.append(text[cursor:])
     return "".join(out)
-

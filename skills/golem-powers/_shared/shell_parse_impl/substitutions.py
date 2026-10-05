@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from .quotes import shell_code
+
 import os
 
 from .heredocs import _after_heredoc_bodies
 from .positions import _segment_for_offset
+from .quotes import ansi_c_quote, ansi_c_opens_at
 
 
 def _parameter_expansion_end(command, start):
@@ -21,6 +24,9 @@ def _parameter_expansion_end(command, start):
     i = start + 2
     while i < len(command):
         char = command[i]
+        if quote is None and ansi_c_opens_at(command, i):
+            _value, i = ansi_c_quote(command, i)
+            continue
         if char == "\\" and quote != "'":
             i += 2
             continue
@@ -78,6 +84,10 @@ def _dollar_substitution(command, start):
     i = start + 2
     while i < len(command):
         char = command[i]
+        if quote is None and ansi_c_opens_at(command, i):
+            _value, i = ansi_c_quote(command, i)
+            at_command_start = False
+            continue
         if char == "\\":
             i += 2
             continue
@@ -268,6 +278,10 @@ def _executable_subcommands(command):
     i = 0
     while i < len(command):
         char = command[i]
+        if not in_double and ansi_c_opens_at(command, i):
+            _value, i = ansi_c_quote(command, i)
+            at_boundary = False
+            continue
         if char == "\\":
             at_boundary = False
             i += 2
@@ -388,8 +402,11 @@ def _shell_command_payloads(tokens, cmd_pos, seg_of):
                 and "c" in option[1:]
             )
             if carries_command and cursor + 1 < len(tokens):
+                # The outer lexer does not retain PID expansion provenance.
+                # An ambiguous Zsh payload must also retain its regular-quote
+                # reading after an outer shell materializes that expansion.
                 payloads.append(
-                    (tokens[cursor + 1], segment, payload_index)
+                    (shell_code(tokens[cursor + 1], "both" if os.path.basename(token).lower() == "zsh" else "bash" if os.path.basename(token).lower() in {"bash", "sh"} else "both"), segment, payload_index)
                 )
                 payload_index += 1
                 break
