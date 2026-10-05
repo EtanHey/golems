@@ -16,9 +16,11 @@ wake an agent.
 
 ## Native Monitor first
 
-Call Monitor with a command, a short description naming the lane, and
-`persistent: true`. Give it a stream of events that each require action; for a
-batch of tests or CI jobs, use one completion watch for the whole batch.
+Call `Monitor({command, description, timeout_ms: 1800000})`: a command, a short
+description naming the lane, and a 30-minute timeout. This Claude Code harness
+caps the tool at 1800000 ms; other harness versions may differ, so check their
+schema. Give it events that each require action; use one completion watch for
+a batch of tests or CI jobs.
 
 ### Collab tail with a lead filter
 
@@ -28,14 +30,17 @@ This avoids spawning a detached producer before every native watch.
 
 ```text
 Monitor({
-  command: 'bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh run --alias @<seat-id> @<lead-listen-name> /absolute/path/collab.md',
+  command: 'bash "$HOME/.claude/skills/collab-monitor/scripts/collab-monitor.sh" run --alias @<seat-id> @<lead-listen-name> /absolute/path/collab.md',
   description: '<lane> addressed collab mail',
-  persistent: true,
+  timeout_ms: 1800000,
 })
 ```
 
 Replace the listen name, seat alias and file with the actual lane values. Use a
 private, explicit state root via `MONITOR_STATE_DIR` when isolating a test watch.
+Resolve the script from the skill location supplied by your harness; the example
+uses this MacBook's installed `~/.claude/skills/collab-monitor` symlink. Verify
+the resolved script exists before arming; use its absolute path on other hosts.
 Never point a test watch at a real lane's state root.
 
 The bounded lead filter accepts word-bounded `@<name>` mentions, headers addressed
@@ -53,7 +58,7 @@ is not proof that the consumer received a message. Append collab posts with
 ### Report-file DONE markers
 
 Set the report path and the exact marker in this command, then pass it as
-Monitor's `command` with `persistent: true`. Check the **exact final line**,
+Monitor's `command` with `timeout_ms: 1800000`. Check the **exact final line**,
 not a DONE word in the report body. This watch completes once; read the report
 and verify its requested artifact after it fires.
 
@@ -70,7 +75,7 @@ while true; do
     printf 'REARM_REQUIRED report watch\n'
     exit 0
   fi
-  sleep 1
+  sleep 1 # Cheap local file-stat poll cadence; not an urgency signal.
 done
 ```
 
@@ -97,7 +102,7 @@ while true; do
     printf 'REARM_REQUIRED installed-version watch\n'
     exit 0
   fi
-  sleep 1
+  sleep 1 # Cheap local file-stat poll cadence; not an urgency signal.
 done
 ```
 
@@ -106,18 +111,19 @@ alone does not prove the installed service serves requests successfully.
 
 ### Re-arm at 30 minutes
 
-At **30 minutes**, and **after every compaction**, re-check which lanes remain
-open and re-arm their watches using current paths, identifiers and expected
-versions. Report/version examples emit `REARM_REQUIRED` after their 30-minute
+The 30-minute re-arm is the tool's **hard expiry**, not an optional reminder.
+On expiry and **after every compaction**, re-check which lanes remain open and
+re-arm their watches using current paths, identifiers and expected versions. Report/version examples emit `REARM_REQUIRED` after their 30-minute
 budget. For a collab stream, cancel the prior native watch by its returned
 identifier before replacing it; keep the same routing state to avoid history
-replay. Use the native tool's cancellation operation from its current schema.
-Do not invent a cancellation API or leave duplicate streams attached.
+replay. In this Claude Code harness, use **TaskStop** with the returned task id
+to cancel early; check the current schema on other harness versions. Do not
+leave duplicate streams attached.
 
 When a watch ends unexpectedly, repair it and re-arm before dispatch resumes.
-When its task finishes, stop it. Workers do not monitor their lead's reviewer:
-post the exact source/artifact handoff to the collab, then let the lead route
-and watch review. Follow an engine-issued mailbox contract when one exists.
+When its task finishes, stop it. Workers do not monitor their lead's reviewer.
+Review routing: `/agent-routing` § Routing rules (SSOT). Follow an engine-issued
+mailbox contract when one exists.
 
 ## Codex fallback
 
@@ -126,7 +132,9 @@ its listen name and PID, verify readiness, and attach its consumer to the
 orchestrator's monitored command session:
 
 ```bash
-CM=$HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh
+CM="$HOME/.claude/skills/collab-monitor/scripts/collab-monitor.sh"
+# Or set CM to the absolute script path from your harness's skill catalog.
+test -f "$CM" || { printf 'Missing collab-monitor script: %s\n' "$CM" >&2; exit 1; }
 bash "$CM" start --alias @<seat-id> @<listen-name> /absolute/path/collab.md
 bash "$CM" status @<listen-name>
 bash "$CM" follow @<listen-name>

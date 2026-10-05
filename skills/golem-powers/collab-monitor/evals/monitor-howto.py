@@ -30,7 +30,12 @@ def run_watch(command, update, expected):
 native = TEXT.index('## Native Monitor first')
 fallback = TEXT.index('## Codex fallback')
 assert native < fallback
-assert 'persistent: true' in TEXT[native:fallback]
+assert 'timeout_ms: 1800000' in TEXT[native:fallback]
+assert 'persistent' not in TEXT[native:fallback]
+assert 'TaskStop' in TEXT[native:fallback]
+assert 'hard expiry' in TEXT[native:fallback]
+assert '/agent-routing' in TEXT and 'Routing rules (SSOT)' in TEXT
+assert '$HOME/.golems/skills/' not in TEXT
 assert ' run --alias ' in TEXT[native:fallback]
 assert ' start ' not in TEXT[native:fallback]
 assert '30 minutes' in TEXT and 'after every compaction' in TEXT

@@ -15,7 +15,11 @@
     "Codex start and follow",
     "30-minute re-arm",
     "compaction re-arm",
-    "real-client verification after version match"
+    "real-client verification after version match",
+    "Claude Code Monitor timeout_ms 1800000 and no persistent field",
+    "hard expiry and TaskStop by returned task id",
+    "review routing SSOT pointer",
+    "resolved installed fallback script path"
   ],
   "native_monitor_executed": false,
   "agent_behavior_evals_executed": false
