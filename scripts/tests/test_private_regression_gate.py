@@ -266,3 +266,123 @@ def test_public_receipt_accepts_passing_subtests_without_extra_case_rows(tmp_pat
     gate.check_result(path)
     with pytest.raises(ValueError):
         gate.check_result(path, 96)
+
+
+@parametrize("expected", [None, 96])
+def test_in_process_exit_cannot_forge_completion(tmp_path, monkeypatch, expected):
+    monkeypatch.setattr(gate.Path, "home", lambda: tmp_path)
+    out = tmp_path / "receipts"; out.mkdir()
+    tree = tmp_path / "candidate"; tree.mkdir()
+    suite = tree / "test_forged.py"
+    count = expected or 1
+    suite.write_text("import os, sys\nfrom pathlib import Path\n"
+        "p=Path(sys.argv[sys.argv.index('--junitxml')+1])\n"
+        f"p.write_text('<testsuite tests=\"{count}\">'+'<testcase/>'*{count}+'</testsuite>')\n"
+        "os._exit(0)\n")
+    with pytest.raises(ValueError, match="completion receipt"):
+        gate.execute_suite([str(suite)], out, tree, "private" if expected else "public", expected)
+
+
+def test_required_absent_suites_refuse(tmp_path):
+    with pytest.raises(ValueError, match="required private suites unavailable"):
+        gate.load_manifest(tmp_path, SHA, required=True)
+
+
+def test_completed_fixture_retention_preserves_active_and_foreign_paths(tmp_path, monkeypatch):
+    monkeypatch.setattr(gate.Path, "home", lambda: tmp_path)
+    root = tmp_path / "docs.local/golems-guard-fixtures"; root.mkdir(parents=True)
+    import os
+    names = [format(i, '032x') for i in range(8)]
+    for i, name in enumerate(names):
+        p = root / name; p.mkdir(); (p / 'data').write_text('fixture')
+        os.utime(p, (i + 1, i + 1))
+    active = root / names[0]; (active / '.active').write_text(json.dumps({'pid': os.getpid(), 'start': gate.process_start(os.getpid())})); os.utime(active, (1, 1))
+    foreign = root / 'unrelated'; foreign.mkdir()
+    external = tmp_path / 'external'; external.mkdir(); (external / 'keep').touch()
+    (root / ('f' * 32)).symlink_to(external, target_is_directory=True)
+    gate.prune_fixtures(keep=3)
+    assert active.exists() and foreign.exists() and (external / 'keep').exists()
+    assert all((root / name).exists() for name in names[-3:])
+    assert all(not (root / name).exists() for name in names[1:-3])
+
+
+def test_honest_completion_and_subtests_accept(tmp_path, monkeypatch):
+    monkeypatch.setattr(gate.Path, "home", lambda: tmp_path)
+    out = tmp_path / 'receipts'; out.mkdir()
+    tree = tmp_path / 'candidate'; tree.mkdir()
+    suite = tree / 'test_honest.py'
+    suite.write_text('def test_honest(subtests):\n    for i in range(3):\n        with subtests.test(i=i):\n            assert i >= 0\n')
+    gate.execute_suite([str(suite)], out, tree, 'public')
+    assert (out / 'public-completion.json').is_file()
+
+
+@parametrize("transport", ["disk", "pipe"])
+def test_candidate_disk_receipt_cannot_spoof_trusted_completion(tmp_path, monkeypatch, transport):
+    monkeypatch.setattr(gate.Path, "home", lambda: tmp_path)
+    out = tmp_path / 'receipts'; out.mkdir()
+    tree = tmp_path / 'candidate'; tree.mkdir()
+    suite = tree / 'test_disk_forged.py'
+    suite.write_text('transport='+repr(transport)+'\n'+'''import ast, hashlib, json, os, sys
+from pathlib import Path
+report = Path(sys.argv[sys.argv.index('--junitxml')+1])
+nonce, receipt_fd = 'guess', None
+for node in ast.parse((report.parent / '_golems_gate_isolation.py').read_text()).body:
+    if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'NONCE':
+        try: nonce = ast.literal_eval(node.value)
+        except ValueError: pass
+    if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'RECEIPT_FD':
+        receipt_fd = ast.literal_eval(node.value)
+report.write_text('<testsuite tests="1"><testcase/></testsuite>')
+payload = json.dumps({
+    'nonce': nonce, 'exit': 0, 'collected': 1, 'passed': 1, 'bad': False,
+    'xmlSHA256': hashlib.sha256(report.read_bytes()).hexdigest()})
+if transport == 'pipe' and receipt_fd is not None:
+    os.write(receipt_fd, payload.encode())
+else:
+    (report.parent / (report.stem + '-completion.json')).write_text(payload)
+os._exit(0)
+''')
+    with pytest.raises(ValueError, match="completion receipt"):
+        gate.execute_suite([str(suite)], out, tree, 'public')
+
+
+def test_xml_rewrite_after_sessionfinish_refuses(tmp_path, monkeypatch):
+    monkeypatch.setattr(gate.Path, "home", lambda: tmp_path)
+    out = tmp_path / "receipts"; out.mkdir()
+    tree = tmp_path / "candidate"; tree.mkdir()
+    suite = tree / "test_honest.py"; suite.write_text("def test_honest(): assert True\n")
+    record = gate.record_completion
+    def rewrite(report, receipt, nonce, payload):
+        # Same passing count, different bytes after the child sends its valid receipt.
+        report.write_bytes(report.read_bytes().replace(b"test_honest", b"test_changed"))
+        record(report, receipt, nonce, payload)
+    monkeypatch.setattr(gate, "record_completion", rewrite)
+    with pytest.raises(ValueError, match="completion receipt"):
+        gate.execute_suite([str(suite)], out, tree, "public")
+
+
+def test_gate_run_prunes_completed_fixtures(tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    monkeypatch.setattr(gate.Path, "home", lambda: tmp_path)
+    root = tmp_path / "docs.local/golems-guard-fixtures"; root.mkdir(parents=True)
+    for i in range(8): (root / format(i, '032x')).mkdir()
+    monkeypatch.setattr(gate, "slot", nullcontext)
+    monkeypatch.setattr(gate, "load_manifest", lambda *args: None)
+    monkeypatch.setattr(gate, "public_suites", lambda *args: [])
+    monkeypatch.setattr(gate, "git", lambda tree, *args: SHA if args[0] == "rev-parse" else "")
+    gate.run(tmp_path, SHA)
+    assert len(list(root.iterdir())) == 5
+
+
+@parametrize("stale", ["dead", "reused"])
+def test_stale_active_fixture_is_pruned(tmp_path, monkeypatch, stale):
+    import os
+    monkeypatch.setattr(gate.Path, "home", lambda: tmp_path)
+    root = tmp_path / "docs.local/golems-guard-fixtures"; root.mkdir(parents=True)
+    for i in range(8):
+        p = root / format(i, '032x'); p.mkdir(); os.utime(p, (i+1, i+1))
+    old = root / format(0, '032x')
+    (old / '.active').write_text(json.dumps({'pid': 99999999 if stale == 'dead' else os.getpid(), 'start': 'different-start'}))
+    os.utime(old, (1, 1))  # Writing the marker must not make the old fixture newest.
+    gate.prune_fixtures()
+    assert not old.exists() and len(list(root.iterdir())) == 5
