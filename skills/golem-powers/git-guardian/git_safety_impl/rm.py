@@ -10,6 +10,8 @@ import fnmatch
 from . import shell_parse
 from .paths import _expand_tilde
 
+CreatedPath = str | None | tuple[str | None, str]
+
 def _skip_options(
     words: list[str], position: int, options_with_values: set[str]
 ) -> int:
@@ -89,11 +91,13 @@ def _created_target_reason(api, target, cwd, variables, _created_paths):
     expanded, complete = api["_expand_known_vars"](target, variables)
     expanded, tilde_complete = _expand_tilde(expanded, variables)
     resolved = os.path.abspath(os.path.join(cwd, expanded)) if complete and tilde_complete and cwd else None
-    if _created_paths and (resolved is None or any(
-        path is None or api["_within"](resolved, path) or api["_within"](path, resolved)
-        for path in _created_paths
-    )):
-        return "deletion target affected by earlier path creation cannot be evaluated safely"
+    for path in _created_paths:
+        known_directory = isinstance(path, tuple)
+        if known_directory:
+            path = path[0]
+        if (resolved is None or path is None or api["_within"](path, resolved)
+                or (not known_directory and api["_within"](resolved, path))):
+            return "deletion target affected by earlier path creation cannot be evaluated safely"
     return None
 
 
@@ -275,7 +279,7 @@ def _rm_reason_in_words(
     argument_variables: dict[str, str] | None = None,
     _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
-    _created_paths: list[str | None] | None = None,
+    _created_paths: list[CreatedPath] | None = None,
 ) -> str | None:
     """Inspect command positions, including wrapper-owned nested commands."""
     if _depth > api["_MAX_WRAPPER_DEPTH"]:
@@ -512,6 +516,33 @@ def _rm_reason_in_words(
             _find_cache=_find_cache, _created_paths=_created_paths,
         )
 
+    if command_name == 'mkdir':
+        index = position + 1
+        options = True
+        while index < len(words):
+            target = words[index]
+            index += 1
+            if options and target == '--':
+                options = False
+                continue
+            if options and (target == '--mode' or re.fullmatch(r'-[pv]*m', target)):
+                index += 1
+                continue
+            if options and target.startswith('-'):
+                continue
+            expanded, complete = api['_expand_known_vars'](target, argument_variables)
+            expanded, tilde_complete = _expand_tilde(expanded, argument_variables)
+            path = os.path.abspath(os.path.join(cwd, expanded)) if complete and tilde_complete and cwd else None
+            if path is None:
+                _created_paths.append((None, 'directory'))
+            while path and not os.path.exists(path):
+                if api['_rm_target_reason'](path, cwd, argument_variables, protected_cwd,
+                        protected_only=True, follow_symlinks=True, assume_directory=True):
+                    _created_paths.append((path, 'directory'))
+                parent = os.path.dirname(path)
+                path = parent if parent != path else None
+        return None
+
     if command_name in {"mv", "ln", "cp"}:
         args = words[position + 1:]
         operands = []
@@ -544,6 +575,9 @@ def _rm_reason_in_words(
             sources = operands if destination_option else operands[:-1]
             if command_name == "mv":
                 for source in sources:
+                    reason = _created_target_reason(api, source, cwd, argument_variables, _created_paths)
+                    if reason:
+                        return reason
                     reason = api["_rm_target_reason"](source, cwd, argument_variables, protected_cwd, protected_only=True)
                     if reason:
                         return "protected root used by move or symbolic link"
@@ -594,7 +628,7 @@ def is_dangerous_rm(
     api: dict, command: str, *, cwd: str | None = None, env=None, _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
     protected_cwd: str | None = None,
-    _created_paths: list[str | None] | None = None,
+    _created_paths: list[CreatedPath] | None = None,
 ):
     """Return `(blocked, reason)` after resolving cwd and shell assignments."""
     if _depth > api["_MAX_WRAPPER_DEPTH"]:

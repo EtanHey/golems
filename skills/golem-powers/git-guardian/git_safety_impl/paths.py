@@ -237,6 +237,7 @@ def _rm_target_reason(
     protected_only: bool = False,
     follow_symlinks: bool = False,
     filtered_find: bool = False,
+    assume_directory: bool = False,
 ) -> str | None:
     literal_parts = [part for part in target.split(os.sep) if part]
     if ".." in literal_parts and not protected_only:
@@ -275,7 +276,7 @@ def _rm_target_reason(
             resolved, physical, home, cwd, protected_cwd, within_fn=within_fn,
             outermost_repo_root_fn=outermost_repo_root_fn,
             is_harness_scratchpad_fn=is_harness_scratchpad_fn,
-            uncertain=not complete, filtered_find=filtered_find,
+            uncertain=not complete or assume_directory, filtered_find=filtered_find,
         )
         if reason:
             return reason

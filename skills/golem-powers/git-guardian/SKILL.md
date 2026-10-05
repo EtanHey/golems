@@ -153,6 +153,7 @@ directory retain the repo-root boundary.
 Moving protected roots is denied; deleting a path affected by an
 earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
 itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
+Earlier `mkdir` retains protected directory roles while permitting known deep cleanup.
 An exact in-repo `find . -name __pycache__ -type d -prune -exec rm -r {} +`
 cache cleanup also remains allowed (including `-R`, `-rf`, `-fr`).
 

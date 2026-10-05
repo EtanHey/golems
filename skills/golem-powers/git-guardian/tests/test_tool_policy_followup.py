@@ -142,6 +142,7 @@ def test_copied_hook_tool_and_file_policy(workspace, tmp_path):
         ('find -x ~/Gits -delete', outside, 2),
         ('find -delete ~/Gits', outside, 2),
         ('rsync -a --del ~/Downloads/scratch/ ~/Gits/', outside, 2),
+        ('mkdir -p ~/.claude/new-state; rm -r ~/.claude/new-state', outside, 2),
         ('rm -r ~/gits', outside, 2),
         ("find . -name '*.pyc' -delete", repo, 0),
         ('mv ~/.claude/settings.json.tmp ~/.claude/settings.json', repo, 0),
@@ -156,3 +157,24 @@ def test_copied_hook_tool_and_file_policy(workspace, tmp_path):
         if expected == 2:
             assert json.loads(result.stdout)['decision'] == 'block'
     assert (repo / '.git').is_dir() and (home / '.claude/settings.json.tmp').exists()
+
+
+@pytest.mark.parametrize('command', [
+    'mkdir -p ~/.claude/new-state; rm -r ~/.claude/new-state',
+    'mkdir -p ~/.claude/new-state/child; rm -r ~/.claude/new-state',
+    'mkdir -p ~/new-state; mv ~/new-state docs.local/moved',
+    'mkdir -pm 700 ~/.claude/new-state; rm -r ~/.claude/new-state',
+    'cd ~; mkdir -- -new-state; rm -r ./-new-state',
+])
+def test_created_protected_directory_keeps_directory_role(workspace, command):
+    _, repo, _, _ = workspace
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo))
+
+
+@pytest.mark.parametrize('command', [
+    'mkdir -p docs.local/new-scratch; rm -r docs.local/new-scratch',
+    'mkdir -p ~/new-state/cache; rm -r ~/new-state/cache',
+])
+def test_known_directory_creation_preserves_deep_cleanup(workspace, command):
+    _, repo, _, _ = workspace
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo)) is None
