@@ -111,7 +111,10 @@ Codex exec_command is currently outside this hook.
 The owner provisions a dedicated SSH signing key in the 1Password SSH agent,
 exports only its public key to `~/.config/golems/human-confirm.pub`, and puts
 `human <public-key-line>` in mode-0600
-`~/.config/golems/human-confirm.allowed_signers`. Use 1Password's **per key,
+`~/.config/golems/human-confirm-anchor/allowed_signers` (directory mode 0700).
+Then `python3 scripts/golems-confirm-pin` locks it and prints a fingerprint
+line for `skills/golem-powers/human-confirm-gate/anchor.pins`. That line lands
+by reviewed PR before hooks-live installs the gate. Use 1Password's **per key,
 per request** authorization setting, and leave **Approve for all applications**
 off. Other approval modes cache authorization; a cached signature is not proof
 of new owner presence. See [1Password's authorization model](https://www.1password.dev/ssh/agent/security).

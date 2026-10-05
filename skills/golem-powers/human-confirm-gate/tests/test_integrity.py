@@ -22,7 +22,7 @@ class Integrity(Gate):
         path = self.token(); path.rename(self.store / ('b' * 32 + '.json'))
         path.with_suffix('.json.sig').rename(self.store / ('b' * 32 + '.json.sig'))
         self.assertEqual(self.run_hook()[0], 2)
-        self.token(); self.policy.chmod(0o644)
+        self.token(); os.chflags(self.policy, 0); self.policy.chmod(0o644)
         self.assertEqual(self.run_hook()[0], 2)
 
     def test_separate_principal_keys(self):

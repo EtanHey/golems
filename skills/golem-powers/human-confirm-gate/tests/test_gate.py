@@ -1,6 +1,8 @@
 import hashlib
 import json
 import os
+import shutil
+import stat
 import subprocess
 import tempfile
 import time
@@ -13,6 +15,8 @@ HOOK = ROOT / 'hooks' / 'human-confirm-pretooluse.py'
 
 class Gate(unittest.TestCase):
     def setUp(self):
+        if not callable(getattr(os, 'chflags', None)):
+            self.skipTest('immutable-anchor runtime fixtures require macOS; token validation fails closed elsewhere')
         scratch_root = ROOT.parents[2] / 'docs.local/human-confirm-gate'
         scratch_root.mkdir(parents=True, exist_ok=True)
         self.scratch = tempfile.TemporaryDirectory(dir=scratch_root)
@@ -22,13 +26,24 @@ class Gate(unittest.TestCase):
         isolated.start(); self.addCleanup(isolated.stop)
         self.store = self.home / '.config/golems/human-confirm'
         self.store.mkdir(parents=True, mode=0o700)
-        self.policy = self.store.parent / 'human-confirm.allowed_signers'
+        self.policy = self.store.parent / 'human-confirm-anchor/allowed_signers'
+        self.policy.parent.mkdir(mode=0o700)
         self.key = self.home / 'key'
         subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(self.key)], check=True)
         self.lead_key = self.home / 'lead-key'
         subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(self.lead_key)], check=True)
         self.policy.write_text('human ' + self.key.with_suffix('.pub').read_text() + 'lead ' + self.lead_key.with_suffix('.pub').read_text())
         self.policy.chmod(0o600)
+        from tokens import pin_anchor
+        fingerprint = pin_anchor(self.home)
+        # The pin rides the pinned hook tree, never the policy dir: run a copy.
+        live = self.home / 'live/skills/golem-powers'
+        shutil.copytree(ROOT / 'hooks', live / 'human-confirm-gate/hooks', ignore=shutil.ignore_patterns('__pycache__'))
+        (live / '_shared').symlink_to(ROOT.parent / '_shared')
+        self.hook = live / 'human-confirm-gate/hooks/human-confirm-pretooluse.py'
+        self.pins = live / 'human-confirm-gate/anchor.pins'
+        self.pins.write_text('# fixture\n' + fingerprint + '  fixture-host\n')
+        pins = patch('tokens.PINS', self.pins); pins.start(); self.addCleanup(pins.stop)
         self.repo = self.home / 'repo'
         subprocess.run(['git', 'init', '-q', str(self.repo)], check=True)
         self.sha = 'a' * 40
@@ -36,7 +51,16 @@ class Gate(unittest.TestCase):
         self.collab = self.home / 'Gits/orchestrator/collab/fixture.md'
         self.collab.parent.mkdir(parents=True)
 
+    def unlock(self):
+        for path in (self.policy.parent, self.policy):
+            if path.exists(): os.chflags(path, 0)
+
+    def lock(self):
+        for path in (self.policy, self.policy.parent):
+            os.chflags(path, stat.UF_IMMUTABLE)
+
     def tearDown(self):
+        Gate.unlock(self)  # borrowed by Issue/Anchor
         self.scratch.cleanup()
 
     def token(self, kind='human', **updates):
@@ -57,7 +81,7 @@ class Gate(unittest.TestCase):
         env = dict(os.environ, HOME=str(self.home))
         value = dict(tool_name=tool, cwd=str(self.repo), session_id='worker',
                      tool_input=tool_input or dict(command=command or self.command))
-        run = subprocess.run(['python3', str(HOOK)], input=json.dumps(value), text=True, capture_output=True, env=env)
+        run = subprocess.run(['python3', str(self.hook)], input=json.dumps(value), text=True, capture_output=True, env=env)
         self.assertIn(run.returncode, (0, 2), run.stderr)
         return run.returncode, json.loads(run.stdout)
 
@@ -146,7 +170,7 @@ class Gate(unittest.TestCase):
                 self.assertEqual(self.run_hook()[0], 0)
         self.token(nonce=uuid.uuid4().hex)
         value = json.dumps(dict(tool_name='Bash', cwd=str(self.repo), session_id='worker', tool_input=dict(command=self.command)))
-        calls = [subprocess.Popen(['python3', str(HOOK)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        calls = [subprocess.Popen(['python3', str(self.hook)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   text=True, env=dict(os.environ, HOME=str(self.home))) for _ in range(2)]
         for call in calls: call.communicate(value)
         self.assertEqual(sorted(call.returncode for call in calls), [0, 2])
@@ -170,7 +194,7 @@ class Gate(unittest.TestCase):
     def test_wrapper_errors_deny(self):
         wrapper = ROOT.parents[2] / 'scripts/hooks/fail-open.py'
         env = dict(os.environ, HOME=str(self.home))
-        run = subprocess.run(['python3', str(wrapper), str(HOOK)], input='{', text=True, capture_output=True, env=env)
+        run = subprocess.run(['python3', str(wrapper), str(self.hook)], input='{', text=True, capture_output=True, env=env)
         self.assertEqual(run.returncode, 2, run.stderr)
 
     def test_agent_write_rejected(self):
@@ -179,7 +203,7 @@ class Gate(unittest.TestCase):
 
     def test_invalid_payload_fails_closed(self):
         env = dict(os.environ, HOME=str(self.home))
-        run = subprocess.run(['python3', str(HOOK)], input='{', text=True, capture_output=True, env=env)
+        run = subprocess.run(['python3', str(self.hook)], input='{', text=True, capture_output=True, env=env)
         self.assertEqual(run.returncode, 2)
         self.assertEqual(json.loads(run.stdout)['hookSpecificOutput']['permissionDecision'], 'deny')
 

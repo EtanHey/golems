@@ -1,4 +1,4 @@
-"""One-use signed capabilities. Same-UID hook/trust-anchor tampering is out of scope."""
+"""One-use signed capabilities; the anchor is owner-locked and fingerprint-pinned in the hook tree."""
 import hashlib
 import json
 import os
@@ -11,6 +11,79 @@ from pathlib import Path
 GIT = '/usr/bin/git'
 SSH = '/usr/bin/ssh-keygen'
 GH = '/opt/homebrew/bin/gh'
+
+
+ANCHOR = Path('.config/golems/human-confirm-anchor/allowed_signers')
+# The fingerprint pin rides the reviewed, pinned hook tree (hooks-live), never
+# the policy dir: clearing flags and rewriting that dir cannot also re-pin.
+PINS = Path(__file__).resolve().parents[1] / 'anchor.pins'
+
+
+def pinned_fingerprints(pins):
+    """Owner-pinned SHA-256 values; any malformed line voids the whole pin."""
+    lines = [line.split('#', 1)[0].strip() for line in Path(pins).read_text('ascii').splitlines()]
+    lines = [line for line in lines if line]
+    if not all(re.fullmatch(r'[0-9a-f]{64}(?:\s+\S+)?', line) for line in lines):
+        raise ValueError('malformed confirmation anchor pin')
+    return {line.split()[0] for line in lines}
+
+
+def locked(info, kind, mode):
+    return (kind(info.st_mode) and stat.S_IMODE(info.st_mode) == mode and info.st_uid == os.getuid()
+            and getattr(info, 'st_flags', 0) & stat.UF_IMMUTABLE)
+
+
+def anchor_bytes(home):
+    """Checked anchor bytes, or raise: every token check denies on any doubt."""
+    directory = os.open(home / ANCHOR.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fd = os.open(ANCHOR.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+        with os.fdopen(fd, 'rb') as stream:
+            info = os.fstat(stream.fileno())
+            if not (locked(os.fstat(directory), stat.S_ISDIR, 0o700) and locked(info, stat.S_ISREG, 0o600)
+                    and info.st_nlink == 1 and info.st_size <= 4096):
+                raise ValueError('confirmation trust anchor is not owner-locked')
+            raw = stream.read(4097)
+    finally:
+        os.close(directory)
+    if hashlib.sha256(raw).hexdigest() not in pinned_fingerprints(PINS):
+        raise ValueError('confirmation trust anchor does not match the pinned fingerprint')
+    return raw
+
+
+def pin_anchor(home):
+    """Owner terminal only: lock the reviewed anchor, return its fingerprint.
+
+    The fingerprint lands in anchor.pins through a reviewed PR; never repin
+    automatically on a mismatch."""
+    if not callable(getattr(os, 'chflags', None)):
+        raise ValueError('confirmation anchor provisioning requires macOS immutable flags')
+    policy = home / ANCHOR
+    if policy.parent.is_symlink() or not policy.parent.is_dir():
+        raise ValueError('unsafe confirmation trust anchor directory')
+    raw = private_read(policy)
+    if len(raw) > 4096 or policy.lstat().st_nlink != 1:
+        raise ValueError('unsafe confirmation trust anchor')
+    policy.parent.chmod(0o700)
+    for path in (policy, policy.parent):
+        os.chflags(path, stat.UF_IMMUTABLE)
+    if not (locked(policy.parent.lstat(), stat.S_ISDIR, 0o700) and locked(policy.lstat(), stat.S_ISREG, 0o600)):
+        raise ValueError('confirmation trust anchor did not lock')
+    return hashlib.sha256(raw).hexdigest()
+
+
+def verify_signature(raw, anchor, kind, signature):
+    # SSH receives an immutable byte snapshot, never reopens the mutable path.
+    read_fd, write_fd = os.pipe()
+    try:
+        os.write(write_fd, anchor)  # <=4096 bytes, bounded below pipe capacity
+        os.close(write_fd); write_fd = None
+        return subprocess.run([SSH, '-Y', 'verify', '-f', '/dev/fd/' + str(read_fd), '-I', kind,
+                               '-n', 'golems-confirm', '-s', str(signature)], input=raw,
+                              capture_output=True, timeout=2, pass_fds=(read_fd,)).returncode == 0
+    finally:
+        os.close(read_fd)
+        if write_fd is not None: os.close(write_fd)
 
 
 def private_read(path):
@@ -45,7 +118,10 @@ def lead_metadata(op):
 
 def authorize(payload, ops, home, metadata_fn=lead_metadata):
     root = home / '.config/golems/human-confirm'
-    policy = root.parent / 'human-confirm.allowed_signers'
+    try:
+        anchor = anchor_bytes(home)
+    except (OSError, ValueError, UnicodeError):
+        return False  # static hook denial; never trust any token after tampering
     digest = hashlib.sha256((payload['cwd'] + '\0' + payload['tool_input']['command']).encode()).hexdigest()
     for path in sorted(root.glob('*.json')):
         try:
@@ -58,11 +134,7 @@ def authorize(payload, ops, home, metadata_fn=lead_metadata):
             if token['command_sha256'] != digest or token['operations'] != ops or token['session_id'] != payload['session_id']:
                 continue
             # Signature authenticates the creator; creator fields/agent chat do not.
-            private_read(policy)
-            verified = subprocess.run([SSH, '-Y', 'verify', '-f', str(policy), '-I', kind,
-                                       '-n', 'golems-confirm', '-s', str(path) + '.sig'],
-                                      input=raw, capture_output=True, timeout=2)
-            if verified.returncode:
+            if not verify_signature(raw, anchor, kind, str(path) + '.sig'):
                 continue
             if kind == 'lead':
                 if len(ops) != 1 or ops[0]['class'] != 'lease':

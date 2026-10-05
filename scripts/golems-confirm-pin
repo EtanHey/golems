@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""Lock the owner-reviewed allowed-signers anchor and print its pin line; run outside every agent."""
+import runpy
+import socket
+import sys
+from pathlib import Path
+
+helper = runpy.run_path(str(Path(__file__).with_name('golems-confirm')))
+if __name__ == '__main__':
+    try:
+        helper['owner_terminal']()
+        from tokens import pin_anchor
+        fingerprint = pin_anchor(Path.home().resolve())
+        print('Confirmation anchor locked (uchg). Add this line to '
+              'skills/golem-powers/human-confirm-gate/anchor.pins through a reviewed PR:')
+        print(fingerprint + '  ' + socket.gethostname().split('.')[0])
+        print('Tokens deny until hooks-live carries it. Never repin automatically on a mismatch.')
+    except (OSError, ValueError) as exc:
+        print('golems-confirm-pin refused: ' + str(exc), file=sys.stderr)
+        sys.exit(2)

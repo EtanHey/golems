@@ -1,6 +1,8 @@
 """Gate-local argv views over the shared shell parser (no shell execution)."""
 import os
+import re
 import shlex
+from pathlib import Path
 
 SHELLS = {'sh', 'bash', 'zsh', 'dash', 'ksh', 'fish'}
 DATA = {'echo', 'printf', 'cat', 'rg', 'grep', 'sed', 'awk', 'test', '[', '[[', 'git', 'gh', 'trap'}
@@ -118,12 +120,53 @@ def heredoc_bodies(command, shell):
             yield delimiter, ''.join(body)
 
 
-def policy_path(raw, cwd, home):
+def expand_home(raw, home):
     word = raw.replace('${HOME}', str(home)).replace('$HOME', str(home))
-    if word.startswith('~/'): word = str(home) + word[1:]
-    target = os.path.realpath(os.path.join(cwd, word)).casefold()
-    protected = os.path.realpath(str(home / '.config/golems')).casefold()
-    return target == protected or target.startswith(protected + '/')
+    return str(home) + word[1:] if word == '~' or word.startswith('~/') else word
+
+
+def unresolved(raw, home):
+    """Glob, brace, variable, substitution or ~user: the hook cannot know the target."""
+    word = expand_home(raw, home)
+    return any(c in word for c in '$`*?[]{}') or word.startswith('~')
+
+
+def anchor_roots(home):
+    """Strict roots: the locked anchor dir plus the pinned tree this hook runs from."""
+    gate = Path(__file__).resolve().parents[1]
+    return [os.path.realpath(p).casefold() for p in
+            (home / '.config/golems/human-confirm-anchor', gate, gate.parent / '_shared')]
+
+
+def _resolved(raw, cwd, home):
+    return os.path.realpath(os.path.join(cwd or '/', expand_home(raw, home))).casefold()
+
+
+def _aliases(target, home):
+    from tokens import ANCHOR, PINS
+    for path in (home / ANCHOR, PINS):
+        try:
+            if os.path.samefile(target, path): return True
+        except OSError:
+            pass
+    return False
+
+
+def policy_path(raw, cwd, home):
+    target = _resolved(raw, cwd, home)
+    for root in [os.path.realpath(str(home / '.config/golems')).casefold()] + anchor_roots(home):
+        if target == root or target.startswith(root + '/'):
+            return True
+    return _aliases(target, home)
+
+
+def anchor_path(raw, cwd, home, ancestors=False):
+    """raw names the anchor or pinned tree (or, with ancestors, a directory above one)."""
+    target = _resolved(raw, cwd, home)
+    for root in anchor_roots(home):
+        if target == root or target.startswith(root + '/') or ancestors and root.startswith(target.rstrip('/') + '/'):
+            return True
+    return _aliases(target, home)
 
 
 def write_targets(base, args, redirects):
@@ -146,3 +189,63 @@ def write_targets(base, args, redirects):
 
 def policy_write(base, args, redirects, cwd, home):
     return any(policy_path(t, cwd, home) for t in write_targets(base, args, redirects))
+
+
+# AIDEV-NOTE: anchor integrity is the tree pin + owner uchg, not this list.
+# These rules only fail closed early: flag changes that could reach the
+# anchor, and any non-reader argv naming the anchor dir or pinned tree.
+FLAG_EXECUTORS = {'chflags', 'setfile'}
+READERS = {'cat', 'ls', 'stat', 'head', 'tail', 'rg', 'grep', 'wc', 'shasum', 'sha256sum', 'md5', 'file',
+           'test', '[', '[[', 'realpath', 'readlink', 'du', 'diff', 'cmp', 'xxd', 'od', 'hexdump', 'strings',
+           'less', 'more', 'cd', 'pushd', 'echo', 'printf', 'which', 'type', 'man'}
+# These supply the flag executor's targets at run time (stdin, {}, -execdir cwd).
+INDIRECT = {'xargs', 'parallel', 'find'}
+_CLEAR = re.compile(r'no[us](?:chg|change|immutable|appnd|append|unlnk|unlink)')
+
+
+def _candidates(arg):
+    yield arg
+    if '=' in arg: yield arg.split('=', 1)[1]
+    if arg.startswith('-') and not arg.startswith('--') and len(arg) > 2: yield arg[2:]
+
+
+def flag_clear(word, numeric=False):
+    return any(_CLEAR.fullmatch(part) for part in word.split(',')) or numeric and bool(re.fullmatch('[0-7]+', word))
+
+
+def flag_write(base, args, cwd, home):
+    """chflags/SetFile argv that could change flags on the anchor or pinned tree."""
+    if any(unresolved(a, home) for a in args):
+        return True
+    recursive = base == 'chflags' and any(a.startswith('-') and not a.startswith('--') and 'R' in a for a in args)
+    values = {'-a', '-c', '-d', '-m', '-t'} if base == 'setfile' else set()
+    i = 0
+    while i < len(args) and args[i].startswith('-') and args[i] != '--':
+        i += 2 if args[i] in values else 1
+    i += (i < len(args) and args[i] == '--') + (base == 'chflags')  # chflags: the flags word
+    return any(cwd is None and not expand_home(t, home).startswith('/') or anchor_path(t, cwd, home, recursive)
+               for t in args[i:])
+
+
+def anchor_tamper(word, args, cwd, home):
+    base = os.path.basename(word).casefold()
+    if base in DATA:
+        return False
+    if base in FLAG_EXECUTORS:
+        return flag_write(base, args, cwd, home)
+    if ('$' in word or '`' in word) and any(flag_clear(a, numeric=True) for a in args):
+        return flag_write('chflags', ['-R', '--', '0'] + [a for a in args if not a.startswith('-')], cwd, home)
+    for j, arg in enumerate(args):
+        executor = os.path.basename(arg).casefold()
+        if executor in FLAG_EXECUTORS and args[j + 1:]:
+            # Wrapped: targets must be absolute (wrappers may change cwd); indirect: unknowable.
+            if base in INDIRECT or base not in WRAPPERS or flag_write(executor, args[j + 1:], None, home):
+                return True
+    if base in READERS or base == 'ssh-keygen' and ('verify' in args or '-l' in args):
+        return False
+    if any(anchor_path(c, cwd, home, ancestors=base in ('ln', 'link')) for a in args for c in _candidates(a)):
+        return True
+    # Renamed/copied flag binaries: a symbolic clear keyword plus a reachable target.
+    return any(flag_clear(a) for a in args) and any(
+        unresolved(c, home) or anchor_path(c, cwd, home, ancestors=True)
+        for a in args if not flag_clear(a) and not a.startswith('-') for c in _candidates(a))

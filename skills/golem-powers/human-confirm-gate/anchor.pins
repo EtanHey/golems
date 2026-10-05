@@ -1,0 +1,4 @@
+# Owner-pinned SHA-256 fingerprints of ~/.config/golems/human-confirm-anchor/allowed_signers.
+# One per line: <64 lowercase hex> <label>. Produced only by scripts/golems-confirm-pin in an
+# owner terminal, landed through a reviewed PR, live after a hooks-live update. No fingerprint
+# (this placeholder) means every token denies, and install-hooks refuses to activate the gate.

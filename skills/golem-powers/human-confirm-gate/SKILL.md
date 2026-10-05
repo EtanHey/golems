@@ -28,7 +28,7 @@ Unsigned file metadata cannot identify a human under the shared macOS UID.
 Tokens are SSH-signed JSON, mode 0600, in
 `~/.config/golems/human-confirm/<32-lowercase-hex-nonce>.json`, with an adjacent
 `.json.sig`. The owner provisions mode-0600
-`~/.config/golems/human-confirm.allowed_signers` out of band, with SSH allowed
+`~/.config/golems/human-confirm-anchor/allowed_signers` out of band, with SSH allowed
 signers principals `human` and `lead` (separate keys). The `human` signing key
 must be unavailable to agents: a separate owner-controlled signer or hardware
 key requiring owner presence. Only the owner creates/signs human tokens;
@@ -40,7 +40,7 @@ to the policy directory deny, including case variants. Monitor commands use
 the same evaluator as Bash.
 A file copied by an agent cannot gain approval without the issuer's signature.
 The same-UID threat frontier remains: this hook is not an OS sandbox; a malicious
-process can replace the hook, trust anchor, or tombstones. Arbitrary interpreter
+process can replace the hook, configuration, or tombstones. Arbitrary interpreter
 code, sourced files and external shell startup aliases remain outside static
 inspection. Unknown wrappers carrying recognizable protected Git/GH argv deny.
 Unregistered tool surfaces remain outside this hook. No owner-origin claim
@@ -51,8 +51,47 @@ separate owner terminal; lease also needs `--sha <full-sha>`. See README for
 Cached application/all-process authorization is insufficient human proof.
 The helper uses ssh-keygen -U to require the agent; ancestry checks are only
 advisory detection. The per-request signer prompt is the owner-presence control.
-Create the directory mode 0700 in an owner terminal; place the allowed signers
-file there. Prepare a JSON draft in the repo's `docs.local/` with these fields:
+### Trust anchor integrity
+The anchor lives in its own directory, `~/.config/golems/human-confirm-anchor/`,
+so locking it never touches the other files under `~/.config/golems`.
+Create that directory mode 0700 in an owner terminal and place the allowed
+signers file there. After reviewing its keys, run
+`python3 scripts/golems-confirm-pin` from that owner terminal. It sets macOS
+`uchg` on the file and directory and prints one fingerprint line.
+That line lands in this skill's `anchor.pins` through a reviewed PR. The pin
+therefore lives in the pinned hooks-live tree, not in the policy directory, so
+clearing flags and rewriting the anchor cannot also re-pin it.
+Every token check opens the anchor fd-relative with no symlinks and verifies
+these, or the hook issues its static denial for every human and lead token:
+- `uchg` on the file and the directory;
+- mode 0700 on the directory and 0600 on the file, and owner UID;
+- a single link to the file;
+- SHA-256 equal to a pinned fingerprint. A missing, empty or malformed pin denies.
+
+SSH verifies the checked bytes through a pipe and never reopens the path.
+`install-hooks` refuses to activate this gate while `anchor.pins` holds no
+fingerprint (it never installs a gate that would deny every token). Order:
+merge, then the owner pins, then the fingerprint PR, then hooks-live install.
+Key rotation means an owner-terminal unlock, review and repin, plus a new pin PR.
+Never repin automatically on a mismatch.
+
+Early fail-closed checks are defence in depth, not the boundary. They deny:
+- `chflags`/`SetFile` whose targets are unresolved (glob, brace, variable,
+  substitution, `~user`), relative under an unknown or wrapper-changed cwd,
+  or able to reach the anchor or pinned tree, including `-R` on an ancestor;
+- flag executors fed targets by `xargs`, `parallel` or `find`;
+- any non-reader command naming the anchor directory or pinned tree, so
+  `ln` (also of an ancestor), `rsync`, `ditto`, `dd`, `curl -o` and `tar -C`;
+- Write/Edit tools on the anchor or pinned tree.
+
+`cd -`, `pushd`/`popd` stacks and CDPATH searches make cwd unknown.
+Interpreter code (`python -c`, `osascript`) and `git` operations inside
+hooks-live stay outside static inspection. A same-UID process can still
+replace hooks-live itself: that shows as drift in `install-hooks --status`.
+This is tamper evidence within the tool boundary, not an OS sandbox.
+Anchor provisioning/runtime are macOS-only. Unsupported hosts refuse tokens;
+CI skips those runtime fixtures explicitly, while structural tests still run.
+Prepare a JSON draft in the repo's `docs.local/` with these fields:
 - `version`: 1; `kind`: `human` or `lead`; `nonce`: random 32 lowercase hex.
 - `issued_at`, `expires_at`: Unix seconds, maximum TTL 300 seconds, no future issue.
 - `command_sha256`: SHA256 of exact hook `cwd` + NUL + exact Bash command.

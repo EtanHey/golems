@@ -143,6 +143,8 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                           syntax.policy_path(t.split('=', 1)[1], cwd or '/', Path.home())
                           for j, t in enumerate(tokens[:i]))
         uncertain_policy_target = policy_hint and any('$' in t or '`' in t for t in syntax.write_targets(base, args, redirects))
+        if syntax.anchor_tamper(word, args, cwd, Path.home()):
+            raise ValueError('agent changes to the confirmation trust anchor or pinned hook tree are forbidden')
         if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
         if ('$' in word or '`' in word) and syntax.guarded_words(args):
@@ -187,10 +189,17 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                     raise ValueError('opaque shell script/stdin source')
         if base == 'trap' and args:
             result += operations(args[0], cwd, alias_lookup, depth + 1, current, _state)
-        if base == 'cd':
-            target = args[-1] if args else str(Path.home())
-            target = target.replace('${HOME}', str(Path.home())).replace('$HOME', str(Path.home()))
-            cwd = None if '$' in target or '`' in target or cwd is None else os.path.realpath(os.path.join(cwd, os.path.expanduser(target)))
+        if base in ('cd', 'pushd', 'popd'):
+            # Directory stacks, `cd -`, CDPATH and dynamic targets make cwd unknown.
+            operands = [a for a in args if a not in ('-P', '-L', '-e', '-@', '-n', '--')]
+            target = operands[0] if len(operands) == 1 and base != 'popd' else None
+            target = str(Path.home()) if base == 'cd' and not operands else target
+            searched = target is not None and not target.startswith(('/', '.', '~', '$')) and (
+                'CDPATH' in command or os.environ.get('CDPATH'))
+            if cwd is None or target is None or searched or target.startswith(('-', '+')) or syntax.unresolved(target, Path.home()):
+                cwd = None
+            else:
+                cwd = os.path.realpath(os.path.join(cwd, syntax.expand_home(target, Path.home())))
         if base == 'git':
             repo, aliases, words, overrides = git_words(args, cwd)
             if not words: continue
