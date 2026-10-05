@@ -54,7 +54,7 @@ Read the user's request and route to the right workflow:
 |---|---|---|
 | QA a recording (default) | `Agent(qa-video-runner)` with video, project, artifact directory and round | `visual-gather.py` called directly from its Bash |
 | Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `visual-gather.py` called directly from its Bash |
-| Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` | That worker views sheets and runs the same iterative loop |
+| Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
 
 **Subagent routing:** Dispatch the full pipeline once using this table. Do not
 open an unrequested Gemini pane or run the default pipeline in the lead.
@@ -74,7 +74,11 @@ screenshot questions outside this pipeline.
 
 Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
-same loop in its own shell and may view images itself. **Never open a terminal pane**
+same loop in its own shell and may view images itself. Its profile permits
+artifacts only in the assigned `docs.local` directory or engine report path;
+pass that absolute workdir explicitly. For QA, the parent persists the final note and
+cited evidence under the project `docs/` directory before BrainLayer storage.
+**Never open a terminal pane**
 or type into another surface to run media tools; never `send_to` media commands.
 If the selected profile has no shell, stop and ask the lead for the shell-enabled
 pipeline profile (or `video-qa` for the explicitly requested visible route).
