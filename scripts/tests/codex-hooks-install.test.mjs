@@ -159,3 +159,8 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
     git("worktree", "unlock", f.live);
   }
 });
+
+test("codexCommand registers the adapter as python3 -I -B", () => {
+  const cmd = codexCommand("python3", "/live/a.py", "git-guardian");
+  expect(cmd).toContain("python3'\\'' '\\''-I'\\'' '\\''-B'\\'' '\\''/live/a.py'\\'' '\\''git-guardian");
+});

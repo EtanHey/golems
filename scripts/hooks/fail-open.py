@@ -7,7 +7,9 @@ Usage (as registered by scripts/hooks/install-hooks.mjs):
 Imports: hooks live in a same-UID tree, so nothing planted beside a hook may
 stand in for the stdlib. The launcher preloads runpy's lazy imports, then adds
 the hook's dir LAST on sys.path (never first). -I drops PYTHONPATH and user
-site; -B keeps hooks from writing bytecode into the tree.
+site; -B keeps hooks from writing bytecode into the tree. The Codex adapter
+(codex-policy-hook.py) runs each policy child through this launcher the same
+way; there, the launcher's exit 0 + stderr line is a denial, never an allow.
 
 Claude Code treats exit 2 as a block, and `python3 missing.py` exits 2, so a
 hook whose file vanished (hooks-live moved, a link dangles) would block every

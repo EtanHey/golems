@@ -9,6 +9,14 @@ calls BrainLayer directly and always fails open.
 
 from __future__ import annotations
 
+import os
+import sys
+
+# AIDEV-NOTE: no hook dir is ever FIRST on sys.path, even when this file runs
+# without the launcher: the stdlib must win over anything planted beside it.
+_HOOK_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != _HOOK_DIR] + [_HOOK_DIR]
+
 import json
 import os
 import re

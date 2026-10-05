@@ -107,6 +107,8 @@ jobs:
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/tests/hooks-fail-open.test.mjs \
                    ./scripts/tests/hooks-planted-module.test.mjs \
+                   ./scripts/tests/codex-hooks-install.test.mjs \
+                   ./scripts/tests/codex-planted-module.test.mjs \
                    ./scripts/tests/install-hooks.test.mjs \
                    ./scripts/cc/cc-statusline.test.ts \
                    ./scripts/cc/cc-axiom-reporter.test.ts \

@@ -13,7 +13,8 @@ export const CODEX_TRUST_HINT = "Review /hooks from plain codex with no --profil
 export function codexCommand(python, adapter, gate) {
   // Codex exit 2 requires stderr. This fallback survives missing Python, a
   // missing/broken adapter, and its unexpected exit. No policy lives here.
-  const run = [python, adapter, gate].map(quote).join(" ");
+  // -I -B: no PYTHONPATH/user site, no bytecode writes into hooks-live (see fail-open.py).
+  const run = [python, "-I", "-B", adapter, gate].map(quote).join(" ");
   return `/bin/sh -c ${quote(`if output=$(${run} 2>/dev/null); then printf '%s\\n' "$output"; else printf '%s\\n' ${quote(REPAIR)} >&2; exit 2; fi`)}`;
 }
 
