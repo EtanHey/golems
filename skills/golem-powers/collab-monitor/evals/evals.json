@@ -1,7 +1,7 @@
 {
   "skill": "collab-monitor",
   "classification": "encoded-preference",
-  "result_provenance": "evals/results/2026-08-03-deterministic-red-green.json",
+  "result_provenance": "evals/results/2026-10-05-native-howto-deterministic.json",
   "evals": [
     {
       "id": 1,
@@ -366,7 +366,12 @@
         {"type": "content", "name": "requires-bottom-prompt-plus-sixty-seconds", "description": "Requires bottom-of-screen prompt proof plus 60 seconds of identical full-screen reads before idle"},
         {"type": "content", "name": "parks-long-running-ops", "description": "Parks the monitor branch, not the worker, around known long-running builds/tests/deploys"}
       ]
-    }
+    },
+    {"id":27,"name":"native-monitor-first","category":"native_monitor_howto","prompt":"A Claude seat has the native Monitor tool and needs addressed collab mail. Show the first watch to arm.","assertions":[{"type":"content","name":"native-monitor-first","description":"Uses native Monitor with a foreground bounded lead filter; no detached producer is required first."}]},
+    {"id":28,"name":"codex-fallback","category":"native_monitor_howto","prompt":"A Codex seat has no native Monitor and needs addressed collab mail. Arm the lane watch.","assertions":[{"type":"content","name":"codex-fallback","description":"Uses the packaged start/status/follow fallback; distinguishes detached production from attached consumption."}]},
+    {"id":29,"name":"report-final-marker","category":"native_monitor_howto","prompt":"A report mentions DONE in its introduction but its final line is WORKING. Is the worker complete?","assertions":[{"type":"content","name":"report-final-marker","description":"Waits for the exact final-line DONE marker and verifies the report and requested artifact before acting."}]},
+    {"id":30,"name":"installed-version-watch","category":"native_monitor_howto","prompt":"A merge is green but the installed binary still returns the previous version. Watch the installation.","assertions":[{"type":"content","name":"installed-version-watch","description":"Queries the installed command --version, waits for the expected exact output, then requires real-client smoke."}]},
+    {"id":31,"name":"thirty-minute-rearm","category":"native_monitor_howto","prompt":"The lane remains open after 30 minutes and after a compaction. What happens to its watches?","assertions":[{"type":"content","name":"thirty-minute-rearm","description":"Re-arms using current paths/listener and stops replaced watches by their returned identifiers; no duplicate wake stream."}]}
   ],
   "sources": {"cron-payload-discipline": {"description": "Synthetic RED/GREEN evals for cron payload stale-state discipline. Baseline captures prompt-state parroting. With-skill behavior must reject or rewrite payloads so step 1 is a live `!` query with frame metadata."}}
 }

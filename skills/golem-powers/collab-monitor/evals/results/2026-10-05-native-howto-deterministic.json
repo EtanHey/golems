@@ -1,0 +1,22 @@
+{
+  "synthetic_only": true,
+  "date": "2026-10-05",
+  "routing_candidate": {
+    "passed": 19,
+    "failed": 0
+  },
+  "howto_command_smoke": [
+    "exact final-line report marker",
+    "installed version transition"
+  ],
+  "teaching_contracts": [
+    "native before fallback",
+    "bounded lead filter",
+    "Codex start and follow",
+    "30-minute re-arm",
+    "compaction re-arm",
+    "real-client verification after version match"
+  ],
+  "native_monitor_executed": false,
+  "agent_behavior_evals_executed": false
+}
