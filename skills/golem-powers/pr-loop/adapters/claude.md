@@ -15,7 +15,7 @@ Claude Code has everything needed for the complete loop:
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create` via Bash | `gh` CLI available |
 | Review | `Agent(subagent_type="coderabbit:code-reviewer")` | Subagent spawning |
-| Poll | `CronCreate` or `/loop 2m gh pr view <N> --comments` | CronCreate tool available |
+| Poll | Native `Monitor` watching CI or addressed review handoffs | `/collab-monitor`; 30-minute expiry |
 | Fix + merge | `gh pr merge <N> --merge --delete-branch` | |
 | Post-merge | `brain_store(...)` via BrainLayer MCP | MCP access |
 
@@ -27,12 +27,15 @@ These options are PR-stage review run by whoever owns the PR loop; who reviews b
 # Option A — subagent reviewer (best)
 Agent(subagent_type="coderabbit:code-reviewer", prompt="Review PR #N in EtanHey/golems")
 
-# Option B — loop polling
-# /loop 2m gh pr view <N> --comments | tail -20
-
-# Option C — manual wait
-sleep 90 && gh pr view <N> --comments
+# CI completion command for native Monitor
+gh pr checks <N> --watch
 ```
+
+Use `Monitor({command, description, timeout_ms: 1800000})` for the CI command above
+or addressed review handoffs. Follow `/collab-monitor` for filtering, TaskStop
+cancellation and re-arming at expiry/after compaction. Fetch review bodies once
+a handoff or slim activity count changes. Timed one-shot wakes remain
+ScheduleWakeup/CronCreate per `collab-monitor/references/cron-payloads.md`.
 
 ## Post-merge BrainLayer Store (Claude-only)
 
@@ -101,6 +104,6 @@ For worker endpoints, draft handling, head verification, and artifact rules, rea
 ## Unique Capabilities
 
 - `Agent(subagent_type="coderabbit:code-reviewer")` — spawns real code review subagent
-- `CronCreate` — scheduled review polling
+- Native `Monitor` — CI/review handoff watches per `/collab-monitor`
 - BrainLayer MCP — post-merge brain_store (mandatory per pr-loop spec)
 - `--worktree` isolation — `claude --worktree feat/name` for parallel PRs

@@ -20,22 +20,18 @@
 | Gap | Impact | Workaround |
 |-----|--------|-----------|
 | No `cr review` pre-commit check | Commits without CodeRabbit pre-screening | Run `cr review --plain` manually if cr installed |
-| No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use shell polling loop |
-| No `CronCreate` | Can't schedule review polling | `for i in $(seq 1 6); do ... sleep 30; done` |
+| No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use routed review handoffs |
+| No native `Monitor` | Needs an attached watch consumer | `/collab-monitor` packaged fallback for handoffs; `gh pr checks <N> --watch` for CI |
 | No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |
 | No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |
 
-## Shell-Based Review Polling (Cursor workaround)
+## CI and Review Waiting
 
-```bash
-# Poll for CodeRabbit (max 3 min)
-for i in $(seq 1 6); do
-  review=$(gh api repos/EtanHey/golems/pulls/NUMBER/reviews \
-    --jq '.[] | select(.user.login == "coderabbitai") | .state' 2>/dev/null)
-  if [ -n "$review" ]; then echo "CodeRabbit: $review"; break; fi
-  sleep 30
-done
-```
+Use one `gh pr checks <N> --watch` call for CI completion. For addressed review
+handoffs, use the `/collab-monitor` packaged fallback with an attached consumer;
+re-arm at its 30-minute expiry and after compaction. Query slim state/activity
+counts and fetch full review bodies only when those change. Timed one-shot
+wakes follow `collab-monitor/references/cron-payloads.md` and the current schema.
 
 ## Cursor's Unique Advantage in the Loop
 
