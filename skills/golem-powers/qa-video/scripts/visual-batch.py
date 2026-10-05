@@ -28,11 +28,11 @@ def read_sheet(helper, question, timeout, sheet):
     except subprocess.TimeoutExpired:
         os.killpg(process.pid, signal.SIGKILL)
         out, err = process.communicate()
-        return {'sheet': sheet, 'finding': 'NOT DETERMINED (helper timeout)', 'fatal': ''}
+        return {'sheet': sheet, 'finding': 'NOT DETERMINED (helper timeout)', 'fatal': '', 'ok': False}
     fatal = next((s for s in err.splitlines() if s.startswith('DISPATCH_STOPPED:')), '')
     complete = process.returncode == 0 and 'Coverage: 1/1; complete;' in out
     return {'sheet': sheet, 'finding': out.strip() if complete else
-            'NOT DETERMINED (helper failed or partial)\n' + out.strip(), 'fatal': fatal}
+            'NOT DETERMINED (helper failed or partial)\n' + out.strip(), 'fatal': fatal, 'ok': complete and not fatal}
 
 
 def run(args, sheets):
@@ -47,9 +47,7 @@ def run(args, sheets):
     def progress():
         nonlocal eta
         elapsed = time.monotonic() - started
-        estimate = elapsed / completed * (total - completed) / args.concurrency if completed else None
-        if estimate is not None:
-            eta = min(eta, estimate) if eta is not None else estimate
+        eta = elapsed / completed * (total - completed) if completed else None
         state = {'status': status, 'completed': completed, 'total': total,
                  'elapsed_seconds': round(elapsed, 3), 'eta_seconds': eta,
                  'budget_seconds': args.budget_seconds, 'concurrency': args.concurrency}
@@ -70,7 +68,8 @@ def run(args, sheets):
                         status = 'BUDGET_EXCEEDED'
                         break
                     sheet = sheets[launched]
-                    active[pool.submit(read_sheet, args.helper, args.question, args.timeout, sheet)] = sheet
+                    timeout = max(10, min(args.timeout, deadline - time.monotonic() + 30))
+                    active[pool.submit(read_sheet, args.helper, args.question, timeout, sheet)] = sheet
                     launched += 1
                 if not active:
                     break
@@ -82,7 +81,7 @@ def run(args, sheets):
                     try:
                         item = future.result()
                     except OSError:
-                        item = {'sheet': sheet, 'finding': 'NOT DETERMINED (helper launch failed)', 'fatal': ''}
+                        item = {'sheet': sheet, 'finding': 'NOT DETERMINED (helper launch failed)', 'fatal': '', 'ok': False}
                     findings.append(item)
                     log.write(json.dumps(item) + '\n')
                     completed += 1
@@ -90,11 +89,11 @@ def run(args, sheets):
                         status, cause = 'DISPATCH_STOPPED', item['fatal']
                     progress()
     if status == 'RUNNING':
-        status = 'PARTIAL' if any('NOT DETERMINED' in f['finding'].upper() for f in findings) else 'COMPLETE'
+        status = 'PARTIAL' if any(not f['ok'] for f in findings) else 'COMPLETE'
     unread = [{'sheet': s, 'finding': 'NOT DETERMINED (not read: ' + status + ')'} for s in sheets[launched:]]
     summary = {'status': status, 'cause': cause, 'completed': completed,
                'total': total, 'concurrency': args.concurrency, 'unread': unread,
-               'unresolved': [f for f in findings if 'NOT DETERMINED' in f['finding'].upper()]}
+               'unresolved': [f for f in findings if not f['ok']]}
     atomic(work / 'visual/summary.json', json.dumps(summary, indent=2) + '\n')
     progress()
     print(json.dumps(summary))

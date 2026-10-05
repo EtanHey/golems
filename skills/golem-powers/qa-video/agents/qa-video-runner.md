@@ -21,7 +21,8 @@ Use run-step.sh for long jobs; poll logs/<step>.exit, require 0 and verify
 outputs. Extract audio + ggml-small SRT/TXT, read narration, combine transcript
 hotspots with scene cues, extract dense windows at 10 fps and 30s coverage.
 Use the packaged batch driver on each index.tsv or a list of coverage frames.
-Default concurrency 3, cap 4, budget 480s; read progress.txt and incremental
+Default concurrency 3, cap 4, budget 480s; in-flight calls may drain past it.
+Helper timeout is clamped to remaining budget +30s (10s floor). Read progress.txt and incremental
 visual/findings.jsonl. A budget/quota stop is partial, never complete coverage.
 Read text only; retry unresolved sheets within the remaining session budget. Match tile indexes to frames.tsv.
 Re-densify unclear moments up to 20 fps and/or tighter windows in fresh output

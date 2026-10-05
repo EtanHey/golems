@@ -70,6 +70,8 @@ never read images in the lead or pipeline sub-agent. Read text with Read;
 call `scripts/visual-batch.py` from your own shell for every sheet/frame.
 The driver invokes visual-gather.py concurrently and returns text only.
 NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
+The budget stops new launches; in-flight helpers may drain past it. Each helper
+timeout is clamped to remaining budget +30s (10s floor).
 A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
 inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
 screenshot questions outside this pipeline.

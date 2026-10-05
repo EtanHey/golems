@@ -16,17 +16,19 @@ DRIVER = SKILL / 'scripts/visual-batch.py'
 @pytest.fixture
 def setup(tmp_path):
     helper = tmp_path / 'helper.py'
-    helper.write_text('''import sys, time
+    helper.write_text('''import json, sys, time
 from pathlib import Path
 image = Path(sys.argv[-1])
+image.with_suffix('.timeout').write_text(sys.argv[sys.argv.index('--timeout') + 1])
 with (image.parent / 'starts').open('a') as f: f.write('start ' + str(time.monotonic()) + '\\n')
-time.sleep(.08 if image.stem == '0' else .3)
+latencies = image.parent / 'latencies.json'
+time.sleep(json.loads(latencies.read_text())[image.stem] if latencies.exists() else (.08 if image.stem == '0' else .3))
 if image.stem == '0' and (image.parent / 'quota').exists():
     print('DISPATCH_STOPPED: quota / 429; our own dispatch', file=sys.stderr)
     sys.exit(2)
 with (image.parent / 'starts').open('a') as f: f.write('end ' + str(time.monotonic()) + '\\n')
 print('Coverage: 1/1; complete; 0 image findings omitted by output cap.')
-print(str(image) + ': synthetic finding')
+print(str(image) + ': synthetic finding' + ('; color NOT DETERMINED' if (image.parent / 'unknown').exists() else ''))
 ''')
     images = [tmp_path / f'{i}.png' for i in range(8)]
     for image in images:
@@ -72,7 +74,8 @@ def test_concurrent_incremental_progress_and_cap(setup):
         peak = max(peak, active)
     assert peak == 4
     eta = [s['eta_seconds'] for s in samples if s['eta_seconds'] is not None]
-    assert eta == sorted(eta, reverse=True) and all(e >= 0 for e in eta)
+    assert all(e >= 0 for e in eta)
+    assert json.loads((work / 'progress.json').read_text())['eta_seconds'] == 0
     assert len((work / 'visual/findings.jsonl').read_text().splitlines()) == 8
     assert re.match(r'visual 8/8 sheets · elapsed .* · ETA .* · budget .*',
                     (work / 'progress.txt').read_text().strip())
@@ -84,6 +87,7 @@ def test_budget_partial_and_unread(setup):
     assert code != 0 and result['status'] == 'BUDGET_EXCEEDED'
     assert 0 < result['completed'] < 8
     assert len(result['unread']) == 8 - result['completed']
+    assert all(10 <= float(p.read_text()) < 30.12 for p in work.glob('*.timeout'))
     assert all(x['finding'].startswith('NOT DETERMINED') for x in result['unread'])
     assert len((work / 'visual/findings.jsonl').read_text().splitlines()) == result['completed']
 
@@ -137,3 +141,31 @@ def test_setup_auth_error_is_propagated(monkeypatch, capsys):
         return str(SKILL.parents[2]) if args[0] == 'git' else 'flash-high'
     monkeypatch.setattr(v.subprocess, 'check_output', lookup)
     assert v.main() == 2 and 'DISPATCH_STOPPED:' in capsys.readouterr().err
+
+
+@pytest.mark.parametrize('slowdown', [False, True])
+def test_eta_matches_throughput_and_can_rise(setup, slowdown):
+    work, launch = setup
+    for i in range(8, 12):
+        (work / f'{i}.png').touch()
+    with (work / 'index.tsv').open('a') as f:
+        f.write(''.join(f'{i}.png\t0\t10\t20\ttest\n' for i in range(8, 12)))
+    (work / 'latencies.json').write_text(json.dumps({str(i): .9 if slowdown and i >= 3 else .3 for i in range(12)}))
+    process, samples = launch('--concurrency', '3'), []
+    while process.poll() is None:
+        if (work / 'progress.json').exists():
+            samples.append(json.loads((work / 'progress.json').read_text()))
+        time.sleep(.01)
+    assert finish(process)[0] == 0
+    first = next(s['eta_seconds'] for s in samples if s['completed'] == 3)
+    assert .7 * .9 <= first <= 1.3 * .9  # nine remaining sheets, three .3s waves
+    if slowdown:
+        assert max(s['eta_seconds'] for s in samples if 3 < s['completed'] < 12) > first
+
+
+def test_unknown_detail_is_successful_coverage(setup):
+    work, launch = setup
+    (work / 'unknown').touch()
+    code, result, _ = finish(launch())
+    assert code == 0 and result['status'] == 'COMPLETE' and not result['unresolved']
+    assert 'NOT DETERMINED' in (work / 'visual/findings.jsonl').read_text()
