@@ -15,7 +15,7 @@
         "linkRoot": "$HOME/.claude/skills",
         "legacyCheckoutRoot": "$HOME/Gits/golems",
         "verifyCommands": [
-          "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && bun scripts/bootstrap.mjs --json"
+          "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && bun scripts/bootstrap.mjs --json"
         ]
       },
       "ralphtools": {
@@ -35,9 +35,9 @@
       "hostEnvCheckers": [
         {
           "id": "audio-dashboard-hard-deps",
-          "checkCommand": "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
-          "provisionCommand": "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; set -euo pipefail; command -v bun >/dev/null 2>&1 || { echo 'missing bun -> curl -fsSL https://bun.sh/install | bash'; curl -fsSL https://bun.sh/install | bash; }; command -v ffmpeg >/dev/null 2>&1 || { echo 'missing ffmpeg -> brew install ffmpeg'; brew install ffmpeg; }; command -v ffprobe >/dev/null 2>&1 || { echo 'missing ffprobe -> brew install ffmpeg (ships ffprobe)'; brew install ffmpeg; }; command -v whisper-cli >/dev/null 2>&1 || { echo 'missing whisper-cli -> brew install whisper-cpp'; brew install whisper-cpp; }; model=\"$HOME/.cache/whisper/ggml-large-v3-turbo.bin\"; if [ ! -f \"$model\" ]; then echo 'missing whisper-model -> download a ggml model to ~/.cache/whisper/ (e.g. ggml-large-v3-turbo.bin) or set NARRATIONLAYER_WHISPER_MODEL'; mkdir -p \"$(dirname \"$model\")\"; curl -fL --retry 3 -o \"$model\" https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin; fi",
-          "verifyCommand": "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
+          "checkCommand": "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
+          "provisionCommand": "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; set -euo pipefail; test -x /opt/homebrew/bin/bun || { echo 'missing bun -> brew install bun'; brew install bun; }; command -v ffmpeg >/dev/null 2>&1 || { echo 'missing ffmpeg -> brew install ffmpeg'; brew install ffmpeg; }; command -v ffprobe >/dev/null 2>&1 || { echo 'missing ffprobe -> brew install ffmpeg (ships ffprobe)'; brew install ffmpeg; }; command -v whisper-cli >/dev/null 2>&1 || { echo 'missing whisper-cli -> brew install whisper-cpp'; brew install whisper-cpp; }; model=\"$HOME/.cache/whisper/ggml-large-v3-turbo.bin\"; if [ ! -f \"$model\" ]; then echo 'missing whisper-model -> download a ggml model to ~/.cache/whisper/ (e.g. ggml-large-v3-turbo.bin) or set NARRATIONLAYER_WHISPER_MODEL'; mkdir -p \"$(dirname \"$model\")\"; curl -fL --retry 3 -o \"$model\" https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin; fi",
+          "verifyCommand": "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
           "installHint": "Run the standalone bootstrap JSON report and follow each exact hint; public hard deps may be auto-provisioned, but machine-local profiles and media are never bundled by this reconciler."
         },
         {
@@ -51,7 +51,7 @@
       "runtimeChecks": [
         {
           "id": "audio-dashboard-tts-8880",
-          "checkCommand": "export PATH=\"$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
+          "checkCommand": "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd \"$HOME/.golems/skills/audio-dashboard\" && NARRATIONLAYER_PROFILES_FILE=\"$HOME/.voicelayer/profiles.local.yaml\" bun scripts/bootstrap.mjs --json --require-tts",
           "installHint": "start the qwen3 voice daemon on :8880 and verify ~/.voicelayer/daemon.secret plus the locally configured profile reference"
         },
         {

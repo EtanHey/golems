@@ -5,7 +5,7 @@
 ## Local Paths
 # - Repo: /Users/YOURUSERNAME/Gits/golems
 # - Skills: /Users/YOURUSERNAME/Gits/golems/skills/golem-powers
-# - Bun: /Users/YOURUSERNAME/.bun/bin/bun
+# - Bun: /opt/homebrew/bin/bun
 # - Claude CLI: /Users/YOURUSERNAME/.local/bin/claude
 
 ## Monorepo Packages
