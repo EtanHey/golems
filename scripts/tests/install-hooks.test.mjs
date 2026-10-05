@@ -546,3 +546,22 @@ test('invalid update manifest refuses before moving an existing pin', () => {
   expect(git(live(fx), 'rev-parse', 'HEAD')).toBe(first);
   expect(readFileSync(fx.settingsPath, 'utf8')).toBe(before); expect(bakFiles(fx)).toEqual(backups);
 });
+
+
+test('--status reports installed heavy-suite availability without changing settings or the pin', () => {
+  const fx = fixture();
+  expect(run(fx, '--status').out).toContain('heavy-suite missing (suites run unqueued)');
+  expect(run(fx, '--apply').status).toBe(0);
+  const sha = git(live(fx), 'rev-parse', 'HEAD');
+  const settings = readFileSync(fx.settingsPath, 'utf8');
+  const helper = path.join(live(fx), 'scripts/hooks/heavy-suite.py');
+  mkdirSync(path.dirname(helper), { recursive: true });
+  writeFileSync(helper, 'fixture');
+  const result = run(fx, '--status');
+  expect(result.status).toBe(0);
+  expect(result.out).toContain(`heavy-suite available ${helper}`);
+  expect(git(live(fx), 'rev-parse', 'HEAD')).toBe(sha);
+  expect(readFileSync(fx.settingsPath, 'utf8')).toBe(settings);
+  rmSync(helper);
+  expect(run(fx, '--status').out).toContain('heavy-suite missing (suites run unqueued)');
+});

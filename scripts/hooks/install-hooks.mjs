@@ -274,6 +274,8 @@ function status(o) {
   const master = git(o.repo, "rev-parse", "--verify", "origin/master");
   const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
   console.log(`hooks-live=${current ?? "absent"} master=${master ?? "unknown"} drift=${drift}`);
+  const helper = path.join(ctx.live, "scripts/hooks/heavy-suite.py");
+  console.log(`heavy-suite ${existsSync(helper) && statSync(helper).isFile() ? `available ${helper}` : "missing (suites run unqueued)"}`);
   // Only registered hook commands count: a hook name in permissions or env is not a registration.
   const hooks = existsSync(ctx.settingsPath) ? JSON.parse(readFileSync(ctx.settingsPath, "utf8")).hooks ?? {} : {};
   const commands = Object.values(hooks).flat().flatMap((g) => g.hooks ?? []).map((h) => String(h.command ?? ""));

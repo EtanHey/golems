@@ -3,8 +3,14 @@
 Opt in by replacing the suite command in each repository's pre-push/release hook:
 
 ```sh
-HS="$HOME/Gits/golems/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then python3 "$HS" -- bun run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun run test; fi
+HS="$HOME/Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then python3 "$HS" -- bun run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun run test; fi
 ```
+
+The helper comes from the installed, pinned hooks-live tree, moved only by
+`install-hooks.mjs --apply --update`. There is no dev-checkout fallback.
+Already opted-in repositories must update their hook line to use this path;
+updating golems alone does not rewrite their hooks. `install-hooks.mjs --status`
+reports helper availability without installing it.
 
 Replace `bun run test` in both branches with that repository's existing suite.
 For the skill suite, use `bash scripts/ci/run-skill-tests.sh`, retaining its environment requirements
