@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail-closed, private source regression gate before a hooks-live install."""
 import argparse
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import fcntl
 import hashlib
 import json
@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import shutil
 import stat
 import subprocess
 import sys
@@ -59,14 +60,17 @@ def verify_files(rows, private_root):
             raise ValueError(f"private file hash mismatch: {p.name}")
 
 
-def load_manifest(repo, sha):
+def load_manifest(repo, sha, required=False, warn=True):
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("selected source must be a full immutable commit SHA")
     root = repo / "docs.local/private-guard-suites"
     try:
         mode = root.lstat().st_mode
     except FileNotFoundError:
-        print("WARN private regression gate ABSENT — private suites unavailable; continuing with public guard verification", flush=True)
+        if required:
+            raise ValueError("required private suites unavailable")
+        if warn:
+            print("WARN private regression gate ABSENT — private suites unavailable; continuing with public guard verification", flush=True)
         return None
     if not stat.S_ISDIR(mode) or root.resolve() != root:
         raise ValueError("private suite root must be a real durable directory")
@@ -124,6 +128,93 @@ def check_result(report, expected=None):
         raise ValueError("private regression result is failed, skipped or incomplete")
 
 
+def completion_plugin(nonce_fd, report, receipt_fd):
+    return f"NONCE_FD={nonce_fd}\nREPORT={str(report)!r}\nRECEIPT_FD={receipt_fd}\n" + '''
+import hashlib, json, os
+from pathlib import Path
+from pytest import fixture, hookimpl
+NONCE = os.read(NONCE_FD, 64).decode('ascii')
+os.close(NONCE_FD)
+passed = set()
+bad = False
+@fixture(autouse=True)
+def isolate_policy_ledger(tmp_path, monkeypatch):
+    monkeypatch.setenv('TMP_BLOCK_LEDGER', str(tmp_path / 'bypass-ledger.jsonl'))
+def pytest_runtest_logreport(report):
+    global bad
+    if report.failed or report.skipped:
+        bad = True
+    if report.when == 'call' and report.passed:
+        passed.add(report.nodeid)
+@hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_sessionfinish(session, exitstatus):
+    yield
+    os.write(RECEIPT_FD, json.dumps({'nonce': NONCE, 'exit': int(exitstatus),
+        'collected': len(session.items), 'passed': len(passed), 'bad': bad,
+        'xmlSHA256': hashlib.sha256(Path(REPORT).read_bytes()).hexdigest()}).encode())
+    os.close(RECEIPT_FD)
+'''
+
+
+def check_completion(report, receipt, nonce):
+    try:
+        data = json.loads(receipt.read_text())
+        root = ET.parse(report).getroot()
+        suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+        cases = sum(len(s.findall("testcase")) for s in suites)
+        if (not isinstance(data, dict) or data.get("nonce") != nonce
+                or data.get("exit") != 0 or data.get("bad") is not False
+                or data.get("collected") != cases or data.get("passed") != cases
+                or data.get("xmlSHA256") != hashlib.sha256(report.read_bytes()).hexdigest()):
+            raise ValueError("invalid trusted completion receipt")
+    except (OSError, ValueError, ET.ParseError) as error:
+        raise ValueError("trusted completion receipt missing or inconsistent") from error
+
+
+def record_completion(report, receipt, nonce, payload):
+    if not payload:
+        raise ValueError("trusted completion receipt missing")
+    try:
+        fd = os.open(receipt, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+    except OSError as error:
+        raise ValueError("unsafe completion receipt destination") from error
+    check_completion(report, receipt, nonce)
+
+
+def process_start(pid):
+    # PID alone is unsafe after reuse. ps works on both installer platforms.
+    result = subprocess.run(["ps", "-p", str(pid), "-o", "lstart="],
+                            capture_output=True, text=True, timeout=5)
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def active_fixture(path):
+    marker = path / ".active"
+    if not marker.exists():
+        return False
+    try:
+        data = json.loads(marker.read_text())
+        pid, start = data["pid"], data["start"]
+        return (type(pid) is int and pid > 0 and bool(start)
+                and process_start(pid) == start)
+    except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired):
+        return False
+
+
+def prune_fixtures(keep=5):
+    root = Path.home() / "docs.local/golems-guard-fixtures"
+    if not root.exists():
+        return
+    if root.resolve() != root:
+        raise ValueError("fixture retention root must not be symlinked")
+    completed = [p for p in root.iterdir() if re.fullmatch(r"[0-9a-f]{32}", p.name)
+                 and not p.is_symlink() and p.is_dir() and not active_fixture(p)]
+    for p in sorted(completed, key=lambda p: p.stat().st_mtime, reverse=True)[keep:]:
+        shutil.rmtree(p)
+
+
 @contextmanager
 def slot():
     # The install gate cannot nest inside a full suite that already owns this lock.
@@ -173,37 +264,52 @@ def execute_suite(paths, out, tree, name, expected=None, timeout=900):
     fixtures.mkdir(parents=True, mode=0o700)
     if fixtures.resolve() != fixtures:
         raise ValueError("fixture directory must not redirect through a symlink")
+    start = process_start(os.getpid())
+    if not start:
+        raise ValueError("cannot identify fixture owner process")
+    (fixtures.parent / ".active").write_text(json.dumps({"pid": os.getpid(), "start": start}))
     env["TMPDIR"] = str(fixtures) + os.sep
     # Restore the reviewed ledger fixture without importing candidate conftests.
     (out / "pytest.ini").write_text("[pytest]\n")
-    (out / "_golems_gate_isolation.py").write_text(
-        "from pytest import fixture\n@fixture(autouse=True)\n"
-        "def isolate_policy_ledger(tmp_path, monkeypatch):\n"
-        "    monkeypatch.setenv('TMP_BLOCK_LEDGER', str(tmp_path / 'bypass-ledger.jsonl'))\n")
     report = out / (name + ".xml")
+    receipt, nonce = out / (name + "-completion.json"), uuid.uuid4().hex
+    receipt.unlink(missing_ok=True)
     command = [sys.executable, "-I", "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
                "--noconftest", "--import-mode=prepend", "-c", str(out / "pytest.ini"),
                "-o", "pythonpath=" + str(out), "-p", "_golems_gate_isolation",
                "--rootdir", str(out), "--basetemp", str(fixtures / "pytest"),
                "--junitxml", str(report), *paths]
-    with (out / (name + ".log")).open("w") as log:
-        child = subprocess.Popen(command, cwd=out, env=env, stdout=log,
-                                 stderr=subprocess.STDOUT, start_new_session=True)
-        try:
-            result = child.wait(timeout=timeout)
-        finally:
-            if child.poll() is None:
-                os.killpg(child.pid, signal.SIGKILL)
-                child.wait()
+    with ExitStack() as channels:
+        nr, nw = os.pipe()
+        nonce_source = channels.enter_context(os.fdopen(nr, "rb", buffering=0))
+        nonce_sink = channels.enter_context(os.fdopen(nw, "wb", buffering=0))
+        rr, rw = os.pipe()
+        receipt_source = channels.enter_context(os.fdopen(rr, "rb", buffering=0))
+        receipt_sink = channels.enter_context(os.fdopen(rw, "wb", buffering=0))
+        nonce_sink.write(nonce.encode()); nonce_sink.close()
+        os.set_blocking(rr, False)
+        (out / "_golems_gate_isolation.py").write_text(completion_plugin(nr, report, rw))
+        with (out / (name + ".log")).open("w") as log:
+            child = subprocess.Popen(command, cwd=out, env=env, stdout=log,
+                stderr=subprocess.STDOUT, start_new_session=True, pass_fds=(nr, rw))
+            nonce_source.close(); receipt_sink.close()
+            try:
+                result = child.wait(timeout=timeout)
+            finally:
+                if child.poll() is None:
+                    os.killpg(child.pid, signal.SIGKILL)
+                    child.wait()
+        payload = receipt_source.read(8192) or b""
     if result:
         raise ValueError(f"{name} regression suite failed; receipt: {out}")
     check_result(report, expected)
+    record_completion(report, receipt, nonce, payload)
 
 
-def run(repo, sha):
-    manifest = load_manifest(repo, sha)
+def run(repo, sha, required=False):
+    manifest = load_manifest(repo, sha, required)
     with slot():
-        if load_manifest(repo, sha) != manifest:
+        if load_manifest(repo, sha, required, False) != manifest:
             raise ValueError("private manifest changed while queued")
         run_id = uuid.uuid4().hex
         out = repo / "docs.local/hooks-private-gate-runs" / run_id
@@ -215,7 +321,7 @@ def run(repo, sha):
         try:
             suites = public_suites(tree)
             if manifest is not None:
-                if load_manifest(repo, sha) != manifest:
+                if load_manifest(repo, sha, required, False) != manifest:
                     raise ValueError("private manifest changed before private verification")
                 adapter = tree / GUARD_FILES[-1]
                 if not adapter.is_file() or adapter.is_symlink() or not adapter.resolve().is_relative_to(tree):
@@ -226,7 +332,7 @@ def run(repo, sha):
                              repo / "docs.local/private-guard-suites")
             if suites:
                 execute_suite(suites, out, tree, "public")
-            if load_manifest(repo, sha) != manifest:
+            if load_manifest(repo, sha, required, False) != manifest:
                 raise ValueError("private manifest changed during the gate")
             if git(tree, "rev-parse", "HEAD") != sha or git(tree, "status", "--porcelain"):
                 raise ValueError("selected source changed during regression gate")
@@ -235,22 +341,29 @@ def run(repo, sha):
                 "sourceHashes": {p: hashlib.sha256((tree / p).read_bytes()).hexdigest()
                                  for p in GUARD_FILES if (tree / p).is_file()},
                 "privateCases": count, "publicSuites": suites}, indent=2) + "\n")
-            print(f"private regression gate: PASS {count} private cases; receipt: {out}")
+            outcome = f"PASS {count} private cases" if manifest else "PASS (private ABSENT)"
+            print(f"private regression gate: {outcome}; receipt: {out}")
         finally:
-            git(repo, "worktree", "remove", "--force", str(tree))
+            try:
+                git(repo, "worktree", "remove", "--force", str(tree))
+            finally:
+                fixtures = Path.home() / "docs.local/golems-guard-fixtures" / run_id
+                (fixtures / ".active").unlink(missing_ok=True)
+                prune_fixtures()
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("repo", type=Path)
     p.add_argument("sha")
+    p.add_argument("--require-private", action="store_true")
     args = p.parse_args()
     def interrupted(signum, frame):
         raise ValueError("regression gate interrupted; refusing installation")
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)
     try:
-        run(args.repo.resolve(), args.sha)
+        run(args.repo.resolve(), args.sha, args.require_private)
         return 0
     except (OSError, ValueError, KeyError, TypeError, ET.ParseError,
             subprocess.SubprocessError) as error:
