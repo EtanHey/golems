@@ -42,7 +42,6 @@ skills/golem-powers/frustration-capture/hooks/tests/test_session_false_positive_
 skills/golem-powers/weave/registry/validate-registry.sh
 
 # Generic transcript/session processing mechanics and synthetic evaluation output.
-packages/content/prompts/launch/text/reddit-localllama-bl.md
 packages/services/CLAUDE.md
 skills/golem-powers/agada-bench/workflows/build-new-domain.md
 skills/golem-powers/drive-filing/references/archive-procedure.md
