@@ -5,7 +5,7 @@
  * This is the core routing logic for the v2 "golems = domain experts" architecture.
  *
  * Routing rules:
- * - job, interview → RecruiterGolem (job search domain)
+ * - job, interview → recruitergolem (legacy career inbox label; package retired 2026-10-05)
  * - subscription → TellerGolem (financial domain)
  * - tech-update → ClaudeGolem (knowledge/learning domain)
  * - urgent → ClaudeGolem (needs human-facing response)
@@ -20,7 +20,8 @@
 import type { GolemActor } from "../lib/event-log";
 import type { ScoredEmail } from "./types";
 
-/** Canonical golem → category mapping. Single source of truth for routing. */
+/** Canonical inbox label → category mapping. recruitergolem has no package consumer;
+ * retain the stored label for compatibility, without dispatching to a retired agent. */
 export const GOLEM_CATEGORIES: Record<string, string[]> = {
   recruitergolem: ["job", "interview"],
   tellergolem: ["subscription"],

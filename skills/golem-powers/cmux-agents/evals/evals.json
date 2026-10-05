@@ -41,12 +41,12 @@
         {
           "type": "negative",
           "name": "no-manual-cmux-send",
-          "description": "Does NOT manually use cmux send_input + cd + cursor commands to hand-roll the launch"
+          "description": "Does NOT manually use cmux send_to + cd + cursor commands to hand-roll the launch"
         },
         {
           "type": "negative",
           "name": "no-hand-rolled-shell-chain",
-          "description": "Does NOT write 'cd ~/Gits/golems && cursor ...' via send_input"
+          "description": "Does NOT write 'cd ~/Gits/golems && cursor ...' via send_to"
         }
       ]
     },
@@ -109,7 +109,7 @@
         {
           "type": "negative",
           "name": "no-old-codex-exec-syntax",
-          "description": "Does NOT use old 'codex exec -m -s' syntax via send_input"
+          "description": "Does NOT use old 'codex exec -m -s' syntax via send_to"
         }
       ]
     },
@@ -183,12 +183,12 @@
         {
           "type": "tool_usage",
           "name": "discovers-first",
-          "description": "Calls list_surfaces or list_agents BEFORE send_input or send_to_agent"
+          "description": "Calls list_surfaces or list_agents BEFORE send_to"
         },
         {
           "type": "tool_usage",
           "name": "sends-message",
-          "description": "Uses send_to_agent (if agent_id known) or send_input (if only surface known)"
+          "description": "Uses send_to(mode='agent', agent_id=...) or send_to(mode='surface', surface=...) after discovery"
         },
         {
           "type": "negative",
@@ -199,39 +199,39 @@
     },
     {
       "id": 7,
-      "name": "send-input-send-key-paired",
+      "name": "send-to-submits-command",
       "category": "communication",
-      "description": "send_input must ALWAYS be followed by send_key Return to execute the command",
+      "description": "send_to submits the command; no separate Return injection",
       "prompt": "Run 'bun test' on surface:301 to check if the tests pass.",
       "assertions": [
         {
           "type": "tool_usage",
-          "name": "calls-send-input",
-          "description": "Uses send_input to type 'bun test' on surface:301"
+          "name": "uses-send-to",
+          "description": "Uses send_to(mode='command', surface='surface:301', text='bun test')"
         },
         {
-          "type": "tool_usage",
-          "name": "calls-send-key-return",
-          "description": "Follows send_input with send_key(key='Return') to execute the command"
+          "type": "negative",
+          "name": "no-separate-return",
+          "description": "Does not inject a separate Return key after send_to"
         },
         {
-          "type": "content",
-          "name": "correct-order",
-          "description": "send_input comes BEFORE send_key — not reversed"
+          "type": "negative",
+          "name": "no-surface-mode-shell",
+          "description": "Does not use mode='surface' for a shell command"
         }
       ]
     },
     {
       "id": 8,
-      "name": "send-to-agent-over-send-input",
+      "name": "send-to-agent-mode",
       "category": "communication",
-      "description": "Prefer send_to_agent (by agent ID) over send_input (by surface) when agent ID is known",
+      "description": "Prefer send_to(mode='agent') when the agent ID is known",
       "prompt": "Send this info to agent:xyz which is working on the security audit: 'JWT refresh tokens are not being rotated on use — this is a token reuse vulnerability.'",
       "assertions": [
         {
           "type": "tool_usage",
           "name": "uses-send-to-agent",
-          "description": "Uses mcp__cmuxlayer__send_to_agent with agent_id='agent:xyz'"
+          "description": "Uses mcp__cmuxlayer__send_to(mode='agent', agent_id='agent:xyz', text=...)"
         },
         {
           "type": "content",
@@ -241,7 +241,7 @@
         {
           "type": "negative",
           "name": "no-surface-send-when-id-known",
-          "description": "Does NOT use send_input by surface ref when agent_id is already known"
+          "description": "Does NOT use mode='surface' when agent_id is already known"
         }
       ]
     },
@@ -256,7 +256,7 @@
         {
           "type": "tool_usage",
           "name": "sends-to-all-three",
-          "description": "Sends the insight to ALL THREE agents via send_to_agent (3 separate calls)"
+          "description": "Sends the insight to ALL THREE agents via send_to (3 separate calls)"
         },
         {
           "type": "content",
@@ -841,7 +841,7 @@
         {
           "type": "negative",
           "name": "no-bare-dispatch",
-          "description": "Does NOT dispatch agents via bare send_input without a coordination file"
+          "description": "Does NOT dispatch agents via bare send_to without a coordination file"
         }
       ]
     },
@@ -861,7 +861,7 @@
         {
           "type": "content",
           "name": "suggests-mitigation",
-          "description": "Suggests at least one mitigation: /compact, send the new rules via send_to_agent, or respawn"
+          "description": "Suggests at least one mitigation: /compact, send the new rules via send_to, or respawn"
         },
         {
           "type": "negative",
@@ -890,7 +890,7 @@
         {
           "type": "negative",
           "name": "no-uuid-routing",
-          "description": "Does NOT claim it will route by `id`, `pane_id`, or any UUID field — send_input / read_screen take surface:N refs as input, never UUIDs"
+          "description": "Does NOT claim it will route by `id`, `pane_id`, or any UUID field — send_to / read_screen take surface:N refs as input, never UUIDs"
         },
         {
           "type": "negative",
@@ -1077,7 +1077,7 @@
         {
           "type": "tool_usage",
           "name": "reprompts-or-answers",
-          "description": "Answers the question / re-prompts via mcp__cmuxlayer__send_to_agent or send_input+send_key, or backgrounds it"
+          "description": "Answers the question / re-prompts via mcp__cmuxlayer__send_to (mode='agent' when the agent_id is known), or backgrounds it"
         },
         {
           "type": "content",

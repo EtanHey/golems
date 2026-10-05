@@ -21,8 +21,8 @@ GOLEMS_DIR="$GITS_DIR/golems"
 TEMPLATE_PROFILE="$GOLEMS_DIR/scripts/templates/owner-profile.md"
 
 # Golem definitions: parallel arrays (name -> dir name)
-GOLEM_NAMES=(recruiter content monitor teller)
-GOLEM_DIRS=(recruiterGolem contentGolem monitorGolem tellerGolem)
+GOLEM_NAMES=(content monitor teller)
+GOLEM_DIRS=(contentGolem monitorGolem tellerGolem)
 
 # --- Colors ---
 RED='\033[0;31m'

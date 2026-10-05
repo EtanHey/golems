@@ -133,7 +133,6 @@ If the launcher guess is wrong, use the verified repoGolem launcher manually unt
 | skills | $HOME/Gits/golems | skillsClaude, skillsCodex, skillsCursor |
 | eval | $ORCHESTRATOR_REPO | evalClaude, evalCodex, evalCursor |
 | maintenance | $ORCHESTRATOR_REPO | maintenanceClaude, maintenanceCodex, maintenanceCursor |
-| recruiter | $HOME/Gits/recruiterGolem | recruiterClaude, recruiterCodex, recruiterCursor |
 | teller | $HOME/Gits/tellerGolem | tellerClaude, tellerCodex, tellerCursor |
 | monitor | $HOME/Gits/monitorGolem | monitorClaude, monitorCodex, monitorCursor |
 | rudy | $HOME/Gits/rudy-monorepo | rudyClaude, rudyCodex, rudyCursor |

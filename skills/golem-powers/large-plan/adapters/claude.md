@@ -26,16 +26,10 @@ Agent(
 
 ## Collab Monitoring
 
-```bash
-# Preferred: /loop (foreground, stops when you stop it)
-/loop 5m Read <plan-dir>/collab.md. Check status changes, blockers, completed phases. If all phases are done, the lead checks every worker's CLEANUP RECEIPT and runs the prune step first, then advance round.
-
-# Alternative: CronCreate (background, survives session)
-CronCreate(schedule="*/5 * * * *", command="bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh run --once @<listen-name> <plan-dir>/collab.md")
-
-# MANDATORY: CronDelete when plan is complete — crons persist until deleted
-CronDelete(<cron-id>)
-```
+Watches: follow `/collab-monitor` before dispatch and after every compaction;
+a DONE marker or version match still needs artifact or real-client verification.
+Use its native Monitor how-to, 30-minute expiry and re-arm rules; stop the returned
+task ID with TaskStop when the plan closes. Codex seats use its packaged fallback.
 
 ## Plan Mode
 
@@ -83,7 +77,7 @@ is a candidate: bench before use.
 
 - `Agent(isolation="worktree")` — native phase isolation
 - `Agent(run_in_background=true)` — async parallel phases
-- `CronCreate` / `/loop` — collab file monitoring
+- `Monitor` — collab watches per `/collab-monitor`
 - `EnterPlanMode` — structured spec before execution
 - `claude --resume` — session continuity across days
 - MCP access (BrainLayer for plan decisions, Supabase, etc.)

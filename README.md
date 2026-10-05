@@ -17,7 +17,7 @@ as working examples, not as a supported product.
 
 Two terms:
 
-- A **golem** is a package that handles one domain (jobs, finance, planning).
+- A **golem** is a package that handles one domain (email, finance, planning).
   It holds the code, prompts, and integrations for that domain.
 - A **skill** is a `SKILL.md` file that an agent loads and follows. It can come
   with scripts, references, and evals.
