@@ -17,6 +17,9 @@ class Gate(unittest.TestCase):
         scratch_root.mkdir(parents=True, exist_ok=True)
         self.scratch = tempfile.TemporaryDirectory(dir=scratch_root)
         self.home = Path(self.scratch.name)
+        from unittest.mock import patch
+        isolated = patch.dict(os.environ, dict(HOME=str(self.home), SSH_AUTH_SOCK=str(self.home / 'no-agent.sock')))
+        isolated.start(); self.addCleanup(isolated.stop)
         self.store = self.home / '.config/golems/human-confirm'
         self.store.mkdir(parents=True, mode=0o700)
         self.policy = self.store.parent / 'human-confirm.allowed_signers'

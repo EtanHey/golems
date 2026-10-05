@@ -6,6 +6,8 @@ description: Mechanical confirmation for destructive Git and repository administ
 Status: source implementation; install only from hooks-live after lead review/merge.
 A chat turn, send_to, sender stamp, or model assertion is never approval.
 The Claude PreToolUse hook classifies shell commands with `_shared/shell_parse`.
+Simple literal assignments resolve command/argument words (including #500);
+unknown force-push expansion markers and xargs Git/GH/shell executors deny.
 It blocks force/lease pushes, positive-force refspecs, remote deletes, mirror/prune,
 filter-repo/filter-branch/replace (conservatively even local rewrites), replacement
 ref pushes, repo visibility/delete, and mutating `gh api repos/...` calls.
@@ -35,6 +37,10 @@ process can replace the hook, trust anchor, or tombstones. Arbitrary interpreter
 code, sourced files, external shell startup aliases, opaque wrappers and
 alternate tool surfaces are outside static inspection. No owner-origin claim
 is made from PID, timestamps, mode, or chat provenance.
+Use `scripts/golems-confirm <repo> <ref> <action> --session <id>` from a
+separate owner terminal; lease also needs `--sha <full-sha>`. See README for
+1Password SSH-agent public-key setup and required per-request authorization.
+Cached application/all-process authorization is insufficient human proof.
 Create the directory mode 0700 in an owner terminal; place the allowed signers
 file there. Prepare a JSON draft in the repo's `docs.local/` with these fields:
 - `version`: 1; `kind`: `human` or `lead`; `nonce`: random 32 lowercase hex.

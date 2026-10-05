@@ -7,6 +7,13 @@ root = Path(__file__).resolve().parents[4]
 (root / 'docs.local/human-confirm-gate').mkdir(parents=True, exist_ok=True)
 gate = Path('skills/golem-powers/human-confirm-gate')
 mutations = [
+ ('mutable-bindings-disabled', 'commands.py', "if any(positions[i] and t in ('eval', 'source', '.', 'read', 'unset', 'export', 'declare', 'typeset', 'local', 'let', 'trap') for i, t in enumerate(tokens[:limit])):", "if False:"),
+ ('issuer-public-key-disabled', '@issuer', "if not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\\s]+ [A-Za-z0-9+/=]+', key.read_text()):", "if False:"),
+ ('issuer-scope-disabled', '@issuer', "if not ops or any(op['class'] != args.action or not matches(op) for op in ops):", "if False:"),
+ ('scope-resolution-disabled', 'commands.py', "if any(t in ('(', '&', '|', 'if', 'for', 'while', 'case') for t in tokens):", "if False:"),
+ ('issuer-agent-detection-disabled', '@issuer', "    owner_terminal()", "    pass"),
+ ('assignment-resolution-disabled', 'commands.py', "word = resolve_word(word, current)", "word = word"),
+ ('xargs-disabled', 'commands.py', "if base == 'xargs' and any(os.path.basename(a) in ('git', 'gh', 'sh', 'bash', 'zsh') for a in args):", "if False:"),
  ('consumption-expiry-disabled', 'tokens.py', "if time.time() >= token['expires_at']:", "if False:"),
  ('redirect-disabled', 'commands.py', "if base in ('git', 'gh') and tokens[j] in ('>', '>>', '<', '<<', '<<<'):", "if False:"),
  ('classifier-disabled', 'commands.py', "    result = []\n", "    return []\n    result = []\n"),
@@ -39,8 +46,9 @@ for name, file, old, new in mutations:
         shutil.copytree(root / 'skills/golem-powers/_shared', scratch / 'skills/golem-powers/_shared', ignore=shutil.ignore_patterns('__pycache__'))
         (scratch / 'scripts/hooks').mkdir(parents=True)
         shutil.copy(root / 'scripts/hooks/fail-open.py', scratch / 'scripts/hooks/fail-open.py')
+        shutil.copy(root / 'scripts/golems-confirm', scratch / 'scripts/golems-confirm')
         (scratch / 'docs.local/human-confirm-gate').mkdir(parents=True)
-        target = scratch / gate / 'hooks' / file
+        target = scratch / 'scripts/golems-confirm' if file == '@issuer' else scratch / gate / 'hooks' / file
         text = target.read_text()
         assert old in text, name
         target.write_text(text.replace(old, new, 1))

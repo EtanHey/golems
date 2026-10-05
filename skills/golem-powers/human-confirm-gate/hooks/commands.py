@@ -77,23 +77,55 @@ def push_operation(args, repo):
                  repo=repo, refs=refs, remote=positional[0] if positional else '')]
 
 
-def operations(command, cwd, alias_lookup=configured_alias, depth=0):
+_VAR = re.compile(r'\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))')
+
+
+def resolve_word(word, bindings):
+    def replace(match):
+        value = bindings.get(match[1] or match[2])
+        return value if value is not None and not any(c.isspace() for c in value) else match[0]
+    return _VAR.sub(replace, word)
+
+
+def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
+    values = dict(initial)
+    if any(t in ('(', '&', '|', 'if', 'for', 'while', 'case') for t in tokens):
+        return {}  # Parent bindings are uncertain across control/subshell scope.
+    if any(positions[i] and t in ('eval', 'source', '.', 'read', 'unset', 'export', 'declare', 'typeset', 'local', 'let', 'trap') for i, t in enumerate(tokens[:limit])):
+        return {}  # These builtins can invalidate earlier literal assignments.
+    for i, word in enumerate(tokens[:limit]):
+        match = shell._ASSIGNMENT_RE.match(word)
+        if scopes[i] == target and positions[i] and match and not match['subscript'] and not match['append']:
+            name, value = word.split('=', 1)
+            value = resolve_word(value, values)
+            values[name] = value if '$' not in value and '`' not in value else None
+    return values
+
+
+def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None):
     if depth > 8 or shell.policy_command_size_reason(command):
         raise ValueError('command inspection budget exceeded')
     if shell.executable_shell_structure_has_open_state(command):
         raise ValueError('unparseable shell input')
     tokens, positions, segments, scopes = shell._parse_bash(command)
+    bindings = dict(bindings or {})
+    if shell._UNRESOLVED_EVAL_MARKER in tokens:
+        raise ValueError('unresolved eval payload')
     result = []
     nested = shell._shell_command_payloads(tokens, positions, segments)
     nested += [(body, seg, idx) for body, seg, idx, _ in shell._executable_subcommands(command)]
     nested += shell._invoked_alias_bodies(command)
-    for body, _, _ in nested:
-        result += operations(body, cwd, alias_lookup, depth + 1)
+    for body, segment, _ in nested:
+        limit = max((i + 1 for i, seg in enumerate(segments) if seg <= segment), default=0)
+        child_bindings = assigned_bindings(tokens, positions, limit, bindings, scopes)
+        result += operations(body, cwd, alias_lookup, depth + 1, child_bindings)
     for i, word in enumerate(tokens):
         if not positions[i]:
             continue
+        current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
+        word = resolve_word(word, current)
         base = os.path.basename(word)
-        if ('$' in word or '`' in word) and any('push' in t for t in tokens) and any('--force' in t or t == '-f' for t in tokens):
+        if ('$' in word or '`' in word) and any('push' in t for t in tokens):
             raise ValueError('dynamic executable with force-push markers')
         args = []
         for j in range(i + 1, len(tokens)):
@@ -101,7 +133,11 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0):
                 raise ValueError('interleaved redirection obscures command arguments; split the command')
             if segments[j] != segments[i] or scopes[j] != scopes[i] or tokens[j] in (';', '&', '|', ')', '}$'):
                 break
-            args.append(tokens[j])
+            args.append(resolve_word(tokens[j], current))
+        if base == 'eval' and any('$' in a or '`' in a for a in args):
+            raise ValueError('unresolved eval payload; use a literal command')
+        if base == 'xargs' and any(os.path.basename(a) in ('git', 'gh', 'sh', 'bash', 'zsh') for a in args):
+            raise ValueError('xargs supplies unresolved arguments; use a literal command')
         if base == 'env' and any(a == '-S' or a.startswith('--split-string') for a in args):
             raise ValueError('env split-string is opaque; use an explicit command')
         if base == 'cd':
@@ -120,7 +156,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0):
             alias = aliases.get(sub) or alias_lookup(repo, sub)
             if alias:
                 body = alias[1:] if alias.startswith('!') else 'git ' + alias
-                result += operations('cd ' + shlex.quote(repo) + '; ' + body + ' ' + shlex.join(tail), repo, alias_lookup, depth + 1)
+                result += operations('cd ' + shlex.quote(repo) + '; ' + body + ' ' + shlex.join(tail), repo, alias_lookup, depth + 1, current)
             elif sub == 'push':
                 # Replacement refs can survive in a later tool call. Their push
                 # requires confirmation even without an explicit force flag.
