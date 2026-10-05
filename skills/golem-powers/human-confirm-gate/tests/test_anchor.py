@@ -344,11 +344,38 @@ class Platform(unittest.TestCase):
 
     def test_hook_imports_put_the_stdlib_first_and_never_read_tree_bytecode(self):
         hook = ROOT / 'hooks/human-confirm-pretooluse.py'
-        probe = ('import runpy, sys, json; g = runpy.run_path(%r);' % str(hook) +
+        here, shared = os.path.realpath(ROOT / 'hooks'), os.path.realpath(ROOT.parent / '_shared')
+        # Start with the tree FIRST, as `python3 hook.py` or a launcher would leave it.
+        probe = ('import runpy, sys, json; sys.path[:0] = [%r, %r]; g = runpy.run_path(%r);' % (here, shared, str(hook)) +
                  'here = g["HERE"]; std = next(i for i, p in enumerate(sys.path) if p.endswith("lib-dynload") or "/lib/python3" in p);'
                  'print(json.dumps([sys.path.index(here) > std, sys.dont_write_bytecode, sys.pycache_prefix]))')
         out = subprocess.run(['python3', '-I', '-c', probe], capture_output=True, text=True, check=True).stdout
         self.assertEqual(json.loads(out), [True, True, '/dev/null/golems-human-confirm'])
+
+    def test_compiled_file_beside_the_sources_denies_every_call(self):
+        import tempfile, shutil
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as tmp:
+            live = Path(tmp) / 'skills/golem-powers'
+            shutil.copytree(ROOT / 'hooks', live / 'human-confirm-gate/hooks', ignore=shutil.ignore_patterns('__pycache__'))
+            (live / '_shared').symlink_to(ROOT.parent / '_shared')
+            hook = live / 'human-confirm-gate/hooks/human-confirm-pretooluse.py'
+            payload = json.dumps(dict(tool_name='Bash', cwd=tmp, session_id='s', tool_input=dict(command='ls')))
+            run = lambda: subprocess.run(['python3', '-I', '-B', str(hook)], input=payload, text=True,
+                                         capture_output=True, env=dict(os.environ, HOME=tmp)).returncode
+            self.assertEqual(run(), 0)
+            (hook.parent / 'extra.pyc').write_bytes(b'')  # any compiled module, whatever its name
+            self.assertEqual(run(), 2)
+
+    def test_launcher_preloads_runpy_lazy_imports_before_any_hook_dir_joins(self):
+        launcher = ROOT.parents[2] / 'scripts/hooks/fail-open.py'
+        probe = ('import importlib.util, sys; before = [m in sys.modules for m in ("pkgutil", "warnings")];'
+                 'spec = importlib.util.spec_from_file_location("launcher", %r);' % str(launcher) +
+                 'mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod);'
+                 'print([before, [m in sys.modules for m in ("pkgutil", "warnings")]])')
+        out = subprocess.run(['python3', '-I', '-S', '-c', probe], capture_output=True, text=True, check=True).stdout
+        # Loading the launcher (before main() touches sys.path) already holds runpy's lazy imports.
+        self.assertEqual(out.strip(), '[[False, False], [True, True]]')
 
     def test_stray_importables_flag_compiled_modules_links_and_shadow_packages(self):
         import tempfile, runpy, sys
