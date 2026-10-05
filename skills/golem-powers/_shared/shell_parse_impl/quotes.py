@@ -29,12 +29,12 @@ def shell_code(source, reading):
 
 
 @contextmanager
-def shell_code_reading(source, shell=None):
+def shell_code_reading(source, shell=None, level_key=None):
     selected = shell if shell is not None else getattr(source, "reading", None)
     if selected == "both":
         with ansi_c_reading(None):
             readings = ansi_c_readings(source)
-        key = (_reading.get(), str(source))
+        key = level_key if level_key is not None else (_reading.get(), str(source))
         choices = _level_choices.get()
         selected = choices.get(key) if choices is not None else (_reading.get() or readings[0])
         if selected is None:

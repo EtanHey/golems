@@ -13,7 +13,7 @@ from .heredocs import _mask_heredoc_body_lines
 from .positions import _parse_bash, _segment_for_offset
 from .substitutions import _executable_subcommands
 from .tokens import _FUNCTION_LOOKUP_SUPPRESSORS
-from .quotes import shell_code, shell_code_reading
+from .quotes import shell_code, shell_code_reading, _reading
 
 
 def _emit_substitutions(command, expansion_state, unit, function_state_at):
@@ -137,13 +137,18 @@ def _emit_eval(command, expansion_state, unit, function_state_at,
             continue
         eval_source, eval_variables, bodies, expanded_bodies = payload
         eval_outer_segment = _segment_for_offset(command, offset) + seg_of[i]
-        with shell_code_reading(eval_source, "both") as reading:
-            eval_source = _eval_payloads.resolve_eval_source(
-                eval_source,
-                eval_variables,
-                enabled=enabled,
-                expansion_state=expansion_state,
-            )
+        level_key = ("eval", _reading.get(), str(command), offset, i)
+        eval_source = _eval_payloads.resolve_eval_source(
+            eval_source, eval_variables, enabled=False,
+            expansion_state=expansion_state,
+        )
+        # Materialization can introduce syntax that was absent from the argument.
+        # Both stages share one level choice, so replay also re-expands aliases
+        # under the mode selected from the final executable source.
+        with shell_code_reading(eval_source, "both", level_key):
+            if enabled:
+                eval_source = _function_expansion.expand_alias_commands(expansion_state, eval_source)
+        with shell_code_reading(eval_source, "both", level_key) as reading:
             eval_source = shell_code(eval_source, reading)
             invoked.append(
                 (
