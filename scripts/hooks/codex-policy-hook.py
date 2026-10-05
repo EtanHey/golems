@@ -95,6 +95,11 @@ def desynced_patch_head(command):
     end = len(lines) - 2
     while end >= 0 and not lines[end].strip():
         end -= 1
+    # Codex's lenient parser also unwraps a literal EOF heredoc in the body.
+    wrapped = (end > 0 and lines[end].rstrip().endswith("EOF")
+               and lines[end - 1].strip() == "*** End Patch")
+    if wrapped:
+        end -= 1
     if end < 0 or lines[end].strip() != "*** End Patch":
         return False
     name = re.search(r"\bapply_?patch\b", command)
@@ -104,8 +109,12 @@ def desynced_patch_head(command):
     # The caller enforces the shared 32 KiB limit; candidate count also bounds
     # delimiter decoding when quoted data contains many apparent operators.
     offset, previous, checked = 0, None, 0
-    for line in lines[:end]:
-        if line.strip() == "*** Begin Patch" and previous is not None:
+    for index, line in enumerate(lines[:end]):
+        start = line.strip() == "*** Begin Patch"
+        if wrapped:
+            start = (line.lstrip().rstrip("\r") in ("<<EOF", "<<'EOF'", '<<"EOF"')
+                     and lines[index + 1].strip() == "*** Begin Patch")
+        if start and previous is not None:
             head_offset, head = previous
             for op in re.finditer(r"(?<!<)<<-?(?!<)[ \t]*", head):
                 if name.start() >= head_offset + op.start():

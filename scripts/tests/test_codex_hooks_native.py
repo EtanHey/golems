@@ -59,6 +59,15 @@ class NativeHooksTests(unittest.TestCase):
             (workspace / "sub").mkdir(); (workspace / "s b").mkdir()
             for name, command in desynced_patch_cases(str(tempdir / "shape-leak.md")).items():
                 commands.append(command.replace("shape-leak.md", name + ".md"))
+            # Optional private regression catalogue; public code carries no new
+            # working bypass spelling while the shared tokenizer fix is pending.
+            private_cases = os.environ.get("CODEX_NATIVE_PRIVATE_CASES")
+            if private_cases:
+                cases = json.loads(Path(private_cases).read_text())
+                self.assertIsInstance(cases, dict)
+                for command in cases.values():
+                    self.assertIsInstance(command, str)
+                    commands.append(command.replace("__TEMP_CLASS__", str(tempdir)))
             patches = [
                 "*** Begin Patch\n  *** Add File: .env\n+SYNTHETIC=x\n*** End Patch\n",
                 "*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\n",
