@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>CHECK_INTERVAL</key>
+		<string>60</string>
+		<key>HOME</key>
+		<string>@HOME@</string>
+		<key>LIVE_RECORDING_GRACE</key>
+		<string>420</string>
+		<key>PATH</key>
+		<string>@HOME@/.bun/bin:/Library/Frameworks/Python.framework/Versions/3.13/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>STALL_SECONDS</key>
+		<string>180</string>
+	</dict>
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>Label</key>
+	<string>com.golems.stalker-live-guard</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>@GOLEMS_ROOT@/scripts/stalker/stalker-live-guard.sh</string>
+		<string>theo</string>
+		<string>best</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>@GOLEMS_ROOT@/docs.local/stalker-golem/live-guard-launchd.err</string>
+	<key>StandardOutPath</key>
+	<string>@GOLEMS_ROOT@/docs.local/stalker-golem/live-guard-launchd.log</string>
+	<key>WorkingDirectory</key>
+	<string>@GOLEMS_ROOT@</string>
+</dict>
+</plist>
