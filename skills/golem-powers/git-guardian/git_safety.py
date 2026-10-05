@@ -135,12 +135,12 @@ def _expand_known_vars(value: str, variables: dict[str, str]) -> tuple[str, bool
 def _literal_tail_after_unresolved_var(target: str, variables: dict[str, str]) -> bool:
     return _paths._literal_tail_after_unresolved_var(target, variables, _SHELL_VAR_RE)
 
-def _rm_target_reason(target: str, cwd: str, variables: dict[str, str], protected_cwd: str | None = None, *, protected_only: bool = False) -> str | None:
+def _rm_target_reason(target: str, cwd: str, variables: dict[str, str], protected_cwd: str | None = None, *, protected_only: bool = False, follow_symlinks: bool = False) -> str | None:
     return _paths._rm_target_reason(
         target, cwd, variables, expand_known_vars_fn=_expand_known_vars,
         literal_tail_fn=_literal_tail_after_unresolved_var, outermost_repo_root_fn=_outermost_repo_root,
         gitfile_owner_fn=_gitfile_owner, within_fn=_within, is_harness_scratchpad_fn=is_harness_scratchpad,
-        protected_cwd=protected_cwd, protected_only=protected_only,
+        protected_cwd=protected_cwd, protected_only=protected_only, follow_symlinks=follow_symlinks,
     )
 
 def _rm_reason_in_words(

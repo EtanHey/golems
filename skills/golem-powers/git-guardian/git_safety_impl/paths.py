@@ -225,6 +225,7 @@ def _rm_target_reason(
     gitfile_owner_fn, within_fn, is_harness_scratchpad_fn,
     protected_cwd: str | None = None,
     protected_only: bool = False,
+    follow_symlinks: bool = False,
 ) -> str | None:
     literal_parts = [part for part in target.split(os.sep) if part]
     if ".." in literal_parts and not protected_only:
@@ -255,8 +256,9 @@ def _rm_target_reason(
     # initial/current checkout. Resolve aliases for identity and bound descendant
     # probing to the container; keep the nested-fixture breadth boundary.
     physical = os.path.realpath(resolved)
-    # Without a trailing slash, rm removes the link itself.
-    follows_target = not complete or not os.path.islink(resolved) or prefix.endswith(("/", "/."))
+    # rm/default find unlink the link itself; directory-traversing tools must
+    # evaluate its physical target even without a trailing slash.
+    follows_target = follow_symlinks or not complete or not os.path.islink(resolved) or prefix.endswith(("/", "/."))
     if follows_target:
         reason = _protected_root_reason(
             resolved, physical, home, cwd, protected_cwd, within_fn=within_fn,

@@ -81,6 +81,21 @@ def _without_redirections(source: str) -> str:
     return "".join(result)
 
 
+def _created_target_reason(api, target, cwd, variables, _created_paths):
+    """A future filesystem operand cannot be trusted from today's realpath."""
+    if not _created_paths:
+        return None
+    expanded, complete = api["_expand_known_vars"](target, variables)
+    expanded, tilde_complete = _expand_tilde(expanded, variables)
+    resolved = os.path.abspath(os.path.join(cwd, expanded)) if complete and tilde_complete and cwd else None
+    if _created_paths and (resolved is None or any(
+        path is None or api["_within"](resolved, path) or api["_within"](path, resolved)
+        for path in _created_paths
+    )):
+        return "deletion target affected by earlier path creation cannot be evaluated safely"
+    return None
+
+
 def _rm_reason_in_words(
     api: dict,
     words: list[str],
@@ -264,13 +279,20 @@ def _rm_reason_in_words(
             return None
         if "-delete" in words[position + 1:]:
             start = position + 1
+            follow_symlinks = False
             while start < len(words) and words[start] in {"-H", "-L", "-P", "--"}:
+                if words[start] != "--":
+                    follow_symlinks = words[start] in {"-H", "-L"}
                 start += 1
+            follow_symlinks |= "-follow" in words[start:]
             roots = []
             while start < len(words) and not words[start].startswith("-") and words[start] not in {"!", "("}:
                 roots.append(words[start]); start += 1
             for target in roots or ["."]:
-                reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd)
+                reason = _created_target_reason(api, target, cwd, argument_variables, _created_paths)
+                if reason:
+                    return reason
+                reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd, follow_symlinks=follow_symlinks)
                 if reason:
                     return reason
         for index in range(position + 1, len(words)):
@@ -372,7 +394,10 @@ def _rm_reason_in_words(
         destination = words[-1]
         if re.match(r"^[^/]+:", destination):
             return None  # remote filesystems are outside this local boundary
-        return api["_rm_target_reason"](destination, cwd, argument_variables, protected_cwd)
+        reason = _created_target_reason(api, destination, cwd, argument_variables, _created_paths)
+        if reason:
+            return reason
+        return api["_rm_target_reason"](destination, cwd, argument_variables, protected_cwd, follow_symlinks=True)
 
     if command_name != "rm":
         return None
@@ -388,14 +413,9 @@ def _rm_reason_in_words(
     if dynamic_input:
         return "rm target supplied dynamically by xargs"
     for target in targets:
-        expanded, complete = api["_expand_known_vars"](target, argument_variables)
-        expanded, tilde_complete = _expand_tilde(expanded, argument_variables)
-        resolved = os.path.abspath(os.path.join(cwd, expanded)) if complete and tilde_complete and cwd else None
-        if _created_paths and (resolved is None or any(
-            path is None or api["_within"](resolved, path) or api["_within"](path, resolved)
-            for path in _created_paths
-        )):
-            return "rm target affected by earlier path creation cannot be evaluated safely"
+        reason = _created_target_reason(api, target, cwd, argument_variables, _created_paths)
+        if reason:
+            return reason
         reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd)
         if reason:
             return reason

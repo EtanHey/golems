@@ -136,7 +136,10 @@ errors fail closed. The initial checkout stays protected after `cd`; `~`, `~+`
 and `~-` use tracked HOME/cwd/oldpwd, and other tilde prefixes fail closed.
 
 The same target policy covers `find -delete` roots and local `rsync --delete*`
-destinations. Moving protected roots is denied; deleting a path affected by an
+destinations. Find follows its selected `-H`/`-L`/`-follow` policy (last
+`-P` overrides earlier flags); local rsync destinations are evaluated physically.
+Both also fail closed for targets affected by earlier path creation.
+Moving protected roots is denied; deleting a path affected by an
 earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
 itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
 An exact in-repo `find . -name __pycache__ -type d -prune -exec rm -r {} +`

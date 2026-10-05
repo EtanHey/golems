@@ -378,3 +378,50 @@ def test_r2_scan_parser_regressions(workspace, command):
 def test_r2_scan_redirection_cleanup_controls(workspace, command):
     home, repo, _, _ = workspace
     assert guardian.dangerous_shell_reason(command, cwd=str(repo)) is None
+
+
+@pytest.mark.parametrize('command', [
+    'find -L ~/Downloads/g -delete',
+    'find -H ~/Downloads/g -delete',
+    'find ~/Downloads/g -follow -delete',
+    'rsync -a --delete ~/Downloads/scratch/ ~/Downloads/g',
+])
+def test_r2_followed_delete_alias(workspace, command):
+    home, repo, _, _ = workspace
+    (home / 'Downloads/g').symlink_to(home / 'Gits', target_is_directory=True)
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo))
+    env = {key: value for key, value in os.environ.items()
+           if key not in {'CLAUDE_WORKER', 'AUTONOMOUS', 'GIT_GUARDIAN_LIB'}}
+    env.update(HOME=str(home), GIT_GUARDIAN_LIB=str(SKILL))
+    result = subprocess.run([sys.executable, str(ROOT / 'scripts/hooks/fail-open.py'),
+                             str(SKILL / 'hooks/pre_tool_use.py')],
+        cwd=repo, env=env, text=True, capture_output=True,
+        input=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': command},
+                          'session_id': 'synthetic-501-followed-alias'}))
+    assert result.returncode == 2, (command, result.stdout, result.stderr)
+    assert result.stderr == ''
+    assert json.loads(result.stdout)['decision'] == 'block'
+    assert (repo / '.git').is_dir()
+
+
+@pytest.mark.parametrize('command', [
+    'rm -rf ~/Downloads/g', 'find ~/Downloads/g -delete',
+    'find -P ~/Downloads/g -delete', 'find -L -P ~/Downloads/g -delete',
+    'find -L ~/Downloads/s -delete',
+    'rsync -a --delete ~/Downloads/scratch/ ~/Downloads/s',
+])
+def test_r2_delete_alias_controls(workspace, command):
+    home, repo, _, scratch = workspace
+    (home / 'Downloads/g').symlink_to(home / 'Gits', target_is_directory=True)
+    (home / 'Downloads/s').symlink_to(scratch, target_is_directory=True)
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo)) is None
+
+
+@pytest.mark.parametrize('command', [
+    'ln -s ~/Gits ~/Downloads/new && find -L ~/Downloads/new -delete',
+    'ln -s ~/Gits ~/Downloads/new && rsync -a --delete ~/Downloads/scratch/ ~/Downloads/new',
+])
+def test_r2_created_alias_delete_tools(workspace, command):
+    home, repo, _, _ = workspace
+    assert not (home / 'Downloads/new').exists()
+    assert guardian.dangerous_shell_reason(command, cwd=str(repo))
