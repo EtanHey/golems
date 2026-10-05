@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
+import fnmatch
 
 from . import shell_parse
 from .paths import _expand_tilde
@@ -124,7 +125,7 @@ def _rsync_destination(words, position):
         "--list-only", "--ignore-times", "--size-only", "--update", "--ignore-existing",
         "--existing", "--ignore-non-existing", "--ignore-missing-args", "--force",
         "--delay-updates", "--partial", "--prune-empty-dirs", "--protect-args",
-        "--secluded-args", "--old-args", "--from0", "--copy-unsafe-links",
+        "--secluded-args", "--old-args", "--from0", "--copy-unsafe-links", "--del",
     }
     operands = []
     index = position + 1
@@ -154,6 +155,112 @@ def _rsync_destination(words, position):
                 return None
             index += 1
     return operands[-1] if operands else None
+
+
+def _find_deletion_roots(args):
+    """BSD/bfs roots anywhere, excluding values and nested command operands."""
+    values = {
+        '-name', '-iname', '-path', '-ipath', '-regex', '-iregex', '-type', '-xtype',
+        '-mindepth', '-maxdepth', '-mtime', '-mmin', '-atime', '-amin', '-ctime', '-cmin',
+        '-newer', '-anewer', '-cnewer', '-samefile', '-size', '-links', '-inum', '-perm',
+        '-user', '-group', '-uid', '-gid', '-fstype', '-lname', '-ilname', '-flags',
+        '-D', '-S', '-printf', '-fprint', '-fprint0', '-fls', '-regextype',
+    }
+    flags = {'-H', '-L', '-P', '-E', '-X', '-d', '-s', '-x', '-depth', '-mount',
+             '-xdev', '-follow', '-empty', '-print', '-print0', '-printx', '-ls', '-prune',
+             '-true', '-false', '-quit', '-noleaf', '-daystart', '-ignore_readdir_race',
+             '-noignore_readdir_race', '-readable', '-writable', '-executable', '-nouser', '-nogroup'}
+    roots, branches, filters = [], [], []
+    follow = negated = grouped = False
+    mindepth = 0
+    index = 0
+    while index < len(args):
+        word = args[index]
+        if word in {'-exec', '-execdir', '-ok', '-okdir'}:
+            index += 1
+            while index < len(args) and args[index] not in {';', '+'}:
+                index += 1
+            if index == len(args):
+                return None
+        elif word == '-delete':
+            branches.append((list(filters), negated))
+        elif word in {'-o', '-or', ','}:
+            filters = []; negated = False
+        elif word in {'!', '-not'}:
+            negated = True
+        elif word in {'(', ')'}:
+            grouped = True
+        elif word in {'-a', '-and', '--'}:
+            pass
+        elif word == '-f' or word in values or word == '-fprintf' or re.fullmatch(r'-newer[acmBt][acmBt]', word):
+            count = 2 if word == '-fprintf' else 1
+            if index + count >= len(args):
+                return None
+            value = args[index + 1]
+            if word == '-f':
+                roots.append(value)
+            elif word in {'-name', '-iname', '-path', '-ipath', '-regex', '-iregex'}:
+                filters.append((word, value))
+            elif word == '-mtime':
+                filters.append((word, value))
+            elif word == '-mindepth':
+                try:
+                    mindepth = int(value)
+                except ValueError:
+                    return None
+            index += count
+        elif word in flags or re.fullmatch(r'-O[0-9]+', word):
+            if word in {'-H', '-L', '-P'}:
+                follow = word != '-P'
+            elif word == '-follow':
+                follow = True
+        elif word.startswith('-'):
+            return None  # unknown primary cannot silently consume a protected root
+        else:
+            roots.append(word)
+        index += 1
+    return roots or ['.'], follow, branches, mindepth, grouped
+
+
+def _selective_find_filter(option, pattern):
+    """A filename class needs literal content beyond wildcard punctuation."""
+    if option not in {'-name', '-iname', '-path', '-ipath'}:
+        return False  # find regex dialects are not Python regex semantics
+    tail = re.sub(r'\[[^\]]*\]', '', os.path.basename(pattern))
+    return any(char.isalnum() or char == '_' for char in tail)
+
+
+def _find_root_filtered(target, branches, mindepth, grouped):
+    """Skip breadth only when every deletion branch excludes its starting root."""
+    if grouped or not branches:
+        return False
+    if mindepth > 0 and all(not negated and any(
+            option == '-mtime' and re.fullmatch(r'\+[0-9]+', pattern)
+            and int(pattern[1:]) > 0 for option, pattern in filters)
+            for filters, negated in branches):
+        return True  # aged entries below the root; never waives the repo root
+    for filters, negated in branches:
+        if negated or not filters:
+            return False
+        excludes_root = False
+        for option, pattern in filters:
+            if not _selective_find_filter(option, pattern):
+                continue
+            # A universal path tail merely excludes the starting '.' spelling;
+            # it can still select every descendant, including the repo metadata.
+            if option in {'-path', '-ipath'} and fnmatch.fnmatchcase('.', os.path.basename(pattern)):
+                continue
+            value = os.path.basename(target.rstrip('/')) if option in {'-name', '-iname'} else target.rstrip('/')
+            if option in {'-iname', '-ipath', '-iregex'}:
+                value, pattern = value.casefold(), pattern.casefold()
+            try:
+                matches = bool(re.fullmatch(pattern, value)) if 'regex' in option else fnmatch.fnmatchcase(value, pattern)
+            except re.error:
+                return False
+            excludes_root |= not matches
+        if not excludes_root:
+            return False
+    return True
 
 
 def _rm_reason_in_words(
@@ -338,21 +445,20 @@ def _rm_reason_in_words(
                 and args[9:] == ["{}", "+"] and api["_outermost_repo_root"](cwd)):
             return None
         if "-delete" in words[position + 1:]:
-            start = position + 1
-            follow_symlinks = False
-            while start < len(words) and words[start] in {"-H", "-L", "-P", "--"}:
-                if words[start] != "--":
-                    follow_symlinks = words[start] in {"-H", "-L"}
-                start += 1
-            follow_symlinks |= "-follow" in words[start:]
-            roots = []
-            while start < len(words) and not words[start].startswith("-") and words[start] not in {"!", "("}:
-                roots.append(words[start]); start += 1
-            for target in roots or ["."]:
+            parsed = _find_deletion_roots(words[position + 1:])
+            if parsed is None:
+                return "find deletion roots cannot be parsed safely"
+            roots, follow_symlinks, branches, mindepth, grouped = parsed
+            for target in roots if branches else []:
                 reason = _created_target_reason(api, target, cwd, argument_variables, _created_paths)
                 if reason:
                     return reason
-                reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd, follow_symlinks=follow_symlinks)
+                filtered = _find_root_filtered(target, branches, mindepth, grouped)
+                reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd,
+                    follow_symlinks=follow_symlinks, protected_only=filtered,
+                    filtered_find=filtered and all(not negated and any(
+                        _selective_find_filter(option, pattern) for option, pattern in filters)
+                        for filters, negated in branches))
                 if reason:
                     return reason
         for index in range(position + 1, len(words)):
@@ -450,7 +556,7 @@ def _rm_reason_in_words(
             _created_paths.append(destination)
         return None
 
-    if command_name == "rsync" and any(word.startswith("--delete") for word in words[position + 1:]):
+    if command_name == "rsync" and any(word == "--del" or word.startswith("--delete") for word in words[position + 1:]):
         destination = _rsync_destination(words, position)
         if destination is None:
             return "rsync deletion destination cannot be parsed safely"

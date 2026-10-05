@@ -128,19 +128,28 @@ instead of re-deriving the rules as prose:
 | `dangerous_shell_reason(command, cwd, env)` | Combined hook-facing F8 verdict for rm breadth and destructive command patterns. |
 
 #501 denies recursive `rm` (with or without force) of `~/Gits`, ancestors
-of the active checkout, direct children of `$HOME`, and the first level of
+of the active checkout, direct child directories of `$HOME`, and directory entries at the first level of
 `~/.claude`, `~/.codex`, `~/.cmux`, `~/.config`, `~/.ssh` and `~/Library`.
-Home/config spelling is case-folded. Inside `~/Gits`, targets outside a checkout
+Existing paths use filesystem identity (including case and volume aliases);
+unavailable identity falls back to case-folded physical spelling. Known regular
+files remain eligible for cleanup and atomic moves. Inside `~/Gits`, targets outside a checkout
 are probed for `.git` at depth at most 3 with a 5,000-entry cap; cap or filesystem
 errors fail closed. The initial checkout stays protected after `cd`; `~`, `~+`
 and `~-` use tracked HOME/cwd/oldpwd, and other tilde prefixes fail closed.
 
-The same target policy covers `find -delete` roots and local `rsync --delete*`
+The same target policy covers `find -delete` roots and local `rsync --delete*`/`--del`
 destinations. Find follows its selected `-H`/`-L`/`-follow` policy (last
 `-P` overrides earlier flags); local rsync destinations are evaluated physically.
 Both also fail closed for targets affected by earlier path creation. Rsync
 option values are separated from operands; unknown trailing long options fail
 closed when the destination becomes ambiguous.
+Find collects BSD/bfs root operands throughout the expression, separating primary
+values and nested command operands; unknown primaries fail closed. Selective
+in-repo filters can permit cleanup while retaining home/config/container and
+active-ancestor protections. Unfiltered, broad, negated or ambiguous branches
+retain breadth checks. Regex dialects and wildcard-only filename classes do
+not qualify for a breadth exemption. Positive age filters below a top-level
+directory retain the repo-root boundary.
 Moving protected roots is denied; deleting a path affected by an
 earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
 itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
