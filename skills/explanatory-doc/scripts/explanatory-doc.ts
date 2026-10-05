@@ -11,9 +11,9 @@
  * Q&A cards, tables with pos/neg styling. NOT freelancing branding.
  *
  * Usage:
- *   bun scripts/explanatory-doc.ts <input.json>              # Output to stdout
- *   bun scripts/explanatory-doc.ts <input.json> <output.html> # Write to file
- *   cat input.json | bun scripts/explanatory-doc.ts -         # Read from stdin
+ *   bun skills/explanatory-doc/scripts/explanatory-doc.ts <input.json>              # Output to stdout
+ *   bun skills/explanatory-doc/scripts/explanatory-doc.ts <input.json> <output.html> # Write to file
+ *   cat input.json | bun skills/explanatory-doc/scripts/explanatory-doc.ts -         # Read from stdin
  *
  * JSON Schema:
  *   {
@@ -576,9 +576,9 @@ async function main() {
 
   if (!inputPath) {
     console.error(
-      "Usage: bun scripts/explanatory-doc.ts <input.json> [output.html]",
+      "Usage: bun skills/explanatory-doc/scripts/explanatory-doc.ts <input.json> [output.html]",
     );
-    console.error("       cat input.json | bun scripts/explanatory-doc.ts -");
+    console.error("       cat input.json | bun skills/explanatory-doc/scripts/explanatory-doc.ts -");
     process.exit(1);
   }
 
