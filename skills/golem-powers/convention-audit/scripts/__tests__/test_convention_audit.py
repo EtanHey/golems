@@ -28,6 +28,8 @@ def load_runner():
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
+    # Historical transport/characterization fixtures explicitly inject their recorded pin.
+    module._model = lambda: "gpt-5.6-luna"
     return module
 
 
@@ -208,7 +210,7 @@ class RunnerContractTest(unittest.TestCase):
                     else:
                         payload = {"worker": worker, "findings": []}
                     output_path.write_text(json.dumps(payload))
-                    print("model: gpt-5.6-luna")
+                    print("model: " + sys.argv[sys.argv.index("-m") + 1])
                     print("reasoning effort: max")
                     if "--json" in sys.argv:
                         print(json.dumps({"type": "turn.completed", "usage": {"input_tokens": 3, "output_tokens": 2}}))
@@ -270,7 +272,7 @@ class RunnerContractTest(unittest.TestCase):
                         print("intentional analysis failure", file=sys.stderr)
                         raise SystemExit(9)
                     output_path.write_text(json.dumps({"worker": worker, "findings": []}))
-                    print("model: gpt-5.6-luna")
+                    print("model: " + sys.argv[sys.argv.index("-m") + 1])
                     print("reasoning effort: max")
                     if "--json" in sys.argv:
                         print(json.dumps({"type": "turn.completed", "usage": {"input_tokens": 3, "output_tokens": 2}}))
@@ -334,7 +336,7 @@ class RunnerContractTest(unittest.TestCase):
                     match = re.search(r'Set worker to ("[^"]+")', prompt)
                     worker = json.loads(match.group(1)) if match else "synthesis"
                     output_path.write_text(json.dumps({"worker": worker, "findings": []}))
-                    print("model: gpt-5.6-luna")
+                    print("model: " + sys.argv[sys.argv.index("-m") + 1])
                     print("reasoning effort: max")
                     if "--json" in sys.argv:
                         print(json.dumps({"type": "turn.completed", "usage": {"input_tokens": 3, "output_tokens": 2}}))
@@ -648,7 +650,7 @@ class LiveEvalScoringTest(unittest.TestCase):
 
                     output_path = Path(sys.argv[sys.argv.index("-o") + 1])
                     output_path.write_text(json.dumps({"worker": "synthesis", "findings": []}))
-                    print("model: gpt-5.6-luna")
+                    print("model: " + sys.argv[sys.argv.index("-m") + 1])
                     print("reasoning effort: max")
                     if "--json" in sys.argv:
                         print(json.dumps({"type": "turn.completed", "usage": {"input_tokens": 3, "output_tokens": 2}}))

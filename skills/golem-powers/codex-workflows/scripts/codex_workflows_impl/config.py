@@ -109,7 +109,7 @@ def default_model() -> str:
             capture_output=True, text=True, check=True, timeout=10,
         )
     except (OSError, subprocess.SubprocessError) as error:
-        raise CodexWorkflowError("Cannot resolve stable codex.implement model") from error
+        raise CodexWorkflowError(f"Cannot resolve stable codex.implement model: {getattr(error, 'stderr', '') or error}") from error
     model = result.stdout.strip()
     if not model or "\n" in model:
         raise CodexWorkflowError("Invalid model-role resolver output")

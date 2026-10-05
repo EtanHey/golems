@@ -19,6 +19,8 @@ def load_runner(path=SCRIPTS / "convention_audit.py"):
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
+    # Historical transport/characterization fixtures explicitly inject their recorded pin.
+    module._model = lambda: "gpt-5.6-luna"
     return module
 
 
@@ -96,6 +98,9 @@ def emitted_artifacts(root, completed):
     run = runs[0]
 
     def normalize(raw):
+        # The current role is verified by test_role_default; old byte goldens retain their injected pin.
+        resolved = subprocess.check_output(["node", str(SCRIPTS.parents[3] / "scripts/model-roles.mjs"), "codex.implement", "--stable"]).strip()
+        raw = raw.replace(resolved, b"gpt-5.6-luna")
         raw = raw.replace(str(root).encode(), b"<ROOT>").replace(run.name.encode(), b"repo-<RUN_ID>")
         raw = re.sub(rb'("wall_seconds": )[0-9]+(?:\.[0-9]+)?', rb'\g<1><WALL>', raw)
         raw = re.sub(rb'(?m)^(- Wall-clock: )[0-9]+\.[0-9]+s$', rb'\g<1><WALL>s', raw)

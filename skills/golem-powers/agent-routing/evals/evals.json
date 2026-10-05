@@ -653,22 +653,22 @@
       "id": 24,
       "name": "bounded-mechanical-change",
       "category": "model-effort",
-      "description": "A fully specified mechanical child packet should use the named Luna xhigh agent.",
+      "description": "A fully specified mechanical child packet should use the named packet with the mechanical role.",
       "prompt": "As a child packet spawned from a Sol implementation lane, choose a Codex model and effort for this mission: rename one JSON field in an adapter and update the two existing fixtures. The exact diff shape is specified, a focused regression test already fails, there are no design choices, and rollback is trivial. State the dispatch approach and what the child's turn_context must prove.",
       "expected_effort": "xhigh",
-      "expected_model": "gpt-6-luna",
-      "expected_output": "Use the named packet subagent at Luna xhigh because the outcome is fully specified and a deterministic acceptance test already exists. Hand it the outcome plus the failing test, never a procedure. Verify the child's effective model and effort from its own session JSONL turn_context.",
+      "expected_role": "codex.subagent.mechanical",
+      "expected_output": "Use the named packet subagent at codex.subagent.mechanical with phase-selected effort because the outcome is fully specified and a deterministic acceptance test already exists. Hand it the outcome plus the failing test, never a procedure. Verify the child's effective model and effort from its own session JSONL turn_context.",
       "assertions": [
         {
           "type": "content",
-          "name": "selects-luna-xhigh",
-          "description": "Selects Luna xhigh for the bounded mechanical subagent packet.",
-          "text": "Selects Luna xhigh for the packet"
+          "name": "selects-internal-mechanical-role",
+          "description": "Selects codex.subagent.mechanical for an internal child for the bounded mechanical subagent packet.",
+          "text": "Selects codex.subagent.mechanical for an internal child for the packet"
         },
         {
           "type": "content",
           "name": "outcome-plus-test",
-          "description": "Hands Luna an outcome and deterministic test rather than a procedure.",
+          "description": "Hands packet an outcome and deterministic test rather than a procedure.",
           "text": "Provides an outcome plus deterministic test"
         },
         {

@@ -57,7 +57,7 @@ test('resolver known, unknown, candidate and optional fields', () => {
   const run = (...args) => spawnSync(process.execPath, [join(root, 'scripts/model-roles.mjs'), ...args], { encoding: 'utf8' });
   const known = run('claude.judgment'); assert.equal(known.status, 0); assert.equal(known.stdout, 'claude-opus-5-5\n');
   assert.equal(run('unknown').status, 2);
-  const candidate = run('codex.subagent.mechanical'); assert.equal(candidate.status, 0); assert.match(candidate.stderr, /candidate: bench before use/);
+  const candidate = run('codex.subagent.mechanical'); assert.equal(candidate.status, 2); assert.equal(candidate.stdout, ''); assert.match(candidate.stderr, /unbenched model role/);
   assert.equal(run('claude.subagent.cheap', '--field', 'alias').stdout, 'sonnet\n');
   const rejected = run('codex.implement', '--field', 'effort');
   assert.equal(rejected.status, 2);

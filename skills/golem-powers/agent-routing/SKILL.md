@@ -61,7 +61,9 @@ Roles live in `standards/model-roles.json`. From the golems checkout, resolve wi
 `node scripts/model-roles.mjs <role> --field model|alias|launcher_tier`
 (select one field). Never hardcode a role-owned model name. Generated launcher
 commands must keep the resolver substitution, not today's resolved literal. Read the role's status
-and gate before dispatch: `codex.subagent.mechanical` is a candidate, bench before use.
+and gate before dispatch: `codex.subagent.mechanical` remains a candidate, with Etan’s
+2026-10-04 exception for Codex-internal mechanical children and named `packet` only. Workers
+remain on `codex.implement`; see the model-and-effort reference for the scoped exception.
 The Routing rules (SSOT) section owns dispatch policy and the role config owns current model defaults; older model-selection recipes in the
 references are pending PR 2b migration and cannot override the config.
 Effort is not in the model-roles config; each `/large-plan` phase declares effort + why, and every dispatch passes it explicitly (Codex `-E` / `effort:`).

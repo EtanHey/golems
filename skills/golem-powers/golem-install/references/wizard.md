@@ -170,12 +170,14 @@ bun <golem-install-dir>/scripts/install-codex-config.mjs \
 ```
 
 The installer renders top-level `model`, `[agents].default_subagent_model`, and packet's model
-from `codex.implement` through the model-role resolver. Existing configs change only those two
+through the model-role resolver: parent/recon use `codex.implement`; the default child/packet
+use `codex.subagent.mechanical` under Etan’s 2026-10-04 internal-use exception. Existing configs change only those two
 model keys; every non-model key is preserved, including effort and concurrency. New configs get
 the template defaults. Changed files receive exclusive content-addressed backups before atomic
 replacement; repeating the install with identical content does no writes. Agent files are rendered
 and backed up too. Standalone bundles must include the resolver, its validator, and both role files
-listed in `INSTALL_PROMPT.md`. Never replace the whole user config.
+listed in `INSTALL_PROMPT.md`. Symlinked configs (including dangling links) and BOM-bearing
+configs refuse before writes; the link and target remain untouched. Never replace the whole user config.
 Do not use `bun --check` as a syntax check for this installer: Bun executes the entrypoint. Import it
 through the focused test, or run the installer only when an actual install is intended.
 

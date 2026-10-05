@@ -32,7 +32,7 @@ Full procedure: [references/wizard.md](references/wizard.md); phase checklist:
    reads `release-gate.json` (the only classification): `INSTALL` never clones, `CLONE` only for
    `kind:"none"` on a workspace, `REFUSE` clones nothing. Then
    `bun <golem-install-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`
-   renders the `codex.implement` role into the two model keys, preserving all non-model settings. Then
+   renders the implementation/internal-mechanical roles into the two model keys, preserving all non-model settings. Then
    `bun <golem-install-dir>/scripts/install-cmuxlayer-fleet.mjs` writes cmuxlayer's
    `~/.config/cmuxlayer/fleet.json` (golems coordination/outbox/launcher paths) only if absent;
    add `--with-worktree-bootstrap` only once the installed cmuxlayer supports that key (after #857).

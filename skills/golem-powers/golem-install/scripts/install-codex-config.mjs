@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { chmod, copyFile, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, rename, rm, stat, lstat, readlink, writeFile } from "node:fs/promises";
 import { constants, existsSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const AGENT_FILES = ["recon.toml", "packet.toml"];
 
 // Find the checkout or complete standalone bundle; never substitute a stale literal.
-async function render(sourceDir, text) {
+async function render(sourceDir, text, internalKey) {
   let root = resolve(sourceDir);
   while (!existsSync(join(root, "scripts/model-roles.mjs"))) {
     const parent = dirname(root);
@@ -16,9 +16,11 @@ async function render(sourceDir, text) {
     root = parent;
   }
   const { resolveModelRole } = await import(pathToFileURL(join(root, "scripts/model-roles.mjs")).href);
-  return text.replace(/\{\{([\w.-]+)\}\}/g, (_, role) => {
+  return text.replace(/\{\{([\w.-]+)\}\}/g, (_, role, offset) => {
     // JSON string encoding is also valid inside a TOML basic string.
-    return JSON.stringify(resolveModelRole(role, root)).slice(1, -1);
+    return JSON.stringify(resolveModelRole(role, root, { use: internalKey &&
+      new RegExp(`^\\s*${internalKey}\\s*=\\s*"$`).test(text.slice(text.lastIndexOf("\n", offset) + 1, offset))
+      ? "codex-internal-subagent" : undefined })).slice(1, -1);
   });
 }
 
@@ -48,23 +50,38 @@ export function mergeCodexConfig(existing, fragment) {
   const defaults = Bun.TOML.parse(fragment);
   if (typeof defaults.model !== "string" || typeof defaults.agents?.default_subagent_model !== "string") throw new Error("Missing rendered model defaults");
   if (!existing.trim()) return fragment;
-  const parsed = Bun.TOML.parse(existing);
+  if (existing.startsWith("\uFEFF")) throw new Error("Refusing Codex config with BOM; remove the BOM before installing");
+  Bun.TOML.parse(existing);
   const newline = existing.includes("\r\n") ? "\r\n" : "\n";
-  const edits = []; let section = "root", header = null, rootFound = false, childFound = false;
+  const edits = []; let rootAgents = false, section = "root", header = null, rootFound = false, childFound = false;
   for (const s of statements(existing)) {
     if (/^\s*\[/.test(s.text)) {
       section = /^\s*\[\s*(?:agents|"agents"|'agents')\s*\]\s*(?:#.*)?(?:\r?\n)?$/.test(s.text) ? "agents" : "other";
       if (section === "agents") header = s;
     } else {
+      if (section === "root" && /^\s*(?:agents|"agents"|'agents')\s*[.=]/.test(s.text)) rootAgents = true;
       const key = section === "root" ? "model" : section === "agents" ? "default_subagent_model" : null;
       if (key && new RegExp(`^\\s*(?:${key}|"${key}"|'${key}')\\s*=`).test(s.text)) {
         const value = key === "model" ? defaults.model : defaults.agents.default_subagent_model;
-        edits.push({ start: s.start, end: s.end, text: `${key} = ${JSON.stringify(value)}${s.text.endsWith("\n") ? newline : ""}` });
+        const prefix = s.text.match(/^(\s*(?:[\w-]+|"[^"\n]+"|'[^'\n]+')\s*=\s*)/)[0];
+        const rest = s.text.slice(prefix.length);
+        const quoted = rest[0] === '"' || rest[0] === String.fromCharCode(39);
+        const q = quoted && rest.startsWith(rest[0].repeat(3)) ? rest[0].repeat(3) : rest[0];
+        let end = quoted ? q.length : 0;
+        if (end) {
+          while (end < rest.length) {
+            if (q[0] === '"' && rest[end] === "\\") { end += 2; continue; }
+            if (rest.startsWith(q, end)) { end += q.length; break; }
+            end++;
+          }
+        } else end = rest.search(/\s|#/);
+        if (end < 0) end = rest.length;
+        edits.push({ start: s.start, end: s.end, text: prefix + JSON.stringify(value) + rest.slice(end) });
         if (key === "model") rootFound = true; else childFound = true;
       }
     }
   }
-  if (!header && parsed.agents && !Array.isArray(parsed.agents)) throw new Error("Refusing root dotted agents key or inline agents table");
+  if (!header && rootAgents) throw new Error("Refusing root dotted agents key or inline agents table");
   if (!rootFound) edits.push({ start: 0, end: 0, text: `model = ${JSON.stringify(defaults.model)}${newline}` });
   if (!childFound) {
     const text = `default_subagent_model = ${JSON.stringify(defaults.agents.default_subagent_model)}${newline}`;
@@ -73,7 +90,8 @@ export function mergeCodexConfig(existing, fragment) {
   }
   let merged = existing;
   for (const e of edits.sort((a, b) => b.start - a.start)) merged = merged.slice(0, e.start) + e.text + merged.slice(e.end);
-  Bun.TOML.parse(merged);
+  const installed = Bun.TOML.parse(merged);
+  if (installed.model !== defaults.model || installed.agents?.default_subagent_model !== defaults.agents.default_subagent_model) throw new Error("Rendered Codex model invariant failed");
   return merged;
 }
 
@@ -94,11 +112,13 @@ async function replaceWithBackup(path, content) {
 
 export async function installCodexConfig({ sourceDir, codexHome }) {
   // Read/render every source and validate before touching any destination.
-  const fragment = await render(sourceDir, await readFile(join(sourceDir, "config.toml"), "utf8"));
+  const fragment = await render(sourceDir, await readFile(join(sourceDir, "config.toml"), "utf8"), "default_subagent_model");
   const agents = await Promise.all(AGENT_FILES.map(async name => {
-    const text = await render(sourceDir, await readFile(join(sourceDir, "agents", name), "utf8")); Bun.TOML.parse(text); return [name, text];
+    const text = await render(sourceDir, await readFile(join(sourceDir, "agents", name), "utf8"), name === "packet.toml" ? "model" : undefined); Bun.TOML.parse(text); return [name, text];
   }));
   const configPath = join(codexHome, "config.toml");
+  const metadata = await lstat(configPath).catch(e => { if (e.code !== "ENOENT") throw e; return null; });
+  if (metadata?.isSymbolicLink()) throw new Error(`Refusing Codex config symlink: ${configPath} -> ${await readlink(configPath)}`);
   const existing = existsSync(configPath) ? await readFile(configPath, "utf8") : "";
   const merged = mergeCodexConfig(existing, fragment);
   await mkdir(codexHome, { recursive: true });

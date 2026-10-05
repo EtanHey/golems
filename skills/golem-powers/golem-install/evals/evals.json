@@ -82,7 +82,7 @@
       "absorbed_from": "wizard",
       "absorbed_id": 1,
       "prompt": "Run /wizard on a fresh machine with role workspace. All 6 prerequisites are installed (brew, node, bun, claude, gh, git). No ~/.golems/config.yaml exists. The user explicitly chooses machineRole workspace and workspace root ~/Gits, then declines all opt-in features. No repos exist. BrainBar is running at /tmp/brainbar.sock.",
-      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with machineRole workspace, reposPath ~/Gits, and all features OFF. Reads release-gate.json through the decision helper. Clones only checkout-backed golems, installs or reports the VoiceBar, BrainBar, and cmuxlayer artifacts, and does not clone installable or unclassified repos. Renders and merges the two config/codex model keys from codex.implement into ~/.codex/config.toml without replacing unrelated keys and copies recon.toml plus packet.toml into ~/.codex/agents. Runs golems/scripts/sync/sync-config.sh --diff from the golems checkout it just cloned, shows the output, and runs --enforce only after the user approves. Verifies BrainLayer via brain_search. Displays the full setup report.",
+      "expected_output": "Agent checks all 6 prerequisites and finds them installed. Creates config.yaml interactively with machineRole workspace, reposPath ~/Gits, and all features OFF. Reads release-gate.json through the decision helper. Clones only checkout-backed golems, installs or reports the VoiceBar, BrainBar, and cmuxlayer artifacts, and does not clone installable or unclassified repos. Renders and merges the two config/codex model keys from codex.implement and the authorised internal codex.subagent.mechanical use into ~/.codex/config.toml without replacing unrelated keys and copies recon.toml plus packet.toml into ~/.codex/agents. Runs golems/scripts/sync/sync-config.sh --diff from the golems checkout it just cloned, shows the output, and runs --enforce only after the user approves. Verifies BrainLayer via brain_search. Displays the full setup report.",
       "files": [],
       "assertions": [
         {
@@ -111,7 +111,7 @@
         },
         {
           "name": "installs-codex-subagent-defaults",
-          "description": "Agent renders and merges only the two config/codex model keys from codex.implement without replacing unrelated ~/.codex config and copies recon.toml plus packet.toml"
+          "description": "Agent renders and merges only the two config/codex model keys from codex.implement and the authorised internal codex.subagent.mechanical use without replacing unrelated ~/.codex config and copies recon.toml plus packet.toml"
         },
         {
           "name": "displays-final-report",
