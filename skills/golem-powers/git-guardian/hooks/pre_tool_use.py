@@ -42,7 +42,7 @@ GIT_GUARDIAN_LIB = os.environ.get("GIT_GUARDIAN_LIB") or os.path.dirname(
     os.path.dirname(os.path.realpath(__file__))
 )
 if GIT_GUARDIAN_LIB not in sys.path:
-    sys.path.insert(0, GIT_GUARDIAN_LIB)
+    sys.path.append(GIT_GUARDIAN_LIB)  # after the stdlib: nothing in the tree may shadow it
 try:
     # A corrupt module must not contaminate the one-JSON denial before raising.
     with redirect_stdout(StringIO()), redirect_stderr(StringIO()):

@@ -131,7 +131,21 @@ def _deny_policy_import_failure():
 _SHARED_ROOT = os.path.realpath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "_shared")
 )
-sys.path.insert(0, _SHARED_ROOT)
+
+def _after_stdlib(paths):
+    # Never first: the stdlib (its zip, dir and lib-dynload) always wins over the
+    # tree, while this copy's _shared still precedes any other copy's.
+    import sysconfig
+    stdlib = os.path.realpath(sysconfig.get_paths()["stdlib"])
+    hits = [i for i, entry in enumerate(paths) if entry and (
+        os.path.realpath(entry) == stdlib or os.path.realpath(entry).startswith(stdlib + os.sep)
+        or entry.endswith(".zip"))]
+    return hits[-1] + 1 if hits else len(paths)
+
+
+if _SHARED_ROOT in sys.path:
+    sys.path.remove(_SHARED_ROOT)
+sys.path.insert(_after_stdlib(sys.path), _SHARED_ROOT)
 try:
     # A corrupt module must not contaminate the one-JSON denial before raising.
     with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
