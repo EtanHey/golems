@@ -108,7 +108,13 @@ jobs:
                    ./skills/golem-powers/drive-filing/scripts
 
       - name: Check canon routing SSOT
-        run: node scripts/ci/canon-drift-lint.mjs --check
+        run: |
+          scans=()
+          while IFS= read -r -d '' file; do
+            scans+=(--routing-scan "$file")
+          done < <(git ls-files -z 'skills/**/*.md')
+          node scripts/ci/canon-drift-lint.mjs --check \
+            --routing-allowlist scripts/ci/routing-restatement-allowlist.json "${scans[@]}"
 
       - name: node suites
         run: |
