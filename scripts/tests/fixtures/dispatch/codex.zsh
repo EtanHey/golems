@@ -466,7 +466,8 @@ _golem_launch_codex() {
   local mcp_names="" mcp_command="" mcp_args_json="" mcp_url="" mcp_env_lines=""
   local mcp_timeout="" mcp_name_toml="" wrote_env_table=false env_json="" env_key="" env_value=""
   local env_key_toml="" env_value_toml=""
-  local -a codex_http_env=()
+  local mcp_transport="" mcp_value="" mcp_value_transport="" mcp_value_token=""
+  local -a codex_http_env=() mcp_value_tokens=() codex_skipped_mcp=()
 
   if [[ -n "$codex_caller_profile" ]]; then
     # Their profile wins outright — codex refuses `--profile` twice. Do not
@@ -494,6 +495,37 @@ _golem_launch_codex() {
         # equivalent, and one bad element makes codex refuse the whole config.
         mcp_args_json=$(jq -c --arg m "$mcp_name" "$(_golem_jq_strip_supabase_token_arg)"' .mcpServers // {} | strip_supabase_token_arg | .[$m].args // empty | if type == "array" then map(select(type == "string")) else empty end' "$merged_mcp_file" 2>/dev/null)
         mcp_timeout=$(jq -r --arg m "$mcp_name" '.mcpServers[$m].timeout // empty' "$merged_mcp_file" 2>/dev/null)
+
+        # The registry can give a server as a `claude mcp add` argument string:
+        # {"transport":"command","value":"--transport http NAME URL"}. Map the
+        # http/sse form to a url server; anything else codex cannot express is
+        # skipped. A table with neither command nor url makes codex abort the
+        # whole launch ("invalid transport"), so it is never rendered.
+        if [[ -z "$mcp_command" && -z "$mcp_url" ]]; then
+          mcp_transport=$(jq -r --arg m "$mcp_name" '.mcpServers[$m].transport // empty' "$merged_mcp_file" 2>/dev/null)
+          mcp_value=$(jq -r --arg m "$mcp_name" '.mcpServers[$m].value // empty | strings' "$merged_mcp_file" 2>/dev/null)
+          mcp_value_transport=""
+          if [[ "$mcp_transport" == command && -n "$mcp_value" ]]; then
+            mcp_value_tokens=(${(z)mcp_value})
+            for mcp_value_token in "${mcp_value_tokens[@]}"; do
+              if [[ "$mcp_value_transport" == next ]]; then
+                mcp_value_transport="$mcp_value_token"
+              elif [[ "$mcp_value_token" == --transport || "$mcp_value_token" == -t ]]; then
+                mcp_value_transport=next
+              elif [[ "$mcp_value_token" == --transport=* ]]; then
+                mcp_value_transport="${mcp_value_token#--transport=}"
+              elif [[ -z "$mcp_url" && "$mcp_value_token" == (http|https)://* ]]; then
+                mcp_url="$mcp_value_token"
+              fi
+            done
+            [[ "$mcp_value_transport" == (http|sse) ]] || mcp_url=""
+            mcp_args_json=""
+          fi
+          if [[ -z "$mcp_url" ]]; then
+            codex_skipped_mcp+=("$mcp_name")
+            continue
+          fi
+        fi
 
         print -r -- ""
         print -r -- "[mcp_servers.${mcp_name_toml}]"
@@ -545,6 +577,11 @@ _golem_launch_codex() {
         done
       done
     } > "$codex_profile_tmp" 2>/dev/null
+
+    local codex_skipped_name
+    for codex_skipped_name in "${codex_skipped_mcp[@]}"; do
+      print -u2 -- "repoGolem: skipping MCP server \"${codex_skipped_name}\" for Codex: it has no command or url codex can use (a claude-mcp-add string other than --transport http|sse URL)."
+    done
 
     local http_env_entry
     for http_env_entry in "${codex_http_env[@]}"; do

@@ -8,6 +8,7 @@ load 'test-repogolem-dispatch-parts/cases-04.bash'
 load 'test-repogolem-dispatch-parts/cases-05.bash'
 load 'test-repogolem-dispatch-parts/cases-06.bash'
 load 'test-repogolem-dispatch-parts/cases-07.bash'
+load 'test-repogolem-dispatch-parts/cases-11.bash'
 load 'test-repogolem-dispatch-parts/cases-08.bash'
 load 'test-repogolem-dispatch-parts/cases-09.bash'
 
@@ -591,6 +592,10 @@ load 'test-repogolem-dispatch-parts/cases-09.bash'
       refute_contains '--agent' "$output"
       refute_contains 'Worker role:' "$output"
     done
+}
+
+@test "a registry MCP server given as a claude-mcp-add string never aborts a Codex launch" {
+    split_case_160
 }
 
 @test "every agent-shaped Codex launch strips codex_apps connectors; computer use is never touched" {
