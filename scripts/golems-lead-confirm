@@ -74,7 +74,7 @@ def issue(argv=None, *, home=None, metadata_fn=lead_metadata, anchor_fn=anchor_b
         raise ValueError('only one lease on the requested ref can be issued')
     pr = lead_scope(ops[0], metadata_fn)  # the gate's own rule: current branch, one GitHub remote, open PR head
     key = private_key(home)
-    collab = Path(os.environ.get('GOLEMS_LEAD_COLLAB') or home / COLLAB).resolve()
+    collab = (home / COLLAB).resolve()  # always the coordinator's OSS collab under this home; no override
     if (home / 'Gits/orchestrator/collab').resolve() not in collab.parents or not collab.is_file():
         raise ValueError("the issuance collab must be an existing file in the coordinator's collab directory")
     anchor = anchor_fn(home)
@@ -94,11 +94,12 @@ def issue(argv=None, *, home=None, metadata_fn=lead_metadata, anchor_fn=anchor_b
             raise ValueError('lead signature does not verify against the pinned anchor')
         by = {k: os.environ[k] for k in AGENT_MARKERS if os.environ.get(k)}
         stamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(now))
-        append(root / 'lead-issued.log', json.dumps(dict(ts=stamp, repo=repo, remote=args.remote, ref=args.ref, sha=args.sha,
+        append(root / 'lead-issued.log', json.dumps(dict(ts=stamp, repo=repo, github=pr.get('github'), remote=args.remote,
+                                                         ref=args.ref, sha=args.sha,
                                                          pr=pr.get('number'), nonce=nonce, session=args.session, env=by),
                                                     sort_keys=True))
         append(collab, 'GOLEMS_CONFIRM ' + json.dumps(token, sort_keys=True, separators=(',', ':')) + '\n'
-               + f"- lead-token issued {stamp} repo={repo} ref={args.ref} sha={args.sha[:12]} pr=#{pr.get('number')} "
+               + f"- lead-token issued {stamp} repo={pr.get('github')} ref={args.ref} sha={args.sha[:12]} pr=#{pr.get('number')} "
                + f"by={by.get('CMUX_AGENT_ID') or by.get('GOLEM_SEAT') or 'unknown'}")
         if time.time() >= token['expires_at']:
             raise ValueError('expired while issuing; issue a fresh token')

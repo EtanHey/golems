@@ -426,7 +426,7 @@ class Platform(unittest.TestCase):
         with patch.dict(os.environ, PATH=str(root)):  # caller PATH is never consulted
             calls = []
             with patch('tokens.trusted_binary', side_effect=lambda c: calls.append(c) or 'GH'), \
-                 patch('tokens.read_command', side_effect=['topic', 'git@github.com:o/r.git', '{"defaultBranchRef":{"name":"main"}}', '{}']) as read:
+                 patch('tokens.read_command', side_effect=['topic', 'origin', 'git@github.com:o/r.git', '{"defaultBranchRef":{"name":"main"}}', '{}']) as read:
                 tokens.lead_metadata(dict(repo='.', ref='refs/heads/topic', source='HEAD', remote='origin'))
             self.assertEqual(calls, [tokens.GH_CANDIDATES, tokens.GH_CANDIDATES])
             self.assertEqual(read.call_args.args[0][0], 'GH')

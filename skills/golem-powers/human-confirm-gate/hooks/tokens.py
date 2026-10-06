@@ -173,15 +173,20 @@ def lead_metadata(op):
         raise ValueError('lead lease must use the current branch')
     if read_command([GIT, '-C', repo, 'symbolic-ref', '--short', 'HEAD']) != branch:
         raise ValueError('not the worker current branch')
-    url = read_command([GIT, '-C', repo, 'remote', 'get-url', '--push', '--all', op['remote']])
-    match = re.fullmatch(r'(?:git@github\.com:|https://github\.com/)([^/\s]+/[^/\s]+?)(?:\.git)?', url)
+    # Exactly one GitHub remote in the checkout, and it is the one pushed to.
+    urls = {name: read_command([GIT, '-C', repo, 'remote', 'get-url', '--push', '--all', name])
+            for name in read_command([GIT, '-C', repo, 'remote']).split()}
+    github = [name for name, url in urls.items() if 'github.com' in url.casefold()]
+    if github != [op['remote']]:
+        raise ValueError('lead scope needs exactly one GitHub remote, the pushed one')
+    match = re.fullmatch(r'(?:git@github\.com:|https://github\.com/)([^/\s]+/[^/\s]+?)(?:\.git)?', urls[op['remote']])
     if not match:
         raise ValueError('lead scope needs one GitHub remote')
     target = match[1]
     metadata = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'repo', 'view', target, '--json', 'defaultBranchRef']))
     pr = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'pr', 'view', branch, '--repo', target, '--json',
                                  'number,state,mergedAt,headRefName,isCrossRepository,headRefOid']))
-    return metadata['defaultBranchRef']['name'], pr
+    return metadata['defaultBranchRef']['name'], dict(pr, github=target)
 
 
 def lead_scope(op, metadata_fn=lead_metadata):
@@ -191,7 +196,7 @@ def lead_scope(op, metadata_fn=lead_metadata):
     if not op['ref'].startswith('refs/heads/') or branch.casefold() in ('main', 'master'):
         raise ValueError('lead leases never touch main/master')
     default, pr = metadata_fn(op)
-    if (branch == default or pr['state'] != 'OPEN' or pr['mergedAt'] is not None or pr['isCrossRepository']
+    if (branch.casefold() == default.casefold() or pr['state'] != 'OPEN' or pr['mergedAt'] is not None or pr['isCrossRepository']
             or pr['headRefName'] != branch or pr['headRefOid'] != op['sha']):
         raise ValueError('outside lead scope: own open PR head, not the default branch')
     return pr

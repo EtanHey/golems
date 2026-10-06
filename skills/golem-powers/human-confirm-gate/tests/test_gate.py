@@ -193,14 +193,19 @@ class Gate(unittest.TestCase):
         from commands import operations
         op = operations(self.command, str(self.repo))[0]
         pr = dict(state='OPEN', mergedAt=None, isCrossRepository=False, headRefName='topic', headRefOid=self.sha)
-        responses = ['topic', 'git@github.com:owner/repo.git', '{"defaultBranchRef":{"name":"main"}}', json.dumps(pr)]
+        responses = ['topic', 'origin\nbackup', 'git@github.com:owner/repo.git', 'https://git.localhost/o/r.git',
+                     '{"defaultBranchRef":{"name":"main"}}', json.dumps(pr)]
         with patch('tokens.read_command', side_effect=responses) as read:
-            self.assertEqual(lead_metadata(op), ('main', pr))
+            self.assertEqual(lead_metadata(op), ('main', dict(pr, github='owner/repo')))
             self.assertIn('owner/repo', read.call_args.args[0])
         with patch('tokens.read_command', return_value='other'), self.assertRaises(ValueError):
             lead_metadata(op)
-        for remote in ['git@github.com:owner/repo.git\nhttps://github.com/other/repo', 'https://evil.example/o/r']:
-            with patch('tokens.read_command', side_effect=['topic', remote]), self.assertRaises(ValueError):
+        for remotes in [['origin', 'git@github.com:owner/repo.git\nhttps://github.com/other/repo'],
+                        ['origin', 'https://git.localhost/o/r'],
+                        ['origin\nfork', 'git@github.com:owner/repo.git', 'git@github.com:x/repo.git'],
+                        ['fork', 'git@github.com:x/repo.git']]:
+            with self.subTest(remotes=remotes), patch('tokens.read_command', side_effect=['topic', *remotes]), \
+                    self.assertRaises(ValueError):
                 lead_metadata(op)
 
     def test_wrapper_errors_deny(self):

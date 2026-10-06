@@ -47,9 +47,9 @@ class Fixture:
         subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(self.key)], check=True)
         self.key.chmod(0o600)
         self.anchor = ('lead ' + self.key.with_suffix('.pub').read_text()).encode()
-        self.collab = self.home / 'Gits/orchestrator/collab/fixture.md'
+        # The issuer always writes the coordinator's OSS collab under its home: a fixture home here.
+        self.collab = self.home / 'Gits/orchestrator/collab/2026-09-24-oss-consolidation.md'
         self.collab.parent.mkdir(parents=True); self.collab.write_text('# fixture collab\n')
-        os.environ['GOLEMS_LEAD_COLLAB'] = str(self.collab)
         self.pr = dict(number=7, state='OPEN', mergedAt=None, isCrossRepository=False, headRefName='topic', headRefOid=SHA)
         self.default = 'develop'
         self.issuer = load(ISSUER, 'lead_issuer')
@@ -62,8 +62,9 @@ class Fixture:
             return json.dumps(self.pr)
         return subprocess.run(argv, capture_output=True, text=True, check=True, timeout=5).stdout.strip()
 
-    def issue(self, *extra, ref='refs/heads/topic', sha=SHA, anchor=None):
+    def issue(self, *extra, ref='refs/heads/topic', sha=SHA, anchor=None, remote=None):
         argv = [str(self.repo), '--ref', ref, '--sha', sha, '--session', 'lead-session', *extra]
+        if remote: argv += ['--remote', remote]
         with patch('tokens.read_command', side_effect=self.gh), patch('tokens.trusted_binary', return_value='gh'):
             return self.issuer.issue(argv, home=self.home, anchor_fn=lambda home: anchor or self.anchor)
 
@@ -97,12 +98,12 @@ class LeadIssuer(Fixture, unittest.TestCase):
         self.assertTrue(log.is_file(), 'machine log written')
         [entry] = log.read_text().splitlines()
         logged = json.loads(entry)
-        self.assertEqual((logged['repo'], logged['ref'], logged['sha'], logged['pr'], logged['nonce']),
-                         (str(self.repo), 'refs/heads/topic', SHA, 7, token['nonce']))
+        self.assertEqual(tuple(logged.get(k) for k in ('repo', 'github', 'ref', 'sha', 'pr', 'nonce')),
+                         (str(self.repo), 'o/r', 'refs/heads/topic', SHA, 7, token['nonce']))
         self.assertIn('env', logged)
         lines = self.collab.read_text().splitlines()
         self.assertIn('GOLEMS_CONFIRM ' + json.dumps(token, sort_keys=True, separators=(',', ':')), lines)
-        self.assertTrue(any(line.startswith('- lead-token issued ') and f'ref=refs/heads/topic sha={SHA[:12]} pr=#7' in line
+        self.assertTrue(any(line.startswith('- lead-token issued ') and f'repo=o/r ref=refs/heads/topic sha={SHA[:12]} pr=#7' in line
                             for line in lines))
 
     def test_scope_refusals(self):
@@ -148,6 +149,10 @@ class LeadIssuer(Fixture, unittest.TestCase):
         subprocess.run(git + ['remote', 'remove', 'origin'], check=True)
         subprocess.run(git + ['remote', 'add', 'origin', 'https://git.localhost/o/r.git'], check=True)
         self.assertIsNotNone(self.refused())  # not GitHub
+        subprocess.run(git + ['remote', 'set-url', 'origin', 'git@github.com:o/r.git'], check=True)
+        subprocess.run(git + ['remote', 'add', 'fork', 'git@github.com:x/r.git'], check=True)
+        self.assertIsNotNone(self.refused())  # a second GitHub remote in the checkout
+        self.assertIsNotNone(self.refused(remote='fork'))
         self.assertEqual(self.store(), [])
 
     def test_key_and_collab_refusals(self):
@@ -156,10 +161,20 @@ class LeadIssuer(Fixture, unittest.TestCase):
         self.signer.chmod(0o700); self.key.chmod(0o644)
         self.assertIsNotNone(self.refused())
         self.key.chmod(0o600)
+        self.collab.unlink()
+        self.assertIsNotNone(self.refused())  # the OSS collab must exist
         outside = self.home / 'elsewhere.md'; outside.write_text('')
-        os.environ['GOLEMS_LEAD_COLLAB'] = str(outside)
-        self.assertIsNotNone(self.refused())
+        self.collab.symlink_to(outside)
+        self.assertIsNotNone(self.refused())  # and resolve inside the collab directory
         self.assertEqual(self.store(), [])
+
+    def test_no_collab_override(self):
+        """GOLEMS_LEAD_COLLAB is not honoured: issuances always reach the OSS collab."""
+        other = self.collab.with_name('other.md'); other.write_text('')
+        with patch.dict(os.environ, GOLEMS_LEAD_COLLAB=str(other)):
+            self.issue()
+        self.assertEqual(other.read_text(), '')
+        self.assertIn('- lead-token issued ', self.collab.read_text())
 
     def test_a_failed_log_write_refuses_and_leaves_no_token(self):
         root = self.home / '.config/golems/human-confirm'; root.mkdir(parents=True, mode=0o700)
@@ -189,6 +204,8 @@ class LeadIssuer(Fixture, unittest.TestCase):
             with self.subTest(ref), self.assertRaises(ValueError):
                 lead_scope(dict(ref=ref, sha=SHA), lambda op: ('develop', dict(pr, headRefName=ref.rsplit('/', 1)[1])))
         self.assertEqual(lead_scope(dict(ref='refs/heads/topic', sha=SHA), lambda op: ('develop', self.pr))['number'], 7)
+        with self.assertRaises(ValueError):  # the default branch in another letter case
+            lead_scope(dict(ref='refs/heads/topic', sha=SHA), lambda op: ('Topic', self.pr))
 
     def test_signature_must_match_the_anchor(self):
         other = self.home / 'other'
@@ -219,6 +236,21 @@ class LeadKeygen(unittest.TestCase):
             self.assertEqual(outcome, 'ValueError')
             self.assertEqual(key.read_bytes(), before)
 
+    def test_refuses_symlinked_key_paths(self):
+        root = ROOT.parents[2] / 'docs.local/human-confirm-gate'; root.mkdir(parents=True, exist_ok=True)
+        keygen = load(KEYGEN, 'lead_keygen_links')
+        for name in ('lead_ed25519', 'lead_ed25519.pub'):
+            with self.subTest(name), tempfile.TemporaryDirectory(dir=root) as tmp:
+                home = Path(tmp); signer = home / '.config/golems/lead-signer'; signer.mkdir(parents=True)
+                target = home / 'elsewhere'
+                (signer / name).symlink_to(target)  # dangling
+                try:
+                    keygen.generate(home); outcome = 'generated'
+                except Exception as exc:
+                    outcome = type(exc).__name__
+                self.assertEqual(outcome, 'ValueError')
+                self.assertFalse(target.exists())
+
 
 class LeadTokenThroughTheGate(unittest.TestCase):
     """The issued token is accepted by the gate's own authorize() exactly once, and by nothing broader."""
@@ -234,8 +266,7 @@ class LeadTokenThroughTheGate(unittest.TestCase):
         subprocess.run(git + ['remote', 'add', 'origin', 'git@github.com:o/r.git'], check=True)
         signer = self.home / '.config/golems/lead-signer'; signer.mkdir(parents=True); signer.chmod(0o700)
         shutil.copy(self.lead_key, signer / 'lead_ed25519'); (signer / 'lead_ed25519').chmod(0o600)
-        os.environ['GOLEMS_LEAD_COLLAB'] = str(self.collab); self.collab.write_text('')
-        self.addCleanup(os.environ.pop, 'GOLEMS_LEAD_COLLAB', None)
+        self.collab = self.home / 'Gits/orchestrator/collab/2026-09-24-oss-consolidation.md'; self.collab.write_text('')
         self.issuer = load(ISSUER, 'lead_issuer_gate')
         self.pr = dict(number=7, state='OPEN', mergedAt=None, isCrossRepository=False, headRefName='topic', headRefOid=self.sha)
 
@@ -258,6 +289,31 @@ class LeadTokenThroughTheGate(unittest.TestCase):
         command = self.command
         self.assertTrue(authorize(self.payload(command), operations(command, str(self.repo)), self.home, self.metadata))
         self.assertFalse(authorize(self.payload(command), operations(command, str(self.repo)), self.home, self.metadata))
+
+    def signed(self, command):
+        """A hand-signed lead token for `command` (what a same-UID agent could forge with the lead key)."""
+        import hashlib, time
+        from commands import operations
+        token = dict(version=1, kind='lead', nonce='b' * 32, issued_at=time.time(), expires_at=time.time() + 120,
+                     command_sha256=hashlib.sha256((str(self.repo) + '\0' + command).encode()).hexdigest(),
+                     operations=operations(command, str(self.repo)), session_id='worker', collab=str(self.collab))
+        path = self.store / (token['nonce'] + '.json'); path.write_text(json.dumps(token, sort_keys=True)); path.chmod(0o600)
+        subprocess.run(['ssh-keygen', '-Y', 'sign', '-q', '-f', str(self.lead_key), '-n', 'golems-confirm', str(path)], check=True)
+        self.collab.write_text('GOLEMS_CONFIRM ' + json.dumps(token, sort_keys=True, separators=(',', ':')) + '\n')
+        return token['operations']
+
+    def test_gate_denies_lead_leases_to_main_or_master_whatever_the_default(self):
+        from tokens import authorize
+        self.lock()
+        for branch in ('main', 'master', 'Main'):
+            with self.subTest(branch):
+                command = self.command.replace('refs/heads/topic', 'refs/heads/' + branch)
+                ops = self.signed(command)
+                pr = dict(self.pr, headRefName=branch)
+                self.assertFalse(authorize(self.payload(command), ops, self.home, lambda op: ('develop', pr)))
+                for leftover in self.store.glob('b' * 32 + '.json*'): leftover.unlink()
+        ops = self.signed(self.command)  # control: the same forge for the PR branch is accepted
+        self.assertTrue(authorize(self.payload(self.command), ops, self.home, lambda op: ('develop', self.pr)))
 
     def test_issued_token_authorizes_nothing_else(self):
         from tokens import authorize
