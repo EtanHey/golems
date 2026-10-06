@@ -197,3 +197,5 @@ footgun — prefer `git stash` so it is recoverable.
 - **`/pr-loop` step 5** — git-guardian's branch check is a prerequisite to commit; pr-loop handles CodeRabbit review.
 - **`/pr-loop`** — calls git-guardian before any force-push during rebase/fixup cycle.
 - **Native `git worktree`** — worktrees always operate on non-main branches; git-guardian still applies for reset/clean inside worktrees.
+
+Bare repositories are recognized by their HEAD file and object/reference directories. Their roots, containing repository folders, and selected metadata receive the same protection as checkout metadata. Multi-root selective cleanup shares one two-second traversal deadline; exhaustion keeps the actionable narrowing guidance. The three-second hook deadline remains unchanged.

@@ -11,7 +11,7 @@ import time
 from functools import lru_cache
 
 from . import shell_parse
-from .paths import _expand_tilde
+from .paths import _expand_tilde, _is_bare_repo, _bare_repo_ancestor
 
 CreatedPath = str | None | tuple[str | None, str]
 
@@ -393,7 +393,7 @@ def _metadata_name_filter(option, pattern):
                    for prefix, count, suffix in shapes)
 
 
-def _metadata_traversal_reason(api, target, cwd, variables, branches, follow_mode, depth_limits):
+def _metadata_traversal_reason(api, target, cwd, variables, branches, follow_mode, depth_limits, *, deadline=None):
     """Reject selected metadata and uncertainty in a bounded, read-only walk."""
     value, complete = api['_expand_known_vars'](target, variables)
     value, tilde_complete = _expand_tilde(value, variables)
@@ -403,7 +403,8 @@ def _metadata_traversal_reason(api, target, cwd, variables, branches, follow_mod
     lexical = os.path.abspath(os.path.join(cwd, value))
     root = os.path.realpath(lexical)
     follow_descendants = follow_mode == 'L'
-    deadline = time.monotonic() + _METADATA_PROBE_SECONDS
+    if deadline is None:
+        deadline = time.monotonic() + _METADATA_PROBE_SECONDS
     try:
         try:
             root_info = os.lstat(os.path.normpath(lexical))
@@ -417,7 +418,8 @@ def _metadata_traversal_reason(api, target, cwd, variables, branches, follow_mod
             # only its parent so metadata-directory aliases remain protected.
             root = os.path.join(os.path.realpath(os.path.dirname(lexical)), os.path.basename(lexical))
         # Every root may contain nested metadata; -L also exposes alias targets.
-        stack = [(root, 0, '.git' in [part.casefold() for part in root.split(os.sep)], (), None)]
+        stack = [(root, 0, bool(_bare_repo_ancestor(root)) or
+                  '.git' in [part.casefold() for part in root.split(os.sep)], (), None)]
         count = 0
         while stack:
             if time.monotonic() >= deadline:
@@ -436,8 +438,11 @@ def _metadata_traversal_reason(api, target, cwd, variables, branches, follow_mod
                 # A file alias is unlinked at its lexical path; directory aliases
                 # expose their target's children to the traversal.
                 if directory:
-                    metadata |= '.git' in [part.casefold()
-                                          for part in os.path.realpath(path).split(os.sep)]
+                    metadata |= (bool(_bare_repo_ancestor(os.path.realpath(path)))
+                                 or '.git' in [part.casefold()
+                                              for part in os.path.realpath(path).split(os.sep)])
+            if directory and not metadata:
+                metadata = _is_bare_repo(path)
             name = os.path.basename(path) if entry is None else entry.name
             regular = stat.S_ISREG(info.st_mode) if info else entry.is_file(follow_symlinks=False)
             finder_litter = name == '.DS_Store' and not linked and regular
@@ -736,6 +741,7 @@ def _rm_reason_in_words(
             if parsed is None:
                 return "find deletion roots cannot be parsed safely"
             roots, follow_symlinks, branches, mindepth, grouped, follow_mode, depth_limits = parsed
+            deadline = time.monotonic() + _METADATA_PROBE_SECONDS
             for target in roots if branches else []:
                 reason = _created_target_reason(api, target, cwd, argument_variables, _created_paths)
                 if reason:
@@ -751,7 +757,7 @@ def _rm_reason_in_words(
                     return reason
                 if filtered or follow_mode == "L":
                     reason = _metadata_traversal_reason(api, target, cwd, argument_variables,
-                        branches, follow_mode, depth_limits)
+                        branches, follow_mode, depth_limits, deadline=deadline)
                     if reason:
                         return reason
         for index in range(position + 1, len(words)):
