@@ -50,7 +50,7 @@ jobs:
         run: node scripts/ratchet/run-rows.mjs --rows scripts/ratchet/rows.json --runner ci --head "$HEAD_SHA" --out "$RUNNER_TEMP/results.json"
 
       # The baseline is the base commit's own rows, run in its own tree. A base without a row file
-      # (the PR that adds it) has no baseline and no direction check.
+      # (the PR that adds it) has no baseline; table.mjs then runs with --bootstrap and says so.
       - name: Measure the base
         if: github.event_name == 'pull_request'
         env:
@@ -71,6 +71,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          # A master push compares against its parent; a PR against its base.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           # A fork PR's token cannot write comments: the table still prints and still decides.
@@ -82,8 +84,9 @@ jobs:
                 --runner ci --marker golems-ratchet-ci --title "Ratchet table (CI rows)"
                 --pr-body-file "$RUNNER_TEMP/pr-body.md" --out "$RUNNER_TEMP/table.md")
           [ -f "$RUNNER_TEMP/baseline.json" ] && args+=(--baseline "$RUNNER_TEMP/baseline.json")
-          [ -f "$RUNNER_TEMP/base-rows.json" ] && args+=(--base-rows "$RUNNER_TEMP/base-rows.json")
-          [ -n "${PR_NUMBER:-}" ] && [ "$SAME_REPO" = "true" ] && args+=(--repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER")
+          # table.mjs reads the base row file itself (git show); --bootstrap only when the base has none.
+          if git cat-file -e "$BASE_SHA:scripts/ratchet/rows.json" 2>/dev/null; then args+=(--base-ref "$BASE_SHA"); else args+=(--bootstrap); fi
+          [ -n "${PR_NUMBER:-}" ] && [ "$SAME_REPO" = "true" ] && args+=(--repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" --author "github-actions[bot]")
           status=0
           node scripts/ratchet/table.mjs "${args[@]}" || status=$?
           cat "$RUNNER_TEMP/table.md" >> "$GITHUB_STEP_SUMMARY" || true
