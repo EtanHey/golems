@@ -43,3 +43,19 @@ Call the CI tools from `scripts/ci/` and the sync tools from `scripts/sync/`.
 - Security and repo guards: `guard-no-docslocal.sh`, `google-drive-oauth-guard.mjs` (+ `install-…`), `materialize-deep-security-plan.sh`
 - Document generators live with their skills: `skills/branded-doc/scripts/` and `skills/explanatory-doc/scripts/`.
 - Host upkeep: `storage-cleanup.sh`, `worktree-gc.sh`, `setup-golem-profiles.sh`
+
+## `deepsource-issues`
+
+`deepsource-issues <owner/repo> <pr-number>` prints a PR's DeepSource findings
+as JSON from the GraphQL API: the failing checks, then per analyzer each issue's
+code, title, category, file:line and message. Exit 0 = clean (a SUCCESS run,
+every check SUCCESS, 0 issues), 1 = failing (issues, a failed/timed-out check or
+run), 2 = usage/auth/redirect or a malformed or incomplete response, 3 = no
+verdict (no run, pending, cancelled, skipped, no checks, or an unknown status).
+It needs `DEEPSOURCE_TOKEN`; repogolem seats get it from the orchestrator
+config's `global.env`. Agents use this or the `deepsource-io[bot]` PR comments,
+never a browser. Install it from the pinned tree, not a working tree:
+
+```sh
+ln -sfn ~/Gits/golems/.worktrees/hooks-live/scripts/deepsource-issues ~/.local/bin/deepsource-issues
+```
