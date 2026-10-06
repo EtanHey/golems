@@ -2,7 +2,7 @@
 """Fail-open launcher for golems python hooks.
 
 Usage (as registered by scripts/hooks/install-hooks.mjs):
-    python3 -I -B ~/.claude/hooks/golems-fail-open.py <hook.py> [args...]
+    <pinned python3> -I -B ~/.claude/hooks/golems-fail-open.py <hook.py> [args...]
 
 Imports: hooks live in a same-UID tree, so nothing planted beside a hook may
 stand in for the stdlib. The launcher preloads runpy's lazy imports, then adds
@@ -41,6 +41,24 @@ def _warn(message):
     print(f"golems-fail-open: {message} (allowing)".replace("\n", " "), file=sys.stderr)
 
 
+def _scrub_path(hook_dir):
+    """Put the hook's dir LAST on sys.path and drop the launcher's own dir.
+
+    AIDEV-NOTE: no hook dir is ever FIRST on sys.path. Sibling imports still
+    resolve from the real file's dir, but the stdlib always wins over anything
+    planted beside a hook. Without -I, sys.path[0] is this launcher's own dir
+    (the hooks dir of links). The scrub is by value, not by flag: hooks may be
+    pinned to any Python >= 3.9, and sys.flags.safe_path (-P) only exists on
+    3.11+. Under 3.9 -I there is no script dir to drop, so popping sys.path[0]
+    there would remove the stdlib zip instead.
+    """
+    here = os.path.abspath(__file__)
+    drop = {hook_dir, os.path.dirname(here), os.path.dirname(os.path.realpath(here))}
+    sys.path[:] = [p for p in sys.path
+                   if os.path.abspath(p) not in drop and os.path.realpath(p) not in drop]
+    sys.path.append(hook_dir)
+
+
 def main():
     if len(sys.argv) < 2:
         _warn("no hook path given")
@@ -50,15 +68,8 @@ def main():
         _warn(f"hook missing: {target}")
         return 0
     sys.argv = sys.argv[1:]
-    # AIDEV-NOTE: no hook dir is ever FIRST on sys.path. Sibling imports still
-    # resolve from the real file's dir, but the stdlib always wins over anything
-    # planted beside a hook. Without -I/-P, sys.path[0] is this launcher's own
-    # dir (the hooks dir of links): drop it.
     hook_dir = os.path.dirname(os.path.realpath(target))
-    if not sys.flags.safe_path:
-        sys.path.pop(0)
-    if hook_dir not in sys.path:
-        sys.path.append(hook_dir)
+    _scrub_path(hook_dir)
     try:
         runpy.run_path(target, run_name="__main__")
     except SystemExit:

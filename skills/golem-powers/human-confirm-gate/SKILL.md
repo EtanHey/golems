@@ -105,7 +105,7 @@ static message, unless all of these hold:
 
 SSH verifies the checked bytes through a pipe and never reopens the path.
 
-**Hook imports.** The installer runs this gate as `python3 -I -B` through the
+**Hook imports.** The installer runs this gate as `<pinned python3> -I -B` through the
 shared launcher, like every golems Python hook. The launcher loads what
 `runpy` needs first, and adds every hook directory LAST on `sys.path`, never
 first. The gate then:

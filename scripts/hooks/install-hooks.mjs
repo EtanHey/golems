@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // install-hooks — wire Claude Code hooks from ONE pinned golems tree (GO-5 S14).
 //
-//   scripts/hooks/install-hooks.sh --host mbp|m1 [--apply] [--update [<sha>]]
-//   scripts/hooks/install-hooks.sh --host mbp|m1 --status
+//   scripts/hooks/install-hooks.sh --host mbp|m1 [--apply] [--update [<sha>]] [--python <abs path>]
+//   scripts/hooks/install-hooks.sh --host mbp|m1 --status [--python <abs path>]
 //
 // Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
 // `--update` moves it (default origin/master), so a `git checkout` in the main
@@ -45,6 +45,50 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const WRAPPER_SRC = path.join(here, "fail-open.py");
 const LOCK_REASON = "GO-5 pinned hook source; move only with scripts/hooks/install-hooks.sh --update";
 
+// AIDEV-NOTE: every hook command carries an ABSOLUTE interpreter, never a bare
+// `python3`: launchd and minimal-PATH environments resolve that to macOS
+// /usr/bin/python3 (3.9). The floor is 3.11: this installer's Codex config check
+// needs tomllib, git-guardian's policy module needs 3.10+, and CI runs the hooks
+// on 3.11. Homebrew first (its bin/python3 link survives `brew upgrade`), then
+// the PATH python3; resolved on the machine at install time, so hosts may differ.
+export const MIN_HOOK_PYTHON = [3, 11];
+export const HOOK_PYTHON_CANDIDATES = ["/opt/homebrew/bin/python3", "/usr/local/bin/python3"];
+// Hook commands are unquoted strings: an interpreter path needs no shell quoting.
+const PLAIN_PATH = /^\/[A-Za-z0-9._+\/-]+$/;
+const pythonVersions = new Map();
+export function pythonVersion(python) {
+  if (!PLAIN_PATH.test(python) || !existsSync(python)) return null;
+  if (!pythonVersions.has(python)) {
+    const r = spawnSync(python, ["-I", "-c", "import sys; print('%d.%d.%d' % sys.version_info[:3])"],
+      { encoding: "utf8", timeout: 10_000 });
+    const m = r.status === 0 ? /^(\d+)\.(\d+)\.(\d+)$/.exec(r.stdout.trim()) : null;
+    pythonVersions.set(python, m ? m.slice(1).map(Number) : null);
+  }
+  return pythonVersions.get(python);
+}
+const [MIN_MAJOR, MIN_MINOR] = MIN_HOOK_PYTHON;
+const pythonOk = (v) => Boolean(v) && (v[0] > MIN_MAJOR || (v[0] === MIN_MAJOR && v[1] >= MIN_MINOR));
+export function resolveHookPython({ override, candidates = HOOK_PYTHON_CANDIDATES, pathPython } = {}) {
+  for (const python of override ? [override] : [...candidates, ...(pathPython ? [pathPython] : [])]) {
+    const version = pythonVersion(python);
+    if (pythonOk(version)) return { python, version: version.join(".") };
+  }
+  return null;
+}
+export function pathPython() {
+  const r = spawnSync("sh", ["-c", "command -v python3"], { encoding: "utf8" });
+  return r.status === 0 ? r.stdout.trim() : "";
+}
+// Why a registered interpreter is unacceptable, or null when it is fine.
+function pythonProblem(python) {
+  if (!path.isAbsolute(python)) return "not an absolute path";
+  if (!PLAIN_PATH.test(python)) return "path needs shell quoting";
+  if (!existsSync(python)) return "missing";
+  const v = pythonVersion(python);
+  if (!v) return "version unknown";
+  return pythonOk(v) ? null : `${v.join(".")} is below ${MIN_HOOK_PYTHON.join(".")}`;
+}
+
 function die(message, code = 1) {
   process.stderr.write(`install-hooks: ${message}\n`);
   process.exit(code);
@@ -68,14 +112,14 @@ function mustGit(cwd, ...args) {
 
 function parseArgs(argv) {
   const o = { apply: false, status: false, update: null, host: null,
-    repo: path.join(homedir(), "Gits/golems"), manifest: null };
+    repo: path.join(homedir(), "Gits/golems"), manifest: null, python: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--apply") o.apply = true;
     else if (a === "--dry-run") o.apply = false;
     else if (a === "--status") o.status = true;
     else if (a === "--update") o.update = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : "origin/master";
-    else if (["--host", "--repo", "--manifest"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
+    else if (["--host", "--repo", "--manifest", "--python"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
     else die(`unknown or incomplete argument: ${a}`, 64);
   }
   if (!o.host) die("--host <mbp|m1> is required", 64);
@@ -85,6 +129,9 @@ function parseArgs(argv) {
 function stamp() {
   return new Date().toISOString().replace(/[:.]/g, "").replace("T", "-").slice(0, 17);
 }
+
+const NO_PYTHON = `no acceptable hook interpreter (absolute, Python >= ${MIN_HOOK_PYTHON.join(".")}; tried `;
+const tried = (o) => (o.python ? [o.python] : [...HOOK_PYTHON_CANDIDATES, "PATH python3"]).join(", ");
 
 function context(o, sha) {
   const text = o.manifest ? readFileSync(o.manifest, "utf8") : git(o.repo, "show", `${sha}:scripts/hooks/manifest.json`);
@@ -109,14 +156,20 @@ function context(o, sha) {
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");
   const node = entries.some((e) => e.command?.includes("{node}")) ? pathNode() : "";
+  // --python overrides the candidates for this run; it is validated the same way.
+  const hookPython = resolveHookPython({ override: o.python, pathPython: pathPython() });
+  // Refuse before anything (the Codex config check included) runs an interpreter.
+  if (!hookPython && !o.status) die(`${NO_PYTHON}${tried(o)}); refusing installation`);
+  const python = hookPython?.python ?? "python3";
   const expand = (s) => s.replaceAll("{home}", homedir()).replaceAll("{hooks}", hooksDir).replaceAll("{live}", live)
-    .replaceAll("{node}", node).replaceAll("{python}", "python3");
+    .replaceAll("{node}", node).replaceAll("{python}", python);
   const golems = entries.filter((e) => e.kind === "golems").map((e) => ({
     ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: expand(e.command),
   }));
   const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
-  const codex = planCodexHooks({ manifest, host: o.host, live, codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) });
-  return { entries, golems, wrapped, hooksDir, live, codex, settingsPath: path.join(homedir(), ".claude", "settings.json") };
+  const codex = planCodexHooks({ manifest, host: o.host, live, python,
+    codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) });
+  return { entries, golems, wrapped, hooksDir, live, codex, hookPython, settingsPath: path.join(homedir(), ".claude", "settings.json") };
 }
 
 // The node on PATH (e.g. a version manager's stable shim), not process.execPath:
@@ -390,6 +443,7 @@ function install(o) {
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   // Read/validate the immutable selected manifest before creating or moving the pin.
   const ctx = context(o, sha);
+  console.log(`hook python: ${ctx.hookPython.python} (${ctx.hookPython.version})`);
   const settings = readSettings(ctx.settingsPath);
   // Validate the Codex destination and selected source before either host's
   // config is written. The manifest comes from the selected pin (#505/#577).
@@ -504,6 +558,11 @@ function status(o) {
   const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
   console.log(`hooks-live=${current ?? "absent"} master=${master ?? "unknown"} drift=${drift}`);
   let bad = false;
+  if (ctx.hookPython) console.log(`hook-python=${ctx.hookPython.python} (${ctx.hookPython.version})`);
+  else {
+    bad = true;
+    console.log(`hook-python=NONE: ${NO_PYTHON}${tried(o)})`);
+  }
   // AIDEV-NOTE: the gate's anchor pin is only as strong as this tree. Detects
   // in-place edits/untracked files, a HEAD off origin/master, and a HEAD moved
   // outside --apply (recorded pin). It cannot see a same-UID edit that is
@@ -560,6 +619,16 @@ function status(o) {
     }
     if (state === "dangling" || state === "copy(not link)") bad = true;
     console.log(`${e.id} ${state}`);
+    // A registered command's own interpreter, whatever the expected one is.
+    if (e.command?.startsWith("{python} ")) {
+      for (const { hook } of registrationMatches(hooks, g)) {
+        const python = String(hook.command).split(" ")[0];
+        const problem = pythonProblem(python);
+        if (!problem) continue;
+        bad = true;
+        console.log(`${e.id} interpreter BAD: ${python} (${problem})`);
+      }
+    }
   }
   const active = ctx.golems.filter((g) => !(current && !pinReady(o, current, g)));
   const settingsDrift = [...active, ...ctx.wrapped].filter((e) => !registeredExactly(hooks, e)).length;

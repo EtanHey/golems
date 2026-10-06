@@ -8,7 +8,7 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { E1_DELETED, pinnedFingerprints } from "../hooks/install-hooks.mjs";
+import { E1_DELETED, MIN_HOOK_PYTHON, pathPython, pinnedFingerprints, resolveHookPython } from "../hooks/install-hooks.mjs";
 
 // Every test builds a git fixture and spawns node; a cold CI runner needs headroom.
 setDefaultTimeout(30_000);
@@ -48,6 +48,27 @@ function addWrappedStopHook(fx) {
     event: "Stop", match: "brainbar-stop-index.py", timeout: 5, async: true,
     command: "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python {home}/Gits/brainlayer/hooks/brainbar-stop-index.py" });
   writeFileSync(fx.manifest, JSON.stringify(manifest));
+}
+
+// The interpreter the installer pins on this machine (same resolution, same PATH).
+function hookPython() {
+  const resolved = resolveHookPython({ pathPython: pathPython() });
+  if (!resolved) throw new Error("no acceptable hook interpreter on this machine");
+  return resolved.python;
+}
+
+function withCodex(fx) {
+  const entries = ["tmp-block", "git-guardian"].map((gate) => ({ gate, source: "scripts/hooks/codex-policy-hook.py",
+    matcher: "^(Bash|apply_patch)$", timeout: 10 }));
+  writeFileSync(fx.manifest, JSON.stringify({ ...manifestFor(), codex_hosts: { mbp: entries, m1: entries } }));
+}
+
+// A fake interpreter that answers the installer's version probe only.
+function fakePython(fx, name, version) {
+  const bin = path.join(fx.root, "fake-python"); mkdirSync(bin, { recursive: true });
+  const at = path.join(bin, name);
+  writeFileSync(at, `#!/bin/sh\nprintf '%s\\n' '${version}'\n`, { mode: 0o755 });
+  return at;
 }
 
 function fixture({ settings, privateSuite = true } = {}) {
@@ -363,7 +384,7 @@ test("--apply pins a detached, locked hooks-live, links (not copies), registers,
   const cmd = after.hooks.PreToolUse[0];
   expect(cmd.matcher).toBe("Bash");
   expect(cmd.hooks[0].command).toBe(
-    `python3 ${fx.home}/.claude/hooks/golems-fail-open.py ${fx.home}/.claude/hooks/demo-gate/hooks/demo-gate.py`);
+    `${hookPython()} ${fx.home}/.claude/hooks/golems-fail-open.py ${fx.home}/.claude/hooks/demo-gate/hooks/demo-gate.py`);
   expect(after.hooks.SessionStart).toEqual([{ hooks: [EXTERNAL] }]);
   const { hooks: _h, ...rest } = after;
   expect(JSON.stringify(rest)).toBe(JSON.stringify(UNRELATED));
@@ -989,4 +1010,72 @@ test("all install and status Git calls scrub inherited Git variables, including 
     expect(calls.some((c) => c.args.includes(command))).toBe(true);
   }
   expect(calls.filter((c) => c.gitEnv.length)).toEqual([]);
+});
+
+test("hook commands pin an ABSOLUTE interpreter >= the minimum, never a bare python3; Codex too", () => {
+  const fx = fixture();
+  withCodex(fx);
+  const python = hookPython();
+  expect(path.isAbsolute(python)).toBe(true);
+  const r = run(fx, "--apply");
+  expect(r.status).toBe(0);
+  expect(r.out).toContain(`hook python: ${python} (`);
+  const commands = Object.values(JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks).flat()
+    .flatMap((g) => g.hooks).map((h) => h.command).filter((c) => c.includes("golems-fail-open.py"));
+  expect(commands.length).toBeGreaterThan(0);
+  for (const c of commands) expect(c.startsWith(`${python} `)).toBe(true);
+  const codex = JSON.parse(readFileSync(path.join(fx.home, ".codex/hooks.json"), "utf8")).hooks.PreToolUse
+    .flatMap((g) => g.hooks).map((h) => h.command);
+  expect(codex.length).toBe(2);
+  for (const c of codex) expect(c).toContain(`if output=$('\\''${python}'\\'' '\\''-I'\\''`);
+  // Codex trust stays unreviewed in a fixture, so --status exits nonzero; the pin is still reported.
+  expect(run(fx, "--status").out).toContain(`hook-python=${python} (`);
+});
+
+test("the resolver prefers candidates in order, skips one below the minimum, and returns null when none qualifies", () => {
+  const fx = fixture();
+  const old = fakePython(fx, "old", "3.9.6");
+  const ok = fakePython(fx, "ok", `${MIN_HOOK_PYTHON[0]}.${MIN_HOOK_PYTHON[1]}.0`);
+  const newer = fakePython(fx, "newer", "3.14.7");
+  expect(resolveHookPython({ candidates: [old, ok, newer] })).toEqual({ python: ok, version: `${MIN_HOOK_PYTHON.join(".")}.0` });
+  expect(resolveHookPython({ candidates: [path.join(fx.root, "absent"), newer] })?.python).toBe(newer);
+  expect(resolveHookPython({ candidates: [old], pathPython: old })).toBeNull();
+  expect(resolveHookPython({ candidates: ["python3"] })).toBeNull();  // relative is never pinned
+  const spaced = path.join(fx.root, "fake python"); mkdirSync(spaced);
+  writeFileSync(path.join(spaced, "python3"), readFileSync(newer), { mode: 0o755 });
+  expect(resolveHookPython({ candidates: [path.join(spaced, "python3")] })).toBeNull();  // commands are unquoted
+});
+
+test("--apply refuses, writing nothing, when the chosen interpreter is below the minimum, missing or relative", () => {
+  for (const pick of ["old", "missing", "relative"]) {
+    const fx = fixture();
+    // With a config.toml the Codex plan runs an interpreter: the refusal must come first.
+    withCodex(fx);
+    mkdirSync(path.join(fx.home, ".codex"), { recursive: true });
+    writeFileSync(path.join(fx.home, ".codex/config.toml"), "model = \"m\"\n");
+    const before = readFileSync(fx.settingsPath, "utf8");
+    const python = pick === "old" ? fakePython(fx, "old", "3.9.6") : pick === "missing" ? path.join(fx.root, "nope") : "python3";
+    const r = run(fx, "--apply", "--python", python);
+    expect([pick, r.status]).toEqual([pick, 1]);
+    expect(r.out).toContain("no acceptable hook interpreter");
+    expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+    expect(existsSync(live(fx))).toBe(false);
+    expect(existsSync(path.join(fx.home, ".codex/hooks.json"))).toBe(false);
+  }
+});
+
+test("--status flags a registered hook command whose interpreter is bare, missing, or below the minimum", () => {
+  const fx = fixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const python = hookPython();
+  const pinned = readFileSync(fx.settingsPath, "utf8");
+  for (const [label, swap] of [["bare", "python3"], ["missing", path.join(fx.root, "gone/python3")],
+    ["old", fakePython(fx, "old", "3.9.6")]]) {
+    writeFileSync(fx.settingsPath, pinned.replaceAll(`"${python} `, `"${swap} `));
+    const st = run(fx, "--status");
+    expect([label, st.status]).toEqual([label, 1]);
+    expect(st.out).toContain(`demo-gate interpreter BAD: ${swap} (`);
+  }
+  writeFileSync(fx.settingsPath, pinned);
+  expect(run(fx, "--status").status).toBe(0);
 });

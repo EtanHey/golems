@@ -65,9 +65,13 @@ jobs:
         with:
           bun-version-file: .bun-version
 
+      # 3.9 is listed first so the default stays 3.11; hooks-interpreter-parity
+      # runs the launcher and policy hooks under python3.9 as well.
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.11"
+          python-version: |
+            3.9
+            3.11
 
       # Installer integration tests execute the isolated regression runner.
       - run: python -m pip install pytest
@@ -107,6 +111,7 @@ jobs:
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/tests/hooks-fail-open.test.mjs \
                    ./scripts/tests/hooks-planted-module.test.mjs \
+                   ./scripts/tests/hooks-interpreter-parity.test.mjs \
                    ./scripts/tests/codex-hooks-install.test.mjs \
                    ./scripts/tests/codex-planted-module.test.mjs \
                    ./scripts/tests/install-hooks.test.mjs \
