@@ -121,15 +121,19 @@ commit_fixture_file() {
     [ -d "$worktree" ]
 }
 
-@test "rejects the retired apply flag and leaves the worktree in place" {
+# #664 (f68dc738) retired --apply ("removal is permanently a human act").
+# Etan's 2026-10-06 21:50 ruling ("nightly prune", "fix that shit") supersedes
+# it: --apply removes an eligible worktree, behind #664's written revival bar.
+@test "apply removes an eligible idle worktree" {
   repo="$(make_fixture_repo apply-repo)"
   worktree="$(add_branch_worktree "$repo" apply-branch)"
 
-  run "$WORKTREE_GC" --apply --repo "$repo"
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
 
-  [ "$status" -eq 2 ] &&
-    [[ "$output" == *"Unknown argument: --apply"* ]] &&
-    [ -d "$worktree" ]
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · apply-branch · dirty=0 · ahead=0 · REMOVED · "* ]] &&
+    [ ! -e "$worktree" ] &&
+    [[ "$(git -C "$repo" worktree list --porcelain)" != *"$worktree"* ]]
 }
 
 @test "falls back to origin master when origin main does not exist" {
@@ -275,17 +279,23 @@ commit_fixture_file() {
     [ -d "$worktree" ]
 }
 
-@test "keeps a worktree containing ignored local-only data" {
+# Etan 2026-10-06: ignored files are rebuildable caches or 1Password-materialized
+# secrets and no longer block (#664 counted node_modules as dirty, so it never
+# freed a byte). docs.local is archived before removal; see the apply tests.
+@test "ignored-only data does not block an eligible verdict" {
   repo="$(make_fixture_repo ignored-data-repo)"
   worktree="$(add_branch_worktree "$repo" ignored-data-branch)"
-  printf '.env\n' >> "$repo/.git/info/exclude"
+  printf '.env\nnode_modules/\n' >> "$repo/.git/info/exclude"
   printf 'local secret fixture\n' > "$worktree/.env"
+  mkdir -p "$worktree/node_modules/pkg"
+  printf 'cache\n' > "$worktree/node_modules/pkg/index.js"
   [ -z "$(git -C "$worktree" status --porcelain)" ]
 
   run "$WORKTREE_GC" --repo "$repo"
 
   [ "$status" -eq 0 ] &&
-    [[ "$output" == *" · $worktree · ignored-data-branch · dirty=1 · "*"KEEP-dirty"* ]]
+    [[ "$output" == *" · $worktree · ignored-data-branch · dirty=0 · ahead=0 · REMOVE · "* ]] &&
+    [ -d "$worktree" ]
 }
 
 @test "overrides status config that hides ordinary untracked data" {
@@ -484,4 +494,137 @@ commit_fixture_file() {
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · (detached) · "*"KEEP-pinned"*"install-hooks"* ]] &&
     [[ "$output" != *" · $worktree · "*" · REMOVE · "* ]]
+}
+
+@test "apply archives an ignored docs.local and verifies the copy before removing" {
+  repo="$(make_fixture_repo archive-repo)"
+  worktree="$(add_branch_worktree "$repo" archive-branch)"
+  printf 'docs.local/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$worktree/docs.local/evidence"
+  printf 'receipt\n' > "$worktree/docs.local/evidence/run.log"
+  printf 'notes\n' > "$worktree/docs.local/notes.md"
+  archive="$(cd "$repo" && pwd -P)/docs.local/worktree-archive/$(basename "$worktree")"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"REMOVED"*"docs.local archived to $archive (2 files, 14 bytes)"* ]] &&
+    [ "$(cat "$archive/evidence/run.log")" = "receipt" ] &&
+    [ "$(cat "$archive/notes.md")" = "notes" ] &&
+    [ ! -e "$worktree" ]
+}
+
+@test "apply keeps the worktree when both archive destinations already exist" {
+  repo="$(make_fixture_repo archive-clash-repo)"
+  worktree="$(add_branch_worktree "$repo" archive-clash-branch)"
+  printf 'docs.local/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$worktree/docs.local"
+  printf 'evidence\n' > "$worktree/docs.local/a.md"
+  head="$(git -C "$worktree" rev-parse HEAD)"
+  archive="$repo/docs.local/worktree-archive/$(basename "$worktree")"
+  mkdir -p "$archive" "$archive-${head:0:12}"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"archive destination already exists"* ]] &&
+    [ -f "$worktree/docs.local/a.md" ]
+}
+
+@test "apply keeps a worktree a running process uses as its cwd" {
+  repo="$(make_fixture_repo live-cwd-repo)"
+  worktree="$(add_branch_worktree "$repo" live-cwd-branch)"
+  mkdir -p "$worktree/sub"
+  (cd "$worktree/sub" && exec sleep 60) &
+  holder=$!
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  kill "$holder" 2>/dev/null || true
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · live-cwd-branch · "*"KEEP-live"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "apply fails closed when lsof lists no process cwd" {
+  repo="$(make_fixture_repo blind-lsof-repo)"
+  worktree="$(add_branch_worktree "$repo" blind-lsof-branch)"
+  wrapper_dir="$TEST_ROOT/blind-lsof"
+  mkdir -p "$wrapper_dir"
+  printf '#!/usr/bin/env bash\nexit 1\n' > "$wrapper_dir/lsof"
+  chmod +x "$wrapper_dir/lsof"
+
+  run env PATH="$wrapper_dir:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"lsof listed no process cwd"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "apply keeps a worktree with HEAD or index activity inside the idle window" {
+  repo="$(make_fixture_repo active-repo)"
+  worktree="$(add_branch_worktree "$repo" active-branch)"
+
+  run "$WORKTREE_GC" --apply --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · active-branch · "*"KEEP-active"*"within 6h"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "apply never removes a dirty or unpushed worktree" {
+  repo="$(make_fixture_repo apply-guard-repo)"
+  dirty="$(add_branch_worktree "$repo" apply-dirty)"
+  printf 'uncommitted\n' > "$dirty/new.txt"
+  unpushed="$(add_branch_worktree "$repo" apply-unpushed)"
+  commit_fixture_file "$unpushed" local-only.txt
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 1 ] &&
+    [[ "$output" == *" · $dirty · apply-dirty · "*"KEEP-dirty"* ]] &&
+    [[ "$output" == *" · $unpushed · apply-unpushed · "*"KEEP-unpushed"* ]] &&
+    [ -f "$dirty/new.txt" ] && [ -f "$unpushed/local-only.txt" ]
+}
+
+@test "path mode judges only the named worktree and never the main checkout" {
+  repo="$(make_fixture_repo path-mode-repo)"
+  target="$(add_branch_worktree "$repo" path-target)"
+  bystander="$(add_branch_worktree "$repo" path-bystander)"
+  main="$(cd "$repo" && pwd -P)"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --path "$target"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $target · path-target · "*"REMOVED"* ]] &&
+    [[ "$output" != *"$bystander"* ]] &&
+    [[ "$output" != *" · $main · "* ]] &&
+    [ ! -e "$target" ] && [ -d "$bystander" ] && [ -d "$main/.git" ]
+}
+
+@test "keeps Claude Code managed .claude/worktrees" {
+  repo="$(make_fixture_repo claude-managed-repo)"
+  mkdir -p "$repo/.claude/worktrees"
+  git -C "$repo" worktree add -q -b claude-agent "$repo/.claude/worktrees/agent-1" origin/main
+  worktree="$(cd "$repo/.claude/worktrees/agent-1" && pwd -P)"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · claude-agent · "*"KEEP-pinned"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "keeps a worktree that has another worktree nested inside it" {
+  repo="$(make_fixture_repo nested-repo)"
+  outer="$(add_branch_worktree "$repo" nested-outer)"
+  printf 'inner/\n' >> "$repo/.git/info/exclude"
+  git -C "$repo" worktree add -q -b nested-inner "$outer/inner" origin/main
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $outer · nested-outer · "*"KEEP-undetermined"*"nested inside"* ]] &&
+    [ -d "$outer" ] &&
+    [[ "$(git -C "$repo" worktree list --porcelain)" == *"worktree $outer"$'\n'* ]]
 }
