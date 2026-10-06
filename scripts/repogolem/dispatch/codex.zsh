@@ -179,14 +179,34 @@ _golem_codex_scan_computer_use_overrides() {
 }
 
 # Prints the first caller argument that would take a --scan launch off the
-# managed workspace-write sandbox Deep Scan requires.
+# managed workspace-write sandbox Deep Scan requires. Sweep of codex-cli
+# 0.160.1 (`--help` for codex, exec and resume, plus hidden aliases probed on
+# the real binary): `--yolo` is an alias of the bypass flag; `-s`/`--sandbox`
+# and `-a`/`--ask-for-approval` take `X`, `=X` and attached `X` spellings;
+# --approve-for-me reroutes approvals; --add-dir widens the writable set; a
+# caller profile (-p/--profile) can widen sandbox_workspace_write. Restating
+# the seat's own `workspace-write` / `never` is allowed.
 _golem_codex_scan_conflict() {
-  local arg
-  for arg in "$@"; do
+  local -a args=("$@")
+  local -i i=1
+  local arg value
+  while (( i <= ${#args[@]} )); do
+    arg="${args[$i]}"
+    value=""
     case "$arg" in
-      --dangerously-bypass-approvals-and-sandbox|--full-auto|-s|--sandbox|--sandbox=*|-s?*|-a|--ask-for-approval|--ask-for-approval=*|-a?*)
+      --dangerously-bypass-approvals-and-sandbox|--yolo|--full-auto|--approve-for-me \
+      |--add-dir|--add-dir=*|-p|-p?*|--profile|--profile=*)
         print -r -- "$arg"; return 0 ;;
+      -s|--sandbox) value="${args[$(( i + 1 ))]:-}"; (( i += 1 ))
+        [[ "$value" == workspace-write ]] || { print -r -- "$arg ${value}"; return 0; } ;;
+      --sandbox=*|-s?*) value="${arg#--sandbox=}"; [[ "$arg" == -s?* ]] && { value="${arg#-s}"; value="${value#=}"; }
+        [[ "$value" == workspace-write ]] || { print -r -- "$arg"; return 0; } ;;
+      -a|--ask-for-approval) value="${args[$(( i + 1 ))]:-}"; (( i += 1 ))
+        [[ "$value" == never ]] || { print -r -- "$arg ${value}"; return 0; } ;;
+      --ask-for-approval=*|-a?*) value="${arg#--ask-for-approval=}"; [[ "$arg" == -a?* ]] && { value="${arg#-a}"; value="${value#=}"; }
+        [[ "$value" == never ]] || { print -r -- "$arg"; return 0; } ;;
     esac
+    (( i += 1 ))
   done
   _golem_codex_args_config_match _golem_codex_config_key_is_scan_sandbox "$@"
 }

@@ -142,6 +142,26 @@ function split_case_153() {
         "testrepoCodex -E high --scan -- -c plugins.browser@${CODEX_PLUGIN_MARKETPLACE}.enabled=true"
         'testrepoCodex -E high --scan -- -c=mcp_servers.node_repl.enabled=true'
         'testrepoCodex -E high --scan -- --config mcp_servers.computer-use.enabled=true'
+        # #687 R1 B1: --yolo is codex's alias of the bypass flag; sweep of every
+        # sandbox/approval/permission spelling codex 0.160.1 accepts.
+        'testrepoCodex -E high --scan --yolo'
+        'testrepoCodex -E high --scan -- --yolo'
+        'testrepoCodex -E high --scan --yolo resume --last'
+        'testrepoCodex -E high --scan -- --approve-for-me'
+        'testrepoCodex -E high --scan -- --add-dir /private/var/scan-extra'
+        'testrepoCodex -E high --scan -- --add-dir=/private/var/scan-extra'
+        'testrepoCodex -E high --scan -- -s=danger-full-access'
+        'testrepoCodex -E high --scan -- -sdanger-full-access'
+        'testrepoCodex -E high --scan -- --sandbox danger-full-access'
+        'testrepoCodex -E high --scan -- -s read-only'
+        'testrepoCodex -E high --scan -- -a=on-request'
+        'testrepoCodex -E high --scan -- -aon-request'
+        'testrepoCodex -E high --scan -- --ask-for-approval untrusted'
+        'testrepoCodex -E high --scan -- -csandbox_mode="danger-full-access"'
+        'testrepoCodex -E high --scan -- --config=approval_policy="on-request"'
+        'testrepoCodex -E high --scan -- -c sandbox_workspace_write.network_access=true'
+        'testrepoCodex -E high --scan -- -p looser-profile'
+        'testrepoCodex -E high --scan -- --profile=looser-profile'
     )
     for launch in "${refused[@]}"; do
         run_codex_scan_launch "$launch"
@@ -149,6 +169,15 @@ function split_case_153() {
         grep -F -q -- 'repoGolem: --scan refuses' <<< "$output" \
           || { echo "[$launch] missing refusal: $output" >&2; return 1; }
         refute_contains 'CODEX_ARG=' "$output" "[$launch] codex must not start" || return 1
+    done
+    # Restating the seat's own sandbox or approval is fine, in any spelling.
+    for launch in 'testrepoCodex -E high --scan -- -s workspace-write' \
+                  'testrepoCodex -E high --scan -- --sandbox=workspace-write' \
+                  'testrepoCodex -E high --scan -- -a never' \
+                  'testrepoCodex -E high --scan -- --ask-for-approval=never'; do
+        run_codex_scan_launch "$launch"
+        [ "$status" -eq 0 ] || { echo "[$launch] status=$status: $output" >&2; return 1; }
+        assert_scan_shape "$launch" "$output" || return 1
     done
 }
 
