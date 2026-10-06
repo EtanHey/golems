@@ -27,7 +27,7 @@
   },
   "overrides": {
     "@hono/node-server": "1.19.17",
-    "@modelcontextprotocol/sdk": "1.30.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "axios": "1.19.0",
     "body-parser": "2.3.0",
     "brace-expansion": "2.1.7",
