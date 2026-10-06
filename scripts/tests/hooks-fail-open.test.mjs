@@ -1,11 +1,12 @@
 import { afterEach, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const wrapper = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "hooks", "fail-open.py");
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dirs = [];
 afterEach(() => dirs.splice(0).forEach((d) => rmSync(d, { recursive: true, force: true })));
 
@@ -15,8 +16,8 @@ function scratch() {
   return d;
 }
 
-function wrap(target) {
-  const r = spawnSync("python3", [wrapper, target], { encoding: "utf8", input: "{}" });
+function wrap(target, { closed = false, launcher = wrapper } = {}) {
+  const r = spawnSync("python3", [launcher, ...(closed ? ["--fail-closed"] : []), ...(target ? [target] : [])], { encoding: "utf8", input: "{}" });
   return { status: r.status, stderr: r.stderr, stdout: r.stdout };
 }
 
@@ -34,6 +35,155 @@ test("missing target and import error exit 0 with exactly one stderr line", () =
   expect(r.stderr.trim().split("\n").length).toBe(1);
   expect(r.stderr).toContain("ModuleNotFoundError");
 });
+
+const repairReason = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.";
+const closedBlock = {
+  decision: "block",
+  reason: repairReason,
+  hookSpecificOutput: {
+    hookEventName: "PreToolUse",
+    permissionDecision: "deny",
+    permissionDecisionReason: repairReason,
+  },
+};
+
+for (const failure of ["missing-arg", "missing", "syntax", "dangling", "unreadable", "crash", "imports", "bad-exit", "exit-1", "exit-3"]) {
+  test(`fail-closed copy gives one static value-free block: ${failure}`, () => {
+    const d = scratch();
+    const launcher = path.join(d, "golems-fail-open.py");
+    copyFileSync(wrapper, launcher);
+    const missing = path.join(d, "sensitive-missing.py");
+    const syntax = path.join(d, "sensitive-syntax.py");
+    writeFileSync(syntax, "def sensitive_bad(:\n");
+    const dangling = path.join(d, "sensitive-hook.py");
+    symlinkSync(path.join(d, "missing-hooks-live", "policy.py"), dangling);
+    const unreadable = path.join(d, "sensitive-unreadable.py");
+    writeFileSync(unreadable, "raise RuntimeError('sensitive-value')\n");
+    chmodSync(unreadable, 0o000);
+    const crash = path.join(d, "sensitive-crash.py");
+    writeFileSync(crash, "import sys\nprint('sensitive-output')\nprint('sensitive-error', file=sys.stderr)\nraise RuntimeError('sensitive-value')\n");
+    const imports = path.join(d, "sensitive-import.py");
+    writeFileSync(imports, "import missing_sensitive_module\n");
+    const badExit = path.join(d, "sensitive-exit.py");
+    writeFileSync(badExit, "import sys\nprint('sensitive-output')\nsys.exit('sensitive-value')\n");
+    const exit1 = path.join(d, "exit1.py"), exit3 = path.join(d, "exit3.py");
+    writeFileSync(exit1, "import sys\nsys.exit(1)\n"); writeFileSync(exit3, "import sys\nsys.exit(3)\n");
+    const target = { missing, syntax, dangling, unreadable, crash, imports, "bad-exit": badExit, "exit-1": exit1, "exit-3": exit3 }[failure];
+    const r = wrap(target, { closed: true, launcher });
+    expect(r.status, target).toBe(2);
+    expect(r.stderr, target).toBe("");
+    expect(r.stdout, target).toBe(`${JSON.stringify(closedBlock)}\n`);
+  });
+}
+
+test("a crash in the launcher itself denies a fail-closed gate and stays a crash (non-blocking) for the rest", () => {
+  // The #652 class: a launcher-level AttributeError (sys.flags.safe_path on 3.9) before any hook ran.
+  const d = scratch();
+  const launcher = path.join(d, "golems-fail-open.py");
+  const source = require("node:fs").readFileSync(wrapper, "utf8");
+  const crashing = source.replace("    args = sys.argv[1:]\n", "    args = sys.argv[1:]\n    sys.flags.no_such_flag  # synthetic launcher crash\n");
+  expect(crashing).not.toBe(source);
+  writeFileSync(launcher, crashing);
+  const target = path.join(d, "gate.py");
+  writeFileSync(target, "print('{}')\n");
+  let r = wrap(target, { closed: true, launcher });
+  expect([r.status, r.stderr, r.stdout]).toEqual([2, "", `${JSON.stringify(closedBlock)}\n`]);
+  r = wrap(target, { launcher });
+  expect(r.status).toBe(1);
+  expect(r.stderr).toContain("AttributeError");
+});
+
+test("--budget: a hook that hangs (even ignoring SIGTERM) gets the static deny within the budget", () => {
+  const d = scratch();
+  const target = path.join(d, "hang.py");
+  writeFileSync(target, "import signal, sys, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nsys.stdin.read()\nprint('partial')\ntime.sleep(30)\n");
+  const started = Date.now();
+  const r = spawnSync("python3", [wrapper, "--fail-closed", "--budget", "1", target], { encoding: "utf8", input: "{}" });
+  const elapsed = Date.now() - started;
+  expect([r.status, r.stderr, r.stdout]).toEqual([2, "", `${JSON.stringify(closedBlock)}\n`]);
+  expect(elapsed).toBeGreaterThan(800);  // the watchdog fired, not an argument error
+  expect(elapsed).toBeLessThan(2_500);
+});
+
+test("--budget: the child losing the setpgid race (EPERM) is not a deny; the hook's allow passes through", () => {
+  // #656 R2 B1: the parent's setpgid(pid, pid) can win; the child's own call then raises EPERM.
+  const d = scratch();
+  const target = path.join(d, "allow.py");
+  writeFileSync(target, "import sys\nsys.stdin.read()\nprint('{}')\n");
+  const driver = "import os, runpy, sys\nreal = os.setpgid\n" +
+    "def racy(pid, pgid):\n    if (pid, pgid) == (0, 0):\n        raise PermissionError(1, 'Operation not permitted')\n    return real(pid, pgid)\n" +
+    "os.setpgid = racy\nsys.argv = sys.argv[1:]\nrunpy.run_path(sys.argv[0], run_name='__main__')\n";
+  const r = spawnSync("python3", ["-c", driver, wrapper, "--fail-closed", "--budget", "4", target], { encoding: "utf8", input: "{}" });
+  expect([r.status, r.stderr, r.stdout]).toEqual([0, "", "{}\n"]);
+});
+
+test("--budget stress: 1000 parallel fast allows through --fail-closed --budget give 0 spurious denies", async () => {
+  const d = scratch();
+  const target = path.join(d, "allow.py");
+  writeFileSync(target, "import sys\nsys.stdin.read()\nprint('{}')\n");
+  const { spawn } = await import("node:child_process");
+  const once = () => new Promise((resolve) => {
+    const p = spawn("python3", ["-I", "-B", wrapper, "--fail-closed", "--budget", "4", target]);
+    let out = "";
+    p.stdout.on("data", (c) => { out += c; });
+    p.on("close", (code) => resolve(code === 0 && out === "{}\n" ? "allow" : `code=${code} out=${out.slice(0, 40)}`));
+    p.stdin.end("{}");
+  });
+  const results = [];
+  for (let i = 0; i < 1000; i += 8) results.push(...await Promise.all(Array.from({ length: Math.min(8, 1000 - i) }, once)));
+  const spurious = results.filter((x) => x !== "allow");
+  expect([results.length, spurious.length, spurious.slice(0, 3)]).toEqual([1000, 0, []]);
+}, 300_000);
+
+test("--budget leaves a fast hook's allow/deny and output untouched", () => {
+  const d = scratch();
+  const target = path.join(d, "fast.py");
+  for (const code of [0, 2]) {
+    writeFileSync(target, `import sys\nsys.stdin.read()\nprint('{"ok": ${code}}')\nsys.exit(${code})\n`);
+    const r = spawnSync("python3", [wrapper, "--fail-closed", "--budget", "4", target], { encoding: "utf8", input: "{}" });
+    expect([r.status, r.stderr, r.stdout]).toEqual([code, "", `{"ok": ${code}}\n`]);
+  }
+});
+
+test("fail-closed preserves legitimate allow and deliberate deny with real sibling imports and argv", () => {
+  const d = scratch();
+  const real = path.join(d, "real");
+  mkdirSync(real);
+  writeFileSync(path.join(real, "policy.py"), "VALUE = 'policy'\n");
+  const target = path.join(real, "gate.py");
+  const link = path.join(d, "gate.py");
+  symlinkSync(target, link);
+  for (const code of [undefined, 0, 2]) {
+    writeFileSync(target, `import json,sys\nfrom policy import VALUE\nsys.stdin.read()\nprint(json.dumps({'value': VALUE, 'argv': sys.argv[1:]}))\n${code === undefined ? "" : `sys.exit(${code})\n`}`);
+    const r = spawnSync("python3", [wrapper, "--fail-closed", link, "argument"], { encoding: "utf8", input: "{}" });
+    expect(r.status).toBe(code ?? 0);
+    expect(r.stderr).toBe("");
+    expect(JSON.parse(r.stdout)).toEqual({ value: "policy", argv: ["argument"] });
+  }
+});
+
+for (const [gate, input] of [
+  ["git-guardian/hooks/pre_tool_use.py", { command: "rm -rf /" }],
+  ["tmp-block/hooks/tmp-block-pretooluse.py", { file_path: "/tmp/policy-fixture.txt" }],
+]) {
+  test(`real policy hook preserves allow/deny through copied fail-closed launcher: ${gate}`, () => {
+    const d = scratch();
+    const launcher = path.join(d, "golems-fail-open.py");
+    copyFileSync(wrapper, launcher);
+    const env = { ...process.env, HOME: d, TMPDIR: "" };
+    for (const key of ["WEAVE_ALLOW_TMP", "WEAVE_ALLOW_WT_MIGRATION", "GIT_GUARDIAN_LIB", "AUTONOMOUS"]) delete env[key];
+    for (const [tool, toolInput, code] of [["Bash", { command: "echo policy-fixture" }, 0],
+      [input.command ? "Bash" : "Write", input, 2]]) {
+      const payload = { tool_name: tool, tool_input: toolInput, cwd: repo, session_id: "synthetic-policy" };
+      const r = spawnSync("python3", [launcher, "--fail-closed", path.join(repo, "skills/golem-powers", gate)],
+        { env, encoding: "utf8", input: JSON.stringify(payload) });
+      expect(r.status).toBe(code);
+      expect(r.stderr).toBe("");
+      expect(() => JSON.parse(r.stdout)).not.toThrow();
+      if (code === 2) expect(r.stdout).not.toContain("policy hook unavailable");
+    }
+  });
+}
 
 test("a deliberate block (exit 2 + stdout) passes through; sibling imports resolve through a FILE symlink", () => {
   const d = scratch();
