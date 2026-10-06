@@ -197,9 +197,12 @@ function context(o, sha) {
     ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: claudeCommand(e),
   }));
   const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
+  // A pinned Codex gate (human-confirm) is refused, never registered, until its
+  // anchor pin carries an owner fingerprint at the selected sha, as on Claude.
+  const codexRefused = (manifest.codex_hosts?.[o.host] ?? []).filter((e) => e.requiresPin && !pinReady(o, sha, e)).map((e) => e.gate);
   // Without an acceptable interpreter (status only), the Codex config probe would
   // run an unvetted python3 and could crash --status; report it unchecked instead.
-  const codex = hookPython ? planCodexHooks({ manifest, host: o.host, live, python,
+  const codex = hookPython ? planCodexHooks({ manifest, host: o.host, live, python, refused: codexRefused,
     codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) }) : undefined;
   return { entries, golems, wrapped, hooksDir, live, codex, hookPython, settingsPath: path.join(homedir(), ".claude", "settings.json") };
 }
@@ -663,6 +666,9 @@ function install(o) {
   console.log(`settings.json: ${changed ? "would change" : "unchanged"} (${ctx.golems.length + ctx.wrapped.length} managed hooks)`);
   const caches = !o.apply ? bytecodePaths(ctx.live, importDirs(ctx)).filter((rel) => path.basename(rel) === "__pycache__") : [];
   if (caches.length) console.log(`hooks-live: ${o.apply ? "clearing" : "would clear"} ${caches.length} stale __pycache__ dir(s) (hooks run -B)`);
+  for (const gate of ctx.codex?.refused ?? []) {
+    console.log(`REFUSED codex ${gate}: its anchor pin has no owner fingerprint at ${sha}; ${o.apply ? "not registered" : "would not be registered"}.`);
+  }
   if (ctx.codex) console.log(`codex hooks.json: ${ctx.codex.old === ctx.codex.next ? "unchanged" : "would change"}; config.toml preserved; trust requires /hooks review`);
   if (!o.apply) {
     console.log("dry-run: nothing written (pass --apply)");
@@ -771,6 +777,7 @@ function status(o) {
     bad = true;
     console.log("codex wiring=unchecked (no acceptable hook interpreter to read config.toml)");
   } else if (codexStatus(ctx.codex)) bad = true;
+  for (const gate of ctx.codex?.refused ?? []) console.log(`codex ${gate} refused(unpinned)`);
   const wrapper = path.join(ctx.hooksDir, "golems-fail-open.py");
   const source = readFileSync(WRAPPER_SRC);
   const wrapperState = !existsSync(wrapper) ? "dangling" : readFileSync(wrapper).equals(source) ? "ok" : "stale";
