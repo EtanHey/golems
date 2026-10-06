@@ -140,6 +140,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         limit = max((i + 1 for i, seg in enumerate(segments) if seg <= segment), default=0)
         child_bindings = assigned_bindings(tokens, positions, limit, bindings, scopes)
         result += operations(body, cwd, alias_lookup, depth + 1, child_bindings, _state)
+    tokens, positions, segments, scopes = syntax.substitution_argv(command, shell)
     for i, word in enumerate(tokens):
         if not positions[i] or syntax.looked_up(tokens, positions, i): continue
         current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
@@ -163,7 +164,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
         if assignment:
             continue  # a prefix assignment is not the executable; the next word is
-        if ('$' in word or '`' in word) and syntax.guarded_words(args):
+        if syntax.unresolved(word, Path.home()) and syntax.guarded_words(args):
             raise ValueError('unresolved executable for protected operation')
         for child in syntax.wrapper_payload(base, args):
             child_bindings = dict(current)
