@@ -66,6 +66,13 @@ describe("parseRows", () => {
     expect(() => parseRows(rowsFile([{ ...drift, ceiling: "0" }]))).toThrow(/ceiling/);
   });
 
+  test("unknown keys are rejected: any field a producer reads must be a known, checked one", () => {
+    expect(() => parseRows(rowsFile([{ ...drift, skip_if: "always" }]))).toThrow(/unknown key skip_if/);
+    expect(() => parseRows({ schema: 1, rows: [], extra: true })).toThrow(/unknown key extra/);
+    expect(parseRows(rowsFile([{ ...drift, timeout_s: 60 }])).rows[0].timeout_s).toBe(60);
+    expect(() => parseRows(rowsFile([{ ...drift, timeout_s: 0 }]))).toThrow(/timeout_s/);
+  });
+
   test("a row id outside the ruling charset is rejected, so every row can be ruled", () => {
     expect(() => parseRows(rowsFile([{ ...drift, id: "has space" }]))).toThrow(/id must match/);
     expect(() => parseRows(rowsFile([{ ...drift, id: "a/b" }]))).toThrow(/id must match/);
@@ -199,6 +206,23 @@ describe("ratchet direction (rule 5)", () => {
     expect(evaluate({ rows: parseRows(rowsFile([promoted])), baseRows: unitBase, results: results({ "unit-hook": true }), head: HEAD }).loosened).toEqual([]);
   });
 
+  test("raising a row's timeout is loosening; lowering it is a tightening", () => {
+    const slowBase = parseRows(rowsFile([{ ...drift, timeout_s: 60 }]));
+    const at = (timeout_s) => evaluate({ rows: parseRows(rowsFile([{ ...drift, timeout_s }])), baseRows: slowBase, results: results({ drift: 0 }), head: HEAD });
+    expect(at(600).loosened).toEqual([{ id: "drift", reason: "timeout_s 60 → 600", ruled: false }]);
+    expect(at(30).loosened).toEqual([]);
+    const dropped = evaluate({ rows: parseRows(rowsFile([drift])), baseRows: slowBase, results: results({ drift: 0 }), head: HEAD });
+    expect(dropped.loosened.map((entry) => entry.reason)).toEqual(["timeout_s 60 → default"]);
+  });
+
+  test("bug/fix evidence edits are metadata: allowed, but listed in the table", () => {
+    const moved = { ...drift, fix_sha: "e".repeat(40) };
+    const out = evaluate({ rows: parseRows(rowsFile([moved])), baseRows: parseRows(rowsFile([drift])), results: results({ drift: 0 }), head: HEAD });
+    expect(out.ok).toBe(true);
+    expect(out.metadata).toEqual([{ id: "drift", field: "fix_sha", before: FIX, after: "e".repeat(40) }]);
+    expect(renderTable(out, { marker: "m" })).toContain("Metadata changed: `drift` fix_sha bbbbbbbb → eeeeeeee");
+  });
+
   test("a ratchet-loosen ruling line per row in the PR body allows it", () => {
     const rows = [{ ...drift, ceiling: 1 }, gate, cover];
     const ruled = evaluate({ rows: parseRows(rowsFile(rows)), baseRows: base, results: results({ drift: 1, gate: true, cover: 12 }), head: HEAD, prBody: "Summary\nratchet-loosen: drift — lead ruling: flaky installer, see #700\n" });
@@ -216,11 +240,13 @@ describe("renderTable", () => {
     const body = renderTable(out, { marker: "golems-ratchet" });
     const lines = body.split("\n");
     expect(lines[0]).toBe(markerComment("golems-ratchet"));
-    expect(lines[1]).toBe(`<!-- ratchet-verdict: {"head":"${HEAD}","ok":true,"real_pass":1,"real_total":1} -->`);
+    expect(lines[1]).toBe(`<!-- ratchet-verdict: {"head":"${HEAD}","ok":true,"real_pass":1,"real_total":1,"bootstrap":false} -->`);
     expect(body).toContain("| baseline@dddddddd | this PR@cccccccc | Δ | ceiling | status |");
     expect(body).toContain("| `drift` hooks-live drift files | real | 0 | 0 | 0 | ≤ 0 | PASS |");
     expect(body).toContain("| `unit-hook` hook code deny/allow | unit | — | PASS | — | PASS | PASS |");
-    expect(readVerdict(body, "golems-ratchet")).toEqual({ head: HEAD, ok: true, real_pass: 1, real_total: 1 });
+    expect(readVerdict(body, "golems-ratchet")).toEqual({ head: HEAD, ok: true, real_pass: 1, real_total: 1, bootstrap: false });
+    const boot = evaluate({ rows, results: results({ drift: 0, "unit-hook": true }), head: HEAD, bootstrap: true });
+    expect(readVerdict(renderTable(boot, { marker: "m" }), "m").bootstrap).toBe(true);
   });
 
   test("a detail cannot forge a verdict line or break the table", () => {
@@ -331,7 +357,10 @@ describe("CLI", () => {
     git("add", "-A");
     git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base");
     const sha = git("rev-parse", "HEAD").trim();
-    for (const [name, value] of Object.entries(files)) writeFileSync(join(cwd, name), typeof value === "string" ? value : JSON.stringify(value));
+    for (const [name, value] of Object.entries(files)) {
+      if (value === null) rmSync(join(cwd, name));
+      else writeFileSync(join(cwd, name), typeof value === "string" ? value : JSON.stringify(value));
+    }
     const args = [script, "--rows", join(cwd, "rows.json"), "--results", join(cwd, "results.json"), "--head", HEAD, ...(baseRef ? ["--base-ref", sha] : []), ...extra];
     return spawnSync(process.execPath, args, { encoding: "utf8" });
   }
@@ -355,6 +384,24 @@ describe("CLI", () => {
     expect(compared.stdout).toContain("command changed");
     expect(compared.stdout).not.toContain("Direction unchecked");
     expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--bootstrap"], { base: rowsFile([drift]), baseRef: false }).status).toBe(2);
+  });
+
+  test("a row file renamed or deleted vs base is FAIL, never a bootstrap", () => {
+    const repo = dir();
+    const git = (...args) => execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: "pipe" });
+    git("init", "-q");
+    writeFileSync(join(repo, "old-rows.json"), JSON.stringify(rowsFile([drift])));
+    git("add", "-A");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base");
+    const base = git("rev-parse", "HEAD").trim();
+    git("mv", "old-rows.json", "rows.json");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "rename");
+    writeFileSync(join(repo, "results.json"), JSON.stringify(results({ drift: 0 })));
+    const renamed = spawnSync(process.execPath, [script, "--rows", join(repo, "rows.json"), "--results", join(repo, "results.json"), "--head", HEAD, "--base-ref", base], { encoding: "utf8" });
+    expect(renamed.status).toBe(2);
+    expect(renamed.stderr).toContain("renamed from old-rows.json");
+    const deleted = cli({ "rows.json": null, "results.json": results({ drift: 0 }) }, [], { base: rowsFile([drift]) });
+    expect(deleted.status).toBe(2);
   });
 
   test("exit 2 on a malformed row file, a missing --head or base, a bad base ref, a non-string SHA, or an unreadable PR body", () => {

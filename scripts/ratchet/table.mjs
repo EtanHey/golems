@@ -17,6 +17,11 @@ const REF_KINDS = new Set(["commit", "fixture-hash"]);
 const ROW_ID = /^[A-Za-z0-9_.:-]+$/;
 const SHA = /^[0-9a-f]{7,40}$/;
 const FIXTURE_HASH = /^[0-9a-f]{8,64}$/;
+// Strict schema: a key nobody validates is a key a producer could later read unchecked.
+const FILE_KEYS = new Set(["schema", "rows"]);
+const ROW_KEYS = new Set(["id", "metric", "kind", "runner", "direction", "ceiling", "command", "timeout_s", "bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture"]);
+// Evidence, not measurement: editing these is allowed but always listed in the table.
+const METADATA_KEYS = ["bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture"];
 const short = (sha) => (typeof sha === "string" && sha ? escapeCell(sha.slice(0, 8)) : "none");
 
 export function markerComment(marker) {
@@ -27,9 +32,11 @@ export const VERDICT_PREFIX = "<!-- ratchet-verdict: ";
 
 export function parseRows(doc) {
   if (!doc || doc.schema !== 1 || !Array.isArray(doc.rows)) throw new Error("row file needs schema: 1 and a rows array");
+  for (const key of Object.keys(doc)) if (!FILE_KEYS.has(key)) throw new Error(`row file: unknown key ${key}`);
   const seen = new Set();
   for (const row of doc.rows) {
     const where = `row ${JSON.stringify(row?.id)}`;
+    for (const key of Object.keys(row ?? {})) if (!ROW_KEYS.has(key)) throw new Error(`${where}: unknown key ${key}`);
     // The id charset is the ruling line's, so every row can be ruled.
     if (typeof row?.id !== "string" || !ROW_ID.test(row.id)) throw new Error(`${where}: id must match ${ROW_ID}`);
     if (seen.has(row.id)) throw new Error(`duplicate row id ${row.id}`);
@@ -56,6 +63,7 @@ export function parseRows(doc) {
       }
     }
     if (row.runner !== undefined && typeof row.runner !== "string") throw new Error(`${where}: runner must be a string`);
+    if (row.timeout_s !== undefined && !(Number.isInteger(row.timeout_s) && row.timeout_s > 0)) throw new Error(`${where}: timeout_s must be a positive integer`);
   }
   return doc;
 }
@@ -83,6 +91,8 @@ function loosening(before, after) {
   if (before.direction === "max" && after.ceiling > before.ceiling) return `ceiling ${before.ceiling} → ${after.ceiling}`;
   if (before.direction === "min" && after.ceiling < before.ceiling) return `ceiling ${before.ceiling} → ${after.ceiling}`;
   for (const field of ["command", "metric"]) if (before[field] !== after[field]) return `${field} changed`;
+  // More time to pass is a looser row; no timeout means the producer's default.
+  if (before.timeout_s !== undefined && (after.timeout_s === undefined || after.timeout_s > before.timeout_s)) return `timeout_s ${before.timeout_s} → ${after.timeout_s ?? "default"}`;
   return null;
 }
 
@@ -114,11 +124,16 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
   // Direction is checked across EVERY base row, whatever --runner selects.
   const ruled = rulings(prBody);
   const loosened = [];
+  const metadata = [];
   if (baseRows) {
     const current = new Map(rows.rows.map((row) => [row.id, row]));
     for (const before of baseRows.rows) {
-      const reason = loosening(before, current.get(before.id));
+      const after = current.get(before.id);
+      const reason = loosening(before, after);
       if (reason) loosened.push({ id: before.id, reason, ruled: ruled.has(before.id) });
+      for (const field of METADATA_KEYS) {
+        if (after && before[field] !== after[field]) metadata.push({ id: before.id, field, before: before[field], after: after[field] });
+      }
     }
   }
 
@@ -132,6 +147,7 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
     resultsSha: results?.head_sha ?? null,
     baselineSha: baseline?.head_sha ?? null,
     loosened,
+    metadata,
     realPass: real.filter((row) => row.status === "PASS").length,
     realTotal: real.length,
     // No selected row is every row missing (a runner typo, `rows: []`), never a pass. A failing
@@ -170,7 +186,8 @@ function deltaCell(delta) {
 }
 
 export function renderTable(evaluation, { marker, title = "Ratchet table" } = {}) {
-  const verdict = { head: evaluation.head, ok: evaluation.ok, real_pass: evaluation.realPass, real_total: evaluation.realTotal };
+  // `bootstrap` lets a consumer FAIL a verdict that skipped the direction check on a base with rows.
+  const verdict = { head: evaluation.head, ok: evaluation.ok, real_pass: evaluation.realPass, real_total: evaluation.realTotal, bootstrap: evaluation.bootstrap };
   // Fixed position: the verdict is ALWAYS the line right after the marker; consumers read only it.
   const lines = [
     markerComment(marker),
@@ -192,6 +209,11 @@ export function renderTable(evaluation, { marker, title = "Ratchet table" } = {}
     lines.push(`- Loosened \`${entry.id}\` (${escapeCell(entry.reason)}): ${entry.ruled ? "ruled in the PR body" : "**no `ratchet-loosen:` ruling in the PR body → FAIL**"}`);
   }
   if (evaluation.loosened.length) lines.push("");
+  for (const entry of evaluation.metadata ?? []) {
+    const show = (value) => (typeof value === "string" ? short(value) : escapeCell(value ?? "none"));
+    lines.push(`- Metadata changed: \`${entry.id}\` ${entry.field} ${show(entry.before)} → ${show(entry.after)}`);
+  }
+  if (evaluation.metadata?.length) lines.push("");
   lines.push(`Real rows: ${evaluation.realPass}/${evaluation.realTotal} PASS. \`unit\` rows are shown but never count as ratchet evidence. Verdict: **${evaluation.ok ? "PASS" : "FAIL"}**.`);
   return lines.join("\n");
 }
@@ -233,7 +255,16 @@ export function baseRowsAt(rowsPath, baseRef, git = spawnSync) {
   const run = (args) => git("git", ["-C", dir, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (run(["rev-parse", "--verify", "--quiet", `${baseRef}^{commit}`]).status !== 0) throw new Error(`--base-ref ${baseRef} is not a commit in this repository`);
   const spec = `${baseRef}:./${basename(rowsPath)}`;
-  if (run(["cat-file", "-e", spec]).status !== 0) return null;
+  if (run(["cat-file", "-e", spec]).status !== 0) {
+    // Absent at base is a bootstrap only if the file did not arrive by rename/copy from a base path.
+    const rel = `${run(["rev-parse", "--show-prefix"]).stdout.trim()}${basename(rowsPath)}`;
+    const diff = run(["diff", "--find-renames", "--find-copies", "--name-status", baseRef]);
+    for (const line of String(diff.stdout ?? "").split("\n")) {
+      const [status, from, to] = line.split("\t");
+      if (/^[RC]/.test(status ?? "") && to === rel) throw new Error(`${rel} was renamed from ${from} vs base ${baseRef}: a moved row file is FAIL, never a bootstrap`);
+    }
+    return null;
+  }
   const shown = run(["show", spec]);
   if (shown.status !== 0) throw new Error(`cannot read ${basename(rowsPath)} at base ${baseRef}: ${(shown.stderr ?? "").trim()}`);
   return parseRows(JSON.parse(shown.stdout));
