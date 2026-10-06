@@ -34,6 +34,7 @@ def feed(hook, command, cwd, session):
                               session_id=session, hook_event_name='PreToolUse'))
     run = subprocess.run(['sh', '-c', hook], input=payload, capture_output=True, text=True, timeout=60)
     out = run.stdout + run.stderr
+    # Any other exit (a hook crash) is ALLOW: Claude Code treats a non-blocking hook error as allow.
     denied = run.returncode == 2 or '"deny"' in out or '"block"' in out
     return 'DENY' if denied else 'ALLOW', f'rc={run.returncode} ' + out.replace('\n', ' ')[:160]
 

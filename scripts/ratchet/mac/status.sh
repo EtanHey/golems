@@ -12,5 +12,10 @@ cd "$RATCHET_CLONE"
 out="$(HOME="$RATCHET_HOME" CODEX_HOME="$RATCHET_HOME/.codex" node scripts/hooks/install-hooks.mjs \
   --host mbp --repo "$RATCHET_CLONE" --status 2>&1 || true)"
 printf '%s\n' "$out"
+# An installer that crashed or never finished prints no complete status: FAIL, not "0 problems".
+if ! grep -qE '^hooks-live=' <<<"$out" || ! grep -qE '^settings-drift=[0-9]+$' <<<"$out"; then
+  echo "installer --status did not run to completion" >&2
+  exit 1
+fi
 problems="$(grep -cE 'DIRTY|unexpected|not on origin/master|recorded pin|no recorded pin| drifted$| unregistered$|dangling|STILL ACTIVE|interpreter BAD|retired-registered|PRESENT in settings|hook-python=NONE|drift=[1-9]|settings-drift=[1-9]|^codex wiring=(drifted|absent)' <<<"$out" || true)"
 echo "$problems"

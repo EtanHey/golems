@@ -47,7 +47,19 @@ REAL_HOME="$HOME"
 read -r HEAD BRANCH STATE BASE < <(gh pr view "$PR" --repo "$REPO_SLUG" --json headRefOid,headRefName,state,baseRefOid -q '"\(.headRefOid) \(.headRefName) \(.state) \(.baseRefOid)"')
 [ "$STATE" = "OPEN" ] || die "PR #$PR is $STATE; the lease probe needs an open PR"
 INSTALL="${INSTALL:-$HEAD}"
-[ "$INSTALL" = "$HEAD" ] && [ -z "${WITH[*]+x}" ] || POST=0
+
+# Post only a canonical PR-head run whose row scripts ARE the PR head's (lib.sh).
+source "$HERE/lib.sh"
+HERE_HEAD="$(git -C "$HERE" rev-parse HEAD)"
+HERE_DIRTY="$(git -C "$HERE" status --porcelain | grep -c . || true)"
+count() { echo "$#"; }
+MODE="$(ratchet_post_mode "$INSTALL" "$HEAD" "$(count "${WITH[@]+"${WITH[@]}"}")" "$PRIVATE_MANIFEST" \
+  "$(count "${PRIVATE_FILES[@]+"${PRIVATE_FILES[@]}"}")" "$HERE_HEAD" "$HERE_DIRTY")"
+case "$MODE" in
+  post) ;;
+  replay*) POST=0; echo "local-run: $MODE (prints the table, never posts)" ;;
+  *) [ "$POST" = 0 ] && echo "local-run: $MODE (allowed: --no-post)" || die "$MODE" ;;
+esac
 
 NAME="pr$PR-${INSTALL:0:12}-$(date +%Y%m%dT%H%M%S)"
 RUN="$MAIN/docs.local/ratchet-runs/$NAME"
@@ -142,7 +154,9 @@ export RATCHET_RUN="$RUN" RATCHET_HOME="$SH" RATCHET_CLONE="$CLONE" RATCHET_INST
 export RATCHET_PR_HEAD="$HEAD" RATCHET_BRANCH="$BRANCH" RATCHET_PUSH_REPO="$SCRATCH/pushwt"
 node "$HERE/run-rows.mjs" --rows "$HERE/rows.json" --runner mac --head "$INSTALL" --cwd "$(cd "$HERE/../.." && pwd)" --out "$RUN/results.json"
 
-args=(--rows "$HERE/rows.json" --results "$RUN/results.json" --head "$INSTALL" --runner mac
+# The receipt binds the posted verdict to this run's measured outputs.
+RECEIPT="$(cat "$HERE/rows.json" "$RUN/results.json" "$RUN/install.log" | shasum -a 256 | cut -c1-64)"
+args=(--rows "$HERE/rows.json" --results "$RUN/results.json" --head "$INSTALL" --runner mac --producer "$HERE_HEAD" --receipt "$RECEIPT"
       --marker golems-ratchet-mac --title "Ratchet table (Mac candidate rows: real binaries, scratch HOME)"
       --out "$RUN/table.md")
 # Rule 5 against the PR's base row file, which table.mjs reads itself at --base-ref.

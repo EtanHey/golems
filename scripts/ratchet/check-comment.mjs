@@ -7,14 +7,14 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { baseRowsAt, markerComment, parseRows, readVerdict } from "./table.mjs";
+import { baseRowsAt, findSticky, parseRows, readVerdict } from "./table.mjs";
 
 export function checkVerdict({ comments, marker, head, expectedReal, authors, baseHasRows }) {
-  const tag = markerComment(marker);
-  const found = comments.filter((c) => typeof c.body === "string" && c.body.split("\n")[0] === tag && authors.includes(c.user?.login));
-  if (!found.length) return { ok: false, reason: `no ${marker} ratchet comment from ${authors.join("/")}` };
+  // The same comment the producer PATCHes (findSticky), never a newer or older look-alike.
+  const sticky = findSticky(comments, marker, authors);
+  if (!sticky) return { ok: false, reason: `no ${marker} ratchet comment from ${authors.join("/")}` };
   // Only the fixed line right after the marker is a verdict (table.mjs escapes every cell).
-  const verdict = readVerdict(found.at(-1).body, marker);
+  const verdict = readVerdict(sticky.body, marker);
   if (!verdict) return { ok: false, reason: "ratchet verdict unreadable" };
   // A verdict that skipped the direction check is only acceptable where there was nothing to check.
   if (baseHasRows && verdict.bootstrap !== false) return { ok: false, reason: "bootstrap verdict (direction unchecked) but the base branch has a row file" };

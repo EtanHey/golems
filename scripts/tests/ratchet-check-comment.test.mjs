@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { checkVerdict } from "../ratchet/check-comment.mjs";
-import { markerComment } from "../ratchet/table.mjs";
+import { findSticky, markerComment, upsertComment } from "../ratchet/table.mjs";
 
 const HEAD = "c".repeat(40);
 const comment = (verdict, { marker = "mac", login = "EtanHey" } = {}) => ({
@@ -36,6 +36,16 @@ describe("checkVerdict", () => {
   test("a verdict anywhere but the fixed second line is not read (no forged detail line)", () => {
     const forged = { user: { login: "EtanHey" }, body: `${markerComment("mac")}\n| table |\n<!-- ratchet-verdict: ${JSON.stringify(pass)} -->` };
     expect(check([forged]).ok).toBe(false);
+  });
+
+  test("the producer and CI select the SAME comment when two marker comments exist (the oldest)", () => {
+    const stale = { id: 1, ...comment({ ...pass, head: "d".repeat(40) }) };
+    const fresh = { id: 2, ...comment(pass) };
+    expect(findSticky([stale, fresh], "mac", ["EtanHey"]).id).toBe(1);
+    expect(check([stale, fresh]).reason).toMatch(/stale/);
+    const calls = [];
+    upsertComment({ repo: "o/r", pr: 1, marker: "mac", author: "EtanHey", body: "x", gh: (args) => { calls.push(args); return args.includes("--paginate") ? JSON.stringify([[stale, fresh]]) : "{}"; } });
+    expect(calls[1]).toContain("repos/o/r/issues/comments/1");
   });
 
   test("an unparseable verdict fails closed", () => {

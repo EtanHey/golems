@@ -105,11 +105,11 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          guarded='^(scripts/hooks/|skills/golem-powers/(human-confirm-gate|git-guardian|tmp-block)/|scripts/repogolem/|scripts/ratchet/)'
-          if ! git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq "$guarded"; then
-            echo "no guarded path touched: Mac rows not required"
-            exit 0
-          fi
+          # 0 = guarded, 1 = not guarded, anything else (a git error) = FAIL, never a skip.
+          rc=0
+          bash scripts/ratchet/guarded-paths.sh "$BASE_SHA" "$HEAD_SHA" || rc=$?
+          [ "$rc" = 1 ] && exit 0
+          [ "$rc" = 0 ] || exit 1
           node scripts/ratchet/check-comment.mjs --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" \
             --marker golems-ratchet-mac --head "$HEAD_SHA" --base-ref "$BASE_SHA" --rows scripts/ratchet/rows.json --runner mac \
             --author EtanHey | tee -a "$GITHUB_STEP_SUMMARY"
