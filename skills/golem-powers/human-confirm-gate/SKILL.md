@@ -18,6 +18,25 @@ scope denies when it could affect a protected operation. The gate inspects
 known wrappers, shell -c/trap and literal stdin payloads, Git executors and
 same-call config mutations; opaque shell stdin sources deny. Unclosed input
 and policy/import/runtime errors deliberately deny (exit 2).
+
+**Git routes:**
+- Executable names are case-folded (APFS is case-insensitive), so `GIT`,
+  `Git`, `GH` and absolute paths in any case are the same commands.
+- git's per-subcommand executables are treated as the matching git subcommand.
+- At push time the gate evaluates the *effective* route: the remote picked by
+  `--repo`, `branch.<b>.pushRemote`, `remote.pushDefault` or `branch.<b>.remote`,
+  plus that remote's configured `push` refspecs and `mirror`, when the command
+  names none. So a stored force/delete refspec or mirror needs a token on the
+  plain push that uses it. (`:` alone is git's "matching" refspec, not a delete.)
+- Tokens bind a digest of that route's config (URLs included, values never
+  copied), so changing the remote after issuance invalidates the token.
+- Storing a destructive route needs a token too:
+  - `git config` setters of a force/delete `remote.<r>.push` or a true `mirror`;
+  - Write/Edit/MultiEdit whose resulting git config (`.git/config`,
+    `config.worktree`, or the repo's common-dir config) would hold one. The
+    edit is simulated on the current file.
+- Other writers to git config (shell redirects, includes) are judged at push
+  time instead.
 The common fail-open launcher retains its existing infrastructure contract:
 a missing script or Python syntax failure before `main()` runs allows. This
 hook catches evaluator/import errors, not launcher failures. Installer status
