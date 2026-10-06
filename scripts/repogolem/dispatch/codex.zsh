@@ -183,7 +183,8 @@ _golem_codex_scan_computer_use_overrides() {
 # 0.160.1 (`--help` for codex, exec and resume, plus hidden aliases probed on
 # the real binary): `--yolo` is an alias of the bypass flag; `-s`/`--sandbox`
 # and `-a`/`--ask-for-approval` take `X`, `=X` and attached `X` spellings;
-# --approve-for-me reroutes approvals; --add-dir widens the writable set; a
+# --approve-for-me reroutes approvals; --add-dir and -C/--cd widen or move the
+# writable set (`-C /` makes `/` the workspace-write root); a
 # caller profile (-p/--profile) can widen sandbox_workspace_write. Restating
 # the seat's own `workspace-write` / `never` is allowed.
 _golem_codex_scan_conflict() {
@@ -195,7 +196,7 @@ _golem_codex_scan_conflict() {
     value=""
     case "$arg" in
       --dangerously-bypass-approvals-and-sandbox|--yolo|--full-auto|--approve-for-me \
-      |--add-dir|--add-dir=*|-p|-p?*|--profile|--profile=*)
+      |--add-dir|--add-dir=*|-C|-C?*|--cd|--cd=*|-p|-p?*|--profile|--profile=*)
         print -r -- "$arg"; return 0 ;;
       -s|--sandbox) value="${args[$(( i + 1 ))]:-}"; (( i += 1 ))
         [[ "$value" == workspace-write ]] || { print -r -- "$arg ${value}"; return 0; } ;;
