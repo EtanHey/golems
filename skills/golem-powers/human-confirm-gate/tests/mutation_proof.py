@@ -167,6 +167,10 @@ mutations = [
     ('gql-header-keyword', 'gh_policy.py', "            if tokens[i] not in ('query', 'mutation', 'subscription', 'fragment', '{'):\n                return None", '            pass', 'test_gh_parsing.GraphQL.test_unknown_header_tokens_and_stray_keywords_are_unreadable'),
     ('gql-header-tokens', 'gh_policy.py', "if tokens[i] != '(' and not re.fullmatch(r'[_A-Za-z]\\w*|[@:!=\\[\\]$]', tokens[i]):", 'if False:', 'test_gh_parsing.GraphQL.test_unknown_header_tokens_and_stray_keywords_are_unreadable'),
     ('gql-stray-keyword', 'gh_policy.py', "return names if tokens.count('mutation') == keywords else None", 'return names', 'test_gh_parsing.GraphQL.test_unknown_header_tokens_and_stray_keywords_are_unreadable'),
+    ('gql-comment-terminator', 'gh_policy.py', '|#[^\\n\\r]*|', '|#[^\\n]*|', 'test_gh_parsing.GraphQL.test_lexer_follows_graphql_line_terminators_and_block_string_escapes'),
+    ('gql-string-terminator', 'gh_policy.py', '"(?:[^"\\\\\\n\\r]|', '"(?:[^"\\\\\\n]|', 'test_gh_parsing.GraphQL.test_lexer_follows_graphql_line_terminators_and_block_string_escapes'),
+    ('gql-block-string-escape', 'gh_policy.py', '"""(?:\\\\"""|(?!""")[\\s\\S])*"""', '"""(?:[^"\\\\]|\\\\.|"(?!""))*"""', 'test_gh_parsing.GraphQL.test_lexer_follows_graphql_line_terminators_and_block_string_escapes'),
+    ('gql-raw-floor', 'gh_policy.py', "    if len(re.findall(r'\\bmutation\\b', document)) > keywords: return None\n", '', 'test_gh_parsing.GraphQL.test_a_mutation_word_the_reader_did_not_consume_is_unreadable'),
     ('route-casefold-settings', 'gh_policy.py', "parts = path.casefold().split('/')", "parts = path.split('/')", 'test_gh_parsing.GraphQL.test_route_keywords_are_casefolded'),
     ('route-casefold-graphql', 'gh_policy.py', "if path.casefold() == 'graphql':", "if path == 'graphql':", 'test_gh_parsing.GraphQL.test_route_keywords_are_casefolded'),
 ]

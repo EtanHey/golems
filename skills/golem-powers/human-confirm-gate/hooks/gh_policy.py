@@ -78,16 +78,20 @@ SAFE_MUTATIONS = {
     'unresolveReviewThread', 'addReaction', 'removeReaction', 'minimizeComment', 'unminimizeComment',
     'requestReviews', 'markPullRequestReadyForReview', 'convertPullRequestToDraft',
     'addLabelsToLabelable', 'removeLabelsFromLabelable'}
-_GQL = re.compile(r'"""(?:[^"\\]|\\.|"(?!""))*"""|"(?:[^"\\\n]|\\.)*"|#[^\n]*|\.\.\.|[_A-Za-z][_0-9A-Za-z]*|[{}()\[\]:$!=@]|[^\s,]')
+# GraphQL's own lexer rules: a comment ends at any line terminator (LF, CR), a
+# string never spans one, and the only escape in a block string is \""".
+_GQL = re.compile(r'"""(?:\\"""|(?!""")[\s\S])*"""|"(?:[^"\\\n\r]|\\.)*"|#[^\n\r]*|\.\.\.|[_A-Za-z][_0-9A-Za-z]*|[{}()\[\]:$!=@]|[^\s,]')
 
 
 def mutation_fields(document):
     """Top-level field names of every mutation operation in a GraphQL document;
     None when the document cannot be read that far: fragments, bad nesting, an
     operation that does not open with a keyword or `{`, a header token that is
-    not GraphQL, or a `mutation` word that is not an operation keyword."""
-    tokens = [t for t in _GQL.findall(document.replace('\ue000', '{').replace('\ue001', '}'))
-              if not t.startswith(('#', '"'))]
+    not GraphQL, or a `mutation` word that is not an operation keyword. The
+    floor: any `mutation` in the raw text that was not read as a keyword (one
+    inside a string or comment) is unreadable too, whatever the lexer saw."""
+    document = document.replace('\ue000', '{').replace('\ue001', '}')
+    tokens = [t for t in _GQL.findall(document) if not t.startswith(('#', '"'))]
     names, i = [], 0
 
     def skip(i, open_, close):
@@ -121,6 +125,7 @@ def mutation_fields(document):
             i += 1
     except (IndexError, ValueError):
         return None
+    if len(re.findall(r'\bmutation\b', document)) > keywords: return None
     return names if tokens.count('mutation') == keywords else None
 
 
