@@ -36,13 +36,13 @@
     "reason": "Retain nested temp classification when an outer in-convention assignment is authoritative"
   },
   {
-    "authority": "golems#475",
+    "authority": "golems#678",
     "candidate_sha256": {
-      "darwin": "5789e2356261075c08bb83011c8155963cf3497669d07030d5fa8245a16c3ef2",
-      "linux": "5789e2356261075c08bb83011c8155963cf3497669d07030d5fa8245a16c3ef2"
+      "darwin": "c7ed0692c6808d3470485d7f7113cb5ea523f1f3b5e9077431b6774907180776",
+      "linux": "c7ed0692c6808d3470485d7f7113cb5ea523f1f3b5e9077431b6774907180776"
     },
     "case": "launcher-002",
-    "reason": "Codex help requires worker and raw-passthrough effort while bare interactive boots use Codex config"
+    "reason": "Codex help requires worker and raw-passthrough effort while bare interactive boots use Codex config; help lists --lead, the seat that keeps the codex_apps connectors (golems#678)"
   },
   {
     "authority": "golems#475",
@@ -108,58 +108,85 @@
     "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#678",
     "candidate_sha256": {
-      "darwin": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e",
-      "linux": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e"
+      "darwin": "5e681a9d955a0ba23d0916595b9d467be45b5646d82488c4e7709e94dd66271f",
+      "linux": "5e681a9d955a0ba23d0916595b9d467be45b5646d82488c4e7709e94dd66271f"
     },
     "case": "launcher-014",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics; every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#678",
     "candidate_sha256": {
-      "darwin": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345",
-      "linux": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345"
+      "darwin": "63f7c17f210eba4c2f5f1d3d09935a35a3c20adf75d22ec55d88b1fe53f367d4",
+      "linux": "63f7c17f210eba4c2f5f1d3d09935a35a3c20adf75d22ec55d88b1fe53f367d4"
     },
     "case": "launcher-015",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics; every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#678",
     "candidate_sha256": {
-      "darwin": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c",
-      "linux": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c"
+      "darwin": "ecec708a5af0c5cc650527bd5f0f5379519622b1af6d547b5bdc408209b0a020",
+      "linux": "ecec708a5af0c5cc650527bd5f0f5379519622b1af6d547b5bdc408209b0a020"
     },
     "case": "launcher-016",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics; every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#678",
     "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+      "darwin": "320c45b54cc3efbb670a83d56b189937caa0fd9b1d4081184dce9c14fca46fd3",
+      "linux": "320c45b54cc3efbb670a83d56b189937caa0fd9b1d4081184dce9c14fca46fd3"
     },
     "case": "launcher-017",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics; every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#678",
     "candidate_sha256": {
-      "darwin": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d",
-      "linux": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d"
+      "darwin": "e6a7f174d95376901f6fb7a42b7daebffa8863dc89cfd07732cfb7fcdd0dba85",
+      "linux": "e6a7f174d95376901f6fb7a42b7daebffa8863dc89cfd07732cfb7fcdd0dba85"
     },
     "case": "launcher-018",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics; every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#678",
     "candidate_sha256": {
-      "darwin": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563",
-      "linux": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563"
+      "darwin": "b84a1291146dbb09995254458e7e363672ab8e35dd5cd9515b9599cdbbdbd970",
+      "linux": "b84a1291146dbb09995254458e7e363672ab8e35dd5cd9515b9599cdbbdbd970"
     },
     "case": "launcher-019",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics; every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
+  },
+  {
+    "authority": "golems#678",
+    "candidate_sha256": {
+      "darwin": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5",
+      "linux": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5"
+    },
+    "case": "launcher-034",
+    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
+  },
+  {
+    "authority": "golems#678",
+    "candidate_sha256": {
+      "darwin": "ae39e1ac0a3ee1bfeb7dfa988d8e25170bbd86fca05d90afceaeee8b2f8304c5",
+      "linux": "ae39e1ac0a3ee1bfeb7dfa988d8e25170bbd86fca05d90afceaeee8b2f8304c5"
+    },
+    "case": "launcher-035",
+    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
+  },
+  {
+    "authority": "golems#678",
+    "candidate_sha256": {
+      "darwin": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5",
+      "linux": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5"
+    },
+    "case": "launcher-036",
+    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
   },
   {
     "authority": "golems#475",

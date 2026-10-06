@@ -75,7 +75,21 @@ the watchdog budget (manifest timeout 10 s, budget 9 s) all deny with the
 static reinstall hint. This hook also catches evaluator/import errors itself.
 Installer status must still be checked before calling this an installed
 mechanical gate.
-This only covers Claude tool calls; Codex exec_command is not wired to it.
+Codex seats run it through the Codex adapter (`scripts/hooks/codex-policy-hook.py
+human-confirm`, fail-closed, 7 s budget under Codex's 10 s). The token binds the
+Codex payload's `session_id`, which is the root thread id (stable across
+`codex resume`, shared by subagents, new on a fork), so issue with `--session
+<root thread id>`. `apply_patch` is never read as a command: the whole patch is
+replayed in order, as Codex applies it, over a virtual file map keyed by
+canonical path (so `.git/../.git/config` is `.git/config`). Each touched path is
+judged once: a git config file on its final content (section context and
+removed lines matter), anything else by path. Hunks are placed with Codex's own
+four seek passes (exact, trailing-whitespace, full-trim, unicode punctuation),
+so a CRLF or loosely matching file replays to what Codex writes. An ordinary
+file that no pass can place is never denied for it; a git config file that no
+pass can place, or such content moved onto one, is denied. The installer refuses this Codex registration while the anchor pin is
+empty, as on Claude. A new registration only runs after the owner trusts it in
+`/hooks`.
 ## Trust and issuance
 Unsigned file metadata cannot identify a human under the shared macOS UID.
 Tokens are SSH-signed JSON, mode 0600, in
