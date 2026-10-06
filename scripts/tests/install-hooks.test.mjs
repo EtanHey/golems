@@ -1079,3 +1079,68 @@ test("--status flags a registered hook command whose interpreter is bare, missin
   writeFileSync(fx.settingsPath, pinned);
   expect(run(fx, "--status").status).toBe(0);
 });
+
+// A golems hook dropped from the manifest (#579 retired precompact-checkpoint):
+// its registration and its dangling hooks-live link must not outlive it.
+function retiredFixture() {
+  const fx = fixture();
+  const hooksDir = path.join(fx.home, ".claude/hooks");
+  const retired = { type: "command", command: `python3 ${hooksDir}/golems-fail-open.py ${hooksDir}/precompact-checkpoint.py`, timeout: 30 };
+  // Not golems: a regular file in the hooks dir, a link that points elsewhere, an old backup.
+  const foreign = { type: "command", command: `python3 ${hooksDir}/cmux-self-register.py` };
+  writeFileSync(path.join(hooksDir, "cmux-self-register.py"), "print('{}')\n");
+  symlinkSync(path.join(fx.root, "elsewhere/gone.py"), path.join(hooksDir, "foreign-dangling.py"));
+  writeFileSync(path.join(hooksDir, "pre_tool_use.py.bak-20260101"), "# old\n");
+  const settings = { ...UNRELATED, hooks: { SessionStart: [{ hooks: [EXTERNAL, foreign] }], PreCompact: [{ hooks: [retired] }] } };
+  writeFileSync(fx.settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+  symlinkSync(path.join(live(fx), "hooks/precompact-checkpoint.py"), path.join(hooksDir, "precompact-checkpoint.py"));
+  return { fx, hooksDir, retired, foreign };
+}
+
+test("retired golems hooks: dry-run and --status name them; --apply removes the registration and dangling link only; idempotent", () => {
+  const { fx, hooksDir, foreign } = retiredFixture();
+  const link = path.join(hooksDir, "precompact-checkpoint.py");
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const dry = run(fx);
+  expect(dry.status).toBe(0);
+  expect(dry.out).toContain("would remove retired registration: precompact-checkpoint.py (PreCompact)");
+  expect(dry.out).toContain("would remove dangling golems link: precompact-checkpoint.py");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+  expect(lstatSync(link).isSymbolicLink()).toBe(true);
+
+  expect(run(fx, "--apply").status).toBe(0);
+  const after = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  expect(after.hooks.PreCompact).toBeUndefined();
+  expect(after.hooks.SessionStart).toEqual([{ hooks: [EXTERNAL, foreign] }]);  // external + foreign byte-identical
+  const { hooks: _h, ...rest } = after;
+  expect(JSON.stringify(rest)).toBe(JSON.stringify(UNRELATED));
+  expect(existsSync(link) || (() => { try { lstatSync(link); return true; } catch { return false; } })()).toBe(false);
+  expect(lstatSync(path.join(hooksDir, "foreign-dangling.py")).isSymbolicLink()).toBe(true);
+  expect(readFileSync(path.join(hooksDir, "cmux-self-register.py"), "utf8")).toBe("print('{}')\n");
+  expect(readFileSync(path.join(hooksDir, "pre_tool_use.py.bak-20260101"), "utf8")).toBe("# old\n");
+  expect(readFileSync(path.join(fx.home, ".claude", bakFiles(fx)[0]), "utf8")).toBe(before);
+
+  const once = readFileSync(fx.settingsPath, "utf8");
+  const again = run(fx, "--apply");
+  expect(again.status).toBe(0);
+  expect(again.out).not.toMatch(/retired registration|dangling golems link/);
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(once);
+  expect(run(fx, "--status").status).toBe(0);
+});
+
+test("--status exits nonzero on a retired golems registration and on a dangling golems link, each named", () => {
+  const { fx, hooksDir, retired } = retiredFixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  // Re-plant the residue after a clean install.
+  const s = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  s.hooks.PreCompact = [{ hooks: [retired] }];
+  writeFileSync(fx.settingsPath, `${JSON.stringify(s, null, 2)}\n`);
+  let st = run(fx, "--status");
+  expect([st.status, st.out]).toEqual([1, expect.stringContaining("retired-registered: precompact-checkpoint.py (PreCompact)")]);
+  writeFileSync(fx.settingsPath, readFileSync(fx.settingsPath, "utf8").replace(/,\n {4}"PreCompact"[\s\S]*?\n {4}\]/, ""));
+  expect(JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.PreCompact).toBeUndefined();
+  symlinkSync(path.join(live(fx), "hooks/precompact-checkpoint.py"), path.join(hooksDir, "precompact-checkpoint.py"));
+  st = run(fx, "--status");
+  expect([st.status, st.out]).toEqual([1, expect.stringContaining("dangling golems link: precompact-checkpoint.py")]);
+  expect(st.out).not.toContain("foreign-dangling");
+});
