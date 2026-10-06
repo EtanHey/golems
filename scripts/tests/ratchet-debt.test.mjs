@@ -44,6 +44,8 @@ test('CI debt rows exist and are numeric ceilings', () => {
   }
 });
 
+// Three full-repo pyflakes scans plus 15 line-count subprocesses exceeded Bun's
+// 5s default on CI; keep the real growth/restoration probes bounded at 30s.
 test('each actual debt row fails the table on growth and passes after restoration', () => {
   const root = resolve(import.meta.dir, '../..');
   for (const row of rows.filter(r => r.id === 'py-undefined-names' || r.id.startsWith('size-'))) {
@@ -58,4 +60,4 @@ test('each actual debt row fails the table on growth and passes after restoratio
     } finally { writeFileSync(path, original); }
     expect(verdict().ok).toBe(true);
   }
-});
+}, 30_000);
