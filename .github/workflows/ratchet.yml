@@ -1,0 +1,117 @@
+name: ratchet
+
+# The golems ratchet table (standards/ratchet.md). ONE job, named `ratchet`, with no path filter:
+# a required check that is path-filtered never reports on PRs outside its paths and hangs them.
+# It runs the `ci` rows of scripts/ratchet/rows.json on this PR and on its base, posts ONE sticky
+# table comment, and fails on a FAIL/MISSING row or an unruled loosening. The rows' commands run
+# here; the stalker completion contract moved in from stalker-completion.yml and now runs on
+# every PR.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ratchet-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  ratchet:
+    name: ratchet
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth 0: the base commit must be present to read its row file and measure the
+      # baseline. persist-credentials false: nothing here pushes, and the token can edit comments.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+
+      - run: python -m pip install pytest
+
+      - run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Measure this head
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ratchet/run-rows.mjs --rows scripts/ratchet/rows.json --runner ci --head "$HEAD_SHA" --out "$RUNNER_TEMP/results.json"
+
+      # The baseline is the base commit's own rows, run in its own tree. A base without a row file
+      # (the PR that adds it) has no baseline; table.mjs sees that at --base-ref and says "bootstrap".
+      - name: Measure the base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if ! git cat-file -e "$BASE_SHA:scripts/ratchet/rows.json" 2>/dev/null; then
+            echo "base has no scripts/ratchet/rows.json: no baseline"
+            exit 0
+          fi
+          git show "$BASE_SHA:scripts/ratchet/rows.json" > "$RUNNER_TEMP/base-rows.json"
+          git worktree add --detach "$RUNNER_TEMP/base" "$BASE_SHA"
+          (cd "$RUNNER_TEMP/base" && bun install --frozen-lockfile --ignore-scripts)
+          node "$RUNNER_TEMP/base/scripts/ratchet/run-rows.mjs" --rows "$RUNNER_TEMP/base-rows.json" --runner ci \
+            --head "$BASE_SHA" --cwd "$RUNNER_TEMP/base" --out "$RUNNER_TEMP/baseline.json" || true
+
+      - name: Ratchet table
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          # The two inputs table.mjs cannot verify come from here, never from the PR's files:
+          # the row file path is hardcoded below, and the base is the event payload's base SHA
+          # (a master push compares against the commit it replaced).
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # A fork PR's token cannot write comments: the table still prints and still decides.
+          SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -euo pipefail
+          printf '%s' "${PR_BODY:-}" > "$RUNNER_TEMP/pr-body.md"
+          args=(--rows scripts/ratchet/rows.json --results "$RUNNER_TEMP/results.json" --head "$HEAD_SHA"
+                --runner ci --marker golems-ratchet-ci --title "Ratchet table (CI rows)"
+                --pr-body-file "$RUNNER_TEMP/pr-body.md" --out "$RUNNER_TEMP/table.md")
+          [ -f "$RUNNER_TEMP/baseline.json" ] && args+=(--baseline "$RUNNER_TEMP/baseline.json")
+          # table.mjs reads the base row file itself (git show) and bootstraps only if the base lacks it.
+          args+=(--base-ref "$BASE_SHA")
+          [ -n "${PR_NUMBER:-}" ] && [ "$SAME_REPO" = "true" ] && args+=(--repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" --author "github-actions[bot]")
+          status=0
+          node scripts/ratchet/table.mjs "${args[@]}" || status=$?
+          cat "$RUNNER_TEMP/table.md" >> "$GITHUB_STEP_SUMMARY" || true
+          exit "$status"
+
+      # Real rows run only on Etan's MBP (scripts/ratchet/local-run.sh: real installer, gate, hook
+      # and ssh-keygen in a scratch HOME). A PR touching the guards, the installer, repoGolem or
+      # the ratchet itself needs that run's table, bound to THIS head, all real rows PASS, posted
+      # by EtanHey. Missing or stale is FAIL. After posting, local-run.sh re-runs this check.
+      - name: Mac rows (required on guarded paths)
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # 0 = guarded, 1 = not guarded, anything else (a git error) = FAIL, never a skip.
+          rc=0
+          bash scripts/ratchet/guarded-paths.sh "$BASE_SHA" "$HEAD_SHA" || rc=$?
+          [ "$rc" = 1 ] && exit 0
+          [ "$rc" = 0 ] || exit 1
+          node scripts/ratchet/check-comment.mjs --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" \
+            --marker golems-ratchet-mac --head "$HEAD_SHA" --base-ref "$BASE_SHA" --rows scripts/ratchet/rows.json --runner mac \
+            --author EtanHey | tee -a "$GITHUB_STEP_SUMMARY"

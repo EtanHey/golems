@@ -96,6 +96,9 @@ jobs:
                    ./scripts/tests/reconcile-to-mac.test.mjs \
                    ./scripts/tests/release-gate.test.mjs \
                    ./scripts/tests/ratchet-table.test.mjs \
+                   ./scripts/tests/ratchet-run-rows.test.mjs \
+                   ./scripts/tests/ratchet-check-comment.test.mjs \
+                   ./scripts/tests/ratchet-mac.test.mjs \
                    ./scripts/tests/repogolem-agents.test.ts \
                    ./scripts/tests/repogolem-managed-agents.test.ts \
                    ./scripts/tests/repogolem-values.test.ts \

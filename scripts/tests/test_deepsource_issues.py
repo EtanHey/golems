@@ -96,7 +96,8 @@ def fake():
 
 
 def run(fake, *args, token=TOKEN, extra=None, path=None):
-    env = {"PATH": path or os.environ["PATH"], "HOME": os.environ.get("HOME", "/nonexistent"),
+    # A HOME with no token file: no test may fall back to the real one.
+    env = {"PATH": path or os.environ["PATH"], "HOME": "/nonexistent-deepsource-test-home",
            "DEEPSOURCE_API_URL": fake.url}
     if token is not None:
         env["DEEPSOURCE_TOKEN"] = token
@@ -450,3 +451,198 @@ def test_redirect_is_refused_and_never_reaches_the_other_host(fake):
     finally:
         other.shutdown()
         redirect.shutdown()
+
+
+def token_file(tmp_path, text, mode=0o600, name="deepsource.env"):
+    path = tmp_path / name
+    path.write_bytes(text.encode() if isinstance(text, str) else text)
+    path.chmod(mode)
+    return path
+
+
+def clean_body(fake):
+    fake.body = pr_payload([check("python", "SUCCESS", page([]))], status="SUCCESS")
+
+
+def test_env_token_wins_over_the_file(fake, tmp_path):
+    clean_body(fake)
+    path = token_file(tmp_path, "DEEPSOURCE_TOKEN=file-token-should-lose\n")
+    r = run(fake, "EtanHey/app", "7", extra={"DEEPSOURCE_TOKEN_FILE": str(path)})
+    assert r.returncode == 0, r.stderr
+    assert [q["auth"] for q in fake.requests] == [f"Bearer {TOKEN}"]
+
+
+@pytest.mark.parametrize("text", [
+    f"DEEPSOURCE_TOKEN={TOKEN}\n",
+    f"DEEPSOURCE_TOKEN={TOKEN}",
+    f"# DeepSource API PAT. Never print it.\n\nDEEPSOURCE_TOKEN={TOKEN}\n",
+    f'export DEEPSOURCE_TOKEN="{TOKEN}"\n',
+    f"DEEPSOURCE_TOKEN='{TOKEN}'\n",
+])
+@pytest.mark.parametrize("env_token", [None, ""])
+def test_file_fallback_when_env_is_unset_or_empty(fake, tmp_path, text, env_token):
+    clean_body(fake)
+    path = token_file(tmp_path, text)
+    r = run(fake, "EtanHey/app", "7", token=env_token, extra={"DEEPSOURCE_TOKEN_FILE": str(path)})
+    assert r.returncode == 0, r.stderr
+    assert [q["auth"] for q in fake.requests] == [f"Bearer {TOKEN}"]
+    assert TOKEN not in r.stdout + r.stderr
+
+
+def test_default_token_file_is_under_home(fake, tmp_path):
+    clean_body(fake)
+    secrets = tmp_path / ".config/deepsource"
+    secrets.mkdir(parents=True)
+    token_file(secrets, f"DEEPSOURCE_TOKEN={TOKEN}\n")
+    r = run(fake, "EtanHey/app", "7", token=None, extra={"HOME": str(tmp_path)})
+    assert r.returncode == 0, r.stderr
+    assert [q["auth"] for q in fake.requests] == [f"Bearer {TOKEN}"]
+
+
+def test_no_env_and_no_file_names_the_file_and_the_fix(fake, tmp_path):
+    missing = tmp_path / "absent.env"
+    r = run(fake, "EtanHey/app", "7", token=None, extra={"DEEPSOURCE_TOKEN_FILE": str(missing)})
+    assert r.returncode == 2 and fake.requests == []
+    error = one_line_error(r)
+    assert str(missing) in error and "DEEPSOURCE_TOKEN=" in error and "600" in error
+    default = run(fake, "EtanHey/app", "7", token=None)
+    assert "/nonexistent-deepsource-test-home/.config/deepsource/deepsource.env" in one_line_error(default)
+
+
+SECRET_PART = "partA-secret"
+
+
+BAD_FILES = [
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\n", 0o644, "mode"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\n", 0o640, "mode"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\n", 0o700, "mode"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\nDEEPSOURCE_TOKEN={SECRET_PART}2\n", 0o600, "one"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\nOTHER=x\n", 0o600, "line"),
+    (f"{SECRET_PART}\n", 0o600, "line"),
+    ("# only a comment\n", 0o600, "no deepsource_token"),
+    ("DEEPSOURCE_TOKEN=\n", 0o600, "empty"),
+    (f"DEEPSOURCE_TOKEN=\"{SECRET_PART}\n", 0o600, "quote"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART} {SECRET_PART}\n", 0o600, "whitespace"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\x01x\n", 0o600, "control"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\r\n", 0o600, "control"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\x7f\n", 0o600, "control"),
+    (b"DEEPSOURCE_TOKEN=" + SECRET_PART.encode() + b"\xff\n", 0o600, "utf-8"),
+    (f"DEEPSOURCE_TOKEN={SECRET_PART}\n" + "#" * 5000 + "\n", 0o600, "large"),
+    (f"DEEPSOURCE_TOKEN=$(echo {SECRET_PART})\n", 0o600, "whitespace"),
+]
+
+
+@pytest.mark.parametrize("text,mode,why", BAD_FILES, ids=[f"{i}-{c[2]}" for i, c in enumerate(BAD_FILES)])
+def test_bad_token_file_is_refused_unechoed(fake, tmp_path, text, mode, why):
+    path = token_file(tmp_path, text, mode=mode)
+    r = run(fake, "EtanHey/app", "7", token=None, extra={"DEEPSOURCE_TOKEN_FILE": str(path)})
+    assert r.returncode == 2 and fake.requests == []
+    error = one_line_error(r)
+    assert SECRET_PART not in r.stdout + r.stderr
+    assert str(path) in error and why in error.replace(str(path), "").lower()
+
+
+def test_symlinked_token_file_is_refused(fake, tmp_path):
+    target = token_file(tmp_path, f"DEEPSOURCE_TOKEN={SECRET_PART}\n")
+    link = tmp_path / "link.env"
+    link.symlink_to(target)
+    r = run(fake, "EtanHey/app", "7", token=None, extra={"DEEPSOURCE_TOKEN_FILE": str(link)})
+    assert r.returncode == 2 and fake.requests == []
+    assert "symlink" in one_line_error(r).lower() and SECRET_PART not in r.stdout + r.stderr
+
+
+def test_non_regular_token_file_is_refused(fake, tmp_path):
+    fifo = tmp_path / "fifo.env"
+    os.mkfifo(fifo, 0o600)
+    r = run(fake, "EtanHey/app", "7", token=None, extra={"DEEPSOURCE_TOKEN_FILE": str(fifo)})
+    assert r.returncode == 2 and fake.requests == []
+    assert "regular file" in one_line_error(r).lower()
+    folder = tmp_path / "dir.env"
+    folder.mkdir(mode=0o700)
+    r = run(fake, "EtanHey/app", "7", token=None, extra={"DEEPSOURCE_TOKEN_FILE": str(folder)})
+    assert r.returncode == 2 and "regular file" in one_line_error(r).lower()
+
+
+def test_token_file_owned_by_another_uid_is_refused(tmp_path, monkeypatch):
+    helper = load_helper()
+    path = token_file(tmp_path, f"DEEPSOURCE_TOKEN={SECRET_PART}\n")
+    monkeypatch.setattr(helper.os, "getuid", lambda: os.stat(path).st_uid + 1)
+    with pytest.raises(helper.Fail) as caught:
+        helper.file_token(str(path))
+    assert "owned" in str(caught.value) and SECRET_PART not in str(caught.value)
+
+
+def test_token_file_is_parsed_never_executed(fake, tmp_path):
+    marker = tmp_path / "ran"
+    path = token_file(tmp_path, f"DEEPSOURCE_TOKEN=`touch {marker}`\n")
+    r = run(fake, "EtanHey/app", "7", token=None, extra={"DEEPSOURCE_TOKEN_FILE": str(path)})
+    assert r.returncode == 2 and not marker.exists()
+
+
+def test_file_token_never_in_argv_or_output_and_op_is_never_called(fake, tmp_path):
+    shim = tmp_path / "bin"
+    shim.mkdir()
+    log = tmp_path / "calls.log"
+    for tool in ("op", "curl", "sh", "bash"):
+        (shim / tool).write_text(f"#!/bin/sh\necho {tool} \"$@\" >> {log}\nexit 1\n")
+        (shim / tool).chmod(0o755)
+    path = token_file(tmp_path, f"DEEPSOURCE_TOKEN={TOKEN}\n")
+    fake.body = pr_payload([check("python", "FAILURE", page([occurrence("PYL-1", 1, "m", "t")]))])
+    fake.snapshot_ps = True
+    r = run(fake, "EtanHey/app", "7", token=None, path=f"{shim}:{os.environ['PATH']}",
+            extra={"DEEPSOURCE_TOKEN_FILE": str(path)})
+    assert r.returncode == 1, r.stderr
+    assert not log.exists()
+    trees = [helper_tree(snap, fake.helper_pid) for snap in fake.ps_snapshots]
+    assert trees and all(tree for tree in trees)
+    assert all(TOKEN not in command for tree in trees for command in tree)
+    assert TOKEN not in r.stdout + r.stderr
+
+
+def test_missing_token_with_no_op_on_path_never_mentions_op(fake, tmp_path):
+    empty = tmp_path / "empty-bin"
+    empty.mkdir()
+    r = run(fake, "EtanHey/app", "7", token=None, path=str(empty))
+    assert r.returncode == 2 and fake.requests == []
+    assert_no_op_mention(r.stdout + r.stderr)
+
+
+def assert_no_op_mention(text):
+    lowered = text.lower()
+    for word in ("op://", "1password", "signin", "sign in", "op read", "op run"):
+        assert word not in lowered, word
+
+
+@pytest.mark.parametrize("flag", ["--help", "-h"])
+def test_help_names_env_and_file_and_never_op(fake, flag):
+    r = run(fake, flag)
+    assert r.returncode == 0 and fake.requests == []
+    assert "DEEPSOURCE_TOKEN_FILE" in r.stdout and "0600" in r.stdout
+    assert "deepsource.env" in r.stdout
+    assert_no_op_mention(r.stdout + r.stderr)
+
+
+def test_helper_source_never_mentions_op():
+    assert_no_op_mention(SCRIPT.read_text())
+
+
+@pytest.mark.parametrize("call,error", [("fstat", OSError(5, "Input/output error")),
+                                        ("read", OSError(5, "Input/output error")),
+                                        ("read", RuntimeError("surprise"))])
+def test_token_file_read_errors_exit_2_with_one_line(tmp_path, monkeypatch, capsys, call, error):
+    helper = load_helper()
+    path = token_file(tmp_path, f"DEEPSOURCE_TOKEN={SECRET_PART}\n")
+    monkeypatch.delenv("DEEPSOURCE_TOKEN", raising=False)
+    monkeypatch.setenv("DEEPSOURCE_TOKEN_FILE", str(path))
+    real = getattr(helper.os, call)
+
+    def broken(fd, *args):
+        if isinstance(fd, int) and fd > 2:
+            raise error
+        return real(fd, *args)
+
+    monkeypatch.setattr(helper.os, call, broken)
+    assert helper.main(["EtanHey/app", "7"]) == 2
+    out, err = capsys.readouterr()
+    assert out == "" and err.count("\n") == 1 and str(path) in err and "Traceback" not in err
+    assert SECRET_PART not in err

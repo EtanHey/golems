@@ -21,7 +21,8 @@
 5. **Ratchet direction only.** Any PR may add a row or tighten a ceiling. These need a lead ruling
    in the PR body, one line per row, `ratchet-loosen: <row-id> <ruling>`:
    - loosening a ceiling;
-   - changing what a row measures (its `command` or `metric`), unless it is a pure tightening;
+   - changing what a row measures (its `command` or `metric`, or a longer `timeout_s`), unless it is
+     a pure tightening;
    - flipping its direction;
    - moving a row to another runner;
    - demoting `real` to `unit`;
@@ -73,6 +74,8 @@ install to measure a candidate. Two tiers:
 }
 ```
 
+- **Strict schema:** an unknown key, in the file or in a row, is rejected (exit 2). A field nobody
+  checks is a field a producer could later read unchecked.
 - `id`: `[A-Za-z0-9_.:-]+`, the charset a `ratchet-loosen:` line can name.
 - `kind`: `real` | `unit`. Real rows must carry `bug_sha` and `fix_sha`.
 - `ref_kind` (optional): `commit` (default) or `fixture-hash`, for a failure that was fixed in a
@@ -83,6 +86,10 @@ install to measure a candidate. Two tiers:
 - `runner` (optional): which producer measures the row, e.g. `ci`, `mac` or `live`. `--runner`
   selects those rows, so each producer posts its own table.
 - `command`: how the producer reproduces the row. The table script never runs it.
+- `timeout_s` (optional, positive integer): the producer's time limit for the row. Raising or
+  removing it is loosening.
+- Editing the evidence (`bug_sha`, `fix_sha`, `ref_kind`, `bug_fixture`, `fix_fixture`) is not
+  loosening, but every such edit is listed in the table.
 
 ## Results file (one per run)
 
@@ -109,13 +116,20 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --hea
 - **`--base-ref` is required too.** The script reads the row file as committed at that SHA
   (`git show`) and checks rule 5 across ALL its rows, whatever `--runner` selects. Only a base
   commit that verifiably has no row file is a bootstrap ("direction unchecked" in the table). A
-  ref that is not a commit exits 2; there is no flag to skip the comparison.
+  ref that is not a commit exits 2; there is no flag to skip the comparison. A row file that was
+  renamed or copied from another base path, or deleted, exits 2: it is never a bootstrap.
+- **What the caller supplies:** the two inputs the script cannot verify, the row file path and
+  the base SHA, come from the CI workflow (a hardcoded path, and the event payload's base SHA),
+  never from the PR's own files.
 - **Posting:** with `--repo/--pr/--author` it upserts ONE comment whose first line is
   `<!-- ratchet-table: <marker> -->`, posted by `--author`. It creates the comment once and PATCHes
   it thereafter, and never touches another author's comment. Use one marker per producer.
 - **Verdict line:** the comment's second line is always
-  `<!-- ratchet-verdict: {"head":…,"ok":…,"real_pass":…,"real_total":…} -->`. A consumer reads that
-  line only (`readVerdict`) and must check that the comment's author is the producer it trusts.
+  `<!-- ratchet-verdict: {"head":…,"ok":…,"real_pass":…,"real_total":…,"bootstrap":…} -->`. A consumer:
+  - reads that line only (`readVerdict`), from the same comment the producer PATCHes: the OLDEST
+    comment by the trusted author whose first line is the marker (`findSticky`);
+  - checks that the comment's author is the producer it trusts;
+  - FAILs a `bootstrap: true` verdict whenever the base branch has a row file.
 - **Exit codes:**
   - `0`: every selected row PASS, and nothing loosened without a ruling.
   - `1`: any row FAIL or MISSING, no row selected, or an unruled loosening.
@@ -123,6 +137,19 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --hea
 - **Other repos:** call the script pinned to a golems SHA (fetch
   `scripts/ratchet/table.mjs` at that SHA, or vendor that exact file with the SHA in a comment).
   It has no dependencies beyond node.
+
+## Companion scripts (golems)
+
+- `scripts/ratchet/run-rows.mjs --rows <file> --head <sha> --out <results.json> [--runner <name>]
+  [--cwd <dir>]`: the generic producer. It runs each selected row's `command` (bash). A `pass` row
+  is true only on exit 0. A numeric row must exit 0 and print its number on the last stdout line,
+  or it is left out (MISSING).
+- `scripts/ratchet/check-comment.mjs --repo --pr --marker --head --rows --runner --author <login>`
+  exits 0 only when that producer's comment carries a fixed-line verdict for exactly `--head`
+  with every real row of `--runner` PASS. The comment must be by an allowed author.
+- golems' own producers:
+  - `scripts/ratchet/local-run.sh` produces the per-PR candidate tier, in a scratch HOME;
+  - `scripts/ratchet/live-rows.sh` produces the post-merge live tier, and the lead runs it.
 
 ## Convergence close: baseline and open targets (Etan, 2026-10-06)
 

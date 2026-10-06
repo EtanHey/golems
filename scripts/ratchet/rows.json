@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "rows": [
+    {
+      "id": "stalker-completion",
+      "metric": "stalker completion contract (delivery tests on fixtures)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "node --test scripts/tests/stalker-run-contract.test.mjs scripts/tests/stalker-publish.test.mjs scripts/tests/stalker-dashboard.test.mjs scripts/tests/stalker-digest-runner.test.mjs scripts/tests/stalker-digest-batches.test.mjs scripts/tests/stalker-digest-evidence.test.mjs scripts/tests/stalker-human-digest.test.mjs scripts/tests/stalker-complete-run.test.mjs scripts/tests/stalker-morning-digest.test.mjs scripts/tests/stalker-pipeline-wiring.test.mjs scripts/tests/stalker-digest-curation.test.mjs scripts/tests/stalker-digest-text.test.mjs scripts/tests/stalker-drive-archive.test.mjs scripts/tests/stalker-card-media.test.mjs scripts/tests/stalker-media-retention.test.mjs"
+    },
+    {
+      "id": "human-confirm-hook-code",
+      "metric": "human-confirm hook code: no-token lease denied, lead token allowed once, replay denied, master denied (fixture keys)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "cd skills/golem-powers/human-confirm-gate/tests && python3 -m pytest -q -p no:cacheprovider test_gate.py::Gate::test_denies_without_token_and_allows_normal test_lead_issuer.py::LeadTokenThroughTheGate"
+    },
+    {
+      "id": "private-gate-count",
+      "metric": "candidate install: real private gate PASS with exactly expectedCases",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "ref_kind": "fixture-hash",
+      "bug_sha": "37146a2825de4656f42b56003cee36d387bd730e",
+      "fix_sha": "37146a2825de4656f42b56003cee36d387bd730e",
+      "bug_fixture": "43226d8e07f1d624b88949fc5e426e2f2a11d10d9aeddd87a49a12559cd1a13c",
+      "fix_fixture": "13f4e588aada8329627dfa820fc607600483b3ff4e2c19cef3e12b71c1d7fd0b",
+      "command": "scripts/ratchet/mac/count.sh"
+    },
+    {
+      "id": "human-confirm-installed",
+      "metric": "INSTALLED human-confirm hook: no-token lease denied, lead token allowed once, replay denied, master denied",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "178becc97f56878bad631b2f6b393371ff42c804",
+      "fix_sha": "37146a2825de4656f42b56003cee36d387bd730e",
+      "command": "HOME=\"$RATCHET_HOME\" python3 scripts/ratchet/mac/hc-probe.py --repo \"$RATCHET_PUSH_REPO\" --branch \"$RATCHET_BRANCH\" --sha \"$RATCHET_PR_HEAD\" --issuer \"$RATCHET_CLONE/.worktrees/hooks-live/scripts/golems-lead-confirm\""
+    },
+    {
+      "id": "hooks-status",
+      "metric": "installer --status problems on the scratch install after a lead-token issuance (codex trust excluded)",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "max",
+      "ceiling": 0,
+      "bug_sha": "37146a2825de4656f42b56003cee36d387bd730e",
+      "fix_sha": "32e948b293d63bbb05f0da857a8498ef7c5d9ddd",
+      "command": "scripts/ratchet/mac/status.sh"
+    },
+    {
+      "id": "live-hooks-status",
+      "metric": "LIVE install --status exit 0 with drift 0 (post-merge, lead-run)",
+      "kind": "real",
+      "runner": "live",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "3ba352ed0d9bab29708f0267be6a41e010319b68",
+      "fix_sha": "37146a2825de4656f42b56003cee36d387bd730e",
+      "command": "scripts/ratchet/live/status.sh"
+    },
+    {
+      "id": "live-human-confirm",
+      "metric": "LIVE human-confirm hook with a lead-issued token: deny / allow once / replay deny / master deny (post-merge, lead-run)",
+      "kind": "real",
+      "runner": "live",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "178becc97f56878bad631b2f6b393371ff42c804",
+      "fix_sha": "37146a2825de4656f42b56003cee36d387bd730e",
+      "command": "HOME=\"$RATCHET_HOME\" python3 scripts/ratchet/mac/hc-probe.py --repo \"$RATCHET_PUSH_REPO\" --branch \"$RATCHET_BRANCH\" --sha \"$RATCHET_PR_HEAD\" --issuer \"$RATCHET_CLONE/.worktrees/hooks-live/scripts/golems-lead-confirm\""
+    }
+  ]
+}

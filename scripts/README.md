@@ -52,10 +52,27 @@ code, title, category, file:line and message. Exit 0 = clean (a SUCCESS run,
 every check SUCCESS, 0 issues), 1 = failing (issues, a failed/timed-out check or
 run), 2 = usage/auth/redirect or a malformed or incomplete response, 3 = no
 verdict (no run, pending, cancelled, skipped, no checks, or an unknown status).
-It needs `DEEPSOURCE_TOKEN`; repogolem seats get it from the orchestrator
-config's `global.env`. Agents use this or the `deepsource-io[bot]` PR comments,
-never a browser. Install it from the pinned tree, not a working tree:
+The token comes from `DEEPSOURCE_TOKEN`, or when that is unset from the 0600
+file `~/.config/deepsource/deepsource.env` (override: `DEEPSOURCE_TOKEN_FILE`).
+Agents use this or the `deepsource-io[bot]` PR comments, never a browser. Install it from the pinned tree, not a working tree:
 
 ```sh
 ln -sfn ~/Gits/golems/.worktrees/hooks-live/scripts/deepsource-issues ~/.local/bin/deepsource-issues
 ```
+
+## `agent-browser`
+
+`agent-browser start|status|stop` manages the one shared, headed Chrome Beta
+with a dedicated private profile outside repos and CDP on 127.0.0.1:9333.
+Install Chrome Beta with `brew install --cask google-chrome@beta`, then link the
+reviewed launcher from hooks-live like the other fleet CLIs. From any golems
+checkout, derive the shared repository location rather than assuming its path:
+
+```sh
+golems_git_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+golems_repo="$(dirname "$golems_git_dir")"
+ln -sfn "$golems_repo/.worktrees/hooks-live/scripts/agent-browser/agent-browser" "$HOME/.local/bin/agent-browser"
+```
+
+Worker usage, CDP cookie access risks and tab ownership:
+[`/agent-browser`](../skills/golem-powers/agent-browser/SKILL.md).
