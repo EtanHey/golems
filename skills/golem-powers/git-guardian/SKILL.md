@@ -71,6 +71,12 @@ Proceed? [y/N]
 3. Show confirmation summary. Proceed only after user confirms.
 4. **Never** suggest `--force-with-lease` as a workaround to silently bypass this check.
 
+#### Remote reference deletion
+Treat remote branch or tag deletion like force push: inspect the impact and require
+explicit user confirmation. The shared policy blocks deletion options, empty-source
+reference mappings, and bulk pruning or mirroring capabilities. Preview mode retains
+the same gate. Repository addresses and transport option values are not references.
+
 #### Reset Hard (`reset --hard`)
 1. Run `git log HEAD~<N>..HEAD --oneline` to list commits being dropped.
 2. Run `git status --short` to show uncommitted work that will be lost.

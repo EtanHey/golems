@@ -146,6 +146,47 @@ def _kill_matcher_reason(words: list[str], position: int, command_name: str, *, 
     return None
 
 
+def _push_deletes_remote_refs(arguments: list[str]) -> bool:
+    """Separate option values and the repository from reference operands."""
+    value_options = {"--repo", "--receive-pack", "--exec", "--push-option"}
+    operands: list[str] = []
+    repository_option = False
+    options = True
+    index = 0
+    while index < len(arguments):
+        argument = arguments[index]
+        index += 1
+        if options and argument == "--":
+            options = False
+            continue
+        if options and argument.startswith("--"):
+            name = argument.split("=", 1)[0]
+            # These are the unambiguous positive prefixes accepted by Git.
+            if any(full.startswith(name) and name.startswith(prefix)
+                   for full, prefix in (("--delete", "--de"),
+                                        ("--prune", "--pru"), ("--mirror", "--m"))):
+                return True
+            matches = [full for full in value_options if full.startswith(name)]
+            if len(matches) == 1:
+                repository_option |= matches[0] == "--repo"
+                if "=" not in argument:
+                    index += 1
+            continue
+        if options and argument.startswith("-") and argument != "-":
+            for offset, flag in enumerate(argument[1:], 1):
+                if flag == "d":
+                    return True
+                if flag == "o":
+                    # The remainder, or the next word, is the option's value.
+                    index += offset == len(argument) - 1
+                    break
+            continue
+        operands.append(argument)
+    references = operands if repository_option else operands[1:]
+    return any(reference.removeprefix("+").startswith(":")
+               and len(reference.removeprefix("+")) > 1 for reference in references)
+
+
 def _dangerous_non_rm_in_words(
     api: dict, words: list[str], position: int = 0, *, _depth: int = 0,
     _find_cache: dict[tuple[int, int, int], str | None] | None = None,
@@ -285,6 +326,8 @@ def _dangerous_non_rm_in_words(
     if parsed is None:
         return None
     subcommand, arguments = parsed
+    if subcommand == "push" and _push_deletes_remote_refs(arguments):
+        return "Dangerous command: remote reference deletion requires explicit confirmation"
     short_force = any(
         argument.startswith("-")
         and not argument.startswith("--")
