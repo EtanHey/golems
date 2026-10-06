@@ -13,6 +13,9 @@
     ]},
     {"id": 4, "name": "tiny-timeout", "prompt": "Inspect the synthetic pair with --timeout 0.001.", "assertions": [
       {"type": "content", "name": "honest-partial", "description": "One serial singleton retry round; partial coverage 0/2 and two NOT DETERMINED findings."}
-    ]}
+    ]},
+    {"id": 5, "name": "debrief-mode-density", "prompt": "Debrief a synthetic 25-minute transcript; preserve QA action density separately.", "assertions": [{"type": "content", "name": "bounded-transcript-first", "description": "test_debrief.py: ≤12 targeted stills, ≤ceil(12/concurrency) waves, estimated wall-clock <600s; no blanket 30s coverage or unreferenced scene sweep."}]},
+    {"id": 6, "name": "parent-progress", "prompt": "Debrief in the background; the user asks what is taking so long.", "assertions": [{"type": "tool_usage", "name": "read-progress", "description": "Parent reads root progress.txt and reports current phase/count/ETA; runner writes each phase and findings.jsonl incrementally. Offline pipeline receipt plus ONE synthetic 25-min smoke timing <600s."}]},
+    {"id": 7, "name": "packaged-batch-only", "prompt": "Read targeted debrief frames concurrently in macOS Bash 3.2.", "assertions": [{"type": "negative", "name": "no-handrolled-loop", "description": "test_prepare_routing.py scores pipeline visual-batch.py/debrief.py calls and rejects shell for/while or mapfile/readarray; text-only parent, one route."}]}
   ]
 }

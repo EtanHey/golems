@@ -21,6 +21,19 @@ from pathlib import Path
 image = Path(sys.argv[-1])
 image.with_suffix('.timeout').write_text(sys.argv[sys.argv.index('--timeout') + 1])
 with (image.parent / 'starts').open('a') as f: f.write('start ' + str(time.monotonic()) + '\\n')
+lock = image.parent / 'setup.lock'
+failed_setup = (image.parent / 'setup-always').exists()
+if (image.parent / 'setup').exists() and '--model' not in sys.argv:
+    try:
+        lock.mkdir()
+    except FileExistsError:
+        failed_setup = True
+    if not failed_setup:
+        time.sleep(.1); lock.rmdir()
+if failed_setup:
+    print('NOT DETERMINED: setup failed')
+    print('setup collision/unavailable api_key=sk-sensitive123456789 /outside/private.pem', file=sys.stderr)
+    sys.exit(1)
 latencies = image.parent / 'latencies.json'
 time.sleep(json.loads(latencies.read_text())[image.stem] if latencies.exists() else (.08 if image.stem == '0' else .3))
 if image.stem == '0' and (image.parent / 'quota').exists():
@@ -169,3 +182,40 @@ def test_unknown_detail_is_successful_coverage(setup):
     code, result, _ = finish(launch())
     assert code == 0 and result['status'] == 'COMPLETE' and not result['unresolved']
     assert 'NOT DETERMINED' in (work / 'visual/findings.jsonl').read_text()
+
+
+@pytest.mark.parametrize('persistent', [False, True])
+def test_setup_retry_once_and_sanitized_cause(setup, persistent):
+    work, launch = setup
+    (work / ('setup-always' if persistent else 'setup')).touch()
+    code, summary, _ = finish(launch('--concurrency', '3'))
+    rows = [json.loads(s) for s in (work/'visual/findings.jsonl').read_text().splitlines()]
+    failed = [r for r in rows if not r['ok']]
+    assert failed and all('setup' in r['cause'] and len(r['cause']) <= 300 for r in failed)
+    assert all('sensitive' not in r['cause'] and '/outside' not in r['cause'] for r in failed)
+    if persistent:
+        assert code != 0 and len(rows) == 16
+        assert all(r['cause'] for r in summary['unresolved'])
+    else:
+        assert code == 0 and not summary['unresolved']
+        assert len(rows) <= 16 and any(r.get('attempt') == 2 for r in rows)
+
+
+def test_cached_model_avoids_concurrent_setup(setup, monkeypatch):
+    work, launch = setup
+    (work/'setup').touch()
+    assert finish(launch('--model', 'fixture-model'))[0] == 0
+    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 8
+    from argparse import Namespace
+    spec = importlib.util.spec_from_file_location('batch', DRIVER)
+    batch = importlib.util.module_from_spec(spec); spec.loader.exec_module(batch)
+    lookups, models = [], []
+    monkeypatch.setattr(batch.visual, 'resolve_model', lambda: lookups.append(1) or ('tier', 'fixture-model'))
+    def read(helper, question, timeout, sheet, model, work):
+        models.append(model)
+        return {'sheet': sheet, 'finding': 'fixture', 'fatal': '', 'ok': True}
+    monkeypatch.setattr(batch, 'read_sheet', read)
+    args = Namespace(workdir=work, budget_seconds=10, concurrency=3, timeout=90,
+                     helper=SKILL/'scripts/visual-gather.py', question='facts')
+    assert batch.run(args, ['a', 'b', 'c']) == 0
+    assert lookups == [1] and models == ['fixture-model']*3
