@@ -37,17 +37,17 @@ def id_route(endpoint):
     return '/'.join(parts)
 
 
-def graphql_dynamic(field, shell_names):
+def graphql_dynamic(field, literal_names):
     """Could the shell change this field's GraphQL document? Variables are
     typed JSON values and cannot alter the operation; in the document, a
-    `$name` declared as a GraphQL variable is GraphQL syntax unless the
-    command also sets a shell variable of that name."""
+    `$name` declared as a GraphQL variable is GraphQL syntax only when every
+    `$name` in the command is single-quoted (the shell never expands it)."""
     for prefix in ('--field=', '--raw-field=', '-f', '-F'):
         if field.startswith(prefix): field = field[len(prefix):]; break
     key, _, value = field.partition('=')
     if '$' in key or '`' in key: return True
     if key not in ('query', 'operationName'): return False
-    declared = set(re.findall(r'\$([A-Za-z_][A-Za-z0-9_]*)\s*:', value)) - set(shell_names)
+    declared = set(re.findall(r'\$([A-Za-z_][A-Za-z0-9_]*)\s*:', value)) & set(literal_names)
     value = re.sub(r'\$([A-Za-z_][A-Za-z0-9_]*)(?![A-Za-z0-9_])', lambda m: '' if m[1] in declared else m[0], value)
     return '$' in value or '`' in value
 
@@ -70,7 +70,7 @@ def settings_path(path, method):
             tail[:2] in (['git', 'refs'], ['git', 'ref']) and method in ('PATCH', 'DELETE'))
 
 
-def operations(args, cwd, shell_names=frozenset()):
+def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in word or '`' in word):
     while args and (args[0] in ('-R', '--repo', '--hostname') or args[0].startswith(('--repo=', '--hostname='))):
         args = args[2:] if '=' not in args[0] else args[1:]
     if not args: return []
@@ -89,7 +89,7 @@ def operations(args, cwd, shell_names=frozenset()):
             return [dict(class_='settings', repo=cwd, target=args[2:])]
         return []
     if args[0] != 'api': return []
-    method, explicit, endpoint, body, opaque = 'GET', False, '', [], False
+    method, explicit, positional, body, opaque = 'GET', False, [], [], False
     i = 1
     while i < len(args):
         arg = args[i]
@@ -103,16 +103,21 @@ def operations(args, cwd, shell_names=frozenset()):
             opaque |= arg.startswith('--input='); body.append(arg)
         elif arg in ('-H', '--header', '--hostname', '--jq', '-q', '--template', '-t'):
             i += 1
-        elif not arg.startswith('-') and not endpoint:
-            endpoint = arg
+        elif not arg.startswith('-'):
+            positional.append(arg)
         i += 1
+    endpoint = positional[0] if positional else ''
     if (body or opaque) and not explicit: method = 'POST'
+    # A shell value can become gh flags: a word led by an expansion, or any
+    # expansion that may word-split, makes the method unknown (gh may send it).
+    if any(a[:1] in ('$', '`') for a in positional) or any(splits(a) for a in args):
+        method = '$UNKNOWN'
     if '$' in endpoint or '`' in endpoint:
-        if method in ('GET', 'HEAD'): return []  # reads never change settings
+        if method in ('GET', 'HEAD') and len(positional) == 1: return []  # a literal-led read
         endpoint = id_route(endpoint)
         if endpoint is None: raise ValueError('dynamic API endpoint')
     path = endpoint_path(endpoint)
-    if ('$' in method or '`' in method) and any(settings_path(path, m) for m in ('PATCH', 'DELETE', 'POST')):
+    if ('$' in method or '`' in method) and any(settings_path(path, m) for m in ('PATCH', 'DELETE', 'POST', 'PUT')):
         raise ValueError('dynamic settings API method')
     guarded = settings_path(path, method)
     if path == 'graphql':
@@ -121,7 +126,7 @@ def operations(args, cwd, shell_names=frozenset()):
         guarded = opaque or any(re.search(r'\bmutation\b', value) and re.search(
             r'\b(?:deleteRef|updateRef|(?:create|update|delete)(?:Repository(?:Ruleset)?|BranchProtectionRule|Environment)|(?:un)?archiveRepository|transferRepository)\b', value)
             for value in body)
-        if any(graphql_dynamic(value, shell_names) for value in body): raise ValueError('dynamic GraphQL payload')
+        if any(graphql_dynamic(value, literal_names) for value in body): raise ValueError('dynamic GraphQL payload')
     if guarded:
         if any('$' in a or '`' in a for a in args): raise ValueError('dynamic settings scope')
         return [dict(class_='settings', repo=cwd, target=path, method=method)]

@@ -31,17 +31,24 @@ the gate treats as data:
 - **Script operands:** `bash file` reads its script from the file, and
   `bash -n` runs nothing. A shell with no operand, `-s`, `-`, a stdin path or
   process substitution reads stdin, so it is opaque and denies. A bare
-  interactive shell denies too.
+  interactive shell denies too. Options are read per shell (bash/sh, dash,
+  ksh, zsh, fish), including which ones take a value. An unknown long option
+  denies. fish's `-C`/`--init-command`/`--command` are code, like `-c`.
 - **Prefix assignments** (`X="$HOME/y" cmd`) are not the executable.
 - **`command -v/-V`** only looks a name up.
 - **Local-only git commands** (merge-base, check-ignore, …): no alias lookup.
 - **`gh api` with a shell id:** the endpoint may use a shell value only as a
   whole id segment under pulls/issues/comments/reviews/commits/runs/jobs/
-  check-runs of a literal `repos/<owner>/<repo>`. Dynamic GET routes are
-  reads.
-- **GraphQL:** a `$name` the query declares is GraphQL syntax, unless the
-  command also sets a shell variable of that name. Values of fields other
-  than `query`/`operationName` are variables and cannot change the operation.
+  check-runs of a literal `repos/<owner>/<repo>`. A dynamic GET route is a
+  read only if it starts with a literal, is the only endpoint word, and no
+  expansion in the call can word-split. An expansion can split if it is
+  unquoted, or if its quoting was lost through a wrapper or an alias. A word
+  led by an expansion makes the method unknown: the shell value may be a gh
+  flag.
+- **GraphQL:** a `$name` the query declares is GraphQL syntax only if every
+  `$name` in the command is single-quoted, so the shell never expands it.
+  Values of fields other than `query`/`operationName` are variables and cannot
+  change the operation.
 
 **Git routes:**
 - Executable names are case-folded (APFS is case-insensitive), so `GIT`,

@@ -42,7 +42,7 @@ def argv_at(tokens, segments, scopes, i):
                 raise ValueError('missing redirection target')
             redirects.append((operator, tokens[j])); j += 1
             continue
-        if word in (';', '&', '|', ')', '}$'):
+        if word in (';', '&', '|', ')', '}$', ')$'):  # )$ closes a $( ) substitution
             break
         args.append(word); j += 1
     return args, redirects
@@ -91,17 +91,23 @@ def looked_up(tokens, positions, i):
 
 
 def shell_payload(base, args):
+    """Code a shell runs from its argv: -c, and fish's -C/--command/--init-command."""
     if base not in SHELLS:
         return None
+    payloads = []
     for i, arg in enumerate(args):
         if arg == '--':
             break
-        if arg.startswith('-') and not arg.startswith('--') and 'c' in arg[1:]:
+        name, eq, value = arg.partition('=')
+        if base == 'fish' and name in ('--command', '--init-command') and eq:
+            payloads.append(value); continue
+        if (arg.startswith('-') and not arg.startswith('--') and ('c' in arg[1:] or base == 'fish' and 'C' in arg[1:])
+                or base == 'fish' and arg in ('--command', '--init-command')):
             j = i + 1
             if j < len(args) and args[j] == '--': j += 1
             if j >= len(args): raise ValueError('missing shell payload')
-            return args[j]
-    return None
+            payloads.append(args[j])
+    return '\n'.join(payloads) if payloads else None
 
 
 def joined(words):
@@ -249,30 +255,142 @@ def mask_heredoc_bodies(command, shell):
     return ''.join(out)
 
 
-SHELL_VALUE_OPTIONS = {'-o', '+o', '-O', '+O', '--rcfile', '--init-file'}
+# Per shell: short options taking a value, long options taking a value, long
+# switches. An unknown long option denies: its arity (and so the script
+# operand) is unknown. -n (noexec) runs nothing.
+_BASH = ('oO', {'--rcfile', '--init-file'},
+         {'--login', '--noprofile', '--norc', '--posix', '--restricted', '--verbose', '--noediting',
+          '--debugger', '--dump-strings', '--dump-po-strings', '--pretty-print'})
+SHELL_OPTIONS = {
+    'bash': _BASH, 'sh': _BASH, 'dash': ('o', set(), set()), 'ksh': ('o', set(), set()),
+    'zsh': ('o', {'--emulate'}, {'--login', '--interactive', '--rcs', '--no-rcs', '--globalrcs', '--no-globalrcs'}),
+    'fish': ('cCdopf', {'--command', '--init-command', '--debug', '--debug-output', '--profile',
+                        '--profile-startup', '--features'},
+             {'--login', '--interactive', '--no-execute', '--no-config', '--private',
+              '--print-rusage-self', '--print-debug-categories'}),
+}
 
 
-def shell_reads_stdin(args):
+def shell_reads_stdin(base, args):
     """No -c payload: does this shell take its script from stdin (no script
     operand, -s, `-`, or a stdin/fd path) rather than from a named file?"""
+    short_values, long_values, long_switches = SHELL_OPTIONS.get(base, _BASH)
     i, stdin = 0, False
     while i < len(args):
         arg = args[i]
         if arg in ('--', '-'):
             i += 1; break
-        if arg in ('--version', '--help'):
+        if arg in ('--version', '--help', '--no-execute'):
             return False
         if not arg.startswith(('-', '+')):
             break
-        if not arg.startswith('--'):
-            if arg.startswith('-') and 'n' in arg[1:]:
+        if arg.startswith('--'):
+            name, eq, _ = arg.partition('=')
+            if name in long_values:
+                i += 1 if eq else 2
+            elif name in long_switches and not eq:
+                i += 1
+            else:
+                raise ValueError('unknown shell option')
+            continue
+        i += 1
+        for k, char in enumerate(arg[1:], 1):
+            if char == 'n' and arg[0] == '-':
                 return False  # noexec: commands are read, never run
-            stdin |= 's' in arg[1:]
-            i += 2 if 'o' in arg[1:] or 'O' in arg[1:] else 1
-        else:
-            i += 2 if arg in SHELL_VALUE_OPTIONS else 1
+            if base == 'fish' and char not in short_values + 'nilNPvh':
+                raise ValueError('unknown shell option')
+            stdin |= char == 's'
+            if char in short_values:
+                i += 0 if k + 1 < len(arg) else 1  # the rest of the cluster, or the next word
+                break
     script = args[i] if i < len(args) else None
     return stdin or script is None or script in ('/dev/stdin', '/dev/fd/0') or script.startswith(('/dev/fd/', '/proc/'))
+
+
+_NAME = re.compile(r'\{?([A-Za-z_][A-Za-z0-9_]*)')
+
+
+def single_quoted_names(command, shell):
+    """Names whose every `$name` in the command sits inside single quotes, so
+    the shell never expands them. Any heredoc the two views disagree on, any
+    unquoted heredoc (its body text is not quoting) or an open quote: none."""
+    starts = _line_heredoc_starts(command, shell)
+    if starts and (not all(quoted for _, _, quoted, _ in starts) or _shell_heredoc_starts(command, shell) != starts):
+        return set()
+    text, quoting, state, i = mask_heredoc_bodies(command, shell), {}, None, 0
+    while i < len(text):
+        char = text[i]
+        if state in ("'", "$'"):
+            if state == "$'" and char == '\\': i += 2; continue
+            if char == "'": state = None
+            elif char == '$' and state == "'" and _NAME.match(text, i + 1):
+                name = _NAME.match(text, i + 1)[1]; quoting[name] = quoting.get(name, True)
+            i += 1; continue
+        if char == '\\':
+            i += 2; continue
+        if state is None and text.startswith("$'", i):
+            state = "$'"; i += 2; continue
+        if state is None and char == "'":
+            state = "'"
+        elif char == '"':
+            state = None if state == '"' else '"'
+        elif char == '$' and _NAME.match(text, i + 1):
+            quoting[_NAME.match(text, i + 1)[1]] = False
+        i += 1
+    return set() if state else {name for name, literal in quoting.items() if literal}
+
+
+def split_words(command, shell):
+    """Shell words (quote-removed, as the parser yields them) mapped to whether any
+    occurrence carries an unquoted expansion, which word-splitting can turn into
+    several words (gh flags among them). A word not found here is assumed to split."""
+    text, words, i = mask_heredoc_bodies(command, shell), {}, 0
+    word, splits, quote, started = [], False, None, False
+
+    def inner(body):  # a substitution body is lexed in its own quoting context
+        for key, value in split_words(body, shell).items():
+            words[key] = words.get(key, False) or value
+
+    def flush():
+        nonlocal word, splits, started
+        if started:
+            key = ''.join(word)
+            words[key] = words.get(key, False) or splits
+        word, splits, started = [], False, False
+    while i < len(text):
+        char = text[i]
+        if quote == "'":
+            if char == "'": quote = None
+            else: word.append('\ue000' if char == '{' else '\ue001' if char == '}' else char)
+            i += 1; continue
+        if quote is None and (text.startswith('$(', i) or char == '`'):
+            found = shell._dollar_substitution(text, i) if char == '$' else shell._backtick_substitution(text, i)
+            if found is None: return {}
+            inner(found[0]); word.append(text[i:found[1]]); splits, started, i = True, True, found[1]; continue
+        if quote == '"' and (text.startswith('$(', i) or char == '`'):
+            found = shell._dollar_substitution(text, i) if char == '$' else shell._backtick_substitution(text, i)
+            if found is None: return {}
+            inner(found[0]); word.append(text[i:found[1]]); i = found[1]; continue
+        if char == '\\':
+            nxt = text[i + 1:i + 2]
+            if quote == '"' and nxt not in ('$', '`', '"', '\\', '\n'): word.append(char)
+            if nxt != '\n': word.append(nxt)
+            started, i = True, i + 2; continue
+        if quote is None and text.startswith("$'", i):
+            return {}  # ANSI-C words: no proof here
+        if char == '"':
+            quote, started = (None if quote == '"' else '"'), True; i += 1; continue
+        if quote is None and char == "'":
+            quote, started = "'", True; i += 1; continue
+        if quote is None and (char.isspace() or char in ';|&()<>'):
+            flush(); i += 1; continue
+        if char == '$' and quote is None and re.match(r'[{A-Za-z0-9_@*#?!$-]', text[i + 1:i + 2]):
+            splits = True
+        if quote == '"' and char in '{}':
+            char = '\ue000' if char == '{' else '\ue001'
+        word.append(char); started = True; i += 1
+    flush()
+    return {} if quote else words
 
 
 def expand_home(raw, home):

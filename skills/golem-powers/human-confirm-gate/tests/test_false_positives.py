@@ -87,7 +87,7 @@ class FalsePositives(unittest.TestCase):
             'for id in $(gh api repos/o/r/pulls/1/comments --jq ".[].id"); do '
             'gh api -X POST repos/o/r/pulls/1/comments/"$id"/replies -f body=ok; done',
             'gh api repos/o/r/pulls/$N/comments', 'gh api -X PATCH repos/o/r/issues/comments/${C} -f body=x',
-            'gh api repos/$O/$R/actions/runs',
+            'gh api "repos/$O/$R/actions/runs"',
         ])
         self.assertDecisions('deny', ['gh api -X DELETE repos/o/"$R"', 'gh api -X PUT repos/o/r/branches/$B/protection',
                                       'gh api -X POST repos/o/r/$X', 'gh api -X POST repos/o/r/pulls/1/$X',
@@ -127,6 +127,68 @@ class FleetCorpus(unittest.TestCase):
         denies = [r for r in rows if r['expected'] == 'deny']
         self.assertLessEqual(len(denies), len(rows) * 0.005)
         self.assertTrue(all(r.get('why') for r in denies))
+
+
+class R2Mechanisms(unittest.TestCase):
+    """#653 R1: F1 (shell values as gh flags), F2 (literal-only GraphQL names), F3 (shell option tables)."""
+
+    def test_word_splitting_evidence(self):
+        import commands, syntax
+        words = syntax.split_words('gh api "repos/$O/x" repos/$P/y \'$Q\' "$(a b)" $(c) \\$d x"{e}"', commands.shell)
+        self.assertEqual({w: words[w] for w in ['repos/$O/x', 'repos/$P/y', '$Q', '$(a b)', '$(c)', '$d']},
+                         {'repos/$O/x': False, 'repos/$P/y': True, '$Q': False, '$(a b)': False, '$(c)': True, '$d': False})
+        self.assertIn('x\ue000e\ue001', words)
+        self.assertEqual(syntax.split_words("echo 'open", commands.shell), {})  # unclosed: no proof
+        inner = syntax.split_words('x=$(gh api "repos/$O/y" repos/$P/z)', commands.shell)
+        self.assertEqual((inner.get('repos/$O/y', 'missing'), inner.get('repos/$P/z', 'missing')), (False, True))
+
+    def test_rejoined_argv_has_lost_its_quoting(self):
+        from commands import operations
+        command = "gh api 'repos/o/r/$S'"
+        self.assertEqual(operations(command, '/repo', alias_lookup=lambda *_: None), [])
+        with self.assertRaises(ValueError):
+            operations(command, '/repo', alias_lookup=lambda *_: None, rejoined=True)
+
+    def test_dynamic_routes_need_a_literal_lead_and_no_splitting(self):
+        import gh_policy
+        quoted, unquoted = (lambda word: False), (lambda word: '$' in word)
+        self.assertEqual(gh_policy.operations(['api', 'repos/$O/x'], '/repo', splits=quoted), [])
+        for args, splits in [(['api', 'repos/$O/x'], unquoted), (['api', '$E'], quoted),
+                             (['api', 'repos/o/r', '$E'], quoted), (['api', 'repos/o/r', '--jq', '$Q'], unquoted)]:
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                gh_policy.operations(args, '/repo', splits=splits)
+        self.assertEqual(gh_policy.operations(['api', 'repos/o/r/pulls/$N/comments'], '/repo', splits=unquoted), [])
+
+    def test_graphql_names_are_literal_only_when_every_use_is_single_quoted(self):
+        import commands, syntax
+        quoted = syntax.single_quoted_names
+        self.assertEqual(quoted("""f -q 'a($t:ID!){b(id:$t)}' -v "$u" '$u' $w""", commands.shell), {'t'})
+        self.assertEqual(quoted("""f 'x $t' "$t" """, commands.shell), set())
+        self.assertEqual(quoted("""f $'x $t'""", commands.shell), set())
+        self.assertEqual(quoted("""cat <<E\n'$t\nE\nf '$t'""", commands.shell), set())  # unquoted heredoc: no proof
+        self.assertEqual(quoted("""f 'open $t""", commands.shell), set())
+        self.assertEqual(quoted("""cat <<E\nit's\nE\nf "$t" x'""", commands.shell), set())  # a body apostrophe is no quote
+
+    def test_shell_option_tables(self):
+        from syntax import shell_reads_stdin as reads, shell_payload
+
+        def shell_reads_stdin(base, args):  # a refusal must fail the assertion, not error out
+            try:
+                return reads(base, args)
+            except ValueError:
+                return 'refused'
+        for base, args, stdin in [('bash', ['--rcfile', 'rc', 's.sh'], False), ('bash', ['-o', 'pipefail', 's.sh'], False),
+                                  ('zsh', ['--emulate', 'sh'], True), ('zsh', ['--emulate', 'sh', 's.zsh'], False),
+                                  ('fish', ['-d', 'all'], True), ('fish', ['--debug-output', 'log', 's.fish'], False),
+                                  ('fish', ['-n'], False), ('zsh', ['-o', 'x', 's.zsh'], False)]:
+            with self.subTest(base=base, args=args):
+                self.assertEqual(shell_reads_stdin(base, args), stdin)
+        for base, args in [('zsh', ['--unknown-option', 's.zsh']), ('fish', ['-Z', 's.fish']), ('bash', ['--bogus=1', 's.sh'])]:
+            with self.subTest(base=base, args=args):
+                self.assertEqual(shell_reads_stdin(base, args), 'refused')
+        self.assertEqual(shell_payload('fish', ['--command=x']), 'x')
+        self.assertEqual(shell_payload('fish', ['-C', 'a', '-c', 'b']), 'a\nb')
+        self.assertEqual(shell_payload('fish', ['--init-command', 'a']), 'a')
 
 
 class GhMutants(unittest.TestCase):
