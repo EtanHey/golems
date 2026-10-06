@@ -509,11 +509,11 @@ load 'test-repogolem-dispatch-parts/cases-07.bash'
     split_case_125
 }
 
-@test "Gemini gatherer agent is selected only for workers when globally installed" {
+@test "Gemini worker profile follows role and explicit override" {
     split_case_126
 }
 
-@test "Gemini missing global gatherer keeps the worker launch with a warning" {
+@test "Gemini missing or invalid worker profile refuses launch" {
     split_case_127
 }
 
@@ -549,3 +549,44 @@ load 'test-repogolem-dispatch-parts/cases-07.bash'
     split_case_135
 }
 
+@test "Gemini normalizes gather and executor role families and rejects unknown roles" {
+    local agents="$TMPDIR_/gatherer-home/.gemini/antigravity-cli/agents"
+    mkdir -p "$agents"
+    cp "$BATS_TEST_DIRNAME/../../templates/gemini/agents/"{gatherer,shell-worker,video-qa}.md "$agents/"
+    local role profile
+    for role in ' Gatherer ' $'\tGEMINI.GATHER.VISUAL\n' gemini.gather.text visual-gatherer text-gatherer; do
+      GOLEM_AGENT_ROLE="$role" run_gatherer_launch -s
+      [ "$status" -eq 0 ]
+      grep -F -q -- '--agent gatherer' <<< "$output"
+      for profile in shell-worker video-qa arbitrary; do
+        GOLEM_AGENT_ROLE="$role" GOLEM_AGY_AGENT="$profile" run_gatherer_launch -s
+        [ "$status" -ne 0 ]
+        grep -F -q -- conflicts <<< "$output"
+        refute_contains 'AGY_ARGS=' "$output"
+      done
+    done
+    for role in implementor implementer worker reviewer executor ' WORKER '; do
+      GOLEM_AGENT_ROLE="$role" run_gatherer_launch -s
+      [ "$status" -eq 0 ]
+      grep -F -q -- '--agent shell-worker' <<< "$output"
+    done
+    GOLEM_AGENT_ROLE=gatherer GOLEM_AGY_AGENT=gatherer run_gatherer_launch -s
+    [ "$status" -eq 0 ]
+    grep -F -q -- '--agent gatherer' <<< "$output"
+    for role in other gather typo; do
+      GOLEM_AGENT_ROLE="$role" GOLEM_AGY_AGENT=video-qa run_gatherer_launch -s
+      [ "$status" -ne 0 ]
+      grep -F -q -- 'known roles:' <<< "$output"
+      refute_contains 'AGY_ARGS=' "$output"
+    done
+}
+
+@test "Gemini lead and orchestrator task roles preserve lead mode" {
+    for role in lead orchestrator ' LEAD ' $'\tOrchestrator\n'; do
+      GOLEM_AGENT_ROLE="$role" run_gatherer_launch -s
+      [ "$status" -eq 0 ]
+      grep -F -q -- 'AGY_ROLE=unset' <<< "$output"
+      refute_contains '--agent' "$output"
+      refute_contains 'Worker role:' "$output"
+    done
+}

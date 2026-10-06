@@ -1,11 +1,13 @@
 #!/usr/bin/env bats
 
 setup() {
-    unset WEAVE_ALLOW_TMP GOLEM_ROLE GOLEM_EFFORT
+    unset WEAVE_ALLOW_TMP GOLEM_ROLE GOLEM_EFFORT GOLEM_AGENT_ROLE GOLEM_AGY_AGENT
     ROOT=$(mktemp -d)
     export ROOT
     export HOME="$ROOT/home" RALPH_REGISTRY_FILE="$ROOT/registry.json"
-    mkdir -p "$HOME/.gemini/config" "$ROOT/a/.agents" "$ROOT/b"
+    mkdir -p "$HOME/.gemini/config" "$HOME/.gemini/antigravity-cli/agents" "$ROOT/a/.agents" "$ROOT/b"
+    cp "$BATS_TEST_DIRNAME/../../templates/gemini/agents/shell-worker.md" \
+      "$HOME/.gemini/antigravity-cli/agents/shell-worker.md"
     MODULE="$BATS_TEST_DIRNAME/../repogolem/dispatch/agy.zsh"
     cat > "$RALPH_REGISTRY_FILE" <<'JSON'
 {"global":{"mcps":{"common":{"command":"common-mcp"}}},"mcpDefinitions":{"A":{"command":"a-mcp","env":{"EXA_API_KEY":"op://development/fake/credential","PUPPETEER_EXECUTABLE_PATH":"/synthetic/browser","FRONT":"op://development/fake/credential","OTHER":"${EXA_API_KEY}","BARE":"$EXA_API_KEY"},"headers":{"Authorization":"${EXA_API_KEY}","api-key":"FAKE_HEADER_KEY","X-Other":"op://development/fake/credential","Accept":"application/json"}},"B":{"command":"new-b-mcp"}},"projects":{"a":{"mcps":["A"]},"b":{"mcps":["B"]}}}

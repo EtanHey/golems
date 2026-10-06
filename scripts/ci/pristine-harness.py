@@ -601,6 +601,14 @@ def capture(case, tree, scratch):
                              "# Full orchestrator protocol\nUse repository context.\n")
             project["agent"] = "test-agent"
             project["mcps"] = ["brainlayer"]
+        if case.get("installed_agy_profile"):
+            # A synthetic installed profile, shared by immutable base and candidate.
+            # Agent files are excluded from captures; never read the real HOME.
+            assert case["installed_agy_profile"] == "shell-worker"
+            agent = fixture / "home/.gemini/antigravity-cli/agents/shell-worker.md"
+            agent.parent.mkdir(parents=True)
+            agent.write_text("---\nname: shell-worker\nmainAgent: true\n"
+                             "subagent: false\ninheritMcp: false\n---\nSynthetic worker.\n")
         registry_data = {"projects": {"testrepo": project}}
         if case.get("mcp_merge"):
             # AGY now reads static declarations, not the resolving builder stub.
