@@ -3,7 +3,7 @@
 
 Usage (as registered by scripts/hooks/install-hooks.mjs):
     <pinned python3> -I -B ~/.claude/hooks/golems-fail-open.py <hook.py> [args...]
-    <pinned python3> -I -B ~/.claude/hooks/golems-fail-open.py --fail-closed <hook.py> [args...]
+    <pinned python3> -I -B ~/.claude/hooks/golems-fail-open.py --fail-closed [--budget <s>] <hook.py> [args...]
 
 Imports: hooks live in a same-UID tree, so nothing planted beside a hook may
 stand in for the stdlib. The launcher preloads runpy's lazy imports, then adds
@@ -25,8 +25,12 @@ With --fail-closed, missing/unreadable/broken hooks, unexpected exit statuses
 and a crash of this launcher itself deny with a static recovery hint. Output
 from a failed hook is discarded so partial JSON, target paths and exception
 values cannot leak into that denial. Successful allow (0) and deliberate block
-(2) retain their output and status. Only tmp-block and git-guardian
-pre_tool_use opt in via the host manifest (#488). A failure before this file
+(2) retain their output and status. --budget <s> adds a watchdog: the hook
+runs in a forked child in its own process group, and if it has not finished
+within <s> seconds the whole group is SIGKILLed and the static denial is
+emitted. A harness hook timeout does not block (Claude Code), so the installer
+registers budget = manifest timeout - 1 s. The policy gates opt in via the
+host manifest (#488): tmp-block, git-guardian pre_tool_use, human-confirm. A failure before this file
 runs (interpreter missing, launcher unparseable) is the installer's /bin/sh
 guard's to deny (install-hooks.mjs failClosedCommand).
 
@@ -40,12 +44,14 @@ import json
 import os
 import pkgutil  # noqa: F401  runpy imports these lazily; load them before a hook dir joins sys.path
 import runpy
+import signal
 import sys
+import time
 import warnings  # noqa: F401
 from contextlib import nullcontext, redirect_stderr, redirect_stdout
 from io import StringIO
 
-FAIL_CLOSED_PROTOCOL = 1
+FAIL_CLOSED_PROTOCOL = 2  # 2: --budget watchdog
 REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`."
 # Read before main() rewrites sys.argv, so a launcher crash still knows its mode.
 FAIL_CLOSED = sys.argv[1:2] == ["--fail-closed"]
@@ -83,11 +89,56 @@ def _scrub_path(hook_dir):
     sys.path.append(hook_dir)
 
 
+def _budget(args):
+    """Parse a leading `--budget <seconds>`; returns (seconds or None, rest)."""
+    if args[:1] != ["--budget"]:
+        return None, args
+    try:
+        seconds = float(args[1])
+    except (IndexError, ValueError):
+        raise ValueError("invalid --budget")
+    if not 0 < seconds <= 120:
+        raise ValueError("invalid --budget")
+    return seconds, args[2:]
+
+
+def _watch(seconds):
+    """Fork: the child runs the hook in its own process group and returns None;
+    the parent waits at most `seconds`, then kills the group and denies."""
+    pid = os.fork()
+    if pid == 0:
+        os.setpgid(0, 0)
+        return None
+    try:
+        os.setpgid(pid, pid)  # close the race with the child's own setpgid
+    except OSError:
+        pass
+    deadline = time.monotonic() + seconds
+    while True:
+        done, status = os.waitpid(pid, os.WNOHANG)
+        if done:
+            break
+        if time.monotonic() >= deadline:
+            try:
+                os.killpg(pid, signal.SIGKILL)
+            except OSError:
+                pass
+            os.waitpid(pid, 0)
+            return _block()
+        time.sleep(0.01)
+    code = os.waitstatus_to_exitcode(status)
+    return code if code in (0, 2) else _block()
+
+
 def main():
     args = sys.argv[1:]
     fail_closed = args[:1] == ["--fail-closed"]
     if fail_closed:
-        args = args[1:]
+        budget, args = _budget(args[1:])
+        if budget is not None:
+            code = _watch(budget)
+            if code is not None:
+                return code
     if not args:
         if fail_closed:
             return _block()

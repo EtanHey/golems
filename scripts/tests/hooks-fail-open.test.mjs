@@ -93,6 +93,28 @@ test("a crash in the launcher itself denies a fail-closed gate and stays a crash
   expect(r.stderr).toContain("AttributeError");
 });
 
+test("--budget: a hook that hangs (even ignoring SIGTERM) gets the static deny within the budget", () => {
+  const d = scratch();
+  const target = path.join(d, "hang.py");
+  writeFileSync(target, "import signal, sys, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nsys.stdin.read()\nprint('partial')\ntime.sleep(30)\n");
+  const started = Date.now();
+  const r = spawnSync("python3", [wrapper, "--fail-closed", "--budget", "1", target], { encoding: "utf8", input: "{}" });
+  const elapsed = Date.now() - started;
+  expect([r.status, r.stderr, r.stdout]).toEqual([2, "", `${JSON.stringify(closedBlock)}\n`]);
+  expect(elapsed).toBeGreaterThan(800);  // the watchdog fired, not an argument error
+  expect(elapsed).toBeLessThan(2_500);
+});
+
+test("--budget leaves a fast hook's allow/deny and output untouched", () => {
+  const d = scratch();
+  const target = path.join(d, "fast.py");
+  for (const code of [0, 2]) {
+    writeFileSync(target, `import sys\nsys.stdin.read()\nprint('{"ok": ${code}}')\nsys.exit(${code})\n`);
+    const r = spawnSync("python3", [wrapper, "--fail-closed", "--budget", "4", target], { encoding: "utf8", input: "{}" });
+    expect([r.status, r.stderr, r.stdout]).toEqual([code, "", `{"ok": ${code}}\n`]);
+  }
+});
+
 test("fail-closed preserves legitimate allow and deliberate deny with real sibling imports and argv", () => {
   const d = scratch();
   const real = path.join(d, "real");

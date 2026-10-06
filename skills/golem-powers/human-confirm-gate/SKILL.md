@@ -68,10 +68,13 @@ the gate treats as data:
     edit is simulated on the current file.
 - Other writers to git config (shell redirects, includes) are judged at push
   time instead.
-The common fail-open launcher retains its existing infrastructure contract:
-a missing script or Python syntax failure before `main()` runs allows. This
-hook catches evaluator/import errors, not launcher failures. Installer status
-must therefore be checked before calling this an installed mechanical gate.
+Like the other policy gates, this gate runs through the launcher's
+`--fail-closed` mode (#656): a missing or unparseable hook, a launcher crash, a
+missing pinned interpreter (the installer's `/bin/sh` guard) and a hang past
+the watchdog budget (manifest timeout 10 s, budget 9 s) all deny with the
+static reinstall hint. This hook also catches evaluator/import errors itself.
+Installer status must still be checked before calling this an installed
+mechanical gate.
 This only covers Claude tool calls; Codex exec_command is not wired to it.
 ## Trust and issuance
 Unsigned file metadata cannot identify a human under the shared macOS UID.
@@ -182,7 +185,8 @@ They do NOT catch:
 - writes through clustered short options, awk/sed write commands, or relative
   operands after an unresolvable `cd`;
 - `git` inside hooks-live;
-- removing an ancestor of hooks-live (the fail-open launcher then allows);
+- removing an ancestor of hooks-live (the fail-closed launcher then denies
+  every matching call until reinstall);
 - interpreter code (`python -c`, `osascript`).
 
 The anchor's uchg/hash and the committed pin are what catch these outcomes.

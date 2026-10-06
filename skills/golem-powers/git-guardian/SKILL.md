@@ -205,14 +205,17 @@ commit. Local damage inside hooks-live refuses (tamper evidence) until a human
 inspects it and re-runs with `--restore-live`.
 The prompt's `!` bypass remains the #411 assumption, not live-verified here.
 Legitimate allow/deny results pass through. Other gates keep the default
-fail-open launcher mode; tmp-block is the other selected policy gate.
+fail-open launcher mode; tmp-block and human-confirm are the other policy gates.
 The launcher is an installed copy so it survives a dangling hooks-live tree.
 The registered command wraps it in a `/bin/sh` guard, so a missing pinned
 interpreter or a launcher that cannot start also denies; a skipped harness
 registration remains outside its own enforcement boundary. Lead installs through hooks-live after review/merge.
-Known residuals: import-time hangs, native exits and harness timeouts can still
-fail open, and registration/launcher edits can disable enforcement. Separate
-follow-ups track these; only Python-level stdout/stderr is captured.
+A hang (import-time included) is cut by the launcher's `--budget` watchdog,
+registered 1 s under the manifest timeout (5 s timeout, 4 s budget): the hook's
+process group is killed and the call denied before the harness timeout, which
+would allow. Known residuals: registration/launcher edits can disable
+enforcement, a hook subprocess that leaves the process group outlives the
+kill, and only Python-level stdout/stderr is captured.
 
 The "discard only what THIS session owns" rule is the key nuance: discarding your own
 in-session edits is fine; discarding another agent's or the user's uncommitted work is the

@@ -28,13 +28,16 @@ hooks-live refuses until a human inspects it and re-runs with `--restore-live`. 
 the #411 assumption, not live-verified here. Failed-hook output
 is discarded; legitimate allow/deny results and advisories pass through. This
 does not change the payload-level advisory rules below. Git-guardian's
-`pre_tool_use.py` is the other selected policy gate; other gates retain the
-default fail-open mode. A `/bin/sh` guard around the registered command denies
+`pre_tool_use.py` and human-confirm are the other policy gates; other gates
+retain the default fail-open mode. A `/bin/sh` guard around the registered command denies
 when the pinned interpreter or the launcher cannot start; the registration
 itself must exist to enforce this boundary; lead installs through hooks-live after review/merge.
-Known residuals: import-time hangs, native exits and harness timeouts can still
-fail open. Registration/launcher edits can disable enforcement. Those are
-separate follow-ups; this launcher captures only Python-level stdout/stderr.
+A hang, import-time included, is cut by the launcher's `--budget` watchdog
+(5 s manifest timeout, 4 s budget): the hook's process group is killed and the
+call denied before the harness timeout, which would allow. Known residuals:
+registration/launcher edits can disable enforcement, a hook subprocess that
+leaves the process group outlives the kill, and only Python-level
+stdout/stderr is captured.
 
 ## Scope
 

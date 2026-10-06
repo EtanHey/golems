@@ -604,7 +604,7 @@ test("human confirmation ships once on each host through hooks-live with the sha
   const reference = realManifest.hosts.mbp.find((h) => h.id === "human-confirm-gate");
   expect(reference.matcher).toBe("Bash|Monitor|Write|Edit|MultiEdit|NotebookEdit");
   expect(reference.timeout).toBe(10);
-  expect(reference.command).toBe("{python} -I -B {hooks}/golems-fail-open.py {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
+  expect(reference.command).toBe("{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
   for (const entries of Object.values(realManifest.hosts)) {
     expect(entries.filter((h) => h.id === "human-confirm-gate")).toEqual([reference]);
   }
@@ -1091,11 +1091,12 @@ const closedDeny = { decision: "block", reason: REPAIR_REASON, hookSpecificOutpu
 const callHook = (fx, command, input = "{}") => spawnSync("sh", ["-c", command],
   { input, encoding: "utf8", env: { ...fixtureEnv(fx), HOME: fx.home } });
 
-test("only tmp-block and the installed git-guardian policy gate opt into fail-closed, on every host", () => {
+test("the policy gates (tmp-block, git-guardian, human-confirm) opt into fail-closed on every host where they run", () => {
   for (const entries of Object.values(realManifest.hosts)) {
     expect(entries.filter((e) => e.command?.includes("--fail-closed")).map((e) => e.id).sort())
-      .toEqual(["pre_tool_use", "tmp-block"]);
-    for (const id of ["pre_tool_use", "tmp-block"]) {
+      .toEqual(["human-confirm-gate", "pre_tool_use", "tmp-block"]);
+    for (const id of ["human-confirm-gate", "pre_tool_use", "tmp-block"]) {
+      expect(entries.find((e) => e.id === id).timeout).toBeGreaterThanOrEqual(2);  // watchdog budget = timeout - 1
       expect(entries.find((e) => e.id === id).command).toContain("golems-fail-open.py --fail-closed ");
     }
     expect(entries.find((e) => e.id === "pre_tool_use").source)
@@ -1118,7 +1119,8 @@ test("a fail-closed gate registers inside the /bin/sh guard; its copied launcher
   const fx = closedFixture();
   expect(run(fx, "--apply").status).toBe(0);
   const command = closedCommand(fx);
-  expect(command).toBe(failClosedCommand(`${hookPython()} ${fx.home}/.claude/hooks/golems-fail-open.py --fail-closed ${fx.home}/.claude/hooks/demo-gate/hooks/demo-gate.py`));
+  // Watchdog budget = the 5 s manifest timeout - 1 s, so the deny lands before the harness kill (which allows).
+  expect(command).toBe(failClosedCommand(`${hookPython()} ${fx.home}/.claude/hooks/golems-fail-open.py --fail-closed --budget 4 ${fx.home}/.claude/hooks/demo-gate/hooks/demo-gate.py`));
   expect(callHook(fx, command).status).toBe(0);
   rmSync(path.join(live(fx), "skills/golem-powers/demo-gate/hooks/demo-gate.py"));
   const r = callHook(fx, command);
@@ -1340,4 +1342,49 @@ test("N3: recovery and the CLI itself work through a symlinked repo/installer pa
   const st = spawnSync("node", [linkedInstaller, "--repo", fx.repo, "--manifest", fx.manifest, "--host", "mbp", "--status"],
     { encoding: "utf8", env: fixtureEnv(fx) });
   expect(st.stdout).toContain("hooks-live=");  // never a silent exit-0 no-op
+});
+
+
+// ---- #656 R1 fixes ----
+
+test("R1 F2: a hanging fail-closed gate denies (exit 2, static) before its 5 s harness timeout and its process group is killed", () => {
+  const fx = closedFixture();
+  const hook = path.join(fx.repo, "skills/golem-powers/demo-gate/hooks/demo-gate.py");
+  const pidFile = path.join(fx.root, "grandchild.pid");
+  writeFileSync(hook, "import subprocess, sys, time\nsys.stdin.read()\n" +
+    `p = subprocess.Popen(['sleep', '30'])\nopen(${JSON.stringify(pidFile)}, 'w').write(str(p.pid))\nprint('{"partial": ')\ntime.sleep(30)\n`);
+  git(fx.repo, "add", "."); git(fx.repo, "commit", "-qm", "hanging gate"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  expect(run(fx, "--apply").status).toBe(0);
+  const started = Date.now();
+  const r = callHook(fx, closedCommand(fx));
+  const elapsed = Date.now() - started;
+  expect([r.status, JSON.parse(r.stdout)]).toEqual([2, closedDeny]);
+  expect(elapsed).toBeGreaterThan(3_500);
+  expect(elapsed).toBeLessThan(5_000);
+  const grandchild = Number(readFileSync(pidFile, "utf8"));
+  expect(spawnSync("kill", ["-0", String(grandchild)]).status).not.toBe(0);  // the hook's own child is gone too
+});
+
+test("R1 F1: --restore-live refuses when hooks-live HEAD is not the recorded pin, never adopting a moved HEAD", () => {
+  const fx = fixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const recorded = readFileSync(path.join(fx.home, ".claude/hooks/golems-hooks-live.sha"), "utf8").trim();
+  git(live(fx), "commit", "-q", "--allow-empty", "-m", "local-only tamper");
+  const moved = git(live(fx), "rev-parse", "HEAD");
+  rmSync(path.join(live(fx), "skills/golem-powers/demo-gate/hooks/demo-gate.py"));
+  const r = run(fx, "--apply", "--restore-live");
+  expect(r.status).toBe(1);
+  expect(r.out).toContain(`hooks-live HEAD ${moved} is not the recorded pin ${recorded}`);
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(moved);
+  expect(readFileSync(path.join(fx.home, ".claude/hooks/golems-hooks-live.sha"), "utf8").trim()).toBe(recorded);
+  expect(existsSync(path.join(live(fx), "skills/golem-powers/demo-gate/hooks/demo-gate.py"))).toBe(false);  // evidence kept
+});
+
+test("R1 F2: a fail-closed entry whose timeout leaves no watchdog budget is refused", () => {
+  const fx = closedFixture();
+  const manifest = JSON.parse(readFileSync(fx.manifest, "utf8"));
+  manifest.hosts.mbp[0].timeout = 1;
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const r = run(fx);
+  expect([r.status, r.out]).toEqual([1, expect.stringContaining("needs a timeout >= 2 seconds for its watchdog budget")]);
 });

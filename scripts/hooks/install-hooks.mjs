@@ -44,7 +44,8 @@ export const E1_DELETED = [
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WRAPPER_SRC = path.join(here, "fail-open.py");
 const LOCK_REASON = "GO-5 pinned hook source; move only with scripts/hooks/install-hooks.sh --update";
-const supportsFailClosed = (bytes) => /^FAIL_CLOSED_PROTOCOL = 1$/m.test(bytes.toString());
+// Protocol 2 = --budget watchdog (#656 R1 F2); an older launcher would read --budget as the hook path.
+const supportsFailClosed = (bytes) => /^FAIL_CLOSED_PROTOCOL = 2\b/m.test(bytes.toString());
 
 // AIDEV-NOTE: a fail-closed policy gate's Claude command runs inside a /bin/sh
 // guard. The launcher denies every hook failure itself, but nothing in Python
@@ -169,6 +170,10 @@ function context(o, sha) {
       if (!Number.isInteger(e.timeout) || e.timeout < 1 || e.timeout > 120) {
         die(`REFUSED: ${host}/${e.id} timeout must be an integer in 1..120 seconds${e.timeout === undefined ? " (required for PreToolUse)" : `; got ${JSON.stringify(e.timeout)}`}`);
       }
+      // The watchdog budget (timeout - 1 s) must be >= 1 s and under the timeout.
+      if (e.command?.includes(" --fail-closed ") && e.timeout < 2) {
+        die(`REFUSED: ${host}/${e.id} is fail-closed and needs a timeout >= 2 seconds for its watchdog budget`);
+      }
     }
   }
   const entries = hosts?.[o.host];
@@ -183,9 +188,13 @@ function context(o, sha) {
   const python = hookPython?.python ?? "python3";
   const expand = (s) => s.replaceAll("{home}", homedir()).replaceAll("{hooks}", hooksDir).replaceAll("{live}", live)
     .replaceAll("{node}", node).replaceAll("{python}", python);
-  const claudeCommand = (command) => (command.includes(" --fail-closed ") ? failClosedCommand(expand(command)) : expand(command));
+  // A harness timeout fails OPEN, so a fail-closed gate's watchdog budget sits
+  // 1 s under its manifest timeout (5 s -> 4 s, 10 s -> 9 s; #656 R1 F2).
+  const claudeCommand = (e) => (e.command.includes(" --fail-closed ")
+    ? failClosedCommand(expand(e.command.replace(" --fail-closed ", ` --fail-closed --budget ${Math.max(1, e.timeout - 1)} `)))
+    : expand(e.command));
   const golems = entries.filter((e) => e.kind === "golems").map((e) => ({
-    ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: claudeCommand(e.command),
+    ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: claudeCommand(e),
   }));
   const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
   // Without an acceptable interpreter (status only), the Codex config probe would
@@ -463,10 +472,10 @@ export function assertLiveClean(live, dirs = []) {
 // (it may be tamper evidence); after inspecting it, --restore-live resets local
 // damage (deleted/edited tracked files, hidden index flags, planted extras in
 // the hook dirs) to its pinned HEAD, so recovery never needs hand-run git (#488-b N1).
-function restoreLive(live, dirs = []) {
+function restoreLive(live, dirs = [], pin) {
   const hidden = mustLiveGit(live, "ls-files", "-v", "-z").split("\0").filter((l) => /^(S|[a-z]) /.test(l)).map((l) => l.slice(2));
   if (hidden.length) mustLiveGit(live, "update-index", "--no-assume-unchanged", "--no-skip-worktree", "--", ...hidden);
-  mustLiveGit(live, "checkout", "-q", "-f", "--detach", "HEAD");
+  mustLiveGit(live, "checkout", "-q", "-f", "--detach", pin);
   mustLiveGit(live, "clean", "-q", "-ffdx", "--", ...new Set(["scripts/hooks", "skills/golem-powers", ".claude/hooks", "hooks", ...dirs]));
 }
 
@@ -522,8 +531,18 @@ function install(o) {
   const gate = path.join(here, "private-regression-gate.py");
   const gateArgs = ["-I", gate, o.repo, sha, ...(machine === "mbp" ? ["--require-private"] : [])];
   console.log(`private regression gate: python3 ${gateArgs.join(" ")}; suites=${o.repo}/docs.local/private-guard-suites`);
+  // --restore-live resets only to the RECORDED pin: a HEAD moved away from it
+  // (possible tampering) is never adopted or blessed (#656 R1 F1; plain
+  // --apply's moved-HEAD acceptance is #665).
+  if (o.restoreLive && liveHead(ctx.live)) {
+    const recorded = existsSync(pinRecord(ctx)) ? readFileSync(pinRecord(ctx), "utf8").trim() : null;
+    const head = liveHead(ctx.live);
+    if (head !== recorded) {
+      die(`refusing --restore-live: hooks-live HEAD ${head} is not the recorded pin ${recorded ?? "(none recorded)"}; inspect ${ctx.live} (it may have been tampered with)`);
+    }
+  }
   if (o.restoreLive && liveDirty(ctx.live, importDirs(ctx))) {
-    if (o.apply) restoreLive(ctx.live, importDirs(ctx));
+    if (o.apply) restoreLive(ctx.live, importDirs(ctx), liveHead(ctx.live));
     console.log(`hooks-live: ${o.apply ? "restored" : "would restore"} local damage to its pinned HEAD (--restore-live)`);
   }
   if (o.apply) {
