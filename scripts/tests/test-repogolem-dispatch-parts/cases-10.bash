@@ -162,6 +162,16 @@ function split_case_153() {
         'testrepoCodex -E high --scan -- -c sandbox_workspace_write.network_access=true'
         'testrepoCodex -E high --scan -- -p looser-profile'
         'testrepoCodex -E high --scan -- --profile=looser-profile'
+        # #687 R2: -C/--cd moves the writable root (codex reports `/` under
+        # workspace-write for `-C /`), the same widening as --add-dir.
+        'testrepoCodex -E high --scan -C /'
+        'testrepoCodex -E high --scan -C/'
+        'testrepoCodex -E high --scan --cd /'
+        'testrepoCodex -E high --scan --cd=/'
+        'testrepoCodex -E high --scan -- -C /'
+        'testrepoCodex -E high --scan -- -C/'
+        'testrepoCodex -E high --scan -- --cd /'
+        'testrepoCodex -E high --scan -- --cd=/'
     )
     for launch in "${refused[@]}"; do
         run_codex_scan_launch "$launch"

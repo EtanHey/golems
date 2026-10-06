@@ -106,7 +106,7 @@ does not inject registry agent front-matter or boot-store instructions. Short
   managed filesystem permission profile. It is the one seat with **computer use off**: a scanner doesn't
   test. It strips connectors too, ignores `--lead`, and resolves its model from the `codex.security` role
   (`-m` overrides). It refuses (exit 2) the bypass flag and its alias `--yolo`, `--approve-for-me`,
-  `--add-dir`, a caller `-p`/`--profile`, any `-s`/`--sandbox` other than `workspace-write` or
+  `--add-dir`, `-C`/`--cd`, a caller `-p`/`--profile`, any `-s`/`--sandbox` other than `workspace-write` or
   `-a`/`--ask-for-approval` other than `never` (every `X`/`=X`/attached spelling), and any `-c`
   sandbox/approval/permissions/computer-use key. It also exports a per-launch `[deep_scan]` cap via
   `CODEX_SECURITY_DEEP_SCAN_CONFIG_PATH`: 2 workers, 2 subagents, 10 discovery runs, 2 h (Etan-confirmed;
