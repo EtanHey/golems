@@ -107,10 +107,17 @@ def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
     return values
 
 
-GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry cherry-pick clean clone commit config describe diff difftool fetch for-each-ref gc grep help init log ls-files ls-remote ls-tree merge mergetool mv notes pull push range-diff rebase reflog remote reset restore revert rev-list rev-parse rm show show-ref sparse-checkout stash status submodule switch tag update-index update-ref version worktree".split())
+GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry cherry-pick clean clone commit config describe diff difftool fetch for-each-ref gc grep help init log ls-files ls-remote ls-tree merge mergetool mv notes pull push range-diff rebase reflog remote reset restore revert rev-list rev-parse rm show show-ref sparse-checkout stash status submodule switch tag update-index update-ref version worktree"
+                   # Local-only git commands: an alias never shadows a git command.
+                   " annotate apply bugreport bundle check-attr check-ignore check-mailmap check-ref-format"
+                   " checkout-index column commit-graph commit-tree count-objects diagnose diff-files diff-index"
+                   " diff-tree fast-export fmt-merge-msg format-patch fsck hash-object index-pack interpret-trailers"
+                   " maintenance merge-base merge-file merge-tree mktag mktree multi-pack-index name-rev"
+                   " pack-objects pack-refs patch-id prune read-tree repack rerere shortlog show-branch"
+                   " stripspace symbolic-ref var verify-commit verify-pack verify-tag whatchanged write-tree".split())
 
 
-def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None):
+def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None, rejoined=False):
     if depth > 8 or shell.policy_command_size_reason(command):
         raise ValueError('command inspection budget exceeded')
     if shell.executable_shell_structure_has_open_state(command):
@@ -120,18 +127,25 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
     if shell._UNRESOLVED_EVAL_MARKER in tokens:
         raise ValueError('unresolved eval payload')
     result = []
-    _state = _state if _state is not None else {'config': False}
-    nested = [(body, seg, idx) for body, seg, idx, _ in shell._executable_subcommands(command)]
-    nested += shell._invoked_alias_bodies(command)
-    for body, segment, _ in nested:
+    # The literal-name proof needs the whole raw command; nested bodies inherit it.
+    _state = _state if _state is not None else {'config': False, 'literal': syntax.single_quoted_names(command, shell)}
+    split_map = {} if rejoined else syntax.split_words(command, shell)
+
+    def splits(word):  # an expansion that may word-split; rejoined argv has lost its quoting
+        return ('$' in word or '`' in word) and split_map.get(word, True)
+    # Quoted heredoc prose is data: its backticks/apostrophes are not substitutions.
+    nested = [(body, seg) for body, seg, _, _ in shell._executable_subcommands(syntax.mask_heredoc_bodies(command, shell))]
+    nested += [(body, seg) for body, seg, _ in shell._invoked_alias_bodies(command)]
+    for body, segment in nested:
         limit = max((i + 1 for i, seg in enumerate(segments) if seg <= segment), default=0)
         child_bindings = assigned_bindings(tokens, positions, limit, bindings, scopes)
         result += operations(body, cwd, alias_lookup, depth + 1, child_bindings, _state)
     for i, word in enumerate(tokens):
-        if not positions[i]: continue
+        if not positions[i] or syntax.looked_up(tokens, positions, i): continue
         current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
         word = resolve_word(word, current)
-        base, direct = syntax.executable(word)
+        assignment = bool(shell._ASSIGNMENT_RE.match(word))
+        base, direct = ('', None) if assignment else syntax.executable(word)
         args, redirects = syntax.argv_at(tokens, segments, scopes, i)
         args = [resolve_word(a, current) for a in args]
         redirects = [(op, resolve_word(target, current)) for op, target in redirects]
@@ -147,6 +161,8 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             raise ValueError('agent changes to the confirmation trust anchor or pinned hook tree are forbidden')
         if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
+        if assignment:
+            continue  # a prefix assignment is not the executable; the next word is
         if ('$' in word or '`' in word) and syntax.guarded_words(args):
             raise ValueError('unresolved executable for protected operation')
         for child in syntax.wrapper_payload(base, args):
@@ -155,17 +171,22 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                 for arg in args[:args.index(child[0])]:
                     if shell._ASSIGNMENT_RE.match(arg):
                         name, value = arg.split('=', 1); child_bindings[name] = value
-            result += operations(syntax.joined(child), cwd, alias_lookup, depth + 1, child_bindings, _state)
+            result += operations(syntax.joined(child), cwd, alias_lookup, depth + 1, child_bindings, _state, rejoined=True)
         # Unknown executors carrying a protected argv are conservative. Data
         # operands of echo/printf/cat/etc. are not command positions.
         if base not in syntax.DATA and base not in syntax.SHELLS:
             for j, arg in enumerate(args):
                 if syntax.executable(arg)[0] in ('git', 'gh') and syntax.guarded_words(args[j + 1:]):
-                    result += operations(syntax.joined(args[j:]), cwd, alias_lookup, depth + 1, current, _state)
+                    result += operations(syntax.joined(args[j:]), cwd, alias_lookup, depth + 1, current, _state, rejoined=True)
                 elif ' ' in arg:
-                    words = shlex.split(arg)
+                    try:
+                        words = shlex.split(arg)
+                    except ValueError:  # prose with an apostrophe; a Git/GH payload still denies
+                        words = arg.split()
+                        if any(syntax.executable(w)[0] in ('git', 'gh') for w in words) and syntax.guarded_words(words):
+                            raise ValueError('unparseable protected payload')
                     if words and syntax.executable(words[0])[0] in ('git', 'gh') and syntax.guarded_words(words[1:]):
-                        result += operations(arg, cwd, alias_lookup, depth + 1, current, _state)
+                        result += operations(arg, cwd, alias_lookup, depth + 1, current, _state, rejoined=True)
         if base == 'eval' and any('$' in a or '`' in a for a in args):
             raise ValueError('unresolved eval payload; use a literal command')
         if base == 'xargs' and any(syntax.executable(a)[0] in ('git', 'gh', 'sh', 'bash', 'zsh', 'fish') for a in args):
@@ -185,7 +206,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                     delimiters = {target for op, target in redirects if op == '<<'}
                     for delimiter, body in syntax.heredoc_bodies(command, shell):
                         if delimiter in delimiters: result += operations(body, cwd, alias_lookup, depth + 1, current, _state)
-                elif '<(' in command or '|' in tokens[:i] or any(op == '<' for op, _ in redirects):
+                elif syntax.shell_reads_stdin(base, args) or any(op == '<' and target == '(' for op, target in redirects):
                     raise ValueError('opaque shell script/stdin source')
         if base == 'trap' and args:
             result += operations(args[0], cwd, alias_lookup, depth + 1, current, _state)
@@ -220,7 +241,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                 alias = alias or alias_lookup(repo, sub.lower())
             if alias:
                 body = alias[1:] if alias.startswith('!') else 'git ' + alias
-                result += operations(body + ' ' + shlex.join(tail), repo, alias_lookup, depth + 1, current, _state)
+                result += operations(body + ' ' + shlex.join(tail), repo, alias_lookup, depth + 1, current, _state, rejoined=True)
             elif sub in ('push', 'send-pack'):
                 if any('refs/replace/' in a for a in tail):
                     result.append(dict(class_='rewrite', repo=repo, refs=tail))
@@ -237,18 +258,18 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             elif sub == 'rebase':
                 for j, arg in enumerate(tail):
                     if arg in ('-x', '--exec'):
-                        result += operations(tail[j + 1], repo, alias_lookup, depth + 1, current, _state)
+                        result += operations(tail[j + 1], repo, alias_lookup, depth + 1, current, _state, rejoined=True)
                     elif arg.startswith('--exec='):
-                        result += operations(arg.split('=', 1)[1], repo, alias_lookup, depth + 1, current, _state)
+                        result += operations(arg.split('=', 1)[1], repo, alias_lookup, depth + 1, current, _state, rejoined=True)
             elif sub == 'submodule' and 'foreach' in tail:
                 body = tail[tail.index('foreach') + 1:]
                 while body and body[0].startswith('-'): body = body[1:]
-                result += operations(' '.join(body), repo, alias_lookup, depth + 1, current, _state)
+                result += operations(' '.join(body), repo, alias_lookup, depth + 1, current, _state, rejoined=True)
             elif sub == 'bisect' and tail[:1] == ['run']:
-                result += operations(syntax.joined(tail[1:]), repo, alias_lookup, depth + 1, current, _state)
+                result += operations(syntax.joined(tail[1:]), repo, alias_lookup, depth + 1, current, _state, rejoined=True)
         elif base == 'gh':
             if cwd is None and syntax.guarded_words(args): raise ValueError('unknown settings cwd')
-            result += gh_policy.operations(args, cwd)
+            result += gh_policy.operations(args, cwd, _state['literal'], splits)
     # Normalize and deduplicate repeated wrapper/substitution views.
     unique = []
     for op in result:
