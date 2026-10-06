@@ -138,3 +138,52 @@ for(const extension of ['mjs','ts'])test(`BYO rejects ${extension} before execut
   const result=run('plugin:'+plugin,undefined,{}, {env:{HOME:dir}});
   expect(result.code).toBe(2);expect(existsSync(marker)).toBe(false);expect(result.text).toContain('not installed; nothing written');expect(existsSync(out)).toBe(false);
 });
+
+// --keep-secrets must never keep a varlock value whose source moved (#690 R1 B1).
+function generateWith(settings: Record<string, unknown>, values: Record<string, unknown>, args: string[] = [], env: Record<string, string> = {}) {
+  const config = join(dir, 'config.yaml');
+  writeFileSync(config, JSON.stringify({ secrets: settings, values, projects: { fixture: { path: '/home/fixture', clis: ['codex'], secrets: { TOKEN: 'varlock://TOKEN' } } } }));
+  const environment = { ...process.env }; for (const key of Object.keys(environment)) if (isOpCredential(key)) delete environment[key];
+  const r = Bun.spawnSync([process.execPath, cli, 'generate', '--config', config, '--out-dir', out, '--home', '/home/fixture', ...args], {
+    env: isolatedBunTestEnv({ ...environment, REPOGOLEM_OP_BIN: '/no-real-op', REPOGOLEM_SOURCE_SHA: '0'.repeat(40), ...env }), stdout: 'pipe', stderr: 'pipe' });
+  const text = r.stdout.toString() + r.stderr.toString();
+  expect(text).not.toContain('CANARY');
+  return { code: r.exitCode, text };
+}
+const cached = () => readFileSync(join(out, 'secrets.env'), 'utf8');
+test('keep refuses a moved valuesFile, and --check reports the drift as stale', () => {
+  const other = join(dir, 'b.env'); writeFileSync(other, "TOKEN='B_CANARY'\n", { mode: 0o600 });
+  writeFileSync(file, "TOKEN='A_CANARY'\n", { mode: 0o600 });
+  const values = { TOKEN: { sensitive: true } };
+  expect(generateWith({ backend: 'file', valuesFile: file }, values).code).toBe(0);
+  const before = cached();
+  const kept = generateWith({ backend: 'file', valuesFile: other }, values, ['--keep-secrets']);
+  expect(kept.code).toBe(2);
+  expect(kept.text).toContain('varlock://TOKEN (source changed)');
+  expect(kept.text).toContain('run a full `generate` (needs 1Password)');
+  expect(cached()).toBe(before);
+  // A file whose config stamp was rewritten anyway (an older keep): still stale.
+  const configSha = require('node:crypto').createHash('sha256').update(readFileSync(join(dir, 'config.yaml'))).digest('hex');
+  for (const name of ['secrets.env', 'registry.json']) {
+    const path = join(out, name);
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/[0-9a-f]{64}/g, (sha) => sha === '0'.repeat(64) ? sha : configSha), { mode: 0o600 });
+  }
+  const check = generateWith({ backend: 'file', valuesFile: other }, values, ['--check']);
+  expect(check.code).toBe(1);
+  expect(check.text).toContain('secret sources differ: varlock://TOKEN (source changed)');
+});
+test('keep refuses a changed values source, and keeps an unchanged one without op', () => {
+  const log = join(dir, 'op.log');
+  const env = { REPOGOLEM_OP_BIN: join(import.meta.dir, 'fixtures/repogolem-config/fake-op.sh'), FAKE_OP_LOG: log };
+  const token = { TOKEN: { sensitive: true, source: 'op://example-vault/example-item/token' } };
+  expect(generateWith({ backend: '1password' }, token, [], env).code).toBe(0);
+  const calls = readFileSync(log, 'utf8');
+  expect(generateWith({ backend: '1password' }, token, ['--keep-secrets'], env).code).toBe(0);
+  expect(cached()).toContain('resolved:op://example-vault/example-item/token');
+  const before = cached();
+  const moved = generateWith({ backend: '1password' }, { TOKEN: { sensitive: true, source: 'op://example-vault/example-item/api-key' } }, ['--keep-secrets'], env);
+  expect(moved.code).toBe(2);
+  expect(moved.text).toContain('varlock://TOKEN (source changed)');
+  expect(cached()).toBe(before);
+  expect(readFileSync(log, 'utf8')).toBe(calls);
+});

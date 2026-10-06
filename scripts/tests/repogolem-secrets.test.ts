@@ -592,7 +592,7 @@ describe("generate --keep-secrets", () => {
     const r = keep();
     expect(r.code).toBe(2);
     expect(r.stderr).toContain(EXTRA);
-    expect(r.stderr).toContain("run full generate (needs op)");
+    expect(r.stderr).toContain("run a full `generate` (needs 1Password)");
     expect(r.stdout + r.stderr).not.toContain("resolved:");
     expect(snapshot()).toEqual(was);
     expect(existsSync(`${log}.dead`)).toBe(false);
@@ -601,7 +601,7 @@ describe("generate --keep-secrets", () => {
   test("no existing secrets.env, or another machine's, refuses with nothing written", () => {
     let r = keep();
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain("run full generate (needs op)");
+    expect(r.stderr).toContain("run a full `generate` (needs 1Password)");
     expect(existsSync(out)).toBe(false);
     expect(generate().code).toBe(0);
     writeFileSync(join(out, "secrets.env"), secretsText().replace(`# machine: ${HOST}`, "# machine: other-host"), { mode: 0o600 });
@@ -617,47 +617,35 @@ describe("generate --keep-secrets", () => {
     expect(generate().code).toBe(0);
     editConfig((c) => (c.projects["example-app"].displayName = "Edited"));
     chmodSync(join(out, "secrets.env"), 0o644);
-    expect(keep().code).toBe(2);
+    let r = keep();
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain(`--keep-secrets: ${join(out, "secrets.env")}: runtime cache must be an owned 0600 regular file`);
     chmodSync(join(out, "secrets.env"), 0o600);
     writeFileSync(join(out, "secrets.env"), `${secretsText()}echo secret-value\n`, { mode: 0o600 });
     const was = snapshot();
-    const r = keep();
+    r = keep();
     expect(r.code).toBe(2);
+    expect(r.stderr).toContain(`--keep-secrets: ${join(out, "secrets.env")}: invalid cached assignment`);
     expect(r.stderr).not.toContain("secret-value");
     expect(snapshot()).toEqual(was);
   });
 
-  test("--allow-missing leaves the named ref unset, warns loudly, and --check stays honest", () => {
+  test("a secrets.env from before source stamps is kept only when refs alone name their values", () => {
     expect(generate().code).toBe(0);
-    const before = valueLines(secretsText());
-    editConfig((c) => (c.projects["example-app"].secrets.EXTRA = EXTRA));
-    const r = keep(["--allow-missing", EXTRA]);
-    expect(r.code).toBe(0);
-    expect(r.stderr).toContain("WARNING");
-    expect(r.stderr).toContain(EXTRA);
-    expect(valueLines(secretsText())).toEqual(before);
-    expect(secretsText()).not.toContain(secretKey(EXTRA));
-    expect(existsSync(`${log}.dead`)).toBe(false);
-    const c = check();
-    expect(c.code).toBe(1);
-    expect(c.stderr).toContain("refs differ: 1 missing, 0 extra");
-    // What the warning promises: the launch-time reader refuses until a full generate.
-    const reader = Bun.spawnSync(["bun", join(REPO, "scripts/repogolem/runtime-reader.ts"), "check", out], { stdout: "pipe", stderr: "pipe" });
-    expect(reader.exitCode).toBe(1);
-    expect(reader.stderr.toString()).toContain("missing cached reference");
-  });
-
-  test("--allow-missing refuses a ref that is not missing, and needs --keep-secrets", () => {
-    expect(generate().code).toBe(0);
-    editConfig((c) => (c.projects["example-app"].secrets.EXTRA = EXTRA));
+    const unstamped = secretsText().replace(/^# source-sha256: .*\n/gm, "");
+    expect(unstamped).not.toContain("source-sha256");
+    writeFileSync(join(out, "secrets.env"), unstamped, { mode: 0o600 });
+    editConfig((c) => (c.projects["example-app"].displayName = "Edited"));
+    expect(keep().code).toBe(0);
+    expect(secretsText()).toContain(`# source-sha256: ${secretKey(REFS[1])} `);
+    expect(check().code).toBe(0);
+    // With a non-default backend the ref no longer names its value: refuse.
+    writeFileSync(join(out, "secrets.env"), secretsText().replace(/^# source-sha256: .*\n/gm, ""), { mode: 0o600 });
+    editConfig((c) => (c.secrets = { backend: "plugin:./adapter.cjs" }));
     const was = snapshot();
-    let r = keep(["--allow-missing", EXTRA, "--allow-missing", REFS[0]]);
+    const r = keep();
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain(REFS[0]);
-    expect(snapshot()).toEqual(was);
-    r = generate(["--allow-missing", EXTRA], { REPOGOLEM_OP_BIN: deadOp() });
-    expect(r.code).toBe(2);
-    expect(r.stderr).toContain("--allow-missing requires --keep-secrets");
+    expect(r.stderr).toContain(`${REFS[0]} (source unstamped)`);
     expect(snapshot()).toEqual(was);
   });
 
@@ -666,7 +654,7 @@ describe("generate --keep-secrets", () => {
     for (const extra of [["--check"], ["--check-refs"], ["--secrets-from", join(out, "secrets.env")]]) {
       const r = keep(extra);
       expect(r.code).toBe(2);
-      expect(r.stderr).toContain("--keep-secrets");
+      expect(r.stderr).toContain("--keep-secrets cannot be combined with --check, --check-refs or --secrets-from");
     }
     expect(existsSync(`${log}.dead`)).toBe(false);
   });

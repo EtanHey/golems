@@ -80,10 +80,12 @@ manually added account) or `OP_SERVICE_ACCOUNT_TOKEN` beforehand.
 `repogolem generate --keep-secrets` ships a config-only change without op. It
 rewrites `registry.json` and `launchers.zsh` and keeps `secrets.env`'s value
 lines verbatim, rewriting only the header stamps. A `secrets-kept-from` stamp
-records the config the values came from, and `--check` reports it. It refuses
-(exit 2, nothing written) when the config needs a ref that `secrets.env` lacks.
-`--allow-missing <op://ref>` leaves such a ref unset with a loud warning.
-Launchers then refuse to start until a full generate resolves it.
+records the config the values came from, and `--check` reports it. Every
+generate stamps a digest of each ref's source (the ref, the `secrets:`
+settings and its `values:` entry, never a value). `--keep-secrets` refuses
+(exit 2, nothing written) when the config needs a ref that `secrets.env` lacks,
+or resolves a kept ref from a different source; `--check` reports that source
+drift as stale. Either way, run a full `generate` (needs 1Password).
 
 Unattended launcher calls read cached data without sourcing secret assignments
 as shell code or invoking `op`. A missing, stale, or non-private cache fails
