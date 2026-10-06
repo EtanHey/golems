@@ -41,3 +41,16 @@ def test_outer_depth_retains_print_only_parser_contract(word, expected):
     extended = guardian._rm._find_deletion_roots(args, include_depth_limits=True)
     assert len(original) == 5 and extended[:5] == original
     assert extended[-1] == expected
+
+
+@parametrize('setting', ['_METADATA_PROBE_LIMIT', '_METADATA_PROBE_SECONDS'])
+def test_over_budget_cleanup_gives_bounded_target_guidance(tmp_path, monkeypatch, setting):
+    (tmp_path / 'ordinary' / 'child').mkdir(parents=True)
+    monkeypatch.setattr(guardian._rm, setting, -1)
+    api = {'_expand_known_vars': lambda value, variables: (value, True)}
+    reason = guardian._rm._metadata_traversal_reason(
+        api, str(tmp_path), str(tmp_path), {},
+        [([('-name', 'benign-marker')], False)], 'P', (0, None))
+    assert 'cleanup target is too large to verify within budget' in reason
+    assert '-maxdepth' in reason and 'narrower root' in reason
+    assert 'unavailable' not in reason and 'reinstall' not in reason

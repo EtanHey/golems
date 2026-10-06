@@ -7,12 +7,20 @@ import re
 import shlex
 import fnmatch
 import stat
+import time
 from functools import lru_cache
 
 from . import shell_parse
 from .paths import _expand_tilde
 
 CreatedPath = str | None | tuple[str | None, str]
+
+_METADATA_PROBE_LIMIT = 1_000_000
+_METADATA_PROBE_SECONDS = 2.0
+_METADATA_PROBE_REASON = (
+    'find cleanup target is too large to verify within budget; '
+    'use -maxdepth N or a narrower root'
+)
 
 def _skip_options(
     words: list[str], position: int, options_with_values: set[str]
@@ -201,6 +209,59 @@ def _selective_name_group(args):
     return branches or None
 
 
+def _selective_prune_group(args):
+    """Recognize a grouped prune arm followed by positive deletion filters.
+
+    Deletion implies depth-first traversal, so prune does not hide descendants.
+    This only recovers the selective right arm; discovery still visits them.
+    """
+    if args.count('(') != 1 or args.count(')') != 1 or args.count('-delete') != 1:
+        return None
+    start, end = args.index('('), args.index(')')
+    if start >= end or args[end + 1:end + 2] not in (['-o'], ['-or']):
+        return None
+    group = args[start + 1:end]
+    if not group or group[-1] != '-prune':
+        return None
+    index = 0
+    while index < len(group) - 1:
+        if group[index] in {'-a', '-and'}:
+            index += 1
+        elif group[index] in {'-path', '-ipath', '-name', '-iname', '-type'} and index + 1 < len(group) - 1:
+            index += 2
+        else:
+            return None
+    # Prefix roots/options must not contain a second action or expression.
+    prefix = args[:start]
+    index = 0
+    while index < len(prefix):
+        word = prefix[index]
+        if word in {'-f', '-mindepth', '-maxdepth'} and index + 1 < len(prefix):
+            index += 2
+            continue
+        if word in {'!', ',', ';', '+'} or (word.startswith('-') and word not in {
+                '-H', '-L', '-P', '-E', '-X', '-d', '-s', '-x', '-depth',
+                '-mount', '-xdev', '-follow', '--'}):
+            return None
+        index += 1
+    suffix = args[end + 2:]
+    if not suffix or suffix[-1] != '-delete':
+        return None
+    filters, index = [], 0
+    while index < len(suffix) - 1:
+        word = suffix[index]
+        if word in {'-a', '-and'}:
+            index += 1
+        elif word in {'-name', '-iname'} and index + 1 < len(suffix) - 1:
+            filters.append((word, suffix[index + 1]))
+            index += 2
+        elif word in {'-type', '-mmin', '-mtime', '-mindepth', '-maxdepth'} and index + 1 < len(suffix) - 1:
+            index += 2
+        else:
+            return None
+    return [(filters, False)] if filters else None
+
+
 def _find_deletion_roots(args, *, include_follow_mode=False, include_depth_limits=False):
     """BSD/bfs roots anywhere, excluding values and nested command operands."""
     values = {
@@ -273,7 +334,7 @@ def _find_deletion_roots(args, *, include_follow_mode=False, include_depth_limit
             roots.append(word)
         index += 1
     if grouped:
-        selective_group = _selective_name_group(args)
+        selective_group = _selective_name_group(args) or _selective_prune_group(args)
         if selective_group:
             branches, grouped = selective_group, False
     result = (roots or ['.'], follow, branches, mindepth, grouped)
@@ -342,6 +403,7 @@ def _metadata_traversal_reason(api, target, cwd, variables, branches, follow_mod
     lexical = os.path.abspath(os.path.join(cwd, value))
     root = os.path.realpath(lexical)
     follow_descendants = follow_mode == 'L'
+    deadline = time.monotonic() + _METADATA_PROBE_SECONDS
     try:
         try:
             root_info = os.lstat(os.path.normpath(lexical))
@@ -355,48 +417,64 @@ def _metadata_traversal_reason(api, target, cwd, variables, branches, follow_mod
             # only its parent so metadata-directory aliases remain protected.
             root = os.path.join(os.path.realpath(os.path.dirname(lexical)), os.path.basename(lexical))
         # Every root may contain nested metadata; -L also exposes alias targets.
-        stack = [(root, 0, False, frozenset())]
+        stack = [(root, 0, '.git' in [part.casefold() for part in root.split(os.sep)], (), None)]
         count = 0
         while stack:
-            path, depth, metadata, ancestors = stack.pop()
+            if time.monotonic() >= deadline:
+                return _METADATA_PROBE_REASON
+            path, depth, metadata, ancestors, entry = stack.pop()
             if maximum is not None and depth > maximum:
                 continue
-            info = os.lstat(path)
-            linked = stat.S_ISLNK(info.st_mode)
-            metadata |= '.git' in [part.casefold() for part in path.split(os.sep)]
+            # Scandir already classified physical children. Repeating lstat
+            # and splitting every full path dominates discovery in large trees.
+            info = os.lstat(path) if entry is None else None
+            linked = stat.S_ISLNK(info.st_mode) if info else entry.is_symlink()
+            directory = stat.S_ISDIR(info.st_mode) if info else entry.is_dir(follow_symlinks=False)
             if linked and follow_descendants:
-                info = os.stat(path)
+                info = os.stat(path) if entry is None else entry.stat(follow_symlinks=True)
+                directory = stat.S_ISDIR(info.st_mode)
                 # A file alias is unlinked at its lexical path; directory aliases
                 # expose their target's children to the traversal.
-                if stat.S_ISDIR(info.st_mode):
+                if directory:
                     metadata |= '.git' in [part.casefold()
                                           for part in os.path.realpath(path).split(os.sep)]
-            name = os.path.basename(path)
-            if metadata and depth >= minimum and any(negated or all(
+            name = os.path.basename(path) if entry is None else entry.name
+            regular = stat.S_ISREG(info.st_mode) if info else entry.is_file(follow_symlinks=False)
+            finder_litter = name == '.DS_Store' and not linked and regular
+            if metadata and not finder_litter and depth >= minimum and any(negated or all(
                     fnmatch.fnmatchcase(name.casefold() if option == '-iname' else name,
                                        pattern.casefold() if option == '-iname' else pattern)
                     for option, pattern in filters if option in {'-name', '-iname'})
                     for filters, negated in branches):
                 return 'find deletion selects repository metadata'
-            if (linked and not follow_descendants) or not stat.S_ISDIR(info.st_mode):
+            if (linked and not follow_descendants) or not directory:
                 continue
             if maximum is not None and depth == maximum:
                 continue
-            identity = (info.st_dev, info.st_ino)
-            if identity in ancestors:
-                return 'find metadata traversal cannot be evaluated safely'
-            ancestors = ancestors | {identity}
+            inode = info.st_ino if info else entry.inode()
+            collisions = [old_path for old_inode, old_path in ancestors if old_inode == inode]
+            if collisions:
+                # Inode values can coincide across mounts. Confirm both device
+                # and inode before refusing a cycle, without statting every dir.
+                current = info if info else os.stat(path, follow_symlinks=follow_descendants)
+                for old_path in collisions:
+                    old = os.stat(old_path, follow_symlinks=follow_descendants)
+                    if (current.st_dev, current.st_ino) == (old.st_dev, old.st_ino):
+                        return 'find metadata traversal cannot be evaluated safely'
+            ancestors = ancestors + ((inode, path),)
             with os.scandir(path) as entries:
                 for entry in entries:
+                    if time.monotonic() >= deadline:
+                        return _METADATA_PROBE_REASON
                     # Ordinary files cannot expose metadata children. Keep their
                     # count out of the directory/metadata discovery budget.
                     if not (metadata or entry.name.casefold() == '.git'
                             or entry.is_dir(follow_symlinks=follow_descendants)):
                         continue
                     count += 1
-                    if count > 5000 or depth >= 64:
-                        return 'find metadata traversal exceeds bounded probe'
-                    stack.append((entry.path, depth + 1, metadata, ancestors))
+                    if count > _METADATA_PROBE_LIMIT or depth >= 64:
+                        return _METADATA_PROBE_REASON
+                    stack.append((entry.path, depth + 1, metadata or entry.name.casefold() == '.git', ancestors, entry))
     except OSError:
         return 'find metadata traversal cannot be evaluated safely'
     return None

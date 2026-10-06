@@ -153,9 +153,17 @@ directory retain the repo-root boundary.
 Filename waivers preserve repository metadata: fixed names and object-name shapes
 stay protected, and a read-only traversal checks actual metadata names below
 selected roots and followed directory aliases. Outer depth limits come from the
-root parser. Directory/metadata discovery refuses above 5,000 entries or 64
-levels, on cycles, or on filesystem errors. Ordinary nonmetadata regular files
+root parser. Directory/metadata discovery refuses above one million entries, two seconds or 64
+levels, on cycles, or on filesystem errors. Regular Finder litter is exempt;
+directories and aliases with the same spelling remain protected. A grouped
+prune arm retains the positive deletion filter, but deletion implies depth-first
+traversal, so descendant metadata is still inspected. Ordinary nonmetadata regular files
 do not consume that discovery budget.
+Discovery reuses directory-entry information; dependency and worktree names never
+waive nested metadata. Limit cleanup to literal subtrees and explicit depth limits
+when an unbounded repository walk exceeds the fixed policy budget.
+An over-budget refusal explains that the cleanup target is too large to verify
+and suggests `-maxdepth N` or a narrower root. It remains a normal policy deny.
 Moving protected roots is denied; deleting a path affected by an
 earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
 itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
