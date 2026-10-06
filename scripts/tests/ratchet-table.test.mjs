@@ -186,6 +186,19 @@ describe("ratchet direction (rule 5)", () => {
     expect(removed.loosened).toEqual([{ id: "drift", reason: "row removed", ruled: false }]);
   });
 
+  test("changing what a row measures (command, metric, kind, runner) is loosening unless it is a pure tightening", () => {
+    const swapped = check([{ ...drift, command: "true" }, gate, cover]);
+    expect(swapped.loosened).toEqual([{ id: "drift", reason: "command changed", ruled: false }]);
+    expect(swapped.ok).toBe(false);
+    expect(check([{ ...drift, metric: "something else" }, gate, cover]).loosened.map((entry) => entry.reason)).toEqual(["metric changed"]);
+    expect(check([drift, gate, { ...cover, ceiling: 11, command: "true" }]).loosened.map((entry) => entry.reason)).toEqual(["command changed"]);
+    expect(check([{ ...drift, command: "true" }, gate, cover], "ratchet-loosen: drift lead ruling: script moved, #701").ok).toBe(true);
+    // Promoting unit -> real with nothing else changed is a tightening.
+    const unitBase = parseRows(rowsFile([unit]));
+    const promoted = { ...unit, kind: "real", bug_sha: BUG, fix_sha: FIX };
+    expect(evaluate({ rows: parseRows(rowsFile([promoted])), baseRows: unitBase, results: results({ "unit-hook": true }), head: HEAD }).loosened).toEqual([]);
+  });
+
   test("a ratchet-loosen ruling line per row in the PR body allows it", () => {
     const rows = [{ ...drift, ceiling: 1 }, gate, cover];
     const ruled = evaluate({ rows: parseRows(rowsFile(rows)), baseRows: base, results: results({ drift: 1, gate: true, cover: 12 }), head: HEAD, prBody: "Summary\nratchet-loosen: drift — lead ruling: flaky installer, see #700\n" });
@@ -218,6 +231,29 @@ describe("renderTable", () => {
     expect(readVerdict(body, "m").ok).toBe(false);
     expect(body.split("\n").filter((line) => line.startsWith("| `gate`"))).toHaveLength(1);
     expect(escapeCell("a|b\n<!-- c -->")).toBe("a\\|b &lt;!-- c --&gt;");
+  });
+
+  test("backslashes and every HTML-comment terminator are neutralised in cells", () => {
+    expect(escapeCell("a\\|b")).toBe("a\\\\\\|b");
+    expect(escapeCell("x --!> y --> z")).toBe("x --!&gt; y --&gt; z");
+    const out = run(parseRows(rowsFile([gate])), { gate: { value: false, detail: "\\| --!> <!--" } });
+    const row = renderTable(out, { marker: "m" }).split("\n").find((line) => line.startsWith("| `gate`"));
+    expect(row.split(/(?<!\\)\|/).length).toBe(9);
+  });
+
+  test("no raw < or > survives in a cell, whatever the comment-like shape (CodeQL js/incomplete-sanitization)", () => {
+    for (const input of ["--!>>", "-->-->", "<<!---->>", "--!!>", "<!-", "a>b<c", "<script>x</script>", "&lt;!--"]) {
+      const out = escapeCell(input);
+      expect(out).not.toMatch(/[<>]/);
+    }
+    expect(escapeCell("&lt;!--")).toBe("&amp;lt;!--");
+  });
+
+  test("a SHA from a results file is escaped where it is shown", () => {
+    const out = evaluate({ rows: parseRows(rowsFile([drift])), baseRows: parseRows(rowsFile([drift])), results: results({ drift: 0 }), head: HEAD, baseline: { head_sha: "\n<!--ab", results: {} } });
+    const body = renderTable(out, { marker: "m" });
+    expect(body).not.toContain("<!--ab");
+    expect(body.split("\n")[4]).toContain("baseline@");
   });
 
   test("an empty selection says so in the table", () => {
@@ -278,15 +314,26 @@ describe("baseRowsAt", () => {
     const base = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
     writeFileSync(join(repo, "rows.json"), JSON.stringify(rowsFile([])));
     expect(baseRowsAt(join(repo, "rows.json"), base).rows.map((row) => row.id)).toEqual(["drift"]);
-    expect(() => baseRowsAt(join(repo, "rows.json"), "f".repeat(40))).toThrow(/--bootstrap/);
+    expect(() => baseRowsAt(join(repo, "rows.json"), "f".repeat(40))).toThrow(/not a commit/);
+    writeFileSync(join(repo, "other.json"), "{}");
+    expect(baseRowsAt(join(repo, "other.json"), base)).toBeNull(); // absent at a real base: bootstrap
   });
 });
 
 describe("CLI", () => {
-  function cli(files, extra = ["--bootstrap"]) {
+  // A real repo whose base commit holds `base` as rows.json (or no row file when base is null).
+  function cli(files, extra = [], { base = null, baseRef = true } = {}) {
     const cwd = dir();
+    const git = (...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", stdio: "pipe" });
+    git("init", "-q");
+    if (base) writeFileSync(join(cwd, "rows.json"), JSON.stringify(base));
+    writeFileSync(join(cwd, "README"), "base\n");
+    git("add", "-A");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base");
+    const sha = git("rev-parse", "HEAD").trim();
     for (const [name, value] of Object.entries(files)) writeFileSync(join(cwd, name), typeof value === "string" ? value : JSON.stringify(value));
-    return spawnSync(process.execPath, [script, "--rows", join(cwd, "rows.json"), "--results", join(cwd, "results.json"), "--head", HEAD, ...extra], { encoding: "utf8" });
+    const args = [script, "--rows", join(cwd, "rows.json"), "--results", join(cwd, "results.json"), "--head", HEAD, ...(baseRef ? ["--base-ref", sha] : []), ...extra];
+    return spawnSync(process.execPath, args, { encoding: "utf8" });
   }
 
   test("exit 0 and the table on stdout when every row passes", () => {
@@ -302,17 +349,31 @@ describe("CLI", () => {
     expect(out.stdout).toContain("| FAIL |");
   });
 
-  test("exit 2 on a malformed row file, a missing --head, no base choice, or an unreadable PR body", () => {
+  test("the base row file decides: present means compared, absent means bootstrap; --bootstrap is gone", () => {
+    const compared = cli({ "rows.json": rowsFile([{ ...drift, command: "true" }]), "results.json": results({ drift: 0 }) }, [], { base: rowsFile([drift]) });
+    expect(compared.status).toBe(1);
+    expect(compared.stdout).toContain("command changed");
+    expect(compared.stdout).not.toContain("Direction unchecked");
+    expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--bootstrap"], { base: rowsFile([drift]), baseRef: false }).status).toBe(2);
+  });
+
+  test("exit 2 on a malformed row file, a missing --head or base, a bad base ref, a non-string SHA, or an unreadable PR body", () => {
     expect(cli({ "rows.json": rowsFile([{ ...drift, kind: "mock" }]), "results.json": results({}) }).status).toBe(2);
-    expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, []).status).toBe(2);
-    expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--bootstrap", "--pr-body-file", "/nonexistent/body.md"]).status).toBe(2);
-    const noHead = spawnSync(process.execPath, [script, "--rows", "x", "--results", "y", "--bootstrap"], { encoding: "utf8" });
+    const noBase = cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, [], { baseRef: false });
+    expect(noBase.status).toBe(2);
+    expect(noBase.stderr).toContain("--base-ref is required");
+    expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--base-ref", "f".repeat(40)], { baseRef: false }).status).toBe(2);
+    expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--pr-body-file", "/nonexistent/body.md"]).status).toBe(2);
+    const badSha = cli({ "rows.json": rowsFile([drift]), "results.json": { head_sha: 7, results: {} } });
+    expect(badSha.status).toBe(2);
+    expect(badSha.stderr).toContain("head_sha must be a string");
+    const noHead = spawnSync(process.execPath, [script, "--rows", "x", "--results", "y", "--base-ref", "HEAD"], { encoding: "utf8" });
     expect(noHead.status).toBe(2);
     expect(noHead.stderr).toContain("--head is required");
   });
 
   test("posting requires the producer's author login", () => {
-    const out = cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--bootstrap", "--repo", "o/r", "--pr", "1"]);
+    const out = cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--repo", "o/r", "--pr", "1"]);
     expect(out.status).toBe(2);
     expect(out.stderr).toContain("--author is required");
   });

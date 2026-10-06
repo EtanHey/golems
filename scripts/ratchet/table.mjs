@@ -3,7 +3,8 @@
 // an exit code. Repo-agnostic on purpose: the contract lives in standards/ratchet.md, and any repo
 // calls this script with its own row file. Exit 0 = every selected row within its ceiling, 1 = a
 // row FAILED or is MISSING, no row was selected, or a row was loosened without a `ratchet-loosen:`
-// ruling, 2 = bad input. Every check fails closed: --head and the base (--base-ref) are required.
+// ruling, 2 = bad input. Every check fails closed: --head and --base-ref are required, and only a
+// base that verifiably has no row file skips the direction check (bootstrap).
 
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -16,7 +17,7 @@ const REF_KINDS = new Set(["commit", "fixture-hash"]);
 const ROW_ID = /^[A-Za-z0-9_.:-]+$/;
 const SHA = /^[0-9a-f]{7,40}$/;
 const FIXTURE_HASH = /^[0-9a-f]{8,64}$/;
-const short = (sha) => (sha ? sha.slice(0, 8) : "none");
+const short = (sha) => (typeof sha === "string" && sha ? escapeCell(sha.slice(0, 8)) : "none");
 
 export function markerComment(marker) {
   return `<!-- ratchet-table: ${marker} -->`;
@@ -71,6 +72,8 @@ function judge(row, value) {
   return row.direction === "max" ? value <= row.ceiling : value >= row.ceiling;
 }
 
+// Any change to what a row measures is loosening unless it is a pure tightening: a stricter
+// ceiling, or promoting unit -> real. A swapped `command` could otherwise pass trivially.
 function loosening(before, after) {
   if (!after) return "row removed";
   if (before.kind === "real" && after.kind !== "real") return "demoted real → unit";
@@ -79,6 +82,7 @@ function loosening(before, after) {
   if (before.direction !== after.direction) return `direction ${before.direction} → ${after.direction}`;
   if (before.direction === "max" && after.ceiling > before.ceiling) return `ceiling ${before.ceiling} → ${after.ceiling}`;
   if (before.direction === "min" && after.ceiling < before.ceiling) return `ceiling ${before.ceiling} → ${after.ceiling}`;
+  for (const field of ["command", "metric"]) if (before[field] !== after[field]) return `${field} changed`;
   return null;
 }
 
@@ -136,9 +140,17 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
   };
 }
 
-// Cells carry producer-controlled text: no pipe, newline or HTML comment may escape its cell.
+// Cells carry producer-controlled text: no pipe, newline or HTML may escape its cell. Every `&`,
+// `<` and `>` is entity-escaped, so no comment opener or terminator of any shape survives.
+// Backslashes before pipes, so `\|` cannot become an escaped backslash plus a live pipe.
 export function escapeCell(value) {
-  return String(value).replace(/\r?\n|\r/g, " ").replace(/\|/g, "\\|").replace(/<!--/g, "&lt;!--").replace(/-->/g, "--&gt;");
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n|\r/g, " ")
+    .replace(/\|/g, "\\|");
 }
 
 function cell(row, value) {
@@ -175,7 +187,7 @@ export function renderTable(evaluation, { marker, title = "Ratchet table" } = {}
   lines.push("");
   if (!evaluation.rows.length) lines.push(`**No rows selected${evaluation.runner ? ` for runner \`${escapeCell(evaluation.runner)}\`` : ""}:** every row is missing → FAIL.`, "");
   if (evaluation.stale) lines.push(`**Stale results:** recorded for ${short(evaluation.resultsSha)}, this PR is at ${short(evaluation.head)}. Every row is MISSING until the table is re-run on this head.`, "");
-  if (evaluation.bootstrap) lines.push("**Direction unchecked:** the base has no row file yet (bootstrap).", "");
+  if (evaluation.bootstrap) lines.push("**Direction unchecked:** the base commit has no row file yet (bootstrap).", "");
   for (const entry of evaluation.loosened) {
     lines.push(`- Loosened \`${entry.id}\` (${escapeCell(entry.reason)}): ${entry.ruled ? "ruled in the PR body" : "**no `ratchet-loosen:` ruling in the PR body → FAIL**"}`);
   }
@@ -215,29 +227,29 @@ export function upsertComment({ repo, pr, marker, author, body, gh = runGh }) {
 }
 
 // The row file as committed at the base, read by the script itself (never a caller-supplied copy).
+// null means the base commit verifiably has no row file: bootstrap. A bad ref throws.
 export function baseRowsAt(rowsPath, baseRef, git = spawnSync) {
   const dir = dirname(resolve(rowsPath));
-  const shown = git("git", ["-C", dir, "show", `${baseRef}:./${basename(rowsPath)}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-  if (shown.status !== 0) throw new Error(`cannot read ${basename(rowsPath)} at base ${baseRef} (pass --bootstrap only when the base has no row file): ${(shown.stderr ?? "").trim()}`);
+  const run = (args) => git("git", ["-C", dir, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  if (run(["rev-parse", "--verify", "--quiet", `${baseRef}^{commit}`]).status !== 0) throw new Error(`--base-ref ${baseRef} is not a commit in this repository`);
+  const spec = `${baseRef}:./${basename(rowsPath)}`;
+  if (run(["cat-file", "-e", spec]).status !== 0) return null;
+  const shown = run(["show", spec]);
+  if (shown.status !== 0) throw new Error(`cannot read ${basename(rowsPath)} at base ${baseRef}: ${(shown.stderr ?? "").trim()}`);
   return parseRows(JSON.parse(shown.stdout));
 }
 
 function parseArgs(argv) {
-  const options = { marker: "ratchet", bootstrap: false };
+  const options = { marker: "ratchet" };
   const keys = { "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out" };
   for (let index = 0; index < argv.length; index += 1) {
-    if (argv[index] === "--bootstrap") {
-      options.bootstrap = true;
-      continue;
-    }
     const key = keys[argv[index]];
     const value = argv[index + 1];
     if (!key || value === undefined || value.startsWith("--")) throw new Error(`unknown or incomplete argument ${argv[index]}`);
     options[key] = value;
     index += 1;
   }
-  for (const key of ["rows", "results", "head"]) if (!options[key]) throw new Error(`--${key} is required`);
-  if (Boolean(options.baseRef) === options.bootstrap) throw new Error("pass exactly one of --base-ref <sha> or --bootstrap");
+  for (const key of ["rows", "results", "head", "baseRef"]) if (!options[key]) throw new Error(`--${key === "baseRef" ? "base-ref" : key} is required`);
   if (Boolean(options.repo) !== Boolean(options.pr)) throw new Error("--repo and --pr go together");
   if (options.repo && !options.author) throw new Error("--author is required to post (the login the producer posts as)");
   return options;
@@ -246,13 +258,17 @@ function parseArgs(argv) {
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
 // A results file that is absent or unreadable is not bad input: every row is then MISSING (FAIL).
+// One that names its SHA as anything but a string is malformed: exit 2.
 function readResults(path) {
+  let doc;
   try {
-    return readJson(path);
+    doc = readJson(path);
   } catch (error) {
     process.stderr.write(`ratchet: results unreadable (${error.message}); every row is MISSING\n`);
     return { head_sha: null, results: {} };
   }
+  if (doc?.head_sha !== undefined && doc?.head_sha !== null && typeof doc.head_sha !== "string") throw new Error(`${path}: head_sha must be a string`);
+  return doc;
 }
 
 export function main(argv) {
@@ -260,11 +276,15 @@ export function main(argv) {
   let rows;
   let baseRows = null;
   let prBody = "";
+  let results;
+  let baseline = null;
   try {
     options = parseArgs(argv);
     rows = parseRows(readJson(options.rows));
-    if (options.baseRef) baseRows = baseRowsAt(options.rows, options.baseRef);
+    baseRows = baseRowsAt(options.rows, options.baseRef);
     if (options.prBodyFile) prBody = readFileSync(options.prBodyFile, "utf8");
+    results = readResults(options.results);
+    if (options.baseline) baseline = readResults(options.baseline);
   } catch (error) {
     process.stderr.write(`ratchet: ${error.message}\n`);
     return 2;
@@ -272,9 +292,9 @@ export function main(argv) {
   const evaluation = evaluate({
     rows,
     baseRows,
-    bootstrap: options.bootstrap,
-    results: readResults(options.results),
-    baseline: options.baseline ? readResults(options.baseline) : null,
+    bootstrap: baseRows === null,
+    results,
+    baseline,
     prBody,
     head: options.head,
     runner: options.runner ?? null,
