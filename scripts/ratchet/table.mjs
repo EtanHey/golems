@@ -140,10 +140,17 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
   };
 }
 
-// Cells carry producer-controlled text: no pipe, newline or HTML comment may escape its cell.
-// Backslashes first, so `\|` cannot become an escaped backslash plus a live pipe.
+// Cells carry producer-controlled text: no pipe, newline or HTML may escape its cell. Every `&`,
+// `<` and `>` is entity-escaped, so no comment opener or terminator of any shape survives.
+// Backslashes before pipes, so `\|` cannot become an escaped backslash plus a live pipe.
 export function escapeCell(value) {
-  return String(value).replace(/\\/g, "\\\\").replace(/\r?\n|\r/g, " ").replace(/\|/g, "\\|").replace(/<!--/g, "&lt;!--").replace(/--!?>/g, (match) => match.replace(">", "&gt;"));
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n|\r/g, " ")
+    .replace(/\|/g, "\\|");
 }
 
 function cell(row, value) {

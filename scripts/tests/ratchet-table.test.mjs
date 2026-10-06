@@ -241,6 +241,14 @@ describe("renderTable", () => {
     expect(row.split(/(?<!\\)\|/).length).toBe(9);
   });
 
+  test("no raw < or > survives in a cell, whatever the comment-like shape (CodeQL js/incomplete-sanitization)", () => {
+    for (const input of ["--!>>", "-->-->", "<<!---->>", "--!!>", "<!-", "a>b<c", "<script>x</script>", "&lt;!--"]) {
+      const out = escapeCell(input);
+      expect(out).not.toMatch(/[<>]/);
+    }
+    expect(escapeCell("&lt;!--")).toBe("&amp;lt;!--");
+  });
+
   test("a SHA from a results file is escaped where it is shown", () => {
     const out = evaluate({ rows: parseRows(rowsFile([drift])), baseRows: parseRows(rowsFile([drift])), results: results({ drift: 0 }), head: HEAD, baseline: { head_sha: "\n<!--ab", results: {} } });
     const body = renderTable(out, { marker: "m" });
