@@ -6,13 +6,21 @@ Usage: deepsource-issues <owner/repo> <pr-number> [--provider GITHUB]
 Prints JSON: the PR's latest analysis run, the failing checks, and per analyzer
 its unsuppressed issues (code, title, category, severity, file:line, message).
 
-Exit: 0 no issues; 1 issues found; 2 usage, auth or API error;
-3 no verdict yet (no analysis run, or the run is still pending).
+Exit (also the JSON "verdict"):
+  0 clean      the run is SUCCESS, every check is SUCCESS, and there are 0 issues
+  1 failing    issues found, a check FAILURE/TIMEOUT/ARTIFACT_TIMEOUT, or a
+               FAILURE/TIMEOUT run; a still-pending run that already has issues is 1
+  2 error      usage, auth, redirect, or a malformed/incomplete API response
+  3 no_verdict no run, a pending/cancelled/skipped/neutral run or check, no
+               checks at all, or any status this script does not know
+Exit 0 is never inferred from missing data.
 
-Reads DEEPSOURCE_TOKEN from the environment. The token goes into a request
-header in-process: never argv, never a subprocess, and every byte this prints
-is scrubbed of it. DEEPSOURCE_API_URL overrides the endpoint for tests; it must
-be https, or plain http to localhost."""
+Reads DEEPSOURCE_TOKEN from the environment; a token with whitespace or control
+characters is refused. The token goes into a request header in-process: never
+argv, never a subprocess, never across a redirect, and every byte this prints is
+scrubbed of it. DEEPSOURCE_API_URL overrides the endpoint for tests; it must be
+https, or plain http to localhost."""
+import http.client
 import json
 import os
 import re
@@ -26,8 +34,10 @@ API_URL = "https://api.deepsource.io/graphql/"
 # AIDEV-NOTE: DeepSource's edge returns 403 to urllib's default User-Agent.
 USER_AGENT = "golems-deepsource-issues/1"
 PAGE = 100
-PENDING = {"PENDING", "WAITING", "READY"}
-FAILED = {"FAILURE", "TIMEOUT", "ARTIFACT_TIMEOUT"}
+SUCCESS = "SUCCESS"
+FAILED_CHECK = {"FAILURE", "TIMEOUT", "ARTIFACT_TIMEOUT"}
+FAILED_RUN = {"FAILURE", "TIMEOUT"}
+TOKEN_SHAPE = re.compile(r"[\x21-\x7e]+")  # printable ASCII, no whitespace or controls
 
 ISSUE_FIELDS = """totalCount pageInfo { hasNextPage endCursor }
   edges { node { shortcode title category severity path beginLine isSuppressed issue { title } } }"""
@@ -57,7 +67,15 @@ class Fail(Exception):
 
 
 def scrub(text, token):
-    return str(text).replace(token, "[REDACTED]") if token else str(text)
+    text = str(text)
+    if not token:
+        return text
+    # The raw token, plus the escaped forms a repr or JSON dump would print.
+    forms = {token, repr(token)[1:-1], json.dumps(token)[1:-1], repr(token.encode())[2:-1]}
+    for form in sorted(forms, key=len, reverse=True):
+        if form:
+            text = text.replace(form, "[REDACTED]")
+    return text
 
 
 def endpoint():
@@ -69,85 +87,131 @@ def endpoint():
     return url
 
 
-def tls_context():
+class RefuseRedirects(urllib.request.HTTPRedirectHandler):
+    """urllib would copy Authorization onto the redirected request, to any host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise Fail(f"DeepSource API answered with a redirect (HTTP {code}); refused, the token is not forwarded")
+
+
+def opener():
     context = ssl.create_default_context()
     # python.org builds ship without a CA bundle until "Install Certificates" runs.
     if not context.cert_store_stats()["x509_ca"] and os.path.exists("/etc/ssl/cert.pem"):
         context.load_verify_locations("/etc/ssl/cert.pem")
-    return context
+    return urllib.request.build_opener(RefuseRedirects(), urllib.request.HTTPSHandler(context=context))
 
 
-def graphql(url, token, query, variables):
+def graphql(client, token, query, variables):
+    url, transport = client
     request = urllib.request.Request(
         url, data=json.dumps({"query": query, "variables": variables}).encode(),
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json",
                  "Accept": "application/json", "User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=60, context=tls_context()) as response:
+        with transport.open(request, timeout=60) as response:
             body = json.load(response)
     except urllib.error.HTTPError as error:
         if error.code in (401, 403):
             raise Fail(f"DeepSource auth error: HTTP {error.code}; check DEEPSOURCE_TOKEN") from None
         raise Fail(f"DeepSource API error: HTTP {error.code}") from None
-    except (urllib.error.URLError, OSError, ValueError) as error:
-        raise Fail(f"DeepSource API unreachable: {error}") from None
-    if body.get("errors"):
-        messages = "; ".join(str(e.get("message", e)) for e in body["errors"])
+    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError) as error:
+        raise Fail(f"DeepSource API unreachable or unreadable: {type(error).__name__}: {error}") from None
+    if not isinstance(body, dict):
+        raise Fail(f"malformed DeepSource response: top level is {type(body).__name__}, not an object")
+    errors = body.get("errors")
+    if errors:
+        errors = errors if isinstance(errors, list) else [errors]
+        messages = "; ".join(str(e.get("message", e)) if isinstance(e, dict) else str(e) for e in errors)
         raise Fail(f"DeepSource GraphQL error: {messages}")
-    return body.get("data") or {}
+    return obj(body.get("data"), "data")
 
 
-def issue_rows(connection, url, token, check_id):
-    rows = []
+def obj(value, where):
+    if not isinstance(value, dict):
+        raise Fail(f"malformed DeepSource response: {where} is {type(value).__name__}, not an object")
+    return value
+
+
+def edges(connection, where):
+    value = obj(connection, where).get("edges")
+    if not isinstance(value, list):
+        raise Fail(f"malformed DeepSource response: {where}.edges is {type(value).__name__}, not a list")
+    return [obj(obj(edge, f"{where}.edges[]").get("node"), f"{where}.edges[].node") for edge in value]
+
+
+def issue_rows(connection, client, token, check_id, analyzer):
+    """Every issue of one check; anything short of all of them is an error, not a smaller list."""
+    where = f"issues of {analyzer}"
+    total = obj(connection, where).get("totalCount")
+    rows, seen = [], set()
     while True:
-        for edge in connection.get("edges") or []:
-            node = edge.get("node") or {}
-            rows.append(node)
-        info = connection.get("pageInfo") or {}
+        rows += edges(connection, where)
+        info = obj(connection.get("pageInfo"), f"{where}.pageInfo")
         if not info.get("hasNextPage"):
-            return rows
-        data = graphql(url, token, PAGE_QUERY, {"id": check_id, "after": info.get("endCursor")})
-        connection = ((data.get("node") or {}).get("issues")) or {}
+            break
+        cursor = info.get("endCursor")
+        if not cursor or cursor in seen:
+            raise Fail(f"incomplete pagination for {where}: hasNextPage with a missing or repeated cursor")
+        seen.add(cursor)
+        data = graphql(client, token, PAGE_QUERY, {"id": check_id, "after": cursor})
+        node = data.get("node")
+        connection = node.get("issues") if isinstance(node, dict) else None
+        if not isinstance(connection, dict):
+            raise Fail(f"incomplete pagination for {where}: page after cursor {cursor} came back empty")
+    if total is not None and len(rows) != total:
+        raise Fail(f"incomplete pagination for {where}: collected {len(rows)} of totalCount {total}")
+    return rows
 
 
 def shape(node):
+    # AIDEV-NOTE: AnalysisIssue.title is the per-occurrence message; issue.title is the generic title.
     file, line = node.get("path"), node.get("beginLine")
     return {"code": node.get("shortcode"), "title": (node.get("issue") or {}).get("title") or node.get("title"),
             "category": node.get("category"), "severity": node.get("severity"), "file": file,
             "line": line, "location": f"{file}:{line}", "message": node.get("title")}
 
 
-def report(repo, number, provider, url, token):
+def verdict(run_status, check_statuses, issues, failing):
+    if issues or failing or run_status in FAILED_RUN:
+        return "failing", 1
+    if run_status == SUCCESS and check_statuses and all(s == SUCCESS for s in check_statuses):
+        return "clean", 0
+    return "no_verdict", 3
+
+
+def report(repo, number, provider, client, token):
     login, name = repo.split("/")
-    data = graphql(url, token, PR_QUERY, {"login": login, "name": name, "number": number,
-                                          "provider": provider})
-    pr = (data.get("repository") or {}).get("pullRequest")
+    data = graphql(client, token, PR_QUERY, {"login": login, "name": name, "number": number,
+                                             "provider": provider})
+    pr = obj(data.get("repository"), "repository").get("pullRequest")
     if pr is None:
         raise Fail(f"PR not found on DeepSource: {repo}#{number} (repo not activated, or no access)")
+    pr = obj(pr, "pullRequest")
     run = pr.get("latestAnalysisRun")
     out = {"repo": repo, "pr": number, "title": pr.get("title"), "state": pr.get("state"),
-           "run": None, "failing_checks": [], "analyzers": [], "total_issues": 0, "suppressed_issues": 0}
+           "verdict": "no_verdict", "run": None, "failing_checks": [], "analyzers": [],
+           "total_issues": 0, "suppressed_issues": 0}
     if run is None:
         return out, 3
+    run = obj(run, "latestAnalysisRun")
     out["run"] = {"uid": run.get("runUid"), "status": run.get("status"), "commit": run.get("commitOid"),
                   "branch": run.get("branchName")}
-    pending = run.get("status") in PENDING
-    for edge in (run.get("checks") or {}).get("edges") or []:
-        check = edge.get("node") or {}
-        analyzer = (check.get("analyzer") or {}).get("shortcode")
-        nodes = issue_rows(check.get("issues") or {}, url, token, check.get("id"))
+    statuses = []
+    for check in edges(run.get("checks"), "checks"):
+        analyzer = obj(check.get("analyzer"), "check.analyzer").get("shortcode")
+        nodes = issue_rows(check.get("issues"), client, token, check.get("id"), analyzer)
         live = [shape(n) for n in nodes if not n.get("isSuppressed")]
         out["suppressed_issues"] += len(nodes) - len(live)
         out["total_issues"] += len(live)
         out["analyzers"].append({"analyzer": analyzer, "status": check.get("status"),
                                  "issue_count": len(live), "issues": live})
-        if check.get("status") in FAILED:
+        if check.get("status") in FAILED_CHECK:
             out["failing_checks"].append({"analyzer": analyzer, "status": check.get("status"),
                                           "issues": len(live)})
-        pending = pending or check.get("status") in PENDING
-    if out["total_issues"]:
-        return out, 1
-    return out, 3 if pending else 0
+        statuses.append(check.get("status"))
+    out["verdict"], code = verdict(run.get("status"), statuses, out["total_issues"], out["failing_checks"])
+    return out, code
 
 
 def main(argv):
@@ -161,23 +225,36 @@ def main(argv):
     if len(args) != 2:
         return usage("expected <owner/repo> <pr-number>")
     repo, number = args
-    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
+    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo, re.ASCII):
         return usage(f"repo must be owner/repo: {repo}")
-    if not number.isdigit() or int(number) < 1:
+    if not (number.isascii() and number.isdigit()) or int(number) < 1:
         return usage(f"pr-number must be a positive integer: {number}")
-    token = (os.environ.get("DEEPSOURCE_TOKEN") or "").strip()
-    if not token:
+    token = os.environ.get("DEEPSOURCE_TOKEN") or ""
+    if not token.strip():
         print("deepsource-issues: DEEPSOURCE_TOKEN is not set. Agent seats get it from the repogolem "
               "launcher env (op://Private/DeepSource API PAT/credential); never open DeepSource in a browser.",
               file=sys.stderr)
         return 2
-    try:
-        out, code = report(repo, int(number), provider, endpoint(), token)
-    except Fail as error:
-        print(f"deepsource-issues: {scrub(error, token)}", file=sys.stderr)
+    if not TOKEN_SHAPE.fullmatch(token):
+        print("deepsource-issues: DEEPSOURCE_TOKEN contains whitespace or control characters; refusing to "
+              "send it (value not shown)", file=sys.stderr)
         return 2
-    print(scrub(json.dumps(out, indent=2), token))
+    try:
+        out, code = report(repo, int(number), provider, (endpoint(), opener()), token)
+        text = json.dumps(out, indent=2)
+    except Fail as error:
+        print(f"deepsource-issues: {one_line(scrub(error, token))}", file=sys.stderr)
+        return 2
+    except Exception as error:  # any surprise is an error verdict, never "issues found"
+        print(f"deepsource-issues: unexpected failure: {type(error).__name__}: "
+              f"{one_line(scrub(error, token))}", file=sys.stderr)
+        return 2
+    print(scrub(text, token))
     return code
+
+
+def one_line(text):
+    return " ".join(str(text).split())
 
 
 def usage(message):

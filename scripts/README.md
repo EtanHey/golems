@@ -48,8 +48,10 @@ Call the CI tools from `scripts/ci/` and the sync tools from `scripts/sync/`.
 
 `deepsource-issues <owner/repo> <pr-number>` prints a PR's DeepSource findings
 as JSON from the GraphQL API: the failing checks, then per analyzer each issue's
-code, title, category, file:line and message. Exit 0 = no issues, 1 = issues,
-2 = usage/auth/API error, 3 = no verdict yet (no run, or still pending).
+code, title, category, file:line and message. Exit 0 = clean (a SUCCESS run,
+every check SUCCESS, 0 issues), 1 = failing (issues, a failed/timed-out check or
+run), 2 = usage/auth/redirect or a malformed or incomplete response, 3 = no
+verdict (no run, pending, cancelled, skipped, no checks, or an unknown status).
 It needs `DEEPSOURCE_TOKEN`; repogolem seats get it from the orchestrator
 config's `global.env`. Agents use this or the `deepsource-io[bot]` PR comments,
 never a browser. Install it from the pinned tree, not a working tree:

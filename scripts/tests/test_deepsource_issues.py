@@ -50,13 +50,18 @@ class Fake:
         self.status = 200
         self.body = None
         self.second_page = None
+        self.pages = None  # cursor -> issues connection, for multi-page runs
+        self.raw = None  # (bytes, Content-Length) sent verbatim instead of JSON
         self.ps_snapshots = []
+        self.snapshot_ps = False  # `ps` per request costs ~0.5s; only the argv test needs it
 
     def respond(self, payload):
         if self.status != 200:
             return self.status, self.body or {"errors": [{"message": "bad"}]}
-        if "after" in (payload.get("variables") or {}):
-            return 200, {"data": {"node": {"issues": self.second_page}}}
+        variables = payload.get("variables") or {}
+        if "after" in variables:
+            issues = self.second_page if self.pages is None else self.pages.get(variables["after"])
+            return 200, {"data": {"node": {"issues": issues}}}
         return 200, self.body
 
 
@@ -69,13 +74,14 @@ def fake():
             payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             state.requests.append({"auth": self.headers.get("Authorization"), "payload": payload,
                                    "ua": self.headers.get("User-Agent")})
-            state.ps_snapshots.append(subprocess.run(["ps", "-axww", "-o", "pid=,ppid=,command="],
-                                                     capture_output=True, text=True).stdout)
+            if state.snapshot_ps:
+                state.ps_snapshots.append(subprocess.run(["ps", "-axww", "-o", "pid=,ppid=,command="],
+                                                         capture_output=True, text=True).stdout)
             code, body = state.respond(payload)
-            raw = json.dumps(body).encode()
+            raw, length = state.raw or (json.dumps(body).encode(), None)
             self.send_response(code)
             self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Content-Length", str(len(raw) if length is None else length))
             self.end_headers()
             self.wfile.write(raw)
 
@@ -228,6 +234,7 @@ def test_token_never_in_argv_or_output(fake, tmp_path):
     (shim / "curl").write_text(f"#!/bin/sh\necho \"$@\" >> {log}\nexit 1\n")
     (shim / "curl").chmod(0o755)
     fake.body = pr_payload([check("python", "FAILURE", page([occurrence("PYL-1", 1, "m", "t")]))])
+    fake.snapshot_ps = True
     r = run(fake, "EtanHey/app", "7", path=f"{shim}:{os.environ['PATH']}")
     assert r.returncode == 1, r.stderr
     assert not log.exists()
@@ -241,3 +248,205 @@ def test_remote_plain_http_override_is_refused(fake):
     r = run(fake, "EtanHey/app", "7", extra={"DEEPSOURCE_API_URL": "http://example.com/graphql/"})
     assert r.returncode == 2
     assert fake.requests == []
+
+
+# --- R1 (B1-B5) -------------------------------------------------------------
+
+def one_line_error(r):
+    assert r.stdout == "" and "Traceback" not in r.stderr
+    assert len(r.stderr.strip().splitlines()) == 1, r.stderr
+    return r.stderr
+
+
+@pytest.mark.parametrize("run_status, checks, expected", [
+    # B1: 0 issues is green only on a SUCCESS run whose every check is SUCCESS.
+    ("FAILURE", [check("python", "TIMEOUT", page([]))], 1),
+    ("FAILURE", [check("python", "FAILURE", page([]))], 1),
+    ("SUCCESS", [check("python", "ARTIFACT_TIMEOUT", page([]))], 1),
+    ("FAILURE", [], 1),
+    ("TIMEOUT", [], 1),
+    ("CANCEL", [], 3),
+    ("SKIPPED", [], 3),
+    ("CANCELLED", [], 3),  # an unknown status is never green
+    ("SUCCESS", [], 3),  # no checks ran
+    ("SUCCESS", [check("python", "SKIPPED", page([]))], 3),
+    ("SUCCESS", [check("python", "CANCEL", page([]))], 3),
+    ("SUCCESS", [check("python", "NEUTRAL", page([]))], 3),
+    ("SUCCESS", [check("python", "SUCCESS", page([])), check("go", "WAITING", page([]))], 3),
+    ("SUCCESS", [check("python", "SUCCESS", page([])), check("go", "SUCCESS", page([]))], 0),
+])
+def test_zero_issues_is_green_only_on_a_fully_successful_run(fake, run_status, checks, expected):
+    fake.body = pr_payload(checks, status=run_status)
+    r = run(fake, "EtanHey/app", "7")
+    assert r.returncode == expected, r.stderr
+    out = json.loads(r.stdout)
+    assert out["verdict"] == {0: "clean", 1: "failing", 3: "no_verdict"}[expected]
+
+
+def test_failed_check_is_listed_even_with_zero_issues(fake):
+    fake.body = pr_payload([check("python", "TIMEOUT", page([]))], status="FAILURE")
+    out = json.loads(run(fake, "EtanHey/app", "7").stdout)
+    assert out["failing_checks"] == [{"analyzer": "python", "status": "TIMEOUT", "issues": 0}]
+
+
+def test_three_pages_are_collected_and_match_total_count(fake):
+    first = page([occurrence("A-1", 1, "m1", "t")], cursor="c1")
+    first["totalCount"] = 3
+    fake.body = pr_payload([check("python", "FAILURE", first)])
+    fake.pages = {"c1": page([occurrence("A-2", 2, "m2", "t")], cursor="c2"),
+                  "c2": page([occurrence("A-3", 3, "m3", "t")])}
+    r = run(fake, "EtanHey/app", "7")
+    assert r.returncode == 1, r.stderr
+    out = json.loads(r.stdout)
+    assert [i["code"] for i in out["analyzers"][0]["issues"]] == ["A-1", "A-2", "A-3"]
+    assert [req["payload"]["variables"].get("after") for req in fake.requests] == [None, "c1", "c2"]
+
+
+@pytest.mark.parametrize("pages, first_cursor, total", [
+    ({"c1": None}, "c1", None),  # B2: a null follow-up page
+    ({}, "c1", None),  # the page never arrives
+    ({"c1": page([occurrence("A-2", 2, "m", "t")], cursor="c1")}, "c1", None),  # cursor does not advance
+    ({"c1": {"pageInfo": {"hasNextPage": True, "endCursor": None}, "edges": []}}, "c1", None),
+    ({"c1": page([occurrence("A-2", 2, "m", "t")])}, "c1", 250),  # totalCount mismatch
+    ({"c1": {"pageInfo": {"hasNextPage": False}, "edges": "nope"}}, "c1", None),
+])
+def test_incomplete_pagination_exits_2(fake, pages, first_cursor, total):
+    first = page([occurrence("A-1", 1, "m", "t")], cursor=first_cursor)
+    first["totalCount"] = total
+    fake.body = pr_payload([check("python", "FAILURE", first)])
+    fake.pages = pages
+    r = run(fake, "EtanHey/app", "7")
+    assert r.returncode == 2
+    error = one_line_error(r).lower()
+    assert "pagination" in error or "malformed" in error
+
+
+def test_single_page_total_count_mismatch_exits_2(fake):
+    first = page([occurrence("A-1", 1, "m", "t")])
+    first["totalCount"] = 250
+    fake.body = pr_payload([check("python", "FAILURE", first)])
+    r = run(fake, "EtanHey/app", "7")
+    assert r.returncode == 2
+    assert "pagination" in one_line_error(r).lower()
+
+
+@pytest.mark.parametrize("body", [
+    ["not", "a", "dict"],  # B3
+    {"errors": ["plain string"]},
+    {"errors": "flat"},
+    {"data": None},
+    {"data": {"repository": "x"}},
+    {"data": {"repository": {"pullRequest": {"latestAnalysisRun": {"status": "SUCCESS", "checks": "x"}}}}},
+    {"data": {"repository": {"pullRequest": {"latestAnalysisRun": {
+        "status": "SUCCESS", "checks": {"edges": [{"node": {"status": "SUCCESS", "issues": 5}}]}}}}}},
+])
+def test_malformed_responses_exit_2_with_one_line_error(fake, body):
+    fake.body = body
+    r = run(fake, "EtanHey/app", "7")
+    assert r.returncode == 2
+    one_line_error(r)
+
+
+def test_non_object_body_names_the_malformed_shape(fake):
+    fake.body = ["not", "a", "dict"]
+    r = run(fake, "EtanHey/app", "7")
+    assert r.returncode == 2
+    assert "malformed DeepSource response: top level is list" in one_line_error(r)
+
+
+def test_an_unforeseen_shape_still_exits_2_not_1(fake):
+    # Passes every structural check, then breaks shape(): only the catch-all stands between it and exit 1.
+    weird = occurrence("PYL-1", 1, "m", "t")
+    weird["node"]["issue"] = "not-an-object"
+    fake.body = pr_payload([check("python", "FAILURE", page([weird]))])
+    r = run(fake, "EtanHey/app", "7")
+    assert r.returncode == 2
+    assert "unexpected failure: AttributeError" in one_line_error(r)
+
+
+@pytest.mark.parametrize("raw", [(b"<html>gateway</html>", None), (b'{"data": {"repo', 400)])
+def test_non_json_and_truncated_bodies_exit_2(fake, raw):
+    fake.raw = raw
+    r = run(fake, "EtanHey/app", "7")
+    assert r.returncode == 2
+    one_line_error(r)
+
+
+@pytest.mark.parametrize("number", ["\u00b2", "\u0663", "+7", " 7"])
+def test_non_ascii_digit_pr_number_is_usage_error(fake, number):
+    r = run(fake, "EtanHey/app", number)
+    assert r.returncode == 2 and fake.requests == []
+    assert r.stdout == "" and "Traceback" not in r.stderr and "pr-number" in r.stderr
+
+
+@pytest.mark.parametrize("token", ["partA-secret\npartB-secret", "partA-secret partB-secret",
+                                   "partA-secret\tpartB-secret", "partA-secret\x00partB-secret",
+                                   "partA-secret\x7fpartB", " partA-secret", "partA-secret\n"])
+def test_token_with_whitespace_or_control_chars_is_rejected_unechoed(fake, token):
+    if "\x00" in token:
+        pytest.skip("execve cannot carry NUL in an env value")
+    r = run(fake, "EtanHey/app", "7", token=token)
+    assert r.returncode == 2 and fake.requests == []
+    assert "partA-secret" not in r.stdout + r.stderr
+    assert "DEEPSOURCE_TOKEN" in one_line_error(r)
+
+
+def load_helper():
+    from importlib.machinery import SourceFileLoader
+    from importlib.util import module_from_spec, spec_from_loader
+    loader = SourceFileLoader("deepsource_issues", str(SCRIPT))
+    module = module_from_spec(spec_from_loader("deepsource_issues", loader))
+    loader.exec_module(module)
+    return module
+
+
+def test_scrub_redacts_raw_repr_and_json_forms():
+    helper = load_helper()
+    token = "tok\\en'\"x"
+    for leaked in (token, repr(token)[1:-1], json.dumps(token)[1:-1], repr(token.encode())[2:-1]):
+        assert token not in helper.scrub(f"before {leaked} after", token)
+        assert leaked not in helper.scrub(f"before {leaked} after", token)
+
+
+def test_redirect_is_refused_and_never_reaches_the_other_host(fake):
+    seen = []
+
+    class Other(BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen.append(self.headers.get("Authorization"))
+            self.send_response(200)
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"{}")
+
+        do_POST = do_GET
+
+        def log_message(self, *args):
+            pass
+
+    other = ThreadingHTTPServer(("127.0.0.1", 0), Other)
+    threading.Thread(target=other.serve_forever, daemon=True).start()
+    target = f"http://localhost:{other.server_address[1]}/elsewhere"
+
+    class Redirect(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            self.send_response(302)
+            self.send_header("Location", target)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    redirect = ThreadingHTTPServer(("127.0.0.1", 0), Redirect)
+    threading.Thread(target=redirect.serve_forever, daemon=True).start()
+    try:
+        fake.url = f"http://127.0.0.1:{redirect.server_address[1]}/graphql/"
+        r = run(fake, "EtanHey/app", "7")
+        assert r.returncode == 2
+        assert "redirect" in one_line_error(r).lower()
+        assert seen == []
+    finally:
+        other.shutdown()
+        redirect.shutdown()
