@@ -107,7 +107,31 @@ def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
     return values
 
 
-GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry cherry-pick clean clone commit config describe diff difftool fetch for-each-ref gc grep help init log ls-files ls-remote ls-tree merge mergetool mv notes pull push range-diff rebase reflog remote reset restore revert rev-list rev-parse rm show show-ref sparse-checkout stash status submodule switch tag update-index update-ref version worktree".split())
+NAME_SETTERS = {'export', 'declare', 'typeset', 'local', 'readonly', 'read', 'mapfile', 'readarray',
+                'getopts', 'printf', 'for', 'select', 'unset', 'let', 'eval', 'source', '.'}
+
+
+def shell_names(tokens, positions, segments):
+    """Every name this command might set (over-approximate)."""
+    names = set()
+    for j, word in enumerate(tokens):
+        if not positions[j]: continue
+        if shell._ASSIGNMENT_RE.match(word):
+            names.add(re.match(r'[A-Za-z_][A-Za-z0-9_]*', word)[0])
+        elif word in NAME_SETTERS:
+            names.update(m[1] for w, seg in zip(tokens[j + 1:], segments[j + 1:]) if seg == segments[j]
+                         for m in [re.match(r'([A-Za-z_][A-Za-z0-9_]*)(?:=|$)', w)] if m)
+    return names
+
+
+GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry cherry-pick clean clone commit config describe diff difftool fetch for-each-ref gc grep help init log ls-files ls-remote ls-tree merge mergetool mv notes pull push range-diff rebase reflog remote reset restore revert rev-list rev-parse rm show show-ref sparse-checkout stash status submodule switch tag update-index update-ref version worktree"
+                   # Local-only git commands: an alias never shadows a git command.
+                   " annotate apply bugreport bundle check-attr check-ignore check-mailmap check-ref-format"
+                   " checkout-index column commit-graph commit-tree count-objects diagnose diff-files diff-index"
+                   " diff-tree fast-export fmt-merge-msg format-patch fsck hash-object index-pack interpret-trailers"
+                   " maintenance merge-base merge-file merge-tree mktag mktree multi-pack-index name-rev"
+                   " pack-objects pack-refs patch-id prune read-tree repack rerere shortlog show-branch"
+                   " stripspace symbolic-ref var verify-commit verify-pack verify-tag whatchanged write-tree".split())
 
 
 def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None):
@@ -120,18 +144,21 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
     if shell._UNRESOLVED_EVAL_MARKER in tokens:
         raise ValueError('unresolved eval payload')
     result = []
-    _state = _state if _state is not None else {'config': False}
-    nested = [(body, seg, idx) for body, seg, idx, _ in shell._executable_subcommands(command)]
-    nested += shell._invoked_alias_bodies(command)
-    for body, segment, _ in nested:
+    _state = _state if _state is not None else {'config': False, 'names': set()}
+    _state['names'] |= shell_names(tokens, positions, segments)  # outer names reach nested gh calls
+    # Quoted heredoc prose is data: its backticks/apostrophes are not substitutions.
+    nested = [(body, seg) for body, seg, _, _ in shell._executable_subcommands(syntax.mask_heredoc_bodies(command, shell))]
+    nested += [(body, seg) for body, seg, _ in shell._invoked_alias_bodies(command)]
+    for body, segment in nested:
         limit = max((i + 1 for i, seg in enumerate(segments) if seg <= segment), default=0)
         child_bindings = assigned_bindings(tokens, positions, limit, bindings, scopes)
         result += operations(body, cwd, alias_lookup, depth + 1, child_bindings, _state)
     for i, word in enumerate(tokens):
-        if not positions[i]: continue
+        if not positions[i] or syntax.looked_up(tokens, positions, i): continue
         current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
         word = resolve_word(word, current)
-        base, direct = syntax.executable(word)
+        assignment = bool(shell._ASSIGNMENT_RE.match(word))
+        base, direct = ('', None) if assignment else syntax.executable(word)
         args, redirects = syntax.argv_at(tokens, segments, scopes, i)
         args = [resolve_word(a, current) for a in args]
         redirects = [(op, resolve_word(target, current)) for op, target in redirects]
@@ -147,6 +174,8 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             raise ValueError('agent changes to the confirmation trust anchor or pinned hook tree are forbidden')
         if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
+        if assignment:
+            continue  # a prefix assignment is not the executable; the next word is
         if ('$' in word or '`' in word) and syntax.guarded_words(args):
             raise ValueError('unresolved executable for protected operation')
         for child in syntax.wrapper_payload(base, args):
@@ -163,7 +192,12 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                 if syntax.executable(arg)[0] in ('git', 'gh') and syntax.guarded_words(args[j + 1:]):
                     result += operations(syntax.joined(args[j:]), cwd, alias_lookup, depth + 1, current, _state)
                 elif ' ' in arg:
-                    words = shlex.split(arg)
+                    try:
+                        words = shlex.split(arg)
+                    except ValueError:  # prose with an apostrophe; a Git/GH payload still denies
+                        words = arg.split()
+                        if any(syntax.executable(w)[0] in ('git', 'gh') for w in words) and syntax.guarded_words(words):
+                            raise ValueError('unparseable protected payload')
                     if words and syntax.executable(words[0])[0] in ('git', 'gh') and syntax.guarded_words(words[1:]):
                         result += operations(arg, cwd, alias_lookup, depth + 1, current, _state)
         if base == 'eval' and any('$' in a or '`' in a for a in args):
@@ -185,7 +219,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                     delimiters = {target for op, target in redirects if op == '<<'}
                     for delimiter, body in syntax.heredoc_bodies(command, shell):
                         if delimiter in delimiters: result += operations(body, cwd, alias_lookup, depth + 1, current, _state)
-                elif '<(' in command or '|' in tokens[:i] or any(op == '<' for op, _ in redirects):
+                elif syntax.shell_reads_stdin(args) or any(op == '<' and target == '(' for op, target in redirects):
                     raise ValueError('opaque shell script/stdin source')
         if base == 'trap' and args:
             result += operations(args[0], cwd, alias_lookup, depth + 1, current, _state)
@@ -248,7 +282,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                 result += operations(syntax.joined(tail[1:]), repo, alias_lookup, depth + 1, current, _state)
         elif base == 'gh':
             if cwd is None and syntax.guarded_words(args): raise ValueError('unknown settings cwd')
-            result += gh_policy.operations(args, cwd)
+            result += gh_policy.operations(args, cwd, _state['names'])
     # Normalize and deduplicate repeated wrapper/substitution views.
     unique = []
     for op in result:

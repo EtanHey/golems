@@ -57,6 +57,9 @@ def wrapper_payload(base, args):
         return
     if base not in WRAPPERS:
         return
+    options = args[:next((i for i, a in enumerate(args) if not a.startswith('-') or a == '--'), len(args))]
+    if base == 'command' and any('v' in a or 'V' in a for a in options):
+        return  # `command -v/-V` only looks the name up
     if base == 'script' and any(a in ('-c', '--command') for a in args):
         index = next(i for i, a in enumerate(args) if a in ('-c', '--command'))
         yield ['sh', '-c', args[index + 1]]
@@ -75,6 +78,16 @@ def wrapper_payload(base, args):
         i += 1  # duration / output transcript file
     if i < len(args):
         yield ['sh', '-c', ' '.join(args[i:])] if base in ('watch', 'parallel') and '-x' not in args[:i] else args[i:]
+
+
+def looked_up(tokens, positions, i):
+    """tokens[i] is the name operand of `command -v/-V`: looked up, never run."""
+    j = i - 1
+    while j >= 0 and tokens[j].startswith('-') and tokens[j] != '--':
+        j -= 1
+    options = tokens[j + 1:i]
+    return (j >= 0 and positions[j] and os.path.basename(tokens[j]).casefold() == 'command'
+            and any('v' in a or 'V' in a for a in options))
 
 
 def shell_payload(base, args):
@@ -125,6 +138,141 @@ def heredoc_bodies(command, shell):
             else:
                 raise ValueError('unterminated heredoc')
             yield delimiter, ''.join(body)
+
+
+def _line_heredoc_starts(command, shell):
+    """The shared parser's line-based view: (line, delimiter, quoted, strip_tabs)."""
+    starts, pending = [], []
+    for number, line in enumerate(command.split('\n')):
+        if pending:
+            delimiter, tabs = pending[0]
+            if (line.lstrip('\t') if tabs else line).rstrip('\r') == delimiter: pending.pop(0)
+            continue
+        for match in shell._HEREDOC_START_RE.finditer(shell._blank_shell_comment(shell._blank_quoted(line))):
+            parsed = shell._heredoc_delimiter_word(line, match.end())
+            if parsed is not None:
+                starts.append((number, parsed[0], parsed[1], bool(match[1])))
+                pending.append((parsed[0], bool(match[1])))
+    return starts
+
+
+def _shell_heredoc_starts(command, shell):
+    """The same tuples as bash would see them: quotes, comments, `${...}`,
+    arithmetic and substitutions are tracked across lines. None when unsure."""
+    starts, pending, quote, depth = [], [], None, 0
+    i, n, line = 0, len(command), 0
+    while i < n:
+        c = command[i]
+        prev = command[i - 1] if i else '\n'
+        if quote == "'":
+            quote = None if c == "'" else quote
+        elif c == '\\':
+            if command.startswith('\\\n', i) and pending: return None  # continued heredoc line
+            line += command.count('\n', i, i + 2); i += 2; continue
+        elif quote is None and command.startswith("$'", i):
+            j = i + 2
+            while j < n and command[j] != "'":
+                j += 2 if command[j] == '\\' else 1
+            if pending and '\n' in command[i:j]: return None
+            line += command.count('\n', i, j); i = j + 1; continue
+        elif command.startswith('$(', i) and not command.startswith('$((', i) or c == '`':
+            found = shell._dollar_substitution(command, i) if c == '$' else shell._backtick_substitution(command, i)
+            if found is None or pending and '\n' in command[i:found[1]]: return None
+            line += command.count('\n', i, found[1]); i = found[1]; continue
+        elif c == '"':
+            quote = None if quote == '"' else '"'
+        elif quote == '"':
+            pass
+        elif c == "'":
+            quote = "'"
+        elif command.startswith(('${', '$((', '$[', '(('), i) and (c == '$' or prev in ' \t\n;|&('):
+            step = 3 if command.startswith('$((', i) else 2
+            depth += 1 if step == 2 and c == '$' and command[i + 1] == '{' else step - 1
+            i += step; continue
+        elif depth and c in '({[':
+            depth += 1
+        elif depth and c in ')}]':
+            depth -= 1
+        elif depth:
+            pass
+        elif c == '#' and prev in ' \t\n;|&()':
+            while i < n and command[i] != '\n': i += 1
+            continue
+        elif command.startswith('<<', i) and not command.startswith('<<<', i):
+            match = shell._HEREDOC_START_RE.match(command, i)
+            parsed = match and shell._heredoc_delimiter_word(command, match.end())
+            if not parsed or '\n' in command[i:match.end()]: return None
+            starts.append((line, parsed[0], parsed[1], bool(match[1])))
+            pending.append((parsed[0], bool(match[1])))
+            i = match.end(); continue
+        if c == '\n':
+            if quote is not None or depth:
+                if pending: return None  # the body would start after the closing quote/expansion
+            else:
+                for delimiter, tabs in pending:
+                    while i < n:
+                        end = command.find('\n', i + 1); end = n if end < 0 else end
+                        body = command[i + 1:end]; line += 1; i = end
+                        if (body.lstrip('\t') if tabs else body).rstrip('\r') == delimiter: break
+                pending = []
+                if i >= n: break
+            line += 1
+        i += 1
+    return starts
+
+
+def mask_heredoc_bodies(command, shell):
+    """Blank the bodies of quoted-delimiter heredocs (literal text to bash),
+    keeping offsets and every other line, so prose backticks/apostrophes are
+    never read as substitutions. Unquoted bodies stay as they are: bash runs
+    their substitutions. Only when the shared line view and the bash-faithful
+    view agree on every heredoc; otherwise the command is returned unchanged."""
+    starts = _line_heredoc_starts(command, shell)
+    if not any(quoted for _, _, quoted, _ in starts) or _shell_heredoc_starts(command, shell) != starts:
+        return command
+    out, pending = [], []
+    for source in command.splitlines(keepends=True):
+        line = source.rstrip('\r\n')
+        if pending:
+            delimiter, quoted, tabs = pending[0]
+            if (line.lstrip('\t') if tabs else line) == delimiter:
+                pending.pop(0)
+            elif quoted:
+                source = ' ' * len(line) + source[len(line):]
+            out.append(source)
+            continue
+        for match in shell._HEREDOC_START_RE.finditer(shell._blank_shell_comment(shell._blank_quoted(line))):
+            parsed = shell._heredoc_delimiter_word(line, match.end())
+            if parsed is not None:
+                pending.append((parsed[0], parsed[1], bool(match[1])))
+        out.append(source)
+    return ''.join(out)
+
+
+SHELL_VALUE_OPTIONS = {'-o', '+o', '-O', '+O', '--rcfile', '--init-file'}
+
+
+def shell_reads_stdin(args):
+    """No -c payload: does this shell take its script from stdin (no script
+    operand, -s, `-`, or a stdin/fd path) rather than from a named file?"""
+    i, stdin = 0, False
+    while i < len(args):
+        arg = args[i]
+        if arg in ('--', '-'):
+            i += 1; break
+        if arg in ('--version', '--help'):
+            return False
+        if not arg.startswith(('-', '+')):
+            break
+        if not arg.startswith('--'):
+            if arg.startswith('-') and 'n' in arg[1:]:
+                return False  # noexec: commands are read, never run
+            stdin |= 's' in arg[1:]
+            i += 2 if 'o' in arg[1:] or 'O' in arg[1:] else 1
+        else:
+            i += 2 if arg in SHELL_VALUE_OPTIONS else 1
+    script = args[i] if i < len(args) else None
+    return stdin or script is None or script in ('/dev/stdin', '/dev/fd/0') or script.startswith(('/dev/fd/', '/proc/'))
 
 
 def expand_home(raw, home):
