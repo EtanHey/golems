@@ -77,9 +77,9 @@ read_worktree_status() {
   local worktree_path="$1"
 
   # AIDEV-NOTE: Untracked files hidden by user configuration are local-only
-  # data and force KEEP. Ignored files do not (Etan 2026-10-06, superseding
-  # #664): they are rebuildable caches (node_modules, .venv, .build) or
-  # 1Password-materialized secrets, and docs.local is archived before removal.
+  # data and force KEEP. Ignored files do not block (Etan 2026-10-06,
+  # superseding #664), but --apply archives every ignored path that is not a
+  # regenerable cache (scripts/lib/worktree-archive.py REGENERABLE) first.
   git -C "$worktree_path" -c status.showUntrackedFiles=all \
     status --porcelain --untracked-files=all
 }
@@ -90,31 +90,103 @@ read_worktree_status() {
 # an explicit refspec, ls-files -v hidden flags, submodule refusal, fail closed)
 # and the runtime guards below also fail closed: a check that cannot run KEEPs.
 
+# AIDEV-NOTE: in-use = any of this user's processes has its cwd inside (lsof),
+# or a cmux-registered agent whose pid is alive was launched inside. A partial
+# view is not proof: lsof exiting non-zero, or an unreadable registry, KEEPs.
 refresh_live_cwds() {
   local out
+  local rc=0
 
   live_cwds=""
+  agent_cwds=""
   if ! command -v lsof >/dev/null 2>&1; then
     live_reason="lsof unavailable; cannot prove no process uses the worktree"
     return 1
   fi
-  # lsof exits 1 when it cannot inspect some processes; the rows it did read stand.
-  out="$(lsof -a -d cwd -Fn 2>/dev/null || true)"
-  live_cwds="$(printf '%s\n' "$out" | sed -n 's/^n//p')"
+  local ps_pids
+  local ps_count=0
+  local lsof_count=0
+  local line
+  if ! ps_pids="$(ps -o pid= -u "$(id -u)" 2>/dev/null)"; then
+    live_reason="ps failed; cannot cross-check lsof coverage"
+    return 1
+  fi
+  out="$(lsof -a -u "$(id -u)" -d cwd -Fpn 2>/dev/null)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    live_reason="lsof exited $rc (partial view); refusing to treat that as idle"
+    return 1
+  fi
+  while IFS= read -r line; do
+    case "$line" in
+      p*) lsof_count=$((lsof_count + 1)) ;;
+      n*) live_cwds+="${line#n}"$'\n' ;;
+    esac
+  done <<< "$out"
+  while IFS= read -r line; do
+    [[ -n "${line// /}" ]] && ps_count=$((ps_count + 1))
+  done <<< "$ps_pids"
   if [[ -z "$live_cwds" ]]; then
     live_reason="lsof listed no process cwd; refusing to treat that as idle"
     return 1
   fi
+  # A sandboxed or blind lsof exits 0 yet sees almost nothing (#703 R1 3i).
+  if (( lsof_count * 10 < ps_count * 9 )); then
+    live_reason="lsof saw $lsof_count of $ps_count processes (partial view); refusing to treat that as idle"
+    return 1
+  fi
+  if [[ -e "$cmux_registry" ]]; then
+    if [[ ! -r "$cmux_registry" ]] || ! agent_cwds="$(perl -MJSON::PP -ne '
+        my $r = eval { decode_json($_) } or next;
+        my $pid = $r->{pid} or next;
+        next unless kill 0, $pid;
+        for my $k (qw(cwd worktree_path launch_cwd)) { print "$r->{$k}\n" if $r->{$k} }
+      ' "$cmux_registry")"; then
+      live_reason="cmux agent registry unreadable: $cmux_registry"
+      return 1
+    fi
+  fi
 }
 
-path_has_live_cwd() {
+# Exact line membership without grep (a missing grep must not fail open).
+line_in() {
+  local needle="$1"
+  local haystack="$2"
+  local line
+
+  while IFS= read -r line; do
+    [[ "$line" == "$needle" ]] && return 0
+  done <<< "$haystack"
+  return 1
+}
+
+path_has_cwd_in() {
   local worktree_path="$1"
+  local cwds="$2"
   local cwd
 
   while IFS= read -r cwd; do
+    [[ -n "$cwd" ]] || continue
     [[ "$cwd" == "$worktree_path" || "$cwd" == "$worktree_path/"* ]] && return 0
-  done <<< "$live_cwds"
+  done <<< "$cwds"
   return 1
+}
+
+# Lists open-PR head branches once per repo. A GitHub origin whose PRs cannot
+# be listed makes every branch worktree KEEP-undetermined.
+load_open_prs() {
+  local url
+  local slug
+
+  open_pr_heads=""
+  open_pr_failed=""
+  # The configured URL, not `remote get-url` (which applies insteadOf rewrites).
+  url="$(git -C "$repo_root" config --get remote.origin.url || true)"
+  [[ "$url" =~ github\.com[:/]([^/]+/[^/]+)$ ]] || return 0
+  slug="${BASH_REMATCH[1]%.git}"
+  if ! open_pr_heads="$(gh pr list --repo "$slug" --state open --limit 1000 \
+    --json headRefName --jq '.[].headRefName' 2>/dev/null)"; then
+    open_pr_failed="cannot list open PRs for $slug (gh failed)"
+  fi
 }
 
 # Prints the newest of the admin dir's HEAD/index/COMMIT_EDITMSG mtimes.
@@ -133,52 +205,14 @@ last_activity_epoch() {
   printf '%s\n' "$newest"
 }
 
-# Prints "<files> <bytes>" for a tree; symlinks count as entries, never followed.
-tree_stats() {
-  perl -MFile::Find -e '
-    my ($n, $b) = (0, 0);
-    find({ no_chdir => 1, wanted => sub {
-      my @s = lstat($_) or die "lstat $_: $!\n";
-      return if -d _;
-      $n++; $b += $s[7];
-    } }, $ARGV[0]);
-    print "$n $b\n";' "$1"
-}
-
-archive_docs_local() {
+archive_ignored() {
   local worktree_path="$1"
   local head_sha="$2"
-  local src="$worktree_path/docs.local"
   local dest
-  local src_stats
-  local dest_stats
 
-  archive_dest=""
-  archive_reason=""
-  [[ -d "$src" && ! -L "$src" ]] || return 0
   dest="$repo_root/docs.local/worktree-archive/$(basename "$worktree_path")"
-  [[ -e "$dest" ]] && dest="$dest-${head_sha:0:12}"
-  if [[ -e "$dest" ]]; then
-    archive_reason="docs.local archive destination already exists: $dest"
-    return 1
-  fi
-  if ! mkdir -p "$(dirname "$dest")"; then
-    archive_reason="cannot create $(dirname "$dest")"
-    return 1
-  fi
-  # cp -c clones on APFS (no extra space); GNU cp has no -c.
-  local -a cp_flags=(-Rp)
-  [[ "$(uname -s)" == Darwin ]] && cp_flags=(-cRp)
-  if ! cp "${cp_flags[@]}" "$src" "$dest"; then
-    archive_reason="docs.local copy to $dest failed"
-    return 1
-  fi
-  if ! src_stats="$(tree_stats "$src")" || ! dest_stats="$(tree_stats "$dest")" ||
-    [[ "$src_stats" != "$dest_stats" ]]; then
-    archive_reason="docs.local copy unverified (source ${src_stats:-?}, copy ${dest_stats:-?}) at $dest"
-    return 1
-  fi
-  archive_dest="$dest (${dest_stats% *} files, ${dest_stats#* } bytes)"
+  archive_detail="$(python3 "$SCRIPT_DIR/lib/worktree-archive.py" archive "$worktree_path" \
+    "$dest" "$dest-${head_sha:0:12}")"
 }
 
 apply_removal() {
@@ -207,9 +241,14 @@ apply_removal() {
       "KEEP-undetermined" "$live_reason"
     return 0
   fi
-  if path_has_live_cwd "$worktree_path"; then
+  if path_has_cwd_in "$worktree_path" "$live_cwds"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "KEEP-live" "a running process has its cwd inside the worktree"
+    return 0
+  fi
+  if path_has_cwd_in "$worktree_path" "$agent_cwds"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "KEEP-live" "a live cmux-registered agent was launched inside the worktree"
     return 0
   fi
   if ! head_sha="$(git -C "$worktree_path" rev-parse HEAD)"; then
@@ -217,9 +256,17 @@ apply_removal() {
       "KEEP-undetermined" "cannot resolve HEAD"
     return 0
   fi
-  if ! archive_docs_local "$worktree_path" "$head_sha"; then
+  local nested
+  local nested_rc=0
+  nested="$(python3 "$SCRIPT_DIR/lib/worktree-archive.py" nested-git "$worktree_path")" || nested_rc=$?
+  if [[ "$nested_rc" -ne 0 ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
-      "KEEP-undetermined" "$archive_reason"
+      "KEEP-undetermined" "nested git repository or unscannable tree: ${nested:-scan failed}"
+    return 0
+  fi
+  if ! archive_ignored "$worktree_path" "$head_sha"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "KEEP-undetermined" "${archive_detail:-ignored-data archive failed}"
     return 0
   fi
   # Never --force: git itself refuses a tree that became unclean meanwhile.
@@ -228,8 +275,7 @@ apply_removal() {
       "KEEP-undetermined" "git worktree remove refused"
     return 0
   fi
-  removed_detail="clean and fully represented by $base_ref"
-  [[ -n "$archive_dest" ]] && removed_detail="$removed_detail; docs.local archived to $archive_dest"
+  removed_detail="clean and fully represented by $base_ref; $archive_detail"
   emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" "REMOVED" "$removed_detail"
 }
 
@@ -267,6 +313,7 @@ process_worktree_block() {
   if [[ -n "$only_worktree" && "$canonical_worktree" != "$only_worktree" ]]; then
     return 0
   fi
+  only_seen=1
 
   if is_tool_managed_worktree "$repo_root" "$canonical_worktree"; then
     return 0
@@ -292,10 +339,32 @@ process_worktree_block() {
     return 0
   fi
 
+  # AIDEV-NOTE: only <main>/.worktrees/<name> is ever eligible (#703 R1 H1):
+  # runtime checkouts (~/.local/share/...), Cursor and superpowers worktrees
+  # and trees inside docs.local live elsewhere and are never touched.
+  if [[ "$canonical_worktree/" != "$main_root/.worktrees/"?* ]]; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
+      "not-checked" "KEEP-out-of-scope" "not under $main_root/.worktrees/"
+    return 0
+  fi
+
   if [[ -n "$locked_reason" ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "undetermined" "KEEP-undetermined" "worktree is locked: $locked_reason"
     return 0
+  fi
+
+  if [[ -n "$branch_ref" ]]; then
+    if [[ -n "$open_pr_failed" ]]; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
+        "undetermined" "KEEP-undetermined" "$open_pr_failed"
+      return 0
+    fi
+    if line_in "$branch_display" "$open_pr_heads"; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
+        "not-checked" "KEEP-open-pr" "branch has an open PR (live lane, parked or not)"
+      return 0
+    fi
   fi
 
   local other
@@ -475,6 +544,7 @@ process_repo() {
   repo_root="$main_root"
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
+  load_open_prs
 
   refresh_remote_base
 
@@ -498,13 +568,15 @@ process_repo() {
     esac
   done <<< "$census"
   process_worktree_block
-  if [[ "$apply" -eq 1 ]]; then
-    git -C "$repo_root" worktree prune || true
-  fi
+  # AIDEV-NOTE: never `git worktree prune` here (#703 R1 M1): it drops the
+  # registration of a KEEP worktree that is only temporarily away, orphaning
+  # its commits. `git worktree remove` already deletes its own admin entry.
 }
 
 explicit_repo=""
 only_worktree=""
+only_seen=0
+cmux_registry="${WORKTREE_GC_CMUX_REGISTRY:-$HOME/.cmuxlayer/session-registry.jsonl}"
 apply=0
 idle_hours=6
 while [[ $# -gt 0 ]]; do
@@ -527,6 +599,11 @@ while [[ $# -gt 0 ]]; do
     --path)
       if [[ $# -lt 2 || ! -d "$2" ]]; then
         printf 'Not a worktree directory: %s\n' "${2:-}" >&2
+        exit 2
+      fi
+      # A symlink (or a path through one) could resolve into another repo.
+      if [[ -L "${2%/}" || "$(cd "$2" && pwd -P)" != "$(cd "$2" && pwd -L)" ]]; then
+        printf 'Refusing --path through a symlink: %s\n' "$2" >&2
         exit 2
       fi
       only_worktree="$(canonical_path "$2")"
@@ -583,6 +660,13 @@ found_unpushed=0
 for repo in "${repos[@]}"; do
   process_repo "$repo"
 done
+
+# A lane close pastes this row into its receipt; a silent no-op would hide a wrong path.
+if [[ -n "$only_worktree" && "$only_seen" -eq 0 ]]; then
+  emit_row "${repo_name:-unknown}" "$only_worktree" "-" "not-checked" "not-checked" \
+    "KEEP-not-a-worktree" "not a linked worktree of its repository (main checkout or subdirectory)"
+  exit 2
+fi
 
 if [[ "$found_unpushed" -ne 0 ]]; then
   exit 1
