@@ -246,14 +246,14 @@ def guardian_inputs(payload):
 _PATCH_FILE = re.compile(r"\*\*\*[^\S\n]+(Add|Update|Delete) File:[^\S\n]*(.+?)[^\S\n]*")
 _PATCH_MOVE = re.compile(r"\*\*\*[^\S\n]+Move to:[^\S\n]*(.+?)[^\S\n]*")
 CONFIG_PATCH_REASON = (
-    "BLOCKED: a patch to a git config file must apply exactly to its current "
-    "content; re-read the file and send an exact patch."
+    "BLOCKED: a patch must apply exactly to the current files (git config is "
+    "judged on its real result); re-read them and send an exact patch."
 )
-_CONFIG_BYTES = 1024 * 1024
+_CONFIG_BYTES = 8 * 1024 * 1024
 
 
 class ConfigPatchRefusal(ValueError):
-    """A git config patch whose real result cannot be computed exactly."""
+    """A patch whose real, in-order result cannot be computed exactly."""
 
 
 def _patch_files(text):
@@ -354,54 +354,64 @@ def _read_text(path):
 
 
 def confirm_inputs(payload):
-    """Project an apply_patch onto the Write/Edit shapes human-confirm already judges.
+    """Project an apply_patch onto the Write shapes human-confirm already judges.
 
     The gate would read a raw patch's text as a shell command, so a patch never
-    reaches it as such. Add -> Write of the new file; Delete -> Write of the path
-    (the policy-store check is path-based). An Update (and a Move) is applied to
-    the current file the way Codex applies it, exactly, and judged as a Write of
-    the REAL result: git config policy depends on section context and removed
-    lines, not on the added lines alone (#693 R1 F1). An Update that cannot be
-    applied exactly is denied when the source or destination is a git config
-    file, and otherwise falls back to a path-only projection."""
+    reaches it as such. Codex applies a patch's sections IN ORDER, each reading
+    what the previous one wrote (#693 R2-F1), so the whole patch is replayed over
+    a virtual file map keyed by canonical path (`.git/../.git/config`, `./.git/
+    config` and the absolute path are one key): Add sets content, Delete removes
+    it, Update applies its chunks exactly as Codex does (#693 R1 F1), and Move
+    writes the destination and removes the source. Every touched path is then
+    judged ONCE: a git config file on its final content, anything else by path.
+    A replay that cannot be performed exactly denies the call."""
     if payload["tool_name"] != "apply_patch":
         return [payload]
     cwd = payload["cwd"]
     files = _patch_files(payload["tool_input"]["command"])
     if len(files) > 64:
         raise TimeoutError("patch budget exceeded")
-    config = None
+    canon = lambda p: os.path.realpath(os.path.normpath(os.path.join(cwd, p)))
+    virtual, order, missing = {}, [], object()
 
-    def is_config(target):
-        nonlocal config
-        if config is None:
-            config = load_parser("skills/golem-powers/human-confirm-gate/hooks/git_config.py", "codex_confirm_git_config")
-        return config._config_file(os.path.realpath(os.path.join(cwd, target)), cwd)
+    def read(path):
+        if path in virtual:
+            return virtual[path]
+        text = _read_text(path)
+        return missing if text is None else text
 
-    write = lambda path, content: {**payload, "tool_name": "Write", "tool_input": {"file_path": path, "content": content}}
-    items = []
+    def put(path, content):
+        virtual[path] = content
+        if path not in order:
+            order.append(path)
+
     for f in files:
+        source = canon(f["path"])
         if f["op"] == "Add":
-            items.append(write(f["path"], "".join(t + "\n" for t in f["added"])))
+            put(source, "".join(t + "\n" for t in f["added"]))
             continue
+        current = read(source)
+        if current is missing or current is None:
+            raise ConfigPatchRefusal("patch section targets a missing file")
         if f["op"] == "Delete":
-            items.append(write(f["path"], ""))
+            put(source, None)
             continue
-        current = _read_text(os.path.join(cwd, f["path"]))
-        result = None if current is None or f["invalid"] or not f["chunks"] else _apply_chunks(current, f["chunks"])
+        if f["invalid"] or (not f["chunks"] and not f["move"]):
+            raise ConfigPatchRefusal("unparseable patch section")
+        result = _apply_chunks(current, f["chunks"]) if f["chunks"] else current
         if result is None:
-            if is_config(f["path"]) or (f["move"] and is_config(f["move"])):
-                raise ConfigPatchRefusal("git config patch does not apply exactly")
-            added = "".join(t + "\n" for t in f["added"])
-            items.append({**payload, "tool_name": "Edit",
-                          "tool_input": {"file_path": f["path"], "old_string": "", "new_string": added}})
-            if f["move"]:
-                items.append(write(f["move"], added))
-            continue
+            raise ConfigPatchRefusal("patch does not apply exactly")
         if f["move"]:
-            items += [write(f["path"], ""), write(f["move"], result)]
+            put(source, None)
+            put(canon(f["move"]), result)
         else:
-            items.append(write(f["path"], result))
+            put(source, result)
+    config = load_parser("skills/golem-powers/human-confirm-gate/hooks/git_config.py", "codex_confirm_git_config")
+    items = []
+    for path in order:
+        content = virtual[path]
+        judged = content if content is not None and config._config_file(path, cwd) else ""
+        items.append({**payload, "tool_name": "Write", "tool_input": {"file_path": path, "content": judged}})
     return items
 
 

@@ -139,5 +139,30 @@ class CodexAdapter(unittest.TestCase):
         self.assertTrue(path.exists())  # an out-of-scope lease never burns the token
 
 
+    def adapter_module(self):
+        spec = importlib.util.spec_from_file_location('codex_adapter_under_test', self.adapter)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        return module
+
+    def test_sections_on_the_same_file_replay_in_order_and_are_judged_once_on_the_final_result(self):
+        config = self.repo / '.git/config'
+        config.write_text(config.read_text() + '[user]\n\tname = one\n')
+        body = (f'*** Begin Patch\n*** Update File: {config}\n@@ [user]\n-\tname = one\n+\tname = two\n'
+                f'*** Update File: {config}\n@@ [user]\n-\tname = two\n+\tname = three\n*** End Patch')
+        payload = dict(tool_name='apply_patch', cwd=str(self.repo), session_id=SESSION, tool_input=dict(command=body))
+        [item] = self.adapter_module().confirm_inputs(payload)  # the second section sees the first's result
+        self.assertEqual(item['tool_input']['content'], config.read_text().replace('name = one', 'name = three'))
+        self.assertEqual(self.run_codex(tool='apply_patch', command=body), 'allow')
+
+    def test_path_aliases_of_one_file_are_one_key(self):
+        config = self.repo / '.git/config'
+        aliases = [str(config), './.git/config', '.git/../.git/config', f'{self.repo}/./.git//config']
+        body = '*** Begin Patch\n' + ''.join(f'*** Update File: {a}\n@@\n+# note {i}\n' for i, a in enumerate(aliases)) + '*** End Patch'
+        payload = dict(tool_name='apply_patch', cwd=str(self.repo), session_id=SESSION, tool_input=dict(command=body))
+        items = self.adapter_module().confirm_inputs(payload)
+        self.assertEqual([i['tool_input']['file_path'] for i in items], [os.path.realpath(config)])
+        self.assertTrue(items[0]['tool_input']['content'].endswith('# note 0\n# note 1\n# note 2\n# note 3\n'))
+
+
 if __name__ == '__main__':
     unittest.main()

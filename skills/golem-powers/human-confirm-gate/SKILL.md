@@ -79,11 +79,13 @@ Codex seats run it through the Codex adapter (`scripts/hooks/codex-policy-hook.p
 human-confirm`, fail-closed, 7 s budget under Codex's 10 s). The token binds the
 Codex payload's `session_id`, which is the root thread id (stable across
 `codex resume`, shared by subagents, new on a fork), so issue with `--session
-<root thread id>`. `apply_patch` is never read as a command: Add and Delete project
-onto Write; an Update or Move is applied to the current file exactly as Codex
-applies it and judged as a Write of the real result (git config policy depends
-on section context and removed lines). A git config patch that does not apply
-exactly is denied. The installer refuses this Codex registration while the anchor pin is
+<root thread id>`. `apply_patch` is never read as a command: the whole patch is
+replayed in order, as Codex applies it, over a virtual file map keyed by
+canonical path (so `.git/../.git/config` is `.git/config`). Each touched path is
+judged once: a git config file on its final content (section context and
+removed lines matter), anything else by path. A patch that cannot be replayed
+exactly is denied, including any CRLF git config (Codex cannot patch those
+exactly either way). The installer refuses this Codex registration while the anchor pin is
 empty, as on Claude, and a new registration needs `/hooks` trust review.
 ## Trust and issuance
 Unsigned file metadata cannot identify a human under the shared macOS UID.
