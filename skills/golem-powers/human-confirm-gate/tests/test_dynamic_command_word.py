@@ -60,6 +60,7 @@ class DynamicCommandWord(unittest.TestCase):
                         "cat <<'EOF'\n$(printf fixture-tool) push --force\nEOF",
                         '$(printf fixture-tool) status',
                         'FIXTURE=$(printf fixture-tool); echo push --force',
+                        '[ -f fixture-file ]', '[[ -f fixture-file ]]',
                         'X=fixture; echo $(printf fixture-tool); gh api repos/${X}/project/issues/1/comments -f body=fixture',
                         'echo fixture-tool >$(printf fixture-tool) push --force'):
             with self.subTest(command=command):

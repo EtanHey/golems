@@ -148,7 +148,8 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         current = assigned_bindings(outer, flags, i, bindings, outer_scopes, outer_scopes[i])
         word = resolve_word(word, current)
         args, _ = syntax.argv_at(outer, segs, outer_scopes, i)
-        if (not shell._ASSIGNMENT_RE.match(word) and syntax.unresolved(word, Path.home()) and
+        if (not shell._ASSIGNMENT_RE.match(word) and syntax.executable(word)[0] not in syntax.DATA and
+                syntax.unresolved(word, Path.home()) and
                 syntax.guarded_words([resolve_word(a, current) for a in args])):
             raise ValueError('unresolved executable for protected operation')
     for i, word in enumerate(tokens):
@@ -174,7 +175,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
         if assignment:
             continue  # a prefix assignment is not the executable; the next word is
-        if syntax.unresolved(word, Path.home()) and syntax.guarded_words(args):
+        if base not in syntax.DATA and syntax.unresolved(word, Path.home()) and syntax.guarded_words(args):
             raise ValueError('unresolved executable for protected operation')
         for child in syntax.wrapper_payload(base, args):
             child_bindings = dict(current)
