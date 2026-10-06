@@ -29,6 +29,11 @@ CASES = (
     '{fixture-tool,fixture-other} push --force',
     '$(printf fixture-tool ")$") push --force',
     '$(printf fixture-tool ")$+") push --force',
+    '$(printf fixture-tool) -C ")$" push --force',
+    '$(printf fixture-tool) -C ";" push --force',
+    '$(printf fixture-tool) -C ">|" push origin topic',
+    'timeout 10 $(printf fixture-tool) push --force',
+    'exec -a fixture-name $(printf fixture-tool) push --force',
 )
 
 

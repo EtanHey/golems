@@ -46,8 +46,6 @@ def substitution_argv(command, shell):
         return isinstance(token, _ShellOperator) and shell._is_command_sub_open(token)
     def closed(token):
         return isinstance(token, _ShellOperator) and shell._is_command_sub_close(token)
-    if not any(opened(t) for t in tokens):
-        return shell._parse_bash(command)
     words, continuing, i = [], False, 0
     while i < len(tokens):
         word = tokens[i]
@@ -64,6 +62,10 @@ def substitution_argv(command, shell):
             if depth: raise ValueError('unclosed command substitution')
         else:
             i += 1
+            if not isinstance(word, _ShellOperator) and (
+                    shell._is_command_sub_open(word) or shell._is_command_sub_close(word) or
+                    word in (';', '&', '|', '(', ')', '<', '>', '>>', '>|', '<<', '<<<', '<>', '&>', '&>>', '}$')):
+                word = '__literal_shell_delimiter__'
         if continuing:
             words[-1] += word
         else:

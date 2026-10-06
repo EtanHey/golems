@@ -148,10 +148,18 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         current = assigned_bindings(outer, flags, i, bindings, outer_scopes, outer_scopes[i])
         word = resolve_word(word, current)
         args, _ = syntax.argv_at(outer, segs, outer_scopes, i)
-        if (not shell._ASSIGNMENT_RE.match(word) and syntax.executable(word)[0] not in syntax.DATA and
-                syntax.unresolved(word, Path.home()) and
-                syntax.guarded_words([resolve_word(a, current) for a in args])):
-            raise ValueError('unresolved executable for protected operation')
+        pending = [(word, args, depth)]
+        while pending:
+            executable, argv, level = pending.pop()
+            executable = resolve_word(executable, current)
+            argv = [resolve_word(a, current) for a in argv]
+            base = syntax.executable(executable)[0]
+            if (not shell._ASSIGNMENT_RE.match(executable) and base not in syntax.DATA and
+                    syntax.unresolved(executable, Path.home()) and syntax.guarded_words(argv)):
+                raise ValueError('unresolved executable for protected operation')
+            if level > 8: raise ValueError('command inspection budget exceeded')
+            for child in syntax.wrapper_payload(base, argv):
+                if child: pending.append((child[0], child[1:], level + 1))
     for i, word in enumerate(tokens):
         if not positions[i] or syntax.looked_up(tokens, positions, i): continue
         current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
