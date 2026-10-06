@@ -105,6 +105,36 @@ test("--budget: a hook that hangs (even ignoring SIGTERM) gets the static deny w
   expect(elapsed).toBeLessThan(2_500);
 });
 
+test("--budget: the child losing the setpgid race (EPERM) is not a deny; the hook's allow passes through", () => {
+  // #656 R2 B1: the parent's setpgid(pid, pid) can win; the child's own call then raises EPERM.
+  const d = scratch();
+  const target = path.join(d, "allow.py");
+  writeFileSync(target, "import sys\nsys.stdin.read()\nprint('{}')\n");
+  const driver = "import os, runpy, sys\nreal = os.setpgid\n" +
+    "def racy(pid, pgid):\n    if (pid, pgid) == (0, 0):\n        raise PermissionError(1, 'Operation not permitted')\n    return real(pid, pgid)\n" +
+    "os.setpgid = racy\nsys.argv = sys.argv[1:]\nrunpy.run_path(sys.argv[0], run_name='__main__')\n";
+  const r = spawnSync("python3", ["-c", driver, wrapper, "--fail-closed", "--budget", "4", target], { encoding: "utf8", input: "{}" });
+  expect([r.status, r.stderr, r.stdout]).toEqual([0, "", "{}\n"]);
+});
+
+test("--budget stress: 1000 parallel fast allows through --fail-closed --budget give 0 spurious denies", async () => {
+  const d = scratch();
+  const target = path.join(d, "allow.py");
+  writeFileSync(target, "import sys\nsys.stdin.read()\nprint('{}')\n");
+  const { spawn } = await import("node:child_process");
+  const once = () => new Promise((resolve) => {
+    const p = spawn("python3", ["-I", "-B", wrapper, "--fail-closed", "--budget", "4", target]);
+    let out = "";
+    p.stdout.on("data", (c) => { out += c; });
+    p.on("close", (code) => resolve(code === 0 && out === "{}\n" ? "allow" : `code=${code} out=${out.slice(0, 40)}`));
+    p.stdin.end("{}");
+  });
+  const results = [];
+  for (let i = 0; i < 1000; i += 8) results.push(...await Promise.all(Array.from({ length: Math.min(8, 1000 - i) }, once)));
+  const spurious = results.filter((x) => x !== "allow");
+  expect([results.length, spurious.length, spurious.slice(0, 3)]).toEqual([1000, 0, []]);
+}, 300_000);
+
 test("--budget leaves a fast hook's allow/deny and output untouched", () => {
   const d = scratch();
   const target = path.join(d, "fast.py");

@@ -107,10 +107,16 @@ def _watch(seconds):
     the parent waits at most `seconds`, then kills the group and denies."""
     pid = os.fork()
     if pid == 0:
-        os.setpgid(0, 0)
+        # Both sides set the group; whichever loses the race gets EPERM/ESRCH,
+        # which is harmless. Unguarded here, it turned ~0.6% of legitimate
+        # calls into the crash deny (#656 R2 B1).
+        try:
+            os.setpgid(0, 0)
+        except OSError:
+            pass
         return None
     try:
-        os.setpgid(pid, pid)  # close the race with the child's own setpgid
+        os.setpgid(pid, pid)
     except OSError:
         pass
     deadline = time.monotonic() + seconds
@@ -121,8 +127,11 @@ def _watch(seconds):
         if time.monotonic() >= deadline:
             try:
                 os.killpg(pid, signal.SIGKILL)
-            except OSError:
-                pass
+            except OSError:  # no group after all: never wait on a live hung child
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
             os.waitpid(pid, 0)
             return _block()
         time.sleep(0.01)
