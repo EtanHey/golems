@@ -52,11 +52,13 @@ class Fixture:
         self.collab.parent.mkdir(parents=True); self.collab.write_text('# fixture collab\n')
         self.pr = dict(number=7, state='OPEN', mergedAt=None, isCrossRepository=False, headRefName='topic', headRefOid=SHA)
         self.default = 'develop'
+        self.targets = []  # every repository gh was asked about
         self.issuer = load(ISSUER, 'lead_issuer')
 
     def gh(self, argv, **_):
         """Real git; gh answers from the fixture PR (never the network)."""
         if os.path.basename(argv[0]) == 'gh':
+            self.targets.append(argv[3] if argv[1:3] == ['repo', 'view'] else argv[argv.index('--repo') + 1])
             if argv[1:3] == ['repo', 'view']:
                 return json.dumps(dict(defaultBranchRef=dict(name=self.default)))
             return json.dumps(self.pr)
@@ -149,11 +151,23 @@ class LeadIssuer(Fixture, unittest.TestCase):
         subprocess.run(git + ['remote', 'remove', 'origin'], check=True)
         subprocess.run(git + ['remote', 'add', 'origin', 'https://git.localhost/o/r.git'], check=True)
         self.assertIsNotNone(self.refused())  # not GitHub
-        subprocess.run(git + ['remote', 'set-url', 'origin', 'git@github.com:o/r.git'], check=True)
-        subprocess.run(git + ['remote', 'add', 'fork', 'git@github.com:x/r.git'], check=True)
-        self.assertIsNotNone(self.refused())  # a second GitHub remote in the checkout
-        self.assertIsNotNone(self.refused(remote='fork'))
+        for alias in ('git@github.com-etanhey:o/r.git', 'gh:o/r', 'ssh://git@github.com/o/r.git'):
+            with self.subTest(alias=alias):
+                subprocess.run(git + ['remote', 'set-url', 'origin', alias], check=True)
+                self.assertIsNotNone(self.refused())  # an SSH alias or unanchored spelling: unknown host
         self.assertEqual(self.store(), [])
+
+    def test_the_pushed_remote_alone_names_the_repository(self):
+        """Other remotes do not matter (fleet checkouts carry several GitHub remotes); the
+        token is bound to the pushed remote's repository and that repository's PR."""
+        subprocess.run(['git', '-C', str(self.repo), 'remote', 'add', 'fork', 'git@github.com:x/r.git'], check=True)
+        token = json.loads(self.issue().read_text())
+        self.assertEqual((token['operations'][0]['remote'], set(self.targets)), ('origin', {'o/r'}))
+        self.targets.clear()
+        token = json.loads(self.issue(remote='fork').read_text())
+        self.assertEqual((token['operations'][0]['remote'], set(self.targets)), ('fork', {'x/r'}))
+        logged = [json.loads(line)['github'] for line in (self.home / '.config/golems/human-confirm/lead-issued.log').read_text().splitlines()]
+        self.assertEqual(logged, ['o/r', 'x/r'])
 
     def test_key_and_collab_refusals(self):
         self.signer.chmod(0o755)  # ssh-keygen would still sign: only the issuer's check refuses

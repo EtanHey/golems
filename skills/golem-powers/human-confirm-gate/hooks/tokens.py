@@ -173,15 +173,13 @@ def lead_metadata(op):
         raise ValueError('lead lease must use the current branch')
     if read_command([GIT, '-C', repo, 'symbolic-ref', '--short', 'HEAD']) != branch:
         raise ValueError('not the worker current branch')
-    # Exactly one GitHub remote in the checkout, and it is the one pushed to.
-    urls = {name: read_command([GIT, '-C', repo, 'remote', 'get-url', '--push', '--all', name])
-            for name in read_command([GIT, '-C', repo, 'remote']).split()}
-    github = [name for name, url in urls.items() if 'github.com' in url.casefold()]
-    if github != [op['remote']]:
-        raise ValueError('lead scope needs exactly one GitHub remote, the pushed one')
-    match = re.fullmatch(r'(?:git@github\.com:|https://github\.com/)([^/\s]+/[^/\s]+?)(?:\.git)?', urls[op['remote']])
+    # The pushed remote alone names the repository: its one push URL, anchored to
+    # github.com. Other remotes are irrelevant; an SSH alias, another host or a
+    # second push URL does not match, and refuses.
+    url = read_command([GIT, '-C', repo, 'remote', 'get-url', '--push', '--all', op['remote']])
+    match = re.fullmatch(r'(?:git@github\.com:|https://github\.com/)([^/\s]+/[^/\s]+?)(?:\.git)?', url)
     if not match:
-        raise ValueError('lead scope needs one GitHub remote')
+        raise ValueError('lead scope needs the pushed remote to be one github.com push URL')
     target = match[1]
     metadata = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'repo', 'view', target, '--json', 'defaultBranchRef']))
     pr = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'pr', 'view', branch, '--repo', target, '--json',
