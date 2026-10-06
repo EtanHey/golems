@@ -866,7 +866,8 @@
   {
     "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34"
+      "darwin": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34",
+      "linux": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34"
     },
     "case": "pr671-worker-installed-shell-profile",
     "reason": "Installed synthetic shell-worker reaches AGY with explicit agent selection, worker prompt path, merged MCP map and routed Flash model."
