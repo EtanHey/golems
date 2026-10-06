@@ -108,58 +108,85 @@
     "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#673",
     "candidate_sha256": {
-      "darwin": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e",
-      "linux": "926f45d7219cd0fb4feb5b664196d409b3390c67aadbc29ee3230de8eeb8795e"
+      "darwin": "9aa35501727b4638221b537209d201dfa0a1d2ed7fa83a95a32d0f5a9493715b",
+      "linux": "9aa35501727b4638221b537209d201dfa0a1d2ed7fa83a95a32d0f5a9493715b"
     },
     "case": "launcher-014",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol (golems#413); every repoGolem Codex launch now also carries the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#673",
     "candidate_sha256": {
-      "darwin": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345",
-      "linux": "a42512bd476a93e7ba2c3940ef2afe729e1447fff14bf3275cd3a70f87481345"
+      "darwin": "efb085a88bd91273706d39a077a6efd99752f4e0e9c527fcb8c0e4a3246a100e",
+      "linux": "efb085a88bd91273706d39a077a6efd99752f4e0e9c527fcb8c0e4a3246a100e"
     },
     "case": "launcher-015",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol (golems#413); every repoGolem Codex launch now also carries the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#673",
     "candidate_sha256": {
-      "darwin": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c",
-      "linux": "db33c4b44c99e112b57684e723ba0f0b8a6eccf41735f62a28a92a994411445c"
+      "darwin": "69caa8a4c1a27eebd823dad2bfc91446658e8301d44015b0a795b95cb9815358",
+      "linux": "69caa8a4c1a27eebd823dad2bfc91446658e8301d44015b0a795b95cb9815358"
     },
     "case": "launcher-016",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol (golems#413); every repoGolem Codex launch now also carries the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#673",
     "candidate_sha256": {
-      "darwin": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5",
-      "linux": "712796393d049a928a72df4ab278a6b088e16f70cde29cac5e77077cb3890fe5"
+      "darwin": "23497662f7c058812b50442e9f11df2eec64e7cc0d2590c2af1c50b4ce60951f",
+      "linux": "23497662f7c058812b50442e9f11df2eec64e7cc0d2590c2af1c50b4ce60951f"
     },
     "case": "launcher-017",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol (golems#413); every repoGolem Codex launch now also carries the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#673",
     "candidate_sha256": {
-      "darwin": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d",
-      "linux": "36fb3a31e8b8f68074a147679d78d91695f2912eb50399974fd25d9e53d72d9d"
+      "darwin": "bb51115a98b6dbbd0477cd0020ef89cfb7c617fc876165c48637271bb13dde99",
+      "linux": "bb51115a98b6dbbd0477cd0020ef89cfb7c617fc876165c48637271bb13dde99"
     },
     "case": "launcher-018",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol (golems#413); every repoGolem Codex launch now also carries the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
   },
   {
-    "authority": "golems#413",
+    "authority": "golems#673",
     "candidate_sha256": {
-      "darwin": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563",
-      "linux": "6f00a8874882750a59b25f7fc276022d0d90b32c225f0dd38d4ef2d308d6d563"
+      "darwin": "23befe7a2289e8507bd21782b8d6541557cc6cd8d29abe04230629a5c2104dd6",
+      "linux": "23befe7a2289e8507bd21782b8d6541557cc6cd8d29abe04230629a5c2104dd6"
     },
     "case": "launcher-019",
-    "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics"
+    "reason": "Fresh Codex boots pin gpt-6.1-sol (golems#413); every repoGolem Codex launch now also carries the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
+  },
+  {
+    "authority": "golems#673",
+    "candidate_sha256": {
+      "darwin": "75e2d1cba5a2c840f05ec5349f6fdbf4675f1070a913aeb40e61e65bc230a237",
+      "linux": "75e2d1cba5a2c840f05ec5349f6fdbf4675f1070a913aeb40e61e65bc230a237"
+    },
+    "case": "launcher-034",
+    "reason": "Worker continue/resume launches now carry the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
+  },
+  {
+    "authority": "golems#673",
+    "candidate_sha256": {
+      "darwin": "4019e518be7bd62d15d429c3182a2412b29195077f782dd78cc4049245bd22bd",
+      "linux": "4019e518be7bd62d15d429c3182a2412b29195077f782dd78cc4049245bd22bd"
+    },
+    "case": "launcher-035",
+    "reason": "Worker continue/resume launches now carry the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
+  },
+  {
+    "authority": "golems#673",
+    "candidate_sha256": {
+      "darwin": "75e2d1cba5a2c840f05ec5349f6fdbf4675f1070a913aeb40e61e65bc230a237",
+      "linux": "75e2d1cba5a2c840f05ec5349f6fdbf4675f1070a913aeb40e61e65bc230a237"
+    },
+    "case": "launcher-036",
+    "reason": "Worker continue/resume launches now carry the app-driver -c overrides that keep computer-use, browser and computer-history off (golems#673)"
   },
   {
     "authority": "golems#475",
