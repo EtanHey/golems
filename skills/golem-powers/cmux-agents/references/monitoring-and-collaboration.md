@@ -132,6 +132,10 @@ For finished one-shots and worker panes, treat harvest → review → close pane
 
 Fleet canon #7 owns harvest/close law. Cmux mechanic: the lane's monitor closes with the lane;
 after harvest/review, close the pane and stop its monitor in the same turn.
+Then remove the lane's worktree in that same turn, once the pane is closed (an open pane keeps
+its cwd live, so the gate answers `KEEP-live`):
+`~/Gits/golems/scripts/worktree-gc.sh --apply --idle-hours 0 --path <lane worktree>`.
+A lane whose PR is not merged yet is kept (`KEEP-unpushed`) and the nightly prune takes it later.
 At every wave close, audit the count: live monitors must never outnumber live lanes.
 
 After a multi-agent sprint, `brain_store` what failed, what worked, and what the user corrected.
