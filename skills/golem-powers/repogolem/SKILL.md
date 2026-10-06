@@ -101,6 +101,13 @@ does not inject registry agent front-matter or boot-store instructions. Short
 - **Opt-in, per launch, by name:** `GOLEM_CODEX_WORKER_ALLOW=gmail,google_drive,browser-tools …`. Names
   come from codex's connector cache. `google_drive` means full Drive. An unknown name refuses the launch,
   and the variable never reaches the launched codex.
+- **`--scan`** (security route): a worker seat that runs `-s workspace-write` with
+  `approval_policy="never"` and no bypass, because codex-security Deep Scan refuses a parent without a
+  managed filesystem permission profile. It is the one seat with **computer use off**: a scanner doesn't
+  test. It strips connectors too, ignores `--lead`, resolves its model from the `codex.security` role (`-m`
+  overrides), and refuses caller sandbox, approval, bypass and computer-use flags. It also exports a
+  per-launch `[deep_scan]` cap via `CODEX_SECURITY_DEEP_SCAN_CONFIG_PATH` (default 2 workers, 2 subagents,
+  10 discovery runs, 2 h; plugin default 4/3/40/96 h); a caller-set path wins.
 - **Bare dotted keys only:** codex keeps quotes inside a `-c` key segment, so a quoted key is a silent no-op.
   The last `-c` wins and `--enable` beats `-c`. So without `--lead`, any caller `--enable`/`--disable`, or
   any `-c features*`/`apps*`/`connectors*` key, is refused in all five spellings (`-c K`, `-cK`, `-c=K`,

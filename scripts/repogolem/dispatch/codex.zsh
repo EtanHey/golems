@@ -134,13 +134,70 @@ _golem_jq_drop_browser_tools() {
     | not)))'
 }
 
+# Resolves the codex.security role from standards/model-roles.json: the root is
+# GOLEMS_MODEL_ROLES_ROOT, else the registry's golems project. No fallback pin.
+_golem_codex_security_model() {
+  local roles_root="${GOLEMS_MODEL_ROLES_ROOT:-}" model=""
+  if [[ -z "$roles_root" ]]; then
+    roles_root=$(jq -r '.projects.golems.path // empty' "${RALPH_REGISTRY_FILE:-$HOME/.config/ralphtools/registry.json}" 2>/dev/null)
+  fi
+  # The generated registry stores paths as `~/Gits/<repo>`.
+  roles_root="${roles_root/#\~/$HOME}"
+  [[ -n "$roles_root" && -f "$roles_root/standards/model-roles.json" ]] || return 1
+  model=$(jq -r '.roles["codex.security"] | select(.status != "candidate") | .model // empty' \
+    "$roles_root/standards/model-roles.json" 2>/dev/null)
+  [[ -n "$model" ]] || return 1
+  print -r -- "$model"
+}
+
+# True when a `-c` key would loosen the scan seat's sandbox or approvals, or
+# turn its computer use back on.
+_golem_codex_config_key_is_scan_sandbox() {
+  local key="${1%%=*}"
+  key=${key//[[:space:]\"\']/}
+  [[ "$key" == sandbox_mode* || "$key" == sandbox_workspace_write* || "$key" == approval_policy* \
+     || "$key" == permissions || "$key" == permissions.* || "$key" == default_permissions* \
+     || "$key" == plugins || "$key" == plugins.* || "$key" == mcp_servers \
+     || "$key" == mcp_servers.node_repl || "$key" == mcp_servers.node_repl.* \
+     || "$key" == mcp_servers.computer-use || "$key" == mcp_servers.computer-use.* ]]
+}
+
+# A scan seat does not test, so unlike every other launch it turns computer use
+# off: the app-driving plugins plus the node_repl/computer-use servers hosting
+# their runtime (full tables: a bare enabled=false aborts codex where the server
+# is undeclared). Bare dotted keys: codex keeps quotes inside a key segment.
+_golem_codex_scan_computer_use_overrides() {
+  local name
+  for name in computer-use unified-computer-use browser computer-history chrome record-and-replay messages codex-app-tools; do
+    print -r -- "-c"
+    print -r -- "plugins.${name}@openai-bundled.enabled=false"
+  done
+  for name in node_repl computer-use; do
+    print -r -- "-c"
+    print -r -- "mcp_servers.${name}={command=\"/usr/bin/false\",enabled=false}"
+  done
+}
+
+# Prints the first caller argument that would take a --scan launch off the
+# managed workspace-write sandbox Deep Scan requires.
+_golem_codex_scan_conflict() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --dangerously-bypass-approvals-and-sandbox|--full-auto|-s|--sandbox|--sandbox=*|-s?*|-a|--ask-for-approval|--ask-for-approval=*|-a?*)
+        print -r -- "$arg"; return 0 ;;
+    esac
+  done
+  _golem_codex_args_config_match _golem_codex_config_key_is_scan_sandbox "$@"
+}
+
 _golem_launch_codex() {
   local project_name="$1" project_path="$2"; shift 2
   # The bare human shape starts with zero launcher args: cmuxlayer always passes -E.
   local -i codex_launcher_argc=$#
   local -x MCP_CONNECTION_NONBLOCKING=1
   local -x CLAUDE_CODE_NO_FLICKER=1
-  local _flag_codex_effort _flag_codex_effort_explicit _flag_codex_help _flag_codex_worker _flag_codex_lead
+  local _flag_codex_effort _flag_codex_effort_explicit _flag_codex_help _flag_codex_worker _flag_codex_lead _flag_codex_scan
   local -a _codex_extra_args _codex_passthrough_args _extra_args
 
   _golem_parse_codex_flags "$@" || return $?
@@ -175,11 +232,20 @@ _golem_launch_codex() {
   # Sol release, and do not drop the --model flag. Resume paths recover their session model
   # from the selected rollout unless the caller deliberately supplies -m/--model.
   local model="${_flag_model:-}"
+  # A scan seat runs on the codex.security role, resolved at launch: no pin here.
+  if $_flag_codex_scan && [[ -z "$model" ]]; then
+    if ! model=$(_golem_codex_security_model); then
+      print -u2 -- "repoGolem: --scan cannot resolve the codex.security model from standards/model-roles.json (set GOLEMS_MODEL_ROLES_ROOT or register the golems project, or pass -m explicitly)."
+      return 2
+    fi
+  fi
   if [[ "$explicit_resume" == false && "$_flag_continue" == false && -z "$model" ]]; then
     model="gpt-6.1-sol"
   fi
   local worker_mode="${_golem_codex_worker_mode:-false}"
   $_flag_codex_worker && worker_mode=true
+  # A scan seat is always a worker: every strip applies and the hatch never opens.
+  $_flag_codex_scan && worker_mode=true
   [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
   # --worker (and the CodexWorker alias) is the one worker signal: export it to
   # this call and the agent it launches. `local -x` ends with the call, so the
@@ -219,6 +285,16 @@ _golem_launch_codex() {
       return 2
     fi
   fi
+  # codex-security Deep Scan refuses a parent without a managed filesystem
+  # permission profile, which a danger-full-access (bypass) seat cannot give.
+  if $_flag_codex_scan; then
+    local codex_scan_conflict=""
+    if codex_scan_conflict=$(_golem_codex_scan_conflict "$resume_prefix_flag" "${codex_args[@]}"); then
+      print -u2 -- "repoGolem: --scan refuses ${codex_scan_conflict%%=*}: a scan seat runs workspace-write with approval_policy=never and computer use off so codex-security Deep Scan can start."
+      return 2
+    fi
+  fi
+
   # Connector policy: strip unless --lead or the bare human shape. A lane
   # re-enables what it needs for one launch, by name:
   #   GOLEM_CODEX_WORKER_ALLOW=gmail,google_calendar,google_drive,browser-tools
@@ -353,6 +429,10 @@ _golem_launch_codex() {
   fi
 
   codex_config_args+=("${codex_connector_args[@]}")
+  if $_flag_codex_scan; then
+    codex_config_args+=("-s" "workspace-write" "-c" 'approval_policy="never"'
+                        "${(@f)$(_golem_codex_scan_computer_use_overrides)}")
+  fi
 
   if [[ "$worker_mode" == true ]]; then
     agent_prompt=$(_golem_build_worker_prompt "$project_name" "$project_path" "$positional_prompt")
@@ -575,6 +655,24 @@ _golem_launch_codex() {
 
   rm -f "$merged_mcp_file"
 
+  # Deep Scan cost cap for this launch (codex-security reads [deep_scan] from
+  # CODEX_SECURITY_DEEP_SCAN_CONFIG_PATH; its own defaults are 4 workers x 3
+  # subagents, 40 discovery runs, 96 h). A caller-supplied file wins.
+  local codex_scan_cap_file=""
+  if $_flag_codex_scan && [[ -z "${CODEX_SECURITY_DEEP_SCAN_CONFIG_PATH:-}" ]]; then
+    codex_scan_cap_file="${codex_home}/${codex_profile}.deep_scan.toml"
+    if print -r -- $'[deep_scan]\nworkers = 2\nsubagents = 2\nmax_discovery_runs = 10\nmax_time_hours = 2' > "$codex_scan_cap_file" 2>/dev/null; then
+      local -x CODEX_SECURITY_DEEP_SCAN_CONFIG_PATH="$codex_scan_cap_file"
+    else
+      print -u2 -- "repoGolem: could not write the Deep Scan cost cap ${codex_scan_cap_file}; refusing an uncapped scan."
+      rm -f "$codex_scan_cap_file"
+      [[ "$codex_profile_published" == true ]] && rm -f "$codex_profile_file"
+      _golem_cleanup_agent_context "$agent_context_file"
+      _golem_reset_title
+      return 1
+    fi
+  fi
+
   local codex_exit=0
   if [[ "$explicit_resume" == true ]]; then
     local -a explicit_resume_args=("${codex_args[@]}")
@@ -626,6 +724,7 @@ _golem_launch_codex() {
   # up. The process has exited, so take it back off disk rather than leaving a
   # credential file behind for every project, forever.
   [[ "$codex_profile_published" == true ]] && rm -f "$codex_profile_file"
+  [[ -n "$codex_scan_cap_file" ]] && rm -f "$codex_scan_cap_file"
 
   _golem_cleanup_agent_context "$agent_context_file"
   _golem_reset_title
