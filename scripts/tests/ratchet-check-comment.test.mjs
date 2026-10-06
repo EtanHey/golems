@@ -8,8 +8,8 @@ const comment = (verdict, { marker = "mac", login = "EtanHey" } = {}) => ({
   user: { login },
   body: `${markerComment(marker)}\n<!-- ratchet-verdict: ${JSON.stringify(verdict)} -->\n| table |`,
 });
-const pass = { head: HEAD, ok: true, real_pass: 2, real_total: 2 };
-const check = (comments, extra = {}) => checkVerdict({ comments, marker: "mac", head: HEAD, expectedReal: 2, authors: ["EtanHey"], ...extra });
+const pass = { head: HEAD, ok: true, real_pass: 2, real_total: 2, bootstrap: false };
+const check = (comments, extra = {}) => checkVerdict({ comments, marker: "mac", head: HEAD, expectedReal: 2, authors: ["EtanHey"], baseHasRows: true, ...extra });
 
 describe("checkVerdict", () => {
   test("passes on an all-PASS verdict for this exact head", () => {
@@ -21,6 +21,12 @@ describe("checkVerdict", () => {
     expect(check([comment({ ...pass, head: "d".repeat(40) })]).reason).toMatch(/stale/);
     expect(check([comment({ ...pass, ok: false, real_pass: 1 })]).ok).toBe(false);
     expect(check([comment({ ...pass, real_pass: 1, real_total: 1 })]).reason).toMatch(/1 real rows, expected 2/);
+  });
+
+  test("a bootstrap verdict FAILs when the base branch has a row file, and passes only when it has none", () => {
+    expect(check([comment({ ...pass, bootstrap: true })]).reason).toMatch(/bootstrap/);
+    expect(check([comment({ ...pass, bootstrap: true })], { baseHasRows: false }).ok).toBe(true);
+    expect(check([comment({ head: HEAD, ok: true, real_pass: 2, real_total: 2 })]).reason).toMatch(/bootstrap/);
   });
 
   test("a marker comment from anyone outside the allowed authors is ignored", () => {

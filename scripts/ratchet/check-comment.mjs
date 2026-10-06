@@ -7,15 +7,17 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { markerComment, parseRows, readVerdict } from "./table.mjs";
+import { baseRowsAt, markerComment, parseRows, readVerdict } from "./table.mjs";
 
-export function checkVerdict({ comments, marker, head, expectedReal, authors }) {
+export function checkVerdict({ comments, marker, head, expectedReal, authors, baseHasRows }) {
   const tag = markerComment(marker);
   const found = comments.filter((c) => typeof c.body === "string" && c.body.split("\n")[0] === tag && authors.includes(c.user?.login));
   if (!found.length) return { ok: false, reason: `no ${marker} ratchet comment from ${authors.join("/")}` };
   // Only the fixed line right after the marker is a verdict (table.mjs escapes every cell).
   const verdict = readVerdict(found.at(-1).body, marker);
   if (!verdict) return { ok: false, reason: "ratchet verdict unreadable" };
+  // A verdict that skipped the direction check is only acceptable where there was nothing to check.
+  if (baseHasRows && verdict.bootstrap !== false) return { ok: false, reason: "bootstrap verdict (direction unchecked) but the base branch has a row file" };
   if (verdict.head !== head) return { ok: false, reason: `stale: table is for ${String(verdict.head).slice(0, 8)}, PR head is ${head.slice(0, 8)}` };
   if (verdict.real_total !== expectedReal) return { ok: false, reason: `table has ${verdict.real_total} real rows, expected ${expectedReal}` };
   if (!verdict.ok || verdict.real_pass !== verdict.real_total) return { ok: false, reason: `verdict FAIL (${verdict.real_pass}/${verdict.real_total} real rows PASS)` };
@@ -28,10 +30,10 @@ function parseArgs(argv) {
     const [key, value] = [argv[index], argv[index + 1]];
     if (value === undefined || value.startsWith("--")) throw new Error(`incomplete argument ${key}`);
     if (key === "--author") options.authors.push(value);
-    else if (["--repo", "--pr", "--marker", "--head", "--rows", "--runner"].includes(key)) options[key.slice(2)] = value;
+    else if (["--repo", "--pr", "--marker", "--head", "--rows", "--runner", "--base-ref"].includes(key)) options[key.slice(2)] = value;
     else throw new Error(`unknown argument ${key}`);
   }
-  for (const key of ["repo", "pr", "marker", "head", "rows", "runner"]) if (!options[key]) throw new Error(`--${key} is required`);
+  for (const key of ["repo", "pr", "marker", "head", "rows", "runner", "base-ref"]) if (!options[key]) throw new Error(`--${key} is required`);
   if (!options.authors.length) throw new Error("at least one --author is required");
   return options;
 }
@@ -44,14 +46,22 @@ export function main(argv) {
     process.stderr.write(`ratchet: ${error.message}\n`);
     return 2;
   }
-  const rows = parseRows(JSON.parse(readFileSync(options.rows, "utf8")));
+  let rows;
+  let baseHasRows;
+  try {
+    rows = parseRows(JSON.parse(readFileSync(options.rows, "utf8")));
+    baseHasRows = baseRowsAt(options.rows, options["base-ref"]) !== null;
+  } catch (error) {
+    process.stderr.write(`ratchet: ${error.message}\n`);
+    return 2;
+  }
   const expectedReal = rows.rows.filter((row) => row.runner === options.runner && row.kind === "real").length;
   const gh = spawnSync("gh", ["api", "--paginate", "--slurp", `repos/${options.repo}/issues/${options.pr}/comments`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (gh.status !== 0) {
     process.stderr.write(`ratchet: cannot read PR comments: ${gh.stderr}\n`);
     return 1;
   }
-  const result = checkVerdict({ comments: JSON.parse(gh.stdout).flat(), marker: options.marker, head: options.head, expectedReal, authors: options.authors });
+  const result = checkVerdict({ comments: JSON.parse(gh.stdout).flat(), marker: options.marker, head: options.head, expectedReal, authors: options.authors, baseHasRows });
   process.stdout.write(`ratchet ${options.marker}: ${result.ok ? "PASS" : "FAIL"}: ${result.reason}\n`);
   return result.ok ? 0 : 1;
 }
