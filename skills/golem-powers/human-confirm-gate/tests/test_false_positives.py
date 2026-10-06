@@ -38,6 +38,7 @@ class FalsePositives(unittest.TestCase):
             "cat <<EOF\nit's\n$(git push -f\n origin topic)\nEOF",
             "cat <<'EOF'\nit's\nEOF\necho $(git push -f origin topic)",
             "cat <<'EOF'; echo $(git push -f origin topic)\n`x`\nEOF",
+            "cat <<'A' <<B\n`a`\nA\n$(git push -f origin topic)\nB",
         ])
 
     def test_fp_a_ambiguous_heredoc_views_keep_the_full_scan(self):
@@ -51,6 +52,8 @@ class FalsePositives(unittest.TestCase):
         self.assertEqual(syntax.mask_heredoc_bodies("cat <<'E'\n`x`\nE", commands.shell), "cat <<'E'\n   \nE")
         unquoted = "cat <<E\n`x` it's\nE"  # bash runs these substitutions: never masked
         self.assertEqual(syntax.mask_heredoc_bodies(unquoted, commands.shell), unquoted)
+        self.assertEqual(syntax.mask_heredoc_bodies("cat <<'A' <<B\n`a`\nA\n`b`\nB", commands.shell),
+                         "cat <<'A' <<B\n   \nA\n`b`\nB")
 
     def test_fp_b_apostrophes_in_quoted_args(self):
         self.assertDecisions('allow', ['bun test -t "doesn\'t crash"', 'npx vitest -t "user\'s flow"',

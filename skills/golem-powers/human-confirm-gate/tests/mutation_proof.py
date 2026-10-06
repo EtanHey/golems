@@ -126,7 +126,7 @@ mutations = [
     ('gh-graphql-input-opaque', 'gh_policy.py', ["opaque |= arg == '--input'; i += 1", "opaque |= arg.startswith('--input=')"], ['i += 1', 'pass'], 'test_false_positives.GhMutants.test_graphql_input_is_opaque'),
     ('gh-transfer', 'gh_policy.py', "'environments', 'transfer')", "'environments')", 'test_false_positives.GhMutants.test_transfer_is_settings'),
     ('heredoc-views-agree', 'syntax.py', ' or _shell_heredoc_starts(command, shell) != starts:', ':', 'test_false_positives.FalsePositives.test_fp_a_ambiguous_heredoc_views_keep_the_full_scan'),
-    ('heredoc-quoted-only', 'syntax.py', '            elif quoted:', '            else:', 'test_false_positives.FalsePositives.test_fp_a_executable_text_around_heredocs_still_denies'),
+    ('heredoc-quoted-only', 'syntax.py', '            elif quoted:', '            else:', 'test_false_positives.FalsePositives.test_fp_a_ambiguous_heredoc_views_keep_the_full_scan'),
     ('heredoc-mask', 'commands.py', 'shell._executable_subcommands(syntax.mask_heredoc_bodies(command, shell))', 'shell._executable_subcommands(command)', 'test_false_positives.FalsePositives.test_fp_a_quoted_heredoc_prose_is_data'),
     ('apostrophe-protected', 'commands.py', "raise ValueError('unparseable protected payload')", 'pass', 'test_false_positives.FalsePositives.test_fp_b_apostrophes_in_quoted_args'),
     ('shell-stdin', 'commands.py', "elif syntax.shell_reads_stdin(args) or any(op == '<' and target == '(' for op, target in redirects):", 'elif False:', 'test_false_positives.FalsePositives.test_fp_c_script_operands_are_not_stdin'),
