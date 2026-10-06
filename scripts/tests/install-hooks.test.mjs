@@ -8,7 +8,9 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { E1_DELETED, MIN_HOOK_PYTHON, pathPython, pinnedFingerprints, resolveHookPython } from "../hooks/install-hooks.mjs";
+import {
+  E1_DELETED, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, pinnedFingerprints, resolveHookPython,
+} from "../hooks/install-hooks.mjs";
 
 // Every test builds a git fixture and spawns node; a cold CI runner needs headroom.
 setDefaultTimeout(30_000);
@@ -71,13 +73,16 @@ function fakePython(fx, name, version) {
   return at;
 }
 
-function fixture({ settings, privateSuite = true } = {}) {
+function fixture({ settings, privateSuite = true, ownerLayout = false } = {}) {
   const scratch = path.join(here, "../../docs.local/install-hooks-fixtures");
   mkdirSync(scratch, { recursive: true });
   const root = realpathSync(mkdtempSync(path.join(scratch, "install-hooks-")));
   dirs.push(root);
   const origin = path.join(root, "origin.git");
-  const repo = path.join(root, "golems");
+  const home = path.join(root, "home");
+  // ownerLayout: the repo sits at ~/Gits/golems, where the recovery hint points.
+  const repo = ownerLayout ? path.join(home, "Gits/golems") : path.join(root, "golems");
+  mkdirSync(path.dirname(repo), { recursive: true });
   git(root, "init", "-q", "--bare", "-b", "master", origin);
   git(root, "clone", "-q", origin, repo);
   mkdirSync(path.join(repo, "skills/golem-powers/demo-gate/hooks"), { recursive: true });
@@ -88,7 +93,6 @@ function fixture({ settings, privateSuite = true } = {}) {
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "seed");
   git(repo, "push", "-q", "origin", "HEAD:master");
-  const home = path.join(root, "home");
   mkdirSync(path.join(home, ".claude/hooks"), { recursive: true });
   const text = settings ?? `${JSON.stringify({ ...UNRELATED, hooks: { SessionStart: [{ hooks: [EXTERNAL] }] } }, null, 2)}\n`;
   writeFileSync(path.join(home, ".claude/settings.json"), text);
@@ -600,7 +604,7 @@ test("human confirmation ships once on each host through hooks-live with the sha
   const reference = realManifest.hosts.mbp.find((h) => h.id === "human-confirm-gate");
   expect(reference.matcher).toBe("Bash|Monitor|Write|Edit|MultiEdit|NotebookEdit");
   expect(reference.timeout).toBe(10);
-  expect(reference.command).toBe("{python} -I -B {hooks}/golems-fail-open.py {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
+  expect(reference.command).toBe("{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py");
   for (const entries of Object.values(realManifest.hosts)) {
     expect(entries.filter((h) => h.id === "human-confirm-gate")).toEqual([reference]);
   }
@@ -1078,6 +1082,311 @@ test("--status flags a registered hook command whose interpreter is bare, missin
   }
   writeFileSync(fx.settingsPath, pinned);
   expect(run(fx, "--status").status).toBe(0);
+});
+
+// ---- #488 policy gates fail closed (#598 integrated) + #488-b recovery ----
+
+const closedDeny = { decision: "block", reason: REPAIR_REASON, hookSpecificOutput: {
+  hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: REPAIR_REASON } };
+const callHook = (fx, command, input = "{}") => spawnSync("sh", ["-c", command],
+  { input, encoding: "utf8", env: { ...fixtureEnv(fx), HOME: fx.home } });
+
+test("the policy gates (tmp-block, git-guardian, human-confirm) opt into fail-closed on every host where they run", () => {
+  for (const entries of Object.values(realManifest.hosts)) {
+    expect(entries.filter((e) => e.command?.includes("--fail-closed")).map((e) => e.id).sort())
+      .toEqual(["human-confirm-gate", "pre_tool_use", "tmp-block"]);
+    for (const id of ["human-confirm-gate", "pre_tool_use", "tmp-block"]) {
+      expect(entries.find((e) => e.id === id).timeout).toBeGreaterThanOrEqual(2);  // watchdog budget = timeout - 1
+      expect(entries.find((e) => e.id === id).command).toContain("golems-fail-open.py --fail-closed ");
+    }
+    expect(entries.find((e) => e.id === "pre_tool_use").source)
+      .toBe("skills/golem-powers/git-guardian/hooks/pre_tool_use.py");
+  }
+});
+
+const legacyLauncher = "import os,sys\nif not os.path.isfile(sys.argv[1]):\n print('legacy missing target (allowing)', file=sys.stderr)\n sys.exit(0)\n";
+function closedFixture() {
+  const fx = fixture();
+  const manifest = manifestFor();
+  manifest.hosts.mbp[0].id = "tmp-block";
+  manifest.hosts.mbp[0].command = manifest.hosts.mbp[0].command.replace("golems-fail-open.py ", "golems-fail-open.py --fail-closed ");
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  return fx;
+}
+const closedCommand = (fx) => JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.PreToolUse[0].hooks[0].command;
+
+test("a fail-closed gate registers inside the /bin/sh guard; its copied launcher denies a vanished hooks-live target", () => {
+  const fx = closedFixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const command = closedCommand(fx);
+  // Watchdog budget = the 5 s manifest timeout - 1 s, so the deny lands before the harness kill (which allows).
+  expect(command).toBe(failClosedCommand(`${hookPython()} ${fx.home}/.claude/hooks/golems-fail-open.py --fail-closed --budget 4 ${fx.home}/.claude/hooks/demo-gate/hooks/demo-gate.py`));
+  expect(callHook(fx, command).status).toBe(0);
+  rmSync(path.join(live(fx), "skills/golem-powers/demo-gate/hooks/demo-gate.py"));
+  const r = callHook(fx, command);
+  expect([r.status, r.stderr, JSON.parse(r.stdout)]).toEqual([2, "", closedDeny]);
+});
+
+test("MEDIUM: a vanished pinned interpreter denies a fail-closed gate (exit 2, static), while a fail-open hook stays open", () => {
+  const fx = closedFixture();
+  const manifest = JSON.parse(readFileSync(fx.manifest, "utf8"));
+  manifest.hosts.mbp.push({ ...manifestFor().hosts.mbp[0], id: "open-gate", link: "open-gate", match: "open-gate.py",
+    command: "{python} -I -B {hooks}/golems-fail-open.py {hooks}/open-gate/hooks/open-gate.py",
+    source: "skills/golem-powers/demo-gate", matcher: "Write" });
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const pinned = path.join(fx.root, "pinned-bin/python3");
+  mkdirSync(path.dirname(pinned)); symlinkSync(hookPython(), pinned);
+  expect(run(fx, "--apply", "--python", pinned).status).toBe(0);
+  const hooks = JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.PreToolUse;
+  const [closed, open] = ["demo-gate.py", "open-gate.py"].map((m) => hooks.flatMap((g) => g.hooks).find((h) => h.command.includes(m)).command);
+  expect(callHook(fx, closed).status).toBe(0);
+  rmSync(pinned);
+  const denied = callHook(fx, closed);
+  expect([denied.status, JSON.parse(denied.stdout)]).toEqual([2, closedDeny]);
+  expect(callHook(fx, open).status).toBe(127);  // non-policy hooks keep fail-open (Claude: non-blocking)
+  const st = run(fx, "--status", "--python", hookPython());
+  expect(st.status).toBe(1);
+  expect(st.out).toContain(`tmp-block interpreter BAD: ${pinned} (missing)`);
+});
+
+test("a fail-closed launcher copy that cannot even start denies through the guard", () => {
+  const fx = closedFixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  writeFileSync(path.join(fx.home, ".claude/hooks/golems-fail-open.py"), "def broken(:\n");
+  const r = callHook(fx, closedCommand(fx));
+  expect([r.status, JSON.parse(r.stdout)]).toEqual([2, closedDeny]);
+});
+
+test("policy status rejects missing fail-closed registration and stale launcher; apply repairs the pair", () => {
+  const fx = closedFixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const original = readFileSync(fx.settingsPath, "utf8");
+  writeFileSync(fx.settingsPath, original.replace("--fail-closed ", ""));
+  let result = run(fx, "--status");
+  expect(result.status).not.toBe(0);
+  expect(result.out).toContain("fail-closed=no");
+  writeFileSync(fx.settingsPath, original);
+  const copy = path.join(fx.home, ".claude/hooks/golems-fail-open.py");
+  writeFileSync(copy, legacyLauncher);
+  result = run(fx, "--status");
+  expect(result.status).not.toBe(0); expect(result.out).toContain("golems-fail-open stale");
+  expect(result.out).toContain("fail-closed=no");
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(readFileSync(copy).equals(readFileSync(wrapper))).toBe(true);
+  result = run(fx, "--status");
+  expect([result.status, result.out]).toEqual([0, expect.stringContaining("tmp-block ok fail-closed=yes")]);
+  const denied = spawnSync("python3", [copy, "--fail-closed", path.join(fx.root, "missing.py")], { encoding: "utf8" });
+  expect(denied.status).toBe(2);
+  const open = fixture();
+  expect(run(open, "--apply").status).toBe(0);
+  writeFileSync(path.join(open.home, ".claude/hooks/golems-fail-open.py"), legacyLauncher);
+  expect(run(open, "--status").status).not.toBe(0);
+});
+
+test("installer refuses a legacy source launcher paired with fail-closed before pin or settings writes", () => {
+  const fx = closedFixture();
+  const source = path.join(fx.root, "installer"); mkdirSync(source);
+  for (const name of ["install-hooks.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
+  writeFileSync(path.join(source, "fail-open.py"), legacyLauncher);
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const result = spawnSync("node", [path.join(source, "install-hooks.mjs"), "--repo", fx.repo,
+    "--manifest", fx.manifest, "--host", "mbp", "--apply"], { encoding: "utf8", env: fixtureEnv(fx) });
+  expect(result.status).not.toBe(0); expect(result.stderr).toContain("fail-closed protocol");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before); expect(existsSync(live(fx))).toBe(false);
+});
+
+test("LOW-1: --status with no acceptable interpreter and a real config.toml prints hook-python=NONE, never a stack trace", () => {
+  const fx = fixture();
+  withCodex(fx);
+  mkdirSync(path.join(fx.home, ".codex"), { recursive: true });
+  writeFileSync(path.join(fx.home, ".codex/config.toml"), "model = \"m\"\n");
+  const st = run(fx, "--status", "--python", fakePython(fx, "old", "3.9.6"));
+  expect(st.status).toBe(1);
+  expect(st.out).toContain("hook-python=NONE: no acceptable hook interpreter");
+  expect(st.out).toContain("codex wiring=unchecked");
+  expect(st.out).not.toMatch(/\n\s+at |Cannot validate Codex config/);
+});
+
+// A repo at ~/Gits/golems holding the REAL policy gates (synthetic public suites,
+// so the private regression gate stays fixture-sized).
+function policyFixture() {
+  const fx = fixture({ ownerLayout: true });
+  const sourceRepo = path.resolve(here, "../..");
+  for (const name of ["git-guardian", "tmp-block", "_shared"]) {
+    cpSync(path.join(sourceRepo, "skills/golem-powers", name), path.join(fx.repo, "skills/golem-powers", name), { recursive: true,
+      filter: (s) => !/\/(tests|evals|__pycache__)(\/|$)|\.pyc$/.test(s.slice(sourceRepo.length)) });
+  }
+  for (const name of ["install-hooks.mjs", "install-hooks.sh", "codex-hooks-install.mjs", "fail-open.py",
+    "private-regression-gate.py", "codex-policy-hook.py"]) {
+    cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
+  }
+  for (const suite of ["skills/golem-powers/_shared/tests", "skills/golem-powers/tmp-block/tests",
+    "skills/golem-powers/tmp-block/hooks/tests", "skills/golem-powers/git-guardian/tests", "skills/golem-powers/git-guardian/hooks/tests"]) {
+    mkdirSync(path.join(fx.repo, suite), { recursive: true });
+    writeFileSync(path.join(fx.repo, suite, `test_public_${suite.split("/").slice(2).join("_")}.py`), "def test_public():\n    pass\n");
+  }
+  mkdirSync(path.join(fx.repo, "scripts/tests"), { recursive: true });
+  writeFileSync(path.join(fx.repo, "scripts/tests/test_codex_policy_hook.py"), "def test_public():\n    pass\n");
+  const manifest = { hosts: { mbp: realManifest.hosts.mbp.filter((e) => ["tmp-block", "pre_tool_use"].includes(e.id)) } };
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  writeFileSync(path.join(fx.repo, "scripts/hooks/manifest.json"), JSON.stringify(manifest));
+  writeFileSync(path.join(fx.repo, ".gitignore"), "__pycache__/\n*.pyc\ndocs.local/\n");
+  git(fx.repo, "add", "."); git(fx.repo, "commit", "-qm", "policies"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  return fx;
+}
+const policyCommands = (fx) => JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command);
+const echoRequest = (fx) => JSON.stringify({ tool_name: "Bash", tool_input: { command: "echo fixture" }, cwd: fx.repo, session_id: "synthetic-recovery" });
+// Simulates a human terminal / ! prompt command; the live Claude ! bypass is not claimed.
+const runHint = (fx, hint) => spawnSync("bash", ["-c", hint], { cwd: fx.home, encoding: "utf8", env: { ...fixtureEnv(fx), HOME: fx.home } });
+
+test("missing locked hooks-live recovers through the actual owner hint from an unrelated cwd; other trees untouched", () => {
+  const fx = policyFixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  for (const command of policyCommands(fx)) expect(callHook(fx, command, echoRequest(fx)).status).toBe(0);
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toContain("locked ");
+  rmSync(live(fx), { recursive: true });
+  for (const command of policyCommands(fx)) expect(callHook(fx, command, echoRequest(fx)).status).toBe(2);
+  const other = path.join(fx.repo, ".worktrees/other-locked");
+  git(fx.repo, "worktree", "add", "-q", "--detach", other, "HEAD");
+  git(fx.repo, "worktree", "lock", "--reason", "foreign pin", other);
+  rmSync(other, { recursive: true });
+  const unlocked = path.join(fx.repo, ".worktrees/other-unlocked");  // N4: no repo-wide prune
+  git(fx.repo, "worktree", "add", "-q", "--detach", unlocked, "HEAD");
+  rmSync(unlocked, { recursive: true });
+  const metadata = git(fx.repo, "worktree", "list", "--porcelain");
+  expect(run(fx, "--update").status).toBe(0);
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toBe(metadata);
+  const reason = JSON.parse(callHook(fx, policyCommands(fx)[0], echoRequest(fx)).stdout).reason;
+  const match = reason.match(/`! (bash [^`]+)`/);
+  expect(match).not.toBeNull();
+  const hint = match[1].replace("<host>", "mbp");
+  const result = runHint(fx, hint);
+  expect(result.status, result.stderr).toBe(0);
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(git(fx.repo, "rev-parse", "origin/master"));
+  const after = git(fx.repo, "worktree", "list", "--porcelain");
+  expect(after).toContain(`worktree ${other}\nHEAD`);
+  expect(after).toContain("locked foreign pin");
+  expect(after).toContain(`worktree ${unlocked}\nHEAD`);
+  for (const command of policyCommands(fx)) expect(callHook(fx, command, echoRequest(fx)).status).toBe(0);
+  // A broken but existing pin moves to a healthy successor via the same hint.
+  const policy = "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py";
+  const healthy = readFileSync(path.join(fx.repo, policy));
+  writeFileSync(path.join(fx.repo, policy), "def broken(:\n");
+  git(fx.repo, "add", policy); git(fx.repo, "commit", "-qm", "broken synthetic pin");
+  const brokenSha = git(fx.repo, "rev-parse", "HEAD");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const brokenInstall = run(fx, "--update", brokenSha, "--apply");
+  expect(brokenInstall.status, brokenInstall.out).toBe(0);
+  expect(callHook(fx, policyCommands(fx).find((c) => c.includes("tmp-block")), echoRequest(fx)).status).toBe(2);
+  writeFileSync(path.join(fx.repo, policy), healthy);
+  git(fx.repo, "add", policy); git(fx.repo, "commit", "-qm", "healthy synthetic successor");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  expect(runHint(fx, hint).status).toBe(0);
+  expect(git(live(fx), "rev-parse", "HEAD")).not.toBe(brokenSha);
+  for (const command of policyCommands(fx)) expect(callHook(fx, command, echoRequest(fx)).status).toBe(0);
+});
+
+test("N1: a damaged pin at the current sha: status is red, apply and the hint refuse naming --restore-live, which restores it", () => {
+  const fx = policyFixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const policy = path.join(live(fx), "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py");
+  rmSync(policy);
+  const tmpBlock = policyCommands(fx).find((c) => c.includes("tmp-block"));
+  expect(callHook(fx, tmpBlock, echoRequest(fx)).status).toBe(2);
+  const st = run(fx, "--status");
+  expect([st.status, st.out]).toEqual([1, expect.stringContaining("hooks-live DIRTY")]);
+  for (const args of [["--apply"], ["--update", "--apply"]]) {
+    const refused = run(fx, ...args);
+    expect([refused.status, refused.out]).toEqual([1, expect.stringContaining("re-run with --restore-live")]);
+  }
+  expect(existsSync(policy)).toBe(false);  // refusing never erases the evidence
+  expect(run(fx, "--restore-live").out).toContain("would restore local damage");
+  const r = run(fx, "--update", "--apply", "--restore-live");
+  expect(r.status, r.out).toBe(0);
+  expect(r.out).toContain("restored local damage");
+  expect(existsSync(policy)).toBe(true);
+  expect(callHook(fx, tmpBlock, echoRequest(fx)).status).toBe(0);
+  expect(run(fx, "--status").status).toBe(0);
+});
+
+test("N2: a non-worktree hooks-live dir is moved aside; the main checkout's branch and HEAD never move", () => {
+  const fx = fixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  rmSync(live(fx), { recursive: true });
+  mkdirSync(live(fx));
+  git(fx.repo, "checkout", "-q", "-b", "my-feature");
+  git(fx.repo, "commit", "-q", "--allow-empty", "-m", "feature work");
+  const head = git(fx.repo, "rev-parse", "HEAD");
+  const st = run(fx, "--status");
+  expect([st.status, st.out]).toEqual([1, expect.stringContaining("hooks-live=NOT-A-WORKTREE")]);
+  const r = run(fx, "--update", "--apply");
+  expect(r.status, r.out).toBe(0);
+  expect(r.out).toContain("not a worktree; moved aside");
+  expect([git(fx.repo, "branch", "--show-current"), git(fx.repo, "rev-parse", "HEAD")]).toEqual(["my-feature", head]);
+  expect(git(live(fx), "rev-parse", "--show-toplevel")).toBe(live(fx));
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(git(fx.repo, "rev-parse", "origin/master"));
+});
+
+test("N3: recovery and the CLI itself work through a symlinked repo/installer path", () => {
+  const fx = fixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  rmSync(live(fx), { recursive: true });
+  const linked = path.join(fx.root, "linked-golems");
+  symlinkSync(fx.repo, linked);
+  const r = spawnSync("node", [installer, "--repo", linked, "--manifest", fx.manifest, "--host", "mbp", "--update", "--apply"],
+    { encoding: "utf8", env: fixtureEnv(fx) });
+  expect(r.status, `${r.stdout}${r.stderr}`).toBe(0);
+  expect(git(path.join(fx.repo, ".worktrees/hooks-live"), "rev-parse", "HEAD")).toBe(git(fx.repo, "rev-parse", "origin/master"));
+  const linkedInstaller = path.join(fx.root, "installer-link.mjs");
+  symlinkSync(installer, linkedInstaller);
+  const st = spawnSync("node", [linkedInstaller, "--repo", fx.repo, "--manifest", fx.manifest, "--host", "mbp", "--status"],
+    { encoding: "utf8", env: fixtureEnv(fx) });
+  expect(st.stdout).toContain("hooks-live=");  // never a silent exit-0 no-op
+});
+
+
+// ---- #656 R1 fixes ----
+
+test("R1 F2: a hanging fail-closed gate denies (exit 2, static) before its 5 s harness timeout and its process group is killed", () => {
+  const fx = closedFixture();
+  const hook = path.join(fx.repo, "skills/golem-powers/demo-gate/hooks/demo-gate.py");
+  const pidFile = path.join(fx.root, "grandchild.pid");
+  writeFileSync(hook, "import subprocess, sys, time\nsys.stdin.read()\n" +
+    `p = subprocess.Popen(['sleep', '30'])\nopen(${JSON.stringify(pidFile)}, 'w').write(str(p.pid))\nprint('{"partial": ')\ntime.sleep(30)\n`);
+  git(fx.repo, "add", "."); git(fx.repo, "commit", "-qm", "hanging gate"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  expect(run(fx, "--apply").status).toBe(0);
+  const started = Date.now();
+  const r = callHook(fx, closedCommand(fx));
+  const elapsed = Date.now() - started;
+  expect([r.status, JSON.parse(r.stdout)]).toEqual([2, closedDeny]);
+  expect(elapsed).toBeGreaterThan(3_500);
+  expect(elapsed).toBeLessThan(5_000);
+  const grandchild = Number(readFileSync(pidFile, "utf8"));
+  expect(spawnSync("kill", ["-0", String(grandchild)]).status).not.toBe(0);  // the hook's own child is gone too
+});
+
+test("R1 F1: --restore-live refuses when hooks-live HEAD is not the recorded pin, never adopting a moved HEAD", () => {
+  const fx = fixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const recorded = readFileSync(path.join(fx.home, ".claude/hooks/golems-hooks-live.sha"), "utf8").trim();
+  git(live(fx), "commit", "-q", "--allow-empty", "-m", "local-only tamper");
+  const moved = git(live(fx), "rev-parse", "HEAD");
+  rmSync(path.join(live(fx), "skills/golem-powers/demo-gate/hooks/demo-gate.py"));
+  const r = run(fx, "--apply", "--restore-live");
+  expect(r.status).toBe(1);
+  expect(r.out).toContain(`hooks-live HEAD ${moved} is not the recorded pin ${recorded}`);
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(moved);
+  expect(readFileSync(path.join(fx.home, ".claude/hooks/golems-hooks-live.sha"), "utf8").trim()).toBe(recorded);
+  expect(existsSync(path.join(live(fx), "skills/golem-powers/demo-gate/hooks/demo-gate.py"))).toBe(false);  // evidence kept
+});
+
+test("R1 F2: a fail-closed entry whose timeout leaves no watchdog budget is refused", () => {
+  const fx = closedFixture();
+  const manifest = JSON.parse(readFileSync(fx.manifest, "utf8"));
+  manifest.hosts.mbp[0].timeout = 1;
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const r = run(fx);
+  expect([r.status, r.out]).toEqual([1, expect.stringContaining("needs a timeout >= 2 seconds for its watchdog budget")]);
 });
 
 // A golems hook dropped from the manifest (#579 retired precompact-checkpoint):

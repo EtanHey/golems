@@ -66,12 +66,14 @@ function setup(id, e) {
   const isFile = source.endsWith(".py");
   copy(isFile ? path.dirname(source) : source);
   copy("scripts/hooks/fail-open.py");
-  const after = e.command.split("golems-fail-open.py ")[1];
+  const rest = e.command.split("golems-fail-open.py ")[1];
+  const closed = rest.startsWith("--fail-closed ");  // policy gates: mirror the registered mode
+  const after = closed ? rest.slice("--fail-closed ".length) : rest;
   const entry = isFile ? path.join(tree, source) : path.join(tree, source, after.replace(`{hooks}/${e.link}/`, ""));
   const flags = e.command.split(" ").slice(1, e.command.split(" ").findIndex((w) => w.includes("golems-fail-open.py")));
   const home = path.join(tree, "home");
   mkdirSync(home, { recursive: true });
-  return { tree, entry, flags, home, launcher: path.join(tree, "scripts/hooks/fail-open.py"),
+  return { tree, entry, flags, home, closed, launcher: path.join(tree, "scripts/hooks/fail-open.py"),
     dirs: [...new Set([...pyDirs(path.join(tree, isFile ? path.dirname(source) : source)), ...pyDirs(path.join(tree, "skills/golem-powers/_shared"))])] };
 }
 
@@ -89,7 +91,8 @@ function invoke(fx, payload, marker, direct = false) {
   if (payload.cwdOnMain && !existsSync(path.join(cwd, ".git"))) {
     spawnSync("git", ["init", "-q", "-b", "main", cwd]);
   }
-  const argv = direct ? [fx.entry] : [...fx.flags, fx.launcher, fx.entry];  // direct: no launcher, no -I
+  const argv = direct ? [fx.entry]  // direct: no launcher, no -I
+    : [...fx.flags, fx.launcher, ...(fx.closed ? ["--fail-closed"] : []), fx.entry];
   const r = spawnSync("python3", argv, { cwd, encoding: "utf8", input: JSON.stringify(event),
     env: { PATH: process.env.PATH, HOME: fx.home, PLANT_MARKER: marker, CLAUDE_PROJECT_DIR: cwd } });
   return r.status;

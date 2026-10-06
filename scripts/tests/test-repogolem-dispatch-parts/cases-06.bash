@@ -271,7 +271,8 @@ function split_case_104() {
 # After the launcher returns, the caller's shell must hold what it held before.
 run_worker_role_launch() {
     local preset="$1"; shift
-    run zsh -f -c '
+    install_test_shell_worker "$TMPDIR_/role-home"
+    run env HOME="$TMPDIR_/role-home" zsh -f -c '
       unset GOLEM_ROLE
       [ -n "$3" ] && export GOLEM_ROLE="$3"
       export RALPH_REGISTRY_FILE="$1"

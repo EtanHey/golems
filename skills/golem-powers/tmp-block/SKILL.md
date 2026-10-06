@@ -16,6 +16,29 @@ the live fleet-wide guard whatever branch happens to be checked out. Install wit
 **A merge does not deploy this hook; `--update --apply` moves the pin.** The legacy copy
 installer `scripts/install.sh` is described in `hooks/INSTALL.md`.
 
+Both host manifests run this policy gate through the installed copy of
+`golems-fail-open.py --fail-closed` (#488). A missing, unreadable, syntax-broken
+or crashed hook produces a static, value-free denial with the reinstall hint
+`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.
+Flag this to the user: the blocked agent cannot run Bash recovery. A human runs
+the command from the prompt or an outside terminal (omit `!` in a terminal).
+The installer clears the missing pin's locked registration before recreating
+it; `--update` also replaces a broken existing pin. Local damage inside
+hooks-live refuses until a human inspects it and re-runs with `--restore-live`. The prompt's `!` bypass is
+the #411 assumption, not live-verified here. Failed-hook output
+is discarded; legitimate allow/deny results and advisories pass through. This
+does not change the payload-level advisory rules below. Git-guardian's
+`pre_tool_use.py` and human-confirm are the other policy gates; other gates
+retain the default fail-open mode. A `/bin/sh` guard around the registered command denies
+when the pinned interpreter or the launcher cannot start; the registration
+itself must exist to enforce this boundary; lead installs through hooks-live after review/merge.
+A hang, import-time included, is cut by the launcher's `--budget` watchdog
+(5 s manifest timeout, 4 s budget): the hook's process group is killed and the
+call denied before the harness timeout, which would allow. Known residuals:
+registration/launcher edits can disable enforcement, a hook subprocess that
+leaves the process group outlives the kill, and only Python-level
+stdout/stderr is captured.
+
 ## Scope
 
 A PreToolUse guard. The deny covers Write/Edit and Bash writes. The worktree location `<repo>/.worktrees/<name>` is the ratified convention.

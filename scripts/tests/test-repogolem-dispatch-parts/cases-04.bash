@@ -76,6 +76,7 @@ function split_case_063() {
     [ -f "$SOURCE_DISPATCHER" ]
 
     local fake_home="$TMPDIR_/home"
+    install_test_shell_worker "$fake_home"
     mkdir -p "$fake_home/.claude/agents"
     printf '%s\n' \
       "# Full orchestrator protocol" \
