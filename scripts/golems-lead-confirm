@@ -18,6 +18,10 @@ import shlex
 import stat
 import subprocess
 import sys
+
+# Run from hooks-live without -B: never write gate bytecode there (it turns
+# install-hooks --status red, and agents may not clean it).
+sys.dont_write_bytecode = True
 import time
 import uuid
 from pathlib import Path
