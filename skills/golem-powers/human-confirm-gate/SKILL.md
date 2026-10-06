@@ -50,6 +50,19 @@ the gate treats as data:
   Values of fields other than `query`/`operationName` are variables and cannot
   change the operation.
 
+**`gh api` routes:**
+- **Flags are read the way gh reads them** (pflag): short clusters such as
+  `-iX`, a value attached with `=` or the rest of the cluster, and `--flag=v`.
+  An unknown flag denies. A second endpoint word denies unless the request is a
+  read. A method-override header makes the method unknown.
+- **The route is what gh requests:** `?query` and `#fragment` are dropped,
+  and any `.`/`..` segment or a non-`api.github.com` URL host denies.
+- **GraphQL mutations deny by default.** Only routine review/comment fields
+  pass (comments, reviews, review threads, reactions, labels, review requests,
+  draft/ready). A fragment spread at the top of a mutation, an unreadable
+  mutation document, `--input`, and a `-F query=@file`/`@-` document all
+  deny.
+
 **Git routes:**
 - Executable names are case-folded (APFS is case-insensitive), so `GIT`,
   `Git`, `GH` and absolute paths in any case are the same commands.
