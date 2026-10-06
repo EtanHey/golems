@@ -1540,3 +1540,29 @@ test("F3: link targets resolve lexically before the hooks-live check, and *.bak*
     .toEqual([["dangling-into-live.py", false], ["relative-into-live.py", false], ["old.py.bak-20260101", true],
       ["dotdot.py", true], ["near-miss.py", true]]);
 });
+
+test("Codex human-confirm: both hosts register it with the Claude gate's pin; the installer refuses it while unpinned", () => {
+  for (const host of ["mbp", "m1"]) {
+    const claude = realManifest.hosts[host].find((e) => e.id === "human-confirm-gate");
+    const codex = realManifest.codex_hosts[host].find((e) => e.gate === "human-confirm");
+    expect([host, codex?.requiresPin]).toEqual([host, claude.requiresPin]);
+  }
+  for (const pinned of [false, true]) {
+    const fx = fixture();
+    const entries = ["tmp-block", "git-guardian"].map((gate) => ({ gate, source: "scripts/hooks/codex-policy-hook.py",
+      matcher: "^(Bash|apply_patch)$", timeout: 10 }));
+    entries.push({ ...entries[0], gate: "human-confirm", requiresPin: "skills/golem-powers/human-confirm-gate/anchor.pins" });
+    writeFileSync(fx.manifest, JSON.stringify({ ...manifestFor(), codex_hosts: { mbp: entries, m1: entries } }));
+    const pins = path.join(fx.repo, "skills/golem-powers/human-confirm-gate/anchor.pins");
+    mkdirSync(path.dirname(pins), { recursive: true });
+    writeFileSync(pins, pinned ? `${FINGERPRINT}  mbp\n` : "# no owner fingerprint yet\n");
+    git(fx.repo, "add", "-A"); git(fx.repo, "commit", "-qm", "pins"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+    const r = run(fx, "--apply");
+    expect([pinned, r.status]).toEqual([pinned, 0]);
+    expect(r.out.includes("REFUSED codex human-confirm")).toBe(!pinned);
+    const gates = JSON.parse(readFileSync(path.join(fx.home, ".codex/hooks.json"), "utf8")).hooks.PreToolUse
+      .flatMap((g) => g.hooks).map((h) => /codex-policy-hook\.py'\\'' '\\''([a-z-]+)/.exec(h.command)?.[1]).sort();
+    expect([pinned, gates]).toEqual([pinned, pinned ? ["git-guardian", "human-confirm", "tmp-block"] : ["git-guardian", "tmp-block"]]);
+    expect(run(fx, "--status").out).toContain(pinned ? "codex wiring=ok" : "codex human-confirm refused(unpinned)");
+  }
+});

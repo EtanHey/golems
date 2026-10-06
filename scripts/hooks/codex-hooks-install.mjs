@@ -28,16 +28,25 @@ function regular(p, directory = false) {
   if (s.isSymbolicLink() || (directory ? !s.isDirectory() : !s.isFile())) throw new Error("Refusing non-regular Codex destination");
 }
 
-export function planCodexHooks({ manifest, host, live, codexHome, python = "python3" }) {
-  const entries = manifest.codex_hosts?.[host];
-  if (!entries) return null; // Old pins do not claim Codex support.
+// The adapter's gates. Only human-confirm carries an owner anchor pin; like its
+// Claude registration it is refused (never registered) while that pin is empty.
+const CODEX_GATES = { "tmp-block": undefined, "git-guardian": undefined,
+  "human-confirm": "skills/golem-powers/human-confirm-gate/anchor.pins" };
+
+export function planCodexHooks({ manifest, host, live, codexHome, python = "python3", refused = [] }) {
+  const listed = manifest.codex_hosts?.[host];
+  if (!listed) return null; // Old pins do not claim Codex support.
   for (const list of Object.values(manifest.codex_hosts)) {
-    if (!Array.isArray(list) || list.length !== 2 || new Set(list.map(e => e.gate)).size !== 2) throw new Error("Invalid Codex policy manifest");
+    const gates = Array.isArray(list) ? list.map(e => e.gate) : [];
+    if (!Array.isArray(list) || new Set(gates).size !== list.length || !gates.includes("tmp-block") ||
+        !gates.includes("git-guardian") || list.length > 3) throw new Error("Invalid Codex policy manifest");
     for (const e of list) {
-      if (!["tmp-block", "git-guardian"].includes(e.gate) || e.source !== "scripts/hooks/codex-policy-hook.py" ||
+      if (!Object.hasOwn(CODEX_GATES, e.gate) || e.requiresPin !== CODEX_GATES[e.gate] ||
+          e.source !== "scripts/hooks/codex-policy-hook.py" ||
           e.matcher !== "^(Bash|apply_patch)$" || e.timeout !== 10) throw new Error("Invalid Codex policy entry");
     }
   }
+  const entries = listed.filter(e => !refused.includes(e.gate));
   regular(codexHome, true);
   const config = path.join(codexHome, "config.toml");
   const at = path.join(codexHome, "hooks.json");
@@ -70,7 +79,7 @@ export function planCodexHooks({ manifest, host, live, codexHome, python = "pyth
   }
   hooks.PreToolUse = [...(hooks.PreToolUse ?? []), ...desired];
   const next = `${JSON.stringify({ ...current, hooks }, null, 2)}\n`;
-  const registered = matches.length === 2 && desired.every(want =>
+  const registered = matches.length === desired.length && desired.every(want =>
     matches.filter(m => m.event === "PreToolUse" && isDeepStrictEqual(m.group, want)).length === 1);
   const source = entries.every(e => existsSync(path.join(live, e.source)));
   // Native state keys are positional. Presence is evidence of persisted trust,
@@ -84,7 +93,7 @@ export function planCodexHooks({ manifest, host, live, codexHome, python = "pyth
     regular(backup);
     if (existsSync(backup) && readFileSync(backup, "utf8") !== old) throw new Error("Codex hook backup collision");
   }
-  return { at, old, next, enabled, registered, source, trust,
+  return { at, old, next, enabled, registered, source, trust, refused: listed.filter(e => refused.includes(e.gate)).map(e => e.gate),
     backup,
     mode: old ? lstatSync(at).mode & 0o777 : 0o600 };
 }
