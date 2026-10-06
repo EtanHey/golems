@@ -147,6 +147,8 @@ JSON
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_connector_args "$output")"
     # URL normalization now lands in the 0600 per-project profile, never on argv
     refute_contains "mcp_servers." "$output" "codex argv must not carry MCP config keys"
     grep -E -q -- "--profile repogolem-testrepo-[0-9a-f]{8}" <<< "$output"
@@ -224,6 +226,8 @@ function split_case_030() {
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_connector_args "$output")"
     for call in 2; do
       local call_output
       call_output=$(awk -v call="$call" '
@@ -389,6 +393,8 @@ function split_case_034() {
     ' _ "$codex_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_connector_args "$output")"
     local preserved_output model_output effort_output
     preserved_output=$(awk '
       $0 == "CODEX_CALL=1" { in_call = 1; next }
@@ -507,6 +513,8 @@ function split_case_037() {
     ' _ "$codex_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_connector_args "$output")"
     [ "$(grep '^CODEX_ARG=' <<< "$output")" = $'CODEX_ARG=resume\nCODEX_ARG=019fec96-588d-7000-8000-000000000000\nCODEX_ARG=-c\nCODEX_ARG=model_reasoning_effort="xhigh"\nCODEX_ARG=--model\nCODEX_ARG=gpt-5.6-sol' ]
     [ "$(grep -Fc -- "Adopt the following launcher agent context" <<< "$output")" -eq 0 ]
 }
@@ -577,6 +585,8 @@ function split_case_039() {
     ' _ "$codex_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_connector_args "$output")"
     local last_output override_output
     last_output=$(awk '
       $0 == "CODEX_CALL=1" { in_call = 1; next }

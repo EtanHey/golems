@@ -56,6 +56,8 @@ _golem_print_codex_help() {
   print -r -- "                         prompted/worker boots require -E or GOLEM_EFFORT"
   print -r -- "                         choose per plan phase (see /agent-routing); bare interactive uses Codex config"
   print -r -- "      -- <raw args>      requires effort too: raw Codex args may carry a prompt"
+  print -r -- "      --lead             lead seat: keeps codex_apps connectors and browser-tools"
+  print -r -- "                         (every other agent-shaped launch strips them; see /repogolem)"
   print -r -- "  -m, --model <name>     explicit model override"
   print -r -- "  -s, --skip-permissions compatibility no-op (has no effect)"
   print -r -- "  -c, --continue         resume the last session"
@@ -71,6 +73,7 @@ _golem_parse_codex_flags() {
   _flag_codex_effort_explicit=false
   _flag_codex_help=false
   _flag_codex_worker=false
+  _flag_codex_lead=false
   _codex_passthrough_args=()
 
   while [[ $# -gt 0 ]]; do
@@ -92,6 +95,7 @@ _golem_parse_codex_flags() {
         esac
         shift 2 ;;
       --worker) _flag_codex_worker=true; shift ;;
+      --lead) _flag_codex_lead=true; shift ;;
       -h|--help) _flag_codex_help=true; shift ;;
       *) _parsed_args+=("$1"); shift ;;
     esac
