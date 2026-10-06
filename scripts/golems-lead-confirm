@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Lead-token issuer: one signed `lease` token for a lead's own open PR branch.
+
+Lease only, never main/master or the default branch, only the current branch's
+open (unmerged, same-repo) PR at its exact remote head. Every issuance is logged
+twice, to `~/.config/golems/human-confirm/lead-issued.log` and to the collab;
+if either write fails, nothing is issued. Signed with the lead key file
+`~/.config/golems/lead-signer/lead_ed25519` (see golems-lead-keygen).
+
+Under one macOS UID the lead key is an operational boundary, not isolation:
+any process of this user can read it. The scope limits are the control."""
+import argparse
+import hashlib
+import json
+import os
+import re
+import shlex
+import stat
+import subprocess
+import sys
+import time
+import uuid
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'skills/golem-powers/human-confirm-gate/hooks'))
+from commands import operations
+from tokens import SSH, anchor_bytes, lead_metadata, lead_scope, verify_signature
+
+COLLAB = 'Gits/orchestrator/collab/2026-09-24-oss-consolidation.md'
+AGENT_MARKERS = ('CMUX_AGENT_ID', 'CLAUDE_CODE_SESSION_ID', 'CODEX_THREAD_ID', 'CLAUDECODE', 'GOLEM_SEAT')
+
+
+def private_key(home):
+    """The lead key: a 0600 regular file of this user in a 0700 directory, no symlinks."""
+    key = home / '.config/golems/lead-signer/lead_ed25519'
+    for path, kind, mode in ((key.parent, stat.S_ISDIR, 0o700), (key, stat.S_ISREG, 0o600)):
+        info = path.lstat()
+        if not kind(info.st_mode) or stat.S_IMODE(info.st_mode) != mode or info.st_uid != os.getuid():
+            raise ValueError('lead key must be a 0600 file in a 0700 directory: ' + str(path))
+    return key
+
+
+def append(path, line):
+    """One whole line or an error; never a partial or redirected write."""
+    fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    try:
+        data = (line + '\n').encode()
+        if os.write(fd, data) != len(data):
+            raise OSError('short write to ' + str(path))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def issue(argv=None, *, home=None, metadata_fn=lead_metadata, anchor_fn=anchor_bytes, sign=subprocess.run):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument('repo')
+    parser.add_argument('--ref', required=True, help='refs/heads/<branch>, the current branch')
+    parser.add_argument('--sha', required=True, help='full SHA of the remote branch tip the lease pins')
+    parser.add_argument('--session', required=True, help='session id of the seat that will run the push')
+    parser.add_argument('--remote', default='origin')
+    parser.add_argument('--ttl', type=int, default=120)
+    args = parser.parse_args(argv)
+    home = Path(home or Path.home()).resolve(); repo = str(Path(args.repo).resolve())
+    if not args.ref.startswith('refs/heads/') or args.ref.removeprefix('refs/heads/').casefold() in ('', 'main', 'master'):
+        raise ValueError('lead leases take refs/heads/<branch>, never main/master')
+    if not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', args.sha):
+        raise ValueError('--sha must be the full remote tip SHA')
+    if not Path(repo).is_dir() or not 1 <= args.ttl <= 300:
+        raise ValueError('existing repo directory and TTL 1..300 required')
+    command = shlex.join(['git', 'push', f'--force-with-lease={args.ref}:{args.sha}', args.remote, 'HEAD:' + args.ref])
+    ops = operations(command, repo)
+    if len(ops) != 1 or ops[0]['class'] != 'lease' or (ops[0]['ref'], ops[0]['sha'], ops[0]['remote']) != (args.ref, args.sha, args.remote):
+        raise ValueError('only one lease on the requested ref can be issued')
+    pr = lead_scope(ops[0], metadata_fn)  # the gate's own rule: current branch, one GitHub remote, open PR head
+    key = private_key(home)
+    collab = Path(os.environ.get('GOLEMS_LEAD_COLLAB') or home / COLLAB).resolve()
+    if (home / 'Gits/orchestrator/collab').resolve() not in collab.parents or not collab.is_file():
+        raise ValueError("the issuance collab must be an existing file in the coordinator's collab directory")
+    anchor = anchor_fn(home)
+    root = home / '.config/golems/human-confirm'; root.mkdir(parents=True, mode=0o700, exist_ok=True)
+    now = time.time(); nonce = uuid.uuid4().hex
+    token = dict(version=1, kind='lead', nonce=nonce, issued_at=now, expires_at=now + args.ttl,
+                 command_sha256=hashlib.sha256((repo + '\0' + command).encode()).hexdigest(),
+                 operations=ops, session_id=args.session, collab=str(collab))
+    path = root / (nonce + '.json'); raw = json.dumps(token, sort_keys=True).encode()
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+        sign([SSH, '-Y', 'sign', '-q', '-f', str(key), '-n', 'golems-confirm', str(path)], check=True, timeout=30,
+             capture_output=True)
+        if not verify_signature(raw, anchor, 'lead', str(path) + '.sig'):
+            raise ValueError('lead signature does not verify against the pinned anchor')
+        by = {k: os.environ[k] for k in AGENT_MARKERS if os.environ.get(k)}
+        stamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(now))
+        append(root / 'lead-issued.log', json.dumps(dict(ts=stamp, repo=repo, remote=args.remote, ref=args.ref, sha=args.sha,
+                                                         pr=pr.get('number'), nonce=nonce, session=args.session, env=by),
+                                                    sort_keys=True))
+        append(collab, 'GOLEMS_CONFIRM ' + json.dumps(token, sort_keys=True, separators=(',', ':')) + '\n'
+               + f"- lead-token issued {stamp} repo={repo} ref={args.ref} sha={args.sha[:12]} pr=#{pr.get('number')} "
+               + f"by={by.get('CMUX_AGENT_ID') or by.get('GOLEM_SEAT') or 'unknown'}")
+        if time.time() >= token['expires_at']:
+            raise ValueError('expired while issuing; issue a fresh token')
+    except BaseException:
+        path.unlink(missing_ok=True); Path(str(path) + '.sig').unlink(missing_ok=True)
+        raise
+    print(json.dumps(dict(cwd=repo, command=command, session_id=args.session, ttl=args.ttl), indent=2))
+    print('Lead token issued: ' + str(path))
+    return path
+
+
+if __name__ == '__main__':
+    try:
+        issue()
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+        print('golems-lead-confirm refused: ' + str(exc), file=sys.stderr)
+        sys.exit(2)
