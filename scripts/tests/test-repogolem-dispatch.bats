@@ -8,6 +8,7 @@ load 'test-repogolem-dispatch-parts/cases-04.bash'
 load 'test-repogolem-dispatch-parts/cases-05.bash'
 load 'test-repogolem-dispatch-parts/cases-06.bash'
 load 'test-repogolem-dispatch-parts/cases-07.bash'
+load 'test-repogolem-dispatch-parts/cases-11.bash'
 
 @test "install helper installs tracked dispatcher inside HOME" {
     split_case_001
@@ -589,4 +590,8 @@ load 'test-repogolem-dispatch-parts/cases-07.bash'
       refute_contains '--agent' "$output"
       refute_contains 'Worker role:' "$output"
     done
+}
+
+@test "a registry MCP server given as a claude-mcp-add string never aborts a Codex launch" {
+    split_case_160
 }
