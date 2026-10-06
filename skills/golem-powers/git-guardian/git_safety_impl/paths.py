@@ -30,6 +30,24 @@ def _expand_known_vars(value: str, variables: dict[str, str], shell_var_re) -> t
     return "".join(out), True
 
 
+def _is_bare_repo(path: str) -> bool:
+    """Recognize the on-disk bare metadata shape without invoking Git."""
+    return (os.path.isfile(os.path.join(path, 'HEAD'))
+            and os.path.isdir(os.path.join(path, 'objects'))
+            and os.path.isdir(os.path.join(path, 'refs')))
+
+
+def _bare_repo_ancestor(path: str) -> str | None:
+    current = os.path.abspath(path)
+    while True:
+        if _is_bare_repo(current):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            return None
+        current = parent
+
+
 def _outermost_repo_root(path: str) -> str | None:
     """Highest ancestor (or `path` itself) holding a `.git`.
 
@@ -51,7 +69,7 @@ def _outermost_repo_root(path: str) -> str | None:
         # 2 components against `~`). Home itself is covered by the home-directory rule.
         if (
             current not in (home, os.sep)
-            and os.path.exists(os.path.join(current, ".git"))
+            and (os.path.exists(os.path.join(current, ".git")) or _is_bare_repo(current))
         ):
             outermost = current
         parent = os.path.dirname(current)
@@ -190,6 +208,8 @@ def _probe_repo_children(target: str, max_depth: int = 3, entry_cap: int = 5000)
     try:
         while pending:
             directory, depth = pending.pop()
+            if _is_bare_repo(directory):
+                return True
             with os.scandir(directory) as entries:
                 for entry in entries:
                     count += 1
@@ -297,7 +317,8 @@ def _rm_target_reason(
         if reason:
             return reason
     if protected_only:
-        if '.git' in [part.casefold() for part in physical.split(os.sep)]:
+        if ('.git' in [part.casefold() for part in physical.split(os.sep)]
+                or _bare_repo_ancestor(physical)):
             return "find deletion root inside repository metadata"
         return None if complete else "rm target cannot be resolved safely"
 

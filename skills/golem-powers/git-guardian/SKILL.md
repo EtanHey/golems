@@ -150,6 +150,20 @@ active-ancestor protections. Unfiltered, broad, negated or ambiguous branches
 retain breadth checks. Regex dialects and wildcard-only filename classes do
 not qualify for a breadth exemption. Positive age filters below a top-level
 directory retain the repo-root boundary.
+Filename waivers preserve repository metadata: fixed names and object-name shapes
+stay protected, and a read-only traversal checks actual metadata names below
+selected roots and followed directory aliases. Outer depth limits come from the
+root parser. Directory/metadata discovery refuses above one million entries, two seconds or 64
+levels, on cycles, or on filesystem errors. Regular Finder litter is exempt;
+directories and aliases with the same spelling remain protected. A grouped
+prune arm retains the positive deletion filter, but deletion implies depth-first
+traversal, so descendant metadata is still inspected. Ordinary nonmetadata regular files
+do not consume that discovery budget.
+Discovery reuses directory-entry information; dependency and worktree names never
+waive nested metadata. Limit cleanup to literal subtrees and explicit depth limits
+when an unbounded repository walk exceeds the fixed policy budget.
+An over-budget refusal explains that the cleanup target is too large to verify
+and suggests `-maxdepth N` or a narrower root. It remains a normal policy deny.
 Moving protected roots is denied; deleting a path affected by an
 earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
 itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
@@ -183,3 +197,5 @@ footgun — prefer `git stash` so it is recoverable.
 - **`/pr-loop` step 5** — git-guardian's branch check is a prerequisite to commit; pr-loop handles CodeRabbit review.
 - **`/pr-loop`** — calls git-guardian before any force-push during rebase/fixup cycle.
 - **Native `git worktree`** — worktrees always operate on non-main branches; git-guardian still applies for reset/clean inside worktrees.
+
+Bare repositories are recognized by their HEAD file and object/reference directories. Their roots, containing repository folders, and selected metadata receive the same protection as checkout metadata. Multi-root selective cleanup shares one two-second traversal deadline; exhaustion keeps the actionable narrowing guidance. The three-second hook deadline remains unchanged.
