@@ -245,48 +245,163 @@ def guardian_inputs(payload):
 
 _PATCH_FILE = re.compile(r"\*\*\*[^\S\n]+(Add|Update|Delete) File:[^\S\n]*(.+?)[^\S\n]*")
 _PATCH_MOVE = re.compile(r"\*\*\*[^\S\n]+Move to:[^\S\n]*(.+?)[^\S\n]*")
+CONFIG_PATCH_REASON = (
+    "BLOCKED: a patch to a git config file must apply exactly to its current "
+    "content; re-read the file and send an exact patch."
+)
+_CONFIG_BYTES = 1024 * 1024
+
+
+class ConfigPatchRefusal(ValueError):
+    """A git config patch whose real result cannot be computed exactly."""
+
+
+def _patch_files(text):
+    """The patch's file sections, parsed the way Codex's apply_patch parses them."""
+    files = []
+    for raw in text.split("\n"):
+        line = raw.rstrip("\r")
+        marker = line.strip()
+        header = _PATCH_FILE.fullmatch(marker)
+        if header:
+            files.append({"op": header.group(1), "path": header.group(2), "added": [], "move": None,
+                          "chunks": [], "invalid": False})
+            continue
+        if not files or marker in ("*** Begin Patch", "*** End Patch"):
+            continue
+        f = files[-1]
+        if f["op"] == "Add":
+            if line.startswith("+"):
+                f["added"].append(line[1:])
+            continue
+        if f["op"] != "Update":
+            continue
+        move = _PATCH_MOVE.fullmatch(marker)
+        chunk = f["chunks"][-1] if f["chunks"] else None
+        if move and not f["chunks"] and f["move"] is None:
+            f["move"] = move.group(1)
+        elif marker == "@@" or marker.startswith("@@ "):
+            f["chunks"].append({"ctx": marker[3:] if marker != "@@" else None, "old": [], "new": [], "eof": False})
+        elif marker == "*** End of File" and chunk:
+            chunk["eof"] = True
+        elif line == "" or line[0] in " +-":
+            if chunk is None:
+                chunk = {"ctx": None, "old": [], "new": [], "eof": False}
+                f["chunks"].append(chunk)
+            kind, body = (" ", "") if line == "" else (line[0], line[1:])
+            if kind != "+":
+                chunk["old"].append(body)
+            if kind != "-":
+                chunk["new"].append(body)
+            f["added"].extend([body] if kind == "+" else [])
+        else:
+            f["invalid"] = True
+    return files
+
+
+def _seek(lines, pattern, start, eof):
+    """Codex's seek_sequence, exact pass only: a looser match is not trusted."""
+    if not pattern:
+        return start
+    if len(pattern) > len(lines):
+        return None
+    begin = len(lines) - len(pattern) if eof else start
+    for i in range(begin, len(lines) - len(pattern) + 1):
+        if lines[i:i + len(pattern)] == pattern:
+            return i
+    return None
+
+
+def _apply_chunks(text, chunks):
+    """The real post-patch text (Codex's compute/apply_replacements), or None."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    replacements, index = [], 0
+    for chunk in chunks:
+        if chunk["ctx"] is not None:
+            found = _seek(lines, [chunk["ctx"]], index, False)
+            if found is None:
+                return None
+            index = found + 1
+        if not chunk["old"]:
+            replacements.append((len(lines) - 1 if lines and lines[-1] == "" else len(lines), 0, chunk["new"]))
+            continue
+        pattern, new = chunk["old"], chunk["new"]
+        found = _seek(lines, pattern, index, chunk["eof"])
+        if found is None and pattern[-1] == "":
+            pattern = pattern[:-1]
+            new = new[:-1] if new and new[-1] == "" else new
+            found = _seek(lines, pattern, index, chunk["eof"])
+        if found is None:
+            return None
+        replacements.append((found, len(pattern), new))
+        index = found + len(pattern)
+    for start, length, new in sorted(replacements, key=lambda r: r[0], reverse=True):
+        lines[start:start + length] = new
+    if not lines or lines[-1] != "":
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _read_text(path):
+    try:
+        with open(path, "rb") as stream:
+            data = stream.read(_CONFIG_BYTES + 1)
+    except OSError:
+        return None
+    return None if len(data) > _CONFIG_BYTES else data.decode("utf-8", errors="replace")
 
 
 def confirm_inputs(payload):
     """Project an apply_patch onto the Write/Edit shapes human-confirm already judges.
 
     The gate would read a raw patch's text as a shell command, so a patch never
-    reaches it as such. Add -> Write of its added lines; Update -> an Edit that
-    prepends its added lines (a superset of the result, so a destructive git
-    config route cannot hide in it); Delete -> Write of the path (the policy
-    store check is path-based); Move to -> Write of the destination with the
-    source text plus the added lines."""
+    reaches it as such. Add -> Write of the new file; Delete -> Write of the path
+    (the policy-store check is path-based). An Update (and a Move) is applied to
+    the current file the way Codex applies it, exactly, and judged as a Write of
+    the REAL result: git config policy depends on section context and removed
+    lines, not on the added lines alone (#693 R1 F1). An Update that cannot be
+    applied exactly is denied when the source or destination is a git config
+    file, and otherwise falls back to a path-only projection."""
     if payload["tool_name"] != "apply_patch":
         return [payload]
-    cwd, files = payload["cwd"], []
-    for raw in payload["tool_input"]["command"].split("\n"):
-        line = raw.rstrip("\r")
-        header, move = _PATCH_FILE.fullmatch(line.strip()), _PATCH_MOVE.fullmatch(line.strip())
-        if header:
-            files.append({"op": header.group(1), "path": header.group(2), "added": [], "move": None})
-        elif move and files:
-            files[-1]["move"] = move.group(1)
-        elif files and line.startswith("+"):
-            files[-1]["added"].append(line[1:])
+    cwd = payload["cwd"]
+    files = _patch_files(payload["tool_input"]["command"])
     if len(files) > 64:
         raise TimeoutError("patch budget exceeded")
+    config = None
+
+    def is_config(target):
+        nonlocal config
+        if config is None:
+            config = load_parser("skills/golem-powers/human-confirm-gate/hooks/git_config.py", "codex_confirm_git_config")
+        return config._config_file(os.path.realpath(os.path.join(cwd, target)), cwd)
+
+    write = lambda path, content: {**payload, "tool_name": "Write", "tool_input": {"file_path": path, "content": content}}
     items = []
     for f in files:
-        added = "".join(text + "\n" for text in f["added"])
-        if f["op"] == "Update":
-            tool_input = {"file_path": f["path"], "old_string": "", "new_string": added}
-            items.append({**payload, "tool_name": "Edit", "tool_input": tool_input})
-        else:
-            items.append({**payload, "tool_name": "Write",
-                          "tool_input": {"file_path": f["path"], "content": added if f["op"] == "Add" else ""}})
+        if f["op"] == "Add":
+            items.append(write(f["path"], "".join(t + "\n" for t in f["added"])))
+            continue
+        if f["op"] == "Delete":
+            items.append(write(f["path"], ""))
+            continue
+        current = _read_text(os.path.join(cwd, f["path"]))
+        result = None if current is None or f["invalid"] or not f["chunks"] else _apply_chunks(current, f["chunks"])
+        if result is None:
+            if is_config(f["path"]) or (f["move"] and is_config(f["move"])):
+                raise ConfigPatchRefusal("git config patch does not apply exactly")
+            added = "".join(t + "\n" for t in f["added"])
+            items.append({**payload, "tool_name": "Edit",
+                          "tool_input": {"file_path": f["path"], "old_string": "", "new_string": added}})
+            if f["move"]:
+                items.append(write(f["move"], added))
+            continue
         if f["move"]:
-            try:
-                with open(os.path.join(cwd, f["path"]), encoding="utf-8", errors="replace") as stream:
-                    source = stream.read()
-            except OSError:
-                source = ""
-            items.append({**payload, "tool_name": "Write",
-                          "tool_input": {"file_path": f["move"], "content": source + added}})
+            items += [write(f["path"], ""), write(f["move"], result)]
+        else:
+            items.append(write(f["path"], result))
     return items
 
 
@@ -397,6 +512,8 @@ if __name__ == "__main__":
         result = denial(TIMEOUT_REASON)
     except PatchTransportRefusal:
         result = denial(PATCH_TRANSPORT_REASON)
+    except ConfigPatchRefusal:
+        result = denial(CONFIG_PATCH_REASON)
     except BaseException:
         result = denial()
     finally:
