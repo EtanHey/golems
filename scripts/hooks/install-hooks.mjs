@@ -230,34 +230,54 @@ function withoutHooks(hooks, refused) {
 }
 
 // AIDEV-NOTE: retired golems hooks (#579 precompact-checkpoint, the #576 gap).
-// A registration is golems-owned when it runs the installed launcher, reads
-// hooks-live directly, or goes through a hooks-dir link into hooks-live. It is
-// retired when no entry of this host's manifest (any kind, externals included)
-// matches it. Only those registrations, and only dangling links into hooks-live
-// that no entry links, are removed; foreign files, links and *.bak stay.
-function golemsOwned(ctx, command) {
-  const c = String(command ?? "");
-  if (c.includes(`${ctx.live}/`) || c.includes(path.join(ctx.hooksDir, "golems-fail-open.py"))) return true;
-  return hookDirNames(ctx, c).some((name) => intoLive(ctx, path.join(ctx.hooksDir, name)));
+// A registration is golems-owned when the path it EXECUTES (the program, or the
+// script an interpreter runs) is the installed launcher, lies under hooks-live,
+// or goes through a hooks-dir link into hooks-live. A path passed only as data
+// never counts (#661 review F1). It is retired when no entry of this host's
+// manifest (any kind, externals included) matches it. Only those registrations,
+// and only dangling links into hooks-live that no entry links, are removed;
+// foreign files, links and anything named *.bak* stay.
+const INTERPRETER = /^(python[0-9.]*|node|bun|bash|sh|zsh)$/;
+function executedPaths(command) {
+  const tokens = String(command ?? "").trim().split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, "")).filter(Boolean);
+  if (!tokens.length) return [];
+  if (!INTERPRETER.test(path.basename(tokens[0]))) return [tokens[0]];
+  const script = tokens.slice(1).find((t) => !t.startsWith("-"));
+  return script ? [tokens[0], script] : [tokens[0]];
 }
-function hookDirNames(ctx, command) {
+// The executed path, as an owned location: launcher, hooks-live, or a hooks-dir link into it.
+function ownedPath(ctx, p) {
+  if (p === path.join(ctx.hooksDir, "golems-fail-open.py") || p.startsWith(`${ctx.live}/`)) return true;
   const prefix = `${ctx.hooksDir}/`;
-  return command.split(/[\s'"]+/).filter((t) => t.startsWith(prefix)).map((t) => t.slice(prefix.length).split("/")[0]);
+  return p.startsWith(prefix) && intoLive(ctx, path.join(ctx.hooksDir, p.slice(prefix.length).split("/")[0]));
 }
+function golemsOwned(ctx, command) {
+  return executedPaths(command).some((p) => ownedPath(ctx, p));
+}
+// Lexical: `..` is normalized before the prefix test, so a link that resolves
+// outside hooks-live is not golems' (#661 review F3).
 function intoLive(ctx, at) {
-  try { return lstatSync(at).isSymbolicLink() && readlinkSync(at).startsWith(`${ctx.live}/`); } catch { return false; }
+  try {
+    return lstatSync(at).isSymbolicLink() && path.resolve(path.dirname(at), readlinkSync(at)).startsWith(`${ctx.live}/`);
+  } catch { return false; }
 }
-// The retired hook's name: the launcher's target (or the first hooks-dir path) under hooks/.
+// A readable name: the launcher's target under hooks/, else the executed path under hooks/ or hooks-live.
 function retiredName(ctx, command) {
-  const names = hookDirNames(ctx, String(command)).filter((n) => n !== "golems-fail-open.py");
-  return names[0] ?? String(command).split(" ").slice(-1)[0];
+  const tokens = String(command).split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, ""));
+  const launcher = tokens.indexOf(path.join(ctx.hooksDir, "golems-fail-open.py"));
+  const target = launcher >= 0 ? tokens.slice(launcher + 1).find((t) => !t.startsWith("-")) : null;
+  const p = target ?? executedPaths(command).find((x) => ownedPath(ctx, x)) ?? tokens.at(-1);
+  for (const root of [ctx.hooksDir, ctx.live]) if (p.startsWith(`${root}/`)) return p.slice(root.length + 1);
+  return p;
 }
+const groupsOf = (groups) => (Array.isArray(groups) ? groups : []);
+const handlersOf = (group) => (Array.isArray(group?.hooks) ? group.hooks : []);
 export function retiredRegistrations(ctx, hooks) {
   const found = [];
   for (const [event, groups] of Object.entries(hooks ?? {})) {
-    for (const g of groups ?? []) {
-      for (const h of g.hooks ?? []) {
-        const command = String(h.command ?? "");
+    for (const g of groupsOf(groups)) {
+      for (const h of handlersOf(g)) {
+        const command = String(h?.command ?? "");
         if (!golemsOwned(ctx, command) || ctx.entries.some((e) => e.match && command.includes(e.match))) continue;
         found.push({ event, command, name: retiredName(ctx, command) });
       }
@@ -265,19 +285,29 @@ export function retiredRegistrations(ctx, hooks) {
   }
   return found;
 }
+// Touch only what the prune empties: a group loses only retired handlers and
+// is dropped only if that left it empty; an event likewise. Pre-existing empty
+// or malformed foreign entries stay byte-identical (#661 review F2).
 function withoutRetired(hooks, retired) {
   const drop = new Set(retired.map((r) => `${r.event}\0${r.command}`));
-  for (const event of Object.keys(hooks)) {
-    hooks[event] = hooks[event].map((g) => ({ ...g, hooks: (g.hooks ?? []).filter((h) => !drop.has(`${event}\0${String(h.command ?? "")}`)) }))
-      .filter((g) => g.hooks.length > 0);
-    if (hooks[event].length === 0) delete hooks[event];
+  for (const event of new Set(retired.map((r) => r.event))) {
+    if (!Array.isArray(hooks[event])) continue;
+    let emptied = false;
+    hooks[event] = hooks[event].flatMap((g) => {
+      const kept = handlersOf(g).filter((h) => !drop.has(`${event}\0${String(h?.command ?? "")}`));
+      if (kept.length === handlersOf(g).length) return [g];
+      if (kept.length) return [{ ...g, hooks: kept }];
+      emptied = true;
+      return [];
+    });
+    if (emptied && hooks[event].length === 0) delete hooks[event];
   }
   return hooks;
 }
 export function danglingGolemsLinks(ctx) {
   if (!existsSync(ctx.hooksDir)) return [];
   const linked = new Set(ctx.entries.filter((e) => e.link).map((e) => e.link));
-  return readdirSync(ctx.hooksDir).filter((name) => !linked.has(name))
+  return readdirSync(ctx.hooksDir).filter((name) => !linked.has(name) && !/\.bak/.test(name))
     .filter((name) => intoLive(ctx, path.join(ctx.hooksDir, name)) && !existsSync(path.join(ctx.hooksDir, name)));
 }
 
@@ -598,8 +628,8 @@ function install(o) {
 }
 
 function registrationMatches(hooks, e) {
-  return Object.entries(hooks).flatMap(([event, groups]) => groups.flatMap((group) => (group.hooks ?? [])
-    .filter((hook) => String(hook.command ?? "").includes(e.match))
+  return Object.entries(hooks).flatMap(([event, groups]) => groupsOf(groups).flatMap((group) => handlersOf(group)
+    .filter((hook) => String(hook?.command ?? "").includes(e.match))
     .map((hook) => ({ event, matcher: group.matcher ?? null, hook }))));
 }
 function registeredExactly(hooks, e) {
@@ -649,7 +679,7 @@ function status(o) {
   console.log(`heavy-suite ${existsSync(helper) && statSync(helper).isFile() ? `available ${helper}` : "missing (suites run unqueued)"}`);
   // Only registered hook commands count: a hook name in permissions or env is not a registration.
   const hooks = existsSync(ctx.settingsPath) ? JSON.parse(readFileSync(ctx.settingsPath, "utf8")).hooks ?? {} : {};
-  const commands = Object.values(hooks).flat().flatMap((g) => g.hooks ?? []).map((h) => String(h.command ?? ""));
+  const commands = Object.values(hooks).flatMap(groupsOf).flatMap(handlersOf).map((h) => String(h?.command ?? ""));
   const text = commands.join("\n");
   if (codexStatus(ctx.codex)) bad = true;
   for (const e of ctx.entries) {
