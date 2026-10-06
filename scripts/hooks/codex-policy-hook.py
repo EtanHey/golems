@@ -29,6 +29,7 @@ ISOLATED = ("-I", "-B")
 TARGETS = {
     "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
+    "human-confirm": "skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py",
 }
 REPAIR_REASON = (
     "BLOCKED: Codex policy hook unavailable; refusing tool call. "
@@ -242,6 +243,208 @@ def guardian_inputs(payload):
     return [{**payload, "tool_name": "Write", "tool_input": {"file_path": p}} for p in paths]
 
 
+_PATCH_FILE = re.compile(r"\*\*\*[^\S\n]+(Add|Update|Delete) File:[^\S\n]*(.+?)[^\S\n]*")
+_PATCH_MOVE = re.compile(r"\*\*\*[^\S\n]+Move to:[^\S\n]*(.+?)[^\S\n]*")
+CONFIG_PATCH_REASON = (
+    "BLOCKED: a patch must apply exactly to the current files (git config is "
+    "judged on its real result); re-read them and send an exact patch."
+)
+_CONFIG_BYTES = 8 * 1024 * 1024
+
+
+class ConfigPatchRefusal(ValueError):
+    """A patch whose real, in-order result cannot be computed exactly."""
+
+
+def _patch_files(text):
+    """The patch's file sections, parsed the way Codex's apply_patch parses them."""
+    files = []
+    for raw in text.split("\n"):
+        line = raw.rstrip("\r")
+        marker = line.strip()
+        header = _PATCH_FILE.fullmatch(marker)
+        if header:
+            files.append({"op": header.group(1), "path": header.group(2), "added": [], "move": None,
+                          "chunks": [], "invalid": False})
+            continue
+        if not files or marker in ("*** Begin Patch", "*** End Patch"):
+            continue
+        f = files[-1]
+        if f["op"] == "Add":
+            if line.startswith("+"):
+                f["added"].append(line[1:])
+            continue
+        if f["op"] != "Update":
+            continue
+        move = _PATCH_MOVE.fullmatch(marker)
+        chunk = f["chunks"][-1] if f["chunks"] else None
+        if move and not f["chunks"] and f["move"] is None:
+            f["move"] = move.group(1)
+        elif marker == "@@" or marker.startswith("@@ "):
+            f["chunks"].append({"ctx": marker[3:] if marker != "@@" else None, "old": [], "new": [], "eof": False})
+        elif marker == "*** End of File" and chunk:
+            chunk["eof"] = True
+        elif line == "" or line[0] in " +-":
+            if chunk is None:
+                chunk = {"ctx": None, "old": [], "new": [], "eof": False}
+                f["chunks"].append(chunk)
+            kind, body = (" ", "") if line == "" else (line[0], line[1:])
+            if kind != "+":
+                chunk["old"].append(body)
+            if kind != "-":
+                chunk["new"].append(body)
+            f["added"].extend([body] if kind == "+" else [])
+        else:
+            f["invalid"] = True
+    return files
+
+
+_PUNCTUATION = {**{c: "-" for c in "\u2010\u2011\u2012\u2013\u2014\u2015\u2212"},
+                **{c: "'" for c in "\u2018\u2019\u201a\u201b"}, **{c: '"' for c in "\u201c\u201d\u201e\u201f"},
+                **{c: " " for c in "\u00a0\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000"}}
+
+
+def _normalise(line):
+    return "".join(_PUNCTUATION.get(c, c) for c in line.strip())
+
+
+_PASSES = (lambda line: line, str.rstrip, str.strip, _normalise)
+
+
+def _seek(lines, pattern, start, eof):
+    """Codex 0.160's seek_sequence: exact, then trim_end, then trim, then unicode
+    punctuation normalised, each over the same window (#698 R1 FP-1)."""
+    if not pattern:
+        return start
+    if len(pattern) > len(lines):
+        return None
+    begin = len(lines) - len(pattern) if eof else start
+    for key in _PASSES:
+        want = [key(p) for p in pattern]
+        for i in range(begin, len(lines) - len(pattern) + 1):
+            if [key(line) for line in lines[i:i + len(pattern)]] == want:
+                return i
+    return None
+
+
+def _apply_chunks(text, chunks):
+    """The real post-patch text (Codex's compute/apply_replacements), or None."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    replacements, index = [], 0
+    for chunk in chunks:
+        if chunk["ctx"] is not None:
+            found = _seek(lines, [chunk["ctx"]], index, False)
+            if found is None:
+                return None
+            index = found + 1
+        if not chunk["old"]:
+            replacements.append((len(lines) - 1 if lines and lines[-1] == "" else len(lines), 0, chunk["new"]))
+            continue
+        pattern, new = chunk["old"], chunk["new"]
+        found = _seek(lines, pattern, index, chunk["eof"])
+        if found is None and pattern[-1] == "":
+            pattern = pattern[:-1]
+            new = new[:-1] if new and new[-1] == "" else new
+            found = _seek(lines, pattern, index, chunk["eof"])
+        if found is None:
+            return None
+        replacements.append((found, len(pattern), new))
+        index = found + len(pattern)
+    for start, length, new in sorted(replacements, key=lambda r: r[0], reverse=True):
+        lines[start:start + length] = new
+    if not lines or lines[-1] != "":
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _read_text(path, limit):
+    """File text; None if missing/unreadable; `...` (Ellipsis) if over the limit."""
+    try:
+        with open(path, "rb") as stream:
+            data = stream.read(limit + 1)
+    except OSError:
+        return None
+    return ... if len(data) > limit else data.decode("utf-8", errors="replace")
+
+
+def confirm_inputs(payload):
+    """Project an apply_patch onto the Write shapes human-confirm already judges.
+
+    The gate would read a raw patch's text as a shell command, so a patch never
+    reaches it as such. Codex applies a patch's sections IN ORDER, each reading
+    what the previous one wrote (#693 R2-F1), so the whole patch is replayed over
+    a virtual file map keyed by canonical path (`.git/../.git/config`, `./.git/
+    config` and the absolute path are one key): Add sets content, Delete removes
+    it, Update applies its chunks with Codex's own four seek passes (#698 R1),
+    and Move writes the destination and removes the source. Every touched path is
+    then judged ONCE: a git config file on its final content, anything else by
+    path. An ordinary file whose chunks no pass can place gets UNKNOWN content
+    and is never denied for it; a git config file, or UNKNOWN content reaching
+    one, denies (as does a section Codex itself would fail: a missing file or
+    an unparseable section)."""
+    if payload["tool_name"] != "apply_patch":
+        return [payload]
+    cwd = payload["cwd"]
+    files = _patch_files(payload["tool_input"]["command"])
+    if len(files) > 64:
+        raise TimeoutError("patch budget exceeded")
+    canon = lambda p: os.path.realpath(os.path.normpath(os.path.join(cwd, p)))
+    config = load_parser("skills/golem-powers/human-confirm-gate/hooks/git_config.py", "codex_confirm_git_config")
+    guarded = lambda path: config._config_file(path, cwd)
+    virtual, order, unknown = {}, [], object()
+
+    def read(path):
+        if path in virtual:
+            return virtual[path]
+        text = _read_text(path, _CONFIG_BYTES if guarded(path) else 64 * _CONFIG_BYTES)
+        if text is ...:
+            if guarded(path):
+                raise ConfigPatchRefusal("git config file too large to judge")
+            return unknown
+        if text is None:
+            raise ConfigPatchRefusal("patch section targets a missing file")
+        return text
+
+    def put(path, content):
+        if content is unknown and guarded(path):
+            raise ConfigPatchRefusal("git config content cannot be computed")
+        virtual[path] = content
+        if path not in order:
+            order.append(path)
+
+    for f in files:
+        source = canon(f["path"])
+        if f["op"] == "Add":
+            put(source, "".join(t + "\n" for t in f["added"]))
+            continue
+        current = read(source)
+        if current is None:
+            raise ConfigPatchRefusal("patch section targets a deleted file")
+        if f["op"] == "Delete":
+            put(source, None)
+            continue
+        if f["invalid"] or (not f["chunks"] and not f["move"]):
+            raise ConfigPatchRefusal("unparseable patch section")
+        result = current
+        if f["chunks"] and current is not unknown:
+            result = _apply_chunks(current, f["chunks"])
+            if result is None:
+                result = unknown  # Codex itself would fail; the content is not trusted either way
+        if f["move"]:
+            put(source, None)
+            put(canon(f["move"]), result)
+        else:
+            put(source, result)
+    items = []
+    for path in order:
+        content = virtual[path]
+        judged = content if isinstance(content, str) and guarded(path) else ""
+        items.append({**payload, "tool_name": "Write", "tool_input": {"file_path": path, "content": judged}})
+    return items
+
+
 def guardian_batch():
     """Amortize imports, retaining the existing entry point for every write."""
     raw = sys.stdin.read(1024 * 1024 + 1)
@@ -303,7 +506,10 @@ def evaluate():
     # exemption. Only the library source is fixed to hooks-live.
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
-    for item in transport_inputs(p):
+    items = transport_inputs(p)
+    if gate == "human-confirm":
+        items = [projected for item in items for projected in confirm_inputs(item)]
+    for item in items:
         command = [sys.executable, *ISOLATED, str(LAUNCHER), str(ROOT / TARGETS[gate])]
         data = item
         if gate == "git-guardian" and item["tool_name"] == "apply_patch":
@@ -346,6 +552,8 @@ if __name__ == "__main__":
         result = denial(TIMEOUT_REASON)
     except PatchTransportRefusal:
         result = denial(PATCH_TRANSPORT_REASON)
+    except ConfigPatchRefusal:
+        result = denial(CONFIG_PATCH_REASON)
     except BaseException:
         result = denial()
     finally:

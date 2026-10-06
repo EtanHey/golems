@@ -86,6 +86,26 @@ Worker mode adds only a one-line role banner before an optional caller prompt; i
 does not inject registry agent front-matter or boot-store instructions. Short
 `-w` remains the worktree-path flag and always requires an absolute path.
 
+### Per-launch Codex overrides (Etan, 2026-10-06)
+
+`~/.codex/config.toml` is never edited; `*Codex` launchers pass `-c` overrides (codex-cli 0.160.1):
+
+- **Computer use stays on** for every launch, workers included ("that's how they can properly test").
+- **Connectors are fail-safe stripped.** Every agent-shaped launch loses the `codex_apps` cloud
+  connectors (Gmail, Calendar, GitHub…) and any `browser-tools-mcp` server, matched by name or package.
+  That includes workers, `-p`, prompts, `resume`, and cmuxlayer spawns. **Google Drive stays read-only**:
+  `apps.<drive>.default_tools_enabled=false` plus an allowlist of its read tools, so new Drive tools
+  default to off.
+- **Keeping them:** `--lead` (a worker signal still wins), or the bare human shape (no args, a TTY, no
+  agent markers). cmuxlayer lead spawns must pass `--lead`.
+- **Opt-in, per launch, by name:** `GOLEM_CODEX_WORKER_ALLOW=gmail,google_drive,browser-tools …`. Names
+  come from codex's connector cache. `google_drive` means full Drive. An unknown name refuses the launch,
+  and the variable never reaches the launched codex.
+- **Bare dotted keys only:** codex keeps quotes inside a `-c` key segment, so a quoted key is a silent no-op.
+  The last `-c` wins and `--enable` beats `-c`. So without `--lead`, any caller `--enable`/`--disable`, or
+  any `-c features*`/`apps*`/`connectors*` key, is refused in all five spellings (`-c K`, `-cK`, `-c=K`,
+  `--config K`, `--config=K`). `connectors` is codex's alias of the `apps` feature.
+
 ### WARNING — launcher names strip hyphens from repo names
 
 repoGolem launcher names are generated from the registry key, not the raw repo folder name. If a repo name contains hyphens, the launcher drops them:
