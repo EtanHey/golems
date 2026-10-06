@@ -86,7 +86,8 @@ judged once: a git config file on its final content (section context and
 removed lines matter), anything else by path. A patch that cannot be replayed
 exactly is denied, including any CRLF git config (Codex cannot patch those
 exactly either way). The installer refuses this Codex registration while the anchor pin is
-empty, as on Claude, and a new registration needs `/hooks` trust review.
+empty, as on Claude. A new registration only runs after the owner trusts it in
+`/hooks`.
 ## Trust and issuance
 Unsigned file metadata cannot identify a human under the shared macOS UID.
 Tokens are SSH-signed JSON, mode 0600, in
