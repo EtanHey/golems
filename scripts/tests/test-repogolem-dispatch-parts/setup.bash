@@ -93,6 +93,33 @@ CODEX_STUB_AWAIT_RELEASE='function _await_release() {
         return 0
       }'
 
+# Agent-shaped launches strip the codex_apps connectors (cases-08/09). With no
+# connector cache (the test CODEX_HOME) that is the single features.apps=false
+# pair; with a cache it is apps._default/apps.<id> pairs. Exact-argv tests strip
+# those pairs and pin the rest.
+CODEX_WORKER_CONNECTOR_OVERRIDE='features.apps=false'
+CODEX_WORKER_CONNECTOR_ARG_COUNT=2
+
+# Removes each launcher connector `-c` pair (features.apps=false, apps.*), in
+# both the per-line CODEX_ARG= form and the one-line CODEX_ARGS= form.
+strip_codex_connector_args() {
+    local text
+    text="$(sed -E -e 's/ -c (features\.apps=false|apps\.[^ ]+)//g' \
+                   -e 's/=-c (features\.apps=false|apps\.[^ ]+) /=/' \
+                   -e 's/=-c (features\.apps=false|apps\.[^ ]+)$/=/' <<< "$1")"
+    awk '
+      function guard(v) { return v == "CODEX_ARG=features.apps=false" || index(v, "CODEX_ARG=apps.") == 1 }
+      held { held = 0; if (guard($0)) next; print "CODEX_ARG=-c" }
+      $0 == "CODEX_ARG=-c" { held = 1; next }
+      { print }
+      END { if (held) print "CODEX_ARG=-c" }
+    ' <<< "$text"
+}
+
+# Agent markers the bare-human shape refuses; harnesses unset them so a test
+# seat's own environment (CLAUDECODE, CODEX_THREAD_ID, ...) cannot decide.
+CODEX_AGENT_MARKERS=(CODEX_THREAD_ID CLAUDECODE CLAUDE_CODE_SESSION_ID AI_AGENT CLAUDE_WORKER CMUX_AGENT_ID)
+
 # bats runs with errexit, but `! cmd` is EXEMPT from it — a bare `! grep`
 # negative assertion can never fail a test. Use this helper instead.
 refute_contains() {

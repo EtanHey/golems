@@ -8,6 +8,8 @@ load 'test-repogolem-dispatch-parts/cases-04.bash'
 load 'test-repogolem-dispatch-parts/cases-05.bash'
 load 'test-repogolem-dispatch-parts/cases-06.bash'
 load 'test-repogolem-dispatch-parts/cases-07.bash'
+load 'test-repogolem-dispatch-parts/cases-08.bash'
+load 'test-repogolem-dispatch-parts/cases-09.bash'
 
 @test "install helper installs tracked dispatcher inside HOME" {
     split_case_001
@@ -589,4 +591,52 @@ load 'test-repogolem-dispatch-parts/cases-07.bash'
       refute_contains '--agent' "$output"
       refute_contains 'Worker role:' "$output"
     done
+}
+
+@test "every agent-shaped Codex launch strips codex_apps connectors; computer use is never touched" {
+    split_case_136
+}
+
+@test "Codex --lead and the bare human shape keep their connectors" {
+    split_case_137
+}
+
+@test "a zero-arg Codex launch on a TTY is agent-shaped when an agent marker is set" {
+    split_case_138
+}
+
+@test "a Codex worker signal beats --lead with one stderr line" {
+    split_case_139
+}
+
+@test "a Codex worker launch carries the connector strip in a fixed order" {
+    split_case_140
+}
+
+@test "stripped Codex launches keep Google Drive read-only and turn every other connector off" {
+    split_case_141
+}
+
+@test "stripped Codex launches with no connector cache turn the apps feature off" {
+    split_case_142
+}
+
+@test "GOLEM_CODEX_WORKER_ALLOW re-enables named connectors for one launch, never inherited" {
+    split_case_143
+}
+
+@test "GOLEM_CODEX_WORKER_ALLOW refuses a connector name it cannot resolve" {
+    split_case_144
+}
+
+@test "stripped Codex profiles drop browser-tools by name and package unless lead or allowed" {
+    split_case_145
+}
+
+@test "GOLEM_CODEX_WORKER_ALLOW on a lead launch is silent and not inherited" {
+    split_case_146
+}
+
+@test "a caller flag that re-enables connectors without --lead is refused in every spelling" {
+    split_case_147
 }

@@ -1,8 +1,136 @@
+# ── Codex connector policy (Etan, 2026-10-06) ──────────────────────
+# Computer use stays on for every launch. The codex_apps cloud connectors
+# (Gmail send, Calendar, Drive, GitHub as Etan...) and browser-tools-mcp are
+# stripped from every agent-shaped launch, fail-safe: only `--lead` or the bare
+# human shape (no args, a TTY, no agent markers) keeps them. Stripped launches
+# still get Google Drive read-only.
+
+# Drive tools codex marks readOnlyHint=true (codex-cli 0.160.1 cache). Drive
+# runs with default_tools_enabled=false, so a tool missing here stays off.
+_golem_codex_drive_read_tools=(
+  export_file fetch fetch_file_revision find_document_text_range
+  get_document get_document_comments get_document_paragraph_range get_document_tables get_document_text
+  get_file_comments get_file_metadata
+  get_presentation get_presentation_comments get_presentation_outline get_presentation_tables get_presentation_text
+  get_profile get_slide get_slide_thumbnail
+  get_spreadsheet_cells get_spreadsheet_comments get_spreadsheet_metadata get_spreadsheet_range
+  list_drives list_file_revisions list_folder recent_documents search search_spreadsheet_rows
+)
+
+# Seam for tests: bats has no TTY, so they stub this to model a human terminal.
+_golem_codex_stdio_is_tty() {
+  [[ -t 0 && -t 1 ]]
+}
+
+# Prints the first agent marker present in the environment, if any.
+_golem_codex_agent_marker() {
+  local marker
+  for marker in CODEX_THREAD_ID CLAUDECODE CLAUDE_CODE_SESSION_ID AI_AGENT CLAUDE_WORKER CMUX_AGENT_ID; do
+    if [[ -n "${(P)marker:-}" ]]; then
+      print -r -- "$marker"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Sets REPLY to why a launch is not the bare human shape: zero launcher args
+# (cmuxlayer always passes -E), not a worker, stdin+stdout on a TTY, and no
+# agent marker. REPLY is empty for the bare human shape. Called directly, not
+# in $(...), so the TTY test sees the real stdout.
+_golem_codex_bare_human_reason() {
+  local -i argc="$1"
+  local worker_mode="$2" marker=""
+  REPLY=""
+  if (( argc > 0 )); then
+    REPLY="launcher arguments"
+  elif [[ "$worker_mode" == true ]]; then
+    REPLY="worker mode"
+  elif ! _golem_codex_stdio_is_tty; then
+    REPLY="no TTY"
+  elif marker=$(_golem_codex_agent_marker); then
+    REPLY="agent marker ${marker}"
+  fi
+}
+
+# Scans raw Codex args for the `-c` spellings codex 0.160.1 honours: `-c K=V`,
+# `-cK=V`, `-c=K=V` (clap strips the `=` after a short flag), `--config K=V`
+# and `--config=K=V`; `--conf`/`--confi` are rejected and `-c==` aborts.
+# Prints the first value whose key matches <predicate>. Codex lets the last
+# `-c` win, so a matching caller key would undo the launcher's own.
+_golem_codex_args_config_match() {
+  local predicate="$1"; shift
+  local -a args=("$@")
+  local -i i=1
+  local arg value
+  while (( i <= ${#args[@]} )); do
+    arg="${args[$i]}"
+    value=""
+    case "$arg" in
+      -c|--config) value="${args[$(( i + 1 ))]:-}"; (( i += 1 )) ;;
+      --config=*) value="${arg#--config=}" ;;
+      -c?*) value="${arg#-c}"; value="${value#=}" ;;
+    esac
+    if [[ -n "$value" ]] && "$predicate" "$value"; then
+      print -r -- "$value"
+      return 0
+    fi
+    (( i += 1 ))
+  done
+  return 1
+}
+
+# True when a `-c` key would toggle a feature or touch the connectors. Codex
+# 0.160.1 accepts `connectors` as an alias of the `apps` feature; keys keep
+# their quotes as literal characters, so those are stripped before matching.
+_golem_codex_config_key_is_connector() {
+  local key="${1%%=*}"
+  key=${key//[[:space:]\"\']/}
+  [[ "$key" == features || "$key" == features.* || "$key" == apps || "$key" == apps.* \
+     || "$key" == connectors || "$key" == connectors.* ]]
+}
+
+# Feature toggles are not an agent's call: `--enable` beats `-c` in any order
+# (`--enable connectors` re-enabled codex_apps past features.apps=false), so
+# every --enable/--disable spelling is refused, as are features/apps keys.
+_golem_codex_args_reenable_connectors() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --enable|--enable=*|--disable|--disable=*) print -r -- "$arg"; return 0 ;;
+    esac
+  done
+  _golem_codex_args_config_match _golem_codex_config_key_is_connector "$@"
+}
+
+# Prints `<connector id><TAB><name>` from codex's own connector tool cache, with
+# names normalised the way the tools are prefixed ("Google Drive" ->
+# google_drive). Codex has no CLI for this map; the cache is what it wrote.
+_golem_codex_connector_ids() {
+  local cache_dir="${CODEX_HOME:-$HOME/.codex}/cache/codex_apps_tools" cache_file
+  for cache_file in "$cache_dir"/*.json(N); do
+    jq -r '.tools[]? | select((.connector_id | type) == "string" and (.connector_name | type) == "string")
+      | [.connector_id, (.connector_name | ascii_downcase | gsub("[^a-z0-9]+"; "_") | gsub("^_+|_+$"; ""))] | @tsv' \
+      "$cache_file" 2>/dev/null
+  done | LC_ALL=C sort -u
+}
+
+# Drops browser-tools-mcp from a merged MCP JSON, matched by server name or by
+# the package in command/args, so a renamed entry is still caught.
+_golem_jq_drop_browser_tools() {
+  print -r -- '.mcpServers |= ((. // {}) | with_entries(select(
+    ((.key | ascii_downcase | gsub("[^a-z0-9]"; "") | contains("browsertools"))
+     or ([(.value.command // ""), ((.value.args // [])[]? | tostring)] | map(tostring) | any(contains("browser-tools-mcp"))))
+    | not)))'
+}
+
 _golem_launch_codex() {
   local project_name="$1" project_path="$2"; shift 2
+  # The bare human shape starts with zero launcher args: cmuxlayer always passes -E.
+  local -i codex_launcher_argc=$#
   local -x MCP_CONNECTION_NONBLOCKING=1
   local -x CLAUDE_CODE_NO_FLICKER=1
-  local _flag_codex_effort _flag_codex_effort_explicit _flag_codex_help _flag_codex_worker
+  local _flag_codex_effort _flag_codex_effort_explicit _flag_codex_help _flag_codex_worker _flag_codex_lead
   local -a _codex_extra_args _codex_passthrough_args _extra_args
 
   _golem_parse_codex_flags "$@" || return $?
@@ -81,6 +209,76 @@ _golem_launch_codex() {
       return 2
     fi
   fi
+  # Connector policy: strip unless --lead or the bare human shape. A lane
+  # re-enables what it needs for one launch, by name:
+  #   GOLEM_CODEX_WORKER_ALLOW=gmail,google_calendar,google_drive,browser-tools
+  # (google_drive here means full Drive, writes included). The variable is
+  # shadowed below, so the launched codex never inherits it.
+  local codex_worker_allow="${GOLEM_CODEX_WORKER_ALLOW:-}"
+  local GOLEM_CODEX_WORKER_ALLOW
+  unset GOLEM_CODEX_WORKER_ALLOW
+  local codex_strip_extras=true
+  if $_flag_codex_lead; then
+    if [[ "$worker_mode" == true ]]; then
+      print -u2 -- "repoGolem: --lead ignored: a worker signal (--worker or GOLEM_ROLE=worker) wins; codex_apps connectors and browser-tools stay stripped."
+    else
+      codex_strip_extras=false
+    fi
+  else
+    _golem_codex_bare_human_reason "$codex_launcher_argc" "$worker_mode"
+    [[ -z "$REPLY" ]] && codex_strip_extras=false
+  fi
+  local -a codex_connector_args=()
+  local codex_strip_browser_tools=false
+  if [[ "$codex_strip_extras" == true ]]; then
+    local codex_reenabling_connector=""
+    if codex_reenabling_connector=$(_golem_codex_args_reenable_connectors "$resume_prefix_flag" "${codex_args[@]}"); then
+      print -u2 -- "repoGolem: refusing a Codex ${codex_reenabling_connector%%=*} without --lead: feature toggles and connector config are not an agent's call; name connectors in GOLEM_CODEX_WORKER_ALLOW instead."
+      return 2
+    fi
+    local -a codex_allow_names=(${(s:,:)${codex_worker_allow//[[:space:]]/}})
+    local -a codex_allow_connectors=("${(@)codex_allow_names:#browser-tools}")
+    (( ${codex_allow_names[(Ie)browser-tools]} )) || codex_strip_browser_tools=true
+    local -A codex_connector_id_by_name=() codex_connector_wanted=()
+    local codex_connector_line codex_connector_name codex_connector_id codex_drive_tool
+    for codex_connector_line in ${(f)"$(_golem_codex_connector_ids)"}; do
+      codex_connector_id_by_name[${codex_connector_line#*$'\t'}]="${codex_connector_line%%$'\t'*}"
+    done
+    for codex_connector_name in "${codex_allow_connectors[@]}"; do
+      if [[ -z "${codex_connector_id_by_name[$codex_connector_name]:-}" ]]; then
+        local codex_known_connectors="${(j:, :)${(@ko)codex_connector_id_by_name}}"
+        print -u2 -- "repoGolem: GOLEM_CODEX_WORKER_ALLOW: unknown connector \"${codex_connector_name}\" (known: ${codex_known_connectors:-none cached; run plain codex once}). Refusing the launch."
+        return 2
+      fi
+      codex_connector_wanted[${codex_connector_id_by_name[$codex_connector_name]}]=1
+    done
+    local codex_drive_id="${codex_connector_id_by_name[google_drive]:-}"
+    if (( ${#codex_connector_id_by_name[@]} == 0 )); then
+      # Nothing cached to allowlist against: no connectors at all, Drive included.
+      codex_connector_args=("-c" "features.apps=false")
+    else
+      # apps._default alone is not enough: an app with its own [apps.<id>] table
+      # in config.toml stays on, so every cached id is set explicitly.
+      codex_connector_args=("-c" "apps._default.enabled=false")
+      for codex_connector_id in ${(ou)codex_connector_id_by_name}; do
+        if [[ -n "${codex_connector_wanted[$codex_connector_id]:-}" ]]; then
+          codex_connector_args+=("-c" "apps.${codex_connector_id}.enabled=true")
+        elif [[ "$codex_connector_id" == "$codex_drive_id" ]]; then
+          codex_connector_args+=("-c" "apps.${codex_connector_id}.enabled=true"
+                                 "-c" "apps.${codex_connector_id}.default_tools_enabled=false")
+          for codex_drive_tool in "${_golem_codex_drive_read_tools[@]}"; do
+            codex_connector_args+=("-c" "apps.${codex_connector_id}.tools.${codex_drive_tool}.enabled=true")
+          done
+        else
+          codex_connector_args+=("-c" "apps.${codex_connector_id}.enabled=false")
+        fi
+      done
+    fi
+    if (( ${#codex_allow_names[@]} > 0 )); then
+      print -u2 -- "repoGolem: GOLEM_CODEX_WORKER_ALLOW re-enabled for this launch: ${(j:, :)codex_allow_names}"
+    fi
+  fi
+
   local codex_config_args=()
   if $_flag_codex_effort_explicit; then
     codex_config_args=("-c" "model_reasoning_effort=\"${_flag_codex_effort}\"")
@@ -141,6 +339,8 @@ _golem_launch_codex() {
     fi
   fi
 
+  codex_config_args+=("${codex_connector_args[@]}")
+
   if [[ "$worker_mode" == true ]]; then
     agent_prompt=$(_golem_build_worker_prompt "$project_name" "$project_path" "$positional_prompt")
   else
@@ -196,6 +396,20 @@ _golem_launch_codex() {
       chmod 600 "$merged_mcp_file" 2>/dev/null
     else
       rm -f "$_tmp_merge"
+    fi
+  fi
+
+  if [[ "$codex_strip_browser_tools" == true ]]; then
+    local _tmp_filter
+    _tmp_filter=$(umask 077; mktemp "${codex_home}/.repogolem-codex-${codex_profile}.filter.json.XXXXXX") || { rm -f "$merged_mcp_file"; _golem_cleanup_agent_context "$agent_context_file"; return 1; }
+    if jq "$(_golem_jq_drop_browser_tools)" "$merged_mcp_file" > "$_tmp_filter" 2>/dev/null; then
+      mv "$_tmp_filter" "$merged_mcp_file"
+      chmod 600 "$merged_mcp_file" 2>/dev/null
+    else
+      # Fail closed: a stripped launch never gets the unfiltered servers.
+      rm -f "$_tmp_filter"
+      print -r -- '{"mcpServers":{}}' > "$merged_mcp_file"
+      print -u2 -- "repoGolem: could not filter browser-tools from this launch's MCP servers; launching without project MCP servers."
     fi
   fi
 
