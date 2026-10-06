@@ -34,7 +34,9 @@ and load waits (default 1800 seconds). Expiry proceeds with a LOUD warning;
 lock expiry runs unqueued; load expiry proceeds to lock acquisition.
 `GOLEMS_HEAVY_FORCE=1` explicitly bypasses both with a warning. Missing helper,
 Python, or unusable lock setup runs the original suite unqueued; a broken suite
-command or failing suite still fails the hook. This is scheduling, not a policy gate.
+command or failing suite still fails the hook. The private regression installer gate uses the same load-before-lock ordering,
+CPU-based default and environment override, but refuses either timeout.
+This wrapper is scheduling, not a policy gate.
 
 The child inherits the descriptor, keeping its slot if the wrapper is SIGKILL'd.
 Normal completion explicitly unlocks before close, so surviving daemons cannot
