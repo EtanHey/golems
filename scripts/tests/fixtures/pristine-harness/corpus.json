@@ -11484,5 +11484,19 @@
     "id": "issue425-tmp-block-oversized-command",
     "target": "tmp-block",
     "input": "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"{ISSUE425_LONG_WORD}\"},\"session_id\":\"pristine\"}"
+  },
+  {
+    "id": "pr671-worker-installed-shell-profile",
+    "target": "launcher",
+    "args": [
+      "testrepo",
+      "gemini",
+      "--worker",
+      "-m",
+      "flash"
+    ],
+    "env": {},
+    "mcp_merge": true,
+    "installed_agy_profile": "shell-worker"
   }
 ]

@@ -6,11 +6,18 @@ Shared rules remain in `AGENTS.md`. The gatherer routes its tier through
 
 Antigravity 1.2.14 reads global agents from
 `~/.gemini/antigravity-cli/agents`. `mainAgent: true` enables `--agent gatherer`;
-`subagent: false` keeps this a primary gatherer session. For `--worker`, inherited `GOLEM_ROLE=worker`, or a task role export, the launcher selects
-`gatherer` only for `GOLEM_AGENT_ROLE=gatherer`; all other roles default to
-`shell-worker`. `GOLEM_AGY_AGENT=<name>` overrides the selection. Invalid names
-or missing profile files refuse launch. Leads retain their existing flow unless
-an explicit profile is supplied. Model defaults remain owned by the launcher's routing policy.
+`subagent: false` keeps this a primary gatherer session. Task roles are trimmed
+and casefolded. `gatherer`, `gemini.gather.*` and `*-gatherer` select `gatherer`;
+`implementor`, `implementer`, `worker`, `reviewer` and `executor` select
+`shell-worker`. Unknown roles refuse launch and list the known roles.
+`lead` and `orchestrator` preserve lead mode unless `--worker` or
+`GOLEM_ROLE=worker` explicitly selects worker mode. A role-less worker selects
+`shell-worker`. `GOLEM_AGY_AGENT=<name>` may override non-gatherer selections;
+a gatherer role paired with any other profile refuses launch. Invalid names
+or missing profile files also refuse launch. Model defaults remain owned by the
+launcher's routing policy. cmux gatherer isolation requires cmuxlayer to export
+`GOLEM_AGENT_ROLE`; that export is pending in cmuxlayer. These role names describe
+the in-repo launcher interface, not proof of installed cmux spawn behavior.
 
 Gatherers delegate independent BrainLayer questions and claim checks to the
 `brain-worker` subagent with `invoke_subagent`, at most four concurrently.
@@ -50,7 +57,7 @@ the read-only `brain-worker`. It retains its scoped receipt tools.
 Only the declared brain-worker may be invoked;
 hidden built-in agents must fail the no-tool delegation probes before release.
 
-Shell-worker: shell + scoped writes, no MCP; executes exactly the brief and stays on task. Model routing belongs to `/agent-routing`.
+Shell-worker: shell + scoped writes, no MCP; executes exactly the brief and stays on task. Never use `open -a`, `osascript` or any app/GUI/browser driving. No outward messages or posts beyond the brief. Model routing belongs to `/agent-routing`.
 
 Video-qa: shell + write, no MCP. Use `--agent video-qa` for /qa-video work that
 needs local media commands, background output/status checks, and denser sampling

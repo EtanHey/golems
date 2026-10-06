@@ -108,3 +108,13 @@ including its ruling, and prints every accepted case with its reason and authori
 Duplicate JSON keys at any nesting depth are rejected. `verify-goldens` and `mutation-proof`
 continue to check the untouched base; a changed declared capture still fails
 its exact candidate hash.
+
+## Installed Gemini worker characterization (#671)
+
+`pr671-worker-installed-shell-profile` adds a synthetic shell-worker profile to
+the existing Flash worker fixture. The installed agent is identical for base
+and candidate and excluded from captures. The new immutable-base capture equals
+`topup-agy-model-flash` byte for byte; all previous goldens remain unchanged.
+The candidate reaches stub AGY and pins its explicit agent/model arguments and
+merged MCP maps. The companion Python test adds a caller prompt and checks its
+forwarding too. This proves dispatcher behavior, not live provider tool access.

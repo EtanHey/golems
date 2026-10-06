@@ -80,5 +80,7 @@ def test_shell_worker_profile_has_scoped_shell_without_inheritance():
                    "STOP and report in one line", "Never explore instead",
                    "No git commits, installs or persistent config changes",
                    "unless the brief explicitly allows them",
-                   "Never open, inspect, or type into cmux panes", "NOT DONE"):
+                   "Never open, inspect, or type into cmux panes", "NOT DONE",
+                   "Never use open -a, osascript", "app/GUI/browser driving",
+                   "No outward messages or posts beyond the brief"):
         assert clause in template

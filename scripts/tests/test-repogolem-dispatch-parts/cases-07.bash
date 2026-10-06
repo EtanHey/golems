@@ -63,7 +63,7 @@ run_gatherer_launch() {
       export RALPH_REGISTRY_FILE="$1"
       function _ralph_setup_mcps() { return 0; }
       function _ralph_setup_secrets() { return 0; }
-      function agy() { print -r -- "AGY_ARGS=$*"; }
+      function agy() { print -r -- "AGY_ROLE=${GOLEM_ROLE-unset}"; print -r -- "AGY_ARGS=$*"; }
       source "$2"
       function _golem_setup_env() { return 0; }
       function _golem_sync_agy_workspace() { return 0; }
@@ -83,14 +83,20 @@ function split_case_126() {
     run_gatherer_launch --worker -s
     [ "$status" -eq 0 ]
     grep -F -q -- "--agent shell-worker" <<< "$output"
-    for role in gatherer implementor worker reviewer other; do
+    for role in gatherer implementor worker reviewer; do
       GOLEM_AGENT_ROLE="$role" run_gatherer_launch -s
       [ "$status" -eq 0 ]
       local expected=shell-worker
       [ "$role" != gatherer ] || expected=gatherer
       grep -F -q -- "--agent $expected" <<< "$output"
     done
-    GOLEM_AGENT_ROLE=gatherer GOLEM_AGY_AGENT=video-qa run_gatherer_launch --worker -s
+    for profile in shell-worker video-qa arbitrary; do
+      GOLEM_AGENT_ROLE=gatherer GOLEM_AGY_AGENT="$profile" run_gatherer_launch --worker -s
+      [ "$status" -ne 0 ]
+      grep -F -q -- "conflicts" <<< "$output"
+      refute_contains "AGY_ARGS=" "$output"
+    done
+    GOLEM_AGENT_ROLE=implementor GOLEM_AGY_AGENT=video-qa run_gatherer_launch --worker -s
     [ "$status" -eq 0 ]
     grep -F -q -- "--agent video-qa" <<< "$output"
     GOLEM_AGY_AGENT=video-qa run_gatherer_launch -s

@@ -25,6 +25,8 @@ Write only where the brief allows. Stay on task: never read other agents' report
 inboxes, briefs or collabs unless the brief names them.
 If this profile cannot do the task, STOP and report in one line. Never explore instead.
 No git commits, installs or persistent config changes unless the brief explicitly allows them.
+Never use open -a, osascript or any app/GUI/browser driving.
+No outward messages or posts beyond the brief.
 You have no MCP access. Never open, inspect, or type into cmux panes.
 Report NOT DONE honestly if the task is incomplete, with the reason and artifact paths.
 Follow /agent-routing for model selection.
