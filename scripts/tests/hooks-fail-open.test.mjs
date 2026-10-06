@@ -76,6 +76,23 @@ for (const failure of ["missing-arg", "missing", "syntax", "dangling", "unreadab
   });
 }
 
+test("a crash in the launcher itself denies a fail-closed gate and stays a crash (non-blocking) for the rest", () => {
+  // The #652 class: a launcher-level AttributeError (sys.flags.safe_path on 3.9) before any hook ran.
+  const d = scratch();
+  const launcher = path.join(d, "golems-fail-open.py");
+  const source = require("node:fs").readFileSync(wrapper, "utf8");
+  const crashing = source.replace("    args = sys.argv[1:]\n", "    args = sys.argv[1:]\n    sys.flags.no_such_flag  # synthetic launcher crash\n");
+  expect(crashing).not.toBe(source);
+  writeFileSync(launcher, crashing);
+  const target = path.join(d, "gate.py");
+  writeFileSync(target, "print('{}')\n");
+  let r = wrap(target, { closed: true, launcher });
+  expect([r.status, r.stderr, r.stdout]).toEqual([2, "", `${JSON.stringify(closedBlock)}\n`]);
+  r = wrap(target, { launcher });
+  expect(r.status).toBe(1);
+  expect(r.stderr).toContain("AttributeError");
+});
+
 test("fail-closed preserves legitimate allow and deliberate deny with real sibling imports and argv", () => {
   const d = scratch();
   const real = path.join(d, "real");
@@ -142,5 +159,32 @@ test("a runtime error and a syntax error in the hook also fail open with one std
     expect(r.status).toBe(0);
     expect(r.stderr.trim().split("\n").length).toBe(1);
     expect(r.stderr).toContain(errorName);
+  }
+});
+
+test("isolated mode (-I -B) keeps every stdlib path entry and still resolves sibling imports", () => {
+  const d = scratch();
+  const isolated = JSON.parse(spawnSync("python3", ["-I", "-c", "import sys, json; print(json.dumps(sys.path))"],
+    { encoding: "utf8" }).stdout);
+  writeFileSync(path.join(d, "policy.py"), "REASON = 'sibling'\n");
+  writeFileSync(path.join(d, "gate.py"), "import json, sys\nfrom policy import REASON\nprint(json.dumps([REASON, sys.path]))\n");
+  const r = spawnSync("python3", ["-I", "-B", wrapper, path.join(d, "gate.py")], { encoding: "utf8", input: "{}" });
+  expect(r.status).toBe(0);
+  const [reason, seen] = JSON.parse(r.stdout);
+  expect(reason).toBe("sibling");
+  expect(seen.at(-1)).toBe(require("node:fs").realpathSync(d));  // the hook dir joins LAST
+  expect(seen.slice(0, -1)).toEqual(isolated);  // every stdlib entry kept, in order, ahead of it
+});
+
+test("no hook dir is ever first on sys.path, isolated or not; the launcher's own dir is dropped", () => {
+  const d = scratch();
+  writeFileSync(path.join(d, "gate.py"), "import json, sys\nprint(json.dumps(sys.path))\n");
+  for (const flags of [[], ["-I", "-B"]]) {
+    const r = spawnSync("python3", [...flags, wrapper, path.join(d, "gate.py")], { encoding: "utf8", input: "{}" });
+    expect(r.status).toBe(0);
+    const seen = JSON.parse(r.stdout);
+    const real = require("node:fs").realpathSync(d);
+    expect([flags.join(" "), seen.indexOf(real)]).toEqual([flags.join(" "), seen.length - 1]);
+    expect(seen).not.toContain(path.dirname(require("node:fs").realpathSync(wrapper)));
   }
 });

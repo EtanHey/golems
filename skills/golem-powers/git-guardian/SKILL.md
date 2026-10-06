@@ -127,6 +127,48 @@ instead of re-deriving the rules as prose:
 | `shell_text_without_heredoc_bodies(command)` | Removes file-write heredoc prose from destructive scans while retaining executable substitutions in unquoted heredocs. |
 | `dangerous_shell_reason(command, cwd, env)` | Combined hook-facing F8 verdict for rm breadth and destructive command patterns. |
 
+#501 denies recursive `rm` (with or without force) of `~/Gits`, ancestors
+of the active checkout, direct child directories of `$HOME`, and directory entries at the first level of
+`~/.claude`, `~/.codex`, `~/.cmux`, `~/.config`, `~/.ssh` and `~/Library`.
+Existing paths use filesystem identity (including case and volume aliases);
+unavailable identity falls back to case-folded physical spelling. Known regular
+files remain eligible for cleanup and atomic moves. Inside `~/Gits`, targets outside a checkout
+are probed for `.git` at depth at most 3 with a 5,000-entry cap; cap or filesystem
+errors fail closed. The initial checkout stays protected after `cd`; `~`, `~+`
+and `~-` use tracked HOME/cwd/oldpwd, and other tilde prefixes fail closed.
+
+The same target policy covers `find -delete` roots and local `rsync --delete*`/`--del`
+destinations. Find follows its selected `-H`/`-L`/`-follow` policy (last
+`-P` overrides earlier flags); local rsync destinations are evaluated physically.
+Both also fail closed for targets affected by earlier path creation. Rsync
+option values are separated from operands; unknown trailing long options fail
+closed when the destination becomes ambiguous.
+Find collects BSD/bfs root operands throughout the expression, separating primary
+values and nested command operands; unknown primaries fail closed. Selective
+in-repo filters can permit cleanup while retaining home/config/container and
+active-ancestor protections. Unfiltered, broad, negated or ambiguous branches
+retain breadth checks. Regex dialects and wildcard-only filename classes do
+not qualify for a breadth exemption. Positive age filters below a top-level
+directory retain the repo-root boundary.
+Moving protected roots is denied; deleting a path affected by an
+earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
+itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
+Earlier `mkdir` retains protected directory roles while permitting known deep cleanup.
+
+The opt-in `scripts/cleanup_corpus_gate.py` compares decision functions on exactly
+200 frozen local commands. Capture requires `--capture-projects`; CI uses only
+synthetic fixtures. It never executes commands and retains hashes plus private
+source references. Each new denial requires a true-positive reason and evidence;
+unclassified denials, missing frozen rows or a truncated sample fail the gate.
+An exact in-repo `find . -name __pycache__ -type d -prune -exec rm -r {} +`
+cache cleanup also remains allowed (including `-R`, `-rf`, `-fr`).
+
+This is a bounded shell model, not a shell interpreter. Nonstandard containers
+outside `~/Gits` and the active checkout, remote rsync destinations, `trash`,
+interpreter deletion one-liners and filesystem changes between evaluation and
+execution remain outside its boundary. The lead tracks interpreter deletion
+as a separate issue; passing this policy is not permission to delete.
+
 Wrapper evaluation is capped at 64 nested commands. Deeper input and any
 `RecursionError` fail closed with a value-free reason. The hook also converts
 unexpected policy-evaluation exceptions to a value-free block. The installed
@@ -138,13 +180,16 @@ syntax-broken or crashed hook denies with a static, value-free reinstall hint:
 `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.
 Flag this to the user: blocked Bash cannot perform agent recovery. A human uses
 the prompt or an outside terminal (omit `!` there). The installer clears the
-missing pin's locked registration, and `--update` repairs broken existing pins.
+missing pin's locked registration, and `--update` moves a broken pin to a healthy
+commit. Local damage inside hooks-live refuses (tamper evidence) until a human
+inspects it and re-runs with `--restore-live`.
 The prompt's `!` bypass remains the #411 assumption, not live-verified here.
 Legitimate allow/deny results pass through. Other gates keep the default
 fail-open launcher mode; tmp-block is the other selected policy gate.
-The launcher is an installed copy so it survives a dangling hooks-live tree;
-a missing/broken launcher or skipped harness registration remains outside its
-own enforcement boundary. Lead installs through hooks-live after review/merge.
+The launcher is an installed copy so it survives a dangling hooks-live tree.
+The registered command wraps it in a `/bin/sh` guard, so a missing pinned
+interpreter or a launcher that cannot start also denies; a skipped harness
+registration remains outside its own enforcement boundary. Lead installs through hooks-live after review/merge.
 Known residuals: import-time hangs, native exits and harness timeouts can still
 fail open, and registration/launcher edits can disable enforcement. Separate
 follow-ups track these; only Python-level stdout/stderr is captured.

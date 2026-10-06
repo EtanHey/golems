@@ -42,6 +42,10 @@ executable_shell_structure_has_open_state = (
     _pkg.shell_parse.executable_shell_structure_has_open_state
 )
 process_substitution_at = _pkg.shell_parse.process_substitution_at
+_shell_operator_words = _pkg.shell_parse._shell_operator_words
+_without_policy_redirections = _rm._without_redirections
+shell_code = _pkg.shell_parse._quotes.shell_code
+shell_code_reading = _pkg.shell_parse.shell_code_reading
 policy_command_size_reason = _pkg.shell_parse.policy_command_size_reason
 PolicyEvaluationDeadlineExceeded = _pkg.shell_parse.PolicyEvaluationDeadlineExceeded
 cancel_policy_evaluation_deadline = _pkg.shell_parse.cancel_policy_evaluation_deadline
@@ -86,6 +90,9 @@ def _shell_text_with_comments_blanked(command: str) -> str:
                 quote = None
             index += 1
             continue
+        if _pkg.shell_parse.ansi_c_opens_at(command, index):
+            _, index = _pkg.shell_parse._tokens.ansi_c_quote(command, index)
+            continue
         if char in "'\"":
             quote = char
             index += 1
@@ -117,6 +124,10 @@ def _wrapper_depth_reason() -> str:
 def pr_body_is_empty(body: str | None) -> bool:
     return _git.pr_body_is_empty(body, api=globals())
 
+def git_family(token: str):
+    return _git.git_family(token)
+
+
 def split_git(command: str):
     return _git.split_git(command, api=globals())
 
@@ -135,11 +146,13 @@ def _expand_known_vars(value: str, variables: dict[str, str]) -> tuple[str, bool
 def _literal_tail_after_unresolved_var(target: str, variables: dict[str, str]) -> bool:
     return _paths._literal_tail_after_unresolved_var(target, variables, _SHELL_VAR_RE)
 
-def _rm_target_reason(target: str, cwd: str, variables: dict[str, str]) -> str | None:
+def _rm_target_reason(target: str, cwd: str, variables: dict[str, str], protected_cwd: str | None = None, *, protected_only: bool = False, follow_symlinks: bool = False, filtered_find: bool = False, assume_directory: bool = False) -> str | None:
     return _paths._rm_target_reason(
         target, cwd, variables, expand_known_vars_fn=_expand_known_vars,
         literal_tail_fn=_literal_tail_after_unresolved_var, outermost_repo_root_fn=_outermost_repo_root,
         gitfile_owner_fn=_gitfile_owner, within_fn=_within, is_harness_scratchpad_fn=is_harness_scratchpad,
+        protected_cwd=protected_cwd, protected_only=protected_only, follow_symlinks=follow_symlinks,
+        filtered_find=filtered_find, assume_directory=assume_directory,
     )
 
 def _rm_reason_in_words(
@@ -158,9 +171,22 @@ def _is_dangerous_rm_at_depth(
     return _rm.is_dangerous_rm(globals(), command, cwd=cwd, env=env, _depth=_depth)
 
 
+def _policy_readings(command, callback, stop, *, root=True):
+    def evaluate():
+        mode = "both" if root and not hasattr(command, "reading") else None
+        with shell_code_reading(command, mode):
+            return callback()
+    return _pkg.shell_parse.evaluate_shell_readings(evaluate, stop)
+
+
 def is_dangerous_rm(command: str, *, cwd: str | None = None, env=None):
     try:
-        return _is_dangerous_rm_at_depth(command, cwd=cwd, env=env, _depth=0)
+        results = _policy_readings(command,
+            lambda: _is_dangerous_rm_at_depth(command, cwd=cwd, env=env, _depth=0),
+            lambda result: result[0])
+        return next((result for result in results if result[0]), (False, None))
+    except _pkg.shell_parse.ShellReadingBudgetExceeded:
+        return True, "shell reading analysis budget exhausted; refusing to evaluate"
     except RecursionError:
         return True, _wrapper_depth_reason()
 
@@ -179,7 +205,11 @@ def _dangerous_git_reason_at_depth(command: str, *, _depth: int) -> str | None:
 
 def _dangerous_git_reason(command: str) -> str | None:
     try:
-        return _dangerous_git_reason_at_depth(command, _depth=0)
+        results = _policy_readings(command,
+            lambda: _dangerous_git_reason_at_depth(command, _depth=0), bool)
+        return next((result for result in results if result), None)
+    except _pkg.shell_parse.ShellReadingBudgetExceeded:
+        return "shell reading analysis budget exhausted; refusing to evaluate"
     except RecursionError:
         return _wrapper_depth_reason()
 
@@ -191,6 +221,11 @@ def _executed_payloads(command: str, active: str) -> list[str]:
 
 def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _depth: int = 0):
     try:
-        return _shell.dangerous_shell_reason(command, cwd=cwd, env=env, _depth=_depth, api=globals())
+        results = _policy_readings(command,
+            lambda: _shell.dangerous_shell_reason(command, cwd=cwd, env=env, _depth=_depth, api=globals()),
+            bool, root=_depth == 0)
+        return next((result for result in results if result), None)
+    except _pkg.shell_parse.ShellReadingBudgetExceeded:
+        return "shell reading analysis budget exhausted; refusing to evaluate"
     except RecursionError:
         return _wrapper_depth_reason()

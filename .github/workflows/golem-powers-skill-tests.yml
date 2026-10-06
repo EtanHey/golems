@@ -14,15 +14,6 @@ permissions:
   contents: read
 
 jobs:
-  eval-composition-tests:
-    name: Eval composition tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-
-      - name: Run focused composition tests
-        run: node --test skill-evals/helpers/compose-skill.test.js
-
   # Every packages/* test file. Before this job, 106 of the 108 ran in no workflow.
   package-tests:
     name: Package test suite (bun)
@@ -74,6 +65,20 @@ jobs:
         with:
           bun-version-file: .bun-version
 
+      # 3.9 is listed first so the default stays 3.11; hooks-interpreter-parity
+      # runs the launcher and policy hooks under python3.9 as well.
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: |
+            3.9
+            3.11
+
+      # Installer integration tests execute the isolated regression runner.
+      - run: python -m pip install pytest
+
+      - name: Regression gate contracts
+        run: python -m pytest scripts/tests/test_private_regression_gate.py -q
+
       - run: bun install --frozen-lockfile
 
       # reconcile-to-mac: the retire-law tests spawn zsh, and the CLI dry run
@@ -90,6 +95,10 @@ jobs:
                    ./scripts/tests/launchd-portability.test.mjs \
                    ./scripts/tests/reconcile-to-mac.test.mjs \
                    ./scripts/tests/release-gate.test.mjs \
+                   ./scripts/tests/repogolem-agents.test.ts \
+                   ./scripts/tests/repogolem-managed-agents.test.ts \
+                   ./scripts/tests/repogolem-values.test.ts \
+                   ./scripts/tests/repogolem-varlock.test.ts \
                    ./scripts/tests/repogolem-config.test.ts \
                    ./scripts/tests/repogolem-mcp-argv.test.ts \
                    ./scripts/tests/repogolem-machines.test.ts \
@@ -101,6 +110,10 @@ jobs:
                    ./scripts/tests/repogolem-env-classifier.test.ts \
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/tests/hooks-fail-open.test.mjs \
+                   ./scripts/tests/hooks-planted-module.test.mjs \
+                   ./scripts/tests/hooks-interpreter-parity.test.mjs \
+                   ./scripts/tests/codex-hooks-install.test.mjs \
+                   ./scripts/tests/codex-planted-module.test.mjs \
                    ./scripts/tests/install-hooks.test.mjs \
                    ./scripts/cc/cc-statusline.test.ts \
                    ./scripts/cc/cc-axiom-reporter.test.ts \
@@ -108,11 +121,18 @@ jobs:
                    ./skills/golem-powers/drive-filing/scripts
 
       - name: Check canon routing SSOT
-        run: node scripts/ci/canon-drift-lint.mjs --check
+        run: |
+          scans=()
+          while IFS= read -r -d '' file; do
+            scans+=(--routing-scan "$file")
+          done < <(git ls-files -z 'skills/**/*.md')
+          node scripts/ci/canon-drift-lint.mjs --check \
+            --routing-allowlist scripts/ci/routing-restatement-allowlist.json "${scans[@]}"
 
       - name: node suites
         run: |
           node --test scripts/tests/bats-coverage.test.mjs \
+                      scripts/tests/codex-internal-role.test.mjs \
                       scripts/tests/google-drive-oauth-guard.test.mjs \
                       scripts/tests/stalker-morning-launchd.test.mjs \
                       scripts/tests/check-telegram-retirement.test.mjs

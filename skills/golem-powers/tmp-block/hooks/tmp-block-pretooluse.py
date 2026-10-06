@@ -94,6 +94,14 @@ for an unknown target with no temp hint, GO-5 E2) · 2 = deny
 ({"decision": "block", ...}). There is no prompt: the ask path stays removed.
 """
 
+import os
+import sys
+
+# AIDEV-NOTE: no hook dir is ever FIRST on sys.path, even when this file runs
+# without the launcher: the stdlib must win over anything planted beside it.
+_HOOK_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != _HOOK_DIR] + [_HOOK_DIR]
+
 import json
 import os
 import re
@@ -131,7 +139,21 @@ def _deny_policy_import_failure():
 _SHARED_ROOT = os.path.realpath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "_shared")
 )
-sys.path.insert(0, _SHARED_ROOT)
+
+def _after_stdlib(paths):
+    # Never first: the stdlib (its zip, dir and lib-dynload) always wins over the
+    # tree, while this copy's _shared still precedes any other copy's.
+    import sysconfig
+    stdlib = os.path.realpath(sysconfig.get_paths()["stdlib"])
+    hits = [i for i, entry in enumerate(paths) if entry and (
+        os.path.realpath(entry) == stdlib or os.path.realpath(entry).startswith(stdlib + os.sep)
+        or entry.endswith(".zip"))]
+    return hits[-1] + 1 if hits else len(paths)
+
+
+if _SHARED_ROOT in sys.path:
+    sys.path.remove(_SHARED_ROOT)
+sys.path.insert(_after_stdlib(sys.path), _SHARED_ROOT)
 try:
     # A corrupt module must not contaminate the one-JSON denial before raising.
     with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
@@ -150,6 +172,10 @@ try:
         from harness_paths import _temp_prefixes, is_harness_scratchpad  # noqa: E402
         from shell_parse import (  # noqa: E402
             _ASSIGNMENT_RE,
+            ansi_c_readings,
+            ansi_c_reading,
+            evaluate_shell_readings,
+            ShellReadingBudgetExceeded,
             _QUOTED_LBRACE,
             _QUOTED_RBRACE,
             _UNRESOLVED_EVAL_MARKER,
@@ -229,6 +255,16 @@ try:
             sys.dont_write_bytecode = _previous_bytecode
 except BaseException:
     _deny_policy_import_failure()
+
+
+# Captured readings share the original deadline. A provisional allow/deny must
+# not disarm it before the other reading has been checked.
+_capturing_reading = False
+_cancel_policy_deadline = cancel_policy_evaluation_deadline
+
+def cancel_policy_evaluation_deadline():
+    if not _capturing_reading:
+        _cancel_policy_deadline()
 
 
 def allow():
@@ -496,16 +532,53 @@ def _main_under_deadline():
 
 
 def main():
+    global _capturing_reading
     try:
         with policy_evaluation_deadline():
-            _main_under_deadline()
-    except PolicyEvaluationDeadlineExceeded as exc:
+            raw = sys.stdin.read()
+            try:
+                payload = json.loads(raw)
+                command = payload.get('tool_input', {}).get('command', '')
+            except (ValueError, AttributeError):
+                command = ''
+            readings = ansi_c_readings(command) if isinstance(command, str) else ('zsh',)
+            original_input = sys.stdin
+            captured = []
+            try:
+                def evaluate():
+                    global _capturing_reading
+                    sys.stdin = StringIO(raw)
+                    output = StringIO()
+                    try:
+                        _capturing_reading = True
+                        with redirect_stdout(output):
+                            _main_under_deadline()
+                    except SystemExit as decision:
+                        return decision.code, output.getvalue()
+                    finally:
+                        _capturing_reading = False
+                for reading in readings:
+                    with ansi_c_reading(reading):
+                        captured.extend(evaluate_shell_readings(evaluate, lambda row: row[0] != 0))
+                    if captured[-1][0] != 0:
+                        break  # deny dominates; another reading cannot allow it
+            finally:
+                sys.stdin = original_input
+                _capturing_reading = False
+            code, output = next((row for row in captured if row[0] != 0), captured[0])
+            cancel_policy_evaluation_deadline()
+            sys.stdout.write(output)
+            raise SystemExit(code)
+    except (PolicyEvaluationDeadlineExceeded, ShellReadingBudgetExceeded) as exc:
         deny(f"⛔ TMP-BLOCK: {exc}.")
 
 
 try:
     with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
         _package.bind(_impl_modules, _impl_exports,
+                      ansi_c_readings=ansi_c_readings,
+                      ansi_c_reading=ansi_c_reading,
+                      evaluate_shell_readings=evaluate_shell_readings,
                       _ASSIGNMENT_RE=_ASSIGNMENT_RE,
                       _QUOTED_LBRACE=_QUOTED_LBRACE,
                       _QUOTED_RBRACE=_QUOTED_RBRACE,

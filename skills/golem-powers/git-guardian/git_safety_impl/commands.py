@@ -223,15 +223,20 @@ def _dangerous_non_rm_in_words(
             api, words, nested, _depth=_depth + 1, _find_cache=_find_cache
         )
 
+    if command_name == "eval":
+        payload = " ".join(words[position + 1:])
+        with api['shell_code_reading'](payload, 'both'):
+            return _dangerous_git_reason(payload, api=api, _depth=_depth + 1)
+
     if command_name in {"bash", "sh", "zsh", "dash", "ksh"}:
         for index in range(position + 1, len(words) - 1):
             option = words[index]
             if option == "--command" or (
                 option.startswith("-") and not option.startswith("--") and "c" in option[1:]
             ):
-                return _dangerous_git_reason(
-                    words[index + 1], api=api, _depth=_depth + 1
-                )
+                with api['shell_code_reading'](words[index + 1], 'both'):
+                    return _dangerous_git_reason(
+                        words[index + 1], api=api, _depth=_depth + 1)
         return None
 
     if command_name == "find":
@@ -272,10 +277,11 @@ def _dangerous_non_rm_in_words(
         if words[position + 1:position + 2] == ["down"]:
             return "Dangerous command: railway down"
         return None
-    if command_name != "git":
+    family = api['git_family'](words[position])
+    if family is None:
         return None
 
-    parsed = api['split_git'](shlex.join(["git", *words[position + 1:]]))
+    parsed = api['split_git'](shlex.join(["git", *([family] if family else []), *words[position + 1:]]))
     if parsed is None:
         return None
     subcommand, arguments = parsed
@@ -298,16 +304,11 @@ def _dangerous_git_reason(command: str, *, api: dict, _depth: int = 0) -> str | 
     """Find destructive git/railway commands with quote-aware shell segmentation."""
     if _depth > api['_MAX_WRAPPER_DEPTH']:
         return api['_wrapper_depth_reason']()
-    def lex(shell_text: str) -> list[str]:
-        lexer = shlex.shlex(
-            api['_shell_text_with_comments_blanked'](shell_text),
-            posix=True,
-            punctuation_chars=";&|()\n",
+    def lex(shell_text: str) -> list[tuple[str, bool]]:
+        return api['_shell_operator_words'](
+            api['_without_policy_redirections'](
+                api['_shell_text_with_comments_blanked'](shell_text))
         )
-        lexer.whitespace = " \t\r"
-        lexer.whitespace_split = True
-        lexer.commenters = ""
-        return list(lexer)
 
     try:
         tokens = lex(command)
@@ -329,8 +330,9 @@ def _dangerous_git_reason(command: str, *, api: dict, _depth: int = 0) -> str | 
             return _dangerous_non_rm_in_words(api, command.split(), _depth=_depth)
 
     segment: list[str] = []
-    for token in tokens + [";"]:
-        if token and all(char in ";&|()\n" for char in token):
+    for token, is_operator in tokens + [(";", True)]:
+        if is_operator and (all(char in ";&|()\n" for char in token)
+                            or token.startswith((")$", ")`"))):
             reason = _dangerous_non_rm_in_words(
                 api, segment, _depth=_depth, _find_cache={}
             )

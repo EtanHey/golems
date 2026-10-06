@@ -11,7 +11,7 @@ Before changing a package, read its `CLAUDE.md` if it has one.
 ## Key Relationships
 
 - **ClaudeGolem** preserves persona guidance and Claude CLI status workflows
-- **CoachGolem** reads getStatus() from Recruiter and Teller (read-only)
+- **CoachGolem** reads getStatus() from Teller (read-only)
 - **Services** (briefing) imports from Coach for daily plan generation
 - **Cloud Worker** remains a local/successor-host runnable scheduler; Railway service was deleted on 2026-07-05
 - **Most packages** depend on Shared for Supabase, LLM, state; golem-skills, golems-tui, green-invoice-mcp and mock-mcp do not
@@ -45,6 +45,6 @@ Durable content goes in the repo or its `docs.local/` — never `/tmp`,
 invisible to the rest of the fleet. Worktrees go in `<repo>/.worktrees/<name>`.
 Genuinely ephemeral? `WEAVE_ALLOW_TMP=1 <command>` — allowed and logged.
 Claude and Cursor panes are held to this by the `tmp-block` PreToolUse hook;
-**Codex panes are not wired**, so in a Codex lane it is a rule you follow, not a
-rail that catches you. Full contract, and why Codex is unwired:
+**Codex enforcement requires hooks-live install and owner trust review in plain `codex`**;
+a seat counts as guarded only after native denial is verified. The installer's `--status` reports wiring, trust unverified. Contract and limits:
 `skills/golem-powers/tmp-block/SKILL.md`.

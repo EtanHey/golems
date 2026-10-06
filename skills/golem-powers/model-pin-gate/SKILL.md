@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Skill: Model-Pin Gate
 
-> Fable is apex-only. Worker fan-out should name the model it needs instead of inheriting or targeting Fable by accident.
+> Every non-Cursor spawn pins its model explicitly (canon #5); a non-default model such as Fable is used only by explicit per-invocation selection, never inherited. Routing: see `/agent-routing` § Routing rules (SSOT).
 
 ## What It Is
 

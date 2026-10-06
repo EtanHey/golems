@@ -7,7 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>@HOME@/.bun/bin/bun</string>
+        <string>/opt/homebrew/bin/bun</string>
         <string>@GOLEMS_ROOT@/packages/services/src/briefing.ts</string>
     </array>
 
@@ -30,7 +30,7 @@
         <key>HOME</key>
         <string>@HOME@</string>
         <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:@HOME@/.bun/bin</string>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
 
     <key>RunAtLoad</key>

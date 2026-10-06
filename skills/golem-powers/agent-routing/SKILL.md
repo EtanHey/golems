@@ -19,6 +19,12 @@ This section is the single source of truth for fleet routing. Fleet canon, globa
 
 Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
 
+### Execution capability
+
+A task that must RUN COMMANDS (shell, ffmpeg/media conversion, builds, tests, installs, or file writes) never goes to a read-only gatherer profile (agy `gatherer`, no shell). The brief names the execution profile and required tool access.
+
+Gemini spawns select the agy profile by task: command/media work uses the shell-capable profile (currently `video-qa`); read-only research uses `gatherer`. Never default to `gatherer`. Verify the named profile supports the whole task: `video-qa` has `run_command` and artifact writes, but forbids code edits and installs; route those to an executor with the required access.
+
 ### Implementation and review
 
 | Work | Implements | Reviews | Plus |
@@ -85,8 +91,8 @@ Read every reference triggered by the mission before dispatch. The live referenc
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
 | **`codex.implement`** | Implement / review | Non-UX/UI, non-security code/docs changes, fixes, refactors, tests, PRs; UX/UI pair review per SSOT | Research, data gathering, orchestration |
 | **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
-| **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
-| **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Implementing, reviewing, deciding, UX/UI judgment |
+| **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
+| **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Running commands, implementing, reviewing, deciding, UX/UI judgment |
 | **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; non-UX/UI implementation |
 
 Decision rules:
@@ -97,7 +103,7 @@ Decision rules:
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
 5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
 6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
-7. A pasted video URL to extract/analyze/process, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a `gemini.gather.visual` gatherer through `/qa-video`; from an Agent-tool context, dispatch `visual-gatherer`; it runs `gemini.gather.visual` headless; use Pro-High only when explicitly requested.
+7. For video extraction/processing that runs commands, select the execution profile under § Execution capability first. Read-only video analysis, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a `gemini.gather.visual` gatherer through `/qa-video`; from an Agent-tool context, dispatch `visual-gatherer`; it runs `gemini.gather.visual` headless; use Pro-High only when explicitly requested.
 8. UX/UI and design judgment stays on `claude.judgment`. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
 
 **Evidence (skill-creator eval, 2026-09-25; visible cmux workers, mechanical answer keys, lead-scored):** 40 bounded text-gather tasks: Flash-Low 40/40 and Opus 5.5 40/40, 0 fabricated claims each; higher Gemini effort on text gave the same accuracy 2.8–4.7× slower. 20 mixed tasks (8 image reads, 4 video): Opus 20/20, Pro-High 20/20 (2:35), Flash-High 20/20 (6:17), Flash-Low 19/20 (missed counting distinct screens across a video). An open-ended Pro research draft had a dead citation, a stale "recent" item, and missed the key release. Limits: screening sample (n=60) on one Mac; not evidence for judgment, design, review, or code. 2026-09-25 ruling: Low tiers are not used for gathering. On a real narrated QA review Flash-Low found 15–16/22 vs Flash-High 21/22, with an invented quote.
@@ -164,15 +170,20 @@ Domain leads are orchestrators one tier below orc:
 2. Lead goals preserve orchestration duties: delegate, maintain health gates, synthesize, and verify.
 3. A lead is a managed `agent_id` with `role:"orchestrator"` and left-column placement.
 4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Routing rules (SSOT).
-5. Reuse an existing healthy worker for the same repo/workspace/role lane; supersede its goal instead of spawning a duplicate.
+5. A new lane or task gets a fresh worker, even if a healthy idle worker exists in the same repo/workspace/role; reuse or supersede a worker's goal only to continue the same lane (its review rounds, follow-ups on its own diff, or re-scopes of the same deliverable), never for two unrelated lanes. Keep the worker through its own review rounds and close its pane only when its lane closes (PR loop finished: merged/handed off, artifacts harvested), not at its first DONE; this closure provides fd hygiene, not recycling workers across tasks.
 
 ## Goal Contract
 
 Every complex or multi-hour dispatch uses one absolute file-backed goal containing the full user
-mission, constraints, green/no-green criteria, report path, and exact DONE marker. Reuse and
-supersede before spawning. A lane may close only as verified `DONE`, file-backed
-`BLOCKED`/`NOT_GREEN`, or `TRANSFERRED` with successor evidence. A DONE marker is only a prompt to
-verify the contracted artifact.
+mission, constraints, green/no-green criteria, report path, and exact DONE marker. Name the CLI,
+execution profile and required tool access, matched to the task under § Execution capability. Supersede an
+existing worker's goal only to continue the same lane; a new lane gets a fresh worker. A lane may
+close only as verified `DONE`, file-backed `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED` with successor
+evidence. A DONE marker is only a prompt to verify the contracted artifact.
+
+**Stay on task:** a worker reads only its brief, the files it names, and repo instruction files. Never read other agents' reports, inboxes, briefs or collab threads not addressed to it unless the brief explicitly allows it.
+
+**Capability mismatch:** if the worker's profile/tools cannot do the task, stop and report one line to its lead: `BLOCKED: <task> needs <capability>; profile <x> lacks it`. Never substitute other work or explore.
 
 If the user questions why work is happening or corrects the route, pause spawning and patching,
 explain the evidence-backed state, and store the correction separately.

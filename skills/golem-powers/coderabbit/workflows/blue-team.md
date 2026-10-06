@@ -55,7 +55,7 @@ REPO_CTX="<repo context for $REPO_NAME from the map>"
 PROMPT="${PROMPT//\{\{REPO_CONTEXT\}\}/$REPO_CTX}"
 
 # Run with Cursor
-cursor agent --output-format text --model "gpt-5.2-codex-xhigh" \
+cursor agent --output-format text \
   "$PROMPT
 
 ## Code to Review
@@ -81,7 +81,7 @@ Save structured output:
 
 ```bash
 # Save to docs.local/audits/ for traceability
-cursor agent --output-format text --model "gpt-5.2-codex-xhigh" "$PROMPT ..." \
+cursor agent --output-format text "$PROMPT ..." \
   > "docs.local/audits/blue-team-$(date +%Y-%m-%d)-$(git rev-parse --short HEAD).md"
 ```
 
@@ -107,10 +107,10 @@ For comprehensive coverage, run both reviews:
 
 ```bash
 # Red team (security/reliability)
-cursor agent --output-format text --model "gpt-5.2-codex-xhigh" "$RED_PROMPT" > red-findings.md
+cursor agent --output-format text "$RED_PROMPT" > red-findings.md
 
 # Blue team (quality/architecture)
-cursor agent --output-format text --model "gpt-5.2-codex-xhigh" "$BLUE_PROMPT" > blue-findings.md
+cursor agent --output-format text "$BLUE_PROMPT" > blue-findings.md
 ```
 
 Merge findings, deduplicate. Red team H findings override Blue team suggestions on the same code.

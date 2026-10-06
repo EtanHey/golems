@@ -17,7 +17,7 @@ as working examples, not as a supported product.
 
 Two terms:
 
-- A **golem** is a package that handles one domain (jobs, finance, planning).
+- A **golem** is a package that handles one domain (email, finance, planning).
   It holds the code, prompts, and integrations for that domain.
 - A **skill** is a `SKILL.md` file that an agent loads and follows. It can come
   with scripts, references, and evals.
@@ -41,7 +41,7 @@ untracked folders.
 
 ## Packages
 
-There are 11 workspace packages under `packages/`:
+There are 10 workspace packages under `packages/`:
 
 | Package | What it is |
 |---|---|
@@ -52,7 +52,6 @@ There are 11 workspace packages under `packages/`:
 | `golems-tui` | Terminal dashboard built on React Ink |
 | `green-invoice-mcp` | MCP server for Green Invoice, an Israeli invoicing service |
 | `mock-mcp` | Mock MCP server for testing agent skills |
-| `recruiter` | Outreach drafting, interview practice, Elo-rated skill tracking |
 | `services` | Morning briefing, scheduler worker, `doctor` health checks |
 | `shared` | Supabase, LLM, email, state, and MCP helpers the other packages share |
 | `teller` | Subscription tracking, payment categorization, spending reports, payment-failure alerts |
@@ -100,6 +99,47 @@ does not prove a skill works in every setup.
 The Python skill suites and gate evals run with `bash scripts/ci/run-skill-tests.sh`.
 You need `python3` with `pytest` installed.
 
+## Human confirmation for destructive commands
+
+The Claude human-confirm gate requires a signed, scoped, one-use token for
+force pushes, remote deletion, history rewrites and repo administration.
+Chat text and agent messages never satisfy it. The source implementation
+must be reviewed and installed through hooks-live before it protects a client;
+Codex exec_command is currently outside this hook.
+
+The owner provisions a dedicated SSH signing key in the 1Password SSH agent,
+exports only its public key to `~/.config/golems/human-confirm.pub`, and puts
+`human <public-key-line>` in mode-0600
+`~/.config/golems/human-confirm-anchor/allowed_signers` (directory mode 0700).
+Then run `~/Gits/golems/.worktrees/hooks-live/scripts/golems-confirm-pin`. It
+shows each principal's key fingerprint and waits for you to type `PIN`. Then it
+locks the file and prints a line for
+`skills/golem-powers/human-confirm-gate/anchor.pins`. That line lands by
+reviewed PR, and only then does hooks-live install the gate. Use 1Password's **per key,
+per request** authorization setting, and leave **Approve for all applications**
+off. Other approval modes cache authorization; a cached signature is not proof
+of new owner presence. See [1Password's authorization model](https://www.1password.dev/ssh/agent/security).
+No private key is exported, and the helper never calls `op`.
+
+From a separate owner terminal with the 1Password `SSH_AUTH_SOCK` configured:
+
+```sh
+alias golems-confirm="$PWD/scripts/golems-confirm"
+golems-confirm /path/to/worker/worktree topic lease --sha <full-remote-sha> --session <Claude-session-id>
+```
+
+The helper prints the exact command/cwd/scope before requesting the signature
+and uses `ssh-keygen -U` to require the agent. Agent ancestry checks only catch
+detectable misuse; the 1Password per-request prompt establishes owner presence.
+It issues a mode-0600 token with a two-minute TTL, and checks the issuer's public
+key against the trust anchor. Execute exactly that displayed command in the
+specified worker session. `force` and `delete` actions generate their commands;
+`rewrite` and `settings` require `--command` with the exact tool command.
+Known agent ancestry or non-interactive issuance refuses. Private token/key
+separation and an immutable trusted hook/anchor remain deployment assumptions:
+a malicious process with the same UID can replace local policy; this is not a
+sandbox. See [the complete gate contract](skills/golem-powers/human-confirm-gate/SKILL.md).
+
 ## CLI
 
 The CLI lives in `packages/golem-skills`. Run it from a clone:
@@ -135,16 +175,22 @@ bun scripts/repogolem/repogolem-config.ts generate --check   # exit 1 + the stal
   join it), `clis` (the CLIs that machine has) and `overrides` (objects merge,
   lists replace, `null` drops a project). `generate` picks the section by
   `scutil --get LocalHostName`, or by `--host` / `REPOGOLEM_HOST`.
-- **Secrets are op:// refs only.** The schema rejects a literal under
-  `secrets:`. The config holds no values, so you can keep it in a private
-  repo.
-- **`generate` is the only step that resolves them.** It resolves every ref
-  in one `op run` (one 1Password unlock) and writes
+- **Secrets use references.** Project mappings accept `op://vault/item/field`
+  or `varlock://NAME` named refs; literals are rejected. `secrets.backend`
+  selects `1password` (the default), `file`, or `plugin:<npm-package-or-path>`.
+  Declare named refs under `values`. The file backend reads a private
+  `secrets.valuesFile`; the `file` backend accepts only `varlock://` refs.
+  Direct `op://` refs resolve through `1password` or a `plugin:` adapter.
+  See [backend setup](scripts/repogolem/README.md#named-values-and-other-backends).
+- **`generate` resolves refs through the configured backend.** The 1Password
+  backend uses one deduplicated `op run` batch (one unlock); `file` and
+  `plugin:` backends use their configured value source or bulk resolver.
+  Generate writes
   `~/.config/repogolem/generated/{registry.json,launchers.zsh,secrets.env}`.
   Each file is stamped with the config's sha256. `--check` only reads these
-  files and never calls `op`. `golem-dispatch.zsh` still resolves refs through
-  Ralph's loader today. Moving it to read `secrets.env` is the next step, and
-  after that an unattended spawn never waits on a prompt.
+  files and never calls `op`. `golem-dispatch.zsh` reads the generated cache
+  through the installed runtime, so an unattended spawn does not resolve refs
+  or wait on a provider prompt.
 
 **The tradeoff: resolved values are on disk.** `secrets.env` holds them in
 plain text, so an agent can start without an unlock prompt. The rule is that

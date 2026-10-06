@@ -49,9 +49,9 @@ describe("wizard module", () => {
 
   test("detects existing config and returns its content", async () => {
     const existingConfig = {
+      features: { proactiveNudges: true },
       reposPath: "~/Gits",
       tools: { claude: "/usr/local/bin/claude" },
-      features: { proactiveNudges: true, nightShift: false },
     };
     await writeFile(configPath, JSON.stringify(existingConfig, null, 2));
 
@@ -61,7 +61,6 @@ describe("wizard module", () => {
     expect(config.reposPath).toBe("~/Gits");
     expect(config.tools.claude).toBe("/usr/local/bin/claude");
     expect(config.features.proactiveNudges).toBe(true);
-    expect(config.features.nightShift).toBe(false);
   });
 
   test("config with all features disabled is valid", async () => {
@@ -70,7 +69,6 @@ describe("wizard module", () => {
       tools: { claude: "/usr/local/bin/claude" },
       features: {
         proactiveNudges: false,
-        nightShift: false,
       },
     };
 
@@ -80,7 +78,6 @@ describe("wizard module", () => {
 
     expect(parsed.reposPath).toBe("~/Projects");
     expect(parsed.features.proactiveNudges).toBe(false);
-    expect(parsed.features.nightShift).toBe(false);
     expect(parsed.features).not.toHaveProperty("telegram");
   });
 
@@ -94,7 +91,6 @@ describe("wizard module", () => {
       },
       features: {
         proactiveNudges: true,
-        nightShift: false,
       },
     };
 
@@ -119,7 +115,6 @@ describe("wizard module", () => {
       tools,
       features: {
         proactiveNudges: false,
-        nightShift: false,
       },
     };
 
@@ -154,7 +149,6 @@ describe("wizard module", () => {
       tools: { claude: "/usr/local/bin/claude" },
       features: {
         proactiveNudges: false,
-        nightShift: false,
       },
     };
 
@@ -163,7 +157,7 @@ describe("wizard module", () => {
     const parsed = JSON.parse(raw);
 
     // All features should be explicitly false
-    for (const feature of ["proactiveNudges", "nightShift"]) {
+    for (const feature of ["proactiveNudges"]) {
       expect(parsed.features[feature]).toBe(false);
     }
   });
@@ -172,12 +166,11 @@ describe("wizard module", () => {
     // User enables only proactiveNudges
     const enabledFeatures = new Set(["proactiveNudges"]);
     const features: Record<string, boolean> = {};
-    for (const f of ["proactiveNudges", "nightShift"]) {
+    for (const f of ["proactiveNudges"]) {
       features[f] = enabledFeatures.has(f);
     }
 
     expect(features.proactiveNudges).toBe(true);
-    expect(features.nightShift).toBe(false);
     expect(features).not.toHaveProperty("telegram");
   });
 });

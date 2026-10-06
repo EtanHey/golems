@@ -28,10 +28,3 @@ mcp__brainlayer__brain_search(query="scheduler isolation", project="<BRAINLAYER_
 | File | Topic | Date |
 |------|-------|------|
 | `decisions.md` | Componentization reference (golem taxonomy, deployment, state, launchd; delivery route retired 2026-10-01) | 2026-02-11 |
-| `contexts-to-rules-migration.md` | Migration from @contexts/ to .claude/rules/ | 2026-02-11 |
-
-## Interview Topics
-
-Architecture decisions that are also useful for interview prep go in `packages/recruiter/docs/topics/` with a cross-reference here.
-
-- RAG vs Fine-Tuning: `packages/recruiter/docs/topics/rag-vs-fine-tuning.md`

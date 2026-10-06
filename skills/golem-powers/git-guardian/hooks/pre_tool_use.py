@@ -10,6 +10,14 @@ Historical retirement note (2026-09-25): GO-5 E2 removed the unrotated permissio
 tracker (E1: agent_states that nothing read).
 """
 
+import os
+import sys
+
+# AIDEV-NOTE: no hook dir is ever FIRST on sys.path, even when this file runs
+# without the launcher: the stdlib must win over anything planted beside it.
+_HOOK_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != _HOOK_DIR] + [_HOOK_DIR]
+
 import json
 import sys
 import os
@@ -42,7 +50,7 @@ GIT_GUARDIAN_LIB = os.environ.get("GIT_GUARDIAN_LIB") or os.path.dirname(
     os.path.dirname(os.path.realpath(__file__))
 )
 if GIT_GUARDIAN_LIB not in sys.path:
-    sys.path.insert(0, GIT_GUARDIAN_LIB)
+    sys.path.append(GIT_GUARDIAN_LIB)  # after the stdlib: nothing in the tree may shadow it
 try:
     # A corrupt module must not contaminate the one-JSON denial before raising.
     with redirect_stdout(StringIO()), redirect_stderr(StringIO()):

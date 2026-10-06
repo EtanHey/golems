@@ -35,6 +35,9 @@ describe("launchd templates are portable", () => {
       const rendered = readFileSync(destination, "utf8");
       expect(rendered).toContain("/Users/example");
       expect(rendered).toContain("/opt/golems/packages/services/src/briefing.ts");
+      expect(rendered).toContain("<string>/opt/homebrew/bin/bun</string>");
+      expect(rendered).toContain("<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>");
+      expect(rendered).not.toContain("/.bun/bin");
       expect(rendered).not.toMatch(/@[A-Z][A-Z0-9_]*@/);
     } finally {
       rmSync(scratch, { recursive: true, force: true });

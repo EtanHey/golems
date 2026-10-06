@@ -19,17 +19,17 @@ Generate branded, visual RTL Hebrew HTML documents with colored sections, callou
 ## How It Works
 
 1. Build a JSON file with the document content
-2. Run `bun scripts/explanatory-doc.ts input.json output.html`
+2. Run `bun skills/explanatory-doc/scripts/explanatory-doc.ts input.json output.html`
 3. Generate PDF: `/Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser --headless --disable-gpu --print-to-pdf="output.pdf" --no-margins "output.html"`
 
 ## Quick Start
 
 ```bash
 # Generate from JSON file
-bun scripts/explanatory-doc.ts /tmp/doc-input.json ~/Documents/output.html
+bun skills/explanatory-doc/scripts/explanatory-doc.ts docs.local/doc-input.json ~/Documents/output.html
 
 # Pipe from stdin
-cat /tmp/doc-input.json | bun scripts/explanatory-doc.ts - ~/Documents/output.html
+cat docs.local/doc-input.json | bun skills/explanatory-doc/scripts/explanatory-doc.ts - ~/Documents/output.html
 
 # Generate PDF from HTML
 /Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser \
@@ -158,6 +158,6 @@ When generating content for explanatory docs:
 2. Gather content (research, notes, conversation)
 3. Structure into sections with appropriate block types
 4. Write JSON to temp file
-5. Run `bun scripts/explanatory-doc.ts` to generate HTML
+5. Run `bun skills/explanatory-doc/scripts/explanatory-doc.ts` to generate HTML
 6. Generate PDF via Brave headless
 7. Copy to Obsidian: `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/personal/Personal/`

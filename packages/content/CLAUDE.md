@@ -410,16 +410,13 @@ ContentGolem has two distinct halves:
 Fully implemented: brand system, Remotion compositions, ComfyUI image gen, data viz pipeline, pipeline intelligence router. All code lives in this package.
 
 ### Text Publishing (in skills + services)
-Logic is currently spread across other packages:
-- **`golem-powers/content/`** skill — draft workflow (draft → critique → refine → publish)
-- **Soltome client** — `@golems/services/soltome-client.ts` (API client for soltome.com)
-- **Post generator** — `@golems/services/post-generator.ts` (critique-waves pattern)
-- **Soltome learner** — `@golems/services/soltome-learner.ts` (2am: scrape + learn patterns)
+The **`golem-powers/content/`** skill owns draft → critique → refine → publish.
+The former `services/soltome-client.ts`, `post-generator.ts` and
+`soltome-learner.ts` modules are retired; they are not current entry points.
 
-Text publishing logic will migrate into `src/` in a future phase.
-
-### n8n Orchestration (in `packages/orchestrator/`)
-The n8n automation layer and Bun render microservice live in a separate package. See `packages/orchestrator/CLAUDE.md`.
+### Orchestration
+No `packages/orchestrator/` package exists in this workspace. Resolve orchestration
+from the active skill and the external orchestration repo's current instructions.
 
 ## Content Pipeline
 

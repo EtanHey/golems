@@ -42,7 +42,10 @@ def canonical_tool(tool_name):
 # apply_patch envelope headers that CREATE or REWRITE a path. `Delete File` is
 # absent on purpose: the contract has never denied a delete.
 _APPLY_PATCH_TARGET_RE = re.compile(
-    r"^\*\*\*\s+(Add File|Update File|Move to):\s*(.+?)\s*$", re.MULTILINE
+    # Codex trims each header line, including Unicode whitespace. Never let
+    # whitespace matching consume a newline and hide a following header.
+    r"^[^\S\n]*\*\*\*[^\S\n]+(Add File|Update File|Move to):[^\S\n]*(.+?)[^\S\n]*$",
+    re.MULTILINE,
 )
 
 
@@ -67,7 +70,14 @@ def find_temp_targets(tool_name, tool_input):
         command = tool_input.get("command", "")
         if not isinstance(command, str):
             raise ValueError("Bash command is not a string")
-        return _bash_temp_targets(command)
+        targets = []
+        for reading in ansi_c_readings(command):
+            with ansi_c_reading(reading):
+                for branch in evaluate_shell_readings(lambda: _bash_temp_targets(command)):
+                    for target in branch:
+                        if target not in targets:
+                            targets.append(target)
+        return targets
 
     if tool_name == APPLY_PATCH_TOOL:
         return _apply_patch_temp_targets(tool_input)

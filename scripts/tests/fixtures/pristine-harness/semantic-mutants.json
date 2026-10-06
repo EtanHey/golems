@@ -681,9 +681,9 @@
     "description": "git lexer consumes real-comment newline and parameter operator suffix",
     "target": "git-guardian",
     "baseline": "candidate",
-    "path": "skills/golem-powers/git-guardian/git_safety_impl/commands.py",
-    "old": "        lexer.commenters = \"\"\n",
-    "new": "        lexer.commenters = \"#\"\n"
+    "path": "skills/golem-powers/git-guardian/git_safety.py",
+    "old": "        if (\n            char == \"#\"\n            and not parameter_depth\n            and (index == 0 or command[index - 1].isspace() or command[index - 1] in \";|&()\")\n        ):\n            while index < len(command) and command[index] not in \"\\r\\n\":\n                output[index] = \" \"\n                index += 1\n            continue\n",
+    "new": "        if char == \"#\":\n            while index < len(command) and command[index] not in \"\\r\\n\":\n                output[index] = \" \"\n                index += 1\n            if index < len(command):\n                output[index] = \" \"\n                index += 1\n            continue\n"
   },
   {
     "id": "I460-L2",

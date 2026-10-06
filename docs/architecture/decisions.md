@@ -1,23 +1,23 @@
 # Architecture Decisions
 
-> Key decisions made during the Golems componentization (Feb 2026). Reference for wizard, doctor, and debugging.
+> Key decisions made during the Golems componentization (Feb 2026). Historical record; current packages and services are listed in README.md.
 
 ---
 
 ## Golem Taxonomy
 
-**Only 3 domain golems** + 1 orchestrator:
+**Original Feb 2026 taxonomy** (Recruiter retired 2026-10-05):
 
 | Component | Type | Package |
 |-----------|------|---------|
-| RecruiterGolem | Domain golem | `@golems/recruiter` |
+| RecruiterGolem | Retired 2026-10-05 | Former `@golems/recruiter` |
 | TellerGolem | Domain golem | `@golems/teller` |
 | CoachGolem | Domain golem | `@golems/coach` |
 | ClaudeGolem | Orchestrator | `@golems/claude` |
 
 **Service layers** (not golems):
 - `@golems/shared` — Supabase, LLM, email, state, notifications
-- `@golems/services` — Night Shift, Briefing, Cloud Worker, Wizard, Doctor
+- `@golems/services` — Briefing, Cloud Worker, Doctor (Night Shift and Wizard retired)
 - `@golems/content` — Content creation skills (LinkedIn, ghostwriting)
 
 ---
@@ -36,7 +36,7 @@ Each golem/service = its own package with:
 ```typescript
 // Always use package imports, never relative cross-package
 import { scorer } from "@golems/shared/email/scorer";
-import { processHotMatch } from "@golems/recruiter/auto-outreach";
+// Historical Recruiter imports were removed with the package on 2026-10-05.
 ```
 
 ---
@@ -53,7 +53,7 @@ remain; no replacement channel is enabled by default.
 
 | Environment | Components | Why |
 |-------------|-----------|-----|
-| Mac (launchd) | Night Shift, Briefing, BrainLayer | Needs local Claude CLI, file access |
+| Mac (launchd) | Briefing, BrainLayer | Needs local Claude CLI, file access |
 | Local/successor scheduler | Email poller, Cloud LLM | Scheduled tasks; Railway service deleted 2026-07-05 |
 | Supabase | Database, auth, storage | Shared state |
 
@@ -94,7 +94,7 @@ active CLI sessions and recent event-log entries.
 
 ### CoachGolem reads status
 ```
-coach/index.ts → getStatus() from recruiter, teller (read-only)
+coach/status-aggregator.ts → email and teller status (read-only)
 ```
 
 ### Services briefing imports from Coach
@@ -113,11 +113,10 @@ services/cloud-worker.ts → processEmails() from @golems/shared
 
 | Plist | Schedule | Process |
 |-------|----------|---------|
-| `com.golems.nightshift.plist` | 4am daily | Night Shift |
-| `com.golems.briefing.plist` | 8am daily | Morning Briefing |
-| `com.golems.bedtime.plist` | 10pm daily | Bedtime Guardian |
-| `com.golems.healthcheck.plist` | 9am daily | Health Check |
-| `com.golems.compactor.plist` | 3am daily | Thread Compaction |
+| `com.golemszikaron.briefing.plist` | 8am daily | Morning Briefing |
+
+Night Shift, Bedtime Guardian, Health Check and Thread Compaction plists were
+retired. This table records the briefing wiring; see `launchd/` for other live plists.
 
 ### SIGTERM Handling
 Any `Bun.serve()` managed by launchd MUST handle SIGTERM:

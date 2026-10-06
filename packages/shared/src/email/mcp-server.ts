@@ -127,14 +127,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "email_getByGolem",
       description:
-        "Get emails routed to a specific golem. Golems: recruitergolem (job/interview), tellergolem (subscription), claudegolem (tech-update/urgent), emailgolem (newsletter/promo/social/other).",
+        "Get emails by inbox label. Labels: recruitergolem (legacy job/interview inbox; package retired), tellergolem (subscription), claudegolem (tech-update/urgent), emailgolem (newsletter/promo/social/other).",
       inputSchema: {
         type: "object" as const,
         properties: {
           golem: {
             type: "string",
             description:
-              "Target golem: recruitergolem, tellergolem, claudegolem, emailgolem",
+              "Inbox label: recruitergolem (legacy career inbox), tellergolem, claudegolem, emailgolem",
             enum: [
               "recruitergolem",
               "tellergolem",
@@ -565,7 +565,7 @@ async function handleGetByGolem(args: McpArgs) {
   }
 
   const golemNames: Record<string, string> = {
-    recruitergolem: "RecruiterGolem",
+    recruitergolem: "Career inbox (legacy recruitergolem)",
     tellergolem: "TellerGolem",
     claudegolem: "ClaudeGolem",
     emailgolem: "EmailGolem",
