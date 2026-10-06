@@ -71,8 +71,7 @@ class GraphQL(unittest.TestCase):
         from gh_policy import mutation_fields
         self.assertEqual(mutation_fields('mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{id}}}'),
                          ['resolveReviewThread'])
-        self.assertEqual(mutation_fields('mutation M { a: addComment(input:{body:"mutation{deleteRef}"}) { x } }'),
-                         ['addComment'])
+        self.assertEqual(mutation_fields('mutation M { a: addComment(input:{body:"x"}) { x } }'), ['addComment'])
         self.assertEqual(mutation_fields('mutation @d { updateRefs(input:{}) { x } }'), ['updateRefs'])
         self.assertEqual(mutation_fields('query{viewer{login}} mutation{addReaction(input:{}){x} deleteRef(input:{}){x}}'),
                          ['addReaction', 'deleteRef'])
@@ -86,11 +85,36 @@ class GraphQL(unittest.TestCase):
         an operation keyword, makes the document unreadable (and a mutation document denies)."""
         from gh_policy import mutation_fields
         for document in ['% mutation{a(input:{}){x}}', 'query mutation {a}', '{a} ! mutation{b}', '{mutation}',
-                         'mutation M % {deleteRef(input:{}){x}}', 'Mutation {deleteRef(input:{}){x}}']:
+                         'mutation M % {deleteRef(input:{}){x}}', 'Mutation {deleteRef(input:{}){x}}',
+                         '{a 1mutation}']:  # glued to a digit: the raw-word floor misses it, the token count does not
             with self.subTest(document=document):
                 self.assertIsNone(mutation_fields(document))
         self.assertEqual(mutation_fields('query Q($a: Int = 1) @d {a} fragment F on T {b}'), [])
         self.assertEqual(mutation_fields('subscription {a} mutation M {addReaction(input:{}){x}}'), ['addReaction'])
+
+    def test_lexer_follows_graphql_line_terminators_and_block_string_escapes(self):
+        """A comment ends at any line terminator and a string never spans one; inside a block
+        string the only escape is a backslash before three quotes, so a backslash run before
+        the closing quotes does not close it."""
+        from gh_policy import _GQL
+        for document in ['#c\rquery', '#c\r\nquery', '#c\nquery']:
+            with self.subTest(document=document):
+                self.assertEqual(_GQL.findall(document)[1:], ['query'])
+        self.assertEqual(_GQL.findall('"a\rb"')[0], '"')
+        self.assertEqual(_GQL.findall(r'"""a\""" b""" c'), [r'"""a\""" b"""', 'c'])
+        self.assertEqual(_GQL.findall(r'"""a\\""" b""" c'), [r'"""a\\""" b"""', 'c'])
+        self.assertEqual(_GQL.findall(r'"""a\b""" c'), [r'"""a\b"""', 'c'])
+
+    def test_a_mutation_word_the_reader_did_not_consume_is_unreadable(self):
+        """Floor: more raw `mutation` words than operation keywords read means the document
+        hides one (in a string or comment); unreadable, so a mutation document denies."""
+        from gh_policy import mutation_fields
+        for document in ['{a(s:"mutation")}', 'mutation{addComment(input:{body:"mutation"}){x}}',
+                         '{a} # mutation{b}', '{a(s:"""mutation""")}']:
+            with self.subTest(document=document):
+                self.assertIsNone(mutation_fields(document))
+        self.assertEqual(mutation_fields('{a(s:"clientMutationId")}'), [])
+        self.assertEqual(decide("gh api graphql -f query='{viewer{login}} # mutation'"), 'deny')
 
     def test_route_keywords_are_casefolded(self):
         from gh_policy import settings_path
