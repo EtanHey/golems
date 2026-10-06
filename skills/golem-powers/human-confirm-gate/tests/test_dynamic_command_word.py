@@ -47,6 +47,12 @@ class DynamicCommandWord(unittest.TestCase):
                                      capture_output=True, timeout=10)
                 self.assertEqual(run.returncode, 2, run.stderr)
                 self.assertEqual(json.loads(run.stdout)['hookSpecificOutput']['permissionDecision'], 'deny')
+        payload['tool_input']['command'] = 'printf fixture-tool'
+        run = subprocess.run([sys.executable, '-I', '-B', str(hook)],
+                             input=json.dumps(payload), text=True,
+                             capture_output=True, timeout=10)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(json.loads(run.stdout), {})
 
     def test_data_and_unprotected_argv_allowed(self):
         for command in ('echo $(printf fixture-tool) push --force',
