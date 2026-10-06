@@ -223,8 +223,8 @@ a fresh token for retries. Concurrent callers cannot consume the same nonce.
 `scripts/golems-lead-confirm <repo> --ref refs/heads/<branch> --sha <full-sha> --session <id> [--remote origin]`
 issues exactly one lead token. The token covers a `--force-with-lease` push of the CURRENT
 branch to its own open, unmerged, same-repository PR, at that PR's exact remote head SHA.
-- **It refuses** main/master (in any letter case, even when the default branch is something
-  else), the default branch, other refs, short SHAs, a remote that is not one GitHub URL, and
+- **It refuses** main/master and the default branch (in any letter case, even when the
+  default branch is something else), a checkout with more than one GitHub remote, other refs, short SHAs, a remote that is not one GitHub URL, and
   any push that config turns into something other than a plain lease.
 - **One rule for both sides.** The issuer and the gate share `tokens.lead_scope`.
 - **It signs** with `~/.config/golems/lead-signer/lead_ed25519` (0600 file, 0700 directory;
@@ -232,9 +232,8 @@ branch to its own open, unmerged, same-repository PR, at that PR's exact remote 
   owner terminal: leads are agents, and the scope limits are the control.
 - **Logging.** Each issuance appends one JSON line to
   `~/.config/golems/human-confirm/lead-issued.log`. It also appends the token's
-  `GOLEMS_CONFIRM` line plus a readable `- lead-token issued …` line to the OSS collab
-  (`GOLEMS_LEAD_COLLAB` overrides that path, for tests). If either write fails, nothing is
-  issued.
+  `GOLEMS_CONFIRM` line plus a readable `- lead-token issued …` line (with the GitHub
+  `owner/repo`) to the OSS collab, always. If either write fails, nothing is issued.
 - **Not isolation.** Under one macOS UID the lead key is an operational boundary, not
   isolation: any process of this user can read the key file.
 

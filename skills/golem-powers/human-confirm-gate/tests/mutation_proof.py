@@ -60,7 +60,7 @@ mutations = [
     ('lead-exact-words', 'tokens.py', 'if words != prefix + expected:', 'if False:', 'test_integrity.Integrity.test_lead_class_exact_command_and_collab_directory'),
     ('collab-directory', 'tokens.py', 'if collab_root not in collab.resolve().parents:', 'if False:', 'test_integrity.Integrity.test_lead_class_exact_command_and_collab_directory'),
     ('collab-log', 'tokens.py', 'if line not in collab.read_text().splitlines():', 'if False:', 'test_gate.Gate.test_lead_scope'),
-    ('default-branch', 'tokens.py', 'branch == default', 'False', 'test_gate.Gate.test_lead_scope'),
+    ('default-branch', 'tokens.py', 'branch.casefold() == default.casefold()', 'False', 'test_gate.Gate.test_lead_scope'),
     ('closed-pr', 'tokens.py', "pr['state'] != 'OPEN'", 'False', 'test_gate.Gate.test_lead_scope'),
     ('merged-pr', 'tokens.py', "pr['mergedAt'] is not None", 'False', 'test_gate.Gate.test_lead_scope'),
     ('foreign-pr', 'tokens.py', "pr['isCrossRepository']", 'False', 'test_gate.Gate.test_lead_scope'),
@@ -164,7 +164,13 @@ mutations = [
     ('lead-cleanup', '@lead-issuer', "path.unlink(missing_ok=True); Path(str(path) + '.sig').unlink(missing_ok=True)", 'pass', 'test_lead_issuer.LeadIssuer.test_a_failed_log_write_refuses_and_leaves_no_token'),
     ('lead-scope-main', 'tokens.py', " or branch.casefold() in ('main', 'master'):", ':', 'test_lead_issuer.LeadIssuer.test_shared_scope_rule'),
     ('gate-lead-scope', 'tokens.py', 'lead_scope(ops[0], metadata_fn)  # raises (continue) outside scope', 'pass', 'test_gate.Gate.test_lead_scope'),
-    ('lead-keygen-overwrite', '@lead-keygen', "if key.exists() or key.with_suffix('.pub').exists() or key.is_symlink():", 'if False:', 'test_lead_issuer.LeadKeygen.test_creates_a_private_key_once_and_prints_the_anchor_line'),
+    ('lead-keygen-overwrite', '@lead-keygen', "if os.path.lexists(key) or os.path.lexists(key.with_suffix('.pub')):", 'if False:', 'test_lead_issuer.LeadKeygen.test_creates_a_private_key_once_and_prints_the_anchor_line'),
+    ('lead-pushed-remote', 'tokens.py', "'get-url', '--push', '--all', op['remote']])", "'get-url', '--push', '--all', 'origin'])", 'test_lead_issuer.LeadIssuer.test_the_pushed_remote_alone_names_the_repository'),
+    ('lead-push-url-anchored', 'tokens.py', "match = re.fullmatch(r'(?:git@github", "match = re.search(r'(?:git@github", 'test_lead_issuer.LeadIssuer.test_repository_refusals'),
+    ('lead-default-casefold', 'tokens.py', 'branch.casefold() == default.casefold()', 'branch == default', 'test_lead_issuer.LeadIssuer.test_shared_scope_rule'),
+    ('lead-collab-no-override', '@lead-issuer', 'collab = (home / COLLAB).resolve()', "collab = Path(os.environ.get('GOLEMS_LEAD_COLLAB') or home / COLLAB).resolve()", 'test_lead_issuer.LeadIssuer.test_no_collab_override'),
+    ('lead-github-slug-log', '@lead-issuer', "github=pr.get('github'), ", '', 'test_lead_issuer.LeadIssuer.test_issues_one_signed_lease_token_and_logs_it'),
+    ('keygen-lexists', '@lead-keygen', "os.path.lexists(key) or os.path.lexists(key.with_suffix('.pub'))", "key.exists() or key.with_suffix('.pub').exists()", 'test_lead_issuer.LeadKeygen.test_refuses_symlinked_key_paths'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
 (root / 'docs.local/human-confirm-gate/r2-mutation-control.log').write_text(control.stdout + control.stderr)

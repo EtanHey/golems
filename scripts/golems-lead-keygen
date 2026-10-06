@@ -3,6 +3,7 @@
 
 The key goes to ~/.config/golems/lead-signer/lead_ed25519 (0600, directory 0700) and is
 never overwritten or printed. Add the printed `lead ...` line to the anchor before pinning."""
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ from pathlib import Path
 def generate(home=None):
     signer = Path(home or Path.home()) / '.config/golems/lead-signer'
     key = signer / 'lead_ed25519'
-    if key.exists() or key.with_suffix('.pub').exists() or key.is_symlink():
+    if os.path.lexists(key) or os.path.lexists(key.with_suffix('.pub')):  # symlinks too, dangling or not
         raise ValueError('lead key already exists; refusing to overwrite ' + str(key))
     signer.mkdir(parents=True, mode=0o700, exist_ok=True)
     signer.chmod(0o700)

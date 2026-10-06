@@ -195,13 +195,28 @@ class Gate(unittest.TestCase):
         pr = dict(state='OPEN', mergedAt=None, isCrossRepository=False, headRefName='topic', headRefOid=self.sha)
         responses = ['topic', 'git@github.com:owner/repo.git', '{"defaultBranchRef":{"name":"main"}}', json.dumps(pr)]
         with patch('tokens.read_command', side_effect=responses) as read:
-            self.assertEqual(lead_metadata(op), ('main', pr))
+            self.assertEqual(lead_metadata(op), ('main', dict(pr, github='owner/repo')))
+            self.assertEqual(read.call_args_list[1].args[0][-1], 'origin')  # only the pushed remote is read
             self.assertIn('owner/repo', read.call_args.args[0])
         with patch('tokens.read_command', return_value='other'), self.assertRaises(ValueError):
             lead_metadata(op)
-        for remote in ['git@github.com:owner/repo.git\nhttps://github.com/other/repo', 'https://evil.example/o/r']:
-            with patch('tokens.read_command', side_effect=['topic', remote]), self.assertRaises(ValueError):
+        for url in ['git@github.com:owner/repo.git\nhttps://github.com/other/repo', 'https://git.localhost/o/r',
+                    'git@github.com-etanhey:owner/repo.git', 'x-git@github.com:owner/repo.git']:
+            with self.subTest(url=url), patch('tokens.read_command', side_effect=['topic', url]), \
+                    self.assertRaises(ValueError):
                 lead_metadata(op)
+
+    def test_lead_token_binds_the_pushed_remote(self):
+        """A lead token for a push to one remote never authorizes the same push to another."""
+        from tokens import authorize
+        from commands import operations
+        pr = dict(state='OPEN', mergedAt=None, isCrossRepository=False, headRefName='topic', headRefOid=self.sha)
+        other = self.command.replace(' origin ', ' fork ')
+        self.token('lead')
+        payload = dict(cwd=str(self.repo), tool_input=dict(command=other), session_id='worker')
+        self.assertFalse(authorize(payload, operations(other, str(self.repo)), self.home, lambda _: ('main', pr)))
+        payload = dict(cwd=str(self.repo), tool_input=dict(command=self.command), session_id='worker')
+        self.assertTrue(authorize(payload, operations(self.command, str(self.repo)), self.home, lambda _: ('main', pr)))
 
     def test_wrapper_errors_deny(self):
         wrapper = ROOT.parents[2] / 'scripts/hooks/fail-open.py'
