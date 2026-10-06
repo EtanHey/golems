@@ -81,6 +81,23 @@ class GraphQL(unittest.TestCase):
             with self.subTest(document=document):
                 self.assertIsNone(mutation_fields(document))
 
+    def test_unknown_header_tokens_and_stray_keywords_are_unreadable(self):
+        """An operation header is a keyword or `{`; anything else, or a `mutation` that is not
+        an operation keyword, makes the document unreadable (and a mutation document denies)."""
+        from gh_policy import mutation_fields
+        for document in ['% mutation{a(input:{}){x}}', 'query mutation {a}', '{a} ! mutation{b}', '{mutation}',
+                         'mutation M % {deleteRef(input:{}){x}}', 'Mutation {deleteRef(input:{}){x}}']:
+            with self.subTest(document=document):
+                self.assertIsNone(mutation_fields(document))
+        self.assertEqual(mutation_fields('query Q($a: Int = 1) @d {a} fragment F on T {b}'), [])
+        self.assertEqual(mutation_fields('subscription {a} mutation M {addReaction(input:{}){x}}'), ['addReaction'])
+
+    def test_route_keywords_are_casefolded(self):
+        from gh_policy import settings_path
+        self.assertTrue(settings_path('REPOS/o/r/HOOKS', 'POST'))
+        self.assertTrue(settings_path('Repos/o/r/Branches/main/Protection', 'PUT'))
+        self.assertEqual(decide("gh api GraphQL -f query='mutation{createRef(input:{}){clientMutationId}}'"), 'deny')
+
     def test_mutations_deny_unless_routine_review_traffic(self):
         self.assertEqual(decide("gh api graphql -f query='mutation{addComment(input:{subjectId:1,body:2}){clientMutationId}}'"), 'allow')
         for command in ["gh api graphql -f query='mutation{updateRefs(input:{repositoryId:1,refUpdates:[]}){clientMutationId}}'",

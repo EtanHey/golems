@@ -34,7 +34,7 @@ mutations = [
     ('unknown-wrapper', 'commands.py', 'if base not in syntax.DATA and base not in syntax.SHELLS:', 'if False:', 'test_r2.R2.test_r1_wrappers'),
     ('redirect-consumption', 'syntax.py', "if word in ('>', '>>', '>|', '<', '<<', '<<<', '<>', '&>', '&>>'):", 'if False:', 'test_gate.Gate.test_denies_without_token_and_allows_normal'),
     ('gh-settings', 'commands.py', "elif base == 'gh':", "elif base == 'unused-gh':", 'test_r2.R2.test_r1_same_call_config_and_gh'),
-    ('gh-graphql', 'gh_policy.py', "if path == 'graphql':", 'if False:', 'test_r2.R2.test_r1_same_call_config_and_gh'),
+    ('gh-graphql', 'gh_policy.py', "if path.casefold() == 'graphql':", 'if False:', 'test_r2.R2.test_r1_same_call_config_and_gh'),
     ('gh-endpoint-normalize', 'gh_policy.py', "path = re.sub('/+', '/', unquote(value.split('#', 1)[0].split('?', 1)[0])).strip('/')", 'path = value', 'test_r2.R2.test_r1_same_call_config_and_gh'),
     ('ordinary-gh-overblock', 'gh_policy.py', 'guarded = settings_path(path, method)', "guarded = method not in ('GET', 'HEAD', 'OPTIONS')", 'test_r2.R2.test_r1_ordinary_commands'),
     ('policy-bash', 'commands.py', "if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:", 'if False:', 'test_surfaces.Surfaces.test_r1_policy_surface'),
@@ -130,7 +130,7 @@ mutations = [
     ('heredoc-mask', 'commands.py', 'shell._executable_subcommands(syntax.mask_heredoc_bodies(command, shell))', 'shell._executable_subcommands(command)', 'test_false_positives.FalsePositives.test_fp_a_quoted_heredoc_prose_is_data'),
     ('apostrophe-protected', 'commands.py', "raise ValueError('unparseable protected payload')", 'pass', 'test_false_positives.FalsePositives.test_fp_b_apostrophes_in_quoted_args'),
     ('assignment-prefix', 'commands.py', '        if assignment:\n            continue', '        pass', 'test_false_positives.FalsePositives.test_fp_d_assignment_prefixes_are_not_executables'),
-    ('gh-id-route', 'gh_policy.py', 'if not _EXPANSION.fullmatch(part) or parts[k - 1] not in ID_FAMILIES:', 'if False:', 'test_false_positives.FalsePositives.test_fp_e_shell_ids_under_comment_families'),
+    ('gh-id-route', 'gh_policy.py', 'if not _EXPANSION.fullmatch(part) or parts[k - 1].casefold() not in ID_FAMILIES:', 'if False:', 'test_false_positives.FalsePositives.test_fp_e_shell_ids_under_comment_families'),
     ('graphql-variables-data', 'gh_policy.py', "if key not in ('query', 'operationName'): return False", 'pass', 'test_false_positives.FalsePositives.test_graphql_variables_are_graphql_syntax'),
     ('command-lookup', 'commands.py', 'if not positions[i] or syntax.looked_up(tokens, positions, i): continue', 'if not positions[i]: continue', 'test_false_positives.FalsePositives.test_command_lookup_runs_nothing'),
     ('command-v-wrapper', 'syntax.py', "if base == 'command' and any('v' in a or 'V' in a for a in options):", 'if False:', 'test_false_positives.FalsePositives.test_command_lookup_runs_nothing'),
@@ -164,6 +164,11 @@ mutations = [
     ('graphql-unreadable', 'gh_policy.py', "names is None and re.search(r'\\bmutation\\b', document) or", '', 'test_gh_parsing.GraphQL.test_mutations_deny_unless_routine_review_traffic'),
     ('graphql-typed-file', 'gh_policy.py', "and value.partition('=')[2].startswith('@') for typed, value in fields)", 'and False for typed, value in fields)', 'test_gh_parsing.GraphQL.test_documents_read_from_files_are_opaque'),
     ('graphql-alias', 'gh_policy.py', "if tokens[i] == ':': name, i = tokens[i + 1], i + 2", "if tokens[i] == ':': i = i + 2", 'test_gh_parsing.GraphQL.test_mutation_fields_read_the_top_level_selection'),
+    ('gql-header-keyword', 'gh_policy.py', "            if tokens[i] not in ('query', 'mutation', 'subscription', 'fragment', '{'):\n                return None", '            pass', 'test_gh_parsing.GraphQL.test_unknown_header_tokens_and_stray_keywords_are_unreadable'),
+    ('gql-header-tokens', 'gh_policy.py', "if tokens[i] != '(' and not re.fullmatch(r'[_A-Za-z]\\w*|[@:!=\\[\\]$]', tokens[i]):", 'if False:', 'test_gh_parsing.GraphQL.test_unknown_header_tokens_and_stray_keywords_are_unreadable'),
+    ('gql-stray-keyword', 'gh_policy.py', "return names if tokens.count('mutation') == keywords else None", 'return names', 'test_gh_parsing.GraphQL.test_unknown_header_tokens_and_stray_keywords_are_unreadable'),
+    ('route-casefold-settings', 'gh_policy.py', "parts = path.casefold().split('/')", "parts = path.split('/')", 'test_gh_parsing.GraphQL.test_route_keywords_are_casefolded'),
+    ('route-casefold-graphql', 'gh_policy.py', "if path.casefold() == 'graphql':", "if path == 'graphql':", 'test_gh_parsing.GraphQL.test_route_keywords_are_casefolded'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
 (root / 'docs.local/human-confirm-gate/r2-mutation-control.log').write_text(control.stdout + control.stderr)

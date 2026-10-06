@@ -83,7 +83,9 @@ _GQL = re.compile(r'"""(?:[^"\\]|\\.|"(?!""))*"""|"(?:[^"\\\n]|\\.)*"|#[^\n]*|\.
 
 def mutation_fields(document):
     """Top-level field names of every mutation operation in a GraphQL document;
-    None when the document cannot be read that far (fragments, bad nesting)."""
+    None when the document cannot be read that far: fragments, bad nesting, an
+    operation that does not open with a keyword or `{`, a header token that is
+    not GraphQL, or a `mutation` word that is not an operation keyword."""
     tokens = [t for t in _GQL.findall(document.replace('\ue000', '{').replace('\ue001', '}'))
               if not t.startswith(('#', '"'))]
     names, i = [], 0
@@ -94,10 +96,15 @@ def mutation_fields(document):
             depth += (tokens[i] == open_) - (tokens[i] == close); i += 1
             if depth == 0: return i
         raise ValueError('unbalanced GraphQL')
+    keywords = 0
     try:
         while i < len(tokens):
-            mutation = tokens[i] == 'mutation'
+            if tokens[i] not in ('query', 'mutation', 'subscription', 'fragment', '{'):
+                return None  # e.g. an ignored-class or stray token before the keyword
+            mutation = tokens[i] == 'mutation'; keywords += mutation
             while i < len(tokens) and tokens[i] != '{':
+                if tokens[i] != '(' and not re.fullmatch(r'[_A-Za-z]\w*|[@:!=\[\]$]', tokens[i]):
+                    return None
                 i = skip(i, '(', ')') if tokens[i] == '(' else i + 1
             if i == len(tokens): break
             if not mutation:
@@ -114,7 +121,7 @@ def mutation_fields(document):
             i += 1
     except (IndexError, ValueError):
         return None
-    return names
+    return names if tokens.count('mutation') == keywords else None
 
 
 _EXPANSION = re.compile(r'\$\{[^}/]*\}|\$\([^)/]*\)|\$[A-Za-z_][A-Za-z0-9_]*|\$[0-9@*#?$!-]|`[^`/]*`')
@@ -127,11 +134,11 @@ def id_route(endpoint):
     whole id segment directly under an ID_FAMILIES segment of a literal
     repos/<owner>/<repo> path. Otherwise None: the route itself is unknown."""
     parts = re.sub('/+', '/', endpoint).strip('/').split('/')
-    if len(parts) < 5 or parts[0] != 'repos' or any('$' in p or '`' in p for p in parts[:3]):
+    if len(parts) < 5 or parts[0].casefold() != 'repos' or any('$' in p or '`' in p for p in parts[:3]):
         return None
     for k, part in enumerate(parts):
         if '$' in part or '`' in part:
-            if not _EXPANSION.fullmatch(part) or parts[k - 1] not in ID_FAMILIES:
+            if not _EXPANSION.fullmatch(part) or parts[k - 1].casefold() not in ID_FAMILIES:
                 return None
             parts[k] = '0'
     return '/'.join(parts)
@@ -154,7 +161,7 @@ def graphql_dynamic(field, literal_names):
 
 def settings_path(path, method):
     if method in ('GET', 'HEAD', 'OPTIONS'): return False
-    parts = path.split('/')
+    parts = path.casefold().split('/')  # GitHub may fold route keywords: compare folded
     if parts[0] == 'repos' and len(parts) >= 3:
         tail = parts[3:]
     elif parts[0] == 'repositories' and len(parts) >= 2:
@@ -211,7 +218,7 @@ def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in 
     if ('$' in method or '`' in method) and any(settings_path(path, m) for m in ('PATCH', 'DELETE', 'POST', 'PUT')):
         raise ValueError('dynamic settings API method')
     guarded = settings_path(path, method)
-    if path == 'graphql':
+    if path.casefold() == 'graphql':
         # Mutations deny by default; routine review/comment ones pass. An opaque
         # document cannot establish that boundary.
         documents = [value.partition('=')[2] for value in body if value.partition('=')[0] == 'query']
