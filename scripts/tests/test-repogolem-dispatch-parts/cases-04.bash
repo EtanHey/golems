@@ -177,12 +177,12 @@ function split_case_065() {
 
     [ "$status" -eq 0 ]
     local normalized_output
-    normalized_output=$(printf '%s' "$output" \
+    normalized_output=$(strip_codex_app_driver_args "$output" \
       | grep -Fv -- 'CODEX_ARG=-c' \
       | grep -Fv -- 'CODEX_ARG=model_reasoning_effort="medium"' \
       | grep -Fv -- 'CODEX_ARG=--model' \
       | grep -Fv -- 'CODEX_ARG=gpt-6.1-sol' \
-      | sed 's/^CODEX_ARG_COUNT=5$/CODEX_ARG_COUNT=1/')
+      | sed "s/^CODEX_ARG_COUNT=$(( 5 + CODEX_APP_DRIVER_ARG_COUNT ))\$/CODEX_ARG_COUNT=1/")
     local actual_hash
     actual_hash=$(printf '%s' "$normalized_output" | shasum -a 256 | awk '{print $1}')
     [ "$actual_hash" = "86fcc2203e54cd62dc8947c3ead7051facb01184610f36346bb72c665cddf5fd" ]
@@ -522,6 +522,8 @@ JSON
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_app_driver_args "$output")"
     # argv must carry no MCP config keys and no secret value.
     # NOTE: `! grep ...` is exempt from errexit in bats, so negative assertions
     # must be written as `if grep ...; then fail; fi` to actually gate.
@@ -547,6 +549,7 @@ assert srv["env"] == {"LINEAR_API_TOKEN": "lin_api_SUPERSECRET_VALUE"}, srv
 print("PROFILE_TOML_OK")
 PYCHECK
     [ "$status" -eq 0 ]
+    output="$(strip_codex_app_driver_args "$output")"
     grep -F -q -- "PROFILE_TOML_OK" <<< "$output"
 }
 
@@ -584,6 +587,8 @@ JSON
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$codex_home"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_app_driver_args "$output")"
     # codex-cli refuses `--profile` twice:
     #   error: the argument '--profile <CONFIG_PROFILE_V2>' cannot be used multiple times
     # so a caller-supplied profile must win outright, never be doubled up.

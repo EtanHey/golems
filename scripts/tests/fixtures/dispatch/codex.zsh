@@ -1,5 +1,84 @@
+# Codex 0.160.1 splits a `-c` key on every dot and keeps quotes as part of the
+# segment, so a quoted `plugins."<name>@<marketplace>".enabled=false` is a silent
+# no-op. The bare form is the one it honours (verified with `codex plugin list`).
+# Servers get a whole table: a bare `enabled=false` on a CODEX_HOME that never
+# declared the server aborts codex with "invalid transport in mcp_servers.<name>".
+# Uninstalled plugins (chrome, record-and-replay, messages) are listed so a later
+# install never reaches a guarded launch; disabling them is a no-op today.
+_golem_codex_app_driver_plugins=(computer-use unified-computer-use browser computer-history chrome record-and-replay messages codex-app-tools)
+_golem_codex_app_driver_servers=(node_repl computer-use)
+
+_golem_codex_app_driver_overrides() {
+  local name
+  for name in "${_golem_codex_app_driver_plugins[@]}"; do
+    print -r -- "-c"
+    print -r -- "plugins.${name}@openai-bundled.enabled=false"
+  done
+  for name in "${_golem_codex_app_driver_servers[@]}"; do
+    print -r -- "-c"
+    print -r -- "mcp_servers.${name}={command=\"/usr/bin/false\",enabled=false}"
+  done
+}
+
+# Seam for tests: bats has no TTY, so they stub this to model a human terminal.
+_golem_codex_stdio_is_tty() {
+  [[ -t 0 && -t 1 ]]
+}
+
+# Prints the first agent marker present in the environment, if any.
+_golem_codex_agent_marker() {
+  local marker
+  for marker in CODEX_THREAD_ID CLAUDECODE CLAUDE_CODE_SESSION_ID AI_AGENT CLAUDE_WORKER CMUX_AGENT_ID; do
+    if [[ -n "${(P)marker:-}" ]]; then
+      print -r -- "$marker"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# True when a `-c` key would re-enable something _golem_codex_app_driver_overrides
+# turns off. Codex lets the last `-c` win, so such a key must never follow ours.
+_golem_codex_config_key_is_app_driver() {
+  local key="${1%%=*}" name
+  key=${key//[[:space:]\"\']/}
+  [[ "$key" == plugins || "$key" == mcp_servers ]] && return 0
+  for name in "${_golem_codex_app_driver_plugins[@]}"; do
+    [[ "$key" == plugins.${name}@* ]] && return 0
+  done
+  for name in "${_golem_codex_app_driver_servers[@]}"; do
+    [[ "$key" == mcp_servers.${name} || "$key" == mcp_servers.${name}.* ]] && return 0
+  done
+  return 1
+}
+
+# Scans raw Codex args for `-c K=V`, `-cK=V`, `--config K=V` and `--config=K=V`
+# and prints the first value that re-enables an app driver.
+_golem_codex_args_reenable_app_driver() {
+  local -a args=("$@")
+  local -i i=1
+  local arg value
+  while (( i <= ${#args[@]} )); do
+    arg="${args[$i]}"
+    value=""
+    case "$arg" in
+      -c|--config) value="${args[$(( i + 1 ))]:-}"; (( i += 1 )) ;;
+      --config=*) value="${arg#--config=}" ;;
+      -c?*) value="${arg#-c}" ;;
+    esac
+    if [[ -n "$value" ]] && _golem_codex_config_key_is_app_driver "$value"; then
+      print -r -- "$value"
+      return 0
+    fi
+    (( i += 1 ))
+  done
+  return 1
+}
+
 _golem_launch_codex() {
   local project_name="$1" project_path="$2"; shift 2
+  # Bare interactive starts with zero launcher args: cmuxlayer always passes -E.
+  local -i codex_launcher_argc=$#
   local -x MCP_CONNECTION_NONBLOCKING=1
   local -x CLAUDE_CODE_NO_FLICKER=1
   local _flag_codex_effort _flag_codex_effort_explicit _flag_codex_help _flag_codex_worker
@@ -81,6 +160,37 @@ _golem_launch_codex() {
       return 2
     fi
   fi
+  # Keep repoGolem Codex launches off the user's apps: the global config enables
+  # computer-use, browser and computer-history, plus the node_repl server that
+  # hosts their runtime (@oai/sky, browser service). `-c` overrides beat the base
+  # config and a caller --profile. Only a bare interactive launch (no launcher
+  # args, a TTY, no agent markers) may opt back in, with GOLEM_CODEX_COMPUTER_USE=1.
+  # This guards against an ambient variable, not against an agent with a shell.
+  local codex_app_drivers_allowed=false
+  if [[ "${GOLEM_CODEX_COMPUTER_USE:-}" == "1" ]]; then
+    local codex_not_bare_reason="" codex_agent_marker=""
+    if (( codex_launcher_argc > 0 )); then
+      codex_not_bare_reason="launcher arguments"
+    elif [[ "$worker_mode" == true ]]; then
+      codex_not_bare_reason="worker mode"
+    elif ! _golem_codex_stdio_is_tty; then
+      codex_not_bare_reason="no TTY"
+    elif codex_agent_marker=$(_golem_codex_agent_marker); then
+      codex_not_bare_reason="agent marker ${codex_agent_marker}"
+    fi
+    if [[ -z "$codex_not_bare_reason" ]]; then
+      codex_app_drivers_allowed=true
+    else
+      print -u2 -- "repoGolem: GOLEM_CODEX_COMPUTER_USE=1 ignored (${codex_not_bare_reason}): only a bare interactive launch with no args, a TTY and no agent markers may use it; app drivers stay disabled."
+    fi
+  fi
+  local codex_reenabling_config=""
+  if [[ "$codex_app_drivers_allowed" == false ]] \
+     && codex_reenabling_config=$(_golem_codex_args_reenable_app_driver "${codex_args[@]}"); then
+    print -u2 -- "repoGolem: refusing a Codex -c/--config that re-enables an app driver (${codex_reenabling_config%%=*}); repoGolem launches keep computer-use, browser and computer-history off."
+    return 2
+  fi
+
   local codex_config_args=()
   if $_flag_codex_effort_explicit; then
     codex_config_args=("-c" "model_reasoning_effort=\"${_flag_codex_effort}\"")
@@ -139,6 +249,10 @@ _golem_launch_codex() {
         codex_config_args=("-c" "model_reasoning_effort=\"${recovered_effort}\"")
       fi
     fi
+  fi
+
+  if [[ "$codex_app_drivers_allowed" == false ]]; then
+    codex_config_args+=("${(@f)$(_golem_codex_app_driver_overrides)}")
   fi
 
   if [[ "$worker_mode" == true ]]; then

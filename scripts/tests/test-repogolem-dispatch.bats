@@ -8,6 +8,7 @@ load 'test-repogolem-dispatch-parts/cases-04.bash'
 load 'test-repogolem-dispatch-parts/cases-05.bash'
 load 'test-repogolem-dispatch-parts/cases-06.bash'
 load 'test-repogolem-dispatch-parts/cases-07.bash'
+load 'test-repogolem-dispatch-parts/cases-08.bash'
 
 @test "install helper installs tracked dispatcher inside HOME" {
     split_case_001
@@ -549,3 +550,35 @@ load 'test-repogolem-dispatch-parts/cases-07.bash'
     split_case_135
 }
 
+
+@test "every guarded Codex launch shape disables computer-use, browser and computer-history" {
+    split_case_136
+}
+
+@test "Codex app-driver overrides survive a caller-supplied --profile" {
+    split_case_137
+}
+
+@test "GOLEM_CODEX_COMPUTER_USE=1 keeps app drivers on a bare interactive Codex launch (no args, TTY, no agent markers)" {
+    split_case_138
+}
+
+@test "GOLEM_CODEX_COMPUTER_USE=1 is ignored with one stderr line on every launch with launcher args, incl. cmuxlayer spawn argv" {
+    split_case_139
+}
+
+@test "only GOLEM_CODEX_COMPUTER_USE=1 opens the Codex app-driver hatch" {
+    split_case_140
+}
+
+@test "a zero-arg Codex launch with an agent marker or no TTY keeps app drivers off" {
+    split_case_141
+}
+
+@test "a caller -c/--config that re-enables a Codex app driver is refused" {
+    split_case_142
+}
+
+@test "a Codex worker launch carries the app-driver overrides in a fixed order" {
+    split_case_143
+}

@@ -220,6 +220,8 @@ function split_case_046() {
     ' _ "$codex_home" "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_app_driver_args "$output")"
     [ "$(grep '^CODEX_ARG=' <<< "$output")" = $'CODEX_ARG=resume\nCODEX_ARG=019fec96-588d-7000-8000-000000000000\nCODEX_ARG=--dangerously-bypass-approvals-and-sandbox\nCODEX_ARG=-c\nCODEX_ARG=model_reasoning_effort="xhigh"\nCODEX_ARG=--model\nCODEX_ARG=gpt-5.6-sol' ]
     [ "$(grep -Fc -- "Adopt the following launcher agent context" <<< "$output")" -eq 0 ]
 }
@@ -249,6 +251,8 @@ function split_case_047() {
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_app_driver_args "$output")"
     for effort in low medium high xhigh max ultra; do
       [ "$(grep -Fxc -- "CODEX_ARG=model_reasoning_effort=\"$effort\"" <<< "$output")" -eq 2 ]
     done
@@ -353,6 +357,8 @@ function split_case_051() {
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$WORKTREE_DIR"
 
     [ "$status" -eq 0 ]
+
+    output="$(strip_codex_app_driver_args "$output")"
     grep -F -q -- 'CODEX_ARG=model_reasoning_effort="high"' <<< "$output"
     [ "$(grep -Fxc -- 'CODEX_ARG=-c' <<< "$output")" -eq 2 ]
     for arg in raw-config -p -m raw-model -s -w "$WORKTREE_DIR"; do
@@ -517,7 +523,7 @@ function split_case_056() {
 
     [ "$status" -eq 0 ]
     refute_contains "Worker mode" "$output" "worker launch without a user prompt must not add a banner"
-    grep -F -q -- "CODEX_ARG_COUNT=4" <<< "$output"
+    grep -F -q -- "CODEX_ARG_COUNT=$(( 4 + CODEX_APP_DRIVER_ARG_COUNT ))" <<< "$output"
 }
 
 function split_case_057() {
@@ -554,7 +560,7 @@ function split_case_057() {
     ' _ "$fake_home" "$TMPDIR_/worker-registry.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
-    grep -F -q -- "CODEX_ARG_COUNT=4" <<< "$output"
+    grep -F -q -- "CODEX_ARG_COUNT=$(( 4 + CODEX_APP_DRIVER_ARG_COUNT ))" <<< "$output"
     refute_contains "Worker mode" "$output" "worker launch with a registry agent must not add a banner"
     refute_contains "registry agent context" "$output" "worker launch must remain persona-free"
 }
@@ -589,7 +595,7 @@ function split_case_058() {
     ' _ "$TMPDIR_/worker-registry.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
-    grep -F -q -- "CODEX_ARG_COUNT=5" <<< "$output"
+    grep -F -q -- "CODEX_ARG_COUNT=$(( 5 + CODEX_APP_DRIVER_ARG_COUNT ))" <<< "$output"
     [ "$(grep -Fxc -- "CODEX_ARG=do X" <<< "$output")" -eq 1 ]
     refute_contains "Worker mode" "$output" "worker launch must pass the user prompt through without a banner"
 }

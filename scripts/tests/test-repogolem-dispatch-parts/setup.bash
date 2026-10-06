@@ -93,6 +93,42 @@ CODEX_STUB_AWAIT_RELEASE='function _await_release() {
         return 0
       }'
 
+# Every non-bare repoGolem Codex launch disables the app-driving plugins and
+# node_repl (cases-08). Exact-argv tests strip these pairs and pin the rest.
+# The marketplace is interpolated: a literal plugin id followed by a dotted key matches the
+# publish-boundary identity-pii (email) pattern.
+CODEX_PLUGIN_MARKETPLACE='openai-bundled'
+CODEX_APP_DRIVER_PLUGINS=(computer-use unified-computer-use browser computer-history chrome record-and-replay messages codex-app-tools)
+CODEX_APP_DRIVER_OVERRIDES=()
+for _codex_plugin in "${CODEX_APP_DRIVER_PLUGINS[@]}"; do
+    CODEX_APP_DRIVER_OVERRIDES+=("plugins.${_codex_plugin}@${CODEX_PLUGIN_MARKETPLACE}.enabled=false")
+done
+unset _codex_plugin
+CODEX_APP_DRIVER_OVERRIDES+=(
+    'mcp_servers.node_repl={command="/usr/bin/false",enabled=false}'
+    'mcp_servers.computer-use={command="/usr/bin/false",enabled=false}'
+)
+CODEX_APP_DRIVER_ARG_COUNT=$(( ${#CODEX_APP_DRIVER_OVERRIDES[@]} * 2 ))
+
+# Removes each `-c <override>` pair from launch output, in both the per-line
+# CODEX_ARG= form and the one-line CODEX_ARGS= form.
+strip_codex_app_driver_args() {
+    local text="$1" override
+    for override in "${CODEX_APP_DRIVER_OVERRIDES[@]}"; do
+        text="${text//" -c $override"/}"
+        text="${text//"=-c $override "/=}"
+        text="${text//"=-c $override"/=}"
+    done
+    # BSD awk rejects a newline inside -v, so the list travels through ENVIRON.
+    CODEX_APP_DRIVERS="$(IFS='|'; printf '%s' "${CODEX_APP_DRIVER_OVERRIDES[*]}")" awk '
+      BEGIN { n = split(ENVIRON["CODEX_APP_DRIVERS"], d, "|"); for (i = 1; i <= n; i++) guard["CODEX_ARG=" d[i]] = 1 }
+      held { held = 0; if ($0 in guard) next; print "CODEX_ARG=-c" }
+      $0 == "CODEX_ARG=-c" { held = 1; next }
+      { print }
+      END { if (held) print "CODEX_ARG=-c" }
+    ' <<< "$text"
+}
+
 # bats runs with errexit, but `! cmd` is EXEMPT from it — a bare `! grep`
 # negative assertion can never fail a test. Use this helper instead.
 refute_contains() {
