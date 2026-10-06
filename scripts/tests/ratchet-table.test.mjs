@@ -35,6 +35,14 @@ describe("parseRows", () => {
     expect(() => parseRows(rowsFile([noBug]))).toThrow(/bug_sha/);
   });
 
+  test("a fixture-hash row also names its bug and fix fixture hashes", () => {
+    const row = { ...gate, ref_kind: "fixture-hash", bug_fixture: "4".repeat(64), fix_fixture: "1".repeat(64) };
+    expect(parseRows(rowsFile([row])).rows[0].ref_kind).toBe("fixture-hash");
+    const { fix_fixture, ...noFix } = row;
+    expect(() => parseRows(rowsFile([noFix]))).toThrow(/fix_fixture/);
+    expect(() => parseRows(rowsFile([{ ...gate, ref_kind: "tag" }]))).toThrow(/ref_kind/);
+  });
+
   test("duplicate ids, unknown kinds and unknown directions are rejected", () => {
     expect(() => parseRows(rowsFile([drift, drift]))).toThrow(/duplicate/);
     expect(() => parseRows(rowsFile([{ ...drift, kind: "mock" }]))).toThrow(/kind/);

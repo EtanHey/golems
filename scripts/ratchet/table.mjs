@@ -10,8 +10,10 @@ import { fileURLToPath } from "node:url";
 
 const KINDS = new Set(["real", "unit"]);
 const DIRECTIONS = new Set(["max", "min", "pass"]);
+const REF_KINDS = new Set(["commit", "fixture-hash"]);
 const SHA = /^[0-9a-f]{7,40}$/;
-const short = (sha) => (sha ? sha.slice(0, 8) : "?");
+const FIXTURE_HASH = /^[0-9a-f]{8,64}$/;
+const short = (sha) => (sha ? sha.slice(0, 8) : "none");
 
 export function markerComment(marker) {
   return `<!-- ratchet-table: ${marker} -->`;
@@ -36,6 +38,14 @@ export function parseRows(doc) {
       // Rule 1: a real row is a failure we hit, shown FAIL on the bug commit and PASS on the fix.
       for (const key of ["bug_sha", "fix_sha"]) {
         if (typeof row[key] !== "string" || !SHA.test(row[key])) throw new Error(`${where}: real rows need ${key} (a commit SHA)`);
+      }
+    }
+    // A failure fixed in a private fixture (not a commit) keeps the commit SHAs and adds both
+    // fixture content hashes.
+    if (row.ref_kind !== undefined && !REF_KINDS.has(row.ref_kind)) throw new Error(`${where}: ref_kind must be commit or fixture-hash`);
+    if (row.ref_kind === "fixture-hash") {
+      for (const key of ["bug_fixture", "fix_fixture"]) {
+        if (typeof row[key] !== "string" || !FIXTURE_HASH.test(row[key])) throw new Error(`${where}: fixture-hash rows need ${key} (a content hash)`);
       }
     }
     if (row.runner !== undefined && typeof row.runner !== "string") throw new Error(`${where}: runner must be a string`);

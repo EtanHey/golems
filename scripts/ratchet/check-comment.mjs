@@ -1,0 +1,64 @@
+#!/usr/bin/env node
+// Requires a producer's ratchet table comment on a PR: the marker comment, posted by an allowed
+// author, whose verdict is bound to this exact head SHA with every expected real row PASS.
+// Missing, stale or red = exit 1 (standards/ratchet.md rule 3: missing is FAIL, never SKIP).
+
+import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { markerComment, parseRows } from "./table.mjs";
+
+const VERDICT = /<!-- ratchet-verdict: (.*?) -->/;
+
+export function checkVerdict({ comments, marker, head, expectedReal, authors }) {
+  const tag = markerComment(marker);
+  const found = comments.filter((c) => typeof c.body === "string" && c.body.startsWith(tag) && authors.includes(c.user?.login));
+  if (!found.length) return { ok: false, reason: `no ${marker} ratchet comment from ${authors.join("/")}` };
+  let verdict;
+  try {
+    verdict = JSON.parse(VERDICT.exec(found.at(-1).body)?.[1] ?? "");
+  } catch {
+    return { ok: false, reason: "ratchet verdict unreadable" };
+  }
+  if (verdict.head !== head) return { ok: false, reason: `stale: table is for ${String(verdict.head).slice(0, 8)}, PR head is ${head.slice(0, 8)}` };
+  if (verdict.real_total !== expectedReal) return { ok: false, reason: `table has ${verdict.real_total} real rows, expected ${expectedReal}` };
+  if (!verdict.ok || verdict.real_pass !== verdict.real_total) return { ok: false, reason: `verdict FAIL (${verdict.real_pass}/${verdict.real_total} real rows PASS)` };
+  return { ok: true, reason: `${verdict.real_pass}/${verdict.real_total} real rows PASS at ${head.slice(0, 8)}` };
+}
+
+function parseArgs(argv) {
+  const options = { authors: [] };
+  for (let index = 0; index < argv.length; index += 2) {
+    const [key, value] = [argv[index], argv[index + 1]];
+    if (value === undefined || value.startsWith("--")) throw new Error(`incomplete argument ${key}`);
+    if (key === "--author") options.authors.push(value);
+    else if (["--repo", "--pr", "--marker", "--head", "--rows", "--runner"].includes(key)) options[key.slice(2)] = value;
+    else throw new Error(`unknown argument ${key}`);
+  }
+  for (const key of ["repo", "pr", "marker", "head", "rows", "runner"]) if (!options[key]) throw new Error(`--${key} is required`);
+  if (!options.authors.length) throw new Error("at least one --author is required");
+  return options;
+}
+
+export function main(argv) {
+  let options;
+  try {
+    options = parseArgs(argv);
+  } catch (error) {
+    process.stderr.write(`ratchet: ${error.message}\n`);
+    return 2;
+  }
+  const rows = parseRows(JSON.parse(readFileSync(options.rows, "utf8")));
+  const expectedReal = rows.rows.filter((row) => row.runner === options.runner && row.kind === "real").length;
+  const gh = spawnSync("gh", ["api", "--paginate", "--slurp", `repos/${options.repo}/issues/${options.pr}/comments`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  if (gh.status !== 0) {
+    process.stderr.write(`ratchet: cannot read PR comments: ${gh.stderr}\n`);
+    return 1;
+  }
+  const result = checkVerdict({ comments: JSON.parse(gh.stdout).flat(), marker: options.marker, head: options.head, expectedReal, authors: options.authors });
+  process.stdout.write(`ratchet ${options.marker}: ${result.ok ? "PASS" : "FAIL"}: ${result.reason}\n`);
+  return result.ok ? 0 : 1;
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) process.exitCode = main(process.argv.slice(2));

@@ -88,3 +88,25 @@ jobs:
           node scripts/ratchet/table.mjs "${args[@]}" || status=$?
           cat "$RUNNER_TEMP/table.md" >> "$GITHUB_STEP_SUMMARY" || true
           exit "$status"
+
+      # Real rows run only on Etan's MBP (scripts/ratchet/local-run.sh: real installer, gate, hook
+      # and ssh-keygen in a scratch HOME). A PR touching the guards, the installer, repoGolem or
+      # the ratchet itself needs that run's table, bound to THIS head, all real rows PASS, posted
+      # by EtanHey. Missing or stale is FAIL. After posting, local-run.sh re-runs this check.
+      - name: Mac rows (required on guarded paths)
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          guarded='^(scripts/hooks/|skills/golem-powers/(human-confirm-gate|git-guardian|tmp-block)/|scripts/repogolem/|scripts/ratchet/)'
+          if ! git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq "$guarded"; then
+            echo "no guarded path touched: Mac rows not required"
+            exit 0
+          fi
+          node scripts/ratchet/check-comment.mjs --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" \
+            --marker golems-ratchet-mac --head "$HEAD_SHA" --rows scripts/ratchet/rows.json --runner mac \
+            --author EtanHey | tee -a "$GITHUB_STEP_SUMMARY"

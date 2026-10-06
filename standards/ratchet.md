@@ -45,6 +45,9 @@
 ```
 
 - `kind`: `real` | `unit`. Real rows must carry `bug_sha` and `fix_sha`.
+- `ref_kind` (optional): `commit` (default) or `fixture-hash`, for a failure that was fixed in a
+  private fixture rather than a commit. It keeps the commit SHAs and adds `bug_fixture` and
+  `fix_fixture`, the fixture content hashes on which the row FAILS and PASSES.
 - `direction`: `max` (value ≤ ceiling), `min` (value ≥ ceiling), or `pass` (value must be `true`;
   `ceiling` is `true`).
 - `runner` (optional): which producer measures the row, e.g. `ci` or `mac`. `--runner` selects
@@ -59,6 +62,20 @@
 
 A value is a number, a boolean, or `{ value, detail }`. With `--head`, a results file bound to any
 other SHA is stale and every row is MISSING. An absent or unreadable results file is MISSING too.
+
+## Real without touching the live machine
+
+A row that needs a machine (an installed hook, a real binary) never mutates that machine's live
+install to measure a candidate. It runs in two tiers:
+
+- **Candidate rows (per PR).** Install the PR head into a SCRATCH HOME with the real installer,
+  the real interpreter and the real binaries (git, ssh-keygen, gh, codex with a scratch
+  `CODEX_HOME`). Keys a gate trusts are generated as fixtures in that scratch HOME, and any pin of
+  them is committed in the scratch tree only, never pushed. Bug and fix SHAs replay there freely.
+  Nothing is mocked, so these rows are `real`. Their table is bound to the PR head, and CI requires
+  it (see `check-comment.mjs`).
+- **Live rows (post-merge).** The lead runs them after installing the merged commit on the real
+  machine, and posts them on the merged PR. They read the live install; they never downgrade it.
 
 ## Running it
 
@@ -77,3 +94,12 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> \
   unruled loosening; `2` malformed row file or arguments.
 - `--base-rows` is the row file at the PR's base (`git show "$BASE_SHA:<path>"`); without it the
   direction check (rule 5) does not run, so CI always passes it.
+
+Companions (repo-agnostic):
+
+- `scripts/ratchet/run-rows.mjs --rows <file> --head <sha> --out <results.json> [--runner <name>]
+  [--cwd <dir>]` runs each selected row's `command` (bash). A `pass` row is true on exit 0. A
+  numeric row must exit 0 and print its number on the last stdout line, or it is left out (MISSING).
+- `scripts/ratchet/check-comment.mjs --repo --pr --marker --head --rows --runner --author <login>`
+  exits 0 only when that producer's comment, by an allowed author, carries a verdict for exactly
+  `--head` with every real row of `--runner` PASS.
