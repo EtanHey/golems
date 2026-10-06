@@ -357,7 +357,10 @@ describe("CLI", () => {
     git("add", "-A");
     git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base");
     const sha = git("rev-parse", "HEAD").trim();
-    for (const [name, value] of Object.entries(files)) writeFileSync(join(cwd, name), typeof value === "string" ? value : JSON.stringify(value));
+    for (const [name, value] of Object.entries(files)) {
+      if (value === null) rmSync(join(cwd, name));
+      else writeFileSync(join(cwd, name), typeof value === "string" ? value : JSON.stringify(value));
+    }
     const args = [script, "--rows", join(cwd, "rows.json"), "--results", join(cwd, "results.json"), "--head", HEAD, ...(baseRef ? ["--base-ref", sha] : []), ...extra];
     return spawnSync(process.execPath, args, { encoding: "utf8" });
   }
@@ -397,7 +400,7 @@ describe("CLI", () => {
     const renamed = spawnSync(process.execPath, [script, "--rows", join(repo, "rows.json"), "--results", join(repo, "results.json"), "--head", HEAD, "--base-ref", base], { encoding: "utf8" });
     expect(renamed.status).toBe(2);
     expect(renamed.stderr).toContain("renamed from old-rows.json");
-    const deleted = cli({ "results.json": results({ drift: 0 }) }, [], { base: rowsFile([drift]) });
+    const deleted = cli({ "rows.json": null, "results.json": results({ drift: 0 }) }, [], { base: rowsFile([drift]) });
     expect(deleted.status).toBe(2);
   });
 
