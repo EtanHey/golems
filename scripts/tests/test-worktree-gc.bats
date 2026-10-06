@@ -628,3 +628,48 @@ commit_fixture_file() {
     [ -d "$outer" ] &&
     [[ "$(git -C "$repo" worktree list --porcelain)" == *"worktree $outer"$'\n'* ]]
 }
+
+@test "nightly wrapper skips the night while the heavy-suite lock is held" {
+  repo="$(make_fixture_repo nightly-held-repo)"
+  worktree="$(add_branch_worktree "$repo" nightly-held-branch)"
+  lock="$TEST_ROOT/heavy-suite.lock"
+  ready="$TEST_ROOT/holder-ready"
+  perl -MFcntl=:flock -e 'open(my $fh, ">>", $ARGV[0]) or die; flock($fh, LOCK_EX) or die;
+    open(my $r, ">", $ARGV[1]) or die; close $r; sleep 30' "$lock" "$ready" &
+  holder=$!
+  for _ in $(seq 50); do [ -e "$ready" ] && break; sleep 0.1; done
+
+  run env GOLEMS_HEAVY_LOCK="$lock" "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+  kill "$holder" 2>/dev/null || true
+
+  [ -e "$ready" ] &&
+    [ "$status" -eq 0 ] &&
+    [[ "$output" == *"SKIP heavy-suite lock held"* ]] &&
+    [[ "$output" != *"$worktree"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "nightly wrapper prunes while holding the heavy-suite lock" {
+  repo="$(make_fixture_repo nightly-free-repo)"
+  worktree="$(add_branch_worktree "$repo" nightly-free-branch)"
+  lock="$TEST_ROOT/heavy-suite.lock"
+  wrapper_dir="$TEST_ROOT/lock-probe"
+  mkdir -p "$wrapper_dir"
+  # A git wrapper that records, during the prune, whether the lock is free to a third party.
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'if [[ " $* " == *" worktree remove "* ]]; then' \
+    '  perl -MFcntl=:flock -e '"'"'open(my $f, ">>", $ARGV[0]) or die; print flock($f, LOCK_EX|LOCK_NB) ? "free" : "held"'"'"' "$PROBE_LOCK" > "$PROBE_OUT"' \
+    'fi' \
+    'exec "$REAL_GIT" "$@"' > "$wrapper_dir/git"
+  chmod +x "$wrapper_dir/git"
+
+  run env GOLEMS_HEAVY_LOCK="$lock" PROBE_LOCK="$lock" PROBE_OUT="$TEST_ROOT/probe" \
+    REAL_GIT="$(command -v git)" PATH="$wrapper_dir:$PATH" \
+    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · nightly-free-branch · "*"REMOVED"* ]] &&
+    [ "$(cat "$TEST_ROOT/probe")" = "held" ] &&
+    [ ! -e "$worktree" ]
+}

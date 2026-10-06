@@ -44,7 +44,7 @@ describe("launchd templates are portable", () => {
     }
   });
 
-  test("nightly worktree prune renders to --apply on the checkout, installed by install.sh", () => {
+  test("nightly worktree prune renders to the locked wrapper at 06:00, installed by install.sh", () => {
     const scratch = mkdtempSync(join(tmpdir(), "golems-launchd-"));
     const source = join(launchdRoot, "com.golems.worktree-gc.plist");
     const destination = join(scratch, basename(source));
@@ -58,7 +58,9 @@ describe("launchd templates are portable", () => {
       });
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       const rendered = readFileSync(destination, "utf8");
-      expect(rendered).toContain("<string>/opt/golems/scripts/worktree-gc.sh</string>\n\t\t<string>--apply</string>");
+      expect(rendered).toContain("<string>/opt/golems/scripts/worktree-gc-nightly.sh</string>");
+      // Clear of BrainLayer's 03:17 backup and 04:20 scrub (03:00-05:30).
+      expect(rendered).toContain("<key>Hour</key>\n\t\t<integer>6</integer>");
       // lsof lives in /usr/sbin; without it every candidate fails closed as KEEP-undetermined.
       expect(rendered).toContain("/usr/sbin");
       expect(rendered).not.toContain("RunAtLoad");
