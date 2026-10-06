@@ -5,7 +5,10 @@
 //            [--drop-cli <cli>]... [--write [--force]]
 //   generate [--config <config.yaml>] [--out-dir <dir>] [--home <dir>]
 //            [--host <LocalHostName>] [--check | --check-refs [--no-prompt]]
+//            [--keep-secrets [--allow-missing <op://ref>]...]
 // --check-refs allows Touch ID; --no-prompt disables it for automation.
+// --keep-secrets regenerates from the existing secrets.env without op: its
+// value lines are copied verbatim, only its header stamps are rewritten.
 //   init     [--config <path>] [--host <LocalHostName>] [--force]
 //
 // --config defaults to $REPOGOLEM_CONFIG, --out-dir to
@@ -60,7 +63,7 @@ import Ajv, { type ErrorObject } from "ajv";
 import { parse as parseYaml, parseAllDocuments, stringify as stringifyYaml } from "yaml";
 import { runSync } from "./repogolem-sync";
 import { runInstall } from "./repogolem-install";
-import { readTransferredSecrets } from "./runtime-reader";
+import { parseCache, privatePath, readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
 import { collectRefs, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
 import { opRefsFor, varlockResolver } from "./repogolem-varlock";
@@ -533,6 +536,64 @@ function recordedSourceSha(registryText: string | null, launchersText: string | 
   return match ? match[1] : null;
 }
 
+// ── --keep-secrets ────────────────────────────────────────────────────────
+
+const KEPT_FROM = "secrets-kept-from";
+const VALUE_LINE = /^(REPOGOLEM_SECRET_[0-9a-f]{32})=/;
+const FULL_GENERATE = "run full generate (needs op)";
+
+export interface Kept {
+  secretsEnv: string;
+  resolved: Map<string, string>;
+  missing: string[];
+}
+
+// The new secrets.env built from the old one without op. Value lines are
+// copied as raw text, never re-serialized; only refs this config still needs
+// are kept. Errors carry refs and stamps, never a value.
+export function keptSecrets(path: string, generated: Generated, allowMissing: string[]): Kept {
+  if (!existsSync(path)) fail(`--keep-secrets: no ${path} to keep; ${FULL_GENERATE}; nothing written`);
+  let text: string;
+  let values: Record<string, string>;
+  try {
+    privatePath(path);
+    text = readFileSync(path, "utf8");
+    values = parseCache(text);
+  } catch (error) {
+    const why = error instanceof Error && /^(runtime cache|invalid cached)/.test(error.message) ? error.message : "unreadable";
+    fail(`--keep-secrets: ${path}: ${why}; ${FULL_GENERATE}; nothing written`);
+  }
+  const machine = generated.machine ?? "(none)";
+  if (stampOf(text, "machine") !== machine) {
+    fail(`--keep-secrets: ${path} is stamped machine ${stampOf(text, "machine") ?? "unstamped"}, not ${machine}; ${FULL_GENERATE}; nothing written`);
+  }
+  const origin = stampOf(text, KEPT_FROM) ?? stampOf(text, "config-sha256");
+  if (origin === null) fail(`--keep-secrets: ${path} has no config-sha256 stamp; ${FULL_GENERATE}; nothing written`);
+  const raw = new Map<string, string>();
+  for (const line of text.split("\n")) {
+    const match = line.match(VALUE_LINE);
+    if (match) raw.set(match[1], line);
+  }
+  const missing = generated.refs.filter((ref) => !raw.has(secretKey(ref)));
+  const notMissing = allowMissing.filter((ref) => !missing.includes(ref));
+  if (notMissing.length > 0) {
+    fail(`--allow-missing names refs this config does not lack:\n  ${notMissing.join("\n  ")}\nnothing written`);
+  }
+  const unallowed = missing.filter((ref) => !allowMissing.includes(ref));
+  if (unallowed.length > 0) {
+    fail(`--keep-secrets: ${path} has no value for ${unallowed.length} ref(s) the config needs:\n  ${unallowed.join("\n  ")}\n${FULL_GENERATE}, or pass --allow-missing <ref> to leave one unset; nothing written`);
+  }
+  const header = [...generated.secretsHeader];
+  header.splice(header.length - 1, 0, `# ${KEPT_FROM}: ${origin}`);
+  const kept = generated.refs.filter((ref) => raw.has(secretKey(ref)));
+  const lines = kept.map((ref) => raw.get(secretKey(ref)) as string).sort();
+  return {
+    secretsEnv: `${[...header, ...lines].join("\n")}\n`,
+    resolved: new Map(kept.map((ref) => [ref, values[secretKey(ref)]])),
+    missing,
+  };
+}
+
 // ── CLI ───────────────────────────────────────────────────────────────────
 
 function parseArgs(argv: string[], flags: string[], values: string[], repeated: string[] = []) {
@@ -823,13 +884,19 @@ function checkOutputs(configText: string, outDir: string, home: string, host: ()
 }
 
 function runGenerate(argv: string[]) {
-  const args = parseArgs(argv, ["check", "check-refs", "no-prompt", "help"], ["config", "out-dir", "home", "host", "secrets-from"]);
+  const args = parseArgs(argv, ["check", "check-refs", "no-prompt", "help", "keep-secrets"], ["config", "out-dir", "home", "host", "secrets-from"], ["allow-missing"]);
   if (args.help) {
-    console.log("usage: repogolem generate [--config PATH] [--host HOST] [--check | --check-refs [--no-prompt]]");
+    console.log("usage: repogolem generate [--config PATH] [--host HOST] [--check | --check-refs [--no-prompt] | --keep-secrets [--allow-missing REF]...]");
+    console.log("--keep-secrets rewrites registry.json and launchers.zsh from the config and keeps secrets.env's values without running op; it refuses (exit 2) when the config needs a ref secrets.env lacks, unless that ref is named with --allow-missing.");
     console.log("--check-refs checks vault/item/field names, signs in if needed, allows Touch ID, writes nothing; --no-prompt disables biometric integration for automation. Metadata calls are bounded to 15 seconds; sign-in requires a terminal and is bounded to 120 seconds.");
     return 0;
   }
   if (args["no-prompt"] && !args["check-refs"]) fail("--no-prompt requires --check-refs");
+  const allowMissing = (args["allow-missing"] as string[] | undefined) ?? [];
+  if (allowMissing.length > 0 && !args["keep-secrets"]) fail("--allow-missing requires --keep-secrets");
+  if (args["keep-secrets"] && (args.check || args["check-refs"] || args["secrets-from"])) {
+    fail("--keep-secrets cannot be combined with --check, --check-refs or --secrets-from");
+  }
   const config = configPath(args);
   const configText = readFileSync(config, "utf8");
   const home = typeof args.home === "string" ? args.home : homedir();
@@ -851,6 +918,10 @@ function runGenerate(argv: string[]) {
       return 1;
     }
     console.log(`fresh: ${OUTPUTS.map((name) => join(outDir, name)).join(", ")}`);
+    const keptFrom = stampOf(readFileSync(join(outDir, "secrets.env"), "utf8"), KEPT_FROM);
+    if (keptFrom) {
+      console.log(`note: secrets.env values kept from config ${keptFrom.slice(0, 12)} by --keep-secrets, not re-resolved; a full generate re-resolves them`);
+    }
     return 0;
   }
 
@@ -866,6 +937,25 @@ function runGenerate(argv: string[]) {
   const providerRefs = opRefsFor(generated.refs, effective);
   let secretsEnv: string;
   let agents: ReturnType<typeof renderAgents> | undefined;
+  if (args["keep-secrets"]) {
+    const kept = keptSecrets(join(outDir, "secrets.env"), generated, allowMissing);
+    try {
+      if (hasAgents) agents = renderAgents(agentInputs, kept.resolved, generated.configSha, generated.machine, effective);
+    } catch (error) {
+      fail(error instanceof Error ? error.message : String(error));
+    }
+    writeOutputsBound(outDir, {
+      "registry.json": generated.registryJson,
+      "launchers.zsh": generated.launchersZsh,
+      "secrets.env": kept.secretsEnv,
+    }, agents);
+    if (kept.missing.length > 0) {
+      console.error(`WARNING: --allow-missing left ${kept.missing.length} ref(s) UNSET in secrets.env:\n  ${kept.missing.join("\n  ")}\nThe launch-time reader refuses a registry with an unset ref, so launchers fail until a full generate (needs op) resolves it.`);
+    }
+    console.log(`machine ${generated.machine ?? "(none)"}: ${generated.refs.length - kept.missing.length} values kept from secrets.env; op not run`);
+    for (const name of OUTPUTS) console.log(`wrote ${join(outDir, name)}`);
+    return 0;
+  }
   try {
     if (!args['secrets-from'] && providerRefs.length) {
       if (!effective.secrets) console.log('secrets.backend missing; defaulting to 1password.');

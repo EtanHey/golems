@@ -522,3 +522,152 @@ test('Bun emitter startup receives resolved refs but no op credentials', () => {
   });
   expect(proc.exitCode).toBe(0); expect(JSON.parse(readFileSync(proof, 'utf8'))).toEqual({ credential: false, resolved: true });
 });
+
+// A config-only change goes live from the existing secrets.env: op never runs,
+// value lines are copied byte-for-byte, only the header stamps are rewritten.
+describe("generate --keep-secrets", () => {
+  const EXTRA = "op://example-vault/example-item/extra";
+  const valueLines = (text: string) => text.split("\n").filter((line) => line && !line.startsWith("#"));
+  const secretsText = () => readFileSync(join(out, "secrets.env"), "utf8");
+  // An op that must never be called: it logs, then fails the run.
+  function deadOp() {
+    const bin = join(dir, "dead-op");
+    writeFileSync(bin, `#!/bin/sh\necho "$*" >>"${log}.dead"\nexit 97\n`, { mode: 0o755 });
+    return bin;
+  }
+  const keep = (extra: string[] = []) => generate(["--keep-secrets", ...extra], { REPOGOLEM_OP_BIN: deadOp() });
+  const snapshot = () => Object.fromEntries(["registry.json", "launchers.zsh", "secrets.env"].map((n) => [n, readFileSync(join(out, n))]));
+
+  test("a config-only change regenerates registry and launchers; secrets.env value lines stay byte-identical; op never runs", () => {
+    expect(generate().code).toBe(0);
+    const before = secretsText();
+    const oldSha = configSha();
+    editConfig((c) => (c.projects["example-app"].displayName = "Edited"));
+    const r = keep();
+    expect(r.code).toBe(0);
+    expect(existsSync(`${log}.dead`)).toBe(false);
+    expect(opCalls()).toBe(5);
+    const after = secretsText();
+    expect(valueLines(after)).toEqual(valueLines(before));
+    expect(after).toContain(`# config-sha256: ${configSha()}`);
+    expect(after).toContain(`# secrets-kept-from: ${oldSha}`);
+    expect(JSON.parse(readFileSync(join(out, "registry.json"), "utf8")).projects["example-app"].displayName).toBe("Edited");
+    for (const name of ["registry.json", "launchers.zsh", "secrets.env"]) expect(mode(join(out, name))).toBe(0o600);
+    expect(mode(out)).toBe(0o700);
+    expect(sourceSecrets(secretKey(REFS[1]))).toBe(`resolved:${REFS[1]}`);
+    expect(r.stdout + r.stderr).not.toContain("resolved:");
+    expect(r.stdout).toContain("op not run");
+  });
+
+  test("--check afterwards is fresh and says the values were kept, not re-resolved", () => {
+    expect(generate().code).toBe(0);
+    const oldSha = configSha();
+    editConfig((c) => (c.projects["example-app"].displayName = "Edited"));
+    expect(keep().code).toBe(0);
+    const r = check();
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain(`secrets.env values kept from config ${oldSha.slice(0, 12)}`);
+    // A later keep carries the original origin, and a full generate clears it.
+    editConfig((c) => (c.projects["example-app"].displayName = "Edited again"));
+    expect(keep().code).toBe(0);
+    expect(secretsText()).toContain(`# secrets-kept-from: ${oldSha}`);
+    expect(generate().code).toBe(0);
+    expect(secretsText()).not.toContain("secrets-kept-from");
+    expect(check().stdout).not.toContain("kept from");
+  });
+
+  test("a removed ref drops its value line; the rest stay byte-identical", () => {
+    expect(generate().code).toBe(0);
+    const before = valueLines(secretsText());
+    editConfig((c) => delete c.projects["example-lib"].secrets.EXAMPLE_WEBHOOK_SECRET);
+    expect(keep().code).toBe(0);
+    expect(valueLines(secretsText())).toEqual(before.filter((line) => !line.startsWith(`${secretKey(REFS[2])}=`)));
+    expect(check().code).toBe(0);
+  });
+
+  test("a new ref refuses with exit 2, names the ref, writes nothing, never runs op", () => {
+    expect(generate().code).toBe(0);
+    editConfig((c) => (c.projects["example-app"].secrets.EXTRA = EXTRA));
+    const was = snapshot();
+    const r = keep();
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain(EXTRA);
+    expect(r.stderr).toContain("run full generate (needs op)");
+    expect(r.stdout + r.stderr).not.toContain("resolved:");
+    expect(snapshot()).toEqual(was);
+    expect(existsSync(`${log}.dead`)).toBe(false);
+  });
+
+  test("no existing secrets.env, or another machine's, refuses with nothing written", () => {
+    let r = keep();
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("run full generate (needs op)");
+    expect(existsSync(out)).toBe(false);
+    expect(generate().code).toBe(0);
+    writeFileSync(join(out, "secrets.env"), secretsText().replace(`# machine: ${HOST}`, "# machine: other-host"), { mode: 0o600 });
+    const was = snapshot();
+    editConfig((c) => (c.projects["example-app"].displayName = "Edited"));
+    r = keep();
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("machine");
+    expect(snapshot()).toEqual(was);
+  });
+
+  test("a permissive or malformed secrets.env refuses before any write", () => {
+    expect(generate().code).toBe(0);
+    editConfig((c) => (c.projects["example-app"].displayName = "Edited"));
+    chmodSync(join(out, "secrets.env"), 0o644);
+    expect(keep().code).toBe(2);
+    chmodSync(join(out, "secrets.env"), 0o600);
+    writeFileSync(join(out, "secrets.env"), `${secretsText()}echo secret-value\n`, { mode: 0o600 });
+    const was = snapshot();
+    const r = keep();
+    expect(r.code).toBe(2);
+    expect(r.stderr).not.toContain("secret-value");
+    expect(snapshot()).toEqual(was);
+  });
+
+  test("--allow-missing leaves the named ref unset, warns loudly, and --check stays honest", () => {
+    expect(generate().code).toBe(0);
+    const before = valueLines(secretsText());
+    editConfig((c) => (c.projects["example-app"].secrets.EXTRA = EXTRA));
+    const r = keep(["--allow-missing", EXTRA]);
+    expect(r.code).toBe(0);
+    expect(r.stderr).toContain("WARNING");
+    expect(r.stderr).toContain(EXTRA);
+    expect(valueLines(secretsText())).toEqual(before);
+    expect(secretsText()).not.toContain(secretKey(EXTRA));
+    expect(existsSync(`${log}.dead`)).toBe(false);
+    const c = check();
+    expect(c.code).toBe(1);
+    expect(c.stderr).toContain("refs differ: 1 missing, 0 extra");
+    // What the warning promises: the launch-time reader refuses until a full generate.
+    const reader = Bun.spawnSync(["bun", join(REPO, "scripts/repogolem/runtime-reader.ts"), "check", out], { stdout: "pipe", stderr: "pipe" });
+    expect(reader.exitCode).toBe(1);
+    expect(reader.stderr.toString()).toContain("missing cached reference");
+  });
+
+  test("--allow-missing refuses a ref that is not missing, and needs --keep-secrets", () => {
+    expect(generate().code).toBe(0);
+    editConfig((c) => (c.projects["example-app"].secrets.EXTRA = EXTRA));
+    const was = snapshot();
+    let r = keep(["--allow-missing", EXTRA, "--allow-missing", REFS[0]]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain(REFS[0]);
+    expect(snapshot()).toEqual(was);
+    r = generate(["--allow-missing", EXTRA], { REPOGOLEM_OP_BIN: deadOp() });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("--allow-missing requires --keep-secrets");
+    expect(snapshot()).toEqual(was);
+  });
+
+  test("--keep-secrets cannot be combined with --check, --check-refs or --secrets-from", () => {
+    expect(generate().code).toBe(0);
+    for (const extra of [["--check"], ["--check-refs"], ["--secrets-from", join(out, "secrets.env")]]) {
+      const r = keep(extra);
+      expect(r.code).toBe(2);
+      expect(r.stderr).toContain("--keep-secrets");
+    }
+    expect(existsSync(`${log}.dead`)).toBe(false);
+  });
+});
