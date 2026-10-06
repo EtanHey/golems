@@ -124,7 +124,7 @@ mutations = [
     ('edit-simulated', 'git_config.py', "            text = text.replace(old, new) if edit.get('replace_all') else text.replace(old, new, 1)\n    return destructive_config(text)", "            text = text.replace(old, new) if edit.get('replace_all') else text.replace(old, new, 1)\n    return destructive_config(str(args.get('new_string', '')))", 'test_git_routes.GitRoutes.test_edit_and_write_destructive_git_config_deny'),
     ('gh-host-check', 'gh_policy.py', "if (url.hostname or '').lower() != 'api.github.com':", 'if False:', 'test_false_positives.GhMutants.test_api_host_is_checked'),
     ('gh-graphql-input-opaque', 'gh_policy.py', 'opaque = source is not None or any(', 'opaque = any(', 'test_false_positives.GhMutants.test_graphql_input_is_opaque'),
-    ('gh-transfer', 'gh_policy.py', "'environments', 'transfer')", "'environments')", 'test_false_positives.GhMutants.test_transfer_is_settings'),
+    # gh-transfer (R2 survivor) is subsumed by settings-default: transfer is no longer a listed route.
     ('heredoc-views-agree', 'syntax.py', ' or _shell_heredoc_starts(command, shell) != starts:', ':', 'test_false_positives.FalsePositives.test_fp_a_ambiguous_heredoc_views_keep_the_full_scan'),
     ('heredoc-quoted-only', 'syntax.py', '            elif quoted:', '            else:', 'test_false_positives.FalsePositives.test_fp_a_ambiguous_heredoc_views_keep_the_full_scan'),
     ('heredoc-mask', 'commands.py', 'shell._executable_subcommands(syntax.mask_heredoc_bodies(command, shell))', 'shell._executable_subcommands(command)', 'test_false_positives.FalsePositives.test_fp_a_quoted_heredoc_prose_is_data'),
@@ -164,6 +164,17 @@ mutations = [
     ('graphql-unreadable', 'gh_policy.py', "names is None and re.search(r'\\bmutation\\b', document) or", '', 'test_gh_parsing.GraphQL.test_mutations_deny_unless_routine_review_traffic'),
     ('graphql-typed-file', 'gh_policy.py', "and value.partition('=')[2].startswith('@') for typed, value in fields)", 'and False for typed, value in fields)', 'test_gh_parsing.GraphQL.test_documents_read_from_files_are_opaque'),
     ('graphql-alias', 'gh_policy.py', "if tokens[i] == ':': name, i = tokens[i + 1], i + 2", "if tokens[i] == ':': i = i + 2", 'test_gh_parsing.GraphQL.test_mutation_fields_read_the_top_level_selection'),
+    ('settings-default', 'gh_policy.py', '    if tail[0] in ROUTINE: return False\n', '    if tail[0] in ROUTINE: return False\n    return False\n', 'test_gh_settings.SettingsRoutes.test_repository_writes_are_settings_by_default'),
+    ('settings-routine', 'gh_policy.py', '    if tail[0] in ROUTINE: return False\n', '', 'test_gh_settings.SettingsRoutes.test_routine_collaboration_stays_allowed'),
+    ('settings-actions-routine', 'gh_policy.py', "or tail[1:2] == ['workflows'] and tail[-1] == 'dispatches')", ')', 'test_gh_settings.SettingsRoutes.test_routine_collaboration_stays_allowed'),
+    ('settings-git-ref-create', 'gh_policy.py', "or tail[1:2] in (['refs'], ['ref']) and method == 'POST')", ')', 'test_gh_settings.SettingsRoutes.test_routine_collaboration_stays_allowed'),
+    ('settings-admin-roots', 'gh_policy.py', 'return parts[0] in ADMIN_ROOTS', 'return False', 'test_gh_settings.SettingsRoutes.test_repository_writes_are_settings_by_default'),
+    ('repo-edit-any', 'gh_policy.py', "'rename', 'edit') or", "'rename') or", 'test_gh_settings.SettingsVerbs.test_cli_settings_verbs_deny'),
+    ('deploy-key', 'gh_policy.py', "verb == 'deploy-key' and any(a in ('add', 'delete') for a in args[2:])", 'False', 'test_gh_settings.SettingsVerbs.test_cli_settings_verbs_deny'),
+    ('secret-verbs', 'gh_policy.py', "args[0] in ('secret', 'variable') and words & {'set', 'delete', 'remove'} or", '', 'test_gh_settings.SettingsVerbs.test_cli_settings_verbs_deny'),
+    ('key-verbs', 'gh_policy.py', "args[0] in ('ssh-key', 'gpg-key') and words & {'add', 'delete'} or", '', 'test_gh_settings.SettingsVerbs.test_cli_settings_verbs_deny'),
+    ('workflow-disable', 'gh_policy.py', "args[0] == 'workflow' and 'disable' in words):", 'False):', 'test_gh_settings.SettingsVerbs.test_cli_settings_verbs_deny'),
+    ('help-only', 'gh_policy.py', "    if args[0] != 'api' and any(a in ('--help', '-h') for a in args):\n        return []  # help text only\n", '', 'test_gh_settings.SettingsVerbs.test_reads_and_help_stay_allowed'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
 (root / 'docs.local/human-confirm-gate/r2-mutation-control.log').write_text(control.stdout + control.stderr)

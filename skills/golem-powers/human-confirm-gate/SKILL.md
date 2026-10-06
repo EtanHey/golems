@@ -10,8 +10,13 @@ Simple literal assignments resolve command/argument words (including #500);
 unresolved protected executable scope and xargs Git/GH/shell executors deny.
 It blocks force/lease pushes, positive-force refspecs, remote deletes, mirror/prune,
 filter-repo/filter-branch/replace (conservatively even local rewrites), replacement
-ref pushes, repo visibility/delete/archive/rename/default-branch/forced-sync,
-and GitHub settings/ruleset/protection/delete/transfer API mutations.
+ref pushes, every `gh repo edit` plus repo delete/archive/unarchive/rename/
+forced-sync and deploy-key add/delete, `gh secret|variable set/delete`,
+`gh ssh-key|gpg-key add/delete`, `gh workflow disable`, and GitHub API writes
+outside routine collaboration. Repository writes are settings by default: only
+pulls, issues, commit comments, statuses, check runs/suites, dispatches,
+merges, forks, Actions run/job reruns, cache deletes and workflow dispatches,
+git object/ref creation pass. Org/user/team/enterprise/app writes are settings.
 Ordinary pushes with redirects/pipes, PR comments/reviews/labels, read-only
 Git global options and config overrides pass. Unknown cwd/executable/config
 scope denies when it could affect a protected operation. The gate inspects

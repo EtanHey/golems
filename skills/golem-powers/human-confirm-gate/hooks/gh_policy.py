@@ -152,6 +152,16 @@ def graphql_dynamic(field, literal_names):
     return '$' in value or '`' in value
 
 
+# AIDEV-NOTE: repository writes are settings by default (lead ruling, R2 N5).
+# Only routine collaboration traffic is listed; keys, branch renames, security
+# features, Actions secrets/variables/permissions, pages, hooks... need a token.
+# commits/<sha> has no write endpoint but its comments, so it is routine for every method.
+ROUTINE = {'pulls', 'issues', 'comments', 'commits', 'statuses', 'check-runs', 'check-suites', 'dispatches', 'merges', 'forks'}
+ROUTINE_ACTIONS = {'runs', 'jobs', 'caches'}  # plus workflows/<id>/dispatches
+ROUTINE_GIT = {'blobs', 'trees', 'commits', 'tags'}  # plus creating a ref
+ADMIN_ROOTS = {'orgs', 'user', 'teams', 'enterprises', 'admin', 'app', 'applications', 'authorizations', 'installation'}
+
+
 def settings_path(path, method):
     if method in ('GET', 'HEAD', 'OPTIONS'): return False
     parts = path.split('/')
@@ -159,15 +169,15 @@ def settings_path(path, method):
         tail = parts[3:]
     elif parts[0] == 'repositories' and len(parts) >= 2:
         tail = parts[2:]
-    elif len(parts) >= 3 and parts[0] == 'orgs':
-        return parts[2] == 'rulesets'
     else:
-        return False
-    if not tail: return method in ('PATCH', 'DELETE') or method == 'POST'
-    return (tail[0] in ('rulesets', 'collaborators', 'hooks', 'environments', 'transfer') or
-            tail[:2] == ['actions', 'permissions'] or
-            tail[0] == 'branches' and 'protection' in tail or
-            tail[:2] in (['git', 'refs'], ['git', 'ref']) and method in ('PATCH', 'DELETE'))
+        return parts[0] in ADMIN_ROOTS  # account/org administration
+    if not tail: return True
+    if tail[0] in ROUTINE: return False
+    if tail[0] == 'actions':
+        return not (tail[1:2] and tail[1] in ROUTINE_ACTIONS or tail[1:2] == ['workflows'] and tail[-1] == 'dispatches')
+    if tail[0] == 'git':
+        return not (tail[1:2] and tail[1] in ROUTINE_GIT or tail[1:2] in (['refs'], ['ref']) and method == 'POST')
+    return True
 
 
 def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in word or '`' in word):
@@ -176,18 +186,27 @@ def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in 
     if not args: return []
     if args[0] not in BUILTINS or '$' in args[0] or '`' in args[0]:
         raise ValueError('unresolved GitHub CLI alias/subcommand')
+    if args[0] != 'api' and any(a in ('--help', '-h') for a in args):
+        return []  # help text only
     if args[:1] == ['repo']:
         if len(args) < 2: return []
         verb = args[1]
         if '$' in verb or '`' in verb or verb in ('edit', 'sync') and any('$' in a or '`' in a for a in args):
             raise ValueError('dynamic settings subcommand/options')
-        guarded = (verb in ('delete', 'archive', 'rename') or
+        guarded = (verb in ('delete', 'archive', 'unarchive', 'rename', 'edit') or  # edit: parity with the root PATCH
                    verb == 'sync' and '--force' in args or
-                   verb == 'edit' and any(a.startswith(('--visibility', '--default-branch')) for a in args))
+                   verb == 'deploy-key' and any(a in ('add', 'delete') for a in args[2:]))
         if guarded:
             if any('$' in a or '`' in a for a in args): raise ValueError('dynamic settings scope')
             return [dict(class_='settings', repo=cwd, target=args[2:])]
         return []
+    # Credentials and security switches outside `gh api`.
+    words = set(args[1:])
+    if (args[0] in ('secret', 'variable') and words & {'set', 'delete', 'remove'} or
+            args[0] in ('ssh-key', 'gpg-key') and words & {'add', 'delete'} or
+            args[0] == 'workflow' and 'disable' in words):
+        if any('$' in a or '`' in a for a in args): raise ValueError('dynamic settings scope')
+        return [dict(class_='settings', repo=cwd, target=args[:2])]
     if args[0] != 'api': return []
     method, positional, fields, source = parse_api(args[1:])
     # gh defaults to POST once it has parameters or a body file.
