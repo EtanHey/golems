@@ -36,8 +36,7 @@ export RATCHET_HOME="$HOME" RATCHET_PUSH_REPO="$LEASE_REPO" RATCHET_BRANCH="$LEA
 export RATCHET_CLONE="$HOME/Gits/golems"
 node "$HERE/run-rows.mjs" --rows "$HERE/rows.json" --runner live --head "$LIVE_HEAD" --cwd "$(cd "$HERE/../.." && pwd)" --out "$RUN/results.json"
 # Direction is checked against the live commit's first parent (the master it was merged onto).
-base=(--bootstrap)
-git -C "$MAIN" cat-file -e "$LIVE_HEAD^1:scripts/ratchet/rows.json" 2>/dev/null && base=(--base-ref "$(git -C "$MAIN" rev-parse "$LIVE_HEAD^1")")
-node "$HERE/table.mjs" --rows "$HERE/rows.json" --results "$RUN/results.json" --head "$LIVE_HEAD" --runner live "${base[@]}" \
+node "$HERE/table.mjs" --rows "$HERE/rows.json" --results "$RUN/results.json" --head "$LIVE_HEAD" --runner live \
+  --base-ref "$(git -C "$MAIN" rev-parse "$LIVE_HEAD^1")" \
   --marker golems-ratchet-live --title "Ratchet table (LIVE rows, post-merge, hooks-live@${LIVE_HEAD:0:8})" \
   --repo "$REPO_SLUG" --pr "$MERGED" --author "$(gh api user -q .login)" --out "$RUN/table.md"

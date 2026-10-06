@@ -145,9 +145,9 @@ node "$HERE/run-rows.mjs" --rows "$HERE/rows.json" --runner mac --head "$INSTALL
 args=(--rows "$HERE/rows.json" --results "$RUN/results.json" --head "$INSTALL" --runner mac
       --marker golems-ratchet-mac --title "Ratchet table (Mac candidate rows: real binaries, scratch HOME)"
       --out "$RUN/table.md")
-# Rule 5 against the PR's base row file, read by table.mjs itself; --bootstrap only if it has none.
+# Rule 5 against the PR's base row file, which table.mjs reads itself at --base-ref.
 git -C "$MAIN" fetch -q origin "$BASE" 2>/dev/null || true
-if git -C "$MAIN" cat-file -e "$BASE:scripts/ratchet/rows.json" 2>/dev/null; then args+=(--base-ref "$BASE"); else args+=(--bootstrap); fi
+args+=(--base-ref "$BASE")
 [ "$POST" = 1 ] && args+=(--repo "$REPO_SLUG" --pr "$PR" --author "$(gh api user -q .login)")
 status=0
 node "$HERE/table.mjs" "${args[@]}" || status=$?
