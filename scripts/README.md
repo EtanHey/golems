@@ -59,3 +59,17 @@ never a browser. Install it from the pinned tree, not a working tree:
 ```sh
 ln -sfn ~/Gits/golems/.worktrees/hooks-live/scripts/deepsource-issues ~/.local/bin/deepsource-issues
 ```
+
+## `agent-browser`
+
+`agent-browser start|status|stop` manages the one shared, headed Chrome Beta
+with a dedicated private profile outside repos and CDP on 127.0.0.1:9333.
+Install Chrome Beta with `brew install --cask google-chrome@beta`, then link the
+reviewed launcher from hooks-live like the other fleet CLIs:
+
+```sh
+ln -sfn ~/Gits/golems/.worktrees/hooks-live/scripts/agent-browser/agent-browser ~/.local/bin/agent-browser
+```
+
+Worker usage, CDP cookie access risks and tab ownership:
+[`/agent-browser`](../skills/golem-powers/agent-browser/SKILL.md).
