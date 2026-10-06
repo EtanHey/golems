@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""Owner setup, run once: create the lead signing key and print its allowed_signers line.
+
+The key goes to ~/.config/golems/lead-signer/lead_ed25519 (0600, directory 0700) and is
+never overwritten or printed. Add the printed `lead ...` line to the anchor before pinning."""
+import subprocess
+import sys
+from pathlib import Path
+
+
+def generate(home=None):
+    signer = Path(home or Path.home()) / '.config/golems/lead-signer'
+    key = signer / 'lead_ed25519'
+    if key.exists() or key.with_suffix('.pub').exists() or key.is_symlink():
+        raise ValueError('lead key already exists; refusing to overwrite ' + str(key))
+    signer.mkdir(parents=True, mode=0o700, exist_ok=True)
+    signer.chmod(0o700)
+    subprocess.run(['/usr/bin/ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-C', 'golems-lead', '-f', str(key)],
+                   check=True, timeout=30)
+    key.chmod(0o600)
+    kind, blob = key.with_suffix('.pub').read_text().split()[:2]
+    return f'lead {kind} {blob}'
+
+
+if __name__ == '__main__':
+    try:
+        line = generate()
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print('golems-lead-keygen refused: ' + str(exc), file=sys.stderr)
+        sys.exit(2)
+    print('Add this line to ~/.config/golems/human-confirm-anchor/allowed_signers, then run golems-confirm-pin:')
+    print(line)
