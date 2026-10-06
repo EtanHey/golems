@@ -229,6 +229,58 @@ function withoutHooks(hooks, refused) {
   return hooks;
 }
 
+// AIDEV-NOTE: retired golems hooks (#579 precompact-checkpoint, the #576 gap).
+// A registration is golems-owned when it runs the installed launcher, reads
+// hooks-live directly, or goes through a hooks-dir link into hooks-live. It is
+// retired when no entry of this host's manifest (any kind, externals included)
+// matches it. Only those registrations, and only dangling links into hooks-live
+// that no entry links, are removed; foreign files, links and *.bak stay.
+function golemsOwned(ctx, command) {
+  const c = String(command ?? "");
+  if (c.includes(`${ctx.live}/`) || c.includes(path.join(ctx.hooksDir, "golems-fail-open.py"))) return true;
+  return hookDirNames(ctx, c).some((name) => intoLive(ctx, path.join(ctx.hooksDir, name)));
+}
+function hookDirNames(ctx, command) {
+  const prefix = `${ctx.hooksDir}/`;
+  return command.split(/[\s'"]+/).filter((t) => t.startsWith(prefix)).map((t) => t.slice(prefix.length).split("/")[0]);
+}
+function intoLive(ctx, at) {
+  try { return lstatSync(at).isSymbolicLink() && readlinkSync(at).startsWith(`${ctx.live}/`); } catch { return false; }
+}
+// The retired hook's name: the launcher's target (or the first hooks-dir path) under hooks/.
+function retiredName(ctx, command) {
+  const names = hookDirNames(ctx, String(command)).filter((n) => n !== "golems-fail-open.py");
+  return names[0] ?? String(command).split(" ").slice(-1)[0];
+}
+export function retiredRegistrations(ctx, hooks) {
+  const found = [];
+  for (const [event, groups] of Object.entries(hooks ?? {})) {
+    for (const g of groups ?? []) {
+      for (const h of g.hooks ?? []) {
+        const command = String(h.command ?? "");
+        if (!golemsOwned(ctx, command) || ctx.entries.some((e) => e.match && command.includes(e.match))) continue;
+        found.push({ event, command, name: retiredName(ctx, command) });
+      }
+    }
+  }
+  return found;
+}
+function withoutRetired(hooks, retired) {
+  const drop = new Set(retired.map((r) => `${r.event}\0${r.command}`));
+  for (const event of Object.keys(hooks)) {
+    hooks[event] = hooks[event].map((g) => ({ ...g, hooks: (g.hooks ?? []).filter((h) => !drop.has(`${event}\0${String(h.command ?? "")}`)) }))
+      .filter((g) => g.hooks.length > 0);
+    if (hooks[event].length === 0) delete hooks[event];
+  }
+  return hooks;
+}
+export function danglingGolemsLinks(ctx) {
+  if (!existsSync(ctx.hooksDir)) return [];
+  const linked = new Set(ctx.entries.filter((e) => e.link).map((e) => e.link));
+  return readdirSync(ctx.hooksDir).filter((name) => !linked.has(name))
+    .filter((name) => intoLive(ctx, path.join(ctx.hooksDir, name)) && !existsSync(path.join(ctx.hooksDir, name)));
+}
+
 function linkState(at, to) {
   let st;
   try {
@@ -485,7 +537,12 @@ function install(o) {
     const state = linkState(e.at, e.to);
     console.log(`link ${e.id}: ${state === "ok" ? "ok" : `${state} -> link ${e.at} -> ${e.to}`}`);
   }
-  const next = { ...settings.json, hooks: withoutHooks(desiredHooks(settings.json.hooks, [...ctx.golems, ...ctx.wrapped]), refused) };
+  const retired = retiredRegistrations(ctx, settings.json.hooks);
+  const dangling = danglingGolemsLinks(ctx);
+  const verb = o.apply ? "removing" : "would remove";
+  for (const r of retired) console.log(`${verb} retired registration: ${r.name} (${r.event})`);
+  for (const name of dangling) console.log(`${verb} dangling golems link: ${name}`);
+  const next = { ...settings.json, hooks: withoutRetired(withoutHooks(desiredHooks(settings.json.hooks, [...ctx.golems, ...ctx.wrapped]), refused), retired) };
   const nextText = `${JSON.stringify(next, null, 2)}\n`;
   const changed = nextText !== settings.text;
   console.log(`settings.json: ${changed ? "would change" : "unchanged"} (${ctx.golems.length + ctx.wrapped.length} managed hooks)`);
@@ -507,6 +564,7 @@ function install(o) {
     if (state === "copy(not link)") renameSync(e.at, `${e.at}.bak-${stamp()}`);
     else if (state !== "missing") unlinkSync(e.at);
   }
+  for (const name of dangling) unlinkSync(path.join(ctx.hooksDir, name));
   writeFileSync(pinRecord(ctx), `${sha}\n`);
   for (const e of ctx.golems) {
     const state = linkState(e.at, e.to);
@@ -629,6 +687,14 @@ function status(o) {
         console.log(`${e.id} interpreter BAD: ${python} (${problem})`);
       }
     }
+  }
+  for (const r of retiredRegistrations(ctx, hooks)) {
+    bad = true;
+    console.log(`retired-registered: ${r.name} (${r.event})`);
+  }
+  for (const name of danglingGolemsLinks(ctx)) {
+    bad = true;
+    console.log(`dangling golems link: ${name}`);
   }
   const active = ctx.golems.filter((g) => !(current && !pinReady(o, current, g)));
   const settingsDrift = [...active, ...ctx.wrapped].filter((e) => !registeredExactly(hooks, e)).length;
