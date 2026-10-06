@@ -47,6 +47,13 @@
         "source": "scripts/hooks/codex-policy-hook.py",
         "matcher": "^(Bash|apply_patch)$",
         "timeout": 10
+      },
+      {
+        "gate": "human-confirm",
+        "source": "scripts/hooks/codex-policy-hook.py",
+        "matcher": "^(Bash|apply_patch)$",
+        "timeout": 10,
+        "requiresPin": "skills/golem-powers/human-confirm-gate/anchor.pins"
       }
     ],
     "m1": [
@@ -61,6 +68,13 @@
         "source": "scripts/hooks/codex-policy-hook.py",
         "matcher": "^(Bash|apply_patch)$",
         "timeout": 10
+      },
+      {
+        "gate": "human-confirm",
+        "source": "scripts/hooks/codex-policy-hook.py",
+        "matcher": "^(Bash|apply_patch)$",
+        "timeout": 10,
+        "requiresPin": "skills/golem-powers/human-confirm-gate/anchor.pins"
       }
     ]
   }
