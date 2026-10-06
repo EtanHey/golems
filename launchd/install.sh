@@ -11,6 +11,7 @@ NODE_BIN="$(command -v node)"
 
 PLISTS=(
     "com.golemszikaron.briefing.plist"
+    "com.golems.worktree-gc.plist"
 )
 
 if [[ "${1:-}" == "--uninstall" ]]; then
@@ -62,6 +63,7 @@ done
 echo ""
 echo "✅ Installed! Schedules:"
 echo "  - Briefing: 8:00 AM daily"
+echo "  - Worktree prune (scripts/worktree-gc.sh --apply): 3:30 AM daily"
 echo "  - Google Drive OAuth guard: login + every 5 minutes"
 echo ""
 echo "📋 Commands:"
