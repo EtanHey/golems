@@ -63,7 +63,7 @@
     "@golems/shared": "workspace:*",
     "@remotion/google-fonts": "4.0.421",
     "@stable-canvas/comfyui-client": "^1.5.9",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
