@@ -71,7 +71,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          # A master push compares against its parent; a PR against its base.
+          # The two inputs table.mjs cannot verify come from here, never from the PR's files:
+          # the row file path is hardcoded below, and the base is the event payload's base SHA
+          # (a master push compares against the commit it replaced).
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
