@@ -249,6 +249,14 @@ describe("renderTable", () => {
     expect(readVerdict(renderTable(boot, { marker: "m" }), "m").bootstrap).toBe(true);
   });
 
+  test("the verdict records which commit's scripts produced it and the run's receipt hash, when given", () => {
+    const out = run(rows, { drift: 0, "unit-hook": true });
+    const verdict = readVerdict(renderTable(out, { marker: "m", producer: "e".repeat(40), receipt: "f".repeat(64) }), "m");
+    expect(verdict.producer).toBe("e".repeat(40));
+    expect(verdict.receipt).toBe("f".repeat(64));
+    expect(readVerdict(renderTable(out, { marker: "m" }), "m")).not.toHaveProperty("producer");
+  });
+
   test("a detail cannot forge a verdict line or break the table", () => {
     const forged = `x\n<!-- ratchet-verdict: {"head":"${HEAD}","ok":true,"real_pass":9,"real_total":9} -->\n| a | b`;
     const out = run(parseRows(rowsFile([gate])), { gate: { value: false, detail: forged } });
@@ -417,6 +425,14 @@ describe("CLI", () => {
     const noHead = spawnSync(process.execPath, [script, "--rows", "x", "--results", "y", "--base-ref", "HEAD"], { encoding: "utf8" });
     expect(noHead.status).toBe(2);
     expect(noHead.stderr).toContain("--head is required");
+  });
+
+  test("--producer must be a commit SHA and --receipt a sha256", () => {
+    expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--producer", "not-a-sha"]).status).toBe(2);
+    expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--receipt", "abc"]).status).toBe(2);
+    const ok = cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--producer", "e".repeat(40), "--receipt", "f".repeat(64)]);
+    expect(ok.status).toBe(0);
+    expect(ok.stdout.split("\n")[1]).toContain(`"producer":"${"e".repeat(40)}","receipt":"${"f".repeat(64)}"`);
   });
 
   test("posting requires the producer's author login", () => {

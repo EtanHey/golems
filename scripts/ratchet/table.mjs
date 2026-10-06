@@ -185,9 +185,12 @@ function deltaCell(delta) {
   return delta > 0 ? `+${delta}` : String(delta);
 }
 
-export function renderTable(evaluation, { marker, title = "Ratchet table" } = {}) {
+export function renderTable(evaluation, { marker, title = "Ratchet table", producer, receipt } = {}) {
   // `bootstrap` lets a consumer FAIL a verdict that skipped the direction check on a base with rows.
   const verdict = { head: evaluation.head, ok: evaluation.ok, real_pass: evaluation.realPass, real_total: evaluation.realTotal, bootstrap: evaluation.bootstrap };
+  // Which commit's row scripts produced it, and a hash of the producer's run receipt.
+  if (producer) verdict.producer = producer;
+  if (receipt) verdict.receipt = receipt;
   // Fixed position: the verdict is ALWAYS the line right after the marker; consumers read only it.
   const lines = [
     markerComment(marker),
@@ -235,14 +238,20 @@ function runGh(args, input) {
   return result.stdout;
 }
 
+// THE sticky comment: the OLDEST comment by an allowed author whose first line is the marker. The
+// producer PATCHes it and CI reads it, so both always agree on one comment (#689 R1 M2).
+export function findSticky(comments, marker, authors) {
+  const tag = markerComment(marker);
+  return comments.find((comment) => authors.includes(comment.user?.login) && typeof comment.body === "string" && comment.body.split("\n")[0] === tag);
+}
+
 export function upsertComment({ repo, pr, marker, author, body, gh = runGh }) {
   if (!author) throw new Error("upsert needs the author the producer posts as");
   // `--slurp` turns the paginated pages into one array of pages; flatten it so a PR with more than
   // one page of comments still finds its sticky comment instead of posting a second one.
   const pages = JSON.parse(gh(["api", "--paginate", "--slurp", `repos/${repo}/issues/${pr}/comments`]) || "[]");
-  const tag = markerComment(marker);
   // Only our own comment is ours to PATCH: another author's marker comment is never touched.
-  const existing = pages.flat().find((comment) => comment.user?.login === author && typeof comment.body === "string" && comment.body.split("\n")[0] === tag);
+  const existing = findSticky(pages.flat(), marker, [author]);
   const payload = JSON.stringify({ body });
   if (existing) gh(["api", "--method", "PATCH", `repos/${repo}/issues/comments/${existing.id}`, "--input", "-"], payload);
   else gh(["api", "--method", "POST", `repos/${repo}/issues/${pr}/comments`, "--input", "-"], payload);
@@ -272,7 +281,7 @@ export function baseRowsAt(rowsPath, baseRef, git = spawnSync) {
 
 function parseArgs(argv) {
   const options = { marker: "ratchet" };
-  const keys = { "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out" };
+  const keys = { "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out", "--producer": "producer", "--receipt": "receipt" };
   for (let index = 0; index < argv.length; index += 1) {
     const key = keys[argv[index]];
     const value = argv[index + 1];
@@ -283,6 +292,8 @@ function parseArgs(argv) {
   for (const key of ["rows", "results", "head", "baseRef"]) if (!options[key]) throw new Error(`--${key === "baseRef" ? "base-ref" : key} is required`);
   if (Boolean(options.repo) !== Boolean(options.pr)) throw new Error("--repo and --pr go together");
   if (options.repo && !options.author) throw new Error("--author is required to post (the login the producer posts as)");
+  if (options.producer && !/^[0-9a-f]{40}$/.test(options.producer)) throw new Error("--producer must be a full commit SHA");
+  if (options.receipt && !/^[0-9a-f]{64}$/.test(options.receipt)) throw new Error("--receipt must be a sha256");
   return options;
 }
 
@@ -330,7 +341,7 @@ export function main(argv) {
     head: options.head,
     runner: options.runner ?? null,
   });
-  const body = renderTable(evaluation, { marker: options.marker, title: options.title });
+  const body = renderTable(evaluation, { marker: options.marker, title: options.title, producer: options.producer, receipt: options.receipt });
   process.stdout.write(`${body}\n`);
   if (options.out) writeFileSync(options.out, `${body}\n`);
   if (options.repo) upsertComment({ repo: options.repo, pr: options.pr, marker: options.marker, author: options.author, body });

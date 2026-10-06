@@ -126,7 +126,8 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --hea
   it thereafter, and never touches another author's comment. Use one marker per producer.
 - **Verdict line:** the comment's second line is always
   `<!-- ratchet-verdict: {"head":…,"ok":…,"real_pass":…,"real_total":…,"bootstrap":…} -->`. A consumer:
-  - reads that line only (`readVerdict`);
+  - reads that line only (`readVerdict`), from the same comment the producer PATCHes: the OLDEST
+    comment by the trusted author whose first line is the marker (`findSticky`);
   - checks that the comment's author is the producer it trusts;
   - FAILs a `bootstrap: true` verdict whenever the base branch has a row file.
 - **Exit codes:**
@@ -136,6 +137,19 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --hea
 - **Other repos:** call the script pinned to a golems SHA (fetch
   `scripts/ratchet/table.mjs` at that SHA, or vendor that exact file with the SHA in a comment).
   It has no dependencies beyond node.
+
+## Companion scripts (golems)
+
+- `scripts/ratchet/run-rows.mjs --rows <file> --head <sha> --out <results.json> [--runner <name>]
+  [--cwd <dir>]`: the generic producer. It runs each selected row's `command` (bash). A `pass` row
+  is true only on exit 0. A numeric row must exit 0 and print its number on the last stdout line,
+  or it is left out (MISSING).
+- `scripts/ratchet/check-comment.mjs --repo --pr --marker --head --rows --runner --author <login>`
+  exits 0 only when that producer's comment carries a fixed-line verdict for exactly `--head`
+  with every real row of `--runner` PASS. The comment must be by an allowed author.
+- golems' own producers:
+  - `scripts/ratchet/local-run.sh` produces the per-PR candidate tier, in a scratch HOME;
+  - `scripts/ratchet/live-rows.sh` produces the post-merge live tier, and the lead runs it.
 
 ## Convergence close: baseline and open targets (Etan, 2026-10-06)
 
