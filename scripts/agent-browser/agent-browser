@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""One headed Chrome Beta instance for fleet CDP testing; never drive Helium."""
+import fcntl
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+
+PORT = 9333
+APP = 'Google Chrome Beta'
+APP_PATH = f'/Applications/{APP}.app'
+BINARY = f'{APP_PATH}/Contents/MacOS/{APP}'
+PROFILE = Path.home() / 'Library/Application Support/golems-agent-browser'
+
+
+def run(*args):
+    return subprocess.run(args, capture_output=True, text=True, check=False)
+
+
+def is_beta(command):
+    return command == BINARY or command.startswith(BINARY + ' ')
+
+
+def owns(command):
+    profile_arg = f'--user-data-dir={PROFILE}'
+    # ps does not quote spaces; match the complete profile argument boundaries.
+    return is_beta(command) and (
+        ' ' + profile_arg + ' ' in command or command.endswith(' ' + profile_arg)
+    )
+
+
+def process():
+    result = run('ps', '-axo', 'pid=,args=')
+    if result.returncode:
+        raise RuntimeError('process inspection failed')
+    pids = []
+    for line in result.stdout.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) == 2 and is_beta(parts[1]):
+            if not owns(parts[1]):
+                raise RuntimeError('Chrome Beta is running with another profile; refusing to touch it')
+            pids.append(int(parts[0]))
+    if len(pids) > 1:
+        raise RuntimeError(f'multiple agent browser processes: {pids}')
+    return pids[0] if pids else None
+
+
+def listener():
+    result = run('lsof', '-nP', f'-iTCP:{PORT}', '-sTCP:LISTEN', '-Fpn')
+    if result.returncode == 1 and not result.stdout and not result.stderr:
+        return None
+    if result.returncode != 0:
+        raise RuntimeError(f'listener inspection failed: {result.stderr.strip()}')
+    pids, addresses = set(), set()
+    for line in result.stdout.splitlines():
+        if line.startswith('p'):
+            pids.add(int(line[1:]))
+        elif line.startswith('n'):
+            addresses.add(line[1:])
+    if len(pids) != 1 or addresses != {f'127.0.0.1:{PORT}'}:
+        raise RuntimeError(f'refusing unsafe listener: pids={sorted(pids)}, addresses={sorted(addresses)}')
+    pid = pids.pop()
+    result = run('ps', '-p', str(pid), '-o', 'args=')
+    command = result.stdout.strip()
+    if result.returncode or not owns(command):
+        raise RuntimeError(f'refusing foreign listener on {PORT} (pid={pid})')
+    return pid
+
+
+def status(pid, listening=None):
+    print(f'{"running" if listening else "starting" if pid else "stopped"} pid={pid or "none"} port={PORT} '
+          f'profile={PROFILE} listening={"127.0.0.1:" + str(PORT) if listening else "none"}')
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in {'start', 'status', 'stop'}:
+        print('usage: agent-browser start|status|stop', file=sys.stderr)
+        return 2
+    PROFILE.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if PROFILE.is_symlink():
+        raise RuntimeError('profile directory must not be a symlink')
+    PROFILE.chmod(0o700)
+    # Serializes competing starts/stops; kernel releases the lock on crashes.
+    fd = os.open(PROFILE / '.launcher.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        listening = listener()
+        pid = process()
+        if listening and listening != pid:
+            raise RuntimeError("listener and process ownership disagree")
+        action = sys.argv[1]
+        if action == 'status':
+            status(pid, listening)
+        elif action == 'start':
+            if pid:
+                if not listening:
+                    raise RuntimeError(f'agent browser already starting (pid={pid}); no second launch')
+                print('agent browser already running')
+                status(pid, listening)
+                return 0
+            result = run('open', '-g', '-a', APP_PATH, '--args',
+                         f'--user-data-dir={PROFILE}',
+                         f'--remote-debugging-port={PORT}',
+                         '--remote-debugging-address=127.0.0.1',
+                         '--no-first-run', '--no-default-browser-check')
+            if result.returncode:
+                raise RuntimeError(f'Chrome Beta launch failed: {result.stderr.strip()}')
+            for _ in range(100):
+                pid = listener()
+                if pid:
+                    status(pid, pid)
+                    return 0
+                time.sleep(0.1)
+            raise RuntimeError('Chrome Beta did not listen within 10 seconds; inspect the app before retrying')
+        elif pid:
+            # Recheck ownership immediately before signalling this one PID.
+            if process() != pid or listener() not in {None, pid}:
+                raise RuntimeError('listener changed before stop; refusing to signal')
+            os.kill(pid, signal.SIGTERM)
+            for _ in range(100):
+                if listener() is None and process() is None:
+                    print('agent browser stopped')
+                    return 0
+                time.sleep(0.1)
+            raise RuntimeError('Chrome Beta did not exit after SIGTERM; no forced kill attempted')
+        else:
+            print('agent browser already stopped')
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, RuntimeError, ValueError) as error:
+        print(f'agent-browser: {error}', file=sys.stderr)
+        sys.exit(1)
