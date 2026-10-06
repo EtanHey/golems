@@ -6,6 +6,10 @@ not a dev checkout an agent can edit."""
 import runpy
 import socket
 import sys
+
+# Run from hooks-live without -B: never write gate bytecode there (it turns
+# install-hooks --status red, and agents may not clean it).
+sys.dont_write_bytecode = True
 from pathlib import Path
 
 helper = runpy.run_path(str(Path(__file__).with_name('golems-confirm')))
