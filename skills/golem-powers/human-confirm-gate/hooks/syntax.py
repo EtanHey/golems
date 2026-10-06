@@ -35,21 +35,30 @@ def substitution_argv(command, shell):
     here; operations() still inspects every executable body recursively.
     The marker cannot resolve through the literal-variable binding grammar.
     """
-    parsed = shell._parse_bash(command)
-    tokens = parsed[0]
-    if not any(shell._is_command_sub_open(t) for t in tokens):
-        return parsed
+    _ShellOperator = shell._impl_module('tokens')._ShellOperator
+    tokens = []
+    for token in shell._shell_tokens(shell._strip_heredoc_bodies(command), _operator_origin=True):
+        if isinstance(token, _ShellOperator) and token == '(' and tokens and tokens[-1].endswith(('$', '`')):
+            tokens[-1] = _ShellOperator(tokens[-1] + '(')
+        else:
+            tokens.append(token)
+    def opened(token):
+        return isinstance(token, _ShellOperator) and shell._is_command_sub_open(token)
+    def closed(token):
+        return isinstance(token, _ShellOperator) and shell._is_command_sub_close(token)
+    if not any(opened(t) for t in tokens):
+        return shell._parse_bash(command)
     words, continuing, i = [], False, 0
     while i < len(tokens):
         word = tokens[i]
         suffix = False
-        if shell._is_command_sub_open(word):
+        if opened(word):
             word = word[:-2] + '${command-substitution}'
             depth = 1
             i += 1
             while i < len(tokens) and depth:
-                if shell._is_command_sub_open(tokens[i]): depth += 1
-                if shell._is_command_sub_close(tokens[i]): depth -= 1
+                if opened(tokens[i]): depth += 1
+                if closed(tokens[i]): depth -= 1
                 if not depth: suffix = tokens[i].endswith('+')
                 i += 1
             if depth: raise ValueError('unclosed command substitution')

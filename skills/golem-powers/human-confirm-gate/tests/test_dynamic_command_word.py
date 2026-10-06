@@ -27,6 +27,8 @@ CASES = (
     '${FIXTURE_TOOL} push --force',
     '/fixture/fixture-* push --force',
     '{fixture-tool,fixture-other} push --force',
+    '$(printf fixture-tool ")$") push --force',
+    '$(printf fixture-tool ")$+") push --force',
 )
 
 
