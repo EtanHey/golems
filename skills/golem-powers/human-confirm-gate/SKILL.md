@@ -72,7 +72,13 @@ The common fail-open launcher retains its existing infrastructure contract:
 a missing script or Python syntax failure before `main()` runs allows. This
 hook catches evaluator/import errors, not launcher failures. Installer status
 must therefore be checked before calling this an installed mechanical gate.
-This only covers Claude tool calls; Codex exec_command is not wired to it.
+Codex seats run it through the Codex adapter (`scripts/hooks/codex-policy-hook.py
+human-confirm`, fail-closed, 7 s budget under Codex's 10 s). The token binds the
+Codex payload's `session_id`, which is the root thread id (stable across
+`codex resume`, shared by subagents, new on a fork), so issue with `--session
+<root thread id>`. `apply_patch` is projected onto Write/Edit, never read as a
+command. The installer refuses this Codex registration while the anchor pin is
+empty, as on Claude, and a new registration needs `/hooks` trust review.
 ## Trust and issuance
 Unsigned file metadata cannot identify a human under the shared macOS UID.
 Tokens are SSH-signed JSON, mode 0600, in

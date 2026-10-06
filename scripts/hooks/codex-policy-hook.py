@@ -29,6 +29,7 @@ ISOLATED = ("-I", "-B")
 TARGETS = {
     "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
+    "human-confirm": "skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py",
 }
 REPAIR_REASON = (
     "BLOCKED: Codex policy hook unavailable; refusing tool call. "
@@ -242,6 +243,53 @@ def guardian_inputs(payload):
     return [{**payload, "tool_name": "Write", "tool_input": {"file_path": p}} for p in paths]
 
 
+_PATCH_FILE = re.compile(r"\*\*\*[^\S\n]+(Add|Update|Delete) File:[^\S\n]*(.+?)[^\S\n]*")
+_PATCH_MOVE = re.compile(r"\*\*\*[^\S\n]+Move to:[^\S\n]*(.+?)[^\S\n]*")
+
+
+def confirm_inputs(payload):
+    """Project an apply_patch onto the Write/Edit shapes human-confirm already judges.
+
+    The gate would read a raw patch's text as a shell command, so a patch never
+    reaches it as such. Add -> Write of its added lines; Update -> an Edit that
+    prepends its added lines (a superset of the result, so a destructive git
+    config route cannot hide in it); Delete -> Write of the path (the policy
+    store check is path-based); Move to -> Write of the destination with the
+    source text plus the added lines."""
+    if payload["tool_name"] != "apply_patch":
+        return [payload]
+    cwd, files = payload["cwd"], []
+    for raw in payload["tool_input"]["command"].split("\n"):
+        line = raw.rstrip("\r")
+        header, move = _PATCH_FILE.fullmatch(line.strip()), _PATCH_MOVE.fullmatch(line.strip())
+        if header:
+            files.append({"op": header.group(1), "path": header.group(2), "added": [], "move": None})
+        elif move and files:
+            files[-1]["move"] = move.group(1)
+        elif files and line.startswith("+"):
+            files[-1]["added"].append(line[1:])
+    if len(files) > 64:
+        raise TimeoutError("patch budget exceeded")
+    items = []
+    for f in files:
+        added = "".join(text + "\n" for text in f["added"])
+        if f["op"] == "Update":
+            tool_input = {"file_path": f["path"], "old_string": "", "new_string": added}
+            items.append({**payload, "tool_name": "Edit", "tool_input": tool_input})
+        else:
+            items.append({**payload, "tool_name": "Write",
+                          "tool_input": {"file_path": f["path"], "content": added if f["op"] == "Add" else ""}})
+        if f["move"]:
+            try:
+                with open(os.path.join(cwd, f["path"]), encoding="utf-8", errors="replace") as stream:
+                    source = stream.read()
+            except OSError:
+                source = ""
+            items.append({**payload, "tool_name": "Write",
+                          "tool_input": {"file_path": f["move"], "content": source + added}})
+    return items
+
+
 def guardian_batch():
     """Amortize imports, retaining the existing entry point for every write."""
     raw = sys.stdin.read(1024 * 1024 + 1)
@@ -303,7 +351,10 @@ def evaluate():
     # exemption. Only the library source is fixed to hooks-live.
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
-    for item in transport_inputs(p):
+    items = transport_inputs(p)
+    if gate == "human-confirm":
+        items = [projected for item in items for projected in confirm_inputs(item)]
+    for item in items:
         command = [sys.executable, *ISOLATED, str(LAUNCHER), str(ROOT / TARGETS[gate])]
         data = item
         if gate == "git-guardian" and item["tool_name"] == "apply_patch":

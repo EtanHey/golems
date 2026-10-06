@@ -173,3 +173,38 @@ test("codexCommand registers the adapter as python3 -I -B", () => {
   const cmd = codexCommand("python3", "/live/a.py", "git-guardian");
   expect(cmd).toContain("python3'\\'' '\\''-I'\\'' '\\''-B'\\'' '\\''/live/a.py'\\'' '\\''git-guardian");
 });
+
+// human-confirm on Codex: a third adapter gate, registered only while pinned.
+const PIN = "skills/golem-powers/human-confirm-gate/anchor.pins";
+function confirmFixture() {
+  const f = fixture();
+  const entries = [...f.manifest.codex_hosts.mbp, { gate: "human-confirm", source: "scripts/hooks/codex-policy-hook.py",
+    matcher: "^(Bash|apply_patch)$", timeout: 10, requiresPin: PIN }];
+  return { ...f, manifest: { codex_hosts: { mbp: entries, m1: entries } } };
+}
+const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-policy-hook\.py'\\'' '\\''([a-z-]+)/)?.[1]).sort();
+
+test("human-confirm registers as a third Codex gate; refused while unpinned, and an existing registration is stripped", () => {
+  const f = confirmFixture();
+  let p = planCodexHooks(f);
+  expect(gatesIn(p)).toEqual(["git-guardian", "human-confirm", "tmp-block"]);
+  applyCodexHooks(p);
+  expect(planCodexHooks(f).registered).toBe(true);
+  p = planCodexHooks({ ...f, refused: ["human-confirm"] });
+  expect(p.registered).toBe(false);
+  expect(gatesIn(p)).toEqual(["git-guardian", "tmp-block"]);
+  applyCodexHooks(p);
+  expect(planCodexHooks({ ...f, refused: ["human-confirm"] }).registered).toBe(true);
+});
+
+test("the Codex manifest pins the gate set: human-confirm needs its anchor pin, nothing else may claim one", () => {
+  const f = confirmFixture();
+  const bad = (mutate) => {
+    const entries = structuredClone(f.manifest.codex_hosts.mbp); mutate(entries);
+    return () => planCodexHooks({ ...f, manifest: { codex_hosts: { mbp: entries, m1: entries } } });
+  };
+  expect(bad((e) => { delete e[2].requiresPin; })).toThrow("Invalid Codex policy entry");
+  expect(bad((e) => { e[0].requiresPin = PIN; })).toThrow("Invalid Codex policy entry");
+  expect(bad((e) => { e[2].gate = "other-gate"; })).toThrow("Invalid Codex policy entry");
+  expect(bad((e) => { e.splice(0, 1); })).toThrow("Invalid Codex policy manifest");
+});
