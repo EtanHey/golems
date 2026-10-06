@@ -299,16 +299,31 @@ def _patch_files(text):
     return files
 
 
+_PUNCTUATION = {**{c: "-" for c in "\u2010\u2011\u2012\u2013\u2014\u2015\u2212"},
+                **{c: "'" for c in "\u2018\u2019\u201a\u201b"}, **{c: '"' for c in "\u201c\u201d\u201e\u201f"},
+                **{c: " " for c in "\u00a0\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000"}}
+
+
+def _normalise(line):
+    return "".join(_PUNCTUATION.get(c, c) for c in line.strip())
+
+
+_PASSES = (lambda line: line, str.rstrip, str.strip, _normalise)
+
+
 def _seek(lines, pattern, start, eof):
-    """Codex's seek_sequence, exact pass only: a looser match is not trusted."""
+    """Codex 0.160's seek_sequence: exact, then trim_end, then trim, then unicode
+    punctuation normalised, each over the same window (#698 R1 FP-1)."""
     if not pattern:
         return start
     if len(pattern) > len(lines):
         return None
     begin = len(lines) - len(pattern) if eof else start
-    for i in range(begin, len(lines) - len(pattern) + 1):
-        if lines[i:i + len(pattern)] == pattern:
-            return i
+    for key in _PASSES:
+        want = [key(p) for p in pattern]
+        for i in range(begin, len(lines) - len(pattern) + 1):
+            if [key(line) for line in lines[i:i + len(pattern)]] == want:
+                return i
     return None
 
 
@@ -344,13 +359,14 @@ def _apply_chunks(text, chunks):
     return "\n".join(lines)
 
 
-def _read_text(path):
+def _read_text(path, limit):
+    """File text; None if missing/unreadable; `...` (Ellipsis) if over the limit."""
     try:
         with open(path, "rb") as stream:
-            data = stream.read(_CONFIG_BYTES + 1)
+            data = stream.read(limit + 1)
     except OSError:
         return None
-    return None if len(data) > _CONFIG_BYTES else data.decode("utf-8", errors="replace")
+    return ... if len(data) > limit else data.decode("utf-8", errors="replace")
 
 
 def confirm_inputs(payload):
@@ -361,10 +377,13 @@ def confirm_inputs(payload):
     what the previous one wrote (#693 R2-F1), so the whole patch is replayed over
     a virtual file map keyed by canonical path (`.git/../.git/config`, `./.git/
     config` and the absolute path are one key): Add sets content, Delete removes
-    it, Update applies its chunks exactly as Codex does (#693 R1 F1), and Move
-    writes the destination and removes the source. Every touched path is then
-    judged ONCE: a git config file on its final content, anything else by path.
-    A replay that cannot be performed exactly denies the call."""
+    it, Update applies its chunks with Codex's own four seek passes (#698 R1),
+    and Move writes the destination and removes the source. Every touched path is
+    then judged ONCE: a git config file on its final content, anything else by
+    path. An ordinary file whose chunks no pass can place gets UNKNOWN content
+    and is never denied for it; a git config file, or UNKNOWN content reaching
+    one, denies (as does a section Codex itself would fail: a missing file or
+    an unparseable section)."""
     if payload["tool_name"] != "apply_patch":
         return [payload]
     cwd = payload["cwd"]
@@ -372,15 +391,25 @@ def confirm_inputs(payload):
     if len(files) > 64:
         raise TimeoutError("patch budget exceeded")
     canon = lambda p: os.path.realpath(os.path.normpath(os.path.join(cwd, p)))
-    virtual, order, missing = {}, [], object()
+    config = load_parser("skills/golem-powers/human-confirm-gate/hooks/git_config.py", "codex_confirm_git_config")
+    guarded = lambda path: config._config_file(path, cwd)
+    virtual, order, unknown = {}, [], object()
 
     def read(path):
         if path in virtual:
             return virtual[path]
-        text = _read_text(path)
-        return missing if text is None else text
+        text = _read_text(path, _CONFIG_BYTES if guarded(path) else 64 * _CONFIG_BYTES)
+        if text is ...:
+            if guarded(path):
+                raise ConfigPatchRefusal("git config file too large to judge")
+            return unknown
+        if text is None:
+            raise ConfigPatchRefusal("patch section targets a missing file")
+        return text
 
     def put(path, content):
+        if content is unknown and guarded(path):
+            raise ConfigPatchRefusal("git config content cannot be computed")
         virtual[path] = content
         if path not in order:
             order.append(path)
@@ -391,26 +420,27 @@ def confirm_inputs(payload):
             put(source, "".join(t + "\n" for t in f["added"]))
             continue
         current = read(source)
-        if current is missing or current is None:
-            raise ConfigPatchRefusal("patch section targets a missing file")
+        if current is None:
+            raise ConfigPatchRefusal("patch section targets a deleted file")
         if f["op"] == "Delete":
             put(source, None)
             continue
         if f["invalid"] or (not f["chunks"] and not f["move"]):
             raise ConfigPatchRefusal("unparseable patch section")
-        result = _apply_chunks(current, f["chunks"]) if f["chunks"] else current
-        if result is None:
-            raise ConfigPatchRefusal("patch does not apply exactly")
+        result = current
+        if f["chunks"] and current is not unknown:
+            result = _apply_chunks(current, f["chunks"])
+            if result is None:
+                result = unknown  # Codex itself would fail; the content is not trusted either way
         if f["move"]:
             put(source, None)
             put(canon(f["move"]), result)
         else:
             put(source, result)
-    config = load_parser("skills/golem-powers/human-confirm-gate/hooks/git_config.py", "codex_confirm_git_config")
     items = []
     for path in order:
         content = virtual[path]
-        judged = content if content is not None and config._config_file(path, cwd) else ""
+        judged = content if isinstance(content, str) and guarded(path) else ""
         items.append({**payload, "tool_name": "Write", "tool_input": {"file_path": path, "content": judged}})
     return items
 

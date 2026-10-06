@@ -83,9 +83,11 @@ Codex payload's `session_id`, which is the root thread id (stable across
 replayed in order, as Codex applies it, over a virtual file map keyed by
 canonical path (so `.git/../.git/config` is `.git/config`). Each touched path is
 judged once: a git config file on its final content (section context and
-removed lines matter), anything else by path. A patch that cannot be replayed
-exactly is denied, including any CRLF git config (Codex cannot patch those
-exactly either way). The installer refuses this Codex registration while the anchor pin is
+removed lines matter), anything else by path. Hunks are placed with Codex's own
+four seek passes (exact, trailing-whitespace, full-trim, unicode punctuation),
+so a CRLF or loosely matching file replays to what Codex writes. An ordinary
+file that no pass can place is never denied for it; a git config file that no
+pass can place, or such content moved onto one, is denied. The installer refuses this Codex registration while the anchor pin is
 empty, as on Claude. A new registration only runs after the owner trusts it in
 `/hooks`.
 ## Trust and issuance
