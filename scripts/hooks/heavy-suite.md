@@ -24,13 +24,14 @@ shared path (or an isolated test path). Different users must configure the same
 accessible path to share a queue. Kernel ownership is authoritative; stale PID
 metadata is replaced. Never delete the lock file: a new inode could allow overlap.
 
-After acquiring the lock, the wrapper waits while uptime's 1-minute load exceeds
-20. `GOLEMS_HEAVY_MAX_LOAD` / `--max-load` changes the threshold;
+Before acquiring the lock, the wrapper waits while uptime's 1-minute load exceeds
+twice the CPU count. It never waits on load while holding the lock.
+`GOLEMS_HEAVY_MAX_LOAD` / `--max-load` changes the threshold;
 `GOLEMS_HEAVY_POLL_SECONDS` / `--poll-seconds` changes the 5-second poll interval.
 WAIT logs are throttled to 30 seconds and show the holder PID/executable/start.
 `GOLEMS_HEAVY_MAX_WAIT_SECONDS` / `--max-wait-seconds` sets one budget for lock
 and load waits (default 1800 seconds). Expiry proceeds with a LOUD warning;
-lock expiry runs unqueued, load expiry runs while retaining its acquired lock.
+lock expiry runs unqueued; load expiry proceeds to lock acquisition.
 `GOLEMS_HEAVY_FORCE=1` explicitly bypasses both with a warning. Missing helper,
 Python, or unusable lock setup runs the original suite unqueued; a broken suite
 command or failing suite still fails the hook. This is scheduling, not a policy gate.
