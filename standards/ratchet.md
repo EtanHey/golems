@@ -21,6 +21,7 @@
 5. **Ratchet direction only.** Any PR may add a row or tighten a ceiling. These need a lead ruling
    in the PR body, one line per row, `ratchet-loosen: <row-id> <ruling>`:
    - loosening a ceiling;
+   - changing what a row measures (its `command` or `metric`), unless it is a pure tightening;
    - flipping its direction;
    - moving a row to another runner;
    - demoting `real` to `unit`;
@@ -99,17 +100,16 @@ install to measure a candidate. Two tiers:
 
 ```bash
 node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --head <sha> \
-  (--base-ref <base sha> | --bootstrap) [--baseline <base-results.json>] \
+  --base-ref <base sha> [--baseline <base-results.json>] \
   [--pr-body-file <body.md>] [--runner <name>] [--marker <name>] [--title <text>] \
   [--repo <owner/name> --pr <number> --author <login>] [--out <table.md>]
 ```
 
 - **`--head` is required.**
-- **The base is required too.**
-  - `--base-ref`: the script reads the row file as committed at that SHA (`git show`) and checks
-    rule 5 across ALL its rows, whatever `--runner` selects.
-  - `--bootstrap`: only for a base with no row file yet. The table then says "direction
-    unchecked".
+- **`--base-ref` is required too.** The script reads the row file as committed at that SHA
+  (`git show`) and checks rule 5 across ALL its rows, whatever `--runner` selects. Only a base
+  commit that verifiably has no row file is a bootstrap ("direction unchecked" in the table). A
+  ref that is not a commit exits 2; there is no flag to skip the comparison.
 - **Posting:** with `--repo/--pr/--author` it upserts ONE comment whose first line is
   `<!-- ratchet-table: <marker> -->`, posted by `--author`. It creates the comment once and PATCHes
   it thereafter, and never touches another author's comment. Use one marker per producer.
@@ -119,7 +119,7 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --hea
 - **Exit codes:**
   - `0`: every selected row PASS, and nothing loosened without a ruling.
   - `1`: any row FAIL or MISSING, no row selected, or an unruled loosening.
-  - `2`: bad input (row file, arguments, base, PR body).
+  - `2`: bad input (row file, arguments, base ref, a non-string SHA, PR body).
 - **Other repos:** call the script pinned to a golems SHA (fetch
   `scripts/ratchet/table.mjs` at that SHA, or vendor that exact file with the SHA in a comment).
   It has no dependencies beyond node.
