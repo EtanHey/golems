@@ -38,10 +38,13 @@ The launcher refuses foreign or non-loopback listeners and only stops the
 verified Chrome Beta PID with this profile. Stop is a shared lifecycle action;
 workers normally leave the instance running for each other.
 
-Install once the reviewed source is in the installed hooks-live pin:
+From any golems checkout, install once the reviewed source is in the installed
+hooks-live pin (Git resolves the shared repository location, including worktrees):
 
 ```sh
-ln -sfn ~/Gits/golems/.worktrees/hooks-live/scripts/agent-browser/agent-browser ~/.local/bin/agent-browser
+golems_git_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+golems_repo="$(dirname "$golems_git_dir")"
+ln -sfn "$golems_repo/.worktrees/hooks-live/scripts/agent-browser/agent-browser" "$HOME/.local/bin/agent-browser"
 ```
 
 Do not change or repin hooks-live for this installation; its owner runs the

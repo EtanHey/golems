@@ -65,10 +65,13 @@ ln -sfn ~/Gits/golems/.worktrees/hooks-live/scripts/deepsource-issues ~/.local/b
 `agent-browser start|status|stop` manages the one shared, headed Chrome Beta
 with a dedicated private profile outside repos and CDP on 127.0.0.1:9333.
 Install Chrome Beta with `brew install --cask google-chrome@beta`, then link the
-reviewed launcher from hooks-live like the other fleet CLIs:
+reviewed launcher from hooks-live like the other fleet CLIs. From any golems
+checkout, derive the shared repository location rather than assuming its path:
 
 ```sh
-ln -sfn ~/Gits/golems/.worktrees/hooks-live/scripts/agent-browser/agent-browser ~/.local/bin/agent-browser
+golems_git_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+golems_repo="$(dirname "$golems_git_dir")"
+ln -sfn "$golems_repo/.worktrees/hooks-live/scripts/agent-browser/agent-browser" "$HOME/.local/bin/agent-browser"
 ```
 
 Worker usage, CDP cookie access risks and tab ownership:
