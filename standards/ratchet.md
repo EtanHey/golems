@@ -126,7 +126,8 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --hea
   it thereafter, and never touches another author's comment. Use one marker per producer.
 - **Verdict line:** the comment's second line is always
   `<!-- ratchet-verdict: {"head":…,"ok":…,"real_pass":…,"real_total":…,"bootstrap":…} -->`. A consumer:
-  - reads that line only (`readVerdict`);
+  - reads that line only (`readVerdict`), from the same comment the producer PATCHes: the OLDEST
+    comment by the trusted author whose first line is the marker (`findSticky`);
   - checks that the comment's author is the producer it trusts;
   - FAILs a `bootstrap: true` verdict whenever the base branch has a row file.
 - **Exit codes:**
