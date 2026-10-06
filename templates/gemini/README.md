@@ -1,15 +1,16 @@
 # Gemini context
 
-Gemini workers gather research, frames, inventories and verification evidence.
+Gemini workers execute scoped tasks or gather research and verification evidence.
 Shared rules remain in `AGENTS.md`. The gatherer routes its tier through
 `/agent-routing`; this template does not select a model.
 
 Antigravity 1.2.14 reads global agents from
 `~/.gemini/antigravity-cli/agents`. `mainAgent: true` enables `--agent gatherer`;
-`subagent: false` keeps this a primary gatherer session. The launcher adds that
-agent for `--worker` or inherited `GOLEM_ROLE=worker` when installed, and warns
-while preserving the existing launch if it is missing. Leads use their existing
-launch flow. Model defaults remain owned by the launcher's routing policy.
+`subagent: false` keeps this a primary gatherer session. For `--worker`, inherited `GOLEM_ROLE=worker`, or a task role export, the launcher selects
+`gatherer` only for `GOLEM_AGENT_ROLE=gatherer`; all other roles default to
+`shell-worker`. `GOLEM_AGY_AGENT=<name>` overrides the selection. Invalid names
+or missing profile files refuse launch. Leads retain their existing flow unless
+an explicit profile is supplied. Model defaults remain owned by the launcher's routing policy.
 
 Gatherers delegate independent BrainLayer questions and claim checks to the
 `brain-worker` subagent with `invoke_subagent`, at most four concurrently.
@@ -49,6 +50,8 @@ the read-only `brain-worker`. It retains its scoped receipt tools.
 Only the declared brain-worker may be invoked;
 hidden built-in agents must fail the no-tool delegation probes before release.
 
+Shell-worker: shell + scoped writes, no MCP; executes exactly the brief and stays on task. Model routing belongs to `/agent-routing`.
+
 Video-qa: shell + write, no MCP. Use `--agent video-qa` for /qa-video work that
 needs local media commands, background output/status checks, and denser sampling
 around unclear moments. Unlike the research gatherer, it can run its own shell
@@ -86,7 +89,7 @@ resolved registry. It never generates a registry or resolves secrets.
 
 The default prints a table without writing. `--check` also fails for ritual
 patterns in global or repo context. `--apply` installs context and the global
-gatherer, brain-worker and video-qa. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
+gatherer, brain-worker, video-qa and shell-worker. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
 only verified; a global ritual blocks apply.
 
 To install only these agents after merge, use

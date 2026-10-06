@@ -8,8 +8,23 @@ _golem_launch_gemini() {
   local worker_mode=false
   $_flag_worker && worker_mode=true
   [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
+  # cmuxlayer can select a task worker using only its role export.
+  [[ -n "${GOLEM_AGENT_ROLE:-}" ]] && worker_mode=true
   # --worker exports GOLEM_ROLE=worker for this call only (see _golem_launch_codex).
   [[ "$worker_mode" == true ]] && local -x GOLEM_ROLE=worker
+  local agy_agent="${GOLEM_AGY_AGENT:-}"
+  if [[ "$worker_mode" == true || -n "$agy_agent" ]]; then
+    if [[ -z "$agy_agent" ]]; then
+      case "${GOLEM_AGENT_ROLE:-}" in
+        gatherer) agy_agent=gatherer ;;
+        *) agy_agent=shell-worker ;;
+      esac
+    fi
+    if [[ "$agy_agent" == *[^a-zA-Z0-9_-]* || ! -f "$HOME/.gemini/antigravity-cli/agents/$agy_agent.md" ]]; then
+      print -u2 -r -- "repoGolem: Gemini profile '$agy_agent' is invalid or not installed; agent not launched."
+      return 1
+    fi
+  fi
   local agent_context_file=""
   local agent_prompt=""
   local has_raw_option=false
@@ -45,13 +60,7 @@ _golem_launch_gemini() {
   local agy_model
   agy_model=$(_golem_agy_resolve_model "${_flag_model:-}")
   agy_args=("--model" "$agy_model" "${agy_args[@]}")
-  if [[ "$worker_mode" == true ]]; then
-    if [[ -f "$HOME/.gemini/antigravity-cli/agents/gatherer.md" ]]; then
-      agy_args=("--agent" "gatherer" "${agy_args[@]}")
-    else
-      print -r -- "repoGolem: gatherer agent is not installed; keeping the Gemini worker launch." >&2
-    fi
-  fi
+  [[ -n "$agy_agent" ]] && agy_args=("--agent" "$agy_agent" "${agy_args[@]}")
 
   $_flag_skip && agy_args=("--dangerously-skip-permissions" "${agy_args[@]}")
   $_flag_continue && agy_args=("--continue" "${agy_args[@]}")

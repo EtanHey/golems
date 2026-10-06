@@ -56,3 +56,29 @@ def test_gatherer_has_no_command_or_terminal_tools():
     tools = re.findall(r"^  - (\w+)$", frontmatter, re.M)
     assert "run_command" not in tools
     assert not any(tool.endswith("_terminal") for tool in tools)
+
+
+def test_shell_worker_profile_has_scoped_shell_without_inheritance():
+    template = (ROOT / "templates/gemini/agents/shell-worker.md").read_text()
+    frontmatter = template.split("---", 2)[1]
+    for field in ("name: shell-worker", "mainAgent: true", "subagent: false",
+                  "inheritMcp: false", "inheritCustomizations: false"):
+        assert re.search(rf"^{field}$", frontmatter, re.M)
+    tools = re.findall(r"^  - (\w+)$", frontmatter, re.M)
+    assert set(tools) == {"run_command", "view_file", "write_to_file",
+                          "replace_file_content", "list_dir", "grep_search",
+                          "find_by_name", "send_message"}
+    assert len(tools) == 8
+    assert not re.search(r"^\s*(?:agents|mcpServers)\s*:", frontmatter, re.M)
+    assert "/agent-routing" in template
+    assert not TIER.search(template)
+    assert not PERSONA_BOOT.search(template)
+    for clause in ("exactly the brief's task", "your own shell", "background",
+                   "logs", "PID", "exit-status", "brief's artifact directory",
+                   "Write only where the brief allows", "never read other agents' reports",
+                   "inboxes, briefs or collabs unless the brief names them",
+                   "STOP and report in one line", "Never explore instead",
+                   "No git commits, installs or persistent config changes",
+                   "unless the brief explicitly allows them",
+                   "Never open, inspect, or type into cmux panes", "NOT DONE"):
+        assert clause in template

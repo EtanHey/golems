@@ -509,11 +509,11 @@ load 'test-repogolem-dispatch-parts/cases-07.bash'
     split_case_125
 }
 
-@test "Gemini gatherer agent is selected only for workers when globally installed" {
+@test "Gemini worker profile follows role and explicit override" {
     split_case_126
 }
 
-@test "Gemini missing global gatherer keeps the worker launch with a warning" {
+@test "Gemini missing or invalid worker profile refuses launch" {
     split_case_127
 }
 

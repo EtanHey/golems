@@ -495,6 +495,7 @@ function split_case_092() {
 function split_case_093() {
     [ -f "$SOURCE_DISPATCHER" ]
     PERSONA_HOME="$TMPDIR_/home-non-codex-worker"
+    install_test_shell_worker "$PERSONA_HOME"
     mkdir -p "$PERSONA_HOME/.claude/agents"
     printf '%s\n' "# Full orchestrator protocol" "BrainLayer-first boot searches." \
       > "$PERSONA_HOME/.claude/agents/test-agent.md"
