@@ -352,3 +352,19 @@ def test_record_preserves_readable_reason_and_existing_declarations(tmp_path):
     rows = {item["case"]: item for item in json.loads(path.read_text())}
     assert rows["example"]["reason"] == "Existing reviewed reason"
     assert rows["second"]["reason"] == "Protected root removal retains its reason."
+
+
+def test_gemini_installed_profile_case_reaches_worker_cli(tmp_path):
+    import base64
+    cases = json.loads(harness.CORPUS.read_text())
+    case = next(row for row in cases if row["id"] == "pr671-worker-installed-shell-profile")
+    case = copy.deepcopy(case)
+    case["args"].append("Run the scoped task")
+    result = harness.capture(case, ROOT, tmp_path)
+    assert result["exit"] == 0
+    output = base64.b64decode(result["stdout"])
+    assert b"AGY_ARG=--agent\nAGY_ARG=shell-worker\n" in output
+    assert b"AGY_ARG=Run the scoped task\n" in output
+    assert b"AGY_ARG=Gemini 3.8 Flash (High)\n" in output
+    config = json.loads(base64.b64decode(result["files"]["project/.agents/mcp_config.json"]))
+    assert {"fixture", "repo"} <= config["mcpServers"].keys()

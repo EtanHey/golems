@@ -171,31 +171,31 @@
     "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c",
-      "linux": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "launcher-028",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "d9c6694ee6d26a43f5d52eb47576fa57e065e752dca91565b30b56372bc9d2ce",
-      "linux": "d9c6694ee6d26a43f5d52eb47576fa57e065e752dca91565b30b56372bc9d2ce"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "launcher-029",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "f8021bbbb5864e051f433a1ef9eebf7041c097d87c934aa94a90f9264a40a7b5",
-      "linux": "f8021bbbb5864e051f433a1ef9eebf7041c097d87c934aa94a90f9264a40a7b5"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "launcher-030",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
     "authority": "golems#475",
@@ -234,22 +234,22 @@
     "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c",
-      "linux": "df961a3f71fcf6f199b91fa2a0964a1a53ed9a44271c563557d884255ad4734c"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "r2-launch-gemini-worker-env",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "52e3ad15070a8942cb0a4efcd1464c4f17ec69d80000c9f57e70a4ecac9f727f",
-      "linux": "52e3ad15070a8942cb0a4efcd1464c4f17ec69d80000c9f57e70a4ecac9f727f"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "r2-launch-gemini-worker-s",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
     "authority": "golems#475",
@@ -279,148 +279,148 @@
     "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "a94a748172f5a869119f2f8de85b288497b06a729011b062d2d2bb797bf1df78",
-      "linux": "a94a748172f5a869119f2f8de85b288497b06a729011b062d2d2bb797bf1df78"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "r2-launch-persona-gemini-worker-env",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "dfbf8db534bcb78f6d3741fb6d79fd4b2e22a03ad7e1209f8f0877c6fe3984d1",
-      "linux": "dfbf8db534bcb78f6d3741fb6d79fd4b2e22a03ad7e1209f8f0877c6fe3984d1"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-custom-model",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
-      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-empty",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
-      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-flash",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139",
-      "linux": "a86ace9396bd8969a0707a474b11fd779135fe2a0273700f104871e24f02c139"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-flash-high",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "063d01b5c0f0dabfa19c77152115ac549c1f1de59a8a7683d0a84ee9b2d68b61",
-      "linux": "063d01b5c0f0dabfa19c77152115ac549c1f1de59a8a7683d0a84ee9b2d68b61"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-flash-low",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a",
-      "linux": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-flash-med",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a",
-      "linux": "5cfbe855948d73cd13fdf613bcd91320ecc2ea75e21694d7883a7a1e9f30d84a"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-flash-medium",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
-      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-gpt-oss",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
-      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-gpt-oss-120b",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "f1731f220fff7c9b514a3d634fa0d5c4e528712cbc72d3552fbdc91a231ada7e",
-      "linux": "f1731f220fff7c9b514a3d634fa0d5c4e528712cbc72d3552fbdc91a231ada7e"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-opus",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79",
-      "linux": "aa198400af6cdfa3b04a6fb0bd458a26620e5bc4e97d139f3914d68728e08f79"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-oss",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e",
-      "linux": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-pro",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e",
-      "linux": "749b8587b9eb07407f14b7f7dcf1556856965cbce5fdc4f37b9d2576d04dd14e"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-pro-high",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "45d15850f55a11d83682a6beb350f4a2cc2fd00f29eeccfadab7c95b5741f50e",
-      "linux": "45d15850f55a11d83682a6beb350f4a2cc2fd00f29eeccfadab7c95b5741f50e"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-pro-low",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#471",
+    "authority": "golems#671",
     "candidate_sha256": {
-      "darwin": "e29a7fab1393d3b525f1c8a13615e4183a20f331a4800c3ea2ebb1ad390d8e86",
-      "linux": "e29a7fab1393d3b525f1c8a13615e4183a20f331a4800c3ea2ebb1ad390d8e86"
+      "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
+      "linux": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1"
     },
     "case": "topup-agy-model-sonnet",
-    "reason": "Gemini launch captures include the selected model and worker context, exact project MCP maps, and a locked registry-declared shared map without stored credentials."
+    "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
     "authority": "golems#412",
@@ -862,5 +862,14 @@
     },
     "case": "topup-is-rm-13",
     "reason": "Recursive protected-root removal is denied by the repository guard even without the force option."
+  },
+  {
+    "authority": "golems#671",
+    "candidate_sha256": {
+      "darwin": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34",
+      "linux": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34"
+    },
+    "case": "pr671-worker-installed-shell-profile",
+    "reason": "Installed synthetic shell-worker reaches AGY with explicit agent selection, worker prompt path, merged MCP map and routed Flash model."
   }
 ]

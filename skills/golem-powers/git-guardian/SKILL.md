@@ -191,8 +191,31 @@ as a separate issue; passing this policy is not permission to delete.
 
 Wrapper evaluation is capped at 64 nested commands. Deeper input and any
 `RecursionError` fail closed with a value-free reason. The hook also converts
-unexpected policy-evaluation exceptions to a value-free block; only launcher or
-hook-infrastructure failures retain the `golems-fail-open.py` allow behavior.
+unexpected policy-evaluation exceptions to a value-free block. The installed
+git-guardian gate is `pre_tool_use.py` (source `hooks/pre_tool_use.py`), which
+imports this skill's `git_safety.py`; it is distinct from the project
+`block-dangerous-commands.py` and the human-confirm gate. Both host manifests
+run it through `golems-fail-open.py --fail-closed` (#488). A missing, unreadable,
+syntax-broken or crashed hook denies with a static, value-free reinstall hint:
+`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.
+Flag this to the user: blocked Bash cannot perform agent recovery. A human uses
+the prompt or an outside terminal (omit `!` there). The installer clears the
+missing pin's locked registration, and `--update` moves a broken pin to a healthy
+commit. Local damage inside hooks-live refuses (tamper evidence) until a human
+inspects it and re-runs with `--restore-live`.
+The prompt's `!` bypass remains the #411 assumption, not live-verified here.
+Legitimate allow/deny results pass through. Other gates keep the default
+fail-open launcher mode; tmp-block and human-confirm are the other policy gates.
+The launcher is an installed copy so it survives a dangling hooks-live tree.
+The registered command wraps it in a `/bin/sh` guard, so a missing pinned
+interpreter or a launcher that cannot start also denies; a skipped harness
+registration remains outside its own enforcement boundary. Lead installs through hooks-live after review/merge.
+A hang (import-time included) is cut by the launcher's `--budget` watchdog,
+registered 1 s under the manifest timeout (5 s timeout, 4 s budget): the hook's
+process group is killed and the call denied before the harness timeout, which
+would allow. Known residuals: registration/launcher edits can disable
+enforcement, a hook subprocess that leaves the process group outlives the
+kill, and only Python-level stdout/stderr is captured.
 
 The "discard only what THIS session owns" rule is the key nuance: discarding your own
 in-session edits is fine; discarding another agent's or the user's uncommitted work is the

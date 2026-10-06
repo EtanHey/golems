@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // install-hooks — wire Claude Code hooks from ONE pinned golems tree (GO-5 S14).
 //
-//   scripts/hooks/install-hooks.sh --host mbp|m1 [--apply] [--update [<sha>]] [--python <abs path>]
+//   scripts/hooks/install-hooks.sh --host mbp|m1 [--apply] [--update [<sha>]] [--python <abs path>] [--restore-live]
 //   scripts/hooks/install-hooks.sh --host mbp|m1 --status [--python <abs path>]
 //
 // Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
@@ -24,8 +24,8 @@
 // checkouts; hooks-live is not a working tree anyone checks out.
 import { spawnSync } from "node:child_process";
 import {
-  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync,
-  statSync, symlinkSync, unlinkSync, writeFileSync,
+  chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync,
+  rmSync, statSync, symlinkSync, unlinkSync, writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -44,6 +44,26 @@ export const E1_DELETED = [
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WRAPPER_SRC = path.join(here, "fail-open.py");
 const LOCK_REASON = "GO-5 pinned hook source; move only with scripts/hooks/install-hooks.sh --update";
+// Protocol 2 = --budget watchdog (#656 R1 F2); an older launcher would read --budget as the hook path.
+const supportsFailClosed = (bytes) => /^FAIL_CLOSED_PROTOCOL = 2\b/m.test(bytes.toString());
+
+// AIDEV-NOTE: a fail-closed policy gate's Claude command runs inside a /bin/sh
+// guard. The launcher denies every hook failure itself, but nothing in Python
+// runs when the pinned interpreter is gone (exit 127) or the launcher copy
+// cannot start (exit 1); Claude treats both as non-blocking, i.e. allow. The
+// guard passes the launcher's own 0/2 through and turns any other status into
+// the launcher's static denial (byte-identical to fail-open.py _block()).
+// Codex has the same shape in codex-hooks-install.mjs.
+export const REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.";
+const DENY_JSON = JSON.stringify({ decision: "block", reason: REPAIR_REASON, hookSpecificOutput: {
+  hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: REPAIR_REASON } });
+const quote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
+export function failClosedCommand(run) {
+  return `/bin/sh -c ${quote(`out=$(${run}); s=$?; if [ "$s" -eq 0 ] || [ "$s" -eq 2 ]; then [ -z "$out" ] || printf '%s\\n' "$out"; exit "$s"; fi; printf '%s\\n' ${quote(DENY_JSON)}; exit 2`)}`;
+}
+// The interpreter a registered launcher command runs, guarded or not.
+const commandPython = (command) => /(?:^|\s)(\S+)(?: -[A-Za-z]+)* \S*golems-fail-open\.py/
+  .exec(String(command).replace(/'|\$\(/g, " "))?.[1] ?? String(command).split(" ")[0];
 
 // AIDEV-NOTE: every hook command carries an ABSOLUTE interpreter, never a bare
 // `python3`: launchd and minimal-PATH environments resolve that to macOS
@@ -118,6 +138,7 @@ function parseArgs(argv) {
     if (a === "--apply") o.apply = true;
     else if (a === "--dry-run") o.apply = false;
     else if (a === "--status") o.status = true;
+    else if (a === "--restore-live") o.restoreLive = true;
     else if (a === "--update") o.update = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : "origin/master";
     else if (["--host", "--repo", "--manifest", "--python"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
     else die(`unknown or incomplete argument: ${a}`, 64);
@@ -149,6 +170,10 @@ function context(o, sha) {
       if (!Number.isInteger(e.timeout) || e.timeout < 1 || e.timeout > 120) {
         die(`REFUSED: ${host}/${e.id} timeout must be an integer in 1..120 seconds${e.timeout === undefined ? " (required for PreToolUse)" : `; got ${JSON.stringify(e.timeout)}`}`);
       }
+      // The watchdog budget (timeout - 1 s) must be >= 1 s and under the timeout.
+      if (e.command?.includes(" --fail-closed ") && e.timeout < 2) {
+        die(`REFUSED: ${host}/${e.id} is fail-closed and needs a timeout >= 2 seconds for its watchdog budget`);
+      }
     }
   }
   const entries = hosts?.[o.host];
@@ -163,12 +188,19 @@ function context(o, sha) {
   const python = hookPython?.python ?? "python3";
   const expand = (s) => s.replaceAll("{home}", homedir()).replaceAll("{hooks}", hooksDir).replaceAll("{live}", live)
     .replaceAll("{node}", node).replaceAll("{python}", python);
+  // A harness timeout fails OPEN, so a fail-closed gate's watchdog budget sits
+  // 1 s under its manifest timeout (5 s -> 4 s, 10 s -> 9 s; #656 R1 F2).
+  const claudeCommand = (e) => (e.command.includes(" --fail-closed ")
+    ? failClosedCommand(expand(e.command.replace(" --fail-closed ", ` --fail-closed --budget ${Math.max(1, e.timeout - 1)} `)))
+    : expand(e.command));
   const golems = entries.filter((e) => e.kind === "golems").map((e) => ({
-    ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: expand(e.command),
+    ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: claudeCommand(e),
   }));
   const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
-  const codex = planCodexHooks({ manifest, host: o.host, live, python,
-    codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) });
+  // Without an acceptable interpreter (status only), the Codex config probe would
+  // run an unvetted python3 and could crash --status; report it unchecked instead.
+  const codex = hookPython ? planCodexHooks({ manifest, host: o.host, live, python,
+    codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) }) : undefined;
   return { entries, golems, wrapped, hooksDir, live, codex, hookPython, settingsPath: path.join(homedir(), ".claude", "settings.json") };
 }
 
@@ -323,8 +355,18 @@ function linkState(at, to) {
   return readlinkSync(at) === to ? "ok" : `foreign(${readlinkSync(at)})`;
 }
 
+// hooks-live's HEAD only when hooks-live IS a worktree root. rev-parse walks up,
+// so a stray non-worktree dir would otherwise report, and --update would then
+// move, the main checkout (#488-b N2).
+function liveHead(live) {
+  if (!existsSync(live)) return null;
+  const top = git(live, "rev-parse", "--show-toplevel");
+  if (!top || realpathSync(top) !== realpathSync(live)) return null;
+  return git(live, "rev-parse", "HEAD");
+}
+
 function selectedPin(o, live) {
-  const current = existsSync(live) ? git(live, "rev-parse", "HEAD") : null;
+  const current = liveHead(live);
   if (current && (!o.update || o.status)) return current;
   if (o.apply && !o.status) mustGit(o.repo, "fetch", "-q", "origin", "master");
   const sha = git(o.repo, "rev-parse", "--verify", `${o.status ? "origin/master" : o.update ?? "origin/master"}^{commit}`);
@@ -333,14 +375,26 @@ function selectedPin(o, live) {
 }
 
 function pinLive(o, live, sha, dirs = []) {
-  const current = existsSync(live) ? git(live, "rev-parse", "HEAD") : null;
+  const current = liveHead(live);
   if (current && !o.update) {
     if (o.apply) { purgeBytecode(live, dirs); relock(o.repo, live); }
     return `hooks-live: keep ${current}`;
   }
-  if (!o.apply) return current ? `hooks-live: move ${current} -> ${sha}` : `hooks-live: create at ${sha}`;
+  if (!o.apply) {
+    if (current) return `hooks-live: move ${current} -> ${sha}`;
+    return `hooks-live: create at ${sha}${existsSync(live) ? " (a non-worktree dir there would be moved aside)" : ""}`;
+  }
   if (!current) {
-    mustGit(o.repo, "worktree", "add", "-q", "--detach", live, sha);
+    if (existsSync(live)) {
+      const aside = `${live}.bak-${stamp()}`;
+      renameSync(live, aside);
+      console.log(`hooks-live: not a worktree; moved aside to ${aside}`);
+    }
+    // A registration of this path may survive (missing, maybe locked). Unlock
+    // only this path (git resolves symlinks) and add over its record; never a
+    // repo-wide prune, never another tree's lock (#488 F1, #488-b N3/N4).
+    gitProcess(o.repo, ["worktree", "unlock", live]);
+    mustGit(o.repo, "worktree", "add", "-q", "-f", "--detach", live, sha);
   } else if (current !== sha) {
     assertLiveClean(live, dirs);
     purgeBytecode(live, dirs);
@@ -482,19 +536,33 @@ function derivedPath(live, rel) {
   }
   return parts.slice(0, limit).join("/");
 }
-export function assertLiveClean(live, dirs = []) {
-  if (!existsSync(live)) return;
+function liveDirty(live, dirs = []) {
+  if (!liveHead(live)) return false;
   const rows = mustLiveGit(live, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignored=no").split("\0").filter(Boolean);
   const dirty = rows.some((row) => !row.startsWith("?? ") || !derivedPath(live, row.slice(3)));
   const flags = mustLiveGit(live, "ls-files", "-v", "-z");
   const ignoredHooks = mustLiveGit(live, "ls-files", "--others", "--ignored", "--exclude-standard", "-z",
     "--", "scripts/hooks", "skills/golem-powers", ...dirs).split("\0").filter(Boolean);
-  if (dirty || /(^|\0)[a-zS]/.test(flags) || ignoredHooks.some((rel) => !derivedPath(live, rel))) {
-    die("live source is dirty (local changes or hidden index flags); refusing installation");
+  return dirty || /(^|\0)[a-zS]/.test(flags) || ignoredHooks.some((rel) => !derivedPath(live, rel));
+}
+export function assertLiveClean(live, dirs = []) {
+  if (liveDirty(live, dirs)) {
+    die(`live source is dirty (local changes or hidden index flags); refusing installation. Inspect ${live}, then re-run with --restore-live to reset it to its pin`);
   }
 }
+// hooks-live is a pinned tree nobody edits. A dirty tree refuses by default
+// (it may be tamper evidence); after inspecting it, --restore-live resets local
+// damage (deleted/edited tracked files, hidden index flags, planted extras in
+// the hook dirs) to its pinned HEAD, so recovery never needs hand-run git (#488-b N1).
+function restoreLive(live, dirs = [], pin) {
+  const hidden = mustLiveGit(live, "ls-files", "-v", "-z").split("\0").filter((l) => /^(S|[a-z]) /.test(l)).map((l) => l.slice(2));
+  if (hidden.length) mustLiveGit(live, "update-index", "--no-assume-unchanged", "--no-skip-worktree", "--", ...hidden);
+  mustLiveGit(live, "checkout", "-q", "-f", "--detach", pin);
+  mustLiveGit(live, "clean", "-q", "-ffdx", "--", ...new Set(["scripts/hooks", "skills/golem-powers", ".claude/hooks", "hooks", ...dirs]));
+}
+
 function bytecodePaths(live, dirs = []) {
-  if (!existsSync(live)) return [];
+  if (!liveHead(live)) return [];
   const files = [mustLiveGit(live, "ls-files", "--others", "--exclude-standard", "-z"),
     mustLiveGit(live, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")];
   const derived = new Set(files.flatMap((s) => s.split("\0").filter(Boolean)).map((rel) => derivedPath(live, rel)).filter(Boolean));
@@ -508,7 +576,7 @@ function bytecodePaths(live, dirs = []) {
   return [...derived];
 }
 function purgeBytecode(live, dirs = []) {
-  if (!existsSync(live)) return;
+  if (!liveHead(live)) return;
   const derived = bytecodePaths(live, dirs);
   const tracked = mustLiveGit(live, "ls-files", "-z").split("\0").filter(Boolean);
   if ([...derived].some((rel) => tracked.some((file) => file === rel || file.startsWith(rel + "/")))) {
@@ -525,6 +593,9 @@ function install(o) {
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   // Read/validate the immutable selected manifest before creating or moving the pin.
   const ctx = context(o, sha);
+  if (ctx.golems.some((e) => e.command.includes("--fail-closed")) && !supportsFailClosed(readFileSync(WRAPPER_SRC))) {
+    die("REFUSED: source launcher lacks fail-closed protocol; update the installer checkout before applying");
+  }
   console.log(`hook python: ${ctx.hookPython.python} (${ctx.hookPython.version})`);
   const settings = readSettings(ctx.settingsPath);
   // Validate the Codex destination and selected source before either host's
@@ -542,6 +613,20 @@ function install(o) {
   const gate = path.join(here, "private-regression-gate.py");
   const gateArgs = ["-I", gate, o.repo, sha, ...(machine === "mbp" ? ["--require-private"] : [])];
   console.log(`private regression gate: python3 ${gateArgs.join(" ")}; suites=${o.repo}/docs.local/private-guard-suites`);
+  // --restore-live resets only to the RECORDED pin: a HEAD moved away from it
+  // (possible tampering) is never adopted or blessed (#656 R1 F1; plain
+  // --apply's moved-HEAD acceptance is #665).
+  if (o.restoreLive && liveHead(ctx.live)) {
+    const recorded = existsSync(pinRecord(ctx)) ? readFileSync(pinRecord(ctx), "utf8").trim() : null;
+    const head = liveHead(ctx.live);
+    if (head !== recorded) {
+      die(`refusing --restore-live: hooks-live HEAD ${head} is not the recorded pin ${recorded ?? "(none recorded)"}; inspect ${ctx.live} (it may have been tampered with)`);
+    }
+  }
+  if (o.restoreLive && liveDirty(ctx.live, importDirs(ctx))) {
+    if (o.apply) restoreLive(ctx.live, importDirs(ctx), liveHead(ctx.live));
+    console.log(`hooks-live: ${o.apply ? "restored" : "would restore"} local damage to its pinned HEAD (--restore-live)`);
+  }
   if (o.apply) {
     assertLiveClean(ctx.live, importDirs(ctx));
     purgeBytecode(ctx.live, importDirs(ctx));
@@ -641,11 +726,12 @@ function registeredExactly(hooks, e) {
 function status(o) {
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   const ctx = context(o, sha);
-  const current = existsSync(ctx.live) ? git(ctx.live, "rev-parse", "HEAD") : null;
+  const current = liveHead(ctx.live);
   const master = git(o.repo, "rev-parse", "--verify", "origin/master");
   const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
-  console.log(`hooks-live=${current ?? "absent"} master=${master ?? "unknown"} drift=${drift}`);
-  let bad = false;
+  const stray = !current && existsSync(ctx.live);
+  console.log(`hooks-live=${current ?? (stray ? "NOT-A-WORKTREE" : "absent")} master=${master ?? "unknown"} drift=${drift}`);
+  let bad = stray;
   if (ctx.hookPython) console.log(`hook-python=${ctx.hookPython.python} (${ctx.hookPython.version})`);
   else {
     bad = true;
@@ -681,7 +767,13 @@ function status(o) {
   const hooks = existsSync(ctx.settingsPath) ? JSON.parse(readFileSync(ctx.settingsPath, "utf8")).hooks ?? {} : {};
   const commands = Object.values(hooks).flatMap(groupsOf).flatMap(handlersOf).map((h) => String(h?.command ?? ""));
   const text = commands.join("\n");
-  if (codexStatus(ctx.codex)) bad = true;
+  if (ctx.codex === undefined) {
+    bad = true;
+    console.log("codex wiring=unchecked (no acceptable hook interpreter to read config.toml)");
+  } else if (codexStatus(ctx.codex)) bad = true;
+  const wrapper = path.join(ctx.hooksDir, "golems-fail-open.py");
+  const source = readFileSync(WRAPPER_SRC);
+  const wrapperState = !existsSync(wrapper) ? "dangling" : readFileSync(wrapper).equals(source) ? "ok" : "stale";
   for (const e of ctx.entries) {
     if (e.kind === "wrapped-external") {
       const expected = ctx.wrapped.find((x) => x.id === e.id);
@@ -706,11 +798,14 @@ function status(o) {
       bad = true;
     }
     if (state === "dangling" || state === "copy(not link)") bad = true;
-    console.log(`${e.id} ${state}`);
+    const closed = e.command.includes("--fail-closed");
+    const closedOk = state === "ok" && wrapperState === "ok" && supportsFailClosed(source);
+    if (closed && !closedOk) bad = true;
+    console.log(`${e.id} ${state}${closed ? ` fail-closed=${closedOk ? "yes" : "no"}` : ""}`);
     // A registered command's own interpreter, whatever the expected one is.
     if (e.command?.startsWith("{python} ")) {
       for (const { hook } of registrationMatches(hooks, g)) {
-        const python = String(hook.command).split(" ")[0];
+        const python = commandPython(hook.command);
         const problem = pythonProblem(python);
         if (!problem) continue;
         bad = true;
@@ -730,11 +825,9 @@ function status(o) {
   const settingsDrift = [...active, ...ctx.wrapped].filter((e) => !registeredExactly(hooks, e)).length;
   console.log(`settings-drift=${settingsDrift}`);
   if (current && settingsDrift) bad = true;
-  const wrapper = path.join(ctx.hooksDir, "golems-fail-open.py");
   if (text.includes(wrapper)) {
-    const w = !existsSync(wrapper) ? "dangling" : readFileSync(wrapper).equals(readFileSync(WRAPPER_SRC)) ? "ok" : "stale";
-    if (w === "dangling") bad = true;
-    console.log(`golems-fail-open ${w}`);
+    if (wrapperState !== "ok") bad = true;
+    console.log(`golems-fail-open ${wrapperState}`);
   }
   for (const name of E1_DELETED) {
     if (text.includes(name)) {
@@ -745,7 +838,9 @@ function status(o) {
   return bad ? 1 : 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// realpath: invoked through a symlinked path (~/Gits as a link), the guard must
+// still match import.meta.url, which is the real path (#488-b N3).
+if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const o = parseArgs(process.argv.slice(2));
   process.exit(o.status ? status(o) : install(o));
 }

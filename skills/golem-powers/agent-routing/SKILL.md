@@ -23,7 +23,7 @@ Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the 
 
 A task that must RUN COMMANDS (shell, ffmpeg/media conversion, builds, tests, installs, or file writes) never goes to a read-only gatherer profile (agy `gatherer`, no shell). The brief names the execution profile and required tool access.
 
-Gemini spawns select the agy profile by task: command/media work uses the shell-capable profile (currently `video-qa`); read-only research uses `gatherer`. Never default to `gatherer`. Verify the named profile supports the whole task: `video-qa` has `run_command` and artifact writes, but forbids code edits and installs; route those to an executor with the required access.
+Gemini spawns select the agy profile by task: command execution uses the shell-capable `shell-worker` profile; media QA uses `video-qa`; read-only research uses `gatherer`. Never default to `gatherer`. Verify the named profile supports the whole task: `video-qa` has `run_command` and artifact writes, but forbids code edits and installs; route those to an executor with the required access.
 
 ### Implementation and review
 

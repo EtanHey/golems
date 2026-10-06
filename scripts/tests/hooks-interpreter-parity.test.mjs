@@ -43,9 +43,12 @@ test("an old (< 3.11) interpreter is available, so the parity cases below are no
 
 const source = (id) => {
   const e = manifest.hosts.mbp.find((x) => x.id === id);
-  const after = e.command.split("golems-fail-open.py ")[1].replace(`{hooks}/${e.link}`, "");
+  const after = e.command.split("golems-fail-open.py ")[1].replace("--fail-closed ", "").replace(`{hooks}/${e.link}`, "");
   return path.join(repo, e.source.endsWith(".py") ? e.source : `${e.source}${after}`);
 };
+
+// The registered launcher mode: policy gates run --fail-closed.
+const mode = (id) => (manifest.hosts.mbp.find((x) => x.id === id).command.includes(" --fail-closed ") ? ["--fail-closed"] : []);
 
 // Synthetic, TLD-less fixtures: a deny and an allow per policy hook.
 const CASES = [
@@ -98,7 +101,7 @@ function expectParity(label, guardian, [old, current], expected) {
 for (const [id, kind, payload, expected] of CASES) {
   test(`${id} ${kind}: identical decision under the old and current interpreter, through the launcher`, () => {
     const seen = PYTHONS.map((py, i) => {
-      const r = decide(py, ["-I", "-B", launcher, source(id)], payload, `${id}-${kind}-${i}`);
+      const r = decide(py, ["-I", "-B", launcher, ...mode(id), source(id)], payload, `${id}-${kind}-${i}`);
       // A launcher crash or a fail-open line means the hook never decided.
       expect([id, kind, py, /Traceback|golems-fail-open:/.test(r.stderr) && r.stderr]).toEqual([id, kind, py, false]);
       return r;

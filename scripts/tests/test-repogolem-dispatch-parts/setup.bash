@@ -5,7 +5,7 @@
 setup() {
     # The suite assumes a lead environment; a worker seat running it must not
     # leak its own role or effort into the launches under test.
-    unset REPOGOLEM_ALLOW_MODEL GOLEM_ROLE GOLEM_EFFORT
+    unset REPOGOLEM_ALLOW_MODEL GOLEM_ROLE GOLEM_EFFORT GOLEM_AGENT_ROLE GOLEM_AGY_AGENT
     # Exported so CODEX_STUB_SNAPSHOT can source it: the stub runs inside
     # `zsh -f -c`, which inherits the environment but no rc files.
     export PORTABLE_STAT_LIB="$BATS_TEST_DIRNAME/../lib/portable-stat.sh"
@@ -110,6 +110,12 @@ assert_no_worker_persona_markers() {
         grep -E -- "$WORKER_PERSONA_MARKERS" <<< "$launch_output" >&2
         return 1
     fi
+}
+
+install_test_shell_worker() {
+    local agents="$1/.gemini/antigravity-cli/agents"
+    mkdir -p "$agents"
+    cp "$BATS_TEST_DIRNAME/../../templates/gemini/agents/shell-worker.md" "$agents/shell-worker.md"
 }
 
 run_non_codex_persona_launch() {

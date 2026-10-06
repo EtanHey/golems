@@ -63,7 +63,7 @@ run_gatherer_launch() {
       export RALPH_REGISTRY_FILE="$1"
       function _ralph_setup_mcps() { return 0; }
       function _ralph_setup_secrets() { return 0; }
-      function agy() { print -r -- "AGY_ARGS=$*"; }
+      function agy() { print -r -- "AGY_ROLE=${GOLEM_ROLE-unset}"; print -r -- "AGY_ARGS=$*"; }
       source "$2"
       function _golem_setup_env() { return 0; }
       function _golem_sync_agy_workspace() { return 0; }
@@ -75,23 +75,57 @@ run_gatherer_launch() {
 }
 
 function split_case_126() {
-    mkdir -p "$TMPDIR_/gatherer-home/.gemini/antigravity-cli/agents"
-    printf '%s\n' '---' 'name: gatherer' 'mainAgent: true' '---' > \
-      "$TMPDIR_/gatherer-home/.gemini/antigravity-cli/agents/gatherer.md"
+    local agents="$TMPDIR_/gatherer-home/.gemini/antigravity-cli/agents"
+    mkdir -p "$agents"
+    printf '%s\n' '---' 'name: gatherer' 'mainAgent: true' '---' > "$agents/gatherer.md"
+    printf '%s\n' '---' 'name: shell-worker' 'mainAgent: true' '---' > "$agents/shell-worker.md"
+    printf '%s\n' '---' 'name: video-qa' 'mainAgent: true' '---' > "$agents/video-qa.md"
     run_gatherer_launch --worker -s
     [ "$status" -eq 0 ]
-    grep -F -q -- "--agent gatherer" <<< "$output"
+    grep -F -q -- "--agent shell-worker" <<< "$output"
+    for role in gatherer implementor worker reviewer; do
+      GOLEM_AGENT_ROLE="$role" run_gatherer_launch -s
+      [ "$status" -eq 0 ]
+      local expected=shell-worker
+      [ "$role" != gatherer ] || expected=gatherer
+      grep -F -q -- "--agent $expected" <<< "$output"
+    done
+    for profile in shell-worker video-qa arbitrary; do
+      GOLEM_AGENT_ROLE=gatherer GOLEM_AGY_AGENT="$profile" run_gatherer_launch --worker -s
+      [ "$status" -ne 0 ]
+      grep -F -q -- "conflicts" <<< "$output"
+      refute_contains "AGY_ARGS=" "$output"
+    done
+    GOLEM_AGENT_ROLE=implementor GOLEM_AGY_AGENT=video-qa run_gatherer_launch --worker -s
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--agent video-qa" <<< "$output"
+    GOLEM_AGY_AGENT=video-qa run_gatherer_launch -s
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--agent video-qa" <<< "$output"
+    GOLEM_ROLE=worker run_gatherer_launch -s
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--agent shell-worker" <<< "$output"
     run_gatherer_launch -s
     [ "$status" -eq 0 ]
-    refute_contains "--agent gatherer" "$output"
+    refute_contains "--agent" "$output"
 }
 
 function split_case_127() {
-    run_gatherer_launch --worker -s
-    [ "$status" -eq 0 ]
-    grep -F -q -- "gatherer agent is not installed" <<< "$output"
-    refute_contains "--agent gatherer" "$output"
-    grep -F -q -- "--model Gemini 3.8 Flash (High)" <<< "$output"
+    for role in '' gatherer implementor; do
+      GOLEM_AGENT_ROLE="$role" run_gatherer_launch --worker -s
+      [ "$status" -ne 0 ]
+      grep -F -q -- "profile" <<< "$output"
+      refute_contains "AGY_ARGS=" "$output"
+    done
+    GOLEM_AGY_AGENT=unknown run_gatherer_launch --worker -s
+    [ "$status" -ne 0 ]
+    refute_contains "AGY_ARGS=" "$output"
+    # Reject path escapes even when the target exists outside the agents dir.
+    mkdir -p "$TMPDIR_/gatherer-home/.gemini/antigravity-cli/agents"
+    printf '%s\n' 'name: outside' > "$TMPDIR_/gatherer-home/.gemini/antigravity-cli/outside.md"
+    GOLEM_AGY_AGENT=../outside run_gatherer_launch --worker -s
+    [ "$status" -ne 0 ]
+    refute_contains "AGY_ARGS=" "$output"
 }
 
 function split_case_128() {

@@ -1,15 +1,23 @@
 # Gemini context
 
-Gemini workers gather research, frames, inventories and verification evidence.
+Gemini workers execute scoped tasks or gather research and verification evidence.
 Shared rules remain in `AGENTS.md`. The gatherer routes its tier through
 `/agent-routing`; this template does not select a model.
 
 Antigravity 1.2.14 reads global agents from
 `~/.gemini/antigravity-cli/agents`. `mainAgent: true` enables `--agent gatherer`;
-`subagent: false` keeps this a primary gatherer session. The launcher adds that
-agent for `--worker` or inherited `GOLEM_ROLE=worker` when installed, and warns
-while preserving the existing launch if it is missing. Leads use their existing
-launch flow. Model defaults remain owned by the launcher's routing policy.
+`subagent: false` keeps this a primary gatherer session. Task roles are trimmed
+and casefolded. `gatherer`, `gemini.gather.*` and `*-gatherer` select `gatherer`;
+`implementor`, `implementer`, `worker`, `reviewer` and `executor` select
+`shell-worker`. Unknown roles refuse launch and list the known roles.
+`lead` and `orchestrator` preserve lead mode unless `--worker` or
+`GOLEM_ROLE=worker` explicitly selects worker mode. A role-less worker selects
+`shell-worker`. `GOLEM_AGY_AGENT=<name>` may override non-gatherer selections;
+a gatherer role paired with any other profile refuses launch. Invalid names
+or missing profile files also refuse launch. Model defaults remain owned by the
+launcher's routing policy. cmux gatherer isolation requires cmuxlayer to export
+`GOLEM_AGENT_ROLE`; that export is pending in cmuxlayer. These role names describe
+the in-repo launcher interface, not proof of installed cmux spawn behavior.
 
 Gatherers delegate independent BrainLayer questions and claim checks to the
 `brain-worker` subagent with `invoke_subagent`, at most four concurrently.
@@ -49,6 +57,8 @@ the read-only `brain-worker`. It retains its scoped receipt tools.
 Only the declared brain-worker may be invoked;
 hidden built-in agents must fail the no-tool delegation probes before release.
 
+Shell-worker: shell + scoped writes, no MCP; executes exactly the brief and stays on task. Never use `open -a`, `osascript` or any app/GUI/browser driving. No outward messages or posts beyond the brief. Model routing belongs to `/agent-routing`.
+
 Video-qa: shell + write, no MCP. Use `--agent video-qa` for /qa-video work that
 needs local media commands, background output/status checks, and denser sampling
 around unclear moments. Unlike the research gatherer, it can run its own shell
@@ -86,7 +96,7 @@ resolved registry. It never generates a registry or resolves secrets.
 
 The default prints a table without writing. `--check` also fails for ritual
 patterns in global or repo context. `--apply` installs context and the global
-gatherer, brain-worker and video-qa. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
+gatherer, brain-worker, video-qa and shell-worker. `--check` and `--apply` are mutually exclusive. Global GEMINI.md is
 only verified; a global ritual blocks apply.
 
 To install only these agents after merge, use
