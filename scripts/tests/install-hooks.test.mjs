@@ -1144,3 +1144,90 @@ test("--status exits nonzero on a retired golems registration and on a dangling 
   expect([st.status, st.out]).toEqual([1, expect.stringContaining("dangling golems link: precompact-checkpoint.py")]);
   expect(st.out).not.toContain("foreign-dangling");
 });
+
+// #661 review follow-up (F1-F3): ownership from the executed path, scoped
+// empty-group cleanup, lexical link resolution. Built from the reviewer's probes.
+const hookCmd = (command) => ({ type: "command", command });
+function settingsFixture(hooksFor, setup) {
+  const fx = fixture();
+  const hooksDir = path.join(fx.home, ".claude/hooks");
+  const L = live(fx);
+  writeFileSync(fx.settingsPath, `${JSON.stringify({ ...UNRELATED, hooks: hooksFor({ fx, hooksDir, L }) }, null, 2)}\n`);
+  if (setup) setup({ fx, hooksDir, L });
+  return { fx, hooksDir, L };
+}
+const linkExists = (p) => { try { return lstatSync(p).isSymbolicLink(); } catch { return false; } };
+
+test("F1: only the executed program/script decides golems ownership; a hooks-live path as data or a near-miss launcher survives", () => {
+  const { fx, hooksDir, L } = settingsFixture(({ fx, hooksDir, L }) => ({
+    SessionStart: [{ hooks: [EXTERNAL] }],
+    Stop: [{ hooks: [
+      hookCmd(`node /elsewhere/my-tool.js --root ${L}/`),
+      hookCmd(`python3 ${hooksDir}/golems-fail-open.pyx /elsewhere/x.py`),
+      hookCmd(`python3 /elsewhere/tool.py ${hooksDir}/golems-fail-open.py`),
+      hookCmd(`python3 ${fx.home}/.claude/hooks-golems/x.py`),
+      hookCmd(`python3 ${L}-old/scripts/x.py`),
+      hookCmd(`python3 ${hooksDir}/near-link.py`),
+    ] }],
+    PreCompact: [{ hooks: [hookCmd(`python3 ${hooksDir}/golems-fail-open.py ${hooksDir}/precompact-checkpoint.py`)] }],
+    Notification: [{ hooks: [hookCmd(`node ${L}/skills/retired-gate/hook.mjs`)] }],
+  }), ({ hooksDir, L }) => symlinkSync(`${L}-old/x.py`, path.join(hooksDir, "near-link.py")));
+  const before = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  const dry = run(fx);
+  expect(dry.status).toBe(0);
+  expect(dry.out.split("\n").filter((l) => l.includes("retired registration")).sort()).toEqual([
+    "would remove retired registration: precompact-checkpoint.py (PreCompact)",
+    "would remove retired registration: skills/retired-gate/hook.mjs (Notification)",
+  ]);
+  expect(run(fx, "--apply").status).toBe(0);
+  const after = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  expect(after.hooks.Stop).toEqual(before.hooks.Stop);
+  expect(after.hooks.PreCompact).toBeUndefined();
+  expect(after.hooks.Notification).toBeUndefined();
+});
+
+test("F2: a mixed group keeps its foreign hooks, matcher and extra keys; pre-existing empty foreign entries stay; null events are skipped", () => {
+  const { fx, hooksDir } = settingsFixture(({ hooksDir }) => ({
+    SessionStart: [{ hooks: [EXTERNAL] }],
+    PreCompact: [{ matcher: "auto", extra: 1, hooks: [
+      hookCmd("python3 /elsewhere/mine-before.py"),
+      { type: "command", command: `python3 ${hooksDir}/golems-fail-open.py ${hooksDir}/precompact-checkpoint.py`, timeout: 30 },
+      hookCmd("python3 /elsewhere/mine-after.py"),
+    ] }],
+    Notification: [],
+    UserPromptSubmit: [{ matcher: "", hooks: [] }],
+    SubagentStop: [{ matcher: "x" }],
+    Elicitation: null,
+  }));
+  for (const mode of [[], ["--status"]]) expect(run(fx, ...mode).out).not.toMatch(/TypeError|Cannot read/);
+  expect(run(fx, "--apply").status).toBe(0);
+  const after = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  expect(after.hooks.PreCompact).toEqual([{ matcher: "auto", extra: 1, hooks: [
+    hookCmd("python3 /elsewhere/mine-before.py"), hookCmd("python3 /elsewhere/mine-after.py")] }]);
+  expect(after.hooks.Notification).toEqual([]);
+  expect(after.hooks.UserPromptSubmit).toEqual([{ matcher: "", hooks: [] }]);
+  expect(after.hooks.SubagentStop).toEqual([{ matcher: "x" }]);
+  expect(after.hooks.Elicitation).toBeNull();
+  const { hooks: _h, ...rest } = after;
+  expect(rest).toEqual(UNRELATED);
+});
+
+test("F3: link targets resolve lexically before the hooks-live check, and *.bak* links are never removed", () => {
+  const { fx, hooksDir, L } = settingsFixture(() => ({ SessionStart: [{ hooks: [EXTERNAL] }] }), ({ hooksDir, L }) => {
+    symlinkSync(`${L}/gone/a.py`, path.join(hooksDir, "dangling-into-live.py"));
+    symlinkSync(`${L}/gone/b.py`, path.join(hooksDir, "old.py.bak-20260101"));
+    symlinkSync(`${L}/../../escape/f.py`, path.join(hooksDir, "dotdot.py"));
+    symlinkSync(path.relative(hooksDir, path.join(L, "gone/rel.py")), path.join(hooksDir, "relative-into-live.py"));
+    symlinkSync(`${L}-old/c.py`, path.join(hooksDir, "near-miss.py"));
+  });
+  const dry = run(fx);
+  expect(dry.out.split("\n").filter((l) => l.includes("dangling golems link")).sort()).toEqual([
+    "would remove dangling golems link: dangling-into-live.py",
+    "would remove dangling golems link: relative-into-live.py",
+  ]);
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(["dangling-into-live.py", "relative-into-live.py", "old.py.bak-20260101", "dotdot.py", "near-miss.py"]
+    .map((n) => [n, linkExists(path.join(hooksDir, n))]))
+    .toEqual([["dangling-into-live.py", false], ["relative-into-live.py", false], ["old.py.bak-20260101", true],
+      ["dotdot.py", true], ["near-miss.py", true]]);
+});
