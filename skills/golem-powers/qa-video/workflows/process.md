@@ -1,4 +1,6 @@
-# Stalker Pipeline: Video → Structured QA Findings
+# Video Processing: QA or Transcript-First Debrief
+
+**qa** keeps the dense action pipeline below. **debrief / review / gems** uses TRANSCRIPT-FIRST: ≤12 transcript questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each, no blanket 30s coverage and no scene sweep unless narration references visuals. Default debrief budget is max(600, 24 × video minutes) seconds wall-clock; explicit --budget-seconds overrides it. Preserve/read debrief.md whenever transcript.srt exists, including BUDGET_EXCEEDED/PARTIAL; missing visual reads stay NOT DETERMINED. For these modes use `scripts/debrief.py VIDEO --workdir FRESH_DIR --mode debrief` through run-step.sh, then read the full SRT and debrief.md for the final synthesis. Skip QA phases 3–5. Never infer visual coverage for unsampled parts of the video. The runner writes root progress.txt at every phase and incremental findings.jsonl; the parent dispatches in the background and reads progress.txt on delay questions. For manual qa steps, rewrite root progress.txt on every phase transition too.
 
 ## Inputs Required
 - `VIDEO` — path to the .mov screen recording
@@ -13,7 +15,7 @@ command reference and troubleshooting notes.
 
 ## Execution Contract: Agent-Owned Iterative Loop
 
-Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
+Default pipeline: `Agent(qa-video-runner)` for QA/debrief/review, `Agent(video-gems)` for gems.
 The pipeline sub-agent owns the whole iterative loop in its **own shell**;
 never read images in the lead or pipeline sub-agent. Read text with Read;
 call `scripts/visual-batch.py` from your own shell for every sheet/frame.
@@ -38,7 +40,7 @@ no `command_status`/`send_command_input`; a launch return is not completion.
 Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
-Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
+**QA mode:** Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
 read every sheet through the visual helper → **re-densify** unclear moments at
 up to 20 fps / tighter windows → re-fetch and re-read until resolved or **NOT
 DETERMINED**. Cite sheet + tile + timestamp from `frames.tsv`. Scripts support
@@ -87,8 +89,8 @@ ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:no
 
 ## Phase 3: Frame Extraction
 
-Both QA and gems use dense windows around transcript AND scene hotspots;
-interval frames provide coverage only.
+QA uses dense windows around transcript AND scene hotspots; interval frames
+provide QA coverage only. Debrief/review/gems uses the targeted path above.
 
 ### 3a. Regular Interval Frames (every 30 seconds)
 ```bash
@@ -118,10 +120,10 @@ data, redact captured text and URLs before sharing, and delete the raw log after
 the redacted findings and evidence frames are accepted. In QA mode, add each
 click as a row in `cues.tsv` (3d) instead of relying on the single click frame.
 
-### 3d. Dense Hotspot Windows (QA and gems — mandatory)
+### 3d. Dense Hotspot Windows (QA — mandatory)
 
 Build `cues.tsv` (`start_s<TAB>end_s<TAB>label`) from transcript hotspots
-(action-language in QA; insights/claims/examples in gems), `scripts/scene-cues.sh` output and click logs (SKILL.md Key Design
+(QA action-language), `scripts/scene-cues.sh` output and click logs (SKILL.md Key Design
 Decision #2), then:
 
 ```bash
