@@ -200,8 +200,8 @@ remove the lane's worktree from the original checkout, after the worker's pane i
 ```bash
 # Check if in worktree
 git worktree list | grep $(git branch --show-current)
-# If yes, after merging/discarding (golems checkout path; works for any repo under ~/Gits):
-~/Gits/golems/scripts/worktree-gc.sh --apply --idle-hours 0 --path <worktree-path>
+# If yes, after merging/discarding (<golems> = the golems checkout; works for any repo):
+<golems>/scripts/worktree-gc.sh --apply --idle-hours 0 --path <worktree-path>
 ```
 It removes only a clean worktree whose HEAD is on the fresh default branch and that no running
 process uses (a live pane keeps it: `KEEP-live`). An ignored `docs.local/` is archived to
