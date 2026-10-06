@@ -338,6 +338,30 @@ expect_history_ratchet_rejects_add_then_delete() {
   else
     record_fail "history ratchet: rejection lacked commit/path evidence" "$output_file"
   fi
+
+  # The first history commit contains the deleted leak; only shard 0 owns it.
+  if PUBLISH_BOUNDARY_HISTORY_SHARD_INDEX=0 PUBLISH_BOUNDARY_HISTORY_SHARD_COUNT=2 \
+    run_guard_history_ratchet "$test_repo" "$history_base" "$output_file"; then
+    record_fail "history shard accepted its deleted violation" "$output_file"
+  elif grep -Fq '[history-ratchet]' "$output_file"; then
+    record_pass "history shard rejects its add-then-delete violation"
+  else
+    record_fail "history shard failed without violation evidence" "$output_file"
+  fi
+  if PUBLISH_BOUNDARY_HISTORY_SHARD_INDEX=1 PUBLISH_BOUNDARY_HISTORY_SHARD_COUNT=2 \
+    run_guard_history_ratchet "$test_repo" "$history_base" "$output_file"; then
+    record_pass "other shard scans its clean commit"
+  else
+    record_fail "other history shard rejected clean commit" "$output_file"
+  fi
+  if PUBLISH_BOUNDARY_HISTORY_SHARD_INDEX=2 PUBLISH_BOUNDARY_HISTORY_SHARD_COUNT=2 \
+    run_guard_history_ratchet "$test_repo" "$history_base" "$output_file"; then
+    record_fail "invalid history shard was accepted" "$output_file"
+  elif grep -Fq 'history shard enumeration failed' "$output_file"; then
+    record_pass "invalid history shard fails closed"
+  else
+    record_fail "invalid shard failure lacked configuration evidence" "$output_file"
+  fi
 }
 
 expect_workflow_history_fail_closed() {
