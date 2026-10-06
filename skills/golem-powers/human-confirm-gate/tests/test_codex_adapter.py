@@ -139,5 +139,73 @@ class CodexAdapter(unittest.TestCase):
         self.assertTrue(path.exists())  # an out-of-scope lease never burns the token
 
 
+    def adapter_module(self):
+        spec = importlib.util.spec_from_file_location('codex_adapter_under_test', self.adapter)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        return module
+
+    def test_sections_on_the_same_file_replay_in_order_and_are_judged_once_on_the_final_result(self):
+        config = self.repo / '.git/config'
+        config.write_text(config.read_text() + '[user]\n\tname = one\n')
+        body = (f'*** Begin Patch\n*** Update File: {config}\n@@ [user]\n-\tname = one\n+\tname = two\n'
+                f'*** Update File: {config}\n@@ [user]\n-\tname = two\n+\tname = three\n*** End Patch')
+        payload = dict(tool_name='apply_patch', cwd=str(self.repo), session_id=SESSION, tool_input=dict(command=body))
+        [item] = self.adapter_module().confirm_inputs(payload)  # the second section sees the first's result
+        self.assertEqual(item['tool_input']['content'], config.read_text().replace('name = one', 'name = three'))
+        self.assertEqual(self.run_codex(tool='apply_patch', command=body), 'allow')
+
+    def test_path_aliases_of_one_file_are_one_key(self):
+        config = self.repo / '.git/config'
+        aliases = [str(config), './.git/config', '.git/../.git/config', f'{self.repo}/./.git//config']
+        body = '*** Begin Patch\n' + ''.join(f'*** Update File: {a}\n@@\n+# note {i}\n' for i, a in enumerate(aliases)) + '*** End Patch'
+        payload = dict(tool_name='apply_patch', cwd=str(self.repo), session_id=SESSION, tool_input=dict(command=body))
+        items = self.adapter_module().confirm_inputs(payload)
+        self.assertEqual([i['tool_input']['file_path'] for i in items], [os.path.realpath(config)])
+        self.assertTrue(items[0]['tool_input']['content'].endswith('# note 0\n# note 1\n# note 2\n# note 3\n'))
+
+
+    # #698 R1 FP-1: Codex matches hunks in four passes (exact, trim_end, trim, unicode punctuation).
+    # Ordinary edits that only match loosely are applied by Codex, so the gate must never deny them.
+    ORDINARY_SRC = 'def greet(name):    \n    msg = "hello"\n    return msg + name\n\n\ndef bye():\n    return "bye"\n'
+    ORDINARY_CLEAN = 'import os\n\n\ndef greet(name):\n    msg = "hello"\n    return msg + name\n\n\ndef bye():\n    return "bye"\n'
+    ORDINARY = [
+        (ORDINARY_CLEAN, '*** Update File: app.py\n@@ def greet(name):\n     msg = "hello"\n-    return msg + name\n+    return f"{msg} {name}"\n'),
+        (ORDINARY_CLEAN, '*** Update File: app.py\n@@\n-import os\n+import os\n+import sys\n@@ def bye():\n-    return "bye"\n+    return "goodbye"\n'),
+        (ORDINARY_CLEAN, '*** Update File: app.py\n@@\n+\n+\n+def extra():\n+    return 1\n'),
+        (ORDINARY_CLEAN, '*** Add File: new.py\n+x = 1\n*** Update File: app.py\n@@ def bye():\n-    return "bye"\n+    return "ciao"\n'),
+        (ORDINARY_CLEAN, '*** Update File: app.py\n*** Move to: app2.py\n@@ def bye():\n-    return "bye"\n+    return "ciao"\n'),
+        (ORDINARY_CLEAN, '*** Delete File: app.py\n'),
+        (ORDINARY_CLEAN, '*** Update File: app.py\n@@\n     msg = "hello" \n-    return msg + name\n+    return name\n'),
+        (ORDINARY_SRC, '*** Update File: app.py\n@@ def greet(name):    \n     msg = "hello"\n-    return msg + name\n+    return f"{msg} {name}"\n'),
+        (ORDINARY_SRC, '*** Update File: app.py\n@@ def greet(name):\n     msg = "hello"\n-    return msg + name\n+    return f"{msg} {name}"\n'),
+        (ORDINARY_SRC, '*** Update File: app.py\n@@\n def greet(name):\n     msg = "hello"\n-    return msg + name\n+    return f"{msg} {name}"\n'),
+        (ORDINARY_SRC, '*** Update File: app.py\n@@\n def bye():\n-  return "bye"\n+    return "goodbye"\n'),
+        ('# Don\u2019t touch \u2014 legacy\nX = 1\n', "*** Update File: app.py\n@@\n # Don't touch - legacy\n-X = 1\n+X = 2\n"),
+        (ORDINARY_SRC.replace('\n', '\r\n'), '*** Update File: app.py\n@@\n     msg = "hello"\n-    return msg + name\n+    return f"{msg} {name}"\n'),
+    ]
+
+    def test_ordinary_edits_codex_applies_loosely_are_never_denied(self):
+        for index, (source, body) in enumerate(self.ORDINARY):
+            with self.subTest(case=index):
+                (self.repo / 'app.py').write_bytes(source.encode())
+                self.assertEqual(self.run_codex(tool='apply_patch', command='*** Begin Patch\n' + body + '*** End Patch'), 'allow')
+
+    def test_a_loose_match_config_edit_is_judged_on_its_replayed_content(self):
+        config = self.repo / '.git/config'
+        config.write_text(config.read_text() + '[remote "origin"]   \n\turl = https://github.com/fixture/repo.git\n')
+        patch = lambda added: (f'*** Begin Patch\n*** Update File: {config}\n@@\n [remote "origin"]\n'
+                               f' \turl = https://github.com/fixture/repo.git\n+{added}\n*** End Patch')  # the header matches only loosely
+        self.assertEqual(self.run_codex(tool='apply_patch', command=patch('\tprune = true')), 'allow')
+        self.assertEqual(self.run_codex(tool='apply_patch', command=patch('\tmirror = true')), 'deny')
+
+    def test_content_no_pass_can_compute_never_reaches_git_config(self):
+        (self.repo / 'notes.cfg').write_text('[core]\n\tbare = false\n')
+        body = (f'*** Begin Patch\n*** Update File: notes.cfg\n*** Move to: .git/config\n@@\n'
+                f' [section-that-is-not-there]\n+\tx = 1\n*** End Patch')
+        self.assertEqual(self.run_codex(tool='apply_patch', command=body), 'deny')
+        ordinary = '*** Begin Patch\n*** Update File: notes.cfg\n@@\n [section-that-is-not-there]\n+\tx = 1\n*** End Patch'
+        self.assertEqual(self.run_codex(tool='apply_patch', command=ordinary), 'allow')  # unknown, but reaches no guarded path
+
+
 if __name__ == '__main__':
     unittest.main()
