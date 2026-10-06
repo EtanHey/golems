@@ -180,8 +180,21 @@ def lead_metadata(op):
     target = match[1]
     metadata = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'repo', 'view', target, '--json', 'defaultBranchRef']))
     pr = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'pr', 'view', branch, '--repo', target, '--json',
-                                 'state,mergedAt,headRefName,isCrossRepository,headRefOid']))
+                                 'number,state,mergedAt,headRefName,isCrossRepository,headRefOid']))
     return metadata['defaultBranchRef']['name'], pr
+
+
+def lead_scope(op, metadata_fn=lead_metadata):
+    """The one lead rule, for the gate and scripts/golems-lead-confirm: a lease on
+    the current branch's own open PR head, never main/master or the default branch."""
+    branch = op['ref'].removeprefix('refs/heads/')
+    if not op['ref'].startswith('refs/heads/') or branch.casefold() in ('main', 'master'):
+        raise ValueError('lead leases never touch main/master')
+    default, pr = metadata_fn(op)
+    if (branch == default or pr['state'] != 'OPEN' or pr['mergedAt'] is not None or pr['isCrossRepository']
+            or pr['headRefName'] != branch or pr['headRefOid'] != op['sha']):
+        raise ValueError('outside lead scope: own open PR head, not the default branch')
+    return pr
 
 
 def authorize(payload, ops, home, metadata_fn=lead_metadata):
@@ -217,10 +230,7 @@ def authorize(payload, ops, home, metadata_fn=lead_metadata):
                             ops[0]['source'] + ':' + ops[0]['ref']]
                 if words != prefix + expected:
                     continue
-                default, pr = metadata_fn(ops[0])
-                branch = ops[0]['ref'].removeprefix('refs/heads/')
-                if branch == default or pr['state'] != 'OPEN' or pr['mergedAt'] is not None or pr['isCrossRepository'] or pr['headRefName'] != branch or pr['headRefOid'] != ops[0]['sha']:
-                    continue
+                lead_scope(ops[0], metadata_fn)  # raises (continue) outside scope
                 collab = Path(token['collab'])
                 collab_root = (home / 'Gits/orchestrator/collab').resolve()
                 if collab_root not in collab.resolve().parents:

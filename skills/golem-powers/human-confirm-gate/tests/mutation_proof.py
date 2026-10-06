@@ -65,7 +65,7 @@ mutations = [
     ('merged-pr', 'tokens.py', "pr['mergedAt'] is not None", 'False', 'test_gate.Gate.test_lead_scope'),
     ('foreign-pr', 'tokens.py', "pr['isCrossRepository']", 'False', 'test_gate.Gate.test_lead_scope'),
     ('head-ref', 'tokens.py', "pr['headRefName'] != branch", 'False', 'test_gate.Gate.test_lead_scope'),
-    ('head-sha', 'tokens.py', "pr['headRefOid'] != ops[0]['sha']", 'False', 'test_gate.Gate.test_lead_scope'),
+    ('head-sha', 'tokens.py', "pr['headRefOid'] != op['sha']", 'False', 'test_gate.Gate.test_lead_scope'),
     ('lease-sha', 'commands.py', '([0-9a-f]{40}|[0-9a-f]{64})', '([0-9a-f]{7,64})', 'test_integrity.Integrity.test_mirror_and_config_override_and_short_lease'),
     ('issuer-public-key', '@issuer', "if not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\\s]+ [A-Za-z0-9+/=]+', key.read_text()):", 'if False:', 'test_issue.Issue.test_helper_refuses_software_private_key'),
     ('issuer-scope', '@issuer', "if not ops or any(op['class'] != args.action or not matches(op) for op in ops):", 'if False:', 'test_issue.Issue.test_helper_refuses_detectable_agent_and_invalid_scope'),
@@ -153,6 +153,18 @@ mutations = [
     ('graphql-literal-proof', 'commands.py', "'literal': syntax.single_quoted_names(command, shell)}", "'literal': set()}", 'test_false_positives.FalsePositives.test_graphql_variables_are_graphql_syntax'),
     ('literal-every-use', 'syntax.py', "            quoting[_NAME.match(text, i + 1)[1]] = False", '            pass', 'test_false_positives.R2Mechanisms.test_graphql_names_are_literal_only_when_every_use_is_single_quoted'),
     ('literal-unquoted-heredoc', 'syntax.py', '    if starts and (not all(quoted for _, _, quoted, _ in starts) or _shell_heredoc_starts(command, shell) != starts):\n        return set()', '    pass', 'test_false_positives.R2Mechanisms.test_graphql_names_are_literal_only_when_every_use_is_single_quoted'),
+    ('lead-main-arg', '@lead-issuer', " or args.ref.removeprefix('refs/heads/').casefold() in ('', 'main', 'master'):", ':', 'test_lead_issuer.LeadIssuer.test_each_issuer_layer_refuses_on_its_own'),
+    # lead-only-lease is equivalent: only lease ops carry 'sha', so the ref/sha/remote match refuses any other class.
+    ('lead-scope-call', '@lead-issuer', 'pr = lead_scope(ops[0], metadata_fn)', "pr = dict(number=0)", 'test_lead_issuer.LeadIssuer.test_pull_request_refusals'),
+    ('lead-key-mode', '@lead-issuer', ' or stat.S_IMODE(info.st_mode) != mode', '', 'test_lead_issuer.LeadIssuer.test_key_and_collab_refusals'),
+    ('lead-collab-root', '@lead-issuer', "if (home / 'Gits/orchestrator/collab').resolve() not in collab.parents or not collab.is_file():", 'if not collab.is_file():', 'test_lead_issuer.LeadIssuer.test_key_and_collab_refusals'),
+    ('lead-verify', '@lead-issuer', "if not verify_signature(raw, anchor, 'lead', str(path) + '.sig'):", 'if False:', 'test_lead_issuer.LeadIssuer.test_signature_must_match_the_anchor'),
+    ('lead-machine-log', '@lead-issuer', "append(root / 'lead-issued.log',", "(lambda *a: None)(root / 'lead-issued.log',", 'test_lead_issuer.LeadIssuer.test_issues_one_signed_lease_token_and_logs_it'),
+    ('lead-collab-log', '@lead-issuer', "append(collab, 'GOLEMS_CONFIRM '", "(lambda *a: None)(collab, 'GOLEMS_CONFIRM '", 'test_lead_issuer.LeadIssuer.test_issues_one_signed_lease_token_and_logs_it'),
+    ('lead-cleanup', '@lead-issuer', "path.unlink(missing_ok=True); Path(str(path) + '.sig').unlink(missing_ok=True)", 'pass', 'test_lead_issuer.LeadIssuer.test_a_failed_log_write_refuses_and_leaves_no_token'),
+    ('lead-scope-main', 'tokens.py', " or branch.casefold() in ('main', 'master'):", ':', 'test_lead_issuer.LeadIssuer.test_shared_scope_rule'),
+    ('gate-lead-scope', 'tokens.py', 'lead_scope(ops[0], metadata_fn)  # raises (continue) outside scope', 'pass', 'test_gate.Gate.test_lead_scope'),
+    ('lead-keygen-overwrite', '@lead-keygen', "if key.exists() or key.with_suffix('.pub').exists() or key.is_symlink():", 'if False:', 'test_lead_issuer.LeadKeygen.test_creates_a_private_key_once_and_prints_the_anchor_line'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
 (root / 'docs.local/human-confirm-gate/r2-mutation-control.log').write_text(control.stdout + control.stderr)
@@ -168,6 +180,8 @@ for name, file, old, new, test in mutations:
         shutil.copy(root / 'scripts/hooks/fail-open.py', scratch / 'scripts/hooks/fail-open.py')
         shutil.copy(root / 'scripts/hooks/manifest.json', scratch / 'scripts/hooks/manifest.json')
         shutil.copy(root / 'scripts/golems-confirm', scratch / 'scripts/golems-confirm')
+        for script in ('golems-lead-confirm', 'golems-lead-keygen'):
+            shutil.copy(root / 'scripts' / script, scratch / 'scripts' / script)
         (scratch / 'docs.local/human-confirm-gate').mkdir(parents=True)
         private = root / 'docs.local/human-confirm-anchor-integrity/test_private_f1b.py'
         if test.startswith('test_private_f1b.'):
@@ -175,6 +189,7 @@ for name, file, old, new, test in mutations:
                 print(name, 'SKIPPED (private tests absent)', flush=True); continue
             shutil.copy(private, scratch / gate / 'tests' / private.name)
         target = {'@issuer': scratch / 'scripts/golems-confirm',
+                  '@lead-issuer': scratch / 'scripts/golems-lead-confirm', '@lead-keygen': scratch / 'scripts/golems-lead-keygen',
                   '@launcher': scratch / 'scripts/hooks/fail-open.py'}.get(file, scratch / gate / 'hooks' / file)
         text = target.read_text()
         changed = text
