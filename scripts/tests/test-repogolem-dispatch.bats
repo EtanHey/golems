@@ -640,3 +640,7 @@ load 'test-repogolem-dispatch-parts/cases-09.bash'
 @test "a caller flag that re-enables connectors without --lead is refused in every spelling" {
     split_case_147
 }
+
+@test "stripped Codex launches disable each Drive write tool explicitly" {
+    split_case_148
+}

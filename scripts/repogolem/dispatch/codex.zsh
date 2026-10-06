@@ -17,6 +17,16 @@ _golem_codex_drive_read_tools=(
   list_drives list_file_revisions list_folder recent_documents search search_spreadsheet_rows
 )
 
+# ...and the 16 it does not. default_tools_enabled=false already keeps these
+# off; each is also disabled explicitly, so a codex that ignored the default
+# would still not expose a Drive write.
+_golem_codex_drive_write_tools=(
+  batch_update_document batch_update_presentation batch_update_spreadsheet bulk_update_file_comments
+  copy_file create_file create_folder create_presentation_from_template delete_file
+  duplicate_sheet_in_new_spreadsheet import_document import_presentation import_spreadsheet
+  share_file update_file upload_file
+)
+
 # Seam for tests: bats has no TTY, so they stub this to model a human terminal.
 _golem_codex_stdio_is_tty() {
   [[ -t 0 && -t 1 ]]
@@ -268,6 +278,9 @@ _golem_launch_codex() {
                                  "-c" "apps.${codex_connector_id}.default_tools_enabled=false")
           for codex_drive_tool in "${_golem_codex_drive_read_tools[@]}"; do
             codex_connector_args+=("-c" "apps.${codex_connector_id}.tools.${codex_drive_tool}.enabled=true")
+          done
+          for codex_drive_tool in "${_golem_codex_drive_write_tools[@]}"; do
+            codex_connector_args+=("-c" "apps.${codex_connector_id}.tools.${codex_drive_tool}.enabled=false")
           done
         else
           codex_connector_args+=("-c" "apps.${codex_connector_id}.enabled=false")

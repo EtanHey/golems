@@ -41,10 +41,18 @@ assert_drive_read_only() {
           || { echo "[$launch] Drive read tool ${tool} missing" >&2; return 1; }
     done
     # Writes are never allowlisted; with default_tools_enabled=false they stay off.
-    for tool in create_file update_file delete_file share_file upload_file copy_file import_document batch_update_document; do
-        refute_contains "tools.${tool}." "$launch_output" "[$launch] Drive write tool ${tool}" || return 1
+    for tool in "${CODEX_DRIVE_WRITE_TOOLS[@]}"; do
+        refute_contains "tools.${tool}.enabled=true" "$launch_output" "[$launch] Drive write tool ${tool}" || return 1
     done
 }
+
+# The 16 Drive tools codex does not mark readOnlyHint (codex-cli 0.160.1 cache).
+CODEX_DRIVE_WRITE_TOOLS=(
+    batch_update_document batch_update_presentation batch_update_spreadsheet bulk_update_file_comments
+    copy_file create_file create_folder create_presentation_from_template delete_file
+    duplicate_sheet_in_new_spreadsheet import_document import_presentation import_spreadsheet
+    share_file update_file upload_file
+)
 
 function split_case_141() {
     write_codex_apps_cache
@@ -169,4 +177,18 @@ function split_case_147() {
     # Unrelated -c keys pass through on stripped launches.
     run_codex_policy_launch 'testrepoCodex -E low --worker -- -c model_verbosity="low"'
     [ "$status" -eq 0 ]
+}
+
+function split_case_148() {
+    # Belt and braces (#678 rework review): besides default_tools_enabled=false,
+    # each known Drive write tool is disabled explicitly.
+    write_codex_apps_cache
+    run_codex_policy_launch 'testrepoCodex -E low --worker'
+    [ "$status" -eq 0 ]
+    [ "${#CODEX_DRIVE_WRITE_TOOLS[@]}" -eq 16 ]
+    local tool
+    for tool in "${CODEX_DRIVE_WRITE_TOOLS[@]}"; do
+        codex_arg_pair_present "apps.connector_fixturedrive.tools.${tool}.enabled=false" "$output" \
+          || { echo "Drive write tool ${tool} not explicitly disabled: $output" >&2; return 1; }
+    done
 }
