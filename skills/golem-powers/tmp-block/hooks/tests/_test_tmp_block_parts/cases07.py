@@ -383,10 +383,13 @@ def test_variable_literal_head_still_proves_the_temp_class(durable_path):
     Every head here is a literal temp path, so the verdict does not depend on
     the host's environment.
     """
+    # Climb out of $HOME by its real depth: a fixed `../..` reaches /private/tmp only when HOME
+    # is /Users/<name>, so a scratch HOME (the ratchet's candidate install) wrongly allowed it.
+    climb = '/..' * (len(Path(os.environ['HOME']).parts) - 1)
     for command in (
         'P=/private/tmp/x_$$.txt; printf x > "$P"',
         'P=/tmp/x_$$.txt; printf x | tee "$P"',
-        'P=$HOME/../../private/tmp/x_$$.txt; printf x > "$P"',
+        f'P=$HOME{climb}/private/tmp/x_$$.txt; printf x > "$P"',
     ):
         proc = run_hook(bash_payload(command), cwd=str(durable_path))
         assert_denied(proc)
