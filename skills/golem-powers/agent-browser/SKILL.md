@@ -11,6 +11,8 @@ flags. Etan signs in by hand; workers never automate sign-in.
 
 There is ONE shared instance and cookie jar, at
 `~/Library/Application Support/golems-agent-browser` (0700), outside repos.
+Before **every** CDP attach, run `agent-browser start` (idempotent; verifies
+Chrome Beta ownership and 127.0.0.1). If it exits non-zero, **do not connect**.
 Attach; never call Playwright `launch` or `launchPersistentContext`:
 
 ```js

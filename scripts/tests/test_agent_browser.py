@@ -4,6 +4,10 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
+import runpy
+import signal
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'scripts/agent-browser/agent-browser'
@@ -36,7 +40,7 @@ class AgentBrowserTests(unittest.TestCase):
         result = self.run_cli('start')
         self.assertEqual(result.returncode, 0, result.stderr)
         argv = json.loads((self.home / 'argv').read_text())
-        self.assertEqual(argv[:4], ['-g', '-a', 'Google Chrome Beta', '--args'])
+        self.assertEqual(argv[:4], ['-g', '-a', '/Applications/Google Chrome Beta.app', '--args'])
         self.assertIn('--remote-debugging-address=127.0.0.1', argv)
         self.assertIn('--remote-debugging-port=9333', argv)
         self.assertIn(f'--user-data-dir={self.profile}', argv)
@@ -96,6 +100,27 @@ class AgentBrowserTests(unittest.TestCase):
         self.assertIn('another profile', result.stderr)
         self.assertFalse((self.home / 'argv').exists())
         self.assertNotEqual(self.run_cli('stop').returncode, 0)
+
+    def test_bare_beta_binary_refused_without_launch(self):
+        self.stub('ps', 'import sys\nprint(("12345 " if "-axo" in sys.argv else "") + "/Applications/Google Chrome Beta.app/Contents/MacOS/Google Chrome Beta")')
+        result = self.run_cli('start')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('another profile', result.stderr)
+        self.assertFalse((self.home / 'argv').exists())
+        self.assertNotEqual(self.run_cli('stop').returncode, 0)
+
+    def test_stop_signals_only_owned_pid(self):
+        (self.home / 'running').touch()
+        with mock.patch.dict(os.environ, self.env, clear=True):
+            module = runpy.run_path(str(SCRIPT), run_name='agent_browser_test')
+            def stopped(pid, sig):
+                self.assertEqual((pid, sig), (12345, signal.SIGTERM))
+                (self.home / 'running').unlink()
+            with mock.patch.object(sys, 'argv', ['agent-browser', 'stop']), \
+                    mock.patch('os.kill', side_effect=stopped) as kill:
+                self.assertEqual(module['main'](), 0)
+                kill.assert_called_once_with(12345, signal.SIGTERM)
+        self.assertFalse((self.home / 'argv').exists())
 
     def test_unknown_command(self):
         self.assertEqual(self.run_cli('wat').returncode, 2)

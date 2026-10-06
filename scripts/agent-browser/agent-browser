@@ -10,7 +10,8 @@ import time
 
 PORT = 9333
 APP = 'Google Chrome Beta'
-BINARY = f'/Applications/{APP}.app/Contents/MacOS/{APP}'
+APP_PATH = f'/Applications/{APP}.app'
+BINARY = f'{APP_PATH}/Contents/MacOS/{APP}'
 PROFILE = Path.home() / 'Library/Application Support/golems-agent-browser'
 
 
@@ -18,10 +19,14 @@ def run(*args):
     return subprocess.run(args, capture_output=True, text=True, check=False)
 
 
+def is_beta(command):
+    return command == BINARY or command.startswith(BINARY + ' ')
+
+
 def owns(command):
     profile_arg = f'--user-data-dir={PROFILE}'
     # ps does not quote spaces; match the complete profile argument boundaries.
-    return command.startswith(BINARY + ' ') and (
+    return is_beta(command) and (
         ' ' + profile_arg + ' ' in command or command.endswith(' ' + profile_arg)
     )
 
@@ -33,7 +38,7 @@ def process():
     pids = []
     for line in result.stdout.splitlines():
         parts = line.strip().split(None, 1)
-        if len(parts) == 2 and parts[1].startswith(BINARY + ' '):
+        if len(parts) == 2 and is_beta(parts[1]):
             if not owns(parts[1]):
                 raise RuntimeError('Chrome Beta is running with another profile; refusing to touch it')
             pids.append(int(parts[0]))
@@ -95,7 +100,7 @@ def main():
                 print('agent browser already running')
                 status(pid, listening)
                 return 0
-            result = run('open', '-g', '-a', APP, '--args',
+            result = run('open', '-g', '-a', APP_PATH, '--args',
                          f'--user-data-dir={PROFILE}',
                          f'--remote-debugging-port={PORT}',
                          '--remote-debugging-address=127.0.0.1',
