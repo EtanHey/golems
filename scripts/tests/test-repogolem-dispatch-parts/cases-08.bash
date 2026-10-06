@@ -181,6 +181,10 @@ function split_case_142() {
         "testrepoCodex -E low -- -c 'mcp_servers.computer-use={command=\"x\"}'"
         "testrepoCodex -E low -- -c 'mcp_servers={}'"
         "testrepoCodex resume --last --config plugins.browser@${m}.enabled=true"
+        # clap strips the `=` after a short flag, so codex honours -c=K=V (R2 B1).
+        "testrepoCodex -E low --worker -c=plugins.browser@${m}.enabled=true \"task\""
+        "testrepoCodex -E low -- -c=mcp_servers.node_repl.enabled=true"
+        "testrepoCodex -E low -- -c='plugins.\"computer-use@${m}\".enabled=true'"
     )
     for launch in "${refused[@]}"; do
         run_codex_plugin_launch "$launch"

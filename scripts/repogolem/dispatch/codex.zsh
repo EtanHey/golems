@@ -52,8 +52,10 @@ _golem_codex_config_key_is_app_driver() {
   return 1
 }
 
-# Scans raw Codex args for `-c K=V`, `-cK=V`, `--config K=V` and `--config=K=V`
-# and prints the first value that re-enables an app driver.
+# Scans raw Codex args for `-c K=V`, `-cK=V`, `-c=K=V`, `--config K=V` and
+# `--config=K=V` and prints the first value that re-enables an app driver.
+# Those are the five spellings codex 0.160.1 honours: clap strips the `=` after
+# a short flag; `--conf`/`--confi` are rejected and `-c==` aborts (empty key).
 _golem_codex_args_reenable_app_driver() {
   local -a args=("$@")
   local -i i=1
@@ -64,7 +66,7 @@ _golem_codex_args_reenable_app_driver() {
     case "$arg" in
       -c|--config) value="${args[$(( i + 1 ))]:-}"; (( i += 1 )) ;;
       --config=*) value="${arg#--config=}" ;;
-      -c?*) value="${arg#-c}" ;;
+      -c?*) value="${arg#-c}"; value="${value#=}" ;;
     esac
     if [[ -n "$value" ]] && _golem_codex_config_key_is_app_driver "$value"; then
       print -r -- "$value"
