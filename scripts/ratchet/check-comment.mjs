@@ -7,20 +7,15 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { markerComment, parseRows } from "./table.mjs";
-
-const VERDICT = /<!-- ratchet-verdict: (.*?) -->/;
+import { markerComment, parseRows, readVerdict } from "./table.mjs";
 
 export function checkVerdict({ comments, marker, head, expectedReal, authors }) {
   const tag = markerComment(marker);
-  const found = comments.filter((c) => typeof c.body === "string" && c.body.startsWith(tag) && authors.includes(c.user?.login));
+  const found = comments.filter((c) => typeof c.body === "string" && c.body.split("\n")[0] === tag && authors.includes(c.user?.login));
   if (!found.length) return { ok: false, reason: `no ${marker} ratchet comment from ${authors.join("/")}` };
-  let verdict;
-  try {
-    verdict = JSON.parse(VERDICT.exec(found.at(-1).body)?.[1] ?? "");
-  } catch {
-    return { ok: false, reason: "ratchet verdict unreadable" };
-  }
+  // Only the fixed line right after the marker is a verdict (table.mjs escapes every cell).
+  const verdict = readVerdict(found.at(-1).body, marker);
+  if (!verdict) return { ok: false, reason: "ratchet verdict unreadable" };
   if (verdict.head !== head) return { ok: false, reason: `stale: table is for ${String(verdict.head).slice(0, 8)}, PR head is ${head.slice(0, 8)}` };
   if (verdict.real_total !== expectedReal) return { ok: false, reason: `table has ${verdict.real_total} real rows, expected ${expectedReal}` };
   if (!verdict.ok || verdict.real_pass !== verdict.real_total) return { ok: false, reason: `verdict FAIL (${verdict.real_pass}/${verdict.real_total} real rows PASS)` };

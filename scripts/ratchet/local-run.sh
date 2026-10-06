@@ -44,7 +44,7 @@ MAIN="$(cd "$(git -C "$HERE" rev-parse --git-common-dir)/.." && pwd)"
 REPO_SLUG="EtanHey/golems"
 REAL_HOME="$HOME"
 
-read -r HEAD BRANCH STATE < <(gh pr view "$PR" --repo "$REPO_SLUG" --json headRefOid,headRefName,state -q '"\(.headRefOid) \(.headRefName) \(.state)"')
+read -r HEAD BRANCH STATE BASE < <(gh pr view "$PR" --repo "$REPO_SLUG" --json headRefOid,headRefName,state,baseRefOid -q '"\(.headRefOid) \(.headRefName) \(.state) \(.baseRefOid)"')
 [ "$STATE" = "OPEN" ] || die "PR #$PR is $STATE; the lease probe needs an open PR"
 INSTALL="${INSTALL:-$HEAD}"
 [ "$INSTALL" = "$HEAD" ] && [ -z "${WITH[*]+x}" ] || POST=0
@@ -145,7 +145,10 @@ node "$HERE/run-rows.mjs" --rows "$HERE/rows.json" --runner mac --head "$INSTALL
 args=(--rows "$HERE/rows.json" --results "$RUN/results.json" --head "$INSTALL" --runner mac
       --marker golems-ratchet-mac --title "Ratchet table (Mac candidate rows: real binaries, scratch HOME)"
       --out "$RUN/table.md")
-[ "$POST" = 1 ] && args+=(--repo "$REPO_SLUG" --pr "$PR")
+# Rule 5 against the PR's base row file, read by table.mjs itself; --bootstrap only if it has none.
+git -C "$MAIN" fetch -q origin "$BASE" 2>/dev/null || true
+if git -C "$MAIN" cat-file -e "$BASE:scripts/ratchet/rows.json" 2>/dev/null; then args+=(--base-ref "$BASE"); else args+=(--bootstrap); fi
+[ "$POST" = 1 ] && args+=(--repo "$REPO_SLUG" --pr "$PR" --author "$(gh api user -q .login)")
 status=0
 node "$HERE/table.mjs" "${args[@]}" || status=$?
 if [ "$POST" = 1 ]; then

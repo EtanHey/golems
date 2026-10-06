@@ -7,21 +7,49 @@
 ## The six rules
 
 1. **Every row is a real failure we hit**, replayed against the REAL binary or service
-   (a cmux NIGHTLY socket, not a fake screen; the real daemon/DB fixture; the real socket/app; the
-   installed hook, not the hook's source). Each row is shown to FAIL on the bug commit and PASS on
-   the fix commit, and records both SHAs (`bug_sha`, `fix_sha`).
+   (a cmux NIGHTLY socket, not a fake screen; the real daemon/DB fixture; the real socket/app; a
+   hook as the real installer installed it, not the hook's source). Each row is shown to FAIL on
+   the bug commit and PASS on the fix commit, and records both SHAs (`bug_sha`, `fix_sha`).
+   "Installed" in a per-PR row means installed into a scratch HOME, never the live machine (see
+   below).
 2. **Seed rows from the circles we went in.** Every bug that came back, or was "fixed" twice,
    becomes a row. Behavior rows (pass/fail) count as much as numeric ones.
 3. **Required check.** The ratchet job is in the branch ruleset's required checks. A missing
-   result, socket or binary is FAIL, never SKIP.
+   result, socket or binary is FAIL, never SKIP. So is a run that selects no rows.
 4. **PR-comment table** on every PR: baseline | this PR | Δ | ceiling | status, as ONE sticky
    comment refreshed in place, so implementer and reviewer self-correct.
-5. **Ratchet direction only.** Any PR may add a row or tighten a ceiling. Loosening a ceiling,
-   flipping its direction, demoting `real` to `unit`, or removing a row needs a lead ruling in the
-   PR body, one line per row: `ratchet-loosen: <row-id> <ruling>`.
+5. **Ratchet direction only.** Any PR may add a row or tighten a ceiling. These need a lead ruling
+   in the PR body, one line per row, `ratchet-loosen: <row-id> <ruling>`:
+   - loosening a ceiling;
+   - flipping its direction;
+   - moving a row to another runner;
+   - demoting `real` to `unit`;
+   - removing a row.
 6. **Mock-green is not a row.** A row that cannot reach the real thing is labeled `unit`. It is
    shown and still fails the job when red (it is a test), but it never counts as ratchet evidence:
    the verdict counts real rows only, and a table with zero real rows is not a ratchet.
+
+## Real, without touching the live machine
+
+A row that needs a machine (an installed hook, a real binary) never mutates that machine's live
+install to measure a candidate. Two tiers:
+
+- **Candidate rows (per PR).**
+  - **Where it runs:** the producer installs the PR head into a SCRATCH HOME (and a scratch
+    `CODEX_HOME`), outside every repository. It uses the real installer, the real interpreter
+    and the real binaries (git, ssh-keygen, gh, codex).
+  - **Trusted keys:** keys a gate trusts are fixtures generated in that scratch HOME. Their pin
+    is committed in the scratch tree only, never pushed. A token issuer such as
+    `golems-lead-confirm` is called only against that fixture anchor.
+  - **What it can replay:** bug and fix SHAs replay there freely. Nothing is mocked, so these
+    rows are `real`.
+  - **Where the table goes:** it is bound to the PR head.
+- **Live rows (post-merge, lead-run).**
+  - The lead runs them after installing the merged commit on the real machine, and posts them
+    on the merged PR. Examples: the live `--status` with drift 0, or the live gate with a real
+    lead-issued token.
+  - They read the live install and never downgrade it.
+  - **No ratchet run ever installs a candidate on, or replays a bug SHA against, the live HOME.**
 
 ## Row file (one per repo, JSON)
 
@@ -44,15 +72,16 @@
 }
 ```
 
+- `id`: `[A-Za-z0-9_.:-]+`, the charset a `ratchet-loosen:` line can name.
 - `kind`: `real` | `unit`. Real rows must carry `bug_sha` and `fix_sha`.
 - `ref_kind` (optional): `commit` (default) or `fixture-hash`, for a failure that was fixed in a
   private fixture rather than a commit. It keeps the commit SHAs and adds `bug_fixture` and
   `fix_fixture`, the fixture content hashes on which the row FAILS and PASSES.
-- `direction`: `max` (value ≤ ceiling), `min` (value ≥ ceiling), or `pass` (value must be `true`;
-  `ceiling` is `true`).
-- `runner` (optional): which producer measures the row, e.g. `ci` or `mac`. `--runner` selects
-  those rows, so each producer posts its own table.
-- `command`: how to reproduce the row by hand. The script never runs it; producers do.
+- `direction`: `max` (value ≤ ceiling), `min` (value ≥ ceiling), or `pass` (value must be boolean
+  `true`; `ceiling` is `true`).
+- `runner` (optional): which producer measures the row, e.g. `ci`, `mac` or `live`. `--runner`
+  selects those rows, so each producer posts its own table.
+- `command`: how the producer reproduces the row. The table script never runs it.
 
 ## Results file (one per run)
 
@@ -60,46 +89,61 @@
 { "head_sha": "<the SHA measured>", "results": { "hooks-live-drift": 0, "gate": { "value": true, "detail": "579/579" } } }
 ```
 
-A value is a number, a boolean, or `{ value, detail }`. With `--head`, a results file bound to any
-other SHA is stale and every row is MISSING. An absent or unreadable results file is MISSING too.
-
-## Real without touching the live machine
-
-A row that needs a machine (an installed hook, a real binary) never mutates that machine's live
-install to measure a candidate. It runs in two tiers:
-
-- **Candidate rows (per PR).** Install the PR head into a SCRATCH HOME with the real installer,
-  the real interpreter and the real binaries (git, ssh-keygen, gh, codex with a scratch
-  `CODEX_HOME`). Keys a gate trusts are generated as fixtures in that scratch HOME, and any pin of
-  them is committed in the scratch tree only, never pushed. Bug and fix SHAs replay there freely.
-  Nothing is mocked, so these rows are `real`. Their table is bound to the PR head, and CI requires
-  it (see `check-comment.mjs`).
-- **Live rows (post-merge).** The lead runs them after installing the merged commit on the real
-  machine, and posts them on the merged PR. They read the live install; they never downgrade it.
+- **Values:** a value is a number, a boolean, or `{ value, detail }`.
+- **Bound to a SHA:** a results file bound to any SHA other than `--head` is stale, and every
+  row is then MISSING. So is a file that is absent or unreadable.
+- **Published verbatim:** `detail` is published as written, so keep secrets out of it. Cells are
+  escaped, so no detail can break the table or forge a line.
 
 ## Running it
 
 ```bash
-node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> \
-  [--head <sha>] [--baseline <main-results.json>] [--base-rows <rows.json at base>] \
+node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --head <sha> \
+  (--base-ref <base sha> | --bootstrap) [--baseline <base-results.json>] \
   [--pr-body-file <body.md>] [--runner <name>] [--marker <name>] [--title <text>] \
-  [--repo <owner/name> --pr <number>] [--out <table.md>]
+  [--repo <owner/name> --pr <number> --author <login>] [--out <table.md>]
 ```
 
-- Prints the markdown table. With `--repo/--pr` it also upserts ONE comment that starts with
-  `<!-- ratchet-table: <marker> -->` (create once, PATCH thereafter). Use one marker per producer.
-- The comment ends with `<!-- ratchet-verdict: {"head":…,"ok":…,"real_pass":…,"real_total":…} -->`,
-  so another job can check a producer's verdict for the exact PR head.
-- Exit `0` all rows PASS and nothing loosened without a ruling; `1` any row FAIL or MISSING, or an
-  unruled loosening; `2` malformed row file or arguments.
-- `--base-rows` is the row file at the PR's base (`git show "$BASE_SHA:<path>"`); without it the
-  direction check (rule 5) does not run, so CI always passes it.
+- **`--head` is required.**
+- **The base is required too.**
+  - `--base-ref`: the script reads the row file as committed at that SHA (`git show`) and checks
+    rule 5 across ALL its rows, whatever `--runner` selects.
+  - `--bootstrap`: only for a base with no row file yet. The table then says "direction
+    unchecked".
+- **Posting:** with `--repo/--pr/--author` it upserts ONE comment whose first line is
+  `<!-- ratchet-table: <marker> -->`, posted by `--author`. It creates the comment once and PATCHes
+  it thereafter, and never touches another author's comment. Use one marker per producer.
+- **Verdict line:** the comment's second line is always
+  `<!-- ratchet-verdict: {"head":…,"ok":…,"real_pass":…,"real_total":…} -->`. A consumer reads that
+  line only (`readVerdict`) and must check that the comment's author is the producer it trusts.
+- **Exit codes:**
+  - `0`: every selected row PASS, and nothing loosened without a ruling.
+  - `1`: any row FAIL or MISSING, no row selected, or an unruled loosening.
+  - `2`: bad input (row file, arguments, base, PR body).
+- **Other repos:** call the script pinned to a golems SHA (fetch
+  `scripts/ratchet/table.mjs` at that SHA, or vendor that exact file with the SHA in a comment).
+  It has no dependencies beyond node.
 
-Companions (repo-agnostic):
+## Companion scripts (golems)
 
 - `scripts/ratchet/run-rows.mjs --rows <file> --head <sha> --out <results.json> [--runner <name>]
-  [--cwd <dir>]` runs each selected row's `command` (bash). A `pass` row is true on exit 0. A
-  numeric row must exit 0 and print its number on the last stdout line, or it is left out (MISSING).
+  [--cwd <dir>]`: the generic producer. It runs each selected row's `command` (bash). A `pass` row
+  is true only on exit 0. A numeric row must exit 0 and print its number on the last stdout line,
+  or it is left out (MISSING).
 - `scripts/ratchet/check-comment.mjs --repo --pr --marker --head --rows --runner --author <login>`
-  exits 0 only when that producer's comment, by an allowed author, carries a verdict for exactly
-  `--head` with every real row of `--runner` PASS.
+  exits 0 only when that producer's comment carries a fixed-line verdict for exactly `--head`
+  with every real row of `--runner` PASS. The comment must be by an allowed author.
+- golems' own producers:
+  - `scripts/ratchet/local-run.sh` produces the per-PR candidate tier, in a scratch HOME;
+  - `scripts/ratchet/live-rows.sh` produces the post-merge live tier, and the lead runs it.
+
+## Convergence close: baseline and open targets (Etan, 2026-10-06)
+
+The ratchet is the starting point of the §12 pristine sprint. At convergence close, each repo's
+lead records two short artifacts:
+
+- **`docs.local/ratchet/BASELINE-<date>.md`:** the ratchet table as merged on main, with its SHA
+  and date.
+- **Open targets:** every known failure or improvement that has no row yet, each with its issue
+  or PR link and the row it would become. This list is the §12 sprint backlog, which starts by
+  turning targets into rows and tightening ceilings.

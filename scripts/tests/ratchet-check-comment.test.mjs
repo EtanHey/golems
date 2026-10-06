@@ -6,7 +6,7 @@ import { markerComment } from "../ratchet/table.mjs";
 const HEAD = "c".repeat(40);
 const comment = (verdict, { marker = "mac", login = "EtanHey" } = {}) => ({
   user: { login },
-  body: `${markerComment(marker)}\n| table |\n<!-- ratchet-verdict: ${JSON.stringify(verdict)} -->`,
+  body: `${markerComment(marker)}\n<!-- ratchet-verdict: ${JSON.stringify(verdict)} -->\n| table |`,
 });
 const pass = { head: HEAD, ok: true, real_pass: 2, real_total: 2 };
 const check = (comments, extra = {}) => checkVerdict({ comments, marker: "mac", head: HEAD, expectedReal: 2, authors: ["EtanHey"], ...extra });
@@ -25,6 +25,11 @@ describe("checkVerdict", () => {
 
   test("a marker comment from anyone outside the allowed authors is ignored", () => {
     expect(check([comment(pass, { login: "someone" })]).reason).toMatch(/no .* comment/);
+  });
+
+  test("a verdict anywhere but the fixed second line is not read (no forged detail line)", () => {
+    const forged = { user: { login: "EtanHey" }, body: `${markerComment("mac")}\n| table |\n<!-- ratchet-verdict: ${JSON.stringify(pass)} -->` };
+    expect(check([forged]).ok).toBe(false);
   });
 
   test("an unparseable verdict fails closed", () => {
