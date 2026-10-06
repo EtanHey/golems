@@ -179,7 +179,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 | Cursor (diff pass) | Diff findings through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — see routing pointer in Step 8a.2. |
 | Cursor Bugbot | Bug detection — **opt-in, core paths only** | Not on the default panel (see Step 8a tiering) and never where repo policy bans it (Step 8a.0). On a daemon/engine/transport diff: `gh pr comment <N> --body "@cursor @bugbot review"`. Re-review after fixes: `gh pr comment <N> --body "@cursor @bugbot re-review"`. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
-| DeepSource | Static analysis | DeepSource findings: use `deepsource-issues <owner/repo> <pr>`, or the `deepsource-io[bot]` inline comments via `gh api`; never a browser |
+| DeepSource | Static analysis | DeepSource findings: use `deepsource-issues <owner/repo> <pr>`, or the `deepsource-io[bot]` inline comments via `gh api`. The token comes from `DEEPSOURCE_TOKEN` or the 0600 file `~/.config/deepsource/deepsource.env` (override: `DEEPSOURCE_TOKEN_FILE`). Never a browser, never op |
 
 **After fixing review feedback, trigger re-review on every reviewer:**
 
