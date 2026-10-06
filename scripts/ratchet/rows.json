@@ -45,6 +45,17 @@
       "command": "HOME=\"$RATCHET_HOME\" python3 scripts/ratchet/mac/hc-probe.py --repo \"$RATCHET_PUSH_REPO\" --branch \"$RATCHET_BRANCH\" --sha \"$RATCHET_PR_HEAD\" --issuer \"$RATCHET_CLONE/.worktrees/hooks-live/scripts/golems-lead-confirm\""
     },
     {
+      "id": "hooks-status",
+      "metric": "installer --status problems on the scratch install after a lead-token issuance (codex trust excluded)",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "max",
+      "ceiling": 0,
+      "bug_sha": "37146a2825de4656f42b56003cee36d387bd730e",
+      "fix_sha": "32e948b293d63bbb05f0da857a8498ef7c5d9ddd",
+      "command": "scripts/ratchet/mac/status.sh"
+    },
+    {
       "id": "live-hooks-status",
       "metric": "LIVE install --status exit 0 with drift 0 (post-merge, lead-run)",
       "kind": "real",

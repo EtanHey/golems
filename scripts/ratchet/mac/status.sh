@@ -3,7 +3,7 @@
 # after the candidate install AND a lead-token issuance (real use). The scratch origin/master is set
 # to the installed commit ("this PR merged and was installed"). Codex `trust=missing` is excluded:
 # in a scratch CODEX_HOME trust needs an owner /hooks review, so it is structural, not a defect.
-# Specimen (2026-10-06): the issuer, run by its shebang, wrote __pycache__ into hooks-live and the
+# Specimen (2026-10-06, bug 37146a28 -> fix #685 32e948b2): the issuer, run by its shebang, wrote __pycache__ into hooks-live and the
 # live --status exited 1 ("hooks import files unexpected").
 set -euo pipefail
 : "${RATCHET_RUN:?run from scripts/ratchet/local-run.sh}"
