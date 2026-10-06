@@ -2,6 +2,7 @@
 """DeepSource findings for one PR, from the GraphQL API. Agents use this, never a browser.
 
 Usage: deepsource-issues <owner/repo> <pr-number> [--provider GITHUB]
+       deepsource-issues --help
 
 Prints JSON: the PR's latest analysis run, the failing checks, and per analyzer
 its unsuppressed issues (code, title, category, severity, file:line, message).
@@ -15,16 +16,24 @@ Exit (also the JSON "verdict"):
                checks at all, or any status this script does not know
 Exit 0 is never inferred from missing data.
 
-Reads DEEPSOURCE_TOKEN from the environment; a token with whitespace or control
-characters is refused. The token goes into a request header in-process: never
-argv, never a subprocess, never across a redirect, and every byte this prints is
-scrubbed of it. DEEPSOURCE_API_URL overrides the endpoint for tests; it must be
-https, or plain http to localhost."""
+The token comes from DEEPSOURCE_TOKEN in the environment or, when that is unset
+or empty, from a token file: DEEPSOURCE_TOKEN_FILE, else
+~/.config/deepsource/deepsource.env. The file must be a regular file (not a
+symlink) owned by you, mode 0600, holding one line DEEPSOURCE_TOKEN=<token>
+(optionally quoted or export-prefixed; blank and # lines are allowed). It is
+parsed as data, never sourced. Never a browser.
+
+A token with whitespace or control characters is refused. The token goes into a
+request header in-process: never argv, never a subprocess, never across a
+redirect, and every byte this prints is scrubbed of it. DEEPSOURCE_API_URL
+overrides the endpoint for tests; it must be https, or plain http to localhost."""
+import errno
 import http.client
 import json
 import os
 import re
 import ssl
+import stat
 import sys
 import urllib.error
 import urllib.parse
@@ -38,6 +47,9 @@ SUCCESS = "SUCCESS"
 FAILED_CHECK = {"FAILURE", "TIMEOUT", "ARTIFACT_TIMEOUT"}
 FAILED_RUN = {"FAILURE", "TIMEOUT"}
 TOKEN_SHAPE = re.compile(r"[\x21-\x7e]+")  # printable ASCII, no whitespace or controls
+TOKEN_FILE = "~/.config/deepsource/deepsource.env"
+TOKEN_FILE_MAX = 4096
+TOKEN_LINE = re.compile(r"(?:export[ \t]+)?DEEPSOURCE_TOKEN=(.*)")
 
 ISSUE_FIELDS = """totalCount pageInfo { hasNextPage endCursor }
   edges { node { shortcode title category severity path beginLine isSuppressed issue { title } } }"""
@@ -78,6 +90,68 @@ def scrub(text, token):
     return text
 
 
+def file_token(path):
+    """The token from a 0600 file you own, parsed as data. Errors never carry the value or its length."""
+    try:
+        # O_NONBLOCK: a FIFO planted at the path must not hang the open.
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        raise Fail(f"no DeepSource token: DEEPSOURCE_TOKEN is unset and {path} does not exist. Fix: write the "
+                   f"single line DEEPSOURCE_TOKEN=<token> to {path} and chmod 600 it, or point "
+                   f"DEEPSOURCE_TOKEN_FILE at such a file") from None
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            raise Fail(f"token file {path} is a symlink; refused") from None
+        raise Fail(f"token file {path} unreadable: {error.strerror}") from None
+    try:
+        try:
+            info = os.fstat(fd)
+        except OSError as error:
+            raise Fail(f"token file {path} unreadable: {error.strerror}") from None
+        if not stat.S_ISREG(info.st_mode):
+            raise Fail(f"token file {path} is not a regular file; refused")
+        if info.st_uid != os.getuid():
+            raise Fail(f"token file {path} is owned by uid {info.st_uid}, not you; refused")
+        if stat.S_IMODE(info.st_mode) != 0o600:
+            raise Fail(f"token file {path} has mode {stat.S_IMODE(info.st_mode):o}, not 600; "
+                       f"refused (chmod 600 {path})")
+        try:
+            data = os.read(fd, TOKEN_FILE_MAX + 1)
+        except OSError as error:
+            raise Fail(f"token file {path} unreadable: {error.strerror}") from None
+    finally:
+        os.close(fd)
+    if len(data) > TOKEN_FILE_MAX:
+        raise Fail(f"token file {path} is too large; refused")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise Fail(f"token file {path} is not utf-8 text; refused") from None
+    values = []
+    for line in text.split("\n"):
+        if not line or line.startswith("#"):
+            continue
+        match = TOKEN_LINE.fullmatch(line)
+        if not match:
+            raise Fail(f"token file {path} has a line that is not DEEPSOURCE_TOKEN=<token>; refused")
+        values.append(match.group(1))
+    if not values:
+        raise Fail(f"token file {path} has no DEEPSOURCE_TOKEN= line; refused")
+    if len(values) > 1:
+        raise Fail(f"token file {path} has more than one DEEPSOURCE_TOKEN= line; refused")
+    value = values[0]
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+        value = value[1:-1]
+    if not value:
+        raise Fail(f"token file {path} has an empty DEEPSOURCE_TOKEN; refused")
+    if not TOKEN_SHAPE.fullmatch(value):
+        raise Fail(f"token file {path}: the token contains whitespace or control characters; refused "
+                   "(value not shown)")
+    if any(quote in value for quote in "'\"`"):
+        raise Fail(f"token file {path}: the token has an unbalanced quote; refused (value not shown)")
+    return value
+
+
 def endpoint():
     url = os.environ.get("DEEPSOURCE_API_URL") or API_URL
     parts = urllib.parse.urlsplit(url)
@@ -113,7 +187,8 @@ def graphql(client, token, query, variables):
             body = json.load(response)
     except urllib.error.HTTPError as error:
         if error.code in (401, 403):
-            raise Fail(f"DeepSource auth error: HTTP {error.code}; check DEEPSOURCE_TOKEN") from None
+            raise Fail(f"DeepSource auth error: HTTP {error.code}; check the token in DEEPSOURCE_TOKEN "
+                       "or the token file") from None
         raise Fail(f"DeepSource API error: HTTP {error.code}") from None
     except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError) as error:
         raise Fail(f"DeepSource API unreachable or unreadable: {type(error).__name__}: {error}") from None
@@ -216,6 +291,9 @@ def report(repo, number, provider, client, token):
 
 def main(argv):
     args, provider = list(argv), "GITHUB"
+    if args in (["--help"], ["-h"]):
+        print(__doc__)
+        return 0
     if "--provider" in args:
         at = args.index("--provider")
         if at + 1 >= len(args):
@@ -231,11 +309,16 @@ def main(argv):
         return usage(f"pr-number must be a positive integer: {number}")
     token = os.environ.get("DEEPSOURCE_TOKEN") or ""
     if not token.strip():
-        print("deepsource-issues: DEEPSOURCE_TOKEN is not set. Agent seats get it from the repogolem "
-              "launcher env (op://Private/DeepSource API PAT/credential); never open DeepSource in a browser.",
-              file=sys.stderr)
-        return 2
-    if not TOKEN_SHAPE.fullmatch(token):
+        path = os.environ.get("DEEPSOURCE_TOKEN_FILE") or os.path.expanduser(TOKEN_FILE)
+        try:
+            token = file_token(path)
+        except Fail as error:
+            print(f"deepsource-issues: {one_line(error)}", file=sys.stderr)
+            return 2
+        except Exception as error:  # exit 1 means "issues found"; a token-file surprise is an error
+            print(f"deepsource-issues: token file {path} unreadable: {type(error).__name__}", file=sys.stderr)
+            return 2
+    elif not TOKEN_SHAPE.fullmatch(token):
         print("deepsource-issues: DEEPSOURCE_TOKEN contains whitespace or control characters; refusing to "
               "send it (value not shown)", file=sys.stderr)
         return 2
