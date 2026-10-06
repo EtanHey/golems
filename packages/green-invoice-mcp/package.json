@@ -28,6 +28,6 @@
     "test": "bun test src/__tests__/"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1"
+    "@modelcontextprotocol/sdk": "^1.31.0"
   }
 }
