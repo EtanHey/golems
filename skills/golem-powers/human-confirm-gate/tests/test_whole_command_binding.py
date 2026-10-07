@@ -1,0 +1,108 @@
+"""Class-only F3 fixtures; candidate strings are never executed."""
+import json,os,subprocess,sys,unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[4]
+assert (ROOT/'skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py').is_file()
+sys.path.insert(0,str(ROOT/'skills/golem-powers/human-confirm-gate/hooks'))
+from commands import operations
+ROWS=[('operator_0', 'F="fixture-tool push --force origin topic"; ${F:-}', True),
+ ('operator_1', 'F="fixture-tool push --force origin topic"; ${F-}', True),
+ ('operator_2', 'F="fixture-tool push --force origin topic"; ${F:=}', True),
+ ('operator_3', 'F="fixture-tool push --force origin topic"; ${F=}', True),
+ ('operator_4', 'F="fixture-tool push --force origin topic"; ${F:?}', True),
+ ('operator_5', 'F="fixture-tool push --force origin topic"; ${F?}', True),
+ ('operator_6', 'F="fixture-tool push --force origin topic"; ${F:+}', True),
+ ('operator_7', 'F="fixture-tool push --force origin topic"; ${F+}', True),
+ ('operator_8', 'F="fixture-tool push --force origin topic"; ${F#x}', True),
+ ('operator_9', 'F="fixture-tool push --force origin topic"; ${F##x}', True),
+ ('operator_10', 'F="fixture-tool push --force origin topic"; ${F%x}', True),
+ ('operator_11', 'F="fixture-tool push --force origin topic"; ${F%%x}', True),
+ ('operator_12', 'F="fixture-tool push --force origin topic"; ${F/x/y}', True),
+ ('operator_13', 'F="fixture-tool push --force origin topic"; ${F//x/y}', True),
+ ('operator_14', 'F="fixture-tool push --force origin topic"; ${F^}', True),
+ ('operator_15', 'F="fixture-tool push --force origin topic"; ${F^^}', True),
+ ('operator_16', 'F="fixture-tool push --force origin topic"; ${F,}', True),
+ ('operator_17', 'F="fixture-tool push --force origin topic"; ${F,,}', True),
+ ('operator_18', 'F="fixture-tool push --force origin topic"; ${F:0}', True),
+ ('operator_19', 'F="fixture-tool push --force origin topic"; ${F:0:80}', True),
+ ('operator_20', 'F="fixture-tool push --force origin topic"; ${F@Q}', True),
+ ('operator_21', 'F="fixture-tool push --force origin topic"; ${F[@]}', True),
+ ('operator_22', 'F="fixture-tool push --force origin topic"; ${F[*]}', True),
+ ('declaration_23', 'declare F="fixture-tool push --force origin topic"; $F', True),
+ ('declaration_24', 'typeset F="fixture-tool push --force origin topic"; $F', True),
+ ('declaration_25', 'local F="fixture-tool push --force origin topic"; $F', True),
+ ('declaration_26', 'export F="fixture-tool push --force origin topic"; $F', True),
+ ('declaration_27', 'declare -x F="fixture-tool push --force origin topic"; $F', True),
+ ('declaration_28', 'declare -r F="fixture-tool push --force origin topic"; $F', True),
+ ('declaration_29', 'typeset -x F="fixture-tool push --force origin topic"; $F', True),
+ ('declaration_30', 'local -r F="fixture-tool push --force origin topic"; $F', True),
+ ('declaration_31', 'export -- F="fixture-tool push --force origin topic"; $F', True),
+ ('value_32', 'F="fixture-tool push --force origin $(printf topic)"; $F', True),
+ ('value_33', 'F="fixture-tool push --force origin `printf topic`"; ${F:-}', True),
+ ('value_34', 'F=$(printf "%s" "fixture-tool push --force origin topic"); $F', True),
+ ('value_35', 'declare F="fixture-tool push --force origin $(printf topic)"; $F', True),
+ ('value_36', 'G="fixture-tool push --force origin topic"; F="$G"; ${F%%x}', True),
+ ('value_37', 'F="fixture-tool push --force origin topic"; F+=x; ${F:-}', True),
+ ('value_38',
+  'F="fixture-tool push --force origin topic"; unset F; ${F:-fixture-tool push --force origin topic}',
+  True),
+ ('value_39', 'IFS=:; F=fixture-tool:push:--force:origin:topic; ${F%%x}', True),
+ ('value_40', 'S=:; IFS=$S; F=fixture-tool:push:--force:origin:topic; ${F:-}', True),
+ ('value_41', 'F="fixture-tool push --force origin topic"; env ${F:-}', True),
+ ('value_42', 'F="fixture-tool push --force origin topic"; command ${F%%x}', True),
+ ('read_43', 'read -r F <<< "fixture-tool push --force origin topic"; $F', True),
+ ('read_44', 'read F <<< "fixture-tool push --force origin topic"; $F', True),
+ ('read_45', 'read -a F <<< "fixture-tool push --force origin topic"; $F', True),
+ ('read_46', 'read -r -- F <<< "fixture-tool push --force origin topic"; $F', True),
+ ('read_47', 'read -p prompt F <<< "fixture-tool push --force origin topic"; $F', True),
+ ('read_48', 'read -n1 F <<< "fixture-tool push --force origin topic"; $F', True),
+ ('read_49', 'read -u 3 F <<< "fixture-tool push --force origin topic"; $F', True),
+ ('read_50', 'read -r <<< "fixture-tool push --force origin topic"; $REPLY', True),
+ ('whole_sub_51', '$(printf "%s" "fixture-tool push --force origin topic")', True),
+ ('whole_sub_52', '`printf "%s" "fixture-tool push --force origin topic"`', True),
+ ('whole_sub_53', '"$(printf "%s" "fixture-tool push --force origin topic")"', True),
+ ('whole_sub_54', '$(printf fixture-tool)$(printf " push --force origin topic")', True),
+ ('whole_sub_55', '$(printf data)', True),
+ ('other_writer_56', "printf -v F '%s' 'fixture-tool push --force origin topic'; $F", True),
+ ('other_writer_57', "mapfile -t F <<< 'fixture-tool push --force origin topic'; ${F[@]}", True),
+ ('other_writer_58', "readarray F <<< 'fixture-tool push --force origin topic'; ${F[*]}", True),
+ ('other_writer_59', 'G="fixture-tool push --force origin topic"; declare -n F=G; $F', True),
+ ('other_writer_60', 'F="fixture-tool push --force origin topic"; declare F; ${F:-}', True),
+ ('unknown_args_61', 'declare F=$(printf data); $F push --force origin topic', True),
+ ('unknown_args_62', 'typeset F=$(printf data); $F push --force origin topic', True),
+ ('unknown_args_63', 'local F=$(printf data); $F push --force origin topic', True),
+ ('unknown_args_64', 'export F=$(printf data); $F push --force origin topic', True),
+ ('unknown_args_65', 'read -r F; $F push --force origin topic', True),
+ ('data_echo', 'F="fixture-tool push --force origin topic"; echo "${F:-}"', False),
+ ('data_printf', 'declare F="fixture-tool push --force origin topic"; printf "%s" "$F"', False),
+ ('read_data', 'read -r F <<< "fixture-tool push --force origin topic"; echo "$F"', False),
+ ('literal_harmless', 'F=fixture-tool; ${F:-} status', False),
+ ('sub_operand', 'echo $(printf data)', False),
+ ('sub_exec_args', '$(printf fixture-tool) status', False),
+ ('sub_assignment_data', 'F=$(printf data); echo "$F"', False),
+ ('declaration_harmless', 'declare F=fixture-tool; $F status', False),
+ ('unset_data', 'F=--force; unset F; echo "$F"', False),
+ ('overwrite', 'F="fixture-tool push --force origin topic"; F=fixture-tool; ${F%%x} status', False),
+ ('IFS_data', 'IFS=:; F=fixture-tool:push:--force:origin:topic; printf "%s" "$F"', False),
+ ('heredoc_data', "cat <<'EOF'\n$(printf data)\nEOF", False),
+ ('read_version', 'read -r F; $F --version', False),
+ ('singlequote_data', "echo '${F:-fixture-tool push --force origin topic}'", False),
+ ('normal_executor', 'F=fixture-tool; "$F" push origin topic', False),
+ ('array_data', 'F=($(printf data)); echo "$F"', False),
+ ('heredoc_sub_assignment', 'F=$(python3 - <<\'PY\'\nprint(\'data\')\nPY\n); echo "$F"', False),
+ ('unquoted_data_sub', 'cat <<EOF\n$(printf data)\nEOF', False),
+ ('nested_echo_data',
+  'echo "data $([ "$(printf data)" = "$(printf data)" ] && echo "done ($(printf data))" || echo other)"',
+  False)]
+class WholeCommand(unittest.TestCase):pass
+def case(command,expected):
+ def test(self):
+  try:deny=bool(operations(command,str(ROOT),alias_lookup=lambda *_:None))
+  except ValueError:deny=True
+  self.assertEqual(deny,expected,'structural decision')
+  env={k:v for k,v in os.environ.items() if not k.startswith('GIT_') and k not in ('WEAVE_ALLOW_TMP','GOLEM_ROLE','GOLEM_EFFORT','PYTHONPATH','PYTHONHOME')};env.update(HOME=str(ROOT/'docs.local/private-guard-suites/scratch-home'),GUARD_ROOT=str(ROOT))
+  r=subprocess.run([sys.executable,'-I','-B',str(ROOT/'skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py')],input=json.dumps(dict(tool_name='Bash',tool_input=dict(command=command),cwd=str(ROOT),session_id='synthetic-whole-command')),env=env,cwd=ROOT,text=True,capture_output=True,timeout=15)
+  self.assertEqual(r.returncode,2 if expected else 0,'fixed hook decision')
+ return test
+for name,command,expected in ROWS:setattr(WholeCommand,'test_'+name,case(command,expected))
+if __name__=='__main__':unittest.main()

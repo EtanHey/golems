@@ -12,6 +12,7 @@ if _SHARED not in sys.path:
 import shell_parse as shell
 import syntax
 import forwarding
+import whole_command
 import gh_policy
 import git_config
 
@@ -165,6 +166,7 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
         raise ValueError('command inspection budget exceeded')
     if shell.executable_shell_structure_has_open_state(command):
         raise ValueError('unparseable shell input')
+    whole_command.check(command, bindings or {}, shell, syntax)
     tokens, positions, segments, scopes = shell._parse_bash(command)
     if forwarding.enabled(): syntax.hide_function_bodies(tokens, positions)
     bindings = dict(bindings or {})
