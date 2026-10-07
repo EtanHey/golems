@@ -2,6 +2,7 @@
 import os
 import re
 import shlex
+import forwarding
 from pathlib import Path
 
 SHELLS = {'sh', 'bash', 'zsh', 'dash', 'ksh', 'fish'}
@@ -80,22 +81,38 @@ def substitution_argv(command, shell):
     return words, positions, segments, [()] * len(words)
 
 
+def hide_function_bodies(tokens, positions):
+    from shell_parse_impl.function_expansion import hide_function_bodies as hide
+    hide(tokens, positions)
+
+
 def argv_at(tokens, segments, scopes, i):
     args, redirects = [], []
     j = i + 1
+    def process_end(k):
+        level, k = 1, k + 2
+        while k < len(tokens) and level:
+            level += (tokens[k] == '(') - (tokens[k] == ')')
+            k += 1
+        if level: raise ValueError('unclosed process substitution')
+        return k
     while j < len(tokens) and segments[j] == segments[i] and scopes[j] == scopes[i]:
         word = tokens[j]
+        if forwarding.enabled() and word in ('<', '>') and j + 1 < len(tokens) and tokens[j+1] == '(':
+            args.append('${process-substitution}'); j = process_end(j); continue
         if word in ('>', '>>', '>|', '<', '<<', '<<<', '<>', '&>', '&>>'):
             operator = word
+            # Lexical fd prefixes were removed by the opted-in tokenizer.
             j += 1
-            if j < len(tokens) and tokens[j] == '&':
-                j += 1  # descriptor duplication, not a pipeline boundary
+            if j < len(tokens) and tokens[j] == '&': j += 1
             if j >= len(tokens) or segments[j] != segments[i]:
                 raise ValueError('missing redirection target')
-            redirects.append((operator, tokens[j])); j += 1
+            if forwarding.enabled() and tokens[j] in ('<', '>') and j+1 < len(tokens) and tokens[j+1] == '(':
+                redirects.append((operator, '${process-substitution}')); j = process_end(j)
+            else:
+                redirects.append((operator, tokens[j])); j += 1
             continue
-        if word in (';', '&', '|', ')', '}$', ')$'):  # )$ closes a $( ) substitution
-            break
+        if word in (';', '&', '|', ')', '}$', ')$'): break
         args.append(word); j += 1
     return args, redirects
 
@@ -132,6 +149,9 @@ def _stdin_command_slot(child, depth=0):
     children = list(wrapper_payload(base, child[1:]))
     return not children or any(_stdin_command_slot(c, depth + 1) for c in children if c)
 
+
+class XargsArgv(list):
+    unknown_tail = False
 
 def xargs_payload(args):
     """Deny-only union of GNU replacement and BSD insertion semantics.
@@ -223,6 +243,8 @@ def xargs_payload(args):
     if insert_at is not None:
         # Unknown arity can supply both an executable and its whole argv.
         child[insert_at:insert_at + 1] = ['${stdin-command}', '${@}']
+    child = XargsArgv(child)
+    child.unknown_tail = bsd_appends or gnu_appends
     return child
 
 
@@ -276,6 +298,7 @@ def shell_payload(base, args):
     """Code a shell runs from its argv: -c, and fish's -C/--command/--init-command."""
     if base not in SHELLS:
         return None
+    if forwarding.enabled() and base != 'fish': return shell_program(base, args)[0]
     payloads = []
     for i, arg in enumerate(args):
         if arg == '--':
@@ -290,6 +313,32 @@ def shell_payload(base, args):
             if j >= len(args): raise ValueError('missing shell payload')
             payloads.append(args[j])
     return '\n'.join(payloads) if payloads else None
+
+
+def shell_program(base, args):
+    """Visible $0, $1… after POSIX -c; option operands are not switches."""
+    if base == 'fish': return None, None
+    short_values, long_values, long_switches = SHELL_OPTIONS.get(base, _BASH)
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ('--help', '--version'): return None, None
+        if arg == '--' or not arg.startswith(('-', '+')): break
+        i += 1
+        if arg.startswith('--'):
+            name, eq, _ = arg.partition('=')
+            if name in long_values: i += not eq
+            elif name not in long_switches: raise ValueError('unknown shell option')
+            continue
+        for k, char in enumerate(arg[1:], 1):
+            if char == 'c':
+                if i < len(args) and args[i] == '--': i += 1
+                if i >= len(args): raise ValueError('missing shell payload')
+                return args[i], args[i+1:]
+            if char in short_values:
+                i += k+1 == len(arg)
+                break
+    return None, None
 
 
 def joined(words):
@@ -486,7 +535,7 @@ def shell_reads_stdin(base, args):
                 i += 0 if k + 1 < len(arg) else 1  # the rest of the cluster, or the next word
                 break
     script = args[i] if i < len(args) else None
-    return stdin or script is None or script in ('/dev/stdin', '/dev/fd/0') or script.startswith(('/dev/fd/', '/proc/'))
+    return stdin or script is None or script in ('/dev/stdin', '/dev/fd/0') or forwarding.enabled() and script in ('${process-substitution}', '${positional-unknown}', '$\ue000positional-unknown\ue001') or script.startswith(('/dev/fd/', '/proc/'))
 
 
 _NAME = re.compile(r'\{?([A-Za-z_][A-Za-z0-9_]*)')
@@ -567,6 +616,8 @@ def split_words(command, shell):
         if quote is None and (char.isspace() or char in ';|&()<>'):
             flush(); i += 1; continue
         if char == '$' and quote is None and re.match(r'[{A-Za-z0-9_@*#?!$-]', text[i + 1:i + 2]):
+            splits = True
+        if quote is None and char in '*?[{':
             splits = True
         if quote == '"' and char in '{}':
             char = '\ue000' if char == '{' else '\ue001'
