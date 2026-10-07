@@ -161,3 +161,33 @@ lead records two short artifacts:
 - **Open targets:** every known failure or improvement that has no row yet, each with its issue
   or PR link and the row it would become. This list is the §12 sprint backlog, which starts by
   turning targets into rows and tightening ceilings.
+
+## CI debt ceilings and live-tier freshness
+
+`py-undefined-names` uses pinned pyflakes 4.0.0 `UndefinedName` diagnostics (F821),
+starting at 299 on `61508f58`. It checks git-tracked Python only, excluding path components
+`vendor`, `vendored`, `third_party`, `node_modules`, `.worktrees` and `docs.local`.
+Syntax/read/tool errors are MISSING, never a zero count. The five `size-*` rows count newline
+bytes (as `wc -l` does), starting at 1084/853/1078/792/613. Growth fails; reductions pass.
+These static checks are `unit` rows: they enforce ceilings but do not claim installed proof.
+
+`live-tier-freshness` makes CI watch the lead-only live tier. It finds the latest first-parent
+commit on `origin/master` touching the same guarded directories as `guarded-paths.sh`, then
+requires the merged master PR for that commit to carry the lead's `golems-ratchet-live` sticky
+comment. The fixed-line verdict must match that merge SHA or a later first-parent master commit, have `bootstrap: false`, and
+pass every real live row defined on master. Missing, stale, red, wrong-author receipts and API
+failures fail closed. Candidate PR changes and later unguarded merges do not invalidate a receipt.
+There is no grace window: a guarded merge becomes red until the lead installs and runs
+`live-rows.sh --merged-pr <latest guarded PR> ...` after installing current master. A later unguarded master SHA is accepted for the receipt;
+branch SHAs and receipts preceding the guarded merge are rejected. The receipt measures the live
+install's status and token probe; this CI row checks the receipt, never uses lead tokens or
+installs hooks. It is labeled `unit` so receipt checks cannot be mistaken for a live replay.
+
+The existing required `ratchet` job enforces this row only on guarded-path PRs, and on master
+pushes, plus hourly and on
+manual dispatch. Non-guarded PRs are exempt before any live API request, so the lead install
+cannot block unrelated work. Failure output prints the exact `live-rows.sh` command; run it from
+the open lease PR checkout after the lead installs current master. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
+(or dispatch the workflow); posting a comment alone does not rerun CI. This prevents a green CI
+claim for merged-but-uninstalled guarded changes. It does not continuously inspect the machine:
+after a passing receipt, later local tampering still requires a fresh lead live run to detect.

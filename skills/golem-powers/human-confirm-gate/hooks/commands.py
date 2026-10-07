@@ -89,6 +89,31 @@ def resolve_word(word, bindings):
     return _VAR.sub(replace, word)
 
 
+def expansion_is_protected(word, bindings):
+    """Deny-only view of argv hidden inside a command-word binding.
+
+    Never use split fields to authorize: quoting and IFS can change runtime
+    argv. A protected field in any referenced literal binding is sufficient
+    to refuse the ambiguous executable.
+    """
+    ifs = bindings.get('IFS', ' \t\n')
+    for match in _VAR.finditer(word):
+        value = bindings.get(match[1] or match[2])
+        if value is not None:
+            fields = re.split('[' + re.escape(ifs) + ']', value) if ifs else [value]
+            if syntax.guarded_words(fields):
+                return True
+    return False
+
+
+def opaque_executable(word, args, script=False):
+    """A whole command or forwarded argv can hide every protected field."""
+    return syntax.unresolved(word, Path.home()) and (
+        syntax.guarded_words(args) or
+        not args and (word in ('$@', '${@}', '$*', '${*}') or script and _VAR.fullmatch(word)) or
+        any(a in ('$@', '${@}', '$*', '${*}') for a in args))
+
+
 def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
     values = dict(initial)
     if any(t in ('(', '&', '|', 'if', 'for', 'while', 'case') for t in tokens[:limit]):
@@ -117,7 +142,7 @@ GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry 
                    " stripspace symbolic-ref var verify-commit verify-pack verify-tag whatchanged write-tree".split())
 
 
-def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None, rejoined=False):
+def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None, rejoined=False, _script=False):
     if depth > 8 or shell.policy_command_size_reason(command):
         raise ValueError('command inspection budget exceeded')
     if shell.executable_shell_structure_has_open_state(command):
@@ -140,9 +165,35 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         limit = max((i + 1 for i, seg in enumerate(segments) if seg <= segment), default=0)
         child_bindings = assigned_bindings(tokens, positions, limit, bindings, scopes)
         result += operations(body, cwd, alias_lookup, depth + 1, child_bindings, _state)
+    # This supplemental view may deny, never authorize or classify an operand.
+    # Keep the original argv (including substitution bodies) for every policy.
+    outer, flags, segs, outer_scopes = syntax.substitution_argv(command, shell)
+    for i, word in enumerate(outer):
+        if not flags[i] or syntax.looked_up(outer, flags, i): continue
+        current = assigned_bindings(outer, flags, i, bindings, outer_scopes, outer_scopes[i])
+        if (not shell._ASSIGNMENT_RE.match(word) and syntax.executable(word)[0] not in syntax.DATA and
+                expansion_is_protected(word, current)):
+            raise ValueError('protected argv hidden in executable expansion')
+        word = resolve_word(word, current)
+        args, _ = syntax.argv_at(outer, segs, outer_scopes, i)
+        pending = [(word, args, depth)]
+        while pending:
+            executable, argv, level = pending.pop()
+            executable = resolve_word(executable, current)
+            argv = [resolve_word(a, current) for a in argv]
+            base = syntax.executable(executable)[0]
+            if (not shell._ASSIGNMENT_RE.match(executable) and base not in syntax.DATA and
+                    opaque_executable(executable, argv, _script)):
+                raise ValueError('unresolved executable for protected operation')
+            if level > 8: raise ValueError('command inspection budget exceeded')
+            for child in syntax.wrapper_payload(base, argv):
+                if child: pending.append((child[0], child[1:], level + 1))
     for i, word in enumerate(tokens):
         if not positions[i] or syntax.looked_up(tokens, positions, i): continue
         current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
+        if (not shell._ASSIGNMENT_RE.match(word) and syntax.executable(word)[0] not in syntax.DATA and
+                expansion_is_protected(word, current)):
+            raise ValueError('protected argv hidden in executable expansion')
         word = resolve_word(word, current)
         assignment = bool(shell._ASSIGNMENT_RE.match(word))
         base, direct = ('', None) if assignment else syntax.executable(word)
@@ -163,7 +214,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
         if assignment:
             continue  # a prefix assignment is not the executable; the next word is
-        if ('$' in word or '`' in word) and syntax.guarded_words(args):
+        if base not in syntax.DATA and opaque_executable(word, args, _script):
             raise ValueError('unresolved executable for protected operation')
         for child in syntax.wrapper_payload(base, args):
             child_bindings = dict(current)
@@ -197,16 +248,16 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         if base in syntax.SHELLS:
             body = syntax.shell_payload(base, args)
             if body is not None:
-                result += operations(body, cwd, alias_lookup, depth + 1, current, _state)
+                result += operations(body, cwd, alias_lookup, depth + 1, current, _state, _script=True)
             else:
                 if any(op == '<<<' for op, _ in redirects):
                     for op, body in redirects:
-                        if op == '<<<': result += operations(body, cwd, alias_lookup, depth + 1, current, _state)
+                        if op == '<<<': result += operations(body, cwd, alias_lookup, depth + 1, current, _state, _script=True)
                 elif any(op == '<<' for op, _ in redirects):
                     delimiters = {target for op, target in redirects if op == '<<'}
                     for delimiter, body in syntax.heredoc_bodies(command, shell):
-                        if delimiter in delimiters: result += operations(body, cwd, alias_lookup, depth + 1, current, _state)
-                elif syntax.shell_reads_stdin(base, args) or any(op == '<' and target == '(' for op, target in redirects):
+                        if delimiter in delimiters: result += operations(body, cwd, alias_lookup, depth + 1, current, _state, _script=True)
+                elif syntax.shell_reads_stdin(base, args) or any(op == '<' and target in ('(', '<') for op, target in redirects):
                     raise ValueError('opaque shell script/stdin source')
         if base == 'trap' and args:
             result += operations(args[0], cwd, alias_lookup, depth + 1, current, _state)

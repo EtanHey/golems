@@ -2,6 +2,33 @@
   "schema": 1,
   "rows": [
     {
+      "id": "xargs-identity",
+      "metric": "human-confirm xargs option grammar, replacement and stdin identity (class fixtures through the real hook)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_xargs_identity.py"
+    },
+    {
+      "id": "opaque-execution",
+      "metric": "human-confirm denies opaque executable argv, forwarding and stdin classes (synthetic fixtures, real hook interpreter)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_opaque_execution.py"
+    },
+    {
+      "id": "dynamic-command-word",
+      "metric": "human-confirm denies dynamic command words carrying guarded argv (synthetic class fixtures, real hook interpreter)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_dynamic_command_word.py"
+    },
+    {
       "id": "stalker-completion",
       "metric": "stalker completion contract (delivery tests on fixtures)",
       "kind": "unit",
@@ -76,6 +103,70 @@
       "bug_sha": "178becc97f56878bad631b2f6b393371ff42c804",
       "fix_sha": "37146a2825de4656f42b56003cee36d387bd730e",
       "command": "HOME=\"$RATCHET_HOME\" python3 scripts/ratchet/mac/hc-probe.py --repo \"$RATCHET_PUSH_REPO\" --branch \"$RATCHET_BRANCH\" --sha \"$RATCHET_PR_HEAD\" --issuer \"$RATCHET_CLONE/.worktrees/hooks-live/scripts/golems-lead-confirm\""
+    },
+    {
+      "id": "py-undefined-names",
+      "metric": "pyflakes 4.0.0 UndefinedName count (F821), tracked non-vendored Python",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "max",
+      "ceiling": 299,
+      "command": "python3 scripts/ratchet/measure-code.py --undefined-names"
+    },
+    {
+      "id": "size-repogolem-config",
+      "metric": "scripts/repogolem/repogolem-config.ts line count",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "max",
+      "ceiling": 1084,
+      "command": "python3 scripts/ratchet/measure-code.py --lines scripts/repogolem/repogolem-config.ts"
+    },
+    {
+      "id": "size-install-hooks",
+      "metric": "scripts/hooks/install-hooks.mjs line count",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "max",
+      "ceiling": 853,
+      "command": "python3 scripts/ratchet/measure-code.py --lines scripts/hooks/install-hooks.mjs"
+    },
+    {
+      "id": "size-rm",
+      "metric": "skills/golem-powers/git-guardian/git_safety_impl/rm.py line count",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "max",
+      "ceiling": 1078,
+      "command": "python3 scripts/ratchet/measure-code.py --lines skills/golem-powers/git-guardian/git_safety_impl/rm.py"
+    },
+    {
+      "id": "size-codex-dispatch",
+      "metric": "scripts/repogolem/dispatch/codex.zsh line count",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "max",
+      "ceiling": 792,
+      "command": "python3 scripts/ratchet/measure-code.py --lines scripts/repogolem/dispatch/codex.zsh"
+    },
+    {
+      "id": "size-tmp-block",
+      "metric": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py line count",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "max",
+      "ceiling": 613,
+      "command": "python3 scripts/ratchet/measure-code.py --lines skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py"
+    },
+    {
+      "id": "live-tier-freshness",
+      "metric": "latest guarded master merge has an exact-head all-PASS lead live-tier receipt",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "node scripts/ratchet/live-freshness.mjs",
+      "timeout_s": 180
     },
     {
       "id": "disk-free-floor",
