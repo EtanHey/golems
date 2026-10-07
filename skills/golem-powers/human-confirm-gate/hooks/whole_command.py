@@ -17,6 +17,8 @@ _DECLARATIONS = {'declare', 'typeset', 'local', 'export', 'readonly'}
 _READ_VALUES = frozenset('adinNptu')
 _PATH_CHAIN_COMMANDS = {'mkdir', 'cat', 'chmod', 'ls', 'echo', 'true', 'false'}
 _CARDINALITY = re.compile(r'\$\{#' + _NAME + r'(?:\[@\]|\[\*\])?\}')
+# ${name=word} / ${name:=word} assign in any word position, including data.
+_ASSIGNING = re.compile(r'\$\{(!?)(' + _NAME + r'):?=')
 
 
 def arithmetic_data(command, shell):
@@ -177,6 +179,11 @@ def check(command, initial, shell, syntax):
                 else: values[name] = old
             if 'IFS' in temporary: ifs = values.get('IFS', Evidence(literal=' \t\n')).literal
             temporary, temporary_segment = {}, None
+        # An expansion writer invalidates the path alternative wherever it
+        # appears; an indirect writer may target any name.
+        for match in _ASSIGNING.finditer(normal(word)):
+            if match[1]: conditional_paths.clear()
+            else: conditional_paths.pop(match[2], None)
         head = heads.get(segments[i])
         data = head is not None and syntax.executable(words[head])[0] in syntax.DATA
         if i in arrays:
