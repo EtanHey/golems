@@ -69,3 +69,21 @@ load lib/worktree-gc-fixtures
   [ "$status" -eq 2 ]
   [[ "$output" != *'"health"'* ]] || false
 }
+
+@test "D1 disk collector clears hook redirects and preserves independent bystander repo" {
+  a="$(make_fixture_repo measured)"; mkdir "$TEST_ROOT/gits"
+  mv "$a" "$TEST_ROOT/gits/a"; a="$TEST_ROOT/gits/a"
+  target="$(add_branch_worktree "$a" target)"
+  b="$(make_fixture_repo bystander)"; victim="$(add_branch_worktree "$b" victim)"
+  [ "$(git -C "$a" rev-parse --show-toplevel)" = "$a" ]
+  [ "$(git -C "$b" rev-parse --show-toplevel)" = "$b" ]
+  before="$(find "$b" -type f -exec shasum -a 256 {} + | LC_ALL=C sort)"
+  admin="$(git -C "$victim" rev-parse --absolute-git-dir)"
+  run timeout -k 3 30 env RATCHET_GITS_ROOT="$TEST_ROOT/gits" DISK_FREE_FLOOR_GB=0 WORKTREE_GC_IDLE_HOURS=0 \
+    GIT_DIR="$admin" GIT_WORK_TREE="$b" GIT_COMMON_DIR="$b/.git" GIT_INDEX_FILE="$admin/index" \
+    GIT_OBJECT_DIRECTORY="$b/.git/objects" GIT_ALTERNATE_OBJECT_DIRECTORIES="$b/.git/objects" \
+    GIT_CONFIG_COUNT=broken "$REPO_ROOT/scripts/ratchet/mac/disk-free-floor.sh"
+  [ "$status" -eq 0 ]; [ -d "$target" ] && [ -d "$victim" ]
+  [[ "$output" == *'merged_worktrees=1 '* ]] || false
+  [ "$(find "$b" -type f -exec shasum -a 256 {} + | LC_ALL=C sort)" = "$before" ]
+}

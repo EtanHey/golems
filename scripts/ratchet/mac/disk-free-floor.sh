@@ -9,6 +9,7 @@ FLOOR_GB="${DISK_FREE_FLOOR_GB:-60}"
 CEILING="${MERGED_WORKTREE_CEILING:-25}"
 GITS="${RATCHET_GITS_ROOT:-$HOME/Gits}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+source "$HERE/../../lib/worktree-git-env.sh"
 GC="$HERE/../../worktree-gc.sh"
 IDLE="${WORKTREE_GC_IDLE_HOURS:-6}"
 
