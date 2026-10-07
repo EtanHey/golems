@@ -7,6 +7,9 @@ export LC_ALL=C
 export GIT_OPTIONAL_LOCKS=0
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+source "$SCRIPT_DIR/lib/worktree-git-env.sh"
+
 usage() {
   printf 'Usage: %s [--dry-run | --prune-plan | --apply] [--idle-hours <n>] [--repo <path> | --path <worktree>]\n' \
     "$(basename "$0")"
@@ -134,14 +137,10 @@ refresh_live_cwds() {
     live_reason="lsof saw $lsof_count of $ps_count processes (partial view); refusing to treat that as idle"
     return 1
   fi
-  if [[ -e "$cmux_registry" ]]; then
-    if [[ ! -r "$cmux_registry" ]] || ! agent_cwds="$(perl -MJSON::PP -ne '
-        my $r = eval { decode_json($_) } or next;
-        my $pid = $r->{pid} or next;
-        next unless kill 0, $pid;
-        for my $k (qw(cwd worktree_path launch_cwd)) { print "$r->{$k}\n" if $r->{$k} }
-      ' "$cmux_registry")"; then
-      live_reason="cmux agent registry unreadable: $cmux_registry"
+  if [[ "$registry_required" -eq 1 || -e "$cmux_registry" || -L "$cmux_registry" ]]; then
+    if [[ ! -f "$cmux_registry" || ! -r "$cmux_registry" ]] ||
+        ! agent_cwds="$(python3 "$SCRIPT_DIR/lib/worktree-registry-cwds.py" "$cmux_registry")"; then
+      live_reason="cmux registry missing, unreadable or invalid: $cmux_registry"
       return 1
     fi
   fi
@@ -536,6 +535,18 @@ process_worktree_block() {
     return 0
   fi
 
+  local private_refs
+  if ! private_refs="$(git -C "$worktree_path" for-each-ref --format='%(refname)' refs/worktree refs/bisect refs/rewritten)"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "KEEP-undetermined" "cannot enumerate per-worktree refs"
+    return 0
+  fi
+  if [[ -n "$private_refs" ]]; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "KEEP-worktree-refs" "per-worktree refs protect local history or operation state"
+    return 0
+  fi
+
   if [[ "$apply" -eq 1 || "$prune_plan" -eq 1 ]]; then
     apply_removal "$worktree_path" "$branch_display"
     return 0
@@ -549,13 +560,8 @@ process_repo() {
   local census
   local line
 
-  if ! repo_root="$(git -C "$requested_repo" rev-parse --show-toplevel 2>/dev/null)"; then
-    printf 'Not a Git repository: %s\n' "$requested_repo" >&2
-    return 2
-  fi
-  repo_root="$(canonical_path "$repo_root")"
-  if [[ -z "$only_worktree" && "$repo_root" != "$(canonical_path "$requested_repo")" ]]; then
-    printf 'Refusing --repo: must be a repository toplevel: %s\n' "$requested_repo" >&2
+  if ! repo_root="$(golems_main_repo "$requested_repo")"; then
+    printf 'Refusing --repo: must be the main repository toplevel: %s\n' "$requested_repo" >&2
     return 2
   fi
 
@@ -563,10 +569,9 @@ process_repo() {
     printf 'Could not list worktrees for %s\n' "$repo_root" >&2
     return 2
   fi
-  # The first census block is always the main working tree, even when the
-  # request named a linked worktree. Archives and removals anchor on it.
+  # Independently verify the census agrees with the validated main root.
   main_root="$(canonical_path "$(sed -n '1s/^worktree //p' <<< "$census")")"
-  repo_root="$main_root"
+  [[ "$main_root" == "$repo_root" ]] || { echo "Main census root mismatch" >&2; return 2; }
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
   load_open_prs
@@ -601,7 +606,9 @@ process_repo() {
 explicit_repo=""
 only_worktree=""
 only_seen=0
-cmux_registry="${WORKTREE_GC_CMUX_REGISTRY:-$HOME/.cmuxlayer/session-registry.jsonl}"
+registry_required=0
+[[ "${WORKTREE_GC_CMUX_REGISTRY+x}" == x ]] && registry_required=1
+cmux_registry="${WORKTREE_GC_CMUX_REGISTRY-$HOME/.cmuxlayer/session-registry.jsonl}"
 apply=0
 prune_plan=0
 idle_hours=6
@@ -637,7 +644,6 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       only_worktree="$(canonical_path "$2")"
-      explicit_repo="$2"
       shift 2
       ;;
     --repo)
@@ -673,6 +679,12 @@ LOG_DIR="$SCRIPT_DIR/../docs.local"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/worktree-gc-$(date '+%Y%m%d-%H%M%S')-$$.log"
 
+# A path-only lane close discovers its main root read-only, then validates it.
+# An explicit --repo is never replaced by --path, regardless of argument order.
+if [[ -n "$only_worktree" && -z "$explicit_repo" ]]; then
+  path_census="$(git -C "$only_worktree" worktree list --porcelain)" || exit 2
+  explicit_repo="$(sed -n '1s/^worktree //p' <<< "$path_census")"
+fi
 repos=()
 if [[ -n "$explicit_repo" ]]; then
   repos+=("$explicit_repo")
