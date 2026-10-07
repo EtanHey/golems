@@ -119,7 +119,7 @@ def expand_function(
             )
             if _argument_expander.get() is not None:
                 invocation_arguments = call_arguments(body, body_tokens, i)
-            target_body = expand_function_arguments(target_body, invocation_arguments)
+            target_body = expand_function_arguments(target_body, invocation_arguments, source=body)
             expanded.append(
                 expand_function(
                     state,
@@ -135,7 +135,7 @@ def expand_function(
     return " ".join(expanded) if changed else body
 
 
-def expand_function_arguments(body, arguments, bindings=None):
+def expand_function_arguments(body, arguments, bindings=None, source=None):
     """Substitute statically known invocation arguments in a body.
 
         This preserves forwarded eval payloads such as `eval "$@"` for the
@@ -143,7 +143,7 @@ def expand_function_arguments(body, arguments, bindings=None):
         they retain the guard's existing REFUSE behavior.
         """
     if _argument_expander.get() is not None:
-        return _argument_expander.get()(body, arguments, bindings)
+        return _argument_expander.get()(body, arguments, bindings, source)
     joined = " ".join(arguments)
     static_variables = {}
 

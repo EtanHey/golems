@@ -97,7 +97,7 @@ def _emit_functions(command, expansion_state, unit, function_state_at,
         target_body = expanded_bodies.get(resolved_token, bodies[resolved_token])
         if _function_expansion._argument_expander.get() is not None:
             invocation_arguments = _function_expansion.call_arguments(line, tokens, i)
-            target_body = _function_expansion.expand_function_arguments(target_body, invocation_arguments, variable_state_at(i))
+            target_body = _function_expansion.expand_function_arguments(target_body, invocation_arguments, variable_state_at(i), source=line)
             target_body = _function_expansion.expand_function(
                 expansion_state, target_body, bodies=bodies, expanded_bodies=expanded_bodies)
         else:

@@ -144,12 +144,20 @@ GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry 
                    " stripspace symbolic-ref var verify-commit verify-pack verify-tag whatchanged write-tree".split())
 
 
-def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None, rejoined=False, _script=False, _unknown_tail=False, _shell_zero=None):
+def operations(*args, **kwargs):
+    lexer = shell._impl_module('tokens')
+    token = lexer._preserve_empty_words.set(True)
+    try:
+        return _operations(*args, **kwargs)
+    finally:
+        lexer._preserve_empty_words.reset(token)
+
+
+def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None, rejoined=False, _script=False, _unknown_tail=False, _shell_zero=None):
     if depth > 8 or shell.policy_command_size_reason(command):
         raise ValueError('command inspection budget exceeded')
     if shell.executable_shell_structure_has_open_state(command):
         raise ValueError('unparseable shell input')
-    command = forwarding.preserve_empty_words(command)
     tokens, positions, segments, scopes = shell._parse_bash(command)
     syntax.hide_function_bodies(tokens, positions)
     bindings = dict(bindings or {})
@@ -165,10 +173,15 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
     # Quoted heredoc prose is data: its backticks/apostrophes are not substitutions.
     nested = [(body, seg) for body, seg, _, _ in shell._executable_subcommands(syntax.mask_heredoc_bodies(command, shell))]
     function_expansion = shell._impl_module('function_expansion')
-    def bind_function(body, args, local=None):
+    def bind_function(body, args, local=None, source=None):
         values = dict(bindings); values.update(local or {})
-        return forwarding.bind(body, [resolve_word(a, values) for a in args], shell,
-                               zero=_shell_zero, ifs=values.get('IFS', ' \t\n'))
+        proof = syntax.split_words(source or command, shell)
+        resolved = [resolve_word(a, values) for a in args]
+        arity = {}
+        for raw, value in zip(args, resolved):
+            arity[value] = arity.get(value, False) or proof.get(raw, True)
+        return forwarding.bind(body, resolved, shell, zero=_shell_zero,
+                               ifs=values.get('IFS', ' \t\n'), split_args=lambda a: arity.get(a, True))
     token = function_expansion._argument_expander.set(bind_function)
     try:
         invoked = shell._invoked_alias_bodies(command)
@@ -227,7 +240,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             raise ValueError('agent changes to the confirmation trust anchor or pinned hook tree are forbidden')
         if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
-        if assignment:
+        if assignment or word == '':
             continue  # a prefix assignment is not the executable; the next word is
         if base not in syntax.DATA and opaque_executable(word, args, _script):
             raise ValueError('unresolved executable for protected operation')
@@ -270,7 +283,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                 if tail is not None:
                     zero = tail[0] if tail else None if _unknown_tail else base
                     body = forwarding.bind(body, tail[1:], shell, zero, _unknown_tail,
-                                           current.get('IFS', ' \t\n'))
+                                           current.get('IFS', ' \t\n'), split_args=lambda a: split_map.get(a, True))
                 result += operations(body, cwd, alias_lookup, depth + 1, current, _state, _script=True, _shell_zero=zero if tail is not None else None)
             else:
                 if any(op == '<<<' for op, _ in redirects):

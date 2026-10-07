@@ -101,8 +101,7 @@ def argv_at(tokens, segments, scopes, i):
             args.append('${process-substitution}'); j = process_end(j); continue
         if word in ('>', '>>', '>|', '<', '<<', '<<<', '<>', '&>', '&>>'):
             operator = word
-            # A descriptor immediately before a redirection is not argv.
-            if args and args[-1].isdigit(): args.pop()
+            # Lexical fd prefixes were removed by the opted-in tokenizer.
             j += 1
             if j < len(tokens) and tokens[j] == '&': j += 1
             if j >= len(tokens) or segments[j] != segments[i]:
@@ -616,6 +615,8 @@ def split_words(command, shell):
         if quote is None and (char.isspace() or char in ';|&()<>'):
             flush(); i += 1; continue
         if char == '$' and quote is None and re.match(r'[{A-Za-z0-9_@*#?!$-]', text[i + 1:i + 2]):
+            splits = True
+        if quote is None and char in '*?[{':
             splits = True
         if quote == '"' and char in '{}':
             char = '\ue000' if char == '{' else '\ue001'

@@ -4,28 +4,7 @@ import shlex
 
 _PARAMETER = re.compile(r'\$(?:([0-9@*])|\{([0-9]+|[@*])(?::\s*(-?[0-9]+)(?::([0-9]+))?)?\})')
 UNKNOWN = '${positional-unknown}'
-EMPTY = '__golems_empty_argv__'
-
-
-def preserve_empty_words(source):
-    """The shared lexer drops empty quoted words; retain their argv positions."""
-    out, quote, i = [], None, 0
-    while i < len(source):
-        char = source[i]
-        if char == '\\' and quote != "'":
-            out.append(source[i:i+2]); i += 2; continue
-        if quote is None and char in "\"'" and source[i:i+2] == char*2:
-            before, after = source[i-1:i], source[i+2:i+3]
-            if (not before or before.isspace() or before in ';|&()<>') and (
-                    not after or after.isspace() or after in ';|&()<>'):
-                out.append(char+EMPTY+char); i += 2; continue
-        if char == "'" and quote != '"': quote = None if quote == "'" else "'"
-        elif char == '"' and quote != "'": quote = None if quote == '"' else '"'
-        out.append(char); i += 1
-    return ''.join(out)
-
-
-def bind(body, arguments, shell, zero=None, unknown_tail=False, ifs=' \t\n'):
+def bind(body, arguments, shell, zero=None, unknown_tail=False, ifs=' \t\n', split_args=None):
     definition_mask = shell._mask_function_definition_bodies(body)
     tokens, positions, _, _ = shell._parse_bash(definition_mask)
     if any(positions[j] and t in ('shift', 'set') for j,t in enumerate(tokens)):
@@ -33,9 +12,17 @@ def bind(body, arguments, shell, zero=None, unknown_tail=False, ifs=' \t\n'):
     if any(t.startswith('IFS=') for t in tokens): ifs = None
     out, quote, i = [], None, 0
     def value(raw):
-        if raw == EMPTY: return ''
         return UNKNOWN if any(c in raw for c in '$`*?[]{}') else raw
     args = [value(a) for a in arguments]
+    for j, raw in enumerate(arguments):
+        normalized = raw.replace('\ue000', '{').replace('\ue001', '}')
+        variadic = '$@' in normalized or bool(re.search(r'\$\{[^}]*@[^}]*\}', normalized))
+        if args[j] == UNKNOWN and (variadic or split_args is None or split_args(raw)):
+            # An expansion can contribute zero or many fields, shifting every
+            # later positional. A quoted scalar still contributes one field.
+            args[j:] = [UNKNOWN] * (len(args)-j)
+            unknown_tail = True
+            break
     zero = value(zero) if zero is not None else UNKNOWN
     while i < len(body):
         char = body[i]
@@ -48,7 +35,7 @@ def bind(body, arguments, shell, zero=None, unknown_tail=False, ifs=' \t\n'):
         elif quote != "'" and definition_mask[i] == char and (body.startswith('$(', i) and not body.startswith('$((', i) or char == '`'):
             found = shell._dollar_substitution(body, i) if char == '$' else shell._backtick_substitution(body, i)
             if found:
-                inner = bind(found[0], arguments, shell, zero, unknown_tail, ifs)
+                inner = bind(found[0], arguments, shell, zero, unknown_tail, ifs, split_args)
                 out.append('$(' + inner + ')' if char == '$' else '`' + inner + '`')
                 i = found[1]; continue
         elif quote != "'" and definition_mask[i] == char and (match := _PARAMETER.match(body, i)):
