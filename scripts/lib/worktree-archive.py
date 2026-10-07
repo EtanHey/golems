@@ -11,12 +11,13 @@
 """
 import hashlib
 import os
-import platform
+import shutil
+import stat
 import subprocess
 import sys
 
-# AIDEV-NOTE: the ONLY list of regenerable names. Anything ignored and not named here is user
-# data (nested docs.local, CLAUDE.local.md, .env, notes) and is archived before removal.
+# Names are disposable only at known cache roots. An ignored data ancestor or
+# any docs.local directory protects every descendant, including these names.
 REGENERABLE = {
     "node_modules", ".venv", "venv", ".build", ".next", "dist", "build", "target", "__pycache__",
     ".pytest_cache", ".ruff_cache", ".mypy_cache", ".turbo", ".parcel-cache", ".swiftpm",
@@ -36,7 +37,7 @@ def nested_git(root):
         if here != "." and (".git" in dirnames or ".git" in filenames):
             print(here)
             return 3
-        dirnames[:] = [d for d in dirnames if not regenerable(d) and not (here == "." and d == ".git")]
+        dirnames[:] = [d for d in dirnames if not (here == "." and d == ".git")]
     return 0
 
 
@@ -44,21 +45,50 @@ def _raise(err):
     raise err
 
 
-def has_regenerable(top):
-    for _dirpath, dirnames, filenames in os.walk(top, onerror=_raise):
-        if any(regenerable(n) for n in dirnames + filenames):
-            return True
-    return False
-
-
 def expand(root, rel):
-    """The maximal subtrees of root/rel that contain no regenerable name (those are dropped)."""
-    if any(regenerable(part) for part in rel.split("/")):
-        return []
-    full = os.path.join(root, rel)
-    if os.path.islink(full) or not os.path.isdir(full) or not has_regenerable(full):
+    """Only known ignored cache roots are disposable, never data inside an ignored ancestor."""
+    parts = rel.split("/")
+    if "docs.local" in parts:
         return [rel]
-    return [leaf for child in sorted(os.listdir(full)) for leaf in expand(root, rel + "/" + child)]
+    full = os.path.join(root, rel)
+    if os.path.islink(full):
+        return [rel]
+    if os.path.isdir(full):
+        # ls-files --directory aggregates directories whose children are all
+        # ignored, even when the parent itself has no ignore rule (e.g. ui/).
+        ignored = subprocess.run(["git", "-C", root, "check-ignore", "-q", "--", rel + "/"])
+        if ignored.returncode == 1:
+            return [leaf for child in sorted(os.listdir(full))
+                    for leaf in expand(root, rel + "/" + child)]
+        ignored.check_returncode()
+    canonical = (len(parts) == 1 or parts[:-1] == ["ui"] or
+                 (len(parts) == 3 and parts[0] == "packages") or
+                 parts[-1] == "__pycache__")
+    if not canonical or not regenerable(parts[-1]):
+        return [rel]
+    # Even a cache root can contain durable docs.local receipts.
+    for _here, dirs, _files in os.walk(os.path.join(root, rel), onerror=_raise):
+        if "docs.local" in dirs:
+            return [rel]
+    return []
+
+
+def copy_regular(src, dst):
+    """Never open FIFOs/devices/sockets, and never follow symlinks."""
+    mode = os.lstat(src).st_mode
+    if stat.S_ISLNK(mode):
+        os.symlink(os.readlink(src), dst)
+    elif stat.S_ISREG(mode):
+        shutil.copy2(src, dst)
+    elif stat.S_ISDIR(mode):
+        os.makedirs(dst)
+        for name in sorted(os.listdir(src)):
+            copy_regular(os.path.join(src, name), os.path.join(dst, name))
+        shutil.copystat(src, dst)
+
+
+def escape_field(value):
+    return str(value).replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n").replace("\r", "\\r")
 
 
 def sha256(path):
@@ -86,8 +116,10 @@ def manifest(base, rel):
         if os.path.islink(full):
             target = os.readlink(full)
             out.append((p, "symlink", len(target), hashlib.sha256(target.encode()).hexdigest()))
-        else:
+        elif stat.S_ISREG(os.lstat(full).st_mode):
             out.append((p, "file", os.lstat(full).st_size, sha256(full)))
+        else:
+            out.append((p, "special", os.lstat(full).st_size, "-"))
     return out
 
 
@@ -111,18 +143,16 @@ def archive(root, dests):
         src = os.path.join(root, rel)
         dst = os.path.join(dest, rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
-        flags = ["-cRp"] if platform.system() == "Darwin" else ["-Rp"]
-        if subprocess.run(["cp", *flags, src, dst]).returncode != 0:
-            print("copy failed for " + rel + " into " + dest)
-            return 1
-        want, got = manifest(root, rel), manifest(dest, rel)
-        if want != got:
+        copy_regular(src, dst)
+        want = manifest(root, rel)
+        got = manifest(dest, rel) if os.path.lexists(dst) else []
+        if [row for row in want if row[1] != "special"] != got:
             print("copy unverified for " + rel + " in " + dest)
             return 1
         rows.extend(want)
     with open(os.path.join(dest, "RECEIPT.tsv"), "w") as fh:
         for row in rows:
-            fh.write("\t".join(str(x) for x in row) + "\n")
+            fh.write("\t".join(escape_field(x) for x in row) + "\n")
     print(f"archived {len(keep)} path(s), {len(rows)} file(s) to {dest} (receipt {dest}/RECEIPT.tsv)")
     return 0
 

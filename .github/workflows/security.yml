@@ -137,12 +137,34 @@ jobs:
           fi
           echo "All clear — no broken placeholders found."
 
-  publish-boundary:
-    name: Publish Boundary Guard
+  publish-boundary-shards:
+    name: Publish Boundary Shard (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    # The full ratchet from genesis (nightly, manual) took 53 minutes at 465
-    # commits and grows with every commit; PR and push ranges take seconds.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 120 || 30 }}
+    outputs:
+      shard_0: ${{ matrix.shard == 0 && steps.scan.outcome || '' }}
+      shard_1: ${{ matrix.shard == 1 && steps.scan.outcome || '' }}
+      shard_2: ${{ matrix.shard == 2 && steps.scan.outcome || '' }}
+      shard_3: ${{ matrix.shard == 3 && steps.scan.outcome || '' }}
+      shard_4: ${{ matrix.shard == 4 && steps.scan.outcome || '' }}
+      shard_5: ${{ matrix.shard == 5 && steps.scan.outcome || '' }}
+      shard_6: ${{ matrix.shard == 6 && steps.scan.outcome || '' }}
+      shard_7: ${{ matrix.shard == 7 && steps.scan.outcome || '' }}
+      shard_8: ${{ matrix.shard == 8 && steps.scan.outcome || '' }}
+      shard_9: ${{ matrix.shard == 9 && steps.scan.outcome || '' }}
+      shard_10: ${{ matrix.shard == 10 && steps.scan.outcome || '' }}
+      shard_11: ${{ matrix.shard == 11 && steps.scan.outcome || '' }}
+      shard_12: ${{ matrix.shard == 12 && steps.scan.outcome || '' }}
+      shard_13: ${{ matrix.shard == 13 && steps.scan.outcome || '' }}
+      shard_14: ${{ matrix.shard == 14 && steps.scan.outcome || '' }}
+      shard_15: ${{ matrix.shard == 15 && steps.scan.outcome || '' }}
+    # The serial genesis ratchet reached 112 minutes, then timed out. Split
+    # commits, not paths: every historical tree retains the complete scan.
+    # PR/push ranges retain one shard. The matrix union is genesis..HEAD.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]' || '[0]') }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -154,8 +176,14 @@ jobs:
       - name: Test ratchet base selection
         run: bash scripts/tests/boundary-history-base.test.sh
 
+      - name: Test history shard coverage
+        run: bash scripts/tests/boundary-history-shards.test.sh
+
       - name: Enforce publication boundary
+        id: scan
         env:
+          PUBLISH_BOUNDARY_HISTORY_SHARD_INDEX: ${{ matrix.shard }}
+          PUBLISH_BOUNDARY_HISTORY_SHARD_COUNT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 16 || 1 }}
           # Trusted runs receive the complete private policy out of band. Fork PRs
           # cannot read this secret and intentionally run the public tree-clean scan.
           PUBLISH_BOUNDARY_PRIVATE_POLICY_YAML: ${{ secrets.PUBLISH_BOUNDARY_PEPPER }}
@@ -175,6 +203,33 @@ jobs:
           PUBLISH_BOUNDARY_HISTORY_BASE="$(bash scripts/ci/boundary-history-base.sh "$GITHUB_EVENT_NAME" "$PUBLISH_BOUNDARY_HISTORY_BASE" "$PUSH_BEFORE")"
           export PUBLISH_BOUNDARY_HISTORY_BASE
           bash scripts/check-publish-boundary.sh
+
+  publish-boundary:
+    name: Publish Boundary Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [publish-boundary-shards]
+    if: always()
+    steps:
+      - name: Require the exact successful shard set
+        env:
+          SHARDS_RESULT: ${{ needs.publish-boundary-shards.result }}
+          SHARD_OUTPUTS: ${{ toJSON(needs.publish-boundary-shards.outputs) }}
+          EXPECTED_COUNT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 16 || 1 }}
+        run: |
+          if [[ "$SHARDS_RESULT" != success ]]; then
+            echo "Publication boundary shards did not all succeed."
+            exit 1
+          fi
+          python3 - <<'PYTHON'
+          import json
+          import os
+          evidence = json.loads(os.environ["SHARD_OUTPUTS"])
+          expected = {f"shard_{i}": "success" for i in range(int(os.environ["EXPECTED_COUNT"]))}
+          if evidence != expected:
+              raise SystemExit("Publication boundary evidence is missing, unexpected, or unsuccessful.")
+          print(f"Verified all {len(expected)} publication boundary shard receipts.")
+          PYTHON
 
   summary:
     name: Security Summary

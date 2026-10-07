@@ -1,55 +1,5 @@
 #!/usr/bin/env bats
-
-setup() {
-  REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-  WORKTREE_GC="$REPO_ROOT/scripts/worktree-gc.sh"
-  TEST_ROOT="$(mktemp -d)"
-}
-
-teardown() {
-  rm -rf "$TEST_ROOT"
-}
-
-make_fixture_repo() {
-  local name="$1"
-  local base_branch="${2:-main}"
-  local remote="$TEST_ROOT/$name-origin.git"
-  local seed="$TEST_ROOT/$name-seed"
-  local repo="$TEST_ROOT/$name"
-
-  git init -q --bare "$remote"
-  git init -q -b "$base_branch" "$seed"
-  printf 'fixture\n' > "$seed/fixture.txt"
-  git -C "$seed" add fixture.txt
-  git -C "$seed" -c user.name=Fixture -c user.email=fixture@example.invalid \
-    commit -qm 'initial fixture'
-  git -C "$seed" remote add origin "$remote"
-  git -C "$seed" push -q -u origin "$base_branch"
-  git -C "$remote" symbolic-ref HEAD "refs/heads/$base_branch"
-  git clone -q "$remote" "$repo"
-
-  printf '%s\n' "$repo"
-}
-
-add_branch_worktree() {
-  local repo="$1"
-  local branch="$2"
-  local base_ref="${3:-origin/main}"
-  local worktree="$repo/.worktrees/$branch-worktree"
-
-  git -C "$repo" worktree add -q -b "$branch" "$worktree" "$base_ref"
-  (cd "$worktree" && pwd -P)
-}
-
-commit_fixture_file() {
-  local worktree="$1"
-  local filename="$2"
-
-  printf 'fixture change\n' > "$worktree/$filename"
-  git -C "$worktree" add "$filename"
-  git -C "$worktree" -c user.name=Fixture -c user.email=fixture@example.invalid \
-    commit -qm "add $filename"
-}
+load lib/worktree-gc-fixtures
 
 @test "refuses a worktree with uncommitted files" {
   repo="$(make_fixture_repo dirty-repo)"
@@ -582,7 +532,7 @@ commit_fixture_file() {
 
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
 
-  [ "$status" -eq 1 ] &&
+  [ "$status" -eq 3 ] &&
     [[ "$output" == *" · $dirty · apply-dirty · "*"KEEP-dirty"* ]] &&
     [[ "$output" == *" · $unpushed · apply-unpushed · "*"KEEP-unpushed"* ]] &&
     [ -f "$dirty/new.txt" ] && [ -f "$unpushed/local-only.txt" ]

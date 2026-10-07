@@ -7,6 +7,12 @@ from pathlib import Path
 
 import pytest
 
+@pytest.fixture(autouse=True)
+def scheduling_defaults(monkeypatch):
+    monkeypatch.setenv("GOLEMS_HEAVY_MIN_FREE_GB", "0")
+    monkeypatch.setenv("GOLEMS_HEAVY_SUITE_SLOTS", "1")
+
+
 fixture = pytest.fixture
 parametrize = pytest.mark.parametrize
 
@@ -112,12 +118,14 @@ def test_nested_suite_refuses_without_acquiring_another_slot(monkeypatch):
 def test_queue_and_load_timeout_never_execute_unqueued(tmp_path, monkeypatch, blocked):
     monkeypatch.delenv("GOLEMS_HEAVY_SUITE_HELD", raising=False)
     monkeypatch.setattr(gate.Path, "home", lambda: tmp_path)
+    monkeypatch.setenv("GOLEMS_HEAVY_MAX_LOAD", "20")
+    monkeypatch.setattr(gate.os, "getloadavg", lambda: (0, 0, 0))
     ticks = iter([0, 1801])
     monkeypatch.setattr(gate.time, "monotonic", lambda: next(ticks))
     if blocked == "lock":
         def busy(*args):
             raise BlockingIOError("synthetic held slot")
-        monkeypatch.setattr(gate.fcntl, "flock", busy)
+        monkeypatch.setattr(gate.heavy_suite.fcntl, "flock", busy)
     else:
         monkeypatch.setattr(gate.os, "getloadavg", lambda: (21, 21, 21))
     with pytest.raises(ValueError, match="timed out"):
@@ -137,7 +145,7 @@ def test_slot_honors_shared_lock_override(tmp_path, monkeypatch):
     monkeypatch.setenv("GOLEMS_HEAVY_LOCK", str(lock))
     monkeypatch.setattr(gate.os, "getloadavg", lambda: (0, 0, 0))
     with gate.slot():
-        assert lock.exists()
+        assert lock.with_name("shared.slot0.lock").exists()
 
 
 def test_fully_absent_private_root_warns(tmp_path, capsys):
@@ -386,3 +394,75 @@ def test_stale_active_fixture_is_pruned(tmp_path, monkeypatch, stale):
     os.utime(old, (1, 1))  # Writing the marker must not make the old fixture newest.
     gate.prune_fixtures()
     assert not old.exists() and len(list(root.iterdir())) == 5
+
+
+def test_private_load_wait_does_not_hold_lock(tmp_path, monkeypatch):
+    monkeypatch.delenv("GOLEMS_HEAVY_SUITE_HELD", raising=False)
+    lock = tmp_path / "shared.lock"
+    monkeypatch.setenv("GOLEMS_HEAVY_LOCK", str(lock))
+    monkeypatch.setenv("GOLEMS_HEAVY_MAX_LOAD", "20")
+    readings = iter([21, 20]); waits = []
+    def load():
+        with lock.open("a+") as probe:
+            try: gate.heavy_suite.fcntl.flock(probe, gate.heavy_suite.fcntl.LOCK_EX | gate.heavy_suite.fcntl.LOCK_NB)
+            except BlockingIOError: raise AssertionError("private load wait holds lock") from None
+            gate.heavy_suite.fcntl.flock(probe, gate.heavy_suite.fcntl.LOCK_UN)
+        return (next(readings), 0, 0)
+    monkeypatch.setattr(gate.os, "getloadavg", load)
+    monkeypatch.setattr(gate.time, "sleep", lambda seconds: waits.append(seconds))
+    with gate.slot(): pass
+    assert waits == [1]
+
+
+@parametrize("override,limit", [(None, 28), ("40", 40)])
+def test_private_cpu_default_and_load_override_boundary(tmp_path, monkeypatch, override, limit):
+    monkeypatch.delenv("GOLEMS_HEAVY_SUITE_HELD", raising=False)
+    monkeypatch.setenv("GOLEMS_HEAVY_LOCK", str(tmp_path / "shared.lock"))
+    monkeypatch.setattr(gate.os, "cpu_count", lambda: 14)
+    if override is None: monkeypatch.delenv("GOLEMS_HEAVY_MAX_LOAD", raising=False)
+    else: monkeypatch.setenv("GOLEMS_HEAVY_MAX_LOAD", override)
+    monkeypatch.setattr(gate.os, "getloadavg", lambda: (limit, 0, 0))
+    def unexpected_sleep(seconds): raise AssertionError("waited at configured load boundary")
+    monkeypatch.setattr(gate.time, "sleep", unexpected_sleep)
+    with gate.slot(): pass
+
+
+@parametrize("value", ["nan", "inf", "-1", "invalid"])
+def test_private_invalid_load_limit_refuses(tmp_path, monkeypatch, value):
+    monkeypatch.delenv("GOLEMS_HEAVY_SUITE_HELD", raising=False)
+    monkeypatch.setenv("GOLEMS_HEAVY_LOCK", str(tmp_path / "shared.lock"))
+    monkeypatch.setenv("GOLEMS_HEAVY_MAX_LOAD", value)
+    monkeypatch.setattr(gate.os, "getloadavg", lambda: (0, 0, 0))
+    with pytest.raises(ValueError):
+        with gate.slot(): pytest.fail("invalid load threshold ran")
+
+
+def test_private_gate_uses_same_semaphore_as_wrapper(tmp_path, monkeypatch):
+    monkeypatch.delenv("GOLEMS_HEAVY_SUITE_HELD", raising=False)
+    monkeypatch.setenv("GOLEMS_HEAVY_LOCK", str(tmp_path / "shared.lock"))
+    monkeypatch.setattr(gate.os, "getloadavg", lambda: (0, 0, 0))
+    with gate.slot():
+        fd, index, legacy_fd = gate.heavy_suite.acquire_slot(.01, 0, 0)
+        assert fd is None and index is None and legacy_fd is None, "private gate bypassed the shared semaphore"
+
+
+def test_private_gate_memory_timeout_refuses(tmp_path, monkeypatch):
+    monkeypatch.delenv("GOLEMS_HEAVY_SUITE_HELD", raising=False)
+    monkeypatch.setenv("GOLEMS_HEAVY_LOCK", str(tmp_path / "shared.lock"))
+    monkeypatch.setenv("GOLEMS_HEAVY_MIN_FREE_GB", "6")
+    monkeypatch.setattr(gate.heavy_suite, "free_inactive_bytes", lambda: 0)
+    ticks = iter([0, 1801]); monkeypatch.setattr(gate.time, "monotonic", lambda: next(ticks))
+    with pytest.raises(ValueError, match="refusing START"):
+        with gate.slot(): pytest.fail("low-memory gate executed")
+
+
+def test_private_slot_descriptors_do_not_survive_child_exec(tmp_path, monkeypatch):
+    import subprocess, sys
+    monkeypatch.delenv("GOLEMS_HEAVY_SUITE_HELD", raising=False)
+    monkeypatch.setenv("GOLEMS_HEAVY_LOCK", str(tmp_path / "shared.lock"))
+    monkeypatch.setattr(gate.os, "getloadavg", lambda: (0, 0, 0))
+    probe = f"import os; from pathlib import Path; targets=[os.stat(p) for p in Path({str(tmp_path)!r}).glob('shared*.lock')];\nfor fd in os.listdir('/dev/fd'):\n try: st=os.fstat(int(fd))\n except OSError: continue\n assert all((st.st_dev,st.st_ino)!=(t.st_dev,t.st_ino) for t in targets), 'coordination fd inherited'"
+    with gate.slot():
+        result = subprocess.run([sys.executable, "-c", probe], close_fds=False,
+                                capture_output=True, text=True, timeout=5)
+        assert result.returncode == 0, result.stderr
