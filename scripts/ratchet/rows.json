@@ -2,6 +2,15 @@
   "schema": 1,
   "rows": [
     {
+      "id": "positional-forwarding",
+      "metric": "human-confirm binds visible shell/function argv and refuses unknown forwarding (class fixtures, real hook)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_positional_forwarding.py"
+    },
+    {
       "id": "xargs-identity",
       "metric": "human-confirm xargs option grammar, replacement and stdin identity (class fixtures through the real hook)",
       "kind": "unit",
