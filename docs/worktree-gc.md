@@ -48,9 +48,13 @@ checklist:
 - Retain a receipt per host: host identity, full installed GC commit, actual apply
   command, start/end timestamps, exit/completion disposition and full durable audit
   log, verified archive receipts and all KEEP/failure data.
-- Each host must have a successful census, no registry/census KEEP-undetermined
-  rows, and actual nonzero lane removals with matching REMOVING/REMOVED audit rows
-  and verified archive receipts. There is no zero-removal exception.
+- Each host must have a successful, complete authoritative current-session census
+  covering all live lanes on that host. Retain coverage evidence bound to that host
+  and the actual run, showing all live lanes covered. A syntactically valid empty
+  or subset registry does not prove completeness. There must be no registry/census
+  KEEP-undetermined rows, and actual nonzero lane removals with matching
+  REMOVING/REMOVED audit rows and verified archive receipts. There is no
+  zero-removal exception.
 - The lead verifies these conditions and containment on each host and links both
   receipts in the restoration PR. Neither host may be inferred from the other.
 - Remove only this row's `report_only` field in a normal reviewed commit, retaining
