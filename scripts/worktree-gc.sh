@@ -691,6 +691,7 @@ if [[ -n "$explicit_repo" ]]; then
 else
   shopt -s nullglob
   for candidate in "$HOME"/Gits/*; do
+    [[ -L "$candidate" ]] && continue # Alias targets are enumerated once by their real root.
     if [[ -d "$candidate/.git" ]]; then
       repos+=("$candidate")
     fi
