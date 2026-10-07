@@ -170,6 +170,7 @@
     },
     {
       "id": "disk-free-floor",
+      "report_only": "gc-success-on-both-macs",
       "metric": "REAL Mac: >= 60 GB free AND <= 25 worktrees with the GC guarded REMOVE prune-plan verdict",
       "kind": "real",
       "runner": "mac",

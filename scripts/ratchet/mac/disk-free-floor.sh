@@ -12,6 +12,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 GC="$HERE/../../worktree-gc.sh"
 IDLE="${WORKTREE_GC_IDLE_HOURS:-6}"
 
+[[ "$FLOOR_GB" =~ ^[0-9]+$ && "$CEILING" =~ ^[0-9]+$ ]] || { echo "invalid disk thresholds" >&2; exit 2; }
 free_kb="$(df -Pk "$GITS" | awk 'NR==2 {print $4}')"
 [[ "$free_kb" =~ ^[0-9]+$ ]] || { echo "cannot measure free disk" >&2; exit 2; }
 free_gb=$((free_kb / 1048576))
@@ -32,4 +33,7 @@ for repo in "$GITS"/*; do
 done
 
 echo "free_gb=$free_gb floor=$FLOOR_GB merged_worktrees=$merged ceiling=$CEILING"
-[[ "$free_gb" -ge "$FLOOR_GB" && "$merged" -le "$CEILING" ]]
+health=false
+if [[ "$free_gb" -ge "$FLOOR_GB" && "$merged" -le "$CEILING" ]]; then health=true; fi
+printf '{"free_gb":%s,"floor":%s,"merged_worktrees":%s,"ceiling":%s,"health":%s}\n' "$free_gb" "$FLOOR_GB" "$merged" "$CEILING" "$health"
+[[ "$health" == true ]]
