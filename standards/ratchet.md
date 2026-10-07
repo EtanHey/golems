@@ -191,3 +191,36 @@ the open lease PR checkout after the lead installs current master. After the lea
 (or dispatch the workflow); posting a comment alone does not rerun CI. This prevents a green CI
 claim for merged-but-uninstalled guarded changes. It does not continuously inspect the machine:
 after a passing receipt, later local tampering still requires a fresh lead live run to detect.
+
+## Installed skill parity on both Macs
+
+`installed-skill-parity` is a read-only `live` row: it inventories the local and SSH host's
+`.claude/skills`, `.agents/skills`, and `.codex/skills` afresh. Names, entry shapes, readable
+SKILL.md catalogs, supporting file hashes and executable bits must match. HOME prefixes are
+normalized; bounded mirrored sources require explicit per-entry target aliases. Finder files,
+bytecode caches, and namespace metadata outside actual skill trees are excluded. Harness-owned
+nested skills are measured without writing their install. Missing SSH, Python, roots, content
+or the required-readable manifest fails; there is no capability skip.
+
+Set `RATCHET_SKILL_HOST` and `RATCHET_SKILL_REQUIREMENTS`; optionally set
+`RATCHET_SKILL_IDENTITY` to select an existing SSH identity. The private requirements JSON is
+`{"schema":1,"roots":{"<root>":{"readable":["class-a","namespace/class-b"],
+"allow_broken":[],"allow_empty":[],"target_aliases":{}}}}`, with all three roots and nonempty
+readable lists. Freeze required catalogs from the approved source before reconciliation;
+never regenerate them to excuse a lost skill. An alias maps an entry to its ordered local,
+remote normalized targets, not to a content exception. Keep host identities and real manifests
+in durable private evidence, never public fixtures. The command also supports explicit
+`--left/--right` fixture inputs, labeled `fixture`; the live row never supplies those flags.
+
+Name/content parity and required readability are separate output fields. Explicitly approved
+source-invalid entries remain in `disclosed_invalid`; they cannot satisfy a required-readable
+entry. The initial source had one dangling entry on both hosts and an empty namespace on both;
+its approved private manifest preserves these shapes without claiming zero dangling links or
+restored content. Account-owned metadata and active sessions remain untouched. This filesystem
+row does not prove UI/session reload; use a safe installed catalog command separately.
+
+The initial failure/fix are frozen private before/after host-inventory pairs (`fixture-hash`),
+with the same source commit on both sides: the repair changed the remote installed catalog,
+not the source checkout's tracked HEAD. Synthetic class-only tests run through the Python
+skill suite and reject missing/extra/broken/hash/mode/target drift, including required skills
+lost on both hosts. Fresh live SSH proof accompanies the saved RED/GREEN pairs.
