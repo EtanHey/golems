@@ -41,17 +41,27 @@ of claiming all four real rows passed.
 
 Enforcement resumes only after the lead has durable proof of one successful real
 GC run on BOTH the MBP and M1. Merge, installation, a dry-run or a prune plan does
-not satisfy that milestone. Restoration checklist:
+not satisfy that milestone. Completed apply/nightly exit 0, absence of a FAILED
+marker, zero REMOVE plans or zero eligible lanes also do not qualify. Restoration
+checklist:
 
 - Retain a receipt per host: host identity, full installed GC commit, actual apply
   command, start/end timestamps, exit/completion disposition and full durable audit
-  log. Include archive/removal receipts where applicable and all KEEP/failure data.
-- The lead verifies successful completion and containment on each host and links
-  both receipts in the restoration PR. Neither host may be inferred from the other.
+  log, verified archive receipts and all KEEP/failure data.
+- Each host must have a successful census, no registry/census KEEP-undetermined
+  rows, and actual nonzero lane removals with matching REMOVING/REMOVED audit rows
+  and verified archive receipts. There is no zero-removal exception.
+- The lead verifies these conditions and containment on each host and links both
+  receipts in the restoration PR. Neither host may be inferred from the other.
 - Remove only this row's `report_only` field in a normal reviewed commit, retaining
   its measurement, thresholds and history. Do not turn a low-disk result into PASS.
 - Rerun the current-head tables/consumer checks: unhealthy health blocks the
   aggregate again; source failures and unrelated failures must still block.
+
+Separate follow-up: nightly can complete with exit 0 while registry failure keeps
+every lane. A distinct alarm/exit for that stall is not implemented here; it never
+counts as restoration evidence. The row stays report-only until BOTH qualifying
+host runs are proved.
 
 The report-only condition changes merge gating, not the creation floor or any
 permission to delete. Real GC, activation and installation remain lead-owned.
