@@ -89,6 +89,10 @@ def check(command, initial, shell, syntax):
         return
     values = {name: evidence(value, {}, syntax, ' \t\n') for name, value in initial.items()}
     ifs = initial.get('IFS', ' \t\n')
+    def assign(name, value):
+        nonlocal ifs
+        values[name] = value
+        if name == 'IFS': ifs = value.literal
     for i, word in enumerate(words):
         if not positions[i] or syntax.looked_up(words, positions, i):
             continue
@@ -100,9 +104,7 @@ def check(command, initial, shell, syntax):
             if assignment['append'] or assignment['subscript']:
                 old = values.get(name, Evidence(unknown=True))
                 new = Evidence(new.guarded or old.guarded, True)
-            values[name] = new
-            if name == 'IFS':
-                ifs = new.literal
+            assign(name, new)
             continue
         base = syntax.executable(word)[0]
         if base in _DECLARATIONS:
@@ -115,19 +117,22 @@ def check(command, initial, shell, syntax):
                 if match:
                     name = match['name']; new = evidence(arg.split('=', 1)[1], values, syntax, ifs)
                     old = values.get(name, Evidence()) if match['append'] or match['subscript'] else Evidence()
-                    values[name] = Evidence(new.guarded or old.guarded,
-                                            new.unknown or unknown or bool(match['append'] or match['subscript']))
+                    uncertain = new.unknown or unknown or bool(match['append'] or match['subscript'])
+                    assign(name, Evidence(new.guarded or old.guarded, uncertain,
+                                          None if uncertain else new.literal))
                 elif re.fullmatch(_NAME, arg) and arg not in values:
-                    values[arg] = Evidence(unknown=True)
+                    assign(arg, Evidence(unknown=True))
         elif base == 'read':
-            for name in read_destinations(args): values[name] = Evidence(unknown=True)
+            for name in read_destinations(args):
+                assign(name, Evidence(unknown=True))
         elif base in ('readarray', 'mapfile'):
             # Even a visible input is data with runtime splitting/array rules.
             names = [a for a in args if re.fullmatch(_NAME, a)]
-            for name in names or ['MAPFILE']: values[name] = Evidence(unknown=True)
+            for name in names or ['MAPFILE']: assign(name, Evidence(unknown=True))
         elif base == 'printf' and '-v' in args:
             j = args.index('-v') + 1
-            if j < len(args) and re.fullmatch(_NAME, args[j]): values[args[j]] = Evidence(unknown=True)
+            if j < len(args) and re.fullmatch(_NAME, args[j]):
+                assign(args[j], Evidence(unknown=True))
         elif base == 'unset':
             for name in args:
                 if re.fullmatch(_NAME, name): values.pop(name, None)
@@ -137,7 +142,8 @@ def check(command, initial, shell, syntax):
         hidden = guarded_text(normal(word), syntax, ifs) or any(v.guarded for v in related)
         # A zero-argument substitution/unknown assigned value can produce the
         # entire executable and argv. A normal data operand cannot enter here.
-        whole = not args and ('${command-substitution}' in normal(word) or any(v.unknown for v in related))
+        whole = not args and ('${command-substitution}' in normal(word) or
+                              any(v.unknown for v in related) or bool(related) and ifs is None)
         exact = _EXACT.fullmatch(normal(word))
         bound = values.get(exact[1] or exact[2]) if exact else None
         known = bound is not None and bound.literal is not None and not any(c.isspace() for c in bound.literal)
