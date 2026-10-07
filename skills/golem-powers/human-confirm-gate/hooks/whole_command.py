@@ -159,10 +159,10 @@ def check(command, initial, shell, syntax):
             scopes.append({'if':'fi', 'for':'done', 'while':'done', 'until':'done',
                            'case':'esac', '{':'}', '(' : ')'}[word])
             continue
-        if scopes and word == scopes[-1]:
+        if scopes and word == scopes[-1] and (beginning or positions[i] or word in ('}', ')')):
             scopes.pop(); beginning = True
             continue
-        if word in ('then', 'do', 'else', 'elif') and scopes:
+        if beginning and word in ('then', 'do', 'else', 'elif') and scopes:
             beginning = True
             continue
         if not positions[i] or syntax.looked_up(words, positions, i):
