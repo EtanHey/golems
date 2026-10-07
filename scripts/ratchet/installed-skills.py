@@ -88,6 +88,7 @@ def validate(document, required=False):
                 if (not isinstance(targets, list) or len(targets) != 2 or
                         any(not isinstance(t, str) or not t.startswith('$HOME/') for t in targets)):
                     raise ValueError('malformed target alias')
+                for target in targets: name(target[len('$HOME/'):], nested=True)
             continue
         object_keys(record, ('exists', 'entries'), root)
         if type(record['exists']) is not bool or not isinstance(record['entries'], dict):
@@ -215,19 +216,53 @@ def compare(left, right, requirements):
                 disclosed_invalid=invalid, errors=errors)
 
 
+def load_config(path):
+    config = Path(path)
+    try:
+        metadata = config.lstat()
+    except OSError:
+        raise ValueError('RATCHET_SKILL_CONFIG missing; create owner-only installed-skills.json')
+    if not config.is_file() or config.is_symlink() or metadata.st_uid != os.getuid() or metadata.st_mode & 0o077:
+        raise ValueError('RATCHET_SKILL_CONFIG must be an owner-only regular file')
+    try:
+        values = json.loads(config.read_text())
+    except (OSError, ValueError):
+        raise ValueError('RATCHET_SKILL_CONFIG unreadable or malformed JSON')
+    object_keys(values, ('schema', 'host', 'identity', 'requirements'), 'RATCHET_SKILL_CONFIG')
+    if type(values['schema']) is not int or values['schema'] != 1:
+        raise ValueError('RATCHET_SKILL_CONFIG schema must be 1')
+    if not isinstance(values['host'], str) or not re.fullmatch('[A-Za-z0-9][A-Za-z0-9._@:-]*', values['host']):
+        raise ValueError('RATCHET_SKILL_CONFIG host unavailable or malformed')
+    for field in ('identity', 'requirements'):
+        value = values[field]
+        if not isinstance(value, str) or not Path(value).is_absolute() or not Path(value).is_file():
+            raise ValueError('RATCHET_SKILL_CONFIG ' + field + ' must name an existing absolute file')
+    return values
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inventory', action='store_true')
-    parser.add_argument('--host', default=os.environ.get('RATCHET_SKILL_HOST'))
-    parser.add_argument('--identity', default=os.environ.get('RATCHET_SKILL_IDENTITY'))
-    parser.add_argument('--requirements', default=os.environ.get('RATCHET_SKILL_REQUIREMENTS'))
+    parser.add_argument('--config', default=os.environ.get('RATCHET_SKILL_CONFIG', str(Path.home() / '.golems/ratchet/installed-skills.json')))
+    parser.add_argument('--check-config', action='store_true')
+    parser.add_argument('--requirements')
     parser.add_argument('--left'); parser.add_argument('--right')
     args = parser.parse_args()
     try:
         if args.inventory:
             print(json.dumps(inventory(), sort_keys=True)); return 0
+        if not (args.left or args.right):
+            config = load_config(args.config)
+            args.host, args.identity, args.requirements = (config[k] for k in ('host', 'identity', 'requirements'))
         if not args.requirements: raise ValueError('required readable manifest unavailable')
-        required = json.loads(Path(args.requirements).read_text())
+        try:
+            required = json.loads(Path(args.requirements).read_text())
+        except (OSError, ValueError):
+            raise ValueError('RATCHET_SKILL_CONFIG requirements unreadable or malformed')
+        validate(required, required=True)
+        if args.check_config:
+            if args.left or args.right: raise ValueError('configuration preflight cannot use fixtures')
+            print('installed skill parity configuration READY'); return 0
         if args.left or args.right:
             if not (args.left and args.right): raise ValueError('both fixture manifests required')
             left, right = (json.loads(Path(p).read_text()) for p in [args.left, args.right])

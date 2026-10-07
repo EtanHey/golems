@@ -204,8 +204,13 @@ excluded dependencies/caches are not claimed byte-identical or runtime-equivalen
 nested skills are measured without writing their install. Missing SSH, Python, roots, content
 or the required-readable manifest fails; there is no capability skip.
 
-Set `RATCHET_SKILL_HOST` and `RATCHET_SKILL_REQUIREMENTS`; optionally set
-`RATCHET_SKILL_IDENTITY` to select an existing SSH identity. The private requirements JSON is
+Create an owner-only regular file at `~/.golems/ratchet/installed-skills.json`, owned by the
+runner's user. Its JSON is `{"schema":1,"host":"class-remote",
+"identity":"/absolute/path/to/existing-identity","requirements":"/absolute/path/to/private-requirements.json"}`.
+Use actual private values locally; the identity and requirements paths must be absolute existing
+files. The checker only passes the existing identity path to SSH, with `IdentitiesOnly=yes` and
+`IdentityAgent=none`; it does not read credential bytes. No configuration is shell-evaluated.
+The private requirements JSON is
 `{"schema":2,"identities":["<local identity object>","<remote identity object>"],
 "roots":{"<root>":{"readable":["class-a","namespace/class-b"],
 "allow_broken":[],"allow_empty":[],"target_aliases":{}}}}`, with all three roots and nonempty
@@ -213,7 +218,17 @@ readable lists. Freeze required catalogs from the approved source before reconci
 never regenerate them to excuse a lost skill. An alias maps an entry to its ordered local,
 remote normalized targets, not to a content exception. Keep host identities and real manifests
 in durable private evidence, never public fixtures. The command also supports explicit
-`--left/--right` fixture inputs, labeled `fixture`; the live row never supplies those flags.
+`--left/--right --requirements` fixture inputs, labeled `fixture`; the live row never supplies
+those flags. Run `python3 -B scripts/ratchet/installed-skills.py --check-config` to validate inputs
+without SSH or issuers, then the same command without flags for the read-only live row.
+
+The documented `scripts/ratchet/live-rows.sh --merged-pr <N> --lease-pr <open PR>
+--lease-repo <checkout>` and freshness recovery command load this same default config. Set
+`RATCHET_SKILL_CONFIG` to an explicit private file to override the default. Recovery explicitly
+selects the default path. Missing, insecure or malformed configuration fails with a named
+actionable error before GitHub, lease or issuer probes. Creating the file only supplies this row's
+inputs; it does not install hooks, deploy the checker or prove the whole live tier. The lead runs
+that post-install tier, including real issuers and publication, after review.
 
 Name/content parity and required readability are separate output fields. Explicitly approved
 source-invalid entries remain in `disclosed_invalid`; they cannot satisfy a required-readable
@@ -239,5 +254,5 @@ The original schema 1 inventories and their hashes remain immutable historical n
 evidence. They cannot supply fresh host identity proof. Schema 2 requirements and fresh host
 observations are stored separately; the row's fix fixture points at the new identity-bearing pair.
 Run class-only tests with `WEAVE_ALLOW_TMP=1 python3 -B -m unittest discover -s scripts/tests
--p test_installed_skill_parity.py`; their owned temporary directories are outside the measured
+-p 'test_installed_skill*.py'`; their owned temporary directories are outside the measured
 checkout and contain no durable evidence.

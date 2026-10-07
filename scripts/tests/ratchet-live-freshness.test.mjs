@@ -38,7 +38,7 @@ test('live receipts require boolean success and numeric row counts', () => {
 });
 
 test('failure supplies a runnable lead command, scoped to the merged and lease PRs', () => {
-  expect(recoveryCommand(42, 77)).toBe('"$HOME/Gits/golems/scripts/ratchet/live-rows.sh" --merged-pr 42 --lease-pr 77 --lease-repo "$PWD"');
+  expect(recoveryCommand(42, 77)).toBe('RATCHET_SKILL_CONFIG="$HOME/.golems/ratchet/installed-skills.json" "$HOME/Gits/golems/scripts/ratchet/live-rows.sh" --merged-pr 42 --lease-pr 77 --lease-repo "$PWD"');
 });
 
 

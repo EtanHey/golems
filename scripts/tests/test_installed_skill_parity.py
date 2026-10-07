@@ -161,20 +161,26 @@ class Parity(unittest.TestCase):
             doc = self.right if field == 'entries' else self.required
             doc['roots'][self.root][field] = [] if field != 'readable' else {}
             with self.assertRaises(ValueError): self.check()
+        for targets in ['class-target', ['$HOME/class-a'], ['$HOME/../class-a', '$HOME/class-b'], [1, 2]]:
+            self.setUp()
+            self.required['roots'][self.root]['target_aliases'] = {'class-a': targets}
+            with self.assertRaises(ValueError): self.check()
 
     def test_diagnostics_name_entry_root_and_host(self):
         self.right['roots'][self.root]['entries']['class-a']['skill_sha256'] = 'b'*64
         self.assertIn(self.root + '/class-a: local/remote content/shape mismatch', self.check()['errors'])
 
     def test_ssh_unavailable_cannot_skip(self):
-        with patch.object(sys, 'argv', [str(SCRIPT), '--host', 'class-host', '--requirements', 'class-manifest']), \
+        with patch.object(sys, 'argv', [str(SCRIPT), '--config', 'class-config']), \
+                patch.object(parity, 'load_config', return_value=dict(host='class-host', identity='/class-identity', requirements='/class-manifest')), \
                 patch.object(parity.Path, 'read_text', return_value=json.dumps(self.required)), \
                 patch.object(parity.subprocess, 'run', side_effect=FileNotFoundError('SSH absent')):
             self.assertEqual(parity.main(), 1)
 
     def test_live_missing_capability_cannot_skip(self):
-        run = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True,
-                             env={'PATH': '/usr/bin:/bin'})
+        with tempfile.TemporaryDirectory(prefix='class-missing-config-') as home:
+            run = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True,
+                                 env={'PATH': '/usr/bin:/bin', 'HOME': home})
         self.assertNotEqual(run.returncode, 0)
         self.assertIn('FAIL', run.stderr)
 
