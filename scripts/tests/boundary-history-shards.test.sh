@@ -42,16 +42,28 @@ if bash "$helper" "$base" 0 1 >/dev/null 2>&1; then exit 1; fi
 git checkout -q --detach "$main"
 git clone -q --depth=1 "file://$scratch/repo" "$scratch/shallow"
 if (cd "$scratch/shallow" && bash "$helper" HEAD 0 1 >/dev/null 2>&1); then exit 1; fi
-ruby -ryaml -e '
+ruby -ryaml -ropen3 -e '
   wf = YAML.safe_load(File.read(ARGV[0]))
-  j = wf.fetch("jobs").fetch("publish-boundary")
+  guard = wf.fetch("jobs").fetch("publish-boundary")
+  abort "required context must be unique and non-matrix" unless guard.fetch("name") == "Publish Boundary Guard" && wf.fetch("jobs").values.count { |job| job["name"] == "Publish Boundary Guard" } == 1 && !guard.key?("strategy")
+  abort "aggregate must always await shards" unless guard.fetch("needs") == ["publish-boundary-shards"] && guard.fetch("if") == "always()"
+  gate = guard.fetch("steps").first
+  abort "aggregate result not wired" unless gate.fetch("env").fetch("SHARDS_RESULT") == "${{ needs.publish-boundary-shards.result }}"
+  abort "aggregate evidence not wired" unless gate.fetch("env").fetch("SCANNED") == "${{ needs.publish-boundary-shards.outputs.scanned }}"
+  (%w[success failure cancelled skipped] + [""]).product(["success", "failure", ""]).each do |result, scanned|
+    output, status = Open3.capture2e({"SHARDS_RESULT" => result, "SCANNED" => scanned}, "bash", "-e", "-c", gate.fetch("run"))
+    abort "aggregate accepted #{result}/#{scanned}: #{output}" unless status.success? == (result == "success" && scanned == "success")
+  end
+  j = wf.fetch("jobs").fetch("publish-boundary-shards")
+  abort "scan output missing" unless j.fetch("outputs").fetch("scanned") == "${{ steps.scan.outcome }}"
   abort "missing fail-fast false" unless j.fetch("strategy").fetch("fail-fast") == false
   matrix = j.fetch("strategy").fetch("matrix").fetch("shard").to_s
   abort "missing 16-shard full scan" unless matrix.include?((0...16).to_a.join(","))
   abort "missing single shard PR/push" unless matrix.include?("[0]")
   step = j.fetch("steps").find { |s| s["name"] == "Enforce publication boundary" }
+  abort "scan outcome not wired" unless step.fetch("id") == "scan"
   abort "shard not wired" unless step.fetch("env").fetch("PUBLISH_BOUNDARY_HISTORY_SHARD_INDEX").include?("matrix.shard")
   abort "count not wired" unless step.fetch("env").fetch("PUBLISH_BOUNDARY_HISTORY_SHARD_COUNT").include?("16")
   abort "summary missing shards" unless wf.fetch("jobs").fetch("summary").fetch("needs").include?("publish-boundary")
-' "$root/.github/workflows/security.yml"
+' "${BOUNDARY_WORKFLOW:-$root/.github/workflows/security.yml}"
 echo 'PASS: merge graph coverage, disjoint shards, empty shards, invalid inputs, workflow wiring'

@@ -137,9 +137,11 @@ jobs:
           fi
           echo "All clear — no broken placeholders found."
 
-  publish-boundary:
-    name: Publish Boundary Guard
+  publish-boundary-shards:
+    name: Publish Boundary Shard (${{ matrix.shard }})
     runs-on: ubuntu-latest
+    outputs:
+      scanned: ${{ steps.scan.outcome }}
     # The serial genesis ratchet reached 112 minutes, then timed out. Split
     # commits, not paths: every historical tree retains the complete scan.
     # PR/push ranges retain one shard. The matrix union is genesis..HEAD.
@@ -163,6 +165,7 @@ jobs:
         run: bash scripts/tests/boundary-history-shards.test.sh
 
       - name: Enforce publication boundary
+        id: scan
         env:
           PUBLISH_BOUNDARY_HISTORY_SHARD_INDEX: ${{ matrix.shard }}
           PUBLISH_BOUNDARY_HISTORY_SHARD_COUNT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 16 || 1 }}
@@ -185,6 +188,23 @@ jobs:
           PUBLISH_BOUNDARY_HISTORY_BASE="$(bash scripts/ci/boundary-history-base.sh "$GITHUB_EVENT_NAME" "$PUBLISH_BOUNDARY_HISTORY_BASE" "$PUSH_BEFORE")"
           export PUBLISH_BOUNDARY_HISTORY_BASE
           bash scripts/check-publish-boundary.sh
+
+  publish-boundary:
+    name: Publish Boundary Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [publish-boundary-shards]
+    if: always()
+    steps:
+      - name: Require every shard and nonempty scan evidence
+        env:
+          SHARDS_RESULT: ${{ needs.publish-boundary-shards.result }}
+          SCANNED: ${{ needs.publish-boundary-shards.outputs.scanned }}
+        run: |
+          if [[ "$SHARDS_RESULT" != success || "$SCANNED" != success ]]; then
+            echo "Publication boundary shards failed or supplied no scan evidence."
+            exit 1
+          fi
 
   summary:
     name: Security Summary
