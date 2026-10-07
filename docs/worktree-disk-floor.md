@@ -16,3 +16,7 @@ nearest existing target ancestor and creates no directories or branches. Low-spa
 errors print available space, required space and the override name. Tests use an
 explicit zero floor only for isolated fixtures exercising unrelated creator behavior;
 separate tests prove the 15/50 boundaries and refusal before any Git write.
+
+The public machine example uses `example-host=50` and `example-laptop=15`.
+Its schema and generated environment tests verify that the overrides reach each
+machine without changing unrelated project settings.
