@@ -32,7 +32,7 @@ def test_pre_push_wraps_suite_and_preserves_fallback_status(tmp_path, availabili
     env = {k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}
     env.update(HOME=str(home), PATH=str(bin_dir), SUITE_RECORD=str(record),
                SUITE_STATUS=str(status), GOLEMS_HEAVY_LOCK=str(lock),
-               GOLEMS_HEAVY_MAX_LOAD="99999")
+               GOLEMS_HEAVY_MAX_LOAD="99999", GOLEMS_HEAVY_MIN_FREE_GB="0")
     result = subprocess.run([shutil.which("bash"), str(HOOK)], cwd=ROOT,
                             env=env, capture_output=True, text=True, timeout=5)
     assert result.returncode == status, result.stderr
@@ -40,7 +40,7 @@ def test_pre_push_wraps_suite_and_preserves_fallback_status(tmp_path, availabili
     if availability == "installed":
         assert "QUEUED" in result.stderr and "SUITE START" in result.stderr
         assert "SUITE DONE" in result.stderr
-        assert json.loads(lock.read_text())["exit_code"] == status
+        assert json.loads(lock.with_name("suite.slot0.lock").read_text())["exit_code"] == status
     else:
         assert "helper missing; running unqueued" in result.stderr
         assert not lock.exists()

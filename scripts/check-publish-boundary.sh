@@ -748,6 +748,14 @@ if [[ $history_mode == ratchet ]]; then
   git -C "$repo_root" merge-base --is-ancestor "$resolved_history_base" HEAD \
     || fail_config "ratchet history base is not an ancestor of HEAD: $resolved_history_base"
 
+  history_commits="$scratch_dir/history-commits.txt"
+  (cd "$repo_root" && bash "$script_dir/ci/boundary-history-shards.sh" \
+    "$resolved_history_base" "${PUBLISH_BOUNDARY_HISTORY_SHARD_INDEX:-0}" \
+    "${PUBLISH_BOUNDARY_HISTORY_SHARD_COUNT:-1}") > "$history_commits" \
+    || fail_config "history shard enumeration failed"
+  printf 'history shard %s/%s: %s commits (full tree per commit)\n' \
+    "${PUBLISH_BOUNDARY_HISTORY_SHARD_INDEX:-0}" "${PUBLISH_BOUNDARY_HISTORY_SHARD_COUNT:-1}" \
+    "$(wc -l < "$history_commits" | tr -d ' ')"
   history_index="$scratch_dir/history.index"
   history_output="$scratch_dir/history-output.txt"
   while IFS= read -r history_commit; do
@@ -763,7 +771,7 @@ if [[ $history_mode == ratchet ]]; then
       sed 's/^/  /' "$history_output" >> "$history_diagnostics"
       record_violation "history-ratchet" "$history_commit"
     fi
-  done < <(git -C "$repo_root" rev-list --reverse "$resolved_history_base..HEAD")
+  done < "$history_commits"
 elif [[ $history_mode == single-root ]]; then
   shallow_repository=$(git -C "$repo_root" rev-parse --is-shallow-repository 2>/dev/null) \
     || fail_config "could not determine whether history is shallow"

@@ -122,7 +122,8 @@ const bakFiles = (fx) => spawnSync("ls", [path.join(fx.home, ".claude")], { enco
 
 function fixtureEnv(fx) {
   const env = { ...process.env, HOME: fx.home, CODEX_HOME: path.join(fx.home, ".codex"),
-    GOLEMS_HEAVY_LOCK: path.join(fx.root, "fixture-heavy.lock"), ...(fx.env ?? {}) };
+    GOLEMS_HEAVY_LOCK: path.join(fx.root, "fixture-heavy.lock"),
+    GOLEMS_HEAVY_MIN_FREE_GB: "0", ...(fx.env ?? {}) };
   // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.
   delete env.GOLEMS_HEAVY_SUITE_HELD;
   const bin = path.join(fx.root, "machine-bin"); mkdirSync(bin, { recursive: true });
@@ -772,6 +773,7 @@ function pinnedManifestFixture() {
   cpSync(path.join(here, '../hooks/codex-hooks-install.mjs'), path.join(directory, 'codex-hooks-install.mjs'));
   cpSync(wrapper, path.join(directory, 'fail-open.py'));
   cpSync(path.join(here, '../hooks/private-regression-gate.py'), path.join(directory, 'private-regression-gate.py'));
+  cpSync(path.join(here, '../hooks/heavy-suite.py'), path.join(directory, 'heavy-suite.py'));
   writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifestFor()));
   fx.defaultInstaller = path.join(directory, 'install-hooks.mjs');
   fx.pinnedManifest = path.join(fx.repo, 'scripts/hooks/manifest.json');
@@ -1217,7 +1219,7 @@ function policyFixture() {
       filter: (s) => !/\/(tests|evals|__pycache__)(\/|$)|\.pyc$/.test(s.slice(sourceRepo.length)) });
   }
   for (const name of ["install-hooks.mjs", "install-hooks.sh", "codex-hooks-install.mjs", "fail-open.py",
-    "private-regression-gate.py", "codex-policy-hook.py"]) {
+    "private-regression-gate.py", "heavy-suite.py", "codex-policy-hook.py"]) {
     cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
   }
   for (const suite of ["skills/golem-powers/_shared/tests", "skills/golem-powers/tmp-block/tests",

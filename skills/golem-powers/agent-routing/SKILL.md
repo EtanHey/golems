@@ -38,6 +38,7 @@ The reviewer is always the other vendor.
 Interim route (Etan 2026-09-30/10-01): Daybreak Blue requires a hardware security key from 2026-10-01. `codex.security` resolves to the interim model until Etan has keys; then one config line switches it back.
 
 Security effort is `high` on the interim route (Etan 2026-09-30: "6.1 Sol high implements"); a security phase records it like any other phase effort.
+Deep scans run from `<repo>Codex --scan -E high` (workspace-write, no approvals, computer use and connectors off, the `codex.security` model, a per-launch Deep Scan cost cap); a bypass seat cannot start one. XS/S security PRs get a diff-scoped Standard scan, M/L or anything touching auth/guards a full Deep scan; the PR body records the scan's reported token use, and cost is never a reason to skip it.
 When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair (`claude.judgment` implements, Daybreak Blue reviews) and record the evidence in the PR bodies (carried from canon #1, 2026-09-29).
 
 ### Inner loop (sequential)

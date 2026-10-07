@@ -142,7 +142,7 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
     // Neither main checkout contents nor the caller's default manifest are used.
     writeFileSync(path.join(repo, "scripts/hooks/manifest.json"), "uncommitted invoking drift");
     const env = { ...process.env, HOME: path.join(f.root, "home"), CODEX_HOME: f.codexHome,
-      GOLEMS_HEAVY_LOCK: path.join(f.root, "fixture-heavy.lock") };
+      GOLEMS_HEAVY_LOCK: path.join(f.root, "fixture-heavy.lock"), GOLEMS_HEAVY_MIN_FREE_GB: "0" };
     const bin = path.join(f.root, "machine-bin"); mkdirSync(bin);
     writeFileSync(path.join(bin, "scutil"), `#!/bin/sh\nprintf '%s\\n' '${host === "mbp" ? "MacBook-Pro" : "Locals-MacBook-Pro"}'\n`, { mode: 0o755 });
     env.PATH = `${bin}:${env.PATH}`;

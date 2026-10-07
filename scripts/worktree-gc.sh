@@ -8,7 +8,7 @@ export GIT_OPTIONAL_LOCKS=0
 set -euo pipefail
 
 usage() {
-  printf 'Usage: %s [--dry-run] [--apply] [--idle-hours <n>] [--repo <path> | --path <worktree>]\n' \
+  printf 'Usage: %s [--dry-run | --prune-plan | --apply] [--idle-hours <n>] [--repo <path> | --path <worktree>]\n' \
     "$(basename "$0")"
 }
 
@@ -41,8 +41,8 @@ emit_row() {
 
   reason="$(normalize_reason "$reason")"
   row="$repo_name · $worktree_path · $branch · dirty=$dirty · ahead=$ahead · $verdict · $reason"
-  printf '%s\n' "$row"
   printf '%s\n' "$row" >> "$LOG_FILE"
+  printf '%s\n' "$row"
 }
 
 is_tool_managed_worktree() {
@@ -264,11 +264,18 @@ apply_removal() {
       "KEEP-undetermined" "nested git repository or unscannable tree: ${nested:-scan failed}"
     return 0
   fi
+  if [[ "$apply" -eq 0 ]]; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "REMOVE" "eligible prune plan; archive verification required before removal"
+    return 0
+  fi
   if ! archive_ignored "$worktree_path" "$head_sha"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "KEEP-undetermined" "${archive_detail:-ignored-data archive failed}"
     return 0
   fi
+  # A durable intent must succeed before the destructive call (nightly crash evidence).
+  emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" "REMOVING" "$archive_detail"
   # Never --force: git itself refuses a tree that became unclean meanwhile.
   if ! git -C "$repo_root" worktree remove "$worktree_path"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
@@ -342,7 +349,8 @@ process_worktree_block() {
   # AIDEV-NOTE: only <main>/.worktrees/<name> is ever eligible (#703 R1 H1):
   # runtime checkouts (~/.local/share/...), Cursor and superpowers worktrees
   # and trees inside docs.local live elsewhere and are never touched.
-  if [[ "$canonical_worktree/" != "$main_root/.worktrees/"?* ]]; then
+  local scope_name="${canonical_worktree#"$main_root/.worktrees/"}"
+  if [[ "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "not-checked" "KEEP-out-of-scope" "not under $main_root/.worktrees/"
     return 0
@@ -515,7 +523,20 @@ process_worktree_block() {
     return 0
   fi
 
-  if [[ "$apply" -eq 1 ]]; then
+  local reflog_only
+  if ! reflog_only="$(git -C "$worktree_path" log -g --format=%H HEAD |
+      git -C "$worktree_path" rev-list --stdin --not --branches --remotes --tags)"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "KEEP-undetermined" "cannot classify HEAD reflog history"
+    return 0
+  fi
+  if [[ -n "$reflog_only" ]]; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "KEEP-reflog" "HEAD reflog contains commits unreachable from branches, remotes or tags"
+    return 0
+  fi
+
+  if [[ "$apply" -eq 1 || "$prune_plan" -eq 1 ]]; then
     apply_removal "$worktree_path" "$branch_display"
     return 0
   fi
@@ -533,6 +554,10 @@ process_repo() {
     return 2
   fi
   repo_root="$(canonical_path "$repo_root")"
+  if [[ -z "$only_worktree" && "$repo_root" != "$(canonical_path "$requested_repo")" ]]; then
+    printf 'Refusing --repo: must be a repository toplevel: %s\n' "$requested_repo" >&2
+    return 2
+  fi
 
   if ! census="$(git -C "$repo_root" worktree list --porcelain)"; then
     printf 'Could not list worktrees for %s\n' "$repo_root" >&2
@@ -578,6 +603,7 @@ only_worktree=""
 only_seen=0
 cmux_registry="${WORKTREE_GC_CMUX_REGISTRY:-$HOME/.cmuxlayer/session-registry.jsonl}"
 apply=0
+prune_plan=0
 idle_hours=6
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -586,6 +612,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --apply)
       apply=1
+      shift
+      ;;
+    --prune-plan)
+      prune_plan=1
       shift
       ;;
     --idle-hours)
@@ -630,6 +660,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$apply" -eq 1 && "$prune_plan" -eq 1 ]]; then
+  printf 'Choose --apply or --prune-plan\n' >&2
+  exit 2
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=lib/portable-stat.sh
 source "$SCRIPT_DIR/lib/portable-stat.sh"
@@ -669,5 +704,6 @@ if [[ -n "$only_worktree" && "$only_seen" -eq 0 ]]; then
 fi
 
 if [[ "$found_unpushed" -ne 0 ]]; then
-  exit 1
+  # 3 means a completed scan with KEEP-unpushed; 1 is reserved for runtime errors.
+  exit 3
 fi

@@ -19,8 +19,9 @@ export function checkVerdict({ comments, marker, head, expectedReal, authors, ba
   // A verdict that skipped the direction check is only acceptable where there was nothing to check.
   if (baseHasRows && verdict.bootstrap !== false) return { ok: false, reason: "bootstrap verdict (direction unchecked) but the base branch has a row file" };
   if (verdict.head !== head) return { ok: false, reason: `stale: table is for ${String(verdict.head).slice(0, 8)}, PR head is ${head.slice(0, 8)}` };
+  if (![expectedReal, verdict.real_pass, verdict.real_total].every(value => Number.isSafeInteger(value) && value >= 0)) return { ok: false, reason: "invalid real row counts: expected nonnegative integers" };
   if (verdict.real_total !== expectedReal) return { ok: false, reason: `table has ${verdict.real_total} real rows, expected ${expectedReal}` };
-  if (!verdict.ok || verdict.real_pass !== verdict.real_total) return { ok: false, reason: `verdict FAIL (${verdict.real_pass}/${verdict.real_total} real rows PASS)` };
+  if (verdict.ok !== true || verdict.real_pass !== verdict.real_total) return { ok: false, reason: `verdict FAIL (${verdict.real_pass}/${verdict.real_total} real rows PASS)` };
   return { ok: true, reason: `${verdict.real_pass}/${verdict.real_total} real rows PASS at ${head.slice(0, 8)}` };
 }
 
