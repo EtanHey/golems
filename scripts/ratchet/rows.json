@@ -170,7 +170,7 @@
     },
     {
       "id": "disk-free-floor",
-      "metric": "REAL Mac: >= 60 GB free on the data volume AND <= 25 merged+clean+idle(>6h) worktrees under ~/Gits",
+      "metric": "REAL Mac: >= 60 GB free AND <= 25 worktrees with the GC guarded REMOVE prune-plan verdict",
       "kind": "real",
       "runner": "mac",
       "direction": "pass",
