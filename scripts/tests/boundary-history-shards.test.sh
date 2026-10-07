@@ -42,20 +42,33 @@ if bash "$helper" "$base" 0 1 >/dev/null 2>&1; then exit 1; fi
 git checkout -q --detach "$main"
 git clone -q --depth=1 "file://$scratch/repo" "$scratch/shallow"
 if (cd "$scratch/shallow" && bash "$helper" HEAD 0 1 >/dev/null 2>&1); then exit 1; fi
-ruby -ryaml -ropen3 -e '
+ruby -ryaml -ropen3 -rjson -e '
   wf = YAML.safe_load(File.read(ARGV[0]))
   guard = wf.fetch("jobs").fetch("publish-boundary")
   abort "required context must be unique and non-matrix" unless guard.fetch("name") == "Publish Boundary Guard" && wf.fetch("jobs").values.count { |job| job["name"] == "Publish Boundary Guard" } == 1 && !guard.key?("strategy")
   abort "aggregate must always await shards" unless guard.fetch("needs") == ["publish-boundary-shards"] && guard.fetch("if") == "always()"
   gate = guard.fetch("steps").first
   abort "aggregate result not wired" unless gate.fetch("env").fetch("SHARDS_RESULT") == "${{ needs.publish-boundary-shards.result }}"
-  abort "aggregate evidence not wired" unless gate.fetch("env").fetch("SCANNED") == "${{ needs.publish-boundary-shards.outputs.scanned }}"
-  (%w[success failure cancelled skipped] + [""]).product(["success", "failure", ""]).each do |result, scanned|
-    output, status = Open3.capture2e({"SHARDS_RESULT" => result, "SCANNED" => scanned}, "bash", "-e", "-c", gate.fetch("run"))
-    abort "aggregate accepted #{result}/#{scanned}: #{output}" unless status.success? == (result == "success" && scanned == "success")
+  abort "aggregate evidence not wired" unless gate.fetch("env").fetch("SHARD_OUTPUTS") == "${{ toJSON(needs.publish-boundary-shards.outputs) }}"
+  count_expr = gate.fetch("env").fetch("EXPECTED_COUNT")
+  abort "aggregate event count missing" unless count_expr.include?("schedule") && count_expr.include?("workflow_dispatch") && count_expr.include?("16 || 1")
+  [1, 16].each do |count|
+    complete = (0...count).to_h { |i| ["shard_#{i}", "success"] }
+    cases = [[complete, true], [{}, false], [complete.merge("shard_16" => "success"), false]]
+    (0...count).each do |i|
+      cases << [complete.reject { |k, _| k == "shard_#{i}" }, false]
+      ["failure", "cancelled", "skipped", ""].each { |value| cases << [complete.merge("shard_#{i}" => value), false] }
+    end
+    (%w[success failure cancelled skipped] + [""]).each do |result|
+      cases.each do |evidence, valid|
+        output, status = Open3.capture2e({"SHARDS_RESULT" => result, "SHARD_OUTPUTS" => JSON.generate(evidence), "EXPECTED_COUNT" => count.to_s}, "bash", "-e", "-c", gate.fetch("run"))
+        abort "aggregate accepted #{result}/#{count}/#{evidence}: #{output}" unless status.success? == (result == "success" && valid)
+      end
+    end
   end
   j = wf.fetch("jobs").fetch("publish-boundary-shards")
-  abort "scan output missing" unless j.fetch("outputs").fetch("scanned") == "${{ steps.scan.outcome }}"
+  expected_outputs = (0...16).to_h { |i| ["shard_#{i}", "${{ matrix.shard == #{i} && steps.scan.outcome || #{39.chr}#{39.chr} }}"] }
+  abort "distinct scan outputs missing" unless j.fetch("outputs") == expected_outputs
   abort "missing fail-fast false" unless j.fetch("strategy").fetch("fail-fast") == false
   matrix = j.fetch("strategy").fetch("matrix").fetch("shard").to_s
   abort "missing 16-shard full scan" unless matrix.include?((0...16).to_a.join(","))

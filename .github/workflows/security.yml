@@ -141,7 +141,22 @@ jobs:
     name: Publish Boundary Shard (${{ matrix.shard }})
     runs-on: ubuntu-latest
     outputs:
-      scanned: ${{ steps.scan.outcome }}
+      shard_0: ${{ matrix.shard == 0 && steps.scan.outcome || '' }}
+      shard_1: ${{ matrix.shard == 1 && steps.scan.outcome || '' }}
+      shard_2: ${{ matrix.shard == 2 && steps.scan.outcome || '' }}
+      shard_3: ${{ matrix.shard == 3 && steps.scan.outcome || '' }}
+      shard_4: ${{ matrix.shard == 4 && steps.scan.outcome || '' }}
+      shard_5: ${{ matrix.shard == 5 && steps.scan.outcome || '' }}
+      shard_6: ${{ matrix.shard == 6 && steps.scan.outcome || '' }}
+      shard_7: ${{ matrix.shard == 7 && steps.scan.outcome || '' }}
+      shard_8: ${{ matrix.shard == 8 && steps.scan.outcome || '' }}
+      shard_9: ${{ matrix.shard == 9 && steps.scan.outcome || '' }}
+      shard_10: ${{ matrix.shard == 10 && steps.scan.outcome || '' }}
+      shard_11: ${{ matrix.shard == 11 && steps.scan.outcome || '' }}
+      shard_12: ${{ matrix.shard == 12 && steps.scan.outcome || '' }}
+      shard_13: ${{ matrix.shard == 13 && steps.scan.outcome || '' }}
+      shard_14: ${{ matrix.shard == 14 && steps.scan.outcome || '' }}
+      shard_15: ${{ matrix.shard == 15 && steps.scan.outcome || '' }}
     # The serial genesis ratchet reached 112 minutes, then timed out. Split
     # commits, not paths: every historical tree retains the complete scan.
     # PR/push ranges retain one shard. The matrix union is genesis..HEAD.
@@ -196,15 +211,25 @@ jobs:
     needs: [publish-boundary-shards]
     if: always()
     steps:
-      - name: Require every shard and nonempty scan evidence
+      - name: Require the exact successful shard set
         env:
           SHARDS_RESULT: ${{ needs.publish-boundary-shards.result }}
-          SCANNED: ${{ needs.publish-boundary-shards.outputs.scanned }}
+          SHARD_OUTPUTS: ${{ toJSON(needs.publish-boundary-shards.outputs) }}
+          EXPECTED_COUNT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 16 || 1 }}
         run: |
-          if [[ "$SHARDS_RESULT" != success || "$SCANNED" != success ]]; then
-            echo "Publication boundary shards failed or supplied no scan evidence."
+          if [[ "$SHARDS_RESULT" != success ]]; then
+            echo "Publication boundary shards did not all succeed."
             exit 1
           fi
+          python3 - <<'PYTHON'
+          import json
+          import os
+          evidence = json.loads(os.environ["SHARD_OUTPUTS"])
+          expected = {f"shard_{i}": "success" for i in range(int(os.environ["EXPECTED_COUNT"]))}
+          if evidence != expected:
+              raise SystemExit("Publication boundary evidence is missing, unexpected, or unsuccessful.")
+          print(f"Verified all {len(expected)} publication boundary shard receipts.")
+          PYTHON
 
   summary:
     name: Security Summary
