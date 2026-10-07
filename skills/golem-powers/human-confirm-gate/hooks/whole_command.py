@@ -4,6 +4,8 @@ This view cannot authorize anything. Exact literal/reference assignments can
 supply evidence; operators, dynamic writers and substitutions remain unknown.
 The original consumer still classifies the unchanged command and arguments.
 """
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass
 
