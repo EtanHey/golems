@@ -86,6 +86,7 @@ CASES = (('shell_0_0', 'bash -c \'$@\' _ "$TOOL" push --force origin topic', Tru
  ('stdin_visible_zero', 'xargs dash -c \'"$@"\' _', True),
  ('source_process', 'source <(printf "%s" "fixture-tool push --force origin topic")', True),
  ('dot_process', '. <(printf "%s" "fixture-tool push --force origin topic")', True),
+ ('stdin_negative_slice', 'xargs dash -c \'"${@: -5}"\' _ echo one two three four', True),
  ('multi_digit', 'bash -c \'${10} "${@:11}"\' _ a b c d e f g h i "$TOOL" push --force origin topic', True),
  ('slice_length', 'bash -c \'$1 "${@:2:4}"\' _ "$TOOL" push --force origin topic', True),
  ('negative_slice', 'bash -c \'"${@: -5}"\' _ "$TOOL" push --force origin topic', True),

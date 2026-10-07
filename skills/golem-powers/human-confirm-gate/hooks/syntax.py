@@ -153,7 +153,6 @@ def _stdin_command_slot(child, depth=0):
 class XargsArgv(list):
     unknown_tail = False
 
-
 def xargs_payload(args):
     """Deny-only union of GNU replacement and BSD insertion semantics.
 

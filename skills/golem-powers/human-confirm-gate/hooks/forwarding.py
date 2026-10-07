@@ -26,7 +26,6 @@ def preserve_empty_words(source):
 
 
 def bind(body, arguments, shell, zero=None, unknown_tail=False, ifs=' \t\n'):
-    """Bind quote-removed argv as data, keeping unknown input symbolic."""
     definition_mask = shell._mask_function_definition_bodies(body)
     tokens, positions, _, _ = shell._parse_bash(definition_mask)
     if any(positions[j] and t in ('shift', 'set') for j,t in enumerate(tokens)):
@@ -61,7 +60,7 @@ def bind(body, arguments, shell, zero=None, unknown_tail=False, ifs=' \t\n'):
                 fields = list(args)
                 if offset is not None:
                     n = int(offset)
-                    fields = ([zero] + args)[n:] if n >= 0 else args[max(0,len(args)+n):]
+                    fields = ([zero] + args)[n:] if n >= 0 else [UNKNOWN] if unknown_tail else args[max(0,len(args)+n):]
                 if unknown_tail: fields.append(UNKNOWN)
                 if length is not None: fields = fields[:int(length)]
                 if key == '*' and quote == '"': fields = [UNKNOWN] if ifs is None else [(ifs[:1] or '').join(fields)]
