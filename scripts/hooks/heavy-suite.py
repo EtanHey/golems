@@ -98,7 +98,7 @@ def run_command(command, lock_fd=None):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    for flag, env, default in (("max-load", "MAX_LOAD", "20"), ("poll-seconds", "POLL_SECONDS", "5"), ("max-wait-seconds", "MAX_WAIT_SECONDS", "1800")):
+    for flag, env, default in (("max-load", "MAX_LOAD", str(2 * (os.cpu_count() or 1))), ("poll-seconds", "POLL_SECONDS", "5"), ("max-wait-seconds", "MAX_WAIT_SECONDS", "1800")):
         parser.add_argument("--" + flag, type=float, default=os.environ.get("GOLEMS_HEAVY_" + env, default))
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
@@ -117,10 +117,14 @@ def main(argv=None):
     lock = Path(os.environ.get("GOLEMS_HEAVY_LOCK") or Path.home() / ".local/state/golems/heavy-suite.lock")
     deadline, fd, held = time.monotonic() + args.max_wait_seconds, None, False
     try:
+        notice(f"QUEUED pid={os.getpid()}")
+        try:
+            wait_for_load(args.max_load, args.poll_seconds, deadline)
+        except OSError as error:
+            notice(f"WARNING load unavailable ({error}); proceeding")
         try:
             lock.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-            notice(f"QUEUED pid={os.getpid()}")
             held = acquire_lock(fd, args.poll_seconds, deadline)
         except OSError as error:
             notice(f"WARNING lock unavailable ({error}); running unqueued")
@@ -128,13 +132,8 @@ def main(argv=None):
             return run_command(command)
         if read_record(fd).get("state") in ("running", "waiting-load"):
             notice("RECLAIMED stale owner record")
-        record = {"pid": os.getpid(), "state": "waiting-load", "started": time.time(), "executable": Path(command[0]).name}
+        record = {"pid": os.getpid(), "state": "running", "started": time.time(), "executable": Path(command[0]).name}
         write_record(fd, record)
-        try:
-            wait_for_load(args.max_load, args.poll_seconds, deadline)
-        except OSError as error:
-            notice(f"WARNING load unavailable ({error}); proceeding")
-        write_record(fd, {**record, "state": "running"})
         notice(f"SUITE START pid={os.getpid()}")
         result = run_command(command, fd)
         write_record(fd, {**record, "state": "done", "exit_code": result})

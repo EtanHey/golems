@@ -5,6 +5,7 @@ from contextlib import contextmanager, ExitStack
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -221,11 +222,18 @@ def slot():
     if os.environ.get("GOLEMS_HEAVY_SUITE_HELD"):
         raise ValueError("run installer outside an existing heavy suite")
     lock = Path(os.environ.get("GOLEMS_HEAVY_LOCK") or Path.home() / ".local/state/golems/heavy-suite.lock")
-    lock.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-    deadline, held = time.monotonic() + 1800, False
+    max_load = float(os.environ.get("GOLEMS_HEAVY_MAX_LOAD", 2 * (os.cpu_count() or 1)))
+    if not math.isfinite(max_load) or max_load < 0:
+        raise ValueError("invalid heavy-suite max load")
+    deadline, held, fd = time.monotonic() + 1800, False, None
     try:
         print(f"private regression gate: QUEUED pid={os.getpid()}", flush=True)
+        while os.getloadavg()[0] > max_load:
+            if time.monotonic() >= deadline:
+                raise ValueError("load gate timed out; refusing execution")
+            time.sleep(1)
+        lock.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
         while not held:
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -234,10 +242,6 @@ def slot():
                 if time.monotonic() >= deadline:
                     raise ValueError("heavy-suite lock timed out; refusing unqueued execution")
                 time.sleep(1)
-        while os.getloadavg()[0] > 20:
-            if time.monotonic() >= deadline:
-                raise ValueError("load gate timed out; refusing execution")
-            time.sleep(1)
         record = {"pid": os.getpid(), "state": "running", "started": time.time(),
                   "executable": "private-regression-gate"}
         os.ftruncate(fd, 0)
@@ -251,7 +255,8 @@ def slot():
             os.write(fd, (json.dumps({"pid": os.getpid(), "state": "done"}) + "\n").encode())
             fcntl.flock(fd, fcntl.LOCK_UN)
             print(f"private regression gate: SUITE DONE pid={os.getpid()}", flush=True)
-        os.close(fd)
+        if fd is not None:
+            os.close(fd)
 
 
 def execute_suite(paths, out, tree, name, expected=None, timeout=900):

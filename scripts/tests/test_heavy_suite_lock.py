@@ -159,6 +159,15 @@ def test_main_load_gate_precedes_launch_and_accepts_boundary(monkeypatch, tmp_pa
     monkeypatch.setenv("GOLEMS_HEAVY_POLL_SECONDS", "0.01")
     loads = iter([21, 20])
     def load():
+        import fcntl
+        lock = tmp_path / ".local/state/golems/heavy-suite.lock"
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        with lock.open("a+") as probe:
+            try:
+                fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise AssertionError("load wait holds the heavy-suite lock") from None
+            fcntl.flock(probe, fcntl.LOCK_UN)
         assert not marker.exists(), "gate was moved after command launch"
         return (next(loads), 0, 0)
     def sleep(seconds):
@@ -217,3 +226,19 @@ def test_documented_one_liner_uses_installed_helper(tmp_path):
     result = subprocess.run(['sh', '-c', one_liner], env=env(tmp_path), capture_output=True, text=True, timeout=5)
     assert result.returncode == 7 and result.stdout == 'installed-helper\n'
     assert 'unqueued' not in result.stderr
+
+
+def test_default_load_limit_is_twice_cpu_count(monkeypatch, tmp_path):
+    module = load_module(); limits = []; states = []
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("GOLEMS_HEAVY_MAX_LOAD", raising=False)
+    monkeypatch.delenv("GOLEMS_HEAVY_SUITE_HELD", raising=False)
+    monkeypatch.setattr(module.os, "cpu_count", lambda: 14)
+    monkeypatch.setattr(module, "wait_for_load", lambda max_load, *args: limits.append(max_load))
+    write = module.write_record
+    def record(fd, value):
+        states.append(value["state"]); write(fd, value)
+    monkeypatch.setattr(module, "write_record", record)
+    assert module.main(["--", sys.executable, "-c", "pass"]) == 0
+    assert limits == [28]
+    assert "waiting-load" not in states
