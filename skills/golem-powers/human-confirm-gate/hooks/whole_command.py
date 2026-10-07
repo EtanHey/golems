@@ -7,6 +7,7 @@ The original consumer still classifies the unchanged command and arguments.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from dataclasses import dataclass
 
 _NAME = r'[A-Za-z_][A-Za-z0-9_]*'
@@ -85,69 +86,148 @@ def check(command, initial, shell, syntax):
         words, positions, segments, scopes = syntax.substitution_argv(parent, shell)
     except ValueError:
         return  # An unproved supplemental view must retain base inspection.
-    # Positive parent-scope grammar. Arrays, functions, compounds and control
-    # operators are left to the original consumer and recursive body checks.
-    if any(w in ('|', '&', '(', ')', '{', '}', 'if', 'for', 'while', 'case') for w in words):
-        return
+    # Locate data regions before examining executable positions. The legacy
+    # lexer can expose a substitution inside an array or quoted data operand as
+    # another command position; base recursion still inspects its actual body.
+    arrays, array_values = set(), set()
+    for i, word in enumerate(words[:-1]):
+        if shell._ASSIGNMENT_RE.match(word) and words[i+1] == '(':
+            array_values.add(i)
+            depth, j = 1, i + 2
+            arrays.add(i+1)
+            while j < len(words) and depth:
+                arrays.add(j)
+                depth += (words[j] == '(') - (words[j] == ')')
+                j += 1
+    grammar = {'if', 'then', 'elif', 'else', 'fi', 'for', 'while', 'until',
+               'do', 'done', 'case', 'esac', '{', '}', '(', ')'}
+    heads = {}
+    for i, word in enumerate(words):
+        if (i not in arrays and positions[i] and not shell._ASSIGNMENT_RE.match(word)
+                and word not in grammar):
+            heads.setdefault(segments[i], i)
     values = {name: evidence(value, {}, syntax, ' \t\n') for name, value in initial.items()}
     ifs = initial.get('IFS', ' \t\n')
-    def assign(name, value):
+    conditional, scopes, beginning = False, [], True
+    temporary, temporary_segment = {}, None
+    def assign(name, value, uncertain=False):
         nonlocal ifs
+        if uncertain:
+            old = values.get(name, Evidence())
+            value = Evidence(old.guarded or value.guarded, True)
         values[name] = value
         if name == 'IFS': ifs = value.literal
+    def expansion_values():
+        # Command names and ordinary arguments expand before prefix assignments.
+        view = dict(values)
+        for name, old in temporary.items():
+            if old is None: view.pop(name, None)
+            else: view[name] = old
+        return view
+    def expansion_ifs():
+        if 'IFS' not in temporary: return ifs
+        old = temporary['IFS']
+        return old.literal if old is not None else ' \t\n'
+    def literal(word):
+        # This supplies evidence only, never executable argv or authorization.
+        def replace(match):
+            value = expansion_values().get(match[1] or match[2])
+            return value.literal if value and not value.unknown and value.literal is not None else match[0]
+        resolved = _EXACT.sub(replace, normal(word))
+        resolved = syntax.expand_home(resolved, Path.home())
+        return None if syntax.unresolved(resolved, Path.home()) else resolved
     for i, word in enumerate(words):
+        if temporary_segment is not None and segments[i] != temporary_segment:
+            for name, old in temporary.items():
+                if old is None: values.pop(name, None)
+                else: values[name] = old
+            if 'IFS' in temporary: ifs = values.get('IFS', Evidence(literal=' \t\n')).literal
+            temporary, temporary_segment = {}, None
+        head = heads.get(segments[i])
+        data = head is not None and syntax.executable(words[head])[0] in syntax.DATA
+        if i in arrays:
+            continue
+        if word in ('&', '|'):
+            conditional, beginning = True, True
+            continue
+        if word == ';':
+            conditional, beginning = False, True
+            continue
+        if data and i > head:
+            continue
+        if beginning and word in ('if', 'for', 'while', 'until', 'case', '{', '('):
+            scopes.append({'if':'fi', 'for':'done', 'while':'done', 'until':'done',
+                           'case':'esac', '{':'}', '(' : ')'}[word])
+            continue
+        if scopes and word == scopes[-1]:
+            scopes.pop(); beginning = True
+            continue
+        if word in ('then', 'do', 'else', 'elif') and scopes:
+            beginning = True
+            continue
         if not positions[i] or syntax.looked_up(words, positions, i):
             continue
-        args, _ = syntax.argv_at(words, segments, scopes, i)
+        beginning = False
+        args, _ = syntax.argv_at(words, segments, [()] * len(words), i)
+        following = next((w for w in words[i+1:] if w in (';', '&', '|')), None)
+        uncertain = conditional or bool(scopes) or following in ('&', '|')
         assignment = shell._ASSIGNMENT_RE.match(word)
         if assignment:
             name, value = assignment['name'], word.split('=', 1)[1]
-            new = evidence(value, values, syntax, ifs)
+            prefix = head is not None and head > i
+            if prefix:
+                temporary.setdefault(name, values.get(name))
+                temporary_segment = segments[i]
+            new = evidence(None if i in array_values else value, values, syntax, ifs)
             if assignment['append'] or assignment['subscript']:
                 old = values.get(name, Evidence(unknown=True))
                 new = Evidence(new.guarded or old.guarded, True)
-            assign(name, new)
+            assign(name, new, uncertain)
             continue
         base = syntax.executable(word)[0]
         if base in _DECLARATIONS:
-            # Only scalar literal/reference assignments have a known value.
-            # Options with value semantics (arrays, integers, namerefs, etc.)
-            # supply unknown evidence, never a rewritten executable.
             unknown = any(a.startswith('-') and a not in ('--', '-x', '-r', '-rx', '-xr') for a in args)
+            argument_values, argument_ifs = expansion_values(), expansion_ifs()
             for arg in args:
                 match = shell._ASSIGNMENT_RE.match(arg)
                 if match:
-                    name = match['name']; new = evidence(arg.split('=', 1)[1], values, syntax, ifs)
+                    name = match['name']; new = evidence(arg.split('=', 1)[1], argument_values, syntax, argument_ifs)
                     old = values.get(name, Evidence()) if match['append'] or match['subscript'] else Evidence()
-                    uncertain = new.unknown or unknown or bool(match['append'] or match['subscript'])
-                    assign(name, Evidence(new.guarded or old.guarded, uncertain,
-                                          None if uncertain else new.literal))
+                    opaque = new.unknown or unknown or bool(match['append'] or match['subscript'])
+                    assign(name, Evidence(new.guarded or old.guarded, opaque,
+                                          None if opaque else new.literal), uncertain)
                 elif re.fullmatch(_NAME, arg) and arg not in values:
-                    assign(arg, Evidence(unknown=True))
+                    assign(arg, Evidence(unknown=True), uncertain)
         elif base == 'read':
-            for name in read_destinations(args):
-                assign(name, Evidence(unknown=True))
+            for name in read_destinations(args): assign(name, Evidence(unknown=True), uncertain)
         elif base in ('readarray', 'mapfile'):
-            # Even a visible input is data with runtime splitting/array rules.
             names = [a for a in args if re.fullmatch(_NAME, a)]
-            for name in names or ['MAPFILE']: assign(name, Evidence(unknown=True))
+            for name in names or ['MAPFILE']: assign(name, Evidence(unknown=True), uncertain)
         elif base == 'printf' and '-v' in args:
             j = args.index('-v') + 1
             if j < len(args) and re.fullmatch(_NAME, args[j]):
-                assign(args[j], Evidence(unknown=True))
+                assign(args[j], Evidence(unknown=True), uncertain)
         elif base == 'unset':
-            for name in args:
-                if re.fullmatch(_NAME, name): values.pop(name, None)
+            functions = any(a.startswith('-') and 'f' in a for a in args)
+            if not functions:
+                for name in args:
+                    if re.fullmatch(_NAME, name): assign(name, Evidence(unknown=True), uncertain)
         if base in syntax.DATA or '$' not in word and '`' not in word:
             continue
-        related = [values[name] for name in references(word) if name in values]
-        hidden = guarded_text(normal(word), syntax, ifs) or any(v.guarded for v in related)
-        # A zero-argument substitution/unknown assigned value can produce the
-        # entire executable and argv. A normal data operand cannot enter here.
-        whole = not args and ('${command-substitution}' in normal(word) or
-                              any(v.unknown for v in related) or bool(related) and ifs is None)
-        exact = _EXACT.fullmatch(normal(word))
-        bound = values.get(exact[1] or exact[2]) if exact else None
-        known = bound is not None and bound.literal is not None and not any(c.isspace() for c in bound.literal)
+        expanded = expansion_values()
+        split_ifs = expansion_ifs()
+        related = [expanded[name] for name in references(word) if name in expanded]
+        indirect = '${!' in normal(word)
+        if indirect:
+            related += [expanded[v.literal] for v in related if v.literal in expanded]
+        hidden = guarded_text(normal(word), syntax, split_ifs) or any(v.guarded for v in related)
+        # A substitution-only executable may produce all argv. A fixed path
+        # suffix is not a whole-command value; base inspects its actual body.
+        substitution_only = bool(normal(word)) and not normal(word).replace('${command-substitution}', '')
+        whole = not args and (substitution_only or indirect or
+                              any(v.unknown for v in related) or bool(related) and split_ifs is None)
+        bound = None if indirect else literal(word)
+        known = (bound is not None and split_ifs is not None and
+                 not any(c.isspace() or c in split_ifs for c in bound))
         if hidden or whole or not known and syntax.guarded_words(args):
             raise ValueError('opaque whole-command expansion may contain protected argv')
