@@ -28,6 +28,15 @@ test('later unguarded master installation is valid, but branch/off-master or old
   expect(check([pass], { guardedHead: later, pulls: [{ ...pulls[0], merge_commit_sha: later }], allowedHeads: [later] }).ok).toBe(false);
 });
 
+test('live receipts require boolean success and numeric row counts', () => {
+  const receipt = fields => ({ ...pass, body: `<!-- ratchet-table: golems-ratchet-live -->\n<!-- ratchet-verdict: ${JSON.stringify({ head: sha, ok: true, real_pass: 2, real_total: 2, bootstrap: false, ...fields })} -->` });
+  for (const ok of ["false", 1, null]) expect(check([receipt({ ok })]).ok).toBe(false);
+  for (const count of ["false", "2", null, true, -1, 1.5]) {
+    expect(check([receipt({ real_pass: count, real_total: count })], { expectedReal: count }).ok).toBe(false);
+  }
+  expect(check([receipt({ real_pass: 1, real_total: 1 })], { expectedReal: 1 }).ok).toBe(true);
+});
+
 test('failure supplies a runnable lead command, scoped to the merged and lease PRs', () => {
   expect(recoveryCommand(42, 77)).toBe('"$HOME/Gits/golems/scripts/ratchet/live-rows.sh" --merged-pr 42 --lease-pr 77 --lease-repo "$PWD"');
 });

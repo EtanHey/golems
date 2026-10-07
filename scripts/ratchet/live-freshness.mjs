@@ -8,7 +8,7 @@ import { parseRows, findSticky, readVerdict } from './table.mjs';
 export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads = [guardedHead] }) {
   const pr = pulls.find(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === guardedHead);
   if (!pr) return { ok: false, reason: 'latest guarded commit has no merged master PR' };
-  if (expectedReal < 1) return { ok: false, reason: 'master has no real live rows' };
+  if (!Number.isSafeInteger(expectedReal) || expectedReal < 1) return { ok: false, reason: 'master has no real live rows' };
   const receipt = readVerdict(findSticky(comments, 'golems-ratchet-live', ['EtanHey'])?.body ?? '', 'golems-ratchet-live');
   if (!receipt || !allowedHeads.includes(receipt.head)) return { ok: false, reason: 'missing or stale live receipt for latest guarded master merge' };
   return checkVerdict({ comments, marker: 'golems-ratchet-live', head: receipt.head,
