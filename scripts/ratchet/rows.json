@@ -2,6 +2,15 @@
   "schema": 1,
   "rows": [
     {
+      "id": "positional-forwarding",
+      "metric": "human-confirm binds visible shell/function argv and refuses unknown forwarding (class fixtures, real hook)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_positional_forwarding.py"
+    },
+    {
       "id": "xargs-identity",
       "metric": "human-confirm xargs option grammar, replacement and stdin identity (class fixtures through the real hook)",
       "kind": "unit",
@@ -167,6 +176,21 @@
       "ceiling": true,
       "command": "node scripts/ratchet/live-freshness.mjs",
       "timeout_s": 180
+    },
+    {
+      "id": "disk-free-floor",
+      "report_only": "gc-success-on-both-macs",
+      "metric": "REAL Mac: >= 60 GB free AND <= 25 worktrees with the GC guarded REMOVE prune-plan verdict",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "ref_kind": "fixture-hash",
+      "bug_sha": "627cf41f79e0071a83d93563676b1e8cca33c253",
+      "fix_sha": "5a18ecf5c98dde56381dcb7d3c1f84eef1ab3d30",
+      "bug_fixture": "42967711bc46af89c8eb9e184be34d4ecafa02fb4119f8d50c44c4d5ecf13a3c",
+      "fix_fixture": "9f21c2ce1f5fbb7c50cd7ac05c77f43b306910a7a339f2f35d0611d8caa349c5",
+      "command": "scripts/ratchet/mac/disk-free-floor.sh"
     }
   ]
 }

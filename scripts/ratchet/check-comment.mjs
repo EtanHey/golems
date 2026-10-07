@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 // Requires a producer's ratchet table comment on a PR: the marker comment, posted by an allowed
-// author, whose verdict is bound to this exact head SHA with every expected real row PASS.
+// author, whose verdict is bound to this exact head SHA with every enforced real row PASS.
+// Only an explicitly configured disk report-only row may carry a validated health warning.
 // Missing, stale or red = exit 1 (standards/ratchet.md rule 3: missing is FAIL, never SKIP).
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { baseRowsAt, findSticky, parseRows, readVerdict } from "./table.mjs";
+import { baseRowsAt, findSticky, parseRows, readVerdict, validDiskMeasurement } from "./table.mjs";
 
-export function checkVerdict({ comments, marker, head, expectedReal, authors, baseHasRows }) {
+export function checkVerdict({ comments, marker, head, expectedReal, authors, baseHasRows, expectedReportOnly = [] }) {
   // The same comment the producer PATCHes (findSticky), never a newer or older look-alike.
   const sticky = findSticky(comments, marker, authors);
   if (!sticky) return { ok: false, reason: `no ${marker} ratchet comment from ${authors.join("/")}` };
@@ -21,8 +22,14 @@ export function checkVerdict({ comments, marker, head, expectedReal, authors, ba
   if (verdict.head !== head) return { ok: false, reason: `stale: table is for ${String(verdict.head).slice(0, 8)}, PR head is ${head.slice(0, 8)}` };
   if (![expectedReal, verdict.real_pass, verdict.real_total].every(value => Number.isSafeInteger(value) && value >= 0)) return { ok: false, reason: "invalid real row counts: expected nonnegative integers" };
   if (verdict.real_total !== expectedReal) return { ok: false, reason: `table has ${verdict.real_total} real rows, expected ${expectedReal}` };
-  if (verdict.ok !== true || verdict.real_pass !== verdict.real_total) return { ok: false, reason: `verdict FAIL (${verdict.real_pass}/${verdict.real_total} real rows PASS)` };
-  return { ok: true, reason: `${verdict.real_pass}/${verdict.real_total} real rows PASS at ${head.slice(0, 8)}` };
+  const reporting = verdict.report_only ?? [];
+  if (!Array.isArray(reporting) || reporting.length !== expectedReportOnly.length
+    || new Set(reporting.map(r => r?.id)).size !== reporting.length
+    || reporting.some(r => r?.id !== "disk-free-floor" || !expectedReportOnly.includes(r.id) || !validDiskMeasurement(r.measurement)))
+    return { ok: false, reason: "invalid or unauthorized report-only measurement" };
+  const warnings = reporting.filter(r => !r.measurement.health).length;
+  if (verdict.ok !== true || verdict.real_pass + warnings !== verdict.real_total) return { ok: false, reason: `verdict FAIL (${verdict.real_pass}/${verdict.real_total} real rows PASS)` };
+  return { ok: true, reason: `${verdict.real_pass}/${verdict.real_total} real rows PASS; ${warnings} measured report-only warnings at ${head.slice(0, 8)}` };
 }
 
 function parseArgs(argv) {
@@ -57,12 +64,13 @@ export function main(argv) {
     return 2;
   }
   const expectedReal = rows.rows.filter((row) => row.runner === options.runner && row.kind === "real").length;
+  const expectedReportOnly = rows.rows.filter(row => row.runner === options.runner && row.report_only).map(row => row.id);
   const gh = spawnSync("gh", ["api", "--paginate", "--slurp", `repos/${options.repo}/issues/${options.pr}/comments`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (gh.status !== 0) {
     process.stderr.write(`ratchet: cannot read PR comments: ${gh.stderr}\n`);
     return 1;
   }
-  const result = checkVerdict({ comments: JSON.parse(gh.stdout).flat(), marker: options.marker, head: options.head, expectedReal, authors: options.authors, baseHasRows });
+  const result = checkVerdict({ comments: JSON.parse(gh.stdout).flat(), marker: options.marker, head: options.head, expectedReal, expectedReportOnly, authors: options.authors, baseHasRows });
   process.stdout.write(`ratchet ${options.marker}: ${result.ok ? "PASS" : "FAIL"}: ${result.reason}\n`);
   return result.ok ? 0 : 1;
 }

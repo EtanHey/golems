@@ -60,3 +60,15 @@ describe("checkVerdict", () => {
     expect(check([{ user: { login: "EtanHey" }, body: `${markerComment("mac")}\n<!-- ratchet-verdict: {nope -->` }]).ok).toBe(false);
   });
 });
+
+test("only the explicitly configured disk warning can satisfy aggregate without fake real PASS", () => {
+  const measurement={free_gb:13,floor:60,merged_worktrees:148,ceiling:25,health:false};
+  const report=[{id:"disk-free-floor",measurement}];
+  const verdict={...pass,real_pass:1,report_only:report};
+  expect(check([comment(verdict)],{expectedReportOnly:["disk-free-floor"]}).ok).toBe(true);
+  expect(check([comment(verdict)]).ok).toBe(false);
+  expect(check([comment({...verdict,report_only:[]})],{expectedReportOnly:["disk-free-floor"]}).ok).toBe(false);
+  expect(check([comment({...verdict,report_only:[{id:"other",measurement}]})],{expectedReportOnly:["disk-free-floor"]}).ok).toBe(false);
+  expect(check([comment({...verdict,report_only:[{id:"disk-free-floor",measurement:{...measurement,health:true}}]})],{expectedReportOnly:["disk-free-floor"]}).ok).toBe(false);
+  expect(check([comment({...verdict,ok:false})],{expectedReportOnly:["disk-free-floor"]}).ok).toBe(false);
+});

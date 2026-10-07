@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import re
+from contextvars import ContextVar
 from .quotes import ansi_c_quote, ansi_c_opens_at
+
+# Policy consumers opt in without changing the shared parser's legacy view.
+_preserve_empty_words = ContextVar('golems_preserve_empty_words', default=False)
 
 # Shell assignment token (`FOO=bar`, `FOO+=bar`, `FOO[0]=bar`) — used to
 # identify assignment words while preserving the base variable name. Array
@@ -74,16 +78,18 @@ def _shell_tokens(command, *, _operator_origin=False, _strict_quotes=False):
     comment (dropped to end-of-line, Bugbot b5f80501)."""
     tokens = []
     cur = ""
+    quoted_word_started = False
     i = 0
     n = len(command)
     paren_stack = []
     operator = _ShellOperator if _operator_origin else str
 
     def flush():
-        nonlocal cur
-        if cur:
+        nonlocal cur, quoted_word_started
+        if cur or (_preserve_empty_words.get() and quoted_word_started):
             tokens.append(cur)
-            cur = ""
+        cur = ""
+        quoted_word_started = False
 
     def suffix_emits_token(start):
         """Whether the rest of this shell word contributes a token.
@@ -130,6 +136,7 @@ def _shell_tokens(command, *, _operator_origin=False, _strict_quotes=False):
     while i < n:
         c = command[i]
         if ansi_c_opens_at(command, i):
+            quoted_word_started = True
             start = i
             buf, i = ansi_c_quote(command, i)
             if _strict_quotes and not re.fullmatch(r"\$'(?:\\[\s\S]|[^'\\])*'", command[start:i]):
@@ -212,6 +219,7 @@ def _shell_tokens(command, *, _operator_origin=False, _strict_quotes=False):
             i += 1
             continue
         if c in "\"'":
+            quoted_word_started = True
             quote = c
             i += 1
             buf = ""
@@ -297,6 +305,8 @@ def _shell_tokens(command, *, _operator_origin=False, _strict_quotes=False):
             continue
         if c == "<":
             # Input redirect / heredoc operator — never a write target.
+            if _preserve_empty_words.get() and cur.isdigit() and not quoted_word_started:
+                cur = ""
             flush()
             j = i
             while j < n and command[j] in "<-":
@@ -306,7 +316,7 @@ def _shell_tokens(command, *, _operator_origin=False, _strict_quotes=False):
             continue
         if c == ">":
             # `2>` / `1>` fd prefixes: drop a pure-digit cur (it is the fd).
-            if cur.isdigit():
+            if cur.isdigit() and not (_preserve_empty_words.get() and quoted_word_started):
                 cur = ""
             flush()
             op = ">"

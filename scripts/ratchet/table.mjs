@@ -19,9 +19,9 @@ const SHA = /^[0-9a-f]{7,40}$/;
 const FIXTURE_HASH = /^[0-9a-f]{8,64}$/;
 // Strict schema: a key nobody validates is a key a producer could later read unchecked.
 const FILE_KEYS = new Set(["schema", "rows"]);
-const ROW_KEYS = new Set(["id", "metric", "kind", "runner", "direction", "ceiling", "command", "timeout_s", "bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture"]);
+const ROW_KEYS = new Set(["id", "metric", "kind", "runner", "direction", "ceiling", "command", "timeout_s", "bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only"]);
 // Evidence, not measurement: editing these is allowed but always listed in the table.
-const METADATA_KEYS = ["bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture"];
+const METADATA_KEYS = ["bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only"];
 const short = (sha) => (typeof sha === "string" && sha ? escapeCell(sha.slice(0, 8)) : "none");
 
 export function markerComment(marker) {
@@ -29,6 +29,11 @@ export function markerComment(marker) {
 }
 
 export const VERDICT_PREFIX = "<!-- ratchet-verdict: ";
+
+export function validDiskMeasurement(m) {
+  return m && [m.free_gb, m.floor, m.merged_worktrees, m.ceiling].every(n => Number.isSafeInteger(n) && n >= 0)
+    && typeof m.health === "boolean" && m.health === (m.free_gb >= m.floor && m.merged_worktrees <= m.ceiling);
+}
 
 export function parseRows(doc) {
   if (!doc || doc.schema !== 1 || !Array.isArray(doc.rows)) throw new Error("row file needs schema: 1 and a rows array");
@@ -62,6 +67,10 @@ export function parseRows(doc) {
         if (typeof row[key] !== "string" || !FIXTURE_HASH.test(row[key])) throw new Error(`${where}: fixture-hash rows need ${key} (a content hash)`);
       }
     }
+    if (row.report_only !== undefined && !(row.id === "disk-free-floor" && row.kind === "real" && row.runner === "mac"
+      && row.direction === "pass" && row.report_only === "gc-success-on-both-macs")) {
+      throw new Error(`${where}: report-only is limited to disk-free-floor until successful GC on BOTH Macs`);
+    }
     if (row.runner !== undefined && typeof row.runner !== "string") throw new Error(`${where}: runner must be a string`);
     if (row.timeout_s !== undefined && !(Number.isInteger(row.timeout_s) && row.timeout_s > 0)) throw new Error(`${where}: timeout_s must be a positive integer`);
   }
@@ -70,7 +79,7 @@ export function parseRows(doc) {
 
 function resultOf(entry) {
   if (entry === undefined || entry === null) return undefined;
-  if (typeof entry === "object") return { value: entry.value, detail: entry.detail };
+  if (typeof entry === "object") return { value: entry.value, detail: entry.detail, measurement: entry.measurement };
   return { value: entry, detail: undefined };
 }
 
@@ -84,6 +93,7 @@ function judge(row, value) {
 // ceiling, or promoting unit -> real. A swapped `command` could otherwise pass trivially.
 function loosening(before, after) {
   if (!after) return "row removed";
+  if (!before.report_only && after.report_only) return "health enforcement → temporary report-only";
   if (before.kind === "real" && after.kind !== "real") return "demoted real → unit";
   // Moving a row to another producer drops it from the one that measured it.
   if ((before.runner ?? null) !== (after.runner ?? null)) return `runner ${before.runner ?? "(any)"} → ${after.runner ?? "(any)"}`;
@@ -116,9 +126,12 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
   const out = selected.map((row) => {
     const now = resultOf(values[row.id]);
     const before = resultOf(base[row.id]);
-    const status = now === undefined ? "MISSING" : judge(row, now.value) ? "PASS" : "FAIL";
+    const measured = row.report_only && validDiskMeasurement(now?.measurement) && now.value === now.measurement.health;
+    const status = now === undefined ? "MISSING" : row.report_only
+      ? measured ? now.value ? "PASS" : "WARN" : "FAIL"
+      : judge(row, now.value) ? "PASS" : "FAIL";
     const numeric = row.direction !== "pass" && typeof now?.value === "number" && typeof before?.value === "number";
-    return { ...row, value: now?.value, detail: now?.detail, baseline: before?.value, delta: numeric ? now.value - before.value : null, status };
+    return { ...row, value: now?.value, detail: now?.detail, measurement: now?.measurement, baseline: before?.value, delta: numeric ? now.value - before.value : null, status };
   });
 
   // Direction is checked across EVERY base row, whatever --runner selects.
@@ -152,7 +165,7 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
     realTotal: real.length,
     // No selected row is every row missing (a runner typo, `rows: []`), never a pass. A failing
     // unit row still fails the job (it is a test), but it never counts as ratchet evidence.
-    ok: out.length > 0 && out.every((row) => row.status === "PASS") && loosened.every((entry) => entry.ruled),
+    ok: out.length > 0 && out.every((row) => row.status === "PASS" || row.status === "WARN") && loosened.every((entry) => entry.ruled),
   };
 }
 
@@ -188,6 +201,8 @@ function deltaCell(delta) {
 export function renderTable(evaluation, { marker, title = "Ratchet table", producer, receipt } = {}) {
   // `bootstrap` lets a consumer FAIL a verdict that skipped the direction check on a base with rows.
   const verdict = { head: evaluation.head, ok: evaluation.ok, real_pass: evaluation.realPass, real_total: evaluation.realTotal, bootstrap: evaluation.bootstrap };
+  const reporting = evaluation.rows.filter(row => row.report_only && validDiskMeasurement(row.measurement));
+  if (reporting.length) verdict.report_only = reporting.map(row => ({ id: row.id, measurement: row.measurement }));
   // Which commit's row scripts produced it, and a hash of the producer's run receipt.
   if (producer) verdict.producer = producer;
   if (receipt) verdict.receipt = receipt;
@@ -201,10 +216,15 @@ export function renderTable(evaluation, { marker, title = "Ratchet table", produ
     "|---|---|---|---|---|---|---|",
   ];
   for (const row of evaluation.rows) {
-    const value = row.detail ? `${cell(row, row.value)} (${escapeCell(row.detail)})` : cell(row, row.value);
-    lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status} |`);
+    const m = row.measurement;
+    const detail = row.report_only && validDiskMeasurement(m)
+      ? `free_gb=${m.free_gb} floor=${m.floor} merged_worktrees=${m.merged_worktrees} ceiling=${m.ceiling}; measured health ${m.health ? "PASS" : "FAIL"}`
+      : row.detail;
+    const value = detail ? `${cell(row, row.value)} (${escapeCell(detail)})` : cell(row, row.value);
+    lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.report_only ? " (report-only)" : ""} |`);
   }
   lines.push("");
+  if (evaluation.rows.some(row => row.report_only)) lines.push("Temporary disk report-only: health remains visible; enforcement resumes after durable proof of one successful GC on BOTH Macs. Measurement errors still FAIL.", "");
   if (!evaluation.rows.length) lines.push(`**No rows selected${evaluation.runner ? ` for runner \`${escapeCell(evaluation.runner)}\`` : ""}:** every row is missing → FAIL.`, "");
   if (evaluation.stale) lines.push(`**Stale results:** recorded for ${short(evaluation.resultsSha)}, this PR is at ${short(evaluation.head)}. Every row is MISSING until the table is re-run on this head.`, "");
   if (evaluation.bootstrap) lines.push("**Direction unchecked:** the base commit has no row file yet (bootstrap).", "");
@@ -214,7 +234,7 @@ export function renderTable(evaluation, { marker, title = "Ratchet table", produ
   if (evaluation.loosened.length) lines.push("");
   for (const entry of evaluation.metadata ?? []) {
     const show = (value) => (typeof value === "string" ? short(value) : escapeCell(value ?? "none"));
-    lines.push(`- Metadata changed: \`${entry.id}\` ${entry.field} ${show(entry.before)} → ${show(entry.after)}`);
+    lines.push(`- Metadata changed: \`${entry.id}\` ${entry.field} ${entry.field === "report_only" ? escapeCell(entry.before ?? "enforced") : show(entry.before)} → ${(entry.field === "report_only" ? escapeCell(entry.after ?? "enforced") : show(entry.after))}`);
   }
   if (evaluation.metadata?.length) lines.push("");
   lines.push(`Real rows: ${evaluation.realPass}/${evaluation.realTotal} PASS. \`unit\` rows are shown but never count as ratchet evidence. Verdict: **${evaluation.ok ? "PASS" : "FAIL"}**.`);

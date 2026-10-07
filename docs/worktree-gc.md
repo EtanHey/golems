@@ -26,3 +26,32 @@ and launchd loading belong to the lead after review and merge.
 Known limits retained from R2: a writer can race between archive and removal; a Git
 removal failure can leave a partially removed, unregistered tree. Failed archives
 can leave partial destinations that require manual inspection.
+
+## Temporary disk health reporting (#710)
+
+Per orc/Etan's 2026-10-07 ruling, `disk-free-floor` has
+`report_only: gc-success-on-both-macs`. It still measures actual free GiB and
+counts the GC's guarded REMOVE plans against the unchanged default thresholds
+60 GiB / 25 worktrees. An unhealthy completed measurement remains `FAIL` in the
+health cell and `WARN (report-only)` in the table; it alone cannot fail the aggregate.
+Healthy data remains PASS. Missing, invalid, contradictory or failed source/plan
+measurements fail the aggregate. Other rows remain enforced. The explicit warning
+measurement travels in the head-bound verdict; the consumer validates it instead
+of claiming all four real rows passed.
+
+Enforcement resumes only after the lead has durable proof of one successful real
+GC run on BOTH the MBP and M1. Merge, installation, a dry-run or a prune plan does
+not satisfy that milestone. Restoration checklist:
+
+- Retain a receipt per host: host identity, full installed GC commit, actual apply
+  command, start/end timestamps, exit/completion disposition and full durable audit
+  log. Include archive/removal receipts where applicable and all KEEP/failure data.
+- The lead verifies successful completion and containment on each host and links
+  both receipts in the restoration PR. Neither host may be inferred from the other.
+- Remove only this row's `report_only` field in a normal reviewed commit, retaining
+  its measurement, thresholds and history. Do not turn a low-disk result into PASS.
+- Rerun the current-head tables/consumer checks: unhealthy health blocks the
+  aggregate again; source failures and unrelated failures must still block.
+
+The report-only condition changes merge gating, not the creation floor or any
+permission to delete. Real GC, activation and installation remain lead-owned.

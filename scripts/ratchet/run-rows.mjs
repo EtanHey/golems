@@ -2,13 +2,14 @@
 // Ratchet row producer: runs each selected row's `command` and writes the results JSON that
 // table.mjs reads. Repo-agnostic. A `pass` row is true on exit 0. A `max`/`min` row must exit 0
 // and print its number on the last stdout line; otherwise it is left out, so the table shows
-// MISSING (FAIL), never a guessed value. This script never decides PASS/FAIL itself.
+// MISSING (FAIL), never a guessed value. The bounded disk report-only row also requires a
+// valid structured measurement and a matching exit status; unhealthy health remains false. This script never decides PASS/FAIL itself.
 
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { parseRows } from "./table.mjs";
+import { parseRows, validDiskMeasurement } from "./table.mjs";
 
 const DEFAULT_TIMEOUT_S = 900;
 
@@ -22,6 +23,14 @@ export function runRows({ rows, head, cwd = process.cwd(), runner = null, log = 
     });
     const code = run.status ?? (run.signal ? `killed by ${run.signal}` : "spawn error");
     log(`ratchet row ${row.id}: exit ${code} in ${((Date.now() - started) / 1000).toFixed(1)}s`, run);
+    if (row.report_only) {
+      try {
+        const measurement = JSON.parse(String(run.stdout ?? "").trim().split("\n").pop());
+        if (validDiskMeasurement(measurement) && run.status === (measurement.health ? 0 : 1))
+          results[row.id] = { value: measurement.health, measurement };
+      } catch {} // Malformed/missing measurement stays MISSING (FAIL), never WARN.
+      continue;
+    }
     if (row.direction === "pass") {
       results[row.id] = { value: run.status === 0, detail: `exit ${code}` };
       continue;
