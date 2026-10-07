@@ -315,6 +315,7 @@ def run(repo, sha, required=False):
         out.mkdir(parents=True, mode=0o700)
         (out / "pytest.ini").write_text("[pytest]\n")
         tree = repo / ".worktrees" / f"hooks-private-gate-{run_id}"
+        subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "repogolem/worktree-disk-floor.py"), str(tree)], check=True)
         tree.parent.mkdir(exist_ok=True)
         git(repo, "worktree", "add", "--detach", str(tree), sha)
         try:

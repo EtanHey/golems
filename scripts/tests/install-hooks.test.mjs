@@ -123,7 +123,7 @@ const bakFiles = (fx) => spawnSync("ls", [path.join(fx.home, ".claude")], { enco
 function fixtureEnv(fx) {
   const env = { ...process.env, HOME: fx.home, CODEX_HOME: path.join(fx.home, ".codex"),
     GOLEMS_HEAVY_LOCK: path.join(fx.root, "fixture-heavy.lock"),
-    GOLEMS_HEAVY_MIN_FREE_GB: "0", ...(fx.env ?? {}) };
+    GOLEMS_HEAVY_MIN_FREE_GB: "0", GOLEMS_WORKTREE_MIN_FREE_GB: "0", ...(fx.env ?? {}) };
   // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.
   delete env.GOLEMS_HEAVY_SUITE_HELD;
   const bin = path.join(fx.root, "machine-bin"); mkdirSync(bin, { recursive: true });
@@ -770,6 +770,8 @@ function pinnedManifestFixture() {
   const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
   mkdirSync(directory, { recursive: true });
   cpSync(installer, path.join(directory, 'install-hooks.mjs'));
+  mkdirSync(path.join(directory, '../repogolem'), { recursive: true });
+  cpSync(path.join(here, '../repogolem/worktree-disk-floor.py'), path.join(directory, '../repogolem/worktree-disk-floor.py'));
   cpSync(path.join(here, '../hooks/codex-hooks-install.mjs'), path.join(directory, 'codex-hooks-install.mjs'));
   cpSync(wrapper, path.join(directory, 'fail-open.py'));
   cpSync(path.join(here, '../hooks/private-regression-gate.py'), path.join(directory, 'private-regression-gate.py'));
@@ -1222,6 +1224,8 @@ function policyFixture() {
     "private-regression-gate.py", "heavy-suite.py", "codex-policy-hook.py"]) {
     cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
   }
+  mkdirSync(path.join(fx.repo, "scripts/repogolem"), { recursive: true });
+  cpSync(path.join(sourceRepo, "scripts/repogolem/worktree-disk-floor.py"), path.join(fx.repo, "scripts/repogolem/worktree-disk-floor.py"));
   for (const suite of ["skills/golem-powers/_shared/tests", "skills/golem-powers/tmp-block/tests",
     "skills/golem-powers/tmp-block/hooks/tests", "skills/golem-powers/git-guardian/tests", "skills/golem-powers/git-guardian/hooks/tests"]) {
     mkdirSync(path.join(fx.repo, suite), { recursive: true });
@@ -1567,4 +1571,15 @@ test("Codex human-confirm: both hosts register it with the Claude gate's pin; th
     expect([pinned, gates]).toEqual([pinned, pinned ? ["git-guardian", "human-confirm", "tmp-block"] : ["git-guardian", "tmp-block"]]);
     expect(run(fx, "--status").out).toContain(pinned ? "codex wiring=ok" : "codex human-confirm refused(unpinned)");
   }
+});
+
+
+test("creation floor refuses before any fixture worktree is added", () => {
+  const fx = fixture(); fx.env = { GOLEMS_WORKTREE_MIN_FREE_GB: "99999999" };
+  const before = git(fx.repo, "worktree", "list", "--porcelain");
+  const result = run(fx, "--apply");
+  expect(result.status).not.toBe(0);
+  expect(result.out).toContain("worktree creation refused");
+  expect(git(fx.repo, "worktree", "list", "--porcelain")).toBe(before);
+  expect(existsSync(live(fx))).toBe(false);
 });

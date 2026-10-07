@@ -57,6 +57,9 @@ machines:
     reposPath: ~/src
     clis: [claude, codex, gemini, cursor]
     overrides:
+      global:
+        env:
+          GOLEMS_WORKTREE_MIN_FREE_GB: "50"
       projects:
         example-app:
           mcps: [example-docs, example-api]
@@ -64,5 +67,8 @@ machines:
     reposPath: ~/code
     clis: [claude]
     overrides:
+      global:
+        env:
+          GOLEMS_WORKTREE_MIN_FREE_GB: "15"
       projects:
         example-lib: null # not checked out on this machine
