@@ -100,32 +100,136 @@ def argv_at(tokens, segments, scopes, i):
     return args, redirects
 
 
+# GNU and BSD option arity. Optional operands must be attached; a required
+# operand consumes the cluster suffix or the next argv word, even if '-...'.
+_XARGS_REQUIRED = frozenset('a d E I J L n P R S s'.split())
+_XARGS_OPTIONAL = {'e': '', 'i': '{}', 'l': '1'}
+_XARGS_FLAGS = frozenset('0oprtx')
+_XARGS_LONG = {
+    'arg-file': ('a', 'required'), 'delimiter': ('d', 'required'),
+    'eof': ('e', 'optional'), 'replace': ('i', 'optional'),
+    'max-lines': ('l', 'optional'), 'max-args': ('n', 'required'),
+    'max-procs': ('P', 'required'), 'max-chars': ('s', 'required'),
+    'process-slot-var': ('slot', 'required'),
+    'null': ('0', 'none'), 'open-tty': ('o', 'none'),
+    'interactive': ('p', 'none'), 'no-run-if-empty': ('r', 'none'),
+    'verbose': ('t', 'none'), 'exit': ('x', 'none'),
+    'show-limits': ('limits', 'none'), 'help': ('help', 'none'),
+    'version': ('version', 'none'),
+}
+
+
+def _stdin_command_slot(child, depth=0):
+    """Appending unknown stdin can supply a missing wrapper executable."""
+    if depth > 8: raise ValueError('wrapper inspection budget exceeded')
+    if unresolved(child[0], Path.home()): return True
+    base = executable(child[0])[0]
+    if base not in WRAPPERS: return False
+    # Name lookup remains data even when stdin supplies the names.
+    if base == 'command' and any(a.startswith('-') and ('v' in a or 'V' in a)
+                                 for a in child[1:]):
+        return False
+    children = list(wrapper_payload(base, child[1:]))
+    return not children or any(_stdin_command_slot(c, depth + 1) for c in children if c)
+
+
+def xargs_payload(args):
+    """Deny-only union of GNU replacement and BSD insertion semantics.
+
+    Never promote an option operand to a child command. Preserve unknown
+    replacement results in every child word so wrapper recursion sees them.
+    Retain symbolic replacement/insertion for deny-only analysis. Track the
+    effective modes separately: BSD uses the last -I/-J; GNU cancels -I after
+    -L/-l or -n other than 1. Check the original command if either can append.
+    """
+    i, replacement, insertion = 0, None, None
+    gnu_replacement, bsd_mode = None, None
+
+    def unknown():
+        if guarded_words(args) or any(executable(a)[0] in WRAPPERS for a in args):
+            raise ValueError('unknown xargs option grammar with protected argv')
+
+    while i < len(args):
+        arg = args[i]
+        if arg == '--':
+            i += 1; break
+        if arg == '-' or not arg.startswith('-'): break
+        # Expansion may change option names, arity or the number of words.
+        # Literal replacement braces (including {}) are not brace expansion.
+        if (any(c in arg for c in '$`*?[]') or
+                any(',' in part or '..' in part for part in re.findall(r'\{([^{}]*)\}', arg))):
+            raise ValueError('unresolved xargs option word')
+        options = []
+        if arg.startswith('--'):
+            name, eq, value = arg[2:].partition('=')
+            matches = [name] if name in _XARGS_LONG else [n for n in _XARGS_LONG if n.startswith(name)]
+            if len(matches) != 1:
+                unknown(); return []
+            key, arity = _XARGS_LONG[matches[0]]
+            if arity == 'none' and eq:
+                unknown(); return []
+            if arity == 'required' and not eq:
+                i += 1
+                if i >= len(args): raise ValueError('missing xargs option operand')
+                value = args[i]
+            elif arity == 'optional' and not eq:
+                value = _XARGS_OPTIONAL[key]
+            options.append((key, value))
+        else:
+            j = 1
+            while j < len(arg):
+                key, value = arg[j], ''
+                j += 1
+                if key in _XARGS_REQUIRED or key in _XARGS_OPTIONAL:
+                    value = arg[j:]
+                    if not value and key in _XARGS_REQUIRED:
+                        i += 1
+                        if i >= len(args): raise ValueError('missing xargs option operand')
+                        value = args[i]
+                    elif not value:
+                        value = _XARGS_OPTIONAL[key]
+                    j = len(arg)
+                elif key not in _XARGS_FLAGS:
+                    unknown(); return []
+                options.append((key, value))
+        for key, value in options:
+            if key in ('help', 'version'): return []
+            if key in ('I', 'i', 'J'):
+                if not value: raise ValueError('empty xargs replacement')
+                if '$' in value or '`' in value:
+                    unknown(); return []
+                if key == 'J': insertion = value
+                else:
+                    replacement = gnu_replacement = value
+                bsd_mode = 'J' if key == 'J' else 'I'
+            elif key in ('L', 'l'):
+                gnu_replacement = None
+            elif key == 'n':
+                try: single = int(value) == 1
+                except ValueError: single = False
+                if not single: gnu_replacement = None
+        i += 1
+    child = list(args[i:])
+    if not child: return []  # default utility is echo
+    # Match against the original argv: replacement must not hide a shared -J
+    # token. BSD permits insertion at argv[0], including the utility itself.
+    insert_at = next((j for j in range(len(child)) if child[j] == insertion), None)
+    bsd_appends = bsd_mode != 'I' and insert_at is None
+    gnu_appends = gnu_replacement is None
+    if (bsd_appends or gnu_appends) and _stdin_command_slot(child):
+        raise ValueError('xargs stdin supplies wrapper executable and argv')
+    if replacement:
+        child = [w.replace(replacement, '${stdin-command}') for w in child]
+    if insert_at is not None:
+        # Unknown arity can supply both an executable and its whole argv.
+        child[insert_at:insert_at + 1] = ['${stdin-command}', '${@}']
+    return child
+
+
 def wrapper_payload(base, args):
     if base == 'xargs':
-        # A replacement token is opaque when it participates in executable
-        # identity. Its declaration is an option operand, never the command.
-        i, replacement = 0, None
-        values = {'-I', '-E', '-L', '-n', '-P', '-s',
-                  '--eof', '--max-lines', '--max-args', '--max-procs', '--max-chars'}
-        while i < len(args) and args[i].startswith('-'):
-            arg = args[i]
-            if arg == '--':
-                i += 1; break
-            if arg == '-I':
-                if i + 1 >= len(args): raise ValueError('missing xargs replacement')
-                replacement = args[i + 1]
-            elif arg in ('-i', '--replace'):
-                replacement = '{}'  # GNU optional value is attached, never the next word
-            elif arg.startswith(('-I', '-i')) and len(arg) > 2:
-                replacement = arg[2:]
-            elif arg.startswith('--replace='):
-                replacement = arg.split('=', 1)[1]
-            i += 2 if arg in values else 1
-        child = list(args[i:])
-        if child:
-            if replacement and replacement in child[0]:
-                child[0] = '${stdin-command}'
-            yield child
+        child = xargs_payload(args)
+        if child: yield child
         return
     if base == 'find':
         for i, arg in enumerate(args):
