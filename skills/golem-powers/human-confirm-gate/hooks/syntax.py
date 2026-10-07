@@ -28,6 +28,58 @@ def executable(word):
     return ('git', base[4:]) if base.startswith('git-') and len(base) > 4 else (base, None)
 
 
+def substitution_argv(command, shell):
+    """Keep a substitution's unknown result in its parent argv.
+
+    The shared lexer exposes its body separately. Collapse that view only
+    here; operations() still inspects every executable body recursively.
+    The marker cannot resolve through the literal-variable binding grammar.
+    """
+    _ShellOperator = shell._impl_module('tokens')._ShellOperator
+    tokens = []
+    for token in shell._shell_tokens(shell._strip_heredoc_bodies(command), _operator_origin=True):
+        if isinstance(token, _ShellOperator) and token == '(' and tokens and tokens[-1].endswith(('$', '`')):
+            tokens[-1] = _ShellOperator(tokens[-1] + '(')
+        else:
+            tokens.append(token)
+    def opened(token):
+        return isinstance(token, _ShellOperator) and shell._is_command_sub_open(token)
+    def closed(token):
+        return isinstance(token, _ShellOperator) and shell._is_command_sub_close(token)
+    words, continuing, i = [], False, 0
+    while i < len(tokens):
+        word = tokens[i]
+        suffix = False
+        if opened(word):
+            word = word[:-2] + '${command-substitution}'
+            depth = 1
+            i += 1
+            while i < len(tokens) and depth:
+                if opened(tokens[i]): depth += 1
+                if closed(tokens[i]): depth -= 1
+                if not depth: suffix = tokens[i].endswith('+')
+                i += 1
+            if depth: raise ValueError('unclosed command substitution')
+        else:
+            i += 1
+            if not isinstance(word, _ShellOperator) and (
+                    shell._is_command_sub_open(word) or shell._is_command_sub_close(word) or
+                    word in (';', '&', '|', '(', ')', '<', '>', '>>', '>|', '<<', '<<<', '<>', '&>', '&>>', '}$')):
+                word = '__literal_shell_delimiter__'
+        if continuing:
+            words[-1] += word
+        else:
+            words.append(word)
+        continuing = suffix
+    # Re-lexing quoted tokens would lose parameter/brace quote provenance.
+    positions = shell._command_position_flags(words)
+    segments, segment = [], 0
+    for i, word in enumerate(words):
+        segments.append(segment)
+        if shell._is_separator(words, i): segment += 1
+    return words, positions, segments, [()] * len(words)
+
+
 def argv_at(tokens, segments, scopes, i):
     args, redirects = [], []
     j = i + 1
