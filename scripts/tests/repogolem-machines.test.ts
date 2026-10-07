@@ -193,8 +193,8 @@ describe("machines", () => {
 
   test("a __proto__ key in overrides is refused, not merged", () => {
     const text = readFileSync(EXAMPLE, "utf8").replace(
-      "    overrides:\n",
-      "    overrides:\n      global:\n        __proto__:\n          polluted: true\n",
+      "      global:\n        env:\n",
+      "      global:\n        __proto__:\n          polluted: true\n        env:\n",
     );
     const r = generate(text, "example-host");
     expect(r.code).toBe(2);
