@@ -198,13 +198,16 @@ after a passing receipt, later local tampering still requires a fresh lead live 
 `.claude/skills`, `.agents/skills`, and `.codex/skills` afresh. Names, entry shapes, readable
 SKILL.md catalogs, supporting file hashes and executable bits must match. HOME prefixes are
 normalized; bounded mirrored sources require explicit per-entry target aliases. Finder files,
-bytecode caches, and namespace metadata outside actual skill trees are excluded. Harness-owned
+`.git`, `node_modules`, `__pycache__`, `.pytest_cache`, `.pyc` files, and namespace metadata
+outside actual skill trees are excluded. This proves parity of installed skill source content;
+excluded dependencies/caches are not claimed byte-identical or runtime-equivalent. Harness-owned
 nested skills are measured without writing their install. Missing SSH, Python, roots, content
 or the required-readable manifest fails; there is no capability skip.
 
 Set `RATCHET_SKILL_HOST` and `RATCHET_SKILL_REQUIREMENTS`; optionally set
 `RATCHET_SKILL_IDENTITY` to select an existing SSH identity. The private requirements JSON is
-`{"schema":1,"roots":{"<root>":{"readable":["class-a","namespace/class-b"],
+`{"schema":2,"identities":["<local identity object>","<remote identity object>"],
+"roots":{"<root>":{"readable":["class-a","namespace/class-b"],
 "allow_broken":[],"allow_empty":[],"target_aliases":{}}}}`, with all three roots and nonempty
 readable lists. Freeze required catalogs from the approved source before reconciliation;
 never regenerate them to excuse a lost skill. An alias maps an entry to its ordered local,
@@ -224,3 +227,17 @@ with the same source commit on both sides: the repair changed the remote install
 not the source checkout's tracked HEAD. Synthetic class-only tests run through the Python
 skill suite and reject missing/extra/broken/hash/mode/target drift, including required skills
 lost on both hosts. Fresh live SSH proof accompanies the saved RED/GREEN pairs.
+
+Schema 2 inventories pin SHA-256 digests of the observed IOPlatformUUID, normalized hostname,
+and resolved HOME as `identity: {machine, hostname, home}`. Private requirements pin the ordered
+local/remote objects as `identities`; equal machines, absent/malformed identities or mismatched
+pins fail. Identity comes from each host's read-only macOS system observation, not the caller's
+SSH label. JSON object/list/member types are strict. Normal output contains only booleans and
+counts; root/entry/host-role diagnostics stay on stderr in the lead's local log.
+
+The original schema 1 inventories and their hashes remain immutable historical name/content
+evidence. They cannot supply fresh host identity proof. Schema 2 requirements and fresh host
+observations are stored separately; the row's fix fixture points at the new identity-bearing pair.
+Run class-only tests with `WEAVE_ALLOW_TMP=1 python3 -B -m unittest discover -s scripts/tests
+-p test_installed_skill_parity.py`; their owned temporary directories are outside the measured
+checkout and contain no durable evidence.

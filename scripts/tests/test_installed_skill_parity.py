@@ -1,5 +1,6 @@
 """Class-only fixtures: no installed names, account data, or personal paths."""
 import copy
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -17,16 +18,18 @@ spec.loader.exec_module(parity)
 
 class Parity(unittest.TestCase):
     def setUp(self):
-        self.left = {'schema': 1, 'roots': {}}
-        self.required = {'schema': 1, 'roots': {}}
+        self.pins = [{k: hashlib.sha256((label+k).encode()).hexdigest() for k in ('machine', 'hostname', 'home')} for label in ('class-local', 'class-remote')]
+        self.left = {'schema': 2, 'identity': copy.deepcopy(self.pins[0]), 'roots': {}}
+        self.required = {'schema': 2, 'identities': copy.deepcopy(self.pins), 'roots': {}}
         for root in parity.ROOTS:
             entry = dict(kind='symlink', exists=True, skill_sha256='a'*64,
                          normalized_target='$HOME/source/class-a',
-                         files={'SKILL.md': {'kind': 'file', 'sha256': 'a'*64, 'executable': False}})
+                         internal_skills={}, files={'SKILL.md': {'kind': 'file', 'sha256': 'a'*64, 'executable': False}})
             self.left['roots'][root] = {'exists': True, 'entries': {'class-a': entry}}
             self.required['roots'][root] = {'readable': ['class-a'], 'allow_broken': [],
                                            'allow_empty': [], 'target_aliases': {}}
         self.right = copy.deepcopy(self.left)
+        self.right['identity'] = copy.deepcopy(self.pins[1])
         self.root = parity.ROOTS[0]
 
     def check(self):
@@ -69,14 +72,14 @@ class Parity(unittest.TestCase):
                 self.assertFalse(self.check()['name_content_parity'])
 
     def test_missing_root_and_malformed_manifest(self):
-        self.right['roots'].pop(self.root)
+        self.right['roots'][self.root]['exists'] = False
         self.assertTrue(self.check()['errors'])
         with self.assertRaises(ValueError): parity.compare({}, self.left, self.required)
 
     def test_disclosed_invalid_is_separate_from_parity(self):
         for host in [self.left, self.right]:
             host['roots'][self.root]['entries']['class-retired'] = dict(
-                kind='symlink', exists=False, skill_sha256=None, files={},
+                kind='symlink', exists=False, skill_sha256=None, files={}, internal_skills={},
                 normalized_target='$HOME/source/class-retired')
         self.required['roots'][self.root]['allow_broken'] = ['class-retired']
         result = self.check()
@@ -108,9 +111,7 @@ class Parity(unittest.TestCase):
         self.assertTrue(self.check()['errors'])
 
     def test_scanner_reads_nested_skills_and_rejects_broken_support(self):
-        scratch = SCRIPT.parents[2] / 'docs.local/parity-tests'
-        scratch.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=scratch) as directory:
+        with tempfile.TemporaryDirectory(prefix='class-skill-parity-') as directory:
             home = Path(directory)
             for root in parity.ROOTS:
                 skill = home / root / 'class-a'
@@ -121,7 +122,7 @@ class Parity(unittest.TestCase):
             nested.mkdir(parents=True)
             (nested / 'SKILL.md').write_text('# class-b\n')
             (namespace / 'class-metadata').write_text('outside skill content\n')
-            with patch.object(parity.Path, 'home', return_value=home):
+            with patch.object(parity.Path, 'home', return_value=home), patch.object(parity, 'observed_identity', return_value=self.pins[0]):
                 snapshot = parity.inventory()
                 entry = snapshot['roots'][parity.ROOTS[0]]['entries']['class-namespace']
                 self.assertEqual(set(entry['internal_skills']), {'class-b'})
@@ -129,6 +130,41 @@ class Parity(unittest.TestCase):
                 self.assertTrue(snapshot['roots'][parity.ROOTS[0]]['entries']['class-a']['skill_sha256'])
                 (nested / 'class-helper').symlink_to(nested / 'class-absent')
                 with self.assertRaises(ValueError): parity.inventory()
+
+    def test_identity_pins_reject_self_swapped_and_unexpected_hosts(self):
+        self.right['identity'] = self.pins[0]
+        self.assertFalse(self.check()['host_identity_valid'])
+        self.setUp()
+        self.left['identity'], self.right['identity'] = copy.deepcopy(self.pins[1]), self.pins[0]
+        self.assertFalse(self.check()['host_identity_valid'])
+        self.setUp()
+        self.right['identity']['hostname'] = 'f'*64
+        self.assertTrue(self.check()['errors'])
+
+    def test_malformed_identity_and_schema_fail(self):
+        for value in [None, {}, 'class-host', {'machine': True}]:
+            with self.subTest(value=value):
+                self.setUp(); self.right['identity'] = value
+                with self.assertRaises(ValueError): self.check()
+        self.setUp(); self.right.pop('identity')
+        with self.assertRaises(ValueError): self.check()
+        self.setUp(); self.left['schema'] = 1
+        with self.assertRaises(ValueError): self.check()
+
+    def test_exact_allowlists_and_catalog_types(self):
+        for value in ['xabx', {'ab': True}, [1], ['../class-a'], ['class-a', 'class-a']]:
+            with self.subTest(value=value):
+                self.setUp(); self.required['roots'][self.root]['allow_broken'] = value
+                with self.assertRaises(ValueError): self.check()
+        for field in ['entries', 'readable', 'target_aliases']:
+            self.setUp()
+            doc = self.right if field == 'entries' else self.required
+            doc['roots'][self.root][field] = [] if field != 'readable' else {}
+            with self.assertRaises(ValueError): self.check()
+
+    def test_diagnostics_name_entry_root_and_host(self):
+        self.right['roots'][self.root]['entries']['class-a']['skill_sha256'] = 'b'*64
+        self.assertIn(self.root + '/class-a: local/remote content/shape mismatch', self.check()['errors'])
 
     def test_ssh_unavailable_cannot_skip(self):
         with patch.object(sys, 'argv', [str(SCRIPT), '--host', 'class-host', '--requirements', 'class-manifest']), \
