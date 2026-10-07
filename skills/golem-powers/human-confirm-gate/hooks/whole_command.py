@@ -16,6 +16,24 @@ _EXACT = re.compile(r'\$(?:(' + _NAME + r')|\{(' + _NAME + r')\})')
 _DECLARATIONS = {'declare', 'typeset', 'local', 'export', 'readonly'}
 _READ_VALUES = frozenset('adinNptu')
 _PATH_CHAIN_COMMANDS = {'mkdir', 'cat', 'chmod', 'ls', 'echo', 'true', 'false'}
+_CARDINALITY = re.compile(r'\$\{#' + _NAME + r'(?:\[@\]|\[\*\])?\}')
+
+
+def arithmetic_data(command, shell):
+    """Only numeric cardinality commands lose supplemental executable positions.
+
+    Quotes/comments and substitution bodies keep their original evidence. No
+    executable substitution or arbitrary arithmetic value is masked here;
+    base inspection always receives the unchanged command.
+    """
+    structural = shell._impl_module('structure').structural_source(command)
+    result = list(command)
+    for match in re.finditer(r'(?<![\w$\\])\(\(([^()]*)\)\)', structural):
+        body = command[match.start(1):match.end(1)]
+        numeric = _CARDINALITY.sub('0', body)
+        if _CARDINALITY.search(body) and re.fullmatch(r'[\s0-9+*/%<>=!&|^~?:-]+', numeric):
+            result[match.start():match.end()] = ':' + ' ' * (match.end()-match.start()-1)
+    return ''.join(result)
 
 
 @dataclass(frozen=True)
@@ -83,6 +101,7 @@ def check(command, initial, shell, syntax):
     Evidence survives uncertain execution/scope: it can only add a denial.
     """
     parent = shell._impl_module('heredocs')._strip_heredoc_bodies(command, preserve_expansions=False)
+    parent = arithmetic_data(parent, shell)
     try:
         words, positions, segments, scopes = syntax.substitution_argv(parent, shell)
     except ValueError:
