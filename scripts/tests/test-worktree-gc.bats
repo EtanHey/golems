@@ -1,55 +1,5 @@
 #!/usr/bin/env bats
-
-setup() {
-  REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-  WORKTREE_GC="$REPO_ROOT/scripts/worktree-gc.sh"
-  TEST_ROOT="$(mktemp -d)"
-}
-
-teardown() {
-  rm -rf "$TEST_ROOT"
-}
-
-make_fixture_repo() {
-  local name="$1"
-  local base_branch="${2:-main}"
-  local remote="$TEST_ROOT/$name-origin.git"
-  local seed="$TEST_ROOT/$name-seed"
-  local repo="$TEST_ROOT/$name"
-
-  git init -q --bare "$remote"
-  git init -q -b "$base_branch" "$seed"
-  printf 'fixture\n' > "$seed/fixture.txt"
-  git -C "$seed" add fixture.txt
-  git -C "$seed" -c user.name=Fixture -c user.email=fixture@example.invalid \
-    commit -qm 'initial fixture'
-  git -C "$seed" remote add origin "$remote"
-  git -C "$seed" push -q -u origin "$base_branch"
-  git -C "$remote" symbolic-ref HEAD "refs/heads/$base_branch"
-  git clone -q "$remote" "$repo"
-
-  printf '%s\n' "$repo"
-}
-
-add_branch_worktree() {
-  local repo="$1"
-  local branch="$2"
-  local base_ref="${3:-origin/main}"
-  local worktree="$TEST_ROOT/$branch-worktree"
-
-  git -C "$repo" worktree add -q -b "$branch" "$worktree" "$base_ref"
-  (cd "$worktree" && pwd -P)
-}
-
-commit_fixture_file() {
-  local worktree="$1"
-  local filename="$2"
-
-  printf 'fixture change\n' > "$worktree/$filename"
-  git -C "$worktree" add "$filename"
-  git -C "$worktree" -c user.name=Fixture -c user.email=fixture@example.invalid \
-    commit -qm "add $filename"
-}
+load lib/worktree-gc-fixtures
 
 @test "refuses a worktree with uncommitted files" {
   repo="$(make_fixture_repo dirty-repo)"
@@ -96,7 +46,7 @@ commit_fixture_file() {
 
 @test "classifies an uncontained detached HEAD as KEEP-detached" {
   repo="$(make_fixture_repo detached-repo)"
-  worktree="$TEST_ROOT/detached-worktree"
+  worktree="$repo/.worktrees/detached-worktree"
   git -C "$repo" worktree add -q --detach "$worktree" origin/main
   worktree="$(cd "$worktree" && pwd -P)"
   commit_fixture_file "$worktree" detached-only.txt
@@ -121,15 +71,19 @@ commit_fixture_file() {
     [ -d "$worktree" ]
 }
 
-@test "rejects the retired apply flag and leaves the worktree in place" {
+# #664 (f68dc738) retired --apply ("removal is permanently a human act").
+# Etan's 2026-10-06 21:50 ruling ("nightly prune", "fix that shit") supersedes
+# it: --apply removes an eligible worktree, behind #664's written revival bar.
+@test "apply removes an eligible idle worktree" {
   repo="$(make_fixture_repo apply-repo)"
   worktree="$(add_branch_worktree "$repo" apply-branch)"
 
-  run "$WORKTREE_GC" --apply --repo "$repo"
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
 
-  [ "$status" -eq 2 ] &&
-    [[ "$output" == *"Unknown argument: --apply"* ]] &&
-    [ -d "$worktree" ]
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · apply-branch · dirty=0 · ahead=0 · REMOVED · "* ]] &&
+    [ ! -e "$worktree" ] &&
+    [[ "$(git -C "$repo" worktree list --porcelain)" != *"$worktree"* ]]
 }
 
 @test "falls back to origin master when origin main does not exist" {
@@ -215,7 +169,7 @@ commit_fixture_file() {
 
 @test "prunes deleted remote base refs before deciding a detached worktree is represented" {
   repo="$(make_fixture_repo deleted-base-repo)"
-  worktree="$TEST_ROOT/deleted-base-detached"
+  worktree="$repo/.worktrees/deleted-base-detached"
   git -C "$repo" worktree add -q --detach "$worktree" origin/main
   worktree="$(cd "$worktree" && pwd -P)"
   git -C "$TEST_ROOT/deleted-base-repo-origin.git" update-ref -d refs/heads/main
@@ -247,7 +201,7 @@ commit_fixture_file() {
 
 @test "re-fetches immediately before a REMOVE verdict when the remote changes after the repo fetch" {
   repo="$(make_fixture_repo removal-race-repo)"
-  worktree="$TEST_ROOT/removal-race-detached"
+  worktree="$repo/.worktrees/removal-race-detached"
   git -C "$repo" worktree add -q --detach "$worktree" origin/main
   worktree="$(cd "$worktree" && pwd -P)"
   wrapper_dir="$TEST_ROOT/git-wrapper"
@@ -275,17 +229,23 @@ commit_fixture_file() {
     [ -d "$worktree" ]
 }
 
-@test "keeps a worktree containing ignored local-only data" {
+# Etan 2026-10-06: ignored files are rebuildable caches or 1Password-materialized
+# secrets and no longer block (#664 counted node_modules as dirty, so it never
+# freed a byte). docs.local is archived before removal; see the apply tests.
+@test "ignored-only data does not block an eligible verdict" {
   repo="$(make_fixture_repo ignored-data-repo)"
   worktree="$(add_branch_worktree "$repo" ignored-data-branch)"
-  printf '.env\n' >> "$repo/.git/info/exclude"
+  printf '.env\nnode_modules/\n' >> "$repo/.git/info/exclude"
   printf 'local secret fixture\n' > "$worktree/.env"
+  mkdir -p "$worktree/node_modules/pkg"
+  printf 'cache\n' > "$worktree/node_modules/pkg/index.js"
   [ -z "$(git -C "$worktree" status --porcelain)" ]
 
   run "$WORKTREE_GC" --repo "$repo"
 
   [ "$status" -eq 0 ] &&
-    [[ "$output" == *" · $worktree · ignored-data-branch · dirty=1 · "*"KEEP-dirty"* ]]
+    [[ "$output" == *" · $worktree · ignored-data-branch · dirty=0 · ahead=0 · REMOVE · "* ]] &&
+    [ -d "$worktree" ]
 }
 
 @test "overrides status config that hides ordinary untracked data" {
@@ -314,7 +274,7 @@ commit_fixture_file() {
   git -C "$seed" branch release "$release_head"
   git -C "$seed" push -q origin release
   git -C "$repo" fetch -q origin
-  worktree="$TEST_ROOT/custom-refspec-detached"
+  worktree="$repo/.worktrees/custom-refspec-detached"
   git -C "$repo" worktree add -q --detach "$worktree" origin/main
   worktree="$(cd "$worktree" && pwd -P)"
   git -C "$repo" config --unset-all remote.origin.fetch
@@ -484,4 +444,362 @@ commit_fixture_file() {
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · (detached) · "*"KEEP-pinned"*"install-hooks"* ]] &&
     [[ "$output" != *" · $worktree · "*" · REMOVE · "* ]]
+}
+
+@test "apply archives an ignored docs.local and verifies the copy before removing" {
+  repo="$(make_fixture_repo archive-repo)"
+  worktree="$(add_branch_worktree "$repo" archive-branch)"
+  printf 'docs.local/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$worktree/docs.local/evidence"
+  printf 'receipt\n' > "$worktree/docs.local/evidence/run.log"
+  printf 'notes\n' > "$worktree/docs.local/notes.md"
+  archive="$(cd "$repo" && pwd -P)/docs.local/worktree-archive/$(basename "$worktree")"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"REMOVED"*"archived 1 path(s), 2 file(s) to $archive"* ]] &&
+    [ "$(cat "$archive/docs.local/evidence/run.log")" = "receipt" ] &&
+    [ "$(cat "$archive/docs.local/notes.md")" = "notes" ] &&
+    grep -q $'^docs.local/notes.md\tfile\t6\t' "$archive/RECEIPT.tsv" &&
+    [ ! -e "$worktree" ]
+}
+
+@test "apply keeps the worktree when both archive destinations already exist" {
+  repo="$(make_fixture_repo archive-clash-repo)"
+  worktree="$(add_branch_worktree "$repo" archive-clash-branch)"
+  printf 'docs.local/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$worktree/docs.local"
+  printf 'evidence\n' > "$worktree/docs.local/a.md"
+  head="$(git -C "$worktree" rev-parse HEAD)"
+  archive="$repo/docs.local/worktree-archive/$(basename "$worktree")"
+  mkdir -p "$archive" "$archive-${head:0:12}"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"archive destination already exists"* ]] &&
+    [ -f "$worktree/docs.local/a.md" ]
+}
+
+@test "apply keeps a worktree a running process uses as its cwd" {
+  repo="$(make_fixture_repo live-cwd-repo)"
+  worktree="$(add_branch_worktree "$repo" live-cwd-branch)"
+  mkdir -p "$worktree/sub"
+  (cd "$worktree/sub" && exec sleep 60) &
+  holder=$!
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  kill "$holder" 2>/dev/null || true
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · live-cwd-branch · "*"KEEP-live"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "apply fails closed when lsof lists no process cwd" {
+  repo="$(make_fixture_repo blind-lsof-repo)"
+  worktree="$(add_branch_worktree "$repo" blind-lsof-branch)"
+  wrapper_dir="$TEST_ROOT/blind-lsof"
+  mkdir -p "$wrapper_dir"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$wrapper_dir/lsof"
+  chmod +x "$wrapper_dir/lsof"
+
+  run env PATH="$wrapper_dir:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"lsof listed no process cwd"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "apply keeps a worktree with HEAD or index activity inside the idle window" {
+  repo="$(make_fixture_repo active-repo)"
+  worktree="$(add_branch_worktree "$repo" active-branch)"
+
+  run "$WORKTREE_GC" --apply --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · active-branch · "*"KEEP-active"*"within 6h"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "apply never removes a dirty or unpushed worktree" {
+  repo="$(make_fixture_repo apply-guard-repo)"
+  dirty="$(add_branch_worktree "$repo" apply-dirty)"
+  printf 'uncommitted\n' > "$dirty/new.txt"
+  unpushed="$(add_branch_worktree "$repo" apply-unpushed)"
+  commit_fixture_file "$unpushed" local-only.txt
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 3 ] &&
+    [[ "$output" == *" · $dirty · apply-dirty · "*"KEEP-dirty"* ]] &&
+    [[ "$output" == *" · $unpushed · apply-unpushed · "*"KEEP-unpushed"* ]] &&
+    [ -f "$dirty/new.txt" ] && [ -f "$unpushed/local-only.txt" ]
+}
+
+@test "path mode judges only the named worktree and never the main checkout" {
+  repo="$(make_fixture_repo path-mode-repo)"
+  target="$(add_branch_worktree "$repo" path-target)"
+  bystander="$(add_branch_worktree "$repo" path-bystander)"
+  main="$(cd "$repo" && pwd -P)"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --path "$target"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $target · path-target · "*"REMOVED"* ]] &&
+    [[ "$output" != *"$bystander"* ]] &&
+    [[ "$output" != *" · $main · "* ]] &&
+    [ ! -e "$target" ] && [ -d "$bystander" ] && [ -d "$main/.git" ]
+}
+
+@test "keeps Claude Code managed .claude/worktrees" {
+  repo="$(make_fixture_repo claude-managed-repo)"
+  mkdir -p "$repo/.claude/worktrees"
+  git -C "$repo" worktree add -q -b claude-agent "$repo/.claude/worktrees/agent-1" origin/main
+  worktree="$(cd "$repo/.claude/worktrees/agent-1" && pwd -P)"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · claude-agent · "*"KEEP-pinned"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "keeps a worktree that has another worktree nested inside it" {
+  repo="$(make_fixture_repo nested-repo)"
+  outer="$(add_branch_worktree "$repo" nested-outer)"
+  printf 'inner/\n' >> "$repo/.git/info/exclude"
+  git -C "$repo" worktree add -q -b nested-inner "$outer/inner" origin/main
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $outer · nested-outer · "*"KEEP-undetermined"*"nested inside"* ]] &&
+    [ -d "$outer" ] &&
+    [[ "$(git -C "$repo" worktree list --porcelain)" == *"worktree $outer"$'\n'* ]]
+}
+
+# --- R1 (#703 review: H1, H2, M1, M2, M3, L1, L2; brainlayer 23:28 open-PR rule) ---
+
+@test "H1: a registered worktree outside <repo>/.worktrees is out of scope in both modes" {
+  repo="$(make_fixture_repo scope-repo)"
+  outside="$TEST_ROOT/runtime-checkout"
+  git -C "$repo" worktree add -q --detach "$outside" origin/main
+  outside="$(cd "$outside" && pwd -P)"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $outside · (detached) · "*"KEEP-out-of-scope"* ]] &&
+    [ -d "$outside" ]
+}
+
+@test "H2: a nested ignored docs.local at any depth is archived with a hash receipt before removal" {
+  repo="$(make_fixture_repo nested-docs-repo)"
+  worktree="$(add_branch_worktree "$repo" nested-docs-branch)"
+  printf 'docs.local/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$worktree/packages/x/docs.local/deep"
+  printf 'run log\n' > "$worktree/packages/x/docs.local/deep/run.log"
+  archive="$(cd "$repo" && pwd -P)/docs.local/worktree-archive/$(basename "$worktree")"
+  sum="$(printf 'run log\n' | { sha256sum 2>/dev/null || shasum -a 256; } | cut -d' ' -f1)"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"REMOVED"* ]] &&
+    [ "$(cat "$archive/packages/x/docs.local/deep/run.log")" = "run log" ] &&
+    grep -q "^packages/x/docs.local/deep/run.log	file	8	$sum$" "$archive/RECEIPT.tsv" &&
+    [ ! -e "$worktree" ]
+}
+
+@test "H2: an ignored nested clone keeps the worktree" {
+  repo="$(make_fixture_repo nested-clone-repo)"
+  worktree="$(add_branch_worktree "$repo" nested-clone-branch)"
+  printf 'scratch/\n' >> "$repo/.git/info/exclude"
+  git init -q "$worktree/scratch/clone"
+  printf 'unpushed\n' > "$worktree/scratch/clone/a.txt"
+  git -C "$worktree/scratch/clone" add a.txt
+  git -C "$worktree/scratch/clone" -c user.name=F -c user.email=f@example.invalid commit -qm local-only
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"nested git repository"*"scratch/clone"* ]] &&
+    [ -f "$worktree/scratch/clone/a.txt" ]
+}
+
+@test "H2: regenerable caches are not archived" {
+  repo="$(make_fixture_repo cache-only-repo)"
+  worktree="$(add_branch_worktree "$repo" cache-only-branch)"
+  printf 'node_modules/\n__pycache__/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$worktree/ui/node_modules/pkg" "$worktree/src/__pycache__"
+  printf 'x\n' > "$worktree/ui/node_modules/pkg/i.js"
+  printf 'x\n' > "$worktree/src/__pycache__/m.pyc"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"REMOVED"*"no archive needed"* ]] &&
+    [ ! -e "$repo/docs.local/worktree-archive/$(basename "$worktree")" ]
+}
+
+@test "M2: a file hidden by core.excludesFile is archived, not lost" {
+  repo="$(make_fixture_repo excludes-repo)"
+  worktree="$(add_branch_worktree "$repo" excludes-branch)"
+  printf 'NOTES.md\n' > "$TEST_ROOT/global-ignore"
+  git -C "$repo" config core.excludesFile "$TEST_ROOT/global-ignore"
+  printf 'personal\n' > "$worktree/NOTES.md"
+  [ -z "$(git -C "$worktree" status --porcelain)" ]
+  archive="$(cd "$repo" && pwd -P)/docs.local/worktree-archive/$(basename "$worktree")"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"REMOVED"* ]] &&
+    [ "$(cat "$archive/NOTES.md")" = "personal" ] &&
+    grep -q "^NOTES.md	file	9	" "$archive/RECEIPT.tsv"
+}
+
+@test "M1: apply never prunes a KEEP worktree's registration" {
+  repo="$(make_fixture_repo keep-prune-repo)"
+  worktree="$(add_branch_worktree "$repo" keep-prune-branch)"
+  commit_fixture_file "$worktree" local-only.txt
+  admin_dir="$(sed -n 's/^gitdir: //p' "$worktree/.git")"
+  mv "$worktree" "$worktree-away"
+  eligible="$(add_branch_worktree "$repo" keep-prune-eligible)"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ -d "$admin_dir" ] &&
+    [[ "$output" == *" · $eligible · "*"REMOVED"* ]] &&
+    [[ "$(git -C "$repo" worktree list --porcelain)" == *"worktree $worktree"* ]]
+}
+
+@test "M3: a non-zero lsof exit with partial output fails closed" {
+  repo="$(make_fixture_repo partial-lsof-repo)"
+  worktree="$(add_branch_worktree "$repo" partial-lsof-branch)"
+  wrapper_dir="$TEST_ROOT/partial-lsof"
+  mkdir -p "$wrapper_dir"
+  printf '#!/usr/bin/env bash\nprintf "p1\\nn/elsewhere\\n"\nexit 1\n' > "$wrapper_dir/lsof"
+  chmod +x "$wrapper_dir/lsof"
+
+  run env PATH="$wrapper_dir:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"lsof exited 1"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "M3: a live cmux agent registered with its cwd inside keeps the worktree" {
+  repo="$(make_fixture_repo cmux-live-repo)"
+  worktree="$(add_branch_worktree "$repo" cmux-live-branch)"
+  sleep 60 &
+  agent=$!
+  printf '{"cwd": "%s", "pid": %s, "cli": "codex"}\n' "$worktree" "$agent" > "$TEST_ROOT/registry.jsonl"
+
+  run env WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" \
+    "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  kill "$agent" 2>/dev/null || true
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-live"*"cmux"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "M3: an unreadable cmux registry fails closed" {
+  repo="$(make_fixture_repo cmux-blind-repo)"
+  worktree="$(add_branch_worktree "$repo" cmux-blind-branch)"
+  printf '{}\n' > "$TEST_ROOT/registry.jsonl"
+  chmod 000 "$TEST_ROOT/registry.jsonl"
+  [ -r "$TEST_ROOT/registry.jsonl" ] && skip "running as a user who can read mode-000 files"
+
+  run env WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" \
+    "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  chmod 600 "$TEST_ROOT/registry.jsonl"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"registry"* ]] &&
+    [ -d "$worktree" ]
+}
+
+make_github_origin() {
+  local repo="$1" slug="$2"
+  git -C "$repo" config "url.$(git -C "$repo" remote get-url origin).insteadOf" "https://github.com/$slug"
+  git -C "$repo" remote set-url origin "https://github.com/$slug"
+}
+
+@test "a worktree whose branch has an OPEN PR is kept, parked or not" {
+  repo="$(make_fixture_repo open-pr-repo)"
+  make_github_origin "$repo" fixture/open-pr
+  worktree="$(add_branch_worktree "$repo" open-pr-branch)"
+  other="$(add_branch_worktree "$repo" no-pr-branch)"
+  stub="$TEST_ROOT/gh-stub"
+  mkdir -p "$stub"
+  printf '#!/usr/bin/env bash\n[[ " $* " == *" pr list "* && " $* " == *" --repo fixture/open-pr "* ]] || exit 9\necho open-pr-branch\n' > "$stub/gh"
+  chmod +x "$stub/gh"
+
+  run env PATH="$stub:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · open-pr-branch · "*"KEEP-open-pr"* ]] &&
+    [[ "$output" == *" · $other · no-pr-branch · "*"REMOVED"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "a failed open-PR lookup fails closed" {
+  repo="$(make_fixture_repo pr-blind-repo)"
+  make_github_origin "$repo" fixture/pr-blind
+  worktree="$(add_branch_worktree "$repo" pr-blind-branch)"
+  stub="$TEST_ROOT/gh-fail"
+  mkdir -p "$stub"
+  printf '#!/usr/bin/env bash\nexit 1\n' > "$stub/gh"
+  chmod +x "$stub/gh"
+
+  run env PATH="$stub:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"open PRs"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "L1: --path refuses a symlink" {
+  repo="$(make_fixture_repo symlink-path-repo)"
+  worktree="$(add_branch_worktree "$repo" symlink-path-branch)"
+  ln -s "$worktree" "$TEST_ROOT/innocent"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --path "$TEST_ROOT/innocent"
+
+  [ "$status" -eq 2 ] &&
+    [[ "$output" == *"symlink"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "L2: --path on a non-worktree prints a row and exits non-zero" {
+  repo="$(make_fixture_repo not-wt-repo)"
+  main="$(cd "$repo" && pwd -P)"
+  mkdir -p "$main/sub"
+
+  run "$WORKTREE_GC" --apply --idle-hours 0 --path "$main/sub"
+
+  [ "$status" -eq 2 ] &&
+    [[ "$output" == *" · $main/sub · "*"KEEP-not-a-worktree"* ]]
+}
+
+@test "M3: an lsof that exits 0 but sees only a fraction of this user's processes fails closed" {
+  repo="$(make_fixture_repo blind-ok-lsof-repo)"
+  worktree="$(add_branch_worktree "$repo" blind-ok-lsof-branch)"
+  (cd "$worktree" && exec sleep 60) &
+  holder=$!
+  wrapper_dir="$TEST_ROOT/blind-ok-lsof"
+  mkdir -p "$wrapper_dir"
+  printf '#!/usr/bin/env bash\nprintf "p1\\nn/\\n"\nexit 0\n' > "$wrapper_dir/lsof"
+  chmod +x "$wrapper_dir/lsof"
+
+  run env PATH="$wrapper_dir:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  kill "$holder" 2>/dev/null || true
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"lsof saw"* ]] &&
+    [ -d "$worktree" ]
 }
