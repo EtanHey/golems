@@ -21,9 +21,15 @@ Run the harness through `scripts/codex-workflows.sh`. Detailed interfaces are in
 - `pipeline` runs ordered stages, parallel within a stage, and stops on failure
   before the next stage unless `continue_on_failure` is explicitly enabled.
 - `watch` observes process exit first, then parses the finished log once.
-- `status`, `harvest`, and `cleanup` make inspection and retirement mechanical. Run `cleanup`
-  right after a harvest is accepted (reviewer finish): un-cleaned runs left 280 worktrees under
-  `.worktrees/.codex-workflows/` by 2026-10-06. The nightly worktree prune is the backstop.
+- `status` and `harvest` inspect and collect a completed run. The dispatching lead owns
+  harvesting and retiring its nested `.codex-workflows` lanes. Nightly GC deliberately
+  excludes `.worktrees/.codex-workflows/` and `~/Gits/worktrees/.codex-workflows/`;
+  it is not their backstop. The current `cleanup` engine can delete ignored personal
+  artifacts without archiving them. Hold these lanes until the lead has inventoried,
+  copied and verified every ignored `docs.local/` or personal artifact outside the
+  retiring tree, preserved local history, and explicitly authorized manual retirement.
+  Accepted harvest alone is insufficient. Until that engine is repaired, do not
+  recommend `cleanup` as automatic post-harvest deletion.
 
 ## Non-Negotiable Guards
 

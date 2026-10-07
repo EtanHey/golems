@@ -135,7 +135,14 @@ after harvest/review, close the pane and stop its monitor in the same turn.
 Then remove the lane's worktree in that same turn, once the pane is closed (an open pane keeps
 its cwd live, so the gate answers `KEEP-live`):
 `<golems>/scripts/worktree-gc.sh --apply --idle-hours 0 --path <lane worktree>` (`<golems>` = the golems checkout).
-A lane whose PR is not merged yet is kept (`KEEP-unpushed`) and the nightly prune takes it later.
+A lane with an open PR is kept (`KEEP-open-pr`); local commits absent from the fresh default
+branch yield `KEEP-unpushed`. Exit 3 means the scan completed with KEEP-unpushed; exit 2
+means the request was refused. Nightly GC covers only direct `<main>/.worktrees/<name>`
+lanes and rechecks every guard; nested `.codex-workflows` lanes belong to their dispatching lead.
+Before manual removal, copy ignored `docs.local/` and personal artifacts outside the retiring
+lane and verify the copies, then preserve local history and obtain the lead's retirement decision.
+If that cannot be proved, hold the lane. Current codex-workflows `cleanup` lacks ignored-artifact
+archiving and is not a safe substitute for these checks.
 At every wave close, audit the count: live monitors must never outnumber live lanes.
 
 After a multi-agent sprint, `brain_store` what failed, what worked, and what the user corrected.
