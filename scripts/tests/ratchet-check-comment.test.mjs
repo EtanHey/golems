@@ -16,6 +16,14 @@ describe("checkVerdict", () => {
     expect(check([comment(pass)]).ok).toBe(true);
   });
 
+  test("nonboolean success and malformed row counts fail closed", () => {
+    for (const ok of ["false", 1, null]) expect(check([comment({ ...pass, ok })]).ok).toBe(false);
+    for (const count of ["false", "2", null, true, -1, 1.5]) {
+      expect(check([comment({ ...pass, real_pass: count, real_total: count })], { expectedReal: count }).ok).toBe(false);
+    }
+    expect(check([comment({ ...pass, real_pass: 1, real_total: 1 })], { expectedReal: 1 }).ok).toBe(true);
+  });
+
   test("missing, stale, failing or short verdicts fail", () => {
     expect(check([]).reason).toMatch(/no .* comment/);
     expect(check([comment({ ...pass, head: "d".repeat(40) })]).reason).toMatch(/stale/);
