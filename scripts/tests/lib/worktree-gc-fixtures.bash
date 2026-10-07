@@ -1,17 +1,24 @@
 # Fixture-only destructive GC harness. Never inherit TMPDIR inside a repository.
 setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd -P)"
+  export GC_ENV_SCRUB="$REPO_ROOT/scripts/lib/worktree-git-env.sh"
+  source "$GC_ENV_SCRUB"
   fixture_parent="$HOME/.local/state/golems/gc-fixtures"
   mkdir -p "$fixture_parent"
   if git -C "$fixture_parent" rev-parse --show-toplevel >/dev/null 2>&1; then
     echo "Refusing fixture parent inside a repository" >&2; return 1
   fi
   TEST_ROOT="$(mktemp -d "$fixture_parent/test.XXXXXXXX")"
+  export HOME="$TEST_ROOT/home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+  mkdir -p "$HOME"
+  export WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" GOLEMS_HEAVY_LOCK="$TEST_ROOT/lock"
+  : > "$WORKTREE_GC_CMUX_REGISTRY"
   export GC_FIXTURE_ROOT="$TEST_ROOT" GC_SOURCE="$REPO_ROOT/scripts/worktree-gc.sh"
   WORKTREE_GC="$TEST_ROOT/contained-gc"
   cat > "$WORKTREE_GC" <<'GUARD'
 #!/usr/bin/env bash
 set -euo pipefail
+source "$GC_ENV_SCRUB"
 candidate=""
 args=("$@")
 while (( $# )); do
@@ -36,7 +43,7 @@ GUARD
 }
 
 teardown() {
-  case "$TEST_ROOT" in "$HOME"/.local/state/golems/gc-fixtures/test.*) rm -rf "$TEST_ROOT" ;; *) return 1 ;; esac
+  case "$TEST_ROOT" in "$fixture_parent"/test.*) rm -rf "$TEST_ROOT" ;; *) return 1 ;; esac
 }
 
 make_fixture_repo() {

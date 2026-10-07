@@ -11,6 +11,9 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+source "$HERE/lib/worktree-git-env.sh"
+# Nightly must prove registry coverage; standalone GC may omit a registry.
+export WORKTREE_GC_CMUX_REGISTRY="${WORKTREE_GC_CMUX_REGISTRY-$HOME/.cmuxlayer/session-registry.jsonl}"
 LOCK="${GOLEMS_HEAVY_LOCK:-$HOME/.local/state/golems/heavy-suite.lock}"
 LIMIT="${WORKTREE_GC_NIGHTLY_TIMEOUT:-3600}"
 
@@ -19,9 +22,8 @@ args=("$@")
 for ((i=0; i<${#args[@]}; i++)); do
   if [[ "${args[i]}" == --repo ]]; then
     requested="${args[i+1]:-}"
-    top="$(git -C "$requested" rev-parse --show-toplevel 2>/dev/null)" || exit 2
-    [[ "$(cd "$requested" && pwd -P)" == "$(cd "$top" && pwd -P)" ]] || {
-      echo "worktree-gc-nightly: --repo must be a repository toplevel" >&2; exit 2;
+    golems_main_repo "$requested" >/dev/null || {
+      echo "worktree-gc-nightly: --repo must be the main repository toplevel" >&2; exit 2;
     }
   fi
 done
