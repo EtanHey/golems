@@ -138,10 +138,12 @@ def xargs_payload(args):
 
     Never promote an option operand to a child command. Preserve unknown
     replacement results in every child word so wrapper recursion sees them.
-    GNU/BSD conflicting-option behavior differs: retain a replacement mode
-    conservatively rather than using a reset to authorize an opaque command.
+    Retain symbolic replacement/insertion for deny-only analysis. Track the
+    effective modes separately: BSD uses the last -I/-J; GNU cancels -I after
+    -L/-l or -n other than 1. Check the original command if either can append.
     """
     i, replacement, insertion = 0, None, None
+    gnu_replacement, bsd_mode = None, None
 
     def unknown():
         if guarded_words(args) or any(executable(a)[0] in WRAPPERS for a in args):
@@ -152,6 +154,8 @@ def xargs_payload(args):
         if arg == '--':
             i += 1; break
         if arg == '-' or not arg.startswith('-'): break
+        if '$' in arg or '`' in arg:
+            raise ValueError('unresolved xargs option word')
         options = []
         if arg.startswith('--'):
             name, eq, value = arg[2:].partition('=')
@@ -192,24 +196,30 @@ def xargs_payload(args):
                 if '$' in value or '`' in value:
                     unknown(); return []
                 if key == 'J': insertion = value
-                else: replacement = value
+                else:
+                    replacement = gnu_replacement = value
+                bsd_mode = 'J' if key == 'J' else 'I'
+            elif key in ('L', 'l'):
+                gnu_replacement = None
+            elif key == 'n':
+                try: single = int(value) == 1
+                except ValueError: single = False
+                if not single: gnu_replacement = None
         i += 1
     child = list(args[i:])
     if not child: return []  # default utility is echo
+    # Match against the original argv: replacement must not hide a shared -J
+    # token. BSD permits insertion at argv[0], including the utility itself.
+    insert_at = next((j for j in range(len(child)) if child[j] == insertion), None)
+    bsd_appends = bsd_mode != 'I' and insert_at is None
+    gnu_appends = gnu_replacement is None
+    if (bsd_appends or gnu_appends) and _stdin_command_slot(child):
+        raise ValueError('xargs stdin supplies wrapper executable and argv')
     if replacement:
         child = [w.replace(replacement, '${stdin-command}') for w in child]
-    inserted = False
-    if insertion:
-        # BSD inserts at the first distinct argument, never in the utility.
-        for j in range(1, len(child)):
-            if child[j] == insertion:
-                # Insertion has unknown arity: it can supply a whole command,
-                # including more words after a wrapper option's operand.
-                child[j:j + 1] = ['${stdin-command}', '${@}']
-                inserted = True
-                break
-    if not replacement and not inserted and _stdin_command_slot(child):
-        raise ValueError('xargs stdin supplies wrapper executable and argv')
+    if insert_at is not None:
+        # Unknown arity can supply both an executable and its whole argv.
+        child[insert_at:insert_at + 1] = ['${stdin-command}', '${@}']
     return child
 
 
