@@ -11,6 +11,7 @@ if _SHARED not in sys.path:
     sys.path.append(_SHARED)  # after the stdlib: nothing in the tree may shadow it
 import shell_parse as shell
 import syntax
+import forwarding
 import gh_policy
 import git_config
 
@@ -110,6 +111,7 @@ def opaque_executable(word, args, script=False):
     """A whole command or forwarded argv can hide every protected field."""
     return syntax.unresolved(word, Path.home()) and (
         syntax.guarded_words(args) or
+        forwarding.UNKNOWN in word.replace("\ue000", "{").replace("\ue001", "}") or
         not args and (word in ('$@', '${@}', '$*', '${*}') or script and _VAR.fullmatch(word)) or
         any(a in ('$@', '${@}', '$*', '${*}') for a in args))
 
@@ -142,12 +144,14 @@ GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry 
                    " stripspace symbolic-ref var verify-commit verify-pack verify-tag whatchanged write-tree".split())
 
 
-def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None, rejoined=False, _script=False):
+def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=None, _state=None, rejoined=False, _script=False, _unknown_tail=False, _shell_zero=None):
     if depth > 8 or shell.policy_command_size_reason(command):
         raise ValueError('command inspection budget exceeded')
     if shell.executable_shell_structure_has_open_state(command):
         raise ValueError('unparseable shell input')
+    command = forwarding.preserve_empty_words(command)
     tokens, positions, segments, scopes = shell._parse_bash(command)
+    syntax.hide_function_bodies(tokens, positions)
     bindings = dict(bindings or {})
     if shell._UNRESOLVED_EVAL_MARKER in tokens:
         raise ValueError('unresolved eval payload')
@@ -160,14 +164,25 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         return ('$' in word or '`' in word) and split_map.get(word, True)
     # Quoted heredoc prose is data: its backticks/apostrophes are not substitutions.
     nested = [(body, seg) for body, seg, _, _ in shell._executable_subcommands(syntax.mask_heredoc_bodies(command, shell))]
-    nested += [(body, seg) for body, seg, _ in shell._invoked_alias_bodies(command)]
+    function_expansion = shell._impl_module('function_expansion')
+    def bind_function(body, args, local=None):
+        values = dict(bindings); values.update(local or {})
+        return forwarding.bind(body, [resolve_word(a, values) for a in args], shell,
+                               zero=_shell_zero, ifs=values.get('IFS', ' \t\n'))
+    token = function_expansion._argument_expander.set(bind_function)
+    try:
+        invoked = shell._invoked_alias_bodies(command)
+        nested += [(body, seg) for body, seg, _ in invoked]
+    finally:
+        function_expansion._argument_expander.reset(token)
     for body, segment in nested:
         limit = max((i + 1 for i, seg in enumerate(segments) if seg <= segment), default=0)
         child_bindings = assigned_bindings(tokens, positions, limit, bindings, scopes)
-        result += operations(body, cwd, alias_lookup, depth + 1, child_bindings, _state)
+        result += operations(body, cwd, alias_lookup, depth + 1, child_bindings, _state, _shell_zero=_shell_zero)
     # This supplemental view may deny, never authorize or classify an operand.
     # Keep the original argv (including substitution bodies) for every policy.
     outer, flags, segs, outer_scopes = syntax.substitution_argv(command, shell)
+    syntax.hide_function_bodies(outer, flags)
     for i, word in enumerate(outer):
         if not flags[i] or syntax.looked_up(outer, flags, i): continue
         current = assigned_bindings(outer, flags, i, bindings, outer_scopes, outer_scopes[i])
@@ -222,10 +237,10 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                 for arg in args[:args.index(child[0])]:
                     if shell._ASSIGNMENT_RE.match(arg):
                         name, value = arg.split('=', 1); child_bindings[name] = value
-            result += operations(syntax.joined(child), cwd, alias_lookup, depth + 1, child_bindings, _state, rejoined=True)
+            result += operations(syntax.joined(child), cwd, alias_lookup, depth + 1, child_bindings, _state, rejoined=True, _unknown_tail=_unknown_tail or getattr(child, 'unknown_tail', False))
         # Unknown executors carrying a protected argv are conservative. Data
         # operands of echo/printf/cat/etc. are not command positions.
-        if base not in syntax.DATA and base not in syntax.SHELLS:
+        if base not in syntax.DATA and base not in syntax.SHELLS and segments[i] not in {seg for _, seg, _ in invoked}:
             for j, arg in enumerate(args):
                 if syntax.executable(arg)[0] in ('git', 'gh') and syntax.guarded_words(args[j + 1:]):
                     result += operations(syntax.joined(args[j:]), cwd, alias_lookup, depth + 1, current, _state, rejoined=True)
@@ -238,6 +253,8 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                             raise ValueError('unparseable protected payload')
                     if words and syntax.executable(words[0])[0] in ('git', 'gh') and syntax.guarded_words(words[1:]):
                         result += operations(arg, cwd, alias_lookup, depth + 1, current, _state, rejoined=True)
+        if base in ('source', '.') and args and any(m in args[0].replace('\ue000', '{').replace('\ue001', '}') for m in ('${process-substitution}', '${positional-unknown}')):
+            raise ValueError('opaque sourced script')
         if base == 'eval' and any('$' in a or '`' in a for a in args):
             raise ValueError('unresolved eval payload; use a literal command')
         if base == 'xargs' and any(syntax.executable(a)[0] in ('git', 'gh', 'sh', 'bash', 'zsh', 'fish') for a in args):
@@ -247,8 +264,14 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                 raise ValueError('env split-string is opaque; use an explicit command')
         if base in syntax.SHELLS:
             body = syntax.shell_payload(base, args)
+            if body is not None: body = body.replace("\ue000", "{").replace("\ue001", "}")
             if body is not None:
-                result += operations(body, cwd, alias_lookup, depth + 1, current, _state, _script=True)
+                tail = syntax.shell_program(base, args)[1]
+                if tail is not None:
+                    zero = tail[0] if tail else None if _unknown_tail else base
+                    body = forwarding.bind(body, tail[1:], shell, zero, _unknown_tail,
+                                           current.get('IFS', ' \t\n'))
+                result += operations(body, cwd, alias_lookup, depth + 1, current, _state, _script=True, _shell_zero=zero if tail is not None else None)
             else:
                 if any(op == '<<<' for op, _ in redirects):
                     for op, body in redirects:
@@ -257,7 +280,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
                     delimiters = {target for op, target in redirects if op == '<<'}
                     for delimiter, body in syntax.heredoc_bodies(command, shell):
                         if delimiter in delimiters: result += operations(body, cwd, alias_lookup, depth + 1, current, _state, _script=True)
-                elif syntax.shell_reads_stdin(base, args) or any(op == '<' and target in ('(', '<') for op, target in redirects):
+                elif syntax.shell_reads_stdin(base, args):
                     raise ValueError('opaque shell script/stdin source')
         if base == 'trap' and args:
             result += operations(args[0], cwd, alias_lookup, depth + 1, current, _state)

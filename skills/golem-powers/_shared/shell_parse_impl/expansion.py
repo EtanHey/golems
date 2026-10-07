@@ -58,6 +58,9 @@ def _emit_functions(command, expansion_state, unit, function_state_at,
     invoked, offset, invocation_index = (expansion_state.invoked, expansion_state.offset,
                                          expansion_state.invocation_index)
     line, tokens, cmd_pos, seg_of = unit.line, unit.tokens, unit.cmd_pos, unit.seg_of
+    if _function_expansion._argument_expander.get() is not None:
+        cmd_pos = list(cmd_pos)
+        _function_expansion.hide_function_bodies(tokens, cmd_pos)
     for i, token in enumerate(tokens):
         if not cmd_pos[i]:
             continue
@@ -91,24 +94,18 @@ def _emit_functions(command, expansion_state, unit, function_state_at,
             for j in range(i + 1, len(tokens))
             if seg_of[j] == seg_of[i]
         ]
-        invoked.append(
-            (
-                _function_expansion.expand_function_arguments(
-                    _function_expansion.expand_function(
-                        expansion_state,
-                        expanded_bodies.get(
-                            resolved_token,
-                            bodies[resolved_token],
-                        ),
-                        bodies=bodies,
-                        expanded_bodies=expanded_bodies,
-                    ),
-                    invocation_arguments,
-                ),
-                outer_seg,
-                invocation_index,
-            )
-        )
+        target_body = expanded_bodies.get(resolved_token, bodies[resolved_token])
+        if _function_expansion._argument_expander.get() is not None:
+            invocation_arguments = _function_expansion.call_arguments(line, tokens, i)
+            target_body = _function_expansion.expand_function_arguments(target_body, invocation_arguments, variable_state_at(i))
+            target_body = _function_expansion.expand_function(
+                expansion_state, target_body, bodies=bodies, expanded_bodies=expanded_bodies)
+        else:
+            target_body = _function_expansion.expand_function_arguments(
+                _function_expansion.expand_function(
+                    expansion_state, target_body, bodies=bodies, expanded_bodies=expanded_bodies),
+                invocation_arguments)
+        invoked.append((target_body, outer_seg, invocation_index))
         invocation_index += 1
         expansion_state.invocation_index = invocation_index
 
