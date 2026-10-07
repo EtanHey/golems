@@ -28,6 +28,58 @@ def executable(word):
     return ('git', base[4:]) if base.startswith('git-') and len(base) > 4 else (base, None)
 
 
+def substitution_argv(command, shell):
+    """Keep a substitution's unknown result in its parent argv.
+
+    The shared lexer exposes its body separately. Collapse that view only
+    here; operations() still inspects every executable body recursively.
+    The marker cannot resolve through the literal-variable binding grammar.
+    """
+    _ShellOperator = shell._impl_module('tokens')._ShellOperator
+    tokens = []
+    for token in shell._shell_tokens(shell._strip_heredoc_bodies(command), _operator_origin=True):
+        if isinstance(token, _ShellOperator) and token == '(' and tokens and tokens[-1].endswith(('$', '`')):
+            tokens[-1] = _ShellOperator(tokens[-1] + '(')
+        else:
+            tokens.append(token)
+    def opened(token):
+        return isinstance(token, _ShellOperator) and shell._is_command_sub_open(token)
+    def closed(token):
+        return isinstance(token, _ShellOperator) and shell._is_command_sub_close(token)
+    words, continuing, i = [], False, 0
+    while i < len(tokens):
+        word = tokens[i]
+        suffix = False
+        if opened(word):
+            word = word[:-2] + '${command-substitution}'
+            depth = 1
+            i += 1
+            while i < len(tokens) and depth:
+                if opened(tokens[i]): depth += 1
+                if closed(tokens[i]): depth -= 1
+                if not depth: suffix = tokens[i].endswith('+')
+                i += 1
+            if depth: raise ValueError('unclosed command substitution')
+        else:
+            i += 1
+            if not isinstance(word, _ShellOperator) and (
+                    shell._is_command_sub_open(word) or shell._is_command_sub_close(word) or
+                    word in (';', '&', '|', '(', ')', '<', '>', '>>', '>|', '<<', '<<<', '<>', '&>', '&>>', '}$')):
+                word = '__literal_shell_delimiter__'
+        if continuing:
+            words[-1] += word
+        else:
+            words.append(word)
+        continuing = suffix
+    # Re-lexing quoted tokens would lose parameter/brace quote provenance.
+    positions = shell._command_position_flags(words)
+    segments, segment = [], 0
+    for i, word in enumerate(words):
+        segments.append(segment)
+        if shell._is_separator(words, i): segment += 1
+    return words, positions, segments, [()] * len(words)
+
+
 def argv_at(tokens, segments, scopes, i):
     args, redirects = [], []
     j = i + 1
@@ -48,7 +100,137 @@ def argv_at(tokens, segments, scopes, i):
     return args, redirects
 
 
+# GNU and BSD option arity. Optional operands must be attached; a required
+# operand consumes the cluster suffix or the next argv word, even if '-...'.
+_XARGS_REQUIRED = frozenset('a d E I J L n P R S s'.split())
+_XARGS_OPTIONAL = {'e': '', 'i': '{}', 'l': '1'}
+_XARGS_FLAGS = frozenset('0oprtx')
+_XARGS_LONG = {
+    'arg-file': ('a', 'required'), 'delimiter': ('d', 'required'),
+    'eof': ('e', 'optional'), 'replace': ('i', 'optional'),
+    'max-lines': ('l', 'optional'), 'max-args': ('n', 'required'),
+    'max-procs': ('P', 'required'), 'max-chars': ('s', 'required'),
+    'process-slot-var': ('slot', 'required'),
+    'null': ('0', 'none'), 'open-tty': ('o', 'none'),
+    'interactive': ('p', 'none'), 'no-run-if-empty': ('r', 'none'),
+    'verbose': ('t', 'none'), 'exit': ('x', 'none'),
+    'show-limits': ('limits', 'none'), 'help': ('help', 'none'),
+    'version': ('version', 'none'),
+}
+
+
+def _stdin_command_slot(child, depth=0):
+    """Appending unknown stdin can supply a missing wrapper executable."""
+    if depth > 8: raise ValueError('wrapper inspection budget exceeded')
+    if unresolved(child[0], Path.home()): return True
+    base = executable(child[0])[0]
+    if base not in WRAPPERS: return False
+    # Name lookup remains data even when stdin supplies the names.
+    if base == 'command' and any(a.startswith('-') and ('v' in a or 'V' in a)
+                                 for a in child[1:]):
+        return False
+    children = list(wrapper_payload(base, child[1:]))
+    return not children or any(_stdin_command_slot(c, depth + 1) for c in children if c)
+
+
+def xargs_payload(args):
+    """Deny-only union of GNU replacement and BSD insertion semantics.
+
+    Never promote an option operand to a child command. Preserve unknown
+    replacement results in every child word so wrapper recursion sees them.
+    Retain symbolic replacement/insertion for deny-only analysis. Track the
+    effective modes separately: BSD uses the last -I/-J; GNU cancels -I after
+    -L/-l or -n other than 1. Check the original command if either can append.
+    """
+    i, replacement, insertion = 0, None, None
+    gnu_replacement, bsd_mode = None, None
+
+    def unknown():
+        if guarded_words(args) or any(executable(a)[0] in WRAPPERS for a in args):
+            raise ValueError('unknown xargs option grammar with protected argv')
+
+    while i < len(args):
+        arg = args[i]
+        if arg == '--':
+            i += 1; break
+        if arg == '-' or not arg.startswith('-'): break
+        # Expansion may change option names, arity or the number of words.
+        # Literal replacement braces (including {}) are not brace expansion.
+        if (any(c in arg for c in '$`*?[]') or
+                any(',' in part or '..' in part for part in re.findall(r'\{([^{}]*)\}', arg))):
+            raise ValueError('unresolved xargs option word')
+        options = []
+        if arg.startswith('--'):
+            name, eq, value = arg[2:].partition('=')
+            matches = [name] if name in _XARGS_LONG else [n for n in _XARGS_LONG if n.startswith(name)]
+            if len(matches) != 1:
+                unknown(); return []
+            key, arity = _XARGS_LONG[matches[0]]
+            if arity == 'none' and eq:
+                unknown(); return []
+            if arity == 'required' and not eq:
+                i += 1
+                if i >= len(args): raise ValueError('missing xargs option operand')
+                value = args[i]
+            elif arity == 'optional' and not eq:
+                value = _XARGS_OPTIONAL[key]
+            options.append((key, value))
+        else:
+            j = 1
+            while j < len(arg):
+                key, value = arg[j], ''
+                j += 1
+                if key in _XARGS_REQUIRED or key in _XARGS_OPTIONAL:
+                    value = arg[j:]
+                    if not value and key in _XARGS_REQUIRED:
+                        i += 1
+                        if i >= len(args): raise ValueError('missing xargs option operand')
+                        value = args[i]
+                    elif not value:
+                        value = _XARGS_OPTIONAL[key]
+                    j = len(arg)
+                elif key not in _XARGS_FLAGS:
+                    unknown(); return []
+                options.append((key, value))
+        for key, value in options:
+            if key in ('help', 'version'): return []
+            if key in ('I', 'i', 'J'):
+                if not value: raise ValueError('empty xargs replacement')
+                if '$' in value or '`' in value:
+                    unknown(); return []
+                if key == 'J': insertion = value
+                else:
+                    replacement = gnu_replacement = value
+                bsd_mode = 'J' if key == 'J' else 'I'
+            elif key in ('L', 'l'):
+                gnu_replacement = None
+            elif key == 'n':
+                try: single = int(value) == 1
+                except ValueError: single = False
+                if not single: gnu_replacement = None
+        i += 1
+    child = list(args[i:])
+    if not child: return []  # default utility is echo
+    # Match against the original argv: replacement must not hide a shared -J
+    # token. BSD permits insertion at argv[0], including the utility itself.
+    insert_at = next((j for j in range(len(child)) if child[j] == insertion), None)
+    bsd_appends = bsd_mode != 'I' and insert_at is None
+    gnu_appends = gnu_replacement is None
+    if (bsd_appends or gnu_appends) and _stdin_command_slot(child):
+        raise ValueError('xargs stdin supplies wrapper executable and argv')
+    if replacement:
+        child = [w.replace(replacement, '${stdin-command}') for w in child]
+    if insert_at is not None:
+        # Unknown arity can supply both an executable and its whole argv.
+        child[insert_at:insert_at + 1] = ['${stdin-command}', '${@}']
+    return child
+
+
 def wrapper_payload(base, args):
+    if base == 'xargs':
+        child = xargs_payload(args)
+        if child: yield child
+        return
     if base == 'find':
         for i, arg in enumerate(args):
             if arg in ('-exec', '-execdir', '-ok', '-okdir'):

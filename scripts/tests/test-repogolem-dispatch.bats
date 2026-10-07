@@ -8,8 +8,10 @@ load 'test-repogolem-dispatch-parts/cases-04.bash'
 load 'test-repogolem-dispatch-parts/cases-05.bash'
 load 'test-repogolem-dispatch-parts/cases-06.bash'
 load 'test-repogolem-dispatch-parts/cases-07.bash'
+load 'test-repogolem-dispatch-parts/cases-11.bash'
 load 'test-repogolem-dispatch-parts/cases-08.bash'
 load 'test-repogolem-dispatch-parts/cases-09.bash'
+load 'test-repogolem-dispatch-parts/cases-10.bash'
 
 @test "install helper installs tracked dispatcher inside HOME" {
     split_case_001
@@ -593,6 +595,10 @@ load 'test-repogolem-dispatch-parts/cases-09.bash'
     done
 }
 
+@test "a registry MCP server given as a claude-mcp-add string never aborts a Codex launch" {
+    split_case_160
+}
+
 @test "every agent-shaped Codex launch strips codex_apps connectors; computer use is never touched" {
     split_case_136
 }
@@ -643,4 +649,32 @@ load 'test-repogolem-dispatch-parts/cases-09.bash'
 
 @test "stripped Codex launches disable each Drive write tool explicitly" {
     split_case_148
+}
+
+@test "Codex --scan runs workspace-write, no approvals, no bypass, computer use and connectors off, codex.security model" {
+    split_case_150
+}
+
+@test "Codex --scan refuses an unresolvable codex.security model unless -m is explicit" {
+    split_case_151
+}
+
+@test "Codex --scan is always a worker and ignores --lead" {
+    split_case_152
+}
+
+@test "Codex --scan refuses caller bypass, sandbox, approval and computer-use overrides" {
+    split_case_153
+}
+
+@test "Codex --scan exports a per-launch Deep Scan cost cap unless the caller supplies one" {
+    split_case_154
+}
+
+@test "Codex launches without --scan keep their sandbox, computer use and no Deep Scan cap" {
+    split_case_155
+}
+
+@test "Codex --scan resolves codex.security through the registry's ~/ golems path" {
+    split_case_156
 }

@@ -2,7 +2,8 @@
 """Fail-closed, private source regression gate before a hooks-live install."""
 import argparse
 from contextlib import contextmanager, ExitStack
-import fcntl
+import importlib.util
+import math
 import hashlib
 import json
 import os
@@ -16,6 +17,11 @@ import sys
 import time
 import uuid
 import xml.etree.ElementTree as ET
+
+# Load the adjacent reviewed helper, without searching cwd/PYTHONPATH.
+_spec = importlib.util.spec_from_file_location("heavy_suite", Path(__file__).with_name("heavy-suite.py"))
+heavy_suite = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(heavy_suite)
 
 GUARD_FILES = (
     "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
@@ -220,38 +226,31 @@ def slot():
     # The install gate cannot nest inside a full suite that already owns this lock.
     if os.environ.get("GOLEMS_HEAVY_SUITE_HELD"):
         raise ValueError("run installer outside an existing heavy suite")
-    lock = Path(os.environ.get("GOLEMS_HEAVY_LOCK") or Path.home() / ".local/state/golems/heavy-suite.lock")
-    lock.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-    deadline, held = time.monotonic() + 1800, False
+    max_load = float(os.environ.get("GOLEMS_HEAVY_MAX_LOAD", 2 * (os.cpu_count() or 1)))
+    if not math.isfinite(max_load) or max_load < 0:
+        raise ValueError("invalid heavy-suite max load")
+    floor = float(os.environ.get("GOLEMS_HEAVY_MIN_FREE_GB", "6"))
+    if not math.isfinite(floor) or floor < 0:
+        raise ValueError("invalid heavy-suite memory floor")
+    deadline, fd, legacy_fd = time.monotonic() + 1800, None, None
     try:
         print(f"private regression gate: QUEUED pid={os.getpid()}", flush=True)
-        while not held:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                held = True
-            except BlockingIOError:
-                if time.monotonic() >= deadline:
-                    raise ValueError("heavy-suite lock timed out; refusing unqueued execution")
-                time.sleep(1)
-        while os.getloadavg()[0] > 20:
-            if time.monotonic() >= deadline:
-                raise ValueError("load gate timed out; refusing execution")
-            time.sleep(1)
-        record = {"pid": os.getpid(), "state": "running", "started": time.time(),
+        fd, index, legacy_fd = heavy_suite.acquire_slot(1, deadline, floor, max_load, strict_load=True)
+        if fd is None:
+            raise ValueError("heavy-suite slots timed out; refusing unqueued execution")
+        record = {"pid": os.getpid(), "slot": index, "state": "running", "started": time.time(),
                   "executable": "private-regression-gate"}
-        os.ftruncate(fd, 0)
-        os.write(fd, (json.dumps(record) + "\n").encode())
-        print(f"private regression gate: SUITE START pid={os.getpid()}", flush=True)
+        heavy_suite.write_record(fd, record)
+        print(f"private regression gate: SUITE START pid={os.getpid()} slot={index}", flush=True)
         yield
     finally:
-        if held:
-            os.lseek(fd, 0, os.SEEK_SET)
-            os.ftruncate(fd, 0)
-            os.write(fd, (json.dumps({"pid": os.getpid(), "state": "done"}) + "\n").encode())
-            fcntl.flock(fd, fcntl.LOCK_UN)
-            print(f"private regression gate: SUITE DONE pid={os.getpid()}", flush=True)
-        os.close(fd)
+        if fd is not None:
+            heavy_suite.write_record(fd, {"pid": os.getpid(), "slot": index, "state": "done"})
+            os.close(fd)
+            print(f"private regression gate: SUITE DONE pid={os.getpid()} slot={index}", flush=True)
+
+        if legacy_fd is not None:
+            os.close(legacy_fd)
 
 
 def execute_suite(paths, out, tree, name, expected=None, timeout=900):
