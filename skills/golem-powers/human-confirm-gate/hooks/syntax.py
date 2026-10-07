@@ -101,6 +101,32 @@ def argv_at(tokens, segments, scopes, i):
 
 
 def wrapper_payload(base, args):
+    if base == 'xargs':
+        # A replacement token is opaque when it participates in executable
+        # identity. Its declaration is an option operand, never the command.
+        i, replacement = 0, None
+        values = {'-I', '-E', '-L', '-n', '-P', '-s',
+                  '--eof', '--max-lines', '--max-args', '--max-procs', '--max-chars'}
+        while i < len(args) and args[i].startswith('-'):
+            arg = args[i]
+            if arg == '--':
+                i += 1; break
+            if arg == '-I':
+                if i + 1 >= len(args): raise ValueError('missing xargs replacement')
+                replacement = args[i + 1]
+            elif arg in ('-i', '--replace'):
+                replacement = '{}'  # GNU optional value is attached, never the next word
+            elif arg.startswith(('-I', '-i')) and len(arg) > 2:
+                replacement = arg[2:]
+            elif arg.startswith('--replace='):
+                replacement = arg.split('=', 1)[1]
+            i += 2 if arg in values else 1
+        child = list(args[i:])
+        if child:
+            if replacement and replacement in child[0]:
+                child[0] = '${stdin-command}'
+            yield child
+        return
     if base == 'find':
         for i, arg in enumerate(args):
             if arg in ('-exec', '-execdir', '-ok', '-okdir'):

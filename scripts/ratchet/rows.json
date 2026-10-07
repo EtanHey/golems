@@ -2,6 +2,15 @@
   "schema": 1,
   "rows": [
     {
+      "id": "opaque-execution",
+      "metric": "human-confirm denies opaque executable argv, forwarding and stdin classes (synthetic fixtures, real hook interpreter)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_opaque_execution.py"
+    },
+    {
       "id": "dynamic-command-word",
       "metric": "human-confirm denies dynamic command words carrying guarded argv (synthetic class fixtures, real hook interpreter)",
       "kind": "unit",
