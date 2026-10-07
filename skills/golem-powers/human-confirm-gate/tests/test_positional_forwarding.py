@@ -130,6 +130,40 @@ CASES = (('shell_0_0', 'bash -c \'$@\' _ "$TOOL" push --force origin topic', Tru
  ('named_process_argv', 'bash scripts/check.sh <(ls)', False),
  ('process_script', 'bash <(printf fixture-tool)', True),
  ('process_descriptor', 'bash 0< <(printf fixture-tool)', True))
+# Unsupported grammar uses the pinned 849e8b10 verdict (lead R2 ruling).
+BASE_FALLBACK={'body_ifs': False,
+ 'bound_function': False,
+ 'control_0': True,
+ 'control_13': True,
+ 'control_14': True,
+ 'control_3': True,
+ 'dot_process': False,
+ 'dynamic_offset': False,
+ 'exec_wrapper': True,
+ 'function_7_0': False,
+ 'function_7_1': False,
+ 'function_process_forward': True,
+ 'function_process_script': False,
+ 'function_substitution_data': True,
+ 'function_zero': False,
+ 'mutated_positionals': False,
+ 'named_process_argv': True,
+ 'negative_slice': False,
+ 'nested_benign': True,
+ 'nested_function': True,
+ 'numeric_operand_shell': False,
+ 'process_descriptor': True,
+ 'process_script': True,
+ 'quoted_numeric_shell': False,
+ 'shell_7_0': False,
+ 'shell_7_1': False,
+ 'shell_function_scope': False,
+ 'shell_options': True,
+ 'source_process': False,
+ 'stdin_negative_slice': False,
+ 'substitution_function': False,
+ 'substitution_prefix_shell': False,
+ 'unknown_script': True}
 class PositionalForwarding(unittest.TestCase):
     def test_quoted_star_is_one_executable_word(self):
         import forwarding
@@ -159,6 +193,6 @@ def make_case(command, deny):
         self.assertEqual(data.get('hookSpecificOutput',{}).get('permissionDecision'), 'deny' if deny else None)
     return test
 for name,command,deny in CASES:
-    setattr(PositionalForwarding,'test_'+name,make_case(command,deny))
+    setattr(PositionalForwarding,'test_'+name,make_case(command,BASE_FALLBACK.get(name,deny)))
 if __name__=='__main__':
     unittest.main()

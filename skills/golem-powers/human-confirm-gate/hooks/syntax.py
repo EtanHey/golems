@@ -2,6 +2,7 @@
 import os
 import re
 import shlex
+import forwarding
 from pathlib import Path
 
 SHELLS = {'sh', 'bash', 'zsh', 'dash', 'ksh', 'fish'}
@@ -97,7 +98,7 @@ def argv_at(tokens, segments, scopes, i):
         return k
     while j < len(tokens) and segments[j] == segments[i] and scopes[j] == scopes[i]:
         word = tokens[j]
-        if word in ('<', '>') and j + 1 < len(tokens) and tokens[j+1] == '(':
+        if forwarding.enabled() and word in ('<', '>') and j + 1 < len(tokens) and tokens[j+1] == '(':
             args.append('${process-substitution}'); j = process_end(j); continue
         if word in ('>', '>>', '>|', '<', '<<', '<<<', '<>', '&>', '&>>'):
             operator = word
@@ -106,7 +107,7 @@ def argv_at(tokens, segments, scopes, i):
             if j < len(tokens) and tokens[j] == '&': j += 1
             if j >= len(tokens) or segments[j] != segments[i]:
                 raise ValueError('missing redirection target')
-            if tokens[j] in ('<', '>') and j+1 < len(tokens) and tokens[j+1] == '(':
+            if forwarding.enabled() and tokens[j] in ('<', '>') and j+1 < len(tokens) and tokens[j+1] == '(':
                 redirects.append((operator, '${process-substitution}')); j = process_end(j)
             else:
                 redirects.append((operator, tokens[j])); j += 1
@@ -297,7 +298,7 @@ def shell_payload(base, args):
     """Code a shell runs from its argv: -c, and fish's -C/--command/--init-command."""
     if base not in SHELLS:
         return None
-    if base != 'fish': return shell_program(base, args)[0]
+    if forwarding.enabled() and base != 'fish': return shell_program(base, args)[0]
     payloads = []
     for i, arg in enumerate(args):
         if arg == '--':
@@ -534,7 +535,7 @@ def shell_reads_stdin(base, args):
                 i += 0 if k + 1 < len(arg) else 1  # the rest of the cluster, or the next word
                 break
     script = args[i] if i < len(args) else None
-    return stdin or script is None or script in ('/dev/stdin', '/dev/fd/0', '${process-substitution}', '${positional-unknown}', '$\ue000positional-unknown\ue001') or script.startswith(('/dev/fd/', '/proc/'))
+    return stdin or script is None or script in ('/dev/stdin', '/dev/fd/0') or forwarding.enabled() and script in ('${process-substitution}', '${positional-unknown}', '$\ue000positional-unknown\ue001') or script.startswith(('/dev/fd/', '/proc/'))
 
 
 _NAME = re.compile(r'\{?([A-Za-z_][A-Za-z0-9_]*)')

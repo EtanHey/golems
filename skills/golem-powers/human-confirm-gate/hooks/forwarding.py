@@ -1,10 +1,110 @@
 """Bind visible shell/function positionals without executing or reinterpreting data."""
 import re
+import os
+from contextvars import ContextVar
 import shlex
 
-_PARAMETER = re.compile(r'\$(?:([0-9@*])|\{([0-9]+|[@*])(?::\s*(-?[0-9]+)(?::([0-9]+))?)?\})')
+_PARAMETER = re.compile(r'\$(?:([0-9@*])|\{([0-9]+|[@*])(?::([0-9]+)(?::([0-9]+))?)?\})')
+_EXACT_PARAMETER = re.compile(r'\$(?:[0-9@*]|\{(?:[0-9]+|[@*]|@:[0-9]+(?::[0-9]+)?)\})')
+_mode = ContextVar('golems_simple_positional_binding', default=None)
+_CODE_COMMANDS = {'echo', 'true', 'false', ':'}
+_MUTATORS = {'shift', 'set', 'eval', 'builtin', 'command', 'exec', 'alias', 'unalias',
+             '.', 'source', 'read', 'getopts', 'declare', 'typeset', 'local', 'export',
+             'IFS', 'argv', 'BASH_ARGV', 'BASH_ARGC'}
+
+
+def enabled():
+    return _mode.get() is True
+
+
+def _normal(word):
+    return str(word).replace('\ue000', '{').replace('\ue001', '}')
+
+
+def code_allowed(body, shell):
+    """Positive grammar: one direct positional/data command, literal operands.
+
+    No control flow, assignments, wrappers, nested definitions, substitutions,
+    alternate parameter operators or interpreter-specific syntax is admitted.
+    """
+    lexer = shell._impl_module('tokens')
+    try:
+        words = lexer._shell_tokens(body, _operator_origin=True, _strict_quotes=True)
+    except ValueError:
+        return False
+    while words and isinstance(words[-1], lexer._ShellOperator) and words[-1] == ';':
+        words.pop()
+    if not words or any(isinstance(w, lexer._ShellOperator) for w in words):
+        return False
+    words = [_normal(w) for w in words]
+    import syntax
+    forbidden = _MUTATORS | syntax.WRAPPERS | syntax.SHELLS | {'find', 'xargs'}
+    if not (_EXACT_PARAMETER.fullmatch(words[0]) or words[0] in _CODE_COMMANDS):
+        return False
+    for word in words:
+        if _EXACT_PARAMETER.fullmatch(word):
+            continue
+        if any(c in word for c in '$`={}[]*?') or any(part in forbidden for part in word.split()):
+            return False
+    return True
+
+
+def command_allowed(command, shell, syntax):
+    """Opt in only when every definition and top-level invocation is proven."""
+    lexer = shell._impl_module('tokens')
+    token = lexer._preserve_empty_words.set(True)
+    try:
+        definitions = shell._impl_module('units').raw_function_definitions(command)
+        names = [name for name, _ in definitions]
+        if len(names) != len(set(names)) or any(not code_allowed(body, shell) for _, body in definitions):
+            return False
+        words = lexer._shell_tokens(command, _operator_origin=True, _strict_quotes=True)
+        segments, current, i = [], [], 0
+        while i < len(words):
+            if i+3 < len(words) and words[i] in names and words[i+1:i+4] == ['(', ')', '{']:
+                if current: return False
+                end = next((j for j in range(i+4, len(words)) if words[j] == '}'), None)
+                if end is None: return False
+                i = end+1
+                continue
+            word = words[i]
+            if isinstance(word, lexer._ShellOperator):
+                if word != ';': return False
+                if current: segments.append(current)
+                current = []
+            else:
+                current.append(_normal(word))
+            i += 1
+        if current: segments.append(current)
+        if not segments: return False
+        def invocation(argv):
+            base = os.path.basename(argv[0])
+            args = argv[1:]
+            if base in syntax.SHELLS:
+                # No option arity is guessed, including options after -c.
+                return (base != 'fish' and len(args) >= 2 and args[0] == '-c'
+                        and code_allowed(args[1], shell) and arguments(args[2:]))
+            if argv[0] in names:
+                return arguments(args)
+            if base == 'xargs':
+                child = syntax.xargs_payload(args)
+                return bool(child) and os.path.basename(child[0]) in syntax.SHELLS and invocation(child)
+            return False
+        def arguments(args):
+            return all(not shell._ASSIGNMENT_RE.match(a) and
+                       not any(part in _MUTATORS | syntax.WRAPPERS | syntax.SHELLS | {'find', 'xargs'} for part in a.split())
+                       for a in args)
+        return all(invocation(argv) for argv in segments)
+    except (ValueError, IndexError):
+        return False
+    finally:
+        lexer._preserve_empty_words.reset(token)
+
+
 UNKNOWN = '${positional-unknown}'
 def bind(body, arguments, shell, zero=None, unknown_tail=False, ifs=' \t\n', split_args=None):
+    if not code_allowed(body, shell):
+        return body  # Leave unproved code untouched for the base inspection path.
     definition_mask = shell._mask_function_definition_bodies(body)
     tokens, positions, _, _ = shell._parse_bash(definition_mask)
     if any(positions[j] and t in ('shift', 'set') for j,t in enumerate(tokens)):
