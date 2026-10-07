@@ -333,15 +333,16 @@ load lib/worktree-gc-fixtures
     [[ "$output" == *" · $worktree · submodule-parent-branch · "*"KEEP-undetermined"*"submodule"* ]]
 }
 
-@test "accepts a linked worktree path as the explicit repository" {
+@test "refuses a linked worktree root without sweeping its sibling" {
   repo="$(make_fixture_repo linked-repo-path)"
   requested_worktree="$(add_branch_worktree "$repo" requested-linked-branch)"
   reported_worktree="$(add_branch_worktree "$repo" reported-linked-branch)"
 
   run "$WORKTREE_GC" --repo "$requested_worktree"
 
-  [ "$status" -eq 0 ] &&
-    [[ "$output" == *" · $reported_worktree · reported-linked-branch · "*"REMOVE"* ]]
+  [ "$status" -eq 2 ]
+  [ -d "$requested_worktree" ] && [ -d "$reported_worktree" ]
+  [[ "$output" != *" · "* ]] || false
 }
 
 @test "normal H index tags are not hidden flags under C locale" {

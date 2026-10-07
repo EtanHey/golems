@@ -5,9 +5,61 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
+from contextvars import ContextVar
+
+_argument_expander = ContextVar("golems_argument_expander", default=None)
 
 from .positions import _parse_bash, _shell_integer_arithmetic
 from .tokens import _ASSIGNMENT_RE, _FUNCTION_LOOKUP_SUPPRESSORS
+
+
+def hide_function_bodies(tokens, positions):
+    """Invoked bodies are inspected with bound argv, never as raw definitions."""
+    i = 0
+    while i < len(tokens):
+        start = i + 1 if tokens[i] == 'function' else i
+        if start+3 < len(tokens) and tokens[start+1:start+4] == ['(', ')', '{']:
+            opening = start+3
+        elif start != i and start+1 < len(tokens) and tokens[start+1] == '{':
+            opening = start+1
+        else:
+            i += 1; continue
+        level, j = 1, opening+1
+        while j < len(tokens) and level:
+            level += (tokens[j] == '{') - (tokens[j] == '}')
+            j += 1
+        if level: raise ValueError('unclosed function body')
+        positions[i:j] = [False]*(j-i)
+        i = j
+
+
+def call_arguments(source, tokens, index):
+    """Opt-in invocation argv with lexical separators/redirections excluded."""
+    from .tokens import _shell_tokens, _ShellOperator
+    from .heredocs import _strip_heredoc_bodies
+    raw = _shell_tokens(_strip_heredoc_bodies(source), _operator_origin=True)
+    name = tokens[index]
+    matches = [j for j,t in enumerate(raw) if t == name]
+    if len(matches) != tokens.count(name): raise ValueError('uncertain function argv')
+    ordinal = tokens[:index+1].count(name)-1
+    args, j = [], matches[ordinal]+1
+    while j < len(raw):
+        word = raw[j]
+        if isinstance(word, _ShellOperator):
+            if word in ('<', '>') and j+1 < len(raw) and raw[j+1] == '(':
+                args.append('${process-substitution}')
+                level, j = 1, j+2
+                while j < len(raw) and level:
+                    if isinstance(raw[j], _ShellOperator):
+                        level += (raw[j] == '(') - (raw[j] == ')')
+                    j += 1
+                if level: raise ValueError('unclosed process substitution')
+                continue
+            if word in ('<', '>', '>>', '>|', '<>', '<<<', '<<'):
+                j += 2; continue
+            break
+        args.append(str(word)); j += 1
+    return args
 
 
 @dataclass
@@ -65,10 +117,9 @@ def expand_function(
                 for j in range(i + 1, len(body_tokens))
                 if body_segs[j] == body_segs[i]
             )
-            target_body = expand_function_arguments(
-                target_body,
-                invocation_arguments,
-            )
+            if _argument_expander.get() is not None:
+                invocation_arguments = call_arguments(body, body_tokens, i)
+            target_body = expand_function_arguments(target_body, invocation_arguments, source=body)
             expanded.append(
                 expand_function(
                     state,
@@ -84,13 +135,15 @@ def expand_function(
     return " ".join(expanded) if changed else body
 
 
-def expand_function_arguments(body, arguments):
+def expand_function_arguments(body, arguments, bindings=None, source=None):
     """Substitute statically known invocation arguments in a body.
 
         This preserves forwarded eval payloads such as `eval "$@"` for the
         recursive scan. Ordinary positional write targets stay unresolved so
         they retain the guard's existing REFUSE behavior.
         """
+    if _argument_expander.get() is not None:
+        return _argument_expander.get()(body, arguments, bindings, source)
     joined = " ".join(arguments)
     static_variables = {}
 
