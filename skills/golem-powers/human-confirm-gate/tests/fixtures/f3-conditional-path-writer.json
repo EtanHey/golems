@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "purpose": "Frozen synthetic regression rows for conditional-path writer repair; commands are DATA ONLY and must never be executed.",
+  "base_commit": "b2c41a79f1c1c65719d43a46902093d6d832f93b",
+  "regression_introduced_at": "7af1864a557c4724179e11f32cbb74b11607e38f",
+  "previous_commit": "adc0795958b4c36e15a3e6d6a9a5ac1b159f33d3",
+  "expectation": "deny=true must be observed in both classifier and registered fail-closed hook; rows and expectations frozen",
+  "rows": [
+    {
+      "id": "subshell_read_is_not_parent_writer",
+      "command": "q=/opt/fixture && cat \"$(read q)\" && \"$q/tool.sh\"",
+      "deny": false
+    },
+    {
+      "id": "actual_protected_after_arithmetic",
+      "command": "items=(); ((${#items[@]})); git push --force origin topic",
+      "deny": true
+    },
+    {
+      "id": "data_word_default_writer",
+      "command": "false && q=/opt/fixture; echo \"${q:=git push --force origin topic}\"; $q/tool.sh",
+      "deny": true
+    },
+    {
+      "id": "data_word_unset_writer",
+      "command": "false && q=/opt/fixture; echo \"${q=git push --force origin topic}\"; $q/tool.sh",
+      "deny": true
+    },
+    {
+      "id": "data_word_printf_writer",
+      "command": "false && q=/opt/fixture; printf \"%s\" \"${q:=git push --force origin topic}\"; $q/tool.sh",
+      "deny": true
+    },
+    {
+      "id": "data_word_writer_control",
+      "command": "false && q=/opt/fixture; echo \"${q:=git push --force origin topic}\"; $q",
+      "deny": true
+    },
+    {
+      "id": "data_word_simple_suffix_control",
+      "command": "false && q=/opt/fixture; echo data; $q/tool.sh",
+      "deny": false
+    }
+  ]
+}
