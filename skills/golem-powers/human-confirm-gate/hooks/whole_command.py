@@ -15,6 +15,7 @@ _REFERENCE = re.compile(r'\$(?:(' + _NAME + r')|\{[!#]?(' + _NAME + r'))')
 _EXACT = re.compile(r'\$(?:(' + _NAME + r')|\{(' + _NAME + r')\})')
 _DECLARATIONS = {'declare', 'typeset', 'local', 'export', 'readonly'}
 _READ_VALUES = frozenset('adinNptu')
+_PATH_CHAIN_COMMANDS = {'mkdir', 'cat', 'chmod', 'ls', 'echo', 'true', 'false'}
 
 
 @dataclass(frozen=True)
@@ -110,8 +111,13 @@ def check(command, initial, shell, syntax):
     ifs = initial.get('IFS', ' \t\n')
     conditional, scopes, beginning = False, [], True
     temporary, temporary_segment = {}, None
+    # A literal directory assigned to a previously unbound name is a visible
+    # path alternative, not proof that its conditional assignment ran. A fixed
+    # suffix can retain base inspection; never turn this into a known binding.
+    conditional_paths = {}
     def assign(name, value, uncertain=False):
         nonlocal ifs
+        conditional_paths.pop(name, None)
         if uncertain:
             old = values.get(name, Evidence())
             value = Evidence(old.guarded or value.guarded, True)
@@ -136,6 +142,15 @@ def check(command, initial, shell, syntax):
         resolved = _EXACT.sub(replace, normal(word))
         resolved = syntax.expand_home(resolved, Path.home())
         return None if syntax.unresolved(resolved, Path.home()) else resolved
+    def fixed_path(word, split_ifs):
+        match = _EXACT.match(normal(word))
+        if not match or split_ifs is None:
+            return False
+        prefix = conditional_paths.get(match[1] or match[2])
+        suffix = normal(word)[match.end():]
+        return (prefix is not None and suffix.startswith('/') and len(suffix) > 1
+                and not syntax.unresolved(suffix, Path.home())
+                and not any(c.isspace() or c in split_ifs for c in prefix + suffix))
     for i, word in enumerate(words):
         if temporary_segment is not None and segments[i] != temporary_segment:
             for name, old in temporary.items():
@@ -148,6 +163,11 @@ def check(command, initial, shell, syntax):
         if i in arrays:
             continue
         if word in ('&', '|'):
+            start = i - int(i > 0 and words[i-1] == '&')
+            and_pair = (word == '&' and words[start:start+2] == ['&', '&']
+                        and (start == 0 or words[start-1] != '&')
+                        and (start+2 == len(words) or words[start+2] != '&'))
+            if not and_pair: conditional_paths.clear()
             conditional, beginning = True, True
             continue
         if word == ';':
@@ -156,10 +176,12 @@ def check(command, initial, shell, syntax):
         if data and i > head:
             continue
         if beginning and word in ('if', 'for', 'while', 'until', 'case', '{', '('):
+            conditional_paths.clear()
             scopes.append({'if':'fi', 'for':'done', 'while':'done', 'until':'done',
                            'case':'esac', '{':'}', '(' : ')'}[word])
             continue
         if scopes and word == scopes[-1] and (beginning or positions[i] or word in ('}', ')')):
+            conditional_paths.clear()
             scopes.pop(); beginning = True
             continue
         if beginning and word in ('then', 'do', 'else', 'elif') and scopes:
@@ -182,7 +204,12 @@ def check(command, initial, shell, syntax):
             if assignment['append'] or assignment['subscript']:
                 old = values.get(name, Evidence(unknown=True))
                 new = Evidence(new.guarded or old.guarded, True)
+            previously_unbound = name not in values
             assign(name, new, uncertain)
+            if (previously_unbound and uncertain and not scopes and not prefix and not new.unknown
+                    and not assignment['append'] and not assignment['subscript']
+                    and new.literal is not None and new.literal.startswith('/')):
+                conditional_paths[name] = new.literal
             continue
         base = syntax.executable(word)[0]
         if base in _DECLARATIONS:
@@ -212,6 +239,10 @@ def check(command, initial, shell, syntax):
             if not functions:
                 for name in args:
                     if re.fullmatch(_NAME, name): assign(name, Evidence(unknown=True), uncertain)
+        split_ifs = expansion_ifs()
+        path_witness = fixed_path(word, split_ifs)
+        if base not in _PATH_CHAIN_COMMANDS or '$' in word or '`' in word:
+            conditional_paths.clear()
         if base in syntax.DATA or '$' not in word and '`' not in word:
             continue
         expanded = expansion_values()
@@ -225,7 +256,8 @@ def check(command, initial, shell, syntax):
         # suffix is not a whole-command value; base inspects its actual body.
         substitution_only = bool(normal(word)) and not normal(word).replace('${command-substitution}', '')
         whole = not args and (substitution_only or indirect or
-                              any(v.unknown for v in related) or bool(related) and split_ifs is None)
+                              any(v.unknown for v in related) and not path_witness or
+                              bool(related) and split_ifs is None)
         bound = None if indirect else literal(word)
         known = (bound is not None and split_ifs is not None and
                  not any(c.isspace() or c in split_ifs for c in bound))
