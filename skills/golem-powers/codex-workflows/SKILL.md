@@ -23,7 +23,7 @@ Run the harness through `scripts/codex-workflows.sh`. Detailed interfaces are in
 - `watch` observes process exit first, then parses the finished log once.
 - `status` and `harvest` inspect and collect a completed run. The dispatching lead owns
   harvesting and retiring its nested `.codex-workflows` lanes. Nightly GC deliberately
-  excludes `.worktrees/.codex-workflows/` and `~/Gits/worktrees/.codex-workflows/`;
+  excludes `.worktrees/.codex-workflows/` and `$HOME/Gits/worktrees/.codex-workflows/`;
   it is not their backstop. The current `cleanup` engine can delete ignored personal
   artifacts without archiving them. Hold these lanes until the lead has inventoried,
   copied and verified every ignored `docs.local/` or personal artifact outside the
