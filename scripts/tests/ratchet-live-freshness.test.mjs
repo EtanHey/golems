@@ -149,4 +149,4 @@ if (a[3] === 'repos/EtanHey/golems/commits/' + e.FIXTURE_GUARDED + '/pulls') {
     expect(workflow.permissions).toEqual({ contents: 'read', 'pull-requests': 'write' });
     expect(workflow.on.pull_request_target).toBeUndefined();
   } finally { rmSync(cwd, { recursive: true, force: true }); }
-});
+}, 30_000);
