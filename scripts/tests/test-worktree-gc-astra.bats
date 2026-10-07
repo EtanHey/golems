@@ -163,3 +163,39 @@ SH
     [[ "$output" == *"KEEP-undetermined"*"registry"* ]] || false
   done
 }
+
+@test "D6 default sweep skips aliases, reaches later repos once, and explicit aliases refuse" {
+  prepare_private
+  mkdir -p "$HOME/Gits"
+  [[ "$HOME" == "$GC_FIXTURE_ROOT/"* ]] || false
+  for name in aaa ccc; do
+    source_repo="$(make_fixture_repo "$name")"
+    mv "$source_repo" "$HOME/Gits/$name"
+    [ "$(clean_git -C "$HOME/Gits/$name" rev-parse --show-toplevel)" = "$HOME/Gits/$name" ]
+    add_branch_worktree "$HOME/Gits/$name" lane >/dev/null
+  done
+  ln -s "$HOME/Gits/aaa" "$HOME/Gits/bbb-link"
+  b="$(make_fixture_repo bystander)"; victim="$(add_branch_worktree "$b" victim)"
+  [ "$(clean_git -C "$b" rev-parse --show-toplevel)" = "$b" ]
+  before="$(snapshot "$b")"
+  for mode in --dry-run --prune-plan; do
+    run timeout -k 3 30 "$WORKTREE_GC" "$mode" --idle-hours 0
+    [ "$status" -eq 0 ]
+    for name in aaa ccc; do
+      [ "$(printf '%s\n' "$output" | grep -c "^$name · .* · REMOVE · ")" -eq 1 ]
+      [ -d "$HOME/Gits/$name/.worktrees/lane-worktree" ]
+    done
+  done
+  run timeout -k 3 30 "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0
+  [ "$status" -eq 0 ]
+  for name in aaa ccc; do
+    [ "$(printf '%s\n' "$output" | grep -c "^$name · .* · REMOVED · ")" -eq 1 ]
+    [ ! -d "$HOME/Gits/$name/.worktrees/lane-worktree" ]
+  done
+  for entry in "$WORKTREE_GC" "$REPO_ROOT/scripts/worktree-gc-nightly.sh"; do
+    run timeout -k 3 30 "$entry" --repo "$HOME/Gits/bbb-link"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Refusing --repo"* || "$output" == *"--repo must be"* ]] || false
+  done
+  [ -d "$victim" ]; [ "$(snapshot "$b")" = "$before" ]
+}
