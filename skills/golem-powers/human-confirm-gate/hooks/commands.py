@@ -140,6 +140,26 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
         limit = max((i + 1 for i, seg in enumerate(segments) if seg <= segment), default=0)
         child_bindings = assigned_bindings(tokens, positions, limit, bindings, scopes)
         result += operations(body, cwd, alias_lookup, depth + 1, child_bindings, _state)
+    # This supplemental view may deny, never authorize or classify an operand.
+    # Keep the original argv (including substitution bodies) for every policy.
+    outer, flags, segs, outer_scopes = syntax.substitution_argv(command, shell)
+    for i, word in enumerate(outer):
+        if not flags[i] or syntax.looked_up(outer, flags, i): continue
+        current = assigned_bindings(outer, flags, i, bindings, outer_scopes, outer_scopes[i])
+        word = resolve_word(word, current)
+        args, _ = syntax.argv_at(outer, segs, outer_scopes, i)
+        pending = [(word, args, depth)]
+        while pending:
+            executable, argv, level = pending.pop()
+            executable = resolve_word(executable, current)
+            argv = [resolve_word(a, current) for a in argv]
+            base = syntax.executable(executable)[0]
+            if (not shell._ASSIGNMENT_RE.match(executable) and base not in syntax.DATA and
+                    syntax.unresolved(executable, Path.home()) and syntax.guarded_words(argv)):
+                raise ValueError('unresolved executable for protected operation')
+            if level > 8: raise ValueError('command inspection budget exceeded')
+            for child in syntax.wrapper_payload(base, argv):
+                if child: pending.append((child[0], child[1:], level + 1))
     for i, word in enumerate(tokens):
         if not positions[i] or syntax.looked_up(tokens, positions, i): continue
         current = assigned_bindings(tokens, positions, i, bindings, scopes, scopes[i])
@@ -163,7 +183,7 @@ def operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=No
             raise ValueError('agent writes/deletes to confirmation policy/tokens are forbidden')
         if assignment:
             continue  # a prefix assignment is not the executable; the next word is
-        if ('$' in word or '`' in word) and syntax.guarded_words(args):
+        if base not in syntax.DATA and syntax.unresolved(word, Path.home()) and syntax.guarded_words(args):
             raise ValueError('unresolved executable for protected operation')
         for child in syntax.wrapper_payload(base, args):
             child_bindings = dict(current)

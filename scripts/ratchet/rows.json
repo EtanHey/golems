@@ -2,6 +2,15 @@
   "schema": 1,
   "rows": [
     {
+      "id": "dynamic-command-word",
+      "metric": "human-confirm denies dynamic command words carrying guarded argv (synthetic class fixtures, real hook interpreter)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_dynamic_command_word.py"
+    },
+    {
       "id": "stalker-completion",
       "metric": "stalker completion contract (delivery tests on fixtures)",
       "kind": "unit",
