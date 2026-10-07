@@ -154,7 +154,10 @@ def xargs_payload(args):
         if arg == '--':
             i += 1; break
         if arg == '-' or not arg.startswith('-'): break
-        if '$' in arg or '`' in arg:
+        # Expansion may change option names, arity or the number of words.
+        # Literal replacement braces (including {}) are not brace expansion.
+        if (any(c in arg for c in '$`*?[]') or
+                any(',' in part or '..' in part for part in re.findall(r'\{([^{}]*)\}', arg))):
             raise ValueError('unresolved xargs option word')
         options = []
         if arg.startswith('--'):

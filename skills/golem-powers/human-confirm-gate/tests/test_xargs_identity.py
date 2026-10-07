@@ -12,6 +12,11 @@ sys.path.insert(0, str(ROOT / 'hooks'))
 from commands import operations
 
 DENIALS = {
+    'glob_star_option': 'xargs -* "$TOOL"',
+    'glob_question_option': 'xargs -? "$TOOL"',
+    'glob_bracket_option': 'xargs -[a-z] "$TOOL"',
+    'brace_list_option': 'xargs -{t,0} "$TOOL"',
+    'brace_range_option': 'xargs -{1..3} "$TOOL"',
     'insert_utility': 'xargs -J TOKEN TOKEN push --force origin topic',
     'insert_utility_cluster': 'xargs -tJ TOKEN TOKEN push --force origin topic',
     'insert_utility_terminated': 'xargs -J TOKEN -- TOKEN push --force origin topic',
@@ -82,6 +87,8 @@ DENIALS = {
 }
 
 CONTROLS = {
+    'literal_brace_replacement': 'xargs -I{TOKEN} echo {TOKEN}',
+    'empty_brace_replacement': 'xargs -I{} echo {}',
     'gnu_one_retains': 'xargs -I TOKEN -n 1 env',
     'gnu_attached_one_retains': 'xargs -ITOKEN -n1 env',
     'gnu_long_one_retains': 'xargs --replace=TOKEN --max-args=1 env',
