@@ -18,7 +18,45 @@ _READ_VALUES = frozenset('adinNptu')
 _PATH_CHAIN_COMMANDS = {'mkdir', 'cat', 'chmod', 'ls', 'echo', 'true', 'false'}
 _CARDINALITY = re.compile(r'\$\{#' + _NAME + r'(?:\[@\]|\[\*\])?\}')
 # ${name=word} / ${name:=word} assign in any word position, including data.
+# Match lexer words before normal(): single-quoted/ANSI-C braces stay marked.
 _ASSIGNING = re.compile(r'\$\{(!?)(' + _NAME + r'):?=')
+_ESCAPED_DOLLAR = '\ue002'
+
+
+def escaped_dollars(command, shell):
+    """Mark backslash-escaped `$` for the writer probe only; it cannot expand.
+
+    Quote state follows the shell. Substitution bodies run in a subshell and
+    stay unchanged; any scan the lexer does not align with keeps every writer.
+    """
+    quotes = shell._impl_module('quotes')
+    substitutions = shell._impl_module('substitutions')
+    result, quote, i = list(command), None, 0
+    while i < len(command):
+        char = command[i]
+        if quote == "'":
+            quote = None if char == "'" else quote
+        elif quote is None and quotes.ansi_c_opens_at(command, i):
+            i = quotes.ansi_c_quote(command, i)[1]
+            continue
+        elif quote is None and char == '#' and (i == 0 or command[i-1].isspace() or command[i-1] in ';|&()<>'):
+            end = command.find('\n', i)
+            i = len(command) if end < 0 else end
+            continue
+        elif char == '\\' and i + 1 < len(command):
+            if command[i+1] == '$': result[i+1] = _ESCAPED_DOLLAR
+            i += 2
+            continue
+        elif command.startswith('$(', i) or char == '`':
+            found = (substitutions._dollar_substitution(command, i) if char == '$'
+                     else substitutions._backtick_substitution(command, i))
+            if found is None: break
+            i = found[1]
+            continue
+        elif char == '"' or char == "'" and quote is None:
+            quote = None if quote == char else char
+        i += 1
+    return ''.join(result)
 
 
 def arithmetic_data(command, shell):
@@ -108,6 +146,13 @@ def check(command, initial, shell, syntax):
         words, positions, segments, scopes = syntax.substitution_argv(parent, shell)
     except ValueError:
         return  # An unproved supplemental view must retain base inspection.
+    try:
+        probe = syntax.substitution_argv(escaped_dollars(parent, shell), shell)[0]
+    except ValueError:
+        probe = None
+    if probe is None or len(probe) != len(words) or any(
+            normal(p).replace(_ESCAPED_DOLLAR, '$') != normal(w) for p, w in zip(probe, words)):
+        probe = words  # Unaligned provenance keeps every writer.
     # Locate data regions before examining executable positions. The legacy
     # lexer can expose a substitution inside an array or quoted data operand as
     # another command position; base recursion still inspects its actual body.
@@ -180,8 +225,9 @@ def check(command, initial, shell, syntax):
             if 'IFS' in temporary: ifs = values.get('IFS', Evidence(literal=' \t\n')).literal
             temporary, temporary_segment = {}, None
         # An expansion writer invalidates the path alternative wherever it
-        # appears; an indirect writer may target any name.
-        for match in _ASSIGNING.finditer(normal(word)):
+        # appears; an indirect writer may target any name. Quoted or escaped
+        # text cannot write.
+        for match in _ASSIGNING.finditer(str(probe[i])):
             if match[1]: conditional_paths.clear()
             else: conditional_paths.pop(match[2], None)
         head = heads.get(segments[i])
