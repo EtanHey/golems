@@ -1,0 +1,119 @@
+{
+  "status": "SYNTHETIC_SHAPE_AND_NORMATIVE_SCENARIOS_ONLY",
+  "synthetic_identifiers": true,
+  "digest_note": "All fixture payload_digest fields intentionally contain 64 zeroes. They are shape/semantic planning fixtures, not digest-valid envelopes.",
+  "cases": [
+    {
+      "file": "fixtures/01-unavailable.json",
+      "schema": "ACCEPT",
+      "semantics": "ACCEPT_INCOMPLETE",
+      "reason": "Unobserved collections null; failed attempt retained",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/02-observed-empty.json",
+      "schema": "ACCEPT",
+      "semantics": "ACCEPT_INCOMPLETE",
+      "reason": "[] only where collection is observed empty; empty arrays do not prove coverage",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/03-repeated-observation.json",
+      "schema": "ACCEPT",
+      "semantics": "ACCEPT_INCOMPLETE",
+      "reason": "Repeated launch observations allowed with distinct record IDs; final identity unique",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/04-duplicate-final-identity.json",
+      "schema": "ACCEPT",
+      "semantics": "REJECT",
+      "reason": "Two final records identify the same launch",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/05-dangling-reference.json",
+      "schema": "ACCEPT",
+      "semantics": "REJECT",
+      "reason": "Final process reference does not resolve",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/06-unreadable-raw-registration.json",
+      "schema": "ACCEPT",
+      "semantics": "ACCEPT_INCOMPLETE",
+      "reason": "Raw row reference preserved even when digest/launch/path unreadable",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/07-duplicate-registration-reference.json",
+      "schema": "ACCEPT",
+      "semantics": "REJECT",
+      "reason": "Distinct record IDs cannot disguise duplicate raw row references",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/08-esrch-disappearance.json",
+      "schema": "ACCEPT",
+      "semantics": "ACCEPT_INCOMPLETE",
+      "reason": "Bounded disappearance evidence retained; unknown historical identity remains unknown; no released path",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/09-esrch-invented-history.json",
+      "schema": "ACCEPT",
+      "semantics": "REJECT",
+      "reason": "Resolution cannot invent missing historical launch",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/10-esrch-missing-native-reread.json",
+      "schema": "ACCEPT",
+      "semantics": "REJECT",
+      "reason": "ESRCH resolution requires fresh native membership/binding reads",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/11-unobserved-empty.json",
+      "schema": "REJECT",
+      "semantics": "REJECT",
+      "reason": "Non-authoritative unobserved collection cannot be [] even with missing-evidence sidecar",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/12-unknown-member.json",
+      "schema": "REJECT",
+      "semantics": "REJECT",
+      "reason": "Candidate closed-world unknown-member policy",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/13-duplicate-keys.raw.json",
+      "schema": "NOT_REACHED",
+      "semantics": "REJECT_LEXICAL",
+      "reason": "Duplicate JSON key rejected before object parsing; not duplicate record",
+      "digest": "NOT_CHECKED"
+    },
+    {
+      "file": "fixtures/14-esrch-pid-reuse.json",
+      "schema": "ACCEPT",
+      "semantics": "ACCEPT_INCOMPLETE",
+      "reason": "Same synthetic PID, same seconds, different microseconds; replacement accounted independently",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/15-duplicate-record-id.json",
+      "schema": "ACCEPT",
+      "semantics": "REJECT",
+      "reason": "Repeated record identifier rejected even though launch observations may repeat",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    },
+    {
+      "file": "fixtures/16-partial-kernel-identity.json",
+      "schema": "ACCEPT",
+      "semantics": "ACCEPT_INCOMPLETE",
+      "reason": "Unknown host/boot; known synthetic PID/start seconds/microseconds and provenance retained at process/attempt/registration evidence sites; complete launches null, joins unresolved, final identity unavailable",
+      "digest": "PLACEHOLDER_NOT_VALIDATED"
+    }
+  ]
+}

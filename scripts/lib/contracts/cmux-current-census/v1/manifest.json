@@ -1,0 +1,144 @@
+{
+  "status": "EXACT_SCHEMA_CANDIDATE / JOINT_FREEZE_PENDING",
+  "self_excluded": true,
+  "files": [
+    {
+      "file": "contract.md",
+      "bytes": 12570,
+      "sha256": "5da92daa7e8deb1b045ad26a466a6295ac4399391fd4011234ff63aaf90d90c7",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/01-unavailable.json",
+      "bytes": 3981,
+      "sha256": "33f1e9dc53ee23c46072f489b7bdb2a14090353961984691486029d1291b9982",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/02-observed-empty.json",
+      "bytes": 3927,
+      "sha256": "c3450d5089cd43e7dea954b82e130473c839578c0d70030635421ed79e95a22c",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/03-repeated-observation.json",
+      "bytes": 8481,
+      "sha256": "753c9511d1489aa91c62394103c32c776cde23d88adeaf04df2b197453833e68",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/04-duplicate-final-identity.json",
+      "bytes": 8493,
+      "sha256": "18f0c69595464cb7f1ea54ebae0b3d51a54af6252ca45991fac07bab2af203da",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/05-dangling-reference.json",
+      "bytes": 8485,
+      "sha256": "ada90523ca075e2ecd43c2e611b10a1695e99ad7569c05effb79c10904a4761b",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/06-unreadable-raw-registration.json",
+      "bytes": 5036,
+      "sha256": "b4be14906a9b52c73cef35a151f222fc4c997de4ceb6a4e9dcfc77d6be94ed5c",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/07-duplicate-registration-reference.json",
+      "bytes": 6568,
+      "sha256": "e86a91b1564c770e818a627d1ccf31450f0e27a1be84c23f5d063b78b18c7106",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/08-esrch-disappearance.json",
+      "bytes": 11401,
+      "sha256": "b82c70b41ded8e6435380190aa66edec55bb284d7c38eccaeab76373a62a75c3",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/09-esrch-invented-history.json",
+      "bytes": 11400,
+      "sha256": "eb57443456976a05d1111dabfafdee2567fd665fbb2152976be48e72476491d2",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/10-esrch-missing-native-reread.json",
+      "bytes": 11054,
+      "sha256": "ab22386a3cbae7e656b4281098b70548adf8f4f009180d9ed752caaab324abfd",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/11-unobserved-empty.json",
+      "bytes": 3814,
+      "sha256": "fa12115ac955cba63f2c894155c7065509938b57678dd0f5ee90b165c5bac4fb",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/12-unknown-member.json",
+      "bytes": 3949,
+      "sha256": "145820ec1d018a3e2e2f2175d9208443de7fcd85cd9a8d3ae3cc828309d291f6",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/13-duplicate-keys.raw.json",
+      "bytes": 1584,
+      "sha256": "15492734650b00501b2c6f52a5b10f1b5379ca876addb6d72b7fea9183cdb386",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/14-esrch-pid-reuse.json",
+      "bytes": 11595,
+      "sha256": "7fd3c391c04789833fb4979557aa51beea03070b8bcc883e94af37f9284755a3",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/15-duplicate-record-id.json",
+      "bytes": 9687,
+      "sha256": "7e4c4b5805a198c281a48a99523e549f66f98bf352629cbdc347d2ed4a04d2f2",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/16-partial-kernel-identity.json",
+      "bytes": 12519,
+      "sha256": "064877ce8a6911d4b532f9d70c2911d0df7eb1bca7582bc94d037e1fac4b96f4",
+      "mode": "0o600"
+    },
+    {
+      "file": "fixtures/index.json",
+      "bytes": 4559,
+      "sha256": "fd855f057667c8a7becdb7cdf9af02678fd9ac2c2e84e93027bd8c4fc7232320",
+      "mode": "0o600"
+    },
+    {
+      "file": "schema.json",
+      "bytes": 35504,
+      "sha256": "0b08d2c4370ed4801f86a96b5825c6b4b376e8d447c5df08e4beb0e6c79cf00e",
+      "mode": "0o600"
+    },
+    {
+      "file": "validation.json",
+      "bytes": 1732,
+      "sha256": "c0154852cfe1b70f3c96ce2c8587de8f69d4594b486932fd914138a750c5fcd9",
+      "mode": "0o600"
+    },
+    {
+      "file": "vectors/index.json",
+      "bytes": 1818,
+      "sha256": "d9b145d883d8ef6c9feff9addff30020556c2738e0e6a178f1c10b01fcacd79a",
+      "mode": "0o600"
+    },
+    {
+      "file": "vectors/rfc8785-3.2.2.input.json",
+      "bytes": 197,
+      "sha256": "0e8b4f7e00b5b54be26d258337579c2c9017959e264e64a8ffd6a600d8fda3da",
+      "mode": "0o600"
+    },
+    {
+      "file": "vectors/rfc8785-3.2.4.canonical.bin",
+      "bytes": 118,
+      "sha256": "2d5e01a318d0f0879ab568c4be289c8b1f64ef8921a53c6277d5e069978baacb",
+      "mode": "0o600"
+    }
+  ]
+}
