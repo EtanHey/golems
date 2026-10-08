@@ -29,9 +29,11 @@ def _blank_shell_comment(line):
     return line
 
 
-def _strip_heredoc_bodies(command):
+def _strip_heredoc_bodies(command, *, preserve_expansions=True):
     """Drop literal heredoc text but preserve executable expansions.
 
+    Set preserve_expansions=False for an outer command-position view;
+    executable bodies must still be inspected separately by the consumer.
     Quoted delimiters make the whole body literal. Unquoted bodies execute
     command substitutions, so those expressions remain visible to the
     recursive scanner while prose-shaped redirects stay blanked.
@@ -44,12 +46,12 @@ def _strip_heredoc_bodies(command):
             delim, expansions_enabled, strip_tabs, body_lines = pending[0]
             candidate = line.lstrip("\t") if strip_tabs else line
             if candidate == delim:
-                if expansions_enabled:
+                if expansions_enabled and preserve_expansions:
                     out.append(
                         _heredoc_executable_text("\n".join(body_lines))
                     )
                 else:
-                    out.append("")
+                    out.append(line if not preserve_expansions else "")
                 pending.pop(0)
                 continue
             body_lines.append(line)
@@ -64,7 +66,7 @@ def _strip_heredoc_bodies(command):
             pending.append([delimiter, not quoted, bool(m.group(1)), []])
         out.append(line)
     for _delim, expansions_enabled, _strip_tabs, body_lines in pending:
-        if expansions_enabled:
+        if expansions_enabled and preserve_expansions:
             out.append(_heredoc_executable_text("\n".join(body_lines)))
         else:
             out.append("")
