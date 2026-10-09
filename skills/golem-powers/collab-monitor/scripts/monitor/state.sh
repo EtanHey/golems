@@ -15,6 +15,20 @@ hash_text() {
   printf '%s\n' "$1" | hash_stream
 }
 
+hash_event() {
+  local event_record="$1" record_kind event_line episode
+  record_kind="${event_record%%$'\t'*}"
+  event_line="${event_record#*$'\t'}"
+  if [[ "$record_kind" == *:* ]]; then
+    episode="${record_kind#*:}"
+    episode="${episode%%:*}"
+    # A NUL domain separator cannot collide with a plain text event line.
+    printf 'heading-episode:%s\0%s\n' "$episode" "$event_line" | hash_stream
+  else
+    hash_text "$event_line"
+  fi
+}
+
 hash_path() {
   printf '%s' "$1" | hash_stream
 }
@@ -95,7 +109,7 @@ seed_file() {
   fi
   while IFS= read -r event_record; do
     event_line="${event_record#*$'\t'}"
-    if ! content_hash="$(hash_text "$event_line")"; then
+    if ! content_hash="$(hash_event "$event_record")"; then
       hash_failed=1
       break
     fi
@@ -117,7 +131,7 @@ scan_file() {
   local state_dir="$4"
   local seen_file="$5"
   local size_dir="$state_dir/sizes"
-  local path_hash size_file current_size previous_size shrink_delta event_record record_kind event_line content_hash event_file seed_status extract_status hash_failed state_failed seen_status
+  local path_hash size_file current_size previous_size shrink_delta event_record record_kind event_line content_hash event_file seed_status extract_status hash_failed state_failed seen_status episode event_offset event_context historical
 
   if ! watched_file="$(canonical_path "$watched_file" 2>/dev/null)"; then
     printf 'WATCH-WARN file=%s reason=temporarily-absent action=retry\n' "$requested_file" >&2
@@ -184,7 +198,23 @@ scan_file() {
   while IFS= read -r event_record; do
     record_kind="${event_record%%$'\t'*}"
     event_line="${event_record#*$'\t'}"
-    if ! content_hash="$(hash_text "$event_line")"; then
+    episode=''
+    event_context=''
+    historical=0
+    if [[ "$record_kind" == *:* ]]; then
+      episode="${record_kind#*:}"
+      event_offset="${episode#*:}"
+      episode="${episode%%:*}"
+      record_kind="${record_kind%%:*}"
+      event_context=" episode=$episode"
+      # Legacy state has only the first heading hash. Seed older occurrences
+      # silently on growth, only when the full heading fits the old watermark.
+      # A shrink still uses the retained seen ledger.
+      if [[ "$current_size" -ge "$previous_size" && "$event_offset" -le "$previous_size" ]]; then
+        historical=1
+      fi
+    fi
+    if ! content_hash="$(hash_event "$event_record")"; then
       hash_failed=1
       break
     fi
@@ -198,10 +228,12 @@ scan_file() {
         break
         ;;
     esac
-    if [[ "$record_kind" == 'SELF' && "$INCLUDE_SELF" -eq 1 ]]; then
-      printf 'SELF-POST-%s file=%s hash=%s :: %s\n' "$listen_name" "$watched_file" "$content_hash" "$event_line"
+    if [[ "$historical" -eq 1 ]]; then
+      : # Persist the occurrence key without replaying pre-watermark history.
+    elif [[ "$record_kind" == 'SELF' && "$INCLUDE_SELF" -eq 1 ]]; then
+      printf 'SELF-POST-%s file=%s hash=%s%s :: %s\n' "$listen_name" "$watched_file" "$content_hash" "$event_context" "$event_line"
     elif [[ "$record_kind" != 'SELF' ]]; then
-      printf 'NEW-FOR-%s file=%s hash=%s :: %s\n' "$listen_name" "$watched_file" "$content_hash" "$event_line"
+      printf 'NEW-FOR-%s file=%s hash=%s%s :: %s\n' "$listen_name" "$watched_file" "$content_hash" "$event_context" "$event_line"
     fi
     if ! persist_seen_hash "$seen_file" "$content_hash"; then
       state_failed=1
