@@ -36,13 +36,13 @@
     "reason": "Retain nested temp classification when an outer in-convention assignment is authoritative"
   },
   {
-    "authority": "golems#687",
+    "authority": "golems#744",
     "candidate_sha256": {
-      "darwin": "27bf398e8accd4345d57cb04771cdf46935f4217cc72dd3dc30f380adee07867",
-      "linux": "27bf398e8accd4345d57cb04771cdf46935f4217cc72dd3dc30f380adee07867"
+      "darwin": "d07501ec68a605468dd73563c3187b804272c2749259cd11b6a41e694cd8207a",
+      "linux": "d07501ec68a605468dd73563c3187b804272c2749259cd11b6a41e694cd8207a"
     },
     "case": "launcher-002",
-    "reason": "Codex help requires worker and raw-passthrough effort while bare interactive boots use Codex config; help lists --lead, the seat that keeps the codex_apps connectors (golems#678); help also lists --scan, the codex-security scan seat (golems#687)"
+    "reason": "Codex help requires worker and raw-passthrough effort while bare interactive boots use Codex config; help lists --lead, the seat that keeps the codex_apps connectors (golems#678); help also lists --scan, the codex-security scan seat (golems#687); the prior golems#687 declaration is retained here, with the connector-policy help line updated to state that other agent-shaped launches keep Locals T3code and read-only Drive under the all-launch Locals default (golems#744)"
   },
   {
     "authority": "golems#475",
