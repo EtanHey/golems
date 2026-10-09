@@ -192,3 +192,24 @@ function split_case_148() {
           || { echo "Drive write tool ${tool} not explicitly disabled: $output" >&2; return 1; }
     done
 }
+
+# A separate normal-cache record proves discovery/normalization and deduplication,
+# without making the existing absent-Locals fixtures depend on this connector.
+write_codex_locals_cache() {
+    write_codex_apps_cache
+    cat > "$CODEX_HOME/cache/codex_apps_tools/locals.json" <<'JSON'
+{"tools":[
+  {"connector_id":"connector_fixturelocals","connector_name":"Locals T3code","tool_name":"t3_project_list"},
+  {"connector_id":"connector_fixturelocals","connector_name":"LOCALS--T3CODE","tool_name":"t3_session_list"}
+]}
+JSON
+}
+
+assert_locals_default() {
+    local launch="$1" launch_output="$2"
+    codex_arg_pair_present 'apps.connector_fixturelocals.enabled=true' "$launch_output" \
+      || { echo "[$launch] Locals missing default: $launch_output" >&2; return 1; }
+    refute_contains 'apps.connector_fixturelocals.enabled=false' "$launch_output" "[$launch] Locals disabled" || return 1
+    [ "$(grep -F -x -c 'CODEX_ARG=apps.connector_fixturelocals.enabled=true' <<< "$launch_output")" = 1 ] || return 1
+    refute_contains "$CODEX_WORKER_ALLOW_LOGGED" "$launch_output" "[$launch] default is not an opt-in" || return 1
+}
