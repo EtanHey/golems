@@ -86,12 +86,15 @@ Worker mode adds only a one-line role banner before an optional caller prompt; i
 does not inject registry agent front-matter or boot-store instructions. Short
 `-w` remains the worktree-path flag and always requires an absolute path.
 
-### Per-launch Codex overrides (Etan, 2026-10-06)
+### Per-launch Codex overrides (Etan, 2026-10-09)
 
 `~/.codex/config.toml` is never edited; `*Codex` launchers pass `-c` overrides (codex-cli 0.160.1):
 
 - **Computer use stays on** for every launch, workers included ("that's how they can properly test").
-- **Connectors are fail-safe stripped.** Every agent-shaped launch loses the `codex_apps` cloud
+- **Locals T3code defaults on in ALL Codex launches:** leads, workers, bare, aliases, prompts,
+  fresh/resume/continue and scan. Its normalized `locals_t3code` name resolves from Codex's normal
+  cache; no opt-in, special flags or F2 binding is required. Missing cache/name does not block launch.
+- **Other connectors are fail-safe stripped.** Every agent-shaped launch loses the other `codex_apps` cloud
   connectors (Gmail, Calendar, GitHub…) and any `browser-tools-mcp` server, matched by name or package.
   That includes workers, `-p`, prompts, `resume`, and cmuxlayer spawns. **Google Drive stays read-only**:
   `apps.<drive>.default_tools_enabled=false` plus an allowlist of its read tools, so new Drive tools
@@ -104,7 +107,7 @@ does not inject registry agent front-matter or boot-store instructions. Short
 - **`--scan`** (security route): a worker seat that runs `-s workspace-write` with
   `approval_policy="never"` and no bypass, because codex-security Deep Scan refuses a parent without a
   managed filesystem permission profile. It is the one seat with **computer use off**: a scanner doesn't
-  test. It strips connectors too, ignores `--lead`, and resolves its model from the `codex.security` role
+  test. It keeps the default Locals exception and read-only Drive, strips other connectors, ignores `--lead`, and resolves its model from the `codex.security` role
   (`-m` overrides). It refuses (exit 2) the bypass flag and its alias `--yolo`, `--approve-for-me`,
   `--add-dir`, `-C`/`--cd`, a caller `-p`/`--profile`, any `-s`/`--sandbox` other than `workspace-write` or
   `-a`/`--ask-for-approval` other than `never` (every `X`/`=X`/attached spelling), and any `-c`
