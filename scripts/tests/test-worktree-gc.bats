@@ -581,6 +581,51 @@ load lib/worktree-gc-fixtures
     [[ "$(git -C "$repo" worktree list --porcelain)" == *"worktree $outer"$'\n'* ]]
 }
 
+@test "nightly wrapper skips the night while the heavy-suite lock is held" {
+  repo="$(make_fixture_repo nightly-held-repo)"
+  worktree="$(add_branch_worktree "$repo" nightly-held-branch)"
+  lock="$TEST_ROOT/heavy-suite.lock"
+  ready="$TEST_ROOT/holder-ready"
+  perl -MFcntl=:flock -e 'open(my $fh, ">>", $ARGV[0]) or die; flock($fh, LOCK_EX) or die;
+    open(my $r, ">", $ARGV[1]) or die; close $r; sleep 30' "$lock" "$ready" &
+  holder=$!
+  for _ in $(seq 50); do [ -e "$ready" ] && break; sleep 0.1; done
+
+  run env GOLEMS_HEAVY_LOCK="$lock" "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+  kill "$holder" 2>/dev/null || true
+
+  [ -e "$ready" ] &&
+    [ "$status" -eq 0 ] &&
+    [[ "$output" == *"SKIP heavy-suite lock held"* ]] &&
+    [[ "$output" != *"$worktree"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "nightly wrapper prunes while holding the heavy-suite lock" {
+  repo="$(make_fixture_repo nightly-free-repo)"
+  worktree="$(add_branch_worktree "$repo" nightly-free-branch)"
+  lock="$TEST_ROOT/heavy-suite.lock"
+  wrapper_dir="$TEST_ROOT/lock-probe"
+  mkdir -p "$wrapper_dir"
+  # A git wrapper that records, during the prune, whether the lock is free to a third party.
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'if [[ " $* " == *" worktree remove "* ]]; then' \
+    '  perl -MFcntl=:flock -e '"'"'open(my $f, ">>", $ARGV[0]) or die; print flock($f, LOCK_EX|LOCK_NB) ? "free" : "held"'"'"' "$PROBE_LOCK" > "$PROBE_OUT"' \
+    'fi' \
+    'exec "$REAL_GIT" "$@"' > "$wrapper_dir/git"
+  chmod +x "$wrapper_dir/git"
+
+  run env GOLEMS_HEAVY_LOCK="$lock" PROBE_LOCK="$lock" PROBE_OUT="$TEST_ROOT/probe" \
+    REAL_GIT="$(command -v git)" PATH="$wrapper_dir:$PATH" \
+    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · nightly-free-branch · "*"REMOVED"* ]] &&
+    [ "$(cat "$TEST_ROOT/probe")" = "held" ] &&
+    [ ! -e "$worktree" ]
+}
+
 # --- R1 (#703 review: H1, H2, M1, M2, M3, L1, L2; brainlayer 23:28 open-PR rule) ---
 
 @test "H1: a registered worktree outside <repo>/.worktrees is out of scope in both modes" {
@@ -803,4 +848,76 @@ make_github_origin() {
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"lsof saw"* ]] &&
     [ -d "$worktree" ]
+}
+
+@test "nightly wrapper: the prune's children never inherit the heavy-suite lock fd" {
+  command -v lsof >/dev/null || skip "lsof unavailable"
+  repo="$(make_fixture_repo nightly-fd-repo)"
+  worktree="$(add_branch_worktree "$repo" nightly-fd-branch)"
+  lock="$TEST_ROOT/heavy-suite.lock"
+  wrapper_dir="$TEST_ROOT/fd-probe"
+  mkdir -p "$wrapper_dir"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'if [[ " $* " == *" worktree remove "* ]]; then' \
+    '  lsof -a -p $$ "$PROBE_LOCK" >/dev/null 2>&1 && echo inherited > "$PROBE_OUT" || echo clean > "$PROBE_OUT"' \
+    'fi' \
+    'exec "$REAL_GIT" "$@"' > "$wrapper_dir/git"
+  chmod +x "$wrapper_dir/git"
+
+  run env GOLEMS_HEAVY_LOCK="$lock" PROBE_LOCK="$lock" PROBE_OUT="$TEST_ROOT/fd" \
+    REAL_GIT="$(command -v git)" PATH="$wrapper_dir:$PATH" \
+    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"REMOVED"* ]] &&
+    [ "$(cat "$TEST_ROOT/fd")" = "clean" ]
+}
+
+@test "nightly wrapper skips when the lock cannot be opened" {
+  repo="$(make_fixture_repo nightly-noopen-repo)"
+  worktree="$(add_branch_worktree "$repo" nightly-noopen-branch)"
+  mkdir -p "$TEST_ROOT/ro"
+  chmod 500 "$TEST_ROOT/ro"
+  [ -w "$TEST_ROOT/ro" ] && skip "running as a user who can write a mode-500 dir"
+
+  run env GOLEMS_HEAVY_LOCK="$TEST_ROOT/ro/heavy-suite.lock" \
+    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+  chmod 700 "$TEST_ROOT/ro"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *"SKIP cannot open heavy-suite lock"* ]] &&
+    [ -d "$worktree" ]
+}
+
+@test "nightly wrapper kills a prune that outlives its time limit" {
+  repo="$(make_fixture_repo nightly-timeout-repo)"
+  worktree="$(add_branch_worktree "$repo" nightly-timeout-branch)"
+  wrapper_dir="$TEST_ROOT/slow-git"
+  mkdir -p "$wrapper_dir"
+  printf '#!/usr/bin/env bash\n[[ " $* " == *" fetch "* ]] && sleep 30\nexec "$REAL_GIT" "$@"\n' > "$wrapper_dir/git"
+  chmod +x "$wrapper_dir/git"
+
+  SECONDS=0
+  run env GOLEMS_HEAVY_LOCK="$TEST_ROOT/heavy-suite.lock" WORKTREE_GC_NIGHTLY_TIMEOUT=2 \
+    REAL_GIT="$(command -v git)" PATH="$wrapper_dir:$PATH" \
+    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 124 ] &&
+    [[ "$output" == *"TIMEOUT after 2s"* ]] &&
+    [ "$SECONDS" -lt 20 ] &&
+    [ -d "$worktree" ]
+}
+
+@test "nightly wrapper exits 0 on a completed run that keeps unpushed work" {
+  repo="$(make_fixture_repo nightly-keep-repo)"
+  worktree="$(add_branch_worktree "$repo" nightly-keep-branch)"
+  commit_fixture_file "$worktree" local-only.txt
+
+  run env GOLEMS_HEAVY_LOCK="$TEST_ROOT/heavy-suite.lock" \
+    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+
+  [ "$status" -eq 0 ] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-unpushed"* ]] &&
+    [ -f "$worktree/local-only.txt" ]
 }
