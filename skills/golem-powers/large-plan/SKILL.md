@@ -78,9 +78,9 @@ Example:
 
 When a round has parallel phases, the orchestrator:
 1. Creates/updates `collab.md` using the [collab protocol](workflows/collab.md)
-2. Starts the monitor **before dispatching any worker** (step 0 at boot and after every compaction — `/collab-monitor` § "Arming Is Step 0") and attaches its alert stream with `bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md && bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>` in a supervised long-running command session
+2. Arms the addressed monitor **before dispatching any worker** per `/collab-monitor`: Claude uses native Monitor; Codex uses packaged `start`/`status`/`follow` with its consumer attached to a supervised command session
 3. Arms a process-exit or scheduled process/registry liveness watcher for every worker. The addressed-message collab monitor **MUST NOT be the only worker-liveness guard**
-4. Spawns one agent per phase (Task tool or CLI agents) only after the message monitor reports `STARTED`, its consumer reports `FOLLOWING`, and the liveness watchers are armed
+4. Spawns one agent per phase (Task tool or CLI agents) only after the native Monitor returns its task ID (Codex fallback: `STARTED`/`FOLLOWING`) and the separate liveness watchers are armed
 5. Includes the collab.md path in every kickoff prompt, requires each agent to append either `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`; when all phases are done, the lead first confirms every worker's CLEANUP RECEIPT and runs the prune step (`git worktree prune`, delete merged branches, `docs.local/<sprint>/` rollup; see **Phase exit**), and only then advances rounds
 
 ### Plan Lifecycle
@@ -199,9 +199,11 @@ When a round has 2+ independent phases, use the **full collab protocol** defined
 **The orchestrator MUST:**
 1. Create `collab.md` at plan root using the template from the collab workflow
 2. Fill in all mandatory sections (Goal, Agents, Task Board, Constraints, Gates)
-3. Start the monitor and attach its alert stream with `bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md && bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>` in a supervised long-running command session
+3. Arms the addressed monitor **before dispatching any worker** per `/collab-monitor`: Claude uses native Monitor; Codex uses packaged `start`/`status`/`follow` with its consumer attached to a supervised command session
 4. Arm a process-exit or scheduled process/registry liveness watcher for every worker. The addressed-message collab monitor **MUST NOT be the only worker-liveness guard**
-5. Spawn agents with the collab path in their kickoff prompts only after the message monitor reports `STARTED`, its consumer reports `FOLLOWING`, and the liveness watchers are armed; require each agent to append either `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`; when all agents report `done`, the lead must first confirm every worker's CLEANUP RECEIPT and run the prune step (`git worktree prune`, delete merged branches, `docs.local/<sprint>/` rollup; see **Phase exit**), and only then advance rounds
+5. Spawn agents with the collab path in their kickoff prompts only after the native Monitor returns its task ID (Codex fallback: `STARTED`/`FOLLOWING`) and the separate liveness watchers are armed; require each agent to append either `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`; when all agents report `done`, the lead must first confirm every worker's CLEANUP RECEIPT and run the prune step (`git worktree prune`, delete merged branches, `docs.local/<sprint>/` rollup; see **Phase exit**), and only then advance rounds
+
+For both procedures, record the returned watch identifier, re-arm on the 30-minute expiry and after every compaction, and use TaskStop before replacing a native watch or closing its lane. Keep the same routing state; do not attach duplicate streams. Stop the Codex fallback by listen name per `/collab-monitor`. Every DONE/BLOCKED heading needs a unique ISO timestamp; verify the report and requested artifact before advancing.
 
 Fleet law for claim/guard/DONE/harvest-close lives in canon #7; this workflow keeps the concrete template, status table, and update gates.
 

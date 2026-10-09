@@ -2,6 +2,7 @@
 # LIVE ratchet rows, lead-run after each hooks-live install (standards/ratchet.md, "Two tiers").
 #
 #   scripts/ratchet/live-rows.sh --merged-pr <N> --lease-pr <open PR> --lease-repo <checkout>
+# Requires owner-only ~/.golems/ratchet/installed-skills.json (or RATCHET_SKILL_CONFIG).
 #
 # Runs the `live` rows of scripts/ratchet/rows.json against the REAL install and posts the table on
 # the merged PR. Nothing is installed or pushed. The human-confirm row issues ONE real lead token
@@ -23,6 +24,10 @@ done
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAIN="$(cd "$(git -C "$HERE" rev-parse --git-common-dir)/.." && pwd)"
+# Fail before GitHub/lease/issuer probes if the private two-host contract is unavailable.
+export RATCHET_SKILL_CONFIG="${RATCHET_SKILL_CONFIG:-$HOME/.golems/ratchet/installed-skills.json}"
+python3 -B "$HERE/installed-skills.py" --check-config >/dev/null || \
+  die "installed-skill-parity configuration invalid: set RATCHET_SKILL_CONFIG to owner-only installed-skills.json (host, identity, schema-2 requirements)"
 REPO_SLUG="EtanHey/golems"
 read -r LEASE_HEAD LEASE_BRANCH < <(gh pr view "$LEASE_PR" --repo "$REPO_SLUG" --json headRefOid,headRefName -q '"\(.headRefOid) \(.headRefName)"')
 [ "$(git -C "$LEASE_REPO" rev-parse HEAD)" = "$LEASE_HEAD" ] || die "--lease-repo is not at PR #$LEASE_PR's head"

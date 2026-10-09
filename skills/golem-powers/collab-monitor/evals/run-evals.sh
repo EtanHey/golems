@@ -165,13 +165,13 @@ run_baseline() {
 
 run_candidate() {
   local part_status
+  python3 "$SCRIPT_DIR/episode-dedup.py"
   source "$SCRIPT_DIR/run-evals-parts/candidate-01.bash"
   part_status=$?
   if [[ "$part_status" -ne 0 ]]; then
     return "$part_status"
   fi
   source "$SCRIPT_DIR/run-evals-parts/candidate-02.bash"
-
 }
 
 case "$MODE" in
