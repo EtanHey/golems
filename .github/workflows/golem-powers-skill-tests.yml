@@ -91,6 +91,7 @@ jobs:
       - name: bun suites
         run: |
           bun --no-install test ./scripts/tests/worktree-census-core.test.ts
+          bun --no-install test ./scripts/tests/worktree-census-lexical.test.ts
           bun test ./scripts/tests/canon-drift-lint.test.mjs \
                    ./scripts/tests/deploy-drift-check.test.mjs \
                    ./scripts/tests/launchd-portability.test.mjs \
