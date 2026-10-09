@@ -1,0 +1,35 @@
+{
+  "status": "AUTHORITATIVE_BYTES_HASHED_CROSS_LANGUAGE_OUTSTANDING",
+  "source": "https://www.rfc-editor.org/rfc/rfc8785.html#section-3.2.4",
+  "vectors": [
+    {
+      "file": "rfc8785-3.2.4.canonical.bin",
+      "utf8_hex": "7b226c69746572616c73223a5b6e756c6c2c747275652c66616c73655d2c226e756d62657273223a5b3333333333333333332e333333333333332c31652b33302c342e352c302e3030322c31652d32375d2c22737472696e67223a22e282ac245c75303030665c6e4127425c225c5c5c5c5c222f227d",
+      "sha256": "2d5e01a318d0f0879ab568c4be289c8b1f64ef8921a53c6277d5e069978baacb",
+      "byte_length": 118,
+      "basis": "Copied RFC published hex bytes, not output of a locally implemented serializer",
+      "input_file": "rfc8785-3.2.2.input.json",
+      "input_source": "https://www.rfc-editor.org/rfc/rfc8785.html#section-3.2.2"
+    }
+  ],
+  "implementation_probes": {
+    "python_jsonschema": "AVAILABLE",
+    "python_jcs": "UNAVAILABLE",
+    "python_rfc8785": "UNAVAILABLE",
+    "local_node_canonicalize": "UNAVAILABLE",
+    "local_node_json_canonicalize": "UNAVAILABLE",
+    "local_node_at_json_canonicalization_canonicalize": "UNAVAILABLE"
+  },
+  "outstanding": [
+    "Execute approved JCS implementations in producer and consumer languages against authoritative vectors",
+    "Produce canonical envelope vectors excluding only payload_digest",
+    "Verify identical canonical bytes and digests across languages; no serializer chosen"
+  ],
+  "candidate_wire_bytes": {
+    "file": "../fixtures/01-unavailable.json",
+    "byte_length": 3981,
+    "sha256": "33f1e9dc53ee23c46072f489b7bdb2a14090353961984691486029d1291b9982",
+    "basis": "Exact synthetic candidate wire bytes. This hash is raw-file integrity only, not payload_digest or JCS canonical-byte proof.",
+    "canonical_envelope_vector": "OUTSTANDING_NO_SERIALIZER_EXECUTED"
+  }
+}
