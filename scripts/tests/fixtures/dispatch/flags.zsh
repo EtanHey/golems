@@ -57,7 +57,7 @@ _golem_print_codex_help() {
   print -r -- "                         choose per plan phase (see /agent-routing); bare interactive uses Codex config"
   print -r -- "      -- <raw args>      requires effort too: raw Codex args may carry a prompt"
   print -r -- "      --lead             lead seat: keeps codex_apps connectors and browser-tools"
-  print -r -- "                         (every other agent-shaped launch strips them; see /repogolem)"
+  print -r -- "                         (other agent-shaped launches keep Locals T3code and read-only Drive)"
   print -r -- "      --scan             codex-security scan seat: workspace-write, no approvals, worker strips,"
   print -r -- "                         codex.security model, per-launch Deep Scan cost cap"
   print -r -- "  -m, --model <name>     explicit model override"

@@ -1,9 +1,9 @@
 # ── Codex connector policy (Etan, 2026-10-06) ──────────────────────
 # Computer use stays on for every launch. The codex_apps cloud connectors
 # (Gmail send, Calendar, Drive, GitHub as Etan...) and browser-tools-mcp are
-# stripped from every agent-shaped launch, fail-safe: only `--lead` or the bare
-# human shape (no args, a TTY, no agent markers) keeps them. Stripped launches
-# still get Google Drive read-only.
+# stripped from agent-shaped launches, except Locals T3code, which defaults on
+# in ALL launch modes (Etan, 2026-10-09). Only `--lead` or the bare human shape
+# keeps the other connectors. Restricted launches still get Drive read-only.
 
 # Drive tools codex marks readOnlyHint=true (codex-cli 0.160.1 cache). Drive
 # runs with default_tools_enabled=false, so a tool missing here stays off.
@@ -265,7 +265,7 @@ _golem_launch_codex() {
   fi
   local worker_mode="${_golem_codex_worker_mode:-false}"
   $_flag_codex_worker && worker_mode=true
-  # A scan seat is always a worker: every strip applies and the hatch never opens.
+  # A scan seat is always a worker; the default Locals exception still applies.
   $_flag_codex_scan && worker_mode=true
   [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
   # --worker (and the CodexWorker alias) is the one worker signal: export it to
@@ -316,7 +316,8 @@ _golem_launch_codex() {
     fi
   fi
 
-  # Connector policy: strip unless --lead or the bare human shape. A lane
+  # Locals T3code defaults on in every mode; other connectors strip unless
+  # --lead or the bare human shape. A lane
   # re-enables what it needs for one launch, by name:
   #   GOLEM_CODEX_WORKER_ALLOW=gmail,google_calendar,google_drive,browser-tools
   # (google_drive here means full Drive, writes included). The variable is
@@ -327,7 +328,7 @@ _golem_launch_codex() {
   local codex_strip_extras=true
   if $_flag_codex_lead; then
     if [[ "$worker_mode" == true ]]; then
-      print -u2 -- "repoGolem: --lead ignored: a worker signal (--worker or GOLEM_ROLE=worker) wins; codex_apps connectors and browser-tools stay stripped."
+      print -u2 -- "repoGolem: --lead ignored: a worker signal (--worker or GOLEM_ROLE=worker) wins; other codex_apps connectors and browser-tools stay stripped; Locals T3code defaults on."
     else
       codex_strip_extras=false
     fi
@@ -337,6 +338,14 @@ _golem_launch_codex() {
   fi
   local -a codex_connector_args=()
   local codex_strip_browser_tools=false
+  # Resolve the optional default from the normal cache, never a hardcoded ID
+  # or a required allow-name. An absent Locals entry does not block a launch.
+  local -A codex_connector_id_by_name=() codex_connector_wanted=()
+  local codex_connector_line codex_connector_name codex_connector_id codex_drive_tool
+  for codex_connector_line in ${(f)"$(_golem_codex_connector_ids)"}; do
+    codex_connector_id_by_name[${codex_connector_line#*$'\t'}]="${codex_connector_line%%$'\t'*}"
+  done
+  local codex_locals_id="${codex_connector_id_by_name[locals_t3code]:-}"
   if [[ "$codex_strip_extras" == true ]]; then
     local codex_reenabling_connector=""
     if codex_reenabling_connector=$(_golem_codex_args_reenable_connectors "$resume_prefix_flag" "${codex_args[@]}"); then
@@ -346,11 +355,7 @@ _golem_launch_codex() {
     local -a codex_allow_names=(${(s:,:)${codex_worker_allow//[[:space:]]/}})
     local -a codex_allow_connectors=("${(@)codex_allow_names:#browser-tools}")
     (( ${codex_allow_names[(Ie)browser-tools]} )) || codex_strip_browser_tools=true
-    local -A codex_connector_id_by_name=() codex_connector_wanted=()
-    local codex_connector_line codex_connector_name codex_connector_id codex_drive_tool
-    for codex_connector_line in ${(f)"$(_golem_codex_connector_ids)"}; do
-      codex_connector_id_by_name[${codex_connector_line#*$'\t'}]="${codex_connector_line%%$'\t'*}"
-    done
+    [[ -n "$codex_locals_id" ]] && codex_connector_wanted[$codex_locals_id]=1
     for codex_connector_name in "${codex_allow_connectors[@]}"; do
       if [[ -z "${codex_connector_id_by_name[$codex_connector_name]:-}" ]]; then
         local codex_known_connectors="${(j:, :)${(@ko)codex_connector_id_by_name}}"
@@ -387,6 +392,10 @@ _golem_launch_codex() {
     if (( ${#codex_allow_names[@]} > 0 )); then
       print -u2 -- "repoGolem: GOLEM_CODEX_WORKER_ALLOW re-enabled for this launch: ${(j:, :)codex_allow_names}"
     fi
+  elif [[ -n "$codex_locals_id" ]]; then
+    # Leads/bare launches keep their existing other-App policy, but Locals is
+    # explicitly on even when its cached ID has an off table in host config.
+    codex_connector_args=("-c" "apps.${codex_locals_id}.enabled=true")
   fi
 
   local codex_config_args=()

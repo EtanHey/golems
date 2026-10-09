@@ -678,3 +678,98 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
 @test "Codex --scan resolves codex.security through the registry's ~/ golems path" {
     split_case_156
 }
+
+
+@test "Locals defaults on in every restricted Codex flag path without opt-in" {
+    write_codex_locals_cache
+    local launch id
+    while IFS= read -r launch; do
+        run_codex_policy_launch "$launch"
+        [ "$status" -eq 0 ] || { echo "[$launch] $output" >&2; return 1; }
+        assert_locals_default "$launch" "$output" || return 1
+        assert_drive_read_only "$launch" "$output" || return 1
+        for id in connector_fixturegmail connector_fixturecal connector_fixturegh; do
+            codex_arg_pair_present "apps.${id}.enabled=false" "$output" || return 1
+        done
+        grep -F -x -q 'ALLOW_ENV=unset' <<< "$output" || return 1
+        refute_contains 'PROFILE_SERVERS=devtools-renamed' "$output" || return 1
+        assert_computer_use_untouched "$launch" "$output" || return 1
+    done < <(codex_stripped_launches; printf '%s\n' \
+      'testrepoCodex --worker -s -m explicit-model -E high "task"' \
+      'testrepoCodex --lead --worker -E low' \
+      'GOLEM_ROLE=worker testrepoCodex --lead -E low' \
+      'testrepoCodexWorker --lead -E low')
+}
+
+@test "Locals defaults on in every Codex lead and bare path with other policy kept" {
+    write_codex_locals_cache
+    local launch
+    while IFS= read -r launch; do
+        run_codex_policy_launch "$launch" "" 1
+        [ "$status" -eq 0 ] || { echo "[$launch] $output" >&2; return 1; }
+        assert_locals_default "$launch" "$output" || return 1
+        # The only Apps override on these paths is the named default exception.
+        [ "$(grep '^CODEX_ARG=apps\.' <<< "$output")" = 'CODEX_ARG=apps.connector_fixturelocals.enabled=true' ] || return 1
+        grep -F -x -q 'PROFILE_SERVERS=devtools-renamed' <<< "$output" || return 1
+        grep -F -x -q 'ALLOW_ENV=unset' <<< "$output" || return 1
+        assert_computer_use_untouched "$launch" "$output" || return 1
+    done < <(codex_lead_launches; printf '%s\n' 'testrepoCodex')
+}
+
+@test "Locals defaults on in Codex scan fresh headless resume and lead paths" {
+    write_codex_locals_cache
+    write_model_roles_fixture "$TMPDIR_/roles"
+    local launch override
+    for launch in 'testrepoCodex --scan -E high' 'testrepoCodex --scan -E high -p "scan diff"' \
+                  'testrepoCodex --scan --lead -E high' 'testrepoCodex --scan resume --last'; do
+        run_codex_scan_launch "$launch"
+        [ "$status" -eq 0 ] || { echo "[$launch] $output" >&2; return 1; }
+        assert_locals_default "$launch" "$output" || return 1
+        assert_drive_read_only "$launch" "$output" || return 1
+        codex_arg_pair_present 'apps.connector_fixturegmail.enabled=false' "$output" || return 1
+        for override in "${CODEX_SCAN_COMPUTER_USE_OVERRIDES[@]}"; do
+            codex_arg_pair_present "$override" "$output" || return 1
+        done
+        grep -F -x -A1 'CODEX_ARG=-s' <<< "$output" | grep -F -x -q 'CODEX_ARG=workspace-write' || return 1
+        codex_arg_pair_present 'approval_policy="never"' "$output" || return 1
+        grep -F -x -q 'ROLE_ENV=worker' <<< "$output" || return 1
+        refute_contains 'dangerously-bypass-approvals-and-sandbox' "$output" || return 1
+        grep -F -x -q 'DEEP_SCAN_TOML:workers = 2' <<< "$output" || return 1
+    done
+}
+
+@test "optional Locals disappearance and absent cache never require an opt-in" {
+    write_codex_locals_cache
+    run_codex_policy_launch 'testrepoCodex --worker -E high'
+    [ "$status" -eq 0 ]
+    assert_locals_default 'present' "$output"
+    rm "$CODEX_HOME/cache/codex_apps_tools/locals.json"
+    local launch
+    for launch in 'testrepoCodex --worker -E high' 'testrepoCodex --lead -E high' 'testrepoCodex'; do
+        run_codex_policy_launch "$launch" "" 1
+        [ "$status" -eq 0 ] || { echo "[$launch] $output" >&2; return 1; }
+        refute_contains 'connector_fixturelocals' "$output" || return 1
+    done
+    rm -rf "$CODEX_HOME/cache/codex_apps_tools"
+    for launch in 'testrepoCodex --worker -E high' 'testrepoCodex --lead -E high' 'testrepoCodex'; do
+        run_codex_policy_launch "$launch" "" 1
+        [ "$status" -eq 0 ] || { echo "[$launch] $output" >&2; return 1; }
+        refute_contains 'CODEX_ARG=apps.' "$output" || return 1
+    done
+    write_model_roles_fixture "$TMPDIR_/roles"
+    run_codex_scan_launch 'testrepoCodex --scan -E high'
+    [ "$status" -eq 0 ]
+    assert_scan_shape 'scan without cache' "$output"
+}
+
+@test "Locals default coexists with explicit other-App opt-in and no env leakage" {
+    write_codex_locals_cache
+    run_codex_policy_launch 'testrepoCodex --worker -E high -m explicit-model' 'gmail'
+    [ "$status" -eq 0 ]
+    codex_arg_pair_present 'apps.connector_fixturelocals.enabled=true' "$output"
+    codex_arg_pair_present 'apps.connector_fixturegmail.enabled=true' "$output"
+    assert_drive_read_only 'explicit gmail plus default Locals' "$output"
+    grep -F -x -q 'ALLOW_ENV=unset' <<< "$output"
+    grep -F -x -A1 'CODEX_ARG=--model' <<< "$output" | grep -F -x -q 'CODEX_ARG=explicit-model'
+    codex_arg_pair_present 'model_reasoning_effort="high"' "$output"
+}
