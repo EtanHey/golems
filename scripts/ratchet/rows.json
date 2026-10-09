@@ -176,6 +176,21 @@
       "ceiling": true,
       "command": "node scripts/ratchet/live-freshness.mjs",
       "timeout_s": 180
+    },
+    {
+      "id": "installed-skill-parity",
+      "metric": "installed skill sets identical on both Macs (name/content parity and required readability; disclosed source-invalid entries separate)",
+      "kind": "real",
+      "runner": "live",
+      "direction": "pass",
+      "ceiling": true,
+      "ref_kind": "fixture-hash",
+      "bug_sha": "e03a646abd938cd29384c40545f6e243bf457247",
+      "fix_sha": "e03a646abd938cd29384c40545f6e243bf457247",
+      "bug_fixture": "2773109b2e78ac1328a00c9fc752ea8fd235eddafbe92ce9b948004be885a02e",
+      "fix_fixture": "004e25a1af0fc78f712c28fa1b209b29895bb66ea771a052785c62d8e1385752",
+      "command": "python3 -B scripts/ratchet/installed-skills.py",
+      "timeout_s": 90
     }
   ]
 }
