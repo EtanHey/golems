@@ -1,10 +1,10 @@
 ---
 name: collab-monitor
 description: "Use native Monitor for addressed collab mail, report DONE markers and installed-version watches; use the packaged detached fallback on Codex seats. NOT for file-integrity auditing."
-version: 1.3.0
+version: 1.3.1
 type: encoded-preference
-last-eval-date: 2026-10-05
-compliance-score: "19/19 routing checks + synthetic command smoke; no agent-behavior or native Monitor runtime proof"
+last-eval-date: 2026-10-08
+compliance-score: "6/6 episode regressions; 18/19 existing routing checks (pre-existing large-plan teaching failure); no agent-behavior or native Monitor runtime proof"
 ---
 
 # Collab Monitor
@@ -54,6 +54,16 @@ The first poll seeds existing history silently. Re-arming with the same state
 root preserves dedup. New mail should produce `NEW-FOR-@<name>`; readiness alone
 is not proof that the consumer received a message. Append collab posts with
 `cat >>` or an append-only writer.
+
+Repeated identical headings in one append-only file are separate occurrences.
+The first retains its content hash; later ones carry `episode=2`, `episode=3`,
+etc. Read that routed occurrence outside code in the alert's file for its report body
+and pointer. Extending a body does not create another heading episode. Restart
+preserves dedup; existing heading-only state silently seeds pre-watermark repeated
+headings on its next successful growth poll. Identical copies at the same
+occurrence in different watched files still share a dedup key. Use a unique final
+completion heading per report episode so older installed monitors also catch it.
+This repair does not attach a parent consumer or replay a missed report.
 
 ### Report-file DONE markers
 
@@ -188,6 +198,7 @@ for native Monitor.
 
 ```bash
 python3 skills/golem-powers/collab-monitor/evals/monitor-howto.py
+python3 skills/golem-powers/collab-monitor/evals/episode-dedup.py
 bash skills/golem-powers/collab-monitor/evals/run-evals.sh candidate
 bash skills/golem-powers/collab-monitor/evals/live-two-file-smoke.sh
 ```
