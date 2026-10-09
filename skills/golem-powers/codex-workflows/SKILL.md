@@ -21,7 +21,9 @@ Run the harness through `scripts/codex-workflows.sh`. Detailed interfaces are in
 - `pipeline` runs ordered stages, parallel within a stage, and stops on failure
   before the next stage unless `continue_on_failure` is explicitly enabled.
 - `watch` observes process exit first, then parses the finished log once.
-- `status`, `harvest`, and `cleanup` make inspection and retirement mechanical.
+- `status`, `harvest`, and `cleanup` make inspection and retirement mechanical. Run `cleanup`
+  right after a harvest is accepted (reviewer finish): un-cleaned runs left 280 worktrees under
+  `.worktrees/.codex-workflows/` by 2026-10-06. The nightly worktree prune is the backstop.
 
 ## Non-Negotiable Guards
 

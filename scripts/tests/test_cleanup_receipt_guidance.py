@@ -33,7 +33,8 @@ def eval_text(skill):
 
 def test_merge_reference_carries_receipt_after_worktree_removal():
     text = read(PR_LOOP / "references/merge-and-verification.md")
-    removal = text.index("git worktree remove <worktree-path>")
+    # Lane close removes the worktree through the guarded GC (disk lane 2026-10-06).
+    removal = text.index("worktree-gc.sh --apply --idle-hours 0 --path <worktree-path>")
     heading = text.index("### Cleanup Receipt")
     assert heading > removal
     for line in RECEIPT_LINES:

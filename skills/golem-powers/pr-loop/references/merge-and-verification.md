@@ -195,13 +195,20 @@ Not every branch goes through the full PR flow. When implementation is done:
 | **Keep as-is** | Need to park work | Just stop. Worktree preserved. |
 | **Discard** | Wrong approach, start over | Requires typed "discard" confirmation. `git branch -D <branch>` |
 
-**Worktree cleanup:** For options 1 (after merge), 3 (never), and 4 (after discard):
+**Worktree cleanup (lane close):** For options 1 (after merge), 3 (never), and 4 (after discard),
+remove the lane's worktree from the original checkout, after the worker's pane is closed:
 ```bash
 # Check if in worktree
 git worktree list | grep $(git branch --show-current)
-# If yes, after merging/discarding:
-git worktree remove <worktree-path>
+# If yes, after merging/discarding (<golems> = the golems checkout; works for any repo):
+<golems>/scripts/worktree-gc.sh --apply --idle-hours 0 --path <worktree-path>
 ```
+It removes only a clean worktree whose HEAD is on the fresh default branch and that no running
+process uses (a live pane keeps it: `KEEP-live`). An ignored `docs.local/` is archived to
+`<repo>/docs.local/worktree-archive/<name>/` first. Paste its row into the cleanup receipt. A
+discarded, never-merged branch stays `KEEP-unpushed`: remove that one by hand after the typed
+"discard". Anything a lane misses, the nightly `com.golems.worktree-gc` prune removes after 6 idle
+hours; the 2026-10-06 disk lane found ~1,400 merged worktrees (433 GB) left behind by lanes.
 
 After `git worktree add`, read the file from the worktree path before editing.
 Reads from the primary checkout or another worktree do not carry over.
