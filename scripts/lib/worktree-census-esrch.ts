@@ -34,10 +34,12 @@ export function validateCensusEsrchWitnesses(envelope: RecordValue) {
     const known = times.filter((time): time is string => time !== null);
     for (let i = 1; i < known.length; i++) ordered(known[i - 1], known[i], path);
   }
-  function observed(provenance: RecordValue | null, attempt: RecordValue | undefined, path: string) {
+  function observed(provenance: RecordValue | null, attempt: RecordValue | undefined, path: string,
+    failureCompletion?: string | null) {
     if (!provenance) { gap('TIMING', path); return; }
     const time = provenance.observed_us;
-    chain([envelope.collection_started_us, ...(attempt ? [attempt.started_us] : []), time,
+    chain([envelope.collection_started_us, ...(failureCompletion !== undefined ? [failureCompletion] : []),
+      ...(attempt ? [attempt.started_us] : []), time,
       ...(attempt ? [attempt.completed_us] : []), envelope.collection_completed_us], path);
   }
   ordered(envelope.collection_started_us, envelope.collection_completed_us, '/collection_completed_us');
@@ -103,17 +105,23 @@ export function validateCensusEsrchWitnesses(envelope: RecordValue) {
       const after = group.filter((m: RecordValue) => m.phase === 'AFTER').map((m: RecordValue) => attempts.get(m.attempt_ref)?.value.provenance.observed_us);
       if (before.length && after.length) {
         if (before.some((t: any) => t == null) || after.some((t: any) => t == null)) gap('TIMING', path);
-        else ordered(before.sort(compare).at(-1)!, after.sort(compare)[0], path);
+        const knownBefore = before.filter((t: any): t is string => t != null).sort(compare);
+        const knownAfter = after.filter((t: any): t is string => t != null).sort(compare);
+        if (knownBefore.length && knownAfter.length) ordered(knownBefore.at(-1)!, knownAfter[0], path);
       }
     }
-    const finalIds: string[] = c.final_process_refs ?? [];
-    if (c.final_process_refs === null) gap('FINAL_INVENTORY', '/coverage/final_process_refs');
+    const finalIds: string[] | null = c.final_process_refs;
+    if (finalIds === null) gap('FINAL_INVENTORY', '/coverage/final_process_refs');
     const accounted: string[] = [...r.surviving_process_refs, ...r.replacement_process_refs];
-    if (!sameSet(accounted, finalIds) || new Set(accounted).size !== accounted.length) issue('FINAL_ACCOUNTING', path);
-    const finalProcesses = finalIds.map(id => processes.get(id)?.value).filter(Boolean) as RecordValue[];
-    const finalIdSet = new Set(finalIds), accountedSet = new Set(accounted);
-    const launches = finalProcesses.filter(p => p.launch).map(p => launchKey(p.launch));
+    if ((finalIds !== null && !sameSet(accounted, finalIds)) || new Set(accounted).size !== accounted.length)
+      issue('FINAL_ACCOUNTING', path);
+    // Accounted records remain known evidence even when the final selection is unavailable.
+    const accountedProcesses = accounted.map(id => processes.get(id)?.value).filter(Boolean) as RecordValue[];
+    const finalIdSet = finalIds === null ? null : new Set(finalIds), accountedSet = new Set(accounted);
+    const launches = accountedProcesses.filter(p => p.launch).map(p => launchKey(p.launch));
     const launchSet = new Set(launches);
+    if (launchSet.size !== launches.length || new Set(accountedProcesses.map(p => p.pid)).size !== accountedProcesses.length)
+      issue('FINAL_ACCOUNTING', path);
     if (owner?.members && !sameSet(owner.members.map(launchKey), launches)) issue('FINAL_ACCOUNTING', path);
     for (const id of accounted) {
       const entry = processes.get(id);
@@ -123,14 +131,15 @@ export function validateCensusEsrchWitnesses(envelope: RecordValue) {
       if (!p.launch || !identities.has(p.attempt_ref) || !a?.captured_launch || launchKey(p.launch) !== launchKey(a.captured_launch) || a.subject_pid !== p.pid)
         issue('IDENTITY_REREAD', pp);
       if (p.binding === 'UNRESOLVED' || !p.identity_provenance) gap('PROCESS_BINDING', pp);
-      observed(p.identity_provenance, a, `${pp}/identity_provenance`);
-      if (p.kernel_identity_observation) observed(p.kernel_identity_observation.provenance, a, `${pp}/kernel_identity_observation/provenance`);
+      observed(p.identity_provenance, a, `${pp}/identity_provenance`, failed?.completed_us ?? null);
+      if (p.kernel_identity_observation) observed(p.kernel_identity_observation.provenance, a,
+        `${pp}/kernel_identity_observation/provenance`, failed?.completed_us ?? null);
       // Path provenance is retained; v1 supplies no independent cwd-attempt link.
       observed(p.cwd.provenance, undefined, `${pp}/cwd/provenance`);
       for (const [j, protectedPath] of (p.protected_paths ?? []).entries()) observed(protectedPath.provenance, undefined, `${pp}/protected_paths/${j}/provenance`);
     }
     for (const a of identities.values()) if (!a.captured_launch || !launchSet.has(launchKey(a.captured_launch))) issue('IDENTITY_REREAD', path);
-    const atFailedPid = finalProcesses.filter(p => p.pid === failed?.subject_pid);
+    const atFailedPid = accountedProcesses.filter(p => p.pid === failed?.subject_pid);
     if (r.disposition === 'DISAPPEARANCE_RECONCILED' && (atFailedPid.length || r.replacement_process_refs.length)) issue('DISAPPEARANCE', path);
     if (r.disposition === 'PID_REUSE_RECONCILED') {
       const replacement = atFailedPid[0];
@@ -138,7 +147,13 @@ export function validateCensusEsrchWitnesses(envelope: RecordValue) {
         !replacement?.launch || !r.replacement_process_refs.includes(replacement.process_record_id) ||
         launchKey(replacement.launch) === launchKey(r.historical_launch)) issue('PID_REUSE', path);
     }
-    for (const a of closure.values()) chain([failed?.completed_us ?? null, a.started_us, a.completed_us], path);
+    for (const [id, a] of closure) {
+      const ap = attempts.get(id)!.path, failureCompletion = failed?.completed_us ?? null;
+      chain([failureCompletion, a.started_us, a.completed_us], path);
+      observed(a.provenance, a, `${ap}/provenance`, failureCompletion);
+      if (a.kernel_identity_observation) observed(a.kernel_identity_observation.provenance, a,
+        `${ap}/kernel_identity_observation/provenance`, failureCompletion);
+    }
     const allEndpoints = [...closure.values()].every(a => a.started_us !== null && a.completed_us !== null);
     const starts = [...closure.values()].map(a => a.started_us).filter(t => t !== null).sort(compare);
     const ends = [...closure.values()].map(a => a.completed_us).filter(t => t !== null).sort(compare);
@@ -154,7 +169,8 @@ export function validateCensusEsrchWitnesses(envelope: RecordValue) {
       } else gap('TIMING', sp);
       if (s.mapping !== 'MAPPED' || s.lifecycle !== 'READY') gap('SURFACE_BINDING', sp);
       if (s.process_refs === null) gap('SURFACE_BINDING', `${sp}/process_refs`);
-      for (const id of s.process_refs ?? []) if (!finalIdSet.has(id) || !accountedSet.has(id)) issue('SURFACE_PROCESS', `${sp}/process_refs`);
+      for (const id of s.process_refs ?? []) if ((finalIdSet !== null && !finalIdSet.has(id)) || !accountedSet.has(id))
+        issue('SURFACE_PROCESS', `${sp}/process_refs`);
     }
     for (const m of cited.filter(Boolean)) {
       const field = nativeFields[m.scope];

@@ -170,3 +170,81 @@ test('unresolved round-two ESRCH grants no reconciliation claim', () => {
   const r = check(v); expect(r.issues).toEqual([]); expect(r.resolutions[0].claimedInterval).toBeNull();
   expect(r.unverified.map(x => x.code)).toContain('UNRESOLVED');
 });
+
+function clonedAttempt(v: any, index: number) {
+  const next = v.coverage.attempts.length, a = structuredClone(v.coverage.attempts[index]);
+  a.attempt_id = `copy_${next}`; v.coverage.attempts.push(a);
+  v.missing_evidence.push(...v.missing_evidence.filter((x: any) => x.field_path.startsWith(`/coverage/attempts/${index}/`))
+    .map((x: any) => ({ ...x, field_path: x.field_path.replace(`/coverage/attempts/${index}/`, `/coverage/attempts/${next}/`) })));
+  return a;
+}
+for (const phase of ['BEFORE', 'AFTER']) for (const reversed of [true, false])
+  test(`R1: ${phase} unknown duplicate preserves ${reversed ? 'reversed' : 'consistent'} known bracket`, () => {
+    const v = fixture(), m = v.coverage.membership_observations;
+    m[1].phase = 'BEFORE'; m[6].phase = 'AFTER';
+    const before = clonedAttempt(v, 3), after = clonedAttempt(v, 3);
+    before.provenance.observed_us = reversed ? '4' : '3';
+    after.provenance.observed_us = reversed ? '3' : '4';
+    m[1].attempt_ref = before.attempt_id; m[6].attempt_ref = after.attempt_id;
+    const duplicate = structuredClone(phase === 'BEFORE' ? m[1] : m[6]), a = clonedAttempt(v, 3);
+    duplicate.observation_id = 'unknown_duplicate'; duplicate.attempt_ref = a.attempt_id;
+    m.push(duplicate); resolution(v).native_reread_observation_refs.push(duplicate.observation_id);
+    unknown(v, a.provenance, 'observed_us', `/coverage/attempts/${v.coverage.attempts.length - 1}/provenance/observed_us`);
+    const r = check(v); expect(r.unverified.map(x => x.code)).toContain('TIMING');
+    if (reversed) expect(r.issues.map(x => x.code)).toContain('TIME_ORDER');
+    else expect(r.issues).toEqual([]);
+  });
+for (const target of ['native', 'owner', 'identity', 'attempt-kernel', 'process', 'process-kernel'])
+  for (const reversed of [true, false]) test(`R2: ${target} observation across null start is ${reversed ? 'rejected' : 'unverified'}`, () => {
+    const v = fixture(), index = target === 'native' ? 3 : target === 'owner' ? 1 : 2;
+    const a = v.coverage.attempts[index], p = v.processes[0];
+    unknown(v, a, 'started_us', `/coverage/attempts/${index}/started_us`);
+    let provenance = a.provenance;
+    if (target === 'process') provenance = p.identity_provenance;
+    if (target.endsWith('kernel')) {
+      const holder = target === 'attempt-kernel' ? a : p;
+      holder.kernel_identity_observation = { ...p.launch, uid: p.uid, provenance: structuredClone(a.provenance) };
+      provenance = holder.kernel_identity_observation.provenance;
+    }
+    provenance.observed_us = reversed ? '1' : '3';
+    const r = check(v); expect(r.unverified.map(x => x.code)).toContain('TIMING');
+    expect(r.resolutions[0].claimedInterval).toBeNull();
+    if (reversed) expect(r.issues.map(x => x.code)).toContain('TIME_ORDER');
+    else expect(r.issues).toEqual([]);
+  });
+function unknownFinalProcesses(v: any) {
+  unknown(v, v.coverage, 'final_process_refs', '/coverage/final_process_refs'); return v;
+}
+for (const name of ['08', '14', 'surface']) test(`R3: unknown final process inventory preserves agreeing ${name} evidence`, () => {
+  const v = unknownFinalProcesses(name === 'surface' ? surface() : fixture(name)), r = check(v);
+  expect(r.issues).toEqual([]); expect(r.unverified.map(x => x.code)).toContain('FINAL_INVENTORY');
+  expect(v.coverage.final_process_refs).toBeNull(); expect(v.status).toBe('INCOMPLETE');
+});
+for (const mismatch of ['owner', 'accounting', 'identity', 'surface'])
+  test(`R3: unknown inventory still rejects known ${mismatch} mismatch`, () => {
+    const v = unknownFinalProcesses(mismatch === 'surface' ? surface() : fixture());
+    if (mismatch === 'owner') v.coverage.membership_observations[0].members =
+      v.coverage.membership_observations[0].observed_members = [];
+    if (mismatch === 'accounting') resolution(v).surviving_process_refs = [];
+    if (mismatch === 'identity') resolution(v).identity_recheck_attempt_refs = [];
+    if (mismatch === 'surface') {
+      const p = structuredClone(v.processes[0]); p.process_record_id = 'historical';
+      v.processes.push(p); v.coverage.process_observation_refs.push('historical');
+      v.missing_evidence.push(...v.missing_evidence.filter((x: any) => x.field_path.startsWith('/processes/0/'))
+        .map((x: any) => ({ ...x, field_path: x.field_path.replace('/processes/0/', '/processes/1/') })));
+      v.surfaces[0].process_refs = ['historical'];
+    }
+    reject(v, mismatch === 'identity' ? 'IDENTITY_REREAD' : mismatch === 'surface' ? 'SURFACE_PROCESS' : 'FINAL_ACCOUNTING');
+  });
+test('R3: authoritative empty final selection still contradicts known accounted launches', () => {
+  const v = fixture(); v.coverage.final_process_refs = []; reject(v, 'FINAL_ACCOUNTING');
+});
+test('R3: unknown inventory cannot hide duplicate accounted launch identities', () => {
+  const v = unknownFinalProcesses(fixture()), p = structuredClone(v.processes[0]);
+  p.process_record_id = 'duplicate_launch'; v.processes.push(p);
+  v.coverage.process_observation_refs.push(p.process_record_id);
+  resolution(v).surviving_process_refs.push(p.process_record_id);
+  v.missing_evidence.push(...v.missing_evidence.filter((x: any) => x.field_path.startsWith('/processes/0/'))
+    .map((x: any) => ({ ...x, field_path: x.field_path.replace('/processes/0/', '/processes/1/') })));
+  reject(v, 'FINAL_ACCOUNTING');
+});
