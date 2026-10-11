@@ -430,7 +430,7 @@
         {
           "name": "no-effort-on-github",
           "type": "negative",
-          "description": "Prompt does not ask the worker to publish an effort value to GitHub"
+          "description": "Prompt permits observed effort only in Loop-record; signature and trailer carry no effort"
         },
         {
           "name": "explains-interim-status",
@@ -524,12 +524,12 @@
       "id": 19,
       "name": "paginate-all-review-sources",
       "prompt": "PR #302 has 130 discussion comments, 120 inline comments and 110 review bodies. Show commands to read all feedback.",
-      "expected_output": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews; does not rely on gh pr view --comments.",
+      "expected_output": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews in core guidance and Codex/Cursor adapters; does not rely on gh pr view --comments.",
       "files": [],
       "assertions": [
         {
           "name": "paginate-all-review-sources",
-          "description": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews; does not rely on gh pr view --comments."
+          "description": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews in core guidance and Codex/Cursor adapters; does not rely on gh pr view --comments."
         }
       ]
     },

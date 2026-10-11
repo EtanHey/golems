@@ -49,4 +49,4 @@ gaps:
     - live_model_provenance          # No verified per-turn model source; sign with model "unknown"
   fleet_missing:
     - gh_signature_wrapper           # gh() auto-injection designed, NOT built (golems/repoGolem lane) — sign by hand
-    - checkpoint_effort_capture      # effort captured nowhere today (brainlayer lane); never put it on GitHub
+    - checkpoint_effort_capture      # effort capture gap (brainlayer lane); effort is allowed only on the Loop-record line

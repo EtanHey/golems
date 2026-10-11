@@ -8,6 +8,6 @@ Tick frame:
 
 1. !gh pr view EtanHey/golems 393 --json mergeable,mergeStateStatus,reviewDecision
 2. !find $ORCHESTRATOR_REPO/collab -newer 2026-05-02T17:00:00Z
-3. If the PR is mergeable, dispatch admin-merge and update `last-genuine-dispatch-time`.
+3. If the head changed, dispatch exact-head review and required-check readback; update `last-genuine-dispatch-time`.
 4. If a worker claims completion without a verified side-effect, run verify-and-decrement.
 5. If no material delta exists and the counter reaches threshold, escalate-park.

@@ -138,6 +138,10 @@ teardown() {
   done
   run grep -F 'gh pr view <N> --comments' "$REVIEW"
   [ "$status" -eq 1 ]
+  for adapter in codex cursor; do
+    run grep -F 'gh pr view <N> --comments' "$REPO_ROOT/skills/golem-powers/pr-loop/adapters/$adapter.md"
+    [ "$status" -eq 1 ]
+  done
 }
 
 @test "bot panel example scopes the full roster to core diffs" {
@@ -146,12 +150,17 @@ teardown() {
 
 @test "Loop-record is a readiness gate and template records same-vendor reason" {
   grep -F 'Missing Loop-record = not ready.' "$PR_LOOP"
+  for adapter in claude.md cursor.md capabilities.yaml codex.md; do
+    grep -F 'effort is allowed only on the Loop-record line' "$REPO_ROOT/skills/golem-powers/pr-loop/adapters/$adapter"
+  done
   CREATION="$REPO_ROOT/skills/golem-powers/pr-loop/references/pr-creation.md"
   grep -F 'Loop-record: implementer=<vendor/model/effort> reviewer=<vendor/model|none> rounds=<inner>/<remote> defects=<n> role=<lead|worker>' "$CREATION"
   grep -F 'A same-vendor review states its reason.' "$CREATION"
 }
 
 @test "cron example never dispatches merge solely on MERGEABLE" {
+  run grep -E 'dispatch (admin-)?merge' "$REPO_ROOT/skills/golem-powers/collab-monitor/evals/fixtures/cron-payloads/compliant-pr-gate-payload.md" "$REPO_ROOT/skills/golem-powers/collab-monitor/evals/fixtures/cron-payloads/compliant-drive-to-completion-tick.md"
+  [ "$status" -eq 1 ]
   run grep -F 'dispatch merge' "$REPO_ROOT/skills/golem-powers/collab-monitor/references/cron-payloads.md"
   [ "$status" -eq 1 ]
 }

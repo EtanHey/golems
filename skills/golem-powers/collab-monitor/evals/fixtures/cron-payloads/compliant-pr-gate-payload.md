@@ -8,7 +8,7 @@ Tick frame:
 
 1. !gh pr view EtanHey/golems 189 --json mergeable,mergeStateStatus,reviewDecision
 2. If mergeStateStatus is REVIEW_REQUIRED, ping the assigned worker once.
-3. If mergeable is MERGEABLE, dispatch merge.
+3. If the head changed, dispatch exact-head review and required-check readback.
 4. Otherwise stay SILENT.
 ```
 

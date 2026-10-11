@@ -88,7 +88,7 @@ context — use the model the harness reports for the running context and set
   repos (`ls -t ~/.claude/projects/<slug>/*.jsonl | head -1`).
 - No JSONL readable (sandbox, worktree oddity)? Emit `"model":"unknown",
   "model_source":"unavailable"`. Never guess — a wrong model poisons every audit downstream.
-- Effort is NOT part of any GitHub artifact. Claude Code JSONLs carry no effort field at all;
+- Observed effort is allowed only on the Loop-record line. Claude Code JSONLs carry no effort field at all;
   effort registration happens at the BrainLayer checkpoint (brainlayer lane).
 
 Claude is also the seat that can `brain_store` the checkpoint metadata behind the signature — pair
