@@ -125,3 +125,9 @@ packages/recruiter/src/__tests__/outreach-db.test.ts
 
 # History-only: launch drafts deleted from the tree; kept for the history ratchet.
 packages/content/prompts/launch/text/reddit-localllama-bl.md
+
+# Relocated authored synthetic Git fixture identity from test-worktree-gc.bats; retain history coverage.
+scripts/tests/lib/worktree-gc-fixtures.bash
+
+# Authored synthetic Git commit identity and private bystander-preservation fixtures.
+scripts/tests/test-worktree-gc-astra.bats
