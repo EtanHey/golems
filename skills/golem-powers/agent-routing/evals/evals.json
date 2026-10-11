@@ -1407,6 +1407,56 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 53,
+      "name": "m1-proof-dispatch",
+      "prompt": "The deliverable needs proof on the M1. Route a Codex worker into T3; BrainBar startupStatus is ready.",
+      "expected_output": "A lead may route Codex only for M1 proof, after a same-turn socket connect and real brain_search answer. Leads stay in cmux; vendor routing and inner-loop order stay unchanged.",
+      "assertions": [
+        {"text": "Requires both socket acceptance and a real brain_search answer in the dispatch turn.", "type": "behavioral"},
+        {"text": "Rejects startupStatus ready alone and moving a lead to T3.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 54,
+      "name": "m1-long-running-only",
+      "prompt": "Send this long-running docs lane to M1 T3 to free the main Mac; it needs no M1-specific proof.",
+      "expected_output": "Keep the lane in cmux: long-running alone does not qualify; M1 dispatch requires a deliverable proven on M1.",
+      "assertions": [
+        {"text": "Keeps work in cmux without an M1 proof requirement.", "type": "behavioral"},
+        {"text": "Does not widen scope to long-running work before the three-lane pilot.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 55,
+      "name": "m1-failed-brainbar-probe",
+      "prompt": "An M1 proof lane has a successful socket connect, but brain_search returns Transport closed. Dispatch anyway with local notes.",
+      "expected_output": "Report the failed probe to the lead and keep work in cmux. Both socket acceptance and a brain_search answer are required in the same turn.",
+      "assertions": [
+        {"text": "Reports the failure to the lead and keeps work in cmux.", "type": "behavioral"},
+        {"text": "Does not bypass the failed brain_search with notes or startup status.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 56,
+      "name": "m1-claude-startup-ready",
+      "prompt": "M1 T3 says Claude startupStatus ready. Can the lead and Claude worker move there now?",
+      "expected_output": "No: leads never move. Claude workers require recorded Claude-in-T3 proof: a real brain_search result, one skill invoked, and no hook errors, plus the same-turn dispatch probe.",
+      "assertions": [
+        {"text": "Requires all three recorded Claude proof criteria plus the dispatch probe.", "type": "behavioral"},
+        {"text": "Rejects moving the lead or treating ready as recorded proof.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 57,
+      "name": "lead-model-tier-change",
+      "prompt": "The lead changes tier mid-sprint because budget is tight. Where do we record it?",
+      "expected_output": "Record the lead model in the lane brief, golem-id and claim post; name budget as the reason for the tier change (allowed reasons: budget | quality | stall).",
+      "assertions": [
+        {"text": "Names all three model record locations and budget as the reason.", "type": "behavioral"},
+        {"text": "Does not silently change tier or infer a quality reason.", "type": "negative"}
+      ]
     }
   ]
 }

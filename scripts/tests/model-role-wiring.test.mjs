@@ -115,3 +115,32 @@ test('packaged helper role matches config and caller-selected brain-worker stays
   assert.ok(allow.every(e => !migrated.includes(e.file)));
   assert.deepEqual(lint(root, config, allow).hits, []);
 });
+
+
+test('M1 dispatch keeps the proof scope, live memory gate and cmux fallback', () => {
+  const text = read('skills/golem-powers/agent-routing/SKILL.md').split('## Dispatch Boundaries')[1].split('## Lead Topology')[0];
+  for (const rule of ['M1 (T3)', 'only when the deliverable must be proven on the M1', 'Codex workers only', 'recorded Claude-in-T3 proof passes', 'one real `brain_search` result, one skill invoked, no hook errors', 'same-turn BrainBar probe: the socket accepts and `brain_search` answers', 'failed probe is reported to the lead and the work stays in cmux', 'Leads never move']) assert.ok(text.includes(rule), rule);
+});
+
+test('lead topology records model and tier-change reason', () => {
+  const text = read('skills/golem-powers/agent-routing/SKILL.md').split('## Lead Topology')[1].split('## Goal Contract')[0];
+  assert.ok(text.includes("6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall)."));
+});
+
+test('short plans use the same skeleton and multi-PR plans declare invariant tests and chain span', () => {
+  const text = read('skills/golem-powers/large-plan/SKILL.md');
+  for (const rule of ['ALWAYS use `/large-plan` for planning', 'a few lines', 'same skeleton', 'Each slice of a multi-PR plan declares its invariant test', 'chain span as its convergence metric']) assert.ok(text.includes(rule), rule);
+  assert.match(text, /## Invariant test/);
+});
+
+test('weave evals exercise rejected M1 routes, lead provenance and short/multi-PR planning', () => {
+  for (const [skill, names] of [['agent-routing', ['m1-proof-dispatch', 'm1-long-running-only', 'm1-failed-brainbar-probe', 'm1-claude-startup-ready', 'lead-model-tier-change']], ['large-plan', ['short-plan-same-skeleton', 'multi-pr-invariant-chain-span']]]) {
+    const suite = JSON.parse(read(`skills/golem-powers/${skill}/evals/evals.json`));
+    assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
+    for (const name of names) {
+      const e = suite.evals.find(e => e.name === name);
+      assert.ok(e?.prompt && e.expected_output, name);
+      assert.ok(e.assertions.length >= 2, name);
+    }
+  }
+});

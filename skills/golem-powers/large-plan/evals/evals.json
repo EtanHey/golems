@@ -190,6 +190,26 @@
           "description": "Does NOT inspect C's worktree/branch and record a receipt itself in place of C's; the phase stays open until C posts its receipt"
         }
       ]
+    },
+    {
+      "id": 8,
+      "name": "short-plan-same-skeleton",
+      "prompt": "Plan a ten-minute single-file wording fix. Do we skip /large-plan?",
+      "expected_output": "Always use /large-plan for planning. Write a few-line short plan with the same Goal, Time, Round, Tools, Steps, Depends On, Status and verification skeleton; one sequential phase is enough.",
+      "assertions": [
+        {"name": "short-plan-same-skeleton-1", "description": "Uses /large-plan and preserves the same skeleton in a few lines."},
+        {"name": "short-plan-same-skeleton-2", "description": "Does not force phase folders or parallel workers for short sequential work."}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "multi-pr-invariant-chain-span",
+      "prompt": "Plan two PR slices for a parser fix. One takes 20 minutes, but the final substantive fix merges two days after the first PR opens. What tests and convergence metric belong in the plan?",
+      "expected_output": "Each slice declares its invariant test and command or case before READY. Report chain span from first PR opening to last linked-chain merge alongside per-PR time (excluding dependabot bundles); stack and follow-up links separately, unmerged roots pending.",
+      "assertions": [
+        {"name": "multi-pr-invariant-chain-span-1", "description": "Each slice names a behavior invariant and its proving test before READY."},
+        {"name": "multi-pr-invariant-chain-span-2", "description": "Reports chain span rather than only per-PR time; unmerged roots are pending, not zero."}
+      ]
     }
   ]
 }
