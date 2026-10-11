@@ -40,8 +40,12 @@ archive's per-file hashes, modes and metadata, and compares two whole builds.
 
 PRs validate without publishing. A master push publishes immutable assets via
 GitHub Releases; reruns compare existing assets instead of replacing them.
-`release-gate.json` requires a published release with all three assets. Local
-installation detection reads `~/.golems/installed.json` and compares the full
+Interrupted draft uploads are replaced on rerun. Publication jobs are serialized;
+only the current master tip is marked latest. Both jobs pin Node to 22.22.0.
+The `github-release` gate support requires a published release with all three
+assets. Local installation detection reads `~/.golems/installed.json` and compares the full
 version, including the SHA suffix. `--release-only` skips local installation.
+Golems remains `kind:none` in `release-gate.json` so workspace wizards keep
+cloning it; P2 will switch the classification when release installation exists.
 Install paths, dependency installation/bundling, bootstrap and hook client
 profiles are P2/P3 work; this artifact does not install anything.

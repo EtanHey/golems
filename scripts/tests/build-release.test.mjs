@@ -2,14 +2,15 @@ import { afterEach, expect, test } from 'bun:test';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { buildRelease, createManifest } from '../release/build-release.mjs';
 
 const scratch = [];
 afterEach(() => scratch.splice(0).forEach(path => rmSync(path, { recursive: true, force: true })));
 const git = (repo, ...args) => execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
 function fixture() {
-  const root = mkdtempSync(resolve('.release-build-test-'));
+  const root = mkdtempSync(join(tmpdir(), 'release-build-test-'));
   scratch.push(root);
   git(root, 'init', '-b', 'master');
   git(root, 'config', 'user.email', 'fixture@example.com');
