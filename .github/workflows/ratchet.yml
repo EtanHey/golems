@@ -1,6 +1,6 @@
 name: ratchet
 
-# The golems ratchet table (standards/ratchet.md). ONE job, named `ratchet`, with no path filter:
+# The golems ratchet table (standards/ratchet.md). The `ratchet` job has no path filter:
 # a required check that is path-filtered never reports on PRs outside its paths and hangs them.
 # It runs the `ci` rows of scripts/ratchet/rows.json on this PR and on its base, posts ONE sticky
 # table comment, and fails on a FAIL/MISSING row or an unruled loosening. The rows' commands run
@@ -12,6 +12,7 @@ on:
     - cron: "17 * * * *"
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [master]
 
@@ -24,6 +25,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  loop-record:
+    name: Loop-record
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Test Loop-record validator
+        run: node --test scripts/tests/pr-loop-record.test.mjs
+
+      - name: Validate PR Loop-record
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node scripts/ci/pr-loop-record.mjs
+
   ratchet:
     name: ratchet
     runs-on: ubuntu-latest
