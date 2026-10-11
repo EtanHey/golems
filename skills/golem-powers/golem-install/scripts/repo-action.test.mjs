@@ -80,11 +80,12 @@ describe("wizard repo action", () => {
     });
   });
 
-  test("real release gate keeps golems cloneable on a workspace until P2 installs releases", () => {
+  test("real release gate routes golems workspaces through the bootstrap installer", () => {
     const releaseGate = JSON.parse(readFileSync(new URL("../../../../release-gate.json", import.meta.url), "utf8"));
     expect(decideRepoAction(releaseGate, "EtanHey/golems", "workspace")).toMatchObject({
-      action: "CLONE",
-      artifact: null,
+      action: "INSTALL",
+      artifact: "github-release:golems",
+      installCommand: "curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/scripts/release/install.sh | sh -s -- --channel nightly",
     });
   });
 

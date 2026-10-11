@@ -24,6 +24,22 @@ Two terms:
 
 ## Quick start
 
+Install the nightly skills and CLI wrappers without a Git checkout:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/scripts/release/install.sh | sh -s -- --channel nightly
+```
+
+The bootstrap uses standard macOS/Linux utilities, curl, tar and shasum; it
+verifies the release before switching `~/.golems/current`. Skills are linked
+for Claude and Codex. Add `~/.golems/bin` to PATH, then use `golems-cli update`
+to install the newest nightly. Running golems-cli requires Bun; pr-watch requires
+Python 3 and GitHub CLI. Existing checkout skill links are kept unless you pass
+`--replace-checkout-links`. Hook installation is a separate step.
+See [release installation](scripts/release/README.md) for pinned and offline installs.
+
+For development from a checkout:
+
 You need [Bun](https://bun.sh/), [Node.js](https://nodejs.org/), and Git. CI
 reads its Bun version from `.bun-version`, so install that version locally too.
 One test checks for the `claude` CLI on your `PATH`. CI stubs it, and you can
@@ -152,7 +168,7 @@ bun packages/golem-skills/src/index.ts skills install <skill-name>   # copies in
 
 `skills list` and `skills install` read the published default branch over the
 network. They do not read your working tree. The npm package `golems-cli` is
-behind this repo, so for now run the CLI from source.
+behind this repo; use the release wrapper or run the CLI from source.
 
 ## repoGolem config
 

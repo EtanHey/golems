@@ -133,7 +133,7 @@ export function detectInstalledVersion(artifact, runCommand = execute) {
   let result;
   if (artifact.kind === "github-release") {
     try {
-      const installed = JSON.parse(readFileSync(artifact.installedJson ?? resolve(homedir(), '.golems/installed.json'), 'utf8'));
+      const installed = JSON.parse(readFileSync(artifact.releaseJson ?? artifact.installedJson ?? resolve(homedir(), '.golems/release.json'), 'utf8'));
       return typeof installed.version === 'string' && /^\d{4}\.\d{2}\.\d{2}-[0-9a-f]{7}$/.test(installed.version) ? installed.version : null;
     } catch { return null; }
   } else if (artifact.kind === "macos-app") {

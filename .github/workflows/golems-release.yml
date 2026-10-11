@@ -19,7 +19,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: .bun-version
-      - run: bun test ./scripts/tests/build-release.test.mjs ./scripts/tests/release-gate.test.mjs ./skills/golem-powers/golem-install/scripts/repo-action.test.mjs
+      - run: bun test ./scripts/tests/build-release.test.mjs ./scripts/tests/install-release.test.mjs ./scripts/tests/release-gate.test.mjs ./skills/golem-powers/golem-install/scripts/repo-action.test.mjs
       - name: Build twice and validate the release contract independently
         run: |
           node scripts/release/build-release.mjs --commit "$GITHUB_SHA" --out dist/first
@@ -73,14 +73,10 @@ jobs:
           elif [ "$draft" = true ]; then
             gh release upload "$tag" dist/release/* --clobber
           elif [ -z "$draft" ]; then
-            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Golems $version" --notes "Skills, CLIs and hooks from commit $GITHUB_SHA. See MANIFEST.json and SHA256SUMS for integrity checks." dist/release/*
+            gh release create "$tag" --draft --prerelease --target "$GITHUB_SHA" --title "Golems $version" --notes "Skills, CLIs and hooks from commit $GITHUB_SHA. See MANIFEST.json and SHA256SUMS for integrity checks." dist/release/*
           else
             printf 'Ambiguous release state for %s: %s\n' "$tag" "$draft" >&2
             exit 1
           fi
-          git fetch --no-tags origin master:refs/remotes/origin/master
-          latest=false
-          if [ "$GITHUB_SHA" = "$(git rev-parse origin/master)" ]; then
-            latest=true
-          fi
-          gh release edit "$tag" --draft=false --latest="$latest"
+          # Nightly selection uses published_at; GitHub cannot mark a prerelease latest.
+          gh release edit "$tag" --draft=false --prerelease --latest=false

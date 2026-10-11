@@ -346,14 +346,14 @@ test("CONTAINED is a successful release verdict", () => {
   expect(releaseExitCode("CONTAINED")).toBe(0);
 });
 
-test('github-release reads the client installed.json version, including the commit suffix', () => {
+test('github-release reads the client release.json version, including the commit suffix', () => {
   const root = mkdtempSync(join(repoRoot, '.release-gate-test-'));
   scratch.push(root);
-  const installed = join(root, 'installed.json');
+  const installed = join(root, 'release.json');
   writeFileSync(installed, '{"version":"2026.10.11-abcdef0"}');
-  expect(detectInstalledVersion({ kind: 'github-release', installedJson: installed })).toBe('2026.10.11-abcdef0');
+  expect(detectInstalledVersion({ kind: 'github-release', releaseJson: installed })).toBe('2026.10.11-abcdef0');
   writeFileSync(installed, '{"version":42}');
-  expect(detectInstalledVersion({ kind: 'github-release', installedJson: installed })).toBeNull();
+  expect(detectInstalledVersion({ kind: 'github-release', releaseJson: installed })).toBeNull();
 });
 
 test('github-release requires a published release with all three assets; equal dates do not hide stale commits', () => {
