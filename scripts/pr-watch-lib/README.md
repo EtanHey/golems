@@ -32,11 +32,15 @@ READY is a CI fact, not merge authorization. Review decision is reported as a
 fact; bot coverage, review threads, late checks, required-check manifests,
 and settle windows belong to later slices.
 Checks, workflow runs, workflow jobs, and legacy commit statuses are paginated
-with 100 rows per page. Only the latest check per name plus workflow, and latest
+with 100 rows per page. Only the latest check per app ID plus name plus workflow, and latest
 legacy status per context, counts. Numeric IDs order queued reruns before they
 have start timestamps; timestamps break ties or order rows without IDs.
 Jobs are read for the latest run of each workflow; older check runs still undergo
-per-check deduplication. A workflow queued without jobs keeps checks pending.
+per-check deduplication. The newest run of every workflow also contributes its
+own status/conclusion: unfinished runs remain pending even with partial green
+jobs, and completed startup failures count even without jobs.
+Each poll costs one PR read, checks/runs/statuses pages, and one jobs read per
+latest workflow plus extra pages (100 rows/page); terminal results add a PR confirmation read.
 Terminal PR observations include `checks`: `green`, `failed`, `pending`, or
 `unknown` when no check snapshot was read (e.g. HEAD_MOVED or CLOSED).
 MERGED is distinct from READY, even when checks are green. Null review decisions

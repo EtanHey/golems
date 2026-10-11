@@ -98,21 +98,23 @@ def read_checks(args, deadline):
     base = f'repos/{args.repo}'
     checks = api_list(f'{base}/commits/{args.head}/check-runs?filter=all', 'check_runs', deadline)
     runs = api_list(f'{base}/actions/runs?head_sha={args.head}', 'workflow_runs', deadline)
-    workflows, jobs, latest_runs, pending = {}, {}, {}, []
+    workflows, jobs, latest_runs, workflow_checks = {}, {}, {}, []
     for run in runs:
         if (run.get('head_sha') != args.head or not isinstance(run.get('id'), int)
                 or not isinstance(run.get('check_suite_id'), int)
                 or not isinstance(run.get('name'), str) or not run['name']):
             raise GhCommandError('missing or invalid workflow run identity from gh\n')
-        workflows[run.get('check_suite_id')] = run.get('name') or str(run.get('workflow_id') or '')
+        workflows[run.get('check_suite_id')] = run['name']
         key = run.get('workflow_id') or run.get('name')
         if key not in latest_runs or run['id'] > latest_runs[key]['id']:
             latest_runs[key] = run
     for run in latest_runs.values():
         run_jobs = api_list(f'{base}/actions/runs/{run["id"]}/jobs?filter=all', 'jobs', deadline)
-        if not run_jobs and run.get('status') != 'completed':
-            pending.append(dict(id=run['id'], name='__workflow__', status='queued',
-                                workflowName=workflows[run.get('check_suite_id')]))
+        # Jobs may not yet exist (needs/matrix expansion), and startup failures
+        # can finish without jobs. The latest run always contributes a verdict.
+        workflow_checks.append(dict(id=run['id'], name='__workflow__', _kind='workflow',
+                                    workflow_id=run.get('workflow_id'), status=run.get('status'),
+                                    conclusion=run.get('conclusion'), workflowName=run['name']))
         for job in run_jobs:
             if not isinstance(job.get('id'), int):
                 raise GhCommandError('missing or invalid workflow job identity from gh\n')
@@ -124,9 +126,11 @@ def read_checks(args, deadline):
         if not isinstance(suite, dict):
             raise GhCommandError('missing or invalid check suite from gh\n')
         check['workflowName'] = workflows.get(suite.get('id'), check.get('workflowName') or '')
-        rows.append(jobs.pop(check.get('id'), check))
+        row = jobs.pop(check.get('id'), check)
+        row['app'] = check.get('app') or {}
+        rows.append(row)
     rows.extend(jobs.values())
-    rows.extend(pending)
+    rows.extend(workflow_checks)
     rows.extend(api_list(f'{base}/commits/{args.head}/statuses', None, deadline))
     return rows
 
@@ -155,8 +159,14 @@ def latest_checks(checks):
         name = check.get('context' if legacy else 'name')
         if not isinstance(name, str) or not name:
             raise GhCommandError('missing or invalid check identity from gh\n')
-        key = ('status', check.get('context')) if legacy else (
-            'check', check.get('name'), check.get('workflowName') or '')
+        app = check.get('app') or {}
+        if not isinstance(app, dict):
+            raise GhCommandError('missing or invalid check app from gh\n')
+        if check.get('_kind') == 'workflow':
+            key = ('workflow', check.get('workflow_id') or check.get('workflowName'))
+        else:
+            key = ('status', name) if legacy else (
+                'check', app.get('id'), name, check.get('workflowName') or '')
         # Run IDs order queued reruns correctly even before started_at exists.
         rank = (int(check.get('id') or 0),
                 check.get('created_at') or check.get('started_at') or check.get('startedAt') or '',

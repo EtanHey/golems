@@ -85,23 +85,72 @@ print(json.dumps(step))
         self.assertEqual(event['sha'], HEAD)
         return result, event
 
+    def rest_fixture(self, checks, runs=None, jobs=None):
+        base = 'repos/owner/repo'
+        api = {f'{base}/commits/{HEAD}/check-runs': {'check_runs': checks},
+               f'{base}/actions/runs': {'workflow_runs': runs or []},
+               f'{base}/commits/{HEAD}/statuses': []}
+        api.update({f'{base}/actions/runs/{run_id}/jobs': {'jobs': rows}
+                    for run_id, rows in (jobs or {}).items()})
+        (self.home / 'api').write_text(json.dumps(api))
+
     def test_758_superseded_rollup_ready(self):
-        check = lambda name, workflow, result, start: dict(
-            name=name, workflowName=workflow, status='COMPLETED',
-            conclusion=result, startedAt=start)
-        rows = [check('Loop-record', 'ratchet', 'FAILURE', '2026-10-11T17:13:48Z'),
-                check('Check PR size label truth', 'pr-size-label', 'FAILURE', '2026-10-11T17:13:48Z'),
-                check('ratchet', 'ratchet', 'CANCELLED', '2026-10-11T17:13:49Z'),
-                check('Loop-record', 'ratchet', 'SUCCESS', '2026-10-11T17:15:07Z'),
-                check('Check PR size label truth', 'pr-size-label', 'SUCCESS', '2026-10-11T17:14:16Z'),
-                check('ratchet', 'ratchet', 'SUCCESS', '2026-10-11T17:15:07Z')]
-        verdict = runpy.run_path(str(SCRIPT))['verdict']
-        self.assertEqual(verdict(snapshot(rows), HEAD), 'READY')
-        merged = snapshot(rows, state='MERGED')
-        self.assertEqual(verdict(merged, HEAD), 'MERGED')
-        self.assertEqual(merged['checks'], 'green')
-        result, event = self.run_watch([merged])
+        def check(cid, suite, name, conclusion):
+            return dict(id=cid, app={'id': 15368}, check_suite={'id': suite},
+                        name=name, status='completed', conclusion=conclusion)
+        def run(rid, suite, workflow, conclusion):
+            return dict(id=rid, head_sha=HEAD, check_suite_id=suite,
+                        workflow_id=1 if workflow == 'ratchet' else 2,
+                        name=workflow, status='completed', conclusion=conclusion)
+        rows = [check(101, 10, 'Loop-record', 'failure'),
+                check(102, 10, 'ratchet', 'cancelled'),
+                check(201, 11, 'Loop-record', 'success'),
+                check(202, 11, 'ratchet', 'success'),
+                check(301, 20, 'Check PR size label truth', 'failure'),
+                check(401, 21, 'Check PR size label truth', 'success')]
+        runs = [run(10, 10, 'ratchet', 'cancelled'), run(11, 11, 'ratchet', 'success'),
+                run(20, 20, 'pr-size-label', 'failure'), run(21, 21, 'pr-size-label', 'success')]
+        jobs = {11: [{k: v for k, v in row.items() if k not in {'app', 'check_suite'}}
+                     for row in rows if row['check_suite']['id'] == 11],
+                21: [{k: v for k, v in rows[-1].items() if k not in {'app', 'check_suite'}}]}
+        self.rest_fixture(rows, runs, jobs)
+        result, event = self.run_watch([snapshot()], deadline='2s')
+        self.assertEqual(result.returncode, 0, (event, result.stderr))
+        self.assertEqual((event['event'], event['checks']), ('READY', 'green'))
+        (self.home / 'calls').unlink()
+        result, event = self.run_watch([snapshot(state='MERGED')], deadline='2s')
         self.assertEqual((result.returncode, event['event'], event['checks']), (12, 'MERGED', 'green'))
+
+    def test_newer_partial_workflow_cannot_reuse_older_green_jobs(self):
+        checks = [dict(id=i, app={'id': 15368}, check_suite={'id': 10}, name=name,
+                       status='completed', conclusion='success') for i, name in [(101, 'A'), (102, 'B')]]
+        newest = dict(id=201, app={'id': 15368}, check_suite={'id': 20}, name='A',
+                      status='completed', conclusion='success')
+        runs = [dict(id=rid, head_sha=HEAD, check_suite_id=suite, workflow_id=1,
+                     name='ci', status=status, conclusion=conclusion)
+                for rid, suite, status, conclusion in [(10, 10, 'completed', 'success'), (20, 20, 'in_progress', None)]]
+        self.rest_fixture(checks + [newest], runs, {20: [dict(id=201, name='A', status='completed', conclusion='success')]})
+        result, event = self.run_watch([snapshot()])
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+        (self.home / 'calls').unlink()
+        result, event = self.run_watch([snapshot(state='MERGED')], deadline='2s')
+        self.assertEqual((result.returncode, event['event'], event['checks']), (12, 'MERGED', 'pending'))
+
+    def test_newer_startup_failure_without_jobs_is_failed(self):
+        check = dict(id=101, app={'id': 15368}, check_suite={'id': 10}, name='A',
+                     status='completed', conclusion='success')
+        runs = [dict(id=rid, head_sha=HEAD, check_suite_id=suite, workflow_id=1,
+                     name='ci', status='completed', conclusion=conclusion)
+                for rid, suite, conclusion in [(10, 10, 'success'), (20, 20, 'startup_failure')]]
+        self.rest_fixture([check], runs, {20: []})
+        result, event = self.run_watch([snapshot()])
+        self.assertEqual((result.returncode, event['event'], event['checks']), (10, 'FAILED', 'failed'))
+
+    def test_same_named_checks_from_different_apps_do_not_hide_failure(self):
+        self.rest_fixture([dict(id=i, app={'id': app}, name='shared', status='completed', conclusion=result)
+                           for i, app, result in [(101, 1, 'failure'), (102, 2, 'success')]])
+        result, event = self.run_watch([snapshot()])
+        self.assertEqual((result.returncode, event['event']), (10, 'FAILED'))
 
     def test_latest_checks_keep_workflows_and_pending_reruns_separate(self):
         classify = runpy.run_path(str(SCRIPT))['checks_verdict']
@@ -157,7 +206,7 @@ print(json.dumps(step))
     def test_paginated_checks_runs_jobs_and_statuses(self):
         base = 'repos/owner/repo'
         checks = [dict(id=i, name=f'check-{i}', status='completed', conclusion='success') for i in range(1, 101)]
-        runs = [dict(id=i, head_sha=HEAD, name='workflow', workflow_id=1, check_suite_id=i, status='completed') for i in range(1, 102)]
+        runs = [dict(id=i, head_sha=HEAD, name='workflow', workflow_id=1, check_suite_id=i, status='completed', conclusion='success') for i in range(1, 102)]
         jobs = [dict(id=1000+i, name=f'job-{i}', status='completed', conclusion='success') for i in range(101)]
         cases = [('checks', checks + [dict(id=101, name='late', status='completed', conclusion='failure')], [], [], []),
                  ('runs/jobs', checks, runs, jobs + [dict(id=2000, name='late', status='completed', conclusion='failure')], []),
