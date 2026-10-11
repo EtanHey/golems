@@ -110,6 +110,8 @@ gh pr create --title "feat: description" --body-file - <<'EOF'
 - [ ] Tests pass
 - [ ] Manual verification done
 
+Loop-record: implementer=<vendor/model/effort> reviewer=<vendor/model|none> rounds=<inner>/<remote> defects=<n> role=<lead|worker>
+
 ## Bot policy
 - Read `<repo>/AGENTS.md` → panel applied: <bots summoned> (<bots excluded, and why>)
 
@@ -117,6 +119,8 @@ gh pr create --title "feat: description" --body-file - <<'EOF'
 <!-- golem-id v1 {"seat":"golemsClaude","role":"lead","harness":"claude-code","model":"claude-opus-4.6","model_source":"session-jsonl","session":"db7f3bb9","ts":"2026-08-08T18:40:00Z"} -->
 EOF
 ```
+
+A same-vendor review states its reason. Replace the Loop-record placeholders with observed values: rounds and defects are non-negative integers; reviewer is `none` until a review has occurred. The lane-approved Loop-record effort field supersedes the older public-effort restriction for this line only; identity signatures and commit trailers keep their existing schema.
 
 ### Size label (canon 9) — apply it at open, not later
 

@@ -124,3 +124,34 @@ teardown() {
   [ "$status" -eq 0 ]
   [ "$output" = "{}" ]
 }
+
+@test "review rounds match canon 9 without a forced second clean review" {
+  grep -F 'One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; round 3 only by a lead exception written in the PR body (canon #9).' "$PR_LOOP"
+  run grep -Ei 'minimum (2|two)|Max 3|go to round 3' "$REPO_ROOT/skills/golem-powers/pr-loop/references/review-loop.md" "$REPO_ROOT/skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md"
+  [ "$status" -eq 1 ]
+}
+
+@test "review reads paginate discussion inline comments and review bodies" {
+  REVIEW="$REPO_ROOT/skills/golem-powers/pr-loop/references/review-loop.md"
+  for endpoint in issues/'{N}'/comments pulls/'{N}'/comments pulls/'{N}'/reviews; do
+    grep -F "gh api --paginate repos/{owner}/{repo}/$endpoint" "$REVIEW"
+  done
+  run grep -F 'gh pr view <N> --comments' "$REVIEW"
+  [ "$status" -eq 1 ]
+}
+
+@test "bot panel example scopes the full roster to core diffs" {
+  grep -F 'Core diffs only; non-core = @coderabbitai + one.' "$REPO_ROOT/skills/golem-powers/pr-loop/references/review-loop.md"
+}
+
+@test "Loop-record is a readiness gate and template records same-vendor reason" {
+  grep -F 'Missing Loop-record = not ready.' "$PR_LOOP"
+  CREATION="$REPO_ROOT/skills/golem-powers/pr-loop/references/pr-creation.md"
+  grep -F 'Loop-record: implementer=<vendor/model/effort> reviewer=<vendor/model|none> rounds=<inner>/<remote> defects=<n> role=<lead|worker>' "$CREATION"
+  grep -F 'A same-vendor review states its reason.' "$CREATION"
+}
+
+@test "cron example never dispatches merge solely on MERGEABLE" {
+  run grep -F 'dispatch merge' "$REPO_ROOT/skills/golem-powers/collab-monitor/references/cron-payloads.md"
+  [ "$status" -eq 1 ]
+}

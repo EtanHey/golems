@@ -64,7 +64,8 @@ worker followed this skill verbatim and summoned Bugbot into the repo that bans 
 #### 8a.1 — The panel
 
 ```bash
-# The default panel (do this right after PR creation, filtered by 8a.0)
+# Core diffs only; non-core = @coderabbitai + one.
+# Full core panel (right after PR creation, filtered by 8a.0)
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@greptileai review"
 gh pr comment <N> --body "@codex review"
@@ -142,7 +143,8 @@ when they change. Timed one-shot wakes remain ScheduleWakeup/CronCreate per
 
 ```bash
 # Fetch after a review handoff or activity-count change
-gh pr view <N> --comments
+gh api --paginate repos/{owner}/{repo}/issues/{N}/comments
+gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews
 ```
 
 ### Reading Review Comments
@@ -151,10 +153,11 @@ Fetch comments from all review sources with full context:
 
 ```bash
 # Quick view of all comments
-gh pr view <N> --comments
+gh api --paginate repos/{owner}/{repo}/issues/{N}/comments
+gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews
 
 # Detailed: get review comments with diff context
-gh api repos/{owner}/{repo}/pulls/{N}/comments
+gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments
 ```
 
 To reply to an inline review thread, use the replies endpoint:
@@ -270,7 +273,7 @@ RIGHT: Every CRITICAL/HIGH comment gets one of:
 4. Complex fixes (refactoring, logic)
 5. Test each fix individually
 
-Max 3 review-fix rounds — skip persistent nitpicks after that.
+Max 2 review-fix rounds; round 3 requires a lead exception written in the PR body.
 
 ### Classify each review comment:
 
@@ -301,17 +304,15 @@ Every PR is an opportunity to make reviewers smarter. Use the right format for e
 
 **Rule:** Always reply with context. The reply compounds knowledge across every future PR.
 
-### Multi-Round Loop (minimum 2 rounds before merge)
+### Review Loop (one clean exact-head review may merge)
 
 ```
-Round 1: Push fixes → request re-review from all bots
-Round 2: Read re-review → fix any new issues found
-Round 3+: Only if new issues surfaced. Max 3 rounds for nitpicks.
+Round 1: Read review at headRefOid; required checks green + clean review may merge
+Round 2: Only for BLOCKING findings; push fixes and request re-review
 ```
 
 CodeRabbit auto-re-reviews on new pushes. For others, comment `@bot re-review` explicitly.
-
-**If reviewer finds new issues in round 2 → fix and go to round 3. Never merge with open issues.**
+Round 3 requires a lead exception written in the PR body (canon #9). Never merge with open blocking issues.
 
 ### Sanitize Before PR (CRITICAL)
 
@@ -330,7 +331,7 @@ git push
 # Wait for re-review — CodeRabbit auto-triggers, others need manual @mention
 ```
 
-### Only THEN merge (after minimum 2 review rounds):
+### Only THEN merge (clean review and required checks green at headRefOid):
 
 ```bash
 # Verify reviews are actually in before merging
