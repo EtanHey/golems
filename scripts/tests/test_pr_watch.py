@@ -1,4 +1,5 @@
 import json
+import runpy
 import os
 from pathlib import Path
 import subprocess
@@ -12,7 +13,9 @@ HEAD = 'a' * 40
 
 def snapshot(checks=None, head=HEAD, state='OPEN'):
     return dict(headRefOid=head, state=state, reviewDecision='',
-                statusCheckRollup=checks or [])
+                statusCheckRollup=[dict(row, **({'name': row.get('name', f'check-{i}')}
+                    if 'status' in row else {'context': row.get('context', f'context-{i}')}))
+                    for i, row in enumerate(checks or [])])
 
 
 class PrWatchTests(unittest.TestCase):
@@ -27,6 +30,28 @@ class PrWatchTests(unittest.TestCase):
 import json, os, sys
 from pathlib import Path
 p = Path(os.environ['FIXTURE_DIR'])
+if sys.argv[1] == 'api':
+    from urllib.parse import urlsplit, parse_qs
+    url = urlsplit(sys.argv[2]); query = parse_qs(url.query)
+    page = int(query['page'][0]); size = int(query['per_page'][0])
+    with (p / 'argv').open('a') as f: f.write(json.dumps(sys.argv[1:]) + '\\n')
+    if (p / 'api').exists():
+        fixtures = json.loads((p / 'api').read_text())
+        if url.path in fixtures:
+            data = fixtures[url.path]
+            key = next((k for k in ['check_runs', 'workflow_runs', 'jobs'] if isinstance(data, dict) and k in data), None)
+            rows = data[key] if key else data
+            chunk = rows[(page-1)*size:page*size]
+            print(json.dumps({key: chunk} if key else chunk)); sys.exit(0)
+    current = json.loads((p / 'current').read_text())
+    rows = current.get('statusCheckRollup')
+    if url.path.endswith('check-runs'):
+        print(json.dumps({'check_runs': None if rows is None else [r for r in rows if 'status' in r]}))
+    elif url.path.endswith('statuses'):
+        print(json.dumps([r for r in rows or [] if 'status' not in r]))
+    else:
+        print(json.dumps({'workflow_runs': []}))
+    sys.exit(0)
 steps = json.loads((p / 'steps').read_text())
 n = int((p / 'calls').read_text()) if (p / 'calls').exists() else 0
 (p / 'calls').write_text(str(n + 1))
@@ -41,6 +66,7 @@ if 'raw' in step:
 if 'error' in step:
     sys.stderr.write(step['error'])
     sys.exit(1)
+(p / 'current').write_text(json.dumps(step))
 print(json.dumps(step))
 ''')
         gh.chmod(0o755)
@@ -58,6 +84,102 @@ print(json.dumps(step))
         event = json.loads(result.stdout)
         self.assertEqual(event['sha'], HEAD)
         return result, event
+
+    def test_758_superseded_rollup_ready(self):
+        check = lambda name, workflow, result, start: dict(
+            name=name, workflowName=workflow, status='COMPLETED',
+            conclusion=result, startedAt=start)
+        rows = [check('Loop-record', 'ratchet', 'FAILURE', '2026-10-11T17:13:48Z'),
+                check('Check PR size label truth', 'pr-size-label', 'FAILURE', '2026-10-11T17:13:48Z'),
+                check('ratchet', 'ratchet', 'CANCELLED', '2026-10-11T17:13:49Z'),
+                check('Loop-record', 'ratchet', 'SUCCESS', '2026-10-11T17:15:07Z'),
+                check('Check PR size label truth', 'pr-size-label', 'SUCCESS', '2026-10-11T17:14:16Z'),
+                check('ratchet', 'ratchet', 'SUCCESS', '2026-10-11T17:15:07Z')]
+        verdict = runpy.run_path(str(SCRIPT))['verdict']
+        self.assertEqual(verdict(snapshot(rows), HEAD), 'READY')
+        merged = snapshot(rows, state='MERGED')
+        self.assertEqual(verdict(merged, HEAD), 'MERGED')
+        self.assertEqual(merged['checks'], 'green')
+        result, event = self.run_watch([merged])
+        self.assertEqual((result.returncode, event['event'], event['checks']), (12, 'MERGED', 'green'))
+
+    def test_latest_checks_keep_workflows_and_pending_reruns_separate(self):
+        classify = runpy.run_path(str(SCRIPT))['checks_verdict']
+        old = dict(id=1, name='test', workflowName='A', status='completed', conclusion='failure',
+                   completed_at='2026-10-11T18:00:00Z')
+        new = dict(id=2, name='test', workflowName='A', status='queued')
+        self.assertEqual(classify(snapshot([old, new])), 'pending')
+        new.update(status='completed', conclusion='success')
+        self.assertEqual(classify(snapshot([new, old])), 'green')
+        other = dict(old, workflowName='B')
+        self.assertEqual(classify(snapshot([new, other])), 'failed')
+        self.assertEqual(classify(snapshot([dict(new, conclusion='cancelled')])), 'failed')
+
+    def test_latest_legacy_context(self):
+        classify = runpy.run_path(str(SCRIPT))['checks_verdict']
+        rows = [dict(id=2, context='ci', state='success'), dict(id=1, context='ci', state='failure')]
+        self.assertEqual(classify(snapshot(rows)), 'green')
+        self.assertEqual(classify(snapshot(rows + [dict(id=3, context='other', state='failure')])), 'failed')
+
+    def test_merged_reports_checks_without_claiming_ready(self):
+        for checks, expected in [([dict(state='SUCCESS')], 'green'),
+                                 ([dict(state='FAILURE')], 'failed'), ([], 'pending')]:
+            with self.subTest(checks=checks):
+                (self.home / 'calls').unlink(missing_ok=True)
+                result, event = self.run_watch([snapshot(checks, state='MERGED')])
+                self.assertEqual((result.returncode, event['event'], event['checks']), (12, 'MERGED', expected))
+
+    def test_merge_during_head_confirmation_is_distinct(self):
+        green = snapshot([dict(state='SUCCESS')])
+        result, event = self.run_watch([green, snapshot(state='MERGED')])
+        self.assertEqual((result.returncode, event['event'], event['checks']), (12, 'MERGED', 'green'))
+
+    def test_healthy_poll_resets_retry_budget_and_null_review(self):
+        green = snapshot([dict(state='SUCCESS')]); green['reviewDecision'] = None
+        result, event = self.run_watch([dict(error='one\n'), snapshot(), dict(error='two\n'), green], retries=1)
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual(result.stderr, 'one\ntwo\n')
+        self.assertEqual(event['review_decision'], '')
+        self.assertEqual(json.loads((self.home / 'state.json').read_text())['retries_by_sha'][HEAD], 0)
+
+    def test_workflow_queued_before_jobs_prevents_ready(self):
+        base = 'repos/owner/repo'
+        api = {f'{base}/commits/{HEAD}/check-runs': {'check_runs': [
+                   dict(id=1, name='ci', status='completed', conclusion='success')]},
+               f'{base}/actions/runs': {'workflow_runs': [
+                   dict(id=2, head_sha=HEAD, name='new', workflow_id=1, check_suite_id=2, status='queued')]},
+               f'{base}/actions/runs/2/jobs': {'jobs': []},
+               f'{base}/commits/{HEAD}/statuses': []}
+        (self.home / 'api').write_text(json.dumps(api))
+        result, event = self.run_watch([snapshot()], deadline='250ms')
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+
+    def test_paginated_checks_runs_jobs_and_statuses(self):
+        base = 'repos/owner/repo'
+        checks = [dict(id=i, name=f'check-{i}', status='completed', conclusion='success') for i in range(1, 101)]
+        runs = [dict(id=i, head_sha=HEAD, name='workflow', workflow_id=1, check_suite_id=i, status='completed') for i in range(1, 102)]
+        jobs = [dict(id=1000+i, name=f'job-{i}', status='completed', conclusion='success') for i in range(101)]
+        cases = [('checks', checks + [dict(id=101, name='late', status='completed', conclusion='failure')], [], [], []),
+                 ('runs/jobs', checks, runs, jobs + [dict(id=2000, name='late', status='completed', conclusion='failure')], []),
+                 ('statuses', checks, [], [], [dict(id=i, context=f'ctx-{i}', state='success') for i in range(100)] +
+                  [dict(id=101, context='late', state='failure')])]
+        for label, cr, wr, jr, statuses in cases:
+            with self.subTest(label=label):
+                (self.home / 'calls').unlink(missing_ok=True)
+                (self.home / 'argv').unlink(missing_ok=True)
+                api = {f'{base}/commits/{HEAD}/check-runs': {'check_runs': cr},
+                       f'{base}/actions/runs': {'workflow_runs': wr},
+                       f'{base}/commits/{HEAD}/statuses': statuses}
+                api.update({f'{base}/actions/runs/{run["id"]}/jobs': {'jobs': jr if run['id'] == 101 else []} for run in wr})
+                (self.home / 'api').write_text(json.dumps(api))
+                result, event = self.run_watch([snapshot()], deadline='4s')
+                self.assertEqual((result.returncode, event['event']), (10, 'FAILED'))
+                calls = (self.home / 'argv').read_text()
+                if label == 'runs/jobs':
+                    self.assertIn(f'actions/runs?head_sha={HEAD}&per_page=100&page=2', calls)
+                    self.assertIn('actions/runs/101/jobs?filter=all&per_page=100&page=2', calls)
+                else:
+                    self.assertIn('page=2', calls)
 
     def test_empty_rollup_never_ready(self):
         result, event = self.run_watch([snapshot()])
@@ -142,7 +264,11 @@ print(json.dumps(step))
     def test_observation_does_not_write_github(self):
         self.run_watch([snapshot([dict(state='SUCCESS')])])
         for argv in (self.home / 'argv').read_text().splitlines():
-            self.assertEqual(json.loads(argv)[:5], ['--repo', 'owner/repo', 'pr', 'view', '42'])
+            command = json.loads(argv)
+            if command[0] == 'api':
+                self.assertNotIn('--method', command)
+            else:
+                self.assertEqual(command[:5], ['--repo', 'owner/repo', 'pr', 'view', '42'])
 
 
 if __name__ == '__main__':

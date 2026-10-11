@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'pr-watch-lib/vendor'))
 import upstream
 
-CODES = dict(READY=0, FAILED=10, HEAD_MOVED=11, DEADLINE=20, GH_ERROR=30)
+CODES = dict(READY=0, MERGED=12, FAILED=10, HEAD_MOVED=11, DEADLINE=20, GH_ERROR=30)
 GREEN = {'SUCCESS', 'NEUTRAL', 'SKIPPED'}
 RED = {'FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED',
        'STARTUP_FAILURE', 'STALE'}
@@ -20,6 +20,10 @@ RED = {'FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED',
 
 class GhCommandError(RuntimeError):
     pass
+
+
+class GhProcessError(GhCommandError):
+    """Command stderr has already been forwarded verbatim."""
 
 
 def duration(value):
@@ -63,7 +67,7 @@ def gh_json(argv, repo=None, timeout=None):
     if proc.returncode:
         sys.stderr.buffer.write(proc.stderr)
         sys.stderr.buffer.flush()
-        raise GhCommandError('gh exited unsuccessfully')
+        raise GhProcessError('gh exited unsuccessfully')
     try:
         return json.loads(proc.stdout)
     except (ValueError, UnicodeDecodeError) as error:
@@ -74,36 +78,118 @@ upstream.gh_json = gh_json
 upstream.GhCommandError = GhCommandError
 
 
+def api_list(endpoint, key, deadline):
+    """Adapt REST envelopes to the unchanged vendored pagination helper."""
+    def page(argv, repo=None):
+        payload = gh_json(argv, timeout=max(.001, deadline - time.monotonic()))
+        rows = payload.get(key) if key and isinstance(payload, dict) else payload
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise GhCommandError('missing or invalid paginated API data from gh\n')
+        return rows
+    previous = upstream.gh_json
+    upstream.gh_json = page
+    try:
+        return upstream.gh_api_list_paginated(endpoint)
+    finally:
+        upstream.gh_json = previous
+
+
+def read_checks(args, deadline):
+    base = f'repos/{args.repo}'
+    checks = api_list(f'{base}/commits/{args.head}/check-runs?filter=all', 'check_runs', deadline)
+    runs = api_list(f'{base}/actions/runs?head_sha={args.head}', 'workflow_runs', deadline)
+    workflows, jobs, latest_runs, pending = {}, {}, {}, []
+    for run in runs:
+        if (run.get('head_sha') != args.head or not isinstance(run.get('id'), int)
+                or not isinstance(run.get('check_suite_id'), int)
+                or not isinstance(run.get('name'), str) or not run['name']):
+            raise GhCommandError('missing or invalid workflow run identity from gh\n')
+        workflows[run.get('check_suite_id')] = run.get('name') or str(run.get('workflow_id') or '')
+        key = run.get('workflow_id') or run.get('name')
+        if key not in latest_runs or run['id'] > latest_runs[key]['id']:
+            latest_runs[key] = run
+    for run in latest_runs.values():
+        run_jobs = api_list(f'{base}/actions/runs/{run["id"]}/jobs?filter=all', 'jobs', deadline)
+        if not run_jobs and run.get('status') != 'completed':
+            pending.append(dict(id=run['id'], name='__workflow__', status='queued',
+                                workflowName=workflows[run.get('check_suite_id')]))
+        for job in run_jobs:
+            if not isinstance(job.get('id'), int):
+                raise GhCommandError('missing or invalid workflow job identity from gh\n')
+            job['workflowName'] = workflows[run.get('check_suite_id')]
+            jobs[job.get('id')] = job
+    rows = []
+    for check in checks:
+        suite = check.get('check_suite') or {}
+        if not isinstance(suite, dict):
+            raise GhCommandError('missing or invalid check suite from gh\n')
+        check['workflowName'] = workflows.get(suite.get('id'), check.get('workflowName') or '')
+        rows.append(jobs.pop(check.get('id'), check))
+    rows.extend(jobs.values())
+    rows.extend(pending)
+    rows.extend(api_list(f'{base}/commits/{args.head}/statuses', None, deadline))
+    return rows
+
+
 def read_pr(args, remaining, checks=True):
-    fields = 'headRefOid,state,reviewDecision' + (',statusCheckRollup' if checks else '')
-    data = gh_json(['pr', 'view', str(args.pr), '--json', fields],
+    deadline = time.monotonic() + remaining
+    data = gh_json(['pr', 'view', str(args.pr), '--json', 'headRefOid,state,reviewDecision'],
                    repo=args.repo, timeout=remaining)
     if not isinstance(data, dict) or not re.fullmatch(r'[0-9a-fA-F]{40}', str(data.get('headRefOid', ''))):
         raise GhCommandError('missing or invalid PR head from gh\n')
     if data.get('state') not in {'OPEN', 'CLOSED', 'MERGED'}:
         raise GhCommandError('missing or invalid PR state from gh\n')
     data['headRefOid'] = data['headRefOid'].lower()
+    data['reviewDecision'] = data.get('reviewDecision') or ''
+    if checks and data['headRefOid'] == args.head and data['state'] != 'CLOSED':
+        data['statusCheckRollup'] = read_checks(args, deadline)
     return data
+
+
+def latest_checks(checks):
+    latest = {}
+    for check in checks:
+        if not isinstance(check, dict):
+            raise GhCommandError('invalid check from gh\n')
+        legacy = 'context' in check or ('state' in check and 'status' not in check)
+        name = check.get('context' if legacy else 'name')
+        if not isinstance(name, str) or not name:
+            raise GhCommandError('missing or invalid check identity from gh\n')
+        key = ('status', check.get('context')) if legacy else (
+            'check', check.get('name'), check.get('workflowName') or '')
+        # Run IDs order queued reruns correctly even before started_at exists.
+        rank = (int(check.get('id') or 0),
+                check.get('created_at') or check.get('started_at') or check.get('startedAt') or '',
+                check.get('completed_at') or check.get('completedAt') or '')
+        if key not in latest or rank > latest[key][0]:
+            latest[key] = (rank, check)
+    return [check for _, check in latest.values()]
+
+
+def checks_verdict(data):
+    checks = data.get('statusCheckRollup')
+    if not isinstance(checks, list):
+        raise GhCommandError('missing or invalid check rollup from gh\n')
+    results = []
+    for check in latest_checks(checks):
+        result = check.get('conclusion') if str(check.get('status')).upper() == 'COMPLETED' else check.get('state')
+        results.append(str(result or '').upper())
+    if any(result in RED for result in results):
+        return 'failed'
+    return 'green' if results and all(result in GREEN for result in results) else 'pending'
 
 
 def verdict(data, head):
     if data['headRefOid'] != head:
         return 'HEAD_MOVED'
-    if data['state'] != 'OPEN':
+    if data['state'] == 'CLOSED':
         return 'FAILED'
-    checks = data.get('statusCheckRollup')
-    if not isinstance(checks, list):
-        raise GhCommandError('missing or invalid check rollup from gh\n')
-    results = []
-    for check in checks:
-        if not isinstance(check, dict):
-            raise GhCommandError('invalid check from gh\n')
-        # CheckRun uses status/conclusion; legacy StatusContext uses state.
-        result = check.get('conclusion') if check.get('status') == 'COMPLETED' else check.get('state')
-        results.append(str(result or '').upper())
-    if any(result in RED for result in results):
+    data['checks'] = checks_verdict(data)
+    if data['state'] == 'MERGED':
+        return 'MERGED'
+    if data['checks'] == 'failed':
         return 'FAILED'
-    if results and all(result in GREEN for result in results):
+    if data['checks'] == 'green':
         return 'READY'
     return None
 
@@ -112,7 +198,8 @@ def emit(event, args, data=None):
     payload = dict(event=event, sha=args.head, repo=args.repo, pr=args.pr)
     if data:
         payload.update(observed_sha=data['headRefOid'], pr_state=data['state'],
-                       review_decision=data.get('reviewDecision', ''))
+                       review_decision=data.get('reviewDecision') or '',
+                       checks=data.get('checks', 'unknown'))
     print(json.dumps(payload, sort_keys=True), flush=True)
     return CODES[event]
 
@@ -121,8 +208,8 @@ def watch(args):
     deadline = time.monotonic() + args.deadline
     try:
         state, _ = upstream.load_state(args.state_file)
-        retries = state.get('retries_by_sha', {})
-        if not isinstance(retries, dict) or any(not isinstance(n, int) or n < 0 for n in retries.values()):
+        retry_state = state.get('retries_by_sha', {})
+        if not isinstance(retry_state, dict) or any(not isinstance(n, int) or n < 0 for n in retry_state.values()):
             raise ValueError('invalid per-head retry state')
         identity = dict(repo=args.repo, number=args.pr)
         if state.get('pr') and state['pr'] != identity:
@@ -133,14 +220,19 @@ def watch(args):
                 data = read_pr(args, deadline - time.monotonic())
                 result = verdict(data, args.head)
                 # Close the head-read race before emitting a terminal CI fact.
-                if result in {'READY', 'FAILED'}:
+                if result in {'READY', 'FAILED', 'MERGED'}:
                     confirm = read_pr(args, max(.001, deadline - time.monotonic()), checks=False)
                     if confirm['headRefOid'] != args.head:
                         data, result = confirm, 'HEAD_MOVED'
-                    elif confirm['state'] != 'OPEN':
+                    elif confirm['state'] == 'CLOSED':
                         data, result = confirm, 'FAILED'
+                    elif confirm['state'] == 'MERGED':
+                        data['state'], result = 'MERGED', 'MERGED'
+                    elif data['state'] == 'MERGED':
+                        raise GhCommandError('inconsistent merged PR state from gh\n')
                 state['last_seen_head_sha'] = data['headRefOid']
                 state['last_snapshot_at'] = int(time.time())
+                upstream.set_retry_count(state, args.head, 0)
                 upstream.save_state(args.state_file, state)
                 if time.monotonic() >= deadline:
                     return emit('DEADLINE', args)
@@ -150,7 +242,7 @@ def watch(args):
             except GhCommandError as error:
                 # Actual command stderr was already forwarded verbatim; only
                 # local validation/missing-command errors need a diagnostic.
-                if str(error) != 'gh exited unsuccessfully':
+                if not isinstance(error, GhProcessError):
                     sys.stderr.write(str(error))
                 retries = upstream.current_retry_count(state, args.head)
                 if retries >= args.max_gh_retries:
