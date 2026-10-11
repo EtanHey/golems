@@ -57,7 +57,7 @@ def parse_args():
     return args
 
 
-def gh_json(argv, repo=None, timeout=None):
+def gh_json(argv, repo=None, timeout=None, unprotected_ok=False):
     command = ['gh']
     if repo and argv[0] != 'api':
         command.extend(['--repo', repo])
@@ -67,6 +67,15 @@ def gh_json(argv, repo=None, timeout=None):
         raise GhCommandError('gh command not found\n') from error
     # Bytes preserve gh stderr exactly, including whitespace and invalid UTF-8.
     if proc.returncode:
+        if unprotected_ok:
+            try:
+                body = json.loads(proc.stdout)
+            except (ValueError, UnicodeDecodeError):
+                body = None
+            if (isinstance(body, dict) and body.get('message') == 'Branch not protected'
+                    and (body.get('status') in (404, '404')
+                         or ('status' not in body and b'(HTTP 404)' in proc.stderr))):
+                return dict(required_status_checks=None)
         sys.stderr.buffer.write(proc.stderr)
         sys.stderr.buffer.flush()
         raise GhProcessError('gh exited unsuccessfully')
@@ -154,7 +163,7 @@ def read_required_checks(args, branch, deadline):
             required.extend(rows)
     if not required:
         protection = gh_json(['api', f'{base}/branches/{branch}/protection'],
-                             timeout=max(.001, deadline - time.monotonic()))
+                             timeout=max(.001, deadline - time.monotonic()), unprotected_ok=True)
         if not isinstance(protection, dict) or 'required_status_checks' not in protection:
             raise GhCommandError('missing or invalid branch protection from gh\n')
         checks = protection['required_status_checks']
@@ -175,7 +184,7 @@ def read_required_checks(args, branch, deadline):
     return sorted(normalized, key=lambda row: (row[0], row[1] or 0))
 
 
-def read_pr(args, remaining, checks=True):
+def read_pr(args, remaining, checks=True, required_cache=None):
     deadline = time.monotonic() + remaining
     data = gh_json(['pr', 'view', str(args.pr), '--json', 'headRefOid,state,reviewDecision,baseRefName'],
                    repo=args.repo, timeout=remaining)
@@ -186,9 +195,21 @@ def read_pr(args, remaining, checks=True):
     data['headRefOid'] = data['headRefOid'].lower()
     data['reviewDecision'] = data.get('reviewDecision') or ''
     if checks and data['headRefOid'] == args.head and data['state'] != 'CLOSED':
-        if data['state'] == 'OPEN':
-            data['requiredChecks'] = read_required_checks(args, data.get('baseRefName'), deadline)
         data['statusCheckRollup'] = read_checks(args, deadline)
+        if data['state'] == 'OPEN':
+            branch = data.get('baseRefName')
+            if not isinstance(branch, str) or not branch:
+                raise GhCommandError('missing or invalid PR base branch from gh\n')
+            if required_cache is None:
+                required_cache = {}
+            green = checks_verdict(data) == 'green'
+            cached = required_cache.get(branch)
+            # Pending polls share a manifest; refresh when checks turn green
+            # so a new settle window starts with current requirements.
+            if cached is None or (green and not cached[1]):
+                required_cache.clear()
+                required_cache[branch] = (read_required_checks(args, branch, deadline), green)
+            data['requiredChecks'] = required_cache[branch][0]
     return data
 
 
@@ -276,6 +297,7 @@ def emit(event, args, data=None):
 def watch(args):
     deadline = time.monotonic() + args.deadline
     quiet_since, observed = None, None
+    required_cache = {}
     try:
         state, _ = upstream.load_state(args.state_file)
         retry_state = state.get('retries_by_sha', {})
@@ -287,17 +309,21 @@ def watch(args):
         state['pr'] = identity
         while time.monotonic() < deadline:
             try:
-                data = read_pr(args, deadline - time.monotonic())
+                data = read_pr(args, deadline - time.monotonic(), required_cache=required_cache)
                 result = verdict(data, args.head)
                 if result == 'READY':
                     current = registrations(data)
                     now = time.monotonic()
                     if quiet_since is None or current != observed:
+                        if quiet_since is not None:
+                            required_cache.clear()
                         quiet_since = now
                     observed = current
                     if now - quiet_since < args.settle:
                         result = None
                 else:
+                    if quiet_since is not None:
+                        required_cache.clear()
                     quiet_since = None
                 # Close the head-read race before emitting a terminal CI fact.
                 if result in {'READY', 'FAILED', 'MERGED'}:
@@ -321,6 +347,7 @@ def watch(args):
                 interval = args.poll_seconds
             except GhCommandError as error:
                 quiet_since = None
+                required_cache.clear()
                 # Actual command stderr was already forwarded verbatim; only
                 # local validation/missing-command errors need a diagnostic.
                 if not isinstance(error, GhProcessError):

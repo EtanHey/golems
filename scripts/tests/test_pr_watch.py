@@ -44,6 +44,7 @@ if sys.argv[1] == 'api':
         if url.path in fixtures:
             data = fixtures[url.path]
             if isinstance(data, dict) and 'error' in data:
+                sys.stdout.write(data.get('stdout', ''))
                 sys.stderr.write(data['error']); sys.exit(1)
             if '/protection' in url.path:
                 print(json.dumps(data)); sys.exit(0)
@@ -54,7 +55,8 @@ if sys.argv[1] == 'api':
     if '/rules/branches/' in url.path:
         print('[]'); sys.exit(0)
     if '/protection' in url.path:
-        print('{"required_status_checks": null}'); sys.exit(0)
+        print('{"message":"Branch not protected","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-branch-protection","status":"404"}')
+        sys.stderr.write('gh: Branch not protected (HTTP 404)\\n'); sys.exit(1)
     current = json.loads((p / 'current').read_text())
     rows = current.get('statusCheckRollup')
     if url.path.endswith('check-runs'):
@@ -122,6 +124,74 @@ print(json.dumps(step))
         result, event = self.run_watch([snapshot([dict(context='other', state='SUCCESS')])],
                                        deadline='2s')
         self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+
+    def test_unprotected_branch_404_is_ready(self):
+        result, event = self.run_watch([snapshot([dict(state='SUCCESS')])])
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual(result.stderr, '')
+        self.assertIn('/branches/master/protection', (self.home / 'argv').read_text())
+
+    def test_other_protection_errors_fail_closed(self):
+        cases = [('403', 'Resource not accessible by integration'),
+                 ('404', 'Not Found'), ('403', 'Branch not protected'),
+                 (None, 'Branch not protected'), ('404', None),
+                 (['404'], 'Branch not protected')]
+        for status, message in cases:
+            with self.subTest(status=status, message=message):
+                (self.home / 'calls').unlink(missing_ok=True)
+                error = f'gh: {message} (HTTP {status})\n'
+                (self.home / 'api').write_text(json.dumps({
+                    'repos/owner/repo/branches/master/protection': dict(
+                        error=error, stdout=json.dumps(dict(message=message, status=status)))}))
+                result, event = self.run_watch([snapshot([dict(state='SUCCESS')])])
+                self.assertEqual((result.returncode, event['event']), (30, 'GH_ERROR'))
+                self.assertEqual(result.stderr, error)
+
+    def test_required_manifest_read_once_during_settle(self):
+        result, event = self.run_watch([snapshot([dict(state='SUCCESS')])], settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        calls = (self.home / 'argv').read_text()
+        self.assertEqual(calls.count('/rules/branches/master?'), 1)
+        self.assertEqual(calls.count('/branches/master/protection'), 1)
+
+    def test_pending_poll_refreshes_required_manifest(self):
+        green = snapshot([dict(id=1, context='ci', state='SUCCESS')])
+        pending = snapshot([dict(id=1, context='ci', state='PENDING')])
+        result, event = self.run_watch([green, pending, green], settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual((self.home / 'argv').read_text().count('/rules/branches/master?'), 2)
+
+    def test_pending_polls_reuse_required_manifest_before_settle(self):
+        result, event = self.run_watch([snapshot([dict(context='ci', state='PENDING')])],
+                                       deadline='1s')
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+        self.assertGreater(int((self.home / 'calls').read_text()), 1)
+        self.assertEqual((self.home / 'argv').read_text().count('/rules/branches/master?'), 1)
+
+    def test_green_window_refreshes_manifest_after_pending(self):
+        pending = snapshot([dict(context='ci', state='PENDING')])
+        green = snapshot([dict(context='ci', state='SUCCESS')])
+        result, event = self.run_watch([pending, green], settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual((self.home / 'argv').read_text().count('/rules/branches/master?'), 2)
+
+    def test_new_registration_refreshes_required_manifest(self):
+        green = snapshot([dict(id=1, context='ci', state='SUCCESS')])
+        late = snapshot([dict(id=1, context='ci', state='SUCCESS'),
+                         dict(id=2, context='late', state='SUCCESS')])
+        result, event = self.run_watch([green, late], settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual((self.home / 'argv').read_text().count('/rules/branches/master?'), 2)
+
+    def test_base_change_refreshes_required_manifest(self):
+        green = snapshot([dict(context='ci', state='SUCCESS')])
+        changed = dict(green, baseRefName='protected')
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/rules/branches/protected': [dict(type='required_status_checks',
+                parameters=dict(required_status_checks=[dict(context='required')]))]}))
+        result, event = self.run_watch([green, changed], deadline='2s', settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+        self.assertIn('/rules/branches/protected?', (self.home / 'argv').read_text())
 
     def test_ruleset_api_error_is_gh_error(self):
         error = 'gh: HTTP 403 rules unavailable\n'
@@ -416,7 +486,7 @@ class SettleTests(unittest.TestCase):
         def sleep(seconds):
             now[0] += seconds
         reads = []
-        def read(args, remaining, checks=True):
+        def read(args, remaining, checks=True, required_cache=None):
             reads.append((now[0], checks))
             step = steps[min(len(reads) - 1, len(steps) - 1)]
             if isinstance(step, str):
