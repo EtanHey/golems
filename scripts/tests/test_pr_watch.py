@@ -5,6 +5,10 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
+from types import SimpleNamespace
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'scripts/pr-watch'
@@ -12,7 +16,7 @@ HEAD = 'a' * 40
 
 
 def snapshot(checks=None, head=HEAD, state='OPEN'):
-    return dict(headRefOid=head, state=state, reviewDecision='',
+    return dict(headRefOid=head, state=state, reviewDecision='', baseRefName='master',
                 statusCheckRollup=[dict(row, **({'name': row.get('name', f'check-{i}')}
                     if 'status' in row else {'context': row.get('context', f'context-{i}')}))
                     for i, row in enumerate(checks or [])])
@@ -33,16 +37,26 @@ p = Path(os.environ['FIXTURE_DIR'])
 if sys.argv[1] == 'api':
     from urllib.parse import urlsplit, parse_qs
     url = urlsplit(sys.argv[2]); query = parse_qs(url.query)
-    page = int(query['page'][0]); size = int(query['per_page'][0])
+    page = int(query.get('page', ['1'])[0]); size = int(query.get('per_page', ['100'])[0])
     with (p / 'argv').open('a') as f: f.write(json.dumps(sys.argv[1:]) + '\\n')
     if (p / 'api').exists():
         fixtures = json.loads((p / 'api').read_text())
         if url.path in fixtures:
             data = fixtures[url.path]
+            if isinstance(data, dict) and 'error' in data:
+                sys.stdout.write(data.get('stdout', ''))
+                sys.stderr.write(data['error']); sys.exit(1)
+            if '/protection' in url.path:
+                print(json.dumps(data)); sys.exit(0)
             key = next((k for k in ['check_runs', 'workflow_runs', 'jobs'] if isinstance(data, dict) and k in data), None)
             rows = data[key] if key else data
             chunk = rows[(page-1)*size:page*size]
             print(json.dumps({key: chunk} if key else chunk)); sys.exit(0)
+    if '/rules/branches/' in url.path:
+        print('[]'); sys.exit(0)
+    if '/protection' in url.path:
+        print('{"message":"Branch not protected","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-branch-protection","status":"404"}')
+        sys.stderr.write('gh: Branch not protected (HTTP 404)\\n'); sys.exit(1)
     current = json.loads((p / 'current').read_text())
     rows = current.get('statusCheckRollup')
     if url.path.endswith('check-runs'):
@@ -71,15 +85,16 @@ print(json.dumps(step))
 ''')
         gh.chmod(0o755)
 
-    def run_watch(self, steps, deadline='1s', retries=0):
+    def run_watch(self, steps, deadline='3s', retries=0, settle='1ms'):
         (self.home / 'steps').write_text(json.dumps(steps))
         env = dict(os.environ, FIXTURE_DIR=str(self.home),
                    PATH=f'{self.home}:{os.environ["PATH"]}')
         result = subprocess.run([str(SCRIPT), 'owner/repo', '42', '--head', HEAD,
                                  '--deadline', deadline, '--poll-seconds', '0.001',
                                  '--max-gh-retries', str(retries), '--state-file',
-                                 str(self.home / 'state.json')],
-                                env=env, capture_output=True, text=True, timeout=5)
+                                 str(self.home / 'state.json')] +
+                                (['--settle', settle] if settle else []),
+                                env=env, capture_output=True, text=True, timeout=8)
         self.assertEqual(len(result.stdout.splitlines()), 1, result.stdout)
         event = json.loads(result.stdout)
         self.assertEqual(event['sha'], HEAD)
@@ -93,6 +108,136 @@ print(json.dumps(step))
         api.update({f'{base}/actions/runs/{run_id}/jobs': {'jobs': rows}
                     for run_id, rows in (jobs or {}).items()})
         (self.home / 'api').write_text(json.dumps(api))
+
+    def test_required_ruleset_context_absent_is_pending(self):
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/rules/branches/master': [dict(type='required_status_checks',
+                parameters=dict(required_status_checks=[dict(context='required')]))]}))
+        result, event = self.run_watch([snapshot([dict(context='other', state='SUCCESS')])],
+                                       deadline='2s')
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+
+    def test_classic_protection_context_absent_is_pending(self):
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/branches/master/protection': dict(
+                required_status_checks=dict(contexts=['required'], checks=[]))}))
+        result, event = self.run_watch([snapshot([dict(context='other', state='SUCCESS')])],
+                                       deadline='2s')
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+
+    def test_unprotected_branch_404_is_ready(self):
+        result, event = self.run_watch([snapshot([dict(state='SUCCESS')])])
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual(result.stderr, '')
+        self.assertIn('/branches/master/protection', (self.home / 'argv').read_text())
+
+    def test_other_protection_errors_fail_closed(self):
+        cases = [('403', 'Resource not accessible by integration'),
+                 ('404', 'Not Found'), ('403', 'Branch not protected'),
+                 (None, 'Branch not protected'), ('404', None),
+                 (['404'], 'Branch not protected')]
+        for status, message in cases:
+            with self.subTest(status=status, message=message):
+                (self.home / 'calls').unlink(missing_ok=True)
+                error = f'gh: {message} (HTTP {status})\n'
+                (self.home / 'api').write_text(json.dumps({
+                    'repos/owner/repo/branches/master/protection': dict(
+                        error=error, stdout=json.dumps(dict(message=message, status=status)))}))
+                result, event = self.run_watch([snapshot([dict(state='SUCCESS')])])
+                self.assertEqual((result.returncode, event['event']), (30, 'GH_ERROR'))
+                self.assertEqual(result.stderr, error)
+
+    def test_required_manifest_read_once_during_settle(self):
+        result, event = self.run_watch([snapshot([dict(state='SUCCESS')])], settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        calls = (self.home / 'argv').read_text()
+        self.assertEqual(calls.count('/rules/branches/master?'), 1)
+        self.assertEqual(calls.count('/branches/master/protection'), 1)
+
+    def test_pending_poll_refreshes_required_manifest(self):
+        green = snapshot([dict(id=1, context='ci', state='SUCCESS')])
+        pending = snapshot([dict(id=1, context='ci', state='PENDING')])
+        result, event = self.run_watch([green, pending, green], settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual((self.home / 'argv').read_text().count('/rules/branches/master?'), 2)
+
+    def test_pending_polls_reuse_required_manifest_before_settle(self):
+        result, event = self.run_watch([snapshot([dict(context='ci', state='PENDING')])],
+                                       deadline='1s')
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+        self.assertGreater(int((self.home / 'calls').read_text()), 1)
+        self.assertEqual((self.home / 'argv').read_text().count('/rules/branches/master?'), 1)
+
+    def test_green_window_refreshes_manifest_after_pending(self):
+        pending = snapshot([dict(context='ci', state='PENDING')])
+        green = snapshot([dict(context='ci', state='SUCCESS')])
+        result, event = self.run_watch([pending, green], settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual((self.home / 'argv').read_text().count('/rules/branches/master?'), 2)
+
+    def test_new_registration_refreshes_required_manifest(self):
+        green = snapshot([dict(id=1, context='ci', state='SUCCESS')])
+        late = snapshot([dict(id=1, context='ci', state='SUCCESS'),
+                         dict(id=2, context='late', state='SUCCESS')])
+        result, event = self.run_watch([green, late], settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertEqual((self.home / 'argv').read_text().count('/rules/branches/master?'), 2)
+
+    def test_base_change_refreshes_required_manifest(self):
+        green = snapshot([dict(context='ci', state='SUCCESS')])
+        changed = dict(green, baseRefName='protected')
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/rules/branches/protected': [dict(type='required_status_checks',
+                parameters=dict(required_status_checks=[dict(context='required')]))]}))
+        result, event = self.run_watch([green, changed], deadline='2s', settle='200ms')
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+        self.assertIn('/rules/branches/protected?', (self.home / 'argv').read_text())
+
+    def test_ruleset_api_error_is_gh_error(self):
+        error = 'gh: HTTP 403 rules unavailable\n'
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/rules/branches/master': dict(error=error)}))
+        result, event = self.run_watch([snapshot([dict(state='SUCCESS')])])
+        self.assertEqual((result.returncode, event['event']), (30, 'GH_ERROR'))
+        self.assertEqual(result.stderr, error)
+
+    def test_required_context_present_is_ready(self):
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/rules/branches/master': [dict(type='required_status_checks',
+                parameters=dict(required_status_checks=[dict(context='required')]))]}))
+        result, event = self.run_watch([snapshot([dict(context='required', state='SUCCESS')])])
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertNotIn('/protection', (self.home / 'argv').read_text())
+
+    def test_required_context_from_second_rules_page(self):
+        rules = [dict(type='deletion') for _ in range(100)] + [dict(type='required_status_checks',
+            parameters=dict(required_status_checks=[dict(context='required')]))]
+        (self.home / 'api').write_text(json.dumps({'repos/owner/repo/rules/branches/master': rules}))
+        result, event = self.run_watch([snapshot([dict(context='required', state='SUCCESS')])])
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
+        self.assertIn('rules/branches/master?per_page=100&page=2', (self.home / 'argv').read_text())
+
+    def test_wrong_app_cannot_satisfy_required_context(self):
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/rules/branches/master': [dict(type='required_status_checks',
+                parameters=dict(required_status_checks=[dict(context='required', integration_id=7)]))]}))
+        result, event = self.run_watch([snapshot([dict(id=1, name='required', app={'id': 8},
+            status='completed', conclusion='success')])], deadline='2s')
+        self.assertEqual((result.returncode, event['event']), (20, 'DEADLINE'))
+
+    def test_malformed_ruleset_manifest_is_error(self):
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/rules/branches/master': [dict(type='required_status_checks', parameters={})]}))
+        result, event = self.run_watch([snapshot([dict(state='SUCCESS')])])
+        self.assertEqual((result.returncode, event['event']), (30, 'GH_ERROR'))
+
+    def test_classic_protection_context_present_is_ready(self):
+        (self.home / 'api').write_text(json.dumps({
+            'repos/owner/repo/branches/master/protection': dict(
+                required_status_checks=dict(contexts=['required'], checks=[dict(context='required', app_id=7)]))}))
+        result, event = self.run_watch([snapshot([dict(id=1, name='required', app={'id': 7},
+            status='completed', conclusion='success')])])
+        self.assertEqual((result.returncode, event['event']), (0, 'READY'))
 
     def test_758_superseded_rollup_ready(self):
         def check(cid, suite, name, conclusion):
@@ -114,11 +259,11 @@ print(json.dumps(step))
                      for row in rows if row['check_suite']['id'] == 11],
                 21: [{k: v for k, v in rows[-1].items() if k not in {'app', 'check_suite'}}]}
         self.rest_fixture(rows, runs, jobs)
-        result, event = self.run_watch([snapshot()], deadline='2s')
+        result, event = self.run_watch([snapshot()], deadline='4s')
         self.assertEqual(result.returncode, 0, (event, result.stderr))
         self.assertEqual((event['event'], event['checks']), ('READY', 'green'))
         (self.home / 'calls').unlink()
-        result, event = self.run_watch([snapshot(state='MERGED')], deadline='2s')
+        result, event = self.run_watch([snapshot(state='MERGED')], deadline='4s')
         self.assertEqual((result.returncode, event['event'], event['checks']), (12, 'MERGED', 'green'))
 
     def test_newer_partial_workflow_cannot_reuse_older_green_jobs(self):
@@ -180,12 +325,12 @@ print(json.dumps(step))
 
     def test_merge_during_head_confirmation_is_distinct(self):
         green = snapshot([dict(state='SUCCESS')])
-        result, event = self.run_watch([green, snapshot(state='MERGED')])
+        result, event = self.run_watch([green, green, snapshot(state='MERGED')])
         self.assertEqual((result.returncode, event['event'], event['checks']), (12, 'MERGED', 'green'))
 
     def test_healthy_poll_resets_retry_budget_and_null_review(self):
         green = snapshot([dict(state='SUCCESS')]); green['reviewDecision'] = None
-        result, event = self.run_watch([dict(error='one\n'), snapshot(), dict(error='two\n'), green], retries=1)
+        result, event = self.run_watch([dict(error='one\n'), snapshot(), dict(error='two\n'), green], retries=1, deadline='5s')
         self.assertEqual((result.returncode, event['event']), (0, 'READY'))
         self.assertEqual(result.stderr, 'one\ntwo\n')
         self.assertEqual(event['review_decision'], '')
@@ -318,6 +463,78 @@ print(json.dumps(step))
                 self.assertNotIn('--method', command)
             else:
                 self.assertEqual(command[:5], ['--repo', 'owner/repo', 'pr', 'view', '42'])
+
+
+class SettleTests(unittest.TestCase):
+    def test_settle_cli_default_duration_and_validation(self):
+        parse = runpy.run_path(str(SCRIPT))['parse_args']
+        argv = [str(SCRIPT), 'owner/repo', '42', '--head', HEAD]
+        with patch.object(__import__('sys'), 'argv', argv):
+            self.assertEqual(parse().settle, 180)
+        with patch.object(__import__('sys'), 'argv', argv + ['--settle', '2m']):
+            self.assertEqual(parse().settle, 120)
+        for value in ['0s', '-1s', 'nan', '180']:
+            with self.subTest(value=value), redirect_stderr(StringIO()), \
+                 patch.object(__import__('sys'), 'argv', argv + ['--settle', value]):
+                with self.assertRaises(SystemExit) as error:
+                    parse()
+                self.assertEqual(error.exception.code, 2)
+
+    def simulate(self, steps, settle=180, deadline=400, retries=0):
+        watch = runpy.run_path(str(SCRIPT))['watch']
+        now = [0]
+        def sleep(seconds):
+            now[0] += seconds
+        reads = []
+        def read(args, remaining, checks=True, required_cache=None):
+            reads.append((now[0], checks))
+            step = steps[min(len(reads) - 1, len(steps) - 1)]
+            if isinstance(step, str):
+                raise watch.__globals__['GhCommandError'](step)
+            return dict(step)
+        args = SimpleNamespace(repo='owner/repo', pr=42, head=HEAD, settle=settle,
+                               deadline=deadline, poll_seconds=30, max_gh_retries=retries,
+                               state_file=Path('unused'))
+        clock = SimpleNamespace(monotonic=lambda: now[0], time=lambda: now[0], sleep=sleep)
+        with patch.dict(watch.__globals__, time=clock, read_pr=read), \
+             patch.object(watch.__globals__['upstream'], 'load_state', return_value=({}, None)), \
+             patch.object(watch.__globals__['upstream'], 'save_state'), \
+             patch('builtins.print'), redirect_stderr(StringIO()):
+            code = watch(args)
+        return code, now[0], reads
+
+    def test_late_registering_check_resets_settle(self):
+        green = dict(id=1, name='ci', status='completed', conclusion='success')
+        late = dict(id=2, name='late', status='completed', conclusion='success')
+        code, elapsed, _ = self.simulate([snapshot([green]), snapshot([green, late])])
+        self.assertEqual(code, 0)
+        self.assertEqual(elapsed, 210)
+
+    def test_pending_rerun_resets_green_window(self):
+        green = dict(id=1, name='ci', status='completed', conclusion='success')
+        pending = dict(green, id=2, status='queued', conclusion=None)
+        rerun = dict(green, id=2)
+        code, elapsed, _ = self.simulate([snapshot([green]), snapshot([pending]), snapshot([rerun])])
+        self.assertEqual((code, elapsed), (0, 240))
+
+    def test_settle_longer_than_deadline_never_ready(self):
+        code, elapsed, _ = self.simulate([snapshot([dict(state='SUCCESS')])], deadline=60)
+        self.assertEqual((code, elapsed), (20, 60))
+
+    def test_head_moves_during_settle(self):
+        code, _, _ = self.simulate([snapshot([dict(state='SUCCESS')]), snapshot(head='b' * 40)])
+        self.assertEqual(code, 11)
+
+    def test_workflow_run_attempt_resets_settle(self):
+        run = dict(id=1, name='__workflow__', _kind='workflow', workflow_id=1,
+                   workflowName='ci', run_attempt=1, status='completed', conclusion='success')
+        code, elapsed, _ = self.simulate([snapshot([run]), snapshot([dict(run, run_attempt=2)])])
+        self.assertEqual((code, elapsed), (0, 210))
+
+    def test_api_error_interrupts_settle(self):
+        green = snapshot([dict(state='SUCCESS')])
+        code, elapsed, _ = self.simulate([green, 'temporary\n', green], retries=1)
+        self.assertEqual((code, elapsed), (0, 240))
 
 
 if __name__ == '__main__':
