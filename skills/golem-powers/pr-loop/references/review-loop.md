@@ -133,12 +133,22 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 
 ### For public repos (bot reviewers configured):
 
-Use native `Monitor` for CI completion and addressed review handoffs when the
-harness exposes it; otherwise use `/collab-monitor`'s packaged fallback with an
-attached consumer. Native calls use `timeout_ms: 1800000`; cancel with TaskStop
-and re-arm at expiry/after compaction. Use one `gh pr checks <N> --watch` command
-for CI. Query slim state/activity counts, then fetch full review bodies once
-when they change. Timed one-shot wakes remain ScheduleWakeup/CronCreate per
+Arm exactly one GitHub watch:
+`Monitor(command="~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`.
+Use this MBP checkout path today; once M1 is a release client, use `~/.golems/bin/pr-watch`.
+Codex runs the same command and reads its exit code. pr-watch never merges.
+An empty rollup is never READY. Required contexts must be present and green,
+and the default 180s settle window must stay quiet. See the
+[exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits).
+On exit 11, read the new head and re-arm with that SHA; on exit 20, re-arm if the
+wait continues. Cancel the old Monitor with TaskStop before re-arming at expiry
+or after compaction. READY remains a CI fact; read the exact-head review before
+an authorized merge. Never route Codex's output through a cmuxlayer file watch.
+
+For addressed review handoffs, use native `Monitor` when exposed; otherwise use
+`/collab-monitor`'s packaged fallback with an attached consumer. Query slim
+state/activity counts, then fetch full review bodies once when they change.
+Timed one-shot wakes remain ScheduleWakeup/CronCreate per
 `collab-monitor/references/cron-payloads.md`.
 
 ```bash

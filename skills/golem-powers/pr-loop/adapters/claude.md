@@ -28,11 +28,15 @@ These options are PR-stage review run by whoever owns the PR loop; who reviews b
 Agent(subagent_type="coderabbit:code-reviewer", prompt="Review PR #N in EtanHey/golems")
 
 # CI completion command for native Monitor
-gh pr checks <N> --watch
+~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h
 ```
 
-Use `Monitor({command, description, timeout_ms: 1800000})` for the CI command above
-or addressed review handoffs. Follow `/collab-monitor` for filtering, TaskStop
+Arm exactly one `Monitor(command="~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`
+for GitHub CI. pr-watch never merges; an empty rollup is never READY. Use the
+[exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits)
+and [shared arming rules](../references/review-loop.md#for-public-repos-bot-reviewers-configured)
+for head movement and deadline handling. Use native Monitor separately for
+addressed review handoffs; follow `/collab-monitor` for filtering, TaskStop
 cancellation and re-arming at expiry/after compaction. Fetch review bodies once
 a handoff or slim activity count changes. Timed one-shot wakes remain
 ScheduleWakeup/CronCreate per `collab-monitor/references/cron-payloads.md`.

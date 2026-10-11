@@ -23,7 +23,7 @@
 |-----|--------|-----------|
 | No `cr review` pre-commit check | Commits without CodeRabbit pre-screening | Run `cr review --plain` manually if cr is installed |
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Slim-poll review state (see CI + Review Waiting below) |
-| No native `Monitor` | Needs an attached watch consumer | `gh pr checks <N> --watch` for CI; `/collab-monitor` packaged fallback for addressed handoffs |
+| No native `Monitor` | Needs an attached watch consumer | `scripts/pr-watch` with the pinned head and exit code for CI; `/collab-monitor` packaged fallback for addressed handoffs |
 | No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |
 | No native review-bot tool | Can't invoke Codex Cloud or Cursor Bugbot through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens, filtered by the repo's bot policy |
 | No `AGENTS.md` bot-policy check in the loop | Can summon a bot the target repo bans | Read the target repo's `AGENTS.md` PR-workflow section BEFORE the first `@mention` ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)), and name the applied policy in the PR body |
@@ -77,8 +77,8 @@ input tokens and forced mid-task auto-compactions — every cycle re-ingests the
 entire comment/review payload into context.
 
 ```bash
-# CI: ONE blocking call — no loop, zero re-ingestion
-gh pr checks <N> --watch          # or: gh run watch <run-id> --exit-status
+# CI: ONE blocking call — read its exit code
+~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h
 
 # Review state: slim poll — state fields + activity COUNTS, never full bodies
 gh pr view <N> --json state,mergeStateStatus,reviewDecision
@@ -90,10 +90,13 @@ gh pr view <N> --json comments,reviews,latestReviews
 ```
 
 Rules:
-- CI waiting is a single `gh pr checks <N> --watch` call. Never wrap it in a
-  sleep loop. If you use `gh run watch` instead, pass `--exit-status` so a
-  failed run fails the command — otherwise `&& gh pr merge` flows sail past
-  red CI.
+- CI waiting is one pinned-head pr-watch command. Read the
+  [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits):
+  0 READY is a CI fact, 12 MERGED is an observed merge, 10 FAILED needs action,
+  11 HEAD_MOVED needs a new head pin, 20 DEADLINE needs re-arming if waiting
+  continues, and 30 GH_ERROR needs the stderr diagnosis. pr-watch never merges;
+  an empty rollup is never READY. Keep required contexts and the 180s default
+  settle window. Do not route its output through a cmuxlayer file watch.
 - While waiting on review, poll only the slim state fields plus the
   comment/review COUNTS (`--jq '... length'` — only the numbers enter
   context). Counts are the trigger that catches bot reviewers (CodeRabbit,
@@ -156,4 +159,4 @@ Use Codex for pr-loop ONLY when:
 - A Claude session can handle post-merge BrainLayer updates
 - `gh` CLI is installed and authenticated in the environment
 
-**Loop mechanics:** Open the PR, trigger review bots through `gh`, watch CI with `gh pr checks --watch`, and slim-poll review state. Use the routing pointer above for role ownership and a BrainLayer-capable session for post-merge tracking.
+**Loop mechanics:** Open the PR, trigger review bots through `gh`, watch CI with the pinned-head pr-watch command and read its exit code, and slim-poll review state. Use the routing pointer above for role ownership and a BrainLayer-capable session for post-merge tracking.

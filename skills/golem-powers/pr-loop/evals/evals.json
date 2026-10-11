@@ -571,6 +571,57 @@
           "description": "Does not dispatch merge solely on MERGEABLE; obtains exact-head review and required-check evidence."
         }
       ]
+    },
+    {
+      "id": 23,
+      "name": "one-monitor-pinned-head",
+      "prompt": "Claude has Monitor available. PR #303 in EtanHey/golems is waiting on CI at a known full SHA. Arm the watch.",
+      "expected_output": "Arms exactly one Monitor with command ~/Gits/golems/scripts/pr-watch EtanHey/golems 303 --head <full-sha> --deadline 2h and timeout_ms=1800000; no gh pr checks --watch or hand-rolled gh loop. Explains that pr-watch never merges, an empty rollup is never READY, and READY still needs exact-head review before authorized merge.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "one-monitor",
+          "description": "Arms exactly one Monitor with command ~/Gits/golems/scripts/pr-watch EtanHey/golems 303 --head <full-sha> --deadline 2h and timeout_ms=1800000; no gh pr checks --watch or hand-rolled gh loop."
+        },
+        {
+          "name": "ci-fact-only",
+          "description": "Explains that pr-watch never merges, an empty rollup is never READY, and READY still needs exact-head review before authorized merge."
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "codex-pr-watch-exits",
+      "prompt": "Codex has no native Monitor. PR #304 is pending at head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. Show the watch command and actions for exits 11, 20, and 30.",
+      "expected_output": "Runs ~/Gits/golems/scripts/pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 2h and reads its exit code; no cmuxlayer file watch. Exit 11 means read the fresh head and re-arm with it; exit 20 means re-arm if waiting continues; exit 30 means inspect verbatim gh stderr and diagnose. Points to scripts/pr-watch-lib/README.md exit-code table.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "same-command-exit-code",
+          "description": "Runs ~/Gits/golems/scripts/pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 2h and reads its exit code; no cmuxlayer file watch."
+        },
+        {
+          "name": "rearm-and-error",
+          "description": "Exit 11 means read the fresh head and re-arm with it; exit 20 means re-arm if waiting continues; exit 30 means inspect verbatim gh stderr and diagnose. Points to scripts/pr-watch-lib/README.md exit-code table."
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "empty-or-late-required-check",
+      "prompt": "A freshly pushed PR has an empty check rollup, then one green optional check. The required package test has not registered. Can pr-watch report READY? What about a new check during settle?",
+      "expected_output": "Never READY for an empty rollup or absent required context; missing contexts stay pending until DEADLINE. Required contexts come from base-branch rules with classic-protection fallback. Requires all latest checks green and a quiet default 180s settle window; a new check or run resets the window. No merge action is performed by pr-watch.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "missing-check-pending",
+          "description": "Never READY for an empty rollup or absent required context; missing contexts stay pending until DEADLINE. Required contexts come from base-branch rules with classic-protection fallback."
+        },
+        {
+          "name": "quiet-window",
+          "description": "Requires all latest checks green and a quiet default 180s settle window; a new check or run resets the window. No merge action is performed by pr-watch."
+        }
+      ]
     }
   ]
 }
