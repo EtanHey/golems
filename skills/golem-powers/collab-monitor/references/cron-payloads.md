@@ -122,7 +122,7 @@ Without these, identical frames are hard to distinguish from a stuck loop.
 The payload's branching logic must reference the output of the live query, not a static narrative written above it.
 
 Good:
-- "If `!gh pr view` reports mergeable=`MERGEABLE`, dispatch merge."
+- "If the live query reports a changed head, dispatch an exact-head review and required-check readback."
 
 Bad:
 - "Since this PR is blocked, keep monitoring."

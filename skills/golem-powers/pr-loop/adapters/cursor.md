@@ -12,7 +12,7 @@
 | Commit | `git add <files> && git commit` | No cr review pre-check |
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create ...` | If `gh` is installed + authenticated |
-| Read comments | `gh pr view <N> --comments` | Manual poll only |
+| Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | Manual poll only |
 | Merge | `gh pr merge <N> --merge --delete-branch` | |
 
 ## Critical Gaps
@@ -80,7 +80,7 @@ Until a source is verified:
   so this adapter and the `gh()` wrapper can be updated (golems / repoGolem lane owns the wrapper).
 
 Everything else in the convention applies unchanged: visible line + one-line blob last in the body,
-ownership marker on non-`EtanHey` repos, no `effort` field anywhere, and the commit trailer
+ownership marker on non-`EtanHey` repos; effort is allowed only on the Loop-record line. The commit trailer is
 `Co-Authored-By: <seat> running <model> <noreply@anthropic.com>` (with `unknown` where the model is
 genuinely unavailable). Use `--body-file`, not inline `--body`, so the blob survives shell quoting.
 

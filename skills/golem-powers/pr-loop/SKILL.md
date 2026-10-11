@@ -44,11 +44,13 @@ Run the loop in this order:
 
 ## Hard Gates
 
+- Missing Loop-record = not ready. Use the PR-body template; a same-vendor review states its reason.
+
 - Never merge with zero reviews. Waiting 15 minutes does not waive the review gate; merge only after at least one review and the required review conditions pass.
 - Draft PRs silently skip bot reviews. Mark the PR ready before invoking reviewers.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
 - Never merge with an unreplied CRITICAL, MAJOR, or HIGH finding.
-- Two review rounds are the normal minimum; three is the maximum for new non-critical findings.
+- One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; round 3 only by a lead exception written in the PR body (canon #9).
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
 - Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for daemon/engine/transport diffs.
 - Cursor diff passes are read-only: findings only, never edit the PR branch. Routing: see `/agent-routing` § Routing rules (SSOT).

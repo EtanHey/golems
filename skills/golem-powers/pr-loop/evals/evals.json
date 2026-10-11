@@ -131,8 +131,8 @@
     },
     {
       "id": 6,
-      "prompt": "I pushed fixes for the CodeRabbit review on PR #215. Can I merge now?",
-      "expected_output": "Agent says no — must wait for re-review after pushing fixes. Explains minimum 2 rounds, requests re-review from bots, and checks for new issues before merging.",
+      "prompt": "I pushed fixes for BLOCKING CodeRabbit findings on PR #215 after round 1. Can I merge now?",
+      "expected_output": "Agent requests round 2 review of the blocking fixes at headRefOid and checks required checks before merge. One clean initial review would have sufficed; no forced second clean round. Round 3 requires a lead exception written in the PR body.",
       "files": [],
       "assertions": [
         {
@@ -144,8 +144,8 @@
           "description": "Response includes triggering re-review (e.g., @coderabbitai review, @cursor @bugbot re-review) after pushing fixes"
         },
         {
-          "name": "enforces-minimum-two-rounds",
-          "description": "Response acknowledges the minimum 2-round rule and does not treat round 1 fixes as sufficient for merge"
+          "name": "canon-nine-round-cap",
+          "description": "Response limits round 2 to BLOCKING findings and requires a lead exception written in the PR body for round 3; never claims a minimum of two clean rounds."
         }
       ]
     },
@@ -430,7 +430,7 @@
         {
           "name": "no-effort-on-github",
           "type": "negative",
-          "description": "Prompt does not ask the worker to publish an effort value to GitHub"
+          "description": "Prompt permits observed effort only in Loop-record; signature and trailer carry no effort"
         },
         {
           "name": "explains-interim-status",
@@ -504,6 +504,71 @@
           "name": "pr-url-present",
           "type": "outcome",
           "description": "The DONE report includes the PR URL"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "clean-head-one-round",
+      "prompt": "PR #301 has one clean review at headRefOid and required checks green. No blocking findings. Must we wait for round 2?",
+      "expected_output": "Allows authorized merge after one clean exact-head review; no minimum second round.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "clean-head-one-round",
+          "description": "Allows authorized merge after one clean exact-head review; no minimum second round."
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "paginate-all-review-sources",
+      "prompt": "PR #302 has 130 discussion comments, 120 inline comments and 110 review bodies. Show commands to read all feedback.",
+      "expected_output": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews in core guidance and Codex/Cursor adapters; does not rely on gh pr view --comments.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "paginate-all-review-sources",
+          "description": "Uses gh api --paginate for issues/{N}/comments, pulls/{N}/comments and pulls/{N}/reviews in core guidance and Codex/Cursor adapters; does not rely on gh pr view --comments."
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "non-core-panel",
+      "prompt": "This PR changes skill documentation only. No repo bot restriction. Which reviewers do you invoke?",
+      "expected_output": "CodeRabbit plus one reviewer; full panel only on daemon/engine/transport diffs; no Bugbot.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "non-core-panel",
+          "description": "CodeRabbit plus one reviewer; full panel only on daemon/engine/transport diffs; no Bugbot."
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "loop-record-readiness",
+      "prompt": "PR body lacks Loop-record. Implementer is openai/gpt-example/high; reviewer is openai/gpt-review, 1 inner and 0 remote rounds, zero defects, worker role. Is it ready?",
+      "expected_output": "Missing Loop-record = not ready. Adds Loop-record: implementer=openai/gpt-example/high reviewer=openai/gpt-review rounds=1/0 defects=0 role=worker and states the same-vendor review reason.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "loop-record-readiness",
+          "description": "Missing Loop-record = not ready. Adds Loop-record: implementer=openai/gpt-example/high reviewer=openai/gpt-review rounds=1/0 defects=0 role=worker and states the same-vendor review reason."
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "mergeable-is-not-reviewed",
+      "prompt": "A cron live query reports MERGEABLE, but no exact-head review or required-check receipt. Dispatch merge?",
+      "expected_output": "Does not dispatch merge solely on MERGEABLE; obtains exact-head review and required-check evidence.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "mergeable-is-not-reviewed",
+          "description": "Does not dispatch merge solely on MERGEABLE; obtains exact-head review and required-check evidence."
         }
       ]
     }

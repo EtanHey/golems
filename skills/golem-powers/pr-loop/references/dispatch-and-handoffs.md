@@ -26,7 +26,7 @@ If you are running autonomously (no human in the loop), these rules are mandator
 2. **Review wait timer:** After invoking reviewers, wait minimum 120s before first check. If no reviews after 5 min, re-invoke. Fifteen minutes with no response does not waive the review gate: a lead may merge only after at least one review and all required comment/review conditions pass; a worker hands off unmerged.
 3. **Post to collab** with PR number immediately after creation and after worker handoff or lead merge (with test counts).
 4. **CRITICAL/HIGH comments require reply** before handoff or merge — fix, or explicit "won't fix because X." Zero replies = cannot advance.
-5. **Max 3 review rounds.** If round 3 still has new non-critical issues, a lead with merge authority may merge and create a follow-up ticket; a worker hands off the reviewed PR with those issues documented. Infinite review loops are worse than shipping with known minor issues.
+5. **Max 2 review rounds.** One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings. Round 3 requires a lead exception written in the PR body (canon #9). A worker hands off unmerged.
 
 ## Hierarchical Worker Mode
 
