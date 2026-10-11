@@ -5,6 +5,7 @@
     "test-bun-version-pin.bats",
     "test-check-instruction-shape.bats",
     "test-cleanup-legacy-commands.bats",
+    "test-disk-free-floor.bats",
     "test-golem-install-validate.bats",
     "test-golems-sync.bats",
     "test-grill-me-upstream-port.bats",
@@ -27,6 +28,9 @@
     "test-sync-config.bats",
     "test-wired-hook-shared-parser.bats",
     "test-worktree-bootstrap.bats",
+    "test-worktree-gc-astra.bats",
+    "test-worktree-gc-nightly-r2.bats",
+    "test-worktree-gc-r2.bats",
     "test-worktree-gc.bats"
   ],
   "skip": {}

@@ -37,6 +37,8 @@ PUBLIC_SUITES = (
     "skills/golem-powers/git-guardian/hooks/tests",
     "scripts/tests/test_codex_policy_hook.py",
 )
+# Environment names through which fixtures select the source they test.
+SOURCE_ROOT_ALIASES = ("GUARD_ROOT", "GOLEMS_GUARD_CANDIDATE", "S616B_SOURCE", "S616_R2_SOURCE")
 
 
 def clean_env():
@@ -254,8 +256,11 @@ def slot():
 
 
 def execute_suite(paths, out, tree, name, expected=None, timeout=900):
-    env = {**clean_env(), "S616B_SOURCE": str(tree), "S616_R2_SOURCE": str(tree),
-           "GOLEMS_GUARD_CANDIDATE": str(tree), "PYTHONDONTWRITEBYTECODE": "1",
+    # Every documented fixture source-root alias names the validated candidate,
+    # overriding inherited values; otherwise a GUARD_ROOT fixture outside the
+    # candidate falls back to its own checkout (the live install layout).
+    env = {**clean_env(), **{alias: str(tree) for alias in SOURCE_ROOT_ALIASES},
+           "PYTHONDONTWRITEBYTECODE": "1",
            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "TMP_BLOCK_LEDGER": str(out / "ledger.jsonl")}
     # Repository-boundary fixtures must not inherit the invoking checkout's .git.
     # Keep their ephemeral data in a durable docs.local area under fixture HOME.

@@ -1,0 +1,15 @@
+{
+  "kind": "deterministic-regression",
+  "behavioral_ab_score": "NOT MEASURED",
+  "prompt": "Append three report episodes with identical addressed headings and distinct report bodies/pointers; poll between appends using private scratch state.",
+  "expected_output": "Three distinct actionable events, each observed once; unchanged polling and restart emit none.",
+  "assertions": [
+    "unique_events: three fresh heading hashes, no replay on unchanged poll or unrelated growth; a heading completed across polls emits once and body extension stays silent; shrink warns without replay",
+    "batch_and_copies: a single poll emits three repeated headings; mirrored copies stay deduplicated; repeated self headings emit only SELF-POST with opt-in",
+    "seeded_history: first arm silently seeds repeated history, next matching heading emits one event",
+    "legacy_history: legacy heading-only seen hashes and watermark suppress old repeated headings but allow the next one",
+    "incomplete_and_boundaries: unclosed fence emits no event or watermark advance, recovery emits once; self, near-miss and code headings remain excluded",
+    "follow_smoke: isolated detached producer to packaged follow consumer exposes all three distinct events; real parent attachment remains UNPROVEN"
+  ],
+  "category": "compliance"
+}

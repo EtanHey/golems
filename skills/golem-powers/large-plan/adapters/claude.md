@@ -28,8 +28,11 @@ Agent(
 
 Watches: follow `/collab-monitor` before dispatch and after every compaction;
 a DONE marker or version match still needs artifact or real-client verification.
-Use its native Monitor how-to, 30-minute expiry and re-arm rules; stop the returned
-task ID with TaskStop when the plan closes. Codex seats use its packaged fallback.
+Use its native Monitor how-to, 30-minute expiry and re-arm rules; record the returned
+task ID and use TaskStop before replacing a watch or when the plan closes. Preserve
+routing state and avoid duplicate streams. Codex seats use its packaged fallback
+with an attached consumer. Also arm a separate process-exit or process/registry
+watcher; the collab monitor MUST NOT be the only worker-liveness guard.
 
 ## Plan Mode
 

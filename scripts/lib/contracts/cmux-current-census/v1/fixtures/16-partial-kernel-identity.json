@@ -1,0 +1,395 @@
+{
+  "format": "cmux-current-census/v1",
+  "status": "INCOMPLETE",
+  "consumer_nonce": "synthetic-nonce",
+  "run_id": "synthetic-run",
+  "host_id": null,
+  "os_boot_id": null,
+  "owner_uid": 900000001,
+  "source_versions": [
+    {
+      "component": "synthetic",
+      "version": null,
+      "source_commit": null,
+      "binary_sha256": null,
+      "association_basis": "UNKNOWN"
+    }
+  ],
+  "collection_started_us": "1",
+  "collection_completed_us": "2",
+  "collection_policy": {
+    "max_rounds": 2,
+    "elapsed_budget_us": "10000000",
+    "max_wire_bytes": 16777216,
+    "max_records_per_array": 100000,
+    "stop_reason": "UNRESOLVED"
+  },
+  "coverage": {
+    "attempts": [
+      {
+        "attempt_id": "a0",
+        "round": 1,
+        "started_us": "1",
+        "completed_us": "2",
+        "operation": "KERNEL_MEMBERSHIP",
+        "result": "OK",
+        "subject_pid": null,
+        "captured_launch": null,
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic-kernel-identity-read",
+          "source_component": "synthetic",
+          "observed_us": "2"
+        }
+      },
+      {
+        "attempt_id": "a1",
+        "round": 1,
+        "started_us": "1",
+        "completed_us": "2",
+        "operation": "PROCESS_IDENTITY",
+        "result": "OK",
+        "subject_pid": 900000001,
+        "captured_launch": null,
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic-kernel-identity-read",
+          "source_component": "synthetic",
+          "observed_us": "2"
+        },
+        "kernel_identity_observation": {
+          "host_id": null,
+          "os_boot_id": null,
+          "pid": 900000001,
+          "start_seconds": "1",
+          "start_microseconds": "2",
+          "uid": 900000001,
+          "provenance": {
+            "source": "KERNEL_LIBPROC",
+            "method": "synthetic-kernel-identity-read",
+            "source_component": "synthetic",
+            "observed_us": "2"
+          }
+        }
+      },
+      {
+        "attempt_id": "a2",
+        "round": 1,
+        "started_us": "1",
+        "completed_us": "2",
+        "operation": "RAW_REGISTRATION",
+        "result": "OK",
+        "subject_pid": null,
+        "captured_launch": null,
+        "errno": null,
+        "provenance": {
+          "source": "RAW_REGISTRY",
+          "method": "synthetic-row-inventory",
+          "source_component": "synthetic",
+          "observed_us": "2"
+        }
+      }
+    ],
+    "membership_observations": [
+      {
+        "observation_id": "m_pid",
+        "attempt_ref": "a0",
+        "phase": "BEFORE",
+        "scope": "OWNER_PID",
+        "source": "KERNEL_OWNER",
+        "authoritative": true,
+        "members": [
+          900000001
+        ],
+        "observed_members": [
+          900000001
+        ]
+      },
+      {
+        "observation_id": "m_launch",
+        "attempt_ref": "a1",
+        "phase": "AFTER",
+        "scope": "OWNER_LAUNCH",
+        "source": "KERNEL_OWNER",
+        "authoritative": false,
+        "members": null,
+        "observed_members": []
+      }
+    ],
+    "resolutions": [],
+    "process_observation_refs": [
+      "p_partial"
+    ],
+    "final_process_refs": null,
+    "final_surface_refs": null,
+    "final_registration_refs": null
+  },
+  "surfaces": null,
+  "processes": [
+    {
+      "process_record_id": "p_partial",
+      "attempt_ref": "a1",
+      "pid": 900000001,
+      "ppid": null,
+      "uid": 900000001,
+      "launch": null,
+      "kernel_identity_observation": {
+        "host_id": null,
+        "os_boot_id": null,
+        "pid": 900000001,
+        "start_seconds": "1",
+        "start_microseconds": "2",
+        "uid": 900000001,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic-kernel-identity-read",
+          "source_component": "synthetic",
+          "observed_us": "2"
+        }
+      },
+      "identity_provenance": {
+        "source": "KERNEL_LIBPROC",
+        "method": "synthetic-kernel-identity-read",
+        "source_component": "synthetic",
+        "observed_us": "2"
+      },
+      "cwd": {
+        "path": "/__synthetic_gc__/worktree-partial",
+        "role": "CWD",
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic-kernel-identity-read",
+          "source_component": "synthetic",
+          "observed_us": "2"
+        }
+      },
+      "protected_paths": null,
+      "classification": "UNKNOWN",
+      "session_id": null,
+      "binding": "UNRESOLVED"
+    }
+  ],
+  "registration_dispositions": [
+    {
+      "registration_record_id": "r_partial",
+      "row_ref": {
+        "registry_id": "synthetic-registry",
+        "row_number": "1",
+        "byte_offset": null
+      },
+      "row_digest": null,
+      "disposition": "UNRESOLVED",
+      "harness_process_ref": null,
+      "captured_launch": null,
+      "kernel_identity_observation": {
+        "host_id": null,
+        "os_boot_id": null,
+        "pid": 900000001,
+        "start_seconds": "1",
+        "start_microseconds": "2",
+        "uid": 900000001,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic-kernel-identity-read",
+          "source_component": "synthetic",
+          "observed_us": "2"
+        }
+      },
+      "session_id": null,
+      "protected_paths": null,
+      "provenance": {
+        "source": "RAW_REGISTRY",
+        "method": "synthetic-row-inventory",
+        "source_component": "synthetic",
+        "observed_us": "2"
+      }
+    }
+  ],
+  "blockers": [
+    {
+      "code": "MISSING_EVIDENCE",
+      "subject_ref": "p_partial",
+      "reason": "Synthetic host/boot unavailable: partial kernel fields cannot establish a launch or final identity"
+    },
+    {
+      "code": "UNRESOLVED_REGISTRATION",
+      "subject_ref": "r_partial",
+      "reason": "Partial kernel observation cannot establish an authoritative harness join or release a path"
+    }
+  ],
+  "missing_evidence": [
+    {
+      "field_path": "/host_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic host or OS-boot identity unavailable; known kernel components retained separately"
+    },
+    {
+      "field_path": "/os_boot_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic host or OS-boot identity unavailable; known kernel components retained separately"
+    },
+    {
+      "field_path": "/source_versions/0/version",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/source_versions/0/source_commit",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/source_versions/0/binary_sha256",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/coverage/attempts/0/subject_pid",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to this synthetic inventory attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/0/captured_launch",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to this synthetic inventory attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/0/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to this synthetic inventory attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/1/captured_launch",
+      "reason_code": "NOT_CAPTURED",
+      "reason": "Complete launch identity unavailable; partial observation cannot substitute"
+    },
+    {
+      "field_path": "/coverage/attempts/1/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to this synthetic inventory attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/1/kernel_identity_observation/host_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic host or OS-boot identity unavailable; known kernel components retained separately"
+    },
+    {
+      "field_path": "/coverage/attempts/1/kernel_identity_observation/os_boot_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic host or OS-boot identity unavailable; known kernel components retained separately"
+    },
+    {
+      "field_path": "/coverage/attempts/2/subject_pid",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to this synthetic inventory attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/2/captured_launch",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to this synthetic inventory attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/2/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to this synthetic inventory attempt"
+    },
+    {
+      "field_path": "/coverage/membership_observations/1/members",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/coverage/final_process_refs",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/coverage/final_surface_refs",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/coverage/final_registration_refs",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/surfaces",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/processes/0/ppid",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/processes/0/launch",
+      "reason_code": "NOT_CAPTURED",
+      "reason": "Complete launch identity unavailable; partial observation cannot substitute"
+    },
+    {
+      "field_path": "/processes/0/kernel_identity_observation/host_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic host or OS-boot identity unavailable; known kernel components retained separately"
+    },
+    {
+      "field_path": "/processes/0/kernel_identity_observation/os_boot_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic host or OS-boot identity unavailable; known kernel components retained separately"
+    },
+    {
+      "field_path": "/processes/0/protected_paths",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/processes/0/session_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/row_ref/byte_offset",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/row_digest",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/harness_process_ref",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/captured_launch",
+      "reason_code": "NOT_CAPTURED",
+      "reason": "Complete launch identity unavailable; partial observation cannot substitute"
+    },
+    {
+      "field_path": "/registration_dispositions/0/kernel_identity_observation/host_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic host or OS-boot identity unavailable; known kernel components retained separately"
+    },
+    {
+      "field_path": "/registration_dispositions/0/kernel_identity_observation/os_boot_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic host or OS-boot identity unavailable; known kernel components retained separately"
+    },
+    {
+      "field_path": "/registration_dispositions/0/session_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/protected_paths",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable authoritative evidence"
+    }
+  ],
+  "payload_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}

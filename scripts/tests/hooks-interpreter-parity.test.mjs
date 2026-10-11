@@ -60,6 +60,8 @@ const CASES = [
   ["block-dangerous-commands", "allow", { tool_name: "Bash", tool_input: { command: "ls" } }, 0],
   ["human-confirm-gate", "deny", { tool_name: "Bash", tool_input: { command: "git push -f origin main" } }, 2],
   ["human-confirm-gate", "allow", { tool_name: "Bash", tool_input: { command: "ls" } }, 0],
+  ["human-confirm-gate", "whole-command class allow", { tool_name: "Bash", tool_input: { command: "declare F=fixture-tool; $F status" } }, 0],
+  ["human-confirm-gate", "whole-command class deny", { tool_name: "Bash", tool_input: { command: 'declare F="fixture-tool push --force origin topic"; $F' } }, 2],
 ];
 
 function work(name) {
@@ -97,6 +99,15 @@ function expectParity(label, guardian, [old, current], expected) {
   if (guardian && old.decision === "deny") return;
   expect([label, old.decision, old.stdout]).toEqual([label, current.decision, current.stdout]);
 }
+
+test("whole-command evidence imports under both interpreters without losing literal values", () => {
+  const hooks = path.join(repo, "skills/golem-powers/human-confirm-gate/hooks");
+  const code = "import sys; sys.path.append(sys.argv[1]); from whole_command import Evidence; print(Evidence(literal='fixture-tool').literal)";
+  for (const py of PYTHONS) {
+    const r = spawnSync(py, ["-I", "-B", "-c", code, hooks], { encoding: "utf8" });
+    expect([py, r.status, r.stderr, r.stdout.trim()]).toEqual([py, 0, "", "fixture-tool"]);
+  }
+});
 
 for (const [id, kind, payload, expected] of CASES) {
   test(`${id} ${kind}: identical decision under the old and current interpreter, through the launcher`, () => {

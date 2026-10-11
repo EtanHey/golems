@@ -1,0 +1,232 @@
+{
+  "format": "cmux-current-census/v1",
+  "status": "INCOMPLETE",
+  "consumer_nonce": "synthetic-nonce",
+  "run_id": "synthetic-run",
+  "host_id": "synthetic-host",
+  "os_boot_id": "synthetic-boot",
+  "owner_uid": 900000001,
+  "source_versions": [
+    {
+      "component": "synthetic",
+      "version": null,
+      "source_commit": null,
+      "binary_sha256": null,
+      "association_basis": "UNKNOWN"
+    }
+  ],
+  "collection_started_us": "1",
+  "collection_completed_us": "2",
+  "collection_policy": {
+    "max_rounds": 2,
+    "elapsed_budget_us": "10000000",
+    "max_wire_bytes": 16777216,
+    "max_records_per_array": 100000,
+    "stop_reason": "CAPABILITY_UNSUPPORTED"
+  },
+  "coverage": {
+    "attempts": [
+      {
+        "attempt_id": "a1",
+        "round": 1,
+        "started_us": "1",
+        "completed_us": "2",
+        "operation": "KERNEL_MEMBERSHIP",
+        "result": "OK",
+        "subject_pid": null,
+        "captured_launch": null,
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "1"
+        }
+      }
+    ],
+    "membership_observations": [
+      {
+        "observation_id": "m1",
+        "attempt_ref": "a1",
+        "phase": "BEFORE",
+        "scope": "OWNER_PID",
+        "source": "KERNEL_OWNER",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "m2",
+        "attempt_ref": "a1",
+        "phase": "AFTER",
+        "scope": "OWNER_LAUNCH",
+        "source": "KERNEL_OWNER",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      }
+    ],
+    "resolutions": [],
+    "process_observation_refs": [],
+    "final_process_refs": [],
+    "final_surface_refs": null,
+    "final_registration_refs": [
+      "r1",
+      "r2"
+    ]
+  },
+  "surfaces": null,
+  "processes": [],
+  "registration_dispositions": [
+    {
+      "registration_record_id": "r1",
+      "row_ref": {
+        "registry_id": "synthetic-registry",
+        "row_number": "1",
+        "byte_offset": null
+      },
+      "row_digest": null,
+      "disposition": "UNREADABLE",
+      "harness_process_ref": null,
+      "captured_launch": null,
+      "session_id": null,
+      "protected_paths": null,
+      "provenance": {
+        "source": "RAW_REGISTRY",
+        "method": "synthetic",
+        "source_component": "synthetic",
+        "observed_us": "1"
+      }
+    },
+    {
+      "registration_record_id": "r2",
+      "row_ref": {
+        "registry_id": "synthetic-registry",
+        "row_number": "1",
+        "byte_offset": null
+      },
+      "row_digest": null,
+      "disposition": "UNREADABLE",
+      "harness_process_ref": null,
+      "captured_launch": null,
+      "session_id": null,
+      "protected_paths": null,
+      "provenance": {
+        "source": "RAW_REGISTRY",
+        "method": "synthetic",
+        "source_component": "synthetic",
+        "observed_us": "1"
+      }
+    }
+  ],
+  "blockers": [
+    {
+      "code": "UNRESOLVED_REGISTRATION",
+      "subject_ref": "r1",
+      "reason": "Synthetic unreadable row retains unavailable digest and paths"
+    }
+  ],
+  "missing_evidence": [
+    {
+      "field_path": "/source_versions/0/version",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/source_versions/0/source_commit",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/source_versions/0/binary_sha256",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/coverage/attempts/0/subject_pid",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/0/captured_launch",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/0/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/final_surface_refs",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/surfaces",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/row_ref/byte_offset",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/row_digest",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/harness_process_ref",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/captured_launch",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/session_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/0/protected_paths",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/1/row_ref/byte_offset",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/1/row_digest",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/1/harness_process_ref",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/1/captured_launch",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/1/session_id",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/registration_dispositions/1/protected_paths",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    }
+  ],
+  "payload_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}

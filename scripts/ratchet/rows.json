@@ -2,6 +2,15 @@
   "schema": 1,
   "rows": [
     {
+      "id": "whole-command-binding",
+      "metric": "human-confirm refuses opaque whole-command binding, operators and declarations (class fixtures, real hook)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_whole_command_binding.py"
+    },
+    {
       "id": "positional-forwarding",
       "metric": "human-confirm binds visible shell/function argv and refuses unknown forwarding (class fixtures, real hook)",
       "kind": "unit",
@@ -176,6 +185,36 @@
       "ceiling": true,
       "command": "node scripts/ratchet/live-freshness.mjs",
       "timeout_s": 180
+    },
+    {
+      "id": "installed-skill-parity",
+      "metric": "installed skill sets identical on both Macs (name/content parity and required readability; disclosed source-invalid entries separate)",
+      "kind": "real",
+      "runner": "live",
+      "direction": "pass",
+      "ceiling": true,
+      "ref_kind": "fixture-hash",
+      "bug_sha": "e03a646abd938cd29384c40545f6e243bf457247",
+      "fix_sha": "e03a646abd938cd29384c40545f6e243bf457247",
+      "bug_fixture": "2773109b2e78ac1328a00c9fc752ea8fd235eddafbe92ce9b948004be885a02e",
+      "fix_fixture": "004e25a1af0fc78f712c28fa1b209b29895bb66ea771a052785c62d8e1385752",
+      "command": "python3 -B scripts/ratchet/installed-skills.py",
+      "timeout_s": 90
+    },
+    {
+      "id": "disk-free-floor",
+      "report_only": "gc-success-on-both-macs",
+      "metric": "REAL Mac: >= 60 GB free AND <= 25 worktrees with the GC guarded REMOVE prune-plan verdict",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "ref_kind": "fixture-hash",
+      "bug_sha": "627cf41f79e0071a83d93563676b1e8cca33c253",
+      "fix_sha": "5a18ecf5c98dde56381dcb7d3c1f84eef1ab3d30",
+      "bug_fixture": "42967711bc46af89c8eb9e184be34d4ecafa02fb4119f8d50c44c4d5ecf13a3c",
+      "fix_fixture": "9f21c2ce1f5fbb7c50cd7ac05c77f43b306910a7a339f2f35d0611d8caa349c5",
+      "command": "scripts/ratchet/mac/disk-free-floor.sh"
     }
   ]
 }

@@ -1,0 +1,419 @@
+{
+  "format": "cmux-current-census/v1",
+  "status": "INCOMPLETE",
+  "consumer_nonce": "synthetic-nonce",
+  "run_id": "synthetic-run",
+  "host_id": "synthetic-host",
+  "os_boot_id": "synthetic-boot",
+  "owner_uid": 900000001,
+  "source_versions": [
+    {
+      "component": "synthetic",
+      "version": null,
+      "source_commit": null,
+      "binary_sha256": null,
+      "association_basis": "UNKNOWN"
+    }
+  ],
+  "collection_started_us": "1",
+  "collection_completed_us": "4",
+  "collection_policy": {
+    "max_rounds": 2,
+    "elapsed_budget_us": "10000000",
+    "max_wire_bytes": 16777216,
+    "max_records_per_array": 100000,
+    "stop_reason": "CAPABILITY_UNSUPPORTED"
+  },
+  "coverage": {
+    "attempts": [
+      {
+        "attempt_id": "a1",
+        "round": 1,
+        "started_us": "1",
+        "completed_us": "2",
+        "operation": "PROCESS_IDENTITY",
+        "result": "ESRCH",
+        "subject_pid": 900000001,
+        "captured_launch": {
+          "host_id": "synthetic-host",
+          "os_boot_id": "synthetic-boot",
+          "pid": 900000001,
+          "start_seconds": "1",
+          "start_microseconds": "1"
+        },
+        "errno": 3,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "1"
+        }
+      },
+      {
+        "attempt_id": "a2",
+        "round": 2,
+        "started_us": "3",
+        "completed_us": "4",
+        "operation": "KERNEL_MEMBERSHIP",
+        "result": "OK",
+        "subject_pid": null,
+        "captured_launch": null,
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "3"
+        }
+      },
+      {
+        "attempt_id": "a3",
+        "round": 2,
+        "started_us": "3",
+        "completed_us": "4",
+        "operation": "PROCESS_IDENTITY",
+        "result": "OK",
+        "subject_pid": 900000001,
+        "captured_launch": {
+          "host_id": "synthetic-host",
+          "os_boot_id": "synthetic-boot",
+          "pid": 900000001,
+          "start_seconds": "1",
+          "start_microseconds": "2"
+        },
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "3"
+        }
+      },
+      {
+        "attempt_id": "a4",
+        "round": 2,
+        "started_us": "3",
+        "completed_us": "4",
+        "operation": "NATIVE_MEMBERSHIP",
+        "result": "OK",
+        "subject_pid": null,
+        "captured_launch": null,
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "3"
+        }
+      }
+    ],
+    "membership_observations": [
+      {
+        "observation_id": "owner_final",
+        "attempt_ref": "a2",
+        "phase": "REBRACKET",
+        "scope": "OWNER_LAUNCH",
+        "source": "KERNEL_OWNER",
+        "authoritative": true,
+        "members": [
+          {
+            "host_id": "synthetic-host",
+            "os_boot_id": "synthetic-boot",
+            "pid": 900000001,
+            "start_seconds": "1",
+            "start_microseconds": "2"
+          }
+        ],
+        "observed_members": [
+          {
+            "host_id": "synthetic-host",
+            "os_boot_id": "synthetic-boot",
+            "pid": 900000001,
+            "start_seconds": "1",
+            "start_microseconds": "2"
+          }
+        ]
+      },
+      {
+        "observation_id": "native_tree",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "SURFACE",
+        "source": "NATIVE_TREE",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_debug",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "TERMINAL",
+        "source": "NATIVE_DEBUG",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_tree_window",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "WINDOW",
+        "source": "NATIVE_TREE",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_tree_workspace",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "WORKSPACE",
+        "source": "NATIVE_TREE",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_tree_pane",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "PANE",
+        "source": "NATIVE_TREE",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_tree_surface",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "SURFACE",
+        "source": "NATIVE_TREE",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_independent_window",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "WINDOW",
+        "source": "NATIVE_INDEPENDENT",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_independent_workspace",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "WORKSPACE",
+        "source": "NATIVE_INDEPENDENT",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_independent_pane",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "PANE",
+        "source": "NATIVE_INDEPENDENT",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "native_independent_surface",
+        "attempt_ref": "a4",
+        "phase": "REBRACKET",
+        "scope": "SURFACE",
+        "source": "NATIVE_INDEPENDENT",
+        "authoritative": true,
+        "members": [],
+        "observed_members": []
+      },
+      {
+        "observation_id": "owner_pid_final",
+        "attempt_ref": "a2",
+        "phase": "REBRACKET",
+        "scope": "OWNER_PID",
+        "source": "KERNEL_OWNER",
+        "authoritative": true,
+        "members": [
+          900000001
+        ],
+        "observed_members": [
+          900000001
+        ]
+      }
+    ],
+    "resolutions": [
+      {
+        "resolution_id": "z1",
+        "failed_attempt_ref": "a1",
+        "disposition": "PID_REUSE_RECONCILED",
+        "historical_launch": {
+          "host_id": "synthetic-host",
+          "os_boot_id": "synthetic-boot",
+          "pid": 900000001,
+          "start_seconds": "1",
+          "start_microseconds": "1"
+        },
+        "historical_binding_known": true,
+        "final_owner_membership_ref": "owner_final",
+        "identity_recheck_attempt_refs": [
+          "a3"
+        ],
+        "native_reread_observation_refs": [
+          "native_tree",
+          "native_debug",
+          "native_tree_window",
+          "native_tree_workspace",
+          "native_tree_pane",
+          "native_tree_surface",
+          "native_independent_window",
+          "native_independent_workspace",
+          "native_independent_pane",
+          "native_independent_surface"
+        ],
+        "surviving_process_refs": [],
+        "replacement_process_refs": [
+          "pnew"
+        ]
+      }
+    ],
+    "process_observation_refs": [
+      "pnew"
+    ],
+    "final_process_refs": [
+      "pnew"
+    ],
+    "final_surface_refs": [],
+    "final_registration_refs": null
+  },
+  "surfaces": [],
+  "processes": [
+    {
+      "process_record_id": "pnew",
+      "attempt_ref": "a3",
+      "pid": 900000001,
+      "ppid": null,
+      "uid": 900000001,
+      "launch": {
+        "host_id": "synthetic-host",
+        "os_boot_id": "synthetic-boot",
+        "pid": 900000001,
+        "start_seconds": "1",
+        "start_microseconds": "2"
+      },
+      "identity_provenance": {
+        "source": "KERNEL_LIBPROC",
+        "method": "synthetic",
+        "source_component": "synthetic",
+        "observed_us": "3"
+      },
+      "cwd": {
+        "path": "/__synthetic_gc__/worktree-alpha",
+        "role": "CWD",
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "3"
+        }
+      },
+      "protected_paths": [],
+      "classification": "ORDINARY_SHELL",
+      "session_id": null,
+      "binding": "NONE"
+    }
+  ],
+  "registration_dispositions": null,
+  "blockers": [
+    {
+      "code": "DIGEST_UNVALIDATED",
+      "subject_ref": null,
+      "reason": "Synthetic PID reuse proves old binding only; no removal or completeness claim"
+    }
+  ],
+  "missing_evidence": [
+    {
+      "field_path": "/source_versions/0/version",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/source_versions/0/source_commit",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/source_versions/0/binary_sha256",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/coverage/attempts/1/subject_pid",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/1/captured_launch",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/1/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/2/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/3/subject_pid",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/3/captured_launch",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/3/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/final_registration_refs",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/processes/0/ppid",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/processes/0/session_id",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Synthetic ordinary shell has no session ID"
+    },
+    {
+      "field_path": "/registration_dispositions",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/blockers/0/subject_ref",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    }
+  ],
+  "payload_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}
