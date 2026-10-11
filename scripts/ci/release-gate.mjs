@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 
 const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -83,8 +84,12 @@ function defaultBranch(repo, runCommand) {
   throw new Error(`cannot resolve origin's default branch: ${remote.stderr.trim()}`);
 }
 
-function latestTag(repo, remoteRef, pattern, runCommand) {
-  const output = checked("git", ["-C", repo, "for-each-ref", `--merged=${remoteRef}`, "--sort=-version:refname", "--format=%(refname:short)", "refs/tags"], { runCommand });
+function latestTag(repo, remoteRef, pattern, runCommand, kind) {
+  // Same-day SHA suffixes do not sort chronologically. Release pushes tag the
+  // first-parent master history, so select its nearest matching release tag.
+  const output = kind === 'github-release'
+    ? checked('git', ['-C', repo, 'log', '--first-parent', '--decorate=short', '--format=%D', remoteRef], { runCommand }).split(/\r?\n/).flatMap(line => [...line.matchAll(/(?:^|, )tag: ([^,]+)/g)].map(match => match[1])).join('\n')
+    : checked("git", ["-C", repo, "for-each-ref", `--merged=${remoteRef}`, "--sort=-version:refname", "--format=%(refname:short)", "refs/tags"], { runCommand });
   const matcher = new RegExp(pattern || defaultTagPattern);
   const tag = output.split(/\r?\n/).find((candidate) => matcher.test(candidate));
   if (!tag) throw new Error(`no release tag matching ${matcher}`);
@@ -126,7 +131,12 @@ export function fetchTags(repo, runCommand = execute) {
 
 export function detectInstalledVersion(artifact, runCommand = execute) {
   let result;
-  if (artifact.kind === "macos-app") {
+  if (artifact.kind === "github-release") {
+    try {
+      const installed = JSON.parse(readFileSync(artifact.installedJson ?? resolve(homedir(), '.golems/installed.json'), 'utf8'));
+      return typeof installed.version === 'string' && /^\d{4}\.\d{2}\.\d{2}-[0-9a-f]{7}$/.test(installed.version) ? installed.version : null;
+    } catch { return null; }
+  } else if (artifact.kind === "macos-app") {
     const plist = artifact.plist ?? `/Applications/${artifact.identifier}.app/Contents/Info.plist`;
     result = runCommand("defaults", ["read", plist, "CFBundleShortVersionString"]);
   } else if (artifact.kind === "homebrew-cask") {
@@ -146,6 +156,17 @@ export function detectInstalledVersion(artifact, runCommand = execute) {
 
 function containmentUnknown(report, reason) {
   return { ...report, verdict: "UNKNOWN", reason };
+}
+
+function publishedReleaseError(repository, tag, runCommand) {
+  const result = runCommand('gh', ['api', `repos/${repository}/releases/tags/${encodeURIComponent(tag)}`]);
+  if (result.status !== 0) return `GitHub Release unavailable for ${tag}: ${(result.stderr || result.stdout).trim()}`;
+  try {
+    const release = JSON.parse(result.stdout);
+    const expected = [`golems-${cleanVersion(tag)}.tar.gz`, 'MANIFEST.json', 'SHA256SUMS'];
+    if (release.draft || release.prerelease || expected.some(name => !release.assets?.some(asset => asset.name === name && asset.state === 'uploaded' && asset.size > 0))) return `GitHub Release ${tag} is unpublished or missing release assets`;
+    return null;
+  } catch { return `invalid GitHub Release response for ${tag}`; }
 }
 
 function remoteTagCommit(repo, tag, runCommand) {
@@ -210,6 +231,10 @@ function inspectContainment(options, runCommand = execute) {
   if (!report.tagCommit) {
     return containmentUnknown({ ...report, tag: candidates[0] }, `installed-version tag absent on origin: ${candidates.join(" or ")}`);
   }
+  if (config.artifact.kind === 'github-release') {
+    const error = publishedReleaseError(identity.slug, report.tag, runCommand);
+    if (error) return containmentUnknown(report, error);
+  }
 
   const localTag = runCommand("git", ["-C", repo, "rev-parse", "--verify", `refs/tags/${report.tag}^{commit}`]);
   if (localTag.status === 0 && localTag.stdout.trim() !== report.tagCommit) {
@@ -265,16 +290,20 @@ export function inspectRelease(options, runCommand = execute) {
       artifact: config.artifact, reason: config.reason.trim(), installationCheck: "not-applicable",
     };
   }
-  const tag = latestTag(repo, remoteRef, config.tagPattern ?? manifest.tagPattern, runCommand);
+  const tag = latestTag(repo, remoteRef, config.tagPattern ?? manifest.tagPattern, runCommand, config.artifact.kind);
   const ignorePaths = config.ignorePaths ?? manifest.ignorePaths ?? defaultIgnores;
   const commits = commitCounts(repo, tag, remoteRef, ignorePaths, runCommand);
+  if (config.artifact.kind === 'github-release') {
+    const error = publishedReleaseError(identity.slug, tag, runCommand);
+    if (error) return { verdict: 'UNKNOWN', repo, repository: identity.slug, latestTag: tag, artifact: config.artifact, error };
+  }
   const installedVersion = options.releaseOnly ? null : detectInstalledVersion(config.artifact, runCommand);
   const installedComparison = options.releaseOnly || !installedVersion ? null : compareVersions(installedVersion, tag);
   let verdict = "CLEAN";
   if (commits.shippable > 0) verdict = "MERGED_UNRELEASED";
   else if (!options.releaseOnly && !installedVersion) verdict = "UNKNOWN";
   else if (!options.releaseOnly && installedComparison === null) verdict = "UNKNOWN";
-  else if (!options.releaseOnly && installedComparison === -1) verdict = "RELEASED_UNINSTALLED";
+  else if (!options.releaseOnly && (installedComparison === -1 || (config.artifact.kind === 'github-release' && installedVersion !== cleanVersion(tag)))) verdict = "RELEASED_UNINSTALLED";
   return {
     verdict, repo, repository: identity.slug, defaultBranch: branch, remoteRef, latestTag: tag,
     releasedVersion: cleanVersion(tag), installedVersion, installationCheck: options.releaseOnly ? "skipped" : "performed",
@@ -283,6 +312,7 @@ export function inspectRelease(options, runCommand = execute) {
 }
 
 function formatHuman(report) {
+  if (report.verdict === 'UNKNOWN' && report.error) return `RELEASE GATE: UNKNOWN\n${report.error}`;
   if (report.verdict === "NOT_RELEASABLE") {
     return [
       "RELEASE GATE: NOT_RELEASABLE (configured)",

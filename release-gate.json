@@ -7,8 +7,9 @@
   ],
   "repositories": {
     "EtanHey/golems": {
-      "artifact": { "kind": "none" },
-      "reason": "consumed from the repo checkout via symlinked skills; no SemVer release, no published package"
+      "artifact": { "kind": "github-release", "identifier": "golems" },
+      "tagPattern": "^v\\d{4}\\.\\d{2}\\.\\d{2}-[0-9a-f]{7}$",
+      "ignorePaths": ["docs.local/**", "collab/**"]
     },
     "EtanHey/voicelayer": {
       "artifact": { "kind": "macos-app", "identifier": "VoiceBar" }

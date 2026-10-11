@@ -1,0 +1,69 @@
+name: Golems release
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun test ./scripts/tests/build-release.test.mjs ./scripts/tests/release-gate.test.mjs
+      - name: Build twice and validate the release contract independently
+        run: |
+          node scripts/release/build-release.mjs --commit "$GITHUB_SHA" --out dist/first
+          node scripts/release/build-release.mjs --commit "$GITHUB_SHA" --out dist/second
+          cmp dist/first/MANIFEST.json dist/second/MANIFEST.json
+          cmp dist/first/SHA256SUMS dist/second/SHA256SUMS
+          cmp dist/first/*.tar.gz dist/second/*.tar.gz
+          (cd dist/first && sha256sum --check SHA256SUMS)
+          python3 - <<'PY'
+          import glob, hashlib, json, tarfile
+          with tarfile.open(glob.glob('dist/first/*.tar.gz')[0]) as archive:
+              members = archive.getmembers()
+              assert all(m.isfile() and m.uid == m.gid == m.mtime == 0 for m in members)
+              assert all(not m.name.startswith('/') and '..' not in m.name.split('/') for m in members)
+              manifest = json.load(archive.extractfile('MANIFEST.json'))
+              assert {m.name for m in members} == {'MANIFEST.json'} | {f['path'] for f in manifest['files']}
+              for entry in manifest['files']:
+                  assert hashlib.sha256(archive.extractfile(entry['path']).read()).hexdigest() == entry['sha256']
+                  assert archive.getmember(entry['path']).mode == int(entry['mode'], 8)
+          PY
+
+  publish:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Publish immutable release assets (reruns verify existing bytes)
+        run: |
+          node scripts/release/build-release.mjs --commit "$GITHUB_SHA" --out dist/release > dist-metadata.json
+          version=$(node -p 'JSON.parse(require("fs").readFileSync("dist-metadata.json")).version')
+          tag="v$version"
+          response=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --include 2>release-error.log) || true
+          status=$(printf '%s\n' "$response" | sed -n '1s/.* \([0-9][0-9][0-9]\).*/\1/p')
+          if [ "$status" = 200 ]; then
+            gh release download "$tag" --dir dist/existing --pattern '*.tar.gz' --pattern MANIFEST.json --pattern SHA256SUMS
+            cmp "dist/release/golems-$version.tar.gz" "dist/existing/golems-$version.tar.gz"
+            cmp dist/release/MANIFEST.json dist/existing/MANIFEST.json
+            cmp dist/release/SHA256SUMS dist/existing/SHA256SUMS
+          elif [ "$status" = 404 ]; then
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Golems $version" --notes "Skills, CLIs and hooks from commit $GITHUB_SHA. See MANIFEST.json and SHA256SUMS for integrity checks." dist/release/*
+          else
+            cat release-error.log >&2
+            exit 1
+          fi
+          gh release edit "$tag" --draft=false
