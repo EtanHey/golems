@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Pinned-head, terminal-only GitHub PR watcher. See pr-watch-lib/README.md."""
+import argparse
+import json
+import math
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'pr-watch-lib/vendor'))
+import upstream
+
+CODES = dict(READY=0, FAILED=10, HEAD_MOVED=11, DEADLINE=20, GH_ERROR=30)
+GREEN = {'SUCCESS', 'NEUTRAL', 'SKIPPED'}
+RED = {'FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED',
+       'STARTUP_FAILURE', 'STALE'}
+
+
+class GhCommandError(RuntimeError):
+    pass
+
+
+def duration(value):
+    match = re.fullmatch(r'(\d+(?:\.\d+)?)(ms|s|m|h)', value)
+    if not match or not math.isfinite(float(match[1])) or float(match[1]) <= 0:
+        raise argparse.ArgumentTypeError('use a positive duration, e.g. 2h')
+    return float(match[1]) * {'ms': .001, 's': 1, 'm': 60, 'h': 3600}[match[2]]
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('repo', help='owner/repo')
+    parser.add_argument('pr', type=int)
+    parser.add_argument('--head', required=True, help='full expected head SHA')
+    parser.add_argument('--deadline', type=duration, default=7200, help='default: 2h')
+    parser.add_argument('--poll-seconds', type=float, default=30)
+    parser.add_argument('--max-gh-retries', type=int, default=3)
+    parser.add_argument('--state-file', type=Path)
+    args = parser.parse_args()
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', args.repo):
+        parser.error('repo must be owner/repo')
+    if args.pr <= 0 or not re.fullmatch(r'[0-9a-fA-F]{40}', args.head):
+        parser.error('PR must be positive and --head must be a full 40-character SHA')
+    if not math.isfinite(args.poll_seconds) or args.poll_seconds <= 0 or args.max_gh_retries < 0:
+        parser.error('poll interval must be positive and retry budget nonnegative')
+    args.head = args.head.lower()
+    if args.state_file is None:
+        args.state_file = Path.home() / '.local/state/golems/pr-watch' / args.repo / f'{args.pr}-{args.head}.json'
+    return args
+
+
+def gh_json(argv, repo=None, timeout=None):
+    command = ['gh']
+    if repo and argv[0] != 'api':
+        command.extend(['--repo', repo])
+    try:
+        proc = subprocess.run(command + argv, capture_output=True, timeout=timeout)
+    except FileNotFoundError as error:
+        raise GhCommandError('gh command not found\n') from error
+    # Bytes preserve gh stderr exactly, including whitespace and invalid UTF-8.
+    if proc.returncode:
+        sys.stderr.buffer.write(proc.stderr)
+        sys.stderr.buffer.flush()
+        raise GhCommandError('gh exited unsuccessfully')
+    try:
+        return json.loads(proc.stdout)
+    except (ValueError, UnicodeDecodeError) as error:
+        raise GhCommandError('invalid JSON from gh\n') from error
+
+
+upstream.gh_json = gh_json
+upstream.GhCommandError = GhCommandError
+
+
+def read_pr(args, remaining, checks=True):
+    fields = 'headRefOid,state,reviewDecision' + (',statusCheckRollup' if checks else '')
+    data = gh_json(['pr', 'view', str(args.pr), '--json', fields],
+                   repo=args.repo, timeout=remaining)
+    if not isinstance(data, dict) or not re.fullmatch(r'[0-9a-fA-F]{40}', str(data.get('headRefOid', ''))):
+        raise GhCommandError('missing or invalid PR head from gh\n')
+    if data.get('state') not in {'OPEN', 'CLOSED', 'MERGED'}:
+        raise GhCommandError('missing or invalid PR state from gh\n')
+    data['headRefOid'] = data['headRefOid'].lower()
+    return data
+
+
+def verdict(data, head):
+    if data['headRefOid'] != head:
+        return 'HEAD_MOVED'
+    if data['state'] != 'OPEN':
+        return 'FAILED'
+    checks = data.get('statusCheckRollup')
+    if not isinstance(checks, list):
+        raise GhCommandError('missing or invalid check rollup from gh\n')
+    results = []
+    for check in checks:
+        if not isinstance(check, dict):
+            raise GhCommandError('invalid check from gh\n')
+        # CheckRun uses status/conclusion; legacy StatusContext uses state.
+        result = check.get('conclusion') if check.get('status') == 'COMPLETED' else check.get('state')
+        results.append(str(result or '').upper())
+    if any(result in RED for result in results):
+        return 'FAILED'
+    if results and all(result in GREEN for result in results):
+        return 'READY'
+    return None
+
+
+def emit(event, args, data=None):
+    payload = dict(event=event, sha=args.head, repo=args.repo, pr=args.pr)
+    if data:
+        payload.update(observed_sha=data['headRefOid'], pr_state=data['state'],
+                       review_decision=data.get('reviewDecision', ''))
+    print(json.dumps(payload, sort_keys=True), flush=True)
+    return CODES[event]
+
+
+def watch(args):
+    deadline = time.monotonic() + args.deadline
+    try:
+        state, _ = upstream.load_state(args.state_file)
+        retries = state.get('retries_by_sha', {})
+        if not isinstance(retries, dict) or any(not isinstance(n, int) or n < 0 for n in retries.values()):
+            raise ValueError('invalid per-head retry state')
+        identity = dict(repo=args.repo, number=args.pr)
+        if state.get('pr') and state['pr'] != identity:
+            raise ValueError('state file belongs to another PR')
+        state['pr'] = identity
+        while time.monotonic() < deadline:
+            try:
+                data = read_pr(args, deadline - time.monotonic())
+                result = verdict(data, args.head)
+                # Close the head-read race before emitting a terminal CI fact.
+                if result in {'READY', 'FAILED'}:
+                    confirm = read_pr(args, max(.001, deadline - time.monotonic()), checks=False)
+                    if confirm['headRefOid'] != args.head:
+                        data, result = confirm, 'HEAD_MOVED'
+                    elif confirm['state'] != 'OPEN':
+                        data, result = confirm, 'FAILED'
+                state['last_seen_head_sha'] = data['headRefOid']
+                state['last_snapshot_at'] = int(time.time())
+                upstream.save_state(args.state_file, state)
+                if time.monotonic() >= deadline:
+                    return emit('DEADLINE', args)
+                if result:
+                    return emit(result, args, data)
+                interval = args.poll_seconds
+            except GhCommandError as error:
+                # Actual command stderr was already forwarded verbatim; only
+                # local validation/missing-command errors need a diagnostic.
+                if str(error) != 'gh exited unsuccessfully':
+                    sys.stderr.write(str(error))
+                retries = upstream.current_retry_count(state, args.head)
+                if retries >= args.max_gh_retries:
+                    return emit('GH_ERROR', args)
+                upstream.set_retry_count(state, args.head, retries + 1)
+                upstream.save_state(args.state_file, state)
+                interval = min(300, args.poll_seconds * 2 ** min(retries, 10))
+            time.sleep(min(interval, max(0, deadline - time.monotonic())))
+        return emit('DEADLINE', args)
+    except subprocess.TimeoutExpired:
+        return emit('DEADLINE', args)
+    except (OSError, RuntimeError, ValueError) as error:
+        sys.stderr.write(str(error) + '\n')
+        return emit('GH_ERROR', args)
+
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(watch(parse_args()))
+    except KeyboardInterrupt:
+        raise SystemExit(130)
