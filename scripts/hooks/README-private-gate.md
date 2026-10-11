@@ -27,7 +27,9 @@ The suite list comes from this manifest, rather than public issue-specific names
 Fixtures and helper dependencies must be real files inside the private root.
 The manifest binds their content, rather than a historical candidate revision.
 Suites receive the selected candidate through `GOLEMS_GUARD_CANDIDATE` and the
-existing source variables. Adapter tests load `scripts/hooks/codex-policy-hook.py`
+existing source variables (`GUARD_ROOT`, `S616B_SOURCE`, `S616_R2_SOURCE`), all
+overriding inherited values. Without `GUARD_ROOT`, a fixture in the invoking
+checkout's `docs.local` would test that checkout. Adapter tests load `scripts/hooks/codex-policy-hook.py`
 from that candidate, never hooks-live or a development checkout.
 
 The gate uses isolated Python and pytest outside the candidate tree, with an
