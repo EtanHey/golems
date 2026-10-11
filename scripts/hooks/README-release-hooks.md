@@ -10,12 +10,17 @@ node "$HOME/.golems/current/scripts/hooks/install-hooks.mjs" \
 ```
 
 Omit `--apply` for a dry-run. Python 3.11+ and Node are required. The client
-installer makes no git or hostname calls and creates no worktree. It verifies
-P1's `MANIFEST.json` hashes and modes, rejects extra hook/import files, and links
-Claude hooks and Codex commands to the resolved release directory. Updating the
+installer makes no git calls and creates no worktree. It refuses an existing
+owner pin or hooks linked into `.worktrees/hooks-live`. When `scutil` is available,
+it also refuses the owner's MBP/M1 hostnames; other hosts and absent `scutil`
+remain supported. It verifies P1's `MANIFEST.json` hashes and modes and, when
+present, its hash in `~/.golems/release.json` (`manifest_sha256`). It rejects extra
+hook/import files and links Claude hooks and Codex commands to the resolved release directory. Updating the
 `current` link requires re-running the hook installer to select the new release.
 Use the release updater for updates; `--update`, `--restore-live` and `--manifest`
 belong to the owner checkout path and are refused with `--source`.
+If a registered shell guard reports an unavailable policy hook, rerun the
+release installer and the client hook command above.
 
 The `client` manifest profile installs tmp-block, git-guardian and human-confirm.
 Entries with `ownerOnly: true` are skipped with a printed reason. Installation

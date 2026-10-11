@@ -1,7 +1,7 @@
 import { afterEach, expect, setDefaultTimeout, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildRelease } from '../release/build-release.mjs';
 
@@ -46,12 +46,76 @@ function rehash(f, relative, text) {
   m.files.find(row => row.path === relative).sha256 = createHash('sha256').update(text).digest('hex');
   writeFileSync(at, JSON.stringify(m));
 }
+function snapshot(at) {
+  if (!existsSync(at)) return null;
+  return readdirSync(at).sort().map(name => {
+    const file = path.join(at, name), st = lstatSync(file);
+    return [name, st.mode, st.isSymbolicLink() ? readlinkSync(file) : st.isDirectory() ? snapshot(file) : readFileSync(file).toString('base64')];
+  });
+}
+for (const signal of ['pin', 'link', 'dangling-link', 'indirect-link', 'nested-link']) test(`R1: client refuses owner ${signal} without changing HOME`, () => {
+  const f = fixture(), hooks = path.join(f.home, '.claude/hooks'); mkdirSync(hooks, { recursive: true });
+  writeFileSync(path.join(f.home, '.claude/settings.json'), JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Task', hooks: [{ type: 'command', command: 'node /old/model-pin-gate-hook.mjs' }] }] } }, null, 2) + '\n');
+  if (signal === 'pin') writeFileSync(path.join(hooks, 'golems-hooks-live.sha'), 'a'.repeat(40) + '\n');
+  else {
+    const live = path.join(f.home, 'Gits/golems/.worktrees/hooks-live/skills/golem-powers/tmp-block');
+    if (signal !== 'dangling-link') mkdirSync(live, { recursive: true });
+    const alias = path.join(f.root, 'alias');
+    if (signal === 'indirect-link') symlinkSync(live, alias);
+    if (signal === 'nested-link') mkdirSync(path.join(hooks, 'nested'));
+    const at = path.join(hooks, signal === 'nested-link' ? 'nested/tmp-block' : 'tmp-block');
+    symlinkSync(signal === 'indirect-link' ? alias : path.relative(path.dirname(at), live), at);
+  }
+  const before = snapshot(f.home);
+  for (const args of [[], ['--apply'], ['--status']]) {
+    const result = run(f, ...args);
+    expect(snapshot(f.home)).toEqual(before);
+    expect(result.status, result.out).not.toBe(0);
+    expect(result.out).toContain('owner install');
+    expect(result.out).not.toContain('client host');
+  }
+});
+for (const name of ['MacBook-Pro', 'Locals-MacBook-Pro']) test(`R1: client refuses owner hostname ${name} before writes`, () => {
+  const f = fixture();
+  writeFileSync(path.join(f.env.PATH, 'scutil'), `#!/bin/sh\nprintf '%s\\n' '${name}'\n`, { mode: 0o755 });
+  for (const args of [[], ['--apply'], ['--status']]) {
+    const result = run(f, ...args);
+    expect(readdirSync(f.home)).toEqual([]);
+    expect(result.status, result.out).not.toBe(0);
+    expect(result.out).toContain('owner host');
+    expect(result.out).not.toContain('client host');
+  }
+});
+test('R1: unknown hostname remains a client', () => {
+  const f = fixture();
+  writeFileSync(path.join(f.env.PATH, 'scutil'), "#!/bin/sh\nprintf '%s\\n' 'Third-Party-Mac'\n", { mode: 0o755 });
+  expect(run(f, '--apply').status).toBe(0);
+});
+test('R1: a receipt manifest hash rejects a rewritten manifest before writes', () => {
+  const f = fixture(), manifest = path.join(f.source, 'MANIFEST.json');
+  mkdirSync(path.join(f.home, '.golems'));
+  writeFileSync(path.join(f.home, '.golems/release.json'), JSON.stringify({ manifest_sha256: createHash('sha256').update(readFileSync(manifest)).digest('hex') }));
+  // All file hashes still match; only the trusted manifest bytes changed.
+  writeFileSync(manifest, readFileSync(manifest, 'utf8') + '\n');
+  const before = snapshot(f.home), result = run(f, '--apply');
+  expect(snapshot(f.home)).toEqual(before);
+  expect(result.status, result.out).not.toBe(0);
+  expect(result.out).toContain('manifest_sha256');
+});
+for (const hashed of [false, true]) test(`R1: release receipt ${hashed ? 'matching hash' : 'without hash'} permits installation`, () => {
+  const f = fixture(); mkdirSync(path.join(f.home, '.golems'));
+  writeFileSync(path.join(f.home, '.golems/release.json'), JSON.stringify(hashed ? { manifest_sha256: createHash('sha256').update(readFileSync(path.join(f.source, 'MANIFEST.json'))).digest('hex') } : { version: 'legacy' }));
+  expect(run(f, '--apply').status).toBe(0);
+});
 test('P1 tarball installs on an unknown client without git, skips owner-only hooks, and reports drift zero without claiming trust', () => {
   const f = fixture(), installed = run(f, '--apply');
   expect(installed.out).toContain('private_gate: skipped (client host)');
   expect(installed.status, installed.out).toBe(0);
   expect(installed.out).toContain('public hook self-tests: PASS');
   expect(installed.out).toContain('owner-only');
+  const skipped = installed.out.split('\n').filter(line => line.startsWith('skipped '));
+  expect(skipped.length).toBeGreaterThan(0);
+  expect(new Set(skipped).size).toBe(skipped.length);
   expect(existsSync(path.join(f.home, 'Gits'))).toBe(false);
   expect(existsSync(path.join(f.source, '.git'))).toBe(false);
   expect(readlinkSync(path.join(f.home, '.claude/hooks/tmp-block'))).toBe(path.join(f.source, 'skills/golem-powers/tmp-block'));
@@ -65,6 +129,23 @@ test('P1 tarball installs on an unknown client without git, skips owner-only hoo
   expect(status.out).toContain('drift=0');
   expect(status.out).toContain('trust=missing');
   expect(existsSync(path.join(f.home, '.codex/config.toml'))).toBe(false);
+});
+test('R1: client Claude and Codex shell fallbacks give release repair instructions', () => {
+  const f = fixture(), python = path.join(f.root, 'pinned-python');
+  symlinkSync(command('sh', ['-c', 'command -v python3']), python);
+  expect(run(f, '--apply', '--python', python).status).toBe(0);
+  const settings = JSON.parse(readFileSync(path.join(f.home, '.claude/settings.json')));
+  const claude = settings.hooks.PreToolUse.flatMap(g => g.hooks).find(h => h.command.includes('human-confirm-pretooluse')).command;
+  const codex = JSON.parse(readFileSync(path.join(f.home, '.codex/hooks.json'))).hooks.PreToolUse[0].hooks[0].command;
+  rmSync(python);
+  for (const hook of [claude, codex]) {
+    const result = spawnSync('/bin/sh', ['-c', hook], { env: f.env, input: '{}', encoding: 'utf8' });
+    expect(result.status).toBe(2);
+    const output = result.stdout + result.stderr;
+    expect(output).toContain('rerun the release installer');
+    expect(output).toContain('install-hooks.mjs --host client --source ~/.golems/current --apply');
+    expect(output).not.toContain('~/Gits');
+  }
 });
 test('installed Claude and Codex human-confirm deny a no-token lease and allow an ordinary command', () => {
   const f = fixture(); expect(run(f, '--apply').status).toBe(0);

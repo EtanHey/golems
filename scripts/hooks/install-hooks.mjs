@@ -55,11 +55,10 @@ const supportsFailClosed = (bytes) => /^FAIL_CLOSED_PROTOCOL = 2\b/m.test(bytes.
 // the launcher's static denial (byte-identical to fail-open.py _block()).
 // Codex has the same shape in codex-hooks-install.mjs.
 export const REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.";
-const DENY_JSON = JSON.stringify({ decision: "block", reason: REPAIR_REASON, hookSpecificOutput: {
-  hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: REPAIR_REASON } });
 const quote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
-export function failClosedCommand(run) {
-  return `/bin/sh -c ${quote(`out=$(${run}); s=$?; if [ "$s" -eq 0 ] || [ "$s" -eq 2 ]; then [ -z "$out" ] || printf '%s\\n' "$out"; exit "$s"; fi; printf '%s\\n' ${quote(DENY_JSON)}; exit 2`)}`;
+export function failClosedCommand(run, repair = REPAIR_REASON) {
+  const deny = JSON.stringify({ decision: "block", reason: repair, hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: repair } });
+  return `/bin/sh -c ${quote(`out=$(${run}); s=$?; if [ "$s" -eq 0 ] || [ "$s" -eq 2 ]; then [ -z "$out" ] || printf '%s\\n' "$out"; exit "$s"; fi; printf '%s\\n' ${quote(deny)}; exit 2`)}`;
 }
 // The interpreter a registered launcher command runs, guarded or not.
 const commandPython = (command) => /(?:^|\s)(\S+)(?: -[A-Za-z]+)* \S*golems-fail-open\.py/

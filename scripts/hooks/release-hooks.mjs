@@ -1,20 +1,47 @@
 // Release-only client installation. Owner worktree installation stays in install-hooks.mjs.
 import { createHash } from 'node:crypto';
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { applyCodexHooks, CODEX_TRUST_HINT, planCodexHooks } from './codex-hooks-install.mjs';
+import { applyCodexHooks, CLIENT_REPAIR, CODEX_TRUST_HINT, planCodexHooks } from './codex-hooks-install.mjs';
 import { checkReleaseHooks } from './release-self-check.mjs';
 
 const digest = data => createHash('sha256').update(data).digest('hex');
 const quote = s => `'${s.replaceAll("'", "'\\''")}'`;
 const safe = p => typeof p === 'string' && p && !path.isAbsolute(p) && !p.split('/').some(s => !s || s === '.' || s === '..') && !/[\\\x00-\x1f]/.test(p);
+function assertClientHost(home, manifest) {
+  const hooks = path.join(home, '.claude/hooks');
+  const present = at => { try { return lstatSync(at); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } };
+  const owner = () => { throw new Error('refusing client installation: HOME has an owner install; use the owner hook installer'); };
+  if (present(path.join(hooks, 'golems-hooks-live.sha'))) owner();
+  const intoOwner = target => /\/\.worktrees\/hooks-live(?:\/|$)/.test(target);
+  const walk = at => {
+    const st = present(at);
+    if (st?.isSymbolicLink()) {
+      if (intoOwner(path.resolve(path.dirname(at), readlinkSync(at)))) owner();
+      try { if (intoOwner(realpathSync(at))) owner(); }
+      catch (e) { if (!['ENOENT', 'ENOTDIR'].includes(e.code)) throw e; }
+    } else if (st?.isDirectory()) for (const name of readdirSync(at)) walk(path.join(at, name));
+  };
+  walk(hooks);
+  // Same LocalHostName mapping as the owner installer; absent scutil is allowed.
+  const result = spawnSync('scutil', ['--get', 'LocalHostName'], { encoding: 'utf8', timeout: 5000 });
+  const host = result.status === 0 ? { 'MacBook-Pro': 'mbp', 'Locals-MacBook-Pro': 'm1' }[result.stdout.trim()] : null;
+  if (host && manifest.hosts?.[host]) throw new Error(`refusing client installation: machine is owner host ${host}; use --host ${host} without --source`);
+}
 function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFingerprints, resolveHookPython }) {
   if (o.host !== 'client' || o.update || o.restoreLive || o.manifest) throw new Error('--source requires --host client and cannot use --update, --restore-live or --manifest');
+  const home = homedir(), hooksDir = path.join(home, '.claude/hooks');
   const source = realpathSync(o.source), at = path.join(source, 'MANIFEST.json');
   if (!lstatSync(at).isFile()) throw new Error('release integrity: MANIFEST.json must be a regular file');
-  const release = JSON.parse(readFileSync(at));
+  const bytes = readFileSync(at), receipt = path.join(home, '.golems/release.json');
+  if (existsSync(receipt)) {
+    const installed = JSON.parse(readFileSync(receipt));
+    if (Object.hasOwn(installed, 'manifest_sha256') && installed.manifest_sha256 !== digest(bytes)) throw new Error('release integrity: MANIFEST.json does not match release receipt manifest_sha256');
+  }
+  const release = JSON.parse(bytes);
   if (!/^[0-9a-f]{40}$/.test(release.commit) || typeof release.version !== 'string' || !Array.isArray(release.files)) throw new Error('release integrity: invalid MANIFEST.json');
   const files = new Set();
   for (const row of release.files) {
@@ -38,9 +65,9 @@ function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFi
   if (E1_DELETED.some(name => text.includes(name))) throw new Error('E1-deleted hook in release manifest');
   const manifest = JSON.parse(text), listed = manifest.hosts?.client;
   if (!Array.isArray(listed)) throw new Error('release manifest has no client profile');
+  assertClientHost(home, manifest);
   const skipped = listed.filter(e => e.ownerOnly);
-  for (const entry of skipped) console.log(`skipped ${entry.id}: owner-only (client host)`);
-  for (const entry of manifest.codex_hosts?.client ?? []) if (entry.ownerOnly) console.log(`skipped codex ${entry.gate}: owner-only (client host)`);
+  const skippedCodex = (manifest.codex_hosts?.client ?? []).filter(e => e.ownerOnly);
   const entries = listed.filter(e => !e.ownerOnly);
   for (const e of entries) {
     if (e.kind !== 'golems' || !safe(e.link) || !safe(e.source) || !e.match || typeof e.command !== 'string' || !Number.isInteger(e.timeout) || e.timeout < 1 || e.timeout > 120 || (e.command.includes('--fail-closed') && e.timeout < 2)) throw new Error(`invalid client hook: ${e.id}`);
@@ -49,16 +76,15 @@ function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFi
   }
   const hookPython = resolveHookPython({ override: o.python, pathPython: pathPython() });
   if (!hookPython) throw new Error('no acceptable hook interpreter (absolute Python >= 3.11)');
-  const home = homedir(), hooksDir = path.join(home, '.claude/hooks');
-  // Absolute node chosen by the invoking CLI; no git or hostname discovery.
+  // Absolute node chosen by the invoking CLI; no git discovery.
   const expand = s => s.replaceAll('{home}', quote(home)).replaceAll('{hooks}', quote(hooksDir)).replaceAll('{live}', quote(source)).replaceAll('{node}', quote(process.execPath)).replaceAll('{python}', quote(hookPython.python));
   const golems = entries.map(e => ({ ...e, at: path.join(hooksDir, e.link), to: path.join(source, e.source), cmd: e.command.includes(' --fail-closed ')
-    ? failClosedCommand(expand(e.command.replace(' --fail-closed ', ` --fail-closed --budget ${e.timeout - 1} `))) : expand(e.command) }));
+    ? failClosedCommand(expand(e.command.replace(' --fail-closed ', ` --fail-closed --budget ${e.timeout - 1} `)), CLIENT_REPAIR) : expand(e.command) }));
   const codex = planCodexHooks({ manifest, host: 'client', source, codexHome: path.resolve(process.env.CODEX_HOME || path.join(home, '.codex')), python: hookPython.python });
   if (!codex || !codex.enabled || !codex.source) throw new Error('client Codex hooks disabled or adapter absent');
   const wrapper = path.join(source, 'scripts/hooks/fail-open.py');
   if (!/^FAIL_CLOSED_PROTOCOL = 2\b/m.test(readFileSync(wrapper, 'utf8'))) throw new Error('release launcher lacks fail-closed protocol');
-  return { source, release, entries, skipped, golems, hooksDir, live: source, codex, hookPython, home, expand, wrapper, settingsPath: path.join(home, '.claude/settings.json') };
+  return { source, release, entries, skipped, skippedCodex, golems, hooksDir, live: source, codex, hookPython, home, expand, wrapper, settingsPath: path.join(home, '.claude/settings.json') };
 }
 
 function releaseStatus(ctx, { readSettings, linkState, hookSpec, retiredRegistrations }) {
@@ -88,6 +114,8 @@ export function runReleaseHooks(o, helpers) {
   const { readSettings, desiredHooks, withoutHooks, withoutRetired, retiredRegistrations, linkState } = helpers;
   try {
     const ctx = releaseContext(o, helpers);
+    for (const entry of ctx.skipped) console.log(`skipped ${entry.id}: owner-only (client host)`);
+    for (const entry of ctx.skippedCodex) console.log(`skipped codex ${entry.gate}: owner-only (client host)`);
     console.log('private_gate: skipped (client host)');
     if (o.status) return releaseStatus(ctx, helpers);
     const settings = readSettings(ctx.settingsPath);
