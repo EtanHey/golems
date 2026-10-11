@@ -8,7 +8,8 @@ SKILL = Path(__file__).resolve().parents[1]
 REPO = SKILL.parents[2]
 COMMAND = "~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h"
 TABLE = "../../../../scripts/pr-watch-lib/README.md#usage-and-exits"
-SURFACES = ["references/review-loop.md", "adapters/claude.md", "adapters/codex.md", "adapters/cursor.md"]
+SURFACES = ["references/review-loop.md", "adapters/claude.md", "adapters/codex.md",
+            "adapters/cursor.md", "adapters/capabilities.yaml"]
 
 
 def text(relative):
@@ -53,6 +54,23 @@ class ArmingContract(unittest.TestCase):
                        "after compaction", "read the exact-head review", "~/.golems/bin/pr-watch"]:
             self.assertIn(phrase, content)
         self.assertRegex(content, r"exit 11.*new head.*re-arm with that SHA")
+
+    def test_native_monitor_expiry_rearms_and_restarts_both_windows(self):
+        for relative in SURFACES[:2]:
+            with self.subTest(surface=relative):
+                content = " ".join(text(relative).split())
+                self.assertIn("30-minute Monitor expiry precedes the 2h --deadline", content)
+                self.assertIn("re-arm on expiry", content)
+                self.assertIn("re-arming restarts the deadline and the settle window", content)
+
+    def test_shared_guidance_gives_an_action_for_every_exit(self):
+        content = " ".join(text("references/review-loop.md").split())
+        for action in ["0 READY: proceed to the exact-head review and authorized merge path",
+                       "10 FAILED: fix the failure", "12 MERGED: stop",
+                       "20 DEADLINE: re-arm if waiting continues or escalate",
+                       "30 GH_ERROR: back off and report stderr"]:
+            with self.subTest(action=action):
+                self.assertIn(action, content)
 
     def test_behavioral_cases_cover_native_codex_and_missing_required_checks(self):
         cases = json.loads(text("evals/evals.json"))["evals"]

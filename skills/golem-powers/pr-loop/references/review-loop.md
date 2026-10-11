@@ -140,10 +140,14 @@ Codex runs the same command and reads its exit code. pr-watch never merges.
 An empty rollup is never READY. Required contexts must be present and green,
 and the default 180s settle window must stay quiet. See the
 [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits).
-On exit 11, read the new head and re-arm with that SHA; on exit 20, re-arm if the
-wait continues. Cancel the old Monitor with TaskStop before re-arming at expiry
-or after compaction. READY remains a CI fact; read the exact-head review before
-an authorized merge. Never route Codex's output through a cmuxlayer file watch.
+Handle every terminal exit: 0 READY: proceed to the exact-head review and authorized merge path;
+10 FAILED: fix the failure; on exit 11 HEAD_MOVED, read the new head and re-arm with that SHA;
+12 MERGED: stop; on exit 20 DEADLINE: re-arm if waiting continues or escalate;
+30 GH_ERROR: back off and report stderr.
+The 30-minute Monitor expiry precedes the 2h --deadline; re-arm on expiry, since
+re-arming restarts the deadline and the settle window. Cancel the old Monitor with TaskStop
+before re-arming at expiry or after compaction. READY remains a CI fact; read the exact-head review
+before an authorized merge. Never route Codex's output through a cmuxlayer file watch.
 
 For addressed review handoffs, use native `Monitor` when exposed; otherwise use
 `/collab-monitor`'s packaged fallback with an attached consumer. Query slim

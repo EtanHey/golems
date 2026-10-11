@@ -21,7 +21,10 @@ adapters:
     git_ops: true
     cr_review_precommit: conditional # Only if cr CLI installed
     coderabbit_subagent: false       # No Agent() tool
-    review_polling: attached_fallback # /collab-monitor for handoffs; gh pr checks --watch for CI
+    review_polling: attached_fallback # /collab-monitor for handoffs; arm one pinned-head CI watch:
+    # ~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h
+    # pr-watch never merges; an empty rollup is never READY.
+    # Exit-code table: ../../../../scripts/pr-watch-lib/README.md#usage-and-exits
     brainlayer_postmerge: false      # No MCP access
     worktree_isolation: manual       # git worktree add required before spawning
     cursor_bugbot_trigger: conditional # Needs gh installed + authenticated; use gh pr comment "@cursor @bugbot review"

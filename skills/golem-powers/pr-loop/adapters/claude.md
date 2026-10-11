@@ -35,7 +35,9 @@ Arm exactly one `Monitor(command="~/Gits/golems/scripts/pr-watch <owner/repo> <N
 for GitHub CI. pr-watch never merges; an empty rollup is never READY. Use the
 [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits)
 and [shared arming rules](../references/review-loop.md#for-public-repos-bot-reviewers-configured)
-for head movement and deadline handling. Use native Monitor separately for
+for head movement and deadline handling. The 30-minute Monitor expiry precedes the 2h --deadline;
+re-arm on expiry after TaskStop cancellation, since re-arming restarts the deadline and the settle window.
+Use native Monitor separately for
 addressed review handoffs; follow `/collab-monitor` for filtering, TaskStop
 cancellation and re-arming at expiry/after compaction. Fetch review bodies once
 a handoff or slim activity count changes. Timed one-shot wakes remain
