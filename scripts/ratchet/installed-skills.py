@@ -27,7 +27,8 @@ def version(value):
 
 
 def installed_version(home):
-    record = Path(home) / '.golems/installed.json'
+    # installed.json belongs to golems-sync; only the release installer owns versions.
+    record = Path(home) / '.golems/release.json'
     if not record.exists() and not record.is_symlink(): return None
     try:
         data = json.loads(record.read_text())
@@ -35,7 +36,7 @@ def installed_version(home):
         value = data.get('version')
         version(value)
     except (OSError, ValueError):
-        raise ValueError('installed.json unreadable or malformed installed version')
+        raise ValueError('release.json unreadable or malformed installed version')
     return value
 
 
@@ -102,6 +103,7 @@ def validate(document, required=False):
             object_keys(record, ('readable', 'allow_broken', 'allow_empty', 'target_aliases'), root)
             names(record['readable'], nested=True, nonempty=True)
             for field in ('allow_broken', 'allow_empty'): names(record[field])
+            # Deprecated: target_aliases is validated for schema compatibility only.
             if not isinstance(record['target_aliases'], dict): raise ValueError('malformed aliases')
             for entry, targets in record['target_aliases'].items():
                 name(entry)
@@ -138,7 +140,9 @@ def content_files(directory, ancestors=frozenset(), prefix=''):
     if resolved in ancestors: raise ValueError('supporting directory symlink cycle')
     files = {}
     for item in sorted(directory.iterdir()):
-        if item.name in INSTALLER_MARKERS or item.name == '.DS_Store' or item.name.endswith('.pyc'):
+        regular_file = item.is_file() and not item.is_symlink()
+        if regular_file and ((not prefix and item.name in INSTALLER_MARKERS) or
+                             item.name == '.DS_Store' or item.name.endswith('.pyc')):
             continue
         relative = prefix + item.name
         if item.is_symlink() and not item.exists(): raise ValueError('broken supporting link')
@@ -161,7 +165,7 @@ def inventory():
         entries = {}
         if directory.is_dir():
             for entry in sorted(directory.iterdir()):
-                if entry.name == '.DS_Store' or entry.name in INSTALLER_MARKERS: continue
+                if entry.name == '.DS_Store' and entry.is_file() and not entry.is_symlink(): continue
                 row = dict(kind='symlink' if entry.is_symlink() else 'dir' if entry.is_dir() else 'file',
                            exists=entry.exists(), normalized_target=normalize(str(entry.resolve()), home),
                            skill_sha256=None, files={}, internal_skills={})
@@ -185,7 +189,9 @@ def inventory():
 
 
 def supporting(entry):
-    files = {k: v for k, v in entry.get('files', {}).items() if Path(k).name not in INSTALLER_MARKERS}
+    # The scanner excludes regular root markers before flattening symlinks to content.
+    # Filtering names here would hide marker-named links, directories or nested files.
+    files = entry.get('files', {})
     if entry.get('skill_sha256'): return files
     return {k: v for k, v in files.items()
             if any(k.startswith(n + '/') for n in entry.get('internal_skills', {}))}
@@ -197,7 +203,7 @@ def compare(left, right, requirements):
     parity, valid = True, True
     if left.get('installed_version') != right.get('installed_version'):
         errors.append('installed version mismatch: local=' + left.get('installed_version', '<unrecorded>') +
-                      ' remote=' + right.get('installed_version', '<unrecorded>'))
+                      ' remote=' + right.get('installed_version', '<unrecorded>') + ' (release.json)')
         parity = False
     identities_valid = True
     if left['identity']['machine'] == right['identity']['machine']:
@@ -213,7 +219,8 @@ def compare(left, right, requirements):
         if any(not host or host.get('exists') is not True for host in hosts):
             errors.append(root + ': missing root'); parity = valid = False
             continue
-        catalogs = [{n: e for n, e in host['entries'].items() if n != '.DS_Store' and n not in INSTALLER_MARKERS}
+        catalogs = [{n: e for n, e in host['entries'].items()
+                     if not (n == '.DS_Store' and e['kind'] == 'file' and e['exists'])}
                     for host in hosts]
         for number in (0, 1):
             for missing in sorted(set(catalogs[1-number]) - set(catalogs[number])):

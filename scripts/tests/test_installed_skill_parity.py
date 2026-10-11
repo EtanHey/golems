@@ -109,15 +109,13 @@ class Parity(unittest.TestCase):
         entry['normalized_target'] = '/foreign/source/class-a'
         self.assertEqual(self.check()['errors'], [])
 
-    def test_marker_only_differences_are_ignored_in_fixture_catalogs(self):
+    def test_nested_markers_are_content_in_fixture_catalogs(self):
         for marker in ['.golems-source-commit', '.golems-install.json']:
-            entries = self.right['roots'][self.root]['entries']
-            entries[marker] = dict(kind='file', exists=True, skill_sha256=None,
-                                   normalized_target='$HOME/' + marker, files={}, internal_skills={})
-            for prefix in ['', 'scripts/']:
-                entries['class-a']['files'][prefix + marker] = dict(
+            with self.subTest(marker=marker):
+                self.setUp()
+                self.right['roots'][self.root]['entries']['class-a']['files']['scripts/' + marker] = dict(
                     kind='file', sha256='b'*64, executable=False)
-        self.assertEqual(self.check()['errors'], [])
+                self.assertFalse(self.check()['name_content_parity'])
 
     def test_installed_version_must_match_when_recorded(self):
         for local, remote in [('v1', 'v1'), ('v1', 'v2'), (None, 'v1'), ('v1', None)]:
@@ -161,7 +159,6 @@ class Parity(unittest.TestCase):
                 (local / root / 'class-a').symlink_to(source, target_is_directory=True)
                 shutil.copytree(source, remote / root / 'class-a')
             for marker in ['.golems-source-commit', '.golems-install.json']:
-                (remote / self.root / marker).write_text('installer metadata\n')
                 (remote / self.root / 'class-a' / marker).write_text('installer metadata\n')
             left, right = self.scan(local, self.pins[0]), self.scan(remote, self.pins[1])
             self.assertEqual(parity.compare(left, right, self.required)['errors'], [])
@@ -169,8 +166,8 @@ class Parity(unittest.TestCase):
             self.assertEqual(files['helper-link'], files['scripts/helper'])
             self.assertEqual(files['scripts-link/helper'], files['scripts/helper'])
             self.assertTrue(files['helper-link']['executable'])
-            self.assertNotIn('.golems-install.json', right['roots'][self.root]['entries'])
-            self.assertNotIn('.golems-source-commit', right['roots'][self.root]['entries']['class-a']['files'])
+            for marker in ['.golems-source-commit', '.golems-install.json']:
+                self.assertNotIn(marker, right['roots'][self.root]['entries']['class-a']['files'])
             skill = remote / self.root / 'class-a/SKILL.md'
             skill.write_bytes(b'# class-b\n')  # Exactly one changed byte.
             right = self.scan(remote, self.pins[1])
@@ -190,22 +187,112 @@ class Parity(unittest.TestCase):
             self.assertFalse(result['name_content_parity'])
             self.assertFalse(result['required_readable_valid'])
 
-    def test_scanner_records_version_and_refuses_bad_install_records(self):
+    def skill_homes(self, base):
+        homes = [base / label for label in ['class-local', 'class-remote']]
+        for home in homes:
+            for root in parity.ROOTS:
+                skill = home / root / 'class-a'
+                skill.mkdir(parents=True)
+                (skill / 'SKILL.md').write_text('# class-a\n')
+        return homes
+
+    def test_real_schema_sync_records_on_both_hosts_are_ignored(self):
+        with tempfile.TemporaryDirectory(prefix='class-sync-record-') as directory:
+            homes = self.skill_homes(Path(directory))
+            for home in homes:
+                record = home / '.golems/installed.json'
+                record.parent.mkdir()
+                record.write_text(json.dumps(dict(commit='a'*40, counts={'skills': 1}, dirty=False,
+                                                  payload_sha256='b'*64, scope='skills',
+                                                  source_host='class-source', ts='2026-10-11T00:00:00Z')))
+            left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+            self.assertNotIn('installed_version', left)
+            self.assertNotIn('installed_version', right)
+            self.assertEqual(parity.compare(left, right, self.required)['errors'], [])
+
+    def test_scanner_compares_release_versions_and_reports_one_sided_record(self):
+        with tempfile.TemporaryDirectory(prefix='class-release-record-') as directory:
+            homes = self.skill_homes(Path(directory))
+            for versions in [('v1', None), (None, 'v1'), ('v1', 'v1'), ('v1', 'v2')]:
+                with self.subTest(versions=versions):
+                    for home, value in zip(homes, versions):
+                        record = home / '.golems/release.json'
+                        record.parent.mkdir(exist_ok=True)
+                        if value is None:
+                            record.unlink(missing_ok=True)
+                        else:
+                            record.write_text(json.dumps(dict(version=value, commit='a'*40)))
+                    left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+                    result = parity.compare(left, right, self.required)
+                    self.assertEqual(result['name_content_parity'], versions[0] == versions[1])
+                    if None in versions:
+                        self.assertIn('release.json', result['errors'][0])
+                        self.assertIn('<unrecorded>', result['errors'][0])
+
+    def test_scanner_records_version_only_from_release_and_refuses_bad_records(self):
         with tempfile.TemporaryDirectory(prefix='class-install-version-') as directory:
             home = Path(directory)
             self.assertNotIn('installed_version', self.scan(home, self.pins[0]))
-            record = home / '.golems/installed.json'
+            record = home / '.golems/release.json'
             record.parent.mkdir()
+            sync_record = record.with_name('installed.json')
+            sync_record.write_text(json.dumps({'version': 'sync-version'}))
+            self.assertNotIn('installed_version', self.scan(home, self.pins[0]))
+            sync_record.write_text('unreadable as JSON; owned by sync\n')
             record.write_text(json.dumps({'version': 'v1', 'source': 'class-release'}))
             self.assertEqual(self.scan(home, self.pins[0])['installed_version'], 'v1')
             for value in ['{', '[]', '{}', '{"version":1}', '{"version":""}']:
                 record.write_text(value)
-                with self.assertRaisesRegex(ValueError, 'installed.json'):
+                with self.assertRaisesRegex(ValueError, 'release.json'):
                     self.scan(home, self.pins[0])
             record.unlink()
             record.symlink_to(home / 'class-missing-record')
-            with self.assertRaisesRegex(ValueError, 'installed.json'):
+            with self.assertRaisesRegex(ValueError, 'release.json'):
                 self.scan(home, self.pins[0])
+
+    def test_scanner_keeps_marker_abuses_and_cache_named_directories(self):
+        for path in ['.golems-source-commit/evil.sh', '.golems-install.json/evil.sh',
+                     'scripts/.golems-install.json', 'scripts/.golems-source-commit',
+                     '.DS_Store/evil.sh', 'class.pyc/evil.sh']:
+            with self.subTest(path=path), tempfile.TemporaryDirectory(prefix='class-marker-content-') as directory:
+                homes = self.skill_homes(Path(directory))
+                helper = homes[1] / self.root / 'class-a' / path
+                helper.parent.mkdir(parents=True, exist_ok=True)
+                helper.write_text('echo class-content\n')
+                left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+                self.assertIn(path, right['roots'][self.root]['entries']['class-a']['files'])
+                self.assertFalse(parity.compare(left, right, self.required)['name_content_parity'])
+
+    def test_scanner_keeps_marker_symlinks_as_content(self):
+        for marker in ['.golems-source-commit', '.golems-install.json']:
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory(prefix='class-marker-link-') as directory:
+                homes = self.skill_homes(Path(directory))
+                target = Path(directory) / 'class-helper'
+                target.write_text('echo class-content\n')
+                (homes[1] / self.root / 'class-a' / marker).symlink_to(target)
+                left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+                self.assertIn(marker, right['roots'][self.root]['entries']['class-a']['files'])
+                self.assertFalse(parity.compare(left, right, self.required)['name_content_parity'])
+
+    def test_discovery_root_marker_names_and_ds_store_directories_are_content(self):
+        for marker in ['.golems-source-commit', '.golems-install.json', '.DS_Store']:
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory(prefix='class-root-marker-') as directory:
+                homes = self.skill_homes(Path(directory))
+                skill = homes[1] / self.root / marker
+                skill.mkdir()
+                (skill / 'SKILL.md').write_text('# class-content\n')
+                left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+                self.assertIn(marker, right['roots'][self.root]['entries'])
+                self.assertFalse(parity.compare(left, right, self.required)['name_content_parity'])
+
+    def test_scanner_still_ignores_regular_cache_files(self):
+        with tempfile.TemporaryDirectory(prefix='class-cache-file-') as directory:
+            homes = self.skill_homes(Path(directory))
+            (homes[1] / self.root / '.DS_Store').write_text('class-cache\n')
+            for name in ['.DS_Store', 'class.pyc']:
+                (homes[1] / self.root / 'class-a' / name).write_text('class-cache\n')
+            left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+            self.assertEqual(parity.compare(left, right, self.required)['errors'], [])
 
     def test_fixture_cli_reports_pass_and_content_or_version_failure(self):
         with tempfile.TemporaryDirectory(prefix='class-parity-cli-') as directory:
