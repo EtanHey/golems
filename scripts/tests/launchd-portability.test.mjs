@@ -43,4 +43,31 @@ describe("launchd templates are portable", () => {
       rmSync(scratch, { recursive: true, force: true });
     }
   });
+
+  test("nightly worktree prune renders to the locked wrapper at 06:00, installed by install.sh", () => {
+    const scratch = mkdtempSync(join(tmpdir(), "golems-launchd-"));
+    const source = join(launchdRoot, "com.golems.worktree-gc.plist");
+    const destination = join(scratch, basename(source));
+
+    try {
+      const result = Bun.spawnSync(["bash", join(launchdRoot, "render-plist.sh"), source, destination], {
+        cwd: repoRoot,
+        env: { ...process.env, HOME: "/Users/example", GOLEMS_ROOT: "/opt/golems" },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      expect(result.exitCode, result.stderr.toString()).toBe(0);
+      const rendered = readFileSync(destination, "utf8");
+      expect(rendered).toContain("<string>/opt/golems/scripts/worktree-gc-nightly.sh</string>");
+      // Clear of BrainLayer's 03:17 backup and 04:20 scrub (03:00-05:30).
+      expect(rendered).toContain("<key>Hour</key>\n\t\t<integer>6</integer>");
+      // lsof lives in /usr/sbin; without it every candidate fails closed as KEEP-undetermined.
+      expect(rendered).toContain("/usr/sbin");
+      expect(rendered).not.toContain("RunAtLoad");
+      expect(rendered).not.toMatch(/@[A-Z][A-Z0-9_]*@/);
+      expect(readFileSync(join(launchdRoot, "install.sh"), "utf8")).toContain('"com.golems.worktree-gc.plist"');
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
 });
