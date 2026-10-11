@@ -6,30 +6,60 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { existsSync, rmSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, rmSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { tmpdir } from "os";
 
-// Test paths (isolated from production)
-const TEST_BASE = "/tmp/content-pipeline-test";
-const TEST_TASKS_DIR = join(TEST_BASE, "tasks");
-const TEST_DRAFTS_DIR = join(TEST_BASE, "drafts");
-const TEST_RESEARCH_DIR = join(TEST_BASE, "research/gits");
+// Each setup owns a fresh directory, including across concurrent test processes.
+let TEST_BASE: string;
+let TEST_TASKS_DIR: string;
+let TEST_DRAFTS_DIR: string;
+let TEST_RESEARCH_DIR: string;
 
 // Helper to create test directories
 function setupTestDirs() {
-  if (existsSync(TEST_BASE)) {
-    rmSync(TEST_BASE, { recursive: true, force: true });
-  }
+  TEST_BASE = mkdtempSync(join(tmpdir(), "content-pipeline-test-"));
+  TEST_TASKS_DIR = join(TEST_BASE, "tasks");
+  TEST_DRAFTS_DIR = join(TEST_BASE, "drafts");
+  TEST_RESEARCH_DIR = join(TEST_BASE, "research/gits");
   mkdirSync(TEST_TASKS_DIR, { recursive: true });
   mkdirSync(TEST_DRAFTS_DIR, { recursive: true });
   mkdirSync(TEST_RESEARCH_DIR, { recursive: true });
+  return TEST_BASE;
 }
 
-function cleanupTestDirs() {
-  if (existsSync(TEST_BASE)) {
-    rmSync(TEST_BASE, { recursive: true, force: true });
+function cleanupTestDirs(base = TEST_BASE) {
+  if (existsSync(base)) {
+    rmSync(base, { recursive: true, force: true });
   }
 }
+
+describe("Content Pipeline - Fixture Isolation", () => {
+  it("should preserve overlapping fixtures when another owner sets up and cleans up", async () => {
+    const bases: string[] = [];
+    try {
+      const [first, second] = await Promise.all(
+        ["first", "second"].map(async (owner) => {
+          const base = setupTestDirs();
+          bases.push(base);
+          const marker = join(base, `${owner}.json`);
+          writeFileSync(marker, owner);
+          // Both setups finish before either owner reads its fixture.
+          await Promise.resolve();
+          expect(readFileSync(marker, "utf-8")).toBe(owner);
+          return { base, marker };
+        }),
+      );
+
+      expect(first.base).not.toBe(second.base);
+      cleanupTestDirs(first.base);
+      expect(existsSync(first.base)).toBe(false);
+      expect(readFileSync(second.marker, "utf-8")).toBe("second");
+    } finally {
+      for (const base of bases) cleanupTestDirs(base);
+    }
+  });
+});
 
 // Synthetic content task
 interface ContentTask {
