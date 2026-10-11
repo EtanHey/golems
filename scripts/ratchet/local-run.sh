@@ -148,6 +148,7 @@ echo "local-run: install exit $(cat "$RUN/install.rc") (log: $RUN/install.log)"
 cp -R "$CLONE/docs.local/hooks-private-gate-runs" "$RUN/" 2>/dev/null || true
 
 # The checkout the lease payloads name: on the PR branch, push URL github.com, HEAD = PR head.
+python3 "$HERE/../repogolem/worktree-disk-floor.py" "$SCRATCH/pushwt"
 git -C "$CLONE" worktree add -q -B "$BRANCH" "$SCRATCH/pushwt" "$HEAD"
 
 export RATCHET_RUN="$RUN" RATCHET_HOME="$SH" RATCHET_CLONE="$CLONE" RATCHET_INSTALLED="$INSTALLED"
