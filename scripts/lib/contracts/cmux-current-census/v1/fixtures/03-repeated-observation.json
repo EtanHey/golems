@@ -1,0 +1,313 @@
+{
+  "format": "cmux-current-census/v1",
+  "status": "INCOMPLETE",
+  "consumer_nonce": "synthetic-nonce",
+  "run_id": "synthetic-run",
+  "host_id": "synthetic-host",
+  "os_boot_id": "synthetic-boot",
+  "owner_uid": 900000001,
+  "source_versions": [
+    {
+      "component": "synthetic",
+      "version": null,
+      "source_commit": null,
+      "binary_sha256": null,
+      "association_basis": "UNKNOWN"
+    }
+  ],
+  "collection_started_us": "1",
+  "collection_completed_us": "2",
+  "collection_policy": {
+    "max_rounds": 2,
+    "elapsed_budget_us": "10000000",
+    "max_wire_bytes": 16777216,
+    "max_records_per_array": 100000,
+    "stop_reason": "CAPABILITY_UNSUPPORTED"
+  },
+  "coverage": {
+    "attempts": [
+      {
+        "attempt_id": "a0",
+        "round": 1,
+        "started_us": "1",
+        "completed_us": "2",
+        "operation": "KERNEL_MEMBERSHIP",
+        "result": "OK",
+        "subject_pid": null,
+        "captured_launch": null,
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "1"
+        }
+      },
+      {
+        "attempt_id": "a1",
+        "round": 1,
+        "started_us": "1",
+        "completed_us": "2",
+        "operation": "PROCESS_IDENTITY",
+        "result": "OK",
+        "subject_pid": 900000001,
+        "captured_launch": {
+          "host_id": "synthetic-host",
+          "os_boot_id": "synthetic-boot",
+          "pid": 900000001,
+          "start_seconds": "1",
+          "start_microseconds": "1"
+        },
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "1"
+        }
+      },
+      {
+        "attempt_id": "a2",
+        "round": 1,
+        "started_us": "1",
+        "completed_us": "2",
+        "operation": "PROCESS_IDENTITY",
+        "result": "OK",
+        "subject_pid": 900000001,
+        "captured_launch": {
+          "host_id": "synthetic-host",
+          "os_boot_id": "synthetic-boot",
+          "pid": 900000001,
+          "start_seconds": "1",
+          "start_microseconds": "1"
+        },
+        "errno": null,
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "1"
+        }
+      }
+    ],
+    "membership_observations": [
+      {
+        "observation_id": "m1",
+        "attempt_ref": "a0",
+        "phase": "BEFORE",
+        "scope": "OWNER_LAUNCH",
+        "source": "KERNEL_OWNER",
+        "authoritative": true,
+        "members": [
+          {
+            "host_id": "synthetic-host",
+            "os_boot_id": "synthetic-boot",
+            "pid": 900000001,
+            "start_seconds": "1",
+            "start_microseconds": "1"
+          }
+        ],
+        "observed_members": [
+          {
+            "host_id": "synthetic-host",
+            "os_boot_id": "synthetic-boot",
+            "pid": 900000001,
+            "start_seconds": "1",
+            "start_microseconds": "1"
+          }
+        ]
+      },
+      {
+        "observation_id": "m2",
+        "attempt_ref": "a0",
+        "phase": "AFTER",
+        "scope": "OWNER_PID",
+        "source": "KERNEL_OWNER",
+        "authoritative": true,
+        "members": [
+          900000001
+        ],
+        "observed_members": [
+          900000001
+        ]
+      }
+    ],
+    "resolutions": [],
+    "process_observation_refs": [
+      "p1",
+      "p2"
+    ],
+    "final_process_refs": [
+      "p2"
+    ],
+    "final_surface_refs": null,
+    "final_registration_refs": null
+  },
+  "surfaces": null,
+  "processes": [
+    {
+      "process_record_id": "p1",
+      "attempt_ref": "a1",
+      "pid": 900000001,
+      "ppid": null,
+      "uid": 900000001,
+      "launch": {
+        "host_id": "synthetic-host",
+        "os_boot_id": "synthetic-boot",
+        "pid": 900000001,
+        "start_seconds": "1",
+        "start_microseconds": "1"
+      },
+      "identity_provenance": {
+        "source": "KERNEL_LIBPROC",
+        "method": "synthetic",
+        "source_component": "synthetic",
+        "observed_us": "1"
+      },
+      "cwd": {
+        "path": "/__synthetic_gc__/worktree-alpha",
+        "role": "CWD",
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "1"
+        }
+      },
+      "protected_paths": [],
+      "classification": "ORDINARY_SHELL",
+      "session_id": null,
+      "binding": "NONE"
+    },
+    {
+      "process_record_id": "p2",
+      "attempt_ref": "a2",
+      "pid": 900000001,
+      "ppid": null,
+      "uid": 900000001,
+      "launch": {
+        "host_id": "synthetic-host",
+        "os_boot_id": "synthetic-boot",
+        "pid": 900000001,
+        "start_seconds": "1",
+        "start_microseconds": "1"
+      },
+      "identity_provenance": {
+        "source": "KERNEL_LIBPROC",
+        "method": "synthetic",
+        "source_component": "synthetic",
+        "observed_us": "1"
+      },
+      "cwd": {
+        "path": "/__synthetic_gc__/worktree-alpha",
+        "role": "CWD",
+        "provenance": {
+          "source": "KERNEL_LIBPROC",
+          "method": "synthetic",
+          "source_component": "synthetic",
+          "observed_us": "1"
+        }
+      },
+      "protected_paths": [],
+      "classification": "ORDINARY_SHELL",
+      "session_id": null,
+      "binding": "NONE"
+    }
+  ],
+  "registration_dispositions": null,
+  "blockers": [
+    {
+      "code": "DIGEST_UNVALIDATED",
+      "subject_ref": null,
+      "reason": "Synthetic shape scenario; no COMPLETE claim"
+    }
+  ],
+  "missing_evidence": [
+    {
+      "field_path": "/source_versions/0/version",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/source_versions/0/source_commit",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/source_versions/0/binary_sha256",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/coverage/attempts/0/subject_pid",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/0/captured_launch",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/0/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/1/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/attempts/2/errno",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Field not applicable to synthetic attempt"
+    },
+    {
+      "field_path": "/coverage/final_surface_refs",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/coverage/final_registration_refs",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/surfaces",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/processes/0/ppid",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/processes/0/session_id",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Synthetic ordinary shell has no session ID"
+    },
+    {
+      "field_path": "/processes/1/ppid",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/processes/1/session_id",
+      "reason_code": "NOT_APPLICABLE",
+      "reason": "Synthetic ordinary shell has no session ID"
+    },
+    {
+      "field_path": "/registration_dispositions",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    },
+    {
+      "field_path": "/blockers/0/subject_ref",
+      "reason_code": "UNAVAILABLE",
+      "reason": "Synthetic unavailable evidence"
+    }
+  ],
+  "payload_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}

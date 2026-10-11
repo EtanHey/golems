@@ -23,7 +23,7 @@ function run(binary, args) {
 
 export function recoveryCommand(mergedPR, leasePR) {
   const lease = /^\d+$/.test(String(leasePR ?? '')) ? leasePR : '"$(gh pr view --repo EtanHey/golems --json number -q .number)"';
-  return `"$HOME/Gits/golems/scripts/ratchet/live-rows.sh" --merged-pr ${mergedPR} --lease-pr ${lease} --lease-repo "$PWD"`;
+  return `RATCHET_SKILL_CONFIG="$HOME/.golems/ratchet/installed-skills.json" "$HOME/Gits/golems/scripts/ratchet/live-rows.sh" --merged-pr ${mergedPR} --lease-pr ${lease} --lease-repo "$PWD"`;
 }
 
 export function main() {

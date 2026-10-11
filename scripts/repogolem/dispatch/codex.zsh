@@ -1,9 +1,9 @@
 # ── Codex connector policy (Etan, 2026-10-06) ──────────────────────
 # Computer use stays on for every launch. The codex_apps cloud connectors
 # (Gmail send, Calendar, Drive, GitHub as Etan...) and browser-tools-mcp are
-# stripped from every agent-shaped launch, fail-safe: only `--lead` or the bare
-# human shape (no args, a TTY, no agent markers) keeps them. Stripped launches
-# still get Google Drive read-only.
+# stripped from agent-shaped launches, except Locals T3code, which defaults on
+# in ALL launch modes (Etan, 2026-10-09). Only `--lead` or the bare human shape
+# keeps the other connectors. Restricted launches still get Drive read-only.
 
 # Drive tools codex marks readOnlyHint=true (codex-cli 0.160.1 cache). Drive
 # runs with default_tools_enabled=false, so a tool missing here stays off.
@@ -265,7 +265,7 @@ _golem_launch_codex() {
   fi
   local worker_mode="${_golem_codex_worker_mode:-false}"
   $_flag_codex_worker && worker_mode=true
-  # A scan seat is always a worker: every strip applies and the hatch never opens.
+  # A scan seat is always a worker; the default Locals exception still applies.
   $_flag_codex_scan && worker_mode=true
   [[ "${GOLEM_ROLE:-}" == "worker" ]] && worker_mode=true
   # --worker (and the CodexWorker alias) is the one worker signal: export it to
@@ -316,27 +316,32 @@ _golem_launch_codex() {
     fi
   fi
 
-  # Connector policy: strip unless --lead or the bare human shape. A lane
-  # re-enables what it needs for one launch, by name:
+  # Locals defaults on; other connectors require --lead or the bare human shape.
+  # Restricted launches may re-enable named Apps for one launch, e.g.:
   #   GOLEM_CODEX_WORKER_ALLOW=gmail,google_calendar,google_drive,browser-tools
-  # (google_drive here means full Drive, writes included). The variable is
-  # shadowed below, so the launched codex never inherits it.
+  # Naming google_drive includes writes; the allow variable is never inherited.
   local codex_worker_allow="${GOLEM_CODEX_WORKER_ALLOW:-}"
   local GOLEM_CODEX_WORKER_ALLOW
   unset GOLEM_CODEX_WORKER_ALLOW
   local codex_strip_extras=true
-  if $_flag_codex_lead; then
-    if [[ "$worker_mode" == true ]]; then
-      print -u2 -- "repoGolem: --lead ignored: a worker signal (--worker or GOLEM_ROLE=worker) wins; codex_apps connectors and browser-tools stay stripped."
-    else
-      codex_strip_extras=false
-    fi
+  if $_flag_codex_lead && [[ "$worker_mode" == true ]]; then
+    print -u2 -- "repoGolem: --lead ignored: a worker signal (--worker or GOLEM_ROLE=worker) wins; other codex_apps connectors and browser-tools stay stripped; Locals T3code defaults on."
+  elif $_flag_codex_lead; then
+    codex_strip_extras=false
   else
     _golem_codex_bare_human_reason "$codex_launcher_argc" "$worker_mode"
     [[ -z "$REPLY" ]] && codex_strip_extras=false
   fi
   local -a codex_connector_args=()
   local codex_strip_browser_tools=false
+  # Resolve optional Locals through the normal cache; no hardcoded ID or required allow-name.
+  local -A codex_connector_id_by_name=() codex_connector_wanted=()
+  local codex_connector_line codex_connector_name codex_connector_id codex_drive_tool
+  for codex_connector_line in ${(f)"$(_golem_codex_connector_ids)"}; do
+    codex_connector_id_by_name[${codex_connector_line#*$'\t'}]="${codex_connector_line%%$'\t'*}"
+  done
+  local codex_locals_id="${codex_connector_id_by_name[locals_t3code]:-}"
+  [[ -n "$codex_locals_id" ]] && codex_connector_args=("-c" "apps.${codex_locals_id}.enabled=true")
   if [[ "$codex_strip_extras" == true ]]; then
     local codex_reenabling_connector=""
     if codex_reenabling_connector=$(_golem_codex_args_reenable_connectors "$resume_prefix_flag" "${codex_args[@]}"); then
@@ -346,11 +351,6 @@ _golem_launch_codex() {
     local -a codex_allow_names=(${(s:,:)${codex_worker_allow//[[:space:]]/}})
     local -a codex_allow_connectors=("${(@)codex_allow_names:#browser-tools}")
     (( ${codex_allow_names[(Ie)browser-tools]} )) || codex_strip_browser_tools=true
-    local -A codex_connector_id_by_name=() codex_connector_wanted=()
-    local codex_connector_line codex_connector_name codex_connector_id codex_drive_tool
-    for codex_connector_line in ${(f)"$(_golem_codex_connector_ids)"}; do
-      codex_connector_id_by_name[${codex_connector_line#*$'\t'}]="${codex_connector_line%%$'\t'*}"
-    done
     for codex_connector_name in "${codex_allow_connectors[@]}"; do
       if [[ -z "${codex_connector_id_by_name[$codex_connector_name]:-}" ]]; then
         local codex_known_connectors="${(j:, :)${(@ko)codex_connector_id_by_name}}"
@@ -368,7 +368,7 @@ _golem_launch_codex() {
       # in config.toml stays on, so every cached id is set explicitly.
       codex_connector_args=("-c" "apps._default.enabled=false")
       for codex_connector_id in ${(ou)codex_connector_id_by_name}; do
-        if [[ -n "${codex_connector_wanted[$codex_connector_id]:-}" ]]; then
+        if [[ "$codex_connector_id" == "$codex_locals_id" || -n "${codex_connector_wanted[$codex_connector_id]:-}" ]]; then
           codex_connector_args+=("-c" "apps.${codex_connector_id}.enabled=true")
         elif [[ "$codex_connector_id" == "$codex_drive_id" ]]; then
           codex_connector_args+=("-c" "apps.${codex_connector_id}.enabled=true"

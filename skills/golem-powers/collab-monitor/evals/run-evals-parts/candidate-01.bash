@@ -270,8 +270,8 @@
   run_once "$case_dir/state" "$case_dir/second.out" '@skillcreator' "$board"
   first="$(alert_count "$case_dir/first.out")"
   second="$(alert_count "$case_dir/second.out")"
-  first_arm_line="$(grep -n 'collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md' "$LARGE_PLAN" | sed -n '1s/:.*//p' || true)"
-  second_arm_line="$(grep -n 'collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md' "$LARGE_PLAN" | sed -n '2s/:.*//p' || true)"
+  first_arm_line="$(grep -n 'Arms the addressed monitor' "$LARGE_PLAN" | sed -n '1s/:.*//p' || true)"
+  second_arm_line="$(grep -n 'Arms the addressed monitor' "$LARGE_PLAN" | sed -n '2s/:.*//p' || true)"
   first_spawn_line="$(grep -n 'Spawns one agent per phase' "$LARGE_PLAN" | sed -n '1s/:.*//p' || true)"
   second_spawn_line="$(grep -En 'Spawn agents with (the )?collab path' "$LARGE_PLAN" | sed -n '1s/:.*//p' || true)"
   first_liveness_line="$(grep -n 'MUST NOT be the only worker-liveness guard' "$LARGE_PLAN" | sed -n '1s/:.*//p' || true)"
@@ -291,8 +291,7 @@
     [[ "$(grep -Fc '→ @<listen-name> — [ISO-timestamp] Phase N blocked' "$LARGE_PLAN")" -ge 2 ]] &&
     ! grep -Fq '→ @<listen-name> — Phase N done' "$LARGE_PLAN" &&
     ! grep -Fq '→ @<listen-name> — Phase N blocked' "$LARGE_PLAN" &&
-    [[ "$(grep -c 'follow @<listen-name>' "$LARGE_PLAN")" -ge 3 ]] &&
-    [[ "$(grep -c 'collab-monitor/scripts/collab-monitor.sh' "$LARGE_PLAN")" -ge 4 ]] &&
+    python3 "$SCRIPT_DIR/large-plan-teaching.py" &&
     grep -Fq '| **Worker liveness** |' "$LARGE_PLAN" &&
     grep -Fq 'codex-workflows/scripts/codex-workflows.sh watch --run-id <run-id>' "$LARGE_PLAN" &&
     ! grep -Eiq 'collab monitor (is|may be|can be|as) (the )?only worker-liveness guard' "$LARGE_PLAN" &&
@@ -310,9 +309,7 @@
     grep -Fq 'collab-monitor/scripts/collab-monitor.sh follow @<listen-name>' "$LARGE_PLAN_CAPABILITIES" &&
     grep -Fq 'collab-monitor/scripts/collab-monitor.sh stop @<listen-name>' "$LARGE_PLAN_CAPABILITIES" &&
     ! grep -Eq 'grep -E.*done|grep -E.*blocked' "$LARGE_PLAN_CLAUDE_ADAPTER" &&
-    grep -Fq 'collab-monitor/scripts/collab-monitor.sh run --once @<listen-name>' "$LARGE_PLAN_CLAUDE_ADAPTER" &&
     ! grep -Eq 'grep -E.*done|grep -E.*blocked' "$LARGE_PLAN_COLLAB_WORKFLOW" &&
-    grep -Fq 'collab-monitor/scripts/collab-monitor.sh run --once @<listen-name>' "$LARGE_PLAN_COLLAB_WORKFLOW" &&
     grep -Fq '### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done' "$LARGE_PLAN_COLLAB_WORKFLOW" &&
     grep -Fq '### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked' "$LARGE_PLAN_COLLAB_WORKFLOW" &&
     ! grep -Fq '### @<agent> → @<listen-name> — Phase N done' "$LARGE_PLAN_COLLAB_WORKFLOW" &&
@@ -324,7 +321,7 @@
     grep -Fq 'MUST NOT be the only worker-liveness guard' "$LARGE_PLAN_COLLAB_WORKFLOW"; then
     pass "7 large-plan-teaching GREEN"
   else
-    fail "7 large-plan-teaching" "expected 1 then 0 alerts plus pre-spawn arming, routed done/blocked headings, and an attached start/follow consumer"
+    fail "7 large-plan-teaching" "expected 1 then 0 alerts plus pre-spawn arming, routed done/blocked headings, native-first routing, an attached Codex fallback, and bounded lifecycle negative controls"
   fi
 
   case_dir="$TMP_ROOT/shrink"
