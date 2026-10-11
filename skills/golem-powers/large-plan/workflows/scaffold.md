@@ -8,6 +8,7 @@
 2. **Plan directory** — where to create it (default: `~/.claude/plans/` or a configured private planning directory)
 3. **Phases** — list of phase names and descriptions
 4. **Depends-on** — which phases depend on which
+5. **Invariant test** — behavior each multi-PR slice preserves and the command or case proving it before READY
 
 ## Steps
 
@@ -136,6 +137,10 @@ Low is only for known-output mechanical work; medium suits mechanical splits/ref
 High/xhigh suit open-ended implementation, hard debugging or contradictory evidence;
 security uses high. Evidence: skill-creator cleanup-routing R2 (2026-09-30, 48 verified runs): medium best-or-joint-best on mechanical cleanup; never default xhigh; a data point, not a ceiling.
 Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
+
+## Invariant test
+- **Invariant:** [behavior this slice must preserve]
+- **Test:** [command or case proving it before READY]
 
 ## Steps
 1. Step one

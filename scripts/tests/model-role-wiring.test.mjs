@@ -70,6 +70,9 @@ test('large-plan generated phases and authored templates retain config-driven st
       assert.ok(text.includes('scripts/model-roles.mjs'));
     }
     const generated = readFileSync(join(dir, 'phase-1/README.md'), 'utf8');
+    for (const text of [generated, readFileSync(join(dir, 'phase-2/README.md'), 'utf8'), read('skills/golem-powers/large-plan/workflows/scaffold.md')]) {
+      assert.match(text, /## Invariant test\n- \*\*Invariant:\*\* \[behavior this slice must preserve\]\n- \*\*Test:\*\* \[command or case proving it before READY\]/);
+    }
     const section = text => text.replaceAll('\\`', '`').split('## Choosing effort per phase')[1].split('## ')[0].trim();
     const phaseEffort = section(generated);
     assert.match(phaseEffort, /Effort is not in the model-roles config; the phase declares it\./);
@@ -137,10 +140,19 @@ test('weave evals exercise rejected M1 routes, lead provenance and short/multi-P
   for (const [skill, names] of [['agent-routing', ['m1-proof-dispatch', 'm1-long-running-only', 'm1-failed-brainbar-probe', 'm1-claude-startup-ready', 'lead-model-tier-change']], ['large-plan', ['short-plan-same-skeleton', 'multi-pr-invariant-chain-span']]]) {
     const suite = JSON.parse(read(`skills/golem-powers/${skill}/evals/evals.json`));
     assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
+    if (skill === 'agent-routing') assert.doesNotMatch(JSON.stringify(suite.evals.find(e => e.id === 54)), /three-lane pilot/);
     for (const name of names) {
       const e = suite.evals.find(e => e.name === name);
       assert.ok(e?.prompt && e.expected_output, name);
       assert.ok(e.assertions.length >= 2, name);
     }
   }
+});
+
+
+test('large-plan install scope includes short work', () => {
+  const text = read('skills/golem-powers/large-plan/INSTALL_PROMPT.md');
+  assert.match(text, /ALWAYS use.*planning/);
+  assert.match(text, /short work.*few lines.*same skeleton/);
+  assert.doesNotMatch(text, /NOT for: single-file changes/);
 });

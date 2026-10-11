@@ -1425,7 +1425,7 @@
       "expected_output": "Keep the lane in cmux: long-running alone does not qualify; M1 dispatch requires a deliverable proven on M1.",
       "assertions": [
         {"text": "Keeps work in cmux without an M1 proof requirement.", "type": "behavioral"},
-        {"text": "Does not widen scope to long-running work before the three-lane pilot.", "type": "negative"}
+        {"text": "Does not treat long-running work alone as an M1 dispatch requirement.", "type": "negative"}
       ]
     },
     {
