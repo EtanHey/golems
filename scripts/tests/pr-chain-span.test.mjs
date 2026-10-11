@@ -51,3 +51,28 @@ test('fork heads cannot masquerade as target-repository stack parents', () => {
   const prs = fixture.slice(0, 2).map(p => ({ ...p, head: { ...p.head, repo: { full_name: 'fork/repo' } }, base: { ...p.base, repo: { full_name: 'owner/repo' } } }));
   assert.equal(run(prs).chains.length, 0);
 });
+
+test('gh camelCase stack matches REST stack with target-repo fallback', () => {
+  const gh = JSON.parse(readFileSync(new URL('./fixtures/pr-chain-span/gh-prs.json', import.meta.url)));
+  const result = measure(gh, '2026-10-01', '2026-10-15', 'owner/target');
+  assert.equal(result.chains.length, 1);
+  assert.equal(result.chains[0].spanHours, 6);
+  assert.deepEqual(result.chains[0].prs, run().chains[0].prs);
+  assert.deepEqual(result.chains[0].links, run().chains[0].links);
+  gh[0].headRepository.nameWithOwner = 'fork/target';
+  assert.deepEqual(measure(gh, '2026-10-01', '2026-10-15', 'owner/target').chains[0].prs.map(p => p.number), [2, 3]);
+});
+test('CLI forwards custom target repo for offline gh-format stacks', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const result = JSON.parse(execFileSync(process.execPath, [new URL('../pr-chain-span.mjs', import.meta.url).pathname, 'owner/target', '--since', '2026-10-01', '--until', '2026-10-15', '--input', new URL('./fixtures/pr-chain-span/gh-prs.json', import.meta.url).pathname], { encoding: 'utf8' }));
+  assert.equal(result.chains.length, 1);
+  assert.equal(result.chains[0].spanHours, 6);
+});
+test('open descendants are separate from abandoned closed-unmerged PRs', () => {
+  const prs = fixture.slice(0, 3).map(p => ({ ...p }));
+  prs[1].merged_at = null;
+  prs[2].merged_at = null;
+  prs[2].closed_at = '2026-10-01T03:00:00Z';
+  assert.deepEqual(run(prs).chains[0].openPrs, [2]);
+  assert.deepEqual(run(prs).chains[0].abandonedPrs, [3]);
+});

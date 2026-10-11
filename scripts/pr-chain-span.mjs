@@ -9,11 +9,14 @@
  * Reuses WEAVE 2026-10 data/cls.json fixes_or_supersedes component computation and
  * floor(p*(n-1)) percentiles (r1-q1q2-stats.txt). Root = earliest-open member.
  * Exclude dependabot before linking; exclude components with an unmerged root.
+ * Reopen/supersede chains rooted at a closed-unmerged PR are excluded too.
+ * Missing base repository metadata (gh JSON) falls back to the target repo argument.
  * Span = earliest open to latest observed merge, even if other descendants remain open.
  * Precision limits: WEAVE rework links were 66% strict / 86% lenient (n=35);
  * stack/supersede links were not sampled. This deterministic extractor is not calibrated.
  * GitHub retargeting/deleted heads can hide stacks; branch reuse and prose can mislink.
- * No file-overlap inference. Bare references to issues may collide with PR numbers.
+ * No file-overlap inference. Issues and PRs share repository numbering; bare #N
+ * references in prose may instead mean a PR in another repository.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -21,7 +24,7 @@ import { pathToFileURL } from 'node:url';
 const hours = (a, b) => (b - a) / 3600000;
 const date = value => { const n = Date.parse(value); if (!Number.isFinite(n)) throw new Error(`Invalid date: ${value}`); return n; };
 const stats = xs => { const s = [...xs].sort((a, b) => a - b); return { n: s.length, p50: s.length ? s[Math.floor(.5 * (s.length - 1))] : null, p90: s.length ? s[Math.floor(.9 * (s.length - 1))] : null }; };
-export function measure(input, since, until) {
+export function measure(input, since, until, repo = 'EtanHey/golems') {
   const start = date(since), end = date(until);
   if (start >= end) throw new Error('since must precede until');
   const bot = p => /^dependabot(?:\[bot\])?$/.test(p.author?.login ?? p.user?.login ?? '') || /^dependabot\//.test(p.head?.ref ?? p.headRefName ?? '');
@@ -36,7 +39,7 @@ export function measure(input, since, until) {
   for (const p of prs) {
     for (const m of `${p.title ?? ''}\n${p.body ?? ''}`.matchAll(/\b(follow[- ]up(?:\s+(?:of|to|on))?|fix(?:es|ed)?|supersed(?:es|ed))\s+#(\d+)\b/gi)) link(byNumber.get(Number(m[2])), p, m[1].toLowerCase().startsWith('follow') ? 'follow-up' : m[1].toLowerCase().startsWith('supersed') ? 'supersedes' : 'fixes');
     const base = p.base?.ref ?? p.baseRefName;
-    const baseRepo = p.base?.repo?.full_name ?? null;
+    const baseRepo = p.base?.repo?.full_name ?? repo;
     const earlier = prs.filter(a => a.number !== p.number && a.opened <= p.opened);
     link(earlier.findLast(a => head(a) && head(a) === base && source(a) === baseRepo), p, 'stack');
     link(earlier.findLast(a => head(a) && head(a) === head(p) && source(a) === source(p) && a.merged === null && (a.closed_at ?? a.closedAt) && date(a.closed_at ?? a.closedAt) <= p.opened), p, 'same-branch-reopen');
@@ -52,7 +55,7 @@ export function measure(input, since, until) {
     if (first.merged === null) { excludedRoots.push(first.number); continue; }
     const last = Math.max(...members.filter(p => p.merged !== null).map(p => p.merged));
     const numbers = new Set(members.map(p => p.number));
-    chains.push({ root: first.number, spanHours: hours(first.opened, last), firstOpenedAt: new Date(first.opened).toISOString(), lastMergedAt: new Date(last).toISOString(), pendingPrs: members.filter(p => p.merged === null).map(p => p.number), prs: members.map(row), links: links.filter(l => numbers.has(l.from) && numbers.has(l.to)) });
+    chains.push({ root: first.number, spanHours: hours(first.opened, last), firstOpenedAt: new Date(first.opened).toISOString(), lastMergedAt: new Date(last).toISOString(), openPrs: members.filter(p => p.merged === null && !(p.closed_at ?? p.closedAt)).map(p => p.number), abandonedPrs: members.filter(p => p.merged === null && (p.closed_at ?? p.closedAt)).map(p => p.number), prs: members.map(row), links: links.filter(l => numbers.has(l.from) && numbers.has(l.to)) });
   }
   const perPr = prs.filter(p => cohort(p) && p.merged !== null).map(row);
   return { window: { since, until, cohort: 'root opened in [since, until); all descendants retained' }, precisionLimits: 'WEAVE rework: 66% strict / 86% lenient, n=35; stack/supersede unsampled; this extractor uncalibrated; current branch metadata only', excludedDependabot: input.length - prs.length, excludedRoots, chains, perPr, chainSpanHours: stats(chains.map(c => c.spanHours)), perPrHours: stats(perPr.map(p => p.openToMergeHours)) };
@@ -65,6 +68,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw new Error('Expected owner/repo');
     if (date(options['--since']) >= date(options['--until'])) throw new Error('since must precede until');
     const prs = options['--input'] ? JSON.parse(readFileSync(options['--input'], 'utf8')) : JSON.parse(execFileSync('gh', ['api', '--paginate', '--slurp', `repos/${repo}/pulls?state=all&per_page=100`], { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 })).flat();
-    console.log(JSON.stringify({ repo, ...measure(prs, options['--since'], options['--until']) }, null, 2));
+    console.log(JSON.stringify({ repo, ...measure(prs, options['--since'], options['--until'], repo) }, null, 2));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
