@@ -164,6 +164,16 @@ def graphql_dynamic(field, literal_names):
     return '$' in value or '`' in value
 
 
+# AIDEV-NOTE: repository writes are settings by default (lead ruling, R2 N5).
+# Only routine collaboration traffic is listed; keys, branch renames, security
+# features, Actions secrets/variables/permissions, pages, hooks... need a token.
+# commits/<sha> has no write endpoint but its comments, so it is routine for every method.
+ROUTINE = {'pulls', 'issues', 'comments', 'commits', 'statuses', 'check-runs', 'check-suites', 'dispatches', 'merges', 'forks'}
+ROUTINE_ACTIONS = {'runs', 'jobs', 'caches'}  # plus workflows/<id>/dispatches
+ROUTINE_GIT = {'blobs', 'trees', 'commits', 'tags'}  # plus creating a ref
+ADMIN_ROOTS = {'orgs', 'user', 'teams', 'enterprises', 'admin', 'app', 'applications', 'authorizations', 'installation'}
+
+
 def settings_path(path, method):
     if method in ('GET', 'HEAD', 'OPTIONS'): return False
     parts = path.casefold().split('/')  # GitHub may fold route keywords: compare folded
@@ -171,15 +181,88 @@ def settings_path(path, method):
         tail = parts[3:]
     elif parts[0] == 'repositories' and len(parts) >= 2:
         tail = parts[2:]
-    elif len(parts) >= 3 and parts[0] == 'orgs':
-        return parts[2] == 'rulesets'
     else:
-        return False
-    if not tail: return method in ('PATCH', 'DELETE') or method == 'POST'
-    return (tail[0] in ('rulesets', 'collaborators', 'hooks', 'environments', 'transfer') or
-            tail[:2] == ['actions', 'permissions'] or
-            tail[0] == 'branches' and 'protection' in tail or
-            tail[:2] in (['git', 'refs'], ['git', 'ref']) and method in ('PATCH', 'DELETE'))
+        return parts[0] in ADMIN_ROOTS  # account/org administration
+    if not tail: return True
+    if tail[0] in ROUTINE: return False
+    if tail[0] == 'actions':
+        return not (tail[1:2] and tail[1] in ROUTINE_ACTIONS or tail[1:2] == ['workflows'] and tail[-1] == 'dispatches')
+    if tail[0] == 'git':
+        return not (tail[1:2] and tail[1] in ROUTINE_GIT or tail[1:2] in (['refs'], ['ref']) and method == 'POST')
+    return True
+
+
+# Value/boolean flags for the settings verbs already classified below (gh v2.95).
+# This reader only proves help: unknown grammar retains normal classification.
+_HELP_FLAGS = {
+    ('repo', 'edit'): ('description homepage default-branch visibility squash-merge-commit-message add-topic remove-topic', 'dh',
+                     'template enable-issues enable-projects enable-wiki enable-discussions enable-merge-commit enable-squash-merge enable-rebase-merge enable-auto-merge enable-advanced-security enable-secret-scanning enable-secret-scanning-push-protection delete-branch-on-merge allow-forking allow-update-branch accept-visibility-change-consequences', ''),
+    ('repo', 'delete'): ('', '', 'confirm yes', ''),
+    ('repo', 'archive'): ('', '', 'confirm yes', 'y'),
+    ('repo', 'unarchive'): ('', '', 'confirm yes', 'y'),
+    ('repo', 'rename'): ('', '', 'confirm yes', 'y'),
+    ('repo', 'sync'): ('source branch', 'sb', 'force', ''),
+    ('repo', 'deploy-key', 'add'): ('title', 't', 'allow-write', 'w'),
+    ('repo', 'deploy-key', 'delete'): ('', '', '', ''),
+    ('secret', 'set'): ('org env visibility repos body env-file app', 'oevrbfa', 'user no-repos-selected no-store', 'u'),
+    ('secret', 'delete'): ('org env app', 'oea', 'user', 'u'),
+    ('variable', 'set'): ('org env visibility repos body env-file', 'oevrbf', '', ''),
+    ('variable', 'delete'): ('org env', 'oe', '', ''),
+    ('ssh-key', 'add'): ('type title', 't', '', ''),
+    ('ssh-key', 'delete'): ('', '', 'confirm yes', 'y'),
+    ('gpg-key', 'add'): ('title', 't', '', ''),
+    ('gpg-key', 'delete'): ('', '', 'confirm yes', 'y'),
+    ('workflow', 'disable'): ('', '', '', ''),
+}
+
+
+def help_only(args):
+    """A consumed help flag, not a value or an operand after `--`.
+    Short value options consume their cluster's remainder or the next word;
+    repo edit owns -h as homepage, so its help flag is long-only."""
+    size = 3 if args[:2] == ['repo', 'deploy-key'] else 2
+    key = tuple(args[:size])
+    if key in (('secret', 'remove'), ('variable', 'remove')):
+        key = (key[0], 'delete')
+    spec = _HELP_FLAGS.get(key)
+    if spec is None: return False
+    values, short_values, booleans, short_booleans = spec
+    values = set(values.split()) | {'repo', 'hostname'}
+    booleans = set(booleans.split()) | {'help'}
+    short_values += 'R'
+    if key != ('repo', 'edit'): short_booleans += 'h'
+    truth = {'1', 't', 'T', 'TRUE', 'true', 'True'}
+    falsity = {'0', 'f', 'F', 'FALSE', 'false', 'False'}
+    help_, i = False, size
+    while i < len(args):
+        arg = args[i]; i += 1
+        if arg == '--': break
+        if arg.startswith('--'):
+            name, eq, value = arg[2:].partition('=')
+            if name in values:
+                if not eq:
+                    if i == len(args): return False
+                    i += 1  # required values include help-looking words
+            elif name in booleans:
+                if eq and value not in truth | falsity: return False
+                if name == 'help': help_ = not eq or value in truth
+            else: return False
+        elif arg.startswith('-') and len(arg) > 1:
+            cluster = arg[1:]
+            while cluster:
+                char, cluster = cluster[0], cluster[1:]
+                if char in short_values:
+                    if not cluster:
+                        if i == len(args): return False
+                        i += 1
+                    break
+                if char not in short_booleans: return False
+                if cluster.startswith('='):
+                    value, cluster = cluster[1:], ''
+                    if value not in truth | falsity: return False
+                    if char == 'h': help_ = value in truth
+                elif char == 'h': help_ = True
+    return help_
 
 
 def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in word or '`' in word):
@@ -188,18 +271,27 @@ def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in 
     if not args: return []
     if args[0] not in BUILTINS or '$' in args[0] or '`' in args[0]:
         raise ValueError('unresolved GitHub CLI alias/subcommand')
+    if help_only(args) and not any(splits(arg) for arg in args):
+        return []  # help text only
     if args[:1] == ['repo']:
         if len(args) < 2: return []
         verb = args[1]
         if '$' in verb or '`' in verb or verb in ('edit', 'sync') and any('$' in a or '`' in a for a in args):
             raise ValueError('dynamic settings subcommand/options')
-        guarded = (verb in ('delete', 'archive', 'rename') or
+        guarded = (verb in ('delete', 'archive', 'unarchive', 'rename', 'edit') or  # edit: parity with the root PATCH
                    verb == 'sync' and '--force' in args or
-                   verb == 'edit' and any(a.startswith(('--visibility', '--default-branch')) for a in args))
+                   verb == 'deploy-key' and any(a in ('add', 'delete') for a in args[2:]))
         if guarded:
             if any('$' in a or '`' in a for a in args): raise ValueError('dynamic settings scope')
             return [dict(class_='settings', repo=cwd, target=args[2:])]
         return []
+    # Credentials and security switches outside `gh api`.
+    words = set(args[1:])
+    if (args[0] in ('secret', 'variable') and words & {'set', 'delete', 'remove'} or
+            args[0] in ('ssh-key', 'gpg-key') and words & {'add', 'delete'} or
+            args[0] == 'workflow' and 'disable' in words):
+        if any('$' in a or '`' in a for a in args): raise ValueError('dynamic settings scope')
+        return [dict(class_='settings', repo=cwd, target=args[:2])]
     if args[0] != 'api': return []
     method, positional, fields, source = parse_api(args[1:])
     # gh defaults to POST once it has parameters or a body file.
