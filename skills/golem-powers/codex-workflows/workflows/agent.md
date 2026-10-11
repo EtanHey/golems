@@ -59,8 +59,13 @@ not a shared-repository destination: harvest copies it to
 
 ## Cleanup
 
-Cleanup refuses live or unharvested workers. Branch deletion also refuses
-unmerged work unless the caller explicitly opts into the force policy:
+The current cleanup engine does not archive ignored personal artifacts. Hold the lane
+until the dispatching lead inventories, copies outside it and verifies all ignored
+`docs.local/` and personal artifacts, preserves local history, and explicitly authorizes
+retirement. Accepted harvest alone does not satisfy this requirement. The command below
+is an interface reference for use only after those preservation checks; nightly GC
+excludes these nested lanes. Cleanup also refuses live/unharvested workers, and branch
+deletion refuses unmerged work unless the caller explicitly opts into the force policy:
 
 ```bash
 skills/golem-powers/codex-workflows/scripts/codex-workflows.sh cleanup \

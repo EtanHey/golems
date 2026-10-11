@@ -195,13 +195,26 @@ Not every branch goes through the full PR flow. When implementation is done:
 | **Keep as-is** | Need to park work | Just stop. Worktree preserved. |
 | **Discard** | Wrong approach, start over | Requires typed "discard" confirmation. `git branch -D <branch>` |
 
-**Worktree cleanup:** For options 1 (after merge), 3 (never), and 4 (after discard):
+**Worktree cleanup (lane close):** For options 1 (after merge), 3 (never), and 4 (after discard),
+remove the lane's worktree from the original checkout, after the worker's pane is closed:
 ```bash
 # Check if in worktree
 git worktree list | grep $(git branch --show-current)
-# If yes, after merging/discarding:
-git worktree remove <worktree-path>
+# If yes, after merging/discarding (<golems> = the golems checkout; works for any repo):
+<golems>/scripts/worktree-gc.sh --apply --idle-hours 0 --path <worktree-path>
 ```
+It removes only a clean worktree whose HEAD is on the fresh default branch and that no running
+process uses (a live pane keeps it: `KEEP-live`). An ignored `docs.local/` is archived to
+`<repo>/docs.local/worktree-archive/<name>/` first. Paste its row into the cleanup receipt. A
+discarded, never-merged branch stays `KEEP-unpushed`. Before any manual removal, inventory,
+copy outside the retiring tree, and verify all ignored `docs.local/` and personal artifacts;
+`git worktree remove` does not archive them. Preserve any local-only history and obtain the
+lead's explicit discard/retirement decision first. Hold the lane when preservation is uncertain.
+Nightly `com.golems.worktree-gc` considers only direct `<main>/.worktrees/<name>` lanes after
+6 idle hours; nested `.codex-workflows` lanes remain their dispatching lead's responsibility.
+Exit 3 means a completed scan with KEEP-unpushed; exit 2 means refused/invalid scope.
+An open PR yields `KEEP-open-pr` even when its head is remotely represented.
+The 2026-10-06 disk lane found ~1,400 merged worktrees (433 GB) left behind by lanes.
 
 After `git worktree add`, read the file from the worktree path before editing.
 Reads from the primary checkout or another worktree do not carry over.
