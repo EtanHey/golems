@@ -5,6 +5,7 @@
     "test-bun-version-pin.bats",
     "test-check-instruction-shape.bats",
     "test-cleanup-legacy-commands.bats",
+    "test-disk-free-floor.bats",
     "test-golem-install-validate.bats",
     "test-golems-sync.bats",
     "test-grill-me-upstream-port.bats",
