@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "purpose": "Public synthetic quote-aware writer rows from the PR #737 review; commands are DATA ONLY and must never be executed.",
+  "parent_commit": "370ad76f9976f45f53b02a8dd266c3e7d41bd84f",
+  "expectation": "deny must match in both classifier and registered fail-closed hook",
+  "rows": [
+    {
+      "id": "single_quoted_default_writer_data",
+      "command": "false && q=/opt/fixture; echo '${q:=x}'; $q/tool.sh",
+      "deny": false
+    },
+    {
+      "id": "single_quoted_unset_writer_data",
+      "command": "false && q=/opt/fixture; echo '${q=x}'; $q/tool.sh",
+      "deny": false
+    },
+    {
+      "id": "single_quoted_indirect_writer_data",
+      "command": "false && q=/opt/fixture; echo '${!r:=x}'; $q/tool.sh",
+      "deny": false
+    },
+    {
+      "id": "backslash_escaped_writer_data",
+      "command": "false && q=/opt/fixture; echo \\${q:=x}; $q/tool.sh",
+      "deny": false
+    },
+    {
+      "id": "double_quoted_backslash_writer_data",
+      "command": "false && q=/opt/fixture; echo \"\\${q:=x}\"; $q/tool.sh",
+      "deny": false
+    },
+    {
+      "id": "other_name_writer",
+      "command": "false && q=/opt/fixture; echo \"${z:=x}\"; $q/tool.sh",
+      "deny": false
+    },
+    {
+      "id": "unquoted_direct_writer",
+      "command": "false && q=/opt/fixture; echo ${q:=x}; $q/tool.sh",
+      "deny": true
+    },
+    {
+      "id": "indirect_writer",
+      "command": "false && q=/opt/fixture; r=q; echo \"${!r:=x}\"; $q/tool.sh",
+      "deny": true
+    }
+  ]
+}
