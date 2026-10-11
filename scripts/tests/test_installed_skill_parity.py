@@ -3,6 +3,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -97,18 +98,152 @@ class Parity(unittest.TestCase):
         self.required['roots'][self.root]['allow_empty'] = ['class-placeholder']
         self.assertEqual(self.check()['errors'], [])
 
-    def test_home_normalization_and_explicit_mirror_alias(self):
+    def test_install_kind_and_target_do_not_affect_content_parity(self):
         self.assertEqual(parity.normalize('/host-a/source/class-a', '/host-a'),
                          parity.normalize('/host-b/source/class-a', '/host-b'))
         self.assertEqual(parity.normalize('/host-ab/source', '/host-a'), '/host-ab/source')
         entry = self.right['roots'][self.root]['entries']['class-a']
+        entry['kind'] = 'dir'
         entry['normalized_target'] = '$HOME/mirror/class-a'
-        self.assertTrue(self.check()['errors'])
-        self.required['roots'][self.root]['target_aliases']['class-a'] = [
-            '$HOME/source/class-a', '$HOME/mirror/class-a']
         self.assertEqual(self.check()['errors'], [])
         entry['normalized_target'] = '/foreign/source/class-a'
-        self.assertTrue(self.check()['errors'])
+        self.assertEqual(self.check()['errors'], [])
+
+    def test_marker_only_differences_are_ignored_in_fixture_catalogs(self):
+        for marker in ['.golems-source-commit', '.golems-install.json']:
+            entries = self.right['roots'][self.root]['entries']
+            entries[marker] = dict(kind='file', exists=True, skill_sha256=None,
+                                   normalized_target='$HOME/' + marker, files={}, internal_skills={})
+            for prefix in ['', 'scripts/']:
+                entries['class-a']['files'][prefix + marker] = dict(
+                    kind='file', sha256='b'*64, executable=False)
+        self.assertEqual(self.check()['errors'], [])
+
+    def test_installed_version_must_match_when_recorded(self):
+        for local, remote in [('v1', 'v1'), ('v1', 'v2'), (None, 'v1'), ('v1', None)]:
+            with self.subTest(local=local, remote=remote):
+                self.setUp()
+                if local is not None: self.left['installed_version'] = local
+                if remote is not None: self.right['installed_version'] = remote
+                result = self.check()
+                self.assertEqual(result['name_content_parity'], local == remote)
+                if local != remote:
+                    self.assertIn('installed version mismatch', result['errors'][0])
+                    self.assertIn('local=', result['errors'][0])
+                    self.assertIn('remote=', result['errors'][0])
+
+    def test_invalid_inventory_versions_fail_closed(self):
+        for value in [None, 1, '', ' v1', 'v1\n']:
+            with self.subTest(value=value):
+                self.setUp(); self.right['installed_version'] = value
+                with self.assertRaisesRegex(ValueError, 'installed version'):
+                    self.check()
+
+    def scan(self, home, pin):
+        with patch.object(parity.Path, 'home', return_value=home), \
+                patch.object(parity, 'observed_identity', return_value=pin):
+            return parity.inventory()
+
+    def test_scanned_checkout_links_and_release_copies_compare_by_content(self):
+        with tempfile.TemporaryDirectory(prefix='class-install-content-') as directory:
+            base = Path(directory)
+            local, remote = base / 'class-local', base / 'class-remote'
+            source = base / 'class-checkout'
+            source.mkdir()
+            (source / 'SKILL.md').write_bytes(b'# class-a\n')
+            (source / 'scripts').mkdir()
+            (source / 'scripts/helper').write_bytes(b'echo class-a\n')
+            (source / 'scripts/helper').chmod(0o755)
+            (source / 'helper-link').symlink_to(source / 'scripts/helper')
+            (source / 'scripts-link').symlink_to(source / 'scripts', target_is_directory=True)
+            for root in parity.ROOTS:
+                (local / root).mkdir(parents=True)
+                (local / root / 'class-a').symlink_to(source, target_is_directory=True)
+                shutil.copytree(source, remote / root / 'class-a')
+            for marker in ['.golems-source-commit', '.golems-install.json']:
+                (remote / self.root / marker).write_text('installer metadata\n')
+                (remote / self.root / 'class-a' / marker).write_text('installer metadata\n')
+            left, right = self.scan(local, self.pins[0]), self.scan(remote, self.pins[1])
+            self.assertEqual(parity.compare(left, right, self.required)['errors'], [])
+            files = left['roots'][self.root]['entries']['class-a']['files']
+            self.assertEqual(files['helper-link'], files['scripts/helper'])
+            self.assertEqual(files['scripts-link/helper'], files['scripts/helper'])
+            self.assertTrue(files['helper-link']['executable'])
+            self.assertNotIn('.golems-install.json', right['roots'][self.root]['entries'])
+            self.assertNotIn('.golems-source-commit', right['roots'][self.root]['entries']['class-a']['files'])
+            skill = remote / self.root / 'class-a/SKILL.md'
+            skill.write_bytes(b'# class-b\n')  # Exactly one changed byte.
+            right = self.scan(remote, self.pins[1])
+            self.assertFalse(parity.compare(left, right, self.required)['name_content_parity'])
+            skill.write_bytes(b'# class-a\n')
+            helper = remote / self.root / 'class-a/scripts/helper'
+            helper.write_bytes(b'echo class-b\n')
+            right = self.scan(remote, self.pins[1])
+            self.assertFalse(parity.compare(left, right, self.required)['name_content_parity'])
+            helper.write_bytes(b'echo class-a\n')
+            helper.chmod(0o644)
+            right = self.scan(remote, self.pins[1])
+            self.assertFalse(parity.compare(left, right, self.required)['name_content_parity'])
+            shutil.rmtree(remote / self.root / 'class-a')
+            right = self.scan(remote, self.pins[1])
+            result = parity.compare(left, right, self.required)
+            self.assertFalse(result['name_content_parity'])
+            self.assertFalse(result['required_readable_valid'])
+
+    def test_scanner_records_version_and_refuses_bad_install_records(self):
+        with tempfile.TemporaryDirectory(prefix='class-install-version-') as directory:
+            home = Path(directory)
+            self.assertNotIn('installed_version', self.scan(home, self.pins[0]))
+            record = home / '.golems/installed.json'
+            record.parent.mkdir()
+            record.write_text(json.dumps({'version': 'v1', 'source': 'class-release'}))
+            self.assertEqual(self.scan(home, self.pins[0])['installed_version'], 'v1')
+            for value in ['{', '[]', '{}', '{"version":1}', '{"version":""}']:
+                record.write_text(value)
+                with self.assertRaisesRegex(ValueError, 'installed.json'):
+                    self.scan(home, self.pins[0])
+            record.unlink()
+            record.symlink_to(home / 'class-missing-record')
+            with self.assertRaisesRegex(ValueError, 'installed.json'):
+                self.scan(home, self.pins[0])
+
+    def test_fixture_cli_reports_pass_and_content_or_version_failure(self):
+        with tempfile.TemporaryDirectory(prefix='class-parity-cli-') as directory:
+            paths = [Path(directory) / name for name in ['left.json', 'right.json', 'required.json']]
+            command = [sys.executable, '-B', str(SCRIPT), '--left', str(paths[0]),
+                       '--right', str(paths[1]), '--requirements', str(paths[2])]
+            for kind in ['equal', 'content', 'version']:
+                with self.subTest(kind=kind):
+                    self.setUp()
+                    entry = self.right['roots'][self.root]['entries']['class-a']
+                    entry.update(kind='dir', normalized_target='$HOME/releases/v1/class-a')
+                    if kind == 'content': entry['skill_sha256'] = 'b'*64
+                    if kind == 'version':
+                        self.left['installed_version'] = 'v1'
+                        self.right['installed_version'] = 'v2'
+                    for path, document in zip(paths, [self.left, self.right, self.required]):
+                        path.write_text(json.dumps(document))
+                    run = subprocess.run(command, capture_output=True, text=True)
+                    result = json.loads(run.stdout)
+                    self.assertEqual(run.returncode, 0 if kind == 'equal' else 1, run.stderr)
+                    self.assertEqual(result['measurement'], 'fixture')
+                    self.assertEqual(result['error_count'], 0 if kind == 'equal' else 1)
+                    self.assertEqual(result['name_content_parity'], kind == 'equal')
+                    if kind == 'version': self.assertIn('installed version mismatch: local=v1 remote=v2', run.stderr)
+
+    def test_supporting_symlink_cycles_and_hashless_manifests_fail_closed(self):
+        entry = self.right['roots'][self.root]['entries']['class-a']
+        entry['files']['helper'] = dict(kind='symlink', target='$HOME/class-helper')
+        with self.assertRaisesRegex(ValueError, 'content digest'):
+            self.check()
+        with tempfile.TemporaryDirectory(prefix='class-skill-cycle-') as directory:
+            home = Path(directory)
+            skill = home / self.root / 'class-a'
+            skill.mkdir(parents=True)
+            (skill / 'SKILL.md').write_text('# class-a\n')
+            (skill / 'cycle').symlink_to(skill, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, 'cycle'):
+                self.scan(home, self.pins[0])
 
     def test_scanner_reads_nested_skills_and_rejects_broken_support(self):
         with tempfile.TemporaryDirectory(prefix='class-skill-parity-') as directory:

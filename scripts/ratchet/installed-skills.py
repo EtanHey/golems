@@ -13,14 +13,30 @@ from pathlib import Path
 
 ROOTS = ('.claude/skills', '.agents/skills', '.codex/skills')
 IGNORED = {'.git', 'node_modules', '__pycache__', '.pytest_cache'}
+INSTALLER_MARKERS = {'.golems-source-commit', '.golems-install.json'}
 
 
 def normalize(value, home):
     return '$HOME' + value[len(home):] if value == home or value.startswith(home + '/') else value
 
 
-def walk_error(error):
-    raise error
+def version(value):
+    if (not isinstance(value, str) or not value or value != value.strip() or
+            any(ord(c) < 32 for c in value)):
+        raise ValueError('malformed installed version')
+
+
+def installed_version(home):
+    record = Path(home) / '.golems/installed.json'
+    if not record.exists() and not record.is_symlink(): return None
+    try:
+        data = json.loads(record.read_text())
+        if not isinstance(data, dict): raise ValueError('malformed record')
+        value = data.get('version')
+        version(value)
+    except (OSError, ValueError):
+        raise ValueError('installed.json unreadable or malformed installed version')
+    return value
 
 
 def observed_identity():
@@ -67,7 +83,11 @@ def names(value, nested=False, nonempty=False):
 
 
 def validate(document, required=False):
-    object_keys(document, ('schema', 'identities' if required else 'identity', 'roots'), 'manifest')
+    keys = {'schema', 'identities' if required else 'identity', 'roots'}
+    if not required and isinstance(document, dict) and 'installed_version' in document:
+        keys.add('installed_version')
+        version(document['installed_version'])
+    object_keys(document, keys, 'manifest')
     if type(document['schema']) is not int or document['schema'] != 2:
         raise ValueError('schema 2 required; historical schema 1 is not fresh identity proof')
     object_keys(document['roots'], ROOTS, 'roots')
@@ -107,13 +127,30 @@ def validate(document, required=False):
             for key, value in row['files'].items():
                 name(key, True)
                 if not isinstance(value, dict): raise ValueError('malformed supporting entry')
-                if value.get('kind') == 'file':
-                    object_keys(value, ('kind', 'sha256', 'executable'), 'file'); digest(value['sha256'])
-                    if type(value['executable']) is not bool: raise ValueError('malformed executable bit')
-                else:
-                    object_keys(value, ('kind', 'target'), 'supporting link')
-                    if value['kind'] != 'symlink' or not isinstance(value['target'], str) or not value['target']:
-                        raise ValueError('malformed supporting link')
+                if value.get('kind') != 'file':
+                    raise ValueError('supporting file requires content digest; refresh inventory')
+                object_keys(value, ('kind', 'sha256', 'executable'), 'file'); digest(value['sha256'])
+                if type(value['executable']) is not bool: raise ValueError('malformed executable bit')
+
+
+def content_files(directory, ancestors=frozenset(), prefix=''):
+    resolved = directory.resolve(strict=True)
+    if resolved in ancestors: raise ValueError('supporting directory symlink cycle')
+    files = {}
+    for item in sorted(directory.iterdir()):
+        if item.name in INSTALLER_MARKERS or item.name == '.DS_Store' or item.name.endswith('.pyc'):
+            continue
+        relative = prefix + item.name
+        if item.is_symlink() and not item.exists(): raise ValueError('broken supporting link')
+        if item.is_dir():
+            if item.name not in IGNORED:
+                files.update(content_files(item, ancestors | {resolved}, relative + '/'))
+        elif item.is_file():
+            files[relative] = dict(kind='file', sha256=hashlib.sha256(item.read_bytes()).hexdigest(),
+                                   executable=bool(item.stat().st_mode & 0o111))
+        elif item.is_symlink():
+            raise ValueError('unsupported supporting link')
+    return files
 
 
 def inventory():
@@ -124,26 +161,14 @@ def inventory():
         entries = {}
         if directory.is_dir():
             for entry in sorted(directory.iterdir()):
-                if entry.name == '.DS_Store': continue
+                if entry.name == '.DS_Store' or entry.name in INSTALLER_MARKERS: continue
                 row = dict(kind='symlink' if entry.is_symlink() else 'dir' if entry.is_dir() else 'file',
                            exists=entry.exists(), normalized_target=normalize(str(entry.resolve()), home),
                            skill_sha256=None, files={}, internal_skills={})
                 if entry.is_dir():
-                    files = {}
-                    for base, dirs, names in os.walk(entry.resolve(), followlinks=False, onerror=walk_error):
-                        dirs[:] = sorted(d for d in dirs if d not in IGNORED)
-                        for name in sorted(dirs + names):
-                            if name == '.DS_Store' or name.endswith('.pyc'): continue
-                            item = Path(base) / name
-                            relative = str(item.relative_to(entry.resolve()))
-                            if item.is_symlink():
-                                if not item.exists(): raise ValueError('broken supporting link')
-                                files[relative] = dict(kind='symlink', target=normalize(os.readlink(item), home))
-                            elif item.is_file():
-                                files[relative] = dict(kind='file', sha256=hashlib.sha256(item.read_bytes()).hexdigest(),
-                                                       executable=bool(item.stat().st_mode & 0o111))
+                    files = content_files(entry)
                     if 'SKILL.md' in files:
-                        row['skill_sha256'] = hashlib.sha256((entry / 'SKILL.md').read_bytes()).hexdigest()
+                        row['skill_sha256'] = files['SKILL.md']['sha256']
                         row['files'] = files
                     else:
                         nested = {str(Path(k).parent): v['sha256'] for k, v in files.items()
@@ -153,11 +178,14 @@ def inventory():
                                         if any(k.startswith(n + '/') for n in nested)}
                 entries[entry.name] = row
         roots[root] = dict(exists=directory.is_dir(), entries=entries)
-    return dict(schema=2, identity=observed_identity(), roots=roots)
+    document = dict(schema=2, identity=observed_identity(), roots=roots)
+    recorded_version = installed_version(home)
+    if recorded_version is not None: document['installed_version'] = recorded_version
+    return document
 
 
 def supporting(entry):
-    files = entry.get('files', {})
+    files = {k: v for k, v in entry.get('files', {}).items() if Path(k).name not in INSTALLER_MARKERS}
     if entry.get('skill_sha256'): return files
     return {k: v for k, v in files.items()
             if any(k.startswith(n + '/') for n in entry.get('internal_skills', {}))}
@@ -167,6 +195,10 @@ def compare(left, right, requirements):
     validate(left); validate(right); validate(requirements, required=True)
     errors, invalid = [], []
     parity, valid = True, True
+    if left.get('installed_version') != right.get('installed_version'):
+        errors.append('installed version mismatch: local=' + left.get('installed_version', '<unrecorded>') +
+                      ' remote=' + right.get('installed_version', '<unrecorded>'))
+        parity = False
     identities_valid = True
     if left['identity']['machine'] == right['identity']['machine']:
         errors.append('hosts: local/remote identify the same machine'); identities_valid = False
@@ -181,7 +213,8 @@ def compare(left, right, requirements):
         if any(not host or host.get('exists') is not True for host in hosts):
             errors.append(root + ': missing root'); parity = valid = False
             continue
-        catalogs = [{n: e for n, e in host['entries'].items() if n != '.DS_Store'} for host in hosts]
+        catalogs = [{n: e for n, e in host['entries'].items() if n != '.DS_Store' and n not in INSTALLER_MARKERS}
+                    for host in hosts]
         for number in (0, 1):
             for missing in sorted(set(catalogs[1-number]) - set(catalogs[number])):
                 errors.append(root + '/' + missing + ': host ' + str(number) + ' name missing'); parity = False
@@ -190,9 +223,6 @@ def compare(left, right, requirements):
             for name, entry in catalog.items():
                 if entry.get('skill_sha256'): readable.add(name)
                 readable.update(name + '/' + n for n in entry.get('internal_skills', {}))
-                target = entry.get('normalized_target', '')
-                if not target.startswith('$HOME/'):
-                    errors.append(root + '/' + name + ': host ' + str(number) + ' foreign target'); valid = False
                 if entry.get('exists') is not True:
                     invalid.append(root + '/' + name + ': host ' + str(number) + ' broken')
                     if name not in required.get('allow_broken', []):
@@ -203,15 +233,11 @@ def compare(left, right, requirements):
                         errors.append(root + '/' + name + ': host ' + str(number) + ' unreadable entry'); valid = False
             for missing in sorted(set(required['readable']) - readable):
                 errors.append(root + '/' + missing + ': host ' + str(number) + ' required readable skill missing'); valid = False
-        for name in set(catalogs[0]) & set(catalogs[1]):
+        for name in sorted(set(catalogs[0]) & set(catalogs[1])):
             a, b = (catalog[name] for catalog in catalogs)
-            fields = ['kind', 'exists', 'skill_sha256']
-            if (any(a.get(k) != b.get(k) for k in fields) or
+            if (a['skill_sha256'] != b['skill_sha256'] or
                     a.get('internal_skills', {}) != b.get('internal_skills', {}) or supporting(a) != supporting(b)):
                 errors.append(root + '/' + name + ': local/remote content/shape mismatch'); parity = False
-            targets = [a['normalized_target'], b['normalized_target']]
-            if targets[0] != targets[1] and required.get('target_aliases', {}).get(name) != targets:
-                errors.append(root + '/' + name + ': local/remote target mismatch'); parity = False
     return dict(host_identity_valid=identities_valid, name_content_parity=parity, required_readable_valid=valid,
                 disclosed_invalid=invalid, errors=errors)
 
