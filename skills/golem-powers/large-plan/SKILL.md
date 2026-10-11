@@ -38,6 +38,8 @@ Each slice of a multi-PR plan declares its invariant test: name the behavior tha
 
 The plan reports chain span as its convergence metric: elapsed time from the first PR opening to the last merge in the linked fix chain, excluding unmerged roots and dependabot bundles, with stack and follow-up links reported separately. An unmerged root has no completed chain span; report it as pending rather than zero. Keep per-PR time alongside it.
 
+Run `node scripts/pr-chain-span.mjs EtanHey/golems --since ISO --until ISO` to produce chain-span and per-PR latency metrics (p50/p90).
+
 Large plans are folder-based: one folder per phase, each containing a README.md (steps) and findings.md (shared knowledge). A main README.md acts as the index with a progress table and routing.
 
 ```

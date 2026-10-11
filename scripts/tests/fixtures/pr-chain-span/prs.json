@@ -1,0 +1,10 @@
+[
+  {"number":1,"created_at":"2026-10-01T00:00:00Z","merged_at":"2026-10-01T01:00:00Z","head":{"ref":"stack-a","repo":{"full_name":"EtanHey/golems"}},"base":{"ref":"master","repo":{"full_name":"EtanHey/golems"}}},
+  {"number":2,"created_at":"2026-10-01T01:00:00Z","merged_at":"2026-10-01T03:00:00Z","head":{"ref":"stack-b","repo":{"full_name":"EtanHey/golems"}},"base":{"ref":"stack-a","repo":{"full_name":"EtanHey/golems"}}},
+  {"number":3,"created_at":"2026-10-01T02:00:00Z","merged_at":"2026-10-01T06:00:00Z","head":{"ref":"stack-c","repo":{"full_name":"EtanHey/golems"}},"base":{"ref":"stack-b","repo":{"full_name":"EtanHey/golems"}}},
+  {"number":4,"created_at":"2026-10-02T00:00:00Z","merged_at":"2026-10-02T01:00:00Z"},
+  {"number":5,"created_at":"2026-10-02T01:00:00Z","merged_at":"2026-10-02T05:00:00Z","body":"Supersedes #4"},
+  {"number":6,"created_at":"2026-10-03T00:00:00Z","merged_at":null},
+  {"number":7,"created_at":"2026-10-03T01:00:00Z","merged_at":"2026-10-03T04:00:00Z","body":"Follow-up of #6"},
+  {"number":8,"created_at":"2026-10-04T00:00:00Z","merged_at":"2026-10-04T01:00:00Z","author":{"login":"dependabot[bot]"},"head":{"ref":"dependabot/npm_and_yarn/bundle","repo":{"full_name":"EtanHey/golems"}},"body":"Fixes #3"}
+]
