@@ -10,6 +10,8 @@
       for (i = 1; i <= event_count; i++) {
         delete events[i]
         delete event_is_heading[i]
+        delete event_episode[i]
+        delete event_offset[i]
       }
       event_count = 0
     }
@@ -92,7 +94,7 @@
     function release_known_block(    i) {
       if (!block_known_author || block_self || event_count == 0) return
       for (i = 1; i <= event_count; i++) {
-        if (events[i] != "") print "INBOUND\t" events[i]
+        emit_event("INBOUND", i)
       }
       clear_events()
     }
@@ -127,12 +129,24 @@
       event_count++
       events[event_count] = value
       event_is_heading[event_count] = is_heading
+      if (is_heading) {
+        # Stable within an append-only file, even when the report body grows.
+        event_episode[event_count] = ++heading_occurrences[value]
+        event_offset[event_count] = line_offset + length(value)
+      }
+    }
+    function emit_event(record_type, i,    kind) {
+      if (events[i] == "") return
+      kind = record_type
+      # Keep the first occurrence's legacy hash and copied-file dedup contract.
+      if (event_episode[i] > 1) kind = kind ":" event_episode[i] ":" event_offset[i]
+      print kind "\t" events[i]
     }
     function flush_block(complete,    i, record_type) {
       if (complete) {
         record_type = block_self ? "SELF" : "INBOUND"
         for (i = 1; i <= event_count; i++) {
-          if (events[i] != "") print record_type "\t" events[i]
+          emit_event(record_type, i)
         }
       }
       reset_block()
@@ -140,7 +154,7 @@
     function flush_incomplete_end(    i, record_type) {
       record_type = block_self ? "SELF" : "INBOUND"
       for (i = 1; i <= event_count; i++) {
-        if (event_is_heading[i] && events[i] != "") print record_type "\t" events[i]
+        if (event_is_heading[i]) emit_event(record_type, i)
       }
       reset_block()
     }
@@ -225,6 +239,8 @@
     }
     {
       original = $0
+      line_offset = byte_offset
+      byte_offset += length(original) + 1
       indent_spaces = 0
       while (substr(original, indent_spaces + 1, 1) == " ") indent_spaces++
       starts_with_tab = substr(original, 1, 1) == "\t"

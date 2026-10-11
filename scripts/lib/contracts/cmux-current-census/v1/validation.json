@@ -1,0 +1,48 @@
+{
+  "status": "BOUNDED_V3_CORRECTION_ARTIFACT_SANITY_ONLY",
+  "current_scope": [
+    "changed schema meta/partial encoding",
+    "one new fixture shape",
+    "two in-memory verified-binding shape rejections",
+    "new fixture exact null-reason/reference integrity",
+    "inventory/preservation hashes"
+  ],
+  "schema_meta_validation": "PASS_DRAFT_2020_12",
+  "complete_launch_subschema": "UNCHANGED_STRICT",
+  "accepted_resource_policy_subschema": "UNCHANGED",
+  "existing_required_record_members": "UNCHANGED",
+  "fixture": {
+    "file": "fixtures/16-partial-kernel-identity.json",
+    "shape": "ACCEPT_AS_DECLARED",
+    "process_verified_with_null_launch": "REJECT_SHAPE",
+    "registration_verified_with_null_launch": "REJECT_SHAPE",
+    "partial_components_and_provenance": "PRESERVED_AT_ALL_THREE_LOCATIONS",
+    "null_pointer_count": 34,
+    "exact_null_pointer_coverage_uniqueness": "PASS",
+    "reference_ids": [
+      "a0",
+      "a1",
+      "a2",
+      "m_pid",
+      "m_launch",
+      "p_partial",
+      "r_partial"
+    ],
+    "reference_kind_uniqueness_integrity": "PASS"
+  },
+  "audited_prior_receipt": {
+    "file": "../gc-census-schema-prior-v3/validation.json",
+    "sha256": "2e1e136f4e6fa58b1926d05a59196960383289ede9638dea737ecfa6e719b722",
+    "previous_fixture_shapes": "NOT_RERUN",
+    "previous_fixture_files_unchanged": 15
+  },
+  "unchanged_previous_inventory_files": 18,
+  "not_performed": [
+    "Normative semantic validator execution",
+    "Canonical envelope serialization/digest validation",
+    "Cross-language golden-vector verification",
+    "Existing fixture blanket rerun",
+    "Runtime/native/M1/registry/exporter/consumer/GC"
+  ],
+  "brainlayer": "SEARCH_ATTEMPT_FAILED_ONCE_TOOL_NOT_CALLABLE"
+}
