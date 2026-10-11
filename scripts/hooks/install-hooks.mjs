@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // install-hooks — wire Claude Code hooks from ONE pinned golems tree (GO-5 S14).
 //
-//   scripts/hooks/install-hooks.sh --host mbp|m1 [--apply] [--update [<sha>]] [--python <abs path>] [--restore-live]
+//   scripts/hooks/install-hooks.sh --host mbp|m1|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--restore-live]
 //   scripts/hooks/install-hooks.sh --host mbp|m1 --status [--python <abs path>]
 //
 // Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
@@ -140,10 +140,10 @@ function parseArgs(argv) {
     else if (a === "--status") o.status = true;
     else if (a === "--restore-live") o.restoreLive = true;
     else if (a === "--update") o.update = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : "origin/master";
-    else if (["--host", "--repo", "--manifest", "--python"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
+    else if (["--host", "--repo", "--manifest", "--python", "--source"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
     else die(`unknown or incomplete argument: ${a}`, 64);
   }
-  if (!o.host) die("--host <mbp|m1> is required", 64);
+  if (!o.host) die("--host <mbp|m1|client> is required", 64);
   return o;
 }
 
@@ -216,7 +216,7 @@ function pathNode() {
   return found;
 }
 
-function readSettings(settingsPath) {
+export function readSettings(settingsPath) {
   if (!existsSync(settingsPath)) return { text: "", json: {}, canonical: true, mode: 0o600 };
   const text = readFileSync(settingsPath, "utf8");
   const json = JSON.parse(text);
@@ -224,14 +224,14 @@ function readSettings(settingsPath) {
   return { text, json, canonical: `${JSON.stringify(json, null, 2)}\n` === text, mode };
 }
 
-function hookSpec(e) {
+export function hookSpec(e) {
   return { type: "command", command: e.cmd, ...(e.timeout ? { timeout: e.timeout } : {}),
     ...(e.async === undefined ? {} : { async: e.async }) };
 }
 
 // Replace each managed hook's command in place (same event + matcher), drop
 // stale duplicates of it, append a new matcher group if none matched.
-function desiredHooks(current, managed) {
+export function desiredHooks(current, managed) {
   const hooks = structuredClone(current ?? {});
   for (const e of managed) {
     const want = hookSpec(e);
@@ -254,7 +254,7 @@ function desiredHooks(current, managed) {
 }
 
 // Deregister refused gates: drop every command of theirs from their event.
-function withoutHooks(hooks, refused) {
+export function withoutHooks(hooks, refused) {
   for (const e of refused) {
     hooks[e.event] = (hooks[e.event] ?? []).map((g) => ({
       ...g, hooks: (g.hooks ?? []).filter((h) => !String(h.command ?? "").includes(e.match)) }))
@@ -323,7 +323,7 @@ export function retiredRegistrations(ctx, hooks) {
 // Touch only what the prune empties: a group loses only retired handlers and
 // is dropped only if that left it empty; an event likewise. Pre-existing empty
 // or malformed foreign entries stay byte-identical (#661 review F2).
-function withoutRetired(hooks, retired) {
+export function withoutRetired(hooks, retired) {
   const drop = new Set(retired.map((r) => `${r.event}\0${r.command}`));
   for (const event of new Set(retired.map((r) => r.event))) {
     if (!Array.isArray(hooks[event])) continue;
@@ -346,7 +346,7 @@ export function danglingGolemsLinks(ctx) {
     .filter((name) => intoLive(ctx, path.join(ctx.hooksDir, name)) && !existsSync(path.join(ctx.hooksDir, name)));
 }
 
-function linkState(at, to) {
+export function linkState(at, to) {
   let st;
   try {
     st = lstatSync(at);
@@ -849,5 +849,5 @@ function status(o) {
 // still match import.meta.url, which is the real path (#488-b N3).
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const o = parseArgs(process.argv.slice(2));
-  process.exit(o.status ? status(o) : install(o));
+  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? status(o) : install(o));
 }

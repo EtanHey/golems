@@ -33,7 +33,8 @@ function regular(p, directory = false) {
 const CODEX_GATES = { "tmp-block": undefined, "git-guardian": undefined,
   "human-confirm": "skills/golem-powers/human-confirm-gate/anchor.pins" };
 
-export function planCodexHooks({ manifest, host, live, codexHome, python = "python3", refused = [] }) {
+export function planCodexHooks({ manifest, host, live, source: releaseSource, codexHome, python = "python3", refused = [] }) {
+  live = releaseSource ? path.resolve(releaseSource) : live;
   const listed = manifest.codex_hosts?.[host];
   if (!listed) return null; // Old pins do not claim Codex support.
   for (const list of Object.values(manifest.codex_hosts)) {
@@ -46,7 +47,7 @@ export function planCodexHooks({ manifest, host, live, codexHome, python = "pyth
           e.matcher !== "^(Bash|apply_patch)$" || e.timeout !== 10) throw new Error("Invalid Codex policy entry");
     }
   }
-  const entries = listed.filter(e => !refused.includes(e.gate));
+  const entries = listed.filter(e => !(host === "client" && e.ownerOnly) && !refused.includes(e.gate));
   regular(codexHome, true);
   const config = path.join(codexHome, "config.toml");
   const at = path.join(codexHome, "hooks.json");

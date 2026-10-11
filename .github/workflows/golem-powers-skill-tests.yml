@@ -126,6 +126,7 @@ jobs:
                    ./scripts/tests/codex-hooks-install.test.mjs \
                    ./scripts/tests/codex-planted-module.test.mjs \
                    ./scripts/tests/install-hooks.test.mjs \
+                   ./scripts/tests/release-hooks.test.mjs \
                    ./scripts/cc/cc-statusline.test.ts \
                    ./scripts/cc/cc-axiom-reporter.test.ts \
                    ./skills/golem-powers/never-fabricate/scripts/__tests__ \

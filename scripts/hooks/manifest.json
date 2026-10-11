@@ -23,6 +23,17 @@
       { "id": "brainbar-stop-index", "kind": "wrapped-external", "owner": "brainlayer", "event": "Stop", "match": "brainbar-stop-index.py", "timeout": 5, "async": true, "command": "{node} {live}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python {home}/Gits/brainlayer/hooks/brainbar-stop-index.py" },
       { "id": "brainlayer-prompt-search", "kind": "external", "owner": "brainlayer", "event": "UserPromptSubmit", "match": "brainlayer-prompt-search.py" }
     ],
+    "client": [
+      {"id": "human-confirm-gate", "kind": "golems", "event": "PreToolUse", "matcher": "Bash|Monitor|Write|Edit|MultiEdit|NotebookEdit", "link": "human-confirm-gate", "source": "skills/golem-powers/human-confirm-gate", "match": "human-confirm-pretooluse.py", "requiresPin": "skills/golem-powers/human-confirm-gate/anchor.pins", "timeout": 10, "command": "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py"},
+      {"id": "model-pin-gate", "ownerOnly": true, "kind": "golems", "event": "PreToolUse", "matcher": "Task|Agent|Workflow", "link": "model-pin-gate", "source": "skills/golem-powers/model-pin-gate", "match": "model-pin-gate-hook.mjs", "timeout": 3, "command": "{node} {hooks}/model-pin-gate/scripts/model-pin-gate-hook.mjs"},
+      {"id": "reviewer-order-gate", "ownerOnly": true, "kind": "golems", "event": "PreToolUse", "matcher": "mcp__cmux(layer)?__spawn_agent", "link": "reviewer-order-gate", "source": "skills/golem-powers/reviewer-order-gate", "match": "reviewer-order-gate-hook.mjs", "timeout": 5, "command": "{node} {hooks}/reviewer-order-gate/scripts/reviewer-order-gate-hook.mjs"},
+      {"id": "collab-guard", "ownerOnly": true, "kind": "golems", "event": "PreToolUse", "matcher": "Write|Edit", "link": "collab-guard", "source": "skills/golem-powers/collab-guard", "match": "collab-guard.py", "timeout": 5, "command": "{python} -I -B {hooks}/golems-fail-open.py {hooks}/collab-guard/hooks/collab-guard.py"},
+      {"id": "daemon-gate-precheck", "ownerOnly": true, "kind": "golems", "event": "PreToolUse", "matcher": "Bash", "link": "daemon-gate-precheck.py", "source": "hooks/daemon-gate-precheck.py", "match": "daemon-gate-precheck.py", "timeout": 30, "command": "{python} -I -B {hooks}/golems-fail-open.py {hooks}/daemon-gate-precheck.py"},
+      {"id": "tmp-block", "kind": "golems", "event": "PreToolUse", "matcher": "Write|Edit|NotebookEdit|Bash", "link": "tmp-block", "source": "skills/golem-powers/tmp-block", "match": "tmp-block-pretooluse.py", "timeout": 5, "command": "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/tmp-block/hooks/tmp-block-pretooluse.py"},
+      {"id": "pre_tool_use", "kind": "golems", "event": "PreToolUse", "matcher": "Bash|Edit|Write|NotebookEdit", "link": "pre_tool_use.py", "source": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py", "match": "pre_tool_use.py", "timeout": 5, "command": "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/pre_tool_use.py"},
+      {"id": "brainlayer-session-start", "ownerOnly": true, "kind": "external", "owner": "brainlayer", "event": "SessionStart", "match": "brainlayer-session-start.py"},
+      {"id": "brainlayer-prompt-search", "ownerOnly": true, "kind": "external", "owner": "brainlayer", "event": "UserPromptSubmit", "match": "brainlayer-prompt-search.py"}
+    ],
     "m1": [
       {"id": "human-confirm-gate", "kind": "golems", "event": "PreToolUse", "matcher": "Bash|Monitor|Write|Edit|MultiEdit|NotebookEdit", "link": "human-confirm-gate", "source": "skills/golem-powers/human-confirm-gate", "match": "human-confirm-pretooluse.py", "requiresPin": "skills/golem-powers/human-confirm-gate/anchor.pins", "timeout": 10, "command": "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py"},
       { "id": "model-pin-gate", "kind": "golems", "event": "PreToolUse", "matcher": "Task|Agent|Workflow|mcp__cmux(layer)?__(spawn_agent|dispatch_to_agent|new_split)", "link": "model-pin-gate", "source": "skills/golem-powers/model-pin-gate", "match": "model-pin-gate-hook.mjs", "timeout": 3, "command": "{node} {hooks}/model-pin-gate/scripts/model-pin-gate-hook.mjs" },
@@ -35,6 +46,11 @@
     ]
   },
   "codex_hosts": {
+    "client": [
+      {"gate": "tmp-block", "source": "scripts/hooks/codex-policy-hook.py", "matcher": "^(Bash|apply_patch)$", "timeout": 10},
+      {"gate": "git-guardian", "source": "scripts/hooks/codex-policy-hook.py", "matcher": "^(Bash|apply_patch)$", "timeout": 10},
+      {"gate": "human-confirm", "source": "scripts/hooks/codex-policy-hook.py", "matcher": "^(Bash|apply_patch)$", "timeout": 10, "requiresPin": "skills/golem-powers/human-confirm-gate/anchor.pins"}
+    ],
     "mbp": [
       {
         "gate": "tmp-block",
