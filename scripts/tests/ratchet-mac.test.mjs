@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -73,6 +73,108 @@ describe("post decision (B2 + M3)", () => {
   test("a head run from another commit's scripts, or a dirty checkout, is refused", () => {
     expect(decide(H, H, "0", "", "0", "d".repeat(40), "0")).toMatch(/^refuse/);
     expect(decide(H, H, "0", "", "0", H, "1")).toMatch(/^refuse/);
+  });
+});
+
+describe("local-run.sh PR body forwarding", () => {
+  const H = "c".repeat(40);
+  function fixture() {
+    const path = mkdtempSync(join(tmpdir(), "ratchet-local-run-"));
+    scratch.push(path);
+    const bin = join(path, "bin");
+    mkdirSync(bin);
+    mkdirSync(join(path, "repo/.git"), { recursive: true });
+    const stub = (name, body) => writeFileSync(join(bin, name), `#!/usr/bin/env bash\nset -euo pipefail\n${body}\n`, { mode: 0o755 });
+    // Exercise the real shell entry point; isolate installs, keys, rows and network calls.
+    stub("git", `
+      if [ "$1" = -C ]; then shift 2; fi
+      case "$1" in
+        rev-parse)
+          if [ "$2" = --git-common-dir ]; then echo "$FIXTURE/repo/.git"; else echo "$FIXTURE_HEAD"; fi ;;
+        status|remote|fetch|checkout|worktree) ;;
+        clone) while [ "$#" -gt 1 ]; do shift; done; mkdir -p "$1" ;;
+        *) echo "unexpected git: $*" >&2; exit 1 ;;
+      esac`);
+    stub("gh", `
+      printf '%s ' "$@" >> "$FIXTURE/gh-calls"
+      printf '\\n' >> "$FIXTURE/gh-calls"
+      case "$1 $2" in
+        'pr view') echo "$FIXTURE_HEAD fixture-branch OPEN $FIXTURE_HEAD" ;;
+        'api repos/EtanHey/golems/pulls/763')
+          if [ "$BODY_FETCH_FAIL" = 1 ]; then echo 'body fetch failed' >&2; exit 1; fi
+          cat "$FIXTURE/fetched-body.md" ;;
+        'api user') echo EtanHey ;;
+        'run list') ;;
+        *) echo "unexpected gh: $*" >&2; exit 1 ;;
+      esac`);
+    stub("ssh-keygen", `
+      while [ "$1" != -f ]; do shift; done
+      : > "$2"
+      echo 'ssh-ed25519 fixture' > "$2.pub"`);
+    stub("chflags", ":");
+    stub("python3", ":");
+    stub("node", `
+      case "$1" in
+        */install-hooks.mjs) echo 'fixture installer' ;;
+        */run-rows.mjs)
+          while [ "$1" != --out ]; do shift; done
+          echo '{}' > "$2" ;;
+        */table.mjs) printf '%s\\n' "$@" > "$FIXTURE/table-args" ;;
+        *) echo "unexpected node: $*" >&2; exit 1 ;;
+      esac`);
+    const body = "ratchet-loosen: installed-skill-parity lead ruling: candidate parity metric\n";
+    writeFileSync(join(path, "fetched-body.md"), body);
+    const invoke = (args = [], env = {}) => spawnSync("bash", [join(here, "local-run.sh"), "--pr", "763", ...args], {
+      encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, HOME: join(path, "home"),
+        GH_TOKEN: "fixture-token", FIXTURE: path, FIXTURE_HEAD: H, BODY_FETCH_FAIL: "0", ...env },
+    });
+    const tableArgs = () => readFileSync(join(path, "table-args"), "utf8").trim().split("\n");
+    return { path, body, invoke, tableArgs };
+  }
+
+  test("post mode fetches the exact PR body and forwards its run file, overriding a supplied body", () => {
+    const f = fixture();
+    const supplied = join(f.path, "supplied body.md");
+    writeFileSync(supplied, "ratchet-loosen: other caller-supplied ruling\n");
+    const out = f.invoke(["--pr-body-file", supplied]);
+    expect(out.status).toBe(0);
+    const args = f.tableArgs();
+    expect(args).toContain("--pr-body-file");
+    const bodyPath = args[args.indexOf("--pr-body-file") + 1];
+    expect(bodyPath.startsWith(join(f.path, "repo/docs.local/ratchet-runs", `pr763-${H.slice(0, 12)}-`))).toBe(true);
+    expect(bodyPath.endsWith("/pr-body.md")).toBe(true);
+    expect(readFileSync(bodyPath, "utf8")).toBe(f.body);
+    expect(args).toContain("--pr");
+    expect(readFileSync(join(f.path, "gh-calls"), "utf8")).toContain("api repos/EtanHey/golems/pulls/763 --jq .body");
+  });
+
+  test("a failed body fetch refuses to post or invoke table.mjs", () => {
+    const f = fixture();
+    const out = f.invoke([], { BODY_FETCH_FAIL: "1" });
+    expect(out.status).toBe(2);
+    expect(out.stderr).toContain("refusing to post");
+    expect(existsSync(join(f.path, "table-args"))).toBe(false);
+    expect(readFileSync(join(f.path, "gh-calls"), "utf8")).not.toContain("run list");
+  });
+
+  for (const args of [["--no-post"], ["--install", "a".repeat(40)]]) {
+    test(`${args[0]} forwards an optional body file without fetching or posting`, () => {
+      const f = fixture();
+      const body = join(f.path, "replay body.md");
+      writeFileSync(body, f.body);
+      const out = f.invoke([...args, "--pr-body-file", body]);
+      expect(out.status).toBe(0);
+      const forwarded = f.tableArgs();
+      expect(forwarded[forwarded.indexOf("--pr-body-file") + 1]).toBe(body);
+      expect(forwarded).not.toContain("--pr");
+      expect(readFileSync(join(f.path, "gh-calls"), "utf8")).not.toContain("api repos/");
+    });
+  }
+
+  test("--no-post still accepts runs without a PR body file", () => {
+    const f = fixture();
+    expect(f.invoke(["--no-post"]).status).toBe(0);
+    expect(f.tableArgs()).not.toContain("--pr-body-file");
   });
 });
 
