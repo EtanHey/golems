@@ -157,7 +157,13 @@ Every agent must know:
 Watches: follow `/collab-monitor` before dispatch and after every compaction;
 a DONE marker or version match still needs artifact or real-client verification.
 Use native Monitor for addressed collab and PR events, with its documented
-30-minute expiry and re-arm rules; use the packaged fallback on Codex seats.
+30-minute expiry and re-arm rules. Record its returned task ID and use TaskStop
+before replacing a watch or closing its lane; preserve routing state and avoid
+duplicate streams. Codex seats use the packaged `start`/`status`/`follow` fallback
+with an attached consumer before dispatch, and `stop` by listen name on closure.
+Also arm a separate process-exit or process/registry liveness watcher before dispatch.
+Every DONE/BLOCKED heading needs a unique ISO timestamp; verify the report and
+requested artifact before advancing.
 
 ### 5. Launch agents with the collab path in their prompt
 
@@ -236,17 +242,9 @@ Short. Timestamped. Bold status keywords. One line per update.
 
 ## Mandatory Agent Rules (DO NOT REMOVE)
 
-### LOOP RULE (Monitoring Before Delegation)
+### WATCH RULE (Monitoring Before Delegation)
 
-Canon #7 owns guard/monitor law. Before sending a task, arm a process-exit or scheduled process/registry liveness watcher that wakes the orchestrator on a worker exit or stall. If addressed status, blocker, and completion messages matter, also arm the packaged collab monitor and attach its consumer; it MUST NOT be the only worker-liveness guard.
-
-```bash
-# Before spawning an agent for Phase 2:
-/loop 5m Read collab file, check if agentB has updated. If no update in 15min, ping them.
-
-# Before delegating a PR review fix:
-/loop 2m gh pr view <N> --json reviews --jq '.reviews[-1].state'
-```
+Canon #7 owns guard/monitor law. Before sending a task, arm a process-exit or scheduled process/registry liveness watcher that wakes the orchestrator on a worker exit or stall. For addressed status, blocker, and completion messages, also arm native Monitor (Claude) or the packaged fallback with its attached consumer (Codex) per `/collab-monitor`; it MUST NOT be the only worker-liveness guard. Follow the lifecycle in step 4 above, including expiry, compaction re-arm and cleanup. For PR events, query current PR state on each tick per `/collab-monitor`; do not reuse a stale review payload.
 
 ### TASK USAGE (Progress Visibility)
 
@@ -364,13 +362,14 @@ Example: `brainlayer-v2-launch/collab.md` + `v2-fix-sprint/collab.md`
 ## Participation law (binding on every agent in this collab)
 
 **A collab is a mailbox with no doorbell.** Writing to it makes a message durable, not delivered.
-Full rules: `collab-monitor` SKILL.md § *Participation Law*. The short form, which a plan's collab
+Full watch lifecycle: `/collab-monitor`. The short form, which a plan's collab
 section MUST state so every joining agent inherits it:
 
 - **Arm a watcher on this file before doing any work** — the moment you are named a participant.
-  Claude: `Monitor`. Codex: `tail -n0 -F <collab> &` detached, then RETURN.
-- **Waiting = detached watcher + return.** Never foreground-poll; never inspect another agent's
-  pane to infer state.
+  Claude: native Monitor. Codex: packaged `start`/`status`/`follow` with an attached
+  consumer per `/collab-monitor`. Follow an engine-issued mailbox contract when present.
+- **Waiting = armed watch + return.** Re-arm on expiry and after every compaction;
+  never inspect another agent's pane to infer state.
 - **Stop the watcher when you post your DONE** — its life is exactly your lane's life.
 - **Pings are pointers**: one line, where to look + why it is urgent. Detail lives here, because
   this file survives restarts and panes do not.

@@ -62,6 +62,11 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GH_TOKEN: ${{ github.token }}
+          # PR scope decides guarded-path applicability; --head/--cwd still measure BASE.
+          RATCHET_PR_BASE: ${{ github.event.pull_request.base.sha }}
+          RATCHET_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          RATCHET_LEASE_PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           if ! git cat-file -e "$BASE_SHA:scripts/ratchet/rows.json" 2>/dev/null; then

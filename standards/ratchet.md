@@ -191,3 +191,68 @@ the open lease PR checkout after the lead installs current master. After the lea
 (or dispatch the workflow); posting a comment alone does not rerun CI. This prevents a green CI
 claim for merged-but-uninstalled guarded changes. It does not continuously inspect the machine:
 after a passing receipt, later local tampering still requires a fresh lead live run to detect.
+
+## Installed skill parity on both Macs
+
+`installed-skill-parity` is a read-only `live` row: it inventories the local and SSH host's
+`.claude/skills`, `.agents/skills`, and `.codex/skills` afresh. Names, entry shapes, readable
+SKILL.md catalogs, supporting file hashes and executable bits must match. HOME prefixes are
+normalized; bounded mirrored sources require explicit per-entry target aliases. Finder files,
+`.git`, `node_modules`, `__pycache__`, `.pytest_cache`, `.pyc` files, and namespace metadata
+outside actual skill trees are excluded. This proves parity of installed skill source content;
+excluded dependencies/caches are not claimed byte-identical or runtime-equivalent. Harness-owned
+nested skills are measured without writing their install. Missing SSH, Python, roots, content
+or the required-readable manifest fails; there is no capability skip.
+
+Create an owner-only regular file at `~/.golems/ratchet/installed-skills.json`, owned by the
+runner's user. Its JSON is `{"schema":1,"host":"class-remote",
+"identity":"/absolute/path/to/existing-identity","requirements":"/absolute/path/to/private-requirements.json"}`.
+Use actual private values locally; the identity and requirements paths must be absolute existing
+files. The checker only passes the existing identity path to SSH, with `IdentitiesOnly=yes` and
+`IdentityAgent=none`; it does not read credential bytes. No configuration is shell-evaluated.
+The private requirements JSON is
+`{"schema":2,"identities":["<local identity object>","<remote identity object>"],
+"roots":{"<root>":{"readable":["class-a","namespace/class-b"],
+"allow_broken":[],"allow_empty":[],"target_aliases":{}}}}`, with all three roots and nonempty
+readable lists. Freeze required catalogs from the approved source before reconciliation;
+never regenerate them to excuse a lost skill. An alias maps an entry to its ordered local,
+remote normalized targets, not to a content exception. Keep host identities and real manifests
+in durable private evidence, never public fixtures. The command also supports explicit
+`--left/--right --requirements` fixture inputs, labeled `fixture`; the live row never supplies
+those flags. Run `python3 -B scripts/ratchet/installed-skills.py --check-config` to validate inputs
+without SSH or issuers, then the same command without flags for the read-only live row.
+
+The documented `scripts/ratchet/live-rows.sh --merged-pr <N> --lease-pr <open PR>
+--lease-repo <checkout>` and freshness recovery command load this same default config. Set
+`RATCHET_SKILL_CONFIG` to an explicit private file to override the default. Recovery explicitly
+selects the default path. Missing, insecure or malformed configuration fails with a named
+actionable error before GitHub, lease or issuer probes. Creating the file only supplies this row's
+inputs; it does not install hooks, deploy the checker or prove the whole live tier. The lead runs
+that post-install tier, including real issuers and publication, after review.
+
+Name/content parity and required readability are separate output fields. Explicitly approved
+source-invalid entries remain in `disclosed_invalid`; they cannot satisfy a required-readable
+entry. The initial source had one dangling entry on both hosts and an empty namespace on both;
+its approved private manifest preserves these shapes without claiming zero dangling links or
+restored content. Account-owned metadata and active sessions remain untouched. This filesystem
+row does not prove UI/session reload; use a safe installed catalog command separately.
+
+The initial failure/fix are frozen private before/after host-inventory pairs (`fixture-hash`),
+with the same source commit on both sides: the repair changed the remote installed catalog,
+not the source checkout's tracked HEAD. Synthetic class-only tests run through the Python
+skill suite and reject missing/extra/broken/hash/mode/target drift, including required skills
+lost on both hosts. Fresh live SSH proof accompanies the saved RED/GREEN pairs.
+
+Schema 2 inventories pin SHA-256 digests of the observed IOPlatformUUID, normalized hostname,
+and resolved HOME as `identity: {machine, hostname, home}`. Private requirements pin the ordered
+local/remote objects as `identities`; equal machines, absent/malformed identities or mismatched
+pins fail. Identity comes from each host's read-only macOS system observation, not the caller's
+SSH label. JSON object/list/member types are strict. Normal output contains only booleans and
+counts; root/entry/host-role diagnostics stay on stderr in the lead's local log.
+
+The original schema 1 inventories and their hashes remain immutable historical name/content
+evidence. They cannot supply fresh host identity proof. Schema 2 requirements and fresh host
+observations are stored separately; the row's fix fixture points at the new identity-bearing pair.
+Run class-only tests with `WEAVE_ALLOW_TMP=1 python3 -B -m unittest discover -s scripts/tests
+-p 'test_installed_skill*.py'`; their owned temporary directories are outside the measured
+checkout and contain no durable evidence.

@@ -91,6 +91,15 @@ Unattended launcher calls read cached data without sourcing secret assignments
 as shell code or invoking `op`. A missing, stale, or non-private cache fails
 before starting an agent. Legacy Ralph files remain available during the soak.
 
+Codex launchers enable cached **Locals T3code by default in every mode**, including
+leads, workers, bare launches, aliases, prompts, resume/continue and scan. The
+normal cache supplies the ID for normalized `locals_t3code`; no opt-in or F2
+prerequisite is needed. Missing cache/name remains optional. Other Apps retain
+their policy: restricted launches keep Drive read-only and strip other Apps and
+browser-tools; lead/bare launches keep their existing permissions. Scan retains
+its workspace-write sandbox, no approvals and computer-use exclusions. These
+are per-launch overrides; owner config and authentication remain unchanged.
+
 `repogolem sync m1 --dry-run` previews without SSH or `op`. Actual sync pulls
 the private repository on M1, reads its LocalHostName, resolves that machine's
 references on the sending Mac once, and streams the cache over SSH under
