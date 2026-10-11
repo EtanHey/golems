@@ -1,6 +1,6 @@
 # Install: large-plan
 
-> Scaffold and execute folder-based multi-phase plans with async agent collaboration. Use when planning large features, multi-PR workflows, or coordinating parallel agent work across phases. NOT for: single-file changes, simple bugs, quick tasks.
+> ALWAYS use `/large-plan` for planning, including single-file changes, simple bugs and quick tasks. For short work, write a few lines with the same skeleton; use folder-based multi-phase plans and async collaboration for larger work.
 
 ## One-Paste Install
 

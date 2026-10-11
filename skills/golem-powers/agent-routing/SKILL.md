@@ -163,6 +163,8 @@ Fan out the read-heavy discovery; make the changes in one agent that holds the w
 - A standalone read-only lane remains Cursor even though a named Codex `recon` child exists for bounded fan-out inside a Codex lane.
 - Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
 
+- M1 (T3): a lead routes a worker to the M1 only when the deliverable must be proven on the M1 (canon #4). Codex workers only, until a recorded Claude-in-T3 proof passes (one real `brain_search` result, one skill invoked, no hook errors). Each dispatch requires a same-turn BrainBar probe: the socket accepts and `brain_search` answers. A failed probe is reported to the lead and the work stays in cmux. Leads never move. Vendor routing, inner-loop order and PR-body records are unchanged.
+
 ## Lead Topology
 
 Domain leads are orchestrators one tier below orc:
@@ -172,6 +174,8 @@ Domain leads are orchestrators one tier below orc:
 3. A lead is a managed `agent_id` with `role:"orchestrator"` and left-column placement.
 4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Routing rules (SSOT).
 5. A new lane or task gets a fresh worker, even if a healthy idle worker exists in the same repo/workspace/role; reuse or supersede a worker's goal only to continue the same lane (its review rounds, follow-ups on its own diff, or re-scopes of the same deliverable), never for two unrelated lanes. Keep the worker through its own review rounds and close its pane only when its lane closes (PR loop finished: merged/handed off, artifacts harvested), not at its first DONE; this closure provides fd hygiene, not recycling workers across tasks.
+
+6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall).
 
 ## Goal Contract
 

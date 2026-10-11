@@ -1,6 +1,6 @@
 ---
 name: large-plan
-description: "Scaffold multi-phase plans with async agents. Triggers: large feature, multi-PR refactor, parallel cmux."
+description: "Plan any work, from short plans to multi-phase scaffolds. Triggers: planning, multi-PR refactor, parallel cmux."
 ---
 
 # /large-plan
@@ -31,6 +31,12 @@ description: "Scaffold multi-phase plans with async agents. Triggers: large feat
 ---
 
 ## Core Concept
+
+ALWAYS use `/large-plan` for planning, including short work. A short plan is a few lines with the same skeleton: Goal, Time, Round, Tools (model, effort and why), Steps, Depends On, Status, and verification. Keep it inline or in one plan file; phase folders are for larger work.
+
+Each slice of a multi-PR plan declares its invariant test: name the behavior that must hold and the test command or case that proves it before READY. Fill this in even when using the scaffold script or workflow templates.
+
+The plan reports chain span as its convergence metric: elapsed time from the first PR opening to the last merge in the linked fix chain, excluding unmerged roots and dependabot bundles, with stack and follow-up links reported separately. An unmerged root has no completed chain span; report it as pending rather than zero. Keep per-PR time alongside it.
 
 Large plans are folder-based: one folder per phase, each containing a README.md (steps) and findings.md (shared knowledge). A main README.md acts as the index with a progress table and routing.
 
@@ -156,6 +162,10 @@ Low is only for known-output mechanical work; medium suits mechanical splits/ref
 High/xhigh suit open-ended implementation, hard debugging or contradictory evidence;
 security uses high. Evidence: skill-creator cleanup-routing R2 (2026-09-30, 48 verified runs): medium best-or-joint-best on mechanical cleanup; never default xhigh; a data point, not a ceiling.
 Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
+
+## Invariant test
+- **Invariant:** [behavior this slice must preserve]
+- **Test:** [command or case proving it before READY]
 
 ## Steps
 1. Step one
