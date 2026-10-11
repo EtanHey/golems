@@ -192,13 +192,86 @@ def settings_path(path, method):
     return True
 
 
+# Value/boolean flags for the settings verbs already classified below (gh v2.95).
+# This reader only proves help: unknown grammar retains normal classification.
+_HELP_FLAGS = {
+    ('repo', 'edit'): ('description homepage default-branch visibility squash-merge-commit-message add-topic remove-topic', 'dh',
+                     'template enable-issues enable-projects enable-wiki enable-discussions enable-merge-commit enable-squash-merge enable-rebase-merge enable-auto-merge enable-advanced-security enable-secret-scanning enable-secret-scanning-push-protection delete-branch-on-merge allow-forking allow-update-branch accept-visibility-change-consequences', ''),
+    ('repo', 'delete'): ('', '', 'confirm yes', ''),
+    ('repo', 'archive'): ('', '', 'confirm yes', 'y'),
+    ('repo', 'unarchive'): ('', '', 'confirm yes', 'y'),
+    ('repo', 'rename'): ('', '', 'confirm yes', 'y'),
+    ('repo', 'sync'): ('source branch', 'sb', 'force', ''),
+    ('repo', 'deploy-key', 'add'): ('title', 't', 'allow-write', 'w'),
+    ('repo', 'deploy-key', 'delete'): ('', '', '', ''),
+    ('secret', 'set'): ('org env visibility repos body env-file app', 'oevrbfa', 'user no-repos-selected no-store', 'u'),
+    ('secret', 'delete'): ('org env app', 'oea', 'user', 'u'),
+    ('variable', 'set'): ('org env visibility repos body env-file', 'oevrbf', '', ''),
+    ('variable', 'delete'): ('org env', 'oe', '', ''),
+    ('ssh-key', 'add'): ('type title', 't', '', ''),
+    ('ssh-key', 'delete'): ('', '', 'confirm yes', 'y'),
+    ('gpg-key', 'add'): ('title', 't', '', ''),
+    ('gpg-key', 'delete'): ('', '', 'confirm yes', 'y'),
+    ('workflow', 'disable'): ('', '', '', ''),
+}
+
+
+def help_only(args):
+    """A consumed help flag, not a value or an operand after `--`.
+    Short value options consume their cluster's remainder or the next word;
+    repo edit owns -h as homepage, so its help flag is long-only."""
+    size = 3 if args[:2] == ['repo', 'deploy-key'] else 2
+    key = tuple(args[:size])
+    if key in (('secret', 'remove'), ('variable', 'remove')):
+        key = (key[0], 'delete')
+    spec = _HELP_FLAGS.get(key)
+    if spec is None: return False
+    values, short_values, booleans, short_booleans = spec
+    values = set(values.split()) | {'repo', 'hostname'}
+    booleans = set(booleans.split()) | {'help'}
+    short_values += 'R'
+    if key != ('repo', 'edit'): short_booleans += 'h'
+    truth = {'1', 't', 'T', 'TRUE', 'true', 'True'}
+    falsity = {'0', 'f', 'F', 'FALSE', 'false', 'False'}
+    help_, i = False, size
+    while i < len(args):
+        arg = args[i]; i += 1
+        if arg == '--': break
+        if arg.startswith('--'):
+            name, eq, value = arg[2:].partition('=')
+            if name in values:
+                if not eq:
+                    if i == len(args): return False
+                    i += 1  # required values include help-looking words
+            elif name in booleans:
+                if eq and value not in truth | falsity: return False
+                if name == 'help': help_ = not eq or value in truth
+            else: return False
+        elif arg.startswith('-') and len(arg) > 1:
+            cluster = arg[1:]
+            while cluster:
+                char, cluster = cluster[0], cluster[1:]
+                if char in short_values:
+                    if not cluster:
+                        if i == len(args): return False
+                        i += 1
+                    break
+                if char not in short_booleans: return False
+                if cluster.startswith('='):
+                    value, cluster = cluster[1:], ''
+                    if value not in truth | falsity: return False
+                    if char == 'h': help_ = value in truth
+                elif char == 'h': help_ = True
+    return help_
+
+
 def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in word or '`' in word):
     while args and (args[0] in ('-R', '--repo', '--hostname') or args[0].startswith(('--repo=', '--hostname='))):
         args = args[2:] if '=' not in args[0] else args[1:]
     if not args: return []
     if args[0] not in BUILTINS or '$' in args[0] or '`' in args[0]:
         raise ValueError('unresolved GitHub CLI alias/subcommand')
-    if args[0] != 'api' and any(a in ('--help', '-h') for a in args):
+    if help_only(args) and not any(splits(arg) for arg in args):
         return []  # help text only
     if args[:1] == ['repo']:
         if len(args) < 2: return []

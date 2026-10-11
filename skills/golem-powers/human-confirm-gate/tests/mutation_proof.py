@@ -201,7 +201,7 @@ mutations = [
     ('secret-verbs', 'gh_policy.py', "args[0] in ('secret', 'variable') and words & {'set', 'delete', 'remove'} or", '', 'test_gh_settings.SettingsVerbs.test_cli_settings_verbs_deny'),
     ('key-verbs', 'gh_policy.py', "args[0] in ('ssh-key', 'gpg-key') and words & {'add', 'delete'} or", '', 'test_gh_settings.SettingsVerbs.test_cli_settings_verbs_deny'),
     ('workflow-disable', 'gh_policy.py', "args[0] == 'workflow' and 'disable' in words):", 'False):', 'test_gh_settings.SettingsVerbs.test_cli_settings_verbs_deny'),
-    ('help-only', 'gh_policy.py', "    if args[0] != 'api' and any(a in ('--help', '-h') for a in args):\n        return []  # help text only\n", '', 'test_gh_settings.SettingsVerbs.test_reads_and_help_stay_allowed'),
+    ('help-only', 'gh_policy.py', "    if help_only(args) and not any(splits(arg) for arg in args):\n        return []  # help text only\n", '', 'test_gh_settings.SettingsVerbs.test_reads_and_help_stay_allowed'),
 ]
 control = subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', str(gate / 'tests')], cwd=root, capture_output=True, text=True)
 (root / 'docs.local/human-confirm-gate/r2-mutation-control.log').write_text(control.stdout + control.stderr)
