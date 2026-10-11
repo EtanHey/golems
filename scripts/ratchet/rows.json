@@ -2,6 +2,15 @@
   "schema": 1,
   "rows": [
     {
+      "id": "whole-command-binding",
+      "metric": "human-confirm refuses opaque whole-command binding, operators and declarations (class fixtures, real hook)",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "python3 -m unittest discover -s skills/golem-powers/human-confirm-gate/tests -p test_whole_command_binding.py"
+    },
+    {
       "id": "positional-forwarding",
       "metric": "human-confirm binds visible shell/function argv and refuses unknown forwarding (class fixtures, real hook)",
       "kind": "unit",
