@@ -466,3 +466,50 @@ def test_private_slot_descriptors_do_not_survive_child_exec(tmp_path, monkeypatc
         result = subprocess.run([sys.executable, "-c", probe], close_fds=False,
                                 capture_output=True, text=True, timeout=5)
         assert result.returncode == 0, result.stderr
+
+
+# Live install layout: the active private fixture lives in the invoking checkout's
+# docs.local (outside the candidate), and fixtures bind their source through
+# GUARD_ROOT, GOLEMS_GUARD_CANDIDATE, S616B_SOURCE, S616_R2_SOURCE or the
+# Path(__file__).parents[2] fallback. Each binding must import the candidate.
+BOUND_FIXTURE = '''
+import importlib.util, os, sys
+from pathlib import Path
+
+def identity(root):
+    spec = importlib.util.spec_from_file_location(
+        "source_marker_" + str(abs(hash(str(root)))), Path(root) / "pkg/source_marker.py")
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    return module.IDENTITY
+
+ROOT = Path(os.environ.get('GUARD_ROOT', Path(__file__).resolve().parents[2])).resolve()
+sys.path.insert(0, str(ROOT / 'pkg'))
+import source_marker
+
+def test_guard_root_or_file_fallback_selects_candidate():
+    assert source_marker.IDENTITY == 'candidate'
+
+def test_every_documented_alias_selects_candidate():
+    for alias in ('GOLEMS_GUARD_CANDIDATE', 'S616B_SOURCE', 'S616_R2_SOURCE'):
+        assert identity(os.environ[alias]) == 'candidate', alias
+'''
+
+
+@parametrize("inherited", [None, "elsewhere"])
+def test_live_layout_fixtures_import_the_validated_candidate(tmp_path, monkeypatch, inherited):
+    monkeypatch.setattr(gate.Path, "home", lambda: tmp_path / "home")
+    roots = {}
+    for name in ("candidate", "invoking", "elsewhere"):
+        root = tmp_path / name; (root / "pkg").mkdir(parents=True)
+        (root / "pkg/source_marker.py").write_text(f"IDENTITY = {name!r}\n")
+        roots[name] = root
+    suites = roots["invoking"] / "docs.local/private-guard-suites"; suites.mkdir(parents=True)
+    fixture_path = suites / "test_bound_private.py"; fixture_path.write_text(BOUND_FIXTURE)
+    for alias in ("GUARD_ROOT", "GOLEMS_GUARD_CANDIDATE", "S616B_SOURCE", "S616_R2_SOURCE"):
+        monkeypatch.delenv(alias, raising=False)
+    if inherited:
+        monkeypatch.setenv("GUARD_ROOT", str(roots[inherited]))
+        monkeypatch.setenv("GOLEMS_GUARD_CANDIDATE", str(roots[inherited]))
+    out = tmp_path / "receipts"; out.mkdir()
+    gate.execute_suite([str(fixture_path)], out, roots["candidate"], "private", 2)
+    assert (out / "private-completion.json").is_file()
