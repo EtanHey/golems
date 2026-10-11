@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'pr-watch-lib/vendor'))
 import upstream
@@ -39,6 +40,7 @@ def parse_args():
     parser.add_argument('pr', type=int)
     parser.add_argument('--head', required=True, help='full expected head SHA')
     parser.add_argument('--deadline', type=duration, default=7200, help='default: 2h')
+    parser.add_argument('--settle', type=duration, default=180, help='green quiet window; default: 180s')
     parser.add_argument('--poll-seconds', type=float, default=30)
     parser.add_argument('--max-gh-retries', type=int, default=3)
     parser.add_argument('--state-file', type=Path)
@@ -114,6 +116,7 @@ def read_checks(args, deadline):
         # can finish without jobs. The latest run always contributes a verdict.
         workflow_checks.append(dict(id=run['id'], name='__workflow__', _kind='workflow',
                                     workflow_id=run.get('workflow_id'), status=run.get('status'),
+                                    run_attempt=run.get('run_attempt'),
                                     conclusion=run.get('conclusion'), workflowName=run['name']))
         for job in run_jobs:
             if not isinstance(job.get('id'), int):
@@ -135,9 +138,46 @@ def read_checks(args, deadline):
     return rows
 
 
+def read_required_checks(args, branch, deadline):
+    if not isinstance(branch, str) or not branch:
+        raise GhCommandError('missing or invalid PR base branch from gh\n')
+    base = f'repos/{args.repo}'
+    branch = quote(branch, safe='')
+    rules = api_list(f'{base}/rules/branches/{branch}', None, deadline)
+    required = []
+    for rule in rules:
+        if rule.get('type') == 'required_status_checks':
+            params = rule.get('parameters')
+            rows = params.get('required_status_checks') if isinstance(params, dict) else None
+            if not isinstance(rows, list):
+                raise GhCommandError('missing or invalid required status checks from gh\n')
+            required.extend(rows)
+    if not required:
+        protection = gh_json(['api', f'{base}/branches/{branch}/protection'],
+                             timeout=max(.001, deadline - time.monotonic()))
+        if not isinstance(protection, dict) or 'required_status_checks' not in protection:
+            raise GhCommandError('missing or invalid branch protection from gh\n')
+        checks = protection['required_status_checks']
+        if checks is not None:
+            if (not isinstance(checks, dict) or not isinstance(checks.get('contexts'), list)
+                    or not isinstance(checks.get('checks', []), list)):
+                raise GhCommandError('missing or invalid classic required checks from gh\n')
+            required.extend(dict(context=context) for context in checks['contexts'])
+            required.extend(checks.get('checks', []))
+    normalized = set()
+    for row in required:
+        if not isinstance(row, dict) or not isinstance(row.get('context'), str) or not row['context']:
+            raise GhCommandError('missing or invalid required context from gh\n')
+        app = row.get('integration_id', row.get('app_id'))
+        if app is not None and (type(app) is not int or app < -1):
+            raise GhCommandError('invalid required check app from gh\n')
+        normalized.add((row['context'], app if app not in {None, -1} else None))
+    return sorted(normalized, key=lambda row: (row[0], row[1] or 0))
+
+
 def read_pr(args, remaining, checks=True):
     deadline = time.monotonic() + remaining
-    data = gh_json(['pr', 'view', str(args.pr), '--json', 'headRefOid,state,reviewDecision'],
+    data = gh_json(['pr', 'view', str(args.pr), '--json', 'headRefOid,state,reviewDecision,baseRefName'],
                    repo=args.repo, timeout=remaining)
     if not isinstance(data, dict) or not re.fullmatch(r'[0-9a-fA-F]{40}', str(data.get('headRefOid', ''))):
         raise GhCommandError('missing or invalid PR head from gh\n')
@@ -146,6 +186,8 @@ def read_pr(args, remaining, checks=True):
     data['headRefOid'] = data['headRefOid'].lower()
     data['reviewDecision'] = data.get('reviewDecision') or ''
     if checks and data['headRefOid'] == args.head and data['state'] != 'CLOSED':
+        if data['state'] == 'OPEN':
+            data['requiredChecks'] = read_required_checks(args, data.get('baseRefName'), deadline)
         data['statusCheckRollup'] = read_checks(args, deadline)
     return data
 
@@ -181,12 +223,29 @@ def checks_verdict(data):
     if not isinstance(checks, list):
         raise GhCommandError('missing or invalid check rollup from gh\n')
     results = []
-    for check in latest_checks(checks):
+    latest = latest_checks(checks)
+    for check in latest:
         result = check.get('conclusion') if str(check.get('status')).upper() == 'COMPLETED' else check.get('state')
         results.append(str(result or '').upper())
     if any(result in RED for result in results):
         return 'failed'
+    for context, app_id in data.get('requiredChecks', []):
+        if not any(check.get('_kind') != 'workflow'
+                   and check.get('context', check.get('name')) == context
+                   and (app_id is None or (check.get('app') or {}).get('id') == app_id)
+                   for check in latest):
+            return 'pending'
     return 'green' if results and all(result in GREEN for result in results) else 'pending'
+
+
+def registrations(data):
+    """Identity only: completing a run is not a new registration; reruns are."""
+    rows = frozenset((row.get('_kind'), row.get('id'), row.get('context', row.get('name')),
+                      (row.get('app') or {}).get('id'), row.get('workflowName'),
+                      row.get('workflow_id'), row.get('run_attempt'),
+                      '' if row.get('id') else row.get('created_at') or row.get('started_at') or '')
+                     for row in data['statusCheckRollup'])
+    return rows, tuple(data.get('requiredChecks', []))
 
 
 def verdict(data, head):
@@ -216,6 +275,7 @@ def emit(event, args, data=None):
 
 def watch(args):
     deadline = time.monotonic() + args.deadline
+    quiet_since, observed = None, None
     try:
         state, _ = upstream.load_state(args.state_file)
         retry_state = state.get('retries_by_sha', {})
@@ -229,6 +289,16 @@ def watch(args):
             try:
                 data = read_pr(args, deadline - time.monotonic())
                 result = verdict(data, args.head)
+                if result == 'READY':
+                    current = registrations(data)
+                    now = time.monotonic()
+                    if quiet_since is None or current != observed:
+                        quiet_since = now
+                    observed = current
+                    if now - quiet_since < args.settle:
+                        result = None
+                else:
+                    quiet_since = None
                 # Close the head-read race before emitting a terminal CI fact.
                 if result in {'READY', 'FAILED', 'MERGED'}:
                     confirm = read_pr(args, max(.001, deadline - time.monotonic()), checks=False)
@@ -250,6 +320,7 @@ def watch(args):
                     return emit(result, args, data)
                 interval = args.poll_seconds
             except GhCommandError as error:
+                quiet_since = None
                 # Actual command stderr was already forwarded verbatim; only
                 # local validation/missing-command errors need a diagnostic.
                 if not isinstance(error, GhProcessError):
