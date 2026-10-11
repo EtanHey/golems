@@ -120,7 +120,7 @@ Loop-record: implementer=<vendor/model/effort> reviewer=<vendor/model|none> roun
 EOF
 ```
 
-A same-vendor review states its reason. Replace the Loop-record placeholders with observed values: rounds and defects are non-negative integers; reviewer is `none` until a review has occurred. The lane-approved Loop-record effort field supersedes the older public-effort restriction for this line only; identity signatures and commit trailers keep their existing schema.
+A same-vendor review states its reason. Put the reason on its own line below Loop-record. Replace the Loop-record placeholders with observed values: rounds and defects are non-negative integers; reviewer is `none` until a review has occurred. The lane-approved Loop-record effort field supersedes the older public-effort restriction for this line only; identity signatures and commit trailers keep their existing schema. Model IDs use letters, digits, dots, underscores, plus or hyphen; no `[`, `:` or `@`. For example, write `claude/model-id`, not `claude-model-id[context]`; Cursor is `cursor/auto/default`.
 
 ### Size label (canon 9) — apply it at open, not later
 
