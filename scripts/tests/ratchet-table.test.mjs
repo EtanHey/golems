@@ -441,3 +441,43 @@ describe("CLI", () => {
     expect(out.stderr).toContain("--author is required");
   });
 });
+
+const diskPolicy = "gc-success-on-both-macs";
+const disk = { ...gate, id: "disk-free-floor", runner: "mac", report_only: diskPolicy };
+const diskData = (free_gb=13, merged_worktrees=148) => ({ free_gb, floor:60, merged_worktrees, ceiling:25, health:free_gb>=60 && merged_worktrees<=25 });
+describe("bounded disk report-only ruling", () => {
+  test("unhealthy measurement stays FAIL/WARN but cannot alone fail aggregate", () => {
+    const rows=parseRows(rowsFile([disk,gate]));
+    const out=run(rows,{"disk-free-floor":{value:false,measurement:diskData()},gate:true});
+    for (const [free,count] of [[13,1],[100,148]]) {
+      expect(run(rows,{"disk-free-floor":{value:false,measurement:diskData(free,count)},gate:true}).ok).toBe(true);
+    }
+    expect(out.ok).toBe(true); expect(out.realPass).toBe(1); expect(out.realTotal).toBe(2);
+    expect(out.rows[0].status).toBe("WARN");
+    const body=renderTable(out,{marker:"mac"});
+    expect(body).toContain("FAIL"); expect(body).toContain("free_gb=13 floor=60 merged_worktrees=148 ceiling=25");
+    expect(body).toContain("WARN (report-only)"); expect(body).toContain("successful GC on BOTH Macs");
+    expect(readVerdict(body,"mac").report_only[0].measurement).toEqual(diskData());
+    expect(run(rows,{"disk-free-floor":{value:false,measurement:diskData()},gate:false}).ok).toBe(false);
+  });
+  test("healthy data passes; missing, malformed and contradictory measurements fail", () => {
+    const rows=parseRows(rowsFile([disk]));
+    expect(run(rows,{"disk-free-floor":{value:true,measurement:diskData(60,25)}}).ok).toBe(true);
+    for (const entry of [undefined,{value:false},{value:true,measurement:diskData()},
+      {value:false,measurement:{...diskData(),free_gb:"13"}},
+      {value:false,measurement:{...diskData(),health:true}}]) {
+      expect(run(rows,{"disk-free-floor":entry}).ok).toBe(false);
+    }
+  });
+  test("policy cannot waive another row and requires an explicit loosening ruling", () => {
+    expect(()=>parseRows(rowsFile([{...disk,id:"gate"}]))).toThrow(/report.only/);
+    expect(()=>parseRows(rowsFile([{...disk,report_only:true}]))).toThrow(/report.only/);
+    const base=rowsFile([{...gate,id:"disk-free-floor",runner:"mac"}]);
+    const rows=parseRows(rowsFile([disk]));
+    const args={baseRows:base,results:results({"disk-free-floor":{value:false,measurement:diskData()}}),head:HEAD,rows};
+    const restored=rowsFile([{...gate,id:"disk-free-floor",runner:"mac"}]);
+    expect(evaluate({rows:restored,baseRows:rows,results:args.results,head:HEAD}).ok).toBe(false);
+    expect(evaluate(args).ok).toBe(false);
+    expect(evaluate({...args,prBody:"ratchet-loosen: disk-free-floor orc/Etan 2026-10-07 report-only until BOTH Macs GC"}).ok).toBe(true);
+  });
+});

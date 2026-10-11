@@ -376,7 +376,6 @@ function selectedPin(o, live) {
   if (!sha) die(`cannot resolve selected hook pin in ${o.repo}`);
   return sha;
 }
-
 function pinLive(o, live, sha, dirs = []) {
   const current = liveHead(live);
   if (current && !o.update) {
@@ -388,6 +387,7 @@ function pinLive(o, live, sha, dirs = []) {
     return `hooks-live: create at ${sha}${existsSync(live) ? " (a non-worktree dir there would be moved aside)" : ""}`;
   }
   if (!current) {
+    if (spawnSync("python3", [path.join(here, "../repogolem/worktree-disk-floor.py"), live], { stdio: "inherit" }).status !== 0) die("worktree creation refused: disk floor");
     if (existsSync(live)) {
       const aside = `${live}.bak-${stamp()}`;
       renameSync(live, aside);

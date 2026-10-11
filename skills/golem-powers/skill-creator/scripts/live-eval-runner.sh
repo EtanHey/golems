@@ -100,6 +100,7 @@ cmd_sandbox() {
     fi
 
     cd "${REPOS_PATH}/golems"
+    python3 "${REPOS_PATH}/golems/scripts/repogolem/worktree-disk-floor.py" "$sandbox_path" || exit $?
     git worktree add -b "${sandbox_name}" "${sandbox_path}" HEAD 2>/dev/null || {
       # Branch may already exist
       git worktree add "${sandbox_path}" "${sandbox_name}" 2>/dev/null || {

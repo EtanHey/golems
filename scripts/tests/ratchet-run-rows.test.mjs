@@ -63,3 +63,21 @@ describe("CLI", () => {
     expect(JSON.parse(readFileSync(join(cwd, "out.json"), "utf8")).results.bad.value).toBe(false);
   });
 });
+
+describe("disk measurement production", () => {
+  const disk=(command)=>row("disk-free-floor",command,{kind:"real",runner:"mac",bug_sha:"a".repeat(40),fix_sha:"b".repeat(40),report_only:"gc-success-on-both-macs"});
+  test("completed unhealthy/healthy data retain measurements, not exit-only PASS", () => {
+    for (const free of [13,60]) {
+      const measurement={free_gb:free,floor:60,merged_worktrees:25,ceiling:25,health:free>=60};
+      const command="printf '%s\\n' '"+JSON.stringify(measurement)+"'; exit "+(measurement.health?0:1);
+      const out=runRows({rows:{schema:1,rows:[disk(command)]},head:HEAD,cwd:dir()});
+      expect(out.results["disk-free-floor"].value).toBe(measurement.health);
+      expect(out.results["disk-free-floor"].measurement).toEqual(measurement);
+    }
+  });
+  test("errors, bad JSON and contradictory exit status never become a warning", () => {
+    for(const command of ["exit 1","echo broken; exit 0", `echo '{"free_gb":13,"floor":60,"merged_worktrees":148,"ceiling":25,"health":false}'; exit 0`]) {
+      expect(runRows({rows:{schema:1,rows:[disk(command)]},head:HEAD,cwd:dir()}).results).toEqual({});
+    }
+  });
+});

@@ -6,6 +6,8 @@ from pathlib import Path
 import os
 import re
 import subprocess
+import shutil
+import math
 
 from .config import CodexWorkflowError, validate_artifact_pattern
 
@@ -98,6 +100,19 @@ def create_worker_worktree(
     worktree_path = Path(worktree).resolve()
     if worktree_path.exists():
         raise CodexWorkflowError(f"worktree path already exists: {worktree_path}")
+    # Skills are also installed standalone; do not depend on the monorepo helper path.
+    try:
+        floor = float(os.environ.get("GOLEMS_WORKTREE_MIN_FREE_GB", "15"))
+        if not math.isfinite(floor) or floor < 0:
+            raise ValueError("GOLEMS_WORKTREE_MIN_FREE_GB must be finite and nonnegative")
+        parent = worktree_path.parent
+        while not parent.exists():
+            parent = parent.parent
+        free = shutil.disk_usage(parent).free / 1024**3
+        if free < floor:
+            raise ValueError(f"{free:.1f} GiB free; requires {floor:g} GiB (GOLEMS_WORKTREE_MIN_FREE_GB)")
+    except (OSError, ValueError) as exc:
+        raise CodexWorkflowError(f"worktree creation refused: {exc}") from exc
     ref_check = _run_git(repo_path, "check-ref-format", "--branch", branch, check=False)
     if ref_check.returncode != 0:
         raise CodexWorkflowError(f"invalid worker branch: {branch}")
