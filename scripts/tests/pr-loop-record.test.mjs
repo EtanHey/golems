@@ -32,6 +32,14 @@ test('record must be its own line', () => assert.equal(check(`Prose ${record}`).
 test('template placeholders fail', () => assert.equal(check('Loop-record: implementer=<vendor/model/effort> reviewer=<vendor/model|none> rounds=<inner>/<remote> defects=<n> role=<lead|worker>').status, 1));
 test('Dependabot is exempt', () => assert.equal(check('', 'dependabot[bot]').status, 0));
 test('lookalike Dependabot author is not exempt', () => assert.equal(check('', 'dependabot').status, 1));
+test('same-vendor reason has its own line', () => {
+  assert.equal(check(`${record}\nSame-vendor reason: specialist context.`).status, 0);
+  assert.equal(check(`${record} Same-vendor reason: specialist context.`).status, 1);
+});
+test('trailing whitespace is accepted', () => assert.equal(check(`${record} \t`).status, 0));
+for (const suffix of ['[1m]', ':latest', '@auto']) test(`model suffix ${suffix} fails`, () => {
+  assert.equal(check(record.replace('gpt-6.1-sol', `gpt-6.1-sol${suffix}`)).status, 1);
+});
 test('CRLF body is accepted', () => assert.equal(check(`${record}\r\n`).status, 0));
 
 test('workflow validates edited bodies through env and preserves default PR events', async () => {
