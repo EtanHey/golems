@@ -34,6 +34,10 @@ read -r LEASE_HEAD LEASE_BRANCH < <(gh pr view "$LEASE_PR" --repo "$REPO_SLUG" -
 LIVE_HEAD="$(git -C "$MAIN/.worktrees/hooks-live" rev-parse HEAD)"
 RUN="$MAIN/docs.local/ratchet-runs/live-pr$MERGED-$(date +%Y%m%dT%H%M%S)"
 mkdir -p "$RUN"
+PR_BODY_FILE="$RUN/pr-body.md"
+if ! gh api "repos/$REPO_SLUG/pulls/$MERGED" --jq .body > "$PR_BODY_FILE"; then
+  die "cannot fetch body for PR #$MERGED; refusing to post a table without its rulings"
+fi
 
 # The probe must not dirty the live tree it measures (the issuer's bytecode was the 10-06 specimen).
 export PYTHONDONTWRITEBYTECODE=1
@@ -43,5 +47,6 @@ node "$HERE/run-rows.mjs" --rows "$HERE/rows.json" --runner live --head "$LIVE_H
 # Direction is checked against the live commit's first parent (the master it was merged onto).
 node "$HERE/table.mjs" --rows "$HERE/rows.json" --results "$RUN/results.json" --head "$LIVE_HEAD" --runner live \
   --base-ref "$(git -C "$MAIN" rev-parse "$LIVE_HEAD^1")" \
+  --pr-body-file "$PR_BODY_FILE" \
   --marker golems-ratchet-live --title "Ratchet table (LIVE rows, post-merge, hooks-live@${LIVE_HEAD:0:8})" \
   --repo "$REPO_SLUG" --pr "$MERGED" --author "$(gh api user -q .login)" --out "$RUN/table.md"
