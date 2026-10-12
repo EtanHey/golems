@@ -133,12 +133,26 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 
 ### For public repos (bot reviewers configured):
 
-Use native `Monitor` for CI completion and addressed review handoffs when the
-harness exposes it; otherwise use `/collab-monitor`'s packaged fallback with an
-attached consumer. Native calls use `timeout_ms: 1800000`; cancel with TaskStop
-and re-arm at expiry/after compaction. Use one `gh pr checks <N> --watch` command
-for CI. Query slim state/activity counts, then fetch full review bodies once
-when they change. Timed one-shot wakes remain ScheduleWakeup/CronCreate per
+Arm exactly one GitHub watch:
+`Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`.
+Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
+Codex runs the same command and reads its exit code. pr-watch never merges.
+An empty rollup is never READY. Required contexts must be present and green,
+and the default 180s settle window must stay quiet. See the
+[exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits).
+Handle every terminal exit: 0 READY: proceed to the exact-head review and authorized merge path;
+10 FAILED: fix the failure; on exit 11 HEAD_MOVED, read the new head and re-arm with that SHA;
+12 MERGED: stop; on exit 20 DEADLINE: re-arm if waiting continues or escalate;
+30 GH_ERROR: back off and report stderr.
+The 30-minute Monitor expiry precedes the 2h --deadline; re-arm on expiry, since
+re-arming restarts the deadline and the settle window. Cancel the old Monitor with TaskStop
+before re-arming at expiry or after compaction. READY remains a CI fact; read the exact-head review
+before an authorized merge. Never route Codex's output through a cmuxlayer file watch.
+
+For addressed review handoffs, use native `Monitor` when exposed; otherwise use
+`/collab-monitor`'s packaged fallback with an attached consumer. Query slim
+state/activity counts, then fetch full review bodies once when they change.
+Timed one-shot wakes remain ScheduleWakeup/CronCreate per
 `collab-monitor/references/cron-payloads.md`.
 
 ```bash
