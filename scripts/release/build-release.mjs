@@ -1,19 +1,20 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 const hash = data => createHash('sha256').update(data).digest('hex');
 const order = (a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path));
-const roots = ['skills/golem-powers/', 'scripts/pr-watch-lib/', 'scripts/repogolem/', 'scripts/hooks/', 'packages/golem-skills/'];
-const support = new Set(['scripts/release/install.sh', 'release-gate.json', 'scripts/pr-watch', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'scripts/model-roles.mjs', 'scripts/ci/check-model-role-drift.mjs', 'standards/model-roles.json', 'standards/model-roles.schema.json', '.bun-version', 'LICENSE']);
-function shipped(path) {
+// Shared with installed-skills.py; the SSH scanner receives this same policy.
+const policy = JSON.parse(readFileSync(new URL('./shipped-paths.json', import.meta.url), 'utf8'));
+const roots = policy.roots, support = new Set(policy.support);
+const excludedParts = new Set(policy.excluded_parts), excludedFiles = new RegExp(policy.excluded_files);
+export function shipped(path) {
   if (!support.has(path) && !roots.some(root => path.startsWith(root))) return false;
-  return !path.split('/').some(part => /^(?:docs\.local|tests?|__tests__|evals|fixtures|testdata|__snapshots__|__pycache__|node_modules|private|\.git)$/.test(part))
-    && !/(?:^|\/)(?:\.env(?:\..*)?|secrets\.(?:env|json|yaml)|.*\.(?:test|spec)\.[^/]+|.*\.(?:pem|key|pyc))$/.test(path);
+  return !path.split('/').some(part => excludedParts.has(part)) && !excludedFiles.test(path);
 }
 function git(repo, args, input) {
   const result = spawnSync('git', ['-C', repo, ...args], { input, maxBuffer: 128 * 1024 * 1024 });

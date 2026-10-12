@@ -24,6 +24,8 @@ class LiveConfig(unittest.TestCase):
         (self.main / '.git').mkdir()
         for name in ['live-rows.sh', 'installed-skills.py', 'run-rows.mjs', 'table.mjs']:
             shutil.copy2(ROOT / 'scripts/ratchet' / name, ratchet / name)
+        (self.main / 'scripts/release').mkdir()
+        shutil.copy2(ROOT / 'scripts/release/shipped-paths.json', self.main / 'scripts/release/shipped-paths.json')
         self.pins = [{k: hashlib.sha256((label+k).encode()).hexdigest()
                       for k in ['machine', 'home', 'hostname']} for label in ['class-local', 'class-remote']]
         required = dict(schema=2, identities=self.pins, roots={})

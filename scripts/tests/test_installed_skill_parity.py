@@ -183,6 +183,68 @@ class Parity(unittest.TestCase):
                 patch.object(parity, 'observed_identity', return_value=pin):
             return parity.inventory()
 
+    def test_real_release_tarball_matches_checkout_shipped_content(self):
+        scratch = SCRIPT.parents[2] / 'docs.local/parity-fixtures'
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as directory:
+            base = Path(directory)
+            checkout = base / 'checkout'
+            source = checkout / 'skills/golem-powers/class-a'
+            source.mkdir(parents=True)
+            (source / 'SKILL.md').write_bytes(b'# class-a\n')
+            helper = source / 'scripts/helper'
+            helper.parent.mkdir()
+            helper.write_bytes(b'echo class-a\n')
+            helper.chmod(0o755)
+            excluded = ['evals/case.json', 'tests/case.py', 'fixtures/case.json',
+                        'test/case.py', '__tests__/case.py', 'testdata/case.json',
+                        '__snapshots__/case.json', 'private/case.txt', 'docs.local/case.txt',
+                        'node_modules/case.js', '__pycache__/case.py', '.env.local',
+                        'secrets.json', 'scripts/helper.test.js', 'scripts/helper.spec.ts',
+                        'key.pem', 'key.key', 'cache.pyc']
+            for path in excluded:
+                file = source / path
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text('checkout-only bytes\n')
+            subprocess.run(['git', 'init', '-q', str(checkout)], check=True)
+            subprocess.run(['git', '-C', str(checkout), 'add', '.'], check=True)
+            subprocess.run(['git', '-C', str(checkout), '-c', 'user.name=class', '-c',
+                            'user.email=fixture@example.com', 'commit', '-qm', 'class'], check=True)
+            built = json.loads(subprocess.check_output([
+                'node', str(SCRIPT.parents[1] / 'release/build-release.mjs'),
+                '--repo', str(checkout), '--out', str(base / 'build')], text=True))
+            release = base / 'release'
+            release.mkdir()
+            subprocess.run(['tar', '-xzf', built['tarball'], '-C', str(release)], check=True)
+            installed = release / 'skills/golem-powers/class-a'
+            self.assertEqual({str(p.relative_to(installed)) for p in installed.rglob('*') if p.is_file()},
+                             {'SKILL.md', 'scripts/helper'})
+            local, remote = base / 'local', base / 'remote'
+            for root in parity.ROOTS:
+                for home, target in [(local, source), (remote, installed)]:
+                    (home / root).mkdir(parents=True)
+                    (home / root / 'class-a').symlink_to(target, target_is_directory=True)
+            record = remote / '.golems/release.json'
+            record.parent.mkdir()
+            record.write_text(json.dumps(dict(version=built['version'], commit=built['commit'])))
+
+            def compare():
+                return parity.compare(self.scan(local, self.pins[0]),
+                                      self.scan(remote, self.pins[1]), self.required)
+
+            self.assertEqual(compare()['errors'], [])
+            (source / 'evals/case.json').write_text('different excluded bytes\n')
+            self.assertEqual(compare()['errors'], [])
+            shipped = installed / 'scripts/helper'
+            shipped.write_bytes(b'echo class-b\n')
+            self.assertFalse(compare()['name_content_parity'])
+            shipped.write_bytes(b'echo class-a\n')
+            shipped.chmod(0o644)
+            self.assertFalse(compare()['name_content_parity'])
+            shipped.chmod(0o755)
+            shipped.unlink()
+            self.assertFalse(compare()['name_content_parity'])
+
     def test_scanned_checkout_links_and_release_copies_compare_by_content(self):
         with tempfile.TemporaryDirectory(prefix='class-install-content-') as directory:
             base = Path(directory)
@@ -440,8 +502,39 @@ class Parity(unittest.TestCase):
         with patch.object(sys, 'argv', [str(SCRIPT), '--config', 'class-config']), \
                 patch.object(parity, 'load_config', return_value=dict(host='class-host', identity='/class-identity', requirements='/class-manifest')), \
                 patch.object(parity.Path, 'read_text', return_value=json.dumps(self.required)), \
-                patch.object(parity.subprocess, 'run', side_effect=FileNotFoundError('SSH absent')):
+                patch.object(parity, 'remote_inventory_script', return_value='class scanner'), \
+                patch.object(parity.subprocess, 'run', side_effect=FileNotFoundError('SSH absent')) as ssh:
             self.assertEqual(parity.main(), 1)
+            ssh.assert_called_once()
+
+    def test_stdin_scanner_carries_policy_without_remote_sibling_files(self):
+        with tempfile.TemporaryDirectory(prefix='class-stdin-scanner-') as directory:
+            home = self.skill_homes(Path(directory))[1]
+            excluded = home / self.root / 'class-a/evals/case.json'
+            excluded.parent.mkdir()
+            excluded.write_text('excluded remote content\n')
+            source = parity.remote_inventory_script()
+            # Match python3 - transport: __file__ is <stdin>, and the target has
+            # no repository or policy file. Only host identity is a fixture.
+            source = "__name__ = 'class_fixture'\n" + source + '\n' + (
+                'Path.home = classmethod(lambda cls: Path(' + repr(str(home)) + '))\n'
+                'observed_identity = lambda: ' + repr(self.pins[1]) + '\n'
+                'print(json.dumps(inventory()))\n')
+            run = subprocess.run([sys.executable, '-B', '-'], input=source,
+                                 text=True, capture_output=True, cwd=directory)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            document = json.loads(run.stdout)
+            self.assertEqual(document['identity'], self.pins[1])
+            self.assertEqual(document['roots'][self.root]['entries']['class-a']['files'],
+                             self.scan(home, self.pins[1])['roots'][self.root]['entries']['class-a']['files'])
+            self.assertNotIn('evals/case.json', document['roots'][self.root]['entries']['class-a']['files'])
+
+    def test_missing_or_malformed_shipping_policy_fails_closed(self):
+        for value in ['{}', '{', '{"schema":1}', '[]']:
+            with self.subTest(value=value), patch.object(parity.Path, 'read_text', return_value=value):
+                with self.assertRaises(ValueError): parity.release_policy()
+        with patch.object(parity.Path, 'read_text', side_effect=FileNotFoundError):
+            with self.assertRaises(FileNotFoundError): parity.release_policy()
 
     def test_live_missing_capability_cannot_skip(self):
         with tempfile.TemporaryDirectory(prefix='class-missing-config-') as home:

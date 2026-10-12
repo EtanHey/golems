@@ -204,6 +204,14 @@ excluded dependencies/caches are not claimed byte-identical or runtime-equivalen
 nested skills are measured without writing their install. Missing SSH, Python, roots, content
 or the required-readable manifest fails; there is no capability skip.
 
+Supporting paths also follow `scripts/release/shipped-paths.json`, the builder's
+single shipping policy: checkout-only evals, tests, fixtures and other excluded
+paths do not affect parity against a release install. Shipped supporting bytes
+and executable bits still decide parity. The local scanner sends this policy
+with its Python source over SSH; no remote checkout, policy file or Node is needed.
+Missing or malformed local policy fails closed. The class fixture builds and
+extracts a real release tarball to verify checkout/release parity and byte/mode drift.
+
 Create an owner-only regular file at `~/.golems/ratchet/installed-skills.json`, owned by the
 runner's user. Its JSON is `{"schema":1,"host":"class-remote",
 "identity":"/absolute/path/to/existing-identity","requirements":"/absolute/path/to/private-requirements.json"}`.

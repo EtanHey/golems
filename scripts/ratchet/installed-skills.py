@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOTS = ('.claude/skills', '.agents/skills', '.codex/skills')
-IGNORED = {'.git', 'node_modules', '__pycache__', '.pytest_cache'}
+IGNORED = {'.pytest_cache'}
 INSTALLER_MARKERS = {'.golems-source-commit', '.golems-install.json'}
 
 
@@ -164,7 +164,42 @@ def validate(document, required=False):
                 if type(value['executable']) is not bool: raise ValueError('malformed executable bit')
 
 
-def content_files(directory, ancestors=frozenset(), prefix=''):
+def release_policy():
+    # Stdin execution on the remote host has no sibling files. The local caller
+    # prepends the builder's policy, so neither host relies on the remote checkout.
+    policy = globals().get('RELEASE_SHIPPING_POLICY')
+    if policy is None:
+        policy = json.loads((Path(__file__).resolve().parents[1] /
+                             'release/shipped-paths.json').read_text())
+    object_keys(policy, ('schema', 'roots', 'support', 'excluded_parts', 'excluded_files'), 'release shipping policy')
+    if type(policy['schema']) is not int or policy['schema'] != 1:
+        raise ValueError('release shipping policy schema must be 1')
+    for field in ('roots', 'support', 'excluded_parts'):
+        if not isinstance(policy[field], list) or not policy[field] or any(
+                not isinstance(value, str) or not value for value in policy[field]):
+            raise ValueError('malformed release shipping policy ' + field)
+    if not isinstance(policy['excluded_files'], str):
+        raise ValueError('malformed release shipping policy excluded_files')
+    try:
+        re.compile(policy['excluded_files'])
+    except re.error:
+        raise ValueError('malformed release shipping policy excluded_files')
+    return policy
+
+
+def shipped_skill_path(path, policy, directory=False):
+    path = 'skills/golem-powers/' + path
+    return ((path in policy['support'] or any(path.startswith(root) for root in policy['roots'])) and
+            not any(part in policy['excluded_parts'] for part in path.split('/')) and
+            (directory or not re.search(policy['excluded_files'], path)))
+
+
+def remote_inventory_script():
+    return 'RELEASE_SHIPPING_POLICY = ' + repr(release_policy()) + '\n' + Path(__file__).read_text()
+
+
+def content_files(directory, ancestors=frozenset(), prefix='', policy=None, skill_prefix=''):
+    if policy is None: policy = release_policy()
     resolved = directory.resolve(strict=True)
     if resolved in ancestors: raise ValueError('supporting directory symlink cycle')
     files = {}
@@ -174,10 +209,12 @@ def content_files(directory, ancestors=frozenset(), prefix=''):
                              item.name == '.DS_Store' or item.name.endswith('.pyc')):
             continue
         relative = prefix + item.name
+        if not shipped_skill_path(skill_prefix + relative, policy, directory=item.is_dir()):
+            continue
         if item.is_symlink() and not item.exists(): raise ValueError('broken supporting link')
         if item.is_dir():
             if item.name not in IGNORED:
-                files.update(content_files(item, ancestors | {resolved}, relative + '/'))
+                files.update(content_files(item, ancestors | {resolved}, relative + '/', policy, skill_prefix))
         elif item.is_file():
             files[relative] = dict(kind='file', sha256=hashlib.sha256(item.read_bytes()).hexdigest(),
                                    executable=bool(item.stat().st_mode & 0o111))
@@ -187,6 +224,7 @@ def content_files(directory, ancestors=frozenset(), prefix=''):
 
 
 def inventory():
+    policy = release_policy()
     home = str(Path.home())
     roots = {}
     skill_directories = set()
@@ -200,7 +238,7 @@ def inventory():
                            exists=entry.exists(), normalized_target=normalize(str(entry.resolve()), home),
                            skill_sha256=None, files={}, internal_skills={})
                 if entry.is_dir():
-                    files = content_files(entry)
+                    files = content_files(entry, policy=policy, skill_prefix=entry.name + '/')
                     if 'SKILL.md' in files:
                         row['skill_sha256'] = files['SKILL.md']['sha256']
                         row['files'] = files
@@ -354,7 +392,7 @@ def main():
             command = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10']
             if args.identity: command += ['-o', 'IdentitiesOnly=yes', '-o', 'IdentityAgent=none', '-i', args.identity]
             command += [args.host, 'python3 - --inventory']
-            remote = subprocess.run(command, input=Path(__file__).read_text(), text=True,
+            remote = subprocess.run(command, input=remote_inventory_script(), text=True,
                                     capture_output=True, timeout=60, check=True)
             left, right, measurement = inventory(), json.loads(remote.stdout), 'live'
         result = compare(left, right, required)
