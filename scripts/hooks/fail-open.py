@@ -3,7 +3,7 @@
 
 Usage (as registered by scripts/hooks/install-hooks.mjs):
     <pinned python3> -I -B ~/.claude/hooks/golems-fail-open.py <hook.py> [args...]
-    <pinned python3> -I -B ~/.claude/hooks/golems-fail-open.py --fail-closed [--budget <s>] <hook.py> [args...]
+    <pinned python3> -I -B ~/.claude/hooks/golems-fail-open.py --fail-closed [--client] [--budget <s>] <hook.py> [args...]
 
 Imports: hooks live in a same-UID tree, so nothing planted beside a hook may
 stand in for the stdlib. The launcher preloads runpy's lazy imports, then adds
@@ -22,7 +22,8 @@ that is not the hook's own decision into exit 0 plus ONE stderr line:
     stays a block)
 
 With --fail-closed, missing/unreadable/broken hooks, unexpected exit statuses
-and a crash of this launcher itself deny with a static recovery hint. Output
+and a crash of this launcher itself deny with a static recovery hint. --client
+selects the release repair command instead of the owner checkout command. Output
 from a failed hook is discarded so partial JSON, target paths and exception
 values cannot leak into that denial. Successful allow (0) and deliberate block
 (2) retain their output and status. --budget <s> adds a watchdog: the hook
@@ -53,8 +54,10 @@ from io import StringIO
 
 FAIL_CLOSED_PROTOCOL = 2  # 2: --budget watchdog
 REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`."
+CLIENT_REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: rerun the release installer, then run node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client --source ~/.golems/current --apply."
 # Read before main() rewrites sys.argv, so a launcher crash still knows its mode.
 FAIL_CLOSED = sys.argv[1:2] == ["--fail-closed"]
+CLIENT_INSTALL = sys.argv[1:3] == ["--fail-closed", "--client"]
 
 
 def _warn(message):
@@ -62,10 +65,11 @@ def _warn(message):
 
 
 def _block():
-    print(json.dumps({"decision": "block", "reason": REPAIR_REASON, "hookSpecificOutput": {
+    reason = CLIENT_REPAIR_REASON if CLIENT_INSTALL else REPAIR_REASON
+    print(json.dumps({"decision": "block", "reason": reason, "hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",
-        "permissionDecisionReason": REPAIR_REASON,
+        "permissionDecisionReason": reason,
     }}, separators=(",", ":")))
     return 2
 
@@ -143,7 +147,10 @@ def main():
     args = sys.argv[1:]
     fail_closed = args[:1] == ["--fail-closed"]
     if fail_closed:
-        budget, args = _budget(args[1:])
+        args = args[1:]
+        if args[:1] == ["--client"]:
+            args = args[1:]
+        budget, args = _budget(args)
         if budget is not None:
             code = _watch(budget)
             if code is not None:

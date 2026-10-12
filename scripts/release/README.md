@@ -76,7 +76,9 @@ sh scripts/release/install.sh --from-file golems-2026.10.11-abcdef0.tar.gz --sum
 ```
 
 The installer needs POSIX sh, standard macOS/Linux utilities (including awk,
-xargs and mktemp), curl, tar and shasum. It needs no Git, Node, Bun or Python.
+xargs and mktemp), curl, tar and shasum. A fresh bootstrap needs no Git, Node,
+Bun or Python. Updates with an existing client hook receipt also need Node and
+Python >= 3.11 to reverify and reinstall the policy hooks.
 JSON parsing is embedded so the one-liner downloads only the installer script.
 The body is enclosed in `main()` so a truncated piped download cannot execute
 installation steps. `GITHUB_TOKEN` optionally authenticates API requests; HTTP
@@ -94,7 +96,9 @@ not release signatures. Payload paths use P1's ASCII path layout.
 mv -h. An install lock refuses overlapping runs. Same-version runs recheck hashes,
 print "already current", and leave metadata untouched. The current release and
 two previous installed versions are retained; pruning follows the install history,
-not lexical SHA order. Untracked release directories are left alone.
+not lexical SHA order. A release referenced by the client hook receipt is also
+retained in the history until a later update no longer needs it. Untracked
+release directories are left alone.
 
 Every skill directory (including shared helpers) is linked into `~/.claude/skills`
 and `~/.agents/skills`; `~/.codex/skills` is linked to the latter only if absent.
@@ -113,8 +117,16 @@ and gh are runtime requirements). `golems-cli` wraps the shipped Bun source;
 its `update` command reruns the shipped installer and accepts installer flags,
 including offline assets, without requiring Bun. Other CLI commands require Bun.
 Updates default to nightly; pass `--channel <tag>` to keep a pinned tag.
-repoGolem's dependency setup and client hook installation are separate from this
-bootstrap. This phase neither installs hooks nor modifies hooks-live.
+repoGolem's dependency setup and the first client hook installation are separate
+from this bootstrap. Once `~/.claude/hooks/golems-hooks-release.json` exists,
+updates activate the verified candidate and rerun its client hook installer
+before pruning. Hooks remain pinned to the verified release directory. Failed
+applies restore hook links, registrations and modes; the updater restores the
+previous `current` and `release.json` and leaves history unpruned. Candidate
+releases without client rollback protocol 1 are refused before activation.
+This includes downgrades to releases predating that protocol. Native Codex
+`/hooks` trust still needs review after definitions change. Owner hooks-live
+installations do not enter this client update path.
 
 For a former M1 owner install, install the release with `--replace-checkout-links`,
 then run `node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client

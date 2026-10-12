@@ -1,4 +1,5 @@
 // Release-only client installation. Owner worktree installation stays in install-hooks.mjs.
+export const CLIENT_INSTALL_PROTOCOL = 1; // failed applies restore previous client wiring
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -7,6 +8,7 @@ import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { applyCodexHooks, CLIENT_REPAIR, CODEX_TRUST_HINT, planCodexHooks } from './codex-hooks-install.mjs';
 import { beginOwnerMigration, ownerInstallPaths } from './owner-install-migration.mjs';
+import { beginClientInstall } from './client-install-transaction.mjs';
 import { checkReleaseHooks } from './release-self-check.mjs';
 
 const digest = data => createHash('sha256').update(data).digest('hex');
@@ -68,7 +70,7 @@ function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFi
   // Absolute node chosen by the invoking CLI; no git discovery.
   const expand = s => s.replaceAll('{home}', quote(home)).replaceAll('{hooks}', quote(hooksDir)).replaceAll('{live}', quote(source)).replaceAll('{node}', quote(process.execPath)).replaceAll('{python}', quote(hookPython.python));
   const golems = entries.map(e => ({ ...e, at: path.join(hooksDir, e.link), to: path.join(source, e.source), cmd: e.command.includes(' --fail-closed ')
-    ? failClosedCommand(expand(e.command.replace(' --fail-closed ', ` --fail-closed --budget ${e.timeout - 1} `)), CLIENT_REPAIR) : expand(e.command) }));
+    ? failClosedCommand(expand(e.command.replace(' --fail-closed ', ` --fail-closed --client --budget ${e.timeout - 1} `)), CLIENT_REPAIR) : expand(e.command) }));
   const codex = planCodexHooks({ manifest, host: 'client', source, codexHome: path.resolve(process.env.CODEX_HOME || path.join(home, '.codex')), python: hookPython.python });
   if (!codex || !codex.enabled || !codex.source) throw new Error('client Codex hooks disabled or adapter absent');
   const wrapper = path.join(source, 'scripts/hooks/fail-open.py');
@@ -116,7 +118,7 @@ export function runReleaseHooks(o, helpers) {
     // Re-check all hashes after executing public specimens, before any host write.
     releaseContext(o, helpers);
     const installStamp = stamp();
-    if (o.migrateOwnerInstall) migration = beginOwnerMigration(ctx, installStamp);
+    migration = o.migrateOwnerInstall ? beginOwnerMigration(ctx, installStamp) : beginClientInstall(ctx, installStamp);
     mkdirSync(ctx.hooksDir, { recursive: true });
     const wrapper = path.join(ctx.hooksDir, 'golems-fail-open.py');
     if (!existsSync(wrapper) || !readFileSync(wrapper).equals(readFileSync(ctx.wrapper))) { copyFileSync(ctx.wrapper, wrapper); chmodSync(wrapper, 0o755); }

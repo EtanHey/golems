@@ -37,8 +37,20 @@ for name in current release.json release-history; do
   [ "$name" = current ] || [ ! -e "$prefix/$name" ] || [ -f "$prefix/$name" ] || fail "$name must be a regular file"
 done
 mkdir "$prefix/.install-lock" 2>/dev/null || fail "another install is active (or stale lock needs inspection): $prefix/.install-lock"
-work=''
-cleanup() { [ -z "$work" ] || rm -rf "$work"; rmdir "$prefix/.install-lock"; }
+work='' hooks_pending=false previous_current=''
+rollback_activation() {
+  if [ -n "$previous_current" ]; then
+    ln -s "$previous_current" "$work/restore-current"
+    atomic_move "$work/restore-current" "$prefix/current"
+  else rm -f "$prefix/current"; fi
+  if [ -f "$work/previous-release.json" ]; then
+    atomic_move "$work/previous-release.json" "$prefix/release.json"
+  else rm -f "$prefix/release.json"; fi
+}
+cleanup() {
+  if [ "$hooks_pending" = true ]; then rollback_activation; fi
+  [ -z "$work" ] || rm -rf "$work"; rmdir "$prefix/.install-lock"
+}
 trap cleanup 0
 trap 'exit 1' 1 2 3 15
 work=$(mktemp -d "$prefix/.install-XXXXXXXX")
@@ -50,7 +62,7 @@ json_fields() {
   awk '
   function bad() { exit 1 }
   function ws() { while (pos <= size && ch[pos] ~ /[ \t\r\n]/) pos++ }
-  function selected(p) { return p ~ /^(version|commit|files\.[0-9]+\.(path|sha256|mode)|([0-9]+\.)?(tag_name|draft|prerelease|created_at))$/ }
+  function selected(p) { return p ~ /^(version|commit|source|private_gate|files\.[0-9]+\.(path|sha256|mode)|([0-9]+\.)?(tag_name|draft|prerelease|created_at))$/ }
   function str(capture, out,c,e,h,i) {
     if (ch[pos++] != "\"") bad()
     while (pos <= size) {
@@ -190,6 +202,31 @@ already=false
 if [ "$already" = true ] && [ "$replace" = false ]; then printf 'golems %s already current\ncommit: %s\ntarball sha256: %s\n' "$version" "$commit" "$tarball_sha256"; exit 0; fi
 # GNU -T and BSD -h both replace the symlink itself, including directory targets.
 atomic_move() { mv -fT "$1" "$2" 2> "$work/mv-error" || mv -fh "$1" "$2"; }
+# Client hooks stay pinned to verified releases. Fail before other host writes
+# if a client receipt cannot be interpreted or its runtime is unavailable.
+hook_source='' hook_receipt=$HOME/.claude/hooks/golems-hooks-release.json
+if [ -e "$hook_receipt" ] || [ -L "$hook_receipt" ]; then
+  [ ! -L "$HOME/.claude/hooks" ] && [ ! -L "$hook_receipt" ] && [ -f "$hook_receipt" ] || fail 'client hook receipt must be a regular file in a regular hooks directory'
+  json_fields "$hook_receipt" "$work/hooks.tsv"
+  [ "$(awk -F '\t' '$1=="private_gate" {print $2}' "$work/hooks.tsv")" = 'skipped (client host)' ] || fail 'invalid client hook receipt'
+  hook_source=$(awk -F '\t' '$1=="source" {print $2}' "$work/hooks.tsv")
+  case "$hook_source" in /*) ;; *) fail 'invalid client hook source' ;; esac
+  command -v node >/dev/null 2>&1 || fail 'client hook update requires node; previous release and hooks retained'
+  awk '/^export const CLIENT_INSTALL_PROTOCOL = 1;/ {ok=1} END {exit !ok}' "$destination/scripts/hooks/release-hooks.mjs" || fail 'client hook update requires rollback protocol 1; previous release and hooks retained'
+  previous_current=$(readlink "$prefix/current" 2>/dev/null || :)
+  [ ! -f "$prefix/release.json" ] || cp -p "$prefix/release.json" "$work/previous-release.json"
+  if [ "$already" = false ]; then
+    printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s","manifest_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" "$manifest_sha256" > "$work/release.json"
+    ln -s "releases/$version" "$work/current"
+    hooks_pending=true
+    atomic_move "$work/current" "$prefix/current"
+    atomic_move "$work/release.json" "$prefix/release.json"
+  fi
+  if ! node "$prefix/current/scripts/hooks/install-hooks.mjs" --host client --source "$prefix/current" --apply; then
+    fail 'client hook reinstallation failed; restoring previous release and hooks'
+  fi
+  hooks_pending=false
+fi
 link_skill() {
   link=$1 target=$2
   if [ -L "$link" ]; then
@@ -228,17 +265,25 @@ WRAPPER
   chmod 755 "$work/$cli"; atomic_move "$work/$cli" "$prefix/bin/$cli"
 done
 if [ "$already" = false ]; then
-  printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s","manifest_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" "$manifest_sha256" > "$work/release.json"
-  ln -s "releases/$version" "$work/current"
-  atomic_move "$work/current" "$prefix/current"
-  atomic_move "$work/release.json" "$prefix/release.json"
+  if [ -z "$hook_source" ]; then
+    printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s","manifest_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" "$manifest_sha256" > "$work/release.json"
+    ln -s "releases/$version" "$work/current"
+    atomic_move "$work/current" "$prefix/current"
+    atomic_move "$work/release.json" "$prefix/release.json"
+  fi
   { printf '%s\n' "$version"; [ ! -f "$prefix/release-history" ] || cat "$prefix/release-history"; } | awk '!seen[$0]++' > "$work/history"
-  sed -n '4,$p' "$work/history" | while IFS= read -r old; do
+  : > "$work/release-history"
+  retained=0
+  while IFS= read -r old; do
     printf '%s\n' "$old" | awk 'length($0)!=18 || !/^[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+$/ {exit 1}' || fail 'invalid release history'
-    [ ! -L "$prefix/releases/$old" ] || fail 'refusing to prune a release symlink'
-    rm -rf "$prefix/releases/$old"
-  done
-  sed -n '1,3p' "$work/history" > "$work/release-history"
+    retained=$((retained + 1))
+    if [ "$retained" -le 3 ] || [ "$prefix/releases/$old" = "$hook_source" ]; then
+      printf '%s\n' "$old" >> "$work/release-history"
+    else
+      [ ! -L "$prefix/releases/$old" ] || fail 'refusing to prune a release symlink'
+      rm -rf "$prefix/releases/$old"
+    fi
+  done < "$work/history"
   atomic_move "$work/release-history" "$prefix/release-history"
 fi
 # shellcheck disable=SC2016 # The PATH hint intentionally prints a literal $PATH.
