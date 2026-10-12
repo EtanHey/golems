@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "roots": ["skills/golem-powers/", "scripts/pr-watch-lib/", "scripts/repogolem/", "scripts/hooks/", "packages/golem-skills/"],
-  "support": ["scripts/release/install.sh", "release-gate.json", "scripts/pr-watch", ".claude/hooks/block-dangerous-commands.py", "hooks/daemon-gate-precheck.py", "scripts/model-roles.mjs", "scripts/ci/check-model-role-drift.mjs", "standards/model-roles.json", "standards/model-roles.schema.json", ".bun-version", "LICENSE"],
+  "support": ["skills/catalog.json", "scripts/release/install.sh", "release-gate.json", "scripts/pr-watch", ".claude/hooks/block-dangerous-commands.py", "hooks/daemon-gate-precheck.py", "scripts/model-roles.mjs", "scripts/ci/check-model-role-drift.mjs", "standards/model-roles.json", "standards/model-roles.schema.json", ".bun-version", "LICENSE"],
   "excluded_parts": ["docs.local", "test", "tests", "__tests__", "evals", "fixtures", "testdata", "__snapshots__", "__pycache__", "node_modules", "private", ".git"],
   "excluded_files": "(?:^|/)(?:\\.env(?:\\..*)?|secrets\\.(?:env|json|yaml)|.*\\.(?:test|spec)\\.[^/]+|.*\\.(?:pem|key|pyc))$"
 }

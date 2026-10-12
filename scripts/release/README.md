@@ -14,6 +14,7 @@ The archive has no enclosing directory; extract into a dedicated version directo
 The archive preserves these repo-relative paths:
 
 - `skills/golem-powers/`: skills and runtime supporting files, including `_shared`
+- `skills/catalog.json`: the canonical per-client set to link (shared helpers are payload only)
 - `scripts/pr-watch` and `scripts/pr-watch-lib/` (including vendor license/notice)
 - `scripts/repogolem/`: config generator, schema/example, runtime and dispatch modules
 - `packages/golem-skills/`: golems-cli source and package metadata
@@ -100,11 +101,22 @@ not lexical SHA order. A release referenced by the client hook receipt is also
 retained in the history until a later update no longer needs it. Untracked
 release directories are left alone.
 
-Every skill directory (including shared helpers) is linked into `~/.claude/skills`
-and `~/.agents/skills`; `~/.codex/skills` is linked to the latter only if absent.
-Existing files/directories and foreign links are reported and kept. Links into
-`~/Gits/golems/` are replaced only with `--replace-checkout-links`; this flag also
-works on a same-version run. The installer writes `release.json` with version,
+Only the entries in `skills/catalog.json` are linked into `~/.claude/skills`
+and `~/.agents/skills`, using their separate lists; `~/.codex/skills` is linked
+to the latter only if absent. Each catalog entry must have `SKILL.md`.
+The catalog was derived from the owner's readable golems-owned links in these
+two roots on 2026-10-12, following golem-install's installed-skill scan. That scan
+is the source chosen for the curated installed set: the library checker counts
+all available skills, and `scripts/sync/reconcile-profile.json` does not declare
+per-client subsets. Update the catalog deliberately when changing the installed
+set; the release manifest verifies its bytes along with the payload.
+Existing files/directories and foreign links are reported and kept. Links that
+resolve into a golems checkout's `skills/` (including relative and worktree links)
+are replaced only with `--replace-checkout-links`; links resolving into another
+repo stay untouched even when reached through a golems symlink. The flag also
+works on a same-version run. Updates refresh release-owned links and remove
+retired entries only when they resolve into this prefix's `releases/` directory.
+The installer writes `release.json` with version,
 commit, channel, installation time, tarball SHA256 and `manifest_sha256`
 (the standalone manifest hash verified against SHA256SUMS). A successful install
 prints the version, full commit and tarball SHA256. It never writes the

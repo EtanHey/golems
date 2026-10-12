@@ -59,10 +59,10 @@ work=$(mktemp -d "$prefix/.install-XXXXXXXX")
 # emitted; scan a character array so macOS awk does not repeatedly copy the
 # full document. Unselected strings are validated without building their value.
 json_fields() {
-  awk '
+  awk -v catalog="${3-false}" '
   function bad() { exit 1 }
   function ws() { while (pos <= size && ch[pos] ~ /[ \t\r\n]/) pos++ }
-  function selected(p) { return p ~ /^(version|commit|source|private_gate|files\.[0-9]+\.(path|sha256|mode)|([0-9]+\.)?(tag_name|draft|prerelease|created_at))$/ }
+  function selected(p) { return catalog=="true" || p ~ /^(version|commit|source|private_gate|files\.[0-9]+\.(path|sha256|mode)|([0-9]+\.)?(tag_name|draft|prerelease|created_at))$/ }
   function str(capture, out,c,e,h,i) {
     if (ch[pos++] != "\"") bad()
     while (pos <= size) {
@@ -82,6 +82,7 @@ json_fields() {
   function value(p, c,k,n,v,q) {
     ws(); c=ch[pos]
     if (c=="{" || c=="[") {
+      if(catalog=="true") print p "\t" (c=="{" ? "object" : "array")
       pos++; ws(); q=(c=="{" ? "}" : "]")
       if (ch[pos]==q) {pos++; return}
       n=0
@@ -95,7 +96,7 @@ json_fields() {
     else { v=""; while (pos<=size && ch[pos] !~ /[ \t\r\n,}\]]/) v=v ch[pos++]
       if(v !~ /^(true|false|null|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?)$/) bad()
     }
-    if (selected(p)) print p "\t" v
+    if (selected(p)) print p "\t" v (catalog=="true" ? "\t" (c=="\"" ? "string" : "scalar") : "")
   }
   {nchars=split($0,line,""); for(j=1;j<=nchars;j++) ch[++size]=line[j]; ch[++size]="\n"} END {pos=1; value(""); ws(); if(pos<=size) bad()}
   ' "$1" > "$2" || fail "invalid JSON: $1"
@@ -185,6 +186,23 @@ verify_files() {
   (cd "$1" && shasum -a 256 -c "$work/file-sums" > "$work/verify.log" 2>&1) || fail 'file checksum mismatch (release payload)'
 }
 verify_files "$work/payload"
+# Validate the entire catalog before activation, hooks or client writes.
+json_fields "$work/payload/skills/catalog.json" "$work/catalog.tsv" true
+awk -F '\t' '
+  $1=="" {if($2!="object") exit 1; next}
+  $1=="schema" {if($2!="1" || $3!="scalar") exit 1; schema++; next}
+  $1=="roots" {if($2!="object") exit 1; next}
+  $1=="roots.claude" || $1=="roots.agents" {if($2!="array") exit 1; next}
+  $1 ~ /^roots\.(claude|agents)\.[0-9]+$/ {
+    split($1,k,"."); if($3!="string" || $2 !~ /^[A-Za-z0-9][A-Za-z0-9_-]*$/ || seen[k[2],$2]++) exit 1
+    counts[k[2]]++; print k[2] "\t" $2; next
+  }
+  {exit 1}
+  END {if(schema!=1 || !counts["claude"] || !counts["agents"]) exit 1}
+' "$work/catalog.tsv" > "$work/catalog" || fail 'invalid skill catalog'
+while IFS="$(printf '\t')" read -r client name; do
+  [ -f "$work/payload/skills/golem-powers/$name/SKILL.md" ] || fail "skill catalog entry has no SKILL.md: $name"
+done < "$work/catalog"
 destination=$prefix/releases/$version
 if [ -e "$destination" ] || [ -L "$destination" ]; then
   [ -d "$destination" ] && [ ! -L "$destination" ] || fail 'existing release is not a directory'
@@ -231,20 +249,60 @@ link_skill() {
   link=$1 target=$2
   if [ -L "$link" ]; then
     old=$(readlink "$link"); [ "$old" != "$target" ] || return 0
-    case "$old" in "$HOME/Gits/golems/"*)
-      if [ "$replace" = false ]; then printf 'Keeping checkout link %s; use --replace-checkout-links\n' "$link"; return 0; fi ;;
-      *) printf 'Keeping existing link %s -> %s\n' "$link" "$old"; return 0 ;;
+    resolved=$(resolve_skill_link "$link") || { printf 'Keeping unresolved link %s -> %s\n' "$link" "$old"; return 0; }
+    case "$resolved" in "$prefix/releases/"*) ;;
+      *) if is_golems_checkout_skill "$resolved"; then
+        if [ "$replace" = false ]; then printf 'Keeping checkout link %s; use --replace-checkout-links\n' "$link"; return 0; fi
+      else printf 'Keeping existing link %s -> %s\n' "$link" "$old"; return 0; fi ;;
     esac
   elif [ -e "$link" ]; then printf 'Keeping existing path %s\n' "$link"; return 0; fi
   ln -s "$target" "$work/skill-link"
   atomic_move "$work/skill-link" "$link"
 }
+is_golems_checkout_skill() (
+  checkout=${1%/skills/*}
+  case "$checkout" in
+    */golems) exit 0 ;;
+    */golems/.worktrees/*)
+      worktree=${checkout##*/golems/.worktrees/}
+      case "$worktree" in ''|*/*) exit 1 ;; *) exit 0 ;; esac ;;
+    *) exit 1 ;;
+  esac
+)
+# Resolve relative links and checkout aliases before deciding who owns them.
+# Dangling paths are normalized too, so stale links can be migrated safely.
+resolve_skill_link() (
+  path=$1 hops=0
+  while :; do
+    parent=$(dirname "$path") base=$(basename "$path")
+    while [ ! -d "$parent" ]; do
+      [ ! -L "$parent" ] && [ "$parent" != / ] || exit 1
+      base=$(basename "$parent")/$base; parent=$(dirname "$parent")
+    done
+    parent=$(CDPATH='' cd -P "$parent" && pwd) || exit 1
+    path=$(printf '%s/%s\n' "$parent" "$base" | awk -F / '{n=0; for(i=1;i<=NF;i++) if($i=="..") {if(n) n--} else if($i!="" && $i!=".") parts[++n]=$i; for(i=1;i<=n;i++) printf "/%s",parts[i]; print ""}')
+    if [ ! -L "$path" ]; then
+      if [ -d "$path" ]; then CDPATH='' cd -P "$path" && pwd; else printf '%s\n' "$path"; fi
+      exit
+    fi
+    hops=$((hops + 1)); [ "$hops" -le 40 ] || exit 1
+    target=$(readlink "$path") || exit 1
+    case "$target" in /*) path=$target ;; *) path=$(dirname "$path")/$target ;; esac
+  done
+)
 for client in .claude .agents; do
   mkdir -p "$HOME/$client/skills"
-  for skill in "$destination/skills/golem-powers/"*; do
-    [ -d "$skill" ] || continue
-    link_skill "$HOME/$client/skills/$(basename "$skill")" "$prefix/current/skills/golem-powers/$(basename "$skill")"
+  awk -F '\t' -v client="${client#.}" '$1==client {print $2}' "$work/catalog" > "$work/client-catalog"
+  for link in "$HOME/$client/skills/"*; do
+    [ -L "$link" ] || continue
+    name=$(basename "$link")
+    awk -v name="$name" '$0==name {found=1} END {exit !found}' "$work/client-catalog" && continue
+    resolved=$(resolve_skill_link "$link") || continue
+    case "$resolved" in "$prefix/releases/"*) rm "$link"; printf 'Removed retired release link %s\n' "$link" ;; esac
   done
+  while IFS= read -r name; do
+    link_skill "$HOME/$client/skills/$name" "$prefix/current/skills/golem-powers/$name"
+  done < "$work/client-catalog"
 done
 mkdir -p "$HOME/.codex"
 if [ ! -e "$HOME/.codex/skills" ] && [ ! -L "$HOME/.codex/skills" ]; then ln -s "$HOME/.agents/skills" "$HOME/.codex/skills"

@@ -14,9 +14,9 @@ beforeAll(() => {
   mkdirSync(source); mkdirSync(minimal);
   // Snapshot the current payload into a scratch Git repo: P1 builds committed objects only.
   const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repo, encoding: 'utf8' }).split('\0').filter(Boolean);
-  paths.push('scripts/release/install.sh');
+  paths.push('scripts/release/install.sh', 'skills/catalog.json');
   paths.push('scripts/hooks/client-install-transaction.mjs');
-  for (const path of new Set(paths.filter(p => /^(skills\/golem-powers\/|scripts\/(pr-watch|repogolem\/|hooks\/|model-roles.mjs|ci\/check-model-role-drift.mjs)|packages\/golem-skills\/|standards\/model-roles|\.claude\/hooks\/block-dangerous-commands.py|hooks\/daemon-gate-precheck.py|\.bun-version$|LICENSE$|package.json$|release-gate.json$|scripts\/release\/install.sh$)/.test(p)))) {
+  for (const path of new Set(paths.filter(p => /^(skills\/(golem-powers\/|catalog.json$)|scripts\/(pr-watch|repogolem\/|hooks\/|model-roles.mjs|ci\/check-model-role-drift.mjs)|packages\/golem-skills\/|standards\/model-roles|\.claude\/hooks\/block-dangerous-commands.py|hooks\/daemon-gate-precheck.py|\.bun-version$|LICENSE$|package.json$|release-gate.json$|scripts\/release\/install.sh$)/.test(p)))) {
     if (!existsSync(join(repo, path))) continue;
     mkdirSync(dirname(join(source, path)), { recursive: true });
     copyFileSync(join(repo, path), join(source, path));
@@ -35,6 +35,115 @@ function install(dir, extra = [], tarball = release.tarball, sums = join(root, '
   return spawnSync('/bin/sh', [installer, '--from-file', tarball, '--sums', sums, ...extra], { env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8' });
 }
 const ok = result => { expect(result.stderr).toBe(''); expect(result.status).toBe(0); };
+const catalog = () => JSON.parse(readFileSync(join(repo, 'skills/catalog.json'))).roots;
+test('fresh install links exactly the per-client catalog, never support directories', () => {
+  const dir = home(); ok(install(dir));
+  for (const [client, names] of Object.entries(catalog())) {
+    expect(readdirSync(join(dir, `.${client}/skills`)).sort()).toEqual([...names].sort());
+    for (const name of names) expect(existsSync(join(dir, `.${client}/skills`, name, 'SKILL.md'))).toBe(true);
+  }
+  const manifest = JSON.parse(readFileSync(join(dir, '.golems/current/MANIFEST.json')));
+  expect(manifest.files.some(file => file.path === 'skills/catalog.json')).toBe(true);
+});
+test('mixed links preserve other repos, redirects and real directories with replacement enabled', () => {
+  const dir = home(), checkout = join(dir, 'Gits/golems/skills/golem-powers');
+  mkdirSync(join(checkout, 'pr-loop'), { recursive: true });
+  const foreign = join(dir, 'Gits/brainlayer/skills/agada-bench'); mkdirSync(foreign, { recursive: true });
+  const creator = join(dir, 'Gits/skill-creator/skills/skill-creator'); mkdirSync(creator, { recursive: true });
+  const worktree = join(dir, 'Gits/golems/.worktrees/demo/skills/golem-powers/coach'); mkdirSync(worktree, { recursive: true });
+  symlinkSync(foreign, join(checkout, 'agada-bench'));
+  symlinkSync(foreign, join(checkout, 'foreign-alias'));
+  for (const client of ['.claude', '.agents']) {
+    const skills = join(dir, client, 'skills'); mkdirSync(skills, { recursive: true });
+    symlinkSync('../../Gits/golems/skills/golem-powers/pr-loop', join(skills, 'pr-loop'));
+    symlinkSync(join(checkout, 'agada-bench'), join(skills, 'agada-bench'));
+    symlinkSync(creator, join(skills, 'skill-creator'));
+    symlinkSync(worktree, join(skills, 'coach'));
+    symlinkSync(join(checkout, 'foreign-alias/missing/skill'), join(skills, 'fleet-wrap'));
+    mkdirSync(join(skills, 'orc')); writeFileSync(join(skills, 'orc/SKILL.md'), 'custom skill');
+  }
+  const result = install(dir, ['--replace-checkout-links']); ok(result);
+  expect(result.stdout).toContain('Keeping existing link'); expect(result.stdout).toContain('Keeping existing path');
+  for (const [client, names] of Object.entries(catalog())) {
+    const skills = join(dir, `.${client}/skills`);
+    expect(readdirSync(skills).sort()).toEqual([...names].sort());
+    expect(readlinkSync(join(skills, 'pr-loop'))).toContain('/current/skills/');
+    expect(readlinkSync(join(skills, 'coach'))).toContain('/current/skills/');
+    expect(realpathSync(join(skills, 'agada-bench'))).toBe(foreign);
+    expect(readlinkSync(join(skills, 'fleet-wrap'))).toBe(join(checkout, 'foreign-alias/missing/skill'));
+    expect(readlinkSync(join(skills, 'skill-creator'))).toBe(creator);
+    expect(readFileSync(join(skills, 'orc/SKILL.md'), 'utf8')).toBe('custom skill');
+  }
+});
+test('catalog errors fail before client or activation writes, including missing SKILL.md', () => {
+  for (const change of [
+    value => { value.roots.claude.push('../escape'); },
+    value => { value.roots.agents.push('collab-guard'); },
+    value => { value.roots.claude.push(value.roots.claude[0]); },
+    value => { value.roots.agents = 'pr-loop'; },
+  ]) {
+    const dir = home(), [tarball, sums] = repack(payload => {
+      const at = join(payload, 'skills/catalog.json'), value = JSON.parse(readFileSync(at)); change(value);
+      writeFileSync(at, JSON.stringify(value));
+      const manifestAt = join(payload, 'MANIFEST.json'), manifest = JSON.parse(readFileSync(manifestAt));
+      manifest.files.find(file => file.path === 'skills/catalog.json').sha256 = createHash('sha256').update(readFileSync(at)).digest('hex');
+      writeFileSync(manifestAt, JSON.stringify(manifest));
+    });
+    const result = install(dir, [], tarball, sums);
+    expect(result.status).not.toBe(0); expect(result.stderr).toContain('catalog');
+    expect(existsSync(join(dir, '.golems/current'))).toBe(false);
+    expect(existsSync(join(dir, '.claude/skills'))).toBe(false);
+  }
+});
+test('catalog upgrade removes only retired release links and refreshes pinned release links', () => {
+  const dir = home(); ok(install(dir));
+  const retired = 'pr-loop', at = join(source, 'skills/catalog.json'), original = readFileSync(at);
+  const value = JSON.parse(original);
+  for (const names of Object.values(value.roots)) names.splice(names.indexOf(retired), 1);
+  const skills = join(dir, '.claude/skills');
+  symlinkSync(join(dir, '.golems/releases', release.version, 'skills/golem-powers/_shared'), join(skills, '_shared'));
+  symlinkSync('../../.golems/releases/missing/skills/golem-powers/retired', join(skills, 'retired'));
+  symlinkSync(join(dir, 'Gits/other/skills/demo'), join(skills, 'foreign'));
+  mkdirSync(join(skills, 'custom'));
+  rmSync(join(skills, 'orc')); symlinkSync(join(dir, '.golems/releases', release.version, 'skills/golem-powers/orc'), join(skills, 'orc'));
+  const next = upgrade(() => writeFileSync(at, JSON.stringify(value)));
+  try {
+    ok(install(dir, [], next.tarball, join(dirname(next.tarball), 'SHA256SUMS')));
+    expect(existsSync(join(skills, retired))).toBe(false);
+    expect(readdirSync(skills)).not.toContain(retired); expect(readdirSync(skills)).not.toContain('_shared');
+    expect(readdirSync(skills)).not.toContain('retired');
+    expect(readlinkSync(join(skills, 'foreign'))).toContain('/Gits/other/');
+    expect(lstatSync(join(skills, 'custom')).isDirectory()).toBe(true);
+    expect(readlinkSync(join(skills, 'orc'))).toContain('/current/skills/');
+  } finally { writeFileSync(at, original); git('add', '.'); git('commit', '-m', 'restore catalog fixture'); }
+});
+test('installed-skills fixture row passes for catalog checkout links versus release install', () => {
+  const left = home(), right = home(); ok(install(right));
+  for (const [client, names] of Object.entries(catalog())) {
+    const skills = join(left, `.${client}/skills`); mkdirSync(skills, { recursive: true });
+    for (const name of names) symlinkSync(join(source, 'skills/golem-powers', name), join(skills, name));
+  }
+  mkdirSync(join(left, '.codex')); symlinkSync(join(left, '.agents/skills'), join(left, '.codex/skills'));
+  const result = spawnSync('python3', ['-c', `
+import hashlib, importlib.util, json, sys
+from unittest.mock import patch
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('parity', sys.argv[1]); parity=importlib.util.module_from_spec(spec); spec.loader.exec_module(parity)
+pins=[{key: hashlib.sha256((label+key).encode()).hexdigest() for key in ('machine','hostname','home')} for label in ('checkout','release')]
+with patch.object(parity, 'observed_identity', side_effect=pins):
+    with patch.object(Path, 'home', return_value=Path(sys.argv[2])): left=parity.inventory()
+    with patch.object(Path, 'home', return_value=Path(sys.argv[3])): right=parity.inventory()
+required={'schema':2,'identities':pins,'roots':{root:{'readable':list(left['roots'][root]['entries']), 'allow_broken':[], 'allow_empty':[], 'target_aliases':{}} for root in parity.ROOTS}}
+paths=[Path(sys.argv[3])/name for name in ('left.json','right.json','required.json')]
+for at, document in zip(paths,(left,right,required)): at.write_text(json.dumps(document))
+import subprocess
+result=subprocess.run([sys.executable,sys.argv[1],'--left',str(paths[0]),'--right',str(paths[1]),'--requirements',str(paths[2])],capture_output=True,text=True)
+print(result.stdout,end=''); print(result.stderr,end='',file=sys.stderr); sys.exit(result.returncode)
+`, join(repo, 'scripts/ratchet/installed-skills.py'), left, right], { encoding: 'utf8' });
+  ok(result); const row = JSON.parse(result.stdout);
+  expect(row.measurement).toBe('fixture'); expect(row.error_count).toBe(0);
+  expect(row.name_content_parity).toBe(true); expect(row.required_readable_valid).toBe(true);
+});
 test('fresh install without git, node or bun links both clients and writes release.json', () => {
   const dir = home(), result = install(dir); ok(result);
   expect(result.stdout).toContain('PATH');
