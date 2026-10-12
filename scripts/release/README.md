@@ -103,7 +103,12 @@ release directories are left alone.
 
 Only the entries in `skills/catalog.json` are linked into `~/.claude/skills`
 and `~/.agents/skills`, using their separate lists; `~/.codex/skills` is linked
-to the latter only if absent. Each catalog entry must have `SKILL.md`.
+to the latter only if absent. An existing real Codex skills directory uses the
+agents catalog: missing entries are linked through `~/.agents/skills/<name>`,
+release-owned links are refreshed, and checkout links are migrated with
+`--replace-checkout-links`. Foreign links, real entries, dot-entries and names
+outside the catalog are reported and kept. Existing Codex root symlinks are
+preserved. Each catalog entry must have `SKILL.md`.
 The catalog was derived from the owner's readable golems-owned links in these
 two roots on 2026-10-12, following golem-install's installed-skill scan. That scan
 is the source chosen for the curated installed set: the library checker counts
@@ -115,7 +120,8 @@ resolve into a golems checkout's `skills/` (including relative and worktree link
 are replaced only with `--replace-checkout-links`; links resolving into another
 repo stay untouched even when reached through a golems symlink. The flag also
 works on a same-version run. Updates refresh release-owned links and remove
-retired entries only when they resolve into this prefix's `releases/` directory.
+retired entries from the Claude and agents roots only when they resolve into
+this prefix's `releases/` directory.
 The installer writes `release.json` with version,
 commit, channel, installation time, tarball SHA256 and `manifest_sha256`
 (the standalone manifest hash verified against SHA256SUMS). A successful install

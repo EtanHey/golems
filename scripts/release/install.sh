@@ -306,6 +306,17 @@ for client in .claude .agents; do
 done
 mkdir -p "$HOME/.codex"
 if [ ! -e "$HOME/.codex/skills" ] && [ ! -L "$HOME/.codex/skills" ]; then ln -s "$HOME/.agents/skills" "$HOME/.codex/skills"
+elif [ -d "$HOME/.codex/skills" ] && [ ! -L "$HOME/.codex/skills" ]; then
+  awk -F '\t' '$1=="agents" {print $2}' "$work/catalog" > "$work/client-catalog"
+  for link in "$HOME/.codex/skills/"* "$HOME/.codex/skills/".[!.]* "$HOME/.codex/skills/"..?*; do
+    [ -e "$link" ] || [ -L "$link" ] || continue
+    name=$(basename "$link")
+    awk -v name="$name" '$0==name {found=1} END {exit !found}' "$work/client-catalog" && continue
+    printf 'Keeping existing path %s\n' "$link"
+  done
+  while IFS= read -r name; do
+    link_skill "$HOME/.codex/skills/$name" "$HOME/.agents/skills/$name"
+  done < "$work/client-catalog"
 elif [ "$(readlink "$HOME/.codex/skills" 2>/dev/null || :)" != "$HOME/.agents/skills" ]; then printf 'Keeping existing Codex skills path %s\n' "$HOME/.codex/skills"; fi
 for cli in pr-watch golems-cli; do
   [ ! -e "$prefix/bin/$cli" ] || [ -f "$prefix/bin/$cli" ] || fail "invalid CLI path: $cli"

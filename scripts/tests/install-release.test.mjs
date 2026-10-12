@@ -75,6 +75,58 @@ test('mixed links preserve other repos, redirects and real directories with repl
     expect(readFileSync(join(skills, 'orc/SKILL.md'), 'utf8')).toBe('custom skill');
   }
 });
+test('real Codex skills root migrates catalog checkout and release links through agents only', () => {
+  const dir = home(), skills = join(dir, '.codex/skills'), checkout = join(dir, 'Gits/golems/skills/golem-powers');
+  mkdirSync(skills, { recursive: true });
+  for (const name of catalog().agents.filter(name => name !== 'golem-install')) {
+    symlinkSync(`${checkout}/${name}/`, join(skills, name));
+  }
+  const foreign = join(dir, 'Gits/brainlayer/skills/agada-bench'); mkdirSync(foreign, { recursive: true });
+  rmSync(join(skills, 'agada-bench')); symlinkSync(foreign, join(skills, 'agada-bench'));
+  mkdirSync(checkout, { recursive: true }); symlinkSync(foreign, join(checkout, 'redirect'));
+  rmSync(join(skills, 'fleet-wrap')); symlinkSync(join(checkout, 'redirect/missing'), join(skills, 'fleet-wrap'));
+  rmSync(join(skills, 'orc')); mkdirSync(join(skills, 'orc')); writeFileSync(join(skills, 'orc/SKILL.md'), 'custom skill');
+  rmSync(join(skills, 'coach')); symlinkSync(join(dir, '.golems/releases/retired/skills/golem-powers/coach'), join(skills, 'coach'));
+  rmSync(join(skills, 'cmux')); symlinkSync(join(dir, 'Gits/golems/.worktrees/old/skills/golem-powers/cmux/'), join(skills, 'cmux'));
+  for (const name of ['.system', 'codex-primary-runtime']) {
+    mkdirSync(join(skills, name)); writeFileSync(join(skills, name, 'sentinel'), name);
+  }
+  for (const name of ['.hidden', 'uncatalogued']) symlinkSync(`${checkout}/${name}/`, join(skills, name));
+  symlinkSync(join(dir, '.golems/releases/retired/skills/golem-powers/retired'), join(skills, 'retired'));
+  const kept = ['agada-bench', 'fleet-wrap', 'orc', '.system', 'codex-primary-runtime', '.hidden', 'uncatalogued', 'retired'];
+  const before = kept.map(name => hookEntry(join(skills, name)));
+  const result = install(dir, ['--replace-checkout-links']); ok(result);
+  expect(lstatSync(skills).isDirectory()).toBe(true);
+  for (const name of catalog().agents.filter(name => !kept.includes(name))) {
+    expect(readlinkSync(join(skills, name))).toBe(join(dir, '.agents/skills', name));
+    expect(realpathSync(join(skills, name))).toBe(join(dir, '.golems/releases', release.version, 'skills/golem-powers', name));
+  }
+  expect(kept.map(name => hookEntry(join(skills, name)))).toEqual(before);
+  for (const name of kept) expect(result.stdout).toContain(join(skills, name));
+  ok(install(dir, ['--replace-checkout-links']));
+  expect(kept.map(name => hookEntry(join(skills, name)))).toEqual(before);
+});
+test('real Codex skills root keeps checkout links without opt-in and adds missing catalog entries', () => {
+  const dir = home(), skills = join(dir, '.codex/skills'), checkout = join(dir, 'Gits/golems/skills/golem-powers/pr-loop/');
+  mkdirSync(skills, { recursive: true }); symlinkSync(checkout, join(skills, 'pr-loop'));
+  symlinkSync(join(dir, '.golems/releases/old/skills/golem-powers/coach'), join(skills, 'coach'));
+  const result = install(dir); ok(result);
+  expect(readlinkSync(join(skills, 'pr-loop'))).toBe(checkout);
+  expect(result.stdout).toContain(`Keeping checkout link ${join(skills, 'pr-loop')}; use --replace-checkout-links`);
+  expect(readlinkSync(join(skills, 'golem-install'))).toBe(join(dir, '.agents/skills/golem-install'));
+  expect(readlinkSync(join(skills, 'coach'))).toBe(join(dir, '.agents/skills/coach'));
+});
+test('existing Codex skills root symlinks are preserved without modifying their targets', () => {
+  for (const agents of [true, false]) {
+    const dir = home(), target = join(dir, agents ? '.agents/skills' : 'other-skills');
+    mkdirSync(target, { recursive: true }); writeFileSync(join(target, 'sentinel'), 'untouched');
+    mkdirSync(join(dir, '.codex')); symlinkSync(target, join(dir, '.codex/skills'));
+    const result = install(dir, ['--replace-checkout-links']); ok(result);
+    expect(readlinkSync(join(dir, '.codex/skills'))).toBe(target);
+    expect(readFileSync(join(target, 'sentinel'), 'utf8')).toBe('untouched');
+    if (!agents) expect(readdirSync(target)).toEqual(['sentinel']);
+  }
+});
 test('catalog errors fail before client or activation writes, including missing SKILL.md', () => {
   for (const change of [
     value => { value.roots.claude.push('../escape'); },
@@ -117,13 +169,27 @@ test('catalog upgrade removes only retired release links and refreshes pinned re
     expect(readlinkSync(join(skills, 'orc'))).toContain('/current/skills/');
   } finally { writeFileSync(at, original); git('add', '.'); git('commit', '-m', 'restore catalog fixture'); }
 });
-test('installed-skills fixture row passes for catalog checkout links versus release install', () => {
-  const left = home(), right = home(); ok(install(right));
+for (const realCodex of [false, true]) test(`installed-skills fixture row passes for catalog checkout links versus release install (real Codex root: ${realCodex})`, () => {
+  const left = home(), right = home();
+  if (realCodex) {
+    const skills = join(right, '.codex/skills'), checkout = join(right, 'Gits/golems/skills/golem-powers');
+    mkdirSync(skills, { recursive: true });
+    for (const name of catalog().agents) {
+      mkdirSync(join(checkout, name), { recursive: true });
+      writeFileSync(join(checkout, name, 'SKILL.md'), 'stale checkout content');
+      symlinkSync(`${checkout}/${name}/`, join(skills, name));
+    }
+  }
+  ok(install(right, realCodex ? ['--replace-checkout-links'] : []));
   for (const [client, names] of Object.entries(catalog())) {
     const skills = join(left, `.${client}/skills`); mkdirSync(skills, { recursive: true });
     for (const name of names) symlinkSync(join(source, 'skills/golem-powers', name), join(skills, name));
   }
-  mkdirSync(join(left, '.codex')); symlinkSync(join(left, '.agents/skills'), join(left, '.codex/skills'));
+  mkdirSync(join(left, '.codex'));
+  if (realCodex) {
+    mkdirSync(join(left, '.codex/skills'));
+    for (const name of catalog().agents) symlinkSync(join(left, '.agents/skills', name), join(left, '.codex/skills', name));
+  } else symlinkSync(join(left, '.agents/skills'), join(left, '.codex/skills'));
   const result = spawnSync('python3', ['-c', `
 import hashlib, importlib.util, json, sys
 from unittest.mock import patch
@@ -354,12 +420,12 @@ function upgrade(change = () => {}) {
   writeFileSync(join(source, 'LICENSE'), `hook update ${serial++}\n`); change(); git('add', '.'); git('commit', '-m', 'hook update fixture');
   return buildRelease({ repo: source, out: join(root, `hooks-upgrade-${serial++}`) });
 }
+function hookEntry(at) {
+  const st = lstatSync(at);
+  return [st.mode, st.isSymbolicLink() ? readlinkSync(at) : st.isDirectory() ? readdirSync(at).sort().map(n => [n, hookEntry(join(at, n))]) : readFileSync(at).toString('base64')];
+}
 function hookState(dir) {
-  const snapshot = at => {
-    const st = lstatSync(at);
-    return [st.mode, st.isSymbolicLink() ? readlinkSync(at) : st.isDirectory() ? readdirSync(at).sort().map(n => [n, snapshot(join(at, n))]) : readFileSync(at).toString('base64')];
-  };
-  return ['.claude/hooks', '.claude/settings.json', '.codex/hooks.json', '.golems/current', '.golems/release.json', '.golems/release-history'].map(p => snapshot(join(dir, p)));
+  return ['.claude/hooks', '.claude/settings.json', '.codex/hooks.json', '.golems/current', '.golems/release.json', '.golems/release-history'].map(p => hookEntry(join(dir, p)));
 }
 test('client hooks survive four release installs: verified pins, drift zero and no-token lease DENY in both clients', () => {
   const dir = home(), env = runtime(dir); ok(update(dir, env, release)); ok(hooks(dir, env, '--apply'));
