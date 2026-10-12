@@ -112,7 +112,10 @@ download() {
       301|302|303|307|308)
         [ "$redirects" -lt 5 ] || fail 'too many download redirects'
         download_url=$(printf '%s\n' "$response" | sed -n '2p'); redirects=$((redirects + 1)) ;;
-      403) fail 'GitHub API/access denied (HTTP 403; possible rate limit). Set GITHUB_TOKEN for authenticated API requests.' ;;
+      403|429)
+        download_host=${download_url#https://}; download_host=${download_host%%/*}
+        case "$download_host" in api.github.com) download_source='GitHub API' ;; *) download_source='GitHub asset download' ;; esac
+        fail "$download_source access denied by $download_host (HTTP $status; possible rate limit). Wait before retrying or set GITHUB_TOKEN for authenticated API requests." ;;
       *) fail "download failed (HTTP $status)" ;;
     esac
   done
