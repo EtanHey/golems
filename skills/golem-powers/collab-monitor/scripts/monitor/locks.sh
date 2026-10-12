@@ -26,12 +26,12 @@ process_is_monitor() {
   if [[ -n "$instance_token" ]]; then
     valid_instance_token "$instance_token" || return 1
     case "$command_line" in
-      *"$SCRIPT_PATH"*" run --instance $instance_token $listen_name "*|*"$SCRIPT_PATH"*" run --instance $instance_token --owner-pid "*" $listen_name "*) return 0 ;;
+      *"/collab-monitor.sh"*" run --instance $instance_token $listen_name "*|*"/collab-monitor.sh"*" run --instance $instance_token --owner-pid "*" $listen_name "*) return 0 ;;
       *) return 1 ;;
     esac
   fi
   case "$command_line" in
-    *"$SCRIPT_PATH"*" run "*"$listen_name "*) return 0 ;;
+    *"/collab-monitor.sh"*" run "*"$listen_name "*) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -108,7 +108,11 @@ acquire_start_lock() {
     fi
     return 0
   fi
-  if [[ -f "$owner_file" ]]; then
+  # Preserve the publication window, but recover a creator killed before
+  # owner.pid was written. Perl stat works on both macOS and Linux.
+  if [[ ! -f "$owner_file" ]]; then
+    perl -e 'my @s=stat($ARGV[0]); exit(!@s || time-$s[9] < 30)' "$lock_dir" || return 1
+  else
     owner_pid="$(sed -n '1p' "$owner_file")"
   fi
   case "$owner_pid" in
@@ -157,7 +161,7 @@ cleanup_run_lock() {
   fi
   if [[ "${COLLAB_MONITOR_MANAGED:-0}" == '1' && -n "$ACTIVE_INSTANCE_FILE" && -f "$ACTIVE_INSTANCE_FILE" ]]; then
     instance_value="$(sed -n '1p' "$ACTIVE_INSTANCE_FILE")"
-    [[ "$instance_value" != "$ACTIVE_INSTANCE_TOKEN" ]] || rm -f "$ACTIVE_INSTANCE_FILE"
+    [[ "$instance_value" != "$ACTIVE_INSTANCE_TOKEN" ]] || rm -f "$ACTIVE_INSTANCE_FILE" "${ACTIVE_INSTANCE_FILE%.instance}.owner"
   fi
   if [[ -n "$ACTIVE_READY_FILE" && -f "$ACTIVE_READY_FILE" ]]; then
     ready_value="$(sed -n '1p' "$ACTIVE_READY_FILE")"
@@ -186,6 +190,52 @@ cleanup_start_lock() {
     ACTIVE_START_CHILD_SETTLED=1
   fi
   if [[ -n "$ACTIVE_START_LOCK" ]]; then
-    rm -rf "$ACTIVE_START_LOCK"
+    release_directory_lock "$ACTIVE_START_LOCK"
   fi
 }
+
+# Call only while holding this state's start lock. Foreground run uses the
+# same lock for acquisition; detached run is protected by its starter.
+prune_inactive_state() {
+  local state_dir="$1" listen_name="$2" record pid token event_file event_pid
+  for record in monitor run.lock/owner ready; do
+    pid=''
+    token=''
+    [[ ! -f "$state_dir/$record.pid" ]] || pid="$(sed -n '1p' "$state_dir/$record.pid")"
+    [[ ! -f "$state_dir/$record.instance" ]] || token="$(sed -n '1p' "$state_dir/$record.instance")"
+    # Token match proves the recorded instance. A monitor with a conflicting
+    # token is ambiguous live state, so preserve it too; never signal here.
+    if process_is_monitor "$pid" "$listen_name" "$token" || process_is_monitor "$pid" "$listen_name" || process_is_monitor "$pid" "${listen_name#@}"; then
+      return 0
+    fi
+  done
+  rm -f "$state_dir/monitor.pid" "$state_dir/monitor.instance" "$state_dir/monitor.owner" \
+    "$state_dir/ready.pid" "$state_dir/ready.instance"
+  for event_file in "$state_dir"/events.* "$state_dir"/seen.sha256.events.*; do
+    event_pid="${event_file##*.}"
+    case "$event_pid" in ''|*[!0-9]*) continue ;; esac
+    rm -f "$event_file"
+  done
+  rm -rf "$state_dir/run.lock"
+}
+
+# Isolate traps from the caller's later start/run lifecycle traps.
+prune_state_root() (
+  local state_dir bare_name
+  ACTIVE_START_CHILD_SETTLED=1
+  trap cleanup_start_lock EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
+  for state_dir in "$STATE_ROOT"/*; do
+    [[ -d "$state_dir" && ! -L "$state_dir" ]] || continue
+    bare_name="${state_dir##*/}"
+    # A concurrent start (including its unpublished child) owns all its state.
+    ACTIVE_START_LOCK="$state_dir/start.lock"
+    if acquire_start_lock "$ACTIVE_START_LOCK"; then
+      prune_inactive_state "$state_dir" "@$bare_name"
+      release_directory_lock "$ACTIVE_START_LOCK"
+    fi
+    ACTIVE_START_LOCK=''
+  done
+)

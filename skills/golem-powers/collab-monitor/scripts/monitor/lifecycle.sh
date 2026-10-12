@@ -28,6 +28,7 @@ start_monitor() {
   bare_name="$(normalize_name "$listen_name")"
   ensure_files "$@"
   initialize_owner
+  prune_state_root
   state_dir="$STATE_ROOT/$bare_name"
   start_lock="$state_dir/start.lock"
   pid_file="$state_dir/monitor.pid"
@@ -47,6 +48,8 @@ start_monitor() {
   trap 'exit 130' INT
   trap 'exit 143' TERM
 
+  prune_inactive_state "$state_dir" "$listen_name"
+
   existing_pid=''
   existing_instance=''
   if [[ -f "$pid_file" ]]; then
@@ -61,6 +64,12 @@ start_monitor() {
   fi
   if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null && ! process_is_zombie "$existing_pid"; then
     printf 'STATE_CONFLICT name=%s pid=%s action=not-started state=preserved\n' "$listen_name" "$existing_pid" >&2
+    exit 1
+  fi
+  # Foreground runs have a live run lock without a published monitor.pid.
+  # Reject before clearing readiness or truncating any live instance's log.
+  if [[ -f "$state_dir/run.lock/owner.pid" ]] && process_is_monitor "$(sed -n '1p' "$state_dir/run.lock/owner.pid")" "$listen_name"; then
+    printf 'MONITOR-BUSY name=%s\n' "$listen_name" >&2
     exit 1
   fi
   rm -f "$pid_file" "$ready_file" "$ready_instance_file" "$instance_file"
@@ -114,6 +123,7 @@ start_monitor() {
   fi
 
   temporary="${pid_file}.tmp.$$"
+  atomic_write_line "$state_dir/monitor.owner" "$OWNER_PID"
   atomic_write_line "$instance_file" "$instance_token"
   printf '%s\n' "$child_pid" > "$temporary"
   mv "$temporary" "$pid_file"
@@ -168,7 +178,7 @@ follow_monitor() {
 }
 
 status_monitor() {
-  local listen_name bare_name state_dir pid_file instance_file pid instance_token
+  local listen_name bare_name state_dir pid_file instance_file pid instance_token owner_pid=unknown
 
   [[ "$#" -eq 1 ]] || {
     usage
@@ -189,7 +199,8 @@ status_monitor() {
     printf 'STALE_PID name=%s pid=%s\n' "$listen_name" "$pid" >&2
     exit 1
   fi
-  printf 'RUNNING name=%s pid=%s\n' "$listen_name" "$pid"
+  [[ ! -f "$state_dir/monitor.owner" ]] || owner_pid="$(sed -n '1p' "$state_dir/monitor.owner")"
+  printf 'RUNNING name=%s pid=%s owner_pid=%s\n' "$listen_name" "$pid" "$owner_pid"
 }
 
 stop_monitor() {

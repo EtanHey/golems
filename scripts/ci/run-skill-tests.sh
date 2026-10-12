@@ -33,6 +33,7 @@ done < <(
     -type f \( -path '*/evals/run_suite.py' -o \
       -path '*/collab-monitor/evals/route-contract.py' -o \
       -path '*/collab-monitor/evals/owner-exit.py' -o \
+      -path '*/collab-monitor/evals/state-hygiene.py' -o \
       -path '*/collab-monitor/evals/monitor-howto.py' \) -print0 | sort -z
   # Stdlib test scripts at scripts/ top level (exit 0 = pass) run the same
   # way as the gate suites.

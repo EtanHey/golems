@@ -437,6 +437,12 @@
     chmod +x "$case_dir/bin/ps"
     PATH="$case_dir/bin:$PATH" COLLAB_MONITOR_FAKE_ZOMBIE_PID="$foreign_pid" MONITOR_STATE_DIR="$case_dir/state" /bin/bash "$MONITOR" status '@skillcreator2' > "$case_dir/zombie-status.out" 2>&1
     zombie_status_rc=$?
+    # Read-only status preserves the real producer's records under a zombie
+    # ps view, so the ordinary view can still identify it without restoration.
+    zombie_records_preserved=0
+    if [[ "$(sed -n '1p' "$case_dir/state/skillcreator2/monitor.pid")" == "$foreign_pid" && -s "$case_dir/state/skillcreator2/monitor.instance" ]]; then
+      zombie_records_preserved=1
+    fi
     MONITOR_STATE_DIR="$case_dir/state" /bin/bash "$MONITOR" status '@skillcreator2' > "$case_dir/foreign-status.out" 2>&1
     foreign_status_rc=$?
     PATH="$case_dir/bin:$PATH" COLLAB_MONITOR_FAKE_ZOMBIE_PID="$foreign_pid" MONITOR_STATE_DIR="$case_dir/state" /bin/bash "$MONITOR" stop '@skillcreator2' > "$case_dir/zombie-stop.out" 2>&1
@@ -447,7 +453,7 @@
     else
       kill "$foreign_pid" 2>/dev/null || true
     fi
-    if [[ "$follow_exited" -eq 1 && "$stale_rc" -ne 0 && "$zombie_status_rc" -ne 0 && "$foreign_status_rc" -eq 0 && "$zombie_stop_rc" -eq 0 ]] && grep -Fq 'STALE_PID' "$case_dir/zombie-status.out" && grep -Fq 'state=zombie' "$case_dir/zombie-stop.out"; then
+    if [[ "$follow_exited" -eq 1 && "$stale_rc" -ne 0 && "$zombie_status_rc" -ne 0 && "$zombie_records_preserved" -eq 1 && "$foreign_status_rc" -eq 0 && "$zombie_stop_rc" -eq 0 ]] && grep -Fq 'STALE_PID' "$case_dir/zombie-status.out" && grep -Fq 'state=zombie' "$case_dir/zombie-stop.out"; then
       lifecycle_ok=1
     fi
   fi

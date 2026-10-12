@@ -3,6 +3,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
+# Make process identity absolute even for `bash collab-monitor.sh run`.
+if [[ "${BASH_SOURCE[0]}" != "$SCRIPT_PATH" ]]; then
+  exec /bin/bash "$SCRIPT_PATH" "$@"
+fi
 STATE_ROOT="${MONITOR_STATE_DIR:-${HOME:?HOME is required}/.local/state/collab-monitor}"
 POLL_SECONDS="${POLL_SECONDS-25}"
 START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS-30}"

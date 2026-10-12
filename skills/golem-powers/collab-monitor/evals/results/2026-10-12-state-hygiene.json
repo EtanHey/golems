@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-12",
+  "runtime": "macOS /bin/bash 3.2; real subprocesses; private scratch state",
+  "baseline": {
+    "tests": 18,
+    "failures": 7
+  },
+  "foreground_start_followup": {
+    "tests": 1,
+    "failures_before_guard": 1
+  },
+  "candidate": {
+    "owner_and_hygiene_tests": 20,
+    "failures": 0,
+    "routing_checks": 19,
+    "episode_regressions": 6,
+    "routing_goldens": 12,
+    "copied_tree_lifecycle": true,
+    "package_tests": 821,
+    "package_failures": 0,
+    "ci_runner_tests": 6
+  },
+  "live_cli_smoke": {
+    "first_append_alerts": 1,
+    "duplicate_append_alerts": 0
+  },
+  "claims": [
+    "dead/reused unrelated PID records pruned without signaling",
+    "live/corrupt-token/foreground/unpublished-start state preserved",
+    "durable dedup retained",
+    "owner PID exposed",
+    "cross-checkout identity",
+    "vanished script/helper exits and child cleanup"
+  ],
+  "limits": [
+    "Ownerless start locks have a 30-second grace before recovery; status is read-only",
+    "native Monitor not exercised",
+    "fleet state and installed copies not changed",
+    "CodeRabbit zero findings on eight earlier files; final guard and new test not covered",
+    "release gate UNKNOWN with installedVersion null; unmerged worker lane does not authorize release/install"
+  ],
+  "review_round_1": {
+    "reviewed_head": "e9646dbb",
+    "findings": [
+      "B1 interrupted status can wedge unrelated state",
+      "N1 basename-relative foreground run identity"
+    ],
+    "design": "status read-only; start-only pruning with isolated signal traps; 30-second ownerless grace; absolute-path re-exec",
+    "red": {
+      "hygiene_tests": 24,
+      "failures": 3,
+      "basename_relative_probe_errors": 1
+    },
+    "green": {
+      "hygiene_tests": 25,
+      "owner_exit_tests": 9,
+      "failures": 0,
+      "routing_goldens": 12,
+      "copied_tree_lifecycle": true,
+      "howto": true,
+      "teaching_negative_controls": 35,
+      "detached_launch": true,
+      "live_cli_first_append_alerts": 1,
+      "live_cli_duplicate_alerts": 0,
+      "package_tests": 821,
+      "package_failures": 0,
+      "routing_checks": 19,
+      "episode_regressions": 6
+    },
+    "grace_test": "Injected TERM at mkdir\u2192owner write; aged lock mtime 31s to exercise recovery without sleeping",
+    "limits": [
+      "native Monitor and installed fleet copies untested",
+      "release gate UNKNOWN: installed version unknown",
+      "review and merge remain lead-owned"
+    ]
+  }
+}

@@ -121,6 +121,10 @@ def main():
         GOLDEN.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
     else:
         expected = json.loads(GOLDEN.read_text())
+        # Q1b adds owner metadata to status; keep all other untouched-base
+        # routing/state/lifecycle goldens, with the PID normalized as above.
+        expected["copied_tree"]["status"]["stdout"] = expected["copied_tree"]["status"]["stdout"].replace(
+            "\n", " owner_pid=<PID>\n")
         assert actual == expected, "routing, state, or copied-tree lifecycle differs from untouched base"
     print(f"PASS routing goldens: {len(CASES)} fixtures + copied-tree detached lifecycle")
 
