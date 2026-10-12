@@ -40,12 +40,22 @@ package metadata, and excludes itself to avoid a circular hash. `SHA256SUMS`
 checks the tarball and the standalone manifest. CI independently checks the
 archive's per-file hashes, modes and metadata, and compares two whole builds.
 
-PRs validate without publishing. A master push publishes immutable assets via
-GitHub Releases; reruns compare existing assets instead of replacing them.
-Interrupted draft uploads are replaced on rerun. Publication jobs are serialized;
-every release is a nightly prerelease. Nightly selection uses publication time
-across all API pages, excluding drafts and stable releases. Prereleases are
-never marked GitHub's stable latest. Both jobs pin Node to 22.22.0.
+PRs validate without publishing. Every master merge publishes immutable assets to
+the **nightly** channel as a GitHub prerelease, explicitly never marked Latest.
+The **stable** channel will come later through promotion of a tested nightly.
+Reruns compare existing assets instead of replacing them. Interrupted draft
+uploads are replaced on rerun. Publication jobs are serialized, and both jobs
+pin Node to 22.22.0.
+
+Resolve nightly as the newest published release by `created_at`, **including
+prereleases** and excluding drafts. GitHub's `/releases/latest` endpoint omits
+prereleases, so use the paginated release list instead:
+
+```sh
+gh api --paginate --slurp 'repos/EtanHey/golems/releases?per_page=100' | \
+  jq -er 'map(.[]) | map(select(.draft == false)) | max_by(.created_at) | .tag_name'
+```
+
 The `github-release` gate support requires a published release with all three
 assets. Local installation detection reads `~/.golems/release.json` and compares the full
 version, including the SHA suffix. `--release-only` skips local installation.

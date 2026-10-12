@@ -73,10 +73,9 @@ jobs:
           elif [ "$draft" = true ]; then
             gh release upload "$tag" dist/release/* --clobber
           elif [ -z "$draft" ]; then
-            gh release create "$tag" --draft --prerelease --target "$GITHUB_SHA" --title "Golems $version" --notes "Skills, CLIs and hooks from commit $GITHUB_SHA. See MANIFEST.json and SHA256SUMS for integrity checks." dist/release/*
+            gh release create "$tag" --draft --prerelease --latest=false --target "$GITHUB_SHA" --title "Golems $version" --notes "Skills, CLIs and hooks from commit $GITHUB_SHA. See MANIFEST.json and SHA256SUMS for integrity checks." dist/release/*
           else
             printf 'Ambiguous release state for %s: %s\n' "$tag" "$draft" >&2
             exit 1
           fi
-          # Nightly selection uses published_at; GitHub cannot mark a prerelease latest.
           gh release edit "$tag" --draft=false --prerelease --latest=false
