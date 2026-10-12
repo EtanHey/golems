@@ -394,6 +394,20 @@ describe("CLI", () => {
     expect(cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 0 }) }, ["--bootstrap"], { base: rowsFile([drift]), baseRef: false }).status).toBe(2);
   });
 
+  test("a loosened Mac row passes only when --pr-body-file supplies its ruling", () => {
+    const before = { ...gate, id: "installed-skill-parity", runner: "mac", metric: "old parity metric" };
+    const after = { ...before, metric: "candidate parity metric" };
+    const body = join(dir(), "pr body.md");
+    writeFileSync(body, "Summary\nratchet-loosen: installed-skill-parity lead ruling: measure candidate install parity\n");
+    const files = { "rows.json": rowsFile([after]), "results.json": results({ "installed-skill-parity": true }) };
+    for (const ruled of [false, true]) {
+      const out = cli(files, ["--runner", "mac", ...(ruled ? ["--pr-body-file", body] : [])], { base: rowsFile([before]) });
+      expect(out.status).toBe(ruled ? 0 : 1);
+      expect(readVerdict(out.stdout, "ratchet").ok).toBe(ruled);
+      expect(out.stdout).toContain("metric changed");
+    }
+  });
+
   test("a row file renamed or deleted vs base is FAIL, never a bootstrap", () => {
     const repo = dir();
     const git = (...args) => execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: "pipe" });
