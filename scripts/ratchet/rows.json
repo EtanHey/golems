@@ -188,7 +188,7 @@
     },
     {
       "id": "installed-skill-parity",
-      "metric": "installed skill sets identical on both Macs (name/content parity and required readability; disclosed source-invalid entries separate)",
+      "metric": "installed skill name/hash/exec-bit sets and recorded release.json versions identical on both Macs (install kind/target and regular skill-root markers ignored; required readability and disclosed invalid entries retained)",
       "kind": "real",
       "runner": "live",
       "direction": "pass",
