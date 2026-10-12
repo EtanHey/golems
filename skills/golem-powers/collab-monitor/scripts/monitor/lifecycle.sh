@@ -2,6 +2,11 @@
 # Source-only detached start, follow, status, and stop lifecycle.
 
 cleanup_follow() {
+  if [[ -n "$ACTIVE_SLEEP_PID" ]]; then
+    kill "$ACTIVE_SLEEP_PID" 2>/dev/null || true
+    wait "$ACTIVE_SLEEP_PID" 2>/dev/null || true
+    ACTIVE_SLEEP_PID=''
+  fi
   if [[ -n "$ACTIVE_TAIL_PID" ]]; then
     kill "$ACTIVE_TAIL_PID" 2>/dev/null || true
     wait "$ACTIVE_TAIL_PID" 2>/dev/null || true
@@ -22,6 +27,7 @@ start_monitor() {
   shift
   bare_name="$(normalize_name "$listen_name")"
   ensure_files "$@"
+  initialize_owner
   state_dir="$STATE_ROOT/$bare_name"
   start_lock="$state_dir/start.lock"
   pid_file="$state_dir/monitor.pid"
@@ -71,13 +77,14 @@ start_monitor() {
   # Disable Bash job control so the background child is not already a group
   # leader (setsid would fail with EPERM). This start script exits afterward.
   set +m
-  nohup perl -MPOSIX=setsid -e 'setsid() >= 0 or die $!; exec @ARGV or die $!' env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 COLLAB_MONITOR_INCLUDE_SELF="$INCLUDE_SELF" COLLAB_MONITOR_ALIASES="$ALIASES" /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
+  nohup perl -MPOSIX=setsid -e 'setsid() >= 0 or die $!; exec @ARGV or die $!' env MONITOR_STATE_DIR="$STATE_ROOT" POLL_SECONDS="$POLL_SECONDS" COLLAB_MONITOR_MANAGED=1 COLLAB_MONITOR_INCLUDE_SELF="$INCLUDE_SELF" COLLAB_MONITOR_ALIASES="$ALIASES" /bin/bash "$SCRIPT_PATH" run --instance "$instance_token" --owner-pid "$OWNER_PID" "$listen_name" "$@" >> "$log_file" 2>&1 < /dev/null &
   child_pid=$!
   ACTIVE_START_CHILD_PID="$child_pid"
 
   start_wait_iterations=$((START_TIMEOUT_SECONDS * 10))
   index=0
   while [[ "$index" -lt "$start_wait_iterations" ]]; do
+    require_owner
     kill -0 "$child_pid" 2>/dev/null || break
     lock_owner=''
     ready_owner=''
@@ -119,6 +126,12 @@ start_monitor() {
 follow_monitor() {
   local listen_name bare_name state_dir pid_file instance_file log_file pid instance_token
 
+  if [[ "${1:-}" == '--owner-pid' ]]; then
+    [[ "$#" -ge 2 ]] || die 'missing --owner-pid value'
+    set_owner_pid "$2"
+    shift 2
+  fi
+  initialize_owner
   [[ "$#" -eq 1 ]] || {
     usage
     exit 2
@@ -147,10 +160,11 @@ follow_monitor() {
   trap 'exit 130' INT
   trap 'exit 143' TERM
   while process_is_monitor "$pid" "$listen_name" "$instance_token"; do
+    require_owner
     kill -0 "$ACTIVE_TAIL_PID" 2>/dev/null || die "log follower exited: $log_file"
-    sleep 1
+    interruptible_sleep 1
   done
-  sleep 0.2
+  interruptible_sleep 0.2
 }
 
 status_monitor() {

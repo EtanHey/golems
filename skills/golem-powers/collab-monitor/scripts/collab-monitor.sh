@@ -30,6 +30,9 @@ source "$SCRIPT_DIR/monitor/state.sh"
 # shellcheck source=monitor/locks.sh
 source "$SCRIPT_DIR/monitor/locks.sh"
 
+# shellcheck source=monitor/owner.sh
+source "$SCRIPT_DIR/monitor/owner.sh"
+
 # shellcheck source=monitor/run.sh
 source "$SCRIPT_DIR/monitor/run.sh"
 
@@ -49,6 +52,11 @@ if [[ "$command" == 'start' ]]; then
       --include-self)
         INCLUDE_SELF=1
         shift
+        ;;
+      --owner-pid)
+        [[ "$#" -ge 2 ]] || die 'missing --owner-pid value'
+        set_owner_pid "$2"
+        shift 2
         ;;
       --alias)
         [[ "$#" -ge 2 ]] || die 'missing --alias value'

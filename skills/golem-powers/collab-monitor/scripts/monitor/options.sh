@@ -4,9 +4,9 @@
 usage() {
   printf '%s\n' \
     'usage:' \
-    '  collab-monitor.sh run [--once] [--include-self] [--alias @seat-id ...] @listen-name file [file ...]' \
-    '  collab-monitor.sh start [--include-self] [--alias @seat-id ...] @listen-name file [file ...]' \
-    '  collab-monitor.sh follow @listen-name' \
+    '  collab-monitor.sh run [--owner-pid pid] [--once] [--include-self] [--alias @seat-id ...] @listen-name file [file ...]' \
+    '  collab-monitor.sh start [--owner-pid pid] [--include-self] [--alias @seat-id ...] @listen-name file [file ...]' \
+    '  collab-monitor.sh follow [--owner-pid pid] @listen-name' \
     '  collab-monitor.sh stop @listen-name' \
     '  collab-monitor.sh status @listen-name' >&2
 }
