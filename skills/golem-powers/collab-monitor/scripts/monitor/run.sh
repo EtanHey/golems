@@ -21,8 +21,14 @@ print_contract() {
 }
 
 interruptible_sleep() {
-  sleep "$POLL_SECONDS" &
+  local duration="${1:-$POLL_SECONDS}" check_interval
+  check_interval="$(awk -v duration="$duration" 'BEGIN { print (duration < 1 ? duration : 1) }')"
+  sleep "$duration" &
   ACTIVE_SLEEP_PID=$!
+  while kill -0 "$ACTIVE_SLEEP_PID" 2>/dev/null; do
+    require_owner
+    sleep "$check_interval"
+  done
   wait "$ACTIVE_SLEEP_PID" || true
   ACTIVE_SLEEP_PID=''
 }
@@ -34,6 +40,11 @@ run_monitor() {
   validate_poll_seconds
   while [[ "$#" -gt 0 ]]; do
     case "${1:-}" in
+      --owner-pid)
+        [[ "$#" -ge 2 ]] || die 'missing --owner-pid value'
+        set_owner_pid "$2"
+        shift 2
+        ;;
       --once)
         once=1
         shift
@@ -68,6 +79,8 @@ run_monitor() {
   elif [[ -z "$instance_token" ]]; then
     die 'managed monitor requires an instance token'
   fi
+
+  initialize_owner
 
   state_dir="$STATE_ROOT/$bare_name"
   seen_file="$state_dir/seen.sha256"
@@ -109,6 +122,7 @@ run_monitor() {
 
   print_contract "$listen_name" "$state_dir" "$#"
   while true; do
+    require_owner
     poll_failed=0
     for watched_file in "$@"; do
       if ! scan_file "$watched_file" "$listen_name" "$bare_name" "$state_dir" "$seen_file"; then
@@ -127,7 +141,7 @@ run_monitor() {
       break
     fi
     if [[ "$poll_failed" -ne 0 && "${COLLAB_MONITOR_MANAGED:-0}" == '1' && ! -f "$ready_file" ]]; then
-      sleep 0.1
+      interruptible_sleep 0.1
       continue
     fi
     interruptible_sleep

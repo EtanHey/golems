@@ -26,7 +26,7 @@ process_is_monitor() {
   if [[ -n "$instance_token" ]]; then
     valid_instance_token "$instance_token" || return 1
     case "$command_line" in
-      *"$SCRIPT_PATH"*" run --instance $instance_token $listen_name "*) return 0 ;;
+      *"$SCRIPT_PATH"*" run --instance $instance_token $listen_name "*|*"$SCRIPT_PATH"*" run --instance $instance_token --owner-pid "*" $listen_name "*) return 0 ;;
       *) return 1 ;;
     esac
   fi
@@ -145,6 +145,7 @@ cleanup_run_lock() {
 
   if [[ -n "$ACTIVE_SLEEP_PID" ]]; then
     kill "$ACTIVE_SLEEP_PID" 2>/dev/null || true
+    wait "$ACTIVE_SLEEP_PID" 2>/dev/null || true
     ACTIVE_SLEEP_PID=''
   fi
   if [[ -n "$ACTIVE_RUN_LOCK" ]]; then

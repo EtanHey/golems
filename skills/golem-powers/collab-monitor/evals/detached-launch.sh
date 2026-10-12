@@ -16,8 +16,8 @@ trap cleanup EXIT
 : > "$case_dir/collab.md"
 printf 'set -m\n' > "$case_dir/bash-env"
 MONITOR_STATE_DIR="$case_dir/state" POLL_SECONDS=1 /bin/sh -c '
-  BASH_ENV="$5" MONITOR_STATE_DIR="$1" POLL_SECONDS=1 /bin/bash "$2" start @detach "$3" > "$4" 2>&1
-' sh "$case_dir/state" "$monitor" "$case_dir/collab.md" "$case_dir/start.out" "$case_dir/bash-env"
+  BASH_ENV="$5" MONITOR_STATE_DIR="$1" POLL_SECONDS=1 /bin/bash "$2" start --owner-pid "$6" @detach "$3" > "$4" 2>&1
+' sh "$case_dir/state" "$monitor" "$case_dir/collab.md" "$case_dir/start.out" "$case_dir/bash-env" "$$"
 
 pid="$(sed -n '1p' "$case_dir/state/detach/monitor.pid")"
 [[ "$pid" =~ ^[0-9]+$ ]] || { cat "$case_dir/start.out"; exit 1; }

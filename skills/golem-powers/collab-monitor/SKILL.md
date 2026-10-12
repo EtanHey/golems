@@ -1,10 +1,10 @@
 ---
 name: collab-monitor
 description: "Use native Monitor for addressed collab mail, report DONE markers and installed-version watches; use the packaged detached fallback on Codex seats. NOT for file-integrity auditing."
-version: 1.3.1
+version: 1.3.2
 type: encoded-preference
-last-eval-date: 2026-10-08
-compliance-score: "6/6 episode regressions; 18/19 existing routing checks (pre-existing large-plan teaching failure); no agent-behavior or native Monitor runtime proof"
+last-eval-date: 2026-10-12
+compliance-score: "9/9 owner lifecycle regressions; 6/6 episode regressions; 19/19 routing checks; no agent-behavior or native Monitor runtime proof"
 ---
 
 # Collab Monitor
@@ -150,7 +150,15 @@ bash "$CM" status @<listen-name>
 bash "$CM" follow @<listen-name>
 ```
 
-`start` persists independently of the invoking shell. `follow` replays the
+`run`, `follow`, and the `start` producer exit cleanly when their owning agent
+dies. Ownership is the nearest `claude`/`codex` ancestor, or the initial parent
+when no agent ancestor exists; `--owner-pid <pid>` overrides it on all three
+commands. `start` captures ownership before detaching and persists independently
+of the invoking shell while that owner lives. Foreground `run`/`follow` also
+exit on reparenting to PID 1; the packaged detached producer is exempt from that
+parent check. Owner checks continue during sleep/tail waits (at most one second
+apart), and normal cleanup reaps sleep/tail children and releases owned state.
+`follow` replays the
 current session log then streams new alerts, and exits when that named watch
 stops. It is the attached consumer, not proof of a native Monitor tool on Codex.
 For a caller-owned foreground process, use `run`; for a scheduled single poll,
@@ -201,6 +209,7 @@ python3 skills/golem-powers/collab-monitor/evals/monitor-howto.py
 python3 skills/golem-powers/collab-monitor/evals/episode-dedup.py
 bash skills/golem-powers/collab-monitor/evals/run-evals.sh candidate
 bash skills/golem-powers/collab-monitor/evals/live-two-file-smoke.sh
+python3 skills/golem-powers/collab-monitor/evals/owner-exit.py
 ```
 
 The how-to checks exercise synthetic report/version command transitions and
