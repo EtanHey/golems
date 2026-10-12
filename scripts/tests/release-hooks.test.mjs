@@ -53,11 +53,11 @@ function snapshot(at) {
     return [name, st.mode, st.isSymbolicLink() ? readlinkSync(file) : st.isDirectory() ? snapshot(file) : readFileSync(file).toString('base64')];
   });
 }
-for (const signal of ['pin', 'link', 'dangling-link', 'indirect-link', 'nested-link']) test(`R1: client refuses owner ${signal} without changing HOME`, () => {
+for (const signal of ['pin', 'pin-and-link', 'link', 'dangling-link', 'indirect-link', 'nested-link']) test(`R1: client refuses owner ${signal} without changing HOME`, () => {
   const f = fixture(), hooks = path.join(f.home, '.claude/hooks'); mkdirSync(hooks, { recursive: true });
   writeFileSync(path.join(f.home, '.claude/settings.json'), JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Task', hooks: [{ type: 'command', command: 'node /old/model-pin-gate-hook.mjs' }] }] } }, null, 2) + '\n');
-  if (signal === 'pin') writeFileSync(path.join(hooks, 'golems-hooks-live.sha'), 'a'.repeat(40) + '\n');
-  else {
+  if (signal === 'pin' || signal === 'pin-and-link') writeFileSync(path.join(hooks, 'golems-hooks-live.sha'), 'a'.repeat(40) + '\n');
+  if (signal !== 'pin') {
     const live = path.join(f.home, 'Gits/golems/.worktrees/hooks-live/skills/golem-powers/tmp-block');
     if (signal !== 'dangling-link') mkdirSync(live, { recursive: true });
     const alias = path.join(f.root, 'alias');

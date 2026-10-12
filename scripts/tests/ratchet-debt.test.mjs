@@ -54,8 +54,13 @@ test('each actual debt row fails the table on growth and passes after restoratio
     const selected = parseRows({ schema: 1, rows: [row] });
     const verdict = () => evaluate({ rows: selected, baseRows: selected, head: 'fixture', results: runRows({ rows: selected, cwd: root, head: 'fixture' }) });
     try {
-      expect(verdict().ok).toBe(true);
-      writeFileSync(path, Buffer.concat([original, Buffer.from(row.id === 'py-undefined-names' ? '\nprint(ratchet_new_undefined_name)\n' : '\n')]));
+      const baseline = runRows({ rows: selected, cwd: root, head: 'fixture' });
+      expect(evaluate({ rows: selected, baseRows: selected, head: 'fixture', results: baseline }).ok).toBe(true);
+      // Refactors can shrink a metric below its ceiling; cross the actual ceiling
+      // rather than assuming one added line or undefined name is enough.
+      const growth = row.ceiling - baseline.results[row.id].value + 1;
+      const mutation = row.id === 'py-undefined-names' ? '\nprint(ratchet_new_undefined_name)\n' : '\n';
+      writeFileSync(path, Buffer.concat([original, Buffer.from(mutation.repeat(growth))]));
       expect(verdict().rows[0].status).toBe('FAIL');
     } finally { writeFileSync(path, original); }
     expect(verdict().ok).toBe(true);
