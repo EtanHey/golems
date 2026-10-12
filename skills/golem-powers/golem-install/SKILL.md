@@ -82,7 +82,7 @@ done
 
 ## Skill Symlinks
 
-Skills live in `$HOME/.golems/skills/golem-powers/`. The symlink target depends on which CLI you use:
+Release skills live in `$HOME/.golems/current/skills/golem-powers/`. The discovery root depends on which CLI you use:
 
 | CLI | Skill directory | Notes |
 |-----|----------------|-------|
@@ -91,41 +91,21 @@ Skills live in `$HOME/.golems/skills/golem-powers/`. The symlink target depends 
 | **Codex** | `~/.agents/skills/` | Codex reads from `~/.codex/skills/` → symlinked to `~/.agents/skills/` |
 | **Cursor / Gemini** | `~/.agents/skills/` | |
 
-```bash
-# For Claude Code — skills/ only
-SKILLS_DIR=$HOME/Gits/golems/skills/golem-powers
-CC_SKILLS=~/.claude/skills
-mkdir -p "$CC_SKILLS"
+The release installer links the separate Claude and agents lists in
+`skills/catalog.json`; shared helpers without `SKILL.md` are never installed as
+skills. Existing foreign-repo links and real directories are preserved. Use the
+release installer to keep this curated set instead of linking every library directory:
 
-for skill_dir in "$SKILLS_DIR"/*/; do
-  skill_name=$(basename "$skill_dir")
-  ln -sf "$skill_dir" "$CC_SKILLS/$skill_name"
-  echo "Linked: $skill_name"
-done
-
-# Drop every legacy commands/ copy. `rm -f` alone misses the REAL directories an
-# older `mkdir -p ~/.claude/commands/<name>` INSTALL_PROMPT created.
-bash "$SKILLS_DIR/golem-install/scripts/cleanup-legacy-commands.sh" \
-  --golems-dir "$HOME/Gits/golems"
-
-# For Codex / Cursor / Gemini
-AGENTS_DIR=~/.agents/skills
-mkdir -p "$AGENTS_DIR"
-
-for skill_dir in "$SKILLS_DIR"/*/; do
-  skill_name=$(basename "$skill_dir")
-  ln -sf "$skill_dir" "$AGENTS_DIR/$skill_name"
-  echo "Linked: $skill_name"
-done
-# Then wire Codex to read from ~/.agents/skills/:
-# ln -sf ~/.agents/skills/<skill> ~/.codex/skills/<skill>
+```sh
+curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/scripts/release/install.sh | sh -s -- --channel nightly
+# Opt in to migrating only links that resolve into a golems checkout's skills/:
+# append --replace-checkout-links to the command above.
 ```
 
-Verify Claude Code: `ls ~/.claude/skills/` should show ~45 skills. Assert the invariant with
-`bash scripts/validate.sh --skills-only` (or `scripts/cleanup-legacy-commands.sh --check`) — it exits 1
-while any golem-powers entry remains under `~/.claude/commands/`, or while `~/.claude/skills/`
-contains a dotted directory or broken symlink. Dotted plain files such as `.DS_Store` are ignored.
-Verify Codex/other: `ls ~/.agents/skills/` should show the installed skills.
+The catalog mirrors the owner's per-root installed-skill scan; the library checker
+still counts all available skills. Updates remove only retired release-owned links.
+For legacy commands/ cleanup, use
+`bash <golem-install-dir>/scripts/cleanup-legacy-commands.sh --golems-dir <clone>`.
 
 ## MCP Servers
 

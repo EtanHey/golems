@@ -32,10 +32,12 @@ curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/scripts/relea
 
 The bootstrap uses standard macOS/Linux utilities, curl, tar and shasum; it
 verifies the release before switching `~/.golems/current`. Skills are linked
-for Claude and Codex. Add `~/.golems/bin` to PATH, then use `golems-cli update`
+for Claude and Codex from the per-client lists in [skills/catalog.json](skills/catalog.json).
+Add `~/.golems/bin` to PATH, then use `golems-cli update`
 to install the newest nightly. Running golems-cli requires Bun; pr-watch requires
 Python 3 and GitHub CLI. Existing checkout skill links are kept unless you pass
-`--replace-checkout-links`. Hook installation is a separate step.
+`--replace-checkout-links`. Other-repo links and real directories are preserved;
+updates remove retired release-owned links. Hook installation is a separate step.
 See [release installation](scripts/release/README.md) for pinned and offline installs.
 
 For a former M1 owner install, run the nightly release installer above with

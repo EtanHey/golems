@@ -20,6 +20,7 @@ function fixture() {
     writeFileSync(join(root, path), path === 'package.json' ? '{"dependencies":{"ajv":"8.18.0","yaml":"2.8.3","varlock":"1.21.1"}}' : path === 'scripts/hooks/manifest.json' ? '{"hosts":{}}' : `${path}\n`);
   }
   chmodSync(join(root, 'scripts/pr-watch'), 0o755);
+  writeFileSync(join(root, 'skills/catalog.json'), JSON.stringify({ schema: 1, roots: { claude: ['demo'], agents: ['demo'] } }));
   git(root, 'add', '.');
   execFileSync('git', ['commit', '-m', 'fixture'], { cwd: root, env: { ...process.env, GIT_AUTHOR_DATE: '2026-01-02T23:30:00-05:00', GIT_COMMITTER_DATE: '2026-01-02T23:30:00-05:00' } });
   return root;
@@ -42,6 +43,7 @@ test('same commit builds identical bytes; extraction matches manifest and exclud
   execFileSync('tar', ['-xzf', first.tarball, '-C', extracted]);
   const manifest = JSON.parse(readFileSync(join(extracted, 'MANIFEST.json')));
   expect(manifest.commit).toBe(sha);
+  expect(manifest.files.some(file => file.path === 'skills/catalog.json')).toBe(true);
   expect(manifest.files.some(file => /docs.local|tests|evals|\.env/.test(file.path))).toBe(false);
   expect(manifest.files.find(file => file.path === 'scripts/pr-watch').mode).toBe('0755');
   for (const file of manifest.files) {
