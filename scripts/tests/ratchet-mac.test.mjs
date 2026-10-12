@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, copyFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -201,5 +201,96 @@ describe("status.sh (M1: an installer that fails to run is FAIL, never 0 problem
     const out = status(fakeClone("console.log('hooks-live=x master=x drift=0');\nconsole.log('settings-drift=0');\nprocess.exit(1);\n"));
     expect(out.status).toBe(0);
     expect(out.stdout.trim().split("\n").pop()).toBe("0");
+  });
+});
+
+
+describe("live-rows.sh merged PR rulings", () => {
+  function fixture(body) {
+    mkdirSync(resolve("docs.local/ratchet-tests"), { recursive: true });
+    const path = mkdtempSync(resolve("docs.local/ratchet-tests/live-"));
+    scratch.push(path);
+    const bin = join(path, "bin"), scripts = join(path, "repo/scripts/ratchet");
+    mkdirSync(bin); mkdirSync(scripts, { recursive: true });
+    mkdirSync(join(path, "repo/.git"));
+    for (const file of ["live-rows.sh", "table.mjs"]) copyFileSync(join(here, file), join(scripts, file));
+    const head = "c".repeat(40), base = "b".repeat(40);
+    const row = { id: "installed-skill-parity", metric: "candidate parity", kind: "real", runner: "live",
+      direction: "pass", ceiling: true, command: "true", bug_sha: base, fix_sha: head };
+    writeFileSync(join(scripts, "rows.json"), JSON.stringify({ schema: 1, rows: [row] }));
+    writeFileSync(join(path, "base-rows.json"), JSON.stringify({ schema: 1, rows: [{ ...row, metric: "old parity" }] }));
+    writeFileSync(join(path, "results.json"), JSON.stringify({ head_sha: head, results: { [row.id]: true } }));
+    writeFileSync(join(path, "body.md"), body);
+    const stub = (name, text) => writeFileSync(join(bin, name), `#!/usr/bin/env bash\nset -euo pipefail\n${text}\n`, { mode: 0o755 });
+    stub("git", `
+      if [ "$1" = -C ]; then shift 2; fi
+      case "$1" in
+        rev-parse)
+          case "$2" in
+            --git-common-dir) echo "$FIXTURE/repo/.git" ;;
+            *^1) echo "$FIXTURE_BASE" ;;
+            --show-toplevel) echo "$FIXTURE/repo" ;;
+            *) echo "$FIXTURE_HEAD" ;;
+          esac ;;
+        cat-file) ;;
+        show) cat "$FIXTURE/base-rows.json" ;;
+        *) echo "unexpected git: $*" >&2; exit 1 ;;
+      esac`);
+    stub("python3", ":");
+    stub("node", `
+      case "$1" in
+        */run-rows.mjs)
+          touch "$FIXTURE/rows-invoked"
+          while [ "$1" != --out ]; do shift; done
+          cp "$FIXTURE/results.json" "$2" ;;
+        */table.mjs)
+          printf '%s\\n' "$@" > "$FIXTURE/table-args"
+          exec "$REAL_NODE" "$@" ;;
+        *) exit 1 ;;
+      esac`);
+    stub("gh", `
+      printf '%s ' "$@" >> "$FIXTURE/gh-calls"; printf '\\n' >> "$FIXTURE/gh-calls"
+      case "$1 $2" in
+        'pr view') echo "$FIXTURE_HEAD fixture-branch" ;;
+        'api repos/EtanHey/golems/pulls/763')
+          [ "$BODY_FETCH_FAIL" = 0 ] || exit 1
+          cat "$FIXTURE/body.md" ;;
+        'api user') echo EtanHey ;;
+        'api --paginate') echo '[]' ;;
+        'api --method') cat > "$FIXTURE/posted.json" ;;
+        *) echo "unexpected gh: $*" >&2; exit 1 ;;
+      esac`);
+    const invoke = (fail = "0") => spawnSync("bash", [join(scripts, "live-rows.sh"), "--merged-pr", "763",
+      "--lease-pr", "777", "--lease-repo", path], { encoding: "utf8", env: { ...process.env,
+        PATH: `${bin}:${process.env.PATH}`, FIXTURE: path, FIXTURE_HEAD: head, FIXTURE_BASE: base,
+        REAL_NODE: execFileSync("which", ["node"], { encoding: "utf8" }).trim(), BODY_FETCH_FAIL: fail } });
+    return { path, invoke };
+  }
+
+  for (const ruled of [true, false]) {
+    test(`loosened live row with merged PR ruling=${ruled} posts ok=${ruled}`, () => {
+      const body = ruled ? "ratchet-loosen: installed-skill-parity lead approved candidate parity\n" : "No ruling\n";
+      const f = fixture(body), out = f.invoke();
+      expect(out.status).toBe(ruled ? 0 : 1);
+      const posted = JSON.parse(readFileSync(join(f.path, "posted.json"), "utf8")).body;
+      expect(posted).toContain(`"ok":${ruled}`);
+      expect(posted).toContain('"real_pass":1,"real_total":1');
+      expect(posted).toContain("metric changed");
+      const args = readFileSync(join(f.path, "table-args"), "utf8").trim().split("\n");
+      const bodyPath = args[args.indexOf("--pr-body-file") + 1];
+      expect(bodyPath.endsWith("/pr-body.md")).toBe(true);
+      expect(readFileSync(bodyPath, "utf8")).toBe(body);
+      const calls = readFileSync(join(f.path, "gh-calls"), "utf8");
+      expect(calls).toContain("api repos/EtanHey/golems/pulls/763 --jq .body");
+      expect(calls).toContain("POST repos/EtanHey/golems/issues/763/comments");
+    });
+  }
+
+  test("merged PR body fetch failure refuses before rows, table or posting", () => {
+    const f = fixture("ratchet-loosen: installed-skill-parity approved\n"), out = f.invoke("1");
+    expect(out.status).toBe(2);
+    expect(out.stderr).toContain("refusing to post");
+    for (const file of ["rows-invoked", "table-args", "posted.json"]) expect(existsSync(join(f.path, file))).toBe(false);
+    expect(readFileSync(join(f.path, "gh-calls"), "utf8")).not.toContain("api --method");
   });
 });
