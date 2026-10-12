@@ -6,12 +6,15 @@
  * Event log gives ClaudeGolem memory of actions taken while "asleep"
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { existsSync, rmSync, writeFileSync, mkdirSync, readFileSync } from "fs";
+import { describe, it, expect, beforeEach, afterEach, afterAll } from "bun:test";
+import { existsSync, rmSync, writeFileSync, mkdirSync, mkdtempSync, readFileSync } from "fs";
 import { join, dirname } from "path";
+import { tmpdir } from "os";
 
-// Test path (isolated from production)
-const TEST_EVENT_LOG_PATH = "/tmp/golems-zikaron-test/event-log.json";
+// This test run owns its directory; other worktrees cannot remove its fixtures.
+const TEST_DIR = mkdtempSync(join(tmpdir(), "golems-zikaron-test-"));
+const TEST_EVENT_LOG_PATH = join(TEST_DIR, "event-log.json");
+afterAll(() => rmSync(TEST_DIR, { recursive: true, force: true }));
 
 // Import will fail initially (TDD: RED phase)
 import {

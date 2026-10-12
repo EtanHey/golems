@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -77,6 +77,14 @@ describe("wizard repo action", () => {
       action: "CLONE",
       artifact: null,
       reason: "consumed from the repo checkout via symlinked skills",
+    });
+  });
+
+  test("real release gate keeps golems cloneable on a workspace until P2 installs releases", () => {
+    const releaseGate = JSON.parse(readFileSync(new URL("../../../../release-gate.json", import.meta.url), "utf8"));
+    expect(decideRepoAction(releaseGate, "EtanHey/golems", "workspace")).toMatchObject({
+      action: "CLONE",
+      artifact: null,
     });
   });
 

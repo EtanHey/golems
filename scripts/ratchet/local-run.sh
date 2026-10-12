@@ -3,6 +3,7 @@
 #
 #   scripts/ratchet/local-run.sh --pr <N> [--install <sha>] [--private-manifest <file>]
 #                                [--private-file <name>=<path>]... [--with <sha>]... [--no-post] [--keep]
+#                                [--pr-body-file <path>]
 #
 # Installs <sha> (default: the PR head) with the REAL installer, the real hook interpreter, real
 # git/ssh-keygen/gh and the real private regression gate, into a SCRATCH HOME under
@@ -19,11 +20,12 @@
 # --install <bug sha>, --private-manifest and --private-file replay a row's bug state. --with <sha>
 # cherry-picks a commit onto the scratch tree first (e.g. a test-only fix a historical SHA lacks);
 # it is logged. Replays never post: the table is printed and saved under the run directory.
+# --pr-body-file supplies rulings for replay/no-post tables. Posting always fetches the PR's body.
 set -euo pipefail
 
 die() { echo "local-run: $*" >&2; exit 2; }
 
-PR="" INSTALL="" PRIVATE_MANIFEST="" POST=1 KEEP=0
+PR="" INSTALL="" PRIVATE_MANIFEST="" PR_BODY_FILE="" POST=1 KEEP=0
 declare -a PRIVATE_FILES=() WITH=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -32,6 +34,7 @@ while [ $# -gt 0 ]; do
     --private-manifest) PRIVATE_MANIFEST="${2:?}"; shift 2 ;;
     --private-file) PRIVATE_FILES+=("${2:?}"); shift 2 ;;
     --with) WITH+=("${2:?}"); shift 2 ;;
+    --pr-body-file) PR_BODY_FILE="${2:?}"; shift 2 ;;
     --no-post) POST=0; shift ;;
     --keep) KEEP=1; shift ;;
     *) die "unknown argument $1" ;;
@@ -79,6 +82,13 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+if [ "$POST" = 1 ]; then
+  PR_BODY_FILE="$RUN/pr-body.md"
+  if ! gh api "repos/$REPO_SLUG/pulls/$PR" --jq .body > "$PR_BODY_FILE"; then
+    die "cannot fetch body for PR #$PR; refusing to post a table without its rulings"
+  fi
+fi
 
 # --shared borrows the real repo's objects read-only; origin is GitHub so the installer's
 # `fetch origin master` sees the real master.
@@ -163,6 +173,7 @@ args=(--rows "$HERE/rows.json" --results "$RUN/results.json" --head "$INSTALL" -
 # Rule 5 against the PR's base row file, which table.mjs reads itself at --base-ref.
 git -C "$MAIN" fetch -q origin "$BASE" 2>/dev/null || true
 args+=(--base-ref "$BASE")
+[ -n "$PR_BODY_FILE" ] && args+=(--pr-body-file "$PR_BODY_FILE")
 [ "$POST" = 1 ] && args+=(--repo "$REPO_SLUG" --pr "$PR" --author "$(gh api user -q .login)")
 status=0
 node "$HERE/table.mjs" "${args[@]}" || status=$?

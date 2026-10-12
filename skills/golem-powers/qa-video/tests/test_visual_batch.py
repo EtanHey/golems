@@ -5,7 +5,9 @@ import re
 import subprocess
 import sys
 import time
+from argparse import Namespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -157,21 +159,47 @@ def test_setup_auth_error_is_propagated(monkeypatch, capsys):
 
 
 @pytest.mark.parametrize('slowdown', [False, True])
-def test_eta_matches_throughput_and_can_rise(setup, slowdown):
-    work, launch = setup
-    for i in range(8, 12):
-        (work / f'{i}.png').touch()
-    with (work / 'index.tsv').open('a') as f:
-        f.write(''.join(f'{i}.png\t0\t10\t20\ttest\n' for i in range(8, 12)))
-    (work / 'latencies.json').write_text(json.dumps({str(i): .9 if slowdown and i >= 3 else .3 for i in range(12)}))
-    process, samples = launch('--concurrency', '3'), []
-    while process.poll() is None:
-        if (work / 'progress.json').exists():
-            samples.append(json.loads((work / 'progress.json').read_text()))
-        time.sleep(.01)
-    assert finish(process)[0] == 0
+def test_eta_matches_throughput_and_can_rise(tmp_path, monkeypatch, slowdown):
+    spec = importlib.util.spec_from_file_location('batch', DRIVER)
+    batch = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(batch)
+    elapsed, samples = 0., []
+    waves = iter((.3, .9, .9, .9) if slowdown else (.3, .3, .3, .3))
+    real_wait, real_atomic = batch.wait, batch.atomic
+
+    def complete_wave(futures, **kwargs):
+        nonlocal elapsed
+        # Drain a full concurrent wave before advancing virtual time. Real
+        # thread scheduling and Python startup cannot change measured latency.
+        done, pending = real_wait(futures)
+        assert len(done) == 3 and not pending
+        elapsed += next(waves)
+        return done, pending
+
+    def record_progress(path, text):
+        real_atomic(path, text)
+        if path.name == 'progress.json':
+            samples.append(json.loads(text))
+
+    def read(helper, question, timeout, sheet, model, work):
+        return {'sheet': sheet, 'finding': 'fixture', 'fatal': '', 'ok': True}
+
+    # Replace only this imported driver's clock, not the shared time module.
+    monkeypatch.setattr(batch, 'time', SimpleNamespace(monotonic=lambda: elapsed))
+    monkeypatch.setattr(batch, 'wait', complete_wave)
+    monkeypatch.setattr(batch, 'atomic', record_progress)
+    monkeypatch.setattr(batch, 'read_sheet', read)
+    args = Namespace(workdir=tmp_path, budget_seconds=10, concurrency=3,
+                     timeout=90, helper=SKILL / 'scripts/visual-gather.py',
+                     question='facts', model='fixture-model')
+    assert batch.run(args, [str(i) for i in range(12)]) == 0
+    assert samples[0]['eta_seconds'] is None
+    expected = {3: .9, 6: 1.2 if slowdown else .6,
+                9: .7 if slowdown else .3, 12: 0.}
+    for completed, eta in expected.items():
+        sample = next(s for s in samples if s['completed'] == completed)
+        assert sample['eta_seconds'] == pytest.approx(eta)
     first = next(s['eta_seconds'] for s in samples if s['completed'] == 3)
-    assert .7 * .9 <= first <= 1.3 * .9  # nine remaining sheets, three .3s waves
     if slowdown:
         assert max(s['eta_seconds'] for s in samples if 3 < s['completed'] < 12) > first
 
