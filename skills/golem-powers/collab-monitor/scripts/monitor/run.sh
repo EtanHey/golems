@@ -106,9 +106,18 @@ run_monitor() {
     exit 1
   fi
 
+  if [[ "${COLLAB_MONITOR_MANAGED:-0}" != '1' ]]; then
+    acquire_start_lock "$state_dir/start.lock" || die "monitor start is busy: $listen_name"
+    ACTIVE_START_LOCK="$state_dir/start.lock"
+    trap cleanup_start_lock EXIT
+  fi
   if ! acquire_directory_lock "$run_lock" "$listen_name" "$instance_token"; then
     printf 'MONITOR-BUSY name=%s\n' "$listen_name" >&2
     exit 1
+  fi
+  if [[ -n "$ACTIVE_START_LOCK" ]]; then
+    release_directory_lock "$ACTIVE_START_LOCK"
+    ACTIVE_START_LOCK=''
   fi
   ACTIVE_RUN_LOCK="$run_lock"
   ACTIVE_PID_FILE="$pid_file"

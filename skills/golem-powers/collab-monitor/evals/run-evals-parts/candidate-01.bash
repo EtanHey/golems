@@ -437,6 +437,11 @@
     chmod +x "$case_dir/bin/ps"
     PATH="$case_dir/bin:$PATH" COLLAB_MONITOR_FAKE_ZOMBIE_PID="$foreign_pid" MONITOR_STATE_DIR="$case_dir/state" /bin/bash "$MONITOR" status '@skillcreator2' > "$case_dir/zombie-status.out" 2>&1
     zombie_status_rc=$?
+    # status now prunes zombie records; restore only the real live producer's
+    # identity before probing the unmodified ps view and stop's zombie branch.
+    printf '%s\n' "$foreign_pid" > "$case_dir/state/skillcreator2/monitor.pid"
+    # The command line still carries the token after runtime records are pruned.
+    ps -p "$foreign_pid" -o command= | awk '{ for (i=1;i<NF;i++) if ($i == "--instance") print $(i+1) }' > "$case_dir/state/skillcreator2/monitor.instance"
     MONITOR_STATE_DIR="$case_dir/state" /bin/bash "$MONITOR" status '@skillcreator2' > "$case_dir/foreign-status.out" 2>&1
     foreign_status_rc=$?
     PATH="$case_dir/bin:$PATH" COLLAB_MONITOR_FAKE_ZOMBIE_PID="$foreign_pid" MONITOR_STATE_DIR="$case_dir/state" /bin/bash "$MONITOR" stop '@skillcreator2' > "$case_dir/zombie-stop.out" 2>&1
@@ -447,7 +452,7 @@
     else
       kill "$foreign_pid" 2>/dev/null || true
     fi
-    if [[ "$follow_exited" -eq 1 && "$stale_rc" -ne 0 && "$zombie_status_rc" -ne 0 && "$foreign_status_rc" -eq 0 && "$zombie_stop_rc" -eq 0 ]] && grep -Fq 'STALE_PID' "$case_dir/zombie-status.out" && grep -Fq 'state=zombie' "$case_dir/zombie-stop.out"; then
+    if [[ "$follow_exited" -eq 1 && "$stale_rc" -ne 0 && "$zombie_status_rc" -ne 0 && "$foreign_status_rc" -eq 0 && "$zombie_stop_rc" -eq 0 ]] && grep -Fq 'NOT_RUNNING' "$case_dir/zombie-status.out" && grep -Fq 'state=zombie' "$case_dir/zombie-stop.out"; then
       lifecycle_ok=1
     fi
   fi

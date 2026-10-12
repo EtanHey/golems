@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-12",
+  "runtime": "macOS /bin/bash 3.2; real subprocesses; private scratch state",
+  "baseline": {
+    "tests": 18,
+    "failures": 7
+  },
+  "foreground_start_followup": {
+    "tests": 1,
+    "failures_before_guard": 1
+  },
+  "candidate": {
+    "owner_and_hygiene_tests": 20,
+    "failures": 0,
+    "routing_checks": 19,
+    "episode_regressions": 6,
+    "routing_goldens": 12,
+    "copied_tree_lifecycle": true,
+    "package_tests": 821,
+    "package_failures": 0,
+    "ci_runner_tests": 6
+  },
+  "live_cli_smoke": {
+    "first_append_alerts": 1,
+    "duplicate_append_alerts": 0
+  },
+  "claims": [
+    "dead/reused unrelated PID records pruned without signaling",
+    "live/corrupt-token/foreground/unpublished-start state preserved",
+    "durable dedup retained",
+    "owner PID exposed",
+    "cross-checkout identity",
+    "vanished script/helper exits and child cleanup"
+  ],
+  "limits": [
+    "ownerless start locks preserved",
+    "native Monitor not exercised",
+    "fleet state and installed copies not changed",
+    "CodeRabbit zero findings on eight earlier files; final guard and new test not covered",
+    "release gate UNKNOWN with installedVersion null; unmerged worker lane does not authorize release/install"
+  ]
+}

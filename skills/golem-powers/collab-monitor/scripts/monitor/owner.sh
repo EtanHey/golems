@@ -45,5 +45,12 @@ owner_alive() {
 }
 
 require_owner() {
+  local helper
+  for helper in "$SCRIPT_PATH" "$SCRIPT_DIR"/monitor/{options,state,locks,owner,run,lifecycle}.sh "$SCRIPT_DIR/monitor/routing.awk"; do
+    [[ -f "$helper" && -r "$helper" ]] || {
+      printf 'MONITOR-EXIT reason=script-missing path=%s\n' "$helper" >&2
+      exit 0
+    }
+  done
   owner_alive || exit 0
 }

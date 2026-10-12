@@ -1,10 +1,10 @@
 ---
 name: collab-monitor
 description: "Use native Monitor for addressed collab mail, report DONE markers and installed-version watches; use the packaged detached fallback on Codex seats. NOT for file-integrity auditing."
-version: 1.3.2
+version: 1.3.3
 type: encoded-preference
 last-eval-date: 2026-10-12
-compliance-score: "9/9 owner lifecycle regressions; 6/6 episode regressions; 19/19 routing checks; no agent-behavior or native Monitor runtime proof"
+compliance-score: "20/20 owner lifecycle and state hygiene regressions; 6/6 episode regressions; 19/19 routing checks; no agent-behavior or native Monitor runtime proof"
 ---
 
 # Collab Monitor
@@ -170,6 +170,16 @@ After handoff or lane closure:
 bash "$CM" stop @<listen-name>
 ```
 
+`start` and `status` prune inactive runtime records across their state root:
+PID/instance/owner/ready records, stale run locks and abandoned event extracts.
+They retain logs, dedup hashes and size watermarks. A live producer or foreground
+run keeps all its files, including when its token is inconsistent; active or
+ownerless start locks are preserved. Reused PIDs belonging to unrelated processes
+are pruned without signaling them. `start` records the owner PID and `status`
+prints `owner_pid` (`unknown` for older instances). Instance identity works across
+checkout paths. `run` and `follow` exit and reap their children if the script or
+any packaged helper disappears, including during long waits.
+
 Stop by listen name, never by a process-name pattern. The implementation checks
 PID and per-start identity before signaling. On `STATE_CONFLICT`, inspect the
 preserved records; do not delete state or signal an unverified process.
@@ -210,6 +220,7 @@ python3 skills/golem-powers/collab-monitor/evals/episode-dedup.py
 bash skills/golem-powers/collab-monitor/evals/run-evals.sh candidate
 bash skills/golem-powers/collab-monitor/evals/live-two-file-smoke.sh
 python3 skills/golem-powers/collab-monitor/evals/owner-exit.py
+python3 skills/golem-powers/collab-monitor/evals/state-hygiene.py
 ```
 
 The how-to checks exercise synthetic report/version command transitions and
