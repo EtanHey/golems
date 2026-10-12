@@ -150,14 +150,39 @@ printf 200
   expect(refused.status).not.toBe(0); expect(refused.stderr).toContain('checksum');
   expect(existsSync(join(dir, '.golems/current'))).toBe(false);
 });
-test('API 403 reports rate limiting clearly without activation', () => {
-  const dir = home(), bin = join(dir, 'bin'); mkdirSync(bin);
-  for (const tool of readdirSync(minimal).filter(tool => tool !== 'curl')) symlinkSync(join(minimal, tool), join(bin, tool));
-  writeFileSync(join(bin, 'curl'), '#!/bin/sh\nprintf 403\n'); chmodSync(join(bin, 'curl'), 0o755);
-  const result = spawnSync('/bin/sh', [installer], { env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8' });
-  expect(result.status).not.toBe(0); expect(result.stderr).toContain('rate limit'); expect(result.stderr).toContain('GITHUB_TOKEN');
-  expect(existsSync(join(dir, '.golems/current'))).toBe(false);
-});
+for (const status of [403, 429]) {
+  for (const host of ['api.github.com', 'github.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com']) {
+    test(`${host} HTTP ${status} identifies the refusing host and rate-limit guidance without activation`, () => {
+      const dir = home(), bin = join(dir, 'bin'); mkdirSync(bin);
+      for (const tool of readdirSync(minimal).filter(tool => tool !== 'curl')) symlinkSync(join(minimal, tool), join(bin, tool));
+      writeFileSync(join(bin, 'curl'), `#!/bin/sh
+while [ "$#" -gt 0 ]; do case "$1" in https://*) url=$1 ;; -o) shift; output=$1 ;; -w) shift ;; esac; shift; done
+printf '%s\\n' "$url" >> "$HOME/requests"
+case "$url" in
+  https://"$REFUSING_HOST"/*) printf '%s' "$HTTP_STATUS" ;;
+  https://api.github.com/*) printf '{"tag_name":"v2026.10.12-abcdef0","draft":false}' > "$output"; printf 200 ;;
+  https://github.com/*) printf '302\\nhttps://%s/fixture/payload' "$REFUSING_HOST" ;;
+esac
+`); chmodSync(join(bin, 'curl'), 0o755);
+      const result = spawnSync('/bin/sh', [installer, '--channel', 'v2026.10.12-abcdef0'], {
+        env: { ...process.env, HOME: dir, PATH: bin, REFUSING_HOST: host, HTTP_STATUS: String(status), GITHUB_TOKEN: '' }, encoding: 'utf8',
+      });
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain(host);
+      expect(result.stderr).toContain(`HTTP ${status}`);
+      expect(result.stderr).toContain(host === 'api.github.com' ? 'GitHub API' : 'asset download');
+      expect(result.stderr).toContain('rate limit');
+      expect(result.stderr).toContain('Wait');
+      expect(result.stderr).toContain('GITHUB_TOKEN');
+      const requests = readFileSync(join(dir, 'requests'), 'utf8').trim().split('\n');
+      expect(new URL(requests.at(-1)).hostname).toBe(host);
+      expect(requests).toHaveLength(host === 'api.github.com' ? 1 : host === 'github.com' ? 2 : 3);
+      expect(existsSync(join(dir, '.golems/current'))).toBe(false);
+      expect(existsSync(join(dir, '.golems/release.json'))).toBe(false);
+      expect(existsSync(join(dir, '.golems/.install-lock'))).toBe(false);
+    });
+  }
+}
 test('redirects refuse non-GitHub hosts and HTTP before requesting the target', () => {
   for (const target of ['https://example.com/payload', 'http://github.com/payload', 'https://api.github.com@example.com/payload']) {
     const dir = home(), bin = join(dir, 'bin'); mkdirSync(bin);
