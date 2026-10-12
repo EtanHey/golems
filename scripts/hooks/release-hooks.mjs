@@ -6,31 +6,20 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { applyCodexHooks, CLIENT_REPAIR, CODEX_TRUST_HINT, planCodexHooks } from './codex-hooks-install.mjs';
+import { beginOwnerMigration, ownerInstallPaths } from './owner-install-migration.mjs';
 import { checkReleaseHooks } from './release-self-check.mjs';
 
 const digest = data => createHash('sha256').update(data).digest('hex');
 const quote = s => `'${s.replaceAll("'", "'\\''")}'`;
 const safe = p => typeof p === 'string' && p && !path.isAbsolute(p) && !p.split('/').some(s => !s || s === '.' || s === '..') && !/[\\\x00-\x1f]/.test(p);
-function assertClientHost(home, manifest) {
-  const hooks = path.join(home, '.claude/hooks');
-  const present = at => { try { return lstatSync(at); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } };
-  const owner = () => { throw new Error('refusing client installation: HOME has an owner install; use the owner hook installer'); };
-  if (present(path.join(hooks, 'golems-hooks-live.sha'))) owner();
-  const intoOwner = target => /\/\.worktrees\/hooks-live(?:\/|$)/.test(target);
-  const walk = at => {
-    const st = present(at);
-    if (st?.isSymbolicLink()) {
-      if (intoOwner(path.resolve(path.dirname(at), readlinkSync(at)))) owner();
-      try { if (intoOwner(realpathSync(at))) owner(); }
-      catch (e) { if (!['ENOENT', 'ENOTDIR'].includes(e.code)) throw e; }
-    } else if (st?.isDirectory()) for (const name of readdirSync(at)) walk(path.join(at, name));
-  };
-  walk(hooks);
-  // Same LocalHostName mapping as the owner installer; absent scutil is allowed.
+function assertClientHost(home, o) {
+  // MBP protection is independent of the release manifest and migration flag.
   const result = spawnSync('scutil', ['--get', 'LocalHostName'], { encoding: 'utf8', timeout: 5000 });
-  const host = result.status === 0 ? { 'MacBook-Pro': 'mbp', 'Locals-MacBook-Pro': 'm1' }[result.stdout.trim()] : null;
-  if (host && manifest.hosts?.[host]) throw new Error(`refusing client installation: machine is owner host ${host}; use --host ${host} without --source`);
+  if (result.status === 0 && result.stdout.trim() === 'MacBook-Pro') throw new Error('refusing client installation: machine is owner host mbp; use --host mbp without --source');
+  if (o.migrateOwnerInstall && (result.status !== 0 || !result.stdout.trim())) throw new Error('owner migration: machine identity unavailable; refusing migration');
+  if (!o.migrateOwnerInstall && ownerInstallPaths(path.join(home, '.claude/hooks')).length) throw new Error('refusing client installation: HOME has an owner install; use --migrate-owner-install on a non-owner host');
 }
+
 function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFingerprints, resolveHookPython }) {
   if (o.host !== 'client' || o.update || o.restoreLive || o.manifest) throw new Error('--source requires --host client and cannot use --update, --restore-live or --manifest');
   const home = homedir(), hooksDir = path.join(home, '.claude/hooks');
@@ -65,7 +54,7 @@ function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFi
   if (E1_DELETED.some(name => text.includes(name))) throw new Error('E1-deleted hook in release manifest');
   const manifest = JSON.parse(text), listed = manifest.hosts?.client;
   if (!Array.isArray(listed)) throw new Error('release manifest has no client profile');
-  assertClientHost(home, manifest);
+  assertClientHost(home, o);
   const skipped = listed.filter(e => e.ownerOnly);
   const skippedCodex = (manifest.codex_hosts?.client ?? []).filter(e => e.ownerOnly);
   const entries = listed.filter(e => !e.ownerOnly);
@@ -112,6 +101,7 @@ const receiptText = ctx => JSON.stringify({ version: ctx.release.version, commit
 const stamp = () => new Date().toISOString().replaceAll(/[:.]/g, '');
 export function runReleaseHooks(o, helpers) {
   const { readSettings, desiredHooks, withoutHooks, withoutRetired, retiredRegistrations, linkState } = helpers;
+  let migration;
   try {
     const ctx = releaseContext(o, helpers);
     for (const entry of ctx.skipped) console.log(`skipped ${entry.id}: owner-only (client host)`);
@@ -125,25 +115,31 @@ export function runReleaseHooks(o, helpers) {
     checkReleaseHooks({ ...ctx, python: ctx.hookPython.python });
     // Re-check all hashes after executing public specimens, before any host write.
     releaseContext(o, helpers);
+    const installStamp = stamp();
+    if (o.migrateOwnerInstall) migration = beginOwnerMigration(ctx, installStamp);
     mkdirSync(ctx.hooksDir, { recursive: true });
     const wrapper = path.join(ctx.hooksDir, 'golems-fail-open.py');
     if (!existsSync(wrapper) || !readFileSync(wrapper).equals(readFileSync(ctx.wrapper))) { copyFileSync(ctx.wrapper, wrapper); chmodSync(wrapper, 0o755); }
     for (const e of ctx.golems) {
       const state = linkState(e.at, e.to);
       if (state === 'ok') continue;
-      if (state === 'copy(not link)') renameSync(e.at, e.at + '.bak-' + stamp());
+      if (state === 'copy(not link)') renameSync(e.at, e.at + '.bak-' + installStamp);
       else if (state !== 'missing') unlinkSync(e.at);
       mkdirSync(path.dirname(e.at), { recursive: true }); symlinkSync(e.to, e.at);
     }
     if (next !== settings.text) {
-      if (settings.text) writeFileSync(ctx.settingsPath + '.bak-' + stamp(), settings.text, { mode: settings.mode });
+      if (settings.text) writeFileSync(ctx.settingsPath + '.bak-' + installStamp, settings.text, { mode: settings.mode });
       const stage = ctx.settingsPath + '.install-hooks-tmp';
       writeFileSync(stage, next, { mode: settings.mode }); chmodSync(stage, settings.mode); renameSync(stage, ctx.settingsPath);
     }
     const receipt = path.join(ctx.hooksDir, 'golems-hooks-release.json');
     if (!existsSync(receipt) || readFileSync(receipt, 'utf8') !== receiptText(ctx)) writeFileSync(receipt, receiptText(ctx), { mode: 0o600 });
     applyCodexHooks(ctx.codex);
+    migration?.commit();
     console.log(`applied release ${ctx.release.version}; ${CODEX_TRUST_HINT}`);
     return 0;
-  } catch (error) { console.error(`install-hooks: ${error.message}`); return 1; }
+  } catch (error) {
+    try { migration?.rollback(); } catch (rollbackError) { console.error(`install-hooks: rollback failed: ${rollbackError.message}`); }
+    console.error(`install-hooks: ${error.message}`); return 1;
+  }
 }

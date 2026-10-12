@@ -359,13 +359,13 @@ test("--status checks the wrapped external hook's exact command, timeout, async 
   expect(result.out).toContain("brainbar-stop-index drifted");
 });
 
-test("shipped MBP wrapper uses host placeholders and M1 has no brainbar Stop hook", () => {
+test("shipped MBP wrapper uses host placeholders and clients have no brainbar Stop hook", () => {
   const entry = realManifest.hosts.mbp.find((hook) => hook.id === "brainbar-stop-index");
   expect(entry.kind).toBe("wrapped-external");
   expect(entry.timeout).toBe(5);
   expect(entry.command).toContain("{home}/Gits/brainlayer/hooks/brainbar-stop-index.py");
   expect(entry.command).not.toMatch(/\/Users\/[^/]+/);
-  expect(realManifest.hosts.m1.some((hook) => hook.id === "brainbar-stop-index")).toBe(false);
+  expect(realManifest.hosts.client.some((hook) => hook.id === "brainbar-stop-index")).toBe(false);
 });
 
 test("--apply pins a detached, locked hooks-live, links (not copies), registers, backs up, keeps unrelated bytes, idempotent", () => {
@@ -454,14 +454,12 @@ test("E1 exclusion: the installer REFUSES every E1 hook even when the manifest n
   }
 });
 
-test("the shipped manifest names no E1 hook and carries the ruled M1 set exactly", () => {
+test("the shipped manifest names no E1 hook and retires the M1 owner profiles", () => {
   const text = JSON.stringify(realManifest);
   for (const name of E1_DELETED) expect(text).not.toContain(name);
-  expect(realManifest.hosts.m1.map((h) => h.id).sort()).toEqual([
-    "brainlayer-prompt-search", "brainlayer-session-start", "daemon-gate-precheck", "human-confirm-gate", "model-pin-gate",
-    "pre_tool_use", "reviewer-order-gate", "tmp-block",
-  ]);
-  expect(realManifest.hosts.m1.some((h) => h.event === "Stop")).toBe(false);
+  expect(Object.keys(realManifest.hosts).sort()).toEqual(["client", "mbp"]);
+  expect(Object.keys(realManifest.codex_hosts).sort()).toEqual(["client", "mbp"]);
+  expect(realManifest.hosts.client.some((h) => h.event === "Stop")).toBe(false);
 });
 
 test("every shipped host set carries the same git-guardian and tmp-block guards", () => {
@@ -1547,8 +1545,8 @@ test("F3: link targets resolve lexically before the hooks-live check, and *.bak*
       ["dotdot.py", true], ["near-miss.py", true]]);
 });
 
-test("Codex human-confirm: both hosts register it with the Claude gate's pin; the installer refuses it while unpinned", () => {
-  for (const host of ["mbp", "m1"]) {
+test("Codex human-confirm: owner and client register it with the Claude gate's pin; the installer refuses it while unpinned", () => {
+  for (const host of ["mbp", "client"]) {
     const claude = realManifest.hosts[host].find((e) => e.id === "human-confirm-gate");
     const codex = realManifest.codex_hosts[host].find((e) => e.gate === "human-confirm");
     expect([host, codex?.requiresPin]).toEqual([host, claude.requiresPin]);

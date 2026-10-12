@@ -60,7 +60,12 @@ Isolated Python requires pytest in that interpreter's own site-packages, includi
 on M1; installing it only in the user site does not make it available to the gate.
 
 Apply reads `scutil --get LocalHostName`, using the configured machine mapping
-(`MacBook-Pro` → `mbp`, `Locals-MacBook-Pro` → `m1`). Unknown machines and
+(`MacBook-Pro` → `mbp`, with the legacy `Locals-MacBook-Pro` → `m1` mapping
+retained for old pinned manifests). The shipped owner manifest no longer includes
+`m1`; `Locals-MacBook-Pro` installs the release's `client` profile. Former owner
+links require `--host client --source <release> --migrate-owner-install --apply`;
+the migration never runs the owner private gate and is refused on the MBP.
+Unknown machines and
 requested-host mismatches refuse; `REPOGOLEM_HOST` cannot override installation.
 Git calls clear inherited `GIT_*`, disable fsmonitor/untracked cache and replace
 objects; live checks explicitly bind the git directory and worktree.

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // install-hooks — wire Claude Code hooks from ONE pinned golems tree (GO-5 S14).
 //
-//   scripts/hooks/install-hooks.sh --host mbp|m1|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--restore-live]
-//   scripts/hooks/install-hooks.sh --host mbp|m1 --status [--python <abs path>]
+//   scripts/hooks/install-hooks.sh --host mbp|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--restore-live]
+//   scripts/hooks/install-hooks.sh --host mbp --status [--python <abs path>]
+//   node scripts/hooks/install-hooks.mjs --host client --source <release dir> --migrate-owner-install [--apply]
 //
 // Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
 // `--update` moves it (default origin/master), so a `git checkout` in the main
@@ -137,12 +138,14 @@ function parseArgs(argv) {
     if (a === "--apply") o.apply = true;
     else if (a === "--dry-run") o.apply = false;
     else if (a === "--status") o.status = true;
+    else if (a === "--migrate-owner-install") o.migrateOwnerInstall = true;
     else if (a === "--restore-live") o.restoreLive = true;
     else if (a === "--update") o.update = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : "origin/master";
     else if (["--host", "--repo", "--manifest", "--python", "--source"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
     else die(`unknown or incomplete argument: ${a}`, 64);
   }
-  if (!o.host) die("--host <mbp|m1|client> is required", 64);
+  if (!o.host) die("--host <mbp|client> is required", 64);
+  if (o.migrateOwnerInstall && (!o.source || o.host !== "client")) die("--migrate-owner-install requires --host client --source <release dir>", 64);
   return o;
 }
 
