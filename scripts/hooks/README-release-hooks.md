@@ -12,7 +12,7 @@ node "$HOME/.golems/current/scripts/hooks/install-hooks.mjs" \
 Omit `--apply` for a dry-run. Python 3.11+ and Node are required. The client
 installer makes no git calls and creates no worktree. It refuses an existing
 owner pin or hooks linked into `.worktrees/hooks-live`. When `scutil` is available,
-it also refuses the owner's MBP/M1 hostnames; other hosts and absent `scutil`
+it also refuses the owner's MBP hostname; other hosts and absent `scutil`
 remain supported. It verifies P1's `MANIFEST.json` hashes and modes and, when
 present, its hash in `~/.golems/release.json` (`manifest_sha256`). It rejects extra
 hook/import files and links Claude hooks and Codex commands to the resolved release directory. Updating the
@@ -25,7 +25,7 @@ release installer and the client hook command above.
 The `client` manifest profile installs tmp-block, git-guardian and human-confirm.
 Entries with `ownerOnly: true` are skipped with a printed reason. Installation
 and status print `private_gate: skipped (client host)`; the hook-specific receipt
-is `~/.claude/hooks/golems-hooks-release.json`. The owner's MBP/M1 profiles and
+is `~/.claude/hooks/golems-hooks-release.json`. The owner's MBP profile and
 private regression gate retain their existing behavior without `--source`.
 
 The archive omits pytest suites. Before configuration writes, the shipped
@@ -40,3 +40,7 @@ Codex trust separately and never writes `config.toml` or creates trust. Review
 The release checks prove a no-token lease is denied by human-confirm. Approved
 token authorization still uses the gate's git-bound anchor contract and is not
 supported or proven for a release with no checkout.
+
+The owner-host check matches the exact `MacBook-Pro` LocalHostName. Renaming
+the MBP would allow the explicit `--migrate-owner-install` flag there; this is an
+accepted risk consistent with the owner installer.

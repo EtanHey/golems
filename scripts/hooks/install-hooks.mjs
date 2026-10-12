@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 // install-hooks — wire Claude Code hooks from ONE pinned golems tree (GO-5 S14).
-//
 //   scripts/hooks/install-hooks.sh --host mbp|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--restore-live]
 //   scripts/hooks/install-hooks.sh --host mbp --status [--python <abs path>]
 //   node scripts/hooks/install-hooks.mjs --host client --source <release dir> --migrate-owner-install [--apply]
-//
 // Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
 // `--update` moves it (default origin/master), so a `git checkout` in the main
 // checkout can never swap a live hook. Every golems hook in the host's manifest
