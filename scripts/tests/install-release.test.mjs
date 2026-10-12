@@ -210,6 +210,49 @@ print(result.stdout,end=''); print(result.stderr,end='',file=sys.stderr); sys.ex
   expect(row.measurement).toBe('fixture'); expect(row.error_count).toBe(0);
   expect(row.name_content_parity).toBe(true); expect(row.required_readable_valid).toBe(true);
 });
+test('real Codex retirement removes only exact agents links owned by the release', () => {
+  const dir = home(), skills = join(dir, '.codex/skills'), agents = join(dir, '.agents/skills');
+  mkdirSync(skills, { recursive: true }); ok(install(dir));
+  const foreign = join(dir, 'Gits/other/skills/custom'); mkdirSync(foreign, { recursive: true });
+  writeFileSync(join(foreign, 'SKILL.md'), 'foreign content');
+  symlinkSync(foreign, join(agents, 'foreign'));
+  mkdirSync(join(agents, 'custom')); writeFileSync(join(agents, 'custom/SKILL.md'), 'user custom');
+  for (const name of ['foreign', 'custom']) symlinkSync(join(agents, name), join(skills, name));
+  const pinned = join(dir, '.golems/releases', release.version, 'skills/golem-powers/pr-loop');
+  symlinkSync(pinned, join(agents, '.hidden')); symlinkSync(join(agents, '.hidden'), join(skills, '.hidden'));
+  symlinkSync(pinned, join(skills, 'direct-release'));
+  symlinkSync(join(dir, 'Gits/golems/skills/golem-powers/old/'), join(skills, 'old-checkout'));
+  symlinkSync('../../.agents/skills/pr-loop', join(skills, 'relative'));
+  symlinkSync(`${agents}/pr-loop/`, join(skills, 'trailing'));
+  rmSync(join(skills, 'orc')); mkdirSync(join(skills, 'orc')); writeFileSync(join(skills, 'orc/SKILL.md'), 'custom orc');
+  mkdirSync(join(skills, '.system')); writeFileSync(join(skills, '.system/sentinel'), 'system');
+  const kept = ['foreign', 'custom', '.hidden', 'direct-release', 'old-checkout', 'relative', 'trailing', 'orc', '.system'];
+  const before = kept.map(name => hookEntry(join(skills, name)));
+  const at = join(source, 'skills/catalog.json'), original = readFileSync(at), value = JSON.parse(original);
+  for (const names of Object.values(value.roots)) for (const name of ['pr-loop', 'orc']) names.splice(names.indexOf(name), 1);
+  const next = upgrade(() => writeFileSync(at, JSON.stringify(value)));
+  try {
+    const result = install(dir, [], next.tarball, join(dirname(next.tarball), 'SHA256SUMS')); ok(result);
+    expect(readdirSync(skills)).not.toContain('pr-loop');
+    expect(result.stdout).toContain(`Removed retired release link ${join(skills, 'pr-loop')}`);
+    expect(kept.map(name => hookEntry(join(skills, name)))).toEqual(before);
+    for (const name of kept) expect(result.stdout).toContain(`Keeping existing path ${join(skills, name)}`);
+  } finally { writeFileSync(at, original); git('add', '.'); git('commit', '-m', 'restore retirement catalog fixture'); }
+});
+test('real Codex links report creation and a checkout swap to custom agents content', () => {
+  const dir = home(), skills = join(dir, '.codex/skills'), target = join(dir, '.agents/skills/pr-loop');
+  mkdirSync(skills, { recursive: true }); mkdirSync(target, { recursive: true });
+  writeFileSync(join(target, 'SKILL.md'), 'user custom');
+  symlinkSync(join(dir, 'Gits/golems/skills/golem-powers/pr-loop/'), join(skills, 'pr-loop'));
+  const result = install(dir, ['--replace-checkout-links']); ok(result);
+  expect(readFileSync(join(skills, 'pr-loop/SKILL.md'), 'utf8')).toBe('user custom');
+  for (const name of ['pr-loop', 'golem-install']) {
+    const line = `Linked ${join(skills, name)} -> ${join(dir, '.agents/skills', name)}`;
+    expect(result.stdout.split('\n').filter(output => output === line)).toHaveLength(1);
+  }
+  const repeat = install(dir, ['--replace-checkout-links']); ok(repeat);
+  expect(repeat.stdout).not.toContain('Linked ');
+});
 test('fresh install without git, node or bun links both clients and writes release.json', () => {
   const dir = home(), result = install(dir); ok(result);
   expect(result.stdout).toContain('PATH');

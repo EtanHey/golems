@@ -106,9 +106,14 @@ and `~/.agents/skills`, using their separate lists; `~/.codex/skills` is linked
 to the latter only if absent. An existing real Codex skills directory uses the
 agents catalog: missing entries are linked through `~/.agents/skills/<name>`,
 release-owned links are refreshed, and checkout links are migrated with
-`--replace-checkout-links`. Foreign links, real entries, dot-entries and names
-outside the catalog are reported and kept. Existing Codex root symlinks are
-preserved. Each catalog entry must have `SKILL.md`.
+`--replace-checkout-links`. Foreign links, real entries and dot-entries are
+reported and kept. Names outside the catalog are also kept, except for non-dot
+Codex symlinks whose target is exactly `$HOME/.agents/skills/<name>` and which
+are broken or resolve into this prefix's `releases/` directory. Those retired links are removed;
+other targets (including direct release links) stay untouched. Each created or
+re-pointed Codex catalog link prints `Linked <path> -> <target>`, including swaps
+to custom agents content. Existing Codex root symlinks are preserved. Each
+catalog entry must have `SKILL.md`.
 The catalog was derived from the owner's readable golems-owned links in these
 two roots on 2026-10-12, following golem-install's installed-skill scan. That scan
 is the source chosen for the curated installed set: the library checker counts
