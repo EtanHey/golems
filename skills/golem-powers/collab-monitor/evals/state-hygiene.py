@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import time
 import unittest
 
 from importlib.util import spec_from_file_location, module_from_spec
@@ -46,11 +47,12 @@ class StateHygiene(owner_exit.OwnerExit):
         self.assertEqual(sorted(p.name for p in state.iterdir()), ['seen.sha256'])
         self.assertEqual((state / 'seen.sha256').read_text(), 'durable dedup\n')
 
-    def test_status_prunes_all_dead_instances(self):
+    def test_status_is_read_only_for_dead_instances(self):
         state = self.debris()
         result = self.command('status')
         self.assertNotEqual(result.returncode, 0)
-        self.assert_pruned(state)
+        self.assertTrue((state / 'monitor.pid').exists())
+        self.assertFalse((state / 'start.lock').exists())
 
     def test_start_prunes_dead_instances(self):
         state = self.debris()
@@ -60,7 +62,7 @@ class StateHygiene(owner_exit.OwnerExit):
     def test_reused_pid_pruned_without_signaling_process(self):
         unrelated = self.spawn(['sleep', '60'])
         state = self.debris(pid=unrelated.pid)
-        self.command('status')
+        self.start()
         self.assert_pruned(state)
         self.assertIsNone(unrelated.poll())
 
@@ -112,8 +114,74 @@ class StateHygiene(owner_exit.OwnerExit):
         (state / 'run.lock').mkdir(parents=True)
         (state / 'events.99999999').touch()
         (state / 'ready.pid').write_text('99999999\n')
-        self.command('status')
+        self.start()
         self.assertEqual(list(state.iterdir()), [])
+
+    def test_ownerless_start_lock_grace_and_recovery(self):
+        lock = self.root / 'state/fixture/start.lock'
+        lock.mkdir(parents=True)
+        self.assertNotEqual(self.command('start').returncode, 0)
+        old = time.time() - 31
+        os.utime(lock, (old, old))
+        self.assertEqual(self.command('start').returncode, 0)
+        self.ready_run()
+
+    def test_sigterm_between_mkdir_and_owner_write_recovers(self):
+        state = self.debris()
+        shim = self.root / 'bin'
+        shim.mkdir()
+        mkdir = shim / 'mkdir'
+        mkdir.write_text('#!/bin/bash\n/bin/mkdir "$@" || exit $?\n'
+                         'case "$*" in *dead/start.lock*) kill -TERM "$PPID" ;; esac\n')
+        mkdir.chmod(0o755)
+        env = dict(self.env, PATH=str(shim) + ':' + self.env['PATH'])
+        result = subprocess.run(self.cmd('start', '--owner-pid', str(os.getpid())),
+                                env=env, capture_output=True, text=True, timeout=5)
+        self.assertNotEqual(result.returncode, 0)
+        lock = state / 'start.lock'
+        if lock.exists():
+            old = time.time() - 31
+            os.utime(lock, (old, old))
+        self.start()
+        self.assert_pruned(state)
+
+    def test_prune_signal_cleanup_releases_published_lock(self):
+        state = self.debris()
+        shim = self.root / 'bin'
+        shim.mkdir()
+        mv = shim / 'mv'
+        mv.write_text('#!/bin/bash\n/bin/mv "$@" || exit $?\n'
+                      'case "$*" in *dead/start.lock/owner.pid*) kill -TERM "$PPID" ;; esac\n')
+        mv.chmod(0o755)
+        env = dict(self.env, PATH=str(shim) + ':' + self.env['PATH'])
+        result = subprocess.run(self.cmd('start', '--owner-pid', str(os.getpid())),
+                                env=env, capture_output=True, text=True, timeout=5)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((state / 'start.lock').exists())
+        self.start()
+        self.assert_pruned(state)
+
+    def test_relative_foreground_run_preserved_by_other_start(self):
+        log = (self.root / 'relative.log').open('w')
+        self.logs.append(log)
+        proc = subprocess.Popen(['/bin/bash', MONITOR.name, 'run', '--owner-pid', str(os.getpid()),
+                                 '@fixture', str(self.file)], cwd=MONITOR.parent, env=self.env,
+                                stdout=log, stderr=log)
+        self.procs.append(proc)
+        pid = self.ready_run()
+        self.assertEqual(self.command('start', name='@other').returncode, 0)
+        self.pids.append(int((self.root / 'state/other/monitor.pid').read_text()))
+        self.assertEqual((self.root / 'state/fixture/run.lock/owner.pid').read_text().strip(), str(pid))
+        self.assertIsNone(proc.poll())
+
+    def test_bare_foreground_run_preserved_by_other_start(self):
+        proc = self.spawn(['/bin/bash', str(MONITOR), 'run', '--owner-pid', str(os.getpid()),
+                           'fixture', str(self.file)])
+        pid = self.ready_run()
+        self.assertEqual(self.command('start', name='@other').returncode, 0)
+        self.pids.append(int((self.root / 'state/other/monitor.pid').read_text()))
+        self.assertEqual((self.root / 'state/fixture/run.lock/owner.pid').read_text().strip(), str(pid))
+        self.assertIsNone(proc.poll())
 
     def copy_script(self):
         copy = self.root / 'scripts'

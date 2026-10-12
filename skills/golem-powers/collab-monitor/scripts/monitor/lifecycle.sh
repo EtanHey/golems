@@ -186,7 +186,6 @@ status_monitor() {
   }
   listen_name="$1"
   bare_name="$(normalize_name "$listen_name")"
-  prune_state_root
   state_dir="$STATE_ROOT/$bare_name"
   pid_file="$state_dir/monitor.pid"
   instance_file="$state_dir/monitor.instance"

@@ -170,11 +170,14 @@ After handoff or lane closure:
 bash "$CM" stop @<listen-name>
 ```
 
-`start` and `status` prune inactive runtime records across their state root:
+`status` is read-only: it never acquires locks or prunes state. `start` prunes
+inactive runtime records across its state root:
 PID/instance/owner/ready records, stale run locks and abandoned event extracts.
-They retain logs, dedup hashes and size watermarks. A live producer or foreground
+Pruning retains logs, dedup hashes and size watermarks. A live producer or foreground
 run keeps all its files, including when its token is inconsistent; active or
-ownerless start locks are preserved. Reused PIDs belonging to unrelated processes
+ownerless start locks younger than 30 seconds are preserved; older ownerless
+locks are recoverable after interrupted publication. Pruning has signal cleanup.
+Reused PIDs belonging to unrelated processes
 are pruned without signaling them. `start` records the owner PID and `status`
 prints `owner_pid` (`unknown` for older instances). Instance identity works across
 checkout paths. `run` and `follow` exit and reap their children if the script or
