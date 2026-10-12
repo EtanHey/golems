@@ -9,7 +9,7 @@ import { gzipSync } from 'node:zlib';
 const hash = data => createHash('sha256').update(data).digest('hex');
 const order = (a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path));
 const roots = ['skills/golem-powers/', 'scripts/pr-watch-lib/', 'scripts/repogolem/', 'scripts/hooks/', 'packages/golem-skills/'];
-const support = new Set(['scripts/pr-watch', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'scripts/model-roles.mjs', 'scripts/ci/check-model-role-drift.mjs', 'standards/model-roles.json', 'standards/model-roles.schema.json', '.bun-version', 'LICENSE']);
+const support = new Set(['scripts/release/install.sh', 'release-gate.json', 'scripts/pr-watch', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'scripts/model-roles.mjs', 'scripts/ci/check-model-role-drift.mjs', 'standards/model-roles.json', 'standards/model-roles.schema.json', '.bun-version', 'LICENSE']);
 function shipped(path) {
   if (!support.has(path) && !roots.some(root => path.startsWith(root))) return false;
   return !path.split('/').some(part => /^(?:docs\.local|tests?|__tests__|evals|fixtures|testdata|__snapshots__|__pycache__|node_modules|private|\.git)$/.test(part))

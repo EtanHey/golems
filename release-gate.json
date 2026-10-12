@@ -7,8 +7,9 @@
   ],
   "repositories": {
     "EtanHey/golems": {
-      "artifact": { "kind": "none" },
-      "reason": "consumed from the repo checkout via symlinked skills; release installation is P2 work"
+      "channel": "nightly",
+      "artifact": { "kind": "github-release", "identifier": "golems" },
+      "installCommand": "curl -fsSL https://raw.githubusercontent.com/EtanHey/golems/master/scripts/release/install.sh | sh -s -- --channel nightly"
     },
     "EtanHey/voicelayer": {
       "artifact": { "kind": "macos-app", "identifier": "VoiceBar" }

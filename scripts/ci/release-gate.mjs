@@ -133,7 +133,7 @@ export function detectInstalledVersion(artifact, runCommand = execute) {
   let result;
   if (artifact.kind === "github-release") {
     try {
-      const installed = JSON.parse(readFileSync(artifact.installedJson ?? resolve(homedir(), '.golems/installed.json'), 'utf8'));
+      const installed = JSON.parse(readFileSync(artifact.releaseJson ?? artifact.installedJson ?? resolve(homedir(), '.golems/release.json'), 'utf8'));
       return typeof installed.version === 'string' && /^\d{4}\.\d{2}\.\d{2}-[0-9a-f]{7}$/.test(installed.version) ? installed.version : null;
     } catch { return null; }
   } else if (artifact.kind === "macos-app") {
@@ -158,13 +158,13 @@ function containmentUnknown(report, reason) {
   return { ...report, verdict: "UNKNOWN", reason };
 }
 
-function publishedReleaseError(repository, tag, runCommand) {
+function publishedReleaseError(repository, tag, channel, runCommand) {
   const result = runCommand('gh', ['api', `repos/${repository}/releases/tags/${encodeURIComponent(tag)}`]);
   if (result.status !== 0) return `GitHub Release unavailable for ${tag}: ${(result.stderr || result.stdout).trim()}`;
   try {
     const release = JSON.parse(result.stdout);
     const expected = [`golems-${cleanVersion(tag)}.tar.gz`, 'MANIFEST.json', 'SHA256SUMS'];
-    if (release.draft || release.prerelease || expected.some(name => !release.assets?.some(asset => asset.name === name && asset.state === 'uploaded' && asset.size > 0))) return `GitHub Release ${tag} is unpublished or missing release assets`;
+    if (release.draft || (release.prerelease && channel !== 'nightly') || expected.some(name => !release.assets?.some(asset => asset.name === name && asset.state === 'uploaded' && asset.size > 0))) return `GitHub Release ${tag} is unpublished or missing release assets`;
     return null;
   } catch { return `invalid GitHub Release response for ${tag}`; }
 }
@@ -232,7 +232,7 @@ function inspectContainment(options, runCommand = execute) {
     return containmentUnknown({ ...report, tag: candidates[0] }, `installed-version tag absent on origin: ${candidates.join(" or ")}`);
   }
   if (config.artifact.kind === 'github-release') {
-    const error = publishedReleaseError(identity.slug, report.tag, runCommand);
+    const error = publishedReleaseError(identity.slug, report.tag, config.channel, runCommand);
     if (error) return containmentUnknown(report, error);
   }
 
@@ -294,7 +294,7 @@ export function inspectRelease(options, runCommand = execute) {
   const ignorePaths = config.ignorePaths ?? manifest.ignorePaths ?? defaultIgnores;
   const commits = commitCounts(repo, tag, remoteRef, ignorePaths, runCommand);
   if (config.artifact.kind === 'github-release') {
-    const error = publishedReleaseError(identity.slug, tag, runCommand);
+    const error = publishedReleaseError(identity.slug, tag, config.channel, runCommand);
     if (error) return { verdict: 'UNKNOWN', repo, repository: identity.slug, latestTag: tag, artifact: config.artifact, error };
   }
   const installedVersion = options.releaseOnly ? null : detectInstalledVersion(config.artifact, runCommand);

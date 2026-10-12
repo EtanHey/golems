@@ -56,6 +56,7 @@ export function decideRepoAction(manifest, repo, machineRole) {
       action: "INSTALL",
       artifact,
       reason: `${repo} is distributed as ${artifact}`,
+      ...(entry.installCommand ? { installCommand: entry.installCommand } : {}),
     };
   }
 

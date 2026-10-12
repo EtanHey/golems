@@ -141,7 +141,7 @@ bun <golem-install-dir>/scripts/repo-action.mjs "$MACHINE_ROLE"
 
 The helper enumerates `release-gate.json` and returns one action per entry:
 
-- `INSTALL`: never clone. Install or update the named artifact; if installation cannot be completed, report it as manual setup.
+- `INSTALL`: never clone. Install or update the named artifact. When the helper returns `installCommand`, use that command (golems uses the nightly release bootstrap); if installation cannot be completed, report it as manual setup.
 - `CLONE`: permitted only for an artifact with `kind:"none"` on a `workspace` machine. Confirm `reposPath` exists, then clone only if the checkout is missing.
 - `REFUSE`: do not clone. Show the helper's reason.
 
@@ -153,10 +153,9 @@ cd "$REPOS_PATH"
 gh repo clone <owner/repo>
 ```
 
-**After cloning golems:**
-```bash
-cd "$REPOS_PATH/golems" && bun install
-```
+For golems, `INSTALL` uses the bootstrap command from `release-gate.json`.
+Add `~/.golems/bin` to PATH after installation. It links Claude/Codex skills and
+installs CLI wrappers; hook installation remains a separate step.
 
 ### Install Codex subagent defaults
 
