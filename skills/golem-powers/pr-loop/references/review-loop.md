@@ -134,8 +134,8 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 ### For public repos (bot reviewers configured):
 
 Arm exactly one GitHub watch:
-`Monitor(command="~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`.
-Use this MBP checkout path today; once M1 is a release client, use `~/.golems/bin/pr-watch`.
+`Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`.
+Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 Codex runs the same command and reads its exit code. pr-watch never merges.
 An empty rollup is never READY. Required contexts must be present and green,
 and the default 180s settle window must stay quiet. See the

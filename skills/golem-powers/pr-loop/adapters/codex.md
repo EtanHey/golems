@@ -23,7 +23,7 @@
 |-----|--------|-----------|
 | No `cr review` pre-commit check | Commits without CodeRabbit pre-screening | Run `cr review --plain` manually if cr is installed |
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Slim-poll review state (see CI + Review Waiting below) |
-| No native `Monitor` | Needs an attached watch consumer | `scripts/pr-watch` with the pinned head and exit code for CI; `/collab-monitor` packaged fallback for addressed handoffs |
+| No native `Monitor` | Needs an attached watch consumer | `pr-watch` with the pinned head and exit code for CI; `/collab-monitor` packaged fallback for addressed handoffs |
 | No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |
 | No native review-bot tool | Can't invoke Codex Cloud or Cursor Bugbot through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens, filtered by the repo's bot policy |
 | No `AGENTS.md` bot-policy check in the loop | Can summon a bot the target repo bans | Read the target repo's `AGENTS.md` PR-workflow section BEFORE the first `@mention` ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)), and name the applied policy in the PR body |
@@ -76,9 +76,11 @@ Sleep-poll loops that re-fetch the full PR payload are BANNED. Cost evidence
 input tokens and forced mid-task auto-compactions — every cycle re-ingests the
 entire comment/review payload into context.
 
+Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
+
 ```bash
 # CI: ONE blocking call — read its exit code
-~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h
+pr-watch <owner/repo> <N> --head <sha> --deadline 2h
 
 # Review state: slim poll — state fields + activity COUNTS, never full bodies
 gh pr view <N> --json state,mergeStateStatus,reviewDecision

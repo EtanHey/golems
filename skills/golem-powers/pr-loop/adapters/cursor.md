@@ -21,13 +21,15 @@
 |-----|--------|-----------|
 | No `cr review` pre-commit check | Commits without CodeRabbit pre-screening | Run `cr review --plain` manually if cr installed |
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use routed review handoffs |
-| No native `Monitor` | Needs an attached watch consumer | `/collab-monitor` packaged fallback for handoffs; `scripts/pr-watch` with a pinned head and exit code for CI |
+| No native `Monitor` | Needs an attached watch consumer | `/collab-monitor` packaged fallback for handoffs; `pr-watch` with a pinned head and exit code for CI |
 | No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |
 | No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |
 
 ## CI and Review Waiting
 
-Run exactly one `~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h`
+Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
+
+Run exactly one `pr-watch <owner/repo> <N> --head <sha> --deadline 2h`
 for GitHub CI and read its exit code. pr-watch never merges; an empty rollup is
 never READY. Use the [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits)
 and [shared arming rules](../references/review-loop.md#for-public-repos-bot-reviewers-configured).

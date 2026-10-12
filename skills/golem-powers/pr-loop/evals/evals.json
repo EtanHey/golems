@@ -576,12 +576,12 @@
       "id": 23,
       "name": "one-monitor-pinned-head",
       "prompt": "Claude has Monitor available. PR #303 in EtanHey/golems is waiting on CI at a known full SHA. Arm the watch.",
-      "expected_output": "Arms exactly one Monitor with command ~/Gits/golems/scripts/pr-watch EtanHey/golems 303 --head <full-sha> --deadline 2h and timeout_ms=1800000; no gh pr checks --watch or hand-rolled gh loop. Explains that pr-watch never merges, an empty rollup is never READY, and READY still needs exact-head review before authorized merge.",
+      "expected_output": "Arms exactly one Monitor with command pr-watch EtanHey/golems 303 --head <full-sha> --deadline 2h and timeout_ms=1800000; no gh pr checks --watch or hand-rolled gh loop. Explains that pr-watch never merges, an empty rollup is never READY, and READY still needs exact-head review before authorized merge.",
       "files": [],
       "assertions": [
         {
           "name": "one-monitor",
-          "description": "Arms exactly one Monitor with command ~/Gits/golems/scripts/pr-watch EtanHey/golems 303 --head <full-sha> --deadline 2h and timeout_ms=1800000; no gh pr checks --watch or hand-rolled gh loop."
+          "description": "Arms exactly one Monitor with command pr-watch EtanHey/golems 303 --head <full-sha> --deadline 2h and timeout_ms=1800000; no gh pr checks --watch or hand-rolled gh loop."
         },
         {
           "name": "ci-fact-only",
@@ -593,12 +593,12 @@
       "id": 24,
       "name": "codex-pr-watch-exits",
       "prompt": "Codex has no native Monitor. PR #304 is pending at head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. Show the watch command and actions for exits 11, 20, and 30.",
-      "expected_output": "Runs ~/Gits/golems/scripts/pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 2h and reads its exit code; no cmuxlayer file watch. Exit 11 means read the fresh head and re-arm with it; exit 20 means re-arm if waiting continues; exit 30 means inspect verbatim gh stderr and diagnose. Points to scripts/pr-watch-lib/README.md exit-code table.",
+      "expected_output": "Runs pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 2h and reads its exit code; no cmuxlayer file watch. Exit 11 means read the fresh head and re-arm with it; exit 20 means re-arm if waiting continues; exit 30 means inspect verbatim gh stderr and diagnose. Points to scripts/pr-watch-lib/README.md exit-code table.",
       "files": [],
       "assertions": [
         {
           "name": "same-command-exit-code",
-          "description": "Runs ~/Gits/golems/scripts/pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 2h and reads its exit code; no cmuxlayer file watch."
+          "description": "Runs pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 2h and reads its exit code; no cmuxlayer file watch."
         },
         {
           "name": "rearm-and-error",

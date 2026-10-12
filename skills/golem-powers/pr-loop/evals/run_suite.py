@@ -6,7 +6,7 @@ import unittest
 
 SKILL = Path(__file__).resolve().parents[1]
 REPO = SKILL.parents[2]
-COMMAND = "~/Gits/golems/scripts/pr-watch <owner/repo> <N> --head <sha> --deadline 2h"
+COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 2h"
 TABLE = "../../../../scripts/pr-watch-lib/README.md#usage-and-exits"
 SURFACES = ["references/review-loop.md", "adapters/claude.md", "adapters/codex.md",
             "adapters/cursor.md", "adapters/capabilities.yaml"]
@@ -51,7 +51,7 @@ class ArmingContract(unittest.TestCase):
         content = " ".join(text("references/review-loop.md").split())
         for phrase in ["Required contexts must be present and green", "default 180s settle window",
                        "on exit 20", "Cancel the old Monitor with TaskStop",
-                       "after compaction", "read the exact-head review", "~/.golems/bin/pr-watch"]:
+                       "after compaction", "read the exact-head review", "`pr-watch` on PATH", "or `scripts/pr-watch` from a golems checkout"]:
             self.assertIn(phrase, content)
         self.assertRegex(content, r"exit 11.*new head.*re-arm with that SHA")
 
