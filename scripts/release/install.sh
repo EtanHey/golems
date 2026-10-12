@@ -258,6 +258,7 @@ link_skill() {
   elif [ -e "$link" ]; then printf 'Keeping existing path %s\n' "$link"; return 0; fi
   ln -s "$target" "$work/skill-link"
   atomic_move "$work/skill-link" "$link"
+  if [ "${3-false}" = true ]; then printf 'Linked %s -> %s\n' "$link" "$target"; fi
 }
 is_golems_checkout_skill() (
   checkout=${1%/skills/*}
@@ -306,6 +307,30 @@ for client in .claude .agents; do
 done
 mkdir -p "$HOME/.codex"
 if [ ! -e "$HOME/.codex/skills" ] && [ ! -L "$HOME/.codex/skills" ]; then ln -s "$HOME/.agents/skills" "$HOME/.codex/skills"
+elif [ -d "$HOME/.codex/skills" ] && [ ! -L "$HOME/.codex/skills" ]; then
+  awk -F '\t' '$1=="agents" {print $2}' "$work/catalog" > "$work/client-catalog"
+  for link in "$HOME/.codex/skills/"* "$HOME/.codex/skills/".[!.]* "$HOME/.codex/skills/"..?*; do
+    [ -e "$link" ] || [ -L "$link" ] || continue
+    name=$(basename "$link")
+    awk -v name="$name" '$0==name {found=1} END {exit !found}' "$work/client-catalog" && continue
+    case "$name" in .*) ;; *)
+      if [ -L "$link" ] && [ "$(readlink "$link")" = "$HOME/.agents/skills/$name" ]; then
+        remove_retired=false
+        if [ ! -e "$link" ]; then remove_retired=true
+        else
+          resolved=$(resolve_skill_link "$link") || resolved=''
+          case "$resolved" in "$prefix/releases/"*) remove_retired=true ;; esac
+        fi
+        if [ "$remove_retired" = true ]; then
+          rm "$link"; printf 'Removed retired release link %s\n' "$link"; continue
+        fi
+      fi ;;
+    esac
+    printf 'Keeping existing path %s\n' "$link"
+  done
+  while IFS= read -r name; do
+    link_skill "$HOME/.codex/skills/$name" "$HOME/.agents/skills/$name" true
+  done < "$work/client-catalog"
 elif [ "$(readlink "$HOME/.codex/skills" 2>/dev/null || :)" != "$HOME/.agents/skills" ]; then printf 'Keeping existing Codex skills path %s\n' "$HOME/.codex/skills"; fi
 for cli in pr-watch golems-cli; do
   [ ! -e "$prefix/bin/$cli" ] || [ -f "$prefix/bin/$cli" ] || fail "invalid CLI path: $cli"
