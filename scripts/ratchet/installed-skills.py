@@ -26,7 +26,12 @@ def version(value):
         raise ValueError('malformed installed version')
 
 
-def installed_version(home):
+def commit(value):
+    if not isinstance(value, str) or not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', value):
+        raise ValueError('malformed installed/checkout commit')
+
+
+def installed_release(home):
     # installed.json belongs to golems-sync; only the release installer owns versions.
     record = Path(home) / '.golems/release.json'
     if not record.exists() and not record.is_symlink(): return None
@@ -35,9 +40,22 @@ def installed_version(home):
         if not isinstance(data, dict): raise ValueError('malformed record')
         value = data.get('version')
         version(value)
+        if 'commit' in data: commit(data['commit'])
     except (OSError, ValueError):
         raise ValueError('release.json unreadable or malformed installed version')
-    return value
+    return data
+
+
+def checkout_head(directory):
+    # Provenance is best-effort; content remains the gate if Git is unavailable.
+    try:
+        result = subprocess.run(['git', '-C', str(directory), 'rev-parse', 'HEAD'],
+                                capture_output=True, text=True, timeout=5, check=True)
+        value = result.stdout.strip()
+        commit(value)
+        return value
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
 
 
 def observed_identity():
@@ -88,6 +106,17 @@ def validate(document, required=False):
     if not required and isinstance(document, dict) and 'installed_version' in document:
         keys.add('installed_version')
         version(document['installed_version'])
+    if not required and isinstance(document, dict):
+        if 'installed_commit' in document:
+            keys.add('installed_commit')
+            if 'installed_version' not in document: raise ValueError('release commit without version')
+            commit(document['installed_commit'])
+        if 'checkout_commits' in document:
+            keys.add('checkout_commits')
+            values = document['checkout_commits']
+            if not isinstance(values, list): raise ValueError('malformed checkout commits')
+            for value in values: commit(value)
+            if len(set(values)) != len(values): raise ValueError('duplicate checkout commit')
     object_keys(document, keys, 'manifest')
     if type(document['schema']) is not int or document['schema'] != 2:
         raise ValueError('schema 2 required; historical schema 1 is not fresh identity proof')
@@ -160,6 +189,7 @@ def content_files(directory, ancestors=frozenset(), prefix=''):
 def inventory():
     home = str(Path.home())
     roots = {}
+    skill_directories = set()
     for root in ROOTS:
         directory = Path(home) / root
         entries = {}
@@ -180,11 +210,19 @@ def inventory():
                         row['internal_skills'] = nested
                         row['files'] = {k: v for k, v in files.items()
                                         if any(k.startswith(n + '/') for n in nested)}
+                if row['skill_sha256'] or row['internal_skills']:
+                    skill_directories.add(entry.resolve())
                 entries[entry.name] = row
         roots[root] = dict(exists=directory.is_dir(), entries=entries)
     document = dict(schema=2, identity=observed_identity(), roots=roots)
-    recorded_version = installed_version(home)
-    if recorded_version is not None: document['installed_version'] = recorded_version
+    release = installed_release(home)
+    if release is not None:
+        document['installed_version'] = release['version']
+        if 'commit' in release: document['installed_commit'] = release['commit']
+    else:
+        heads = sorted({head for directory in sorted(skill_directories)
+                        if (head := checkout_head(directory)) is not None})
+        if heads: document['checkout_commits'] = heads
     return document
 
 
@@ -201,10 +239,21 @@ def compare(left, right, requirements):
     validate(left); validate(right); validate(requirements, required=True)
     errors, invalid = [], []
     parity, valid = True, True
-    if left.get('installed_version') != right.get('installed_version'):
+    versions = {role: document.get('installed_version', '<checkout>')
+                for role, document in [('local', left), ('remote', right)]}
+    notes = []
+    if ('installed_version' in left and 'installed_version' in right and
+            left['installed_version'] != right['installed_version']):
         errors.append('installed version mismatch: local=' + left.get('installed_version', '<unrecorded>') +
                       ' remote=' + right.get('installed_version', '<unrecorded>') + ' (release.json)')
         parity = False
+    elif ('installed_version' in left) != ('installed_version' in right):
+        owner_role, owner, release = ('remote', right, left) if 'installed_version' in left else ('local', left, right)
+        for head in owner.get('checkout_commits', []):
+            if release.get('installed_commit') and release['installed_commit'] != head:
+                notes.append(owner_role + ' checkout HEAD ' + head +
+                             ' differs from release.json commit ' + release['installed_commit'] +
+                             '; informational, content parity decides')
     identities_valid = True
     if left['identity']['machine'] == right['identity']['machine']:
         errors.append('hosts: local/remote identify the same machine'); identities_valid = False
@@ -245,7 +294,7 @@ def compare(left, right, requirements):
             if (a['skill_sha256'] != b['skill_sha256'] or
                     a.get('internal_skills', {}) != b.get('internal_skills', {}) or supporting(a) != supporting(b)):
                 errors.append(root + '/' + name + ': local/remote content/shape mismatch'); parity = False
-    return dict(host_identity_valid=identities_valid, name_content_parity=parity, required_readable_valid=valid,
+    return dict(installed_version=versions, notes=notes, host_identity_valid=identities_valid, name_content_parity=parity, required_readable_valid=valid,
                 disclosed_invalid=invalid, errors=errors)
 
 
