@@ -124,11 +124,52 @@ class Parity(unittest.TestCase):
                 if local is not None: self.left['installed_version'] = local
                 if remote is not None: self.right['installed_version'] = remote
                 result = self.check()
-                self.assertEqual(result['name_content_parity'], local == remote)
-                if local != remote:
+                self.assertEqual(result['name_content_parity'], local is None or remote is None or local == remote)
+                if local is not None and remote is not None and local != remote:
                     self.assertIn('installed version mismatch', result['errors'][0])
                     self.assertIn('local=', result['errors'][0])
                     self.assertIn('remote=', result['errors'][0])
+
+    def test_checkout_commit_notes_are_informational_in_both_directions(self):
+        for checkout in ('local', 'remote'):
+            for release_commit in ('a'*40, 'b'*40):
+                with self.subTest(checkout=checkout, release_commit=release_commit):
+                    self.setUp()
+                    owner, client = (self.left, self.right) if checkout == 'local' else (self.right, self.left)
+                    owner['checkout_commits'] = ['a'*40]
+                    client.update(installed_version='v1', installed_commit=release_commit)
+                    result = self.check()
+                    self.assertEqual(result['errors'], [])
+                    self.assertEqual(bool(result['notes']), release_commit != 'a'*40)
+                    if result['notes']:
+                        self.assertIn(checkout + ' checkout HEAD', result['notes'][0])
+                        self.assertIn(release_commit, result['notes'][0])
+                    client['roots'][self.root]['entries']['class-a']['skill_sha256'] = 'b'*64
+                    self.assertFalse(self.check()['name_content_parity'])
+
+    def test_scanner_observes_resolved_checkout_head_and_release_commit(self):
+        with tempfile.TemporaryDirectory(prefix='class-checkout-head-') as directory:
+            homes = self.skill_homes(Path(directory))
+            checkout = Path(directory) / 'class-source'
+            checkout.mkdir()
+            subprocess.run(['git', '-C', str(checkout), 'init', '-q'], check=True)
+            (checkout / 'SKILL.md').write_text('# class-a\n')
+            subprocess.run(['git', '-C', str(checkout), 'add', 'SKILL.md'], check=True)
+            subprocess.run(['git', '-C', str(checkout), '-c', 'user.name=class', '-c',
+                            'user.email=fixture@example.com', 'commit', '-qm', 'class'], check=True)
+            head = subprocess.check_output(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], text=True).strip()
+            for root in parity.ROOTS:
+                shutil.rmtree(homes[0] / root / 'class-a')
+                (homes[0] / root / 'class-a').symlink_to(checkout, target_is_directory=True)
+            record = homes[1] / '.golems/release.json'
+            record.parent.mkdir()
+            record.write_text(json.dumps(dict(version='v1', commit='b'*40)))
+            left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+            self.assertEqual(left['checkout_commits'], [head])
+            self.assertEqual(right['installed_commit'], 'b'*40)
+            result = parity.compare(left, right, self.required)
+            self.assertEqual(result['errors'], [])
+            self.assertEqual(len(result['notes']), 1)
 
     def test_invalid_inventory_versions_fail_closed(self):
         for value in [None, 1, '', ' v1', 'v1\n']:
@@ -224,10 +265,10 @@ class Parity(unittest.TestCase):
                             record.write_text(json.dumps(dict(version=value, commit='a'*40)))
                     left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
                     result = parity.compare(left, right, self.required)
-                    self.assertEqual(result['name_content_parity'], versions[0] == versions[1])
+                    self.assertEqual(result['name_content_parity'], None in versions or versions[0] == versions[1])
                     if None in versions:
-                        self.assertIn('release.json', result['errors'][0])
-                        self.assertIn('<unrecorded>', result['errors'][0])
+                        self.assertEqual(result['errors'], [])
+                        self.assertEqual(result['installed_version'], dict(zip(('local', 'remote'), [v or '<checkout>' for v in versions])))
 
     def test_scanner_records_version_only_from_release_and_refuses_bad_records(self):
         with tempfile.TemporaryDirectory(prefix='class-install-version-') as directory:
@@ -241,7 +282,7 @@ class Parity(unittest.TestCase):
             sync_record.write_text('unreadable as JSON; owned by sync\n')
             record.write_text(json.dumps({'version': 'v1', 'source': 'class-release'}))
             self.assertEqual(self.scan(home, self.pins[0])['installed_version'], 'v1')
-            for value in ['{', '[]', '{}', '{"version":1}', '{"version":""}']:
+            for value in ['{', '[]', '{}', '{"version":1}', '{"version":""}', '{"version":"v1","commit":1}', '{"version":"v1","commit":"bad"}']:
                 record.write_text(value)
                 with self.assertRaisesRegex(ValueError, 'release.json'):
                     self.scan(home, self.pins[0])
@@ -299,12 +340,13 @@ class Parity(unittest.TestCase):
             paths = [Path(directory) / name for name in ['left.json', 'right.json', 'required.json']]
             command = [sys.executable, '-B', str(SCRIPT), '--left', str(paths[0]),
                        '--right', str(paths[1]), '--requirements', str(paths[2])]
-            for kind in ['equal', 'content', 'version']:
+            for kind in ['equal', 'content', 'version', 'one-sided', 'one-sided-content']:
                 with self.subTest(kind=kind):
                     self.setUp()
                     entry = self.right['roots'][self.root]['entries']['class-a']
                     entry.update(kind='dir', normalized_target='$HOME/releases/v1/class-a')
-                    if kind == 'content': entry['skill_sha256'] = 'b'*64
+                    if kind in ('content', 'one-sided-content'): entry['skill_sha256'] = 'b'*64
+                    if kind.startswith('one-sided'): self.right['installed_version'] = 'v1'
                     if kind == 'version':
                         self.left['installed_version'] = 'v1'
                         self.right['installed_version'] = 'v2'
@@ -312,10 +354,12 @@ class Parity(unittest.TestCase):
                         path.write_text(json.dumps(document))
                     run = subprocess.run(command, capture_output=True, text=True)
                     result = json.loads(run.stdout)
-                    self.assertEqual(run.returncode, 0 if kind == 'equal' else 1, run.stderr)
+                    self.assertEqual(run.returncode, 0 if kind in ('equal', 'one-sided') else 1, run.stderr)
                     self.assertEqual(result['measurement'], 'fixture')
-                    self.assertEqual(result['error_count'], 0 if kind == 'equal' else 1)
-                    self.assertEqual(result['name_content_parity'], kind == 'equal')
+                    self.assertEqual(result['error_count'], 0 if kind in ('equal', 'one-sided') else 1)
+                    self.assertEqual(result['name_content_parity'], kind in ('equal', 'one-sided'))
+                    if kind.startswith('one-sided'):
+                        self.assertEqual(result['installed_version'], {'local': '<checkout>', 'remote': 'v1'})
                     if kind == 'version': self.assertIn('installed version mismatch: local=v1 remote=v2', run.stderr)
 
     def test_supporting_symlink_cycles_and_hashless_manifests_fail_closed(self):
