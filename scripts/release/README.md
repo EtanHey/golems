@@ -116,6 +116,17 @@ Updates default to nightly; pass `--channel <tag>` to keep a pinned tag.
 repoGolem's dependency setup and client hook installation are separate from this
 bootstrap. This phase neither installs hooks nor modifies hooks-live.
 
+For a former M1 owner install, install the release with `--replace-checkout-links`,
+then run `node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client
+--source ~/.golems/current --migrate-owner-install --apply`. Verify the same command
+with `--status` instead of `--migrate-owner-install --apply` reports `drift=0`.
+The migration archives the old pin and hooks-live links with a receipt under
+`~/.golems/archive/owner-install-<timestamp>-<id>/` and rolls back failed writes;
+without the flag, an owner-shaped HOME is refused. The MBP always refuses client
+installation, including migration. Status verifies wiring; native Codex `/hooks`
+trust review is still required. Archive/retire the old checkout only after installed
+parity and live verification pass.
+
 Run the scratch-HOME suite with:
 
 ```sh

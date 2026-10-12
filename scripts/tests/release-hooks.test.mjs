@@ -75,7 +75,7 @@ for (const signal of ['pin', 'pin-and-link', 'link', 'dangling-link', 'indirect-
     expect(result.out).not.toContain('client host');
   }
 });
-for (const name of ['MacBook-Pro', 'Locals-MacBook-Pro']) test(`R1: client refuses owner hostname ${name} before writes`, () => {
+for (const name of ['MacBook-Pro']) test(`R1: client refuses owner hostname ${name} before writes`, () => {
   const f = fixture();
   writeFileSync(path.join(f.env.PATH, 'scutil'), `#!/bin/sh\nprintf '%s\\n' '${name}'\n`, { mode: 0o755 });
   for (const args of [[], ['--apply'], ['--status']]) {
@@ -86,9 +86,9 @@ for (const name of ['MacBook-Pro', 'Locals-MacBook-Pro']) test(`R1: client refus
     expect(result.out).not.toContain('client host');
   }
 });
-test('R1: unknown hostname remains a client', () => {
+for (const hostname of ['Third-Party-Mac', 'Locals-MacBook-Pro']) test(`P5: ${hostname} is a release client`, () => {
   const f = fixture();
-  writeFileSync(path.join(f.env.PATH, 'scutil'), "#!/bin/sh\nprintf '%s\\n' 'Third-Party-Mac'\n", { mode: 0o755 });
+  writeFileSync(path.join(f.env.PATH, 'scutil'), `#!/bin/sh\nprintf '%s\\n' '${hostname}'\n`, { mode: 0o755 });
   expect(run(f, '--apply').status).toBe(0);
 });
 test('R1: a receipt manifest hash rejects a rewritten manifest before writes', () => {
@@ -209,4 +209,73 @@ test('client migration removes skipped golems registrations while preserving ext
   expect(JSON.stringify(settings)).not.toContain('model-pin-gate-hook');
   expect(settings.hooks.SessionStart[0].hooks).toEqual([external]);
   expect(run(f, '--status').status).toBe(0);
+});
+
+function formerOwner(f) {
+  const hooks = path.join(f.home, '.claude/hooks'); mkdirSync(hooks, { recursive: true });
+  writeFileSync(path.join(f.env.PATH, 'scutil'), "#!/bin/sh\nprintf '%s\\n' 'Locals-MacBook-Pro'\n", { mode: 0o755 });
+  writeFileSync(path.join(hooks, 'golems-hooks-live.sha'), 'a'.repeat(40) + '\n');
+  for (const name of ['tmp-block', 'model-pin-gate', 'nested/old']) {
+    const at = path.join(hooks, name); mkdirSync(path.dirname(at), { recursive: true });
+    symlinkSync(path.relative(path.dirname(at), path.join(f.home, 'Gits/golems/.worktrees/hooks-live', name)), at);
+  }
+  symlinkSync('/foreign/external.py', path.join(hooks, 'external.py'));
+  writeFileSync(path.join(f.home, '.claude/settings.json'), JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Task', hooks: [{ type: 'command', command: 'node /old/model-pin-gate-hook.mjs' }] }] } }, null, 2) + '\n');
+  mkdirSync(path.join(f.home, '.codex'));
+  writeFileSync(path.join(f.home, '.codex/hooks.json'), '{"hooks":{}}\n');
+  return hooks;
+}
+test('P5: explicit former-owner migration archives pin/links, installs both clients, and denies no-token leases', () => {
+  const f = fixture(), hooks = formerOwner(f);
+  const oldPin = readFileSync(path.join(hooks, 'golems-hooks-live.sha'));
+  const result = run(f, '--migrate-owner-install', '--apply'); expect(result.status, result.out).toBe(0);
+  expect(existsSync(path.join(hooks, 'golems-hooks-live.sha'))).toBe(false);
+  expect(existsSync(path.join(hooks, 'model-pin-gate'))).toBe(false);
+  expect(readlinkSync(path.join(hooks, 'tmp-block'))).toBe(path.join(f.source, 'skills/golem-powers/tmp-block'));
+  expect(readlinkSync(path.join(hooks, 'external.py'))).toBe('/foreign/external.py');
+  const archive = path.join(f.home, '.golems/archive', readdirSync(path.join(f.home, '.golems/archive'))[0]);
+  const receipt = JSON.parse(readFileSync(path.join(archive, 'receipt.json')));
+  expect(receipt.source).toBe(f.source); expect(receipt.commit).toBe(f.release.commit);
+  expect(receipt.archived.sort()).toEqual(['golems-hooks-live.sha', 'model-pin-gate', 'nested/old', 'tmp-block']);
+  expect(readFileSync(path.join(archive, 'hooks/golems-hooks-live.sha'))).toEqual(oldPin);
+  expect(readlinkSync(path.join(archive, 'hooks/nested/old'))).toContain('hooks-live');
+  const status = run(f, '--status'); expect(status.status, status.out).toBe(0); expect(status.out).toContain('drift=0');
+  for (const client of ['.claude/settings.json', '.codex/hooks.json']) {
+    const groups = JSON.parse(readFileSync(path.join(f.home, client))).hooks.PreToolUse;
+    const hook = groups.flatMap(g => g.hooks).find(h => h.command.includes('human-confirm')).command;
+    const payload = { tool_name: 'Bash', cwd: f.home, session_id: 'P5', tool_input: { command: `git push --force-with-lease=refs/heads/topic:${'a'.repeat(40)} origin HEAD:refs/heads/topic` } };
+    const r = spawnSync('/bin/sh', ['-c', hook], { env: f.env, input: JSON.stringify(payload), encoding: 'utf8' });
+    expect(r.status).toBe(client.startsWith('.claude') ? 2 : 0);
+    expect(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision).toBe('deny');
+  }
+});
+for (const mode of ['without-flag', 'dry-run', 'mbp']) test(`P5: ${mode} preserves former-owner HOME`, () => {
+  const f = fixture(); formerOwner(f);
+  if (mode === 'mbp') writeFileSync(path.join(f.env.PATH, 'scutil'), "#!/bin/sh\nprintf '%s\\n' 'MacBook-Pro'\n", { mode: 0o755 });
+  const before = snapshot(f.home), args = mode === 'without-flag' ? ['--apply'] : ['--migrate-owner-install', ...(mode === 'dry-run' ? [] : ['--apply'])];
+  const r = run(f, ...args); expect(snapshot(f.home)).toEqual(before);
+  expect(r.status, r.out).toBe(mode === 'dry-run' ? 0 : 1);
+});
+for (const destination of ['settings.json', 'hooks.json']) test(`P5: failure replacing ${destination} rolls back pin, links, both configurations and backups`, () => {
+  const f = fixture(); formerOwner(f);
+  const inject = path.join(f.root, 'fault.mjs');
+  writeFileSync(inject, `import fs from 'node:fs'; import { syncBuiltinESMExports } from 'node:module'; const rename = fs.renameSync; let fired = false; fs.renameSync = (a, b) => { if (!fired && b.endsWith('/${destination}')) { fired = true; throw new Error('P5 injected install failure'); } return rename(a, b); }; syncBuiltinESMExports();`);
+  f.env.NODE_OPTIONS = `--import=${inject}`;
+  const before = snapshot(f.home), r = run(f, '--migrate-owner-install', '--apply');
+  expect(r.status, r.out).not.toBe(0); expect(r.out).toContain('P5 injected install failure');
+  expect(snapshot(f.home)).toEqual(before);
+});
+
+for (const script of [null, '#!/bin/sh\nexit 1\n', '#!/bin/sh\nexit 0\n']) test('P5: migration refuses unavailable machine identity without writes', () => {
+  const f = fixture(); formerOwner(f); const at = path.join(f.env.PATH, 'scutil');
+  if (script) writeFileSync(at, script, { mode: 0o755 }); else rmSync(at);
+  const before = snapshot(f.home), r = run(f, '--migrate-owner-install', '--apply');
+  expect(r.status, r.out).not.toBe(0); expect(r.out).toContain('machine identity unavailable'); expect(snapshot(f.home)).toEqual(before);
+});
+for (const name of ['golems-fail-open.py', 'golems-hooks-release.json']) test(`P5: migration refuses foreign writable alias ${name}`, () => {
+  const f = fixture(), hooks = formerOwner(f), foreign = path.join(f.root, 'foreign');
+  writeFileSync(foreign, 'foreign bytes'); symlinkSync(foreign, path.join(hooks, name));
+  const before = snapshot(f.home), r = run(f, '--migrate-owner-install', '--apply');
+  expect(r.status, r.out).not.toBe(0); expect(r.out).toContain('non-regular file');
+  expect(snapshot(f.home)).toEqual(before); expect(readFileSync(foreign, 'utf8')).toBe('foreign bytes');
 });

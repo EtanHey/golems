@@ -38,6 +38,15 @@ Python 3 and GitHub CLI. Existing checkout skill links are kept unless you pass
 `--replace-checkout-links`. Hook installation is a separate step.
 See [release installation](scripts/release/README.md) for pinned and offline installs.
 
+For a former M1 owner install, run the nightly release installer above with
+`--replace-checkout-links`, then run `node ~/.golems/current/scripts/hooks/install-hooks.mjs
+--host client --source ~/.golems/current --migrate-owner-install --apply` and verify
+`node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client --source
+~/.golems/current --status` reports `drift=0`. The migration archives the old owner
+pin and hooks-live links under `~/.golems/archive/owner-install-<timestamp>-<id>/`
+with a receipt, and restores the install if a write fails. The MBP owner refuses
+this flag. Native Codex `/hooks` trust review remains a separate step.
+
 For development from a checkout:
 
 You need [Bun](https://bun.sh/), [Node.js](https://nodejs.org/), and Git. CI
