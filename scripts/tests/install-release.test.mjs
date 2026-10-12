@@ -24,7 +24,7 @@ beforeAll(() => {
   git('init', '-b', 'master'); git('config', 'user.name', 'Installer Fixture'); git('config', 'user.email', 'fixture@example.com');
   git('add', '.'); git('commit', '-m', 'current payload');
   release = buildRelease({ repo: source, out: join(root, 'assets') });
-  for (const name of ['awk', 'basename', 'cat', 'chmod', 'cmp', 'cp', 'curl', 'cut', 'date', 'dirname', 'find', 'ln', 'mkdir', 'mktemp', 'mv', 'readlink', 'rm', 'rmdir', 'sed', 'sh', 'shasum', 'sort', 'tar', 'xargs']) {
+  for (const name of ['awk', 'basename', 'cat', 'chmod', 'cmp', 'cp', 'curl', 'cut', 'date', 'dirname', 'find', 'gzip', 'ln', 'mkdir', 'mktemp', 'mv', 'readlink', 'rm', 'rmdir', 'sed', 'sh', 'shasum', 'sort', 'tar', 'xargs']) {
     symlinkSync(execFileSync('/usr/bin/which', [name], { encoding: 'utf8' }).trim(), join(minimal, name));
   }
 }, 60_000);
