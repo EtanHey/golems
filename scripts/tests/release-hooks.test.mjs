@@ -147,6 +147,16 @@ test('R1: client Claude and Codex shell fallbacks give release repair instructio
     expect(output).not.toContain('~/Gits');
   }
 });
+test('client launcher missing-hook denial gives the release repair hint', () => {
+  const f = fixture(); expect(run(f, '--apply').status).toBe(0);
+  const hook = JSON.parse(readFileSync(path.join(f.home, '.claude/settings.json'))).hooks.PreToolUse.flatMap(g => g.hooks).find(h => h.command.includes('human-confirm-pretooluse')).command;
+  rmSync(path.join(f.source, 'skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py'));
+  rmSync(path.join(f.home, '.claude/hooks/golems-hooks-release.json'));
+  const r = spawnSync('/bin/sh', ['-c', hook], { env: f.env, input: '{}', encoding: 'utf8' });
+  expect(r.status).toBe(2);
+  expect(JSON.parse(r.stdout).reason).toContain('install-hooks.mjs --host client --source ~/.golems/current --apply');
+  expect(r.stdout).not.toContain('~/Gits');
+});
 test('installed Claude and Codex human-confirm deny a no-token lease and allow an ordinary command', () => {
   const f = fixture(); expect(run(f, '--apply').status).toBe(0);
   const claude = JSON.parse(readFileSync(path.join(f.home, '.claude/settings.json'))).hooks.PreToolUse.flatMap(g => g.hooks).find(h => h.command.includes('human-confirm-pretooluse')).command;

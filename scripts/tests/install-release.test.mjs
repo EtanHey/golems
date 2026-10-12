@@ -15,6 +15,7 @@ beforeAll(() => {
   // Snapshot the current payload into a scratch Git repo: P1 builds committed objects only.
   const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repo, encoding: 'utf8' }).split('\0').filter(Boolean);
   paths.push('scripts/release/install.sh');
+  paths.push('scripts/hooks/client-install-transaction.mjs');
   for (const path of new Set(paths.filter(p => /^(skills\/golem-powers\/|scripts\/(pr-watch|repogolem\/|hooks\/|model-roles.mjs|ci\/check-model-role-drift.mjs)|packages\/golem-skills\/|standards\/model-roles|\.claude\/hooks\/block-dangerous-commands.py|hooks\/daemon-gate-precheck.py|\.bun-version$|LICENSE$|package.json$|release-gate.json$|scripts\/release\/install.sh$)/.test(p)))) {
     if (!existsSync(join(repo, path))) continue;
     mkdirSync(dirname(join(source, path)), { recursive: true });
@@ -225,4 +226,75 @@ test('four upgrades retain current plus two previous releases and atomically rep
   expect(readdirSync(join(dir, '.golems/releases')).sort()).toEqual(versions.slice(1).sort());
   expect(readlinkSync(join(dir, '.golems/current'))).toBe(`releases/${versions[3]}`);
   expect(existsSync(join(dir, '.golems/releases', versions[1], 'current'))).toBe(false);
+});
+
+function runtime(dir) {
+  const bin = join(dir, 'runtime'); mkdirSync(bin);
+  for (const name of readdirSync(minimal)) symlinkSync(join(minimal, name), join(bin, name));
+  for (const name of ['node', 'python3']) symlinkSync(execFileSync('/usr/bin/which', [name], { encoding: 'utf8' }).trim(), join(bin, name));
+  const env = { ...process.env, HOME: dir, CODEX_HOME: join(dir, '.codex'), PATH: bin, TMP_BLOCK_LEDGER: join(dir, 'ledger.jsonl') };
+  for (const key of ['WEAVE_ALLOW_TMP', 'PYTHONPATH', 'PYTHONHOME', 'GOLEM_ROLE', 'GOLEMS_WORKER', 'GOLEMS_HEAVY_SUITE_HELD']) delete env[key];
+  return env;
+}
+const update = (dir, env, next) => {
+  const wrapper = join(dir, '.golems/bin/golems-cli'), installed = existsSync(wrapper);
+  return spawnSync(installed ? wrapper : '/bin/sh', [installed ? 'update' : installer, '--from-file', next.tarball, '--sums', join(dirname(next.tarball), 'SHA256SUMS')], { env, encoding: 'utf8' });
+};
+const hooks = (dir, env, flag) => spawnSync('node', [join(dir, '.golems/current/scripts/hooks/install-hooks.mjs'), '--host', 'client', '--source', join(dir, '.golems/current'), flag], { env, encoding: 'utf8' });
+function upgrade(change = () => {}) {
+  writeFileSync(join(source, 'LICENSE'), `hook update ${serial++}\n`); change(); git('add', '.'); git('commit', '-m', 'hook update fixture');
+  return buildRelease({ repo: source, out: join(root, `hooks-upgrade-${serial++}`) });
+}
+function hookState(dir) {
+  const snapshot = at => {
+    const st = lstatSync(at);
+    return [st.mode, st.isSymbolicLink() ? readlinkSync(at) : st.isDirectory() ? readdirSync(at).sort().map(n => [n, snapshot(join(at, n))]) : readFileSync(at).toString('base64')];
+  };
+  return ['.claude/hooks', '.claude/settings.json', '.codex/hooks.json', '.golems/current', '.golems/release.json', '.golems/release-history'].map(p => snapshot(join(dir, p)));
+}
+test('client hooks survive four release installs: verified pins, drift zero and no-token lease DENY in both clients', () => {
+  const dir = home(), env = runtime(dir); ok(update(dir, env, release)); ok(hooks(dir, env, '--apply'));
+  for (let i = 0; i < 3; i++) {
+    const next = upgrade(); ok(update(dir, env, next));
+    const status = hooks(dir, env, '--status'); ok(status); expect(status.stdout).toContain('drift=0');
+    expect(readlinkSync(join(dir, '.claude/hooks/tmp-block'))).toBe(join(dir, '.golems/releases', next.version, 'skills/golem-powers/tmp-block'));
+    const claude = JSON.parse(readFileSync(join(dir, '.claude/settings.json'))).hooks.PreToolUse.flatMap(g => g.hooks).find(h => h.command.includes('human-confirm-pretooluse')).command;
+    const codex = JSON.parse(readFileSync(join(dir, '.codex/hooks.json'))).hooks.PreToolUse.flatMap(g => g.hooks).find(h => h.command.includes('human-confirm')).command;
+    for (const command of [claude, codex]) {
+      const denied = spawnSync('/bin/sh', ['-c', command], { env, encoding: 'utf8', input: JSON.stringify({ tool_name: 'Bash', cwd: dir, session_id: 'fixture', tool_input: { command: `git push --force-with-lease=refs/heads/topic:${'a'.repeat(40)} origin HEAD:refs/heads/topic` } }) });
+      expect(denied.status).toBe(command === claude ? 2 : 0);
+      expect(JSON.parse(denied.stdout).hookSpecificOutput.permissionDecision).toBe('deny');
+      expect(denied.stdout + denied.stderr).not.toContain('policy hook unavailable');
+    }
+  }
+});
+test('failed client reinstallation restores previous current, receipts and partially rewritten hooks', () => {
+  const dir = home(), env = runtime(dir); ok(update(dir, env, release)); ok(hooks(dir, env, '--apply'));
+  const at = join(source, 'scripts/hooks/codex-hooks-install.mjs'), original = readFileSync(at, 'utf8');
+  const next = upgrade(() => writeFileSync(at, original.replace('renameSync(stage, plan.at);', "renameSync(stage, plan.at); throw new Error('fixture: late Codex failure');")));
+  const before = hookState(dir), result = update(dir, env, next);
+  expect(result.status).not.toBe(0); expect(result.stderr).toContain('late Codex failure');
+  expect(hookState(dir)).toEqual(before);
+  const status = hooks(dir, env, '--status'); ok(status); expect(status.stdout).toContain('drift=0');
+  writeFileSync(at, original); git('add', '.'); git('commit', '-m', 'restore fixture installer');
+});
+test('client update without Node refuses and preserves release and hooks', () => {
+  const dir = home(), env = runtime(dir); ok(update(dir, env, release)); ok(hooks(dir, env, '--apply'));
+  const before = hookState(dir), result = update(dir, { ...env, PATH: minimal }, upgrade());
+  expect(result.status).not.toBe(0); expect(result.stderr).toContain('node');
+  expect(hookState(dir)).toEqual(before);
+});
+test('a release without rollback support cannot update an existing client hook install', () => {
+  const dir = home(), env = runtime(dir); ok(update(dir, env, release)); ok(hooks(dir, env, '--apply'));
+  const before = hookState(dir), [tarball, sums] = repack(payload => {
+    const at = join(payload, 'scripts/hooks/release-hooks.mjs');
+    writeFileSync(at, readFileSync(at, 'utf8').replace('export const CLIENT_INSTALL_PROTOCOL = 1;', ''));
+    const manifestPath = join(payload, 'MANIFEST.json'), manifest = JSON.parse(readFileSync(manifestPath));
+    manifest.files.find(r => r.path === 'scripts/hooks/release-hooks.mjs').sha256 = createHash('sha256').update(readFileSync(at)).digest('hex');
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+  });
+  // A fresh prefix with an existing client HOME must also enforce the protocol.
+  const result = spawnSync('/bin/sh', [installer, '--prefix', join(dir, 'other-prefix'), '--from-file', tarball, '--sums', sums], { env, encoding: 'utf8' });
+  expect(result.status).not.toBe(0); expect(result.stderr).toContain('rollback protocol');
+  expect(hookState(dir)).toEqual(before);
 });
