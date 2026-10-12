@@ -375,3 +375,27 @@ test('github-release requires a published release with all three assets; equal d
   assets = [];
   expect(inspectRelease({ repo: root, manifest, releaseOnly: true }, command).verdict).toBe('UNKNOWN');
 });
+
+for (const shaMode of [false, true]) test(`github-release nightly prereleases work in ${shaMode ? '--sha' : 'release-only'} mode; drafts and other channels fail closed`, () => {
+  const root = mkdtempSync(join(repoRoot, '.release-gate-test-')); scratch.push(root);
+  const manifest = join(root, 'gate.json'), installed = join(root, 'release.json');
+  const version = '2026.10.11-abcdef0', commit = 'abcdef0' + '1'.repeat(33);
+  writeFileSync(installed, JSON.stringify({ version }));
+  let draft = false, prerelease = true, channel = 'nightly', assets = [`golems-${version}.tar.gz`, 'MANIFEST.json', 'SHA256SUMS'];
+  const command = (program, args) => {
+    if (program === 'gh') return { status: 0, stdout: JSON.stringify({ draft, prerelease, assets: assets.map(name => ({ name, state: 'uploaded', size: 1 })) }), stderr: '' };
+    const key = args.join(' ');
+    const stdout = key.includes('get-url') ? 'https://github.com/EtanHey/golems.git' : key.includes('remote show') ? 'HEAD branch: master' : key.includes('ls-remote') ? `${commit}\trefs/tags/v${version}` : key.includes('--is-shallow') ? 'false' : key.includes('rev-parse') ? commit : key.includes('--first-parent') ? `HEAD, tag: v${version}` : key.includes('--count') ? '0' : '';
+    return { status: 0, stdout, stderr: '' };
+  };
+  const inspect = () => {
+    writeFileSync(manifest, JSON.stringify({ repositories: { 'EtanHey/golems': { channel, artifact: { kind: 'github-release', releaseJson: installed } } } }));
+    return inspectRelease({ repo: root, manifest, ...(shaMode ? { sha: commit } : { releaseOnly: true }) }, command);
+  };
+  expect(inspect().verdict).toBe(shaMode ? 'CONTAINED' : 'CLEAN');
+  draft = true; expect(inspect().verdict).toBe('UNKNOWN'); draft = false;
+  assets = []; expect(inspect().verdict).toBe('UNKNOWN'); assets = [`golems-${version}.tar.gz`, 'MANIFEST.json', 'SHA256SUMS'];
+  channel = undefined; expect(inspect().verdict).toBe('UNKNOWN');
+  channel = 'stable'; expect(inspect().verdict).toBe('UNKNOWN');
+  prerelease = false; expect(inspect().verdict).toBe(shaMode ? 'CONTAINED' : 'CLEAN');
+});

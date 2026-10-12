@@ -2,13 +2,12 @@ import { afterAll, beforeAll, expect, setDefaultTimeout, test } from 'bun:test';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { buildRelease } from '../release/build-release.mjs';
 
 const repo = resolve(import.meta.dir, '../..'), installer = join(repo, 'scripts/release/install.sh');
 setDefaultTimeout(60_000);
-const root = realpathSync(mkdtempSync(join(tmpdir(), 'golems-install-test-'))), source = join(root, 'source'), minimal = join(root, 'bin');
+const root = realpathSync(mkdtempSync(join(repo, '.golems-install-test-'))), source = join(root, 'source'), minimal = join(root, 'bin');
 let release, serial = 0;
 const git = (...args) => execFileSync('git', ['-C', source, ...args], { encoding: 'utf8' }).trim();
 beforeAll(() => {
@@ -38,11 +37,13 @@ const ok = result => { expect(result.stderr).toBe(''); expect(result.status).toB
 test('fresh install without git, node or bun links both clients and writes release.json', () => {
   const dir = home(), result = install(dir); ok(result);
   expect(result.stdout).toContain('PATH');
+  expect(result.stdout).toContain(release.commit);
+  expect(result.stdout).toContain(createHash('sha256').update(readFileSync(release.tarball)).digest('hex'));
   const prefix = join(dir, '.golems');
   expect(readlinkSync(join(prefix, 'current'))).toBe(`releases/${release.version}`);
   expect(readlinkSync(join(dir, '.codex/skills'))).toBe(join(dir, '.agents/skills'));
   for (const client of ['.claude', '.agents']) expect(readlinkSync(join(dir, client, 'skills/pr-loop'))).toBe(join(prefix, 'current/skills/golem-powers/pr-loop'));
-  expect(JSON.parse(readFileSync(join(prefix, 'release.json')))).toMatchObject({ version: release.version, commit: release.commit, channel: 'nightly', tarball_sha256: createHash('sha256').update(readFileSync(release.tarball)).digest('hex') });
+  expect(JSON.parse(readFileSync(join(prefix, 'release.json')))).toMatchObject({ version: release.version, commit: release.commit, channel: 'nightly', manifest_sha256: createHash('sha256').update(readFileSync(join(root, 'assets/MANIFEST.json'))).digest('hex'), tarball_sha256: createHash('sha256').update(readFileSync(release.tarball)).digest('hex') });
   expect(existsSync(join(prefix, 'installed.json'))).toBe(false);
   expect(existsSync(join(prefix, 'current/scripts/release/install.sh'))).toBe(true);
   expect(JSON.parse(readFileSync(join(prefix, 'current/release-gate.json'))).repositories['EtanHey/golems'].artifact.kind).toBe('github-release');
@@ -52,7 +53,7 @@ test('fresh install without git, node or bun links both clients and writes relea
 test('second install is a no-op, including through the installed update wrapper', () => {
   const dir = home(); ok(install(dir));
   const metadata = readFileSync(join(dir, '.golems/release.json'));
-  const result = install(dir); ok(result); expect(result.stdout).toContain('already current');
+  const result = install(dir); ok(result); expect(result.stdout).toContain('already current'); expect(result.stdout).toContain(release.commit); expect(result.stdout).toContain(createHash('sha256').update(readFileSync(release.tarball)).digest('hex'));
   expect(readFileSync(join(dir, '.golems/release.json'))).toEqual(metadata);
   const update = spawnSync(join(dir, '.golems/bin/golems-cli'), ['update', '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], { env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8' });
   ok(update); expect(update.stdout).toContain('already current');
@@ -97,7 +98,7 @@ test('symlink archive entries and unmanifested payload files are refused', () =>
 test('custom prefix with spaces works and an in-progress install refuses cleanly', () => {
   const dir = home(), prefix = join(dir, 'custom prefix'); ok(install(dir, ['--prefix', prefix]));
   mkdirSync(join(prefix, '.install-lock'));
-  const result = install(dir, ['--prefix', prefix]); expect(result.status).not.toBe(0); expect(result.stderr).toContain('another install');
+  const result = install(dir, ['--prefix', prefix]); expect(result.status).not.toBe(0); expect(result.stderr).toContain('another install'); expect(result.stderr).toContain(join(prefix, '.install-lock'));
   expect(existsSync(join(prefix, '.install-lock'))).toBe(true);
 });
 test('symlinked install and client directories refuse without touching their targets', () => {
@@ -111,30 +112,82 @@ test('symlinked install and client directories refuse without touching their tar
 test('nightly publication workflow marks releases as prereleases', () => {
   expect(readFileSync(join(repo, '.github/workflows/golems-release.yml'), 'utf8')).toContain('--prerelease');
 });
-test('nightly scans pages by publication date, ignores stable/draft releases, and supports pinned tags', () => {
+test('nightly uses only page one and newest created_at including stable releases, with optional API auth', () => {
   const fixture = join(root, 'network'), bin = join(fixture, 'bin'); mkdirSync(bin, { recursive: true });
   for (const file of readdirSync(join(root, 'assets'))) copyFileSync(join(root, 'assets', file), join(fixture, file));
   for (const tool of readdirSync(minimal).filter(tool => tool !== 'curl')) symlinkSync(join(minimal, tool), join(bin, tool));
-  const tag = `v${release.version}`, entry = (tag_name, published_at, extra = {}) => ({ tag_name, published_at, draft: false, prerelease: true, body: 'nested "tag_name": fake\n Unicode: \\u1234', ...extra });
-  writeFileSync(join(fixture, 'page1.json'), JSON.stringify(Array.from({ length: 100 }, () => entry('v2026.01.01-deadbee', '2026-01-01T00:00:00Z'))));
-  writeFileSync(join(fixture, 'page2.json'), JSON.stringify([entry(tag, '2026-10-12T00:00:00Z'), entry('v2026.10.13-abcdef0', '2026-10-13T00:00:00Z', { prerelease: false }), entry('v2026.10.14-abcdef0', '2026-10-14T00:00:00Z', { draft: true })]));
+  const tag = `v${release.version}`, entry = (tag_name, created_at, extra = {}) => ({ tag_name, created_at, published_at: '2099-01-01T00:00:00Z', draft: false, prerelease: true, body: 'escaped "tag_name": fake\n' + 'x'.repeat(4000), ...extra });
+  // Deliberately larger than the requested page: stress the macOS awk parser.
+  writeFileSync(join(fixture, 'page1.json'), JSON.stringify([
+    entry('v2026.10.14-abcdef0', '2026-10-14T00:00:00Z', { draft: true }),
+    entry(tag, '2026-10-12T00:00:00Z', { prerelease: false, published_at: '2000-01-01T00:00:00Z' }),
+    ...Array.from({ length: 100 }, () => entry('v2026.01.01-deadbee', '2026-01-01T00:00:00Z')),
+  ]));
   writeFileSync(join(fixture, 'release.json'), JSON.stringify(entry(tag, '2026-10-12T00:00:00Z')));
   writeFileSync(join(bin, 'curl'), `#!/bin/sh
-while [ "$#" -gt 0 ]; do case "$1" in https://*) url=$1 ;; -o) shift; output=$1 ;; esac; shift; done
+printf '%s\\n' "$@" >> "$FIXTURE/args"
+while [ "$#" -gt 0 ]; do case "$1" in https://*) url=$1 ;; -o) shift; output=$1 ;; -w) shift ;; esac; shift; done
 printf '%s\\n' "$url" >> "$FIXTURE/requests"
-case "$url" in *'page=1') file=page1.json ;; *'page=2') file=page2.json ;; *'/tags/'*) file=release.json ;; *) file=$(basename "$url") ;; esac
+case "$url" in https://github.com/*) printf '302\\nhttps://release-assets.githubusercontent.com/fixture/%s' "$(basename "$url")"; exit ;; esac
+case "$url" in *'page=1') file=page1.json ;; *'/tags/'*) file=release.json ;; *) file=$(basename "$url") ;; esac
 cp "$FIXTURE/$file" "$output"
+printf 200
 `); chmodSync(join(bin, 'curl'), 0o755);
   for (const channel of ['nightly', tag]) {
-    const dir = home();
-    ok(spawnSync('/bin/sh', [installer, '--channel', channel], { env: { ...process.env, HOME: dir, PATH: bin, FIXTURE: fixture }, encoding: 'utf8' }));
+    const dir = home(), started = performance.now();
+    ok(spawnSync('/bin/sh', [installer, '--channel', channel], { env: { ...process.env, HOME: dir, PATH: bin, FIXTURE: fixture, GITHUB_TOKEN: 'fixture-token' }, encoding: 'utf8', timeout: 10_000 }));
+    expect(performance.now() - started).toBeLessThan(10_000);
     expect(JSON.parse(readFileSync(join(dir, '.golems/release.json'))).channel).toBe(channel);
     expect(readlinkSync(join(dir, '.golems/current'))).toBe(`releases/${release.version}`);
   }
-  expect(readFileSync(join(fixture, 'requests'), 'utf8')).toContain('page=2');
+  const requests = readFileSync(join(fixture, 'requests'), 'utf8').trim().split('\n');
+  expect(requests.filter(url => url.startsWith('https://release-assets.githubusercontent.com/'))).toHaveLength(6);
+  expect(requests.filter(url => url.includes('?'))).toEqual(['https://api.github.com/repos/EtanHey/golems/releases?per_page=30&page=1']);
+  const args = readFileSync(join(fixture, 'args'), 'utf8');
+  expect(args.split('Authorization: Bearer fixture-token').length - 1).toBe(3); // API only; never asset hosts.
   writeFileSync(join(fixture, 'MANIFEST.json'), '{}');
   const dir = home(), refused = spawnSync('/bin/sh', [installer, '--channel', tag], { env: { ...process.env, HOME: dir, PATH: bin, FIXTURE: fixture }, encoding: 'utf8' });
   expect(refused.status).not.toBe(0); expect(refused.stderr).toContain('checksum');
+  expect(existsSync(join(dir, '.golems/current'))).toBe(false);
+});
+test('API 403 reports rate limiting clearly without activation', () => {
+  const dir = home(), bin = join(dir, 'bin'); mkdirSync(bin);
+  for (const tool of readdirSync(minimal).filter(tool => tool !== 'curl')) symlinkSync(join(minimal, tool), join(bin, tool));
+  writeFileSync(join(bin, 'curl'), '#!/bin/sh\nprintf 403\n'); chmodSync(join(bin, 'curl'), 0o755);
+  const result = spawnSync('/bin/sh', [installer], { env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8' });
+  expect(result.status).not.toBe(0); expect(result.stderr).toContain('rate limit'); expect(result.stderr).toContain('GITHUB_TOKEN');
+  expect(existsSync(join(dir, '.golems/current'))).toBe(false);
+});
+test('redirects refuse non-GitHub hosts and HTTP before requesting the target', () => {
+  for (const target of ['https://example.com/payload', 'http://github.com/payload', 'https://api.github.com@example.com/payload']) {
+    const dir = home(), bin = join(dir, 'bin'); mkdirSync(bin);
+    for (const tool of readdirSync(minimal).filter(tool => tool !== 'curl')) symlinkSync(join(minimal, tool), join(bin, tool));
+    writeFileSync(join(bin, 'curl'), `#!/bin/sh
+printf 'request\\n' >> "$HOME/requests"
+printf '302\\n%s' "$REDIRECT_TARGET"
+`); chmodSync(join(bin, 'curl'), 0o755);
+    const result = spawnSync('/bin/sh', [installer], { env: { ...process.env, HOME: dir, PATH: bin, REDIRECT_TARGET: target }, encoding: 'utf8' });
+    expect(result.status).not.toBe(0); expect(result.stderr).toContain('refusing download host');
+    expect(readFileSync(join(dir, 'requests'), 'utf8')).toBe('request\n');
+    expect(existsSync(join(dir, '.golems/current'))).toBe(false);
+  }
+});
+test('truncated piped installer never executes setup or download side effects', () => {
+  const script = readFileSync(installer, 'utf8');
+  for (const marker of ['mkdir -p "$prefix"', 'download()', "printf 'golems %s installed"]) {
+    const dir = home(), cut = script.indexOf(marker); expect(cut).toBeGreaterThan(0);
+    spawnSync('/bin/sh', [], { input: script.slice(0, cut), env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8' });
+    expect(existsSync(join(dir, '.golems'))).toBe(false);
+  }
+});
+test('manifest commit must match the filename tag SHA suffix even when checksums are valid', () => {
+  const dir = home();
+  const [tarball, sums] = repack(payload => {
+    const path = join(payload, 'MANIFEST.json'), manifest = JSON.parse(readFileSync(path));
+    manifest.commit = '0'.repeat(40); writeFileSync(path, JSON.stringify(manifest));
+  });
+  const result = install(dir, [], tarball, sums);
+  expect(result.status).not.toBe(0); expect(result.stderr).toContain('manifest commit mismatch');
   expect(existsSync(join(dir, '.golems/current'))).toBe(false);
 });
 test('four upgrades retain current plus two previous releases and atomically replace directory links', () => {

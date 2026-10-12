@@ -49,16 +49,19 @@ pin Node to 22.22.0.
 
 Resolve nightly as the newest published release by `created_at`, **including
 prereleases** and excluding drafts. GitHub's `/releases/latest` endpoint omits
-prereleases, so use the paginated release list instead:
+prereleases, so the installer requests only page 1 (`per_page=30`) and selects
+the newest non-draft by `created_at` from that response:
 
 ```sh
-gh api --paginate --slurp 'repos/EtanHey/golems/releases?per_page=100' | \
-  jq -er 'map(.[]) | map(select(.draft == false)) | max_by(.created_at) | .tag_name'
+gh api 'repos/EtanHey/golems/releases?per_page=30&page=1' | \
+  jq -er 'map(select(.draft == false)) | max_by(.created_at) | .tag_name'
 ```
 
 The `github-release` gate support requires a published release with all three
 assets. Local installation detection reads `~/.golems/release.json` and compares the full
 version, including the SHA suffix. `--release-only` skips local installation.
+Prereleases are accepted only for manifest entries with `channel:nightly`;
+drafts and missing assets remain refused, including in the `--sha` gate.
 Golems is `kind:github-release` in `release-gate.json`; workspace and daemon-host
 wizards return INSTALL with the public bootstrap command.
 
@@ -75,6 +78,12 @@ sh scripts/release/install.sh --from-file golems-2026.10.11-abcdef0.tar.gz --sum
 The installer needs POSIX sh, standard macOS/Linux utilities (including awk,
 xargs and mktemp), curl, tar and shasum. It needs no Git, Node, Bun or Python.
 JSON parsing is embedded so the one-liner downloads only the installer script.
+The body is enclosed in `main()` so a truncated piped download cannot execute
+installation steps. `GITHUB_TOKEN` optionally authenticates API requests; HTTP
+403 reports a possible rate limit and the token option. Downloads and every
+redirect require HTTPS and a GitHub host (`api.github.com`, `github.com`,
+`objects.githubusercontent.com`, or `release-assets.githubusercontent.com`).
+The API token is never forwarded to asset hosts.
 It verifies the tarball and standalone manifest checksums, rejects unsafe archive
 entries, and verifies every payload file before activating the release.
 Checksums establish integrity against SHA256SUMS fetched over HTTPS; they are
@@ -92,7 +101,9 @@ and `~/.agents/skills`; `~/.codex/skills` is linked to the latter only if absent
 Existing files/directories and foreign links are reported and kept. Links into
 `~/Gits/golems/` are replaced only with `--replace-checkout-links`; this flag also
 works on a same-version run. The installer writes `release.json` with version,
-commit, channel, installation time and tarball SHA256. It never writes the
+commit, channel, installation time, tarball SHA256 and `manifest_sha256`
+(the standalone manifest hash verified against SHA256SUMS). A successful install
+prints the version, full commit and tarball SHA256. It never writes the
 sync script's `installed.json`.
 Symlinked client parent directories and release/bin directories are refused
 to avoid writing through aliases into a checkout or another installation.

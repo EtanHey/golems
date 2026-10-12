@@ -1,5 +1,6 @@
 #!/bin/sh
 # Bootstrap needs only standard macOS/Linux utilities, curl, tar and shasum.
+main() {
 set -eu
 umask 077
 fail() { printf 'golems install: %s\n' "$*" >&2; exit 1; }
@@ -35,7 +36,7 @@ for name in current release.json release-history; do
   [ "$name" = current ] || [ ! -L "$prefix/$name" ] || fail "$name must not be a symlink"
   [ "$name" = current ] || [ ! -e "$prefix/$name" ] || [ -f "$prefix/$name" ] || fail "$name must be a regular file"
 done
-mkdir "$prefix/.install-lock" 2>/dev/null || fail 'another install is active (or a stale .install-lock needs inspection)'
+mkdir "$prefix/.install-lock" 2>/dev/null || fail "another install is active (or stale lock needs inspection): $prefix/.install-lock"
 work=''
 cleanup() { [ -z "$work" ] || rm -rf "$work"; rmdir "$prefix/.install-lock"; }
 trap cleanup 0
@@ -43,46 +44,48 @@ trap 'exit 1' 1 2 3 15
 work=$(mktemp -d "$prefix/.install-XXXXXXXX")
 
 # Parse JSON without a runtime dependency. Only selected scalar fields are
-# emitted; descriptions/bodies can contain arbitrary escapes and nested JSON.
+# emitted; scan a character array so macOS awk does not repeatedly copy the
+# full document. Unselected strings are validated without building their value.
 json_fields() {
   awk '
   function bad() { exit 1 }
-  function ws() { while (substr(s,pos,1) ~ /[ \t\r\n]/ && pos <= length(s)) pos++ }
-  function str( out,c,e,h) {
-    if (substr(s,pos++,1) != "\"") bad()
-    while (pos <= length(s)) {
-      c=substr(s,pos++,1); if (c=="\"") return out
+  function ws() { while (pos <= size && ch[pos] ~ /[ \t\r\n]/) pos++ }
+  function selected(p) { return p ~ /^(version|commit|files\.[0-9]+\.(path|sha256|mode)|([0-9]+\.)?(tag_name|draft|prerelease|created_at))$/ }
+  function str(capture, out,c,e,h,i) {
+    if (ch[pos++] != "\"") bad()
+    while (pos <= size) {
+      c=ch[pos++]; if (c=="\"") return out
       if (c ~ /[[:cntrl:]]/) bad()
       if (c=="\\") {
-        e=substr(s,pos++,1)
-        if (e=="u") { h=substr(s,pos,4); if (length(h)!=4 || h ~ /[^0-9a-fA-F]/) bad(); pos+=4; c="\\u" h }
+        e=ch[pos++]
+        if (e=="u") { h=""; for(i=0;i<4;i++) h=h ch[pos+i]; if (length(h)!=4 || h ~ /[^0-9a-fA-F]/) bad(); pos+=4; c="\\u" h }
         else if (e ~ /^["\\\/]$/) c=e
         else if (e ~ /^[bfnrt]$/) c="\\" e
         else bad()
       }
-      out=out c
+      if (capture) out=out c
     }
     bad()
   }
   function value(p, c,k,n,v,q) {
-    ws(); c=substr(s,pos,1)
+    ws(); c=ch[pos]
     if (c=="{" || c=="[") {
       pos++; ws(); q=(c=="{" ? "}" : "]")
-      if (substr(s,pos,1)==q) {pos++; return}
+      if (ch[pos]==q) {pos++; return}
       n=0
       while (1) {
-        ws(); if (c=="{") {k=str(); ws(); if(substr(s,pos++,1)!=":") bad()} else k=n++
+        ws(); if (c=="{") {k=str(1); ws(); if(ch[pos++]!=":") bad()} else k=n++
         v=(p=="" ? k : p "." k); if (seen[v]++) bad(); value(v); ws()
-        k=substr(s,pos++,1); if(k==q) return; if(k!=",") bad()
+        k=ch[pos++]; if(k==q) return; if(k!=",") bad()
       }
     }
-    if (c=="\"") v=str()
-    else { v=""; while (pos<=length(s) && substr(s,pos,1) !~ /[ \t\r\n,}\]]/) v=v substr(s,pos++,1)
+    if (c=="\"") v=str(selected(p))
+    else { v=""; while (pos<=size && ch[pos] !~ /[ \t\r\n,}\]]/) v=v ch[pos++]
       if(v !~ /^(true|false|null|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?)$/) bad()
     }
-    if (p ~ /^(version|commit|files\.[0-9]+\.(path|sha256|mode)|([0-9]+\.)?(tag_name|draft|prerelease|published_at))$/) print p "\t" v
+    if (selected(p)) print p "\t" v
   }
-  {s=s $0 "\n"} END {pos=1; value(""); ws(); if(pos<=length(s)) bad()}
+  {nchars=split($0,line,""); for(j=1;j<=nchars;j++) ch[++size]=line[j]; ch[++size]="\n"} END {pos=1; value(""); ws(); if(pos<=size) bad()}
   ' "$1" > "$2" || fail "invalid JSON: $1"
 }
 hash() { shasum -a 256 "$1" | awk '{print $1}'; }
@@ -90,25 +93,41 @@ check_sum() {
   expected=$(awk -v name="$2" '$2==name {h=$1; n++} END {if(n!=1 || length(h)!=64 || h ~ /[^0-9a-f]/) exit 1; print h}' "$work/SHA256SUMS") || fail "missing/ambiguous checksum: $2"
   [ "$(hash "$1")" = "$expected" ] || fail "checksum mismatch: $2"
 }
-download() { curl -fsSL --retry 2 --connect-timeout 20 --max-time 120 --proto '=https' --proto-redir '=https' "$1" -o "$2" || fail "download failed: $1"; }
+# Follow redirects ourselves: curl can restrict protocols but not redirect hosts.
+download() {
+  download_url=$1 download_path=$2 redirects=0
+  while :; do
+    case "$download_url" in
+      https://api.github.com/*|https://github.com/*|https://objects.githubusercontent.com/*|https://release-assets.githubusercontent.com/*) ;;
+      *) fail "refusing download host: $download_url" ;;
+    esac
+    set -- -sS --retry 2 --connect-timeout 20 --max-time 120 --proto '=https' --proto-redir '=https'
+    case "$download_url" in https://api.github.com/*)
+      [ -z "${GITHUB_TOKEN-}" ] || set -- "$@" -H "Authorization: Bearer $GITHUB_TOKEN" ;;
+    esac
+    response=$(curl "$@" "$download_url" -o "$download_path" -w '%{http_code}\n%{redirect_url}') || fail 'download transport failed'
+    status=$(printf '%s\n' "$response" | sed -n '1p')
+    case "$status" in
+      200) return ;;
+      301|302|303|307|308)
+        [ "$redirects" -lt 5 ] || fail 'too many download redirects'
+        download_url=$(printf '%s\n' "$response" | sed -n '2p'); redirects=$((redirects + 1)) ;;
+      403) fail 'GitHub API/access denied (HTTP 403; possible rate limit). Set GITHUB_TOKEN for authenticated API requests.' ;;
+      *) fail "download failed (HTTP $status)" ;;
+    esac
+  done
+}
 if [ -n "$from" ]; then
   filename=$(basename "$from"); cp "$from" "$work/$filename"; cp "$sums" "$work/SHA256SUMS"
 else
   api=https://api.github.com/repos/EtanHey/golems/releases
   tag=$channel
   if [ "$channel" = nightly ]; then
-    page=1
-    : > "$work/candidates"
-    while :; do
-      download "$api?per_page=100&page=$page" "$work/api.json"
-      json_fields "$work/api.json" "$work/api.tsv"
-      awk -F '\t' '{split($1,k,"."); a[k[1],k[2]]=$2; ids[k[1]]=1} END {for(i in ids) if(a[i,"draft"]=="false" && a[i,"prerelease"]=="true") print a[i,"published_at"] "\t" a[i,"tag_name"]}' "$work/api.tsv" >> "$work/candidates"
-      count=$(awk -F '\t' '$1 ~ /^[0-9]+\.tag_name$/ {n++} END {print n+0}' "$work/api.tsv")
-      [ "$count" -eq 100 ] || break
-      page=$((page + 1))
-    done
+    download "$api?per_page=30&page=1" "$work/api.json"
+    json_fields "$work/api.json" "$work/api.tsv"
+    awk -F '\t' '{split($1,k,"."); a[k[1],k[2]]=$2; ids[k[1]]=1} END {for(i in ids) if(a[i,"draft"]=="false") print a[i,"created_at"] "\t" a[i,"tag_name"]}' "$work/api.tsv" > "$work/candidates"
     tag=$(sort -r "$work/candidates" | awk -F '\t' 'NR==1 {print $2}')
-    [ -n "$tag" ] || fail 'no published nightly prerelease found'
+    [ -n "$tag" ] || fail 'no published nightly release found'
   fi
   printf '%s\n' "$tag" | awk '!/^v[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+$/ {exit 1}' || fail 'unsupported release tag'
   download "$api/tags/$tag" "$work/release.json"
@@ -132,6 +151,7 @@ tar -tvzf "$work/$filename" > "$work/types"
 awk 'substr($0,1,1)!="-" && substr($0,1,1)!="d" {exit 1}' "$work/types" || fail 'unsafe archive entry type'
 if [ -n "$from" ]; then tar -xOzf "$work/$filename" MANIFEST.json > "$work/MANIFEST.json"; fi
 check_sum "$work/MANIFEST.json" MANIFEST.json
+manifest_sha256=$(hash "$work/MANIFEST.json")
 json_fields "$work/MANIFEST.json" "$work/manifest.tsv"
 version=$(awk -F '\t' '$1=="version" {print $2}' "$work/manifest.tsv")
 commit=$(awk -F '\t' '$1=="commit" {print $2}' "$work/manifest.tsv")
@@ -164,7 +184,7 @@ else
 fi
 already=false
 [ "$(readlink "$prefix/current" 2>/dev/null || :)" != "releases/$version" ] || already=true
-if [ "$already" = true ] && [ "$replace" = false ]; then printf 'golems %s already current\n' "$version"; exit 0; fi
+if [ "$already" = true ] && [ "$replace" = false ]; then printf 'golems %s already current\ncommit: %s\ntarball sha256: %s\n' "$version" "$commit" "$tarball_sha256"; exit 0; fi
 # GNU -T and BSD -h both replace the symlink itself, including directory targets.
 atomic_move() { mv -fT "$1" "$2" 2> "$work/mv-error" || mv -fh "$1" "$2"; }
 link_skill() {
@@ -205,7 +225,7 @@ WRAPPER
   chmod 755 "$work/$cli"; atomic_move "$work/$cli" "$prefix/bin/$cli"
 done
 if [ "$already" = false ]; then
-  printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" > "$work/release.json"
+  printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s","manifest_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" "$manifest_sha256" > "$work/release.json"
   ln -s "releases/$version" "$work/current"
   atomic_move "$work/current" "$prefix/current"
   atomic_move "$work/release.json" "$prefix/release.json"
@@ -220,4 +240,6 @@ if [ "$already" = false ]; then
 fi
 # shellcheck disable=SC2016 # The PATH hint intentionally prints a literal $PATH.
 case :${PATH-}: in *:"$prefix/bin":*) ;; *) printf 'Add to PATH: export PATH="%s/bin:$PATH"\n' "$prefix" ;; esac
-printf 'golems %s installed (%s)\n' "$version" "$channel"
+printf 'golems %s installed (%s)\ncommit: %s\ntarball sha256: %s\n' "$version" "$channel" "$commit" "$tarball_sha256"
+}
+main "$@"
