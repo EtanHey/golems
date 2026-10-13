@@ -127,3 +127,90 @@ git("-c", "user.name=Fixture", "-c", "user.email=fixture@localhost",
              decoy_git("config", "--get", "core.bare"))
     assert after == before
     assert (Path(env["SUITE_FIXTURE"]) / ".git/HEAD").is_file()
+
+
+@pytest.mark.parametrize("push_args,runs_suite", [
+    (["--delete", "old-a", "old-b"], False),
+    (["main"], True),
+    (["main", ":old-a"], True),
+])
+def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
+    """Git supplies real ref updates; the suite leaves an independent marker."""
+    git = shutil.which("git")
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith(("GIT_", "GOLEMS_HEAVY_"))}
+    env.update(HOME=str(tmp_path), GIT_CONFIG_NOSYSTEM="1",
+               GIT_CONFIG_GLOBAL=os.devnull, GOLEMS_HEAVY_MIN_FREE_GB="0",
+               GOLEMS_HEAVY_MAX_LOAD="99999",
+               GOLEMS_HEAVY_LOCK=str(tmp_path / "suite.lock"))
+    repo, remote = tmp_path / "repo", tmp_path / "remote.git"
+    def run_git(*args):
+        return subprocess.run([git, *map(str, args)], env=env,
+                              capture_output=True, text=True, check=True, timeout=10)
+    run_git("init", "-q", "-b", "main", repo)
+    run_git("init", "--bare", "-q", remote)
+    def commit(message):
+        run_git("-C", repo, "-c", "user.name=Fixture", "-c",
+                "user.email=fixture@example.invalid", "commit", "--allow-empty",
+                "-qm", message)
+    commit("seed")
+    run_git("-C", repo, "push", "-q", remote, "main", "main:old-a", "main:old-b")
+    commit("new work")
+    hooks = repo / ".githooks"
+    hooks.mkdir()
+    shutil.copy2(HOOK, hooks / "pre-push")
+    helper = tmp_path / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
+    helper.parent.mkdir(parents=True)
+    shutil.copyfile(ROOT / "scripts/hooks/heavy-suite.py", helper)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    marker = tmp_path / "suite-ran"
+    bun = bin_dir / "bun"
+    bun.write_text('#!/bin/sh\nprintf ran > "$SUITE_RECORD"\n')
+    bun.chmod(0o755)
+    scripts = repo / "scripts"
+    scripts.mkdir()
+    (scripts / "run_tests.sh").write_text(
+        'printf ran > "$SUITE_RECORD"\n')
+    env.update(PATH=str(bin_dir) + os.pathsep + env["PATH"], SUITE_RECORD=str(marker))
+    run_git("-C", repo, "config", "core.hooksPath", ".githooks")
+    result = run_git("-C", repo, "push", remote, *push_args)
+    assert marker.exists() == runs_suite, result.stderr
+
+
+@pytest.mark.parametrize("ref_input,skips", [
+    (f"(delete) {'0' * 40} refs/heads/old {'a' * 40}\n", True),
+    (f"(delete) {'0' * 64} refs/heads/old {'a' * 64}\n", True),
+    ("", False),
+    ("malformed\n", False),
+    (f"(delete) {'0' * 39} refs/heads/old {'a' * 40}\n", False),
+    (f"(delete) {'0' * 40} refs/heads/old {'a' * 40}\n\n", False),
+    (f"(delete) {'0' * 40} refs/heads/old {'a' * 40}\n"
+     f"refs/heads/main {'b' * 40} refs/heads/main {'a' * 40}\n", False),
+])
+def test_helper_pre_push_input(tmp_path, ref_input, skips):
+    marker = tmp_path / "suite-ran"
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}
+    env.update(GOLEMS_HEAVY_FORCE="1", GOLEMS_HEAVY_PRE_PUSH="1")
+    result = subprocess.run([
+        sys.executable, str(ROOT / "scripts/hooks/heavy-suite.py"), "--",
+        sys.executable, "-c", "import pathlib,sys; pathlib.Path(sys.argv[1]).touch(); sys.exit(7)",
+        str(marker)], input=ref_input, env=env, capture_output=True, text=True, timeout=5)
+    assert result.returncode == (0 if skips else 7), result.stderr
+    assert marker.exists() == (not skips)
+    if skips:
+        assert result.stderr.splitlines() == ["heavy-suite: SKIP delete-only push: no code to test"]
+        assert "QUEUED" not in result.stderr
+
+
+
+def test_non_hook_command_preserves_stdin(tmp_path):
+    payload = f"(delete) {'0' * 40} refs/heads/old {'a' * 40}\n"
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}
+    env["GOLEMS_HEAVY_FORCE"] = "1"
+    result = subprocess.run([
+        sys.executable, str(ROOT / "scripts/hooks/heavy-suite.py"), "--",
+        sys.executable, "-c", "import sys; sys.stdout.write(sys.stdin.read())"],
+        input=payload, env=env, capture_output=True, text=True, timeout=5)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == payload

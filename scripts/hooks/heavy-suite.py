@@ -180,6 +180,12 @@ def main(argv=None):
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if not command:
         parser.error("provide a command after --")
+    if os.environ.get("GOLEMS_HEAVY_PRE_PUSH") == "1" and not sys.stdin.isatty():
+        updates = [line.split() for line in sys.stdin]
+        if updates and all(len(fields) == 4 and fields[1] in ("0" * 40, "0" * 64)
+                           for fields in updates):
+            notice("SKIP delete-only push: no code to test")
+            return 0
     if os.environ.get("GOLEMS_HEAVY_SUITE_HELD"):
         return run_command(command)
     if os.environ.get("GOLEMS_HEAVY_FORCE") == "1":
