@@ -179,6 +179,8 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
 
 
 @pytest.mark.parametrize("ref_input,skips", [
+    (b"(delete) " + b"0" * 40 + b" refs/heads/caf\xe9 " + b"a" * 40 + b"\n", True),
+    (b"refs/heads/caf\xe9 " + b"b" * 40 + b" refs/heads/caf\xe9 " + b"a" * 40 + b"\n", False),
     (f"(delete) {'0' * 40} refs/heads/old {'a' * 40}\n", True),
     (f"(delete) {'0' * 64} refs/heads/old {'a' * 64}\n", True),
     ("", False),
@@ -191,17 +193,19 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
 def test_helper_pre_push_input(tmp_path, ref_input, skips):
     marker = tmp_path / "suite-ran"
     env = {k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}
-    env.update(GOLEMS_HEAVY_FORCE="1", GOLEMS_HEAVY_PRE_PUSH="1")
+    env.update(GOLEMS_HEAVY_FORCE="1", GOLEMS_HEAVY_PRE_PUSH="1",
+               PYTHONIOENCODING="utf-8:strict")
     result = subprocess.run([
         sys.executable, str(ROOT / "scripts/hooks/heavy-suite.py"), "--",
         sys.executable, "-c", "import pathlib,sys; pathlib.Path(sys.argv[1]).touch(); sys.exit(7)",
-        str(marker)], input=ref_input, env=env, capture_output=True, text=True, timeout=5)
+        str(marker)], input=ref_input, env=env, capture_output=True,
+        text=isinstance(ref_input, str), timeout=5)
+    stderr = result.stderr if isinstance(result.stderr, str) else result.stderr.decode("utf-8", "replace")
     assert result.returncode == (0 if skips else 7), result.stderr
     assert marker.exists() == (not skips)
     if skips:
-        assert result.stderr.splitlines() == ["heavy-suite: SKIP delete-only push: no code to test"]
-        assert "QUEUED" not in result.stderr
-
+        assert stderr.splitlines() == ["heavy-suite: SKIP delete-only push: no code to test"]
+        assert "QUEUED" not in stderr
 
 
 def test_non_hook_command_preserves_stdin(tmp_path):
@@ -214,3 +218,17 @@ def test_non_hook_command_preserves_stdin(tmp_path):
         input=payload, env=env, capture_output=True, text=True, timeout=5)
     assert result.returncode == 0, result.stderr
     assert result.stdout == payload
+
+
+
+def test_pre_push_with_closed_stdin_runs_suite(tmp_path):
+    marker = tmp_path / "suite-ran"
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}
+    env.update(GOLEMS_HEAVY_FORCE="1", GOLEMS_HEAVY_PRE_PUSH="1")
+    result = subprocess.run([
+        sys.executable, str(ROOT / "scripts/hooks/heavy-suite.py"), "--",
+        sys.executable, "-c", "import pathlib,sys; pathlib.Path(sys.argv[1]).touch()",
+        str(marker)], env=env, capture_output=True, text=True, timeout=5,
+        preexec_fn=lambda: os.close(0))
+    assert result.returncode == 0, result.stderr
+    assert marker.exists()
