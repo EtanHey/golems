@@ -1,9 +1,9 @@
 # Heavy suite queue
 
-Opt in by replacing the suite command in each repository's pre-push/release hook:
+Opt in by replacing the suite command in each repository's pre-push hook (omit `GOLEMS_HEAVY_PRE_PUSH=1` in release hooks):
 
 ```sh
-if command -v git >/dev/null; then unset $(git rev-parse --local-env-vars); fi; HS="$HOME/Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then python3 "$HS" -- bun run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun run test; fi
+if command -v git >/dev/null; then unset $(git rev-parse --local-env-vars); fi; HS="$HOME/Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then GOLEMS_HEAVY_PRE_PUSH=1 python3 "$HS" -- bun run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun run test; fi
 ```
 
 Clear Git’s local environment first: inherited hook variables can redirect fixture commits into the real repository and alter its HEAD or `core.bare` config.
@@ -62,3 +62,13 @@ wrappers re-entrant. QUEUED / SUITE START / SUITE DONE log tokens and exit statu
 are preserved; START/DONE include the slot index. Keep fleet START/DONE posts
 until all callers opt in; commands outside the wrapper, forced runs and expired
 slot waits may overlap. Tests use synthetic homes, slots and commands.
+
+Set `GOLEMS_HEAVY_PRE_PUSH=1` only in Git pre-push hooks. It reads Git's inherited stdin
+before any scheduling gate: a nonempty list of valid ref lines with 40- or
+64-zero local object IDs skips the suite with one notice. Empty or malformed
+input and any real local object ID still run the suite. Hooks must leave stdin
+unconsumed until this call. Release and other commands omit the variable, preserving
+their stdin. Missing helper/Python retains the existing full-suite fallback.
+Older installed helpers ignore the variable and keep running the full suite,
+so source and caller PRs can land independently. The deletion skip becomes active
+after the owner updates the installed pin; these source PRs do not install it.
