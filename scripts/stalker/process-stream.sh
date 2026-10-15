@@ -81,7 +81,7 @@ run_audio_stages
 # PASS 2: VISUAL ANALYSIS (frames + clips)
 # ============================================================
 
-run_frame_stage
+if [ "${STALKER_DASHBOARD_ENABLED:-0}" = "1" ]; then run_frame_stage; fi
 
 # --- 2b: Clips extracted AFTER scoring (Pass 3 identifies gem timestamps) ---
 
@@ -165,7 +165,7 @@ fi
 # PASS 4: CLIP EXTRACTION (runs if gems.md already has timestamps)
 # ============================================================
 
-run_clip_stage
+if [ "${STALKER_DASHBOARD_ENABLED:-0}" = "1" ]; then run_clip_stage; fi
 
 # ============================================================
 # PASS 5: GENERATE GEMS-MANIFEST.JSON (if --json-output)

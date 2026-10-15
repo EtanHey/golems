@@ -118,7 +118,7 @@ const { readFileSync } = require("node:fs");
 try {
   const streamDir = process.argv[1];
   const receipt = JSON.parse(readFileSync(join(streamDir, ".stalker-completion.json"), "utf8"));
-  const eligible = receipt.version === 4 && ["published", "complete"].includes(receipt.status)
+  const eligible = [4, 5].includes(receipt.version) && ["published", "complete"].includes(receipt.status)
     || receipt.version === 3 && ["notified", "complete"].includes(receipt.status);
   if (!eligible || receipt.runName !== basename(streamDir)) process.exit(1);
 } catch { process.exit(1); }
@@ -273,7 +273,7 @@ else
     fi
 fi
 
-if stalker_stage_done "$STREAM_DIR" "brainlayer"; then
+if stalker_stage_done "$STREAM_DIR" "brainlayer" && [ "${STALKER_DASHBOARD_ENABLED:-0}" = "1" ]; then
     log "BrainLayer stage complete, skipping contract ingest"
 else
     BRAINLAYER_INGEST_TIMEOUT="${STALKER_BRAINLAYER_INGEST_TIMEOUT:-15m}"
@@ -303,6 +303,10 @@ fi
 
 if [ "$DIGEST_QUALITY_STATUS" -ne 0 ]; then
     exit "$DIGEST_QUALITY_STATUS"
+fi
+
+if [ "${STALKER_DASHBOARD_ENABLED:-0}" != "1" ] && [ "$BRAINLAYER_DRY_RUN" != "1" ]; then
+    node "$SCRIPT_DIR/stalker-run-contract.mjs" "$STREAM_DIR"
 fi
 
 if [[ "$STARTED_EPOCH" =~ ^[0-9]+$ ]] && [ "$STARTED_EPOCH" -gt 0 ]; then

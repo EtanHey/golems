@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 setup() {
+    export STALKER_DASHBOARD_ENABLED=1
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
     SCRIPT_DIR="$REPO_ROOT/scripts"
     STALKER_DIR="$REPO_ROOT/scripts/stalker"

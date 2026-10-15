@@ -23,7 +23,7 @@ async function fixture(t) {
   await writeFile(join(bin, 'notify'), '#!/bin/bash\nexit 0\n', { mode: 0o755 });
   const calls = join(root, 'calls');
   const run = extra => spawnSync('bash', [join(stalker, 'post-stream.sh'), runDir, join(runDir, 'video.mp4'), join(runDir, 'chat.log'), 'examplechannel'], {
-    encoding: 'utf8', timeout: 10000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CALLS: calls, ...extra },
+    encoding: 'utf8', timeout: 10000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CALLS: calls, STALKER_DASHBOARD_ENABLED: "1", ...extra },
   });
   return { runDir, calls, run };
 }

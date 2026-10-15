@@ -147,3 +147,16 @@ load 'test-process-stream-agy-cli-parts/cases-02.bash'
 @test "process-stream removes incomplete gems file when all candidate scoring fails" {
     split_case_036
 }
+
+@test "default processing keeps transcript and gems without frame or clip encodes" {
+    stream_dir="$(make_scoring_fixture)"
+    rm "$stream_dir/.stage-2-frames.done"
+    printf '#!/bin/bash\nexit 99\n' > "$FAKE_BIN/ffmpeg"
+    chmod +x "$FAKE_BIN/ffmpeg"
+    run env -u STALKER_DASHBOARD_ENABLED PATH="$FAKE_BIN:$PATH" HOME="$TMPDIR_/home" "$PROCESS_STREAM" "$stream_dir/video.mp4" "$stream_dir/chat.log"
+    [ "$status" -eq 0 ]
+    [ -s "$stream_dir/transcript.md" ]
+    [ -s "$stream_dir/gems.md" ]
+    [ -z "$(ls -A "$stream_dir/frames")" ]
+    [ -z "$(ls -A "$stream_dir/clips")" ]
+}

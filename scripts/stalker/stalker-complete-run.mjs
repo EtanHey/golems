@@ -36,24 +36,26 @@ export async function completeRun(runDir, options = {}) {
   const unlock = await lockRun(runDir);
   let stage = 6, receipt, preserveDeliveryReceipt = false;
   try {
+    const dashboardEnabled = options.dashboardEnabled ?? (process.env.STALKER_DASHBOARD_ENABLED === '1');
     const name = basename(runDir), match = name.match(/^(.+)-(\d{4}-\d{2}-\d{2})(?:-\d{6})?$/);
     if (!match) throw stageFailure(6, 'run directory must be channel-YYYY-MM-DD[-HHMMSS]');
     const [, channel, date] = match;
     receipt = await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
+    if (receipt && (dashboardEnabled ? receipt.version === 5 : receipt.version !== 5)) receipt = null;
     const legacy = receipt?.version === 3 && ['notified', 'complete'].includes(receipt.status);
     let initialError;
     try {
       const verified = legacy && receipt.status === 'complete' ? await migrateCompletionReceipt(runDir, {receipt, fetchImpl: options.fetchImpl}) : receipt;
-      const result = await verifyRunDelivery(runDir, {receipt: verified, fetchImpl: options.fetchImpl});
+      const result = await verifyRunDelivery(runDir, {receipt: verified ?? {}, fetchImpl: options.fetchImpl});
       if (legacy) await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(verified, null, 2));
       return {...result, skipped: true};
     } catch (error) { initialError = error; }
     let resumeRetention = false;
-    if (legacy || (receipt?.version === 4 && ['published', 'complete'].includes(receipt.status))) {
+    if (legacy || ([4, 5].includes(receipt?.version) && ['published', 'complete'].includes(receipt.status))) {
       preserveDeliveryReceipt = true;
       if (initialError.liveVerificationFailure || (receipt.status === 'complete' && initialError.stage === 9)) throw initialError;
       const {notification, ...evidence} = receipt;
-      const published = {...evidence, version: 4, status: 'published'};
+      const published = {...evidence, version: receipt.version === 5 ? 5 : 4, status: 'published'};
       try {
         await verifyRunDelivery(runDir, {receipt: published, fetchImpl: options.fetchImpl, requireRetention: false});
         receipt = published;
@@ -71,9 +73,9 @@ export async function completeRun(runDir, options = {}) {
     const config = await readFile(join(repoRoot, 'docs.local/stalker-golem/delivery-config.json'), 'utf8').then(JSON.parse).catch(() => ({}));
     if (!resumeRetention) {
       await rm(join(runDir, COMPLETION_RECEIPT), { force: true });
-      const hubOrigin = options.hubOrigin ?? ((process.env.TAILNET_HUB_HOST || process.env.STALKER_DASHBOARD_BASE)
+      const hubOrigin = !dashboardEnabled ? undefined : options.hubOrigin ?? ((process.env.TAILNET_HUB_HOST || process.env.STALKER_DASHBOARD_BASE)
         ? configuredHubOrigin() : config.hubOrigin ?? configuredHubOrigin());
-      const dashboardUrl = `${new URL(hubOrigin).origin}/dashboards/${basename(repoRoot)}/stalker/${name}.html`;
+      const dashboardUrl = dashboardEnabled ? `${new URL(hubOrigin).origin}/dashboards/${basename(repoRoot)}/stalker/${name}.html` : undefined;
       const gemsMarkdown = await readFile(join(runDir, 'gems.md'), 'utf8');
       if (!/Scored:|\*Scored \d+\/\d+ segments/.test(gemsMarkdown) || !parseGems(gemsMarkdown).length) throw stageFailure(6, 'completed gems are required');
       const inputHash = sha256(Buffer.concat([await readFile(join(runDir, 'transcript.md')), Buffer.from(gemsMarkdown)]));
@@ -85,20 +87,26 @@ export async function completeRun(runDir, options = {}) {
       }
       await atomicWrite(join(runDir, 'digest.md'), digest.markdown);
       await atomicWrite(join(runDir, '.stage-6-digest.done'), new Date().toISOString());
-      stage = 7;
-      const { items: selected } = await (options.mediaImpl ?? prepareCardMedia)({ runDir, summary: digest.summary });
-      const assets = selected.flatMap(gem => [gem.clip, gem.frame].filter(Boolean));
-      const html = buildRunDashboard({ date, channel, runName: name, summary: digest.summary, cardMedia: selected });
-      const publication = await publishRunDashboard({ runDir, repoRoot, orchestratorRoot, hubOrigin, html,
-        assets, syncImpl: options.syncImpl });
-      receipt = { version: 4, runName: name, status: 'published', artifacts: await artifactHashes(runDir), publication,
-        retention: { keepPaths: assets } };
-      await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
-      await atomicWrite(join(runDir, '.stage-7-publish.done'), new Date().toISOString());
-      // Durable local checkpoint before any retention work can offload originals.
-      await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
-      preserveDeliveryReceipt = true;
-      await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
+      if (dashboardEnabled) {
+        stage = 7;
+        const { items: selected } = await (options.mediaImpl ?? prepareCardMedia)({ runDir, summary: digest.summary });
+        const assets = selected.flatMap(gem => [gem.clip, gem.frame].filter(Boolean));
+        const html = buildRunDashboard({ date, channel, runName: name, summary: digest.summary, cardMedia: selected });
+        const publication = await publishRunDashboard({ runDir, repoRoot, orchestratorRoot, hubOrigin, html,
+          assets, syncImpl: options.syncImpl });
+        receipt = { version: 4, runName: name, status: 'published', artifacts: await artifactHashes(runDir), publication,
+          retention: { keepPaths: assets } };
+        await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
+        await atomicWrite(join(runDir, '.stage-7-publish.done'), new Date().toISOString());
+        // Durable local checkpoint before any retention work can offload originals.
+        await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
+        preserveDeliveryReceipt = true;
+        await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl, requireRetention: false });
+      } else {
+        receipt = { version: 5, mode: 'digest-only', runName: name, status: 'published', artifacts: await artifactHashes(runDir, { includeDashboard: false }), retention: { keepPaths: [] } };
+        await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
+        preserveDeliveryReceipt = true;
+      }
     }
     stage = 9;
     const archiveImpl = options.archiveImpl ?? createDriveArchive({ parentId: options.driveArchiveParentId ?? config.driveArchiveParentId });
@@ -108,7 +116,7 @@ export async function completeRun(runDir, options = {}) {
     const result = await verifyRunDelivery(runDir, { receipt, fetchImpl: options.fetchImpl });
     await atomicWrite(join(runDir, COMPLETION_RECEIPT), JSON.stringify(receipt, null, 2));
     await rm(join(runDir, '.stalker-failure.json'), { force: true });
-    console.log(`Stalker COMPLETE: ${receipt.publication.url}`);
+    console.log(dashboardEnabled ? `Stalker COMPLETE: ${receipt.publication.url}` : `Stalker DIGEST: ${result.status}`);
     return result;
   } catch (error) {
     const failure = { status: 'failed', stage: error.stage ?? stage, reason: error.message, ts: new Date().toISOString() };

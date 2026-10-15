@@ -37,3 +37,9 @@ Stores select the BrainLayer source environment's `.venv/bin/python` when presen
 are recorded as `chunk_id`. A custom `STALKER_BRAIN_STORE_CMD` must return one
 plain chunk-ID token on stdout; exit zero without an ID stays queued. The
 content-versioned human-digest payload includes `digest.md` itself.
+
+Dashboard HTML, card media, spike/quiet frames, and gem clips/annotations are
+opt-in with `STALKER_DASHBOARD_ENABLED=1`; the default keeps digest text, gems,
+transcripts, BrainLayer delivery, and disk-safe archival/retention. A digest-only
+completion is `digest-ready` until its current digest hash has a stored chunk ID;
+the post-stream verifier fails retryably while that confirmation is missing.
