@@ -658,3 +658,75 @@ http://127.0.0.1:8742/api/send" ]
     [ "$status" -ne 0 ]
     [[ "$output" == *"Usage: stream-overnight-monitor.sh <channel>"* ]]
 }
+
+@test "post-stream clip encode uses background policy and bounded ffmpeg pools" {
+    mkdir -p "$TMPDIR_/bin" "$TMPDIR_/clips"
+    export THROTTLE_TRACE="$TMPDIR_/trace"
+    for tool in nice taskpolicy ffmpeg; do
+        cat > "$TMPDIR_/bin/$tool" <<'SH'
+#!/bin/bash
+name=${0##*/}
+printf '%s' "$name" >> "$THROTTLE_TRACE"
+printf ' <%s>' "$@" >> "$THROTTLE_TRACE"
+printf '\n' >> "$THROTTLE_TRACE"
+case "$name" in
+    nice) shift 2; exec "$@" ;;
+    taskpolicy) if [ "$1" = -c ]; then shift 2; else shift; fi; exec "$@" ;;
+    ffmpeg) touch "${@: -1}" ;;
+esac
+SH
+        chmod +x "$TMPDIR_/bin/$tool"
+    done
+    printf '#!/bin/bash\necho Darwin\n' > "$TMPDIR_/bin/uname"
+    chmod +x "$TMPDIR_/bin/uname"
+    export PATH="$TMPDIR_/bin:$PATH"
+    source "$SCRIPT_DIR/stalker/process/outputs.sh"
+    log() { :; }
+    OUT_DIR="$TMPDIR_"
+    VIDEO="$TMPDIR_/video with spaces.mp4"
+    GEMS_FILE="$TMPDIR_/gems.md"
+    printf '### [00:20] fixture\n' > "$GEMS_FILE"
+    run run_clip_stage
+    [ "$status" -eq 0 ]
+    cat "$THROTTLE_TRACE"
+    grep -q '^nice <-n> <15>' "$THROTTLE_TRACE"
+    grep -q '^taskpolicy <-c> <utility>' "$THROTTLE_TRACE"
+    grep -q -- '<-filter_threads> <4> <-filter_complex_threads> <4>' "$THROTTLE_TRACE"
+    grep -q -- '<-threads> <4> <-i>' "$THROTTLE_TRACE"
+    grep -q -- "<-threads> <4> <$TMPDIR_/clips/clip-00m20s.mp4>" "$THROTTLE_TRACE"
+}
+
+@test "background runner falls back to nice and preserves child failure without retry" {
+    mkdir -p "$TMPDIR_/bin"
+    printf '#!/bin/bash\necho Linux\n' > "$TMPDIR_/bin/uname"
+    chmod +x "$TMPDIR_/bin/uname"
+    run env PATH="$TMPDIR_/bin:$PATH" bash "$SCRIPT_DIR/lib/stream/background.sh" bash -c 'echo attempted; exit 37'
+    [ "$status" -eq 37 ]
+    [ "$output" = attempted ]
+}
+
+@test "background runner uses nice on macOS without taskpolicy and preserves argv" {
+    mkdir -p "$TMPDIR_/bin"
+    printf '#!/bin/bash\necho Darwin\n' > "$TMPDIR_/bin/uname"
+    # Isolate PATH so host taskpolicy is unavailable, even on macOS.
+    ln -s /usr/bin/nice "$TMPDIR_/bin/nice"
+    chmod +x "$TMPDIR_/bin/uname"
+    run env PATH="$TMPDIR_/bin" /bin/bash "$SCRIPT_DIR/lib/stream/background.sh" /bin/bash -c 'printf "<%s>\n" "$@"' fixture 'two words' '' '*'
+    [ "$status" -eq 0 ]
+    [ "$output" = "<two words>
+<>
+<*>" ]
+}
+
+@test "background runner keeps Darwin background policy for whisper and sox" {
+    mkdir -p "$TMPDIR_/bin"
+    printf '#!/bin/bash\necho Darwin\n' > "$TMPDIR_/bin/uname"
+    printf '#!/bin/bash\nprintf "nice"; printf " <%%s>" "$@"\nprintf "\\n"\n' > "$TMPDIR_/bin/nice"
+    printf '#!/bin/bash\nexit 99\n' > "$TMPDIR_/bin/taskpolicy"
+    chmod +x "$TMPDIR_/bin/"*
+    for tool in whisper-cli sox; do
+        run env PATH="$TMPDIR_/bin:$PATH" /bin/bash "$SCRIPT_DIR/lib/stream/background.sh" "$tool" 'two words'
+        [ "$status" -eq 0 ]
+        [ "$output" = "nice <-n> <15> <taskpolicy> <-b> <$tool> <two words>" ]
+    done
+}

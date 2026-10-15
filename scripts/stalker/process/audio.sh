@@ -14,7 +14,7 @@ if stalker_stage_done "$OUT_DIR" "1a-audio" && [ -f "$AUDIO" ]; then
     log "Pass 1a: Stage complete, skipping audio extraction"
 elif [ ! -f "$AUDIO" ]; then
     log "Pass 1a: Extracting audio..."
-    ffmpeg -i "$VIDEO" -vn -acodec pcm_s16le -ar 16000 -ac 1 "$AUDIO" -y 2>/dev/null
+    bash "$STREAM_HELPERS_DIR/stream/background.sh" ffmpeg -i "$VIDEO" -vn -acodec pcm_s16le -ar 16000 -ac 1 -y "$AUDIO" 2>/dev/null
     log "  Audio extracted: $(du -sh "$AUDIO" | cut -f1)"
     mark_stalker_stage_done "$OUT_DIR" "1a-audio"
 else
@@ -31,7 +31,7 @@ if stalker_stage_done "$OUT_DIR" "1b-silences" && [ -f "$SILENCES" ]; then
     log "Pass 1b: Stage complete, skipping silence detection"
 elif [ ! -f "$SILENCES" ]; then
     log "Pass 1b: Detecting silence boundaries..."
-    ffmpeg -nostats -hide_banner -i "$AUDIO" -af "silencedetect=noise=${SILENCE_THRESHOLD}dB:d=${SILENCE_DURATION}" -f null - 2>&1 \
+    bash "$STREAM_HELPERS_DIR/stream/background.sh" ffmpeg -nostats -hide_banner -i "$AUDIO" -af "silencedetect=noise=${SILENCE_THRESHOLD}dB:d=${SILENCE_DURATION}" -f null - 2>&1 \
       | parse_silence_timestamps \
       > "$SILENCES"
     log "  Found $(wc -l < "$SILENCES") silence boundaries"
@@ -55,7 +55,7 @@ elif [ ! -f "$VOLUME_FILE" ]; then
     [[ "$DURATION" =~ ^[0-9]+$ ]] || DURATION=0
     : > "$VOLUME_FILE"
     for ((t=0; t<DURATION; t+=10)); do
-        RMS=$(sox "$AUDIO" -n trim "$t" 10 stat 2>&1 | grep "RMS.*amplitude" | head -1 | awk '{print $NF}' 2>/dev/null || echo "0")
+        RMS=$(bash "$STREAM_HELPERS_DIR/stream/background.sh" sox "$AUDIO" -n trim "$t" 10 stat 2>&1 | grep "RMS.*amplitude" | head -1 | awk '{print $NF}' 2>/dev/null || echo "0")
         echo "$t $RMS" >> "$VOLUME_FILE"
     done
     log "  Volume measured: $(wc -l < "$VOLUME_FILE") windows"
@@ -125,7 +125,7 @@ elif [ ! -f "$TRANSCRIPT" ]; then
         SEG_NUM=$((SEG_NUM + 1))
         SEG_FILE="$OUT_DIR/segment-$(printf '%03d' $SEG_NUM).wav"
 
-        ffmpeg -nostdin -i "$AUDIO" -ss "$PREV_END" -to "$END" -y "$SEG_FILE" 2>/dev/null
+        bash "$STREAM_HELPERS_DIR/stream/background.sh" ffmpeg -nostdin -i "$AUDIO" -ss "$PREV_END" -to "$END" -y "$SEG_FILE" 2>/dev/null
 
         if ! TRANSCRIPTION=$(transcribe_segment_with_fallback "$SEG_FILE" "$WHISPER_MODEL" "$SEG_NUM" "$OUT_DIR"); then
             FAILED_SEGMENTS=$((FAILED_SEGMENTS + 1))

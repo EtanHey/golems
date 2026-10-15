@@ -18,7 +18,7 @@ transcribe_with_whisper_cli() {
 
     local attempt output status
     for ((attempt=1; attempt<=max_attempts; attempt++)); do
-        output=$(whisper-cli -m "$model_file" -f "$segment_file" --no-timestamps 2>&1)
+        output=$(bash "$STREAM_HELPERS_DIR/stream/background.sh" whisper-cli -m "$model_file" -f "$segment_file" --no-timestamps 2>&1)
         status=$?
         if [ "$status" -eq 0 ]; then
             if [[ "$output" == \{* ]] && command -v python3 >/dev/null 2>&1; then

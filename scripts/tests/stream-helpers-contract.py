@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from stream_background_contract import with_background_policy
 
 BASE = "70b7833f91f3cf2f683214829fc15baf775bc4a7"
 ROOT = Path(__file__).resolve().parents[2]
@@ -209,7 +210,7 @@ def main():
         if record:
             fixture.write_text(json.dumps(actual, indent=2) + "\n")
         else:
-            expected = json.loads(fixture.read_text())
+            expected = with_background_policy(json.loads(fixture.read_text()))
             assert actual == expected, f"{case}: golden mismatch\nEXPECTED {expected!r}\nACTUAL {actual!r}"
         print(f"{case}: {'recorded from base' if record else 'PASS'}")
     if not record:
@@ -217,7 +218,7 @@ def main():
             copied = Path(directory).resolve()
             shutil.copytree(root / "scripts/lib", copied / "scripts/lib")
             for case in CASES:
-                assert capture(copied, case) == json.loads((FIXTURES / f"{case}.json").read_text()), f"copied tree: {case}"
+                assert capture(copied, case) == with_background_policy(json.loads((FIXTURES / f"{case}.json").read_text())), f"copied tree: {case}"
             print("copied library tree: all cases PASS")
 
 

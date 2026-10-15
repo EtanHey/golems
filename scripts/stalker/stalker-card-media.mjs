@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { cleanTranscript } from "./stalker-digest-evidence.mjs";
 
@@ -30,7 +31,7 @@ function timestampName(timestamp) {
   return `${minutes}m${seconds}s`;
 }
 
-async function runTool(program, args) {
+async function runTool(program, args, label = program) {
   try {
     return await execFileAsync(program, args, {
       timeout: PROCESS_TIMEOUT_MS,
@@ -38,7 +39,7 @@ async function runTool(program, args) {
       windowsHide: true,
     });
   } catch (error) {
-    throw new Error(`${program} failed${error.killed ? " (timed out)" : ""}: ${error.message}`);
+    throw new Error(`${label} failed${error.killed ? " (timed out)" : ""}: ${error.message}`);
   }
 }
 
@@ -60,7 +61,7 @@ async function defaultFfprobe({ path }) {
 }
 
 async function defaultFfmpeg({ args }) {
-  await runTool("ffmpeg", args);
+  await runTool("bash", [fileURLToPath(new URL("../lib/stream/background.sh", import.meta.url)), "ffmpeg", ...args], "ffmpeg");
 }
 
 async function hashFile(path) {
