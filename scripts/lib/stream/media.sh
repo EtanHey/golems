@@ -41,7 +41,7 @@ compress_video_h264() {
     [ ! -f "$input" ] && { echo "compress_video_h264: input not found: $input" >&2; return 3; }
     [ -f "$output" ] && { echo "compress_video_h264: output exists: $output" >&2; return 4; }
 
-    ffmpeg -nostdin -y -i "$input" \
+    bash "$STREAM_HELPERS_DIR/stream/background.sh" ffmpeg -nostdin -y -i "$input" \
       -c:v libx264 -crf "$crf" -preset "$preset" \
       -c:a copy -movflags +faststart \
       "$output" 2>&1

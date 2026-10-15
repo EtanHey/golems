@@ -354,7 +354,7 @@ elif [ ! -f "$VIDEO" ]; then
     log "Step 1: No video.mp4 to compress, skipping"
 else
     log "Step 1: Compressing $VIDEO → $COMPRESSED"
-    log "  This can take 15-30 min for a 4h stream. Running ffmpeg..."
+    log "  Running ffmpeg at background priority with four-thread pools; duration depends on stream length and system load."
     if [ "$DRY_RUN" = true ]; then
         log "  [DRY RUN] would compress"
     else

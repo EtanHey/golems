@@ -53,7 +53,7 @@ for TS in ${SPIKE_TIMESTAMPS[@]+"${SPIKE_TIMESTAMPS[@]}"}; do
     SECS=$((TS % 60))
     FNAME="frame-${MINS}m${SECS}s.jpg"
     if [ ! -f "$OUT_DIR/frames/$FNAME" ]; then
-        ffmpeg -nostdin -ss "$TS" -i "$VIDEO" -vframes 1 -q:v 3 "$OUT_DIR/frames/$FNAME" -y 2>/dev/null
+        bash "$STREAM_HELPERS_DIR/stream/background.sh" ffmpeg -nostdin -ss "$TS" -i "$VIDEO" -vframes 1 -q:v 3 -y "$OUT_DIR/frames/$FNAME" 2>/dev/null
         FRAME_COUNT=$((FRAME_COUNT + 1))
     fi
 done
@@ -65,7 +65,7 @@ while IFS= read -r TS; do
     SECS=$((TS % 60))
     FNAME="frame-quiet-${MINS}m${SECS}s.jpg"
     if [ ! -f "$OUT_DIR/frames/$FNAME" ]; then
-        ffmpeg -nostdin -ss "$TS" -i "$VIDEO" -vframes 1 -q:v 3 "$OUT_DIR/frames/$FNAME" -y 2>/dev/null
+        bash "$STREAM_HELPERS_DIR/stream/background.sh" ffmpeg -nostdin -ss "$TS" -i "$VIDEO" -vframes 1 -q:v 3 -y "$OUT_DIR/frames/$FNAME" 2>/dev/null
         FRAME_COUNT=$((FRAME_COUNT + 1))
     fi
 done < "$OUT_DIR/quiet-frames.txt"

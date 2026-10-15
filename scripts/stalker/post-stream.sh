@@ -214,7 +214,7 @@ if [ "$RETENTION_REENTRY" -eq 0 ]; then
             log "Remux stage complete, using existing $TARGET_VIDEO"
         else
             log "Remuxing transport stream to mp4: $SOURCE_VIDEO -> $TARGET_VIDEO"
-            ffmpeg -nostdin -y -i "$SOURCE_VIDEO" -c copy "$TARGET_VIDEO" 2> "$STREAM_DIR/.remux.log"
+            bash "$STREAM_HELPERS_DIR/stream/background.sh" ffmpeg -nostdin -y -i "$SOURCE_VIDEO" -c copy "$TARGET_VIDEO" 2> "$STREAM_DIR/.remux.log"
             mark_stalker_stage_done "$STREAM_DIR" "0-remux"
         fi
     elif [ -f "$TARGET_VIDEO" ]; then

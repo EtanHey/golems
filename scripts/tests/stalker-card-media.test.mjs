@@ -227,3 +227,9 @@ test("refuses stale legacy clips and reuses only receipt-verified card media", a
   await writeFile(join(runDir, "card-media-v2", "receipt.json"), JSON.stringify(receipt));
   await assert.rejects(prepareCardMedia({ runDir, summary, ...fake }), /cannot regenerate card media without source video/);
 });
+
+test("default encoder failures identify ffmpeg through the bash policy runner", async () => {
+  const { runDir, summary } = await fixture("encoder-label");
+  const { ffprobeImpl } = fakes();
+  await assert.rejects(prepareCardMedia({ runDir, summary, ffprobeImpl }), /^Error: ffmpeg failed/);
+});

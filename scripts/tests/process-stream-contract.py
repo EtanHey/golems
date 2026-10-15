@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from stream_background_contract import with_background_policy
 
 ROOT = Path(__file__).resolve().parents[2]
 ENTRY = "scripts/stalker/process-stream.sh"
@@ -230,8 +231,11 @@ def main():
         if record:
             path.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
         else:
-            expected = json.loads(path.read_text())
-            assert actual == expected, (f"{case} differs from untouched-base golden {path}: "
+            expected = with_background_policy(json.loads(path.read_text()))
+            if case == "parallel-order":
+                for step in expected:
+                    step["commands"].sort(key=lambda item: json.dumps(item, sort_keys=True))
+            assert actual == expected, (f"{case} differs from base golden plus background policy {path}: "
                                         f"{first_difference(actual, expected)}")
         print(f"PASS {case}: {len(actual)} step(s)")
 

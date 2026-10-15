@@ -34,7 +34,7 @@ if [ -f "$GEMS_FILE" ]; then
         if [ ! -f "$CLIP_FILE" ]; then
             START=$((SECS - 10))
             [ $START -lt 0 ] && START=0
-            ffmpeg -nostdin -y -ss "$START" -i "$VIDEO" -t 45 \
+            bash "$STREAM_HELPERS_DIR/stream/background.sh" ffmpeg -nostdin -y -ss "$START" -i "$VIDEO" -t 45 \
                 -c:v libx264 -preset fast -crf 28 \
                 -c:a aac -b:a 64k \
                 -movflags +faststart \

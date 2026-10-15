@@ -48,7 +48,7 @@ img.save(os.environ["GEM_OUTPUT"])
 PYEOF
 
 # Composite overlay onto clip at bottom
-ffmpeg -y -i "$CLIP" -i "$OVERLAY_PNG" \
+bash "$(dirname "${BASH_SOURCE[0]}")/../lib/stream/background.sh" ffmpeg -y -i "$CLIP" -i "$OVERLAY_PNG" \
   -filter_complex "[1]format=rgba[ov];[0][ov]overlay=0:H-${BAR_HEIGHT}" \
   -c:v libx264 -preset fast -crf 28 \
   -c:a copy \
