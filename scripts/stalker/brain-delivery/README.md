@@ -31,3 +31,9 @@ goldens. `test-brain-delivery-isolation.py` checks two simultaneous copies.
 The digest subcommand always prints its existing title/body to stdout and returns
 the renderer status. It sends no message. `--dry-run` remains accepted; BrainLayer
 dry-run aliases affect ingestion only.
+
+Stores select the BrainLayer source environment's `.venv/bin/python` when present;
+`STALKER_BRAINLAYER_PYTHON` explicitly overrides it. Durable store acknowledgments
+are recorded as `chunk_id`. A custom `STALKER_BRAIN_STORE_CMD` must return one
+plain chunk-ID token on stdout; exit zero without an ID stays queued. The
+content-versioned human-digest payload includes `digest.md` itself.
