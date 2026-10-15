@@ -106,7 +106,8 @@ fi
 SH
 
     chmod +x "$TMPDIR_/bin/ffprobe" "$TMPDIR_/bin/ffmpeg" "$TMPDIR_/bin/notify" "$TMPDIR_/bin/curl" "$TMPDIR_/bin/brain-store" "$TMPDIR_/bin/brain-store-fail" "$TMPDIR_/bin/timeout"
-    ln -s "$(command -v node)" "$TMPDIR_/bin/node"
+    source "$REPO_ROOT/scripts/tests/stalker-fake-verifier.bash"
+    stalker_fake_verifier_node "$TMPDIR_/bin/node"
 }
 
 teardown() {
@@ -544,10 +545,13 @@ SH
 #!/bin/bash
 cat >/dev/null
 trap '' TERM
-/bin/sleep 37.24681
+/bin/sleep 37.24681 &
+echo $! > "$STALKER_TEST_CHILD_PID"
+wait $!
 SH
     chmod +x "$TMPDIR_/bin/brain-store-slow"
 
+    STALKER_TEST_CHILD_PID="$TMPDIR_/child.pid" \
     PATH="$TMPDIR_/bin:/usr/bin:/bin" \
     STALKER_BRAIN_STORE_CMD="$TMPDIR_/bin/brain-store-slow" \
     STALKER_BRAINLAYER_INGEST_TIMEOUT=1s \
@@ -560,7 +564,8 @@ SH
     [ ! -f "$full_dir/.stage-brainlayer.done" ]
     grep -F -q 'status=queued' "$full_dir/.brainlayer-status"
     [ "$(jq -s 'length' "$full_dir/orphaned_stores.jsonl")" = "3" ]
-    if child_pid="$(pgrep -f '^/bin/sleep 37\.24681$' | head -1)" && [ -n "$child_pid" ]; then
+    child_pid="$(cat "$TMPDIR_/child.pid")"
+    if kill -0 "$child_pid" 2>/dev/null; then
         kill "$child_pid" 2>/dev/null || true
         false
     fi
@@ -625,4 +630,23 @@ SH
     [ "$(cat "$TMPDIR_/contract-calls")" = "ingest-run" ]
     [ ! -f "$TMPDIR_/quality-alert.json" ]
     [ ! -f "$full_dir/.stage-notified.done" ]
+}
+
+@test "built-in watchdog kills TERM-ignoring descendants after their parent exits" {
+    sed -n '/^stalker_timeout_seconds()/,/^queue_brainlayer_replay()/p' "$POST_STREAM" | sed '$d' > "$TMPDIR_/timeout-functions.sh"
+    cat > "$TMPDIR_/early-parent" <<'SH'
+#!/bin/bash
+trap 'exit 0' TERM
+bash -c 'trap "" TERM; exec /bin/sleep 37.24681' </dev/null >/dev/null 2>&1 &
+echo $! > "$STALKER_TEST_CHILD_PID"
+wait $!
+SH
+    chmod +x "$TMPDIR_/early-parent"
+    run env STALKER_TEST_CHILD_PID="$TMPDIR_/child.pid" bash -c 'source "$1"; STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0; run_with_stalker_timeout "" 1s "$2"' bash "$TMPDIR_/timeout-functions.sh" "$TMPDIR_/early-parent"
+    [ "$status" -eq 124 ]
+    child_pid="$(cat "$TMPDIR_/child.pid")"
+    if kill -0 "$child_pid" 2>/dev/null; then
+        kill -KILL "$child_pid" 2>/dev/null || true
+        false
+    fi
 }
