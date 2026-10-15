@@ -92,8 +92,11 @@ elif name == "codex":
         sys.exit(9)
     result = '{"score":8,"type":"take","title":"Codex fallback highlight","summary":"Synthetic fallback found a highlight."}\n'
     pathlib.Path(args[args.index("--output-last-message") + 1]).write_text(result)
+elif name == "stalker-brainlayer.sh":
+    trace()
 elif name == "node":
     trace()
+    if args[0].endswith("stalker-run-contract.mjs"): sys.exit(0)
     with (data / "completion-calls").open("a") as f: f.write("called\n")
 elif name == "annotate-clip.sh":
     trace()
@@ -167,7 +170,7 @@ def capture(root, case):
         if case == "chat-json":
             chat = run / "chat.json"
             chat.write_text('[{"time_s":10,"user":"a","message":"wow !clip"},{"time_s":30,"user":"b","message":"hype"}]\n')
-        commands = ["date", "ps", "mktemp", "ffprobe", "ffmpeg", "sox", "curl", "whisper-cli", "timeout", "node"]
+        commands = ["date", "ps", "mktemp", "ffprobe", "ffmpeg", "sox", "curl", "whisper-cli", "timeout", "node", "stalker-brainlayer.sh"]
         if case != "no-scorer": commands += ["agy", "codex"]
         for name in commands:
             stub = bin_dir / name
@@ -178,7 +181,7 @@ def capture(root, case):
             override = os.environ.get(f"PROCESS_STREAM_CONTRACT_{name.upper()}")
             if override: (bin_dir / name).symlink_to(Path(override).resolve())
         env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home),
-               "CONTRACT_DATA": str(data), "LC_ALL": "C", "TZ": "UTC",
+               "STALKER_CONTRACT_SCRIPT": str(bin_dir / "stalker-brainlayer.sh"), "CONTRACT_DATA": str(data), "LC_ALL": "C", "TZ": "UTC",
                "STALKER_DASHBOARD_ENABLED": "1", "STALKER_TRANSCRIBE_ATTEMPTS": "1", "STALKER_RETRY_SLEEP_BASE": "0",
                "STALKER_SCORE_PARALLEL": "2" if case == "parallel-order" else "1",
                "STALKER_HEARTBEAT_NOTIFY": "0", "STALKER_HEARTBEAT_SECS": "9999",
@@ -232,6 +235,15 @@ def main():
             path.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
         else:
             expected = with_background_policy(json.loads(path.read_text()))
+            # Completion now ingests and verifies the current digest in both modes.
+            for step in expected:
+                commands = step["commands"]
+                for i in range(len(commands)-1, -1, -1):
+                    if commands[i]["command"] == "node" and commands[i]["argv"][0].endswith("stalker-complete-run.mjs"):
+                        run = commands[i]["argv"][1]
+                        commands[i+1:i+1] = [
+                            {"command":"stalker-brainlayer.sh", "argv":["ingest-run",run]},
+                            {"command":"node", "argv":[commands[i]["argv"][0].replace("stalker-complete-run.mjs", "stalker-run-contract.mjs"),run]}]
             if case == "parallel-order":
                 for step in expected:
                     step["commands"].sort(key=lambda item: json.dumps(item, sort_keys=True))

@@ -1,12 +1,12 @@
 # Stalker completion and recovery
 
-A processing marker is not a delivery receipt. A Stalker run is complete only after its human digest, admitted dashboard, media verification and archive custody pass `stalker-run-contract.mjs`.
+A processing marker is not a delivery receipt. Default completion keeps transcript, gems and grounded `digest.md`, requires the current digest hash's durable BrainLayer chunk ID, and verifies archive custody. The v5 `digest-only` receipt remains `digest-ready` until storage is confirmed; stage 8 reports missing acknowledgment. Morning and post-stream entrypoints ingest idempotently before final verification.
 
-Delivery runs before archive compression. It writes `digest.md`, `dashboard.html` and `.stalker-completion.json` inside the recording directory. The v4 local receipt uses `published` and `complete` statuses. Stage 6 generates a grounded digest, stage 7 checks the live HTML hash, hub manifest and every card's clip/poster hashes, and stage 9 verifies retention/custody. Stage 8 was retired on 2026-10-01. A durable `published` checkpoint precedes retention; only all completed checks permit `complete`. Failures keep `.stalker-failure.json` and leave completion open.
+Set `STALKER_DASHBOARD_ENABLED=1` to also generate frames, clips, card media and HTML. This opt-in uses v4 receipts and additionally verifies the live HTML hash, hub manifest and card media. Both modes retain text and archive media safely; failures keep `.stalker-failure.json` and leave final delivery open.
 
 ## Install configuration
 
-The canonical checkout needs the merged completion scripts. Configure the hub once in `docs.local/stalker-golem/delivery-config.json`:
+The canonical checkout needs the merged completion scripts and Drive archive configuration. Hub configuration is required only for dashboard opt-in, in `docs.local/stalker-golem/delivery-config.json`:
 
 ```json
 {"hubOrigin":"https://dashboard.example"}

@@ -1,3 +1,5 @@
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createServer, get } from 'node:http';
@@ -438,6 +440,12 @@ test('live-hub outage preserves a legacy v3 completion receipt byte-for-byte', a
 test('default completion keeps digest and retention without dashboard work', async t => {
   const {runDir, options} = await setup(t);
   await completeRun(runDir, options); // Switching an existing published run must also disable the hub.
+  const monitor = () => promisify(execFile)('bash', [join(import.meta.dirname, '../stalker/stream-overnight-monitor.sh'), 'examplechannel'],
+    {env:{...process.env, STALKER_MONITOR_ONCE:'1', STALKER_RUN_DIR:runDir}});
+  await assert.rejects(monitor(), error => error.code === 75);
+  await writeFile(join(runDir, '.brainlayer-store-state.jsonl'), JSON.stringify({record:`human-digest:${createHash('sha256').update(await readFile(join(runDir, 'digest.md'))).digest('hex')}`,status:'stored',chunk_id:'fixture-id'}));
+  assert.match((await monitor()).stdout, /verified dashboard/);
+  await rm(join(runDir, '.brainlayer-store-state.jsonl'));
   delete options.dashboardEnabled;
   let dashboardCalls = 0;
   const forbidden = async () => { dashboardCalls++; throw new Error('dashboard work must remain off'); };
@@ -451,9 +459,14 @@ test('default completion keeps digest and retention without dashboard work', asy
   assert.equal(receipt.artifacts.dashboard, undefined);
   const digest = await readFile(join(runDir, 'digest.md'), 'utf8');
   assert.ok(digest.includes('Top highlights'));
+  await assert.rejects(monitor(), error => error.code === 75);
   const statePath = join(runDir, '.brainlayer-store-state.jsonl');
   await writeFile(statePath, JSON.stringify({record: 'human-digest:stale', status: 'stored', chunk_id: 'old'}));
   assert.equal((await completeRun(runDir, options)).status, 'digest-ready');
   await writeFile(statePath, JSON.stringify({record: `human-digest:${createHash('sha256').update(digest).digest('hex')}`, status: 'stored', chunk_id: 'fixture-id'}));
   assert.equal((await completeRun(runDir, options)).status, 'complete');
+  assert.match((await monitor()).stdout, /verified digest.*BrainLayer/);
+  const summary = await readFile(join(runDir, 'morning-summary.md'), 'utf8');
+  assert.ok(summary.includes(join(runDir, 'digest.md')));
+  assert.doesNotMatch(summary, /undefined|Dashboard:/);
 });

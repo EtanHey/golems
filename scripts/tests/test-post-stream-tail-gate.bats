@@ -272,16 +272,17 @@ mark_downstream_stages_done() {
     [ "$(jq -s 'length' "$TMPDIR_/brain-store.jsonl")" = "3" ]
 }
 
-@test "post-stream completion remains successful when BrainLayer ingest fails" {
+@test "post-stream keeps missing BrainLayer acknowledgment retryable" {
     full_dir="$(make_run_dir examplechannel-2026-06-18-005309)"
     mark_downstream_stages_done "$full_dir"
     printf '# Stalker Golem Drive Ledger\n\n- Drive Target: fake\n' > "$full_dir/_DRIVE-LEDGER.md"
 
+    STALKER_TEST_VERIFY_EXIT=75 \
     PATH="$TMPDIR_/bin:$PATH" \
     STALKER_BRAINLAYER_IMPORTANCE=bad \
     run "$POST_STREAM" "$full_dir" "$full_dir/video.ts" "$full_dir/chat.log" examplechannel 0
 
-    [ "$status" -eq 0 ]
+    [ "$status" -eq 75 ]
     [ "$(cat "$STALKER_COMPLETION_CALLS")" = "$full_dir" ]
     [ ! -f "$full_dir/.stage-brainlayer.done" ]
 }

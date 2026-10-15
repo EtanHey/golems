@@ -21,6 +21,8 @@ async function fixture(t) {
   await writeFile(join(stalker, 'stalker-complete-run.mjs'), `import {appendFileSync} from 'node:fs'; appendFileSync(process.env.CALLS,'delivery\\n'); process.exit(Number(process.env.DELIVERY_EXIT ?? 0));`);
   await writeFile(join(bin, 'ffprobe'), '#!/bin/bash\necho 24000\n', { mode: 0o755 });
   await writeFile(join(bin, 'notify'), '#!/bin/bash\nexit 0\n', { mode: 0o755 });
+  await writeFile(join(stalker, 'stalker-brainlayer.sh'), '#!/bin/bash\nprintf "ingest\\n" >> "$CALLS"\n', {mode:0o755});
+  await writeFile(join(stalker, 'stalker-run-contract.mjs'), "import {appendFileSync} from 'node:fs'; appendFileSync(process.env.CALLS,'verify\\n'); process.exit(Number(process.env.VERIFY_EXIT ?? 0));");
   const calls = join(root, 'calls');
   const run = extra => spawnSync('bash', [join(stalker, 'post-stream.sh'), runDir, join(runDir, 'video.mp4'), join(runDir, 'chat.log'), 'examplechannel'], {
     encoding: 'utf8', timeout: 10000, env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CALLS: calls, STALKER_DASHBOARD_ENABLED: "1", ...extra },
@@ -32,7 +34,7 @@ test('post-stream delivery owns retention and never invokes the legacy archive s
   const { run, calls } = await fixture(t);
   const result = run();
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.equal(await readFile(calls, 'utf8'), 'process-stream\ndelivery\n');
+  assert.equal(await readFile(calls, 'utf8'), 'process-stream\ndelivery\ningest\nverify\n');
 });
 
 test('a resumed process stage still validates delivery and fails before archive', async t => {
@@ -40,7 +42,7 @@ test('a resumed process stage still validates delivery and fails before archive'
   await writeFile(join(runDir, '.stage-process.done'), 'done');
   const result = run({ DELIVERY_EXIT: '75' });
   assert.equal(result.status, 75, result.stdout + result.stderr);
-  assert.equal(await readFile(calls, 'utf8'), 'delivery\n');
+  assert.equal(await readFile(calls, 'utf8'), 'delivery\ningest\n');
 });
 
 test('post-stream re-enters local and legacy receipts after original video offload', async t => {
@@ -52,7 +54,7 @@ test('post-stream re-enters local and legacy receipts after original video offlo
     }));
     const result = run();
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.equal(await readFile(calls, 'utf8'), 'delivery\n');
+    assert.equal(await readFile(calls, 'utf8'), 'delivery\ningest\nverify\n');
   });
 });
 
@@ -64,4 +66,11 @@ test('overnight monitor rejects the incident shape instead of announcing gems as
   assert.equal(result.status, 75, result.stdout + result.stderr);
   assert.doesNotMatch(result.stdout, /PIPELINE COMPLETE/);
   await assert.rejects(readFile(join(runDir, 'morning-summary.md')));
+});
+
+
+test('opt-in re-ingests despite old marker and requires current digest acknowledgment', async t => {
+  const {run, calls} = await fixture(t);
+  assert.equal(run({VERIFY_EXIT: '75'}).status, 75);
+  assert.match(await readFile(calls, 'utf8'), /delivery\ningest\nverify\n$/);
 });

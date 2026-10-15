@@ -30,10 +30,11 @@ check_delivery() {
     fi
     local receipt
     if receipt=$(node "$SCRIPT_DIR/stalker-run-contract.mjs" "$STREAM_DIR" 2>&1); then
-        local dashboard_url
-        dashboard_url=$(printf '%s' "$receipt" | node -e 'let s="";process.stdin.on("data",b=>s+=b);process.stdin.on("end",()=>console.log(JSON.parse(s).dashboardUrl))')
-        printf '# Morning Summary: %s (%s)\n\n## Pipeline Status: COMPLETE\n\nDashboard: %s\n' "$CHANNEL" "$DATE" "$dashboard_url" > "$STREAM_DIR/morning-summary.md"
-        log "PIPELINE COMPLETE — verified dashboard and retention: $dashboard_url"
+        local summary
+        summary=$(printf '%s' "$receipt" | node -e 'let s="";process.stdin.on("data",b=>s+=b);process.stdin.on("end",()=>{const r=JSON.parse(s);console.log(r.mode === "digest-only" ? `Digest: ${r.digestPath}\nBrainLayer: confirmed (${r.brainlayerChunkId})` : `Dashboard: ${r.dashboardUrl}`)})')
+        printf '# Morning Summary: %s (%s)\n\n## Pipeline Status: COMPLETE\n\n%s\n' "$CHANNEL" "$DATE" "$summary" > "$STREAM_DIR/morning-summary.md"
+        if [[ "$summary" == Digest:* ]]; then log "PIPELINE COMPLETE — verified digest and BrainLayer delivery: $summary"
+        else log "PIPELINE COMPLETE — verified dashboard and retention: $summary"; fi
         return 0
     fi
     if [ "${STALKER_MONITOR_ONCE:-0}" = "1" ]; then log "$receipt"; fi
