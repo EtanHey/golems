@@ -139,7 +139,7 @@ function split_case_013() {
     mkdir -p "$stream_dir" "$TMPDIR_/empty-home"
     printf 'video\n' > "$stream_dir/video.mp4"
 
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/empty-home" \
         ALERTS_FILE="$ALERTS_FILE" \
@@ -173,7 +173,7 @@ SH
         ln -s "$(command -v "$required_cmd")" "$FAKE_BIN/$required_cmd"
     done
 
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN" \
         HOME="$TMPDIR_/empty-home" \
         CODEX_CALLS="$codex_calls" \
@@ -209,7 +209,7 @@ function split_case_015() {
         printf 'done\n' > "$stream_dir/.stage-${stage}.done"
     done
 
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/empty-home" \
         ALERTS_FILE="$ALERTS_FILE" \
@@ -364,7 +364,7 @@ function split_case_021() {
     printf '[00:00:01] viewer: current run\n' > "$stream_dir/chat.log"
     printf '# Gems\n\n### [00:10] Current gem\n' > "$stream_dir/gems.md"
 
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \

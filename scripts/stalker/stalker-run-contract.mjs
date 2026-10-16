@@ -21,11 +21,11 @@ async function requiredFile(runDir, name, stage) {
 }
 
 // These are delivery artifacts; legacy processing/notification markers are not evidence.
-export async function artifactHashes(runDir) {
+export async function artifactHashes(runDir, { includeDashboard = true } = {}) {
   const gems = await requiredFile(runDir, 'gems.md', 6);
   const transcript = await requiredFile(runDir, 'transcript.md', 6);
   const digest = await requiredFile(runDir, 'digest.md', 6);
-  const dashboard = await requiredFile(runDir, 'dashboard.html', 7);
+  const dashboard = includeDashboard ? await requiredFile(runDir, 'dashboard.html', 7) : null;
   const text = digest.toString('utf8').replace(/\r\n/g, '\n');
   for (const heading of ['What was discussed', 'Top highlights', 'Claims worth checking']) {
     const section = text.split(`## ${heading}\n`)[1]?.split('\n## ')[0]?.trim();
@@ -38,8 +38,8 @@ export async function artifactHashes(runDir) {
   const count = highlights.split('\n').filter(line =>
     /^(?:- |\d+\. |### ).*\[\d+:\d{2}(?::\d{2})?\].*\S/.test(line)).length;
   if (count < 5 || count > 10) throw stageFailure(6, 'digest must contain 5–10 highlights');
-  if (!/<html\b|<!doctype html/i.test(dashboard.toString('utf8'))) throw stageFailure(7, 'dashboard is not HTML');
-  return { transcript: sha256(transcript), gems: sha256(gems), digest: sha256(digest), dashboard: sha256(dashboard) };
+  if (dashboard && !/<html\b|<!doctype html/i.test(dashboard.toString('utf8'))) throw stageFailure(7, 'dashboard is not HTML');
+  return { transcript: sha256(transcript), gems: sha256(gems), digest: sha256(digest), ...(dashboard && { dashboard: sha256(dashboard) }) };
 }
 
 async function verifyCardMedia(html, publication, fetchImpl) {
@@ -70,13 +70,25 @@ async function verifyCardMedia(html, publication, fetchImpl) {
 }
 
 export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireRetention = true } = {}) {
-  const hashes = await artifactHashes(runDir);
   receipt ??= await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
-  if (receipt?.version !== 4 || receipt.runName !== basename(resolve(runDir))) {
+  const digestOnly = receipt?.version === 5 && receipt.mode === 'digest-only';
+  const hashes = await artifactHashes(runDir, { includeDashboard: !digestOnly });
+  if ((!digestOnly && receipt?.version !== 4) || receipt.runName !== basename(resolve(runDir))) {
     throw stageFailure(7, 'missing or wrong-run completion receipt');
   }
   if (Object.keys(hashes).some(key => hashes[key] !== receipt.artifacts?.[key])) {
     throw stageFailure(7, 'artifact hash mismatch; regenerate delivery after input changes');
+  }
+  if (digestOnly) {
+    if (!['published', 'complete'].includes(receipt.status)) throw stageFailure(7, 'invalid digest receipt status');
+    if (requireRetention) {
+      if (receipt.status !== 'complete') throw stageFailure(9, 'media retention is not complete');
+      await verifyLocalMediaRetention({ runDir }).catch(error => { throw stageFailure(9, error.message); });
+    }
+    const state = await readFile(join(runDir, '.brainlayer-store-state.jsonl'), 'utf8').catch(() => '');
+    const rows = state.split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
+    const stored = rows.some(row => row.record === `human-digest:${hashes.digest}` && row.status === 'stored' && typeof row.chunk_id === 'string' && row.chunk_id.length > 0);
+    return { status: requireRetention && stored ? 'complete' : 'digest-ready', mode: 'digest-only', runName: receipt.runName };
   }
   const publication = receipt.publication;
   let url, manifestUrl;
@@ -130,7 +142,10 @@ export async function migrateCompletionReceipt(runDir, {receipt, fetchImpl} = {}
 }
 
 if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
-  verifyRunDelivery(process.argv[2] ?? '').then(result => console.log(JSON.stringify(result))).catch(error => {
+  verifyRunDelivery(process.argv[2] ?? '').then(result => {
+    if (result.status === 'digest-ready') throw stageFailure(8, 'human digest not confirmed in BrainLayer');
+    console.log(JSON.stringify(result));
+  }).catch(error => {
     console.error(error.message);
     process.exitCode = 75;
   });

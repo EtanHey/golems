@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createServer, get } from 'node:http';
 import { chmod, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
@@ -35,7 +36,7 @@ async function setup(t, runName = 'examplechannel-2026-09-08-030512') {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
-  const options = { repoRoot, orchestratorRoot: join(root, 'orc'), hubOrigin: `http://127.0.0.1:${server.address().port}`,
+  const options = { dashboardEnabled: true, repoRoot, orchestratorRoot: join(root, 'orc'), hubOrigin: `http://127.0.0.1:${server.address().port}`,
     generateImpl: async () => { calls.push('generate'); return digest; },
     mediaImpl: async ({summary}) => {
       const items=[];
@@ -432,4 +433,27 @@ test('live-hub outage preserves a legacy v3 completion receipt byte-for-byte', a
   options.fetchImpl = async () => { throw new Error('synthetic legacy hub outage'); };
   await assert.rejects(completeRun(runDir, options), /stage 7.*synthetic legacy hub outage/);
   assert.equal(await readFile(path, 'utf8'), bytes);
+});
+
+test('default completion keeps digest and retention without dashboard work', async t => {
+  const {runDir, options} = await setup(t);
+  await completeRun(runDir, options); // Switching an existing published run must also disable the hub.
+  delete options.dashboardEnabled;
+  let dashboardCalls = 0;
+  const forbidden = async () => { dashboardCalls++; throw new Error('dashboard work must remain off'); };
+  const result = await completeRun(runDir, {...options, mediaImpl: forbidden, syncImpl: forbidden, fetchImpl: forbidden});
+  assert.equal(dashboardCalls, 0);
+  assert.equal(result.mode, 'digest-only');
+  assert.equal(result.status, 'digest-ready');
+  const receipt = JSON.parse(await readFile(join(runDir, '.stalker-completion.json')));
+  assert.equal(receipt.version, 5);
+  assert.equal(receipt.publication, undefined);
+  assert.equal(receipt.artifacts.dashboard, undefined);
+  const digest = await readFile(join(runDir, 'digest.md'), 'utf8');
+  assert.ok(digest.includes('Top highlights'));
+  const statePath = join(runDir, '.brainlayer-store-state.jsonl');
+  await writeFile(statePath, JSON.stringify({record: 'human-digest:stale', status: 'stored', chunk_id: 'old'}));
+  assert.equal((await completeRun(runDir, options)).status, 'digest-ready');
+  await writeFile(statePath, JSON.stringify({record: `human-digest:${createHash('sha256').update(digest).digest('hex')}`, status: 'stored', chunk_id: 'fixture-id'}));
+  assert.equal((await completeRun(runDir, options)).status, 'complete');
 });

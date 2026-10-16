@@ -225,6 +225,10 @@ if ! stalker_require_run_quality "$OUT_DIR" "$CHAT_LOG" "complete-notify"; then
 fi
 if [ "${STALKER_DEFER_DELIVERY:-0}" != "1" ]; then
     node "${STALKER_COMPLETION_SCRIPT:-$SCRIPT_DIR/stalker-complete-run.mjs}" "$OUT_DIR"
+    if [ "${STALKER_DASHBOARD_ENABLED:-0}" != "1" ]; then
+        "$SCRIPT_DIR/stalker-brainlayer.sh" ingest-run "$OUT_DIR"
+        if [ "${STALKER_BRAINLAYER_DRY_RUN:-${STALKER_BRAIN_STORE_DRY_RUN:-0}}" != "1" ]; then node "$SCRIPT_DIR/stalker-run-contract.mjs" "$OUT_DIR"; fi
+    fi
 fi
 
 log ""

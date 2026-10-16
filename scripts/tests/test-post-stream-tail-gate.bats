@@ -3,6 +3,7 @@
 # Run with: bats scripts/tests/test-post-stream-tail-gate.bats
 
 setup() {
+    export STALKER_DASHBOARD_ENABLED=1
     REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
     POST_STREAM="$REPO_ROOT/scripts/stalker/post-stream.sh"
     TMPDIR_="$(mktemp -d)"

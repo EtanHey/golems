@@ -179,7 +179,7 @@ def capture(root, case):
             if override: (bin_dir / name).symlink_to(Path(override).resolve())
         env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home),
                "CONTRACT_DATA": str(data), "LC_ALL": "C", "TZ": "UTC",
-               "STALKER_TRANSCRIBE_ATTEMPTS": "1", "STALKER_RETRY_SLEEP_BASE": "0",
+               "STALKER_DASHBOARD_ENABLED": "1", "STALKER_TRANSCRIBE_ATTEMPTS": "1", "STALKER_RETRY_SLEEP_BASE": "0",
                "STALKER_SCORE_PARALLEL": "2" if case == "parallel-order" else "1",
                "STALKER_HEARTBEAT_NOTIFY": "0", "STALKER_HEARTBEAT_SECS": "9999",
                "WHISPER_MODEL": str(data / "model.bin"),

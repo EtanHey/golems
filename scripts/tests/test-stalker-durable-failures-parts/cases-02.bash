@@ -49,7 +49,7 @@ function split_case_035() {
     printf '[00:00:01] viewer: hello\n' > "$stream_dir/chat.log"
     printf '# Gems\n\n### [00:10] A real gem\n**Score:** 8/10 | **Type:** insight\n' > "$stream_dir/gems.md"
 
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
@@ -67,7 +67,7 @@ function split_case_036() {
     stream_dir="$(make_post_fixture)"
     printf '[00:00:01] viewer: hello\n' > "$stream_dir/chat.log"
     printf '# Gems\n\n### [00:10] A real gem\n' > "$stream_dir/gems.md"
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
@@ -87,7 +87,7 @@ function split_case_037() {
     contract="$(make_contract)"
     : > "$stream_dir/chat.log"
 
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
@@ -114,7 +114,7 @@ function split_case_038() {
     : > "$stream_dir/chat.log"
     printf '# Gems\n\n### [00:10] A real gem\n' > "$stream_dir/gems.md"
 
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
@@ -143,7 +143,7 @@ function split_case_039() {
 ### [00:10] A real gem
 EOF
 
-    run env -i \
+    run env -i STALKER_DASHBOARD_ENABLED=1 \
         PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$TMPDIR_/home" \
         ALERTS_FILE="$ALERTS_FILE" \
