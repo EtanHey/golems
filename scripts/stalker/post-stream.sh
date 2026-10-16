@@ -32,28 +32,29 @@ stalker_timeout_seconds() {
     return 2
 }
 
-stalker_signal_process_tree() {
-    local pid="$1"
-    local signal="$2"
-    local child
+stalker_process_tree() {
+    local pid="$1" child
     while IFS= read -r child; do
-        [ -n "$child" ] || continue
-        stalker_signal_process_tree "$child" "$signal"
+        [ -z "$child" ] || stalker_process_tree "$child"
     done < <(pgrep -P "$pid" 2>/dev/null || true)
-    kill "-$signal" "$pid" 2>/dev/null || true
+    printf '%s\n' "$pid"
 }
 
 stalker_terminate_full_process_tree() {
-    local pid="$1"
-    local kill_after="${2:-1}"
+    local pid="$1" kill_after="${2:-1}" child identity i
+    local pids=() identities=()
     [[ "$pid" =~ ^[0-9]+$ ]] || return 2
-    kill -0 "$pid" 2>/dev/null || return 0
-
-    stalker_signal_process_tree "$pid" TERM
+    # Snapshot before TERM: an exiting parent can orphan a TERM-ignoring child.
+    while IFS= read -r child; do
+        identity="$(ps -p "$child" -o lstart= 2>/dev/null)" || continue
+        pids+=("$child"); identities+=("$identity")
+    done < <(stalker_process_tree "$pid")
+    for child in "${pids[@]}"; do kill -TERM "$child" 2>/dev/null || true; done
     sleep "$kill_after"
-    if kill -0 "$pid" 2>/dev/null; then
-        stalker_signal_process_tree "$pid" KILL
-    fi
+    for ((i=0; i<${#pids[@]}; i++)); do
+        identity="$(ps -p "${pids[$i]}" -o lstart= 2>/dev/null)" || continue
+        [ "$identity" != "${identities[$i]}" ] || kill -KILL "${pids[$i]}" 2>/dev/null || true
+    done
 }
 
 run_with_stalker_timeout() {
@@ -91,7 +92,8 @@ run_with_stalker_timeout() {
 
     status=0
     wait "$command_pid" || status=$?
-    stalker_terminate_full_process_tree "$watchdog_pid" 0
+    if [ ! -s "$marker" ]; then stalker_terminate_full_process_tree "$watchdog_pid" 0; fi
+    # Once timeout fires, let its escalation finish even if the root exits first.
     wait "$watchdog_pid" 2>/dev/null || true
 
     if [ -s "$marker" ]; then
