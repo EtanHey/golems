@@ -69,7 +69,14 @@ async function verifyCardMedia(html, publication, fetchImpl) {
   }
 }
 
-export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireRetention = true } = {}) {
+export async function storedDigest(runDir, hash) {
+  const state = await readFile(join(runDir, '.brainlayer-store-state.jsonl'), 'utf8').catch(() => '');
+  const rows = state.split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
+  const row = rows.find(row => row.record === `human-digest:${hash}` && row.status === 'stored' && typeof row.chunk_id === 'string' && row.chunk_id.trim());
+  return {digestPath: join(resolve(runDir), 'digest.md'), ...(row && {brainlayerChunkId: row.chunk_id})};
+}
+
+export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, requireRetention = true, requireBrainlayer = false } = {}) {
   receipt ??= await readFile(join(runDir, COMPLETION_RECEIPT), 'utf8').then(JSON.parse).catch(() => null);
   const digestOnly = receipt?.version === 5 && receipt.mode === 'digest-only';
   const hashes = await artifactHashes(runDir, { includeDashboard: !digestOnly });
@@ -85,10 +92,9 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
       if (receipt.status !== 'complete') throw stageFailure(9, 'media retention is not complete');
       await verifyLocalMediaRetention({ runDir }).catch(error => { throw stageFailure(9, error.message); });
     }
-    const state = await readFile(join(runDir, '.brainlayer-store-state.jsonl'), 'utf8').catch(() => '');
-    const rows = state.split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
-    const stored = rows.some(row => row.record === `human-digest:${hashes.digest}` && row.status === 'stored' && typeof row.chunk_id === 'string' && row.chunk_id.length > 0);
-    return { status: requireRetention && stored ? 'complete' : 'digest-ready', mode: 'digest-only', runName: receipt.runName };
+    const delivery = await storedDigest(runDir, hashes.digest);
+    if (requireBrainlayer && !delivery.brainlayerChunkId) throw stageFailure(8, 'human digest not confirmed in BrainLayer');
+    return { status: requireRetention && delivery.brainlayerChunkId ? 'complete' : 'digest-ready', mode: 'digest-only', runName: receipt.runName, ...delivery };
   }
   const publication = receipt.publication;
   let url, manifestUrl;
@@ -126,7 +132,9 @@ export async function verifyRunDelivery(runDir, { receipt, fetchImpl = fetch, re
     try { retention = await verifyLocalMediaRetention({ runDir }); }
     catch (error) { throw stageFailure(9, error.message); }
   }
-  return { status: requireRetention ? 'complete' : 'published',
+  const delivery = requireBrainlayer ? await storedDigest(runDir, hashes.digest) : {};
+  if (requireBrainlayer && !delivery.brainlayerChunkId) throw stageFailure(8, 'human digest not confirmed in BrainLayer');
+  return { ...delivery, status: requireRetention ? 'complete' : 'published',
     runName: receipt.runName, dashboardUrl: url.href, ...(retention && { retentionVerification: retention.verification }) };
 }
 
@@ -142,7 +150,7 @@ export async function migrateCompletionReceipt(runDir, {receipt, fetchImpl} = {}
 }
 
 if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
-  verifyRunDelivery(process.argv[2] ?? '').then(result => {
+  verifyRunDelivery(process.argv[2] ?? '', {requireBrainlayer: true}).then(result => {
     if (result.status === 'digest-ready') throw stageFailure(8, 'human digest not confirmed in BrainLayer');
     console.log(JSON.stringify(result));
   }).catch(error => {

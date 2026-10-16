@@ -5,7 +5,9 @@ import { realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { stageFailure } from "./stalker-run-contract.mjs";
+import { spawn } from "node:child_process";
+
+import { verifyRunDelivery, stageFailure } from "./stalker-run-contract.mjs";
 
 const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -77,8 +79,20 @@ async function eligibleRuns(stalkerRoot, date) {
   return inspected.filter(Boolean);
 }
 
+async function ingestRun(runDir) {
+  await new Promise((resolve, reject) => {
+    const child = spawn(join(SCRIPT_DIR, 'stalker-brainlayer.sh'), ['ingest-run', runDir], {detached: true, stdio: ['ignore', 'ignore', 'inherit']});
+    const timer = setTimeout(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }, 15 * 60 * 1000);
+    child.once('error', error => { clearTimeout(timer); reject(stageFailure(8, error.message)); });
+    child.once('close', code => { clearTimeout(timer); code === 0 ? resolve() : reject(stageFailure(8, 'BrainLayer ingest failed or timed out')); });
+  });
+}
+
 function validatedSummary(runDir, result) {
   const runName = basename(runDir);
+  if (result?.mode === 'digest-only' && result.status === 'complete' && result.runName === runName && result.brainlayerChunkId) {
+    return {run_name: runName, digest_path: result.digestPath, brainlayer_chunk_id: result.brainlayerChunkId, contract_check: result.skipped ? 'reverified' : 'completed'};
+  }
   let url;
   try { url = new URL(result?.dashboardUrl); }
   catch { throw stageFailure(7, `${runName} completion returned no valid dashboard URL`); }
@@ -135,15 +149,19 @@ export async function runMorningDigest(options = {}) {
     const runs = [];
     for (const runDir of runDirs) {
       runName = basename(runDir);
-      const result = await complete(runDir, {
+      let result = await complete(runDir, {
         repoRoot,
+        dashboardEnabled: options.dashboardEnabled,
         orchestratorRoot: options.orchestratorRoot,
         hubOrigin: options.hubOrigin,
         fetchImpl: options.fetchImpl,
         generateImpl: options.generateImpl,
         syncImpl: options.syncImpl,
       });
-      runs.push(validatedSummary(runDir, result));
+      await (options.ingestImpl ?? ingestRun)(runDir);
+      const skipped = result.skipped;
+      result = await (options.verifyImpl ?? verifyRunDelivery)(runDir, {requireBrainlayer: true, fetchImpl: options.fetchImpl});
+      runs.push(validatedSummary(runDir, {...result, skipped}));
     }
     const receipt = { ts: new Date().toISOString(), status: "complete", date, runs };
     await atomicWrite(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`);

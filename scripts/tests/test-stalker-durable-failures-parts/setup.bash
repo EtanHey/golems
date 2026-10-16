@@ -42,7 +42,8 @@ for arg in "$@"; do output="$arg"; done
 printf 'clip\n' > "$output"
 SH
     chmod +x "$FAKE_BIN/curl" "$FAKE_BIN/ffprobe" "$FAKE_BIN/ffmpeg"
-    ln -s "$(command -v node)" "$FAKE_BIN/node"
+    source "$REPO_ROOT/scripts/tests/stalker-fake-verifier.bash"
+    stalker_fake_verifier_node "$FAKE_BIN/node"
     export ALERTS_FILE
 }
 

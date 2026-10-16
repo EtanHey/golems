@@ -4,7 +4,15 @@ import { spawnSync } from "node:child_process";
 import { basename, join } from "node:path";
 import { test, beforeEach, afterEach } from "node:test";
 
-import { parseGems, runMorningDigest } from "../stalker/stalker-morning-digest.mjs";
+import { parseGems, runMorningDigest as runActualMorningDigest } from "../stalker/stalker-morning-digest.mjs";
+
+// Existing scheduling tests inject the completion boundary; keep storage explicit too.
+async function runMorningDigest(options) {
+  if (!options.completeImpl) return runActualMorningDigest(options);
+  let result;
+  return runActualMorningDigest({...options, completeImpl: async (...args) => result = await options.completeImpl(...args),
+    ingestImpl: async () => {}, verifyImpl: async () => result});
+}
 
 let sends;
 const notifyImpl = async (...args) => { sends.push(args); return {accepted: true}; };
@@ -181,4 +189,29 @@ test('retired skip-notify CLI option cannot certify completion', async t => {
   });
   assert.equal(result.status, 1); assert.match(result.stderr, /--skip-notify is retired/);
   await assert.rejects(readFile(receiptPath), {code: 'ENOENT'});
+});
+
+
+test('morning delivers fresh and already-stored digest-only runs through real completion', async t => {
+  const { completeRun } = await import('../stalker/stalker-complete-run.mjs');
+  const { verifyRunDelivery, sha256 } = await import('../stalker/stalker-run-contract.mjs');
+  const { repoRoot, stalkerRoot } = await setup(t, 'digest-only-integration');
+  const runDir = await eligibleRun(stalkerRoot, `examplechannel-${DATE}`);
+  await writeFile(join(runDir, 'transcript.md'), 'source');
+  await writeFile(join(runDir, 'gems.md'), GEMS);
+  const markdown = '# Digest\n## What was discussed\n[00:01] Topic\n## Top highlights\n' + '- [00:01] Highlight\n'.repeat(5) + '## Claims worth checking\n[00:01] Claim\n';
+  let generates = 0, ingests = 0;
+  const completeImpl = dir => completeRun(dir, { repoRoot, dashboardEnabled: false, archiveImpl: async () => { throw Error('no media'); },
+    generateImpl: async () => { generates++; return {markdown, summary: {}}; } });
+  const ingestImpl = async dir => { ingests++; await writeFile(join(dir, '.brainlayer-store-state.jsonl'), JSON.stringify({
+    record: `human-digest:${sha256(Buffer.from(markdown))}`, status: 'stored', chunk_id: 'integration-id' })); };
+  for (let i=0; i<2; i++) {
+    const result = await runActualMorningDigest({ date: DATE, repoRoot, completeImpl, ingestImpl });
+    assert.equal(result.runs[0].digest_path, join(runDir, 'digest.md'));
+    assert.equal(result.runs[0].brainlayer_chunk_id, 'integration-id');
+    assert.equal((await verifyRunDelivery(runDir)).status, 'complete');
+  }
+  assert.equal(generates, 1); assert.equal(ingests, 2);
+  await rm(join(runDir, '.brainlayer-store-state.jsonl'));
+  await assert.rejects(runActualMorningDigest({ date: DATE, repoRoot, completeImpl, ingestImpl: async () => {} }), /BrainLayer/);
 });

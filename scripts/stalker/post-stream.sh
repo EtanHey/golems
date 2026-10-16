@@ -275,31 +275,28 @@ else
     fi
 fi
 
-if stalker_stage_done "$STREAM_DIR" "brainlayer" && [ "${STALKER_DASHBOARD_ENABLED:-0}" = "1" ]; then
-    log "BrainLayer stage complete, skipping contract ingest"
+# Content-versioned payload keys provide idempotency; old stage markers do not.
+BRAINLAYER_INGEST_TIMEOUT="${STALKER_BRAINLAYER_INGEST_TIMEOUT:-15m}"
+if [ "$BRAINLAYER_DRY_RUN" = "1" ]; then
+    log "Starting BrainLayer contract dry-run..."
+    if ! "$CONTRACT_SCRIPT" ingest-run "$STREAM_DIR" --dry-run; then
+        log "WARNING: BrainLayer contract dry-run failed"
+    fi
 else
-    BRAINLAYER_INGEST_TIMEOUT="${STALKER_BRAINLAYER_INGEST_TIMEOUT:-15m}"
-    if [ "$BRAINLAYER_DRY_RUN" = "1" ]; then
-        log "Starting BrainLayer contract dry-run..."
-        if ! "$CONTRACT_SCRIPT" ingest-run "$STREAM_DIR" --dry-run; then
-            log "WARNING: BrainLayer contract dry-run failed"
-        fi
-    else
-        BRAINLAYER_TIMEOUT_BIN="$(stalker_resolve_command timeout || stalker_resolve_command gtimeout || true)"
-        if [ -z "$BRAINLAYER_TIMEOUT_BIN" ]; then
-            log "timeout/gtimeout not found; using built-in BrainLayer watchdog"
-        fi
-        log "Starting BrainLayer contract ingest (timeout: ${BRAINLAYER_INGEST_TIMEOUT})..."
-        ingest_status=0
-        run_with_stalker_timeout "$BRAINLAYER_TIMEOUT_BIN" "$BRAINLAYER_INGEST_TIMEOUT" \
-            "$CONTRACT_SCRIPT" ingest-run "$STREAM_DIR" || ingest_status=$?
-        if [ "$ingest_status" -eq 124 ] || [ "$ingest_status" -eq 137 ]; then
-            log "WARNING: BrainLayer contract ingest timed out; queueing unfinished payloads for replay"
-            queue_brainlayer_replay "$STREAM_DIR" "brain_store_timeout" || true
-        elif [ "$ingest_status" -ne 0 ]; then
-            log "WARNING: BrainLayer contract ingest failed; queueing unfinished payloads for replay"
-            queue_brainlayer_replay "$STREAM_DIR" "brain_store_failed" || true
-        fi
+    BRAINLAYER_TIMEOUT_BIN="$(stalker_resolve_command timeout || stalker_resolve_command gtimeout || true)"
+    if [ -z "$BRAINLAYER_TIMEOUT_BIN" ]; then
+        log "timeout/gtimeout not found; using built-in BrainLayer watchdog"
+    fi
+    log "Starting BrainLayer contract ingest (timeout: ${BRAINLAYER_INGEST_TIMEOUT})..."
+    ingest_status=0
+    run_with_stalker_timeout "$BRAINLAYER_TIMEOUT_BIN" "$BRAINLAYER_INGEST_TIMEOUT" \
+        "$CONTRACT_SCRIPT" ingest-run "$STREAM_DIR" || ingest_status=$?
+    if [ "$ingest_status" -eq 124 ] || [ "$ingest_status" -eq 137 ]; then
+        log "WARNING: BrainLayer contract ingest timed out; queueing unfinished payloads for replay"
+        queue_brainlayer_replay "$STREAM_DIR" "brain_store_timeout" || true
+    elif [ "$ingest_status" -ne 0 ]; then
+        log "WARNING: BrainLayer contract ingest failed; queueing unfinished payloads for replay"
+        queue_brainlayer_replay "$STREAM_DIR" "brain_store_failed" || true
     fi
 fi
 
@@ -307,7 +304,7 @@ if [ "$DIGEST_QUALITY_STATUS" -ne 0 ]; then
     exit "$DIGEST_QUALITY_STATUS"
 fi
 
-if [ "${STALKER_DASHBOARD_ENABLED:-0}" != "1" ] && [ "$BRAINLAYER_DRY_RUN" != "1" ]; then
+if [ "$BRAINLAYER_DRY_RUN" != "1" ]; then
     node "$SCRIPT_DIR/stalker-run-contract.mjs" "$STREAM_DIR"
 fi
 
