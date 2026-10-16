@@ -261,3 +261,18 @@ test("renders the contract's honest human sentence when there are no claims", as
   });
   assert.match(result.markdown, /^- No explicit checkable claims identified\.$/m);
 });
+
+test("map input supplies verbatim source quotes without relaxing grounding", async () => {
+  const runDir = await fixture("verbatim-source");
+  const result = await generateHumanDigest({ runDir, date: "2026-09-08", channel: "examplechannel",
+    curateImpl: async ({ candidates }) => ({ ...candidates, highlights: candidates.highlights.map(({ importance, ...item }) => item) }),
+    generateImpl: async ({ input, outputPath }) => {
+      const data = JSON.parse(input.split("SOURCE DATA:\n")[1]);
+      assert.ok(data.segments.every(segment => typeof segment.verbatimExcerpt === "string" && segment.text.includes(segment.verbatimExcerpt)));
+      assert.match(input, /copy.*verbatimExcerpt.*without changing/i);
+      await writeMap(outputPath, validSummary());
+    },
+  });
+  assert.ok(result.markdown.includes("Top highlights"));
+  assert.ok(!result.markdown.includes("Dashboard:"));
+});

@@ -7,19 +7,24 @@ store_payloads() {
     if [ -n "${STALKER_BRAIN_STORE_CMD:-}" ]; then
         # STALKER_BRAIN_STORE_CMD is a single executable path. Use a wrapper script
         # when test fakes or local tools need additional arguments.
-        local payload record_key
+        local payload record_key chunk_id
         while IFS= read -r payload; do
             [ -n "$payload" ] || continue
-            if printf '%s\n' "$payload" | "$STALKER_BRAIN_STORE_CMD" >/dev/null; then
+            if chunk_id=$(printf '%s\n' "$payload" | "$STALKER_BRAIN_STORE_CMD") && [[ "$chunk_id" =~ ^[A-Za-z0-9][A-Za-z0-9_.:-]*$ ]]; then
                 record_key="$(payload_record_key "$payload")"
-                append_store_state "$state_file" "$record_key" "stored"
+                append_store_state "$state_file" "$record_key" "stored" "$chunk_id"
             fi
         done < "$payloads_file"
         return
     fi
 
     local brainlayer_src="${STALKER_BRAINLAYER_SRC:-$HOME/Gits/brainlayer/src}"
-    PYTHONPATH="$brainlayer_src${PYTHONPATH:+:$PYTHONPATH}" python3 - "$payloads_file" "$state_file" <<'PY'
+    local store_python="${STALKER_BRAINLAYER_PYTHON:-$brainlayer_src/../.venv/bin/python}"
+    if [ ! -x "$store_python" ]; then
+        [ -z "${STALKER_BRAINLAYER_PYTHON:-}" ] || { echo "Configured BrainLayer Python is not executable" >&2; return 127; }
+        store_python=python3
+    fi
+    PYTHONPATH="$brainlayer_src${PYTHONPATH:+:$PYTHONPATH}" "$store_python" - "$payloads_file" "$state_file" <<'PY'
 import json
 import os
 import sys
@@ -34,9 +39,10 @@ def record_key(payload):
             return tag.split(":", 1)[1]
     return "unknown"
 
-def append_stored(payload):
+def append_stored(payload, chunk_id):
     record = {
         "record": record_key(payload),
+        "chunk_id": chunk_id,
         "status": "stored",
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
@@ -57,7 +63,7 @@ except Exception as exc:
 
 for payload in payloads:
     try:
-        store_memory(
+        result = store_memory(
             store=store,
             embed_fn=None,
             content=payload["content"],
@@ -66,7 +72,10 @@ for payload in payloads:
             tags=payload.get("tags") or [],
             importance=payload.get("importance"),
         )
-        append_stored(payload)
+        chunk_id = result.get("id") if isinstance(result, dict) else None
+        if not isinstance(chunk_id, str) or not chunk_id.strip():
+            raise ValueError("BrainLayer returned no durable chunk id")
+        append_stored(payload, chunk_id)
     except Exception as exc:
         print(f"BrainLayer store failed: {exc}", file=sys.stderr)
 PY
@@ -145,8 +154,9 @@ append_store_state() {
     local record_key="$2"
     local status="$3"
     mkdir -p "$(dirname "$state_file")"
-    python3 - "$state_file" "$record_key" "$status" <<'PY'
+    STALKER_CHUNK_ID="${4:-}" python3 - "$state_file" "$record_key" "$status" <<'PY'
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -156,6 +166,8 @@ record = {
     "status": status,
     "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
 }
+if os.environ.get("STALKER_CHUNK_ID"):
+    record["chunk_id"] = os.environ["STALKER_CHUNK_ID"]
 with open(state_file, "a") as handle:
     handle.write(json.dumps(record, sort_keys=True) + "\n")
 PY

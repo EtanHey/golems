@@ -142,6 +142,15 @@ def store_memory(**_kwargs):
     return {"id": "fake-memory-id"}
 PY
 
+    mkdir -p "$fake_src/../.venv/bin"
+    export STORE_TEST_REAL_PYTHON="$(command -v python3)" SOURCE_PYTHON_USED="$TMPDIR_/source-python-used"
+    cat > "$fake_src/../.venv/bin/python" <<'SH'
+#!/bin/bash
+touch "$SOURCE_PYTHON_USED"
+exec "$STORE_TEST_REAL_PYTHON" "$@"
+SH
+    chmod +x "$fake_src/../.venv/bin/python"
+
     STALKER_BRAINLAYER_SRC="$fake_src" \
     VECTOR_STORE_OPEN_COUNT="$TMPDIR_/vector-store-opens" \
     FAKE_BRAINLAYER_DB="$TMPDIR_/fake-brainlayer.db" \
@@ -150,6 +159,8 @@ PY
     [ "$status" -eq 0 ]
     [ "$(cat "$TMPDIR_/vector-store-opens")" = "1" ]
     [ -f "$run_dir/.stage-brainlayer.done" ]
+    [ -f "$TMPDIR_/source-python-used" ]
+    jq -s -e 'all(.[]; .chunk_id == "fake-memory-id")' "$run_dir/.brainlayer-store-state.jsonl"
 
     rm "$run_dir/.stage-brainlayer.done"
     STALKER_BRAINLAYER_SRC="$fake_src" \
@@ -382,4 +393,34 @@ EOF
     [[ "$output" == *"Top moments:"* ]] || false
     [[ "$output" == *"No highlights found — no gems.md found for processed runs"* ]] || false
     [ ! -f "$HTTP_CALLS" ]
+}
+
+@test "stalker store does not acknowledge a missing returned chunk id" {
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
+    fake_src="$TMPDIR_/null-backend"
+    mkdir -p "$fake_src/brainlayer"
+    touch "$fake_src/brainlayer/__init__.py"
+    printf 'def get_db_path(): return "unused"\n' > "$fake_src/brainlayer/paths.py"
+    printf 'class VectorStore:\n    def __init__(self, path): pass\n' > "$fake_src/brainlayer/vector_store.py"
+    printf 'def store_memory(**kwargs): return None\n' > "$fake_src/brainlayer/store.py"
+    STALKER_BRAINLAYER_SRC="$fake_src" run "$CONTRACT" ingest-run "$run_dir"
+    [ ! -f "$run_dir/.stage-brainlayer.done" ]
+    grep -q 'status=queued' "$run_dir/.brainlayer-status"
+}
+
+@test "stalker payloads include the human digest with a content-versioned record" {
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
+    printf '# Human digest\nGrounded learning.\n' > "$run_dir/digest.md"
+    run "$CONTRACT" ingest-run "$run_dir" --dry-run
+    [ "$status" -eq 0 ]
+    printf '%s\n' "$output" | jq -s -e 'any(.[]; (.content | contains("Grounded learning.")) and any(.tags[]; startswith("record:human-digest:")))'
+}
+
+@test "custom store success without a returned id remains queued" {
+    run_dir="$(make_processed_run examplechannel-2026-06-18-005309)"
+    printf '#!/bin/bash\ncat >/dev/null\nexit 0\n' > "$FAKE_BIN/empty-ack"
+    chmod +x "$FAKE_BIN/empty-ack"
+    STALKER_BRAIN_STORE_CMD="$FAKE_BIN/empty-ack" run "$CONTRACT" ingest-run "$run_dir"
+    [ ! -f "$run_dir/.stage-brainlayer.done" ]
+    grep -q 'status=queued' "$run_dir/.brainlayer-status"
 }

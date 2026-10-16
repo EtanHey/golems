@@ -35,6 +35,7 @@ function buildInput({ date, channel, dashboardUrl, segments, gemHints, batchInde
     "Cover every usable segment in this chronological batch exactly once via each topic's coveredTimestamps.",
     "List every unusable segment only in unusableTimestamps; never cite it as speech evidence.",
     "Group adjacent material into topics; anchor every item with its timestamp and one exact short excerpt copied case-sensitively from that segment.",
+    "For excerpt, copy the cited segment verbatimExcerpt without changing any character. Never insert pronouns or paraphrase a quote.",
     "For a grouped topic, timestamp must identify the covered segment containing excerpt, not merely the first covered segment.",
     "Select up to 5 unique highlights and give each importance 1-10. List checkable claims without fact-checking.",
     "Gem titles and gists are selection hints only and may hallucinate. Transcript text is the sole evidence.",
@@ -48,7 +49,7 @@ function buildInput({ date, channel, dashboardUrl, segments, gemHints, batchInde
     dashboardUrl,
     batchIndex: batchIndex + 1,
     batchCount,
-    segments,
+    segments: segments.map(segment => ({ ...segment, verbatimExcerpt: segment.text.slice(0, 200).replace(/\s+\S*$/, "") || segment.text.slice(0, 200) })),
     gemHints,
   }, null, 2)}\n`;
 }
@@ -88,13 +89,13 @@ export function renderMarkdown({ date, channel, dashboardUrl, summary }) {
   const claims = summary.claims.length > 0
     ? summary.claims.map((item) => `- **[${item.timestamp}]** ${item.claim}${uncertainty(item)} — “${item.excerpt}”`).join("\n")
     : "- No explicit checkable claims identified.";
-  return `# Human Digest — ${channel} — ${date}\n\nDashboard: ${dashboardUrl}\n\n## What was discussed\n\n${topics}\n\n## Top highlights\n\n${highlights}\n\n## Claims worth checking\n\n${claims}\n`;
+  return `# Human Digest — ${channel} — ${date}\n\n${dashboardUrl ? `Dashboard: ${dashboardUrl}\n\n` : ""}## What was discussed\n\n${topics}\n\n## Top highlights\n\n${highlights}\n\n## Claims worth checking\n\n${claims}\n`;
 }
 export async function generateHumanDigest({ runDir, date, channel, dashboardUrl, generateImpl, curateImpl }) {
   const absoluteRunDir = resolve(runDir ?? "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) throw new Error("date must be YYYY-MM-DD");
   assertText(channel, "channel", 100);
-  assertText(dashboardUrl, "dashboardUrl", 2000);
+  if (dashboardUrl !== undefined) assertText(dashboardUrl, "dashboardUrl", 2000);
   const transcriptPath = join(absoluteRunDir, "transcript.md");
   const transcript = await readFile(transcriptPath, "utf8").catch((error) => {
     throw new Error(`cannot read ${transcriptPath}: ${error.message}`);

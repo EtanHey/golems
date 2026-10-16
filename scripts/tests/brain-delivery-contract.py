@@ -54,6 +54,7 @@ if name == "brain-store":
     if os.environ.get("STORE_MODE") == "fail" or (os.environ.get("STORE_MODE") == "partial" and count > 1):
         print("fixture store failure", file=sys.stderr)
         sys.exit(9)
+    print("fixture-command-id")
 '''
 
 CLOCK = '''import datetime
@@ -73,6 +74,7 @@ def store_memory(**kwargs):
         f.write(json.dumps(kwargs) + "\\n")
     if os.environ.get("STORE_MODE") == "partial" and "record:run-summary" not in kwargs["tags"]:
         raise RuntimeError("fixture batch failure")
+    return {"id": "fixture-batch-id"}
 '''
 
 
@@ -257,6 +259,21 @@ def main():
             path.write_text(json.dumps(actual, indent=2) + "\n")
         else:
             expected = json.loads(path.read_text())
+            # Explicit acknowledgment metadata delta; malformed fixture bytes stay unchanged.
+            for step in expected:
+                for name, raw in step["files"].items():
+                    if not name.endswith(".brainlayer-store-state.jsonl"): continue
+                    lines = []
+                    for line in raw.splitlines(keepends=True):
+                        try: row = json.loads(line)
+                        except json.JSONDecodeError:
+                            lines.append(line)
+                            continue
+                        if row["status"] == "stored":
+                            row["chunk_id"] = "fixture-batch-id" if case.startswith("batch-") else "fixture-command-id"
+                            line = json.dumps(row, sort_keys=True) + "\n"
+                        lines.append(line)
+                    step["files"][name] = "".join(lines)
             assert actual == expected, f"{case}: golden mismatch\nEXPECTED {expected!r}\nACTUAL {actual!r}"
         print(f"{case}: {'recorded from base' if record else 'PASS'}", flush=True)
 

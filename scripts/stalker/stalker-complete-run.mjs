@@ -15,7 +15,7 @@ import { retainRunMedia, verifyLocalMediaRetention } from './stalker-media-reten
 
 const canonicalPath = candidate => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 // Bump whenever the digest prompt, schema or grounding validator changes.
-const DIGEST_CONTRACT_VERSION = 3;
+const DIGEST_CONTRACT_VERSION = 4;
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 async function lockRun(runDir) {
   // Kernel-owned lock: releasing stdin or crashing releases it, with no stale PID marker.

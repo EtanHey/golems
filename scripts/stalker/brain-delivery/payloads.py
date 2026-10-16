@@ -173,5 +173,10 @@ records.append(payload(
     importance=default_importance,
 ))
 
+digest = read_text(stream_dir / "digest.md")
+if digest.strip():
+    digest_hash = hashlib.sha256(digest.encode()).hexdigest()
+    records.append(payload(f"human-digest:{digest_hash}", f"[{run_date}] {name} human digest\n\n{digest}", memory_type="journal"))
+
 for record in records:
     print(json.dumps(record, sort_keys=True))
