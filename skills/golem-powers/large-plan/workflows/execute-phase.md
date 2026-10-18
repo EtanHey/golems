@@ -141,7 +141,7 @@ Update findings.md with final notes.
 3. If ALL your assigned phases are done → status → `signed-off`
 4. If this completes a round → the lead runs the phase-close gate above (every worker's CLEANUP RECEIPT present, prune step run) and only then advances to next round
 
-**If blocked at any step:** update your status, then append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`. Task Board changes and unaddressed prose do not wake the tag-scoped collab monitor.
+**If blocked at any step:** update your status, then append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`. Task Board changes and unaddressed prose do not wake the tag-scoped collab monitor (cmux adapter); in T3 your final message wakes the lead via the completion notification.
 
 ### 11. Continue
 

@@ -82,7 +82,7 @@
     {
       "id": 4,
       "prompt": "Scaffold a collab for 3 agents working on parallel phases. One agent per repo: voicelayer, brainlayer, cmux. All independent. I'll be asleep — make it fully autonomous.",
-      "expected_output": "Agent creates collab file with all mandatory sections, sets up monitoring loops, includes all mandatory rules (honesty, checkpoint, loop, task usage, PR teaching, entity awareness).",
+      "expected_output": "Agent creates collab file with all mandatory sections and all mandatory rules (honesty, checkpoint, task usage, PR teaching, entity awareness). Wake-ups branch by harness, with no polling turn in either: in T3 the delegate_task completion notification wakes the lead and PR waits are the parent's watch_pull_request, nothing armed; under the cmux adapter it arms the addressed watch per /collab-monitor plus a separate process-exit or process/registry liveness watcher before dispatch (Codex seats arm no collab monitor).",
       "files": [],
       "assertions": [
         {
@@ -106,8 +106,16 @@
           "description": "Collab includes HONESTY RULE requiring agents to raise concerns instead of pushing through"
         },
         {
-          "name": "sets-up-monitoring-loops",
-          "description": "Orchestrator sets up /loop or CronCreate to monitor agent progress after delegation — no fire-and-forget"
+          "name": "t3-completion-notification-guard",
+          "description": "In T3, relies on the delegate_task completion notification (and the parent's watch_pull_request for PRs) as the liveness guard and arms nothing — no fire-and-forget, no polling"
+        },
+        {
+          "name": "cmux-adapter-guards-before-dispatch",
+          "description": "Under the cmux adapter, arms the addressed watch per /collab-monitor and a separate process-exit or process/registry liveness watcher before dispatch"
+        },
+        {
+          "name": "no-polling-turn-negative",
+          "description": "Does not set up /loop, CronCreate or ScheduleWakeup to monitor agent progress, and the collab header carries no 'read every N min' cadence"
         },
         {
           "name": "agent-entity-awareness",
@@ -122,7 +130,7 @@
     {
       "id": 5,
       "prompt": "I spawned 3 agents for the sprint. They've been running for 20 minutes. How do I know if they're stuck?",
-      "expected_output": "Agent checks collab file for stale statuses, suggests /loop monitoring, and reads task status. Does NOT just say 'check the collab file' — actively checks it.",
+      "expected_output": "Agent actively reads the collab file for stale `working` statuses and checks task status — does NOT just say 'check the collab file'. In T3 it makes one bounded task_status check on the retained taskIds, then ends the turn and relies on the completion notification to wake it. Under the cmux adapter it checks the process-exit/liveness watcher and the addressed watch per /collab-monitor, arming them if missing. No polling turn in either.",
       "files": [],
       "assertions": [
         {
@@ -134,8 +142,16 @@
           "description": "Agent looks for agents stuck in 'working' status with no recent Messages updates"
         },
         {
-          "name": "suggests-loop-monitoring",
-          "description": "Agent suggests setting up /loop or CronCreate for ongoing monitoring"
+          "name": "t3-completion-notification-wake",
+          "description": "In T3, makes one bounded task_status check and relies on the delegate_task completion notification to wake the lead, ending the turn instead of polling"
+        },
+        {
+          "name": "cmux-adapter-liveness-watcher",
+          "description": "Under the cmux adapter, verifies or arms the process-exit liveness watcher and the /collab-monitor addressed watch rather than polling panes"
+        },
+        {
+          "name": "no-loop-monitoring-negative",
+          "description": "Does not suggest /loop, CronCreate or ScheduleWakeup for ongoing monitoring"
         },
         {
           "name": "checks-task-status",

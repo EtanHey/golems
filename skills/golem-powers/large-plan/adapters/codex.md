@@ -51,7 +51,7 @@ git worktree remove ../wt-phase-<N>
 
 - **T3 (default in T3):** dispatch with `delegate_task` and end the turn. The completion notification wakes you (SKILL.md § T3-native execution). Arm nothing.
 - **cmux adapter:** run no collab monitor. Your guard is the worker's process exit: `skills/golem-powers/codex-workflows/scripts/codex-workflows.sh watch --run-id <run-id>`. When it wakes you, read the finished worker log and `collab.md` once; never poll `read_screen` in a loop.
-- **Something must sit and watch** (CI, a file): one bounded `codex.subagent.mechanical` child with a deadline and a single terminal report, settled at its terminal state. Never this seat, never a re-arm loop.
+- **Something must sit and watch** (CI, a file): one bounded `codex.subagent.mechanical` child (model: `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`) with a deadline and a single terminal report, settled at its terminal state. Never this seat, never a re-arm loop.
 
 ## Limitations
 

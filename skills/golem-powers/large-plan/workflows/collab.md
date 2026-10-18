@@ -22,7 +22,7 @@ Every collab file MUST have these sections in this order. Copy this template.
 ```markdown
 # [Project Name] Collab
 
-> [One-line purpose]. All agents: read this file every 5 min. Update BEFORE every commit.
+> [One-line purpose]. No polling: in T3 the `delegate_task` completion notification wakes the lead and PR waits are the parent's `watch_pull_request`; read this file on each wake. cmux adapter: arm the addressed watch per `/collab-monitor`. Update BEFORE every commit.
 
 ## References
 
@@ -160,7 +160,7 @@ the report and requested artifact before advancing.
 
 **cmux adapter:** Watches: follow `/collab-monitor` before dispatch and after every compaction;
 a DONE marker or version match still needs artifact or real-client verification.
-Use native Monitor for addressed collab and PR events, with its documented
+Use native Monitor (cmux adapter) for addressed collab and PR events, with its documented
 30-minute expiry and re-arm rules. Record its returned task ID and use TaskStop
 before replacing a watch or closing its lane; preserve routing state and avoid
 duplicate streams. Codex seats arm no collab monitor: "Codex seats must not poll
@@ -222,7 +222,7 @@ Short. Timestamped. Bold status keywords. One line per update.
 2. **Decisions buried in Messages** — use the `## Decisions` section. Messages scroll; decisions must be findable.
 3. **Unbounded findings in collab** — detailed analysis goes in `agent-specific.md` files. Collab has one-line summaries only.
 4. **Freeform status prose** — "I'm working on the thing and it's going well" is not a status update. Use the gate format.
-5. **No sign-off** — without explicit sign-off, other agents keep polling for updates that will never come.
+5. **No sign-off** — without explicit sign-off, other agents keep waiting for updates that will never come.
 6. **No pre-flight** — always verify tests pass before starting work. Report the count.
 7. **No forward-looking handoff** — "Phase 1 done" is incomplete. "Phase 1 done. **Next: Phase 2 (agentB unblocked).**" is correct.
 8. **Scope creep** — health data, calendar schedules, workout plans, side project specs DO NOT BELONG in a collab file.
@@ -231,11 +231,11 @@ Short. Timestamped. Bold status keywords. One line per update.
 11. **Status drift** — agents invent new statuses (`in-progress`, `almost done`) instead of using the defined values. Stick to the status list.
 12. **Dual sources of truth** — collab Task Board says one thing, plan README says another. The collab Task Board is authoritative during execution. Plan README gets updated after merge.
 13. **Concurrent edit clobbering** — two agents edit collab.md simultaneously, one overwrites the other. Messages section is append-only. For the rest, each agent edits only their own rows.
-14. **Stale `working` status** — agent crashes or hangs, status stays `working` forever. If no Messages update for 30+ min from a `working` agent, orchestrator should check on them.
+14. **Stale `working` status** — agent crashes or hangs, status stays `working` forever. cmux adapter: if no Messages update for 30+ min from a `working` agent, the orchestrator checks the liveness watcher once. In T3 the completion notification (or one bounded `task_status` check) answers this; never a polling turn.
 15. **Missing MCP servers in cross-repo agents** — agent launched in repo B has no access to MCP servers configured in repo A's `.mcp.json`. ALWAYS use `--mcp-config` when launching agents in different repos. See scaffold step 9 for CLI template.
 16. **Registering hooks before creating the file** — Agent adds a hook to `settings.json` pointing to a file that doesn't exist yet. Hook runner returns exit code 2 (file not found), which blocks ALL tool calls for ALL agents in the repo. **Rule: create the hook file first, register it second. Never the reverse.**
 17. **No watch cleanup** — when a collab ends, stop owned Monitor task IDs with TaskStop (cmux adapter). In T3: `unwatch_pull_request` and `task_cancel` any child still running.
-18. **`/loop` without termination** — `/loop` runs indefinitely. When all phases are `done` or `signed-off`, stop the loop. Don't leave it polling a dead collab. In T3 and on Codex seats, never start one.
+18. **`/loop` without termination** (cmux adapter, Claude seats only) — `/loop` runs indefinitely. When all phases are `done` or `signed-off`, stop the loop. Don't leave it polling a dead collab. In T3 and on Codex seats, never start one.
 19. **Fire-and-forget delegation** — Orchestrator sends a task to an agent without an armed liveness watcher. A crash or stall emits no addressed message, so the collab monitor alone cannot detect it. **Rule (cmux adapter): before EVERY delegation, arm a process-exit or scheduled process/registry liveness watcher. The collab monitor may additionally deliver addressed status, blocker, and completion messages, but MUST NOT be the only worker-liveness guard.** In T3 the `delegate_task` completion notification is that guard; arm nothing else.
 20. **Silent progress** — Agent does work but doesn't use `TaskCreate`/`TaskUpdate`. Orchestrator and UI have no visibility into what's happening. **All agents MUST use task tools for progress tracking.**
 21. **Lazy reviewer teaching** — Agent responds to CodeRabbit with "Fixed in X" without explaining the design decision. Next review, CodeRabbit flags the same pattern. **Always `@coderabbitai` with a Learning explaining WHY the pattern is correct.**

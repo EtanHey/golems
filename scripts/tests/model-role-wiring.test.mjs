@@ -168,6 +168,44 @@ test('large-plan defaults to T3-native execution and keeps cmux monitors as an a
     assert.equal(e?.name, name);
     assert.ok(e.prompt && e.expected_output && e.assertions.length >= 2, name);
   }
+  // Review round 1: generated collab/kickoff instructions carry no polling cadence; cmux cadence is labelled.
+  const collab = read(`${dir}/workflows/collab.md`);
+  const scaffoldDoc = read(`${dir}/workflows/scaffold.md`);
+  const header = collab.split('## Collab File Structure (MANDATORY)')[1].split('## References')[0];
+  assert.ok(header.includes('completion notification') && header.includes('`watch_pull_request`'), 'collab header template wakes on notifications');
+  const kickoff = scaffoldDoc.split('### Kickoff Prompt:')[1].split('Start now.')[0];
+  assert.ok(kickoff.includes('completion notification') && kickoff.includes('`watch_pull_request`'), 'kickoff prompt wakes on notifications');
+  const pollParent = join(root, 'docs.local/cx28'); mkdirSync(pollParent, { recursive: true });
+  const scaffoldDir = mkdtempSync(join(pollParent, 'poll-'));
+  try {
+    assert.equal(spawnSync('bash', [join(root, `${dir}/scripts/scaffold-plan.sh`), scaffoldDir, 'poll-check', '2'], { encoding: 'utf8' }).status, 0);
+    const generated = [readFileSync(join(scaffoldDir, 'phase-1/README.md'), 'utf8'), readFileSync(join(scaffoldDir, 'phase-2/README.md'), 'utf8')];
+    const polling = /every (\[?N\]?|\d+) min|poll (reviews|the collab|collab)|read (this|the) (collab )?file every|\/loop \d|CronCreate\(|ScheduleWakeup\(/i;
+    for (const [where, text] of [['collab header', header], ['kickoff prompt', kickoff], ['scaffold header rule', scaffoldDoc.split('**Mandatory sections to fill at scaffold time')[1].split('**Additional sections')[0]], ...generated.map((t, i) => [`generated phase-${i + 1}`, t])]) {
+      assert.doesNotMatch(text, polling, `${where}: no polling cadence in generated instructions`);
+    }
+    for (const path of [`${dir}/SKILL.md`, `${dir}/workflows/collab.md`, `${dir}/workflows/scaffold.md`, `${dir}/workflows/execute-phase.md`, `${dir}/adapters/claude.md`, `${dir}/adapters/codex.md`]) {
+      for (const para of read(path).split(/\n\s*\n/).filter(p => polling.test(p) || /30\+ min|30-minute expiry|keep polling/i.test(p))) {
+        assert.match(para, /cmux adapter|never|Does not|Do not poll|No polling|must not poll/i, `${path}: cadence must be labelled cmux adapter: ${para}`);
+      }
+    }
+  } finally { rmSync(scaffoldDir, { recursive: true, force: true }); }
+  // Old evals 4-5 distinguish T3 completion notifications from the cmux adapter; none reward /loop or CronCreate.
+  for (const id of [4, 5]) {
+    const e = suite.evals.find(e => e.id === id);
+    assert.ok(e.expected_output.includes('completion notification') && e.expected_output.includes('cmux adapter'), `eval ${id} expected_output branches T3 vs cmux adapter`);
+    assert.doesNotMatch(e.expected_output, /\/loop|CronCreate/, `eval ${id} expected_output does not reward /loop or CronCreate`);
+    for (const a of e.assertions) {
+      if (/\/loop|CronCreate|ScheduleWakeup/.test(a.description)) assert.match(a.name, /-negative$/, `eval ${id} ${a.name}: polling only as a negative`);
+    }
+    assert.ok(e.assertions.some(a => a.description.includes('completion notification')), `eval ${id} asserts the T3 completion notification`);
+    assert.ok(e.assertions.some(a => a.description.includes('cmux adapter')), `eval ${id} asserts the cmux adapter branch`);
+  }
+  // Watcher recipe resolves through the PR10 contract, not a self-declared authorisation.
+  for (const path of [`${dir}/SKILL.md`, `${dir}/adapters/codex.md`]) {
+    assert.ok(read(path).includes('node scripts/model-roles.mjs codex.subagent.mechanical --use watcher'), `${path}: watcher role resolves via --use watcher`);
+  }
+  assert.doesNotMatch(skill, /this ruling is the authorisation for the watch use/);
 });
 
 test('weave evals exercise rejected M1 routes, lead provenance and short/multi-PR planning', () => {

@@ -32,7 +32,7 @@ Agent(
 
 Watches: follow `/collab-monitor` before dispatch and after every compaction;
 a DONE marker or version match still needs artifact or real-client verification.
-Use its native Monitor how-to, 30-minute expiry and re-arm rules; record the returned
+Use its native Monitor how-to (cmux adapter), 30-minute expiry and re-arm rules; record the returned
 task ID and use TaskStop before replacing a watch or when the plan closes. Preserve
 routing state and avoid duplicate streams. Codex seats arm no collab monitor
 (see [codex.md](codex.md)). Also arm a separate process-exit or process/registry
@@ -78,7 +78,8 @@ Resolve role model/alias with `node scripts/model-roles.mjs <role> --field model
 (one field) from the golems checkout. Every phase records `role · effort · why`; choose
 effort per `/large-plan` phase and pass it explicitly at dispatch. Managed Claude peers use the bare launcher pin, verified
 against the role; Agent children receive the resolved alias. `codex.subagent.mechanical`
-is a candidate: bench before use.
+is a candidate: bench before use, except a sit-and-watch child, which resolves via
+`node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`.
 
 ## Unique Capabilities (not available in other CLIs)
 

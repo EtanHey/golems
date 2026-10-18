@@ -13,7 +13,7 @@ adapters:
     background_tasks: true      # Agent(run_in_background=true) for async phases
     plan_mode: true             # EnterPlanMode — spec before execution
     native_monitoring: true       # Monitor — addressed collab watches; see /collab-monitor
-    loop_monitoring: true       # /loop Nm — foreground collab polling
+    loop_monitoring: true       # /loop Nm — cmux adapter only (Claude seats); never in T3 or on Codex seats
     prompting:
       style: natural_language
       structure: xml_tags       # <context>, <task>, <constraints>
