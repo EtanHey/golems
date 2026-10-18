@@ -229,10 +229,29 @@ the default branch (bare-mirror-style hubs like brainlayer), use the
 
 ### Cleanup Receipt
 
-Cleanup is part of done. After the branch/worktree removal above, end the merge
-comment (lead) or the DONE report (worker) with this block. A merge or DONE
-without it is not done. A worker handing off unmerged still writes it:
-`worktree: <path> kept because PR #N awaits lead merge`.
+Cleanup is part of done: "the implementer removes its worktree at DONE" and
+"regenerable caches need no OK" (Etan 2026-10-18, via orc collab). After the
+branch/worktree removal, end the merge comment (lead) or the DONE report
+(worker) with this block. A merge or DONE without it is not done.
+
+- **Who removes:** the implementer removes its own worktree at DONE, once its
+  artifact is preserved: branch pushed (local HEAD equals `origin/<branch>`),
+  PR merged, or report committed. That is the preservation the lane-close rule
+  above asks for, so it needs no lead decision; local-only history or an
+  unarchived `docs.local/` still does. A worker handing off an unmerged PR has
+  a pushed branch, so it removes the tree too:
+  `worktree: <path> removed (branch <name> pushed at <sha>)`. A later fix round
+  checks the pushed branch out again.
+- **How:** merged lane: the guarded GC above. It keeps an open-PR tree
+  (`KEEP-open-pr`), so an unmerged handoff runs
+  `git -C <main-checkout> worktree remove <path>` after `git status --porcelain`
+  is empty. Run it from outside the tree, as the last tool call before the
+  final report.
+- **Regenerable caches:** delete `node_modules`, build output (`dist/`,
+  `build/`, `.next/`, `target/`), `__pycache__` and `.pytest_cache` without
+  asking.
+- **The lead verifies the receipt** (`git worktree list`,
+  `git ls-remote origin <branch>`) and never removes a worker's worktree itself.
 
 ```
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):

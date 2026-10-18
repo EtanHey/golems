@@ -90,8 +90,8 @@
           "description": "Agent uses TaskCreate to track each phase/task so progress is visible in UI"
         },
         {
-          "name": "updates-collab-before-commits",
-          "description": "Collab template includes Update Gates requiring collab update BEFORE every commit"
+          "name": "status-line-per-status-change",
+          "description": "Collab template keeps STATUS.md (Task Board, overwritten in place by the lead) and Update Gates requiring ONE appended collab line per status change; a commit checks status is current but adds no line (no big ledgers)"
         },
         {
           "name": "brain-store-checkpoints",
@@ -284,6 +284,38 @@
           "name": "kickoff-invokes-skill-first-2",
           "description": "Every worker kickoff brief names /large-plan, /agent-routing and /pr-loop as skills to invoke."
         }
+      ]
+    },
+    {
+      "id": 40,
+      "name": "lead-pr-done-status-overwrite-one-line",
+      "prompt": "You are skill-lead in a T3 thread, reporting to orc through the fleet collab. Your worker's PR #801 just merged and you verified it. Update orc on the lane.",
+      "expected_output": "Overwrites its STATUS file in place (PR #801 row: merged, SHA, open-to-merge hours) and appends exactly ONE line to the fleet collab with cat >> … <<'EOF'. Sends no status message into orc's T3 thread. Uses a wake word (@orc, ### skill-lead → orc, or a DONE line) only if this closes the lane; a mid-lane merge is a plain line.",
+      "assertions": [
+        {"name": "lead-pr-done-status-overwrite-one-line-1", "description": "Overwrites the STATUS file in place rather than appending a ledger row history."},
+        {"name": "lead-pr-done-status-overwrite-one-line-2", "description": "Appends exactly one collab line at EOF with cat >> … <<'EOF', never editing earlier lines."},
+        {"name": "lead-pr-done-status-overwrite-one-line-negative", "description": "Does not post a status message into orc's T3 thread and does not tag @orc for a mid-lane merge."}
+      ]
+    },
+    {
+      "id": 41,
+      "name": "implementer-done-removes-worktree",
+      "prompt": "You are skill-lead-w3, the implementer for one PR. You pushed the branch, opened the PR and the lead owns the merge. Your worktree has node_modules and __pycache__ in it. Report DONE.",
+      "expected_output": "Confirms local HEAD equals origin/<branch>, deletes node_modules and __pycache__ without asking, removes its own worktree from outside the tree (git -C <main-checkout> worktree remove <path>) as its last tool call, and ends the DONE report with a CLEANUP RECEIPT whose worktree line reads removed (branch pushed at <sha>).",
+      "assertions": [
+        {"name": "implementer-done-removes-worktree-1", "description": "Removes its own worktree at DONE after confirming the branch is pushed, from outside the tree."},
+        {"name": "implementer-done-removes-worktree-2", "description": "Deletes the regenerable caches (node_modules, __pycache__) without asking for permission."},
+        {"name": "implementer-done-removes-worktree-negative", "description": "Does not write 'kept because PR #N awaits lead merge' and does not ask the lead or Etan whether to delete caches."}
+      ]
+    },
+    {
+      "id": 42,
+      "name": "t3-lane-terminal-settle-now",
+      "prompt": "You are a lead in a T3 thread. A delegate_task child is result_available; you verified its PR and it merged. The plan has two more phases still running. What do you do with this child?",
+      "expected_output": "Settles it now rather than at plan close: concludes the child with no new sends, task_cancel its taskId so queued runs stop, unwatch_pull_request its PR, overwrites STATUS.md and appends one collab line. The next PR gets a fresh implementer.",
+      "assertions": [
+        {"name": "t3-lane-terminal-settle-now-1", "description": "Calls task_cancel on the child's taskId and unwatch_pull_request on its PR at the lane's terminal state."},
+        {"name": "t3-lane-terminal-settle-now-negative", "description": "Does not leave the child idle until the plan closes and does not send it the next phase."}
       ]
     }
   ]

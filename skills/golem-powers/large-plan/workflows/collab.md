@@ -15,6 +15,33 @@ Use the collab as the active coordination artifact: scaffold it before spawn, up
 
 ---
 
+## Status and wakes
+
+The fleet collab law (Etan 2026-10-18, via orc collab), verbatim:
+
+- "**Where updates go:** leads post progress HERE, appended with `cat >> … <<'EOF'`, never edited in place. No more status messages into orc's T3 thread."
+- "**What wakes orc:** `@orc`, a header `### <lead> → orc`, or a BLOCKED/DONE line. Use them only for: blocked, a lane done, or something Etan must decide."
+- "**Etan-facing asks:** tag them `@etan`. orc folds them into ONE stable page" (orc's `fleet-latest.html`, overwritten in place, same URL every time).
+- "**Lead workers** post here as `<lead>-w<N>`."
+- "**Status tracking:** a STATUS file overwritten in place, plus ONE line per status change appended here (traceability). No big ledgers."
+
+HERE is orc's fleet collab for a lead's progress; a plan's `collab.md` follows the same law. In practice:
+
+1. **STATUS file:** `STATUS.md` next to `collab.md` (for fleet progress, the lead's own STATUS file). It holds the Task Board (phase, owner, status, PR) and any metric the lead tracks. One writer, the lead, overwrites it in place. It is current state, never a growing table of past states.
+2. **One collab line per status change**, appended at EOF and never edited:
+   ```bash
+   cat >> <plan-dir>/collab.md <<'EOF'
+   - [skill-lead-w2 2026-10-19T09:12Z] Phase 2: PR #801 opened. **working → review**
+   EOF
+   ```
+   A status change is a move between the status values below, a PR opened or merged, or a blocker. A commit, a test run or a step inside a phase is not one and gets no line. Canon #7's "checkpoint before commits" is a check that your status is current; append only when it changed.
+3. **Progress never goes into orc's T3 thread** or the lead's thread as a message. A T3 child's final message is its report; the `delegate_task` completion wakes the lead, which overwrites STATUS.md and appends one line.
+4. **Wake words only for a wake:** `@orc`, `### <lead> → orc`, or a BLOCKED/DONE line, and only for blocked, a lane done, or an Etan decision. Inside a plan, the `### @<agent> → @<listen-name> — … done|blocked` headings below are the same wake for the lead. A progress line carries no `@` tag.
+5. **`@etan`** is for a decision only Etan can make. Routing, scope and model questions go to the lead, never Etan (`/agent-routing` § Goal Contract).
+6. **Names:** a lead's workers post as `<lead>-w<N>` (`skill-lead-w2`), numbered in dispatch order.
+
+---
+
 ## Collab File Structure (MANDATORY)
 
 Every collab file MUST have these sections in this order. Copy this template.
@@ -22,7 +49,7 @@ Every collab file MUST have these sections in this order. Copy this template.
 ```markdown
 # [Project Name] Collab
 
-> [One-line purpose]. No polling: in T3 the `delegate_task` completion notification wakes the lead and PR waits are the parent's `watch_pull_request`; read this file on each wake. cmux adapter: arm the addressed watch per `/collab-monitor`. Update BEFORE every commit.
+> [One-line purpose]. No polling: in T3 the `delegate_task` completion notification wakes the lead and PR waits are the parent's `watch_pull_request`; read this file on each wake. cmux adapter: arm the addressed watch per `/collab-monitor`. Status lives in `STATUS.md` (overwritten in place); this file gets ONE appended line per status change.
 
 ## References
 
@@ -43,25 +70,27 @@ Every collab file MUST have these sections in this order. Copy this template.
 Staff by role from golems `standards/model-roles.json`; resolve with
 `node scripts/model-roles.mjs <role> --field <field>` before dispatch.
 
-| Agent | Role | Phases | Repo/CWD | Status |
-|-------|------|--------|----------|--------|
-| agentA | `codex.implement` | 1, 3 | $HOME/Gits/repo-a | idle |
-| agentB | `gemini.gather.text` | 2, 4 | $HOME/Gits/repo-b | idle |
-| reviewer | <role per `/agent-routing` § Routing rules (SSOT)> | PR gates | $HOME/Gits/repo-a | idle |
+| Agent | Role | Phases | Repo/CWD |
+|-------|------|--------|----------|
+| lead-w1 | `codex.implement` | 1, 3 | $HOME/Gits/repo-a |
+| lead-w2 | `gemini.gather.text` | 2, 4 | $HOME/Gits/repo-b |
+| lead-w3 | <role per `/agent-routing` § Routing rules (SSOT)> | PR gates | $HOME/Gits/repo-a |
 
-Frame batches use `gemini.gather.visual`; single-fact recall, pane mechanics and
+Workers are named `<lead>-w<N>`. Frame batches use `gemini.gather.visual`; single-fact recall, pane mechanics and
 verifiers use `claude.subagent.cheap`. Candidate roles require their bench gate.
 
 Status values: `idle` | `ready` | `learning` | `working` | `blocked:reason` | `done` | `signed-off`
 
 ## Task Board
 
+Lives in `STATUS.md` next to this file, overwritten in place by the lead (§ Status and wakes):
+
 | Phase/Task | Owner | Status | PR |
 |------------|-------|--------|----|
-| Phase 1: Description | agentA | pending | — |
-| Phase 2: Description | agentB | pending | — |
+| Phase 1: Description | lead-w1 | pending | — |
+| Phase 2: Description | lead-w2 | pending | — |
 
-This is the SINGLE source of truth for progress. Messages are supplementary.
+STATUS.md is the SINGLE source of truth for progress. Messages hold one line per status change.
 
 ## Key Constraints
 
@@ -84,15 +113,15 @@ This is the SINGLE source of truth for progress. Messages are supplementary.
 
 | Checkpoint | What to Write | Where |
 |------------|---------------|-------|
-| Pre-flight done | Status -> `learning`. "Pre-flight: N tests green." | Agents + Messages |
-| Starting work | Status -> `working`. "Starting [task]." | Agents + Messages |
-| Before EVERY commit | One-line summary of changes | Messages |
-| Before creating PR | Read other agents' Messages for cross-refs. **Invoke `/pr-loop` for the full loop.** | Messages |
-| Phase complete | Status -> `done`; PR link; append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>. Next: <what is unblocked>` | Task Board + Messages |
-| Blocked | Status -> `blocked:reason`; append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>` | Agents + Messages |
-| Done for session | "agentX signing off." Status -> `signed-off` | Agents + Messages |
+| Pre-flight done | Status -> `learning`. "Pre-flight: N tests green." | One status line |
+| Starting work | Status -> `working`. "Starting [task]." | One status line |
+| Before a commit | Check your status is current; append a line only if it changed. No per-commit lines | — |
+| Before creating PR | Read other agents' Messages for cross-refs. **Invoke `/pr-loop` for the full loop.** | One status line when the PR opens |
+| Phase complete | Status -> `done`; PR link; append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>. Next: <what is unblocked>` | Messages (lead overwrites STATUS.md) |
+| Blocked | Status -> `blocked:reason`; append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>` | Messages (lead overwrites STATUS.md) |
+| Done for session | "<lead>-w<N> signing off." Status -> `signed-off` | One status line |
 
-**Enforcement:** If you git commit without a corresponding Messages entry, you are violating the protocol. Update collab FIRST, then commit.
+**Enforcement:** every status change gets exactly one appended line, and the lead folds it into STATUS.md. A status change with no line breaks the protocol; a line with no status change is ledger noise ("No big ledgers").
 
 ## Round Advancement
 
@@ -113,9 +142,9 @@ Orchestrator announces: `**ADVANCING TO ROUND N.** [per-agent directives]`
 
 ## Messages
 
-<!-- Format: - [agentName ISO-timestamp] Short update. Bold status. -->
+<!-- Format: - [<lead>-w<N> ISO-timestamp] One line per status change. Bold status. Append with cat >> … <<'EOF'. -->
 
-- [agentA 2026-02-25T14:00] Pre-flight: 42 tests green. Starting Phase 1.
+- [lead-w1 2026-02-25T14:00] Pre-flight: 42 tests green. **learning → working** on Phase 1.
 ```
 
 ---
@@ -229,8 +258,8 @@ Short. Timestamped. Bold status keywords. One line per update.
 9. **No orchestrator** — someone must advance rounds and resolve conflicts. If nobody is designated, nobody does it.
 10. **Human writes the protocol at 4am** — if the coordination protocol wasn't in the collab BEFORE agents started, the collab was set up wrong.
 11. **Status drift** — agents invent new statuses (`in-progress`, `almost done`) instead of using the defined values. Stick to the status list.
-12. **Dual sources of truth** — collab Task Board says one thing, plan README says another. The collab Task Board is authoritative during execution. Plan README gets updated after merge.
-13. **Concurrent edit clobbering** — two agents edit collab.md simultaneously, one overwrites the other. Messages section is append-only. For the rest, each agent edits only their own rows.
+12. **Dual sources of truth** — STATUS.md says one thing, plan README says another. The STATUS.md Task Board is authoritative during execution. Plan README gets updated after merge.
+13. **Concurrent edit clobbering** — two agents edit collab.md simultaneously, one overwrites the other. Messages section is append-only. STATUS.md has one writer, the lead.
 14. **Stale `working` status** — agent crashes or hangs, status stays `working` forever. cmux adapter: if no Messages update for 30+ min from a `working` agent, the orchestrator checks the liveness watcher once. In T3 the completion notification (or one bounded `task_status` check) answers this; never a polling turn.
 15. **Missing MCP servers in cross-repo agents** — agent launched in repo B has no access to MCP servers configured in repo A's `.mcp.json`. ALWAYS use `--mcp-config` when launching agents in different repos. See scaffold step 9 for CLI template.
 16. **Registering hooks before creating the file** — Agent adds a hook to `settings.json` pointing to a file that doesn't exist yet. Hook runner returns exit code 2 (file not found), which blocks ALL tool calls for ALL agents in the repo. **Rule: create the hook file first, register it second. Never the reverse.**
@@ -338,16 +367,16 @@ When agents work while the human sleeps:
 3. **CPU/thermal safety rules in Key Constraints** — which heavy processes can run simultaneously.
 4. **Blocker escalation** — if blocked on human action, update status to `blocked:human` with exactly what's needed. Don't keep retrying.
 5. **Sign off when done** — prevents other agents from waiting for you.
-6. **The human should wake up to a clean collab file** where Messages show exactly what happened, Task Board shows what's done, and Decisions capture anything learned.
+6. **The human should wake up to a clean collab file** where Messages show one line per status change, STATUS.md shows what's done, and Decisions capture anything learned.
 
 ---
 
 ## Complexity Tiers
 
-**Always-required sections** (every tier): Goal, Agents, Task Board, Update Gates, Decisions, Messages.
+**Always-required sections** (every tier): Goal, Agents, Task Board (in STATUS.md), Update Gates, Decisions, Messages.
 
 ### Lightweight (2 agents, independent work, ~40 lines)
-Required: Goal, Agents, Task Board, Update Gates, Decisions, Messages.
+Required: Goal, Agents, Task Board (in STATUS.md), Update Gates, Decisions, Messages.
 Optional: References, Key Constraints, Shared Context, Orchestrator.
 Skip: Round Advancement.
 Note: If Orchestrator section is omitted, the agent that created the collab is implicitly the orchestrator.

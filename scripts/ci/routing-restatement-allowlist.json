@@ -472,7 +472,7 @@
     },
     {
       "file": "skills/golem-powers/large-plan/workflows/collab.md",
-      "marker": "| agentB | `gemini.gather.text` | 2, 4 | $HOME/Gits/repo-b | idle |",
+      "marker": "| lead-w2 | `gemini.gather.text` | 2, 4 | $HOME/Gits/repo-b |",
       "class": "FALSE POSITIVE",
       "reason": "Illustrative status/collab row; clause scanner bleeds from adjacent table text.",
       "count": 1

@@ -166,7 +166,7 @@ If step 2 identified any round with 2+ phases, create `collab.md` at the plan ro
 1. **Header** — one-line purpose + wake rule, never a polling cadence (T3: `delegate_task` completion notification and the parent's `watch_pull_request`; cmux adapter: addressed watch per `/collab-monitor`)
 2. **Goal** — copy from plan description
 3. **Agents** — one row per parallel agent, status = `idle`
-4. **Task Board** — one row per phase, owner = assigned agent, status = `pending`
+4. **Task Board** — in `STATUS.md` next to `collab.md`, one row per phase, owner = assigned agent, status = `pending`; the lead overwrites it in place ([Status and wakes](collab.md#status-and-wakes))
 5. **Update Gates** — copy the full table from the collab protocol template (all checkpoint rows, not just section headers)
 6. **Decisions** — empty section with comment placeholder
 7. **Messages** — empty section with format example
@@ -180,7 +180,7 @@ If step 2 identified any round with 2+ phases, create `collab.md` at the plan ro
 **Additional sections for Complex tier only:**
 12. **Round Advancement** — criteria for each round transition (usually "all PRs merged")
 
-**Source of truth rule:** During execution, the collab **Task Board** is authoritative for progress. The plan **README.md** progress table is updated after merges as a summary.
+**Source of truth rule:** During execution, the **STATUS.md Task Board** is authoritative for progress. The plan **README.md** progress table is updated after merges as a summary.
 
 **Complexity tier selection:**
 - 2 agents, fully independent → **Lightweight** (~40 lines)
@@ -190,7 +190,7 @@ If step 2 identified any round with 2+ phases, create `collab.md` at the plan ro
 **Validation checklist (after creating collab.md):**
 - [ ] All always-required sections present: Goal, Agents, Task Board, Update Gates, Decisions, Messages
 - [ ] Agents table has one row per parallel agent with status = `idle`
-- [ ] Task Board has one row per phase with owner assigned
+- [ ] STATUS.md Task Board has one row per phase with owner assigned
 - [ ] Update Gates has the full checkpoint table (not just a section header)
 - [ ] **Standard+:** Orchestrator, References, Key Constraints, Shared Context present
 - [ ] **Complex:** Round Advancement criteria reference specific completion conditions
@@ -276,15 +276,15 @@ Your phases: Phase N ([name]), Phase M ([name]).
 Your phase docs: <plan-dir>/phase-N-name/README.md
 
 Rules:
-1. Read collab.md FIRST. Update your status to `learning`.
-2. Run pre-flight checks (tests, build). Report count in Messages.
-3. Update status to `working` before starting each phase.
-4. Update Messages BEFORE every git commit.
+1. Read collab.md FIRST. Append one status line: `learning`. You post as <lead>-w<N>.
+2. Run pre-flight checks (tests, build). Report the count in your `learning` line.
+3. Append one status line when you start each phase (`working`).
+4. One line per status change, appended with cat >> … <<'EOF'. Commits get no line; never edit STATUS.md (the lead owns it).
 5. Before creating PR, read other agents' Messages for cross-references.
-6. Update Task Board with PR link when creating PRs.
+6. Append one line with the PR link when you open a PR.
 7. Full PR loop: push → create PR → wait for reviews on a notification, never a polling loop (T3: the parent's `watch_pull_request`; cmux adapter: addressed watch per `/collab-monitor`) → fix issues → merge → clean branch → CLEANUP RECEIPT in your done message.
-8. If blocked, set status → `blocked:reason` with exactly what's needed and from whom.
-9. When done with all your phases, status → `done`, then `signed-off`.
+8. If blocked, append `blocked:reason` with exactly what's needed and from whom. Routing questions go to the lead, never Etan.
+9. When done with all your phases, append `done` with your CLEANUP RECEIPT, then `signed-off`.
 10. Do not poll this collab file. Read it at kickoff and at every Update Gate. T3: your final message is the report; its completion notification wakes the lead. cmux adapter: arm the addressed watch per `/collab-monitor` (Claude seats; Codex seats arm none).
 
 Start now.

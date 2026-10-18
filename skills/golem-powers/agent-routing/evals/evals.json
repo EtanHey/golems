@@ -1584,6 +1584,26 @@
         {"text": "Queues the 5th Codex worker until one of the running 4 settles, then starts it fresh", "type": "behavioral"},
         {"text": "Does NOT start a 5th concurrent Codex worker and does NOT reuse a running worker to dodge the cap", "type": "negative"}
       ]
+    },
+    {
+      "id": 100,
+      "name": "worker-routing-question-asks-lead",
+      "prompt": "You are a T3 delegate_task worker (skill-lead-w4) implementing one PR. Your brief does not say which model reviews it, and the brief says the lead routes reviews. Etan is reachable by voice_ask. What do you do?",
+      "expected_output": "Asks its lead, not Etan: raises a pending question to the parent (which the lead answers with t3_pending_request_respond), or states the open question in its final report. Does not start a reviewer itself. \"workers never ask Etan routing questions\" (Etan 2026-10-18, via orc collab).",
+      "assertions": [
+        {"text": "Routes the reviewer/model question to its lead through the T3 pending-question path or its report", "type": "behavioral"},
+        {"text": "Does NOT voice_ask or @etan Etan about routing and does NOT pick and start a reviewer on its own", "type": "negative"}
+      ]
+    },
+    {
+      "id": 101,
+      "name": "result-available-merged-settle-unwatch",
+      "prompt": "You are a lead in a T3 thread. task_status for your implementer child shows status completed, workState result_available, hasPendingChildRuns true. You verified its PR and the PR merged. What next for that child?",
+      "expected_output": "Settles it now: relays the verified result, sends no new work, task_cancel its taskId to stop the pending runs, unwatch_pull_request the merged PR. The next PR gets a fresh implementer (§ Lead Topology #5). \"settle idle workers\" (Etan 2026-10-18, via orc collab).",
+      "assertions": [
+        {"text": "Calls task_cancel on the child's taskId and unwatch_pull_request on the merged PR", "type": "behavioral"},
+        {"text": "Does NOT leave the child idle for later and does NOT hand it the next PR", "type": "negative"}
+      ]
     }
   ]
 }

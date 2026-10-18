@@ -29,9 +29,9 @@ Read that phase's README.md for steps
 | Parallel rounds exist + NO collab.md | **STOP.** Run scaffold workflow step 6 to create collab.md before proceeding. |
 
 **If running as part of a collab:**
-- Update your agent status to `learning` in collab.md
-- Run pre-flight checks and report: "Pre-flight: N tests green" in Messages
-- Update status to `working` before starting implementation
+- Append one status line (`learning`) to collab.md per [Status and wakes](collab.md#status-and-wakes)
+- Run pre-flight checks and report: "Pre-flight: N tests green" in that line
+- Append one line when your status moves to `working`
 
 ### 2. Create Branch
 
@@ -48,7 +48,7 @@ Follow the phase README steps. For each step:
 - Write tests for logic-heavy code
 - Update findings.md with decisions and learnings
 
-**If collab:** Update collab.md Messages before every commit with a one-line summary.
+**If collab:** commits get no collab line. Append one line only when your status changes (no big ledgers).
 
 ### 4. Pre-Commit Checks
 
@@ -90,7 +90,7 @@ git commit -m "<type>(scope): description"
 git push -u origin feature/phase-<N>-<name>
 ```
 
-**If collab:** Update collab.md Messages BEFORE committing. Verify your agent status is current BEFORE pushing.
+**If collab:** before committing, check your status is current; append one line only if it changed.
 
 ### 7. Create PR
 
@@ -137,11 +137,11 @@ Update findings.md with final notes.
 
 **If collab:**
 1. Append a timestamped, addressed Messages heading: `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: PR #XX merged. Next: <what is unblocked>`, with your CLEANUP RECEIPT under it. The receipt comes first; the lead's gate reads it
-2. Then update Task Board in collab.md — status → `done`, add PR link
+2. The lead then overwrites STATUS.md: status → `done`, PR link (workers do not edit STATUS.md)
 3. If ALL your assigned phases are done → status → `signed-off`
 4. If this completes a round → the lead runs the phase-close gate above (every worker's CLEANUP RECEIPT present, prune step run) and only then advances to next round
 
-**If blocked at any step:** update your status, then append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`. Task Board changes and unaddressed prose do not wake the tag-scoped collab monitor (cmux adapter); in T3 your final message wakes the lead via the completion notification.
+**If blocked at any step:** append `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`. STATUS.md changes and unaddressed prose do not wake the tag-scoped collab monitor (cmux adapter); in T3 your final message wakes the lead via the completion notification.
 
 ### 11. Continue
 
