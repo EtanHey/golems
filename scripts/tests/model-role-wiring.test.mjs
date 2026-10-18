@@ -156,3 +156,42 @@ test('large-plan install scope includes short work', () => {
   assert.match(text, /short work.*few lines.*same skeleton/);
   assert.doesNotMatch(text, /NOT for: single-file changes/);
 });
+
+test('agent-routing has a first-class T3-native child lifecycle and keeps cmux as an adapter', () => {
+  const skill = read('skills/golem-powers/agent-routing/SKILL.md');
+  const fanOut = skill.split('## Fan-out engine')[1].split('\n## ')[0];
+  assert.match(fanOut, /\| .*T3 `delegate_task`.*\|/);
+  assert.doesNotMatch(fanOut, /\| Visible, multi-vendor, long-running, human-watchable workers \| cmux fleet/);
+  const t3 = skill.split('## T3-native dispatch')[1]?.split('\n## ')[0];
+  assert.ok(t3, 'T3-native dispatch section is required');
+  assert.ok(t3.trim().split('\n').length <= 20, 'T3-native dispatch section stays <=20 lines');
+  assert.match(t3, /references\/t3-native\.md/);
+  assert.match(skill.split('## Read Map')[1].split('\n## ')[0], /references\/t3-native\.md/);
+  const boundaries = skill.split('## Dispatch Boundaries')[1].split('## Lead Topology')[0];
+  const cmux = boundaries.split('### cmux adapter')[1];
+  assert.ok(cmux, 'cmux adapter sub-heading is required');
+  for (const kept of ['cmux fleet (`/cmux-agents`)', 'Visible-worker launch law lives in fleet canon #6', 'Codex children may edit only inside their visible Codex parent\'s worktree']) assert.ok(cmux.includes(kept), kept);
+  const owners = skill.split('## Cross-Skill Ownership')[1];
+  assert.match(owners, /`\/collab-monitor`: cmux\/collab-mail only.*T3 children.*completion notifications/);
+
+  const ref = read('skills/golem-powers/agent-routing/references/t3-native.md');
+  for (const rule of [
+    '`orchestrator_capabilities`', 'never a native tool\'s model list', 'canon #5',
+    '`delegate_task`', '`taskId`', '`clientRequestId`', '`isolation: "worktree"`', 'committed', 'gitignored', 'absolute paths',
+    'end the turn', 'verify the artifact',
+    'NEW `delegate_task`', 'prior findings', '`childThreadId`', '`t3_thread_send`',
+    '`hasPendingQuestion`', '"workers never ask Etan routing questions"', '(Etan 2026-10-18, via orc collab)',
+    '`t3_thread_launch`', '`create_threads`', '`link_pull_request`', '`watch_pull_request`', 'parent-owned',
+    'Lead Topology #5',
+  ]) assert.ok(ref.includes(rule), rule);
+  assert.doesNotMatch(ref, /at most 4 Codex workers|No Codex session lives past one PR/, 'point to Lead Topology, do not restate it');
+
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
+  for (const [id, name] of [[80, 't3-review-round-new-delegate-task'], [81, 't3-dispatch-worker-lifecycle'], [82, 't3-child-done-verify-before-relay'], [83, 't3-new-thread-vs-subagent']]) {
+    const e = suite.evals.find(e => e.id === id);
+    assert.equal(e?.name, name);
+    assert.ok(e.prompt && e.expected_output, name);
+    assert.ok(e.assertions.some(a => a.type === 'negative'), name);
+  }
+});

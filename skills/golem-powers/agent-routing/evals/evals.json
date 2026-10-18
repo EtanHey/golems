@@ -1457,6 +1457,51 @@
         {"text": "Names all three model record locations and budget as the reason.", "type": "behavioral"},
         {"text": "Does not silently change tier or infer a quality reason.", "type": "negative"}
       ]
+    },
+    {
+      "id": 80,
+      "name": "t3-review-round-new-delegate-task",
+      "prompt": "We're in T3. The round-1 reviewer for PR #12 found two bugs; the implementer pushed fixes. delegate_task a reviewer for round 2 of PR #12.",
+      "expected_output": "Starts round 2 as a NEW delegate_task (new taskId, new clientRequestId) whose task carries the original brief, PR #12 URL and current head SHA, the round-1 findings, the implementer's responses and open objections; pins model and effort in target. Does not send to the round-1 reviewer's childThreadId.",
+      "assertions": [
+        {"text": "Uses a new delegate_task for round 2 with prior findings, implementer responses and open objections in the task text.", "type": "behavioral"},
+        {"text": "Uses a distinct clientRequestId for round 2 and keeps the new taskId.", "type": "behavioral"},
+        {"text": "Does not call t3_thread_send on the round-1 childThreadId to continue the review.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 81,
+      "name": "t3-dispatch-worker-lifecycle",
+      "prompt": "You're a lead in a T3 thread. Dispatch a worker to fix the flaky retry test in packages/shared. The brief is in docs.local/briefs/retry.md.",
+      "expected_output": "Calls orchestrator_capabilities first, picks provider/model from its live catalog per the routing SSOT, then delegate_task mode async with explicit model and effort in target, isolation worktree, the brief passed by absolute path (docs.local is gitignored and not copied to the worktree), a stable clientRequestId; retains the taskId and ends the turn to wait for the completion notification.",
+      "assertions": [
+        {"text": "Calls orchestrator_capabilities before delegate_task and takes the model from its catalog, not a native tool's model list.", "type": "behavioral"},
+        {"text": "delegate_task pins model and effort explicitly in target and sets isolation: worktree.", "type": "behavioral"},
+        {"text": "Passes the gitignored brief by absolute path (or commits what the child needs) because the worktree only has committed files.", "type": "behavioral"},
+        {"text": "Ends the turn after dispatch; does not poll task_status, schedule wakeups or spawn a watcher/collab monitor.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 82,
+      "name": "t3-child-done-verify-before-relay",
+      "prompt": "T3 notification: your delegated implementer finished and its summary says 'PR_DONE PR: https://github.com/EtanHey/golems/pull/900 head: abc1234'. Tell orc it's ready.",
+      "expected_output": "Before relaying, verifies the artifact: the PR exists and is non-draft, headRefOid matches abc1234, and the changed files match the brief's scope (gh pr view --json headRefOid,files,isDraft); links the PR; relays only verified values, then concludes the child.",
+      "assertions": [
+        {"text": "Checks the PR head SHA and file list against the report before relaying.", "type": "behavioral"},
+        {"text": "Calls link_pull_request for the PR (the parent owns any watch_pull_request).", "type": "behavioral"},
+        {"text": "Does not forward the child's PR_DONE claim to orc unverified.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 83,
+      "name": "t3-new-thread-vs-subagent",
+      "prompt": "Two asks from Etan in T3: (1) 'open a new thread for the docs subtask', (2) 'dispatch a subagent to audit the CI config'. Do both.",
+      "expected_output": "Ask (1) explicitly asks for a separate top-level conversation, so it uses t3_thread_launch (with an explicit workspaceStrategy). Ask (2) is child work, so it uses delegate_task after orchestrator_capabilities. Only the first uses t3_thread_launch.",
+      "assertions": [
+        {"text": "Uses t3_thread_launch for the explicit 'new thread' ask.", "type": "behavioral"},
+        {"text": "Uses delegate_task for the 'dispatch a subagent' ask.", "type": "behavioral"},
+        {"text": "Does not use t3_thread_launch or create_threads for the subagent ask.", "type": "negative"}
+      ]
     }
   ]
 }
