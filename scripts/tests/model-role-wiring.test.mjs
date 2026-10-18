@@ -391,3 +391,41 @@ test('agent-routing has a first-class T3-native child lifecycle and keeps cmux a
     assert.ok(e.assertions.some(a => a.type === 'negative'), name);
   }
 });
+
+test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk-sized UI review, dated trial cases', () => {
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  const byId = id => suite.evals.find(e => e.id === id);
+  // Codex = gpt-6.1-sol and gpt-6-luna only; Astra only on Etan's own ask. Any other Codex model
+  // named in an eval's expected output or assertions must sit in a rejection sentence.
+  const allowed = new Set(['gpt-6.1-sol', 'gpt-6-luna']);
+  const rejects = /\b(reject\w*|refus\w*|ban\w*|remov\w*|never|not|no)\b/i;
+  for (const e of suite.evals) {
+    const texts = [e.expected_output, ...e.assertions.map(a => a.text ?? a.description ?? '')];
+    for (const text of texts) {
+      for (const sentence of text.split(/(?<=[.;])\s+/)) {
+        for (const m of sentence.matchAll(/\bgpt-[0-9][\w.]*(?:-[a-z]+)*|\bspark\b/gi)) {
+          const model = m[0].toLowerCase().replace(/[.*]+$/, '');
+          if (allowed.has(model)) continue;
+          if (model === 'gpt-6-astra' && /^Etan\b/.test(e.prompt)) continue;
+          assert.match(sentence, rejects, `eval ${e.id} names non-allowed Codex model ${m[0]} outside a rejection: ${sentence}`);
+        }
+      }
+    }
+  }
+  // Eval 46: UI review is sized; a Codex reviewer only in the L/data/security full panel.
+  const e46 = JSON.stringify(byId(46));
+  assert.match(e46, /size:\*/);
+  assert.match(e46, /frontend-design:frontend-design/);
+  assert.match(e46, /full panel/);
+  assert.doesNotMatch(e46, /Codex with the codex\.implement model to review/);
+  // Eval 14: Spark is no longer allowed for internal children.
+  assert.doesNotMatch(JSON.stringify(byId(14)), /Allows Spark/);
+  // Codex-implements answers for "everything else" are explicitly dated after the trial.
+  for (const id of [9, 34, 49]) assert.match(byId(id).prompt, /2026-10-26.*trial.*expired/s, `eval ${id} is dated post-trial`);
+  // Trial-agnostic implementer wording where the point is "not the lead, not Cursor".
+  for (const id of [2, 3, 5, 8, 22]) assert.match(JSON.stringify(byId(id)), /dated trial/, `eval ${id} names the trial implementer`);
+  // M1: failed probe stays on the MBP; nothing moves before Etan authorizes the rig.
+  assert.match(JSON.stringify(byId(55)), /MBP/);
+  assert.doesNotMatch(JSON.stringify(byId(55)), /cmux/);
+  assert.match(JSON.stringify(byId(56)), /authorizes the rig/);
+});
