@@ -69,7 +69,9 @@ Roles live in `standards/model-roles.json`. From the golems checkout, resolve wi
 (select one field). Never hardcode a role-owned model name. Generated launcher
 commands must keep the resolver substitution, not today's resolved literal. Read the role's status
 and gate before dispatch: `codex.subagent.mechanical` remains a candidate, with Etan’s
-2026-10-04 exception for Codex-internal mechanical children and named `packet` only. Workers
+2026-10-04 exception for Codex-internal mechanical children and named `packet` only. Watchers are
+the second exception — "anything that must sit and watch (a PR, CI, a file)" (Etan 2026-10-18, via orc collab) —
+resolved with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`. Workers
 remain on `codex.implement`; see the model-and-effort reference for the scoped exception.
 The Routing rules (SSOT) section owns dispatch policy and the role config owns current model defaults; older model-selection recipes in the
 references are pending PR 2b migration and cannot override the config.
