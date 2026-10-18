@@ -8,25 +8,107 @@ A multi-way deep-mining fan-out next to the live Opus fleet = OOM + token
 contention. The weave fires ONLY at convergence. **All four must be true:**
 
 1. **0 open PRs** across golems + brainlayer + voicelayer.
-2. **All worker panes idle.**
-3. **No in-flight Codex.**
+2. **All workers idle and settled** — cmux panes idle, and/or every T3 worker
+   thread settled.
+3. **No in-flight Codex** — no busy cmux Codex pane, and/or no T3 delegate
+   still working (Codex delegates are T3 threads too).
 4. **Etan has SEEN + APPROVED the demo.**
 
 Plus a **RAM gate** (same lesson as content-demo's `ram-gate.sh` — quiesce first).
 
+Conditions 2–3 depend on how the fleet runs. `--fleet` (or `WEAVE_FLEET`) picks
+the check:
+
+| `--fleet` | Section [2/3] checks |
+|---|---|
+| `t3` | The T3 snapshot only (§1.1). No cmux check, no cmux failure. |
+| `cmux` | `cmux list-status` + the `pgrep codex` warning only (§1.2). |
+| `both` | Both; each must pass. |
+| `auto` (default) | `t3` when `--t3-state` is given or the gate runs inside T3 (`T3CODE_CLI_PATH` set); `cmux` when the cmux CLI is on PATH; both when both. **Nothing detectable = BLOCKED, never a pass.** |
+
 ```bash
-bash scripts/convergence-gate.sh            # checks 1–3 + RAM; #4 needs operator ack
-bash scripts/convergence-gate.sh --ack-demo # operator asserts demo approval → can PASS
+bash scripts/convergence-gate.sh --fleet t3 --t3-state "$SNAP"            # T3 fleet; #4 still needs the ack
+bash scripts/convergence-gate.sh --fleet t3 --t3-state "$SNAP" --ack-demo # operator asserts demo approval → can PASS
+bash scripts/convergence-gate.sh --fleet cmux --ack-demo                  # cmux fleet
 ```
 
 Condition #4 is **not script-checkable** — the gate stays BLOCKED until the
 operator passes `--ack-demo` (or `WEAVE_DEMO_ACK=1`). Human/orchestrator in the
-loop; never auto-fire. `"weave now"` is the only path that skips the gate.
+loop; never auto-fire. `"weave now"` is the only path that skips the gate. The
+open-PR gate, the RAM gate and the demo gate run the same way in every fleet mode.
 
 > **Convergence signal (2026-07-10):** the gate may key on the orchestrator's
 > **SENTINEL** (an explicit quiescence marker orc emits) rather than a raw
 > PR-count poll — PR-count alone false-fires while a lead is mid-close. Prefer
 > the SENTINEL when orc emits one. [g1:52 → 2026-06-21.md:2]
+
+### 1.1 T3 fleet — threads + delegated tasks snapshot
+
+Leads and workers now run as T3 threads and `delegate_task` children, and a
+shell script cannot call MCP. So the lead running the gate captures what T3
+reports into one JSON file, and `scripts/t3-fleet-state.py` judges it.
+
+**Capture (in the lead's own thread, right before the gate):**
+
+1. `t3_thread_list(settled: false, includeSubagents: true, limit: 100)` for each
+   fleet project (`projectId`), following `nextCursor` until it is `null`.
+   Copy every row verbatim into `threads`. Then set `threads_complete: true`.
+2. `task_status(taskId)` for every delegated task you hold. Copy each result
+   verbatim into `tasks`, and add `childThreadId` from the `delegate_task`
+   return if `task_status` does not carry it.
+3. Optional: `t3_pending_request_list` rows into `pending_requests`.
+4. `self_thread_id` = your own thread (`currentThreadId` in the list response).
+   `captured_at` = `date -u +%Y-%m-%dT%H:%M:%SZ`.
+
+```json
+{
+  "schema": "weave-t3-fleet/v1",
+  "captured_at": "2026-10-18T21:00:00Z",
+  "self_thread_id": "thread:orc",
+  "threads_complete": true,
+  "threads": [{"threadId": "thread:orc", "title": "orc", "status": "running", "settled": false}],
+  "tasks": [{"taskId": "task:pr1-impl", "childThreadId": "thread:pr1-worker",
+             "workState": "result_available", "hasPendingChildRuns": false}],
+  "pending_requests": []
+}
+```
+
+Write it under the run's `docs.local/` scratch dir (never `/tmp`), then
+`bash scripts/convergence-gate.sh --fleet t3 --t3-state <file>` (or
+`WEAVE_T3_STATE`). Max age defaults to 15 min (`--t3-max-age-min N`,
+`WEAVE_T3_MAX_AGE_MIN`).
+
+**Verdicts — the gate fails closed on:**
+
+- a missing, unreadable, malformed or wrong-`schema` snapshot, `threads_complete`
+  not `true`, or a stale / future `captured_at`;
+- `self_thread_id` absent from `threads` (wrong project or a filtered listing);
+- any other thread `preparing`/`queued`/`starting`/`running`, or `waiting`
+  (a pending question), or with a status outside the `t3_thread_list` enum;
+- any task `working` or `waiting_for_children`, or with an unknown `workState`;
+- a `result_available` task with `hasPendingChildRuns: true`;
+- any `pending_requests` row.
+
+**Parent/child completion is not a settled worker.** A task at
+`result_available` means the child finished its work for the parent. The worker
+is converged only once its thread is settled too. A `result_available` task
+whose `childThreadId` is still in the unsettled listing — or any finished thread
+(`idle`, `completed`, `failed`, …) left unsettled — fails with
+**"… not settled — settle it"**. Standing rule: "settle idle workers"
+(Etan 2026-10-18, via orc collab). A task whose child thread is absent from the
+complete unsettled listing counts as settled.
+
+Limit: the gate can only judge the projects you listed. A lead that lists one
+project while workers run in another will pass that project alone — list every
+fleet project.
+
+### 1.2 cmux fleet — pane idleness
+
+With `--fleet cmux` (or `auto` with the cmux CLI on PATH), section [2/3] reads
+`cmux list-status`: any surface `working`/`busy`/`running`/`active` blocks, and a
+failed or empty `list-status` blocks (fail-safe). Without the cmux CLI the cmux
+check blocks. A `pgrep codex` match is a warning only: confirm by hand that no
+in-flight worker is behind it.
 
 ### 1.4 verify-before-alarming — read the bytes before you publish a finding
 

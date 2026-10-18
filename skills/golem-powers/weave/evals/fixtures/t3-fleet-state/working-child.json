@@ -1,0 +1,13 @@
+{
+  "schema": "weave-t3-fleet/v1",
+  "captured_at": "2026-10-18T21:00:00Z",
+  "self_thread_id": "thread:orc",
+  "threads_complete": true,
+  "threads": [
+    {"threadId": "thread:orc", "title": "orc", "status": "running", "settled": false},
+    {"threadId": "thread:pr8-worker", "title": "PR8 impl", "status": "running", "settled": false}
+  ],
+  "tasks": [
+    {"taskId": "task:pr8-impl", "childThreadId": "thread:pr8-worker", "workState": "working", "hasPendingChildRuns": true}
+  ]
+}

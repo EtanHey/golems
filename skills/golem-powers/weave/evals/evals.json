@@ -1,0 +1,81 @@
+{
+  "skill_name": "weave",
+  "description": "Operational evals for the weave convergence gate. EVAL.md owns the conversion-to-change metric and the fixture smoke; these cases test whether a lead reads the gate correctly for a T3 fleet (threads + delegate_task children) instead of a cmux fleet.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "t3-fleet-one-delegate-working-blocks",
+      "category": "operational",
+      "description": "A T3 fleet with one delegate_task child still working is not converged, even with 0 open PRs and the demo approved.",
+      "prompt": "Is the fleet converged? Run the weave. All three repos show 0 open PRs and Etan approved the demo. The fleet runs in T3, not cmux: I hold two delegate_task children. task_status says task:pr1-impl is result_available and its thread is settled, but task:pr8-impl is workState working. cmux is not installed on this machine.",
+      "expected_output": "BLOCKED. The agent runs convergence-gate.sh with --fleet t3 and a weave-t3-fleet/v1 snapshot built from t3_thread_list + task_status. The working delegate blocks the gate and the agent does not fire the weave.",
+      "assertions": [
+        {
+          "type": "behavioral",
+          "name": "uses-t3-snapshot-gate",
+          "description": "Runs (or describes running) convergence-gate.sh with --fleet t3 and --t3-state pointing at a snapshot captured from t3_thread_list and task_status."
+        },
+        {
+          "type": "content",
+          "name": "verdict-blocked-working-delegate",
+          "description": "States the gate is BLOCKED because task:pr8-impl is still working."
+        },
+        {
+          "type": "negative",
+          "name": "no-cmux-absence-excuse",
+          "description": "Does not treat the missing cmux CLI as a blocker for a T3 fleet, and does not switch to 'weave now' to get around it."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "t3-all-tasks-done-one-thread-unsettled-blocks",
+      "category": "operational",
+      "description": "Parent/child completion is not convergence: a result_available task whose worker thread is still unsettled blocks the gate with a settle instruction.",
+      "prompt": "Weave. All delegate_task children report result_available, 0 open PRs, demo approved, plenty of RAM. t3_thread_list(settled:false) still shows the PR2 implementer thread as completed, settled:false. Are we converged?",
+      "expected_output": "BLOCKED with a settle instruction. result_available proves the child finished for the parent, not that the worker is settled. The agent settles the PR2 implementer thread, recaptures the snapshot, and re-runs the gate before weaving.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "verdict-blocked-unsettled",
+          "description": "States the gate is BLOCKED because the PR2 worker thread is completed but not settled."
+        },
+        {
+          "type": "behavioral",
+          "name": "settle-then-recapture",
+          "description": "Says to settle the worker thread, then recapture the snapshot and re-run the gate."
+        },
+        {
+          "type": "negative",
+          "name": "result-available-not-converged",
+          "description": "Does not call the fleet converged just because every task is result_available."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "gate-without-detectable-fleet-fails-closed",
+      "category": "operational",
+      "description": "With no snapshot and no cmux, nothing is checkable; the gate blocks and the lead captures the T3 snapshot instead of passing.",
+      "prompt": "Plan the next batch after the weave. First run the convergence gate. I ran convergence-gate.sh --ack-demo outside T3 on a box without cmux and it printed 'no fleet detected'. Nothing is running anyway, so can we just call it converged?",
+      "expected_output": "No. 'No fleet detected' is BLOCKED, not converged. The agent captures a weave-t3-fleet/v1 snapshot (or names the cmux fleet) and re-runs with --fleet and its input; only an explicit operator 'weave now' skips the gate.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "nothing-detectable-is-blocked",
+          "description": "States that 'no fleet detected' means BLOCKED, never a pass."
+        },
+        {
+          "type": "behavioral",
+          "name": "captures-input-and-reruns",
+          "description": "Captures the T3 snapshot (or uses --fleet cmux on a cmux fleet) and re-runs the gate with --fleet."
+        },
+        {
+          "type": "negative",
+          "name": "no-self-granted-weave-now",
+          "description": "Does not invoke the 'weave now' override on its own; that is the operator's call."
+        }
+      ]
+    }
+  ]
+}

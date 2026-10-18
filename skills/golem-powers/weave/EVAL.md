@@ -81,6 +81,15 @@ flagging for human review (repo rule). See `references/topology.md`.
 # automated regression coverage for the corrections-rate fixture contract
 python3 -m unittest scripts/__tests__/test_corrections_rate.py
 
+# convergence gate, T3 fleet: snapshot verdicts + --fleet selection end to end
+python3 -m unittest scripts/__tests__/test_t3_fleet_state.py scripts/__tests__/test_convergence_gate.py
+python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/converged.json --now 2026-10-18T21:05:00Z
+echo "expect 0 -> $?"
+python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/unsettled-result.json --now 2026-10-18T21:05:00Z
+echo "expect 1 -> $?"   # result_available but worker thread unsettled: "settle it"
+python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/malformed.json
+echo "expect 2 -> $?"
+
 # clean fixture: every finding routed to a known disposition, drops have reasons
 python3 scripts/weave-ledger.py --findings-dir evals/fixtures/findings-clean --strict
 echo "expect 0 -> $?"

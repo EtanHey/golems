@@ -97,7 +97,8 @@ Fleet standing contracts are ambient (CLAUDE.md) — this skill states only weav
 | `$ORCHESTRATOR_ROOT/weave-records/registry/RULES.md` | The durable rule registry (PRIVATE records repo — retros + registry contain operator comms): stable `R-###` IDs, lifecycle states, born/encodings/breaks per family (§7); **v1.6, 49 family rows** [retro 2026-08-24-monthly.md] |
 | `$ORCHESTRATOR_ROOT/weave-records/retros/<date>.md` | Per-run retros (PRIVATE records repo); `retros/README.md` here is the tombstone pointer |
 | `registry/validate-registry.sh` | Re-runnable registry assertions — run `bash registry/validate-registry.sh $ORCHESTRATOR_ROOT/weave-records/registry/RULES.md` after every registry edit |
-| `scripts/convergence-gate.sh` | The 4-condition gate + RAM check; arms "weave", bypassed by "weave now" |
+| `scripts/convergence-gate.sh` | The 4-condition gate + RAM check; arms "weave", bypassed by "weave now"; `--fleet auto\|cmux\|t3\|both` picks the worker-idleness check |
+| `scripts/t3-fleet-state.py` | Judges a `weave-t3-fleet/v1` snapshot (T3 threads + delegated tasks) for the gate's T3 fleet check; fails closed (run-lifecycle §1.1) |
 | `scripts/weave-run.py` | Reproducible orchestrator: `discover` → `prepare` → `batches` → `aggregate` |
 | `scripts/prepare-mine-context.py` | Compact per-session context (digest + grep excerpts with `jsonl_line=N`) for one miner; Claude + Codex formats |
 | `scripts/validate-dispatch-brief.py` | Pre-send validation for §EDITS worker briefs (schema + required sections) |

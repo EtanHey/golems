@@ -1,0 +1,15 @@
+{
+  "schema": "weave-t3-fleet/v1",
+  "captured_at": "2026-10-18T21:00:00Z",
+  "self_thread_id": "thread:orc",
+  "threads_complete": true,
+  "threads": [
+    {"threadId": "thread:orc", "title": "orc", "status": "running", "settled": false},
+    {"threadId": "thread:old-worker", "title": "PR1 impl", "status": "completed", "settled": true}
+  ],
+  "tasks": [
+    {"taskId": "task:pr1-impl", "childThreadId": "thread:old-worker", "workState": "result_available", "hasPendingChildRuns": false},
+    {"taskId": "task:pr2-impl", "childThreadId": "thread:pr2-worker", "workState": "result_available", "hasPendingChildRuns": false}
+  ],
+  "pending_requests": []
+}

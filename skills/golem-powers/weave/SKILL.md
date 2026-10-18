@@ -5,7 +5,7 @@ description: "Orchestrator convergence: mine JSONLs, cite findings, route action
 
 # `/weave`
 
-> **Version: v1.2**
+> **Version: v1.3**
 
 > **At convergence, fan out deep cross-session mining, then prove each finding
 > turned into a real change — or kill it.**
@@ -48,7 +48,10 @@ and verified change is not convergence.
 |---|---|
 | **"weave"** | Arm the skill, run `scripts/convergence-gate.sh`, and wait. Never auto-fire. |
 | **"weave now"** | Fire immediately, skipping the gate. Operator override — use only when the operator knows the fleet is quiet. |
-| Gate path | Require 0 open fleet PRs, idle workers, no in-flight Codex, RAM headroom, and explicit demo approval. Prefer orc's SENTINEL over raw PR count when present. |
+| Gate path | Require 0 open fleet PRs, idle and settled workers, no in-flight Codex, RAM headroom, and explicit demo approval. Prefer orc's SENTINEL over raw PR count when present. |
+| T3 fleet (leads/workers are T3 threads or `delegate_task` children) | Capture the `weave-t3-fleet/v1` snapshot from `t3_thread_list` + `task_status`, then run the gate with `--fleet t3 --t3-state <file>`. Any working, waiting or unknown state blocks. A `result_available` task whose worker thread is unsettled blocks too: settle it first. |
+| cmux fleet | Run the gate with `--fleet cmux`; it reads `cmux list-status` pane idleness. |
+| Gate cannot detect a fleet | BLOCKED. Pass `--fleet` and its input; never treat "nothing to check" as converged. |
 | Small corpus (about 10 sessions or fewer) | Flat fan-out may be appropriate; still verify on disk and loop until dry. |
 | Large or centerpiece-heavy corpus | Use staged mining, with centerpiece digests first and later rounds seeded by earlier findings. |
 | Finding is a failure | Add evidence-cited `cause_layer` and route the fix to code, instructions, or tool description. |
@@ -67,8 +70,8 @@ and verified change is not convergence.
 
 ## Read the relevant reference
 
-- Running the gate, discovery, mining, dispatch, delta wave, or miner contract?
-  Read [references/run-lifecycle.md](references/run-lifecycle.md).
+- Running the gate (T3 snapshot schema: §1.1; cmux fleet: §1.2), discovery, mining,
+  dispatch, delta wave, or miner contract? Read [references/run-lifecycle.md](references/run-lifecycle.md).
 - Aggregating, re-scoring, red-teaming, correcting, discharging edits, or computing
   correction rates? Read [references/verification-and-discharge.md](references/verification-and-discharge.md).
 - Emitting track intents, self-QA gates, grill carryover, name claims, or monitors?
