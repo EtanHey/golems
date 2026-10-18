@@ -85,5 +85,125 @@ class ArmingContract(unittest.TestCase):
                 self.assertTrue(all(row["name"] and row["description"] for row in case["assertions"]))
 
 
+ATTRIBUTION = "(Etan 2026-10-18, via orc collab)"
+RULE_NO_POLLING = ("No polling turns. No collab-monitor wakes in Codex, and no \"watch #410\" loops. "
+                   "Use T3 completion notifications or a single bounded check. "
+                   "Mechanical polling or rebases go to gpt-6-luna.")
+RULE_WATCHING = ("anything that must sit and watch (a PR, CI, a file) uses a cheap gpt-6-luna "
+                 "sub-agent, never a big-context Sol or lead session.")
+RULE_RATE_LIMITS = "Never wait on rate limits."
+ADAPTERS = ["adapters/claude.md", "adapters/codex.md", "adapters/cursor.md"]
+POLICY_LINK = "references/review-loop.md#waiting-policy-no-polling-turns"
+
+
+def flat(relative):
+    return " ".join(text(relative).split())
+
+
+class WaitingPolicy(unittest.TestCase):
+    """Etan 2026-10-18 rulings: T3 watch first, no polling turns, cheap watchers only."""
+
+    def test_review_loop_orders_t3_watch_bounded_check_cheap_watcher_then_bans(self):
+        content = flat("references/review-loop.md")
+        self.assertIn("### Waiting policy (no polling turns)", content)
+        content = content.split("### Waiting policy (no polling turns)", 1)[1]
+        order = ["`link_pull_request`", "`watch_pull_request`", "end the turn",
+                 "Single bounded check", "cheap watcher", "`codex.subagent.mechanical`", "Banned"]
+        positions = [content.find(token) for token in order]
+        self.assertTrue(all(pos >= 0 for pos in positions), dict(zip(order, positions)))
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("`unwatch_pull_request`", content)
+        self.assertIn("parent-owned", content)
+        self.assertIn("never a big-context lead session", content)
+
+    def test_review_loop_quotes_the_rules_verbatim_with_attribution(self):
+        # The collab source bolds some phrases; compare words, not emphasis markers.
+        content = flat("references/review-loop.md").replace("**", "")
+        for rule in [RULE_NO_POLLING, RULE_WATCHING, RULE_RATE_LIMITS]:
+            with self.subTest(rule=rule[:40]):
+                self.assertIn(rule, content)
+        self.assertIn(ATTRIBUTION, content)
+
+    def test_banned_list_names_every_polling_shape(self):
+        content = flat("references/review-loop.md").split("### Waiting policy (no polling turns)", 1)[1]
+        banned = content.split("Banned", 1)[1][:900]
+        for shape in ["ScheduleWakeup", "CronCreate", "`/loop`", "collab-monitor", "duplicate watcher",
+                      "rate limit"]:
+            with self.subTest(shape=shape):
+                self.assertIn(shape, banned)
+
+    def test_scheduled_wakes_are_no_longer_prescribed(self):
+        for relative in ["references/review-loop.md", *ADAPTERS]:
+            with self.subTest(surface=relative):
+                self.assertNotIn("Timed one-shot wakes", flat(relative))
+
+    def test_cmux_fallback_is_labelled_not_deleted(self):
+        content = flat("references/review-loop.md")
+        self.assertIn("#### cmux adapter", content)
+        cmux = content.split("#### cmux adapter", 1)[1].split("###", 1)[0]
+        self.assertIn("/collab-monitor", cmux)
+        self.assertIn("Codex seats never arm it", cmux)
+
+    def test_every_adapter_points_at_the_policy(self):
+        for relative in ADAPTERS:
+            with self.subTest(surface=relative):
+                content = flat(relative)
+                self.assertIn(f"../{POLICY_LINK}", content)
+                self.assertIn("`watch_pull_request`", content)
+
+    def test_codex_adapter_has_no_collab_monitor_review_wake(self):
+        content = flat("adapters/codex.md")
+        self.assertNotIn("arm the `/collab-monitor` packaged fallback", content)
+        self.assertIn("No collab-monitor wakes in Codex", content)
+        self.assertIn("T3 completion", content)
+        caps = flat("adapters/capabilities.yaml")
+        self.assertNotIn("/collab-monitor for handoffs", caps)
+
+    def test_skill_md_names_the_policy_in_one_line(self):
+        content = text("SKILL.md")
+        self.assertIn("references/review-loop.md#waiting-policy-no-polling-turns", content)
+        self.assertIn("never a polling turn", content)
+
+    def test_dispatch_handoffs_links_the_policy_instead_of_a_review_timer(self):
+        # Review round 1 (#796): Autonomous Agent Mode kept a 120s / 5 min timer beside the policy.
+        content = flat("references/dispatch-and-handoffs.md")
+        autonomous = content.split("## Autonomous Agent Mode", 1)[1].split("## ", 1)[0]
+        self.assertIn("(review-loop.md#waiting-policy-no-polling-turns)", autonomous)
+        for stale in ["120s", "5 min", "wait minimum", "If no reviews after"]:
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, autonomous)
+
+    def test_no_surface_keeps_a_timed_review_recheck(self):
+        for path in sorted(SKILL.rglob("*.md")):
+            relative = path.relative_to(SKILL).as_posix()
+            if relative.startswith("evals/results"):
+                continue
+            with self.subTest(surface=relative):
+                self.assertNotRegex(flat(relative), r"(?i)wait minimum \d+|if no reviews after \d+")
+
+    def test_watcher_child_uses_the_supported_resolution_path(self):
+        # Bare `codex.subagent.mechanical` resolution refuses (candidate role); watchers use --use watcher.
+        self.assertIn("node scripts/model-roles.mjs codex.subagent.mechanical --use watcher",
+                      flat("references/review-loop.md"))
+        for path in sorted(SKILL.rglob("*.md")):
+            relative = path.relative_to(SKILL).as_posix()
+            for line in text(relative).splitlines():
+                if "model-roles.mjs codex.subagent.mechanical" in line:
+                    with self.subTest(surface=relative, line=line.strip()[:60]):
+                        self.assertIn("--use watcher", line)
+
+    def test_behavioral_cases_cover_the_waiting_policy(self):
+        cases = {case["id"]: case for case in json.loads(text("evals/evals.json"))["evals"]}
+        for case_id, name in [(40, "t3-seat-links-and-watches-pr"), (41, "rate-limited-bot-not-awaited"),
+                              (42, "codex-no-collab-monitor-after-push"), (43, "cmux-seat-one-watcher-process")]:
+            with self.subTest(case=name):
+                case = cases.get(case_id)
+                self.assertIsNotNone(case)
+                self.assertEqual(case["name"], name)
+                self.assertTrue(case["prompt"] and case["expected_output"])
+                self.assertGreaterEqual(len(case["assertions"]), 2)
+                self.assertTrue(any(row.get("type") == "negative" for row in case["assertions"]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

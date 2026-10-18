@@ -14,7 +14,7 @@
 | PR | `gh pr create ...` | If `gh` is installed + authenticated |
 | Trigger review bots | `gh pr comment <N> --body "@codex review"` | Shell path, not a native reviewer tool |
 | Trigger Bugbot | `gh pr comment <N> --body "@cursor @bugbot review"` | **Opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (§ 8a.0). Not part of the default panel. Re-review with `@cursor @bugbot re-review` |
-| Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | Fetch once on state change — never in a poll loop |
+| Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | Fetch once on a wake that shows a change — never in a poll loop |
 | Merge | `gh pr merge <N> --merge --delete-branch` | See worktree note below |
 
 ## Critical Gaps
@@ -22,8 +22,8 @@
 | Gap | Impact | Workaround |
 |-----|--------|-----------|
 | No `cr review` pre-commit check | Commits without CodeRabbit pre-screening | Run `cr review --plain` manually if cr is installed |
-| No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Slim-poll review state (see CI + Review Waiting below) |
-| No native `Monitor` | Needs an attached watch consumer | `pr-watch` with the pinned head and exit code for CI; `/collab-monitor` packaged fallback for addressed handoffs |
+| No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | One bounded slim read per wake (see CI + Review Waiting below) |
+| No native `Monitor` | A watch must not be a model loop in this session | T3 `watch_pull_request` and delegate completion wakes first; else one pinned-head `pr-watch` process for CI. No collab-monitor wakes |
 | No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |
 | No native review-bot tool | Can't invoke Codex Cloud or Cursor Bugbot through a built-in agent tool | Use `gh pr comment` shell commands after the PR opens, filtered by the repo's bot policy |
 | No `AGENTS.md` bot-policy check in the loop | Can summon a bot the target repo bans | Read the target repo's `AGENTS.md` PR-workflow section BEFORE the first `@mention` ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)), and name the applied policy in the PR body |
@@ -70,6 +70,17 @@ Diff-pass procedure: [review loop § 8a.2](../references/review-loop.md#8a2--the
 
 ## CI + Review Waiting (Codex — NO sleep-poll loops)
 
+Wait per the [waiting policy](../references/review-loop.md#waiting-policy-no-polling-turns), in order:
+
+1. **T3 seat:** the PR-loop owner calls `link_pull_request` then `watch_pull_request` and ends the
+   turn; a delegated Codex child ends its turn and its parent's `delegate_task` completion wakes the
+   parent. T3 wakes on checks finished, a new comment, or a conflict. `unwatch_pull_request` at a
+   terminal state.
+2. **State needed now:** one bounded slim read (below), then act or end the turn.
+3. **Must sit and watch outside T3:** one pinned-head `pr-watch` process, or one bounded
+   `codex.subagent.mechanical` child that reports once at a terminal state. Never this session
+   looping.
+
 Sleep-poll loops that re-fetch the full PR payload are BANNED. Cost evidence
 (weave 2026-06-07, 3 instances across 2 sessions): `sleep 60; gh pr view <N>
 --json ...,comments,reviews,latestReviews,...` loops burned ~47M cumulative
@@ -82,12 +93,12 @@ Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` fro
 # CI: ONE blocking call — read its exit code
 pr-watch <owner/repo> <N> --head <sha> --deadline 2h
 
-# Review state: slim poll — state fields + activity COUNTS, never full bodies
+# Review state: one bounded slim read per wake — state fields + activity COUNTS, never full bodies
 gh pr view <N> --json state,mergeStateStatus,reviewDecision
 gh pr view <N> --json comments,reviews \
   --jq '{comments: (.comments|length), reviews: (.reviews|length)}'
 
-# Full payload: fetch ONCE, only AFTER the slim poll shows a change
+# Full payload: fetch ONCE, only AFTER the slim read shows a change
 gh pr view <N> --json comments,reviews,latestReviews
 ```
 
@@ -99,7 +110,7 @@ Rules:
   continues, and 30 GH_ERROR needs the stderr diagnosis. pr-watch never merges;
   an empty rollup is never READY. Keep required contexts and the 180s default
   settle window. Do not route its output through a cmuxlayer file watch.
-- While waiting on review, poll only the slim state fields plus the
+- On each wake (T3 watch, delegate completion, pr-watch exit), read only the slim state fields plus the
   comment/review COUNTS (`--jq '... length'` — only the numbers enter
   context). Counts are the trigger that catches bot reviewers (CodeRabbit,
   Codex, Bugbot) whose findings land as comments WITHOUT changing
@@ -107,10 +118,13 @@ Rules:
 - Fetch full `comments,reviews,latestReviews` exactly once, when a state
   field changes or a count increases — never inside a poll cycle.
 
-For addressed review handoffs, arm the `/collab-monitor` packaged fallback with
-an attached consumer and bounded 30-minute re-arm. Respect engine mailbox
-contracts. Timed one-shot wakes use the current harness schema; see
-`collab-monitor/references/cron-payloads.md`.
+Review handoffs reach this seat as T3 wakes: a `delegate_task` completion, or the parent-owned
+`watch_pull_request` wake. Never arm `/collab-monitor` or its packaged fallback for a review handoff,
+in T3 or in cmux. The rule, verbatim (Etan 2026-10-18, via orc collab): "No polling turns. No
+collab-monitor wakes in Codex, and no "watch #410" loops. Use T3 completion notifications or a single
+bounded check." Mechanical watching goes to one bounded `codex.subagent.mechanical` child (policy
+item 3). No `ScheduleWakeup`/cron wakes for CI or reviews, and never wait on a rate-limited bot: bots
+are advisory.
 
 ## Agent Identity Signature — Codex read paths (ratified 2026-08-08)
 
@@ -157,8 +171,8 @@ For worker endpoints, draft handling, head verification, and deploy claims, read
 ## Recommended Usage
 
 Use Codex for pr-loop ONLY when:
-- Shell-driven review triggers and polling are acceptable
+- Shell-driven review triggers and T3 wakes (or one pinned-head pr-watch) are acceptable
 - A Claude session can handle post-merge BrainLayer updates
 - `gh` CLI is installed and authenticated in the environment
 
-**Loop mechanics:** Open the PR, trigger review bots through `gh`, watch CI with the pinned-head pr-watch command and read its exit code, and slim-poll review state. Use the routing pointer above for role ownership and a BrainLayer-capable session for post-merge tracking.
+**Loop mechanics:** Open the PR, trigger review bots through `gh`, wait on the T3 watch (or one pinned-head pr-watch command, reading its exit code), and read slim review state once per wake. Use the routing pointer above for role ownership and a BrainLayer-capable session for post-merge tracking.

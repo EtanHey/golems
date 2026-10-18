@@ -101,7 +101,7 @@
         },
         {
           "name": "waits-or-invokes-reviewers",
-          "description": "Response either waits for reviewers (minimum 10-15 min) or explicitly invokes @coderabbitai/@greptileai review before proceeding"
+          "description": "Response either waits for reviewers per the waiting policy (T3 watch wake, one bounded check or one cheap watcher, never a polling turn) or explicitly invokes @coderabbitai/@greptileai review before proceeding"
         }
       ]
     },
@@ -620,6 +620,87 @@
         {
           "name": "quiet-window",
           "description": "Requires all latest checks green and a quiet default 180s settle window; a new check or run resets the window. No merge action is performed by pr-watch."
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "name": "t3-seat-links-and-watches-pr",
+      "prompt": "You are a lead in a T3 thread. You pushed the branch for a small skills fix. Open a PR and merge when green. What do you do between opening the PR and merging?",
+      "expected_output": "Opens the PR, calls link_pull_request with the PR URL, then watch_pull_request, and ends the turn. T3 wakes the seat when checks finish, someone comments, or the branch conflicts. On the wake it makes one bounded state read, merges only after the exact-head review and green required checks, then calls unwatch_pull_request. No ScheduleWakeup, CronCreate, /loop or sleep-poll turns.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "link-then-watch-then-end-turn",
+          "description": "Calls link_pull_request, then watch_pull_request (parent-owned), then ends the turn instead of waiting in-session."
+        },
+        {
+          "type": "outcome",
+          "name": "unwatch-at-terminal",
+          "description": "Calls unwatch_pull_request at the terminal state (merged or handed off)."
+        },
+        {
+          "type": "negative",
+          "name": "no-scheduled-polling-turns",
+          "description": "Does NOT use ScheduleWakeup, CronCreate, /loop or a sleep loop to re-check CI or reviews."
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "name": "rate-limited-bot-not-awaited",
+      "prompt": "The routed reviewer already approved your PR at the current head and required checks are green. CodeRabbit replied that it is rate limited. Should you wait for it?",
+      "expected_output": "No. Never wait on rate limits: review bots run after the inner loop and are advisory. Record CodeRabbit as unavailable in the PR body and proceed on the routed review (merge if this seat holds merge authority, otherwise hand off). Does not schedule a wake to retry the bot.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "proceeds-on-routed-review",
+          "description": "Treats the bot as advisory, records it as unavailable in the PR body, and proceeds on the routed review."
+        },
+        {
+          "type": "negative",
+          "name": "no-rate-limit-wait",
+          "description": "Does NOT wait, sleep, or schedule a wake for the rate-limited bot."
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "name": "codex-no-collab-monitor-after-push",
+      "prompt": "You are a Codex worker delegated by a lead through delegate_task. You just pushed fixes for review findings on PR #812. How do you wait for the re-review?",
+      "expected_output": "Reports the push and ends the turn; the handoff returns as a T3 wake (the parent's delegate_task completion or its parent-owned watch_pull_request). At most one bounded slim read if state is needed now. If something must sit and watch, one pinned-head pr-watch process or one bounded codex.subagent.mechanical child. Never arms /collab-monitor or its packaged fallback and never loops in its own session.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "t3-completion-wake",
+          "description": "Ends the turn and relies on T3 completion/watch wakes, or one bounded check."
+        },
+        {
+          "type": "negative",
+          "name": "no-collab-monitor-arm",
+          "description": "Does NOT arm /collab-monitor (or its packaged fallback) or any polling loop for the review handoff."
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "name": "cmux-seat-one-watcher-process",
+      "prompt": "You are a Claude worker in a cmux pane with no T3 thread. CI on your PR takes about 40 minutes. How do you wait for it?",
+      "expected_output": "Arms exactly one native Monitor running pr-watch <owner/repo> <N> --head <sha> --deadline 2h and handles its exit code; the process waits, not model turns. Review handoffs follow the cmux adapter (Monitor or /collab-monitor). No CronCreate, ScheduleWakeup or /loop polling turns and no second watcher on the same PR.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "one-pinned-watcher-process",
+          "description": "Uses exactly one pinned-head pr-watch process (via native Monitor) and acts on its exit code."
+        },
+        {
+          "type": "negative",
+          "name": "no-cron-or-duplicate",
+          "description": "Does NOT use CronCreate, ScheduleWakeup or /loop polling, and does not arm a second watcher on the same PR."
         }
       ]
     }
