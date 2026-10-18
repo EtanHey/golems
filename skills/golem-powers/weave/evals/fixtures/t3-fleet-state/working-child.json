@@ -2,12 +2,13 @@
   "schema": "weave-t3-fleet/v1",
   "captured_at": "2026-10-18T21:00:00Z",
   "self_thread_id": "thread:orc",
-  "threads_complete": true,
+  "projects": [{"projectId": "project:fleet", "total": 2}],
   "threads": [
-    {"threadId": "thread:orc", "title": "orc", "status": "running", "settled": false},
-    {"threadId": "thread:pr8-worker", "title": "PR8 impl", "status": "running", "settled": false}
+    {"threadId": "thread:orc", "projectId": "project:fleet", "title": "orc", "status": "running", "settled": false},
+    {"threadId": "thread:pr8-worker", "projectId": "project:fleet", "title": "PR8 impl", "status": "running", "settled": false}
   ],
   "tasks": [
-    {"taskId": "task:pr8-impl", "childThreadId": "thread:pr8-worker", "workState": "working", "hasPendingChildRuns": true}
-  ]
+    {"taskId": "task:pr8-impl", "childThreadId": "thread:pr8-worker", "status": "running", "workState": "working", "hasPendingChildRuns": true, "hasPendingQuestion": false}
+  ],
+  "pending_requests": [{"threadId": "thread:orc", "requestIds": []}]
 }

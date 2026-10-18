@@ -24,12 +24,13 @@ the check:
 | `t3` | The T3 snapshot only (§1.1). No cmux check, no cmux failure. |
 | `cmux` | `cmux list-status` + the `pgrep codex` warning only (§1.2). |
 | `both` | Both; each must pass. |
-| `auto` (default) | `t3` when `--t3-state` is given or the gate runs inside T3 (`T3CODE_CLI_PATH` set); `cmux` when the cmux CLI is on PATH; both when both. **Nothing detectable = BLOCKED, never a pass.** |
+| `auto` (default) | `t3` when `--t3-state` is given or the gate runs inside T3 (`T3CODE_CLI_PATH` set); `cmux` when the cmux CLI is on PATH; both when both (inside T3 with `cmux` on PATH that means both, so pass `--fleet t3` for a T3-only fleet). **Nothing detectable = BLOCKED, never a pass.** |
 
 ```bash
-bash scripts/convergence-gate.sh --fleet t3 --t3-state "$SNAP"            # T3 fleet; #4 still needs the ack
-bash scripts/convergence-gate.sh --fleet t3 --t3-state "$SNAP" --ack-demo # operator asserts demo approval → can PASS
-bash scripts/convergence-gate.sh --fleet cmux --ack-demo                  # cmux fleet
+P="$FLEET_PROJECT_IDS"   # space-separated T3 projectIds the fleet runs in
+bash scripts/convergence-gate.sh --fleet t3 --t3-state "$SNAP" --t3-projects "$P"            # #4 still needs the ack
+bash scripts/convergence-gate.sh --fleet t3 --t3-state "$SNAP" --t3-projects "$P" --ack-demo # operator asserts demo approval → can PASS
+bash scripts/convergence-gate.sh --fleet cmux --ack-demo                                     # cmux fleet
 ```
 
 Condition #4 is **not script-checkable** — the gate stays BLOCKED until the
@@ -48,16 +49,33 @@ Leads and workers now run as T3 threads and `delegate_task` children, and a
 shell script cannot call MCP. So the lead running the gate captures what T3
 reports into one JSON file, and `scripts/t3-fleet-state.py` judges it.
 
+The gate passes only when convergence is **proven**. Every absence, duplicate,
+unknown value or missing liveness field blocks.
+
 **Capture (in the lead's own thread, right before the gate):**
 
-1. `t3_thread_list(settled: false, includeSubagents: true, limit: 100)` for each
-   fleet project (`projectId`), following `nextCursor` until it is `null`.
-   Copy every row verbatim into `threads`. Then set `threads_complete: true`.
-2. `task_status(taskId)` for every delegated task you hold. Copy each result
-   verbatim into `tasks`, and add `childThreadId` from the `delegate_task`
-   return if `task_status` does not carry it.
-3. Optional: `t3_pending_request_list` rows into `pending_requests`.
-4. `self_thread_id` = your own thread (`currentThreadId` in the list response).
+1. **Sweep every fleet project.** For each fleet `projectId`:
+   `t3_thread_list(projectId, settled: false, includeSubagents: true, limit: 100)`,
+   following `nextCursor` until it is `null`. Copy every row verbatim into
+   `threads` and add `"projectId"` (the response's top-level `projectId`) to
+   each row. Record `{"projectId": …, "total": …}` (the response's `total`)
+   in `projects`. The judge counts the unsettled rows per project against
+   `total`, so a skipped page blocks.
+2. **Every delegated task.** `task_status(taskId)` for every task you hold;
+   copy each result verbatim into `tasks`. The judge requires `taskId`,
+   `childThreadId`, `status`, `workState`, `hasPendingChildRuns` and
+   `hasPendingQuestion` on every row. A missing field blocks; it is not
+   read as `false`.
+3. **Prove each child settled.** For every task whose `childThreadId` is not
+   already in `threads` (a settled child drops out of the `settled: false`
+   listing), `t3_thread_read(childThreadId)` and append its `thread` object
+   (it carries `projectId`, `status`, `settled`, `pendingRequestCount`) to
+   `threads`. Never append a thread twice: duplicate `threadId`s are rejected.
+4. **Your own pending questions.** `t3_pending_request_list()` (no `threadId`
+   means your own thread) returns `{"requestIds": [...]}`. Record it as
+   `{"threadId": <self_thread_id>, "requestIds": [...]}` in `pending_requests`.
+   Add one row per extra thread you checked the same way.
+5. `self_thread_id` = `currentThreadId` from the list response.
    `captured_at` = `date -u +%Y-%m-%dT%H:%M:%SZ`.
 
 ```json
@@ -65,42 +83,58 @@ reports into one JSON file, and `scripts/t3-fleet-state.py` judges it.
   "schema": "weave-t3-fleet/v1",
   "captured_at": "2026-10-18T21:00:00Z",
   "self_thread_id": "thread:orc",
-  "threads_complete": true,
-  "threads": [{"threadId": "thread:orc", "title": "orc", "status": "running", "settled": false}],
+  "projects": [{"projectId": "project:fleet", "total": 1}],
+  "threads": [
+    {"threadId": "thread:orc", "projectId": "project:fleet", "title": "orc",
+     "status": "running", "settled": false},
+    {"threadId": "thread:pr1-worker", "projectId": "project:fleet", "title": "PR1 impl",
+     "status": "completed", "settled": true, "pendingRequestCount": 0}
+  ],
   "tasks": [{"taskId": "task:pr1-impl", "childThreadId": "thread:pr1-worker",
-             "workState": "result_available", "hasPendingChildRuns": false}],
-  "pending_requests": []
+             "status": "completed", "workState": "result_available",
+             "hasPendingChildRuns": false, "hasPendingQuestion": false}],
+  "pending_requests": [{"threadId": "thread:orc", "requestIds": []}]
 }
 ```
 
 Write it under the run's `docs.local/` scratch dir (never `/tmp`), then
-`bash scripts/convergence-gate.sh --fleet t3 --t3-state <file>` (or
-`WEAVE_T3_STATE`). Max age defaults to 15 min (`--t3-max-age-min N`,
+`bash scripts/convergence-gate.sh --fleet t3 --t3-state <file> --t3-projects "<ids>"`
+(or `WEAVE_T3_STATE` + `WEAVE_T3_PROJECTS`). `--t3-projects` is the fleet
+project set, given to the gate separately from the snapshot. Without it the gate
+blocks. Max age defaults to 15 min (`--t3-max-age-min N`,
 `WEAVE_T3_MAX_AGE_MIN`).
 
-**Verdicts — the gate fails closed on:**
+**Verdicts. The gate blocks on:**
 
-- a missing, unreadable, malformed or wrong-`schema` snapshot, `threads_complete`
-  not `true`, or a stale / future `captured_at`;
-- `self_thread_id` absent from `threads` (wrong project or a filtered listing);
+- a missing, unreadable, malformed or wrong-`schema` snapshot, or a stale /
+  future `captured_at`;
+- a missing or duplicate field or id: no `projects`, a row without
+  `projectId`, a task without `status` / `hasPendingChildRuns` /
+  `hasPendingQuestion`, a duplicate `threadId` / `taskId` / `pending_requests`
+  thread, or a `pending_requests` row without a `requestIds` list;
+- coverage gaps: no `--t3-projects`, a fleet project absent from `projects`, a
+  project whose unsettled rows do not add up to its `total`, or an unsettled
+  thread from a project that was not swept;
+- `self_thread_id` absent from `threads`, or the runner itself `waiting` or in
+  an unknown status (it is exempt only from the running/unsettled checks);
 - any other thread `preparing`/`queued`/`starting`/`running`, or `waiting`
-  (a pending question), or with a status outside the `t3_thread_list` enum;
-- any task `working` or `waiting_for_children`, or with an unknown `workState`;
+  (a pending question), or with a status outside the `t3_thread_list` enum,
+  or with `pendingRequestCount` > 0;
+- any task `working` or `waiting_for_children`, with an unknown `workState`
+  or `status`, with `hasPendingQuestion: true`, or `result_available` with a
+  live `status` (inconsistent);
 - a `result_available` task with `hasPendingChildRuns: true`;
-- any `pending_requests` row.
+- no `pending_requests` row for `self_thread_id`, or any non-empty `requestIds`.
 
 **Parent/child completion is not a settled worker.** A task at
 `result_available` means the child finished its work for the parent. The worker
-is converged only once its thread is settled too. A `result_available` task
-whose `childThreadId` is still in the unsettled listing — or any finished thread
-(`idle`, `completed`, `failed`, …) left unsettled — fails with
-**"… not settled — settle it"**. Standing rule: "settle idle workers"
-(Etan 2026-10-18, via orc collab). A task whose child thread is absent from the
-complete unsettled listing counts as settled.
-
-Limit: the gate can only judge the projects you listed. A lead that lists one
-project while workers run in another will pass that project alone — list every
-fleet project.
+is converged only once its thread is settled too, and the snapshot has to prove
+it. A `result_available` task whose child thread is unsettled, or any finished
+thread (`idle`, `completed`, `failed`, …) left unsettled, fails with
+**"… not settled — settle it"**. A child thread missing from `threads` fails
+with **"… missing from the snapshot — add t3_thread_read(…).thread"**. It is
+never assumed settled. Standing rule: "settle idle workers"
+(Etan 2026-10-18, via orc collab).
 
 ### 1.2 cmux fleet — pane idleness
 

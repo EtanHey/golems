@@ -9,7 +9,6 @@ the durable snapshot fixtures are under evals/fixtures/t3-fleet-state/.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -55,8 +54,8 @@ class GateHarness(unittest.TestCase):
         path.write_text(body)
         path.chmod(0o755)
 
-    def snapshot(self, fixture: str, age_min: int = 1) -> Path:
-        doc = json.loads((FIXTURES / fixture).read_text())
+    def snapshot(self, fixture: str, age_min: int = 1, doc: dict | None = None) -> Path:
+        doc = doc if doc is not None else json.loads((FIXTURES / fixture).read_text())
         stamp = datetime.now(timezone.utc) - timedelta(minutes=age_min)
         doc["captured_at"] = stamp.strftime("%Y-%m-%dT%H:%M:%SZ")
         out = self.root / fixture
@@ -68,6 +67,7 @@ class GateHarness(unittest.TestCase):
             "PATH": f"{self.bin}:/usr/bin:/bin",
             "HOME": str(self.root),
             "GITS_ROOT": str(self.root / "gits"),
+            "WEAVE_T3_PROJECTS": "project:fleet",
         }
         base.update(env or {})
         return subprocess.run(
@@ -143,7 +143,7 @@ class T3Fleet(GateHarness):
             ["bash", str(GATE), "--repos", "repo", "--fleet", "t3", "--t3-state", snap],
             capture_output=True, text=True,
             env={"PATH": f"{self.bin}:/usr/bin:/bin", "HOME": str(self.root),
-                 "GITS_ROOT": str(self.root / "gits")},
+                 "GITS_ROOT": str(self.root / "gits"), "WEAVE_T3_PROJECTS": "project:fleet"},
         )
         self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
         self.assertIn("demo approval NOT asserted", r.stdout)
@@ -153,6 +153,63 @@ class T3Fleet(GateHarness):
         r = self.gate("--fleet", "t3", "--t3-state", str(self.snapshot("converged.json")))
         self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
         self.assertIn("repo: 2 open PR(s)", r.stdout)
+
+    def test_t3_without_fleet_project_set_blocks(self) -> None:
+        snap = str(self.snapshot("converged.json"))
+        r = self.gate("--fleet", "t3", "--t3-state", snap, env={"WEAVE_T3_PROJECTS": ""})
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertRegex(r.stdout, r"❌ T3: no fleet project set")
+
+    def test_t3_projects_flag_names_an_uncaptured_project(self) -> None:
+        snap = str(self.snapshot("converged.json"))
+        r = self.gate("--fleet", "t3", "--t3-state", snap,
+                      "--t3-projects", "project:fleet project:other")
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertIn("❌ T3: fleet project 'project:other' was not captured", r.stdout)
+
+
+def _probe(mutate) -> dict:
+    doc = json.loads((FIXTURES / "converged.json").read_text())
+    mutate(doc)
+    return doc
+
+
+def _task(doc: dict) -> dict:
+    return doc["tasks"][0]
+
+
+def _self(doc: dict) -> dict:
+    return doc["threads"][0]
+
+
+# Review round 1 (Cursor + Sol on f55ef551): every probe printed
+# "CONVERGENCE GATE PASSED" end to end. Each must now block the whole gate.
+FAIL_OPEN_PROBES = {
+    "absent result_available child": lambda d: d["threads"].pop(),
+    "missing hasPendingChildRuns": lambda d: _task(d).pop("hasPendingChildRuns"),
+    "hasPendingQuestion true": lambda d: _task(d).update(hasPendingQuestion=True),
+    "task status teleporting": lambda d: _task(d).update(status="teleporting"),
+    "duplicate running then settled": lambda d: d["threads"].insert(
+        1, dict(d["threads"][1], status="running", settled=False)),
+    "duplicate settled then running": lambda d: d["threads"].append(
+        dict(d["threads"][1], status="running", settled=False)),
+    "self status teleporting": lambda d: _self(d).update(status="teleporting"),
+    "self status waiting": lambda d: _self(d).update(status="waiting"),
+    "no project coverage": lambda d: d.pop("projects"),
+    "pending requestIds on self": lambda d: d.update(
+        pending_requests=[{"threadId": "thread:orc", "requestIds": ["request:1"]}]),
+}
+
+
+class FailOpenProbesEndToEnd(GateHarness):
+    def test_every_fail_open_probe_blocks_the_gate(self) -> None:
+        for name, mutate in FAIL_OPEN_PROBES.items():
+            with self.subTest(probe=name):
+                snap = str(self.snapshot(f"probe-{len(name)}.json", doc=_probe(mutate)))
+                r = self.gate("--fleet", "t3", "--t3-state", snap)
+                self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+                self.assertRegex(r.stdout, r"❌ T3: ")
+                self.assertNotIn("PASSED", r.stdout)
 
 
 class FleetSelection(GateHarness):
@@ -201,6 +258,14 @@ class FleetSelection(GateHarness):
     def test_unknown_fleet_value_is_usage_error(self) -> None:
         r = self.gate("--fleet", "slack")
         self.assertEqual(r.returncode, 64, msg=r.stdout + r.stderr)
+
+    def test_value_flag_without_value_is_usage_error(self) -> None:
+        for flag in ("--fleet", "--t3-state", "--t3-projects", "--t3-max-age-min",
+                     "--min-free-gb", "--repos"):
+            with self.subTest(flag=flag):
+                r = self.gate(flag)
+                self.assertEqual(r.returncode, 64, msg=r.stdout + r.stderr)
+                self.assertIn(f"{flag} needs a value", r.stderr)
 
 
 if __name__ == "__main__":

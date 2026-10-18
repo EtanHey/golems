@@ -21,10 +21,13 @@
 # Conditions 2/3 depend on how the fleet runs (--fleet / WEAVE_FLEET):
 #   cmux  — `cmux list-status` pane idleness + a pgrep codex heuristic (warn only).
 #   t3    — a JSON snapshot of T3 threads + delegated tasks (--t3-state /
-#           WEAVE_T3_STATE), judged by t3-fleet-state.py. The script cannot call
-#           MCP; the lead captures the snapshot (references/run-lifecycle.md §1.1).
-#           Fails closed on a missing/invalid/stale snapshot, any working,
-#           waiting or unknown state, and a finished-but-unsettled worker.
+#           WEAVE_T3_STATE), judged by t3-fleet-state.py against the fleet's
+#           T3 projectIds (--t3-projects / WEAVE_T3_PROJECTS). The script cannot
+#           call MCP; the lead captures the snapshot (references/run-lifecycle.md
+#           §1.1). Passes only when convergence is proven: a missing/invalid/
+#           stale snapshot, an unswept project, any working, waiting or unknown
+#           state, a missing liveness field, a duplicate row, a missing child
+#           thread, a pending question, or a finished-but-unsettled worker blocks.
 #   both  — both checks; each must pass.
 #   auto  — (default) t3 if a snapshot is given or the gate runs inside T3
 #           (T3CODE_CLI_PATH set), cmux if the cmux CLI is on PATH, both if both.
@@ -33,7 +36,7 @@
 # Usage:
 #   convergence-gate.sh [--ack-demo] [--min-free-gb N] [--repos "a b c"]
 #                       [--fleet auto|cmux|t3|both] [--t3-state FILE]
-#                       [--t3-max-age-min N]
+#                       [--t3-projects "ID ..."] [--t3-max-age-min N]
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,17 +47,24 @@ REPOS=(golems brainlayer voicelayer)
 GIT_ROOT="${GITS_ROOT:-$HOME/Gits}"
 FLEET="${WEAVE_FLEET:-auto}"
 T3_STATE="${WEAVE_T3_STATE:-}"
+T3_PROJECTS="${WEAVE_T3_PROJECTS:-}"
 T3_MAX_AGE_MIN="${WEAVE_T3_MAX_AGE_MIN:-15}"
+
+# value flags: a missing value is a usage error (64), not a set -u crash
+need_value() {
+  if [[ $# -lt 2 ]]; then echo "ERROR: $1 needs a value" >&2; exit 64; fi
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --ack-demo) ACK_DEMO=1; shift ;;
-    --min-free-gb) MIN_FREE_GB="$2"; shift 2 ;;
-    --repos) read -r -a REPOS <<< "$2"; shift 2 ;;
-    --fleet) FLEET="$2"; shift 2 ;;
-    --t3-state) T3_STATE="$2"; shift 2 ;;
-    --t3-max-age-min) T3_MAX_AGE_MIN="$2"; shift 2 ;;
-    -h|--help) sed -n '2,42p' "$0"; exit 0 ;;
+    --min-free-gb) need_value "$@"; MIN_FREE_GB="$2"; shift 2 ;;
+    --repos) need_value "$@"; read -r -a REPOS <<< "$2"; shift 2 ;;
+    --fleet) need_value "$@"; FLEET="$2"; shift 2 ;;
+    --t3-state) need_value "$@"; T3_STATE="$2"; shift 2 ;;
+    --t3-projects) need_value "$@"; T3_PROJECTS="$2"; shift 2 ;;
+    --t3-max-age-min) need_value "$@"; T3_MAX_AGE_MIN="$2"; shift 2 ;;
+    -h|--help) sed -n '2,39p' "$0"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 64 ;;
   esac
 done
@@ -163,7 +173,8 @@ if [[ "$check_t3" -eq 1 ]]; then
   elif ! command -v python3 >/dev/null 2>&1; then
     fail "T3: python3 not on PATH — cannot judge the snapshot (fail-safe: BLOCKED)"
   else
-    t3_out=$(python3 "$SCRIPT_DIR/t3-fleet-state.py" "$T3_STATE" --max-age-min "$T3_MAX_AGE_MIN" 2>&1); t3_rc=$?
+    t3_out=$(python3 "$SCRIPT_DIR/t3-fleet-state.py" "$T3_STATE" --max-age-min "$T3_MAX_AGE_MIN" \
+      --expect-projects "$T3_PROJECTS" 2>&1); t3_rc=$?
     t3_pass=0
     t3_fail=0
     while IFS= read -r line; do

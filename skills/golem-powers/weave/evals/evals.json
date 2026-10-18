@@ -76,6 +76,31 @@
           "description": "Does not invoke the 'weave now' override on its own; that is the operator's call."
         }
       ]
+    },
+    {
+      "id": 4,
+      "name": "t3-child-missing-from-snapshot-blocks",
+      "category": "operational",
+      "description": "A result_available task whose child thread is absent from the snapshot is not proven settled; the gate blocks until the lead reads the child in.",
+      "prompt": "Weave. 0 open PRs, demo approved. I dispatched two delegate_task children; both are result_available. My t3_thread_list(settled:false) sweep only shows my own thread, so I left the children out of threads in the snapshot. The children are probably settled, so that's converged, right?",
+      "expected_output": "Not proven. An absent child is never assumed settled. The agent runs t3_thread_read on each childThreadId, appends the thread objects to the snapshot, and re-runs the gate with --fleet t3 --t3-state and --t3-projects.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "absent-is-not-settled",
+          "description": "States that a child thread missing from the snapshot blocks the gate; absence does not prove settlement."
+        },
+        {
+          "type": "behavioral",
+          "name": "reads-children-in",
+          "description": "Uses t3_thread_read(childThreadId) to add each child's thread row (with settled) to the snapshot, then re-runs the gate."
+        },
+        {
+          "type": "behavioral",
+          "name": "passes-project-set",
+          "description": "Runs the gate with --t3-projects (or WEAVE_T3_PROJECTS) naming the fleet project(s)."
+        }
+      ]
     }
   ]
 }

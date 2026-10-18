@@ -46,10 +46,10 @@ and verified change is not convergence.
 
 | Situation | Action |
 |---|---|
-| **"weave"** | Arm the skill, run `scripts/convergence-gate.sh`, and wait. Never auto-fire. |
+| **"weave"** | Arm the skill, run `scripts/convergence-gate.sh` with the fleet's mode, and wait. Never auto-fire. In a T3 fleet that means the §1.1 capture, then `--fleet t3 --t3-state <file> --t3-projects "<ids>"`. Inside T3 with `cmux` on PATH, `auto` checks both fleets. |
 | **"weave now"** | Fire immediately, skipping the gate. Operator override — use only when the operator knows the fleet is quiet. |
 | Gate path | Require 0 open fleet PRs, idle and settled workers, no in-flight Codex, RAM headroom, and explicit demo approval. Prefer orc's SENTINEL over raw PR count when present. |
-| T3 fleet (leads/workers are T3 threads or `delegate_task` children) | Capture the `weave-t3-fleet/v1` snapshot from `t3_thread_list` + `task_status`, then run the gate with `--fleet t3 --t3-state <file>`. Any working, waiting or unknown state blocks. A `result_available` task whose worker thread is unsettled blocks too: settle it first. |
+| T3 fleet (leads/workers are T3 threads or `delegate_task` children) | Capture the `weave-t3-fleet/v1` snapshot (`references/run-lifecycle.md` §1.1): `t3_thread_list` for every fleet project, `task_status` per task, `t3_thread_read` per child the listing misses, `t3_pending_request_list` for your own thread. Then run the gate with `--fleet t3 --t3-state <file> --t3-projects "<ids>"`. It passes only when convergence is proven: any working, waiting or unknown state, missing field, duplicate row, unswept project or missing child blocks. A `result_available` task whose worker thread is unsettled blocks too: settle it first. |
 | cmux fleet | Run the gate with `--fleet cmux`; it reads `cmux list-status` pane idleness. |
 | Gate cannot detect a fleet | BLOCKED. Pass `--fleet` and its input; never treat "nothing to check" as converged. |
 | Small corpus (about 10 sessions or fewer) | Flat fan-out may be appropriate; still verify on disk and loop until dry. |

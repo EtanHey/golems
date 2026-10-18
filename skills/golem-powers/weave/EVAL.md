@@ -83,10 +83,14 @@ python3 -m unittest scripts/__tests__/test_corrections_rate.py
 
 # convergence gate, T3 fleet: snapshot verdicts + --fleet selection end to end
 python3 -m unittest scripts/__tests__/test_t3_fleet_state.py scripts/__tests__/test_convergence_gate.py
-python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/converged.json --now 2026-10-18T21:05:00Z
+python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/converged.json --now 2026-10-18T21:05:00Z --expect-projects project:fleet
 echo "expect 0 -> $?"
-python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/unsettled-result.json --now 2026-10-18T21:05:00Z
+python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/unsettled-result.json --now 2026-10-18T21:05:00Z --expect-projects project:fleet
 echo "expect 1 -> $?"   # result_available but worker thread unsettled: "settle it"
+python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/pending-question.json --now 2026-10-18T21:05:00Z --expect-projects project:fleet
+echo "expect 1 -> $?"   # t3_pending_request_list returned {"requestIds": [...]} for the runner
+python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/converged.json --now 2026-10-18T21:05:00Z
+echo "expect 1 -> $?"   # no fleet project set: coverage unproven
 python3 scripts/t3-fleet-state.py evals/fixtures/t3-fleet-state/malformed.json
 echo "expect 2 -> $?"
 
