@@ -26,7 +26,8 @@ Fleet law for user-visible completion lives in canon #4. Before emitting `TASK_D
 `bun skills/golem-powers/false-green-gate/scripts/false-green-gate-cli.mjs <transcript|->`,
 exit 3 = FLAG. A FLAG means the claim is unearned — run the missing live probe, then claim. Compose with `/deploy-verify` and `/qa-verdict-gate` as the domain requires; for a narration render-done, also run `audio-dashboard`'s gate (`bun skills/golem-powers/audio-dashboard/scripts/render-done-gate-cli.mjs <transcript|->`).
 
-Functional self-QA happens BEFORE handoff — "merged" ≠ "converged into one verified build."
+Functional self-QA runs at the [feature-batch gate](#feature-batch-gate), before the batch is handed off
+or declared done — "merged" ≠ "converged into one verified build."
 
 ## PR-Referenced Artifacts Must Be Committed
 

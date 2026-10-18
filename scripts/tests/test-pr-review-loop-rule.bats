@@ -145,7 +145,10 @@ teardown() {
 }
 
 @test "bot panel example scopes the full roster to core diffs" {
-  grep -F 'Core diffs only; non-core = @coderabbitai + one.' "$REPO_ROOT/skills/golem-powers/pr-loop/references/review-loop.md"
+  grep -F '# Bot tiering (canon #9): full panel on core diffs only. Reviewer selection and counts:' "$REPO_ROOT/skills/golem-powers/pr-loop/references/review-loop.md"
+  grep -F '# /agent-routing § Routing rules (SSOT).' "$REPO_ROOT/skills/golem-powers/pr-loop/references/review-loop.md"
+  run grep -F 'Core diffs only; non-core = @coderabbitai + one.' "$REPO_ROOT/skills/golem-powers/pr-loop/references/review-loop.md"
+  [ "$status" -eq 1 ]
 }
 
 @test "Loop-record is a readiness gate and template records same-vendor reason" {

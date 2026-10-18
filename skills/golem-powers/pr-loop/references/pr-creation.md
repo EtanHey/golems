@@ -7,7 +7,10 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 1. BRANCH    git checkout main && git pull && git checkout -b feat/name
 2. IMPLEMENT Write code — write the failing test FIRST (AGENTS.md law);
              the /tdd-guard hook enforces the edit limit
-3. TEST      Run full test suite — ALL must pass
+3. TEST      Run the relevant fast checks (the repo's required PR suites
+             plus tests touching the diff) — ALL must pass. Heavy/e2e
+             suites run at the [feature-batch gate](merge-and-verification.md#feature-batch-gate),
+             not per PR (now, for a single-PR batch).
 4. VERIFY    Invoke /never-fabricate
              ↳ DAEMON GATE: If this PR touches daemon/socket/MCP code, queue
                a real client session for the feature-batch gate (run it now

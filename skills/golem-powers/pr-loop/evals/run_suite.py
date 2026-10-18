@@ -294,5 +294,42 @@ class RiskSizedGates(unittest.TestCase):
                 self.assertGreaterEqual(len(case["assertions"]), 2)
                 self.assertTrue(any(row.get("type") == "negative" for row in case["assertions"]))
 
+    # Review round 1 (#800): stale per-PR gates survived outside the files the first pass touched.
+    STALE_GATES = [
+        r"(?i)full test suite\s*\W+\s*all must pass",
+        r"(?i)review bots and required checks green",
+        r"(?i)bot reviewers post on the pr\. wait for them",
+        r"(?i)wait for re-review",
+        r"(?i)coderabbit (plus|\+) one",
+        r"(?i)comment count is less than \d",
+        r"(?i)(before|until)[^.]{0,40}(creating the pr|pr creation|gh pr create)",
+        r"(?i)functional self-qa happens before handoff",
+    ]
+
+    # Verbatim historical rulings stay quoted as provenance; the scan skips only these exact quotes.
+    PROVENANCE_QUOTES = [
+        "*\"bot tiering — full 4-bot panel only on daemon/engine/transport diffs, else CodeRabbit + one, "
+        "one pass per bot, duplicate findings answered once + dup-links.\"*",
+    ]
+
+    def test_no_surface_keeps_a_per_pr_heavy_gate_or_bot_wait(self):
+        for path in sorted(SKILL.rglob("*")):
+            relative = path.relative_to(SKILL).as_posix()
+            if not path.is_file() or relative.startswith("evals/results") or relative == "evals/run_suite.py":
+                continue
+            content = flat(relative)
+            for quote in self.PROVENANCE_QUOTES:
+                content = content.replace(quote, "")
+            for pattern in self.STALE_GATES:
+                with self.subTest(surface=relative, pattern=pattern):
+                    self.assertNotRegex(content, pattern)
+
+    def test_bot_tiering_points_at_the_routing_ssot_for_reviewer_counts(self):
+        panel = flat("references/review-loop.md").split("#### 8a.1", 1)[1].split("#### 8a.2", 1)[0]
+        self.assertIn(SSOT, panel)
+        case = next(case for case in json.loads(text("evals/evals.json"))["evals"] if case["id"] == 20)
+        self.assertIn("agent-routing", case["expected_output"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

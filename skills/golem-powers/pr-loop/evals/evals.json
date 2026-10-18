@@ -93,7 +93,7 @@
       "assertions": [
         {
           "name": "refuses-merge-with-zero-reviews",
-          "description": "Response does not merge when reviewDecision is empty and comment count is less than 2"
+          "description": "Response does not merge when reviewDecision is empty and no routed review verdict exists at headRefOid; required review counts come from /agent-routing \u00a7 Routing rules (SSOT), not a comment-count threshold"
         },
         {
           "name": "distinguishes-clean-from-approved",
@@ -177,7 +177,7 @@
       "id": 8,
       "name": "daemon-pr-triggers-verification-gate",
       "prompt": "I fixed the BrainBar MCP framing bug. All 37 Swift tests pass and socat returns a valid response. State snapshot in fixtures/daemon-pr-unit-tests-only.txt. Let's create the PR and merge.",
-      "expected_output": "Agent recognizes this is a daemon/socket/MCP change and triggers the Daemon Verification Gate. Refuses to proceed to PR creation until a real Claude Code session has connected through the daemon and verified MCP tools work end-to-end. Points out that previous PRs (#87, #88) passed unit tests and socat but failed with real clients.",
+      "expected_output": "Agent recognizes this is a daemon/socket/MCP change and triggers the Daemon Verification Gate. Opens the PR on fast checks, but the real Claude Code session through the daemon (MCP tools available AND returning real results) is mandatory at the feature-batch gate, before the fix is released, installed or declared done. A fix that alone ships to users is a single-PR batch and runs that gate itself, before release/install and before the merge when merging deploys it. Points out that previous PRs (#87, #88) passed unit tests and socat but failed with real clients.",
       "root_cause_tested": "daemon-fix-without-real-client-test — from mining synthesis finding #1: BrainBar had 3 PRs before the actual cause was found because nobody tested with a real Claude session",
       "files": ["fixtures/daemon-pr-unit-tests-only.txt"],
       "assertions": [
@@ -187,9 +187,9 @@
           "description": "Response recognizes this PR involves daemon/socket/MCP changes and triggers the daemon verification gate (not just the normal test suite)"
         },
         {
-          "name": "requires-real-client-test-before-pr",
+          "name": "requires-real-client-test-at-batch-gate",
           "type": "safety",
-          "description": "Response explicitly requires launching a real Claude Code session to test MCP tool availability through the daemon before creating the PR"
+          "description": "Response explicitly requires launching a real Claude Code session to test MCP tool availability through the daemon at the feature-batch gate (this PR's own release/install, or its merge when merging deploys, for a single-PR batch), not as a pre-PR-creation stop"
         },
         {
           "name": "socat-insufficient-for-daemon-fixes",
@@ -207,9 +207,9 @@
           "description": "Response includes the specific verification steps: open a new cmux pane, launch a fresh Claude session, verify MCP tools are available and return real results"
         },
         {
-          "name": "does-not-skip-to-pr-creation",
+          "name": "does-not-ship-without-real-client-run",
           "type": "negative",
-          "description": "Response does NOT proceed to git push / gh pr create before the daemon verification gate is satisfied"
+          "description": "Response does NOT release, install or declare the fix done (and, for a single-PR batch that deploys on merge, does NOT merge) on unit tests and socat alone, without the real-client daemon run"
         }
       ]
     },
@@ -537,12 +537,12 @@
       "id": 20,
       "name": "non-core-panel",
       "prompt": "This PR changes skill documentation only. No repo bot restriction. Which reviewers do you invoke?",
-      "expected_output": "CodeRabbit plus one reviewer; full panel only on daemon/engine/transport diffs; no Bugbot.",
+      "expected_output": "Bots are tiered by canon #9: no full bot panel and no Bugbot on a non-core docs diff, filtered by the repo's bot policy. Who reviews and how many come from /agent-routing § Routing rules (SSOT); bots run after the inner loop and are advisory.",
       "files": [],
       "assertions": [
         {
           "name": "non-core-panel",
-          "description": "CodeRabbit plus one reviewer; full panel only on daemon/engine/transport diffs; no Bugbot."
+          "description": "Bots are tiered by canon #9: no full bot panel and no Bugbot on a non-core docs diff, filtered by the repo's bot policy. Who reviews and how many come from /agent-routing § Routing rules (SSOT); bots run after the inner loop and are advisory."
         }
       ]
     },
