@@ -45,23 +45,18 @@ codex --full-auto "Execute phase N. Plan: $(cat ../plan/README.md)"
 git worktree remove ../wt-phase-<N>
 ```
 
-## Collab Monitoring (No CronCreate)
+## Waiting on Workers (no collab monitor)
 
-```bash
-# Attach the packaged monitor in a supervised long-running command session
-bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh start @<listen-name> <plan-dir>/collab.md && \
-  bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>
+"Codex seats must not poll collabs; T3 delegate completions already wake you." (Etan 2026-10-18, via orc collab)
 
-# From a separate control command when the plan is complete
-bash $HOME/.golems/skills/golem-powers/collab-monitor/scripts/collab-monitor.sh stop @<listen-name>
-```
-
-This addressed-message monitor does not observe a delegated CLI crash or stall. Also arm the worker's process-exit or scheduled process/registry liveness watcher; the collab monitor **MUST NOT be the only worker-liveness guard**. Read the finished worker screen or log once after the liveness watcher wakes you—never poll `read_screen` in a loop.
+- **T3 (default in T3):** dispatch with `delegate_task` and end the turn. The completion notification wakes you (SKILL.md § T3-native execution). Arm nothing.
+- **cmux adapter:** run no collab monitor. Your guard is the worker's process exit: `skills/golem-powers/codex-workflows/scripts/codex-workflows.sh watch --run-id <run-id>`. When it wakes you, read the finished worker log and `collab.md` once; never poll `read_screen` in a loop.
+- **Something must sit and watch** (CI, a file): one bounded `codex.subagent.mechanical` child with a deadline and a single terminal report, settled at its terminal state. Never this seat, never a re-arm loop.
 
 ## Limitations
 
-- No subagent spawning — each Codex instance is standalone; spawn from orchestrator terminal
+- No subagent spawning outside T3 — each Codex instance is standalone; spawn from orchestrator terminal (in T3, use `delegate_task`)
 - No session resume — pass plan README as context in next invocation
 - No MCP access — write decisions to `<phase>/findings.md`, not BrainLayer
-- No CronCreate — use the packaged collab-monitor `start`/`follow`/`stop` lifecycle
+- No CronCreate and no collab monitor — completion notifications (T3) or one process-exit watch (cmux adapter)
 - No plan mode — write plan structure to markdown first

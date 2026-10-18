@@ -136,6 +136,40 @@ test('short plans use the same skeleton and multi-PR plans declare invariant tes
   assert.match(text, /## Invariant test/);
 });
 
+test('large-plan defaults to T3-native execution and keeps cmux monitors as an adapter', () => {
+  const dir = 'skills/golem-powers/large-plan';
+  const skill = read(`${dir}/SKILL.md`);
+  const t3 = skill.split('### T3-native execution (default in T3)')[1]?.split('\n### cmux adapter: parallel rounds')[0];
+  assert.ok(t3, 'T3-native execution section precedes the cmux adapter');
+  for (const rule of [
+    'agent-routing/references/t3-native.md', '`delegate_task`', '`taskId`', 'completion notification is the liveness guard',
+    'no collab monitor', '`ScheduleWakeup`', '`CronCreate`', 'end the turn', 'verify the artifact',
+    '`watch_pull_request`', '`codex.subagent.mechanical`', 'deadline', 'single terminal report',
+    'never owns the parent\'s PR watch', '`task_cancel`', '`unwatch_pull_request`', '(Etan 2026-10-18, via orc collab)',
+  ]) assert.ok(t3.includes(rule), rule);
+  const cmux = skill.split('### cmux adapter: parallel rounds')[1].split('### Plan Lifecycle')[0];
+  assert.ok(cmux.includes('Arms the addressed monitor'), 'round monitor procedure lives under the cmux adapter');
+  const parallel = skill.split('## Parallel Execution')[1].split('\n## ')[0];
+  assert.ok(parallel.indexOf('### cmux adapter: orchestrator duties') < parallel.indexOf('**The orchestrator MUST:**'), 'parallel monitor procedure lives under the cmux adapter');
+  const table = skill.split('## Platform Features')[1].split('\n## ')[0];
+  assert.match(table, /\| Feature \| T3 \(default in T3\) \| cmux adapter: Claude Code \| cmux adapter: universal fallback \|/);
+  for (const cell of ['`delegate_task`', 'Completion notification', '`watch_pull_request`', '`unwatch_pull_request`', '`task_cancel`']) assert.ok(table.includes(cell), cell);
+  for (const path of [`${dir}/SKILL.md`, `${dir}/adapters/codex.md`, `${dir}/adapters/claude.md`, `${dir}/adapters/capabilities.yaml`, `${dir}/workflows/collab.md`]) {
+    const text = read(path);
+    assert.doesNotMatch(text, /Codex uses packaged|Codex seats use (its|the) packaged|collab-monitor\.sh (start|follow)/, `${path}: Codex seats run no collab monitor`);
+  }
+  assert.ok(read(`${dir}/adapters/codex.md`).includes('Codex seats must not poll collabs; T3 delegate completions already wake you.'));
+  const arm = read(`${dir}/workflows/collab.md`).split('### 4. Arm addressed watches')[1].split('### 5.')[0];
+  assert.ok(arm.includes('**T3 (default in T3):**') && arm.includes('**cmux adapter:**'), 'collab step 4 branches T3 vs cmux');
+  const suite = JSON.parse(read(`${dir}/evals/evals.json`));
+  assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
+  for (const [id, name] of [[30, 't3-next-batch-delegate-no-guards'], [31, 't3-ci-watch-parent-or-bounded-child'], [32, 'codex-lead-refuses-collab-monitor'], [33, 'cmux-fleet-keeps-monitor-adapter']]) {
+    const e = suite.evals.find(e => e.id === id);
+    assert.equal(e?.name, name);
+    assert.ok(e.prompt && e.expected_output && e.assertions.length >= 2, name);
+  }
+});
+
 test('weave evals exercise rejected M1 routes, lead provenance and short/multi-PR planning', () => {
   for (const [skill, names] of [['agent-routing', ['m1-proof-dispatch', 'm1-long-running-only', 'm1-failed-brainbar-probe', 'm1-claude-startup-ready', 'lead-model-tier-change']], ['large-plan', ['short-plan-same-skeleton', 'multi-pr-invariant-chain-span']]]) {
     const suite = JSON.parse(read(`skills/golem-powers/${skill}/evals/evals.json`));

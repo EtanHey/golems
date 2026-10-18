@@ -210,6 +210,49 @@
         {"name": "multi-pr-invariant-chain-span-1", "description": "Each slice names a behavior invariant and its proving test before READY."},
         {"name": "multi-pr-invariant-chain-span-2", "description": "Reports chain span rather than only per-PR time; unmerged roots are pending, not zero."}
       ]
+    },
+    {
+      "id": 30,
+      "name": "t3-next-batch-delegate-no-guards",
+      "prompt": "You are a lead in a T3 thread. Plan the next batch: 3 independent PRs (retry backoff, log rotation, README badge). Dispatch the workers.",
+      "expected_output": "Plans one round of 3 parallel phases, then dispatches each PR as its own delegate_task (worktree isolation, plan path by absolute path) per agent-routing references/t3-native.md, retains the 3 taskIds and ends the turn. The completion notification is the liveness guard: no Monitor, collab monitor, ScheduleWakeup, CronCreate or /loop is armed.",
+      "assertions": [
+        {"name": "t3-next-batch-delegate-no-guards-1", "description": "Dispatches one delegate_task per PR and retains each taskId."},
+        {"name": "t3-next-batch-delegate-no-guards-2", "description": "Ends the turn after dispatch, relying on completion notifications."},
+        {"name": "t3-next-batch-delegate-no-guards-negative", "description": "Does not arm a Monitor, collab monitor, liveness watcher, ScheduleWakeup, CronCreate or /loop."}
+      ]
+    },
+    {
+      "id": 31,
+      "name": "t3-ci-watch-parent-or-bounded-child",
+      "prompt": "You are a lead in a T3 thread. PR #412 is open and CI will take 20 min, watch it and merge when green.",
+      "expected_output": "Calls watch_pull_request on PR #412 from the parent thread and ends the turn; a wake is news, re-checked before any merge. If something must sit and watch beyond what the PR watch covers, dispatches exactly one bounded codex.subagent.mechanical child with a deadline and a single terminal report that never owns the parent's PR watch. Calls unwatch_pull_request at terminal state.",
+      "assertions": [
+        {"name": "t3-ci-watch-parent-or-bounded-child-1", "description": "Uses the parent's watch_pull_request, or one bounded codex.subagent.mechanical child with a deadline and single terminal report."},
+        {"name": "t3-ci-watch-parent-or-bounded-child-2", "description": "Re-verifies the latest head's checks on wake before merging, then unwatch_pull_request."},
+        {"name": "t3-ci-watch-parent-or-bounded-child-negative", "description": "Does not use ScheduleWakeup, CronCreate, /loop or a sleep loop in the lead seat."}
+      ]
+    },
+    {
+      "id": 32,
+      "name": "codex-lead-refuses-collab-monitor",
+      "prompt": "You are a Codex lead running in T3 with two delegated workers. Start the collab monitor on collab.md so you hear when they finish.",
+      "expected_output": "Declines to start the collab monitor, quoting 'Codex seats must not poll collabs; T3 delegate completions already wake you.' Ends the turn and relies on the delegate_task completion notifications; on wake reads collab.md once and verifies the artifact.",
+      "assertions": [
+        {"name": "codex-lead-refuses-collab-monitor-1", "description": "Names the delegate completion notification as what wakes the lead."},
+        {"name": "codex-lead-refuses-collab-monitor-negative", "description": "Does not run collab-monitor start/follow or any polling loop on the Codex seat."}
+      ]
+    },
+    {
+      "id": 33,
+      "name": "cmux-fleet-keeps-monitor-adapter",
+      "prompt": "You are a Claude lead driving a visible cmux pane fleet (not T3). Round 2 has two parallel phases. Kick them off.",
+      "expected_output": "Follows the cmux adapter: creates/updates collab.md, arms the native Monitor per /collab-monitor and a separate process-exit or process/registry liveness watcher before spawning, records the watch ID for 30-minute and post-compaction re-arm, then spawns one agent per phase with the collab path.",
+      "assertions": [
+        {"name": "cmux-fleet-keeps-monitor-adapter-1", "description": "Arms the native Monitor and a separate liveness watcher before spawning any worker."},
+        {"name": "cmux-fleet-keeps-monitor-adapter-2", "description": "Records the watch ID and plans re-arm on expiry and after compaction, with TaskStop at close."},
+        {"name": "cmux-fleet-keeps-monitor-adapter-negative", "description": "Does not use delegate_task completion as the only guard for pane workers."}
+      ]
     }
   ]
 }

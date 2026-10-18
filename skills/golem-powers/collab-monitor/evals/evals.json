@@ -107,12 +107,12 @@
         {"type": "negative", "name": "unrelated-done-zero", "description": "The exact ## Round 2 not done append emits zero alerts and does not re-fire history."},
         {"type": "negative", "name": "broken-recipe-removed", "description": "large-plan contains neither grep done nor kill <bg-monitor-pid>."},
         {"type": "content", "name": "monitor-armed-before-spawn", "description": "Both large-plan orchestration procedures arm and attach the monitor before spawning phase agents."},
-        {"type": "content", "name": "packaged-entrypoint-taught", "description": "Large-plan routes Claude through native Monitor and /collab-monitor, with packaged start/status/follow/stop and an attached consumer on Codex seats."},
+        {"type": "content", "name": "packaged-entrypoint-taught", "description": "Large-plan routes Claude through native Monitor and /collab-monitor in its cmux adapter; Codex seats arm no collab monitor, and T3 leads rely on delegate_task completion notifications (Etan 2026-10-18 rulings)."},
         {"type": "content", "name": "bounded-watch-lifecycle", "description": "Re-arm at 30-minute expiry and after compaction; record returned identifiers, TaskStop replaced/closed native watches, preserve routing state, and avoid duplicate streams. Negative controls reject removal of lifecycle guidance and obsolete run --once-only teaching."},
         {"type": "content", "name": "attached-consumer-taught", "description": "Every start recipe attaches follow so detached log records reach a monitored command session."},
         {"type": "content", "name": "addressed-status-taught", "description": "Parallel agents are required to append timestamped, addressed done and blocked events that the monitor can actually deliver."},
-        {"type": "content", "name": "codex-adapter-taught", "description": "The linked Codex adapter teaches packaged start/follow/stop and timestamped addressed completion headings instead of a detached grep loop."},
-        {"type": "negative", "name": "message-monitor-is-not-liveness", "description": "The top-level skill, linked workflow, and Codex adapter forbid using the addressed-message collab monitor as the only worker-liveness guard."},
+        {"type": "content", "name": "codex-adapter-taught", "description": "The linked Codex adapter runs no collab monitor: T3 completion notifications or one process-exit watch, plus timestamped addressed completion headings instead of a detached grep loop."},
+        {"type": "negative", "name": "message-monitor-is-not-liveness", "description": "The top-level skill, linked workflow, and Claude adapter forbid using the addressed-message collab monitor as the only worker-liveness guard."},
         {"type": "content", "name": "liveness-before-spawn", "description": "Both top-level parallel-execution procedures arm process or registry liveness before spawning workers."}
       ]
     },
