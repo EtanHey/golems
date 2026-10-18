@@ -295,6 +295,17 @@ def test_recipe_keeps_ignored_docs_local(tmp_path):
     assert "kept because docs.local unarchived" in out.stdout
 
 
+def test_recipe_keeps_nested_docs_local_without_a_tracked_sibling(tmp_path):
+    # Review round 3 BLOCKING on #801: `git status --porcelain --ignored` collapses a
+    # directory holding only ignored files to `!! scratch/`, so a status grep misses it.
+    _, wt = lane(tmp_path)
+    (wt / "scratch" / "docs.local").mkdir(parents=True)
+    (wt / "scratch" / "docs.local" / "REPORT.md").write_text("unarchived\n")
+    out = retire(wt)
+    assert (wt / "scratch" / "docs.local" / "REPORT.md").exists()
+    assert "kept because docs.local unarchived" in out.stdout and "removed" not in out.stdout
+
+
 def test_recipe_removes_when_only_regenerable_caches_are_ignored(tmp_path):
     _, wt = lane(tmp_path)
     (wt / "node_modules" / "pkg").mkdir(parents=True)
@@ -308,7 +319,7 @@ def test_recipe_pins_main_discovery_and_ls_remote_sha():
     recipe = retirement_recipe()
     assert 'MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")' in recipe
     assert "| cut -f1" in recipe and "git rev-parse HEAD" in recipe
-    assert "--porcelain --ignored" in recipe
+    assert "-type d -name docs.local" in recipe and "-prune" in recipe
     assert "--force" not in recipe
 
 
