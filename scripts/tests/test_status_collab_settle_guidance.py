@@ -306,6 +306,16 @@ def test_recipe_keeps_nested_docs_local_without_a_tracked_sibling(tmp_path):
     assert "kept because docs.local unarchived" in out.stdout and "removed" not in out.stdout
 
 
+def test_recipe_removes_when_docs_local_holds_only_empty_dirs(tmp_path):
+    # model-role-wiring.test.mjs leaves an empty docs.local/cx28/ in every tree it runs in;
+    # nothing there needs archiving, so it must not keep the tree forever.
+    _, wt = lane(tmp_path)
+    (wt / "docs.local" / "cx28").mkdir(parents=True)
+    out = retire(wt)
+    assert out.returncode == 0, out.stderr
+    assert not wt.exists() and f"removed: {wt}" in out.stdout
+
+
 def test_recipe_removes_when_only_regenerable_caches_are_ignored(tmp_path):
     _, wt = lane(tmp_path)
     (wt / "node_modules" / "pkg").mkdir(parents=True)
@@ -319,7 +329,7 @@ def test_recipe_pins_main_discovery_and_ls_remote_sha():
     recipe = retirement_recipe()
     assert 'MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")' in recipe
     assert "| cut -f1" in recipe and "git rev-parse HEAD" in recipe
-    assert "-type d -name docs.local" in recipe and "-prune" in recipe
+    assert "-path '*/docs.local/*' ! -type d" in recipe and "-prune" in recipe
     assert "--force" not in recipe
 
 

@@ -254,7 +254,7 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
     echo "kept because uncommitted or untracked changes"
   elif [ -z "$BRANCH" ] || [ "$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)" != "$(git rev-parse HEAD)" ]; then
     echo "kept because HEAD is not pushed to origin/$BRANCH"
-  elif [ -n "$(find "$WT" -path "$WT/.git" -prune -o -path '*/node_modules' -prune -o -type d -name docs.local -print -quit)" ]; then
+  elif [ -n "$(find "$WT" -path "$WT/.git" -prune -o -path '*/node_modules' -prune -o -path '*/docs.local/*' ! -type d -print -quit)" ]; then
     echo "kept because docs.local unarchived"
   elif git -C "$MAIN" worktree remove "$WT"; then
     echo "removed: $WT"
@@ -266,8 +266,9 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
      (`git ls-remote origin refs/heads/<branch> | cut -f1`) equals `git rev-parse HEAD`
      (artifact pushed; `<branch>` is the upstream when one is set, so a review-fix
      checkout `-B <local> origin/<pr-branch>` pushed with `HEAD:<pr-branch>` still
-     matches, else the current branch), and no `docs.local/` directory exists at any depth
-     (a `find` walk that skips `.git` and `node_modules`; `git status --porcelain --ignored`
+     matches, else the current branch), and no file sits under a `docs.local/` at any depth
+     (a `find` walk that skips `.git` and `node_modules`; an empty `docs.local/` holds nothing
+     to archive; `git status --porcelain --ignored`
      collapses a directory holding only ignored files to `!! scratch/`, so it misses
      `scratch/docs.local/`). `git worktree remove` deletes ignored files too, so an unarchived
      `docs.local/` keeps the tree until it is archived or the lead decides. Any other
