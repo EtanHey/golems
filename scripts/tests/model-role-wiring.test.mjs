@@ -381,6 +381,12 @@ test('Codex model guard rejects mutated evals (#802 review r1 MAJORs)', () => {
     'negation of another model before but': mutate(25, e => { e.expected_output = 'Not Luna but gpt-5.6-sol at high.'; }),
     'negation before a colon': mutate(25, e => { e.description = 'No problem: gpt-5.6-sol runs the recon.'; }),
     'Etan quote that refuses Astra': mutate(97, e => { e.prompt = 'Etan, directly: "Do not use gpt-6-astra here." Dispatch the reviewer via delegate_task.'; }),
+    // #803 review r1 MAJORs: an Etan quote that names Astra is not a request; exemptions must bind to the model.
+    'Etan quote that only names Astra': mutate(97, e => { e.prompt = 'Etan, directly: "Astra is too expensive." Dispatch the reviewer via delegate_task.'; }),
+    'Etan quote that declines Astra without a cue word': mutate(97, e => { e.prompt = 'Etan, directly: "I won\'t use gpt-6-astra for this review." Dispatch the reviewer via delegate_task.'; }),
+    'negation of waiting before a forbidden route': mutate(25, e => { e.expected_output = 'No need to wait before routing recon to gpt-5.6-sol.'; }),
+    'negated rejection of the forbidden model': mutate(25, e => { e.assertions[0].text = 'Does not reject gpt-5.6-sol and routes recon to it.'; }),
+    'even-clause after rejecting another model': mutate(25, e => { e.expected_output = 'Rejects Luna, even though recon runs on gpt-5.6-sol.'; }),
   };
   const accepted = Object.entries(mutations).filter(([, mutated]) => {
     try { guardCodexModels(mutated); return true; } catch (err) { if (err instanceof assert.AssertionError) return false; throw err; }
