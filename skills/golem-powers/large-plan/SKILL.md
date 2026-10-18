@@ -103,7 +103,7 @@ When a round has parallel phases, the orchestrator dispatches through its harnes
 3. **On wake:** verify the artifact (PR exists, head SHA, file scope) before relaying or advancing. **Phase exit** below still applies.
 4. **PR waiting:** the parent calls `watch_pull_request` and ends the turn. A wake is news, not a merge decision.
 5. **Something must sit and watch** (CI, a file, a job no notification covers): "anything that must sit and watch (a PR, CI, a file) uses a cheap [`codex.subagent.mechanical`] sub-agent, never a big-context [`codex.implement`] or lead session." (Etan 2026-10-18, via orc collab) Exactly one bounded child with a deadline and a single terminal report. It never owns the parent's PR watch. Settle it at its terminal state; no re-arm loops. Resolve its model through the supported watcher path: `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` (add `--field model` for the bare id). A bare call without `--use watcher` still refuses the `candidate` role.
-6. **Cleanup:** `unwatch_pull_request` before handing work back; `task_cancel` any child still running when the plan closes.
+6. **Settle** each lane at its terminal state (PR merged or handed off, artifact verified), not only when the plan closes: conclude the child (no new sends), `task_cancel` its `taskId` to stop queued runs, `unwatch_pull_request` its PR, then overwrite STATUS.md (no second collab line: the worker's line already recorded the change; append one only if none landed). Idle with no artifact pending = settle now, not later: "settle idle workers" (Etan 2026-10-18, via orc collab). Mechanics: `/agent-routing` § Goal Contract.
 
 ### cmux adapter: parallel rounds
 
@@ -231,7 +231,9 @@ Each phase findings.md is the shared collaboration room:
 
 When a round has 2+ independent phases, use the **full collab protocol** defined in [workflows/collab.md](workflows/collab.md).
 
-**In T3:** `collab.md` holds the Task Board, decisions and status lines (steps 1–2 below). Dispatch and waiting follow [T3-native execution](#t3-native-execution-default-in-t3); none of the watches below are armed.
+**Status and wakes:** one `STATUS.md` overwritten in place by the lead, plus ONE appended collab line per status change; progress never goes into orc's T3 thread; `@orc` / BLOCKED / DONE wake words only for blocked, a lane done or an Etan decision; `@etan` asks go to orc's stable page; workers post as `<lead>-w<N>`. Rules quoted verbatim in [workflows/collab.md#status-and-wakes](workflows/collab.md#status-and-wakes).
+
+**In T3:** `collab.md` holds decisions and status lines, `STATUS.md` the Task Board (steps 1–2 below). Dispatch and waiting follow [T3-native execution](#t3-native-execution-default-in-t3); none of the watches below are armed.
 
 **Complexity tiers** (from collab workflow):
 - **Lightweight** (~40 lines): 2 agents, fully independent work
@@ -244,7 +246,7 @@ See [workflows/collab.md](workflows/collab.md) for the full protocol, mandatory 
 
 **The orchestrator MUST:**
 1. Create `collab.md` at plan root using the template from the collab workflow
-2. Fill in all mandatory sections (Goal, Agents, Task Board, Constraints, Gates)
+2. Fill in all mandatory sections (Goal, Agents, Task Board in `STATUS.md`, Constraints, Gates)
 3. Arms the addressed monitor **before dispatching any worker** per `/collab-monitor`: Claude uses native Monitor. Codex seats arm no collab monitor; their guard is the process-exit watch in step 4
 4. Arm a process-exit or scheduled process/registry liveness watcher for every worker. The addressed-message collab monitor **MUST NOT be the only worker-liveness guard**
 5. Spawn agents with the collab path in their kickoff prompts only after the native Monitor returns its task ID (Codex seats: once the process-exit watch is attached) and the separate liveness watchers are armed; require each agent to append either `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @<agent> → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>`; when all agents report `done`, the lead must first confirm every worker's CLEANUP RECEIPT and run the prune step (`git worktree prune`, delete merged branches, `docs.local/<sprint>/` rollup; see **Phase exit**), and only then advance rounds
@@ -381,6 +383,10 @@ User correction (April 5): "No, I'm saying it will take probably hours, not week
 `git worktree prune`, delete merged branches, and roll `docs.local/<sprint>/` up into one README. A missing
 receipt is a question to that worker, not a closed phase: the phase stays open until that worker posts it, and the lead
 does not write a receipt on a worker's behalf.
+Worktree removal belongs to the implementer: "the implementer removes its worktree at DONE" and
+"regenerable caches need no OK" (Etan 2026-10-18, via orc collab). The lead verifies the receipt's
+`worktree: <path> removed` line against `git worktree list` and never removes a worker's worktree itself, except leftovers of settled or merged lanes; retirement path:
+`/pr-loop` § Cleanup Receipt. `git worktree prune` only clears entries the implementer already removed.
 
 ---
 

@@ -20,7 +20,7 @@ Use `<output_contract>` for structured phase deliverables:
 After completing this phase:
 1. Write decisions to phase-N/findings.md
 2. Append `### @codex → @<listen-name> — [ISO-timestamp] Phase N done: <summary>` or `### @codex → @<listen-name> — [ISO-timestamp] Phase N blocked: <need/from whom>` to collab.md
-3. Update collab.md Task Board — status → done, add PR link
+3. Leave STATUS.md to the lead; your step-2 line carries the PR link
 4. Commit with: feat(phase-N): <description>
 </output_contract>
 ```

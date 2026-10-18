@@ -243,8 +243,10 @@ Not every branch goes through the full PR flow. When implementation is done:
 | **Keep as-is** | Need to park work | Just stop. Worktree preserved. |
 | **Discard** | Wrong approach, start over | Requires typed "discard" confirmation. `git branch -D <branch>` |
 
-**Worktree cleanup (lane close):** For options 1 (after merge), 3 (never), and 4 (after discard),
-remove the lane's worktree from the original checkout, after the worker's pane is closed:
+**Worktree cleanup (lane close):** the implementer retires its own worktree at DONE
+([Cleanup Receipt](#cleanup-receipt)). This GC is the lead's sweep for leftovers of settled or
+merged lanes under `<main>/.worktrees/` only. For options 1 (after merge), 3 (never), and 4
+(after discard), sweep a leftover from the original checkout once its pane is closed:
 ```bash
 # Check if in worktree
 git worktree list | grep $(git branch --show-current)
@@ -277,10 +279,70 @@ the default branch (bare-mirror-style hubs like brainlayer), use the
 
 ### Cleanup Receipt
 
-Cleanup is part of done. After the branch/worktree removal above, end the merge
-comment (lead) or the DONE report (worker) with this block. A merge or DONE
-without it is not done. A worker handing off unmerged still writes it:
-`worktree: <path> kept because PR #N awaits lead merge`.
+Cleanup is part of done: "the implementer removes its worktree at DONE" and
+"regenerable caches need no OK" (Etan 2026-10-18, via orc collab). After the
+branch/worktree removal, end the merge comment (lead) or the DONE report
+(worker) with this block. A merge or DONE without it is not done.
+
+- **Who removes:** the implementer removes its own worktree at DONE, once its
+  artifact is preserved: branch pushed (local HEAD equals `origin/<branch>`),
+  PR merged, or report committed. That is the preservation the lane-close rule
+  above asks for, so it needs no lead decision; local-only history or an
+  unarchived `docs.local/` still does. A worker handing off an unmerged PR has
+  a pushed branch, so it removes the tree too:
+  `worktree: <path> removed (branch <name> pushed at <sha>)`.
+- **How (retirement path, implementer-owned, both harnesses):** run this from
+  inside your own worktree, unchanged; it prints the receipt's worktree line.
+  ```bash
+  WT=$(git rev-parse --show-toplevel)
+  UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)
+  BRANCH=${UPSTREAM#origin/}; [ -n "$UPSTREAM" ] || BRANCH=$(git branch --show-current)
+  MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "kept because uncommitted or untracked changes"
+  elif [ -z "$BRANCH" ] || [ "$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)" != "$(git rev-parse HEAD)" ]; then
+    echo "kept because HEAD is not pushed to origin/$BRANCH"
+  elif [ -n "$(find "$WT" -path "$WT/.git" -prune -o -path '*/node_modules' -prune -o -path '*/docs.local/*' ! -type d -print -quit)" ]; then
+    echo "kept because docs.local unarchived"
+  elif git -C "$MAIN" worktree remove "$WT"; then
+    echo "removed: $WT"
+  else
+    echo "kept because git worktree remove exited non-zero"
+  fi
+  ```
+  1. **Preserve first:** `git status --porcelain` is empty, the remote branch SHA
+     (`git ls-remote origin refs/heads/<branch> | cut -f1`) equals `git rev-parse HEAD`
+     (artifact pushed; `<branch>` is the upstream when one is set, so a review-fix
+     checkout `-B <local> origin/<pr-branch>` pushed with `HEAD:<pr-branch>` still
+     matches, else the current branch), and no file sits under a `docs.local/` at any depth
+     (a `find` walk that skips `.git` and `node_modules`; an empty `docs.local/` holds nothing
+     to archive; `git status --porcelain --ignored`
+     collapses a directory holding only ignored files to `!! scratch/`, so it misses
+     `scratch/docs.local/`). `git worktree remove` deletes ignored files too, so an unarchived
+     `docs.local/` keeps the tree until it is archived or the lead decides. Any other
+     ignored path is a regenerable cache (`node_modules/`, `__pycache__/`, build dirs)
+     and goes with the tree without asking. If a check fails, the receipt says
+     `kept because <reason>`.
+  2. **Main discovery:** `MAIN` is the main checkout, from the shared git dir
+     (`git rev-parse --path-format=absolute --git-common-dir` is `<main>/.git` for T3
+     `.t3/worktrees/...` and cmux `<main>/.worktrees/...` alike). `git -C "$MAIN"` runs
+     the removal from there, not from inside the tree; never `--force`.
+  3. **T3 child:** run the block as its LAST tool call. Report `removed: <path>` only
+     if the command exited 0. Review-fix rounds get a fresh `delegate_task` worktree
+     from the pushed branch, so nothing needs the old tree.
+  4. **cmux worker:** the same block BEFORE writing DONE;
+     the lead closes the pane afterwards (pane close no longer precedes removal).
+  `worktree-gc.sh` is not the implementer's path: it answers `KEEP-out-of-scope` for
+  `.t3/worktrees/...` and `KEEP-live` while the worker's pane runs. It stays the lead's
+  sweep for leftovers under `<main>/.worktrees/` only.
+- **Receipt:** the worktree line says `removed` only after the removal exited 0;
+  otherwise `kept because <reason>`.
+- **Regenerable caches:** delete `node_modules`, build output (`dist/`,
+  `build/`, `.next/`, `target/`), `__pycache__` and `.pytest_cache` without
+  asking.
+- **The lead verifies the receipt** (`git worktree list`,
+  `git ls-remote origin <branch>`) and never removes a worker's worktree itself,
+  except leftovers of settled or merged lanes.
 
 ```
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):

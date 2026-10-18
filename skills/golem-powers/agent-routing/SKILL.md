@@ -263,6 +263,19 @@ evidence. A DONE marker is only a prompt to verify the contracted artifact.
 
 **Capability mismatch:** if the worker's profile/tools cannot do the task, stop and report one line to its lead: `BLOCKED: <task> needs <capability>; profile <x> lacks it`. Never substitute other work or explore.
 
+**Questions go to the lead:** "workers never ask Etan routing questions" (Etan 2026-10-18, via orc collab). A worker
+unsure about routing, scope, model or reviewer asks its lead. T3: the child's pending question, which the lead reads with
+`t3_pending_request_read` and answers with `t3_pending_request_respond` ([t3-native § 6](references/t3-native.md#6-pending-questions)).
+cmux adapter: one addressed collab line to the lead. The lead answers from this skill and escalates only a decision Etan
+alone can make, as an `@etan` ask in the collab.
+
+**Settle at the terminal state:** "settle idle workers" (Etan 2026-10-18, via orc collab). When a lane closes (verified
+`DONE`, filed `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED`), the lead settles its worker. T3: conclude the task (no new
+sends), `task_cancel` its `taskId` so queued runs stop, and `unwatch_pull_request` the lane's PR. cmux adapter: harvest,
+then close the pane through the cmuxlayer MCP (`close_surface`). Idle with no artifact pending = settle now, not later.
+A PR still in its review rounds is not idle; its implementer stays for those fixes (§ Lead Topology #5). The implementer
+removes its own worktree at DONE (`/pr-loop` § Cleanup Receipt); the lead verifies the receipt.
+
 If the user questions why work is happening or corrects the route, pause spawning and patching,
 explain the evidence-backed state, and store the correction separately.
 
