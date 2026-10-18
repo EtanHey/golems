@@ -160,16 +160,27 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
     '"**Models:** Codex = gpt-6.1-sol and gpt-6-luna ONLY."', '"**Never gpt-5.6-\\*** (luna, sol, terra)"', '"gpt-6-astra only when Etan asks for it."',
     '`codex.implement`', '`codex.subagent.mechanical`', 'refused',
   ]) assert.ok(pins.includes(rule), rule);
+  // Review r1 BLOCKING: explicit interim UI precedence (lead decision) next to the UI bullet.
+  const uiLine = sizing.split('\n').find(l => l.startsWith('- UI precedence (interim'));
+  assert.ok(uiLine, 'dated interim UI precedence line is required');
+  for (const rule of ['skill-lead interim', 'pending Etan', 'takes precedence over the table', 'evidence', 'functional defect', 'not "the reviewer"', 'ONE reviewer', 'fresh Opus', 'never the implementer', 'XS/S', 'M UI PRs: up to 2 rounds', 'full panel']) assert.ok(uiLine.includes(rule), rule);
   const matrix = skill.split('## Role Matrix')[1].split('### Evidence')[0];
   assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*dated trial/);
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
-  for (const [id, name] of [[90, 'trial-refactor-opus-implements-sol-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only']]) {
+  for (const [id, name] of [[90, 'trial-refactor-opus-implements-sol-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-one-opus-reviewer-codex-records'], [97, 'astra-on-etan-explicit-ask']]) {
     const e = suite.evals.find(e => e.id === id);
     assert.equal(e?.name, name);
     assert.ok(e.prompt && e.expected_output, name);
     assert.ok(e.assertions.some(a => a.type === 'negative'), name);
   }
+  // Review r1 MAJOR: eval 92 is a lead's suggestion, not Etan's ask; eval 54 asserts MBP, not cmux.
+  const e92 = suite.evals.find(e => e.id === 92);
+  assert.match(e92.prompt, /lead/i);
+  assert.match(e92.prompt, /Etan has not/);
+  const e54 = suite.evals.find(e => e.id === 54);
+  assert.ok(e54.assertions.some(a => /MBP/.test(a.text) && /M1 proof/.test(a.text)), 'eval 54 asserts MBP with the M1-proof restriction');
+  assert.ok(!e54.assertions.some(a => /cmux/.test(a.text)), 'eval 54 no longer requires cmux');
 });
 
 test('large-plan staffing lines resolve through the SSOT including any dated trial and the Codex model list', () => {

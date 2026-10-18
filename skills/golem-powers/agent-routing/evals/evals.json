@@ -1425,7 +1425,7 @@
       "prompt": "Send this long-running docs lane to M1 T3 to free the main Mac; it needs no M1-specific proof.",
       "expected_output": "Keep the lane on the MBP: the M1 is a test rig only, long-running alone does not qualify, and even after Etan authorizes the rig, M1 dispatch requires a deliverable proven on M1.",
       "assertions": [
-        {"text": "Keeps work in cmux without an M1 proof requirement.", "type": "behavioral"},
+        {"text": "Keeps the lane on the MBP, and restricts any future M1 dispatch to work that needs M1 proof.", "type": "behavioral"},
         {"text": "Does not treat long-running work alone as an M1 dispatch requirement.", "type": "negative"}
       ]
     },
@@ -1610,8 +1610,8 @@
     {
       "id": 92,
       "name": "astra-only-on-etan-ask",
-      "prompt": "The reviewer is stuck on a tricky race. Get astra to look at it.",
-      "expected_output": "No Astra: gpt-6-astra runs only on Etan's own explicit request. A lead or worker suggestion does not count. Route a fresh reviewer per § Routing rules (SSOT), or escalate the question to Etan.",
+      "prompt": "A lead writes: \"The reviewer is stuck on a tricky race. Let's get astra to look at it.\" Etan has not asked for Astra.",
+      "expected_output": "No Astra: gpt-6-astra runs only on Etan's own explicit request, and here only a lead suggested it. Route a fresh reviewer per § Routing rules (SSOT), or escalate the question to Etan.",
       "assertions": [
         {"text": "Keeps the review on the SSOT-routed roles, or asks Etan, without dispatching Astra.", "type": "behavioral"},
         {"text": "Does NOT dispatch gpt-6-astra without Etan's own explicit request.", "type": "negative"}
@@ -1646,6 +1646,27 @@
       "assertions": [
         {"text": "Dispatches the worker on the MBP and cites the test-rig-only rule.", "type": "behavioral"},
         {"text": "Does NOT dispatch to or change anything on the M1 before Etan authorizes the rig setup.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 96,
+      "name": "xs-ui-pr-one-opus-reviewer-codex-records",
+      "prompt": "Open a PR for an XS UI change: a new focus ring on the sidebar links, implemented by claude.judgment. Route its review.",
+      "expected_output": "Per the interim UI precedence line: a Codex worker (codex.implement) records the changed states with computer use (default, hover, focus, clicked) and reports any functional defect it sees; that recording is evidence, not the reviewer. Exactly one fresh claude.judgment reviewer (not the implementer instance) loads frontend-design:frontend-design and judges the recording, 1 round.",
+      "assertions": [
+        {"text": "Has a Codex worker record the changed states with computer use and report any functional defect it observes, as evidence.", "type": "behavioral"},
+        {"text": "Routes exactly one fresh Opus (claude.judgment) reviewer that loads frontend-design:frontend-design, for 1 round.", "type": "behavioral"},
+        {"text": "Does NOT add a second (Codex) reviewer or a second round for the XS UI PR, and the implementer instance does not review.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 97,
+      "name": "astra-on-etan-explicit-ask",
+      "prompt": "Etan, directly: \"Use gpt-6-astra for this review of the race in the scheduler. I'm asking for it.\" Dispatch the reviewer via delegate_task.",
+      "expected_output": "Allowed: Etan himself explicitly asked for Astra, the one exception in the Codex model list. Dispatch the reviewer on gpt-6-astra via delegate_task (model checked against orchestrator_capabilities) and record that Etan requested it.",
+      "assertions": [
+        {"text": "Dispatches the reviewer on gpt-6-astra because Etan explicitly asked for it, and records that request.", "type": "behavioral"},
+        {"text": "Does NOT refuse or substitute another model when Etan himself explicitly requests Astra.", "type": "negative"}
       ]
     }
   ]

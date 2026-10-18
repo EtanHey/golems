@@ -69,10 +69,11 @@ This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewe
 
 Review is sized to risk; the PR's `size:*` label sets the tier.
 
-- "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above.
+- "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs count by the UI precedence line below.
 - M: up to 2 rounds, and round 2 only for BLOCKING findings (canon #9).
 - "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict. When the implementer is `claude.judgment` (UX/UI, or the dated trial above), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
 - UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement`. The UX/UI judge is a fresh `claude.judgment`, never the implementer, and judges from the recording.
+- UI precedence (interim, 2026-10-19; skill-lead interim pending Etan): for UI/style PRs the UI flow above takes precedence over the table's UX/UI reviewer. The Codex recording is evidence: the recorder also reports any functional defect it observes, so the other vendor has eyes on the change, but it is not "the reviewer". The ONE reviewer for an XS/S UI PR is a fresh Opus (`claude.judgment`, never the implementer instance) that loads `frontend-design:frontend-design` and judges the recording, 1 round. M UI PRs: up to 2 rounds of that reviewer. L, data or security UI PRs get the full panel above, which keeps a Codex reviewer.
 
 ### Records
 
